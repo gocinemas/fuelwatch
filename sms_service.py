@@ -20,9 +20,12 @@ Setup:
 
 import os
 import re
+import requests
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from datetime import datetime
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
-from search import postcode_to_latlon, fetch_all_stations, haversine_km
+from search import postcode_to_latlon, fetch_all_stations, haversine_km, fetch_nearby_amenities
 
 app = Flask(__name__)
 
@@ -69,6 +72,38 @@ def parse_sms(body: str):
     return postcode, fuel, radius
 
 
+# ── Weather ───────────────────────────────────────────────────────────────────
+
+WEATHER_CODES = {
+    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+    45: "Foggy", 48: "Icy fog", 51: "Light drizzle", 53: "Drizzle",
+    55: "Heavy drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain",
+    71: "Light snow", 73: "Snow", 75: "Heavy snow", 77: "Snow grains",
+    80: "Light showers", 81: "Showers", 82: "Heavy showers",
+    85: "Snow showers", 86: "Heavy snow showers",
+    95: "Thunderstorm", 96: "Thunderstorm+hail", 99: "Thunderstorm+hail",
+}
+
+def get_weather(lat: float, lon: float) -> str:
+    """Fetch current weather from Open-Meteo (free, no API key)."""
+    try:
+        url = (
+            f"https://api.open-meteo.com/v1/forecast"
+            f"?latitude={lat}&longitude={lon}"
+            f"&current=temperature_2m,weathercode,windspeed_10m"
+            f"&timezone=Europe/London"
+        )
+        r = requests.get(url, timeout=5)
+        c = r.json()["current"]
+        temp    = round(c["temperature_2m"])
+        code    = c["weathercode"]
+        wind    = round(c["windspeed_10m"])
+        desc    = WEATHER_CODES.get(code, "")
+        return f"{temp}°C {desc}, Wind {wind}km/h"
+    except Exception:
+        return ""
+
+
 # ── Search & Format ───────────────────────────────────────────────────────────
 
 def search_and_format(postcode: str, fuel: str, radius_miles: float) -> str:
@@ -103,14 +138,22 @@ def search_and_format(postcode: str, fuel: str, radius_miles: float) -> str:
     tank_saving = (avg - cheapest["price"]) * 55 / 100
 
     fuel_label = "Petrol" if fuel == "petrol" else "Diesel"
+    now = datetime.now().strftime("%d %b %Y %H:%M")
+    weather = get_weather(lat, lon)
 
-    # Build SMS — keep under 320 chars (2 SMS segments)
+    # Today / date / time / weather
     lines = [
-        f"FuelWatch {fuel_label} - {postcode}",
-        f"Radius: {radius_miles:.0f}mi | {len(nearby)} stations",
+        f"Today {now}",
+        weather if weather else "",
         "",
     ]
 
+    # Petrol Prices
+    lines += [
+        f"-- {fuel_label} near {postcode} --",
+        f"Radius: {radius_miles:.0f}mi | {len(nearby)} stations",
+        "",
+    ]
     for i, s in enumerate(nearby[:5], 1):
         marker = ">>>" if i == 1 else f" {i}."
         maps_url = f"https://maps.google.com/?q={s['lat']},{s['lon']}"
@@ -118,14 +161,29 @@ def search_and_format(postcode: str, fuel: str, radius_miles: float) -> str:
         if s["address"]:
             lines.append(f"    {s['address'][:30]}")
         lines.append(f"    {maps_url}")
-
     lines += [
         "",
         f"Avg: {avg:.1f}p | Save: {avg - cheapest['price']:.1f}p/L",
-        f"Full tank saving: £{tank_saving:.2f}",
+        f"Full tank: £{tank_saving:.2f} saving",
     ]
 
-    return "\n".join(lines)
+    # Supermarkets & Coffee (fetch with timeout so SMS isn't delayed)
+    try:
+        with ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(fetch_nearby_amenities, lat, lon, radius_miles * 1.60934)
+            amenities = future.result(timeout=6)
+    except (FuturesTimeoutError, Exception):
+        amenities = {"supermarkets": [], "cafes": []}
+    if amenities["supermarkets"]:
+        lines += ["", "-- Supermarkets --"]
+        for s in amenities["supermarkets"][:3]:
+            lines.append(f"  {s['name']}{s['rating']} ({s['dist_mi']:.1f}mi)")
+    if amenities["cafes"]:
+        lines += ["", "-- Coffee --"]
+        for c in amenities["cafes"][:3]:
+            lines.append(f"  {c['name']}{c['rating']} ({c['dist_mi']:.1f}mi)")
+
+    return "\n".join(l for l in lines if l is not None)
 
 
 # ── Webhook ───────────────────────────────────────────────────────────────────
@@ -176,5 +234,5 @@ if __name__ == "__main__":
     print("  ngrok http 5000")
     print("\nThen set your Twilio webhook to:")
     print("  https://YOUR-NGROK-URL/sms\n")
-    port = int(os.environ.get("PORT", 5001))
+    port = int(os.environ.get("PORT", 8080))
     app.run(debug=False, host="0.0.0.0", port=port)
