@@ -540,75 +540,101 @@ def _google_rating(name: str, lat: float = None, lon: float = None):
 # ── Share price ───────────────────────────────────────────────────────────────
 
 def _fetch_share_price(company: str) -> dict:
-    """Fetch current price + 1-month daily closes from Yahoo Finance (no API key needed)."""
-    try:
-        ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-        hdrs = {"User-Agent": ua, "Accept": "application/json"}
+    """Fetch current price + 1-month daily closes.
+    Tries Yahoo Finance first, falls back to Stooq CSV."""
+    from datetime import datetime as _dt
 
-        # Step 1: resolve ticker symbol
+    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+    hdrs = {"User-Agent": ua, "Accept": "application/json"}
+
+    # ── Step 1: resolve ticker via Yahoo Finance search ───────────────────────
+    ticker, disp_name, exchange, currency = "", company, "", "USD"
+    try:
         sr = requests.get(
-            "https://query1.finance.yahoo.com/v1/finance/search",
-            params={"q": company, "quotesCount": 3, "newsCount": 0},
+            "https://query2.finance.yahoo.com/v1/finance/search",
+            params={"q": company, "quotesCount": 5, "newsCount": 0},
             timeout=6, headers=hdrs,
         )
         quotes = sr.json().get("quotes", [])
-        # Prefer EQUITY type
         equity = [q for q in quotes if q.get("quoteType") == "EQUITY"]
         pick = equity[0] if equity else (quotes[0] if quotes else None)
-        if not pick:
-            return {}
-        ticker   = pick.get("symbol", "")
-        disp_name = pick.get("shortname") or pick.get("longname") or company
-        exchange = pick.get("exchDisp") or pick.get("exchange", "")
+        if pick:
+            ticker    = pick.get("symbol", "")
+            disp_name = pick.get("shortname") or pick.get("longname") or company
+            exchange  = pick.get("exchDisp") or pick.get("exchange", "")
+            currency  = pick.get("currency", "USD")
+    except Exception as e:
+        print(f"[share_price] ticker lookup failed: {e}")
 
-        # Step 2: 1-month daily chart
+    if not ticker:
+        return {}
+
+    # ── Step 2a: try Yahoo Finance chart API ──────────────────────────────────
+    prices, dates, meta = [], [], {}
+    try:
         cr = requests.get(
-            f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+            f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}",
             params={"interval": "1d", "range": "1mo"},
             timeout=6, headers=hdrs,
         )
         result = cr.json().get("chart", {}).get("result", [None])[0]
-        if not result:
-            return {}
-
-        meta       = result.get("meta", {})
-        timestamps = result.get("timestamp", [])
-        closes     = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
-
-        pairs = [(t, round(c, 4)) for t, c in zip(timestamps, closes) if c is not None]
-        if len(pairs) < 2:
-            return {}
-
-        from datetime import datetime as _dt
-        dates  = [_dt.fromtimestamp(t).strftime("%d %b") for t, _ in pairs]
-        prices = [p for _, p in pairs]
-
-        current      = prices[-1]
-        month_start  = prices[0]
-        prev_close   = meta.get("previousClose") or meta.get("regularMarketPreviousClose") or prices[-2]
-        currency     = meta.get("currency", "")
-        symbol_char  = {"USD": "$", "GBP": "£", "GBp": "p", "EUR": "€"}.get(currency, currency + " ")
-
-        day_chg   = round((current - prev_close) / prev_close * 100, 2) if prev_close else 0
-        month_chg = round((current - month_start) / month_start * 100, 2)
-
-        return {
-            "ticker":      ticker,
-            "name":        disp_name,
-            "exchange":    exchange,
-            "currency":    currency,
-            "symbol":      symbol_char,
-            "current":     current,
-            "day_chg":     day_chg,
-            "month_chg":   month_chg,
-            "month_high":  max(prices),
-            "month_low":   min(prices),
-            "prices":      prices,
-            "dates":       dates,
-        }
+        if result:
+            meta      = result.get("meta", {})
+            currency  = meta.get("currency", currency)
+            timestamps = result.get("timestamp", [])
+            closes    = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
+            pairs = [(t, round(c, 4)) for t, c in zip(timestamps, closes) if c is not None]
+            if pairs:
+                dates  = [_dt.fromtimestamp(t).strftime("%d %b") for t, _ in pairs]
+                prices = [p for _, p in pairs]
     except Exception as e:
-        print(f"[share_price] {e}")
+        print(f"[share_price] Yahoo chart failed: {e}")
+
+    # ── Step 2b: fallback to Stooq CSV ────────────────────────────────────────
+    if not prices:
+        try:
+            stooq_ticker = ticker.replace(".", "-")
+            sc = requests.get(
+                f"https://stooq.com/q/d/l/?s={stooq_ticker}&i=d",
+                timeout=8, headers={"User-Agent": ua},
+            )
+            lines = [l for l in sc.text.strip().splitlines() if l and not l.startswith("Date")]
+            lines = lines[-22:]  # ~1 month of trading days
+            for line in lines:
+                parts = line.split(",")
+                if len(parts) >= 5:
+                    try:
+                        dates.append(_dt.strptime(parts[0], "%Y-%m-%d").strftime("%d %b"))
+                        prices.append(round(float(parts[4]), 4))  # Close
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"[share_price] Stooq failed: {e}")
+
+    if not prices:
         return {}
+
+    current     = prices[-1]
+    month_start = prices[0]
+    prev_close  = meta.get("previousClose") or meta.get("regularMarketPreviousClose") or prices[-2]
+    symbol_char = {"USD": "$", "GBP": "£", "GBp": "p", "EUR": "€"}.get(currency, currency + " ")
+    day_chg     = round((current - prev_close) / prev_close * 100, 2) if prev_close else 0
+    month_chg   = round((current - month_start) / month_start * 100, 2)
+
+    return {
+        "ticker":     ticker,
+        "name":       disp_name,
+        "exchange":   exchange,
+        "currency":   currency,
+        "symbol":     symbol_char,
+        "current":    current,
+        "day_chg":    day_chg,
+        "month_chg":  month_chg,
+        "month_high": max(prices),
+        "month_low":  min(prices),
+        "prices":     prices,
+        "dates":      dates,
+    }
 
 
 # ── Company research ──────────────────────────────────────────────────────────
