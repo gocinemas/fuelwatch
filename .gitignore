@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+price_history_national.json
+price_history_postcodes.json
+*.png

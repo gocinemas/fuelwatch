@@ -18,19 +18,78 @@ Setup:
   6. Set Twilio webhook to: https://YOUR-NGROK-URL/sms
 """
 
+import io
+import json
 import os
 import re
+import time
 import requests
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime
-from flask import Flask, request
+from flask import Flask, request, send_file
 from twilio.twiml.messaging_response import MessagingResponse
 from search import postcode_to_latlon, fetch_all_stations, haversine_km, fetch_nearby_amenities
 
 app = Flask(__name__)
 
+# ── Price history files ────────────────────────────────────────────────────────
+NATIONAL_HISTORY_FILE = "price_history_national.json"
+POSTCODE_HISTORY_FILE = "price_history_postcodes.json"
+
+def _load_json(path):
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    return []
+
+def _save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f)
+
+def log_national_snapshot(stations):
+    """Append national avg petrol/diesel to history after each cache refresh."""
+    petrol_prices = [s["petrol"] for s in stations if s.get("petrol") and s["petrol"] > 0]
+    diesel_prices = [s["diesel"] for s in stations if s.get("diesel") and s["diesel"] > 0]
+    if not petrol_prices:
+        return
+    record = {
+        "ts": datetime.now().isoformat(timespec="minutes"),
+        "petrol_avg": round(sum(petrol_prices) / len(petrol_prices), 2),
+        "diesel_avg": round(sum(diesel_prices) / len(diesel_prices), 2) if diesel_prices else None,
+        "station_count": len(stations),
+    }
+    history = _load_json(NATIONAL_HISTORY_FILE)
+    # Deduplicate by minute
+    if not history or history[-1]["ts"] != record["ts"]:
+        history.append(record)
+        history = history[-2016:]  # keep ~6 weeks of 30-min snapshots
+        _save_json(NATIONAL_HISTORY_FILE, history)
+
+def log_postcode_snapshot(postcode, fuel, nearby):
+    """Append cheapest + area avg for a postcode search to history."""
+    if not nearby:
+        return
+    prices = [s["price"] for s in nearby]
+    record = {
+        "ts": datetime.now().isoformat(timespec="minutes"),
+        "fuel": fuel,
+        "cheapest": round(min(prices), 2),
+        "avg": round(sum(prices) / len(prices), 2),
+        "count": len(prices),
+    }
+    all_history = _load_json(POSTCODE_HISTORY_FILE)
+    if not isinstance(all_history, dict):
+        all_history = {}
+    key = f"{postcode.upper()}_{fuel}"
+    entries = all_history.get(key, [])
+    if not entries or entries[-1]["ts"] != record["ts"]:
+        entries.append(record)
+        entries = entries[-336:]  # keep ~1 week of 30-min snapshots
+        all_history[key] = entries
+        _save_json(POSTCODE_HISTORY_FILE, all_history)
+
+
 # ── Cache stations in memory (refresh every 30 min) ───────────────────────────
-import time
 _station_cache = {"data": [], "loaded_at": 0}
 CACHE_TTL = 1800  # 30 minutes
 
@@ -39,18 +98,25 @@ def get_stations():
     if not _station_cache["data"] or (now - _station_cache["loaded_at"]) > CACHE_TTL:
         _station_cache["data"] = fetch_all_stations()
         _station_cache["loaded_at"] = now
+        log_national_snapshot(_station_cache["data"])
     return _station_cache["data"]
 
 
 # ── SMS Parser ────────────────────────────────────────────────────────────────
 
+KNOWN_RETAILERS = ["tesco", "asda", "bp", "shell", "esso", "sainsburys",
+                   "sainsbury", "morrisons", "jet", "applegreen", "rontec",
+                   "moto", "sgn", "texaco"]
+
 def parse_sms(body: str):
     """
-    Parse incoming SMS into (postcode, fuel, radius_miles).
+    Parse incoming SMS into (postcode, fuel, radius_miles, retailer).
     Examples:
-      "KT16 0DA"           -> ("KT160DA", "petrol", 5.0)
-      "KT160DA diesel"     -> ("KT160DA", "diesel", 5.0)
-      "KT16 0DA petrol 10" -> ("KT160DA", "petrol", 10.0)
+      "KT16 0DA"              -> ("KT160DA", "petrol", 5.0, None)
+      "KT160DA diesel"        -> ("KT160DA", "diesel", 5.0, None)
+      "KT16 0DA petrol 10"    -> ("KT160DA", "petrol", 10.0, None)
+      "KT16 0DA tesco"        -> ("KT160DA", "petrol", 5.0, "tesco")
+      "KT16 0DA bp diesel 10" -> ("KT160DA", "diesel", 10.0, "bp")
     """
     body = body.strip().upper()
 
@@ -59,7 +125,7 @@ def parse_sms(body: str):
         r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body
     )
     if not postcode_match:
-        return None, None, None
+        return None, None, None, None
 
     postcode = postcode_match.group(1).replace(" ", "")
 
@@ -67,9 +133,15 @@ def parse_sms(body: str):
 
     radius_match = re.search(r'\b(\d+)\s*(?:MILE|MI|MILES)?\b', body.replace(postcode, ""))
     radius = float(radius_match.group(1)) if radius_match else 5.0
-    radius = min(max(radius, 1), 20)  # clamp between 1–20 miles
+    radius = min(max(radius, 1), 20)
 
-    return postcode, fuel, radius
+    retailer = None
+    for r in KNOWN_RETAILERS:
+        if r.upper() in body:
+            retailer = r
+            break
+
+    return postcode, fuel, radius, retailer
 
 
 # ── Weather ───────────────────────────────────────────────────────────────────
@@ -106,7 +178,7 @@ def get_weather(lat: float, lon: float) -> str:
 
 # ── Search & Format ───────────────────────────────────────────────────────────
 
-def search_and_format(postcode: str, fuel: str, radius_miles: float) -> str:
+def search_and_format(postcode: str, fuel: str, radius_miles: float, retailer: str = None) -> str:
     """Run search and format result as a concise SMS reply."""
 
     latlon = postcode_to_latlon(postcode)
@@ -122,17 +194,21 @@ def search_and_format(postcode: str, fuel: str, radius_miles: float) -> str:
         price = s.get(fuel)
         if not price or price <= 0:
             continue
+        if retailer and retailer.lower() not in s.get("brand", "").lower():
+            continue
         dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
         if dist_km <= radius_km:
             nearby.append({**s, "dist_mi": dist_km / 1.60934, "price": price})
 
     if not nearby:
+        retailer_msg = f" {retailer.title()}" if retailer else ""
         return (
-            f"No {fuel} stations found within {radius_miles:.0f} miles of {postcode}.\n"
+            f"No{retailer_msg} {fuel} stations found within {radius_miles:.0f} miles of {postcode}.\n"
             f"Try: {postcode} {fuel} 10"
         )
 
     nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
+    log_postcode_snapshot(postcode, fuel, nearby)
     avg = sum(s["price"] for s in nearby) / len(nearby)
     cheapest = nearby[0]
     tank_saving = (avg - cheapest["price"]) * 55 / 100
@@ -149,8 +225,9 @@ def search_and_format(postcode: str, fuel: str, radius_miles: float) -> str:
     ]
 
     # Petrol Prices
+    retailer_label = f" — {retailer.title()}" if retailer else ""
     lines += [
-        f"-- {fuel_label} near {postcode} --",
+        f"-- {fuel_label}{retailer_label} near {postcode} --",
         f"Radius: {radius_miles:.0f}mi | {len(nearby)} stations",
         "",
     ]
@@ -176,11 +253,11 @@ def search_and_format(postcode: str, fuel: str, radius_miles: float) -> str:
         amenities = {"supermarkets": [], "cafes": []}
     if amenities["supermarkets"]:
         lines += ["", "-- Supermarkets --"]
-        for s in amenities["supermarkets"][:3]:
+        for s in amenities["supermarkets"][:5]:
             lines.append(f"  {s['name']}{s['rating']} ({s['dist_mi']:.1f}mi)")
     if amenities["cafes"]:
         lines += ["", "-- Coffee --"]
-        for c in amenities["cafes"][:3]:
+        for c in amenities["cafes"][:5]:
             lines.append(f"  {c['name']}{c['rating']} ({c['dist_mi']:.1f}mi)")
 
     return "\n".join(l for l in lines if l is not None)
@@ -201,16 +278,16 @@ def sms_reply():
         resp.message("FuelWatch UK\nText your postcode to get fuel prices.\nExample: KT16 0DA\nOr: KT16 0DA diesel 10")
         return str(resp)
 
-    postcode, fuel, radius = parse_sms(body)
+    postcode, fuel, radius, retailer = parse_sms(body)
 
     if not postcode:
         resp.message(
             "FuelWatch UK\nCouldn't read that postcode.\n"
-            "Try: KT16 0DA\nOr: KT16 0DA diesel 10"
+            "Try: KT16 0DA\nOr: KT16 0DA tesco diesel 10"
         )
         return str(resp)
 
-    reply = search_and_format(postcode, fuel, radius)
+    reply = search_and_format(postcode, fuel, radius, retailer)
     resp.message(reply)
     return str(resp)
 
@@ -219,6 +296,100 @@ def sms_reply():
 def health():
     stations = get_stations()
     return {"status": "ok", "stations_loaded": len(stations)}
+
+
+# ── Charts ────────────────────────────────────────────────────────────────────
+
+def _make_chart(fig):
+    """Render a matplotlib figure to a PNG response."""
+    import matplotlib
+    matplotlib.use("Agg")
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=130)
+    buf.seek(0)
+    import matplotlib.pyplot as plt
+    plt.close(fig)
+    return send_file(buf, mimetype="image/png")
+
+
+@app.route("/chart")
+def chart_national():
+    """National average petrol & diesel price trend."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+
+    history = _load_json(NATIONAL_HISTORY_FILE)
+    if len(history) < 2:
+        return "Not enough data yet — check back after a few cache refreshes (30 min each).", 404
+
+    dates   = [datetime.fromisoformat(r["ts"]) for r in history]
+    petrol  = [r["petrol_avg"] for r in history]
+    diesel  = [r["diesel_avg"] for r in history if r.get("diesel_avg")]
+    d_dates = [datetime.fromisoformat(r["ts"]) for r in history if r.get("diesel_avg")]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(dates, petrol, color="#e74c3c", linewidth=2, label="Petrol (national avg)")
+    if diesel:
+        ax.plot(d_dates, diesel, color="#2980b9", linewidth=2, label="Diesel (national avg)")
+
+    ax.set_title("UK Fuel Price Trend — National Average", fontsize=14, fontweight="bold")
+    ax.set_ylabel("Price (pence/litre)")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b\n%H:%M"))
+    ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+    fig.autofmt_xdate()
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    ax.set_ylim(bottom=min(petrol) - 2)
+    fig.tight_layout()
+    return _make_chart(fig)
+
+
+@app.route("/chart/<postcode>")
+@app.route("/chart/<postcode>/<fuel>")
+def chart_postcode(postcode, fuel="petrol"):
+    """Cheapest vs area-average price trend for a specific postcode."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+
+    postcode = postcode.upper().replace(" ", "")
+    fuel = fuel.lower()
+    all_history = _load_json(POSTCODE_HISTORY_FILE)
+    if not isinstance(all_history, dict):
+        all_history = {}
+
+    key = f"{postcode}_{fuel}"
+    entries = all_history.get(key, [])
+    if len(entries) < 2:
+        return (
+            f"Not enough data for {postcode} {fuel} yet. "
+            "Search for this postcode a few times and check back.", 404
+        )
+
+    dates    = [datetime.fromisoformat(e["ts"]) for e in entries]
+    cheapest = [e["cheapest"] for e in entries]
+    avg      = [e["avg"] for e in entries]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(dates, avg,      color="#95a5a6", linewidth=2, linestyle="--", label="Area average")
+    ax.plot(dates, cheapest, color="#e74c3c", linewidth=2.5, label="Cheapest nearby")
+    ax.fill_between(dates, cheapest, avg, alpha=0.12, color="#e74c3c", label="Saving zone")
+
+    fuel_label = "Petrol" if fuel == "petrol" else "Diesel"
+    ax.set_title(f"{fuel_label} Price Trend near {postcode}", fontsize=14, fontweight="bold")
+    ax.set_ylabel("Price (pence/litre)")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b\n%H:%M"))
+    ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+    fig.autofmt_xdate()
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    all_vals = cheapest + avg
+    ax.set_ylim(min(all_vals) - 1, max(all_vals) + 1)
+    fig.tight_layout()
+    return _make_chart(fig)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ Geocoding: postcodes.io (free, no API key needed)
 """
 
 import math
+import os
 import requests
 import sys
 from datetime import datetime
@@ -17,14 +18,19 @@ from typing import Optional
 # ── CMA Retailer Price Feed URLs ──────────────────────────────────────────────
 # Confirmed working (tested March 2026)
 RETAILER_FEEDS = {
-    "Asda":       "https://storelocator.asda.com/fuel_prices_data.json",
-    "Tesco":      "https://www.tesco.com/fuel_prices/fuel_prices_data.json",
-    "BP":         "https://www.bp.com/en_gb/united-kingdom/home/fuelprices/fuel_prices_data.json",
-    "Jet":        "https://jetlocal.co.uk/fuel_prices_data.json",
-    "Applegreen": "https://applegreenstores.com/fuel-prices/data.json",
-    "Rontec":     "https://www.rontec-servicestations.co.uk/fuel-prices/data/fuel_prices_data.json",
-    "Moto":       "https://www.moto-way.com/fuel-price/fuel_prices.json",
-    "SGN":        "https://www.sgnretail.uk/files/data/SGN_daily_fuel_prices.json",
+    "Asda":        "https://storelocator.asda.com/fuel_prices_data.json",
+    "Tesco":       "https://www.tesco.com/fuel_prices/fuel_prices_data.json",
+    "BP":          "https://www.bp.com/en_gb/united-kingdom/home/fuelprices/fuel_prices_data.json",
+    "Shell":       "https://www.shell.co.uk/fuel-prices-data.html",
+    "Sainsburys":  "https://api.sainsburys.co.uk/v1/exports/latest/fuel_prices_data.json",
+    "Morrisons":   "https://www.morrisons.com/fuel-prices/fuel.json",
+    "Esso":        "https://fuelprices.esso.co.uk/latestdata.json",
+    "MFG":         "https://fuel.motorfuelgroup.com/fuel_prices_data.json",
+    "Jet":         "https://jetlocal.co.uk/fuel_prices_data.json",
+    "Applegreen":  "https://applegreenstores.com/fuel-prices/data.json",
+    "Rontec":      "https://www.rontec-servicestations.co.uk/fuel-prices/data/fuel_prices_data.json",
+    "Moto":        "https://www.moto-way.com/fuel-price/fuel_prices.json",
+    "SGN":         "https://www.sgnretail.uk/files/data/SGN_daily_fuel_prices.json",
 }
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
@@ -170,15 +176,54 @@ def get_weather(lat: float, lon: float) -> str:
 
 # ── Nearby Amenities ──────────────────────────────────────────────────────────
 
+def _places_nearby(lat: float, lon: float, radius_m: int, place_type: str, api_key: str) -> list:
+    """Fetch places from Google Places API with ratings."""
+    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+    params = {
+        "location": f"{lat},{lon}",
+        "radius": radius_m,
+        "type": place_type,
+        "key": api_key,
+    }
+    resp = requests.get(url, params=params, timeout=6)
+    results = resp.json().get("results", [])
+    places = []
+    for r in results:
+        name = r.get("name")
+        loc = r.get("geometry", {}).get("location", {})
+        plat, plon = loc.get("lat"), loc.get("lng")
+        if not name or plat is None:
+            continue
+        dist_mi = haversine_km(lat, lon, plat, plon) / 1.60934
+        rating = r.get("rating")
+        n_ratings = r.get("user_ratings_total", 0)
+        rating_str = f" {rating}★({n_ratings})" if rating else ""
+        places.append({"name": name, "dist_mi": dist_mi, "rating": rating_str})
+    places.sort(key=lambda x: x["dist_mi"])
+    return places[:5]
+
+
 def fetch_nearby_amenities(lat: float, lon: float, radius_km: float = 8.0) -> dict:
-    """Fetch nearby supermarkets and cafes using OpenStreetMap Overpass API."""
+    """Fetch nearby supermarkets and cafes. Uses Google Places if API key set, else OSM."""
     radius_m = int(radius_km * 1000)
+    api_key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+
+    if api_key:
+        try:
+            supermarkets = _places_nearby(lat, lon, radius_m, "supermarket", api_key)
+            cafes        = _places_nearby(lat, lon, radius_m, "cafe", api_key)
+            return {"supermarkets": supermarkets, "cafes": cafes}
+        except Exception:
+            pass  # fall through to OSM
+
+    # OSM fallback
     query = f"""
 [out:json][timeout:5];
 (
   node["shop"="supermarket"](around:{radius_m},{lat},{lon});
   node["amenity"="supermarket"](around:{radius_m},{lat},{lon});
   node["amenity"="cafe"](around:{radius_m},{lat},{lon});
+  node["amenity"="fast_food"]["brand"~"Costa|Starbucks|Pret|Greggs|Caffe Nero|Coffee#1|Esquires",i](around:{radius_m},{lat},{lon});
 );
 out body 30;
 """
@@ -203,7 +248,7 @@ out body 30;
             entry = {"name": name, "dist_mi": dist_mi, "rating": rating_str}
             if tags.get("shop") == "supermarket" or tags.get("amenity") == "supermarket":
                 supermarkets.append(entry)
-            else:
+            elif tags.get("amenity") in ("cafe", "fast_food"):
                 cafes.append(entry)
         supermarkets.sort(key=lambda x: x["dist_mi"])
         cafes.sort(key=lambda x: x["dist_mi"])
@@ -212,10 +257,126 @@ out body 30;
         return {"supermarkets": [], "cafes": []}
 
 
+def fetch_nearby_schools(lat: float, lon: float, radius_km: float = 5.0) -> dict:
+    """Fetch nearby schools and universities via Overpass (OSM)."""
+    radius_m = int(radius_km * 1000)
+    query = f"""
+[out:json][timeout:8];
+(
+  node["amenity"="school"](around:{radius_m},{lat},{lon});
+  way["amenity"="school"](around:{radius_m},{lat},{lon});
+  node["amenity"="university"](around:{radius_m},{lat},{lon});
+  way["amenity"="university"](around:{radius_m},{lat},{lon});
+  node["amenity"="college"](around:{radius_m},{lat},{lon});
+  way["amenity"="college"](around:{radius_m},{lat},{lon});
+);
+out center 30;
+"""
+    try:
+        resp = requests.post(
+            "https://overpass-api.de/api/interpreter",
+            data=query, timeout=9, headers=HEADERS
+        )
+        elements = resp.json().get("elements", [])
+        schools, universities = [], []
+        for e in elements:
+            tags = e.get("tags", {})
+            name = tags.get("name")
+            if not name:
+                continue
+            # ways have center, nodes have lat/lon directly
+            if e["type"] == "way":
+                center = e.get("center", {})
+                elat, elon = center.get("lat"), center.get("lon")
+            else:
+                elat, elon = e.get("lat"), e.get("lon")
+            if elat is None or elon is None:
+                continue
+            dist_mi = haversine_km(lat, lon, elat, elon) / 1.60934
+            amenity = tags.get("amenity", "school")
+            entry = {"name": name, "dist_mi": dist_mi, "type": amenity}
+            if amenity == "school":
+                schools.append(entry)
+            else:
+                universities.append(entry)
+        schools.sort(key=lambda x: x["dist_mi"])
+        universities.sort(key=lambda x: x["dist_mi"])
+        return {"schools": schools[:6], "universities": universities[:3]}
+    except Exception:
+        return {"schools": [], "universities": []}
+
+
+def fetch_nearby_pubs(lat: float, lon: float, radius_km: float = 2.5) -> list:
+    """Fetch nearby pubs and bars via Overpass (OSM)."""
+    radius_m = int(radius_km * 1000)
+    query = f"""
+[out:json][timeout:8];
+(
+  node["amenity"="pub"](around:{radius_m},{lat},{lon});
+  node["amenity"="bar"](around:{radius_m},{lat},{lon});
+);
+out body 25;
+"""
+    try:
+        resp = requests.post(
+            "https://overpass-api.de/api/interpreter",
+            data=query, timeout=9, headers=HEADERS
+        )
+        elements = resp.json().get("elements", [])
+        pubs = []
+        for e in elements:
+            tags = e.get("tags", {})
+            name = tags.get("name")
+            elat, elon = e.get("lat"), e.get("lon")
+            if not name or elat is None:
+                continue
+            dist_mi = haversine_km(lat, lon, elat, elon) / 1.60934
+            real_ale = tags.get("real_ale") == "yes"
+            cuisine = tags.get("cuisine", "")
+            note = "Real ale" if real_ale else ("Gastropub" if cuisine else "")
+            pubs.append({"name": name, "dist_mi": dist_mi, "note": note})
+        pubs.sort(key=lambda x: x["dist_mi"])
+        return pubs[:8]
+    except Exception:
+        return []
+
+
+def fetch_house_prices(postcode: str) -> dict:
+    """Fetch recent sold prices from Land Registry Price Paid Data API."""
+    pc = postcode.strip().replace(" ", "%20")
+    url = (
+        f"https://landregistry.data.gov.uk/data/ppi/transaction-record.json"
+        f"?propertyAddress.postcode={pc}&_pageSize=50&_sort=-transactionDate"
+    )
+    try:
+        resp = requests.get(url, timeout=8, headers=HEADERS)
+        items = resp.json().get("result", {}).get("items", [])
+        type_map = {"D": "Detached", "S": "Semi-det", "T": "Terraced", "F": "Flat"}
+        buckets = {}
+        for item in items:
+            pt = type_map.get(item.get("propertyType", {}).get("prefLabel", [{}])[0] if isinstance(item.get("propertyType"), dict) else "", "")
+            # handle both string and dict shapes from the API
+            pt_raw = item.get("propertyType", "")
+            if isinstance(pt_raw, dict):
+                pt = type_map.get(pt_raw.get("prefLabel", ""), "")
+            else:
+                pt = type_map.get(str(pt_raw), "")
+            price = item.get("pricePaid")
+            if pt and price:
+                buckets.setdefault(pt, []).append(int(price))
+        summary = {}
+        for pt, prices in buckets.items():
+            summary[pt] = round(sum(prices) / len(prices) / 1000) * 1000
+        return summary
+    except Exception:
+        return {}
+
+
 # ── Search ────────────────────────────────────────────────────────────────────
 
 def search_near_postcode(postcode: str, fuel: str = "petrol",
-                         radius_miles: float = 5.0, top_n: int = 10):
+                         radius_miles: float = 5.0, top_n: int = 10,
+                         retailer: str = None):
     """Find cheapest fuel stations within radius of a postcode."""
 
     latlon = postcode_to_latlon(postcode)
@@ -234,12 +395,15 @@ def search_near_postcode(postcode: str, fuel: str = "petrol",
         price = s.get(fuel)
         if not price or price <= 0:
             continue
+        if retailer and retailer.lower() not in s.get("brand", "").lower():
+            continue
         dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
         if dist_km <= radius_km:
             nearby.append({**s, "distance_miles": dist_km / 1.60934, "price": price})
 
     if not nearby:
-        print(f"No {fuel} stations found within {radius_miles} miles of {postcode.upper()}.")
+        retailer_msg = f" {retailer.title()}" if retailer else ""
+        print(f"No{retailer_msg} {fuel} stations found within {radius_miles} miles of {postcode.upper()}.")
         print(f"Try a larger radius, e.g.: python3 search.py {postcode} {fuel} 10")
         return
 
@@ -258,8 +422,9 @@ def search_near_postcode(postcode: str, fuel: str = "petrol",
 
     # ── Petrol Prices ─────────────────────────────────────────────────────────
     fuel_label = "Petrol (E10)" if fuel == "petrol" else "Diesel (B7)"
+    retailer_label = f" — {retailer.title()}" if retailer else ""
     print(f"  {'─'*58}")
-    print(f"  {fuel_label} near {postcode.upper()}  |  Radius: {radius_miles:.0f} miles  |  {len(nearby)} stations")
+    print(f"  {fuel_label}{retailer_label} near {postcode.upper()}  |  Radius: {radius_miles:.0f} miles  |  {len(nearby)} stations")
     print(f"  {'─'*58}")
     print(f"  {'':3} {'Brand':<14} {'Price':>7}  {'vs area avg':>11}  {'Miles':>5}  Address")
     print(f"  {'─'*3} {'─'*14} {'─'*7}  {'─'*11}  {'─'*5}  {'─'*18}")
@@ -301,19 +466,21 @@ def search_near_postcode(postcode: str, fuel: str = "petrol",
 
 def main():
     if len(sys.argv) < 2:
-        print("\nUsage:   python3 search.py <POSTCODE> [petrol|diesel] [radius_miles]")
-        print("Example: python3 search.py SW1A1AA petrol 5\n")
+        print("\nUsage:   python3 search.py <POSTCODE> [petrol|diesel] [radius_miles] [retailer]")
+        print("Example: python3 search.py SW1A1AA petrol 5")
+        print("         python3 search.py SW1A1AA petrol 5 tesco\n")
         sys.exit(1)
 
     postcode     = sys.argv[1]
     fuel         = sys.argv[2].lower() if len(sys.argv) > 2 else "petrol"
     radius_miles = float(sys.argv[3])  if len(sys.argv) > 3 else 5.0
+    retailer     = sys.argv[4]         if len(sys.argv) > 4 else None
 
     if fuel not in ("petrol", "diesel"):
         print("Fuel must be 'petrol' or 'diesel'")
         sys.exit(1)
 
-    search_near_postcode(postcode, fuel=fuel, radius_miles=radius_miles)
+    search_near_postcode(postcode, fuel=fuel, radius_miles=radius_miles, retailer=retailer)
 
 
 if __name__ == "__main__":
