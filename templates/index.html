@@ -137,14 +137,23 @@
 
   </div><!-- /max-w-xl -->
 
-  <div class="text-center text-xs text-gray-300 py-8">FuelWatch UK · CMA + Land Registry + OSM data</div>
+  <div id="footer" class="text-center text-xs text-gray-300 py-8">FuelWatch UK · CMA + Land Registry + OSM data</div>
 
 <script>
   // ── Navigation ──────────────────────────────────────────────────────────────
+  const FOOTERS = {
+    home:   "FuelWatch UK · CMA + Land Registry + OSM data",
+    fuel:   "FuelWatch UK · Live fuel prices from CMA retailer feeds · Updated daily",
+    report: "FuelWatch UK · House prices from Land Registry · Schools & pubs from OSM",
+  };
+  function setFooter(name) {
+    document.getElementById("footer").textContent = FOOTERS[name] || FOOTERS.home;
+  }
   function showHome() {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     document.getElementById("screen-home").classList.add("active");
     window.scrollTo({top:0, behavior:"smooth"});
+    setFooter("home");
   }
   function showScreen(name) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -152,6 +161,7 @@
     window.scrollTo({top:0, behavior:"smooth"});
     if (name === "fuel") document.getElementById("fuel-postcode").focus();
     if (name === "report") document.getElementById("report-postcode").focus();
+    setFooter(name);
   }
 
   document.getElementById("fuel-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchFuel(); });
