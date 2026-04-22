@@ -541,6 +541,69 @@ def _google_rating(name: str, lat: float = None, lon: float = None):
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
 
+def _fetch_news(company: str) -> list:
+    """Fetch recent news via Google News RSS."""
+    try:
+        import xml.etree.ElementTree as ET
+        r = requests.get(
+            "https://news.google.com/rss/search",
+            params={"q": company, "hl": "en-GB", "gl": "GB", "ceid": "GB:en"},
+            timeout=8, headers={"User-Agent": "Mozilla/5.0"},
+        )
+        if r.status_code != 200:
+            return []
+        root = ET.fromstring(r.content)
+        out = []
+        for item in root.findall(".//item")[:6]:
+            title = item.findtext("title", "")
+            link  = item.findtext("link", "")
+            pub   = item.findtext("pubDate", "")[:16].strip()
+            src_el = item.find("{https://news.google.com/rss}source")
+            source = src_el.text if src_el is not None else _re.search(r" - ([^-]+)$", title)
+            if isinstance(source, type(None)):
+                source = ""
+            elif not isinstance(source, str):
+                source = source.group(1) if source else ""
+            # Strip source from title
+            clean_title = _re.sub(r"\s+-\s+[^-]+$", "", title).strip()
+            out.append({"title": clean_title, "source": source, "date": pub, "url": link})
+        return out
+    except Exception:
+        return []
+
+def _job_signals(jobs: list) -> dict:
+    """Derive hiring signals from job listings."""
+    if not jobs:
+        return {}
+    dept_keywords = {
+        "Engineering & Tech":  ["engineer", "developer", "architect", "data", "ml", "ai", "backend", "frontend", "platform", "devops", "security", "cloud"],
+        "Product & Design":    ["product", "designer", "ux", "ui", "researcher", "design"],
+        "Sales & Marketing":   ["sales", "marketing", "growth", "partnerships", "account", "revenue", "brand"],
+        "Finance & Legal":     ["finance", "legal", "compliance", "tax", "audit", "accounting", "risk"],
+        "Operations & People": ["operations", "hr", "people", "recruiting", "talent", "support", "operations", "customer"],
+    }
+    depts = {}
+    remote_count = 0
+    for j in jobs:
+        t = j.get("title", "").lower()
+        matched = False
+        for dept, kws in dept_keywords.items():
+            if any(kw in t for kw in kws):
+                depts[dept] = depts.get(dept, 0) + 1
+                matched = True
+                break
+        if not matched:
+            depts["Other"] = depts.get("Other", 0) + 1
+        loc = j.get("location", "").lower()
+        if "remote" in loc:
+            remote_count += 1
+    top_depts = sorted(depts.items(), key=lambda x: -x[1])[:4]
+    return {
+        "total":       len(jobs),
+        "departments": [{"name": d, "count": c} for d, c in top_depts],
+        "remote":      remote_count,
+    }
+
 def _fetch_wikipedia(company: str) -> dict:
     """Fetch company overview from Wikipedia summary API."""
     try:
@@ -676,8 +739,18 @@ def fetch_company_info(company: str) -> dict:
 
     slugs = _co_slugs(company)
 
-    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
+    enc = requests.utils.quote(company)
+    slug = slugs[0] if slugs else ""
+    links = {
+        "linkedin":    f"https://www.linkedin.com/company/{slug}",
+        "glassdoor":   f"https://www.glassdoor.co.uk/Search/results.htm?keyword={enc}",
+        "ch":          f"https://find-and-update.company-information.service.gov.uk/search?q={enc}",
+        "indeed":      f"https://uk.indeed.com/jobs?q={enc}",
+    }
+
+    with _cf.ThreadPoolExecutor(max_workers=6) as pool:
         wiki_f = pool.submit(_fetch_wikipedia, company)
+        news_f = pool.submit(_fetch_news, company)
         gh_f   = pool.submit(_fetch_greenhouse, slugs)
         lv_f   = pool.submit(_fetch_lever, slugs)
         sr_f   = pool.submit(_fetch_smartrecruiters, slugs)
@@ -686,6 +759,12 @@ def fetch_company_info(company: str) -> dict:
         wiki = {}
         try:
             wiki = wiki_f.result(timeout=10) or {}
+        except Exception:
+            pass
+
+        news = []
+        try:
+            news = news_f.result(timeout=10) or []
         except Exception:
             pass
 
@@ -702,9 +781,12 @@ def fetch_company_info(company: str) -> dict:
     result = {
         "name":        company,
         "wiki":        wiki,
+        "news":        news,
         "jobs":        jobs,
         "jobs_source": source,
-        "slug":        slugs[0] if slugs else "",
+        "job_signals": _job_signals(jobs),
+        "links":       links,
+        "slug":        slug,
     }
     _COMPANY_CACHE[key] = {"ts": time.time(), "data": result}
     return result
