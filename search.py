@@ -541,6 +541,73 @@ def _google_rating(name: str, lat: float = None, lon: float = None):
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
 
+def _fetch_wikipedia(company: str) -> dict:
+    """Fetch company overview from Wikipedia summary API."""
+    try:
+        slug = requests.utils.quote(company.replace(" ", "_"))
+        r = requests.get(
+            f"https://en.wikipedia.org/api/rest_v1/page/summary/{slug}",
+            timeout=8, headers={"User-Agent": "LocalIQ/1.0"},
+        )
+        if r.status_code != 200:
+            return {}
+        d = r.json()
+        if d.get("type") == "disambiguation":
+            return {}
+        # Also grab infobox fields from wikitext
+        r2 = requests.get("https://en.wikipedia.org/w/api.php", params={
+            "action": "query", "titles": company, "prop": "revisions",
+            "rvprop": "content", "rvsection": 0, "format": "json",
+        }, timeout=8, headers={"User-Agent": "LocalIQ/1.0"})
+        pages = r2.json().get("query", {}).get("pages", {})
+        wikitext = list(pages.values())[0].get("revisions", [{}])[0].get("*", "")
+
+        def _field(key):
+            m = _re.search(rf'\|\s*{key}\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
+            if not m: return ""
+            v = m.group(1).strip()
+            # If value starts with a template, try to extract first pipe argument
+            if v.startswith("{{"):
+                inner = _re.search(r'\{\{[^|{}]*\|([^|{}]+)', v)
+                return inner.group(1).strip()[:120] if inner else ""
+            # Strip any trailing templates/citations
+            v = v.split("{{")[0]
+            # Strip wikilinks
+            v = _re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', v)
+            v = _re.sub(r'<[^>]+>|\[\d+\]', '', v)
+            return " ".join(v.split())[:120]
+
+        employees = _field("num_employees") or _field("employees")
+        hq        = _field("headquarters") or _field("location_city") or _field("location")
+        industry  = _field("industry") or _field("type")
+
+        # Founded: extract 4-digit year from raw wikitext field
+        founded = ""
+        mf = _re.search(r'\|\s*(?:founded|foundation)\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
+        if mf:
+            ym = _re.search(r'\b(1[5-9]\d{2}|20\d{2})\b', mf.group(1))
+            founded = ym.group(1) if ym else ""
+
+        # Revenue: look for monetary value pattern
+        revenue = ""
+        mr = _re.search(r'\|\s*revenue\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
+        if mr:
+            vm = _re.search(r'[£$€]?[\d,\.]+\s*(?:billion|million|trillion)', mr.group(1), _re.IGNORECASE)
+            revenue = vm.group(0).strip() if vm else ""
+
+        return {
+            "description": d.get("description", ""),
+            "extract":     d.get("extract", "")[:600],
+            "employees":   employees,
+            "revenue":     revenue,
+            "founded":     founded,
+            "hq":          hq,
+            "industry":    industry,
+            "wiki_url":    d.get("content_urls", {}).get("desktop", {}).get("page", ""),
+        }
+    except Exception:
+        return {}
+
 def _co_slugs(name: str) -> list:
     """Generate ATS slug candidates from a company name."""
     s = name.lower().strip()
@@ -609,11 +676,18 @@ def fetch_company_info(company: str) -> dict:
 
     slugs = _co_slugs(company)
 
-    with _cf.ThreadPoolExecutor(max_workers=4) as pool:
-        gh_f = pool.submit(_fetch_greenhouse, slugs)
-        lv_f = pool.submit(_fetch_lever, slugs)
-        sr_f = pool.submit(_fetch_smartrecruiters, slugs)
-        ab_f = pool.submit(_fetch_ashby, slugs)
+    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
+        wiki_f = pool.submit(_fetch_wikipedia, company)
+        gh_f   = pool.submit(_fetch_greenhouse, slugs)
+        lv_f   = pool.submit(_fetch_lever, slugs)
+        sr_f   = pool.submit(_fetch_smartrecruiters, slugs)
+        ab_f   = pool.submit(_fetch_ashby, slugs)
+
+        wiki = {}
+        try:
+            wiki = wiki_f.result(timeout=10) or {}
+        except Exception:
+            pass
 
         jobs, source = [], ""
         for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (ab_f, "Ashby"), (sr_f, "SmartRecruiters")]:
@@ -627,6 +701,7 @@ def fetch_company_info(company: str) -> dict:
 
     result = {
         "name":        company,
+        "wiki":        wiki,
         "jobs":        jobs,
         "jobs_source": source,
         "slug":        slugs[0] if slugs else "",

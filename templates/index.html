@@ -21,7 +21,7 @@
     <div class="max-w-xl mx-auto flex items-center justify-between">
       <div>
         <h1 class="text-xl font-bold">Local IQ</h1>
-        <p class="text-red-200 text-xs">Fuel · Housing · Local · Jobs</p>
+        <p class="text-red-200 text-xs">Fuel · Housing · Local · Company Intel</p>
       </div>
       <button onclick="showHome()" class="text-red-200 text-sm underline hover:text-white">Home</button>
     </div>
@@ -50,8 +50,8 @@
         <button onclick="showScreen('company')"
           class="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
           <div class="text-4xl mb-3">🏢</div>
-          <div class="font-bold text-lg">Company Research</div>
-          <div class="text-indigo-200 text-xs mt-1">Trustpilot reviews & live job vacancies</div>
+          <div class="font-bold text-lg">Company Intel</div>
+          <div class="text-indigo-200 text-xs mt-1">Overview, key facts & vacancies</div>
         </button>
 
       </div>
@@ -172,9 +172,9 @@
     <!-- ── COMPANY SCREEN ── -->
     <div id="screen-company" class="screen pt-5">
       <div class="bg-white rounded-2xl shadow p-5 mb-4">
-        <h2 class="font-bold text-gray-800 mb-3">🏢 Company Research</h2>
+        <h2 class="font-bold text-gray-800 mb-3">🏢 Company Intel</h2>
         <div class="flex gap-2 mb-4">
-          <input id="company-input" type="text" placeholder="e.g. Revolut, Tesco, HSBC"
+          <input id="company-input" type="text" placeholder="e.g. Tesco, HSBC, Monzo"
             class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             autocomplete="off" />
         </div>
@@ -185,10 +185,21 @@
       </div>
 
       <div id="company-loading" class="hidden text-center py-6 text-gray-400 text-sm">
-        <div class="spinner text-indigo-600 mx-auto mb-2"></div>Searching reviews &amp; jobs…
+        <div class="spinner text-indigo-600 mx-auto mb-2"></div>Looking up company…
       </div>
       <div id="company-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
       <div id="company-results" class="hidden">
+
+        <!-- Overview -->
+        <div id="co-overview" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-3">🏢 About</h3>
+          <div id="co-overview-body" class="text-sm text-gray-600 leading-relaxed"></div>
+        </div>
+
+        <!-- Stats -->
+        <div id="co-stats" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm"></div>
+        </div>
 
         <!-- Jobs -->
         <div id="co-jobs" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
@@ -257,7 +268,7 @@
     home:    "FuelWatch UK · CMA + Land Registry + OSM data",
     fuel:    "FuelWatch UK · Live fuel prices from CMA retailer feeds · Updated daily",
     report:  "FuelWatch UK · House prices from Land Registry · Schools & pubs from OSM",
-    company: "FuelWatch UK · Reviews from Trustpilot · Jobs from Greenhouse / Lever / SmartRecruiters",
+    company: "Local IQ · Company data from Wikipedia · Jobs from Greenhouse / Lever / Ashby",
   };
   function setFooter(name) {
     document.getElementById("footer").textContent = FOOTERS[name] || FOOTERS.home;
@@ -587,7 +598,7 @@
     if (!name) return;
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
-    ["co-jobs","co-no-jobs"].forEach(id =>
+    ["co-overview","co-stats","co-jobs","co-no-jobs"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
       const r = await _fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
@@ -603,6 +614,33 @@
 
   function renderCompany(d) {
     document.getElementById("company-results").classList.remove("hidden");
+
+    // Wikipedia overview
+    const w = d.wiki || {};
+    if (w.extract) {
+      let html = `<p class="mb-2">${w.extract}</p>`;
+      if (w.wiki_url) html += `<a href="${w.wiki_url}" target="_blank" class="text-xs text-indigo-500 underline">Read more on Wikipedia →</a>`;
+      document.getElementById("co-overview-body").innerHTML = html;
+      document.getElementById("co-overview").classList.remove("hidden");
+    }
+
+    // Stats grid
+    const stats = [
+      w.industry  && ["Industry",   w.industry],
+      w.employees && ["Employees",  w.employees],
+      w.revenue   && ["Revenue",    w.revenue],
+      w.founded   && ["Founded",    w.founded],
+      w.hq        && ["HQ",         w.hq],
+    ].filter(Boolean);
+    if (stats.length) {
+      document.getElementById("co-stats-body").innerHTML = stats.map(([label, val]) =>
+        `<div class="bg-gray-50 rounded-xl p-3">
+          <div class="text-xs text-gray-400 mb-0.5">${label}</div>
+          <div class="font-semibold text-gray-800 text-sm">${val}</div>
+        </div>`
+      ).join("");
+      document.getElementById("co-stats").classList.remove("hidden");
+    }
 
     // Jobs
     if (d.jobs && d.jobs.length) {
