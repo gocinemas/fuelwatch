@@ -355,7 +355,7 @@
       const el = document.getElementById("report-schools-list");
       if (el && el.querySelector(".spinner"))
         el.innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Almost there — fetching local data…</div>';
-    }, 6000);
+    }, 8000);
 
     async function fetchWithTimeout(url, ms) {
       const ctrl = new AbortController();
@@ -384,7 +384,7 @@
           `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
       });
 
-    const localP = fetchWithTimeout(`/api/local?postcode=${postcode}`, 20000)
+    const localP = fetchWithTimeout(`/api/local?postcode=${postcode}`, 45000)
       .then(async r => {
         const text = await r.text();
         let data;
