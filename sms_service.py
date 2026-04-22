@@ -577,6 +577,20 @@ def debug_postcode(postcode):
     return jsonify(results)
 
 
+@app.route("/admin/debug")
+def admin_debug():
+    db_url = os.environ.get("DATABASE_URL", "")
+    masked = db_url[:30] + "..." if db_url else "NOT SET"
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url, connect_timeout=5)
+        conn.close()
+        db_status = "Connected OK"
+    except Exception as e:
+        db_status = f"Error: {e}"
+    return jsonify({"DATABASE_URL": masked, "db_status": db_status, "analytics_db_ok": analytics._db_ok})
+
+
 @app.route("/health")
 def health():
     stations = get_stations()
