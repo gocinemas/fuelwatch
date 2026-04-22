@@ -276,6 +276,10 @@ def _overpass(query: str) -> list:
 _local_cache: dict = {}
 _LOCAL_CACHE_TTL = 3600  # 1 hour
 
+# Cache for house prices keyed by normalised postcode
+_house_cache: dict = {}
+_HOUSE_CACHE_TTL = 1800  # 30 minutes
+
 
 def fetch_local_amenities(lat: float, lon: float, school_km: float = 5.0, pub_km: float = 2.5) -> dict:
     """Single Overpass query for schools, universities, pubs, bars and cafes.
@@ -288,7 +292,7 @@ def fetch_local_amenities(lat: float, lon: float, school_km: float = 5.0, pub_km
     school_m = int(school_km * 1000)
     pub_m    = int(pub_km * 1000)
     query = f"""
-[out:json][timeout:15];
+[out:json][timeout:8];
 (
   node["amenity"~"^(school|college)$"](around:{school_m},{lat},{lon});
   way["amenity"~"^(school|college)$"](around:{school_m},{lat},{lon});
@@ -298,7 +302,7 @@ def fetch_local_amenities(lat: float, lon: float, school_km: float = 5.0, pub_km
   node["amenity"="cafe"](around:{pub_m},{lat},{lon});
   node["amenity"="fast_food"]["brand"~"Costa|Starbucks|Pret|Greggs|Caffe Nero|Nero",i](around:{pub_m},{lat},{lon});
 );
-out center 80;
+out center 50;
 """
     elements = _overpass(query)
     schools, universities, pubs, cafes = [], [], [], []
@@ -406,6 +410,10 @@ def fetch_house_prices(postcode: str) -> dict:
     """Fetch last 3 years of sold prices from Land Registry for any postcode.
     Falls back to local authority district if the unit postcode has too few sales."""
     from datetime import date, timedelta, datetime as dt
+    cache_key = postcode.strip().upper().replace(" ", "")
+    cached = _house_cache.get(cache_key)
+    if cached and (time.time() - cached["ts"]) < _HOUSE_CACHE_TTL:
+        return cached["data"]
     cutoff = date.today() - timedelta(days=3*365)
     pc_formatted = _format_postcode(postcode)
     pc_enc = pc_formatted.replace(" ", "%20")
@@ -450,6 +458,7 @@ def fetch_house_prices(postcode: str) -> dict:
     summary = _parse_lr_items(items)
     for v in summary.values():
         v["scope"] = scope
+    _house_cache[cache_key] = {"ts": time.time(), "data": summary}
     return summary
 
 
