@@ -26,14 +26,18 @@ import time
 import requests
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime
-from flask import Flask, request, send_file, render_template, jsonify
+from flask import Flask, request, send_file, render_template, jsonify, Response
 from twilio.twiml.messaging_response import MessagingResponse
 from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
                     fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
                     fetch_company_info)
+import analytics
 
 app = Flask(__name__)
+
+# Initialise analytics DB on startup
+analytics.init_db()
 
 # ── Price history files ────────────────────────────────────────────────────────
 NATIONAL_HISTORY_FILE = "price_history_national.json"
@@ -325,6 +329,7 @@ def api_search():
     if not result:
         return jsonify({"error": "Postcode not found. Please check and try again."}), 404
     postcode, lat, lon, pc_fmt = result
+    analytics.log_search("fuel", postcode, request.remote_addr, request.user_agent.string)
 
     fuel   = request.args.get("fuel", "petrol").lower()
     radius = float(request.args.get("radius", 5))
@@ -363,6 +368,7 @@ def api_house():
     if not result:
         return jsonify({"error": "Postcode not found."}), 404
     postcode, lat, lon, pc_fmt = result
+    analytics.log_search("area", postcode, request.remote_addr, request.user_agent.string)
     house = fetch_house_prices(postcode)
     rightmove_url = f"https://www.rightmove.co.uk/house-prices/{pc_fmt.lower().replace(' ', '-')}.html"
     return jsonify({"house_prices": house, "rightmove_url": rightmove_url})
@@ -375,6 +381,7 @@ def api_local():
     if not result:
         return jsonify({"error": "Postcode not found."}), 404
     postcode, lat, lon, pc_fmt = result
+    analytics.log_search("area", postcode, request.remote_addr, request.user_agent.string)
     local = fetch_local_amenities(lat, lon, 5.0, 2.5)
     return jsonify({
         "schools":      {"schools": local.get("schools", []), "universities": local.get("universities", [])},
@@ -389,7 +396,124 @@ def api_company():
     name = request.args.get("name", "").strip()
     if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
+    analytics.log_search("company", name, request.remote_addr, request.user_agent.string)
     return jsonify(fetch_company_info(name))
+
+
+@app.route("/admin")
+def admin():
+    pw = os.environ.get("ADMIN_PASSWORD", "miru2024")
+    if request.args.get("pw") != pw:
+        return Response(
+            '<form style="font-family:sans-serif;margin:80px auto;max-width:320px">'
+            '<h2>Miru Admin</h2>'
+            '<input name="pw" type="password" placeholder="Password" style="padding:8px;width:100%;margin:8px 0">'
+            '<button type="submit" style="padding:8px 16px">Enter</button>'
+            '</form>',
+            status=401, mimetype="text/html"
+        )
+
+    s = analytics.get_stats()
+    if not s:
+        return "<p style='font-family:sans-serif;padding:40px'>Analytics unavailable (no DATABASE_URL set).</p>"
+
+    # Build daily sparkline data
+    daily_labels = [d["day"][-5:] for d in s.get("daily", [])]  # MM-DD
+    daily_counts = [d["count"] for d in s.get("daily", [])]
+
+    by_type_html = "".join(
+        f'<tr><td>{r["type"].title()}</td><td><b>{r["count"]}</b></td></tr>'
+        for r in s.get("by_type", [])
+    )
+    top_pc_html = "".join(
+        f'<tr><td>{r["query"]}</td><td><b>{r["count"]}</b></td></tr>'
+        for r in s.get("top_postcodes", [])
+    )
+    top_co_html = "".join(
+        f'<tr><td>{r["query"]}</td><td><b>{r["count"]}</b></td></tr>'
+        for r in s.get("top_companies", [])
+    )
+    recent_html = "".join(
+        f'<tr><td>{r["at"]}</td><td>{r["type"].title()}</td><td>{r["query"]}</td><td style="color:#999">{r["ip"]}</td></tr>'
+        for r in s.get("recent", [])
+    )
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Miru — Admin</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: #0f0f13; color: #e0e0e0; padding: 24px; }}
+  h1 {{ font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; color: #fff; }}
+  .sub {{ color: #666; font-size: 0.85rem; margin-bottom: 24px; }}
+  .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }}
+  .card {{ background: #1a1a24; border-radius: 12px; padding: 16px; }}
+  .card .num {{ font-size: 2rem; font-weight: 700; color: #fff; }}
+  .card .lbl {{ font-size: 0.75rem; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }}
+  .section {{ background: #1a1a24; border-radius: 12px; padding: 16px; margin-bottom: 16px; }}
+  .section h2 {{ font-size: 0.85rem; text-transform: uppercase; letter-spacing: .5px; color: #666; margin-bottom: 12px; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 0.9rem; }}
+  td, th {{ padding: 6px 8px; text-align: left; border-bottom: 1px solid #2a2a36; }}
+  th {{ color: #666; font-weight: 500; font-size: 0.8rem; }}
+  .bar-wrap {{ display: flex; align-items: flex-end; gap: 3px; height: 60px; margin-top: 8px; }}
+  .bar {{ flex: 1; background: #6c63ff; border-radius: 3px 3px 0 0; min-height: 2px; }}
+  .bar-labels {{ display: flex; gap: 3px; margin-top: 4px; }}
+  .bar-labels span {{ flex: 1; font-size: 9px; color: #555; text-align: center; overflow: hidden; }}
+</style>
+</head>
+<body>
+<h1>Miru Analytics</h1>
+<div class="sub">Admin dashboard — private</div>
+
+<div class="grid">
+  <div class="card"><div class="num">{s['total']}</div><div class="lbl">Total searches</div></div>
+  <div class="card"><div class="num">{s['today']}</div><div class="lbl">Today</div></div>
+  <div class="card"><div class="num">{s['week']}</div><div class="lbl">Last 7 days</div></div>
+</div>
+
+<div class="section">
+  <h2>Activity — last 14 days</h2>
+  <div class="bar-wrap">
+    {''.join(f'<div class="bar" style="height:{int(c / max(daily_counts or [1]) * 56) + 4}px" title="{daily_labels[i] if i < len(daily_labels) else ""}: {c}"></div>' for i, c in enumerate(daily_counts))}
+  </div>
+  <div class="bar-labels">
+    {''.join(f'<span>{l}</span>' for l in daily_labels)}
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+  <div class="section">
+    <h2>By type</h2>
+    <table><thead><tr><th>Type</th><th>Count</th></tr></thead>
+    <tbody>{by_type_html}</tbody></table>
+  </div>
+  <div class="section">
+    <h2>Top postcodes</h2>
+    <table><thead><tr><th>Postcode</th><th>Count</th></tr></thead>
+    <tbody>{top_pc_html}</tbody></table>
+  </div>
+  <div class="section">
+    <h2>Top companies</h2>
+    <table><thead><tr><th>Company</th><th>Count</th></tr></thead>
+    <tbody>{top_co_html}</tbody></table>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Recent searches</h2>
+  <table>
+    <thead><tr><th>Time</th><th>Type</th><th>Query</th><th>IP</th></tr></thead>
+    <tbody>{recent_html}</tbody>
+  </table>
+</div>
+
+</body>
+</html>"""
+    return html
 
 
 @app.route("/whatsapp", methods=["POST"])
