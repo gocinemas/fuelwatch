@@ -352,7 +352,7 @@ _house_cache: dict = {}
 _HOUSE_CACHE_TTL = 1800  # 30 minutes
 
 
-def fetch_local_amenities(lat: float, lon: float, school_km: float = 5.0, pub_km: float = 2.5) -> dict:
+def fetch_local_amenities(lat: float, lon: float, school_km: float = 5.0, pub_km: float = 3.0) -> dict:
     """Single Overpass query for schools, universities, pubs, bars and cafes.
     Results are cached for 1 hour per location to dramatically speed up the Area Report."""
     cache_key = (round(lat, 3), round(lon, 3))
@@ -372,8 +372,11 @@ def fetch_local_amenities(lat: float, lon: float, school_km: float = 5.0, pub_km
   node["amenity"="university"](around:{school_m},{lat},{lon});
   way["amenity"="university"](around:{school_m},{lat},{lon});
   node["amenity"="pub"](around:{pub_m},{lat},{lon});
+  way["amenity"="pub"](around:{pub_m},{lat},{lon});
   node["amenity"="bar"](around:{pub_m},{lat},{lon});
+  way["amenity"="bar"](around:{pub_m},{lat},{lon});
   node["amenity"="cafe"](around:{pub_m},{lat},{lon});
+  way["amenity"="cafe"](around:{pub_m},{lat},{lon});
   node["amenity"="fast_food"]["brand"~"Costa|Starbucks|Pret|Greggs|Caffe Nero|Nero",i](around:{pub_m},{lat},{lon});
 );
 out center 200;
