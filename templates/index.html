@@ -433,12 +433,16 @@
     const schools = (d.schools && d.schools.schools) || [];
     const unis    = (d.schools && d.schools.universities) || [];
     if (schools.length || unis.length) {
-      document.getElementById("report-schools-list").innerHTML = schools.map(s =>
-        `<div class="py-2 flex justify-between items-center">
-          <span class="text-gray-700">${s.name}</span>
-          <span class="text-gray-400 text-xs">${s.dist_mi.toFixed(1)}mi</span>
-        </div>`
-      ).join("");
+      document.getElementById("report-schools-list").innerHTML = schools.map(s => {
+        const ofstedUrl = `https://reports.ofsted.gov.uk/search?q=${encodeURIComponent(s.name)}&rows=3`;
+        return `<div class="py-2 flex justify-between items-start gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="text-gray-700 text-sm">${s.name}</div>
+            <a href="${ofstedUrl}" target="_blank" class="text-xs text-blue-400 underline">Ofsted report →</a>
+          </div>
+          <span class="text-gray-400 text-xs shrink-0">${s.dist_mi.toFixed(1)}mi</span>
+        </div>`;
+      }).join("");
       document.getElementById("report-unis-list").innerHTML = unis.length
         ? `<div class="font-semibold text-gray-400 text-xs mt-2 mb-1">Universities & Colleges</div>` +
           unis.map(u => `<div class="py-1 flex justify-between"><span>${u.name}</span><span class="text-gray-400 text-xs">${u.dist_mi.toFixed(1)}mi</span></div>`).join("")
@@ -450,9 +454,12 @@
     const pubs = d.pubs || [];
     if (pubs.length) {
       document.getElementById("report-pubs-list").innerHTML = pubs.map(p =>
-        `<div class="py-2 flex justify-between items-center">
-          <div><span class="text-gray-700">${p.name}</span>${p.note ? `<span class="ml-1 text-xs text-gray-400">${p.note}</span>` : ""}</div>
-          <span class="text-gray-400 text-xs shrink-0 ml-2">${p.dist_mi.toFixed(1)}mi</span>
+        `<div class="py-2 flex justify-between items-start gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="text-gray-700 text-sm">${p.name}${p.note ? ` <span class="text-xs text-gray-400">${p.note}</span>` : ""}</div>
+            ${p.hygiene ? `<div class="text-xs text-amber-500 mt-0.5">${p.hygiene}</div>` : ""}
+          </div>
+          <span class="text-gray-400 text-xs shrink-0">${p.dist_mi.toFixed(1)}mi</span>
         </div>`
       ).join("");
       document.getElementById("report-pubs").classList.remove("hidden");
@@ -461,9 +468,12 @@
     const cafes = d.cafes || [];
     if (cafes.length) {
       document.getElementById("report-cafes-list").innerHTML = cafes.map(c =>
-        `<div class="py-2 flex justify-between items-center">
-          <span class="text-gray-700">${c.name}${c.rating}</span>
-          <span class="text-gray-400 text-xs shrink-0 ml-2">${c.dist_mi.toFixed(1)}mi</span>
+        `<div class="py-2 flex justify-between items-start gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="text-gray-700 text-sm">${c.name}</div>
+            ${c.hygiene ? `<div class="text-xs text-amber-500 mt-0.5">${c.hygiene}</div>` : ""}
+          </div>
+          <span class="text-gray-400 text-xs shrink-0">${c.dist_mi.toFixed(1)}mi</span>
         </div>`
       ).join("");
       document.getElementById("report-cafes").classList.remove("hidden");

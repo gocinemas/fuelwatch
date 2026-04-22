@@ -260,6 +260,41 @@ out body 40;
         return {"supermarkets": [], "cafes": []}
 
 
+import re as _re
+
+FSA_API = "https://api.ratings.food.gov.uk/Establishments"
+FSA_HEADERS = {"x-api-version": "2", "User-Agent": "FuelWatchUK/1.0"}
+
+def _norm(name: str) -> str:
+    """Normalise a venue name for fuzzy matching."""
+    n = name.lower()
+    n = _re.sub(r"\b(the|pub|bar|cafe|coffee|restaurant|inn|arms|head|house|tavern)\b", "", n)
+    n = _re.sub(r"[^a-z0-9 ]", "", n)
+    return " ".join(n.split())
+
+def fetch_fsa_ratings(lat: float, lon: float, radius_km: float = 2.5) -> dict:
+    """Return {normalised_name: rating_str} for food establishments near lat/lon."""
+    ratings = {}
+    radius_miles = radius_km / 1.60934
+    for btype in (7843, 1, 7844):  # pub/bar, restaurant/cafe, takeaway
+        try:
+            r = requests.get(FSA_API, params={
+                "latitude": lat, "longitude": lon,
+                "maxDistanceLimit": radius_miles,
+                "businessTypeId": btype,
+                "pageSize": 50,
+            }, headers=FSA_HEADERS, timeout=8)
+            if r.status_code != 200:
+                continue
+            for e in r.json().get("establishments", []):
+                name = e.get("BusinessName", "")
+                rating = e.get("RatingValue", "")
+                if name and rating and rating.isdigit():
+                    ratings[_norm(name)] = int(rating)
+        except Exception:
+            continue
+    return ratings
+
 OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
@@ -357,6 +392,27 @@ out center 200;
     universities.sort(key=lambda x: x["dist_mi"])
     pubs.sort(key=lambda x: x["dist_mi"])
     cafes.sort(key=lambda x: x["dist_mi"])
+
+    # Enrich pubs and cafes with FSA hygiene ratings
+    try:
+        fsa = fetch_fsa_ratings(lat, lon, pub_km)
+        def _add_fsa(item):
+            key = _norm(item["name"])
+            # try exact then partial match
+            rating = fsa.get(key)
+            if rating is None:
+                for fkey, fval in fsa.items():
+                    if key and fkey and (key in fkey or fkey in key):
+                        rating = fval
+                        break
+            if rating is not None:
+                stars = "★" * rating + "☆" * (5 - rating)
+                item["hygiene"] = f"Hygiene {stars} {rating}/5"
+            return item
+        pubs  = [_add_fsa(p) for p in pubs]
+        cafes = [_add_fsa(c) for c in cafes]
+    except Exception:
+        pass
 
     result = {
         "schools":      schools[:10],
