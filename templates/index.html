@@ -52,9 +52,14 @@
     <div id="screen-fuel" class="screen pt-5">
       <div class="bg-white rounded-2xl shadow p-5 mb-4">
         <h2 class="font-bold text-gray-800 mb-3">⛽ Fuel Prices</h2>
-        <input id="fuel-postcode" type="text" placeholder="Postcode e.g. TW3 3SF"
-          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-red-400 uppercase"
-          maxlength="8" autocomplete="off" />
+        <div class="flex gap-2 mb-3">
+          <input id="fuel-postcode" type="text" placeholder="Postcode e.g. TW3 3SF"
+            class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 uppercase"
+            maxlength="8" autocomplete="off" />
+          <button onclick="useLocation('fuel')" title="Use my location"
+            class="shrink-0 border border-gray-200 rounded-xl px-3 py-3 text-lg hover:bg-gray-50 active:bg-gray-100 transition"
+            id="fuel-loc-btn">📍</button>
+        </div>
         <div class="flex gap-2 mb-4">
           <select id="fuel-type" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
             <option value="petrol">Petrol</option>
@@ -97,9 +102,14 @@
     <div id="screen-report" class="screen pt-5">
       <div class="bg-white rounded-2xl shadow p-5 mb-4">
         <h2 class="font-bold text-gray-800 mb-3">🏠 Area Report</h2>
-        <input id="report-postcode" type="text" placeholder="Postcode e.g. TW3 3SF"
-          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-gray-400 uppercase"
-          maxlength="8" autocomplete="off" />
+        <div class="flex gap-2 mb-4">
+          <input id="report-postcode" type="text" placeholder="Postcode e.g. TW3 3SF"
+            class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 uppercase"
+            maxlength="8" autocomplete="off" />
+          <button onclick="useLocation('report')" title="Use my location"
+            class="shrink-0 border border-gray-200 rounded-xl px-3 py-3 text-lg hover:bg-gray-50 active:bg-gray-100 transition"
+            id="report-loc-btn">📍</button>
+        </div>
         <button onclick="searchReport()"
           class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl transition text-sm">
           Get Area Report
@@ -181,6 +191,47 @@
 
   document.getElementById("fuel-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchFuel(); });
   document.getElementById("report-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchReport(); });
+
+  // ── Current Location ─────────────────────────────────────────────────────────
+  function useLocation(screen) {
+    const btn = document.getElementById(screen + "-loc-btn");
+    const input = document.getElementById(screen + "-postcode");
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    btn.textContent = "⏳";
+    btn.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const res = await fetch(
+            `https://api.postcodes.io/postcodes?lon=${coords.longitude}&lat=${coords.latitude}&limit=1`
+          );
+          const data = await res.json();
+          const pc = data?.result?.[0]?.postcode;
+          if (pc) {
+            input.value = pc;
+            if (screen === "fuel") searchFuel();
+            else searchReport();
+          } else {
+            alert("Couldn't find a postcode for your location.");
+          }
+        } catch {
+          alert("Location lookup failed — please enter postcode manually.");
+        } finally {
+          btn.textContent = "📍";
+          btn.disabled = false;
+        }
+      },
+      () => {
+        alert("Location access denied — please enter your postcode manually.");
+        btn.textContent = "📍";
+        btn.disabled = false;
+      },
+      { timeout: 10000 }
+    );
+  }
 
   // ── Fuel Search ─────────────────────────────────────────────────────────────
   async function searchFuel() {
