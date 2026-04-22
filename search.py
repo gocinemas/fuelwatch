@@ -38,9 +38,13 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleW
 
 # ── Geocoding ─────────────────────────────────────────────────────────────────
 
+_postcode_cache: dict = {}
+
 def postcode_to_latlon(postcode: str) -> Optional[tuple]:
-    """Convert a UK postcode to (lat, lon) using postcodes.io."""
+    """Convert a UK postcode to (lat, lon) using postcodes.io. Cached indefinitely."""
     postcode = postcode.strip().replace(" ", "").upper()
+    if postcode in _postcode_cache:
+        return _postcode_cache[postcode]
     try:
         resp = requests.get(
             f"https://api.postcodes.io/postcodes/{postcode}",
@@ -49,7 +53,9 @@ def postcode_to_latlon(postcode: str) -> Optional[tuple]:
         data = resp.json()
         if data.get("status") == 200:
             r = data["result"]
-            return (r["latitude"], r["longitude"])
+            result = (r["latitude"], r["longitude"])
+            _postcode_cache[postcode] = result
+            return result
         print(f"Postcode not found: {postcode}")
     except Exception as e:
         print(f"Geocoding failed: {e}")

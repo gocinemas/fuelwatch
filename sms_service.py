@@ -158,8 +158,14 @@ WEATHER_CODES = {
     95: "Thunderstorm", 96: "Thunderstorm+hail", 99: "Thunderstorm+hail",
 }
 
+_weather_cache: dict = {}
+
 def get_weather(lat: float, lon: float) -> str:
-    """Fetch current weather from Open-Meteo (free, no API key)."""
+    """Fetch current weather from Open-Meteo (free, no API key). Cached 10min."""
+    key = (round(lat, 2), round(lon, 2))
+    cached = _weather_cache.get(key)
+    if cached and (time.time() - cached["ts"]) < 600:
+        return cached["v"]
     try:
         url = (
             f"https://api.open-meteo.com/v1/forecast"
@@ -167,13 +173,15 @@ def get_weather(lat: float, lon: float) -> str:
             f"&current=temperature_2m,weathercode,windspeed_10m"
             f"&timezone=Europe/London"
         )
-        r = requests.get(url, timeout=5)
+        r = requests.get(url, timeout=3)
         c = r.json()["current"]
         temp    = round(c["temperature_2m"])
         code    = c["weathercode"]
         wind    = round(c["windspeed_10m"])
         desc    = WEATHER_CODES.get(code, "")
-        return f"{temp}°C {desc}, Wind {wind}km/h"
+        result  = f"{temp}°C {desc}, Wind {wind}km/h"
+        _weather_cache[key] = {"ts": time.time(), "v": result}
+        return result
     except Exception:
         return ""
 

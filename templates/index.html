@@ -290,7 +290,6 @@
       const gUrl = `https://maps.google.com/?q=${s.lat},${s.lon}`;
       const wUrl = `https://waze.com/ul?ll=${s.lat},${s.lon}&navigate=yes`;
       const aUrl = `maps://maps.apple.com/?ll=${s.lat},${s.lon}&q=${encodeURIComponent(s.brand)}`;
-      const navData = encodeURIComponent(JSON.stringify({g:gUrl,w:wUrl,a:aUrl,name:s.brand,addr:s.address||""}));
       sl.innerHTML += `
         <div class="py-2.5 flex items-start justify-between gap-2">
           <div class="flex-1 min-w-0">
@@ -304,7 +303,10 @@
           <div class="text-right shrink-0 flex flex-col items-end gap-1">
             <div class="font-bold text-gray-900">${s.price.toFixed(1)}p</div>
             <div class="text-xs text-gray-400">${s.dist_mi.toFixed(1)}mi</div>
-            <button onclick="openNav(${navData})"
+            <button
+              data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}"
+              data-name="${s.brand}" data-addr="${(s.address||"").replace(/"/g,"'")}"
+              onclick="openNav(this)"
               class="text-xs bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded-lg transition active:scale-95">
               Navigate
             </button>
@@ -469,7 +471,8 @@
   }
 
   // ── Navigation sheet ─────────────────────────────────────────────────────────
-  function openNav(d) {
+  function openNav(btn) {
+    const d = btn.dataset;
     document.getElementById("nav-station-name").textContent = d.name;
     document.getElementById("nav-station-addr").textContent = d.addr;
     document.getElementById("nav-google").href = d.g;
