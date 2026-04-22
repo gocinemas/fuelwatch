@@ -417,12 +417,14 @@ out center 200;
             entry["note"]    = "Real ale" if real_ale else ("Gastropub" if cuisine else "")
             entry["fhrs_id"] = tags.get("fhrs:id", "")
             entry["website"] = tags.get("website", tags.get("contact:website", ""))
+            entry["phone"]   = tags.get("phone", tags.get("contact:phone", ""))
             entry["lat"]     = elat
             entry["lon"]     = elon
             pubs.append(entry)
         elif amenity in ("cafe", "fast_food"):
             entry["fhrs_id"] = tags.get("fhrs:id", "")
             entry["website"] = tags.get("website", tags.get("contact:website", ""))
+            entry["phone"]   = tags.get("phone", tags.get("contact:phone", ""))
             entry["lat"]     = elat
             entry["lon"]     = elon
             cafes.append(entry)
@@ -607,20 +609,11 @@ def fetch_company_info(company: str) -> dict:
 
     slugs = _co_slugs(company)
 
-    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
-        gr_f = pool.submit(_google_rating, company)
+    with _cf.ThreadPoolExecutor(max_workers=4) as pool:
         gh_f = pool.submit(_fetch_greenhouse, slugs)
         lv_f = pool.submit(_fetch_lever, slugs)
         sr_f = pool.submit(_fetch_smartrecruiters, slugs)
         ab_f = pool.submit(_fetch_ashby, slugs)
-
-        google = None
-        try:
-            g_rating, g_count = gr_f.result(timeout=8)
-            if g_rating:
-                google = {"rating": g_rating, "count": g_count or 0}
-        except Exception:
-            pass
 
         jobs, source = [], ""
         for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (ab_f, "Ashby"), (sr_f, "SmartRecruiters")]:
@@ -634,7 +627,6 @@ def fetch_company_info(company: str) -> dict:
 
     result = {
         "name":        company,
-        "google":      google,
         "jobs":        jobs,
         "jobs_source": source,
         "slug":        slugs[0] if slugs else "",

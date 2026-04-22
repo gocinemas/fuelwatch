@@ -190,17 +190,6 @@
       <div id="company-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
       <div id="company-results" class="hidden">
 
-        <!-- Trustpilot -->
-        <div id="co-trustpilot" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">⭐ Trustpilot Reviews</h3>
-          <div id="co-trustpilot-body" class="text-sm"></div>
-        </div>
-
-        <!-- No Trustpilot -->
-        <div id="co-no-trustpilot" class="hidden bg-gray-50 rounded-2xl p-4 mb-4 text-sm text-gray-500">
-          No Trustpilot profile found for this company.
-        </div>
-
         <!-- Jobs -->
         <div id="co-jobs" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
           <h3 class="font-bold text-gray-800 mb-1">💼 Open Positions</h3>
@@ -209,9 +198,14 @@
         </div>
 
         <!-- No jobs -->
-        <div id="co-no-jobs" class="hidden bg-gray-50 rounded-2xl p-4 mb-4 text-sm text-gray-500">
-          No job listings found. This company may not use Greenhouse, Lever, or SmartRecruiters.
-          <a id="co-indeed-link" href="#" target="_blank" class="text-indigo-600 font-medium underline ml-1">Search on Indeed →</a>
+        <div id="co-no-jobs" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-3">💼 Jobs</h3>
+          <p class="text-sm text-gray-500 mb-3">No direct listings found. Search on job boards:</p>
+          <div class="flex flex-col gap-2">
+            <a id="co-indeed-link" href="#" target="_blank" class="text-sm bg-blue-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-blue-700 transition">Search on Indeed →</a>
+            <a id="co-linkedin-link" href="#" target="_blank" class="text-sm bg-indigo-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-indigo-700 transition">Search on LinkedIn →</a>
+            <a id="co-glassdoor-link" href="#" target="_blank" class="text-sm bg-green-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-green-700 transition">Search on Glassdoor →</a>
+          </div>
         </div>
 
       </div>
@@ -531,6 +525,7 @@
             <div class="flex gap-2 mt-1 flex-wrap">
               <button data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}" data-name="${p.name.replace(/"/g,"'")}" data-addr="${addr}" onclick="openNav(this)"
                 class="text-xs bg-red-600 text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-red-700 transition">Navigate</button>
+              ${p.phone ? `<a href="tel:${p.phone}" class="text-xs bg-green-50 text-green-700 font-medium px-2.5 py-1 rounded-lg hover:bg-green-100 transition">📞 Call</a>` : ""}
               ${p.website ? `<a href="${p.website}" target="_blank" class="text-xs bg-blue-50 text-blue-600 font-medium px-2.5 py-1 rounded-lg hover:bg-blue-100 transition">Website →</a>` : ""}
             </div>
           </div>
@@ -554,6 +549,7 @@
             <div class="flex gap-2 mt-1 flex-wrap">
               <button data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}" data-name="${c.name.replace(/"/g,"'")}" data-addr="" onclick="openNav(this)"
                 class="text-xs bg-red-600 text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-red-700 transition">Navigate</button>
+              ${c.phone ? `<a href="tel:${c.phone}" class="text-xs bg-green-50 text-green-700 font-medium px-2.5 py-1 rounded-lg hover:bg-green-100 transition">📞 Call</a>` : ""}
               ${c.website ? `<a href="${c.website}" target="_blank" class="text-xs bg-blue-50 text-blue-600 font-medium px-2.5 py-1 rounded-lg hover:bg-blue-100 transition">Website →</a>` : ""}
             </div>
           </div>
@@ -586,7 +582,7 @@
     if (!name) return;
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
-    ["co-trustpilot","co-no-trustpilot","co-jobs","co-no-jobs"].forEach(id =>
+    ["co-jobs","co-no-jobs"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
       const r = await fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
@@ -603,21 +599,6 @@
   function renderCompany(d) {
     document.getElementById("company-results").classList.remove("hidden");
 
-    // Google rating
-    if (d.google) {
-      const g = d.google;
-      const gStars = Math.round(g.rating);
-      document.getElementById("co-trustpilot-body").innerHTML = `
-        <div class="flex items-center gap-3">
-          <span class="text-yellow-400 text-2xl tracking-tight">${"★".repeat(gStars)}${"☆".repeat(5-gStars)}</span>
-          <span class="text-2xl font-bold text-gray-800">${g.rating.toFixed(1)}</span>
-          <span class="text-gray-400 text-sm">${g.count.toLocaleString()} Google reviews</span>
-        </div>`;
-      document.getElementById("co-trustpilot").classList.remove("hidden");
-    } else {
-      document.getElementById("co-no-trustpilot").classList.remove("hidden");
-    }
-
     // Jobs
     if (d.jobs && d.jobs.length) {
       document.getElementById("co-jobs-source").textContent = `Via ${d.jobs_source} · ${d.jobs.length} open role${d.jobs.length !== 1 ? "s" : ""}`;
@@ -633,8 +614,10 @@
       `).join("");
       document.getElementById("co-jobs").classList.remove("hidden");
     } else {
-      const indeedUrl = `https://uk.indeed.com/jobs?q=${encodeURIComponent(d.name)}`;
-      document.getElementById("co-indeed-link").href = indeedUrl;
+      const enc = encodeURIComponent(d.name);
+      document.getElementById("co-indeed-link").href    = `https://uk.indeed.com/jobs?q=${enc}`;
+      document.getElementById("co-linkedin-link").href  = `https://www.linkedin.com/jobs/search/?keywords=${enc}`;
+      document.getElementById("co-glassdoor-link").href = `https://www.glassdoor.co.uk/Job/jobs.htm?sc.keyword=${enc}`;
       document.getElementById("co-no-jobs").classList.remove("hidden");
     }
   }
