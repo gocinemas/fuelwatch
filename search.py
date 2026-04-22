@@ -353,37 +353,66 @@ def _format_postcode(postcode: str) -> str:
     return f"{pc[:-3]} {pc[-3:]}" if len(pc) >= 5 else pc
 
 
+def _parse_lr_items(items: list) -> dict:
+    """Parse Land Registry transaction items into a price summary dict."""
+    buckets = {}
+    for item in items:
+        pt_obj = item.get("propertyType", {})
+        labels = pt_obj.get("prefLabel", []) if isinstance(pt_obj, dict) else []
+        pt = labels[0].get("_value", "").capitalize() if labels else ""
+        price = item.get("pricePaid")
+        date  = item.get("transactionDate", "")
+        if pt and price:
+            buckets.setdefault(pt, []).append({"price": int(price), "date": date})
+    summary = {}
+    for pt, entries in buckets.items():
+        prices = [e["price"] for e in entries]
+        summary[pt] = {
+            "avg":    round(sum(prices) / len(prices) / 1000) * 1000,
+            "latest": entries[0]["date"],
+            "count":  len(prices),
+        }
+    return summary
+
+
 def fetch_house_prices(postcode: str) -> dict:
-    """Fetch recent sold prices from Land Registry Price Paid Data API."""
-    pc = _format_postcode(postcode).replace(" ", "%20")
-    url = (
-        f"https://landregistry.data.gov.uk/data/ppi/transaction-record.json"
-        f"?propertyAddress.postcode={pc}&_pageSize=50&_sort=-transactionDate"
-    )
-    try:
-        resp = requests.get(url, timeout=8, headers=HEADERS)
-        items = resp.json().get("result", {}).get("items", [])
-        buckets = {}
-        for item in items:
-            pt_obj = item.get("propertyType", {})
-            labels = pt_obj.get("prefLabel", []) if isinstance(pt_obj, dict) else []
-            pt = labels[0].get("_value", "").capitalize() if labels else ""
-            price = item.get("pricePaid")
-            date  = item.get("transactionDate", "")
-            if pt and price:
-                buckets.setdefault(pt, []).append({"price": int(price), "date": date})
-        summary = {}
-        for pt, entries in buckets.items():
-            prices = [e["price"] for e in entries]
-            latest = entries[0]["date"]
-            summary[pt] = {
-                "avg":    round(sum(prices) / len(prices) / 1000) * 1000,
-                "latest": latest,
-                "count":  len(prices),
-            }
-        return summary
-    except Exception:
-        return {}
+    """Fetch last 3 years of sold prices from Land Registry.
+    Falls back to postcode district if the unit postcode has too few sales."""
+    from datetime import date, timedelta
+    since = (date.today() - timedelta(days=3*365)).isoformat()
+    pc_formatted = _format_postcode(postcode)
+    pc_enc = pc_formatted.replace(" ", "%20")
+    # Postcode district = first part e.g. KT16 from KT16 0DA
+    district = pc_formatted.split(" ")[0]
+
+    def _fetch(param_name, param_value):
+        url = (
+            f"https://landregistry.data.gov.uk/data/ppi/transaction-record.json"
+            f"?{param_name}={param_value}"
+            f"&transactionDate.min={since}"
+            f"&_pageSize=100&_sort=-transactionDate"
+        )
+        try:
+            resp = requests.get(url, timeout=10, headers=HEADERS)
+            return resp.json().get("result", {}).get("items", [])
+        except Exception:
+            return []
+
+    # Try exact postcode first
+    items = _fetch("propertyAddress.postcode", pc_enc)
+    scope = pc_formatted
+
+    # Fall back to district if fewer than 3 sales in last 3 years
+    if len(items) < 3:
+        district_enc = district.replace(" ", "%20")
+        items = _fetch("propertyAddress.district", district_enc)
+        scope = district
+
+    summary = _parse_lr_items(items)
+    # Tag which scope the data covers
+    for v in summary.values():
+        v["scope"] = scope
+    return summary
 
 
 # ── Search ────────────────────────────────────────────────────────────────────

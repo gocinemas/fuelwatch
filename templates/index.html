@@ -259,16 +259,20 @@
     const hp = d.house_prices || {};
     if (Object.keys(hp).length > 0) {
       hasAny = true;
+      const scope = Object.values(hp)[0]?.scope || d.postcode;
+      const scopeNote = scope === d.postcode
+        ? `${d.postcode} · last 3 years`
+        : `${scope} district · last 3 years (few local sales, showing district average)`;
       document.getElementById("report-house-list").innerHTML =
         Object.entries(hp).map(([type, v]) =>
           `<div class="flex justify-between py-2 border-b border-gray-50 last:border-0">
             <div>
               <span class="text-gray-700 font-medium">${type}</span>
-              <span class="text-xs text-gray-400 ml-2">${v.count} sale${v.count>1?"s":""} · ${v.latest}</span>
+              <span class="text-xs text-gray-400 ml-2">${v.count} sale${v.count>1?"s":""} · latest ${v.latest}</span>
             </div>
             <span class="font-semibold text-gray-900">£${v.avg.toLocaleString()}</span>
           </div>`
-        ).join("") + `<p class="text-xs text-gray-400 mt-2">Source: Land Registry Price Paid Data</p>`;
+        ).join("") + `<p class="text-xs text-gray-400 mt-2">📍 ${scopeNote} · Source: Land Registry</p>`;
       document.getElementById("report-house").classList.remove("hidden");
     }
 
