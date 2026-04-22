@@ -262,6 +262,7 @@ out body 40;
 
 OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
 ]
 
@@ -269,11 +270,16 @@ def _overpass(query: str) -> list:
     """POST an Overpass query, trying multiple mirrors."""
     for url in OVERPASS_URLS:
         try:
-            r = requests.post(url, data={"data": query}, timeout=10,
+            r = requests.post(url, data={"data": query}, timeout=30,
                               headers={"User-Agent": "FuelWatchUK/1.0"})
             if r.status_code == 200:
-                return r.json().get("elements", [])
-        except Exception:
+                data = r.json()
+                elements = data.get("elements", [])
+                print(f"Overpass OK ({url}): {len(elements)} elements")
+                return elements
+            print(f"Overpass {r.status_code} from {url}")
+        except Exception as e:
+            print(f"Overpass error {url}: {e}")
             continue
     return []
 
@@ -298,17 +304,20 @@ def fetch_local_amenities(lat: float, lon: float, school_km: float = 5.0, pub_km
     school_m = int(school_km * 1000)
     pub_m    = int(pub_km * 1000)
     query = f"""
-[out:json][timeout:8];
+[out:json][timeout:25];
 (
-  node["amenity"~"^(school|college)$"](around:{school_m},{lat},{lon});
-  way["amenity"~"^(school|college)$"](around:{school_m},{lat},{lon});
+  node["amenity"="school"](around:{school_m},{lat},{lon});
+  way["amenity"="school"](around:{school_m},{lat},{lon});
+  node["amenity"="college"](around:{school_m},{lat},{lon});
+  way["amenity"="college"](around:{school_m},{lat},{lon});
   node["amenity"="university"](around:{school_m},{lat},{lon});
   way["amenity"="university"](around:{school_m},{lat},{lon});
-  node["amenity"~"^(pub|bar)$"](around:{pub_m},{lat},{lon});
+  node["amenity"="pub"](around:{pub_m},{lat},{lon});
+  node["amenity"="bar"](around:{pub_m},{lat},{lon});
   node["amenity"="cafe"](around:{pub_m},{lat},{lon});
   node["amenity"="fast_food"]["brand"~"Costa|Starbucks|Pret|Greggs|Caffe Nero|Nero",i](around:{pub_m},{lat},{lon});
 );
-out center 50;
+out center 60;
 """
     elements = _overpass(query)
     schools, universities, pubs, cafes = [], [], [], []
