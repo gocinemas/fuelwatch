@@ -195,7 +195,7 @@
 
         <!-- Overview -->
         <div id="co-overview" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-overview')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-overview" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <h3 class="font-bold text-gray-800">🏢 About</h3>
             <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -206,7 +206,7 @@
 
         <!-- Stats -->
         <div id="co-stats" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-stats')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-stats" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <h3 class="font-bold text-gray-800">📋 Key Facts</h3>
             <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -217,7 +217,7 @@
 
         <!-- Share Price -->
         <div id="co-share" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-share')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-share" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <div class="flex items-center gap-2">
               <h3 class="font-bold text-gray-800">📈 Share Price</h3>
               <span id="co-share-badge" class="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500"></span>
@@ -247,7 +247,7 @@
 
         <!-- AI & Tech Focus -->
         <div id="co-ai" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-ai')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-ai" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <h3 class="font-bold text-gray-800">🤖 AI & Tech Focus</h3>
             <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -259,7 +259,7 @@
 
         <!-- Strategy & Direction -->
         <div id="co-strategy" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-strategy')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-strategy" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <h3 class="font-bold text-gray-800">🧭 Strategy & Direction</h3>
             <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -270,7 +270,7 @@
 
         <!-- News -->
         <div id="co-news" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-news')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-news" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <h3 class="font-bold text-gray-800">📰 Latest News</h3>
             <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -281,7 +281,7 @@
 
         <!-- Job signals -->
         <div id="co-signals" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-signals')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-signals" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <h3 class="font-bold text-gray-800">📊 Hiring Signals</h3>
             <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -292,7 +292,7 @@
 
         <!-- Jobs -->
         <div id="co-jobs" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-jobs')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-jobs" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <h3 class="font-bold text-gray-800">💼 Open Positions</h3>
             <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -304,7 +304,7 @@
 
         <!-- No jobs -->
         <div id="co-no-jobs" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-no-jobs')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-no-jobs" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <h3 class="font-bold text-gray-800">💼 Jobs</h3>
             <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -320,7 +320,7 @@
 
         <!-- Practical links -->
         <div id="co-links" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button onclick="_coToggle('co-links')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+          <button data-toggle="co-links" class="w-full flex justify-between items-center px-5 py-4 text-left">
             <h3 class="font-bold text-gray-800">🔗 Useful Links</h3>
             <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
@@ -943,15 +943,19 @@
   }
 
   // ── Collapsible sections ─────────────────────────────────────────────────────
-  function _coToggle(id) {
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-toggle]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-toggle');
     const el = document.getElementById(id);
     if (!el) return;
     const body = el.querySelector('.co-body');
     const chevron = el.querySelector('.co-chevron');
+    if (!body) return;
     const isOpen = !body.classList.contains('hidden');
     body.classList.toggle('hidden', isOpen);
     if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
-  }
+  });
   function _coOpen(id) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -959,14 +963,6 @@
     const chevron = el.querySelector('.co-chevron');
     if (body) body.classList.remove('hidden');
     if (chevron) chevron.style.transform = 'rotate(180deg)';
-  }
-  function _coClose(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const body = el.querySelector('.co-body');
-    const chevron = el.querySelector('.co-chevron');
-    if (body) body.classList.add('hidden');
-    if (chevron) chevron.style.transform = '';
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
