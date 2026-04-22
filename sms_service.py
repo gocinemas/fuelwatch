@@ -329,18 +329,20 @@ def api_search():
     nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
     avg = round(sum(s["price"] for s in nearby) / len(nearby), 1) if nearby else 0
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        f_amenities = ex.submit(fetch_nearby_amenities, lat, lon, radius_km)
-        f_schools   = ex.submit(fetch_nearby_schools, lat, lon, 5.0)
-        f_pubs      = ex.submit(fetch_nearby_pubs, lat, lon, 2.5)
-        f_house     = ex.submit(fetch_house_prices, postcode)
-        f_weather   = ex.submit(get_weather, lat, lon)
+    mode = request.args.get("mode", "full")
 
-    amenities   = f_amenities.result()
-    schools     = f_schools.result()
-    pubs        = f_pubs.result()
-    house       = f_house.result()
-    weather     = f_weather.result()
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        f_weather   = ex.submit(get_weather, lat, lon)
+        f_amenities = ex.submit(fetch_nearby_amenities, lat, lon, radius_km) if mode == "full" else None
+        f_schools   = ex.submit(fetch_nearby_schools, lat, lon, 5.0)         if mode == "full" else None
+        f_pubs      = ex.submit(fetch_nearby_pubs, lat, lon, 2.5)            if mode == "full" else None
+        f_house     = ex.submit(fetch_house_prices, postcode)                if mode == "full" else None
+
+    weather   = f_weather.result()
+    amenities = f_amenities.result() if f_amenities else {}
+    schools   = f_schools.result()   if f_schools   else {}
+    pubs      = f_pubs.result()      if f_pubs      else []
+    house     = f_house.result()     if f_house     else {}
 
     return jsonify({
         "postcode":      postcode,

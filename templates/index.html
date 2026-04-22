@@ -44,10 +44,16 @@
           <option value="15">15 miles</option>
         </select>
       </div>
-      <button onclick="doSearch()"
-        class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl transition text-sm">
-        Search
-      </button>
+      <div class="flex gap-2">
+        <button onclick="doSearch('fuel')"
+          class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl transition text-sm">
+          ⛽ Fuel Only
+        </button>
+        <button onclick="doSearch('full')"
+          class="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3 rounded-xl transition text-sm">
+          🏠 Full Report
+        </button>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -109,10 +115,10 @@
 
 <script>
   document.getElementById("postcode").addEventListener("keydown", e => {
-    if (e.key === "Enter") doSearch();
+    if (e.key === "Enter") doSearch("fuel");
   });
 
-  async function doSearch() {
+  async function doSearch(mode) {
     const postcode = document.getElementById("postcode").value.trim().replace(/\s+/g, "");
     const fuel     = document.getElementById("fuel").value;
     const radius   = document.getElementById("radius").value;
@@ -124,10 +130,11 @@
     document.getElementById("error").classList.add("hidden");
 
     try {
-      const res = await fetch(`/api/search?postcode=${postcode}&fuel=${fuel}&radius=${radius}`);
+      const url = `/api/search?postcode=${postcode}&fuel=${fuel}&radius=${radius}&mode=${mode}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (!res.ok) { showError(data.error || "Something went wrong."); return; }
-      renderResults(data);
+      renderResults(data, mode);
     } catch(e) {
       showError("Network error — please try again.");
     } finally {
@@ -142,7 +149,7 @@
     el.classList.remove("hidden");
   }
 
-  function renderResults(d) {
+  function renderResults(d, mode) {
     // Weather / timestamp
     document.getElementById("weather-line").textContent = d.weather || "";
     document.getElementById("timestamp").textContent = new Date(d.timestamp).toLocaleTimeString("en-GB", {hour:"2-digit", minute:"2-digit"});
@@ -182,6 +189,15 @@
       const tankSaving = ((d.avg_price - cheapest.price) * 55 / 100).toFixed(2);
       document.getElementById("fuel-summary").innerHTML =
         `Avg: <strong>${d.avg_price}p</strong> · Save <strong>${(d.avg_price - cheapest.price).toFixed(1)}p/L</strong> · Full tank saving: <strong>£${tankSaving}</strong>`;
+    }
+
+    // Hide full-report sections if fuel-only mode
+    const fullSections = ["house-section","schools-section","pubs-section","super-section"];
+    fullSections.forEach(id => document.getElementById(id).classList.add("hidden"));
+    if (mode !== "full") {
+      document.getElementById("results").classList.remove("hidden");
+      document.getElementById("results").scrollIntoView({behavior:"smooth"});
+      return;
     }
 
     // House Prices
