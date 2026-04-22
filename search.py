@@ -17,7 +17,7 @@ import time
 from datetime import datetime
 from typing import Optional
 
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "AIzaSyDSJyUiYSCADhDdtBcOFI_iF-b-HOlUEq8")
 
 # ── CMA Retailer Price Feed URLs ──────────────────────────────────────────────
 # Confirmed working (tested March 2026)
