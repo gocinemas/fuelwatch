@@ -507,7 +507,7 @@ def _parse_lr_items(items: list) -> dict:
         pt = labels[0].get("_value", "").capitalize() if labels else ""
         price = item.get("pricePaid")
         date  = item.get("transactionDate", "")
-        if pt and price:
+        if pt and price and pt.lower() != "other":
             buckets.setdefault(pt, []).append({"price": int(price), "date": date})
     summary = {}
     for pt, entries in buckets.items():
