@@ -194,89 +194,139 @@
       <div id="company-results" class="hidden">
 
         <!-- Overview -->
-        <div id="co-overview" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">🏢 About</h3>
-          <div id="co-overview-body" class="text-sm text-gray-600 leading-relaxed"></div>
+        <div id="co-overview" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-overview')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <h3 class="font-bold text-gray-800">🏢 About</h3>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body hidden px-5 pb-5">
+            <div id="co-overview-body" class="text-sm text-gray-600 leading-relaxed"></div>
+          </div>
         </div>
 
         <!-- Stats -->
-        <div id="co-stats" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm"></div>
+        <div id="co-stats" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-stats')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <h3 class="font-bold text-gray-800">📋 Key Facts</h3>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body hidden px-5 pb-5">
+            <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm"></div>
+          </div>
         </div>
 
         <!-- Share Price -->
-        <div id="co-share" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <div class="flex justify-between items-start mb-3">
-            <h3 class="font-bold text-gray-800">📈 Share Price</h3>
-            <span id="co-share-badge" class="text-xs px-2 py-0.5 rounded-full font-medium"></span>
-          </div>
-          <div class="flex items-end gap-4 mb-4">
-            <div>
-              <div id="co-share-price" class="text-3xl font-bold text-gray-900"></div>
-              <div id="co-share-meta" class="text-xs text-gray-400 mt-0.5"></div>
+        <div id="co-share" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-share')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <div class="flex items-center gap-2">
+              <h3 class="font-bold text-gray-800">📈 Share Price</h3>
+              <span id="co-share-badge" class="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500"></span>
             </div>
-            <div class="text-right ml-auto">
-              <div id="co-share-day" class="text-sm font-semibold"></div>
-              <div id="co-share-month" class="text-sm font-semibold"></div>
-              <div class="text-xs text-gray-400">Today / 1 month</div>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body hidden px-5 pb-5">
+            <div class="flex items-end gap-4 mb-4">
+              <div>
+                <div id="co-share-price" class="text-3xl font-bold text-gray-900"></div>
+                <div id="co-share-meta" class="text-xs text-gray-400 mt-0.5"></div>
+              </div>
+              <div class="text-right ml-auto">
+                <div id="co-share-day" class="text-sm font-semibold"></div>
+                <div id="co-share-month" class="text-sm font-semibold"></div>
+                <div class="text-xs text-gray-400">Today / 1 month</div>
+              </div>
             </div>
+            <div id="co-share-range" class="flex justify-between text-xs text-gray-400 mb-1"></div>
+            <svg id="co-share-chart" viewBox="0 0 300 60" preserveAspectRatio="none" class="w-full h-14 overflow-visible">
+              <polyline id="co-share-line" fill="none" stroke-width="2" stroke-linejoin="round"/>
+              <polygon  id="co-share-fill" stroke="none" opacity="0.12"/>
+            </svg>
+            <div id="co-share-dates" class="flex justify-between text-xs text-gray-300 mt-1"></div>
           </div>
-          <div id="co-share-range" class="flex justify-between text-xs text-gray-400 mb-1"></div>
-          <svg id="co-share-chart" viewBox="0 0 300 60" preserveAspectRatio="none"
-               class="w-full h-14 overflow-visible">
-            <polyline id="co-share-line" fill="none" stroke-width="2" stroke-linejoin="round"/>
-            <polygon  id="co-share-fill" stroke="none" opacity="0.12"/>
-          </svg>
-          <div id="co-share-dates" class="flex justify-between text-xs text-gray-300 mt-1"></div>
         </div>
 
         <!-- AI & Tech Focus -->
-        <div id="co-ai" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">🤖 AI & Tech Focus</h3>
-          <div id="co-ai-job-bar" class="hidden mb-4"></div>
-          <div id="co-ai-news-list" class="divide-y divide-gray-50 text-sm"></div>
+        <div id="co-ai" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-ai')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <h3 class="font-bold text-gray-800">🤖 AI & Tech Focus</h3>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body px-5 pb-5">
+            <div id="co-ai-job-bar" class="hidden mb-4"></div>
+            <div id="co-ai-news-list" class="divide-y divide-gray-50 text-sm"></div>
+          </div>
         </div>
 
         <!-- Strategy & Direction -->
-        <div id="co-strategy" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">🧭 Strategy & Direction</h3>
-          <div id="co-strategy-list" class="divide-y divide-gray-50 text-sm"></div>
+        <div id="co-strategy" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-strategy')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <h3 class="font-bold text-gray-800">🧭 Strategy & Direction</h3>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body hidden px-5 pb-5">
+            <div id="co-strategy-list" class="divide-y divide-gray-50 text-sm"></div>
+          </div>
         </div>
 
         <!-- News -->
-        <div id="co-news" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">📰 Latest News</h3>
-          <div id="co-news-list" class="divide-y divide-gray-50 text-sm"></div>
+        <div id="co-news" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-news')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <h3 class="font-bold text-gray-800">📰 Latest News</h3>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body hidden px-5 pb-5">
+            <div id="co-news-list" class="divide-y divide-gray-50 text-sm"></div>
+          </div>
         </div>
 
         <!-- Job signals -->
-        <div id="co-signals" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">📊 Hiring Signals</h3>
-          <div id="co-signals-body" class="text-sm"></div>
+        <div id="co-signals" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-signals')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <h3 class="font-bold text-gray-800">📊 Hiring Signals</h3>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body hidden px-5 pb-5">
+            <div id="co-signals-body" class="text-sm"></div>
+          </div>
         </div>
 
         <!-- Jobs -->
-        <div id="co-jobs" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-1">💼 Open Positions</h3>
-          <p id="co-jobs-source" class="text-xs text-gray-400 mb-3"></p>
-          <div id="co-jobs-list" class="divide-y divide-gray-50 text-sm"></div>
+        <div id="co-jobs" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-jobs')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <h3 class="font-bold text-gray-800">💼 Open Positions</h3>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body hidden px-5 pb-5">
+            <p id="co-jobs-source" class="text-xs text-gray-400 mb-3"></p>
+            <div id="co-jobs-list" class="divide-y divide-gray-50 text-sm"></div>
+          </div>
         </div>
 
         <!-- No jobs -->
-        <div id="co-no-jobs" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">💼 Jobs</h3>
-          <p class="text-sm text-gray-500 mb-3">No direct listings found. Search on:</p>
-          <div class="flex flex-col gap-2">
-            <a id="co-indeed-link" href="#" target="_blank" class="text-sm bg-blue-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-blue-700 transition">Indeed →</a>
-            <a id="co-linkedin-link" href="#" target="_blank" class="text-sm bg-indigo-700 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-indigo-800 transition">LinkedIn →</a>
-            <a id="co-glassdoor-link" href="#" target="_blank" class="text-sm bg-green-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-green-700 transition">Glassdoor →</a>
+        <div id="co-no-jobs" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-no-jobs')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <h3 class="font-bold text-gray-800">💼 Jobs</h3>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body hidden px-5 pb-5">
+            <p class="text-sm text-gray-500 mb-3">No direct listings found. Search on:</p>
+            <div class="flex flex-col gap-2">
+              <a id="co-indeed-link" href="#" target="_blank" class="text-sm bg-blue-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-blue-700 transition">Indeed →</a>
+              <a id="co-linkedin-link" href="#" target="_blank" class="text-sm bg-indigo-700 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-indigo-800 transition">LinkedIn →</a>
+              <a id="co-glassdoor-link" href="#" target="_blank" class="text-sm bg-green-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-green-700 transition">Glassdoor →</a>
+            </div>
           </div>
         </div>
 
         <!-- Practical links -->
-        <div id="co-links" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">🔗 Useful Links</h3>
-          <div id="co-links-body" class="flex flex-col gap-2 text-sm"></div>
+        <div id="co-links" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
+          <button onclick="_coToggle('co-links')" class="w-full flex justify-between items-center px-5 py-4 text-left">
+            <h3 class="font-bold text-gray-800">🔗 Useful Links</h3>
+            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="co-body hidden px-5 pb-5">
+            <div id="co-links-body" class="flex flex-col gap-2 text-sm"></div>
+          </div>
         </div>
 
       </div>
@@ -820,6 +870,7 @@
           </div>`).join("");
       }
       document.getElementById("co-ai").classList.remove("hidden");
+      _coOpen('co-ai');
     }
 
     // Strategy & Direction
@@ -889,6 +940,33 @@
       ].filter(Boolean).join("");
       document.getElementById("co-links").classList.remove("hidden");
     }
+  }
+
+  // ── Collapsible sections ─────────────────────────────────────────────────────
+  function _coToggle(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const body = el.querySelector('.co-body');
+    const chevron = el.querySelector('.co-chevron');
+    const isOpen = !body.classList.contains('hidden');
+    body.classList.toggle('hidden', isOpen);
+    if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+  }
+  function _coOpen(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const body = el.querySelector('.co-body');
+    const chevron = el.querySelector('.co-chevron');
+    if (body) body.classList.remove('hidden');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+  }
+  function _coClose(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const body = el.querySelector('.co-body');
+    const chevron = el.querySelector('.co-chevron');
+    if (body) body.classList.add('hidden');
+    if (chevron) chevron.style.transform = '';
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
