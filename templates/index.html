@@ -468,7 +468,6 @@
         return `<div class="py-2.5 flex justify-between items-start gap-2">
           <div class="flex-1 min-w-0">
             <div class="text-gray-700 text-sm font-medium">${p.name}${p.note ? ` <span class="text-xs text-gray-400 font-normal">${p.note}</span>` : ""}</div>
-            ${p.hygiene ? `<div class="text-xs text-amber-500 mt-0.5">${p.hygiene}</div>` : ""}
             <div class="flex gap-2 mt-1 flex-wrap">
               <button data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}" data-name="${p.name.replace(/"/g,"'")}" data-addr="${addr}" onclick="openNav(this)"
                 class="text-xs bg-red-600 text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-red-700 transition">Navigate</button>
@@ -490,7 +489,6 @@
         return `<div class="py-2.5 flex justify-between items-start gap-2">
           <div class="flex-1 min-w-0">
             <div class="text-gray-700 text-sm font-medium">${c.name}</div>
-            ${c.hygiene ? `<div class="text-xs text-amber-500 mt-0.5">${c.hygiene}</div>` : ""}
             <div class="flex gap-2 mt-1 flex-wrap">
               <button data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}" data-name="${c.name.replace(/"/g,"'")}" data-addr="" onclick="openNav(this)"
                 class="text-xs bg-red-600 text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-red-700 transition">Navigate</button>

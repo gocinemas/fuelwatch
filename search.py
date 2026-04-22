@@ -429,43 +429,24 @@ out center 200;
     pubs.sort(key=lambda x: x["dist_mi"])
     cafes.sort(key=lambda x: x["dist_mi"])
 
-    # Parallel enrichment: FSA hygiene ratings + Ofsted ratings
-    def _enrich_fsa(item, fsa):
-        fhrs_id = item.pop("fhrs_id", "")
-        rating = fsa.get(fhrs_id) if fhrs_id else None
-        if rating is None:
-            key = _norm(item["name"])
-            rating = fsa.get(key)
-            if rating is None:
-                for fkey, fval in fsa.items():
-                    if key and fkey and len(key) > 3 and (key in fkey or fkey in key):
-                        rating = fval
-                        break
-        if rating is not None:
-            stars = "★" * rating + "☆" * (5 - rating)
-            item["hygiene"] = f"Hygiene {stars} {rating}/5"
-        return item
-
+    # Ofsted ratings for schools with URN
     try:
         with _cf.ThreadPoolExecutor(max_workers=6) as pool:
-            fsa_future = pool.submit(fetch_fsa_ratings, lat, lon, pub_km)
-
-            # Ofsted lookups for schools with URN
             ofsted_futures = {
                 i: pool.submit(fetch_ofsted_rating, s["urn"])
                 for i, s in enumerate(schools[:10]) if s.get("urn")
             }
-
-            fsa = fsa_future.result(timeout=10)
-            pubs  = [_enrich_fsa(p, fsa) for p in pubs]
-            cafes = [_enrich_fsa(c, fsa) for c in cafes]
-
             for i, fut in ofsted_futures.items():
                 grade = fut.result(timeout=6)
                 if grade:
                     schools[i]["ofsted"] = grade
     except Exception:
         pass
+
+    for p in pubs:
+        p.pop("fhrs_id", None)
+    for c in cafes:
+        c.pop("fhrs_id", None)
 
     # Clean up internal fields not needed by frontend
     for s in schools + universities:
