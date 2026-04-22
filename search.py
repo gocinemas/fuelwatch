@@ -223,9 +223,9 @@ def fetch_nearby_amenities(lat: float, lon: float, radius_km: float = 8.0) -> di
   node["shop"="supermarket"](around:{radius_m},{lat},{lon});
   node["amenity"="supermarket"](around:{radius_m},{lat},{lon});
   node["amenity"="cafe"](around:{radius_m},{lat},{lon});
-  node["amenity"="fast_food"]["brand"~"Costa|Starbucks|Pret|Greggs|Caffe Nero|Coffee#1|Esquires",i](around:{radius_m},{lat},{lon});
+  node["amenity"="fast_food"]["brand"~"Costa|Starbucks|Pret|Greggs|Caffe Nero|Coffee#1|Esquires|Nero",i](around:{radius_m},{lat},{lon});
 );
-out body 30;
+out body 40;
 """
     try:
         elements = _overpass(query)
@@ -375,26 +375,48 @@ def _parse_lr_items(items: list) -> dict:
     return summary
 
 
+def _get_postcode_info(postcode: str) -> dict:
+    """Return admin_district and outward code for a postcode via postcodes.io."""
+    pc = postcode.strip().replace(" ", "").upper()
+    try:
+        r = requests.get(f"https://api.postcodes.io/postcodes/{pc}", timeout=5, headers=HEADERS)
+        res = r.json().get("result", {})
+        return {
+            "admin_district": res.get("admin_district", "").upper(),
+            "outward": res.get("outcode", pc[:-3]),
+        }
+    except Exception:
+        return {"admin_district": "", "outward": pc[:-3]}
+
+
 def fetch_house_prices(postcode: str) -> dict:
-    """Fetch last 3 years of sold prices from Land Registry.
-    Falls back to postcode district if the unit postcode has too few sales."""
-    from datetime import date, timedelta
-    since = (date.today() - timedelta(days=3*365)).isoformat()
+    """Fetch last 3 years of sold prices from Land Registry for any postcode.
+    Falls back to local authority district if the unit postcode has too few sales."""
+    from datetime import date, timedelta, datetime as dt
+    cutoff = date.today() - timedelta(days=3*365)
     pc_formatted = _format_postcode(postcode)
     pc_enc = pc_formatted.replace(" ", "%20")
-    # Postcode district = first part e.g. KT16 from KT16 0DA
-    district = pc_formatted.split(" ")[0]
 
     def _fetch(param_name, param_value):
         url = (
             f"https://landregistry.data.gov.uk/data/ppi/transaction-record.json"
             f"?{param_name}={param_value}"
-            f"&transactionDate.min={since}"
             f"&_pageSize=100&_sort=-transactionDate"
         )
         try:
             resp = requests.get(url, timeout=10, headers=HEADERS)
-            return resp.json().get("result", {}).get("items", [])
+            items = resp.json().get("result", {}).get("items", [])
+            # Filter client-side to last 3 years
+            filtered = []
+            for item in items:
+                date_str = item.get("transactionDate", "")
+                try:
+                    sale_date = dt.strptime(date_str, "%a, %d %b %Y").date()
+                    if sale_date >= cutoff:
+                        filtered.append(item)
+                except Exception:
+                    filtered.append(item)  # include if date unparseable
+            return filtered
         except Exception:
             return []
 
@@ -402,14 +424,17 @@ def fetch_house_prices(postcode: str) -> dict:
     items = _fetch("propertyAddress.postcode", pc_enc)
     scope = pc_formatted
 
-    # Fall back to district if fewer than 3 sales in last 3 years
-    if len(items) < 3:
-        district_enc = district.replace(" ", "%20")
-        items = _fetch("propertyAddress.district", district_enc)
-        scope = district
+    # Fall back to local authority district if fewer than 5 recent sales
+    if len(items) < 5:
+        info = _get_postcode_info(postcode)
+        admin = info["admin_district"]
+        if admin:
+            fallback_items = _fetch("propertyAddress.district", admin.replace(" ", "%20"))
+            if fallback_items:
+                items = fallback_items
+                scope = admin.title()
 
     summary = _parse_lr_items(items)
-    # Tag which scope the data covers
     for v in summary.values():
         v["scope"] = scope
     return summary

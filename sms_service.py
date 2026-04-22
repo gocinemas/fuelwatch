@@ -344,6 +344,11 @@ def api_search():
     pubs      = f_pubs.result()      if f_pubs      else []
     house     = f_house.result()     if f_house     else {}
 
+    pc_fmt = postcode.upper()
+    if len(pc_fmt) >= 5 and " " not in pc_fmt:
+        pc_fmt = pc_fmt[:-3] + " " + pc_fmt[-3:]
+    rightmove_url = f"https://www.rightmove.co.uk/house-prices/{pc_fmt.lower().replace(' ', '-')}.html"
+
     return jsonify({
         "postcode":      postcode,
         "fuel":          fuel,
@@ -355,6 +360,8 @@ def api_search():
         "schools":       schools,
         "pubs":          pubs,
         "supermarkets":  amenities.get("supermarkets", []),
+        "cafes":         amenities.get("cafes", []),
+        "rightmove_url": rightmove_url,
         "timestamp":     datetime.now().isoformat(),
     })
 

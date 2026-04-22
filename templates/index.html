@@ -131,6 +131,21 @@
           <div id="report-pubs-list" class="divide-y divide-gray-50 text-sm"></div>
         </div>
 
+        <!-- Coffee -->
+        <div id="report-cafes" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-3">☕ Coffee & Cafes</h3>
+          <div id="report-cafes-list" class="divide-y divide-gray-50 text-sm"></div>
+        </div>
+
+        <!-- Rightmove -->
+        <div id="report-rightmove" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-2">🔗 More House Price Data</h3>
+          <a id="report-rightmove-link" href="#" target="_blank"
+            class="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+            View on Rightmove →
+          </a>
+        </div>
+
         <p id="report-empty" class="hidden text-center text-gray-400 text-sm py-4">No area data found for this postcode.</p>
       </div>
     </div>
@@ -239,7 +254,7 @@
     if (!postcode) return;
 
     setLoading("report", true);
-    ["report-house","report-schools","report-pubs","report-empty"].forEach(id =>
+    ["report-house","report-schools","report-pubs","report-cafes","report-rightmove","report-empty"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     document.getElementById("report-results").classList.add("hidden");
 
@@ -305,6 +320,27 @@
         </div>`
       ).join("");
       document.getElementById("report-pubs").classList.remove("hidden");
+    }
+
+    // Cafes
+    const cafes = d.cafes || [];
+    if (cafes.length) {
+      hasAny = true;
+      document.getElementById("report-cafes-list").innerHTML = cafes.map(c =>
+        `<div class="py-2 flex justify-between items-center">
+          <span class="text-gray-700">${c.name}${c.rating}</span>
+          <span class="text-gray-400 text-xs shrink-0 ml-2">${c.dist_mi.toFixed(1)}mi</span>
+        </div>`
+      ).join("");
+      document.getElementById("report-cafes").classList.remove("hidden");
+    }
+
+    // Rightmove link — always show if we have a URL
+    if (d.rightmove_url) {
+      document.getElementById("report-rightmove-link").href = d.rightmove_url;
+      document.getElementById("report-rightmove-link").textContent = `View ${d.postcode} on Rightmove →`;
+      document.getElementById("report-rightmove").classList.remove("hidden");
+      hasAny = true;
     }
 
     if (!hasAny) document.getElementById("report-empty").classList.remove("hidden");
