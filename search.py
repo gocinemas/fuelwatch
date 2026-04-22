@@ -541,20 +541,21 @@ def _google_rating(name: str, lat: float = None, lon: float = None):
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
 
-def _fetch_news(company: str) -> list:
-    """Fetch recent news via Google News RSS."""
+def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
+    """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
     try:
         import xml.etree.ElementTree as ET
+        q = f"{company} {extra}".strip()
         r = requests.get(
             "https://news.google.com/rss/search",
-            params={"q": company, "hl": "en-GB", "gl": "GB", "ceid": "GB:en"},
+            params={"q": q, "hl": "en-GB", "gl": "GB", "ceid": "GB:en"},
             timeout=8, headers={"User-Agent": "Mozilla/5.0"},
         )
         if r.status_code != 200:
             return []
         root = ET.fromstring(r.content)
         out = []
-        for item in root.findall(".//item")[:6]:
+        for item in root.findall(".//item")[:limit]:
             title = item.findtext("title", "")
             link  = item.findtext("link", "")
             pub   = item.findtext("pubDate", "")[:16].strip()
@@ -564,7 +565,6 @@ def _fetch_news(company: str) -> list:
                 source = ""
             elif not isinstance(source, str):
                 source = source.group(1) if source else ""
-            # Strip source from title
             clean_title = _re.sub(r"\s+-\s+[^-]+$", "", title).strip()
             out.append({"title": clean_title, "source": source, "date": pub, "url": link})
         return out
@@ -603,6 +603,30 @@ def _job_signals(jobs: list) -> dict:
         "departments": [{"name": d, "count": c} for d, c in top_depts],
         "remote":      remote_count,
     }
+
+_AI_KEYWORDS = [
+    "ai", "artificial intelligence", "machine learning", "ml engineer", "llm",
+    "deep learning", "nlp", "data scientist", "computer vision", "generative",
+    "foundation model", "prompt", "reinforcement learning",
+]
+
+def _ai_job_signals(jobs: list) -> dict:
+    """Count AI/ML-specific roles from job listings."""
+    if not jobs:
+        return {}
+    ai_roles = []
+    for j in jobs:
+        t = j.get("title", "").lower()
+        if any(kw in t for kw in _AI_KEYWORDS):
+            ai_roles.append(j.get("title", ""))
+    pct = round(len(ai_roles) / len(jobs) * 100) if jobs else 0
+    return {
+        "ai_role_count": len(ai_roles),
+        "total_jobs":    len(jobs),
+        "ai_pct":        pct,
+        "sample_roles":  ai_roles[:5],
+    }
+
 
 def _fetch_wikipedia(company: str) -> dict:
     """Fetch company overview from Wikipedia summary API."""
@@ -748,13 +772,15 @@ def fetch_company_info(company: str) -> dict:
         "indeed":      f"https://uk.indeed.com/jobs?q={enc}",
     }
 
-    with _cf.ThreadPoolExecutor(max_workers=6) as pool:
-        wiki_f = pool.submit(_fetch_wikipedia, company)
-        news_f = pool.submit(_fetch_news, company)
-        gh_f   = pool.submit(_fetch_greenhouse, slugs)
-        lv_f   = pool.submit(_fetch_lever, slugs)
-        sr_f   = pool.submit(_fetch_smartrecruiters, slugs)
-        ab_f   = pool.submit(_fetch_ashby, slugs)
+    with _cf.ThreadPoolExecutor(max_workers=8) as pool:
+        wiki_f     = pool.submit(_fetch_wikipedia, company)
+        news_f     = pool.submit(_fetch_news, company, "", 6)
+        ai_news_f  = pool.submit(_fetch_news, company, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
+        strat_f    = pool.submit(_fetch_news, company, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
+        gh_f       = pool.submit(_fetch_greenhouse, slugs)
+        lv_f       = pool.submit(_fetch_lever, slugs)
+        sr_f       = pool.submit(_fetch_smartrecruiters, slugs)
+        ab_f       = pool.submit(_fetch_ashby, slugs)
 
         wiki = {}
         try:
@@ -765,6 +791,18 @@ def fetch_company_info(company: str) -> dict:
         news = []
         try:
             news = news_f.result(timeout=10) or []
+        except Exception:
+            pass
+
+        ai_news = []
+        try:
+            ai_news = ai_news_f.result(timeout=10) or []
+        except Exception:
+            pass
+
+        strategy_news = []
+        try:
+            strategy_news = strat_f.result(timeout=10) or []
         except Exception:
             pass
 
@@ -779,14 +817,17 @@ def fetch_company_info(company: str) -> dict:
                 pass
 
     result = {
-        "name":        company,
-        "wiki":        wiki,
-        "news":        news,
-        "jobs":        jobs,
-        "jobs_source": source,
-        "job_signals": _job_signals(jobs),
-        "links":       links,
-        "slug":        slug,
+        "name":          company,
+        "wiki":          wiki,
+        "news":          news,
+        "ai_news":       ai_news,
+        "strategy_news": strategy_news,
+        "ai_signals":    _ai_job_signals(jobs),
+        "jobs":          jobs,
+        "jobs_source":   source,
+        "job_signals":   _job_signals(jobs),
+        "links":         links,
+        "slug":          slug,
     }
     _COMPANY_CACHE[key] = {"ts": time.time(), "data": result}
     return result
