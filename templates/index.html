@@ -523,9 +523,11 @@
         const wUrl = `https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes`;
         const aUrl = `maps://maps.apple.com/?ll=${p.lat},${p.lon}&q=${encodeURIComponent(p.name)}`;
         const addr = (p.note || "").replace(/"/g,"'");
+        const gRating = p.google_rating ? `<span class="text-xs text-yellow-500 font-medium">★ ${p.google_rating.toFixed(1)}</span><span class="text-xs text-gray-400"> (${p.google_count.toLocaleString()})</span>` : "";
         return `<div class="py-2.5 flex justify-between items-start gap-2">
           <div class="flex-1 min-w-0">
             <div class="text-gray-700 text-sm font-medium">${p.name}${p.note ? ` <span class="text-xs text-gray-400 font-normal">${p.note}</span>` : ""}</div>
+            ${gRating ? `<div class="mt-0.5">${gRating}</div>` : ""}
             <div class="flex gap-2 mt-1 flex-wrap">
               <button data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}" data-name="${p.name.replace(/"/g,"'")}" data-addr="${addr}" onclick="openNav(this)"
                 class="text-xs bg-red-600 text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-red-700 transition">Navigate</button>
@@ -544,9 +546,11 @@
         const gUrl = `https://maps.google.com/?q=${c.lat},${c.lon}`;
         const wUrl = `https://waze.com/ul?ll=${c.lat},${c.lon}&navigate=yes`;
         const aUrl = `maps://maps.apple.com/?ll=${c.lat},${c.lon}&q=${encodeURIComponent(c.name)}`;
+        const cRating = c.google_rating ? `<span class="text-xs text-yellow-500 font-medium">★ ${c.google_rating.toFixed(1)}</span><span class="text-xs text-gray-400"> (${c.google_count.toLocaleString()})</span>` : "";
         return `<div class="py-2.5 flex justify-between items-start gap-2">
           <div class="flex-1 min-w-0">
             <div class="text-gray-700 text-sm font-medium">${c.name}</div>
+            ${cRating ? `<div class="mt-0.5">${cRating}</div>` : ""}
             <div class="flex gap-2 mt-1 flex-wrap">
               <button data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}" data-name="${c.name.replace(/"/g,"'")}" data-addr="" onclick="openNav(this)"
                 class="text-xs bg-red-600 text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-red-700 transition">Navigate</button>
@@ -599,19 +603,32 @@
   function renderCompany(d) {
     document.getElementById("company-results").classList.remove("hidden");
 
-    // Trustpilot
-    if (d.trustpilot) {
-      const tp = d.trustpilot;
-      const stars = Math.round(tp.rating);
-      const starStr = "★".repeat(stars) + "☆".repeat(5 - stars);
-      document.getElementById("co-trustpilot-body").innerHTML = `
-        <div class="flex items-center gap-3 mb-2">
-          <span class="text-2xl font-bold text-gray-800">${tp.rating}</span>
-          <span class="text-yellow-400 text-xl tracking-tight">${starStr}</span>
+    // Ratings
+    const hasRatings = d.trustpilot || d.google;
+    if (hasRatings) {
+      let html = "";
+      if (d.google) {
+        const g = d.google;
+        const gStars = Math.round(g.rating);
+        html += `<div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-50">
+          <span class="text-lg font-bold text-gray-800">Google</span>
+          <span class="text-yellow-400 text-lg tracking-tight">${"★".repeat(gStars)}${"☆".repeat(5-gStars)}</span>
+          <span class="font-semibold text-gray-800">${g.rating.toFixed(1)}</span>
+          <span class="text-gray-400 text-xs">${g.count.toLocaleString()} reviews</span>
+        </div>`;
+      }
+      if (d.trustpilot) {
+        const tp = d.trustpilot;
+        const tpStars = Math.round(tp.rating);
+        html += `<div class="flex items-center gap-3 mb-2">
+          <span class="text-lg font-bold text-gray-800">Trustpilot</span>
+          <span class="text-green-500 text-lg tracking-tight">${"★".repeat(tpStars)}${"☆".repeat(5-tpStars)}</span>
+          <span class="font-semibold text-gray-800">${tp.rating.toFixed(1)}</span>
           <span class="text-gray-400 text-xs">${tp.count.toLocaleString()} reviews</span>
         </div>
-        <a href="${tp.url}" target="_blank" class="text-xs text-indigo-600 font-medium underline">View on Trustpilot →</a>
-      `;
+        <a href="${tp.url}" target="_blank" class="text-xs text-indigo-600 font-medium underline">View on Trustpilot →</a>`;
+      }
+      document.getElementById("co-trustpilot-body").innerHTML = html;
       document.getElementById("co-trustpilot").classList.remove("hidden");
     } else {
       document.getElementById("co-no-trustpilot").classList.remove("hidden");

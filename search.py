@@ -8,6 +8,7 @@ Data: CMA-mandated retailer price feeds (updated daily, no API key needed)
 Geocoding: postcodes.io (free, no API key needed)
 """
 
+import json
 import math
 import os
 import requests
@@ -15,6 +16,8 @@ import sys
 import time
 from datetime import datetime
 from typing import Optional
+
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 
 # ── CMA Retailer Price Feed URLs ──────────────────────────────────────────────
 # Confirmed working (tested March 2026)
@@ -429,17 +432,44 @@ out center 200;
     pubs.sort(key=lambda x: x["dist_mi"])
     cafes.sort(key=lambda x: x["dist_mi"])
 
-    # Ofsted ratings for schools with URN
+    # Parallel: Ofsted for schools + Google ratings for pubs/cafes
     try:
-        with _cf.ThreadPoolExecutor(max_workers=6) as pool:
+        with _cf.ThreadPoolExecutor(max_workers=12) as pool:
             ofsted_futures = {
                 i: pool.submit(fetch_ofsted_rating, s["urn"])
                 for i, s in enumerate(schools[:10]) if s.get("urn")
             }
+            pub_rating_futures = {
+                i: pool.submit(_google_rating, p["name"], p["lat"], p["lon"])
+                for i, p in enumerate(pubs[:8])
+            }
+            cafe_rating_futures = {
+                i: pool.submit(_google_rating, c["name"], c["lat"], c["lon"])
+                for i, c in enumerate(cafes[:6])
+            }
             for i, fut in ofsted_futures.items():
-                grade = fut.result(timeout=6)
-                if grade:
-                    schools[i]["ofsted"] = grade
+                try:
+                    grade = fut.result(timeout=6)
+                    if grade:
+                        schools[i]["ofsted"] = grade
+                except Exception:
+                    pass
+            for i, fut in pub_rating_futures.items():
+                try:
+                    rating, total = fut.result(timeout=5)
+                    if rating:
+                        pubs[i]["google_rating"] = rating
+                        pubs[i]["google_count"]  = total or 0
+                except Exception:
+                    pass
+            for i, fut in cafe_rating_futures.items():
+                try:
+                    rating, total = fut.result(timeout=5)
+                    if rating:
+                        cafes[i]["google_rating"] = rating
+                        cafes[i]["google_count"]  = total or 0
+                except Exception:
+                    pass
     except Exception:
         pass
 
@@ -471,6 +501,32 @@ def fetch_nearby_schools(lat: float, lon: float, radius_km: float = 5.0) -> dict
 def fetch_nearby_pubs(lat: float, lon: float, radius_km: float = 2.5) -> list:
     data = fetch_local_amenities(lat, lon, pub_km=radius_km)
     return data["pubs"]
+
+
+# ── Google Places ────────────────────────────────────────────────────────────
+_PLACES_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
+
+def _google_rating(name: str, lat: float = None, lon: float = None):
+    """Return (rating, total_ratings) for a place name, optionally biased by location."""
+    if not GOOGLE_API_KEY:
+        return None, None
+    params = {
+        "input":     name,
+        "inputtype": "textquery",
+        "fields":    "rating,user_ratings_total",
+        "key":       GOOGLE_API_KEY,
+    }
+    if lat is not None and lon is not None:
+        params["locationbias"] = f"circle:2000@{lat},{lon}"
+    try:
+        r = requests.get(_PLACES_URL, params=params, timeout=5, headers=HEADERS)
+        candidates = r.json().get("candidates", [])
+        if candidates:
+            c = candidates[0]
+            return c.get("rating"), c.get("user_ratings_total")
+    except Exception:
+        pass
+    return None, None
 
 
 # ── Company research ──────────────────────────────────────────────────────────
@@ -598,8 +654,9 @@ def fetch_company_info(company: str) -> dict:
 
     slug = _co_slug(company)
 
-    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
+    with _cf.ThreadPoolExecutor(max_workers=6) as pool:
         tp_f = pool.submit(_fetch_trustpilot, company)
+        gr_f = pool.submit(_google_rating, company)
         gh_f = pool.submit(_fetch_greenhouse, slug)
         lv_f = pool.submit(_fetch_lever, slug)
         sr_f = pool.submit(_fetch_smartrecruiters, slug)
@@ -607,6 +664,14 @@ def fetch_company_info(company: str) -> dict:
         tp = None
         try:
             tp = tp_f.result(timeout=12)
+        except Exception:
+            pass
+
+        google = None
+        try:
+            g_rating, g_count = gr_f.result(timeout=8)
+            if g_rating:
+                google = {"rating": g_rating, "count": g_count or 0}
         except Exception:
             pass
 
@@ -623,6 +688,7 @@ def fetch_company_info(company: str) -> dict:
     result = {
         "name":        company,
         "trustpilot":  tp,
+        "google":      google,
         "jobs":        jobs,
         "jobs_source": source,
         "slug":        slug,
