@@ -414,8 +414,10 @@ def admin():
         )
 
     s = analytics.get_stats()
-    if not s:
-        return "<p style='font-family:sans-serif;padding:40px'>Analytics unavailable (no DATABASE_URL set).</p>"
+    if "error" in s or not s:
+        err = s.get("error", "Unknown error") if s else "get_stats returned empty"
+        db_url_set = "YES" if os.environ.get("DATABASE_URL") else "NO"
+        return f"<p style='font-family:sans-serif;padding:40px'>Analytics unavailable.<br><b>Error:</b> {err}<br><b>DATABASE_URL set:</b> {db_url_set}</p>"
 
     # Build daily sparkline data
     daily_labels = [d["day"][-5:] for d in s.get("daily", [])]  # MM-DD

@@ -2,33 +2,36 @@
 """PostgreSQL analytics: log searches, expose stats for admin dashboard."""
 
 import os
-import time
 
 _db_ok = False
 _conn = None
+_last_error = ""
+
 
 def _get_conn():
-    global _conn, _db_ok
+    global _conn, _last_error
     try:
         import psycopg2
-        import psycopg2.extras
         db_url = os.environ.get("DATABASE_URL", "")
         if not db_url:
+            _last_error = "DATABASE_URL not set"
             return None
         if _conn is None or _conn.closed:
             _conn = psycopg2.connect(db_url, connect_timeout=5)
             _conn.autocommit = True
         return _conn
     except Exception as e:
+        _last_error = str(e)
         print(f"[analytics] DB connect error: {e}")
+        _conn = None
         return None
 
 
 def init_db():
-    global _db_ok
+    global _db_ok, _last_error
     conn = _get_conn()
     if not conn:
-        print("[analytics] No DATABASE_URL — analytics disabled")
+        print(f"[analytics] Disabled: {_last_error}")
         return
     try:
         with conn.cursor() as cur:
@@ -45,10 +48,19 @@ def init_db():
         _db_ok = True
         print("[analytics] DB ready")
     except Exception as e:
+        _last_error = str(e)
         print(f"[analytics] init_db error: {e}")
 
 
+def ensure_ready():
+    """Try to connect and init if not already done (handles late env var injection)."""
+    global _db_ok
+    if not _db_ok:
+        init_db()
+
+
 def log_search(search_type: str, query: str, ip: str = None, user_agent: str = None):
+    ensure_ready()
     if not _db_ok:
         return
     conn = _get_conn()
@@ -65,13 +77,13 @@ def log_search(search_type: str, query: str, ip: str = None, user_agent: str = N
 
 
 def get_stats() -> dict:
+    ensure_ready()
     conn = _get_conn()
     if not conn or not _db_ok:
-        return {}
+        return {"error": _last_error or "DB unavailable"}
     try:
         import psycopg2.extras
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-            # Totals
             cur.execute("SELECT COUNT(*) AS total FROM searches")
             total = cur.fetchone()["total"]
 
@@ -81,40 +93,30 @@ def get_stats() -> dict:
             cur.execute("SELECT COUNT(*) AS week FROM searches WHERE created_at >= NOW() - INTERVAL '7 days'")
             week = cur.fetchone()["week"]
 
-            # By type
             cur.execute("SELECT search_type, COUNT(*) AS cnt FROM searches GROUP BY search_type ORDER BY cnt DESC")
             by_type = [{"type": r["search_type"], "count": r["cnt"]} for r in cur.fetchall()]
 
-            # Top postcodes (fuel + area)
             cur.execute("""
                 SELECT UPPER(query) AS query, COUNT(*) AS cnt
-                FROM searches
-                WHERE search_type IN ('fuel', 'area')
-                GROUP BY UPPER(query)
-                ORDER BY cnt DESC LIMIT 10
+                FROM searches WHERE search_type IN ('fuel', 'area')
+                GROUP BY UPPER(query) ORDER BY cnt DESC LIMIT 10
             """)
             top_postcodes = [{"query": r["query"], "count": r["cnt"]} for r in cur.fetchall()]
 
-            # Top companies
             cur.execute("""
-                SELECT query, COUNT(*) AS cnt
-                FROM searches
+                SELECT query, COUNT(*) AS cnt FROM searches
                 WHERE search_type = 'company'
-                GROUP BY query
-                ORDER BY cnt DESC LIMIT 10
+                GROUP BY query ORDER BY cnt DESC LIMIT 10
             """)
             top_companies = [{"query": r["query"], "count": r["cnt"]} for r in cur.fetchall()]
 
-            # Daily trend last 14 days
             cur.execute("""
                 SELECT DATE(created_at) AS day, COUNT(*) AS cnt
-                FROM searches
-                WHERE created_at >= NOW() - INTERVAL '14 days'
+                FROM searches WHERE created_at >= NOW() - INTERVAL '14 days'
                 GROUP BY day ORDER BY day
             """)
             daily = [{"day": str(r["day"]), "count": r["cnt"]} for r in cur.fetchall()]
 
-            # Last 20 searches
             cur.execute("""
                 SELECT search_type, query, ip, created_at
                 FROM searches ORDER BY created_at DESC LIMIT 20
@@ -139,4 +141,4 @@ def get_stats() -> dict:
         }
     except Exception as e:
         print(f"[analytics] get_stats error: {e}")
-        return {}
+        return {"error": str(e)}
