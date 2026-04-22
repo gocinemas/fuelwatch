@@ -603,32 +603,16 @@
   function renderCompany(d) {
     document.getElementById("company-results").classList.remove("hidden");
 
-    // Ratings
-    const hasRatings = d.trustpilot || d.google;
-    if (hasRatings) {
-      let html = "";
-      if (d.google) {
-        const g = d.google;
-        const gStars = Math.round(g.rating);
-        html += `<div class="flex items-center gap-3 mb-3 pb-3 border-b border-gray-50">
-          <span class="text-lg font-bold text-gray-800">Google</span>
-          <span class="text-yellow-400 text-lg tracking-tight">${"★".repeat(gStars)}${"☆".repeat(5-gStars)}</span>
-          <span class="font-semibold text-gray-800">${g.rating.toFixed(1)}</span>
-          <span class="text-gray-400 text-xs">${g.count.toLocaleString()} reviews</span>
+    // Google rating
+    if (d.google) {
+      const g = d.google;
+      const gStars = Math.round(g.rating);
+      document.getElementById("co-trustpilot-body").innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="text-yellow-400 text-2xl tracking-tight">${"★".repeat(gStars)}${"☆".repeat(5-gStars)}</span>
+          <span class="text-2xl font-bold text-gray-800">${g.rating.toFixed(1)}</span>
+          <span class="text-gray-400 text-sm">${g.count.toLocaleString()} Google reviews</span>
         </div>`;
-      }
-      if (d.trustpilot) {
-        const tp = d.trustpilot;
-        const tpStars = Math.round(tp.rating);
-        html += `<div class="flex items-center gap-3 mb-2">
-          <span class="text-lg font-bold text-gray-800">Trustpilot</span>
-          <span class="text-green-500 text-lg tracking-tight">${"★".repeat(tpStars)}${"☆".repeat(5-tpStars)}</span>
-          <span class="font-semibold text-gray-800">${tp.rating.toFixed(1)}</span>
-          <span class="text-gray-400 text-xs">${tp.count.toLocaleString()} reviews</span>
-        </div>
-        <a href="${tp.url}" target="_blank" class="text-xs text-indigo-600 font-medium underline">View on Trustpilot →</a>`;
-      }
-      document.getElementById("co-trustpilot-body").innerHTML = html;
       document.getElementById("co-trustpilot").classList.remove("hidden");
     } else {
       document.getElementById("co-no-trustpilot").classList.remove("hidden");

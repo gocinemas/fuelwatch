@@ -503,27 +503,33 @@ def fetch_nearby_pubs(lat: float, lon: float, radius_km: float = 2.5) -> list:
     return data["pubs"]
 
 
-# ── Google Places ────────────────────────────────────────────────────────────
-_PLACES_URL = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
+# ── Google Places (New API) ───────────────────────────────────────────────────
+_PLACES_URL = "https://places.googleapis.com/v1/places:searchText"
 
 def _google_rating(name: str, lat: float = None, lon: float = None):
-    """Return (rating, total_ratings) for a place name, optionally biased by location."""
+    """Return (rating, total_ratings) using the Places API (New)."""
     if not GOOGLE_API_KEY:
         return None, None
-    params = {
-        "input":     name,
-        "inputtype": "textquery",
-        "fields":    "rating,user_ratings_total",
-        "key":       GOOGLE_API_KEY,
-    }
+    body = {"textQuery": name}
     if lat is not None and lon is not None:
-        params["locationbias"] = f"circle:2000@{lat},{lon}"
+        body["locationBias"] = {
+            "circle": {"center": {"latitude": lat, "longitude": lon}, "radius": 2000.0}
+        }
     try:
-        r = requests.get(_PLACES_URL, params=params, timeout=5, headers=HEADERS)
-        candidates = r.json().get("candidates", [])
-        if candidates:
-            c = candidates[0]
-            return c.get("rating"), c.get("user_ratings_total")
+        r = requests.post(
+            _PLACES_URL,
+            headers={
+                "X-Goog-Api-Key":   GOOGLE_API_KEY,
+                "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount",
+                "Content-Type":     "application/json",
+            },
+            json=body,
+            timeout=5,
+        )
+        places = r.json().get("places", [])
+        if places:
+            p = places[0]
+            return p.get("rating"), p.get("userRatingCount")
     except Exception:
         pass
     return None, None
@@ -533,118 +539,65 @@ def _google_rating(name: str, lat: float = None, lon: float = None):
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
 
-def _co_slug(name: str) -> str:
-    """ATS-style slug: lowercase alphanumeric, strip common suffixes."""
+def _co_slugs(name: str) -> list:
+    """Generate ATS slug candidates from a company name."""
     s = name.lower().strip()
-    s = _re.sub(r"\s+(uk|ltd|plc|inc|corp|group|the|&|and)\s*$", "", s)
-    return _re.sub(r"[^a-z0-9]", "", s)
+    s = _re.sub(r"\s+(uk|ltd|plc|inc|corp|group|the|&|and)\s*$", "", s).strip()
+    plain   = _re.sub(r"[^a-z0-9]", "", s)
+    hyphen  = _re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    # deduplicate while preserving order
+    seen, out = set(), []
+    for slug in [plain, hyphen, plain.replace("-", "")]:
+        if slug and slug not in seen:
+            seen.add(slug)
+            out.append(slug)
+    return out
 
-def _tp_slug(name: str) -> str:
-    """Trustpilot-style slug: lowercase hyphenated."""
-    s = name.lower().strip()
-    s = _re.sub(r"\s+(ltd|plc|inc|corp|group)\s*$", "", s)
-    return _re.sub(r"[^a-z0-9]+", "-", s).strip("-")
-
-def _fetch_trustpilot(company: str):
-    ua = {"User-Agent": _BROWSER_UA, "Accept-Language": "en-GB,en;q=0.9"}
-    slug_base = _tp_slug(company)
-    for slug in [slug_base, slug_base + ".co.uk", slug_base + ".com"]:
+def _fetch_greenhouse(slugs: list) -> list:
+    for slug in slugs:
         try:
-            url = f"https://www.trustpilot.com/review/{slug}"
-            r = requests.get(url, timeout=8, headers=ua)
-            if r.status_code != 200:
-                continue
-            for raw in _re.findall(r'<script type="application/ld\+json">(.*?)</script>', r.text, _re.DOTALL):
-                try:
-                    d = json.loads(raw)
-                    ag = d.get("aggregateRating", {})
-                    if ag and ag.get("ratingValue"):
-                        return {
-                            "rating": round(float(ag["ratingValue"]), 1),
-                            "count":  int(ag.get("reviewCount", 0)),
-                            "url":    url,
-                        }
-                except Exception:
-                    continue
+            r = requests.get(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs", timeout=6, headers=HEADERS)
+            if r.status_code == 200:
+                jobs = r.json().get("jobs", [])
+                if jobs:
+                    return [{"title": j.get("title",""), "location": j.get("location",{}).get("name",""), "url": j.get("absolute_url","")} for j in jobs[:30]]
         except Exception:
-            continue
-    # Search fallback
-    try:
-        r = requests.get(
-            f"https://www.trustpilot.com/search?query={requests.utils.quote(company)}",
-            timeout=8, headers=ua,
-        )
-        m = _re.search(r'href="/review/([a-z0-9.-]+)"', r.text)
-        if m:
-            found = m.group(1)
-            r2 = requests.get(f"https://www.trustpilot.com/review/{found}", timeout=8, headers=ua)
-            for raw in _re.findall(r'<script type="application/ld\+json">(.*?)</script>', r2.text, _re.DOTALL):
-                try:
-                    d = json.loads(raw)
-                    ag = d.get("aggregateRating", {})
-                    if ag and ag.get("ratingValue"):
-                        return {
-                            "rating": round(float(ag["ratingValue"]), 1),
-                            "count":  int(ag.get("reviewCount", 0)),
-                            "url":    f"https://www.trustpilot.com/review/{found}",
-                        }
-                except Exception:
-                    continue
-    except Exception:
-        pass
-    return None
+            pass
+    return []
 
-def _fetch_greenhouse(slug: str) -> list:
-    try:
-        r = requests.get(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs", timeout=8, headers=HEADERS)
-        if r.status_code != 200:
-            return []
-        return [
-            {
-                "title":    j.get("title", ""),
-                "location": j.get("location", {}).get("name", ""),
-                "url":      j.get("absolute_url", ""),
-            }
-            for j in r.json().get("jobs", [])[:30]
-        ]
-    except Exception:
-        return []
+def _fetch_lever(slugs: list) -> list:
+    for slug in slugs:
+        try:
+            r = requests.get(f"https://api.lever.co/v0/postings/{slug}?mode=json", timeout=6, headers=HEADERS)
+            if r.status_code == 200 and isinstance(r.json(), list) and r.json():
+                return [{"title": j.get("text",""), "location": j.get("categories",{}).get("location",""), "url": j.get("hostedUrl","")} for j in r.json()[:30]]
+        except Exception:
+            pass
+    return []
 
-def _fetch_lever(slug: str) -> list:
-    try:
-        r = requests.get(f"https://api.lever.co/v0/postings/{slug}?mode=json", timeout=8, headers=HEADERS)
-        if r.status_code != 200 or not isinstance(r.json(), list):
-            return []
-        out = []
-        for j in r.json()[:30]:
-            cats = j.get("categories", {})
-            locs = cats.get("allLocations") or []
-            loc  = cats.get("location") or (locs[0] if locs else "")
-            out.append({"title": j.get("text", ""), "location": loc, "url": j.get("hostedUrl", "")})
-        return out
-    except Exception:
-        return []
+def _fetch_smartrecruiters(slugs: list) -> list:
+    for slug in slugs:
+        try:
+            r = requests.get(f"https://api.smartrecruiters.com/v1/companies/{slug}/postings", timeout=6, headers=HEADERS)
+            if r.status_code == 200:
+                content = r.json().get("content", [])
+                if content:
+                    return [{"title": j.get("name",""), "location": ", ".join(filter(None,[j.get("location",{}).get("city",""), j.get("location",{}).get("country","")])), "url": f"https://jobs.smartrecruiters.com/{slug}/{j.get('id','')}"} for j in content[:30]]
+        except Exception:
+            pass
+    return []
 
-def _fetch_smartrecruiters(slug: str) -> list:
-    try:
-        r = requests.get(
-            f"https://api.smartrecruiters.com/v1/companies/{slug}/postings",
-            timeout=8, headers=HEADERS,
-        )
-        if r.status_code != 200:
-            return []
-        out = []
-        for j in r.json().get("content", [])[:30]:
-            loc = j.get("location", {})
-            location = ", ".join(filter(None, [loc.get("city"), loc.get("country")]))
-            out.append({
-                "title":    j.get("name", ""),
-                "location": location,
-                "url":      f"https://jobs.smartrecruiters.com/{slug}/{j.get('id', '')}",
-            })
-        return out
-    except Exception:
-        return []
+def _fetch_ashby(slugs: list) -> list:
+    for slug in slugs:
+        try:
+            r = requests.get(f"https://api.ashbyhq.com/posting-api/job-board/{slug}", timeout=6, headers=HEADERS)
+            if r.status_code == 200:
+                jobs = r.json().get("jobPostings", [])
+                if jobs:
+                    return [{"title": j.get("title",""), "location": j.get("locationName","") or j.get("isRemote","") and "Remote" or "", "url": j.get("jobUrl", f"https://jobs.ashbyhq.com/{slug}/{j.get('id','')}")} for j in jobs[:30]]
+        except Exception:
+            pass
+    return []
 
 def fetch_company_info(company: str) -> dict:
     key = company.strip().lower()
@@ -652,20 +605,14 @@ def fetch_company_info(company: str) -> dict:
     if cached and time.time() - cached["ts"] < _COMPANY_TTL:
         return cached["data"]
 
-    slug = _co_slug(company)
+    slugs = _co_slugs(company)
 
-    with _cf.ThreadPoolExecutor(max_workers=6) as pool:
-        tp_f = pool.submit(_fetch_trustpilot, company)
+    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
         gr_f = pool.submit(_google_rating, company)
-        gh_f = pool.submit(_fetch_greenhouse, slug)
-        lv_f = pool.submit(_fetch_lever, slug)
-        sr_f = pool.submit(_fetch_smartrecruiters, slug)
-
-        tp = None
-        try:
-            tp = tp_f.result(timeout=12)
-        except Exception:
-            pass
+        gh_f = pool.submit(_fetch_greenhouse, slugs)
+        lv_f = pool.submit(_fetch_lever, slugs)
+        sr_f = pool.submit(_fetch_smartrecruiters, slugs)
+        ab_f = pool.submit(_fetch_ashby, slugs)
 
         google = None
         try:
@@ -676,7 +623,7 @@ def fetch_company_info(company: str) -> dict:
             pass
 
         jobs, source = [], ""
-        for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (sr_f, "SmartRecruiters")]:
+        for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (ab_f, "Ashby"), (sr_f, "SmartRecruiters")]:
             try:
                 j = fut.result(timeout=10)
                 if j:
@@ -687,11 +634,10 @@ def fetch_company_info(company: str) -> dict:
 
     result = {
         "name":        company,
-        "trustpilot":  tp,
         "google":      google,
         "jobs":        jobs,
         "jobs_source": source,
-        "slug":        slug,
+        "slug":        slugs[0] if slugs else "",
     }
     _COMPANY_CACHE[key] = {"ts": time.time(), "data": result}
     return result
