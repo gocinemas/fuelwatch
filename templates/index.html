@@ -322,26 +322,28 @@
     // Fire both requests in parallel — render each section as it arrives
     const houseP = fetch(`/api/house?postcode=${postcode}`)
       .then(async r => {
-        const data = await r.json();
+        const text = await r.text();
+        let data;
+        try { data = JSON.parse(text); } catch { throw new Error("Server error — please try again."); }
         if (!r.ok) throw new Error(data.error || "House price lookup failed");
         renderHousePrices(data, postcode);
       })
       .catch(err => {
         document.getElementById("report-house-list").innerHTML =
           `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
-        anyError = true;
       });
 
     const localP = fetch(`/api/local?postcode=${postcode}`)
       .then(async r => {
-        const data = await r.json();
+        const text = await r.text();
+        let data;
+        try { data = JSON.parse(text); } catch { throw new Error("Server error — please try again."); }
         if (!r.ok) throw new Error(data.error || "Local data lookup failed");
         renderLocalData(data);
       })
       .catch(err => {
         document.getElementById("report-schools-list").innerHTML =
           `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
-        anyError = true;
       });
 
     await Promise.allSettled([houseP, localP]);
