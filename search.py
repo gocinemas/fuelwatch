@@ -413,9 +413,15 @@ out center 200;
             cuisine  = tags.get("cuisine", "")
             entry["note"]    = "Real ale" if real_ale else ("Gastropub" if cuisine else "")
             entry["fhrs_id"] = tags.get("fhrs:id", "")
+            entry["website"] = tags.get("website", tags.get("contact:website", ""))
+            entry["lat"]     = elat
+            entry["lon"]     = elon
             pubs.append(entry)
         elif amenity in ("cafe", "fast_food"):
             entry["fhrs_id"] = tags.get("fhrs:id", "")
+            entry["website"] = tags.get("website", tags.get("contact:website", ""))
+            entry["lat"]     = elat
+            entry["lon"]     = elon
             cafes.append(entry)
 
     schools.sort(key=lambda x: x["dist_mi"])

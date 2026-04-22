@@ -460,29 +460,46 @@
 
     const pubs = d.pubs || [];
     if (pubs.length) {
-      document.getElementById("report-pubs-list").innerHTML = pubs.map(p =>
-        `<div class="py-2 flex justify-between items-start gap-2">
+      document.getElementById("report-pubs-list").innerHTML = pubs.map(p => {
+        const gUrl = `https://maps.google.com/?q=${p.lat},${p.lon}`;
+        const wUrl = `https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes`;
+        const aUrl = `maps://maps.apple.com/?ll=${p.lat},${p.lon}&q=${encodeURIComponent(p.name)}`;
+        const addr = (p.note || "").replace(/"/g,"'");
+        return `<div class="py-2.5 flex justify-between items-start gap-2">
           <div class="flex-1 min-w-0">
-            <div class="text-gray-700 text-sm">${p.name}${p.note ? ` <span class="text-xs text-gray-400">${p.note}</span>` : ""}</div>
+            <div class="text-gray-700 text-sm font-medium">${p.name}${p.note ? ` <span class="text-xs text-gray-400 font-normal">${p.note}</span>` : ""}</div>
             ${p.hygiene ? `<div class="text-xs text-amber-500 mt-0.5">${p.hygiene}</div>` : ""}
+            <div class="flex gap-2 mt-1 flex-wrap">
+              <button data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}" data-name="${p.name.replace(/"/g,"'")}" data-addr="${addr}" onclick="openNav(this)"
+                class="text-xs bg-red-600 text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-red-700 transition">Navigate</button>
+              ${p.website ? `<a href="${p.website}" target="_blank" class="text-xs bg-blue-50 text-blue-600 font-medium px-2.5 py-1 rounded-lg hover:bg-blue-100 transition">Website →</a>` : ""}
+            </div>
           </div>
-          <span class="text-gray-400 text-xs shrink-0">${p.dist_mi.toFixed(1)}mi</span>
-        </div>`
-      ).join("");
+          <span class="text-gray-400 text-xs shrink-0 mt-1">${p.dist_mi.toFixed(1)}mi</span>
+        </div>`;
+      }).join("");
       document.getElementById("report-pubs").classList.remove("hidden");
     }
 
     const cafes = d.cafes || [];
     if (cafes.length) {
-      document.getElementById("report-cafes-list").innerHTML = cafes.map(c =>
-        `<div class="py-2 flex justify-between items-start gap-2">
+      document.getElementById("report-cafes-list").innerHTML = cafes.map(c => {
+        const gUrl = `https://maps.google.com/?q=${c.lat},${c.lon}`;
+        const wUrl = `https://waze.com/ul?ll=${c.lat},${c.lon}&navigate=yes`;
+        const aUrl = `maps://maps.apple.com/?ll=${c.lat},${c.lon}&q=${encodeURIComponent(c.name)}`;
+        return `<div class="py-2.5 flex justify-between items-start gap-2">
           <div class="flex-1 min-w-0">
-            <div class="text-gray-700 text-sm">${c.name}</div>
+            <div class="text-gray-700 text-sm font-medium">${c.name}</div>
             ${c.hygiene ? `<div class="text-xs text-amber-500 mt-0.5">${c.hygiene}</div>` : ""}
+            <div class="flex gap-2 mt-1 flex-wrap">
+              <button data-g="${gUrl}" data-w="${wUrl}" data-a="${aUrl}" data-name="${c.name.replace(/"/g,"'")}" data-addr="" onclick="openNav(this)"
+                class="text-xs bg-red-600 text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-red-700 transition">Navigate</button>
+              ${c.website ? `<a href="${c.website}" target="_blank" class="text-xs bg-blue-50 text-blue-600 font-medium px-2.5 py-1 rounded-lg hover:bg-blue-100 transition">Website →</a>` : ""}
+            </div>
           </div>
-          <span class="text-gray-400 text-xs shrink-0">${c.dist_mi.toFixed(1)}mi</span>
-        </div>`
-      ).join("");
+          <span class="text-gray-400 text-xs shrink-0 mt-1">${c.dist_mi.toFixed(1)}mi</span>
+        </div>`;
+      }).join("");
       document.getElementById("report-cafes").classList.remove("hidden");
     }
   }
