@@ -435,10 +435,17 @@
     if (schools.length || unis.length) {
       document.getElementById("report-schools-list").innerHTML = schools.map(s => {
         const ofstedUrl = `https://reports.ofsted.gov.uk/search?q=${encodeURIComponent(s.name)}&rows=3`;
+        const ofstedBadge = s.ofsted
+          ? `<span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full mr-1 ${
+              s.ofsted === 'Outstanding' ? 'bg-green-100 text-green-700' :
+              s.ofsted === 'Good' ? 'bg-blue-100 text-blue-700' :
+              s.ofsted === 'Requires improvement' ? 'bg-amber-100 text-amber-700' :
+              'bg-red-100 text-red-700'}">${s.ofsted}</span>`
+          : `<a href="${ofstedUrl}" target="_blank" class="text-xs text-blue-400 underline">Ofsted →</a>`;
         return `<div class="py-2 flex justify-between items-start gap-2">
           <div class="flex-1 min-w-0">
             <div class="text-gray-700 text-sm">${s.name}</div>
-            <a href="${ofstedUrl}" target="_blank" class="text-xs text-blue-400 underline">Ofsted report →</a>
+            <div class="mt-0.5">${ofstedBadge}</div>
           </div>
           <span class="text-gray-400 text-xs shrink-0">${s.dist_mi.toFixed(1)}mi</span>
         </div>`;

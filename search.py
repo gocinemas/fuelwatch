@@ -261,39 +261,59 @@ out body 40;
 
 
 import re as _re
+import concurrent.futures as _cf
 
 FSA_API = "https://api.ratings.food.gov.uk/Establishments"
 FSA_HEADERS = {"x-api-version": "2", "User-Agent": "FuelWatchUK/1.0"}
+GIAS_API = "https://api.get-information-schools.service.gov.uk/api/v1/schools"
+OFSTED_GRADES = {"1": "Outstanding", "2": "Good", "3": "Requires improvement", "4": "Inadequate"}
 
 def _norm(name: str) -> str:
-    """Normalise a venue name for fuzzy matching."""
     n = name.lower()
     n = _re.sub(r"\b(the|pub|bar|cafe|coffee|restaurant|inn|arms|head|house|tavern)\b", "", n)
     n = _re.sub(r"[^a-z0-9 ]", "", n)
     return " ".join(n.split())
 
 def fetch_fsa_ratings(lat: float, lon: float, radius_km: float = 2.5) -> dict:
-    """Return {normalised_name: rating_str} for food establishments near lat/lon."""
+    """Return {fhrs_id: rating, norm_name: rating} for food establishments near lat/lon."""
     ratings = {}
     radius_miles = radius_km / 1.60934
-    for btype in (7843, 1, 7844):  # pub/bar, restaurant/cafe, takeaway
+    for btype in (7843, 1, 7844):
         try:
             r = requests.get(FSA_API, params={
                 "latitude": lat, "longitude": lon,
                 "maxDistanceLimit": radius_miles,
                 "businessTypeId": btype,
-                "pageSize": 50,
+                "pageSize": 100,
             }, headers=FSA_HEADERS, timeout=8)
             if r.status_code != 200:
                 continue
             for e in r.json().get("establishments", []):
                 name = e.get("BusinessName", "")
                 rating = e.get("RatingValue", "")
-                if name and rating and rating.isdigit():
-                    ratings[_norm(name)] = int(rating)
+                fhrs_id = str(e.get("FHRSID", ""))
+                if rating and rating.isdigit():
+                    val = int(rating)
+                    if fhrs_id:
+                        ratings[fhrs_id] = val
+                    if name:
+                        ratings[_norm(name)] = val
         except Exception:
             continue
     return ratings
+
+def fetch_ofsted_rating(urn: str) -> str:
+    """Return Ofsted grade string for a school URN via GIAS API, or '' on failure."""
+    try:
+        r = requests.get(f"{GIAS_API}/{urn}", timeout=5, headers={"Accept": "application/json"})
+        if r.status_code == 200:
+            data = r.json()
+            grade_code = str(data.get("OfstedRating", {}).get("code", "") or
+                            data.get("ofstedRating", "") or "")
+            return OFSTED_GRADES.get(grade_code, "")
+    except Exception:
+        pass
+    return ""
 
 OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
@@ -376,16 +396,19 @@ out center 200;
         entry = {"name": name, "dist_mi": dist_mi}
 
         if amenity in ("school", "college"):
+            entry["urn"] = tags.get("ref:edubase", "")
             schools.append(entry)
         elif amenity == "university":
+            entry["urn"] = tags.get("ref:edubase", "")
             universities.append(entry)
         elif amenity in ("pub", "bar"):
             real_ale = tags.get("real_ale") == "yes"
             cuisine  = tags.get("cuisine", "")
-            entry["note"] = "Real ale" if real_ale else ("Gastropub" if cuisine else "")
+            entry["note"]    = "Real ale" if real_ale else ("Gastropub" if cuisine else "")
+            entry["fhrs_id"] = tags.get("fhrs:id", "")
             pubs.append(entry)
         elif amenity in ("cafe", "fast_food"):
-            entry["rating"] = ""
+            entry["fhrs_id"] = tags.get("fhrs:id", "")
             cafes.append(entry)
 
     schools.sort(key=lambda x: x["dist_mi"])
@@ -393,26 +416,47 @@ out center 200;
     pubs.sort(key=lambda x: x["dist_mi"])
     cafes.sort(key=lambda x: x["dist_mi"])
 
-    # Enrich pubs and cafes with FSA hygiene ratings
-    try:
-        fsa = fetch_fsa_ratings(lat, lon, pub_km)
-        def _add_fsa(item):
+    # Parallel enrichment: FSA hygiene ratings + Ofsted ratings
+    def _enrich_fsa(item, fsa):
+        fhrs_id = item.pop("fhrs_id", "")
+        rating = fsa.get(fhrs_id) if fhrs_id else None
+        if rating is None:
             key = _norm(item["name"])
-            # try exact then partial match
             rating = fsa.get(key)
             if rating is None:
                 for fkey, fval in fsa.items():
-                    if key and fkey and (key in fkey or fkey in key):
+                    if key and fkey and len(key) > 3 and (key in fkey or fkey in key):
                         rating = fval
                         break
-            if rating is not None:
-                stars = "★" * rating + "☆" * (5 - rating)
-                item["hygiene"] = f"Hygiene {stars} {rating}/5"
-            return item
-        pubs  = [_add_fsa(p) for p in pubs]
-        cafes = [_add_fsa(c) for c in cafes]
+        if rating is not None:
+            stars = "★" * rating + "☆" * (5 - rating)
+            item["hygiene"] = f"Hygiene {stars} {rating}/5"
+        return item
+
+    try:
+        with _cf.ThreadPoolExecutor(max_workers=6) as pool:
+            fsa_future = pool.submit(fetch_fsa_ratings, lat, lon, pub_km)
+
+            # Ofsted lookups for schools with URN
+            ofsted_futures = {
+                i: pool.submit(fetch_ofsted_rating, s["urn"])
+                for i, s in enumerate(schools[:10]) if s.get("urn")
+            }
+
+            fsa = fsa_future.result(timeout=10)
+            pubs  = [_enrich_fsa(p, fsa) for p in pubs]
+            cafes = [_enrich_fsa(c, fsa) for c in cafes]
+
+            for i, fut in ofsted_futures.items():
+                grade = fut.result(timeout=6)
+                if grade:
+                    schools[i]["ofsted"] = grade
     except Exception:
         pass
+
+    # Clean up internal fields not needed by frontend
+    for s in schools + universities:
+        s.pop("urn", None)
 
     result = {
         "schools":      schools[:10],
