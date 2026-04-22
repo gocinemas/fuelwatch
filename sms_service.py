@@ -398,7 +398,8 @@ def api_company():
     if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
     if request.args.get("refresh"):
-        _COMPANY_CACHE.pop(name.strip().lower(), None)
+        from search import _COMPANY_VER
+        _COMPANY_CACHE.pop(name.strip().lower() + "|" + _COMPANY_VER, None)
     analytics.log_search("company", name, request.remote_addr, request.user_agent.string)
     return jsonify(fetch_company_info(name))
 

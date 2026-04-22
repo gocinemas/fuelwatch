@@ -640,6 +640,7 @@ def _fetch_share_price(company: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
+_COMPANY_VER = "v3"  # bump when result schema changes to bust stale cache
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -856,7 +857,7 @@ def _fetch_ashby(slugs: list) -> list:
     return []
 
 def fetch_company_info(company: str) -> dict:
-    key = company.strip().lower()
+    key = company.strip().lower() + "|" + _COMPANY_VER
     cached = _COMPANY_CACHE.get(key)
     if cached and time.time() - cached["ts"] < _COMPANY_TTL:
         return cached["data"]
