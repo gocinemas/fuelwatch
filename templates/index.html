@@ -304,49 +304,81 @@
     const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"");
     if (!postcode) return;
 
-    setLoading("report", true);
+    // Reset all sections
     ["report-house","report-schools","report-pubs","report-cafes","report-rightmove","report-empty"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
-    document.getElementById("report-results").classList.add("hidden");
+    document.getElementById("report-error").classList.add("hidden");
 
-    try {
-      const res  = await fetch(`/api/search?postcode=${postcode}&fuel=petrol&radius=5&mode=full`);
-      const data = await res.json();
-      if (!res.ok) { setError("report", data.error || "Not found"); return; }
-      renderReport(data);
-    } catch { setError("report", "Network error — try again."); }
-    finally { setLoading("report", false); }
+    // Show results container immediately with skeleton loaders
+    document.getElementById("report-results").classList.remove("hidden");
+    document.getElementById("report-house-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading house prices…</div>';
+    document.getElementById("report-house").classList.remove("hidden");
+    document.getElementById("report-schools-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading schools & local info…</div>';
+    document.getElementById("report-schools").classList.remove("hidden");
+    document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
+
+    let anyError = false;
+
+    // Fire both requests in parallel — render each section as it arrives
+    const houseP = fetch(`/api/house?postcode=${postcode}`)
+      .then(async r => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || "House price lookup failed");
+        renderHousePrices(data, postcode);
+      })
+      .catch(err => {
+        document.getElementById("report-house-list").innerHTML =
+          `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+        anyError = true;
+      });
+
+    const localP = fetch(`/api/local?postcode=${postcode}`)
+      .then(async r => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || "Local data lookup failed");
+        renderLocalData(data);
+      })
+      .catch(err => {
+        document.getElementById("report-schools-list").innerHTML =
+          `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+        anyError = true;
+      });
+
+    await Promise.allSettled([houseP, localP]);
   }
 
-  function renderReport(d) {
-    let hasAny = false;
-
-    // House Prices
+  function renderHousePrices(d, postcode) {
     const hp = d.house_prices || {};
-    if (Object.keys(hp).length > 0) {
-      hasAny = true;
-      const scope = Object.values(hp)[0]?.scope || d.postcode;
-      const scopeNote = scope === d.postcode
-        ? `${d.postcode} · last 3 years`
-        : `${scope} district · last 3 years (few local sales, showing district average)`;
-      document.getElementById("report-house-list").innerHTML =
-        Object.entries(hp).map(([type, v]) =>
-          `<div class="flex justify-between py-2 border-b border-gray-50 last:border-0">
-            <div>
-              <span class="text-gray-700 font-medium">${type}</span>
-              <span class="text-xs text-gray-400 ml-2">${v.count} sale${v.count>1?"s":""} · latest ${v.latest}</span>
-            </div>
-            <span class="font-semibold text-gray-900">£${v.avg.toLocaleString()}</span>
-          </div>`
-        ).join("") + `<p class="text-xs text-gray-400 mt-2">📍 ${scopeNote} · Source: Land Registry</p>`;
-      document.getElementById("report-house").classList.remove("hidden");
+    if (Object.keys(hp).length === 0) {
+      document.getElementById("report-house-list").innerHTML = '<p class="text-gray-400 text-sm py-2">No recent sales found for this area.</p>';
+      return;
     }
+    const scope = Object.values(hp)[0]?.scope || postcode;
+    const scopeNote = (scope || "").replace(/\s+/g,"").toUpperCase() === postcode.replace(/\s+/g,"").toUpperCase()
+      ? `${postcode} · last 3 years`
+      : `${scope} district · last 3 years (few local sales, showing district average)`;
+    document.getElementById("report-house-list").innerHTML =
+      Object.entries(hp).map(([type, v]) =>
+        `<div class="flex justify-between py-2 border-b border-gray-50 last:border-0">
+          <div>
+            <span class="text-gray-700 font-medium">${type}</span>
+            <span class="text-xs text-gray-400 ml-2">${v.count} sale${v.count>1?"s":""} · latest ${v.latest}</span>
+          </div>
+          <span class="font-semibold text-gray-900">£${v.avg.toLocaleString()}</span>
+        </div>`
+      ).join("") + `<p class="text-xs text-gray-400 mt-2">📍 ${scopeNote} · Source: Land Registry</p>`;
 
-    // Schools
+    if (d.rightmove_url) {
+      document.getElementById("report-rightmove-link").href = d.rightmove_url;
+      document.getElementById("report-rightmove-link").textContent = `View ${postcode.replace(/(.{3,4})(.{3})$/,"$1 $2")} on Rightmove →`;
+      document.getElementById("report-rightmove").classList.remove("hidden");
+    }
+  }
+
+  function renderLocalData(d) {
     const schools = (d.schools && d.schools.schools) || [];
     const unis    = (d.schools && d.schools.universities) || [];
     if (schools.length || unis.length) {
-      hasAny = true;
       document.getElementById("report-schools-list").innerHTML = schools.map(s =>
         `<div class="py-2 flex justify-between items-center">
           <span class="text-gray-700">${s.name}</span>
@@ -357,13 +389,12 @@
         ? `<div class="font-semibold text-gray-400 text-xs mt-2 mb-1">Universities & Colleges</div>` +
           unis.map(u => `<div class="py-1 flex justify-between"><span>${u.name}</span><span class="text-gray-400 text-xs">${u.dist_mi.toFixed(1)}mi</span></div>`).join("")
         : "";
-      document.getElementById("report-schools").classList.remove("hidden");
+    } else {
+      document.getElementById("report-schools-list").innerHTML = '<p class="text-gray-400 text-sm py-2">No schools found within 5 miles.</p>';
     }
 
-    // Pubs
     const pubs = d.pubs || [];
     if (pubs.length) {
-      hasAny = true;
       document.getElementById("report-pubs-list").innerHTML = pubs.map(p =>
         `<div class="py-2 flex justify-between items-center">
           <div><span class="text-gray-700">${p.name}</span>${p.note ? `<span class="ml-1 text-xs text-gray-400">${p.note}</span>` : ""}</div>
@@ -373,10 +404,8 @@
       document.getElementById("report-pubs").classList.remove("hidden");
     }
 
-    // Cafes
     const cafes = d.cafes || [];
     if (cafes.length) {
-      hasAny = true;
       document.getElementById("report-cafes-list").innerHTML = cafes.map(c =>
         `<div class="py-2 flex justify-between items-center">
           <span class="text-gray-700">${c.name}${c.rating}</span>
@@ -385,19 +414,6 @@
       ).join("");
       document.getElementById("report-cafes").classList.remove("hidden");
     }
-
-    // Rightmove link — always show if we have a URL
-    if (d.rightmove_url) {
-      document.getElementById("report-rightmove-link").href = d.rightmove_url;
-      document.getElementById("report-rightmove-link").textContent = `View ${d.postcode} on Rightmove →`;
-      document.getElementById("report-rightmove").classList.remove("hidden");
-      hasAny = true;
-    }
-
-    if (!hasAny) document.getElementById("report-empty").classList.remove("hidden");
-
-    document.getElementById("report-results").classList.remove("hidden");
-    document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

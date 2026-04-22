@@ -299,70 +299,78 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/api/search")
-def api_search():
-    postcode = request.args.get("postcode", "").strip().upper().replace(" ", "")
-    fuel     = request.args.get("fuel", "petrol").lower()
-    radius   = float(request.args.get("radius", 5))
-
-    if fuel not in ("petrol", "diesel"):
-        fuel = "petrol"
-    radius = min(max(radius, 1), 20)
-
+def _resolve_postcode(postcode):
+    """Shared helper: validate postcode, return (postcode, lat, lon, pc_fmt) or None."""
+    postcode = postcode.strip().upper().replace(" ", "")
     latlon = postcode_to_latlon(postcode)
     if not latlon:
-        return jsonify({"error": f"Postcode {postcode} not found. Please check and try again."}), 404
-
+        return None
     lat, lon = latlon
+    pc_fmt = f"{postcode[:-3]} {postcode[-3:]}" if len(postcode) >= 5 else postcode
+    return postcode, lat, lon, pc_fmt
+
+
+@app.route("/api/search")
+def api_search():
+    result = _resolve_postcode(request.args.get("postcode", ""))
+    if not result:
+        return jsonify({"error": "Postcode not found. Please check and try again."}), 404
+    postcode, lat, lon, pc_fmt = result
+
+    fuel   = request.args.get("fuel", "petrol").lower()
+    radius = float(request.args.get("radius", 5))
+    if fuel not in ("petrol", "diesel"): fuel = "petrol"
+    radius = min(max(radius, 1), 20)
     radius_km = radius * 1.60934
     stations = get_stations()
 
     nearby = []
     for s in stations:
         price = s.get(fuel)
-        if not price or price <= 0:
-            continue
+        if not price or price <= 0: continue
         dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
         if dist_km <= radius_km:
             nearby.append({**s, "dist_mi": round(dist_km / 1.60934, 2), "price": price})
-
     nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
     avg = round(sum(s["price"] for s in nearby) / len(nearby), 1) if nearby else 0
 
-    mode = request.args.get("mode", "full")
-
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        f_weather = ex.submit(get_weather, lat, lon)
-        f_local   = ex.submit(fetch_local_amenities, lat, lon, 5.0, 2.5) if mode == "full" else None
-        f_house   = ex.submit(fetch_house_prices, postcode)              if mode == "full" else None
-
-    weather = f_weather.result()
-    local   = f_local.result() if f_local else {}
-    house   = f_house.result() if f_house else {}
-
-    schools   = {"schools": local.get("schools", []), "universities": local.get("universities", [])}
-    pubs      = local.get("pubs", [])
-    amenities = {"supermarkets": [], "cafes": local.get("cafes", [])}
-
-    pc_fmt = postcode.upper()
-    if len(pc_fmt) >= 5 and " " not in pc_fmt:
-        pc_fmt = pc_fmt[:-3] + " " + pc_fmt[-3:]
+    weather = get_weather(lat, lon)
     rightmove_url = f"https://www.rightmove.co.uk/house-prices/{pc_fmt.lower().replace(' ', '-')}.html"
 
     return jsonify({
-        "postcode":      postcode,
-        "fuel":          fuel,
-        "radius":        radius,
-        "weather":       weather,
-        "stations":      nearby[:10],
-        "avg_price":     avg,
-        "house_prices":  house,
-        "schools":       schools,
-        "pubs":          pubs,
-        "supermarkets":  amenities.get("supermarkets", []),
-        "cafes":         amenities.get("cafes", []),
+        "postcode": postcode, "pc_fmt": pc_fmt,
+        "fuel": fuel, "radius": radius,
+        "weather": weather,
+        "stations": nearby[:10], "avg_price": avg,
         "rightmove_url": rightmove_url,
-        "timestamp":     datetime.now().isoformat(),
+        "timestamp": datetime.now().isoformat(),
+    })
+
+
+@app.route("/api/house")
+def api_house():
+    """Fast endpoint: house prices only (Land Registry)."""
+    result = _resolve_postcode(request.args.get("postcode", ""))
+    if not result:
+        return jsonify({"error": "Postcode not found."}), 404
+    postcode, lat, lon, pc_fmt = result
+    house = fetch_house_prices(postcode)
+    rightmove_url = f"https://www.rightmove.co.uk/house-prices/{pc_fmt.lower().replace(' ', '-')}.html"
+    return jsonify({"house_prices": house, "rightmove_url": rightmove_url})
+
+
+@app.route("/api/local")
+def api_local():
+    """Slower endpoint: schools, pubs, cafes from Overpass (cached 1hr)."""
+    result = _resolve_postcode(request.args.get("postcode", ""))
+    if not result:
+        return jsonify({"error": "Postcode not found."}), 404
+    postcode, lat, lon, pc_fmt = result
+    local = fetch_local_amenities(lat, lon, 5.0, 2.5)
+    return jsonify({
+        "schools":      {"schools": local.get("schools", []), "universities": local.get("universities", [])},
+        "pubs":         local.get("pubs", []),
+        "cafes":        local.get("cafes", []),
     })
 
 
