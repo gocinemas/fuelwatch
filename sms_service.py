@@ -382,6 +382,29 @@ def whatsapp_reply():
     return str(resp)
 
 
+@app.route("/debug/postcode/<postcode>")
+def debug_postcode(postcode):
+    import traceback
+    results = {}
+    latlon = postcode_to_latlon(postcode)
+    results["latlon"] = latlon
+    if latlon:
+        lat, lon = latlon
+        try:
+            results["house_prices"] = fetch_house_prices(postcode)
+        except Exception as e:
+            results["house_prices_error"] = traceback.format_exc()
+        try:
+            results["schools"] = fetch_nearby_schools(lat, lon, 5.0)
+        except Exception as e:
+            results["schools_error"] = traceback.format_exc()
+        try:
+            results["pubs"] = fetch_nearby_pubs(lat, lon, 2.5)
+        except Exception as e:
+            results["pubs_error"] = traceback.format_exc()
+    return jsonify(results)
+
+
 @app.route("/health")
 def health():
     stations = get_stations()
