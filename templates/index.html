@@ -193,38 +193,35 @@
       <div id="company-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
       <div id="company-results" class="hidden">
 
+        <style>
+          details.co-section { background:#fff; border-radius:1rem; box-shadow:0 1px 3px rgba(0,0,0,.1); margin-bottom:1rem; overflow:hidden; }
+          details.co-section summary { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; cursor:pointer; list-style:none; font-weight:700; color:#1f2937; }
+          details.co-section summary::-webkit-details-marker { display:none; }
+          details.co-section summary::after { content:"▾"; font-size:1rem; color:#9ca3af; transition:transform .2s; display:inline-block; }
+          details.co-section[open] summary::after { transform:rotate(180deg); }
+          details.co-section .co-body { padding:0 1.25rem 1.25rem; }
+        </style>
+
         <!-- Overview -->
-        <div id="co-overview" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-overview" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <h3 class="font-bold text-gray-800">🏢 About</h3>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-overview" class="co-section hidden" open>
+          <summary>🏢 About</summary>
+          <div class="co-body">
             <div id="co-overview-body" class="text-sm text-gray-600 leading-relaxed"></div>
           </div>
-        </div>
+        </details>
 
         <!-- Stats -->
-        <div id="co-stats" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-stats" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <h3 class="font-bold text-gray-800">📋 Key Facts</h3>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-stats" class="co-section hidden" open>
+          <summary>📋 Key Facts</summary>
+          <div class="co-body">
             <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm"></div>
           </div>
-        </div>
+        </details>
 
         <!-- Share Price -->
-        <div id="co-share" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-share" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <div class="flex items-center gap-2">
-              <h3 class="font-bold text-gray-800">📈 Share Price</h3>
-              <span id="co-share-badge" class="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500"></span>
-            </div>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-share" class="co-section hidden" open>
+          <summary>📈 Share Price <span id="co-share-badge" class="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500 ml-1"></span></summary>
+          <div class="co-body">
             <div class="flex items-end gap-4 mb-4">
               <div>
                 <div id="co-share-price" class="text-3xl font-bold text-gray-900"></div>
@@ -243,72 +240,54 @@
             </svg>
             <div id="co-share-dates" class="flex justify-between text-xs text-gray-300 mt-1"></div>
           </div>
-        </div>
+        </details>
 
         <!-- AI & Tech Focus -->
-        <div id="co-ai" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-ai" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <h3 class="font-bold text-gray-800">🤖 AI & Tech Focus</h3>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-ai" class="co-section hidden" open>
+          <summary>🤖 AI & Tech Focus</summary>
+          <div class="co-body">
             <div id="co-ai-job-bar" class="hidden mb-4"></div>
             <div id="co-ai-news-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-        </div>
+        </details>
 
         <!-- Strategy & Direction -->
-        <div id="co-strategy" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-strategy" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <h3 class="font-bold text-gray-800">🧭 Strategy & Direction</h3>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-strategy" class="co-section hidden" open>
+          <summary>🧭 Strategy & Direction</summary>
+          <div class="co-body">
             <div id="co-strategy-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-        </div>
+        </details>
 
         <!-- News -->
-        <div id="co-news" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-news" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <h3 class="font-bold text-gray-800">📰 Latest News</h3>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-news" class="co-section hidden" open>
+          <summary>📰 Latest News</summary>
+          <div class="co-body">
             <div id="co-news-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-        </div>
+        </details>
 
         <!-- Job signals -->
-        <div id="co-signals" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-signals" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <h3 class="font-bold text-gray-800">📊 Hiring Signals</h3>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-signals" class="co-section hidden" open>
+          <summary>📊 Hiring Signals</summary>
+          <div class="co-body">
             <div id="co-signals-body" class="text-sm"></div>
           </div>
-        </div>
+        </details>
 
         <!-- Jobs -->
-        <div id="co-jobs" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-jobs" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <h3 class="font-bold text-gray-800">💼 Open Positions</h3>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-jobs" class="co-section hidden" open>
+          <summary>💼 Open Positions</summary>
+          <div class="co-body">
             <p id="co-jobs-source" class="text-xs text-gray-400 mb-3"></p>
             <div id="co-jobs-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-        </div>
+        </details>
 
         <!-- No jobs -->
-        <div id="co-no-jobs" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-no-jobs" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <h3 class="font-bold text-gray-800">💼 Jobs</h3>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-no-jobs" class="co-section hidden" open>
+          <summary>💼 Jobs</summary>
+          <div class="co-body">
             <p class="text-sm text-gray-500 mb-3">No direct listings found. Search on:</p>
             <div class="flex flex-col gap-2">
               <a id="co-indeed-link" href="#" target="_blank" class="text-sm bg-blue-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-blue-700 transition">Indeed →</a>
@@ -316,18 +295,15 @@
               <a id="co-glassdoor-link" href="#" target="_blank" class="text-sm bg-green-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-green-700 transition">Glassdoor →</a>
             </div>
           </div>
-        </div>
+        </details>
 
         <!-- Practical links -->
-        <div id="co-links" class="hidden bg-white rounded-2xl shadow mb-4 overflow-hidden">
-          <button data-toggle="co-links" class="w-full flex justify-between items-center px-5 py-4 text-left">
-            <h3 class="font-bold text-gray-800">🔗 Useful Links</h3>
-            <svg class="co-chevron w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="co-body px-5 pb-5">
+        <details id="co-links" class="co-section hidden" open>
+          <summary>🔗 Useful Links</summary>
+          <div class="co-body">
             <div id="co-links-body" class="flex flex-col gap-2 text-sm"></div>
           </div>
-        </div>
+        </details>
 
       </div>
     </div>
@@ -939,34 +915,8 @@
       ].filter(Boolean).join("");
       document.getElementById("co-links").classList.remove("hidden");
     }
-    // Point all visible chevrons up (open state)
-    document.querySelectorAll('#company-results .co-chevron').forEach(ch => {
-      ch.style.transform = 'rotate(180deg)';
-    });
   }
 
-  // ── Collapsible sections ─────────────────────────────────────────────────────
-  document.addEventListener('click', function(e) {
-    const btn = e.target.closest('[data-toggle]');
-    if (!btn) return;
-    const id = btn.getAttribute('data-toggle');
-    const el = document.getElementById(id);
-    if (!el) return;
-    const body = el.querySelector('.co-body');
-    const chevron = el.querySelector('.co-chevron');
-    if (!body) return;
-    const isOpen = !body.classList.contains('hidden');
-    body.classList.toggle('hidden', isOpen);
-    if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
-  });
-  function _coOpen(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const body = el.querySelector('.co-body');
-    const chevron = el.querySelector('.co-chevron');
-    if (body) body.classList.remove('hidden');
-    if (chevron) chevron.style.transform = 'rotate(180deg)';
-  }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   function setLoading(screen, on) {
