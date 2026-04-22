@@ -566,18 +566,20 @@ def fetch_house_prices(postcode: str) -> dict:
     # Try exact postcode first
     items = _fetch("propertyAddress.postcode", pc_enc)
     scope = pc_formatted
+    summary = _parse_lr_items(items)
 
-    # Fall back to local authority district if fewer than 5 recent sales
-    if len(items) < 5:
+    # Fall back to district if: too few sales OR only 1 property type found
+    # (e.g. a postcode that's entirely flats gives misleading single-type results)
+    if len(items) < 5 or len(summary) < 2:
         info = _get_postcode_info(postcode)
         admin = info["admin_district"]
         if admin:
             fallback_items = _fetch("propertyAddress.district", admin.replace(" ", "%20"))
-            if fallback_items:
+            fallback_summary = _parse_lr_items(fallback_items)
+            if len(fallback_summary) > len(summary):
                 items = fallback_items
+                summary = fallback_summary
                 scope = admin.title()
-
-    summary = _parse_lr_items(items)
     for v in summary.values():
         v["scope"] = scope
     _house_cache[cache_key] = {"ts": time.time(), "data": summary}
