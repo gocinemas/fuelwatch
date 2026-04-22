@@ -385,8 +385,8 @@ def api_local():
 
 @app.route("/api/debug-google")
 def debug_google():
-    import os, requests as req
-    key = os.environ.get("GOOGLE_API_KEY", "")
+    import search as _s, requests as req
+    key = _s.GOOGLE_API_KEY
     if not key:
         return jsonify({"error": "GOOGLE_API_KEY not set"})
     r = req.post(
