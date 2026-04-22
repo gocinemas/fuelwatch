@@ -80,6 +80,7 @@
             <option value="10">10 miles</option>
           </select>
         </div>
+        <div id="fuel-recent" class="hidden mb-3"></div>
         <button onclick="searchFuel()"
           class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition text-sm">
           Search Fuel Prices
@@ -119,6 +120,7 @@
             class="shrink-0 border border-gray-200 rounded-xl px-3 py-3 text-lg hover:bg-gray-50 active:bg-gray-100 transition"
             id="report-loc-btn">📍</button>
         </div>
+        <div id="report-recent" class="hidden mb-3"></div>
         <button onclick="searchReport()"
           class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl transition text-sm">
           Get Area Report
@@ -178,6 +180,7 @@
             class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             autocomplete="off" />
         </div>
+        <div id="company-recent" class="hidden mb-3"></div>
         <button onclick="searchCompany()"
           class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-sm">
           Search Company
@@ -267,6 +270,33 @@
   </div>
 
 <script>
+  // ── Recent searches ──────────────────────────────────────────────────────────
+  function _saveRecent(key, value) {
+    const val = value.trim().toUpperCase();
+    if (!val) return;
+    let list = JSON.parse(localStorage.getItem(key) || "[]");
+    list = [val, ...list.filter(v => v !== val)].slice(0, 5);
+    localStorage.setItem(key, JSON.stringify(list));
+  }
+
+  function _renderRecent(key, containerId, inputId, searchFn) {
+    const list = JSON.parse(localStorage.getItem(key) || "[]");
+    const el = document.getElementById(containerId);
+    if (!list.length) { el.classList.add("hidden"); return; }
+    el.classList.remove("hidden");
+    el.innerHTML = `<div class="text-xs text-gray-400 mb-1.5">Recent</div>
+      <div class="flex flex-wrap gap-1.5">` +
+      list.map(v => `<button onclick="document.getElementById('${inputId}').value='${v}';${searchFn}"
+        class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-1.5 rounded-full transition">${v}</button>`
+      ).join("") + `</div>`;
+  }
+
+  function loadAllRecents() {
+    _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()");
+    _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()");
+    _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()");
+  }
+
   // ── Shared helpers ────────────────────────────────────────────────────────────
   async function _fetchWithTimeout(url, ms) {
     const ctrl = new AbortController();
@@ -301,9 +331,9 @@
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     document.getElementById("screen-" + name).classList.add("active");
     window.scrollTo({top:0, behavior:"smooth"});
-    if (name === "fuel") document.getElementById("fuel-postcode").focus();
-    if (name === "report") document.getElementById("report-postcode").focus();
-    if (name === "company") document.getElementById("company-input").focus();
+    if (name === "fuel")    { document.getElementById("fuel-postcode").focus();   _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()"); }
+    if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); }
+    if (name === "company") { document.getElementById("company-input").focus();   _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()"); }
     setFooter(name);
   }
 
@@ -358,6 +388,7 @@
     const fuel     = document.getElementById("fuel-type").value;
     const radius   = document.getElementById("fuel-radius").value;
     if (!postcode) return;
+    _saveRecent("miru_fuel", postcode);
 
     setLoading("fuel", true);
     try {
@@ -431,6 +462,7 @@
   async function searchReport() {
     const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"");
     if (!postcode) return;
+    _saveRecent("miru_report", postcode);
 
     // Reset all sections
     ["report-house","report-schools","report-pubs","report-cafes","report-rightmove","report-empty"].forEach(id =>
@@ -614,6 +646,7 @@
   async function searchCompany() {
     const name = document.getElementById("company-input").value.trim();
     if (!name) return;
+    _saveRecent("miru_company", name);
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
     ["co-overview","co-stats","co-news","co-signals","co-jobs","co-no-jobs","co-links"].forEach(id =>
