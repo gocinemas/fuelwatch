@@ -204,6 +204,32 @@
           <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm"></div>
         </div>
 
+        <!-- Share Price -->
+        <div id="co-share" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <div class="flex justify-between items-start mb-3">
+            <h3 class="font-bold text-gray-800">📈 Share Price</h3>
+            <span id="co-share-badge" class="text-xs px-2 py-0.5 rounded-full font-medium"></span>
+          </div>
+          <div class="flex items-end gap-4 mb-4">
+            <div>
+              <div id="co-share-price" class="text-3xl font-bold text-gray-900"></div>
+              <div id="co-share-meta" class="text-xs text-gray-400 mt-0.5"></div>
+            </div>
+            <div class="text-right ml-auto">
+              <div id="co-share-day" class="text-sm font-semibold"></div>
+              <div id="co-share-month" class="text-sm font-semibold"></div>
+              <div class="text-xs text-gray-400">Today / 1 month</div>
+            </div>
+          </div>
+          <div id="co-share-range" class="flex justify-between text-xs text-gray-400 mb-1"></div>
+          <svg id="co-share-chart" viewBox="0 0 300 60" preserveAspectRatio="none"
+               class="w-full h-14 overflow-visible">
+            <polyline id="co-share-line" fill="none" stroke-width="2" stroke-linejoin="round"/>
+            <polygon  id="co-share-fill" stroke="none" opacity="0.12"/>
+          </svg>
+          <div id="co-share-dates" class="flex justify-between text-xs text-gray-300 mt-1"></div>
+        </div>
+
         <!-- AI & Tech Focus -->
         <div id="co-ai" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
           <h3 class="font-bold text-gray-800 mb-3">🤖 AI & Tech Focus</h3>
@@ -662,7 +688,7 @@
     _saveRecent("miru_company", name);
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
-    ["co-overview","co-stats","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links"].forEach(id =>
+    ["co-overview","co-stats","co-share","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
       const r = await _fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
@@ -714,6 +740,55 @@
           <div class="text-xs text-gray-400 mt-0.5">${n.source ? n.source + " · " : ""}${n.date}</div>
         </div>`).join("");
       document.getElementById("co-news").classList.remove("hidden");
+    }
+
+    // Share Price
+    const sh = d.share || {};
+    if (sh.current) {
+      const up = v => v >= 0;
+      const fmt = v => (v >= 0 ? "+" : "") + v.toFixed(2) + "%";
+      const color = v => up(v) ? "text-green-600" : "text-red-500";
+      const bgColor = v => up(v) ? "#16a34a" : "#dc2626";
+      const lineColor = up(sh.month_chg) ? "#6366f1" : "#dc2626";
+
+      document.getElementById("co-share-price").textContent = sh.symbol + sh.current.toLocaleString();
+      document.getElementById("co-share-meta").textContent = sh.ticker + " · " + sh.exchange + " · " + sh.currency;
+      document.getElementById("co-share-badge").textContent = sh.ticker;
+      document.getElementById("co-share-badge").style.background = "#f1f5f9";
+      document.getElementById("co-share-badge").style.color = "#64748b";
+
+      const dayEl = document.getElementById("co-share-day");
+      dayEl.textContent = fmt(sh.day_chg) + " today";
+      dayEl.className = "text-sm font-semibold " + color(sh.day_chg);
+
+      const moEl = document.getElementById("co-share-month");
+      moEl.textContent = fmt(sh.month_chg) + " 1m";
+      moEl.className = "text-sm font-semibold " + color(sh.month_chg);
+
+      document.getElementById("co-share-range").innerHTML =
+        `<span>Low: ${sh.symbol}${sh.month_low.toLocaleString()}</span><span>High: ${sh.symbol}${sh.month_high.toLocaleString()}</span>`;
+
+      // SVG sparkline
+      const pts = sh.prices;
+      const W = 300, H = 60, pad = 4;
+      const minP = Math.min(...pts), maxP = Math.max(...pts);
+      const scaleX = i => (i / (pts.length - 1)) * W;
+      const scaleY = p => H - pad - ((p - minP) / (maxP - minP || 1)) * (H - pad * 2);
+      const coords = pts.map((p, i) => `${scaleX(i).toFixed(1)},${scaleY(p).toFixed(1)}`).join(" ");
+      document.getElementById("co-share-line").setAttribute("points", coords);
+      document.getElementById("co-share-line").setAttribute("stroke", lineColor);
+      const fillCoords = `0,${H} ${coords} ${W},${H}`;
+      document.getElementById("co-share-fill").setAttribute("points", fillCoords);
+      document.getElementById("co-share-fill").setAttribute("fill", lineColor);
+
+      // Date labels: first, mid, last
+      const dates = sh.dates || [];
+      if (dates.length) {
+        const mid = dates[Math.floor(dates.length / 2)];
+        document.getElementById("co-share-dates").innerHTML =
+          `<span>${dates[0]}</span><span>${mid}</span><span>${dates[dates.length-1]}</span>`;
+      }
+      document.getElementById("co-share").classList.remove("hidden");
     }
 
     // AI & Tech Focus

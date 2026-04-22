@@ -537,6 +537,80 @@ def _google_rating(name: str, lat: float = None, lon: float = None):
     return None, None
 
 
+# ── Share price ───────────────────────────────────────────────────────────────
+
+def _fetch_share_price(company: str) -> dict:
+    """Fetch current price + 1-month daily closes from Yahoo Finance (no API key needed)."""
+    try:
+        ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        hdrs = {"User-Agent": ua, "Accept": "application/json"}
+
+        # Step 1: resolve ticker symbol
+        sr = requests.get(
+            "https://query1.finance.yahoo.com/v1/finance/search",
+            params={"q": company, "quotesCount": 3, "newsCount": 0},
+            timeout=6, headers=hdrs,
+        )
+        quotes = sr.json().get("quotes", [])
+        # Prefer EQUITY type
+        equity = [q for q in quotes if q.get("quoteType") == "EQUITY"]
+        pick = equity[0] if equity else (quotes[0] if quotes else None)
+        if not pick:
+            return {}
+        ticker   = pick.get("symbol", "")
+        disp_name = pick.get("shortname") or pick.get("longname") or company
+        exchange = pick.get("exchDisp") or pick.get("exchange", "")
+
+        # Step 2: 1-month daily chart
+        cr = requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+            params={"interval": "1d", "range": "1mo"},
+            timeout=6, headers=hdrs,
+        )
+        result = cr.json().get("chart", {}).get("result", [None])[0]
+        if not result:
+            return {}
+
+        meta       = result.get("meta", {})
+        timestamps = result.get("timestamp", [])
+        closes     = result.get("indicators", {}).get("quote", [{}])[0].get("close", [])
+
+        pairs = [(t, round(c, 4)) for t, c in zip(timestamps, closes) if c is not None]
+        if len(pairs) < 2:
+            return {}
+
+        from datetime import datetime as _dt
+        dates  = [_dt.fromtimestamp(t).strftime("%d %b") for t, _ in pairs]
+        prices = [p for _, p in pairs]
+
+        current      = prices[-1]
+        month_start  = prices[0]
+        prev_close   = meta.get("previousClose") or meta.get("regularMarketPreviousClose") or prices[-2]
+        currency     = meta.get("currency", "")
+        symbol_char  = {"USD": "$", "GBP": "£", "GBp": "p", "EUR": "€"}.get(currency, currency + " ")
+
+        day_chg   = round((current - prev_close) / prev_close * 100, 2) if prev_close else 0
+        month_chg = round((current - month_start) / month_start * 100, 2)
+
+        return {
+            "ticker":      ticker,
+            "name":        disp_name,
+            "exchange":    exchange,
+            "currency":    currency,
+            "symbol":      symbol_char,
+            "current":     current,
+            "day_chg":     day_chg,
+            "month_chg":   month_chg,
+            "month_high":  max(prices),
+            "month_low":   min(prices),
+            "prices":      prices,
+            "dates":       dates,
+        }
+    except Exception as e:
+        print(f"[share_price] {e}")
+        return {}
+
+
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
@@ -772,11 +846,12 @@ def fetch_company_info(company: str) -> dict:
         "indeed":      f"https://uk.indeed.com/jobs?q={enc}",
     }
 
-    with _cf.ThreadPoolExecutor(max_workers=8) as pool:
+    with _cf.ThreadPoolExecutor(max_workers=9) as pool:
         wiki_f     = pool.submit(_fetch_wikipedia, company)
         news_f     = pool.submit(_fetch_news, company, "", 6)
         ai_news_f  = pool.submit(_fetch_news, company, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
         strat_f    = pool.submit(_fetch_news, company, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
+        share_f    = pool.submit(_fetch_share_price, company)
         gh_f       = pool.submit(_fetch_greenhouse, slugs)
         lv_f       = pool.submit(_fetch_lever, slugs)
         sr_f       = pool.submit(_fetch_smartrecruiters, slugs)
@@ -806,6 +881,12 @@ def fetch_company_info(company: str) -> dict:
         except Exception:
             pass
 
+        share = {}
+        try:
+            share = share_f.result(timeout=8) or {}
+        except Exception:
+            pass
+
         jobs, source = [], ""
         for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (ab_f, "Ashby"), (sr_f, "SmartRecruiters")]:
             try:
@@ -822,6 +903,7 @@ def fetch_company_info(company: str) -> dict:
         "news":          news,
         "ai_news":       ai_news,
         "strategy_news": strategy_news,
+        "share":         share,
         "ai_signals":    _ai_job_signals(jobs),
         "jobs":          jobs,
         "jobs_source":   source,
