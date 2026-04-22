@@ -473,6 +473,164 @@ def fetch_nearby_pubs(lat: float, lon: float, radius_km: float = 2.5) -> list:
     return data["pubs"]
 
 
+# ── Company research ──────────────────────────────────────────────────────────
+_COMPANY_CACHE: dict = {}
+_COMPANY_TTL = 3600
+
+def _co_slug(name: str) -> str:
+    """ATS-style slug: lowercase alphanumeric, strip common suffixes."""
+    s = name.lower().strip()
+    s = _re.sub(r"\s+(uk|ltd|plc|inc|corp|group|the|&|and)\s*$", "", s)
+    return _re.sub(r"[^a-z0-9]", "", s)
+
+def _tp_slug(name: str) -> str:
+    """Trustpilot-style slug: lowercase hyphenated."""
+    s = name.lower().strip()
+    s = _re.sub(r"\s+(ltd|plc|inc|corp|group)\s*$", "", s)
+    return _re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+def _fetch_trustpilot(company: str):
+    ua = {"User-Agent": _BROWSER_UA, "Accept-Language": "en-GB,en;q=0.9"}
+    slug_base = _tp_slug(company)
+    for slug in [slug_base, slug_base + ".co.uk", slug_base + ".com"]:
+        try:
+            url = f"https://www.trustpilot.com/review/{slug}"
+            r = requests.get(url, timeout=8, headers=ua)
+            if r.status_code != 200:
+                continue
+            for raw in _re.findall(r'<script type="application/ld\+json">(.*?)</script>', r.text, _re.DOTALL):
+                try:
+                    d = json.loads(raw)
+                    ag = d.get("aggregateRating", {})
+                    if ag and ag.get("ratingValue"):
+                        return {
+                            "rating": round(float(ag["ratingValue"]), 1),
+                            "count":  int(ag.get("reviewCount", 0)),
+                            "url":    url,
+                        }
+                except Exception:
+                    continue
+        except Exception:
+            continue
+    # Search fallback
+    try:
+        r = requests.get(
+            f"https://www.trustpilot.com/search?query={requests.utils.quote(company)}",
+            timeout=8, headers=ua,
+        )
+        m = _re.search(r'href="/review/([a-z0-9.-]+)"', r.text)
+        if m:
+            found = m.group(1)
+            r2 = requests.get(f"https://www.trustpilot.com/review/{found}", timeout=8, headers=ua)
+            for raw in _re.findall(r'<script type="application/ld\+json">(.*?)</script>', r2.text, _re.DOTALL):
+                try:
+                    d = json.loads(raw)
+                    ag = d.get("aggregateRating", {})
+                    if ag and ag.get("ratingValue"):
+                        return {
+                            "rating": round(float(ag["ratingValue"]), 1),
+                            "count":  int(ag.get("reviewCount", 0)),
+                            "url":    f"https://www.trustpilot.com/review/{found}",
+                        }
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return None
+
+def _fetch_greenhouse(slug: str) -> list:
+    try:
+        r = requests.get(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs", timeout=8, headers=HEADERS)
+        if r.status_code != 200:
+            return []
+        return [
+            {
+                "title":    j.get("title", ""),
+                "location": j.get("location", {}).get("name", ""),
+                "url":      j.get("absolute_url", ""),
+            }
+            for j in r.json().get("jobs", [])[:30]
+        ]
+    except Exception:
+        return []
+
+def _fetch_lever(slug: str) -> list:
+    try:
+        r = requests.get(f"https://api.lever.co/v0/postings/{slug}?mode=json", timeout=8, headers=HEADERS)
+        if r.status_code != 200 or not isinstance(r.json(), list):
+            return []
+        out = []
+        for j in r.json()[:30]:
+            cats = j.get("categories", {})
+            locs = cats.get("allLocations") or []
+            loc  = cats.get("location") or (locs[0] if locs else "")
+            out.append({"title": j.get("text", ""), "location": loc, "url": j.get("hostedUrl", "")})
+        return out
+    except Exception:
+        return []
+
+def _fetch_smartrecruiters(slug: str) -> list:
+    try:
+        r = requests.get(
+            f"https://api.smartrecruiters.com/v1/companies/{slug}/postings",
+            timeout=8, headers=HEADERS,
+        )
+        if r.status_code != 200:
+            return []
+        out = []
+        for j in r.json().get("content", [])[:30]:
+            loc = j.get("location", {})
+            location = ", ".join(filter(None, [loc.get("city"), loc.get("country")]))
+            out.append({
+                "title":    j.get("name", ""),
+                "location": location,
+                "url":      f"https://jobs.smartrecruiters.com/{slug}/{j.get('id', '')}",
+            })
+        return out
+    except Exception:
+        return []
+
+def fetch_company_info(company: str) -> dict:
+    key = company.strip().lower()
+    cached = _COMPANY_CACHE.get(key)
+    if cached and time.time() - cached["ts"] < _COMPANY_TTL:
+        return cached["data"]
+
+    slug = _co_slug(company)
+
+    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
+        tp_f = pool.submit(_fetch_trustpilot, company)
+        gh_f = pool.submit(_fetch_greenhouse, slug)
+        lv_f = pool.submit(_fetch_lever, slug)
+        sr_f = pool.submit(_fetch_smartrecruiters, slug)
+
+        tp = None
+        try:
+            tp = tp_f.result(timeout=12)
+        except Exception:
+            pass
+
+        jobs, source = [], ""
+        for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (sr_f, "SmartRecruiters")]:
+            try:
+                j = fut.result(timeout=10)
+                if j:
+                    jobs, source = j, src
+                    break
+            except Exception:
+                pass
+
+    result = {
+        "name":        company,
+        "trustpilot":  tp,
+        "jobs":        jobs,
+        "jobs_source": source,
+        "slug":        slug,
+    }
+    _COMPANY_CACHE[key] = {"ts": time.time(), "data": result}
+    return result
+
+
 def _format_postcode(postcode: str) -> str:
     """Ensure postcode has a space: KT160DA -> KT16 0DA."""
     pc = postcode.strip().upper().replace(" ", "")

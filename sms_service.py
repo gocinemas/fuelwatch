@@ -30,7 +30,8 @@ from flask import Flask, request, send_file, render_template, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
-                    fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities)
+                    fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
+                    fetch_company_info)
 
 app = Flask(__name__)
 
@@ -380,6 +381,14 @@ def api_local():
         "pubs":         local.get("pubs", []),
         "cafes":        local.get("cafes", []),
     })
+
+
+@app.route("/api/company")
+def api_company():
+    name = request.args.get("name", "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "Company name required"}), 400
+    return jsonify(fetch_company_info(name))
 
 
 @app.route("/whatsapp", methods=["POST"])

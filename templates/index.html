@@ -47,6 +47,13 @@
           <div class="font-bold text-lg">Area Report</div>
           <div class="text-gray-400 text-xs mt-1">House prices, schools & pubs nearby</div>
         </button>
+        <button onclick="showScreen('company')"
+          class="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
+          <div class="text-4xl mb-3">🏢</div>
+          <div class="font-bold text-lg">Company Research</div>
+          <div class="text-indigo-200 text-xs mt-1">Trustpilot reviews & live job vacancies</div>
+        </button>
+
       </div>
     </div>
 
@@ -162,6 +169,54 @@
       </div>
     </div>
 
+    <!-- ── COMPANY SCREEN ── -->
+    <div id="screen-company" class="screen pt-5">
+      <div class="bg-white rounded-2xl shadow p-5 mb-4">
+        <h2 class="font-bold text-gray-800 mb-3">🏢 Company Research</h2>
+        <div class="flex gap-2 mb-4">
+          <input id="company-input" type="text" placeholder="e.g. Revolut, Tesco, HSBC"
+            class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            autocomplete="off" />
+        </div>
+        <button onclick="searchCompany()"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-sm">
+          Search Company
+        </button>
+      </div>
+
+      <div id="company-loading" class="hidden text-center py-6 text-gray-400 text-sm">
+        <div class="spinner text-indigo-600 mx-auto mb-2"></div>Searching reviews &amp; jobs…
+      </div>
+      <div id="company-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
+      <div id="company-results" class="hidden">
+
+        <!-- Trustpilot -->
+        <div id="co-trustpilot" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-3">⭐ Trustpilot Reviews</h3>
+          <div id="co-trustpilot-body" class="text-sm"></div>
+        </div>
+
+        <!-- No Trustpilot -->
+        <div id="co-no-trustpilot" class="hidden bg-gray-50 rounded-2xl p-4 mb-4 text-sm text-gray-500">
+          No Trustpilot profile found for this company.
+        </div>
+
+        <!-- Jobs -->
+        <div id="co-jobs" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-1">💼 Open Positions</h3>
+          <p id="co-jobs-source" class="text-xs text-gray-400 mb-3"></p>
+          <div id="co-jobs-list" class="divide-y divide-gray-50 text-sm"></div>
+        </div>
+
+        <!-- No jobs -->
+        <div id="co-no-jobs" class="hidden bg-gray-50 rounded-2xl p-4 mb-4 text-sm text-gray-500">
+          No job listings found. This company may not use Greenhouse, Lever, or SmartRecruiters.
+          <a id="co-indeed-link" href="#" target="_blank" class="text-indigo-600 font-medium underline ml-1">Search on Indeed →</a>
+        </div>
+
+      </div>
+    </div>
+
   </div><!-- /max-w-xl -->
 
   <div id="footer" class="text-center text-xs text-gray-300 py-8">FuelWatch UK · CMA + Land Registry + OSM data</div>
@@ -191,9 +246,10 @@
 <script>
   // ── Navigation ──────────────────────────────────────────────────────────────
   const FOOTERS = {
-    home:   "FuelWatch UK · CMA + Land Registry + OSM data",
-    fuel:   "FuelWatch UK · Live fuel prices from CMA retailer feeds · Updated daily",
-    report: "FuelWatch UK · House prices from Land Registry · Schools & pubs from OSM",
+    home:    "FuelWatch UK · CMA + Land Registry + OSM data",
+    fuel:    "FuelWatch UK · Live fuel prices from CMA retailer feeds · Updated daily",
+    report:  "FuelWatch UK · House prices from Land Registry · Schools & pubs from OSM",
+    company: "FuelWatch UK · Reviews from Trustpilot · Jobs from Greenhouse / Lever / SmartRecruiters",
   };
   function setFooter(name) {
     document.getElementById("footer").textContent = FOOTERS[name] || FOOTERS.home;
@@ -210,11 +266,13 @@
     window.scrollTo({top:0, behavior:"smooth"});
     if (name === "fuel") document.getElementById("fuel-postcode").focus();
     if (name === "report") document.getElementById("report-postcode").focus();
+    if (name === "company") document.getElementById("company-input").focus();
     setFooter(name);
   }
 
   document.getElementById("fuel-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchFuel(); });
   document.getElementById("report-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchReport(); });
+  document.getElementById("company-input").addEventListener("keydown", e => { if (e.key==="Enter") searchCompany(); });
 
   // ── Current Location ─────────────────────────────────────────────────────────
   function useLocation(screen) {
@@ -516,6 +574,68 @@
   function closeNav() {
     document.getElementById("nav-sheet").classList.remove("open");
     setTimeout(() => document.getElementById("nav-overlay").classList.add("hidden"), 250);
+  }
+
+  // ── Company search ───────────────────────────────────────────────────────────
+  async function searchCompany() {
+    const name = document.getElementById("company-input").value.trim();
+    if (!name) return;
+    setLoading("company", true);
+    document.getElementById("company-results").classList.add("hidden");
+    ["co-trustpilot","co-no-trustpilot","co-jobs","co-no-jobs"].forEach(id =>
+      document.getElementById(id).classList.add("hidden"));
+    try {
+      const r = await fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
+      const txt = await r.text();
+      const d = JSON.parse(txt);
+      if (d.error) { setError("company", d.error); setLoading("company", false); return; }
+      renderCompany(d);
+    } catch(e) {
+      setError("company", "Search timed out — try again.");
+    }
+    setLoading("company", false);
+  }
+
+  function renderCompany(d) {
+    document.getElementById("company-results").classList.remove("hidden");
+
+    // Trustpilot
+    if (d.trustpilot) {
+      const tp = d.trustpilot;
+      const stars = Math.round(tp.rating);
+      const starStr = "★".repeat(stars) + "☆".repeat(5 - stars);
+      document.getElementById("co-trustpilot-body").innerHTML = `
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-2xl font-bold text-gray-800">${tp.rating}</span>
+          <span class="text-yellow-400 text-xl tracking-tight">${starStr}</span>
+          <span class="text-gray-400 text-xs">${tp.count.toLocaleString()} reviews</span>
+        </div>
+        <a href="${tp.url}" target="_blank" class="text-xs text-indigo-600 font-medium underline">View on Trustpilot →</a>
+      `;
+      document.getElementById("co-trustpilot").classList.remove("hidden");
+    } else {
+      document.getElementById("co-no-trustpilot").classList.remove("hidden");
+    }
+
+    // Jobs
+    if (d.jobs && d.jobs.length) {
+      document.getElementById("co-jobs-source").textContent = `Via ${d.jobs_source} · ${d.jobs.length} open role${d.jobs.length !== 1 ? "s" : ""}`;
+      document.getElementById("co-jobs-list").innerHTML = d.jobs.map(j => `
+        <div class="py-2.5">
+          <div class="font-medium text-gray-800 text-sm">${j.title}</div>
+          ${j.location ? `<div class="text-xs text-gray-400 mt-0.5">📍 ${j.location}</div>` : ""}
+          <a href="${j.url}" target="_blank"
+            class="inline-block mt-1.5 text-xs bg-indigo-50 text-indigo-600 font-medium px-2.5 py-1 rounded-lg hover:bg-indigo-100 transition">
+            Apply →
+          </a>
+        </div>
+      `).join("");
+      document.getElementById("co-jobs").classList.remove("hidden");
+    } else {
+      const indeedUrl = `https://uk.indeed.com/jobs?q=${encodeURIComponent(d.name)}`;
+      document.getElementById("co-indeed-link").href = indeedUrl;
+      document.getElementById("co-no-jobs").classList.remove("hidden");
+    }
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
