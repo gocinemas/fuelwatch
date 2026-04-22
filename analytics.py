@@ -8,11 +8,16 @@ _conn = None
 _last_error = ""
 
 
+_DB_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://postgres:PRzSjmduvkVKfEQlqaRoqaWUOKCLBimk@postgres.railway.internal:5432/railway"
+)
+
 def _get_conn():
     global _conn, _last_error
     try:
         import psycopg2
-        db_url = os.environ.get("DATABASE_URL", "")
+        db_url = _DB_URL
         if not db_url:
             _last_error = "DATABASE_URL not set"
             return None

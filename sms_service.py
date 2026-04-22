@@ -579,8 +579,8 @@ def debug_postcode(postcode):
 
 @app.route("/admin/debug")
 def admin_debug():
-    db_url = os.environ.get("DATABASE_URL", "")
-    masked = db_url[:30] + "..." if db_url else "NOT SET"
+    db_url = analytics._DB_URL
+    masked = db_url[:40] + "..." if db_url else "NOT SET"
     try:
         import psycopg2
         conn = psycopg2.connect(db_url, connect_timeout=5)
