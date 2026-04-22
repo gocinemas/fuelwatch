@@ -228,11 +228,7 @@ def fetch_nearby_amenities(lat: float, lon: float, radius_km: float = 8.0) -> di
 out body 30;
 """
     try:
-        resp = requests.post(
-            "https://overpass-api.de/api/interpreter",
-            data=query, timeout=6, headers=HEADERS
-        )
-        elements = resp.json().get("elements", [])
+        elements = _overpass(query)
         supermarkets, cafes = [], []
         for e in elements:
             tags = e.get("tags", {})
@@ -257,6 +253,24 @@ out body 30;
         return {"supermarkets": [], "cafes": []}
 
 
+OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
+
+def _overpass(query: str) -> list:
+    """POST an Overpass query, trying multiple mirrors."""
+    for url in OVERPASS_URLS:
+        try:
+            r = requests.post(url, data={"data": query}, timeout=10,
+                              headers={"User-Agent": "FuelWatchUK/1.0"})
+            if r.status_code == 200:
+                return r.json().get("elements", [])
+        except Exception:
+            continue
+    return []
+
+
 def fetch_nearby_schools(lat: float, lon: float, radius_km: float = 5.0) -> dict:
     """Fetch nearby schools and universities via Overpass (OSM)."""
     radius_m = int(radius_km * 1000)
@@ -273,11 +287,7 @@ def fetch_nearby_schools(lat: float, lon: float, radius_km: float = 5.0) -> dict
 out center 30;
 """
     try:
-        resp = requests.post(
-            "https://overpass-api.de/api/interpreter",
-            data=query, timeout=9, headers=HEADERS
-        )
-        elements = resp.json().get("elements", [])
+        elements = _overpass(query)
         schools, universities = [], []
         for e in elements:
             tags = e.get("tags", {})
@@ -318,11 +328,7 @@ def fetch_nearby_pubs(lat: float, lon: float, radius_km: float = 2.5) -> list:
 out body 25;
 """
     try:
-        resp = requests.post(
-            "https://overpass-api.de/api/interpreter",
-            data=query, timeout=9, headers=HEADERS
-        )
-        elements = resp.json().get("elements", [])
+        elements = _overpass(query)
         pubs = []
         for e in elements:
             tags = e.get("tags", {})
@@ -341,9 +347,15 @@ out body 25;
         return []
 
 
+def _format_postcode(postcode: str) -> str:
+    """Ensure postcode has a space: KT160DA -> KT16 0DA."""
+    pc = postcode.strip().upper().replace(" ", "")
+    return f"{pc[:-3]} {pc[-3:]}" if len(pc) >= 5 else pc
+
+
 def fetch_house_prices(postcode: str) -> dict:
     """Fetch recent sold prices from Land Registry Price Paid Data API."""
-    pc = postcode.strip().replace(" ", "%20")
+    pc = _format_postcode(postcode).replace(" ", "%20")
     url = (
         f"https://landregistry.data.gov.uk/data/ppi/transaction-record.json"
         f"?propertyAddress.postcode={pc}&_pageSize=50&_sort=-transactionDate"
