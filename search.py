@@ -317,7 +317,7 @@ def fetch_local_amenities(lat: float, lon: float, school_km: float = 5.0, pub_km
   node["amenity"="cafe"](around:{pub_m},{lat},{lon});
   node["amenity"="fast_food"]["brand"~"Costa|Starbucks|Pret|Greggs|Caffe Nero|Nero",i](around:{pub_m},{lat},{lon});
 );
-out center 60;
+out center 200;
 """
     elements = _overpass(query)
     schools, universities, pubs, cafes = [], [], [], []
