@@ -384,24 +384,37 @@ def whatsapp_reply():
 
 @app.route("/debug/postcode/<postcode>")
 def debug_postcode(postcode):
-    import traceback
+    import requests as req
     results = {}
     latlon = postcode_to_latlon(postcode)
     results["latlon"] = latlon
-    if latlon:
-        lat, lon = latlon
-        try:
-            results["house_prices"] = fetch_house_prices(postcode)
-        except Exception as e:
-            results["house_prices_error"] = traceback.format_exc()
-        try:
-            results["schools"] = fetch_nearby_schools(lat, lon, 5.0)
-        except Exception as e:
-            results["schools_error"] = traceback.format_exc()
-        try:
-            results["pubs"] = fetch_nearby_pubs(lat, lon, 2.5)
-        except Exception as e:
-            results["pubs_error"] = traceback.format_exc()
+    if not latlon:
+        return jsonify(results)
+    lat, lon = latlon
+
+    # Raw Land Registry response
+    pc = postcode.strip().replace(" ", "%20")
+    lr_url = (f"https://landregistry.data.gov.uk/data/ppi/transaction-record.json"
+              f"?propertyAddress.postcode={pc}&_pageSize=5&_sort=-transactionDate")
+    try:
+        r = req.get(lr_url, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+        results["lr_status"] = r.status_code
+        results["lr_raw"] = r.text[:500]
+    except Exception as e:
+        results["lr_error"] = str(e)
+
+    # Raw Overpass response
+    radius_m = 5000
+    query = f'[out:json][timeout:8];(node["amenity"="pub"](around:{radius_m},{lat},{lon}););out body 3;'
+    try:
+        r2 = req.post("https://overpass-api.de/api/interpreter",
+                      data=query, timeout=9,
+                      headers={"User-Agent": "Mozilla/5.0"})
+        results["osm_status"] = r2.status_code
+        results["osm_raw"] = r2.text[:300]
+    except Exception as e:
+        results["osm_error"] = str(e)
+
     return jsonify(results)
 
 
