@@ -265,8 +265,6 @@ import concurrent.futures as _cf
 
 FSA_API = "https://api.ratings.food.gov.uk/Establishments"
 FSA_HEADERS = {"x-api-version": "2", "User-Agent": "FuelWatchUK/1.0"}
-GIAS_API = "https://api.get-information-schools.service.gov.uk/api/v1/schools"
-OFSTED_GRADES = {"1": "Outstanding", "2": "Good", "3": "Requires improvement", "4": "Inadequate"}
 
 def _norm(name: str) -> str:
     n = name.lower()
@@ -302,15 +300,21 @@ def fetch_fsa_ratings(lat: float, lon: float, radius_km: float = 2.5) -> dict:
             continue
     return ratings
 
+_BROWSER_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"
+
 def fetch_ofsted_rating(urn: str) -> str:
-    """Return Ofsted grade string for a school URN via GIAS API, or '' on failure."""
+    """Return Ofsted grade by scraping the provider page. Cached via _local_cache indirectly."""
     try:
-        r = requests.get(f"{GIAS_API}/{urn}", timeout=5, headers={"Accept": "application/json"})
+        r = requests.get(
+            f"https://reports.ofsted.gov.uk/provider/ELS/{urn}",
+            timeout=8,
+            headers={"User-Agent": _BROWSER_UA, "Accept": "text/html"},
+        )
         if r.status_code == 200:
-            data = r.json()
-            grade_code = str(data.get("OfstedRating", {}).get("code", "") or
-                            data.get("ofstedRating", "") or "")
-            return OFSTED_GRADES.get(grade_code, "")
+            import re as _r
+            m = _r.search(r"(Outstanding|Good|Requires improvement|Inadequate)", r.text)
+            if m:
+                return m.group(1)
     except Exception:
         pass
     return ""
