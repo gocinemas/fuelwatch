@@ -271,80 +271,92 @@ def _overpass(query: str) -> list:
     return []
 
 
-def fetch_nearby_schools(lat: float, lon: float, radius_km: float = 5.0) -> dict:
-    """Fetch nearby schools and universities via Overpass (OSM)."""
-    radius_m = int(radius_km * 1000)
+# Cache for local amenities keyed by (lat_rounded, lon_rounded)
+_local_cache: dict = {}
+_LOCAL_CACHE_TTL = 3600  # 1 hour
+
+
+def fetch_local_amenities(lat: float, lon: float, school_km: float = 5.0, pub_km: float = 2.5) -> dict:
+    """Single Overpass query for schools, universities, pubs, bars and cafes.
+    Results are cached for 1 hour per location to dramatically speed up the Area Report."""
+    cache_key = (round(lat, 3), round(lon, 3))
+    cached = _local_cache.get(cache_key)
+    if cached and (time.time() - cached["ts"]) < _LOCAL_CACHE_TTL:
+        return cached["data"]
+
+    school_m = int(school_km * 1000)
+    pub_m    = int(pub_km * 1000)
     query = f"""
-[out:json][timeout:8];
+[out:json][timeout:15];
 (
-  node["amenity"="school"](around:{radius_m},{lat},{lon});
-  way["amenity"="school"](around:{radius_m},{lat},{lon});
-  node["amenity"="university"](around:{radius_m},{lat},{lon});
-  way["amenity"="university"](around:{radius_m},{lat},{lon});
-  node["amenity"="college"](around:{radius_m},{lat},{lon});
-  way["amenity"="college"](around:{radius_m},{lat},{lon});
+  node["amenity"~"^(school|college)$"](around:{school_m},{lat},{lon});
+  way["amenity"~"^(school|college)$"](around:{school_m},{lat},{lon});
+  node["amenity"="university"](around:{school_m},{lat},{lon});
+  way["amenity"="university"](around:{school_m},{lat},{lon});
+  node["amenity"~"^(pub|bar)$"](around:{pub_m},{lat},{lon});
+  node["amenity"="cafe"](around:{pub_m},{lat},{lon});
+  node["amenity"="fast_food"]["brand"~"Costa|Starbucks|Pret|Greggs|Caffe Nero|Nero",i](around:{pub_m},{lat},{lon});
 );
-out center 30;
+out center 80;
 """
-    try:
-        elements = _overpass(query)
-        schools, universities = [], []
-        for e in elements:
-            tags = e.get("tags", {})
-            name = tags.get("name")
-            if not name:
-                continue
-            # ways have center, nodes have lat/lon directly
-            if e["type"] == "way":
-                center = e.get("center", {})
-                elat, elon = center.get("lat"), center.get("lon")
-            else:
-                elat, elon = e.get("lat"), e.get("lon")
-            if elat is None or elon is None:
-                continue
-            dist_mi = haversine_km(lat, lon, elat, elon) / 1.60934
-            amenity = tags.get("amenity", "school")
-            entry = {"name": name, "dist_mi": dist_mi, "type": amenity}
-            if amenity == "school":
-                schools.append(entry)
-            else:
-                universities.append(entry)
-        schools.sort(key=lambda x: x["dist_mi"])
-        universities.sort(key=lambda x: x["dist_mi"])
-        return {"schools": schools[:6], "universities": universities[:3]}
-    except Exception:
-        return {"schools": [], "universities": []}
+    elements = _overpass(query)
+    schools, universities, pubs, cafes = [], [], [], []
+
+    for e in elements:
+        tags   = e.get("tags", {})
+        name   = tags.get("name")
+        if not name:
+            continue
+        amenity = tags.get("amenity", "")
+        # resolve lat/lon for both nodes and ways
+        if e.get("type") == "way":
+            c = e.get("center", {})
+            elat, elon = c.get("lat"), c.get("lon")
+        else:
+            elat, elon = e.get("lat"), e.get("lon")
+        if elat is None or elon is None:
+            continue
+
+        dist_mi = haversine_km(lat, lon, elat, elon) / 1.60934
+        entry = {"name": name, "dist_mi": dist_mi}
+
+        if amenity in ("school", "college"):
+            schools.append(entry)
+        elif amenity == "university":
+            universities.append(entry)
+        elif amenity in ("pub", "bar"):
+            real_ale = tags.get("real_ale") == "yes"
+            cuisine  = tags.get("cuisine", "")
+            entry["note"] = "Real ale" if real_ale else ("Gastropub" if cuisine else "")
+            pubs.append(entry)
+        elif amenity in ("cafe", "fast_food"):
+            entry["rating"] = ""
+            cafes.append(entry)
+
+    schools.sort(key=lambda x: x["dist_mi"])
+    universities.sort(key=lambda x: x["dist_mi"])
+    pubs.sort(key=lambda x: x["dist_mi"])
+    cafes.sort(key=lambda x: x["dist_mi"])
+
+    result = {
+        "schools":      schools[:10],
+        "universities": universities[:3],
+        "pubs":         pubs[:8],
+        "cafes":        cafes[:6],
+    }
+    _local_cache[cache_key] = {"ts": time.time(), "data": result}
+    return result
+
+
+# Kept for backward compatibility with the SMS service
+def fetch_nearby_schools(lat: float, lon: float, radius_km: float = 5.0) -> dict:
+    data = fetch_local_amenities(lat, lon, school_km=radius_km)
+    return {"schools": data["schools"], "universities": data["universities"]}
 
 
 def fetch_nearby_pubs(lat: float, lon: float, radius_km: float = 2.5) -> list:
-    """Fetch nearby pubs and bars via Overpass (OSM)."""
-    radius_m = int(radius_km * 1000)
-    query = f"""
-[out:json][timeout:8];
-(
-  node["amenity"="pub"](around:{radius_m},{lat},{lon});
-  node["amenity"="bar"](around:{radius_m},{lat},{lon});
-);
-out body 25;
-"""
-    try:
-        elements = _overpass(query)
-        pubs = []
-        for e in elements:
-            tags = e.get("tags", {})
-            name = tags.get("name")
-            elat, elon = e.get("lat"), e.get("lon")
-            if not name or elat is None:
-                continue
-            dist_mi = haversine_km(lat, lon, elat, elon) / 1.60934
-            real_ale = tags.get("real_ale") == "yes"
-            cuisine = tags.get("cuisine", "")
-            note = "Real ale" if real_ale else ("Gastropub" if cuisine else "")
-            pubs.append({"name": name, "dist_mi": dist_mi, "note": note})
-        pubs.sort(key=lambda x: x["dist_mi"])
-        return pubs[:8]
-    except Exception:
-        return []
+    data = fetch_local_amenities(lat, lon, pub_km=radius_km)
+    return data["pubs"]
 
 
 def _format_postcode(postcode: str) -> str:

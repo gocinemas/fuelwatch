@@ -30,7 +30,7 @@ from flask import Flask, request, send_file, render_template, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
 from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
-                    fetch_nearby_pubs, fetch_house_prices)
+                    fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities)
 
 app = Flask(__name__)
 
@@ -331,18 +331,18 @@ def api_search():
 
     mode = request.args.get("mode", "full")
 
-    with ThreadPoolExecutor(max_workers=5) as ex:
-        f_weather   = ex.submit(get_weather, lat, lon)
-        f_amenities = ex.submit(fetch_nearby_amenities, lat, lon, radius_km) if mode == "full" else None
-        f_schools   = ex.submit(fetch_nearby_schools, lat, lon, 5.0)         if mode == "full" else None
-        f_pubs      = ex.submit(fetch_nearby_pubs, lat, lon, 2.5)            if mode == "full" else None
-        f_house     = ex.submit(fetch_house_prices, postcode)                if mode == "full" else None
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        f_weather = ex.submit(get_weather, lat, lon)
+        f_local   = ex.submit(fetch_local_amenities, lat, lon, 5.0, 2.5) if mode == "full" else None
+        f_house   = ex.submit(fetch_house_prices, postcode)              if mode == "full" else None
 
-    weather   = f_weather.result()
-    amenities = f_amenities.result() if f_amenities else {}
-    schools   = f_schools.result()   if f_schools   else {}
-    pubs      = f_pubs.result()      if f_pubs      else []
-    house     = f_house.result()     if f_house     else {}
+    weather = f_weather.result()
+    local   = f_local.result() if f_local else {}
+    house   = f_house.result() if f_house else {}
+
+    schools   = {"schools": local.get("schools", []), "universities": local.get("universities", [])}
+    pubs      = local.get("pubs", [])
+    amenities = {"supermarkets": [], "cafes": local.get("cafes", [])}
 
     pc_fmt = postcode.upper()
     if len(pc_fmt) >= 5 and " " not in pc_fmt:
