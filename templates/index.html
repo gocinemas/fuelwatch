@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LocalIQ</title>
+  <title>Local IQ</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .spinner { border: 3px solid #f3f3f3; border-top: 3px solid currentColor; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; display:inline-block; }
@@ -20,7 +20,7 @@
   <div class="bg-red-600 text-white px-4 py-4 shadow">
     <div class="max-w-xl mx-auto flex items-center justify-between">
       <div>
-        <h1 class="text-xl font-bold">LocalIQ</h1>
+        <h1 class="text-xl font-bold">Local IQ</h1>
         <p class="text-red-200 text-xs">Fuel · Housing · Local · Jobs</p>
       </div>
       <button onclick="showHome()" class="text-red-200 text-sm underline hover:text-white">Home</button>
@@ -238,6 +238,20 @@
   </div>
 
 <script>
+  // ── Shared helpers ────────────────────────────────────────────────────────────
+  async function _fetchWithTimeout(url, ms) {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(tid);
+      return r;
+    } catch (e) {
+      clearTimeout(tid);
+      throw e.name === "AbortError" ? new Error("Took too long — try again.") : e;
+    }
+  }
+
   // ── Navigation ──────────────────────────────────────────────────────────────
   const FOOTERS = {
     home:    "FuelWatch UK · CMA + Land Registry + OSM data",
@@ -410,16 +424,7 @@
     }, 8000);
 
     async function fetchWithTimeout(url, ms) {
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), ms);
-      try {
-        const r = await fetch(url, { signal: ctrl.signal });
-        clearTimeout(tid);
-        return r;
-      } catch (e) {
-        clearTimeout(tid);
-        throw e.name === "AbortError" ? new Error("Took too long — try again.") : e;
-      }
+      return _fetchWithTimeout(url, ms);
     }
 
     // Fire both requests in parallel — render each section as it arrives
@@ -585,7 +590,7 @@
     ["co-jobs","co-no-jobs"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
-      const r = await fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
+      const r = await _fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
       const txt = await r.text();
       const d = JSON.parse(txt);
       if (d.error) { setError("company", d.error); setLoading("company", false); return; }
