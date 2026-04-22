@@ -383,6 +383,21 @@ def api_local():
     })
 
 
+@app.route("/api/debug-google")
+def debug_google():
+    import os, requests as req
+    key = os.environ.get("GOOGLE_API_KEY", "")
+    if not key:
+        return jsonify({"error": "GOOGLE_API_KEY not set"})
+    r = req.post(
+        "https://places.googleapis.com/v1/places:searchText",
+        headers={"X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.displayName,places.rating", "Content-Type": "application/json"},
+        json={"textQuery": "The Crown pub London"},
+        timeout=5,
+    )
+    return jsonify({"status": r.status_code, "key_prefix": key[:8]+"...", "response": r.json()})
+
+
 @app.route("/api/company")
 def api_company():
     name = request.args.get("name", "").strip()
