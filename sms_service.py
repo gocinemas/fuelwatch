@@ -393,9 +393,12 @@ def api_local():
 
 @app.route("/api/company")
 def api_company():
+    from search import _COMPANY_CACHE
     name = request.args.get("name", "").strip()
     if not name or len(name) < 2:
         return jsonify({"error": "Company name required"}), 400
+    if request.args.get("refresh"):
+        _COMPANY_CACHE.pop(name.strip().lower(), None)
     analytics.log_search("company", name, request.remote_addr, request.user_agent.string)
     return jsonify(fetch_company_info(name))
 
@@ -575,6 +578,12 @@ def debug_postcode(postcode):
         results["osm_error"] = str(e)
 
     return jsonify(results)
+
+
+@app.route("/debug/share/<company>")
+def debug_share(company):
+    from search import _fetch_share_price
+    return jsonify(_fetch_share_price(company))
 
 
 @app.route("/admin/debug")
