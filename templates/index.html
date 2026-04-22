@@ -6,175 +6,197 @@
   <title>FuelWatch UK</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #ef4444; border-radius: 50%; width: 28px; height: 28px; animation: spin 0.8s linear infinite; }
+    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid currentColor; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; display:inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .card { @apply bg-white rounded-2xl shadow-md p-5 mb-4; }
-    .badge-outstanding { @apply bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
-    .badge-good { @apply bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
-    .badge-ri { @apply bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
+    .screen { display: none; }
+    .screen.active { display: block; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
 
   <!-- Header -->
-  <div class="bg-red-600 text-white px-4 py-5 shadow-lg">
-    <div class="max-w-xl mx-auto">
-      <h1 class="text-2xl font-bold tracking-tight">⛽ FuelWatch UK</h1>
-      <p class="text-red-100 text-sm mt-0.5">Live fuel prices, house prices, schools & pubs</p>
+  <div class="bg-red-600 text-white px-4 py-4 shadow">
+    <div class="max-w-xl mx-auto flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold">⛽ FuelWatch UK</h1>
+        <p class="text-red-200 text-xs">Live prices · House data · Local info</p>
+      </div>
+      <button onclick="showHome()" class="text-red-200 text-sm underline hover:text-white">Home</button>
     </div>
   </div>
 
-  <!-- Search -->
-  <div class="max-w-xl mx-auto px-4 mt-5">
-    <div class="bg-white rounded-2xl shadow-md p-5">
-      <div class="flex gap-2 mb-3">
-        <input id="postcode" type="text" placeholder="Enter postcode e.g. KT16 0DA"
-          class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 uppercase"
+  <div class="max-w-xl mx-auto px-4">
+
+    <!-- ── HOME SCREEN ── -->
+    <div id="screen-home" class="screen active pt-8">
+      <p class="text-center text-gray-500 text-sm mb-6">What would you like to look up?</p>
+      <div class="grid grid-cols-2 gap-4">
+
+        <button onclick="showScreen('fuel')"
+          class="bg-red-600 hover:bg-red-700 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
+          <div class="text-4xl mb-3">⛽</div>
+          <div class="font-bold text-lg">Fuel Prices</div>
+          <div class="text-red-200 text-xs mt-1">Live petrol & diesel near any postcode</div>
+        </button>
+
+        <button onclick="showScreen('report')"
+          class="bg-gray-800 hover:bg-gray-900 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
+          <div class="text-4xl mb-3">🏠</div>
+          <div class="font-bold text-lg">Area Report</div>
+          <div class="text-gray-400 text-xs mt-1">House prices, schools & pubs nearby</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── FUEL SCREEN ── -->
+    <div id="screen-fuel" class="screen pt-5">
+      <div class="bg-white rounded-2xl shadow p-5 mb-4">
+        <h2 class="font-bold text-gray-800 mb-3">⛽ Fuel Prices</h2>
+        <input id="fuel-postcode" type="text" placeholder="Postcode e.g. KT16 0DA"
+          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-red-400 uppercase"
           maxlength="8" autocomplete="off" />
-      </div>
-      <div class="flex gap-2 mb-4">
-        <select id="fuel" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
-          <option value="petrol">Petrol</option>
-          <option value="diesel">Diesel</option>
-        </select>
-        <select id="radius" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
-          <option value="3">3 miles</option>
-          <option value="5" selected>5 miles</option>
-          <option value="10">10 miles</option>
-          <option value="15">15 miles</option>
-        </select>
-      </div>
-      <div class="flex gap-2">
-        <button onclick="doSearch('fuel')"
-          class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl transition text-sm">
-          ⛽ Fuel Only
-        </button>
-        <button onclick="doSearch('full')"
-          class="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3 rounded-xl transition text-sm">
-          🏠 Full Report
+        <div class="flex gap-2 mb-4">
+          <select id="fuel-type" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+            <option value="petrol">Petrol</option>
+            <option value="diesel">Diesel</option>
+          </select>
+          <select id="fuel-radius" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+            <option value="3">3 miles</option>
+            <option value="5" selected>5 miles</option>
+            <option value="10">10 miles</option>
+          </select>
+        </div>
+        <button onclick="searchFuel()"
+          class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition text-sm">
+          Search Fuel Prices
         </button>
       </div>
+
+      <div id="fuel-loading" class="hidden text-center py-6 text-gray-400 text-sm">
+        <div class="spinner text-red-500 mx-auto mb-2"></div>Fetching live prices…
+      </div>
+      <div id="fuel-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
+      <div id="fuel-results" class="hidden">
+        <div class="text-xs text-gray-400 mb-2 flex justify-between px-1">
+          <span id="fuel-weather"></span><span id="fuel-time"></span>
+        </div>
+        <div class="bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-1" id="fuel-title"></h3>
+          <p class="text-xs text-gray-400 mb-3" id="fuel-meta"></p>
+          <div id="fuel-stations" class="divide-y divide-gray-50"></div>
+          <div id="fuel-summary" class="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600"></div>
+        </div>
+        <div id="fuel-supermarkets" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-3">🛒 Nearby Supermarkets</h3>
+          <div id="fuel-supermarkets-list" class="divide-y divide-gray-50 text-sm"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Loading -->
-    <div id="loading" class="hidden flex justify-center items-center py-10 gap-3 text-gray-500 text-sm">
-      <div class="spinner"></div> Fetching live data…
+    <!-- ── AREA REPORT SCREEN ── -->
+    <div id="screen-report" class="screen pt-5">
+      <div class="bg-white rounded-2xl shadow p-5 mb-4">
+        <h2 class="font-bold text-gray-800 mb-3">🏠 Area Report</h2>
+        <input id="report-postcode" type="text" placeholder="Postcode e.g. KT16 0DA"
+          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-gray-400 uppercase"
+          maxlength="8" autocomplete="off" />
+        <button onclick="searchReport()"
+          class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl transition text-sm">
+          Get Area Report
+        </button>
+      </div>
+
+      <div id="report-loading" class="hidden text-center py-6 text-gray-400 text-sm">
+        <div class="spinner text-gray-700 mx-auto mb-2"></div>Loading area data…
+      </div>
+      <div id="report-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
+      <div id="report-results" class="hidden">
+
+        <!-- House Prices -->
+        <div id="report-house" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-3">🏠 House Prices</h3>
+          <div id="report-house-list" class="text-sm"></div>
+        </div>
+
+        <!-- Schools -->
+        <div id="report-schools" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-3">🎓 Nearby Schools</h3>
+          <div id="report-schools-list" class="divide-y divide-gray-50 text-sm"></div>
+          <div id="report-unis-list" class="text-sm text-gray-500 mt-2"></div>
+        </div>
+
+        <!-- Pubs -->
+        <div id="report-pubs" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
+          <h3 class="font-bold text-gray-800 mb-3">🍺 Pubs & Bars</h3>
+          <div id="report-pubs-list" class="divide-y divide-gray-50 text-sm"></div>
+        </div>
+
+        <p id="report-empty" class="hidden text-center text-gray-400 text-sm py-4">No area data found for this postcode.</p>
+      </div>
     </div>
 
-    <!-- Error -->
-    <div id="error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 mt-2 text-sm"></div>
+  </div><!-- /max-w-xl -->
 
-    <!-- Results -->
-    <div id="results" class="hidden mt-2">
-
-      <!-- Weather + timestamp -->
-      <div class="text-xs text-gray-400 mb-3 px-1 flex justify-between">
-        <span id="weather-line"></span>
-        <span id="timestamp"></span>
-      </div>
-
-      <!-- Fuel Prices -->
-      <div class="card">
-        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
-          ⛽ <span id="fuel-heading">Petrol Prices</span>
-        </h2>
-        <div class="text-xs text-gray-500 mb-3" id="fuel-meta"></div>
-        <div id="stations-list" class="divide-y divide-gray-50"></div>
-        <div id="fuel-summary" class="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600"></div>
-      </div>
-
-      <!-- House Prices -->
-      <div class="card" id="house-section">
-        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">🏠 House Prices</h2>
-        <div id="house-content" class="text-sm text-gray-600"></div>
-      </div>
-
-      <!-- Schools -->
-      <div class="card" id="schools-section">
-        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">🎓 Nearby Schools</h2>
-        <div id="schools-list" class="divide-y divide-gray-50 text-sm"></div>
-        <div id="unis-list" class="mt-3 text-sm text-gray-500"></div>
-      </div>
-
-      <!-- Pubs -->
-      <div class="card" id="pubs-section">
-        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">🍺 Nearby Pubs & Bars</h2>
-        <div id="pubs-list" class="divide-y divide-gray-50 text-sm"></div>
-      </div>
-
-      <!-- Supermarkets -->
-      <div class="card" id="super-section">
-        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">🛒 Nearby Supermarkets</h2>
-        <div id="super-list" class="divide-y divide-gray-50 text-sm"></div>
-      </div>
-
-    </div>
-  </div>
-
-  <div class="text-center text-xs text-gray-300 py-8">FuelWatch UK · Live CMA data · No API key needed</div>
+  <div class="text-center text-xs text-gray-300 py-8">FuelWatch UK · CMA + Land Registry + OSM data</div>
 
 <script>
-  document.getElementById("postcode").addEventListener("keydown", e => {
-    if (e.key === "Enter") doSearch("fuel");
-  });
+  // ── Navigation ──────────────────────────────────────────────────────────────
+  function showHome() {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById("screen-home").classList.add("active");
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+  function showScreen(name) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById("screen-" + name).classList.add("active");
+    window.scrollTo({top:0, behavior:"smooth"});
+    if (name === "fuel") document.getElementById("fuel-postcode").focus();
+    if (name === "report") document.getElementById("report-postcode").focus();
+  }
 
-  async function doSearch(mode) {
-    const postcode = document.getElementById("postcode").value.trim().replace(/\s+/g, "");
-    const fuel     = document.getElementById("fuel").value;
-    const radius   = document.getElementById("radius").value;
+  document.getElementById("fuel-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchFuel(); });
+  document.getElementById("report-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchReport(); });
 
-    if (!postcode) { showError("Please enter a postcode."); return; }
+  // ── Fuel Search ─────────────────────────────────────────────────────────────
+  async function searchFuel() {
+    const postcode = document.getElementById("fuel-postcode").value.trim().replace(/\s+/g,"");
+    const fuel     = document.getElementById("fuel-type").value;
+    const radius   = document.getElementById("fuel-radius").value;
+    if (!postcode) return;
 
-    document.getElementById("loading").classList.remove("hidden");
-    document.getElementById("results").classList.add("hidden");
-    document.getElementById("error").classList.add("hidden");
-
+    setLoading("fuel", true);
     try {
-      const url = `/api/search?postcode=${postcode}&fuel=${fuel}&radius=${radius}&mode=${mode}`;
-      const res = await fetch(url);
+      const res  = await fetch(`/api/search?postcode=${postcode}&fuel=${fuel}&radius=${radius}&mode=fuel`);
       const data = await res.json();
-      if (!res.ok) { showError(data.error || "Something went wrong."); return; }
-      renderResults(data, mode);
-    } catch(e) {
-      showError("Network error — please try again.");
-    } finally {
-      document.getElementById("loading").classList.add("hidden");
-    }
+      if (!res.ok) { setError("fuel", data.error || "Not found"); return; }
+      renderFuel(data);
+    } catch { setError("fuel", "Network error — try again."); }
+    finally { setLoading("fuel", false); }
   }
 
-  function showError(msg) {
-    document.getElementById("loading").classList.add("hidden");
-    const el = document.getElementById("error");
-    el.textContent = msg;
-    el.classList.remove("hidden");
-  }
+  function renderFuel(d) {
+    document.getElementById("fuel-weather").textContent = d.weather || "";
+    document.getElementById("fuel-time").textContent    = new Date(d.timestamp).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+    document.getElementById("fuel-title").textContent   = `${d.fuel==="petrol"?"Petrol":"Diesel"} near ${d.postcode}`;
+    document.getElementById("fuel-meta").textContent    = `${d.stations.length} stations within ${d.radius} miles`;
 
-  function renderResults(d, mode) {
-    // Weather / timestamp
-    document.getElementById("weather-line").textContent = d.weather || "";
-    document.getElementById("timestamp").textContent = new Date(d.timestamp).toLocaleTimeString("en-GB", {hour:"2-digit", minute:"2-digit"});
-
-    // Fuel heading
-    const fuelLabel = d.fuel === "petrol" ? "Petrol" : "Diesel";
-    document.getElementById("fuel-heading").textContent = `${fuelLabel} near ${d.postcode}`;
-    document.getElementById("fuel-meta").textContent = `${d.stations.length} stations within ${d.radius} miles`;
-
-    // Stations
-    const sl = document.getElementById("stations-list");
+    const sl = document.getElementById("fuel-stations");
     sl.innerHTML = "";
-    d.stations.slice(0, 8).forEach((s, i) => {
-      const saving = d.avg_price - s.price;
-      const savingStr = saving > 0 ? `<span class="text-green-600">-${saving.toFixed(1)}p</span>` : `<span class="text-red-400">+${Math.abs(saving).toFixed(1)}p</span>`;
+    d.stations.slice(0,8).forEach((s,i) => {
+      const saving = (d.avg_price - s.price).toFixed(1);
+      const savingHtml = saving > 0
+        ? `<span class="text-green-600 text-xs">-${saving}p</span>`
+        : `<span class="text-red-400 text-xs">+${Math.abs(saving)}p</span>`;
       const maps = `https://maps.google.com/?q=${s.lat},${s.lon}`;
       sl.innerHTML += `
         <div class="py-2.5 flex items-start justify-between gap-2">
-          <div class="flex-1">
-            <div class="flex items-center gap-2">
-              ${i === 0 ? '<span class="text-xs bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">CHEAPEST</span>' : `<span class="text-xs text-gray-400">${i+1}.</span>`}
-              <span class="font-semibold text-gray-800">${s.brand}</span>
-              ${savingStr}
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              ${i===0 ? '<span class="text-xs bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">CHEAPEST</span>' : `<span class="text-xs text-gray-400">${i+1}.</span>`}
+              <span class="font-semibold text-gray-800 text-sm">${s.brand}</span>
+              ${savingHtml}
             </div>
-            <div class="text-xs text-gray-400 mt-0.5 ml-1">${s.address ? s.address.substring(0,40) : ""} · <a href="${maps}" target="_blank" class="text-blue-400 underline">Map</a></div>
+            <div class="text-xs text-gray-400 mt-0.5 truncate">${s.address||""} · <a href="${maps}" target="_blank" class="text-blue-400 underline">Map</a></div>
           </div>
           <div class="text-right shrink-0">
             <div class="font-bold text-gray-900">${s.price.toFixed(1)}p</div>
@@ -183,102 +205,110 @@
         </div>`;
     });
 
-    // Fuel summary
     if (d.stations.length > 0) {
-      const cheapest = d.stations[0];
-      const tankSaving = ((d.avg_price - cheapest.price) * 55 / 100).toFixed(2);
+      const tankSaving = ((d.avg_price - d.stations[0].price) * 55 / 100).toFixed(2);
       document.getElementById("fuel-summary").innerHTML =
-        `Avg: <strong>${d.avg_price}p</strong> · Save <strong>${(d.avg_price - cheapest.price).toFixed(1)}p/L</strong> · Full tank saving: <strong>£${tankSaving}</strong>`;
+        `Avg: <b>${d.avg_price}p</b> · Save <b>${(d.avg_price-d.stations[0].price).toFixed(1)}p/L</b> · Full tank: <b>£${tankSaving} saving</b>`;
     }
 
-    // Hide full-report sections if fuel-only mode
-    const fullSections = ["house-section","schools-section","pubs-section","super-section"];
-    fullSections.forEach(id => document.getElementById(id).classList.add("hidden"));
-    if (mode !== "full") {
-      document.getElementById("results").classList.remove("hidden");
-      document.getElementById("results").scrollIntoView({behavior:"smooth"});
-      return;
+    if (d.supermarkets && d.supermarkets.length) {
+      const sl2 = document.getElementById("fuel-supermarkets-list");
+      sl2.innerHTML = d.supermarkets.map(s =>
+        `<div class="py-2 flex justify-between"><span>${s.name}${s.rating}</span><span class="text-gray-400 text-xs">${s.dist_mi.toFixed(1)}mi</span></div>`
+      ).join("");
+      document.getElementById("fuel-supermarkets").classList.remove("hidden");
     }
+
+    document.getElementById("fuel-results").classList.remove("hidden");
+    document.getElementById("fuel-results").scrollIntoView({behavior:"smooth"});
+  }
+
+  // ── Area Report ─────────────────────────────────────────────────────────────
+  async function searchReport() {
+    const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"");
+    if (!postcode) return;
+
+    setLoading("report", true);
+    ["report-house","report-schools","report-pubs","report-empty"].forEach(id =>
+      document.getElementById(id).classList.add("hidden"));
+    document.getElementById("report-results").classList.add("hidden");
+
+    try {
+      const res  = await fetch(`/api/search?postcode=${postcode}&fuel=petrol&radius=5&mode=full`);
+      const data = await res.json();
+      if (!res.ok) { setError("report", data.error || "Not found"); return; }
+      renderReport(data);
+    } catch { setError("report", "Network error — try again."); }
+    finally { setLoading("report", false); }
+  }
+
+  function renderReport(d) {
+    let hasAny = false;
 
     // House Prices
-    const hc = document.getElementById("house-content");
-    const hp = d.house_prices;
-    if (hp && Object.keys(hp).length > 0) {
-      hc.innerHTML = Object.entries(hp).map(([type, v]) =>
-        `<div class="flex justify-between py-1.5 border-b border-gray-50">
-          <div>
-            <span class="text-gray-700 font-medium">${type}</span>
-            <span class="text-xs text-gray-400 ml-2">${v.count} sale${v.count>1?'s':''} · last ${v.latest}</span>
-          </div>
-          <span class="font-semibold text-gray-800">£${v.avg.toLocaleString()}</span>
-        </div>`
-      ).join("") + `<p class="text-xs text-gray-400 mt-2">Source: Land Registry Price Paid Data</p>`;
-      document.getElementById("house-section").classList.remove("hidden");
-    } else {
-      document.getElementById("house-section").classList.add("hidden");
+    const hp = d.house_prices || {};
+    if (Object.keys(hp).length > 0) {
+      hasAny = true;
+      document.getElementById("report-house-list").innerHTML =
+        Object.entries(hp).map(([type, v]) =>
+          `<div class="flex justify-between py-2 border-b border-gray-50 last:border-0">
+            <div>
+              <span class="text-gray-700 font-medium">${type}</span>
+              <span class="text-xs text-gray-400 ml-2">${v.count} sale${v.count>1?"s":""} · ${v.latest}</span>
+            </div>
+            <span class="font-semibold text-gray-900">£${v.avg.toLocaleString()}</span>
+          </div>`
+        ).join("") + `<p class="text-xs text-gray-400 mt-2">Source: Land Registry Price Paid Data</p>`;
+      document.getElementById("report-house").classList.remove("hidden");
     }
 
     // Schools
-    const schoolsList = document.getElementById("schools-list");
-    schoolsList.innerHTML = "";
-    if (d.schools && d.schools.schools && d.schools.schools.length > 0) {
-      d.schools.schools.forEach(s => {
-        schoolsList.innerHTML += `
-          <div class="py-2 flex justify-between items-center">
-            <span class="text-gray-700">${s.name}</span>
-            <span class="text-gray-400 text-xs ml-2 shrink-0">${s.dist_mi.toFixed(1)}mi</span>
-          </div>`;
-      });
-      document.getElementById("schools-section").classList.remove("hidden");
-    } else {
-      document.getElementById("schools-section").classList.add("hidden");
-    }
-
-    const uniList = document.getElementById("unis-list");
-    if (d.schools && d.schools.universities && d.schools.universities.length > 0) {
-      uniList.innerHTML = "<div class='font-semibold text-gray-500 text-xs mb-1 mt-2'>Universities & Colleges</div>" +
-        d.schools.universities.map(u =>
-          `<div class="py-1 flex justify-between"><span>${u.name}</span><span class="text-gray-400 text-xs">${u.dist_mi.toFixed(1)}mi</span></div>`
-        ).join("");
+    const schools = (d.schools && d.schools.schools) || [];
+    const unis    = (d.schools && d.schools.universities) || [];
+    if (schools.length || unis.length) {
+      hasAny = true;
+      document.getElementById("report-schools-list").innerHTML = schools.map(s =>
+        `<div class="py-2 flex justify-between items-center">
+          <span class="text-gray-700">${s.name}</span>
+          <span class="text-gray-400 text-xs">${s.dist_mi.toFixed(1)}mi</span>
+        </div>`
+      ).join("");
+      document.getElementById("report-unis-list").innerHTML = unis.length
+        ? `<div class="font-semibold text-gray-400 text-xs mt-2 mb-1">Universities & Colleges</div>` +
+          unis.map(u => `<div class="py-1 flex justify-between"><span>${u.name}</span><span class="text-gray-400 text-xs">${u.dist_mi.toFixed(1)}mi</span></div>`).join("")
+        : "";
+      document.getElementById("report-schools").classList.remove("hidden");
     }
 
     // Pubs
-    const pubsList = document.getElementById("pubs-list");
-    pubsList.innerHTML = "";
-    if (d.pubs && d.pubs.length > 0) {
-      d.pubs.forEach(p => {
-        pubsList.innerHTML += `
-          <div class="py-2 flex justify-between items-center">
-            <div>
-              <span class="text-gray-700">${p.name}</span>
-              ${p.note ? `<span class="ml-1 text-xs text-gray-400">${p.note}</span>` : ""}
-            </div>
-            <span class="text-gray-400 text-xs shrink-0 ml-2">${p.dist_mi.toFixed(1)}mi</span>
-          </div>`;
-      });
-      document.getElementById("pubs-section").classList.remove("hidden");
-    } else {
-      document.getElementById("pubs-section").classList.add("hidden");
+    const pubs = d.pubs || [];
+    if (pubs.length) {
+      hasAny = true;
+      document.getElementById("report-pubs-list").innerHTML = pubs.map(p =>
+        `<div class="py-2 flex justify-between items-center">
+          <div><span class="text-gray-700">${p.name}</span>${p.note ? `<span class="ml-1 text-xs text-gray-400">${p.note}</span>` : ""}</div>
+          <span class="text-gray-400 text-xs shrink-0 ml-2">${p.dist_mi.toFixed(1)}mi</span>
+        </div>`
+      ).join("");
+      document.getElementById("report-pubs").classList.remove("hidden");
     }
 
-    // Supermarkets
-    const superList = document.getElementById("super-list");
-    superList.innerHTML = "";
-    if (d.supermarkets && d.supermarkets.length > 0) {
-      d.supermarkets.forEach(s => {
-        superList.innerHTML += `
-          <div class="py-2 flex justify-between">
-            <span class="text-gray-700">${s.name}${s.rating}</span>
-            <span class="text-gray-400 text-xs">${s.dist_mi.toFixed(1)}mi</span>
-          </div>`;
-      });
-      document.getElementById("super-section").classList.remove("hidden");
-    } else {
-      document.getElementById("super-section").classList.add("hidden");
-    }
+    if (!hasAny) document.getElementById("report-empty").classList.remove("hidden");
 
-    document.getElementById("results").classList.remove("hidden");
-    document.getElementById("results").scrollIntoView({behavior:"smooth"});
+    document.getElementById("report-results").classList.remove("hidden");
+    document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function setLoading(screen, on) {
+    document.getElementById(screen+"-loading").classList.toggle("hidden", !on);
+    document.getElementById(screen+"-error").classList.add("hidden");
+    if (on) document.getElementById(screen+"-results").classList.add("hidden");
+  }
+  function setError(screen, msg) {
+    const el = document.getElementById(screen+"-error");
+    el.textContent = msg;
+    el.classList.remove("hidden");
   }
 </script>
 </body>
