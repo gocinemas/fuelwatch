@@ -26,9 +26,11 @@ import time
 import requests
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, render_template, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
-from search import postcode_to_latlon, fetch_all_stations, haversine_km, fetch_nearby_amenities
+from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
+                    fetch_nearby_amenities, fetch_nearby_schools,
+                    fetch_nearby_pubs, fetch_house_prices)
 
 app = Flask(__name__)
 
@@ -285,6 +287,92 @@ def sms_reply():
             "FuelWatch UK\nCouldn't read that postcode.\n"
             "Try: KT16 0DA\nOr: KT16 0DA tesco diesel 10"
         )
+        return str(resp)
+
+    reply = search_and_format(postcode, fuel, radius, retailer)
+    resp.message(reply)
+    return str(resp)
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/api/search")
+def api_search():
+    postcode = request.args.get("postcode", "").strip().upper().replace(" ", "")
+    fuel     = request.args.get("fuel", "petrol").lower()
+    radius   = float(request.args.get("radius", 5))
+
+    if fuel not in ("petrol", "diesel"):
+        fuel = "petrol"
+    radius = min(max(radius, 1), 20)
+
+    latlon = postcode_to_latlon(postcode)
+    if not latlon:
+        return jsonify({"error": f"Postcode {postcode} not found. Please check and try again."}), 404
+
+    lat, lon = latlon
+    radius_km = radius * 1.60934
+    stations = get_stations()
+
+    nearby = []
+    for s in stations:
+        price = s.get(fuel)
+        if not price or price <= 0:
+            continue
+        dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
+        if dist_km <= radius_km:
+            nearby.append({**s, "dist_mi": round(dist_km / 1.60934, 2), "price": price})
+
+    nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
+    avg = round(sum(s["price"] for s in nearby) / len(nearby), 1) if nearby else 0
+
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        f_amenities = ex.submit(fetch_nearby_amenities, lat, lon, radius_km)
+        f_schools   = ex.submit(fetch_nearby_schools, lat, lon, 5.0)
+        f_pubs      = ex.submit(fetch_nearby_pubs, lat, lon, 2.5)
+        f_house     = ex.submit(fetch_house_prices, postcode)
+        f_weather   = ex.submit(get_weather, lat, lon)
+
+    amenities   = f_amenities.result()
+    schools     = f_schools.result()
+    pubs        = f_pubs.result()
+    house       = f_house.result()
+    weather     = f_weather.result()
+
+    return jsonify({
+        "postcode":      postcode,
+        "fuel":          fuel,
+        "radius":        radius,
+        "weather":       weather,
+        "stations":      nearby[:10],
+        "avg_price":     avg,
+        "house_prices":  house,
+        "schools":       schools,
+        "pubs":          pubs,
+        "supermarkets":  amenities.get("supermarkets", []),
+        "timestamp":     datetime.now().isoformat(),
+    })
+
+
+@app.route("/whatsapp", methods=["POST"])
+def whatsapp_reply():
+    body        = request.form.get("Body", "").strip()
+    from_number = request.form.get("From", "unknown")
+    print(f"WhatsApp from {from_number}: {body}")
+
+    resp = MessagingResponse()
+
+    if not body:
+        resp.message("FuelWatch UK\nText your postcode to get fuel prices.\nExample: KT16 0DA\nOr: KT16 0DA diesel 10")
+        return str(resp)
+
+    postcode, fuel, radius, retailer = parse_sms(body)
+
+    if not postcode:
+        resp.message("FuelWatch UK\nCouldn't read that postcode.\nTry: KT16 0DA\nOr: KT16 0DA diesel 10")
         return str(resp)
 
     reply = search_and_format(postcode, fuel, radius, retailer)

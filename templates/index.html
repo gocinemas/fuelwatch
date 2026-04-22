@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FuelWatch UK</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #ef4444; border-radius: 50%; width: 28px; height: 28px; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .card { @apply bg-white rounded-2xl shadow-md p-5 mb-4; }
+    .badge-outstanding { @apply bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
+    .badge-good { @apply bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
+    .badge-ri { @apply bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded-full; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+  <!-- Header -->
+  <div class="bg-red-600 text-white px-4 py-5 shadow-lg">
+    <div class="max-w-xl mx-auto">
+      <h1 class="text-2xl font-bold tracking-tight">⛽ FuelWatch UK</h1>
+      <p class="text-red-100 text-sm mt-0.5">Live fuel prices, house prices, schools & pubs</p>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="max-w-xl mx-auto px-4 mt-5">
+    <div class="bg-white rounded-2xl shadow-md p-5">
+      <div class="flex gap-2 mb-3">
+        <input id="postcode" type="text" placeholder="Enter postcode e.g. KT16 0DA"
+          class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 uppercase"
+          maxlength="8" autocomplete="off" />
+      </div>
+      <div class="flex gap-2 mb-4">
+        <select id="fuel" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+          <option value="petrol">Petrol</option>
+          <option value="diesel">Diesel</option>
+        </select>
+        <select id="radius" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+          <option value="3">3 miles</option>
+          <option value="5" selected>5 miles</option>
+          <option value="10">10 miles</option>
+          <option value="15">15 miles</option>
+        </select>
+      </div>
+      <button onclick="doSearch()"
+        class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl transition text-sm">
+        Search
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="hidden flex justify-center items-center py-10 gap-3 text-gray-500 text-sm">
+      <div class="spinner"></div> Fetching live data…
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 mt-2 text-sm"></div>
+
+    <!-- Results -->
+    <div id="results" class="hidden mt-2">
+
+      <!-- Weather + timestamp -->
+      <div class="text-xs text-gray-400 mb-3 px-1 flex justify-between">
+        <span id="weather-line"></span>
+        <span id="timestamp"></span>
+      </div>
+
+      <!-- Fuel Prices -->
+      <div class="card">
+        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+          ⛽ <span id="fuel-heading">Petrol Prices</span>
+        </h2>
+        <div class="text-xs text-gray-500 mb-3" id="fuel-meta"></div>
+        <div id="stations-list" class="divide-y divide-gray-50"></div>
+        <div id="fuel-summary" class="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600"></div>
+      </div>
+
+      <!-- House Prices -->
+      <div class="card" id="house-section">
+        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">🏠 House Prices</h2>
+        <div id="house-content" class="text-sm text-gray-600"></div>
+      </div>
+
+      <!-- Schools -->
+      <div class="card" id="schools-section">
+        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">🎓 Nearby Schools</h2>
+        <div id="schools-list" class="divide-y divide-gray-50 text-sm"></div>
+        <div id="unis-list" class="mt-3 text-sm text-gray-500"></div>
+      </div>
+
+      <!-- Pubs -->
+      <div class="card" id="pubs-section">
+        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">🍺 Nearby Pubs & Bars</h2>
+        <div id="pubs-list" class="divide-y divide-gray-50 text-sm"></div>
+      </div>
+
+      <!-- Supermarkets -->
+      <div class="card" id="super-section">
+        <h2 class="font-bold text-gray-800 mb-3 flex items-center gap-2">🛒 Nearby Supermarkets</h2>
+        <div id="super-list" class="divide-y divide-gray-50 text-sm"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="text-center text-xs text-gray-300 py-8">FuelWatch UK · Live CMA data · No API key needed</div>
+
+<script>
+  document.getElementById("postcode").addEventListener("keydown", e => {
+    if (e.key === "Enter") doSearch();
+  });
+
+  async function doSearch() {
+    const postcode = document.getElementById("postcode").value.trim().replace(/\s+/g, "");
+    const fuel     = document.getElementById("fuel").value;
+    const radius   = document.getElementById("radius").value;
+
+    if (!postcode) { showError("Please enter a postcode."); return; }
+
+    document.getElementById("loading").classList.remove("hidden");
+    document.getElementById("results").classList.add("hidden");
+    document.getElementById("error").classList.add("hidden");
+
+    try {
+      const res = await fetch(`/api/search?postcode=${postcode}&fuel=${fuel}&radius=${radius}`);
+      const data = await res.json();
+      if (!res.ok) { showError(data.error || "Something went wrong."); return; }
+      renderResults(data);
+    } catch(e) {
+      showError("Network error — please try again.");
+    } finally {
+      document.getElementById("loading").classList.add("hidden");
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById("loading").classList.add("hidden");
+    const el = document.getElementById("error");
+    el.textContent = msg;
+    el.classList.remove("hidden");
+  }
+
+  function renderResults(d) {
+    // Weather / timestamp
+    document.getElementById("weather-line").textContent = d.weather || "";
+    document.getElementById("timestamp").textContent = new Date(d.timestamp).toLocaleTimeString("en-GB", {hour:"2-digit", minute:"2-digit"});
+
+    // Fuel heading
+    const fuelLabel = d.fuel === "petrol" ? "Petrol" : "Diesel";
+    document.getElementById("fuel-heading").textContent = `${fuelLabel} near ${d.postcode}`;
+    document.getElementById("fuel-meta").textContent = `${d.stations.length} stations within ${d.radius} miles`;
+
+    // Stations
+    const sl = document.getElementById("stations-list");
+    sl.innerHTML = "";
+    d.stations.slice(0, 8).forEach((s, i) => {
+      const saving = d.avg_price - s.price;
+      const savingStr = saving > 0 ? `<span class="text-green-600">-${saving.toFixed(1)}p</span>` : `<span class="text-red-400">+${Math.abs(saving).toFixed(1)}p</span>`;
+      const maps = `https://maps.google.com/?q=${s.lat},${s.lon}`;
+      sl.innerHTML += `
+        <div class="py-2.5 flex items-start justify-between gap-2">
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              ${i === 0 ? '<span class="text-xs bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded-full">CHEAPEST</span>' : `<span class="text-xs text-gray-400">${i+1}.</span>`}
+              <span class="font-semibold text-gray-800">${s.brand}</span>
+              ${savingStr}
+            </div>
+            <div class="text-xs text-gray-400 mt-0.5 ml-1">${s.address ? s.address.substring(0,40) : ""} · <a href="${maps}" target="_blank" class="text-blue-400 underline">Map</a></div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="font-bold text-gray-900">${s.price.toFixed(1)}p</div>
+            <div class="text-xs text-gray-400">${s.dist_mi.toFixed(1)}mi</div>
+          </div>
+        </div>`;
+    });
+
+    // Fuel summary
+    if (d.stations.length > 0) {
+      const cheapest = d.stations[0];
+      const tankSaving = ((d.avg_price - cheapest.price) * 55 / 100).toFixed(2);
+      document.getElementById("fuel-summary").innerHTML =
+        `Avg: <strong>${d.avg_price}p</strong> · Save <strong>${(d.avg_price - cheapest.price).toFixed(1)}p/L</strong> · Full tank saving: <strong>£${tankSaving}</strong>`;
+    }
+
+    // House Prices
+    const hc = document.getElementById("house-content");
+    const hp = d.house_prices;
+    if (hp && Object.keys(hp).length > 0) {
+      hc.innerHTML = Object.entries(hp).map(([type, v]) =>
+        `<div class="flex justify-between py-1.5 border-b border-gray-50">
+          <div>
+            <span class="text-gray-700 font-medium">${type}</span>
+            <span class="text-xs text-gray-400 ml-2">${v.count} sale${v.count>1?'s':''} · last ${v.latest}</span>
+          </div>
+          <span class="font-semibold text-gray-800">£${v.avg.toLocaleString()}</span>
+        </div>`
+      ).join("") + `<p class="text-xs text-gray-400 mt-2">Source: Land Registry Price Paid Data</p>`;
+      document.getElementById("house-section").classList.remove("hidden");
+    } else {
+      document.getElementById("house-section").classList.add("hidden");
+    }
+
+    // Schools
+    const schoolsList = document.getElementById("schools-list");
+    schoolsList.innerHTML = "";
+    if (d.schools && d.schools.schools && d.schools.schools.length > 0) {
+      d.schools.schools.forEach(s => {
+        schoolsList.innerHTML += `
+          <div class="py-2 flex justify-between items-center">
+            <span class="text-gray-700">${s.name}</span>
+            <span class="text-gray-400 text-xs ml-2 shrink-0">${s.dist_mi.toFixed(1)}mi</span>
+          </div>`;
+      });
+      document.getElementById("schools-section").classList.remove("hidden");
+    } else {
+      document.getElementById("schools-section").classList.add("hidden");
+    }
+
+    const uniList = document.getElementById("unis-list");
+    if (d.schools && d.schools.universities && d.schools.universities.length > 0) {
+      uniList.innerHTML = "<div class='font-semibold text-gray-500 text-xs mb-1 mt-2'>Universities & Colleges</div>" +
+        d.schools.universities.map(u =>
+          `<div class="py-1 flex justify-between"><span>${u.name}</span><span class="text-gray-400 text-xs">${u.dist_mi.toFixed(1)}mi</span></div>`
+        ).join("");
+    }
+
+    // Pubs
+    const pubsList = document.getElementById("pubs-list");
+    pubsList.innerHTML = "";
+    if (d.pubs && d.pubs.length > 0) {
+      d.pubs.forEach(p => {
+        pubsList.innerHTML += `
+          <div class="py-2 flex justify-between items-center">
+            <div>
+              <span class="text-gray-700">${p.name}</span>
+              ${p.note ? `<span class="ml-1 text-xs text-gray-400">${p.note}</span>` : ""}
+            </div>
+            <span class="text-gray-400 text-xs shrink-0 ml-2">${p.dist_mi.toFixed(1)}mi</span>
+          </div>`;
+      });
+      document.getElementById("pubs-section").classList.remove("hidden");
+    } else {
+      document.getElementById("pubs-section").classList.add("hidden");
+    }
+
+    // Supermarkets
+    const superList = document.getElementById("super-list");
+    superList.innerHTML = "";
+    if (d.supermarkets && d.supermarkets.length > 0) {
+      d.supermarkets.forEach(s => {
+        superList.innerHTML += `
+          <div class="py-2 flex justify-between">
+            <span class="text-gray-700">${s.name}${s.rating}</span>
+            <span class="text-gray-400 text-xs">${s.dist_mi.toFixed(1)}mi</span>
+          </div>`;
+      });
+      document.getElementById("super-section").classList.remove("hidden");
+    } else {
+      document.getElementById("super-section").classList.add("hidden");
+    }
+
+    document.getElementById("results").classList.remove("hidden");
+    document.getElementById("results").scrollIntoView({behavior:"smooth"});
+  }
+</script>
+</body>
+</html>

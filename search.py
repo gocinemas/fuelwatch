@@ -351,22 +351,24 @@ def fetch_house_prices(postcode: str) -> dict:
     try:
         resp = requests.get(url, timeout=8, headers=HEADERS)
         items = resp.json().get("result", {}).get("items", [])
-        type_map = {"D": "Detached", "S": "Semi-det", "T": "Terraced", "F": "Flat"}
         buckets = {}
         for item in items:
-            pt = type_map.get(item.get("propertyType", {}).get("prefLabel", [{}])[0] if isinstance(item.get("propertyType"), dict) else "", "")
-            # handle both string and dict shapes from the API
-            pt_raw = item.get("propertyType", "")
-            if isinstance(pt_raw, dict):
-                pt = type_map.get(pt_raw.get("prefLabel", ""), "")
-            else:
-                pt = type_map.get(str(pt_raw), "")
+            pt_obj = item.get("propertyType", {})
+            labels = pt_obj.get("prefLabel", []) if isinstance(pt_obj, dict) else []
+            pt = labels[0].get("_value", "").capitalize() if labels else ""
             price = item.get("pricePaid")
+            date  = item.get("transactionDate", "")
             if pt and price:
-                buckets.setdefault(pt, []).append(int(price))
+                buckets.setdefault(pt, []).append({"price": int(price), "date": date})
         summary = {}
-        for pt, prices in buckets.items():
-            summary[pt] = round(sum(prices) / len(prices) / 1000) * 1000
+        for pt, entries in buckets.items():
+            prices = [e["price"] for e in entries]
+            latest = entries[0]["date"]
+            summary[pt] = {
+                "avg":    round(sum(prices) / len(prices) / 1000) * 1000,
+                "latest": latest,
+                "count":  len(prices),
+            }
         return summary
     except Exception:
         return {}
