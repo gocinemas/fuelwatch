@@ -194,34 +194,42 @@
       <div id="company-results" class="hidden">
 
         <style>
-          details.co-section { background:#fff; border-radius:1rem; box-shadow:0 1px 3px rgba(0,0,0,.1); margin-bottom:1rem; overflow:hidden; }
-          details.co-section summary { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; cursor:pointer; list-style:none; font-weight:700; color:#1f2937; }
-          details.co-section summary::-webkit-details-marker { display:none; }
-          details.co-section summary::after { content:"▾"; font-size:1rem; color:#9ca3af; transition:transform .2s; display:inline-block; }
-          details.co-section[open] summary::after { transform:rotate(180deg); }
-          details.co-section .co-body { padding:0 1.25rem 1.25rem; }
+          .co-card { background:#fff; border-radius:1rem; box-shadow:0 1px 3px rgba(0,0,0,.08); margin-bottom:1rem; padding:1.25rem; }
+          .co-card-title { font-size:10px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.75rem; }
+          .co-tab-bar { display:flex; gap:4px; background:#f3f4f6; padding:4px; border-radius:1rem; margin-bottom:1rem; }
+          .co-tab-btn { flex:1; font-size:11px; font-weight:600; padding:7px 4px; border-radius:.65rem; border:none; cursor:pointer; transition:all .15s; background:transparent; color:#6b7280; }
+          .co-tab-btn.active { background:#fff; color:#4f46e5; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+          .co-tab-panel { display:none; }
+          .co-tab-panel.active { display:block; }
         </style>
 
-        <!-- Overview -->
-        <details id="co-overview" class="co-section hidden" open>
-          <summary>🏢 About</summary>
-          <div class="co-body">
+        <!-- Tab bar -->
+        <div class="co-tab-bar">
+          <button class="co-tab-btn active" onclick="switchCoTab('overview')"   id="co-tab-btn-overview">🏢 Overview</button>
+          <button class="co-tab-btn"        onclick="switchCoTab('financials')" id="co-tab-btn-financials">📈 Finance</button>
+          <button class="co-tab-btn"        onclick="switchCoTab('intel')"      id="co-tab-btn-intel">🧠 Intel</button>
+          <button class="co-tab-btn"        onclick="switchCoTab('jobs')"       id="co-tab-btn-jobs">💼 Jobs</button>
+        </div>
+
+        <!-- ── Overview ── -->
+        <div id="co-tab-overview" class="co-tab-panel active">
+          <div id="co-overview" class="co-card hidden">
+            <div class="co-card-title">About</div>
             <div id="co-overview-body" class="text-sm text-gray-600 leading-relaxed"></div>
           </div>
-        </details>
-
-        <!-- Stats -->
-        <details id="co-stats" class="co-section hidden" open>
-          <summary>📋 Key Facts</summary>
-          <div class="co-body">
+          <div id="co-stats" class="co-card hidden">
+            <div class="co-card-title">Key Facts</div>
             <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm"></div>
           </div>
-        </details>
+        </div>
 
-        <!-- Share Price -->
-        <details id="co-share" class="co-section hidden" open>
-          <summary>📈 Share Price <span id="co-share-badge" class="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500 ml-1"></span></summary>
-          <div class="co-body">
+        <!-- ── Financials ── -->
+        <div id="co-tab-financials" class="co-tab-panel">
+          <div id="co-share" class="co-card hidden">
+            <div class="flex items-center justify-between mb-3">
+              <div class="co-card-title mb-0">Share Price</div>
+              <span id="co-share-badge" class="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500"></span>
+            </div>
             <div class="flex items-end gap-4 mb-4">
               <div>
                 <div id="co-share-price" class="text-3xl font-bold text-gray-900"></div>
@@ -240,12 +248,9 @@
             </svg>
             <div id="co-share-dates" class="flex justify-between text-xs text-gray-300 mt-1"></div>
           </div>
-        </details>
 
-        <!-- Last Results -->
-        <details id="co-results" class="co-section hidden" open>
-          <summary>📊 Last Results</summary>
-          <div class="co-body">
+          <div id="co-results" class="co-card hidden">
+            <div class="co-card-title">Last Results</div>
             <div id="co-results-loading" class="text-center py-4 text-sm text-gray-400">
               <div class="spinner text-indigo-600 mx-auto mb-2"></div>Fetching latest results…
             </div>
@@ -267,54 +272,38 @@
             </div>
             <div id="co-results-error" class="hidden text-sm text-red-400 text-center py-3"></div>
           </div>
-        </details>
+        </div>
 
-        <!-- AI & Tech Focus -->
-        <details id="co-ai" class="co-section hidden" open>
-          <summary>🤖 AI & Tech Focus</summary>
-          <div class="co-body">
+        <!-- ── Intel ── -->
+        <div id="co-tab-intel" class="co-tab-panel">
+          <div id="co-ai" class="co-card hidden">
+            <div class="co-card-title">🤖 AI & Tech Focus</div>
             <div id="co-ai-job-bar" class="hidden mb-4"></div>
             <div id="co-ai-news-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-        </details>
-
-        <!-- Strategy & Direction -->
-        <details id="co-strategy" class="co-section hidden" open>
-          <summary>🧭 Strategy & Direction</summary>
-          <div class="co-body">
+          <div id="co-strategy" class="co-card hidden">
+            <div class="co-card-title">🧭 Strategy & Direction</div>
             <div id="co-strategy-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-        </details>
-
-        <!-- News -->
-        <details id="co-news" class="co-section hidden" open>
-          <summary>📰 Latest News</summary>
-          <div class="co-body">
+          <div id="co-news" class="co-card hidden">
+            <div class="co-card-title">📰 Latest News</div>
             <div id="co-news-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-        </details>
+        </div>
 
-        <!-- Job signals -->
-        <details id="co-signals" class="co-section hidden" open>
-          <summary>📊 Hiring Signals</summary>
-          <div class="co-body">
+        <!-- ── Jobs ── -->
+        <div id="co-tab-jobs" class="co-tab-panel">
+          <div id="co-signals" class="co-card hidden">
+            <div class="co-card-title">📊 Hiring Signals</div>
             <div id="co-signals-body" class="text-sm"></div>
           </div>
-        </details>
-
-        <!-- Jobs -->
-        <details id="co-jobs" class="co-section hidden" open>
-          <summary>💼 Open Positions</summary>
-          <div class="co-body">
+          <div id="co-jobs" class="co-card hidden">
+            <div class="co-card-title">💼 Open Positions</div>
             <p id="co-jobs-source" class="text-xs text-gray-400 mb-3"></p>
             <div id="co-jobs-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-        </details>
-
-        <!-- No jobs -->
-        <details id="co-no-jobs" class="co-section hidden" open>
-          <summary>💼 Jobs</summary>
-          <div class="co-body">
+          <div id="co-no-jobs" class="co-card hidden">
+            <div class="co-card-title">💼 Jobs</div>
             <p class="text-sm text-gray-500 mb-3">No direct listings found. Search on:</p>
             <div class="flex flex-col gap-2">
               <a id="co-indeed-link" href="#" target="_blank" class="text-sm bg-blue-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-blue-700 transition">Indeed →</a>
@@ -322,15 +311,11 @@
               <a id="co-glassdoor-link" href="#" target="_blank" class="text-sm bg-green-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-green-700 transition">Glassdoor →</a>
             </div>
           </div>
-        </details>
-
-        <!-- Practical links -->
-        <details id="co-links" class="co-section hidden" open>
-          <summary>🔗 Useful Links</summary>
-          <div class="co-body">
+          <div id="co-links" class="co-card hidden">
+            <div class="co-card-title">🔗 Useful Links</div>
             <div id="co-links-body" class="flex flex-col gap-2 text-sm"></div>
           </div>
-        </details>
+        </div>
 
       </div>
     </div>
@@ -741,6 +726,7 @@
     _saveRecent("miru_company", name);
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
+    switchCoTab("overview");
     ["co-overview","co-stats","co-share","co-results","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
@@ -948,6 +934,14 @@
     }
   }
 
+
+  // ── Company tabs ────────────────────────────────────────────────────────────
+  function switchCoTab(tab) {
+    document.querySelectorAll(".co-tab-panel").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".co-tab-btn").forEach(b => b.classList.remove("active"));
+    document.getElementById("co-tab-" + tab).classList.add("active");
+    document.getElementById("co-tab-btn-" + tab).classList.add("active");
+  }
 
   // ── Results summary + chat ──────────────────────────────────────────────────
   let _resultsCompany = "";
