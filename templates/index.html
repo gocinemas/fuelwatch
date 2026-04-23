@@ -1558,7 +1558,7 @@
       });
       const d = await r.json();
       document.getElementById("lib-ask-thinking")?.remove();
-      const answer = d.answer || "No answer found.";
+      const answer = d.answer || d.error || "No answer found.";
       _libAskHistory.push({role:"user", content:q}, {role:"assistant", content:answer});
       const sources = (d.sources || []).map(s =>
         `<span onclick="libOpenDoc('${s.share_id}')" class="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition">${s.title} →</span>`

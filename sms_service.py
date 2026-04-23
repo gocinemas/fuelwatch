@@ -415,6 +415,15 @@ def api_library_delete(share_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/library/reindex")
+def api_library_reindex():
+    try:
+        result = lib.reindex_all()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/library/search")
 def api_library_search():
     q = request.args.get("q", "").strip()

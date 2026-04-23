@@ -2,7 +2,11 @@ import os
 import uuid
 
 from supabase import create_client
-from algoliasearch.search_client import SearchClient
+try:
+    from algoliasearch.search_client import SearchClient
+    _ALGOLIA_OK = True
+except ImportError:
+    _ALGOLIA_OK = False
 
 _SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 _SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
@@ -16,6 +20,10 @@ def _sb():
 
 
 def _idx():
+    if not _ALGOLIA_OK:
+        raise RuntimeError("algoliasearch not installed")
+    if not _ALGOLIA_APP or not _ALGOLIA_KEY:
+        raise RuntimeError("Algolia credentials not set")
     client = SearchClient.create(_ALGOLIA_APP, _ALGOLIA_KEY)
     return client.init_index(_INDEX_NAME)
 
@@ -136,6 +144,29 @@ def search_chunks(doc_id: str, query: str, n: int = 6) -> list:
     q_words = set(w for w in query.lower().split() if len(w) > 2)
     scored = sorted(chunks, key=lambda c: -sum(1 for w in q_words if w in c["content"].lower()))
     return [c["content"] for c in scored[:n]]
+
+
+def reindex_all() -> dict:
+    """Re-index all documents from Supabase into Algolia. Call once after integration."""
+    sb = _sb()
+    idx = _idx()
+    docs = sb.table("library_docs").select("id,share_id,title,doc_type").execute().data
+    total, indexed = len(docs), 0
+    for doc in docs:
+        chunks = sb.table("library_chunks").select("chunk_index,content") \
+            .eq("doc_id", doc["id"]).order("chunk_index").execute().data
+        if chunks:
+            idx.save_objects([{
+                "objectID":    f"{doc['share_id']}_{c['chunk_index']}",
+                "share_id":    doc["share_id"],
+                "doc_id":      doc["id"],
+                "doc_title":   doc["title"],
+                "doc_type":    doc["doc_type"],
+                "chunk_index": c["chunk_index"],
+                "content":     c["content"],
+            } for c in chunks])
+            indexed += 1
+    return {"total_docs": total, "indexed": indexed}
 
 
 def delete_document(share_id: str) -> bool:
