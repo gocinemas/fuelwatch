@@ -323,8 +323,21 @@ def company_page(company_slug):
 
 # ── Library API ───────────────────────────────────────────────────────────────
 
+def _check_library_pin():
+    """Return 401 response if PIN is wrong, else None."""
+    pin = os.environ.get("LIBRARY_PIN", "")
+    if not pin:
+        return None  # no PIN set — open access
+    supplied = request.headers.get("X-Library-PIN") or request.args.get("pin", "")
+    if supplied != pin:
+        return jsonify({"error": "PIN required", "auth": True}), 401
+    return None
+
+
 @app.route("/api/library/documents")
 def api_library_list():
+    err = _check_library_pin()
+    if err: return err
     try:
         docs = lib.list_documents()
         return jsonify(docs)
@@ -334,6 +347,8 @@ def api_library_list():
 
 @app.route("/api/library/upload", methods=["POST"])
 def api_library_upload():
+    err = _check_library_pin()
+    if err: return err
     try:
         title = request.form.get("title", "Untitled").strip() or "Untitled"
         doc_type = request.form.get("doc_type", "note")
@@ -367,6 +382,8 @@ def api_library_upload():
 
 @app.route("/api/library/doc/<share_id>")
 def api_library_doc(share_id):
+    err = _check_library_pin()
+    if err: return err
     try:
         doc = lib.get_document(share_id)
         if not doc:
@@ -379,6 +396,8 @@ def api_library_doc(share_id):
 
 @app.route("/api/library/chat", methods=["POST"])
 def api_library_chat():
+    err = _check_library_pin()
+    if err: return err
     try:
         data = request.get_json()
         share_id = data.get("share_id", "")
@@ -408,6 +427,8 @@ def api_library_chat():
 
 @app.route("/api/library/delete/<share_id>", methods=["DELETE"])
 def api_library_delete(share_id):
+    err = _check_library_pin()
+    if err: return err
     try:
         lib.delete_document(share_id)
         return jsonify({"ok": True})
@@ -417,6 +438,8 @@ def api_library_delete(share_id):
 
 @app.route("/api/library/download/<share_id>")
 def api_library_download(share_id):
+    err = _check_library_pin()
+    if err: return err
     from flask import Response
     doc = lib.get_document(share_id)
     if not doc:
@@ -484,6 +507,8 @@ def api_tweets():
 
 @app.route("/api/library/search")
 def api_library_search():
+    err = _check_library_pin()
+    if err: return err
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify([])
@@ -495,6 +520,8 @@ def api_library_search():
 
 @app.route("/api/library/ask", methods=["POST"])
 def api_library_ask():
+    err = _check_library_pin()
+    if err: return err
     try:
         data = request.get_json()
         question = data.get("question", "").strip()

@@ -385,6 +385,22 @@
     <!-- ── LIBRARY SCREEN ── -->
     <div id="screen-library" class="screen pt-5">
 
+      <!-- PIN lock -->
+      <div id="lib-pin-screen" class="hidden flex flex-col items-center justify-center py-20 px-4 text-center">
+        <div class="text-4xl mb-4">🔒</div>
+        <h2 class="text-lg font-bold text-gray-800 mb-1">Private Library</h2>
+        <p class="text-sm text-gray-400 mb-6">Enter your PIN to access your documents.</p>
+        <div class="flex gap-2 w-full max-w-xs">
+          <input id="lib-pin-input" type="password" placeholder="PIN"
+            class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 text-center tracking-widest"
+            onkeydown="if(event.key==='Enter') libSubmitPin()">
+          <button onclick="libSubmitPin()" class="bg-indigo-600 text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-indigo-700 transition">Unlock</button>
+        </div>
+        <p id="lib-pin-error" class="hidden text-xs text-red-500 mt-3">Incorrect PIN — try again.</p>
+      </div>
+
+
+
       <!-- Doc view (shown when reading a doc) -->
       <div id="lib-doc-view" class="hidden">
         <div class="flex items-center gap-3 mb-4">
@@ -599,7 +615,7 @@
     if (name === "fuel")    { document.getElementById("fuel-postcode").focus();   _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()"); }
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); }
     if (name === "company") { document.getElementById("company-input").focus();   _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()"); }
-    if (name === "library") { libLoadDocs(); }
+    if (name === "library") { libCheckPin(); }
     setFooter(name);
   }
 
@@ -1366,6 +1382,40 @@
   let _libCurrentDoc = null;
   let _libChatHistory = [];
 
+  function _libPin() { return sessionStorage.getItem("lib_pin") || ""; }
+  function _libHeaders() { return _libPin() ? {"X-Library-PIN": _libPin()} : {}; }
+
+  function libCheckPin() {
+    const pin = _libPin();
+    const pinScreen  = document.getElementById("lib-pin-screen");
+    const listView   = document.getElementById("lib-list-view");
+    if (pin) {
+      pinScreen.classList.add("hidden");
+      listView.classList.remove("hidden");
+      libLoadDocs();
+    } else {
+      pinScreen.classList.remove("hidden");
+      listView.classList.add("hidden");
+    }
+  }
+
+  async function libSubmitPin() {
+    const pin = document.getElementById("lib-pin-input").value.trim();
+    if (!pin) return;
+    const r = await fetch("/api/library/documents", {headers: {"X-Library-PIN": pin}});
+    if (r.status === 401) {
+      document.getElementById("lib-pin-error").classList.remove("hidden");
+      return;
+    }
+    sessionStorage.setItem("lib_pin", pin);
+    document.getElementById("lib-pin-error").classList.add("hidden");
+    document.getElementById("lib-pin-screen").classList.add("hidden");
+    document.getElementById("lib-list-view").classList.remove("hidden");
+    const docs = await r.json();
+    _libAllDocs = docs;
+    libLoadDocs();
+  }
+
   function libGetBookmarks() {
     try { return JSON.parse(localStorage.getItem("miru_bookmarks") || "[]"); } catch { return []; }
   }
@@ -1392,7 +1442,7 @@
         <div class="text-xs text-gray-400 mt-1">${meta} · ${date}</div>
       </div>
       <div class="flex items-center gap-1 shrink-0">
-        <a href="/api/library/download/${d.share_id}" onclick="event.stopPropagation()" download
+        <a href="/api/library/download/${d.share_id}${_libPin() ? '?pin=' + encodeURIComponent(_libPin()) : ''}" onclick="event.stopPropagation()" download
           class="text-gray-300 hover:text-indigo-500 text-lg transition" title="Download">⬇</a>
         <button onclick="libToggleBookmark('${d.share_id}', event)"
           class="text-xl transition ${bookmarked ? "opacity-100" : "opacity-30 hover:opacity-80"}" title="${bookmarked ? "Remove bookmark" : "Bookmark"}">${bookmarked ? "⭐" : "☆"}</button>
@@ -1409,7 +1459,7 @@
     document.getElementById("lib-empty").classList.add("hidden");
     document.getElementById("lib-docs").innerHTML = "";
     try {
-      const r = await fetch("/api/library/documents");
+      const r = await fetch("/api/library/documents", {headers: _libHeaders()});
       const docs = await r.json();
       _libAllDocs = docs;
       document.getElementById("lib-loading").classList.add("hidden");
@@ -1438,7 +1488,7 @@
     document.getElementById("lib-doc-title").textContent = "Loading…";
     document.getElementById("lib-doc-meta").textContent = "";
     try {
-      const r = await fetch(`/api/library/doc/${shareId}`);
+      const r = await fetch(`/api/library/doc/${shareId}`, {headers: _libHeaders()});
       const doc = await r.json();
       _libCurrentDoc = doc;
       document.getElementById("lib-doc-title").textContent = doc.title;
@@ -1506,7 +1556,7 @@
     try {
       const r = await fetch("/api/library/chat", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: {"Content-Type": "application/json", ..._libHeaders()},
         body: JSON.stringify({ share_id: _libCurrentDoc.share_id, question: q, history: _libChatHistory }),
       });
       const d = await r.json();
@@ -1597,7 +1647,7 @@
           fd.append("doc_type", "note");
           fd.append("text", await item.file.text());
         }
-        const r = await fetch("/api/library/upload", { method: "POST", body: fd });
+        const r = await fetch("/api/library/upload", { method: "POST", headers: _libHeaders(), body: fd });
         const d = await r.json();
         item.status = d.error ? "error" : "done";
       } catch { item.status = "error"; }
@@ -1619,7 +1669,7 @@
     fd.append("doc_type", "note");
     fd.append("text", text);
     try {
-      await fetch("/api/library/upload", { method: "POST", body: fd });
+      await fetch("/api/library/upload", { method: "POST", headers: _libHeaders(), body: fd });
       libCancelUpload();
       libLoadDocs();
     } catch(e) {
@@ -1631,7 +1681,7 @@
   async function libDeleteDoc(shareId, btn) {
     if (!confirm("Delete this document?")) return;
     btn.textContent = "…";
-    await fetch(`/api/library/delete/${shareId}`, { method: "DELETE" });
+    await fetch(`/api/library/delete/${shareId}`, { method: "DELETE", headers: _libHeaders() });
     libLoadDocs();
   }
 
@@ -1699,7 +1749,7 @@
     try {
       const r = await fetch("/api/library/ask", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: {"Content-Type": "application/json", ..._libHeaders()},
         body: JSON.stringify({ question: q, history: _libAskHistory }),
       });
       const d = await r.json();
