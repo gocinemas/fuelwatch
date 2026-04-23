@@ -48,10 +48,17 @@
           <div class="text-gray-400 text-xs mt-1">House prices, schools & pubs nearby</div>
         </button>
         <button onclick="showScreen('company')"
-          class="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
+          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
           <div class="text-4xl mb-3">🏢</div>
           <div class="font-bold text-lg">Company Intel</div>
           <div class="text-indigo-200 text-xs mt-1">Overview, key facts & vacancies</div>
+        </button>
+
+        <button onclick="showScreen('library')"
+          class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
+          <div class="text-4xl mb-3">📚</div>
+          <div class="font-bold text-lg">My Library</div>
+          <div class="text-emerald-200 text-xs mt-1">Notes, PDFs & chat with docs</div>
         </button>
 
       </div>
@@ -229,13 +236,15 @@
           <div id="co-overview" class="co-card hidden">
             <div class="co-card-title">About</div>
             <div id="co-overview-body" class="text-sm text-gray-600 leading-relaxed"></div>
-          </div>
-          <div id="co-stats" class="co-card hidden">
-            <div class="co-card-title">Key Facts</div>
-            <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm mb-3"></div>
-            <div id="co-brands" class="hidden">
-              <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Famous Brands</div>
-              <div id="co-brands-list" class="flex flex-wrap gap-2"></div>
+            <div id="co-stats" class="hidden">
+              <div class="border-t border-gray-100 mt-4 pt-4">
+                <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-3">Key Facts</div>
+                <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm mb-3"></div>
+                <div id="co-brands" class="hidden">
+                  <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2 mt-3">Famous Brands</div>
+                  <div id="co-brands-list" class="flex flex-wrap gap-2"></div>
+                </div>
+              </div>
             </div>
           </div>
           <div id="co-youtube" class="co-card hidden">
@@ -339,6 +348,97 @@
       </div>
     </div>
 
+    <!-- ── LIBRARY SCREEN ── -->
+    <div id="screen-library" class="screen pt-5">
+
+      <!-- Doc view (shown when reading a doc) -->
+      <div id="lib-doc-view" class="hidden">
+        <div class="flex items-center gap-3 mb-4">
+          <button onclick="libCloseDoc()" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">←</button>
+          <div>
+            <div id="lib-doc-title" class="font-bold text-gray-800 text-base leading-snug"></div>
+            <div id="lib-doc-meta" class="text-xs text-gray-400 mt-0.5"></div>
+          </div>
+          <button id="lib-doc-share-btn" onclick="libShareDoc()" class="ml-auto flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            Share
+          </button>
+        </div>
+
+        <!-- Chat -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
+            <span class="text-sm font-semibold text-gray-700">💬 Chat with this document</span>
+          </div>
+          <div id="lib-chat-msgs" class="flex flex-col gap-3 px-4 py-4 min-h-[160px] max-h-[360px] overflow-y-auto text-sm"></div>
+          <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
+            <input id="lib-chat-input" type="text" placeholder="Ask anything about this document…"
+              class="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50"
+              onkeydown="if(event.key==='Enter') libSendChat()">
+            <button onclick="libSendChat()" class="bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-indigo-700 transition">Ask</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Library list view -->
+      <div id="lib-list-view">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-bold text-gray-800 text-base">📚 My Library</h2>
+          <button onclick="libShowUpload()" id="lib-add-btn"
+            class="flex items-center gap-1.5 text-sm font-semibold bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition">
+            + Add
+          </button>
+        </div>
+
+        <!-- Upload panel -->
+        <div id="lib-upload-panel" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+          <div class="text-sm font-semibold text-gray-700 mb-3">Add to Library</div>
+
+          <!-- Type toggle -->
+          <div class="flex gap-2 mb-3">
+            <button id="lib-type-note" onclick="libSetType('note')"
+              class="flex-1 text-xs font-semibold py-2 rounded-xl border-2 border-indigo-500 bg-indigo-50 text-indigo-700 transition">📝 Note / Text</button>
+            <button id="lib-type-pdf" onclick="libSetType('pdf')"
+              class="flex-1 text-xs font-semibold py-2 rounded-xl border-2 border-gray-200 text-gray-500 transition">📄 PDF Upload</button>
+          </div>
+
+          <input id="lib-title-input" type="text" placeholder="Title (optional)"
+            class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50">
+
+          <div id="lib-note-area">
+            <textarea id="lib-text-input" rows="5" placeholder="Paste your note, article, or any text here…"
+              class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 resize-none"></textarea>
+          </div>
+
+          <div id="lib-pdf-area" class="hidden">
+            <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl py-6 mb-3 cursor-pointer hover:border-indigo-400 transition">
+              <span class="text-2xl mb-1">📄</span>
+              <span class="text-sm text-gray-500">Tap to choose PDF</span>
+              <input type="file" accept=".pdf" id="lib-file-input" class="hidden" onchange="libFileChosen(this)">
+            </label>
+            <div id="lib-file-name" class="text-xs text-gray-400 text-center mb-3"></div>
+          </div>
+
+          <div id="lib-upload-error" class="hidden text-xs text-red-600 mb-2"></div>
+          <div class="flex gap-2">
+            <button onclick="libCancelUpload()" class="flex-1 text-sm font-medium text-gray-500 border border-gray-200 py-2 rounded-xl hover:bg-gray-50 transition">Cancel</button>
+            <button onclick="libSubmitUpload()" class="flex-1 text-sm font-semibold bg-emerald-600 text-white py-2 rounded-xl hover:bg-emerald-700 transition">
+              <span id="lib-upload-btn-text">Save to Library</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Doc list -->
+        <div id="lib-loading" class="hidden text-center py-8 text-gray-400 text-sm">Loading…</div>
+        <div id="lib-empty" class="hidden text-center py-12 text-gray-400 text-sm">
+          <div class="text-4xl mb-2">📭</div>
+          Your library is empty. Add a note or PDF to get started.
+        </div>
+        <div id="lib-docs" class="flex flex-col gap-3"></div>
+      </div>
+
+    </div>
+
   </div><!-- /max-w-xl -->
 
   <div id="footer" class="text-center text-xs text-gray-300 py-8">FuelWatch UK · CMA + Land Registry + OSM data</div>
@@ -431,6 +531,7 @@
     if (name === "fuel")    { document.getElementById("fuel-postcode").focus();   _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()"); }
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); }
     if (name === "company") { document.getElementById("company-input").focus();   _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()"); }
+    if (name === "library") { libLoadDocs(); }
     setFooter(name);
   }
 
@@ -819,6 +920,7 @@
         document.getElementById("co-brands").classList.remove("hidden");
       }
       document.getElementById("co-stats").classList.remove("hidden");
+      document.getElementById("co-overview").classList.remove("hidden");
     }
 
     // Show fallback only if overview tab has truly nothing
@@ -1189,6 +1291,198 @@
     showScreen("company");
     document.getElementById("company-input").value = "{{ prefill_company }}";
     searchCompany();
+  });
+  {% endif %}
+
+  // ── Library ─────────────────────────────────────────────────────────────────
+  let _libCurrentDoc = null;
+  let _libChatHistory = [];
+
+  async function libLoadDocs() {
+    document.getElementById("lib-loading").classList.remove("hidden");
+    document.getElementById("lib-empty").classList.add("hidden");
+    document.getElementById("lib-docs").innerHTML = "";
+    try {
+      const r = await fetch("/api/library/documents");
+      const docs = await r.json();
+      document.getElementById("lib-loading").classList.add("hidden");
+      if (!docs.length) { document.getElementById("lib-empty").classList.remove("hidden"); return; }
+      document.getElementById("lib-docs").innerHTML = docs.map(d => {
+        const icon = d.doc_type === "pdf" ? "📄" : "📝";
+        const meta = d.doc_type === "pdf"
+          ? `${d.page_count} page${d.page_count !== 1 ? "s" : ""}`
+          : `${Math.round((d.char_count || 0) / 5)} words`;
+        const date = new Date(d.created_at).toLocaleDateString("en-GB", {day:"numeric", month:"short", year:"numeric"});
+        return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-start gap-3 cursor-pointer hover:border-indigo-200 transition"
+                  onclick="libOpenDoc('${d.share_id}')">
+          <div class="text-2xl mt-0.5">${icon}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-gray-800 text-sm leading-snug truncate">${d.title}</div>
+            <div class="text-xs text-gray-400 mt-1">${meta} · ${date}</div>
+          </div>
+          <button onclick="event.stopPropagation(); libDeleteDoc('${d.share_id}', this)"
+            class="text-gray-300 hover:text-red-400 text-lg transition shrink-0">✕</button>
+        </div>`;
+      }).join("");
+    } catch(e) {
+      document.getElementById("lib-loading").classList.add("hidden");
+    }
+  }
+
+  async function libOpenDoc(shareId) {
+    _libChatHistory = [];
+    document.getElementById("lib-chat-msgs").innerHTML = "";
+    document.getElementById("lib-doc-view").classList.remove("hidden");
+    document.getElementById("lib-list-view").classList.add("hidden");
+    document.getElementById("lib-doc-title").textContent = "Loading…";
+    document.getElementById("lib-doc-meta").textContent = "";
+    try {
+      const r = await fetch(`/api/library/doc/${shareId}`);
+      const doc = await r.json();
+      _libCurrentDoc = doc;
+      document.getElementById("lib-doc-title").textContent = doc.title;
+      const icon = doc.doc_type === "pdf" ? "📄" : "📝";
+      const meta = doc.doc_type === "pdf"
+        ? `${doc.page_count} pages · ${Math.round(doc.char_count / 5)} words`
+        : `${Math.round(doc.char_count / 5)} words`;
+      document.getElementById("lib-doc-meta").textContent = `${icon} ${meta}`;
+      document.getElementById("lib-chat-msgs").innerHTML =
+        `<div class="self-start bg-emerald-50 text-emerald-700 text-sm px-3 py-2 rounded-2xl rounded-tl-sm max-w-xs leading-relaxed">
+          Hi! Ask me anything about <strong>${doc.title}</strong>.
+        </div>`;
+    } catch(e) {
+      document.getElementById("lib-doc-title").textContent = "Error loading document";
+    }
+  }
+
+  function libCloseDoc() {
+    _libCurrentDoc = null;
+    _libChatHistory = [];
+    document.getElementById("lib-doc-view").classList.add("hidden");
+    document.getElementById("lib-list-view").classList.remove("hidden");
+  }
+
+  function libShareDoc() {
+    if (!_libCurrentDoc) return;
+    const url = `${location.origin}/doc/${_libCurrentDoc.share_id}`;
+    if (navigator.share) {
+      navigator.share({ title: _libCurrentDoc.title, url });
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById("lib-doc-share-btn");
+        btn.textContent = "✓ Copied!";
+        setTimeout(() => { btn.textContent = "Share"; }, 2000);
+      });
+    }
+  }
+
+  async function libSendChat() {
+    if (!_libCurrentDoc) return;
+    const input = document.getElementById("lib-chat-input");
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = "";
+    const msgs = document.getElementById("lib-chat-msgs");
+    msgs.innerHTML += `<div class="self-end bg-indigo-600 text-white text-sm px-3 py-2 rounded-2xl rounded-tr-sm max-w-xs leading-relaxed">${q}</div>`;
+    msgs.innerHTML += `<div id="lib-thinking" class="self-start bg-gray-100 text-gray-400 text-xs px-3 py-2 rounded-2xl rounded-tl-sm">Thinking…</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+    try {
+      const r = await fetch("/api/library/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ share_id: _libCurrentDoc.share_id, question: q, history: _libChatHistory }),
+      });
+      const d = await r.json();
+      document.getElementById("lib-thinking")?.remove();
+      const reply = d.answer || "Sorry, couldn't generate a response.";
+      _libChatHistory.push({role:"user", content:q}, {role:"assistant", content:reply});
+      msgs.innerHTML += `<div class="self-start bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded-2xl rounded-tl-sm max-w-xs leading-relaxed">${reply}</div>`;
+    } catch(e) {
+      document.getElementById("lib-thinking")?.remove();
+      msgs.innerHTML += `<div class="self-start bg-red-50 text-red-500 text-xs px-3 py-2 rounded-2xl">Error — please try again.</div>`;
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function libShowUpload() {
+    document.getElementById("lib-upload-panel").classList.remove("hidden");
+    document.getElementById("lib-add-btn").classList.add("hidden");
+  }
+
+  function libCancelUpload() {
+    document.getElementById("lib-upload-panel").classList.add("hidden");
+    document.getElementById("lib-add-btn").classList.remove("hidden");
+    document.getElementById("lib-title-input").value = "";
+    document.getElementById("lib-text-input").value = "";
+    document.getElementById("lib-file-input").value = "";
+    document.getElementById("lib-file-name").textContent = "";
+    document.getElementById("lib-upload-error").classList.add("hidden");
+    libSetType("note");
+  }
+
+  function libSetType(type) {
+    document.getElementById("lib-note-area").classList.toggle("hidden", type !== "note");
+    document.getElementById("lib-pdf-area").classList.toggle("hidden", type !== "pdf");
+    document.getElementById("lib-type-note").className = `flex-1 text-xs font-semibold py-2 rounded-xl border-2 transition ${type==="note" ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-gray-200 text-gray-500"}`;
+    document.getElementById("lib-type-pdf").className  = `flex-1 text-xs font-semibold py-2 rounded-xl border-2 transition ${type==="pdf"  ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-gray-200 text-gray-500"}`;
+  }
+
+  function libFileChosen(input) {
+    document.getElementById("lib-file-name").textContent = input.files[0]?.name || "";
+    const name = input.files[0]?.name?.replace(".pdf","").replace(/[_-]/g," ");
+    if (name && !document.getElementById("lib-title-input").value) {
+      document.getElementById("lib-title-input").value = name;
+    }
+  }
+
+  async function libSubmitUpload() {
+    const title = document.getElementById("lib-title-input").value.trim();
+    const isPdf = !document.getElementById("lib-pdf-area").classList.contains("hidden");
+    const errEl = document.getElementById("lib-upload-error");
+    errEl.classList.add("hidden");
+
+    const fd = new FormData();
+    fd.append("title", title || "Untitled");
+
+    if (isPdf) {
+      const file = document.getElementById("lib-file-input").files[0];
+      if (!file) { errEl.textContent = "Please choose a PDF file."; errEl.classList.remove("hidden"); return; }
+      fd.append("doc_type", "pdf");
+      fd.append("file", file);
+    } else {
+      const text = document.getElementById("lib-text-input").value.trim();
+      if (!text) { errEl.textContent = "Please enter some text."; errEl.classList.remove("hidden"); return; }
+      fd.append("doc_type", "note");
+      fd.append("text", text);
+    }
+
+    const btn = document.getElementById("lib-upload-btn-text");
+    btn.textContent = "Saving…";
+    try {
+      const r = await fetch("/api/library/upload", { method: "POST", body: fd });
+      const d = await r.json();
+      if (d.error) { errEl.textContent = d.error; errEl.classList.remove("hidden"); btn.textContent = "Save to Library"; return; }
+      libCancelUpload();
+      libLoadDocs();
+    } catch(e) {
+      errEl.textContent = "Upload failed — try again.";
+      errEl.classList.remove("hidden");
+    }
+    btn.textContent = "Save to Library";
+  }
+
+  async function libDeleteDoc(shareId, btn) {
+    if (!confirm("Delete this document?")) return;
+    btn.textContent = "…";
+    await fetch(`/api/library/delete/${shareId}`, { method: "DELETE" });
+    libLoadDocs();
+  }
+
+  // ── Shareable doc URL ───────────────────────────────────────────────────────
+  {% if prefill_doc %}
+  window.addEventListener("DOMContentLoaded", () => {
+    showScreen("library");
+    libOpenDoc("{{ prefill_doc }}");
   });
   {% endif %}
 </script>

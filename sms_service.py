@@ -33,6 +33,7 @@ from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
                     fetch_company_info)
 import analytics
+import library as lib
 
 app = Flask(__name__)
 
@@ -309,12 +310,109 @@ def sms_reply():
 
 @app.route("/")
 def index():
-    return render_template("index.html", prefill_company=None)
+    return render_template("index.html", prefill_company=None, prefill_doc=None)
+
+@app.route("/doc/<share_id>")
+def doc_page(share_id):
+    return render_template("index.html", prefill_company=None, prefill_doc=share_id)
 
 @app.route("/<company_slug>")
 def company_page(company_slug):
-    # Only treat as company shortlink if it looks like a name, not a known route
-    return render_template("index.html", prefill_company=company_slug.replace("-", " "))
+    return render_template("index.html", prefill_company=company_slug.replace("-", " "), prefill_doc=None)
+
+
+# ── Library API ───────────────────────────────────────────────────────────────
+
+@app.route("/api/library/documents")
+def api_library_list():
+    try:
+        docs = lib.list_documents()
+        return jsonify(docs)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/library/upload", methods=["POST"])
+def api_library_upload():
+    try:
+        title = request.form.get("title", "Untitled").strip() or "Untitled"
+        doc_type = request.form.get("doc_type", "note")
+        text = ""
+        page_count = 0
+
+        if doc_type == "pdf" and "file" in request.files:
+            f = request.files["file"]
+            raw = f.read()
+            try:
+                import fitz
+                pdf = fitz.open(stream=raw, filetype="pdf")
+                text = "\n".join(page.get_text() for page in pdf)
+                page_count = len(pdf)
+                if not title or title == "Untitled":
+                    title = f.filename.replace(".pdf", "").replace("_", " ").replace("-", " ").title()
+            except Exception as e:
+                return jsonify({"error": f"PDF extraction failed: {e}"}), 400
+        else:
+            text = request.form.get("text", "").strip()
+            doc_type = "note"
+
+        if not text:
+            return jsonify({"error": "No content found"}), 400
+
+        doc = lib.upload_document(title, text, doc_type, page_count)
+        return jsonify(doc)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/library/doc/<share_id>")
+def api_library_doc(share_id):
+    try:
+        doc = lib.get_document(share_id)
+        if not doc:
+            return jsonify({"error": "Not found"}), 404
+        doc.pop("chunks", None)
+        return jsonify(doc)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/library/chat", methods=["POST"])
+def api_library_chat():
+    try:
+        data = request.get_json()
+        share_id = data.get("share_id", "")
+        question = data.get("question", "").strip()
+        history  = data.get("history", [])
+        if not share_id or not question:
+            return jsonify({"error": "Missing share_id or question"}), 400
+
+        doc = lib.get_document(share_id)
+        if not doc:
+            return jsonify({"error": "Document not found"}), 404
+
+        chunks = lib.search_chunks(doc["id"], question)
+        context = "\n\n---\n\n".join(chunks)
+
+        system = (
+            f'You are a helpful assistant. Answer questions based on the document "{doc["title"]}".\n\n'
+            f'Relevant excerpts:\n{context}\n\n'
+            f'Answer concisely and cite the document where relevant. If the answer is not in the document, say so.'
+        )
+        messages = history[-6:] + [{"role": "user", "content": question}]
+        answer = _groq_chat(system, messages, max_tokens=600)
+        return jsonify({"answer": answer})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/library/delete/<share_id>", methods=["DELETE"])
+def api_library_delete(share_id):
+    try:
+        lib.delete_document(share_id)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 def _resolve_postcode(postcode):
