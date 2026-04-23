@@ -1585,27 +1585,34 @@
 
   function libSearch() {
     const q = document.getElementById("lib-search-input").value.trim().toLowerCase();
-    const clearBtn = document.getElementById("lib-search-clear");
-    const resultsEl = document.getElementById("lib-search-results");
-    const listEl = document.getElementById("lib-search-list");
-    const docsEl = document.getElementById("lib-docs");
+    const clearBtn   = document.getElementById("lib-search-clear");
+    const resultsEl  = document.getElementById("lib-search-results");
+    const listEl     = document.getElementById("lib-search-list");
+    const docsEl     = document.getElementById("lib-docs");
     clearBtn.classList.toggle("hidden", !q);
-    if (!q) { resultsEl.classList.add("hidden"); docsEl.classList.remove("hidden"); return; }
+    if (!q) {
+      resultsEl.classList.add("hidden");
+      docsEl.classList.remove("hidden");
+      return;
+    }
     docsEl.classList.add("hidden");
-    const hits = _libAllDocs.filter(d => d.title.toLowerCase().includes(q));
+    const hits = _libAllDocs.filter(d => (d.title || "").toLowerCase().includes(q));
     if (!hits.length) {
-      listEl.innerHTML = `<div class="text-sm text-gray-400 py-2 px-1">No documents match "${q}".</div>`;
+      listEl.innerHTML = `<div class="text-sm text-gray-400 py-3 px-1">No documents match "${q}".</div>`;
     } else {
-      const icon = t => t === "pdf" ? "📄" : "📝";
       listEl.innerHTML = hits.map(h => {
-        const i = h.title.toLowerCase().indexOf(q);
-        const highlighted = h.title.slice(0, i) +
-          `<mark class="bg-yellow-100 text-gray-800 rounded">${h.title.slice(i, i + q.length)}</mark>` +
-          h.title.slice(i + q.length);
+        const title = h.title || "Untitled";
+        const idx = title.toLowerCase().indexOf(q);
+        const hl = idx >= 0
+          ? title.slice(0, idx) +
+            `<mark style="background:#fef9c3;border-radius:3px;padding:0 2px">${title.slice(idx, idx + q.length)}</mark>` +
+            title.slice(idx + q.length)
+          : title;
+        const icon = h.doc_type === "pdf" ? "📄" : "📝";
         return `<div onclick="libOpenDoc('${h.share_id}')"
           class="bg-white border border-gray-100 rounded-2xl px-4 py-3 cursor-pointer hover:border-indigo-200 transition flex items-center gap-3">
-          <span class="text-xl">${icon(h.doc_type)}</span>
-          <span class="font-medium text-gray-800 text-sm">${highlighted}</span>
+          <span class="text-xl">${icon}</span>
+          <span class="font-medium text-sm" style="color:#111">${hl}</span>
         </div>`;
       }).join("");
     }
