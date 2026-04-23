@@ -637,6 +637,97 @@ def _fetch_share_price(company: str) -> dict:
     }
 
 
+# ── Brand research ────────────────────────────────────────────────────────────
+_BRAND_CACHE: dict = {}
+_BRAND_TTL = 3600
+
+def _fetch_brand_ai(brand: str, extract: str) -> dict:
+    """Ask Groq to extract timeline milestones and famous campaigns for a brand."""
+    import json
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return {"timeline": [], "campaigns": []}
+    prompt = f"""You are a brand historian. Provide structured data about the brand "{brand}".
+
+Wikipedia context: {extract[:1800] if extract else "Not provided"}
+
+Return ONLY a valid JSON object with exactly these two fields:
+{{
+  "timeline": [
+    {{"year": "1971", "event": "Short description under 12 words"}}
+  ],
+  "campaigns": [
+    {{"name": "Campaign Name", "year": "1984", "description": "One sentence about this campaign or slogan"}}
+  ]
+}}
+
+Rules:
+- timeline: 8–14 key milestones (founding, major launches, rebrands, acquisitions, revenue records). Sort ascending by year.
+- campaigns: 4–6 most iconic advertising campaigns or slogans. Use your knowledge if Wikipedia doesn't mention them.
+- Return ONLY the JSON object. No markdown, no explanation."""
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2,
+                "max_tokens": 1400,
+            },
+            timeout=20,
+        )
+        content = r.json()["choices"][0]["message"]["content"].strip()
+        m = _re.search(r'\{.*\}', content, _re.DOTALL)
+        if m:
+            return json.loads(m.group(0))
+    except Exception as e:
+        print(f"[brand_ai] error: {e}")
+    return {"timeline": [], "campaigns": []}
+
+
+def fetch_brand_data(brand: str) -> dict:
+    cache_key = brand.strip().lower() + "|brandv2"
+    cached = _BRAND_CACHE.get(cache_key)
+    if cached and time.time() - cached["ts"] < _BRAND_TTL:
+        return cached["data"]
+
+    with _cf.ThreadPoolExecutor(max_workers=3) as pool:
+        wiki_f = pool.submit(_fetch_wikipedia, brand)
+        news_f = pool.submit(_fetch_news, brand, "brand OR campaign OR advertising OR revenue OR launch", 6)
+
+        wiki = {}
+        try:
+            wiki = wiki_f.result(timeout=12) or {}
+        except Exception:
+            pass
+
+        news = []
+        try:
+            news = news_f.result(timeout=10) or []
+        except Exception:
+            pass
+
+    ai = _fetch_brand_ai(brand, wiki.get("extract", ""))
+
+    result = {
+        "name":        brand,
+        "description": wiki.get("description", ""),
+        "extract":     wiki.get("extract", ""),
+        "founded":     wiki.get("founded", ""),
+        "hq":          wiki.get("hq", ""),
+        "revenue":     wiki.get("revenue", ""),
+        "employees":   wiki.get("employees", ""),
+        "industry":    wiki.get("industry", ""),
+        "wiki_url":    wiki.get("wiki_url", ""),
+        "timeline":    ai.get("timeline", []),
+        "campaigns":   ai.get("campaigns", []),
+        "news":        news,
+    }
+    _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
+    return result
+
+
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600

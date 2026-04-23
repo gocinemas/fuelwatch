@@ -94,6 +94,10 @@
             <span style="font-size:20px;line-height:1">📚</span>
             <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">My Library</span>
           </button>
+          <button onclick="showScreen('brand')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
+            <span style="font-size:20px;line-height:1">🏷️</span>
+            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">Brand Intel</span>
+          </button>
         </div>
       </div>
     </div>
@@ -382,6 +386,81 @@
       </div>
     </div>
 
+    <!-- ── BRAND INTEL SCREEN ── -->
+    <div id="screen-brand" class="screen pt-4">
+
+      <!-- Search bar -->
+      <div class="flex gap-2 mb-4">
+        <input id="brand-input" type="text" placeholder="e.g. Nike, Coca-Cola, Apple…"
+          style="flex:1;border:1px solid #e5e7eb;border-radius:16px;padding:12px 16px;font-size:15px;background:#fff;outline:none"
+          onkeydown="if(event.key==='Enter') searchBrand()"
+          onfocus="this.style.boxShadow='0 0 0 3px rgba(124,58,237,.15)'"
+          onblur="this.style.boxShadow=''">
+        <button onclick="searchBrand()"
+          style="background:#7c3aed;color:#fff;font-size:14px;font-weight:700;padding:12px 18px;border-radius:16px;border:none;cursor:pointer;white-space:nowrap">Search</button>
+      </div>
+      <div id="brand-recent" class="mb-3"></div>
+
+      <!-- Loading -->
+      <div id="brand-loading" class="hidden text-center py-16">
+        <div class="spinner mx-auto mb-3" style="border-top-color:#7c3aed;width:28px;height:28px"></div>
+        <div style="font-size:13px;color:#9ca3af">Researching brand…</div>
+      </div>
+
+      <!-- Error -->
+      <div id="brand-error" class="hidden text-center py-12" style="font-size:14px;color:#9ca3af"></div>
+
+      <!-- Result -->
+      <div id="brand-result" class="hidden">
+
+        <!-- Header card -->
+        <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
+          <div id="brand-name-el" style="font-size:22px;font-weight:900;letter-spacing:-0.8px;color:#111"></div>
+          <div id="brand-desc-el" style="font-size:12px;color:#9ca3af;margin-top:2px"></div>
+          <div id="brand-extract-el" style="font-size:14px;color:#374151;margin-top:10px;line-height:1.65"></div>
+        </div>
+
+        <!-- Quick stats -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
+            <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Founded</div>
+            <div id="brand-founded-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+          </div>
+          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
+            <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Headquarters</div>
+            <div id="brand-hq-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+          </div>
+          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
+            <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Revenue</div>
+            <div id="brand-revenue-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+          </div>
+          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
+            <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Industry</div>
+            <div id="brand-industry-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div id="brand-timeline-section" style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
+          <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:16px;letter-spacing:-0.2px">Brand Timeline</div>
+          <div id="brand-timeline-el"></div>
+        </div>
+
+        <!-- Campaigns -->
+        <div id="brand-campaigns-section" style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
+          <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">Famous Campaigns & Slogans</div>
+          <div id="brand-campaigns-el"></div>
+        </div>
+
+        <!-- News -->
+        <div id="brand-news-section" style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
+          <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">Latest News</div>
+          <div id="brand-news-el"></div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- ── LIBRARY SCREEN ── -->
     <div id="screen-library" class="screen pt-5">
 
@@ -616,6 +695,7 @@
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); }
     if (name === "company") { document.getElementById("company-input").focus();   _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()"); }
     if (name === "library") { libCheckPin(); }
+    if (name === "brand")   { document.getElementById("brand-input").focus(); _renderRecent("miru_brand", "brand-recent", "brand-input", "searchBrand()"); }
     setFooter(name);
   }
 
@@ -1378,6 +1458,95 @@
   });
   {% endif %}
 
+  // ── Brand Intel ─────────────────────────────────────────────────────────────
+  async function searchBrand() {
+    const input = document.getElementById("brand-input");
+    const name = input.value.trim();
+    if (!name) return;
+    _renderRecent("miru_brand", "brand-recent", "brand-input", "searchBrand()");
+    const recent = JSON.parse(localStorage.getItem("miru_brand") || "[]");
+    if (!recent.includes(name)) {
+      recent.unshift(name);
+      localStorage.setItem("miru_brand", JSON.stringify(recent.slice(0, 8)));
+    }
+    document.getElementById("brand-loading").classList.remove("hidden");
+    document.getElementById("brand-result").classList.add("hidden");
+    document.getElementById("brand-error").classList.add("hidden");
+    try {
+      const r = await fetch(`/api/brand?name=${encodeURIComponent(name)}`);
+      const d = await r.json();
+      document.getElementById("brand-loading").classList.add("hidden");
+      if (d.error) { document.getElementById("brand-error").textContent = d.error; document.getElementById("brand-error").classList.remove("hidden"); return; }
+      _renderBrand(d);
+    } catch(e) {
+      document.getElementById("brand-loading").classList.add("hidden");
+      document.getElementById("brand-error").textContent = "Could not load brand data. Try again.";
+      document.getElementById("brand-error").classList.remove("hidden");
+    }
+  }
+
+  function _renderBrand(d) {
+    document.getElementById("brand-name-el").textContent = d.name || "";
+    document.getElementById("brand-desc-el").textContent = d.description || "";
+    document.getElementById("brand-extract-el").textContent = d.extract || "";
+    document.getElementById("brand-founded-el").textContent = d.founded || "—";
+    document.getElementById("brand-hq-el").textContent = d.hq || "—";
+    document.getElementById("brand-revenue-el").textContent = d.revenue || "—";
+    document.getElementById("brand-industry-el").textContent = d.industry || "—";
+
+    // Timeline
+    const tl = d.timeline || [];
+    const tlEl = document.getElementById("brand-timeline-el");
+    if (tl.length) {
+      tlEl.innerHTML = `<div style="position:relative;padding-left:28px">
+        <div style="position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:#e9d5ff;border-radius:2px"></div>
+        ${tl.map((item, i) => `
+          <div style="position:relative;margin-bottom:${i < tl.length-1 ? '16px' : '0'}">
+            <div style="position:absolute;left:-22px;top:3px;width:10px;height:10px;border-radius:50%;background:#7c3aed;border:2px solid #fff;box-shadow:0 0 0 2px #ddd8fe"></div>
+            <div style="font-size:11px;font-weight:800;color:#7c3aed;letter-spacing:.02em;margin-bottom:1px">${item.year || ""}</div>
+            <div style="font-size:13px;color:#374151;line-height:1.5">${item.event || ""}</div>
+          </div>`).join("")}
+      </div>`;
+      document.getElementById("brand-timeline-section").classList.remove("hidden");
+    } else {
+      document.getElementById("brand-timeline-section").style.display = "none";
+    }
+
+    // Campaigns
+    const camps = d.campaigns || [];
+    const campsEl = document.getElementById("brand-campaigns-el");
+    if (camps.length) {
+      campsEl.innerHTML = camps.map(c => `
+        <div style="border-left:3px solid #7c3aed;padding:8px 12px;margin-bottom:10px;background:#faf5ff;border-radius:0 10px 10px 0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+            <span style="font-size:13px;font-weight:800;color:#5b21b6">${c.name || ""}</span>
+            ${c.year ? `<span style="font-size:11px;font-weight:600;color:#a78bfa;background:#ede9fe;padding:1px 7px;border-radius:99px">${c.year}</span>` : ""}
+          </div>
+          <div style="font-size:13px;color:#6b7280;line-height:1.5">${c.description || ""}</div>
+        </div>`).join("");
+      document.getElementById("brand-campaigns-section").style.display = "";
+    } else {
+      document.getElementById("brand-campaigns-section").style.display = "none";
+    }
+
+    // News
+    const news = d.news || [];
+    const newsEl = document.getElementById("brand-news-el");
+    if (news.length) {
+      newsEl.innerHTML = news.map(n => `
+        <a href="${n.url}" target="_blank" rel="noopener"
+           style="display:block;text-decoration:none;padding:8px 0;border-bottom:1px solid #f3f4f6">
+          <div style="font-size:13px;font-weight:600;color:#111;line-height:1.4">${n.title}</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:2px">${n.source ? n.source + " · " : ""}${n.date || ""}</div>
+        </a>`).join("");
+      document.getElementById("brand-news-section").style.display = "";
+    } else {
+      document.getElementById("brand-news-section").style.display = "none";
+    }
+
+    document.getElementById("brand-result").classList.remove("hidden");
+  }
+
   // ── Library ─────────────────────────────────────────────────────────────────
   let _libCurrentDoc = null;
   let _libChatHistory = [];
@@ -1777,7 +1946,7 @@
 
   // ── Bottom nav active state ──────────────────────────────────────────────────
   function _updateBottomNav(name) {
-    ["fuel","report","company","library"].forEach(s => {
+    ["fuel","report","company","library","brand"].forEach(s => {
       document.getElementById("bnav-" + s).classList.toggle("active", s === name);
     });
   }
@@ -1785,7 +1954,7 @@
   showScreen = function(name) { _origShowScreen(name); _updateBottomNav(name); };
   const _origShowHome = showHome;
   showHome = function() { _origShowHome();
-    ["fuel","report","company","library"].forEach(s => document.getElementById("bnav-"+s).classList.remove("active"));
+    ["fuel","report","company","library","brand"].forEach(s => document.getElementById("bnav-"+s).classList.remove("active"));
   };
 </script>
 
@@ -1799,6 +1968,9 @@
   </button>
   <button class="bnav-btn" id="bnav-company" onclick="showScreen('company')">
     <span class="bnav-icon">🏢</span>Company
+  </button>
+  <button class="bnav-btn" id="bnav-brand" onclick="showScreen('brand')">
+    <span class="bnav-icon">🏷️</span>Brand
   </button>
   <button class="bnav-btn" id="bnav-library" onclick="showScreen('library')">
     <span class="bnav-icon">📚</span>Library

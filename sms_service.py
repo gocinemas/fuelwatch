@@ -31,7 +31,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
                     fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
-                    fetch_company_info)
+                    fetch_company_info, fetch_brand_data)
 import analytics
 import library as lib
 
@@ -631,6 +631,15 @@ def api_local():
         "cafes":        local.get("cafes", []),
     })
 
+
+
+@app.route("/api/brand")
+def api_brand():
+    name = request.args.get("name", "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "Brand name required"}), 400
+    analytics.log_search("brand", name, request.remote_addr, request.user_agent.string)
+    return jsonify(fetch_brand_data(name))
 
 
 @app.route("/api/company")
