@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Miru">
+  <meta name="theme-color" content="#dc2626">
   <title>Miru</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -12,22 +16,44 @@
     .screen.active { display: block; }
     #nav-sheet { transition: transform 0.25s ease; transform: translateY(100%); }
     #nav-sheet.open { transform: translateY(0); }
+
+    /* Safe area insets for iPhone notch / Dynamic Island / home indicator */
+    body { padding-top: env(safe-area-inset-top); overscroll-behavior: none; }
+    #bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+    .main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+
+    /* Prevent iOS input zoom — all inputs/selects must be >= 16px */
+    input, select, textarea { font-size: 16px !important; }
+
+    /* Bottom nav */
+    #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff;
+      border-top: 1px solid #f3f4f6; display: flex; z-index: 100;
+      box-shadow: 0 -2px 12px rgba(0,0,0,.06); }
+    .bnav-btn { flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 3px; padding: 10px 4px 8px;
+      font-size: 11px; font-weight: 600; color: #9ca3af; border: none;
+      background: transparent; cursor: pointer; transition: color .15s; -webkit-tap-highlight-color: transparent; }
+    .bnav-btn.active { color: #4f46e5; }
+    .bnav-btn .bnav-icon { font-size: 22px; line-height: 1; }
+
+    /* Tap highlight off globally */
+    * { -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
 
   <!-- Header -->
-  <div class="bg-red-600 text-white px-4 py-4 shadow">
+  <div class="bg-red-600 text-white px-4 py-4 shadow sticky top-0 z-50">
     <div class="max-w-xl mx-auto flex items-center justify-between">
       <div>
         <h1 class="text-xl font-bold">Miru</h1>
         <p class="text-red-200 text-xs">See everything, decide anything.</p>
       </div>
-      <button onclick="showHome()" class="text-red-200 text-sm underline hover:text-white">Home</button>
+      <button onclick="showHome()" class="text-red-200 text-sm font-semibold hover:text-white px-2 py-1">Home</button>
     </div>
   </div>
 
-  <div class="max-w-xl mx-auto px-4">
+  <div class="max-w-xl mx-auto px-4 main-content">
 
     <!-- ── HOME SCREEN ── -->
     <div id="screen-home" class="screen active pt-8">
@@ -1581,6 +1607,35 @@
     libOpenDoc("{{ prefill_doc }}");
   });
   {% endif %}
+
+  // ── Bottom nav active state ──────────────────────────────────────────────────
+  function _updateBottomNav(name) {
+    ["fuel","report","company","library"].forEach(s => {
+      document.getElementById("bnav-" + s).classList.toggle("active", s === name);
+    });
+  }
+  const _origShowScreen = showScreen;
+  showScreen = function(name) { _origShowScreen(name); _updateBottomNav(name); };
+  const _origShowHome = showHome;
+  showHome = function() { _origShowHome();
+    ["fuel","report","company","library"].forEach(s => document.getElementById("bnav-"+s).classList.remove("active"));
+  };
 </script>
+
+<!-- Bottom Navigation -->
+<nav id="bottom-nav">
+  <button class="bnav-btn" id="bnav-fuel" onclick="showScreen('fuel')">
+    <span class="bnav-icon">⛽</span>Fuel
+  </button>
+  <button class="bnav-btn" id="bnav-report" onclick="showScreen('report')">
+    <span class="bnav-icon">🏠</span>Area
+  </button>
+  <button class="bnav-btn" id="bnav-company" onclick="showScreen('company')">
+    <span class="bnav-icon">🏢</span>Company
+  </button>
+  <button class="bnav-btn" id="bnav-library" onclick="showScreen('library')">
+    <span class="bnav-icon">📚</span>Library
+  </button>
+</nav>
 </body>
 </html>
