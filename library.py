@@ -2,13 +2,22 @@ import os
 import uuid
 
 from supabase import create_client
+from algoliasearch.search_client import SearchClient
 
 _SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 _SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+_ALGOLIA_APP  = os.environ.get("ALGOLIA_APP_ID", "")
+_ALGOLIA_KEY  = os.environ.get("ALGOLIA_API_KEY", "")
+_INDEX_NAME   = "library_chunks"
 
 
 def _sb():
     return create_client(_SUPABASE_URL, _SUPABASE_KEY)
+
+
+def _idx():
+    client = SearchClient.create(_ALGOLIA_APP, _ALGOLIA_KEY)
+    return client.init_index(_INDEX_NAME)
 
 
 def chunk_text(text: str, chunk_size: int = 600, overlap: int = 80) -> list:
@@ -31,16 +40,33 @@ def upload_document(title: str, text: str, doc_type: str = "note", page_count: i
         "char_count":   len(text),
         "share_id":     share_id,
     }).execute()
-    doc_id = doc.data[0]["id"]
+    doc_record = doc.data[0]
+    doc_id = doc_record["id"]
 
     chunks = chunk_text(text)
     if chunks:
+        # Store in Supabase
         sb.table("library_chunks").insert([
             {"doc_id": doc_id, "chunk_index": i, "content": c}
             for i, c in enumerate(chunks)
         ]).execute()
 
-    return doc.data[0]
+        # Index in Algolia
+        try:
+            idx = _idx()
+            idx.save_objects([{
+                "objectID":    f"{share_id}_{i}",
+                "share_id":    share_id,
+                "doc_id":      doc_id,
+                "doc_title":   title,
+                "doc_type":    doc_type,
+                "chunk_index": i,
+                "content":     c,
+            } for i, c in enumerate(chunks)])
+        except Exception:
+            pass  # Algolia indexing failure doesn't block upload
+
+    return doc_record
 
 
 def list_documents() -> list:
@@ -64,7 +90,45 @@ def get_document(share_id: str) -> dict | None:
     return doc
 
 
+def search_library(query: str, n: int = 10) -> list:
+    """Full-text search across all documents via Algolia. Returns grouped results by doc."""
+    try:
+        idx = _idx()
+        res = idx.search(query, {"hitsPerPage": n * 2, "attributesToRetrieve": [
+            "share_id", "doc_title", "doc_type", "content", "chunk_index"
+        ]})
+        hits = res.get("hits", [])
+        # Deduplicate — one result per doc, best matching chunk
+        seen, results = set(), []
+        for h in hits:
+            if h["share_id"] not in seen:
+                seen.add(h["share_id"])
+                results.append({
+                    "share_id":  h["share_id"],
+                    "title":     h["doc_title"],
+                    "doc_type":  h["doc_type"],
+                    "snippet":   h["content"][:200],
+                })
+        return results[:n]
+    except Exception:
+        return []
+
+
+def search_all_chunks(query: str, n: int = 8) -> list:
+    """Return top-n chunks across all docs for RAG, with source info."""
+    try:
+        idx = _idx()
+        res = idx.search(query, {"hitsPerPage": n, "attributesToRetrieve": [
+            "share_id", "doc_title", "content"
+        ]})
+        return [{"title": h["doc_title"], "share_id": h["share_id"], "content": h["content"]}
+                for h in res.get("hits", [])]
+    except Exception:
+        return []
+
+
 def search_chunks(doc_id: str, query: str, n: int = 6) -> list:
+    """Keyword search within a single doc (fallback if Algolia unavailable)."""
     sb = _sb()
     chunks = sb.table("library_chunks").select("content").eq("doc_id", doc_id).execute().data
     if not chunks:
@@ -76,4 +140,11 @@ def search_chunks(doc_id: str, query: str, n: int = 6) -> list:
 
 def delete_document(share_id: str) -> bool:
     sb = _sb()
-    return bool(sb.table("library_docs").delete().eq("share_id", share_id).execute().data)
+    result = sb.table("library_docs").delete().eq("share_id", share_id).execute()
+    # Remove from Algolia index
+    try:
+        idx = _idx()
+        idx.delete_by({"filters": f"share_id:{share_id}"})
+    except Exception:
+        pass
+    return bool(result.data)

@@ -390,6 +390,40 @@
           </button>
         </div>
 
+        <!-- Search bar -->
+        <div class="relative mb-3">
+          <input id="lib-search-input" type="text" placeholder="Search your library…"
+            oninput="libSearch()"
+            class="w-full text-sm border border-gray-200 rounded-2xl pl-9 pr-4 py-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 bg-white">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base">🔍</span>
+          <button id="lib-search-clear" onclick="libSearchClear()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        </div>
+
+        <!-- Search results -->
+        <div id="lib-search-results" class="hidden mb-4">
+          <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Search Results</div>
+          <div id="lib-search-list" class="flex flex-col gap-2"></div>
+        </div>
+
+        <!-- Ask your Library -->
+        <div id="lib-ask-panel" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+          <div class="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
+            <span class="text-sm font-semibold text-gray-700">🤖 Ask your Library</span>
+            <span class="text-xs text-gray-400">— searches across all documents</span>
+          </div>
+          <div id="lib-ask-msgs" class="flex flex-col gap-3 px-4 py-3 max-h-[280px] overflow-y-auto text-sm">
+            <div class="self-start bg-emerald-50 text-emerald-700 text-sm px-3 py-2 rounded-2xl rounded-tl-sm max-w-xs leading-relaxed">
+              Ask me anything — I'll search across all your documents to find the answer.
+            </div>
+          </div>
+          <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
+            <input id="lib-ask-input" type="text" placeholder="Ask anything across all docs…"
+              class="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50"
+              onkeydown="if(event.key==='Enter') libAsk()">
+            <button onclick="libAsk()" class="bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-emerald-700 transition">Ask</button>
+          </div>
+        </div>
+
         <!-- Upload panel -->
         <div id="lib-upload-panel" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
           <div class="text-sm font-semibold text-gray-700 mb-3">Add to Library</div>
@@ -1473,6 +1507,71 @@
     btn.textContent = "…";
     await fetch(`/api/library/delete/${shareId}`, { method: "DELETE" });
     libLoadDocs();
+  }
+
+  let _libSearchTimer = null;
+  function libSearch() {
+    const q = document.getElementById("lib-search-input").value.trim();
+    document.getElementById("lib-search-clear").classList.toggle("hidden", !q);
+    clearTimeout(_libSearchTimer);
+    if (!q) { document.getElementById("lib-search-results").classList.add("hidden"); return; }
+    _libSearchTimer = setTimeout(async () => {
+      const r = await fetch(`/api/library/search?q=${encodeURIComponent(q)}`);
+      const hits = await r.json();
+      const list = document.getElementById("lib-search-list");
+      if (!hits.length) {
+        list.innerHTML = `<div class="text-sm text-gray-400 py-2">No results found.</div>`;
+      } else {
+        const icon = t => t === "pdf" ? "📄" : "📝";
+        list.innerHTML = hits.map(h => `
+          <div onclick="libOpenDoc('${h.share_id}')"
+            class="bg-white border border-gray-100 rounded-2xl p-3 cursor-pointer hover:border-indigo-200 transition">
+            <div class="flex items-center gap-2 mb-1">
+              <span>${icon(h.doc_type)}</span>
+              <span class="font-semibold text-gray-800 text-sm">${h.title}</span>
+            </div>
+            <div class="text-xs text-gray-500 leading-relaxed line-clamp-2">${h.snippet}…</div>
+          </div>`).join("");
+      }
+      document.getElementById("lib-search-results").classList.remove("hidden");
+    }, 350);
+  }
+
+  function libSearchClear() {
+    document.getElementById("lib-search-input").value = "";
+    document.getElementById("lib-search-results").classList.add("hidden");
+    document.getElementById("lib-search-clear").classList.add("hidden");
+  }
+
+  let _libAskHistory = [];
+  async function libAsk() {
+    const input = document.getElementById("lib-ask-input");
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = "";
+    const msgs = document.getElementById("lib-ask-msgs");
+    msgs.innerHTML += `<div class="self-end bg-indigo-600 text-white text-sm px-3 py-2 rounded-2xl rounded-tr-sm max-w-xs leading-relaxed">${q}</div>`;
+    msgs.innerHTML += `<div id="lib-ask-thinking" class="self-start bg-gray-100 text-gray-400 text-xs px-3 py-2 rounded-2xl rounded-tl-sm">Searching your library…</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+    try {
+      const r = await fetch("/api/library/ask", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ question: q, history: _libAskHistory }),
+      });
+      const d = await r.json();
+      document.getElementById("lib-ask-thinking")?.remove();
+      const answer = d.answer || "No answer found.";
+      _libAskHistory.push({role:"user", content:q}, {role:"assistant", content:answer});
+      const sources = (d.sources || []).map(s =>
+        `<span onclick="libOpenDoc('${s.share_id}')" class="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition">${s.title} →</span>`
+      ).join(" ");
+      msgs.innerHTML += `<div class="self-start bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded-2xl rounded-tl-sm max-w-xs leading-relaxed">${answer}${sources ? `<div class="mt-2">${sources}</div>` : ""}</div>`;
+    } catch(e) {
+      document.getElementById("lib-ask-thinking")?.remove();
+      msgs.innerHTML += `<div class="self-start bg-red-50 text-red-500 text-xs px-3 py-2 rounded-2xl">Error — please try again.</div>`;
+    }
+    msgs.scrollTop = msgs.scrollHeight;
   }
 
   // ── Shareable doc URL ───────────────────────────────────────────────────────

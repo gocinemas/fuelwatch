@@ -415,6 +415,51 @@ def api_library_delete(share_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/library/search")
+def api_library_search():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify([])
+    try:
+        return jsonify(lib.search_library(q))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/library/ask", methods=["POST"])
+def api_library_ask():
+    try:
+        data = request.get_json()
+        question = data.get("question", "").strip()
+        history  = data.get("history", [])
+        if not question:
+            return jsonify({"error": "Missing question"}), 400
+
+        chunks = lib.search_all_chunks(question)
+        if not chunks:
+            return jsonify({"answer": "I couldn't find anything relevant in your library. Try rephrasing or uploading more documents.", "sources": []})
+
+        context = "\n\n---\n\n".join(
+            f'[From: {c["title"]}]\n{c["content"]}' for c in chunks
+        )
+        sources = list({c["share_id"]: c["title"] for c in chunks}.items())
+
+        system = (
+            "You are a helpful assistant with access to the user's personal document library. "
+            "Answer the question using the relevant excerpts below. "
+            "Cite which document your answer comes from.\n\n"
+            f"Relevant excerpts:\n{context}"
+        )
+        messages = history[-6:] + [{"role": "user", "content": question}]
+        answer = _groq_chat(system, messages, max_tokens=700)
+        return jsonify({
+            "answer":  answer,
+            "sources": [{"share_id": sid, "title": t} for sid, t in sources],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _resolve_postcode(postcode):
     """Shared helper: validate postcode, return (postcode, lat, lon, pc_fmt) or None."""
     postcode = postcode.strip().upper().replace(" ", "")
