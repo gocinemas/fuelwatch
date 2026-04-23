@@ -413,15 +413,34 @@
           </button>
         </div>
 
-        <!-- Single ask/search bar -->
-        <div id="lib-ask-panel" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <div id="lib-ask-msgs" class="flex flex-col gap-3 px-4 py-4 max-h-[260px] overflow-y-auto text-sm">
+        <!-- Search bar -->
+        <div class="relative mb-3">
+          <input id="lib-search-input" type="text" placeholder="Search documents…"
+            oninput="libSearch()"
+            class="w-full text-sm border border-gray-200 rounded-2xl pl-9 pr-10 py-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 bg-white">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+          <button id="lib-search-clear" onclick="libSearchClear()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">✕</button>
+        </div>
+
+        <!-- Search results -->
+        <div id="lib-search-results" class="hidden mb-4">
+          <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2 px-1">Results</div>
+          <div id="lib-search-list" class="flex flex-col gap-2"></div>
+        </div>
+
+        <!-- Ask AI — collapsible -->
+        <button onclick="libToggleAsk()" class="w-full flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 mb-2 text-sm text-emerald-800 font-medium">
+          <span>✨ Ask AI — search across all documents</span>
+          <span id="lib-ask-chevron" class="text-emerald-500 text-xs">▼</span>
+        </button>
+        <div id="lib-ask-panel" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+          <div id="lib-ask-msgs" class="flex flex-col gap-3 px-4 py-4 max-h-[240px] overflow-y-auto text-sm">
             <div class="self-start bg-emerald-50 text-emerald-700 text-sm px-3 py-2 rounded-2xl rounded-tl-sm leading-relaxed">
               Ask me anything — I'll find the answer across all your documents.
             </div>
           </div>
           <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
-            <input id="lib-ask-input" type="text" placeholder="Search or ask your library…"
+            <input id="lib-ask-input" type="text" placeholder="e.g. What does my contract say about notice period?"
               class="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50"
               onkeydown="if(event.key==='Enter') libAsk()">
             <button onclick="libAsk()" class="bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-emerald-700 transition">Ask</button>
@@ -1353,10 +1372,12 @@
         <div class="text-xs text-gray-400 mt-1">${meta} · ${date}</div>
       </div>
       <div class="flex items-center gap-1 shrink-0">
+        <a href="/api/library/download/${d.share_id}" onclick="event.stopPropagation()" download
+          class="text-gray-300 hover:text-indigo-500 text-lg transition" title="Download">⬇</a>
         <button onclick="libToggleBookmark('${d.share_id}', event)"
           class="text-xl transition ${bookmarked ? "opacity-100" : "opacity-30 hover:opacity-80"}" title="${bookmarked ? "Remove bookmark" : "Bookmark"}">${bookmarked ? "⭐" : "☆"}</button>
         <button onclick="event.stopPropagation(); libDeleteDoc('${d.share_id}', this)"
-          class="text-gray-300 hover:text-red-400 text-lg transition ml-1">✕</button>
+          class="text-gray-300 hover:text-red-400 text-lg transition">✕</button>
       </div>
     </div>`;
   }
@@ -1551,6 +1572,14 @@
     libLoadDocs();
   }
 
+  function libToggleAsk() {
+    const panel = document.getElementById("lib-ask-panel");
+    const chevron = document.getElementById("lib-ask-chevron");
+    const hidden = panel.classList.toggle("hidden");
+    chevron.textContent = hidden ? "▼" : "▲";
+    if (!hidden) document.getElementById("lib-ask-input").focus();
+  }
+
   let _libSearchTimer = null;
   function libSearch() {
     const q = document.getElementById("lib-search-input").value.trim();
@@ -1562,7 +1591,7 @@
       const hits = await r.json();
       const list = document.getElementById("lib-search-list");
       if (!hits.length) {
-        list.innerHTML = `<div class="text-sm text-gray-400 py-2">No results found.</div>`;
+        list.innerHTML = `<div class="text-sm text-gray-400 py-2 px-1">No documents found for "${q}".</div>`;
       } else {
         const icon = t => t === "pdf" ? "📄" : "📝";
         list.innerHTML = hits.map(h => `

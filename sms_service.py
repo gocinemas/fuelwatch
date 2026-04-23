@@ -415,6 +415,21 @@ def api_library_delete(share_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/library/download/<share_id>")
+def api_library_download(share_id):
+    from flask import Response
+    doc = lib.get_document(share_id)
+    if not doc:
+        return "Not found", 404
+    filename = (doc.get("title") or "document").replace(" ", "_").replace("/", "-") + ".txt"
+    content = doc.get("text_content") or "\n".join(c["content"] for c in doc.get("chunks", []))
+    return Response(
+        content,
+        mimetype="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @app.route("/api/library/reindex")
 def api_library_reindex():
     try:
