@@ -557,12 +557,16 @@ def _fetch_share_price(company: str) -> dict:
         )
         quotes = sr.json().get("quotes", [])
         equity = [q for q in quotes if q.get("quoteType") == "EQUITY"]
-        pick = equity[0] if equity else (quotes[0] if quotes else None)
+        # Prefer UK/LSE listings (.L suffix or London exchange)
+        uk = [q for q in equity if
+              q.get("symbol", "").endswith(".L") or
+              "london" in (q.get("exchDisp") or q.get("exchange") or "").lower()]
+        pick = uk[0] if uk else (equity[0] if equity else (quotes[0] if quotes else None))
         if pick:
             ticker    = pick.get("symbol", "")
             disp_name = pick.get("shortname") or pick.get("longname") or company
             exchange  = pick.get("exchDisp") or pick.get("exchange", "")
-            currency  = pick.get("currency", "USD")
+            currency  = pick.get("currency", "GBp" if ticker.endswith(".L") else "USD")
     except Exception as e:
         print(f"[share_price] ticker lookup failed: {e}")
 
@@ -640,7 +644,7 @@ def _fetch_share_price(company: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v3"  # bump when result schema changes to bust stale cache
+_COMPANY_VER = "v4"  # bump when result schema changes to bust stale cache
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -878,6 +882,7 @@ def fetch_company_info(company: str) -> dict:
         news_f     = pool.submit(_fetch_news, company, "", 6)
         ai_news_f  = pool.submit(_fetch_news, company, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
         strat_f    = pool.submit(_fetch_news, company, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
+        results_f  = pool.submit(_fetch_news, company, 'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"', 3)
         share_f    = pool.submit(_fetch_share_price, company)
         gh_f       = pool.submit(_fetch_greenhouse, slugs)
         lv_f       = pool.submit(_fetch_lever, slugs)
@@ -908,6 +913,12 @@ def fetch_company_info(company: str) -> dict:
         except Exception:
             pass
 
+        results_news = []
+        try:
+            results_news = results_f.result(timeout=10) or []
+        except Exception:
+            pass
+
         share = {}
         try:
             share = share_f.result(timeout=8) or {}
@@ -930,6 +941,7 @@ def fetch_company_info(company: str) -> dict:
         "news":          news,
         "ai_news":       ai_news,
         "strategy_news": strategy_news,
+        "results_news":  results_news,
         "share":         share,
         "ai_signals":    _ai_job_signals(jobs),
         "jobs":          jobs,

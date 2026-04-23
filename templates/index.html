@@ -251,6 +251,15 @@
           </div>
         </details>
 
+        <!-- Last Results -->
+        <details id="co-results" class="co-section hidden" open>
+          <summary>📊 Last Results</summary>
+          <div class="co-body">
+            <div id="co-results-summary" class="text-sm text-gray-600 leading-relaxed mb-3"></div>
+            <div id="co-results-list" class="divide-y divide-gray-50 text-sm"></div>
+          </div>
+        </details>
+
         <!-- Strategy & Direction -->
         <details id="co-strategy" class="co-section hidden" open>
           <summary>🧭 Strategy & Direction</summary>
@@ -714,7 +723,7 @@
     _saveRecent("miru_company", name);
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
-    ["co-overview","co-stats","co-share","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links"].forEach(id =>
+    ["co-overview","co-stats","co-share","co-ai","co-results","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
       const r = await _fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
@@ -846,6 +855,23 @@
           </div>`).join("");
       }
       document.getElementById("co-ai").classList.remove("hidden");
+    }
+
+    // Last Results
+    const resultsNews = d.results_news || [];
+    if (resultsNews.length) {
+      const top = resultsNews[0];
+      document.getElementById("co-results-summary").innerHTML =
+        `<p class="mb-2">${top.title}</p>` +
+        `<div class="text-xs text-gray-400">${top.source ? top.source + " · " : ""}${top.date}</div>`;
+      document.getElementById("co-results-list").innerHTML = resultsNews.slice(1).map(n => `
+        <div class="py-2.5">
+          <a href="${n.url}" target="_blank" class="font-medium text-gray-800 hover:text-indigo-600 leading-snug block">${n.title}</a>
+          <div class="text-xs text-gray-400 mt-0.5">${n.source ? n.source + " · " : ""}${n.date}</div>
+        </div>`).join("");
+      const topLink = `<a href="${top.url}" target="_blank" class="inline-block mt-3 text-xs bg-indigo-50 text-indigo-600 font-medium px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">View full results →</a>`;
+      document.getElementById("co-results-summary").innerHTML += topLink;
+      document.getElementById("co-results").classList.remove("hidden");
     }
 
     // Strategy & Direction
