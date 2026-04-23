@@ -67,21 +67,20 @@
         <div class="text-6xl mb-5">👁</div>
         <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">Miru</h2>
         <p class="text-gray-500 mt-2 text-base max-w-xs">See everything, decide anything.</p>
-        <div class="mt-8 flex flex-col gap-2 w-full max-w-xs text-sm text-gray-400">
-          <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
-            <span class="text-xl">⛽</span><span class="text-gray-600 font-medium">Live fuel prices near any postcode</span>
-          </div>
-          <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
-            <span class="text-xl">🏠</span><span class="text-gray-600 font-medium">House prices, schools & local pubs</span>
-          </div>
-          <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
-            <span class="text-xl">🏢</span><span class="text-gray-600 font-medium">Company overview, facts & jobs</span>
-          </div>
-          <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
-            <span class="text-xl">📚</span><span class="text-gray-600 font-medium">Your notes, PDFs & AI chat</span>
-          </div>
+        <div class="mt-8 flex flex-col gap-2 w-full max-w-xs">
+          <button onclick="showScreen('fuel')" class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 active:bg-gray-50 text-left w-full">
+            <span class="text-xl">⛽</span><span class="text-gray-700 font-medium text-sm">Live fuel prices near any postcode</span>
+          </button>
+          <button onclick="showScreen('report')" class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 active:bg-gray-50 text-left w-full">
+            <span class="text-xl">🏠</span><span class="text-gray-700 font-medium text-sm">House prices, schools & local pubs</span>
+          </button>
+          <button onclick="showScreen('company')" class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 active:bg-gray-50 text-left w-full">
+            <span class="text-xl">🏢</span><span class="text-gray-700 font-medium text-sm">Company overview, facts & jobs</span>
+          </button>
+          <button onclick="showScreen('library')" class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 active:bg-gray-50 text-left w-full">
+            <span class="text-xl">📚</span><span class="text-gray-700 font-medium text-sm">Your notes, PDFs & AI chat</span>
+          </button>
         </div>
-        <p class="mt-8 text-xs text-gray-400">Tap a section below to get started</p>
       </div>
     </div>
 
