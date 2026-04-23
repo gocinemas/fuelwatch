@@ -44,18 +44,28 @@
 
     /* Inter font — matches humanagency.co */
     body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+
+    /* Typography refinements */
+    h1, h2, h3 { letter-spacing: -0.4px; line-height: 1.2; }
+    h1 { font-weight: 900; }
+    h2 { font-weight: 800; }
+    h3 { font-weight: 700; }
+    p  { line-height: 1.6; }
+    .text-xs  { letter-spacing: 0.01em; }
+    .font-bold { letter-spacing: -0.2px; }
+    .font-semibold { letter-spacing: -0.1px; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
 
   <!-- Header -->
-  <div class="bg-red-600 text-white px-4 py-4 shadow sticky top-0 z-50">
+  <div class="bg-red-600 text-white px-4 shadow sticky top-0 z-50" style="padding-top:14px;padding-bottom:14px;">
     <div class="max-w-xl mx-auto flex items-center justify-between">
-      <div>
-        <h1 class="text-xl font-bold">Miru</h1>
-        <p class="text-red-200 text-xs">See everything, decide anything.</p>
+      <div style="line-height:1">
+        <div style="font-size:20px;font-weight:900;letter-spacing:-0.8px;color:#fff">Miru</div>
+        <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.6);margin-top:2px;letter-spacing:0.02em">See everything, decide anything.</div>
       </div>
-      <button onclick="showHome()" class="text-red-200 text-sm font-semibold hover:text-white px-2 py-1">Home</button>
+      <button onclick="showHome()" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);padding:6px 10px;border:none;background:transparent;cursor:pointer">Home</button>
     </div>
   </div>
 
@@ -63,22 +73,26 @@
 
     <!-- ── HOME SCREEN ── -->
     <div id="screen-home" class="screen active">
-      <div class="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div class="text-6xl mb-5">👁</div>
-        <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">Miru</h2>
-        <p class="text-gray-500 mt-2 text-base max-w-xs">See everything, decide anything.</p>
-        <div class="mt-8 flex flex-col gap-2 w-full max-w-xs">
-          <button onclick="showScreen('fuel')" class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 active:bg-gray-50 text-left w-full">
-            <span class="text-xl">⛽</span><span class="text-gray-700 font-medium text-sm">Live fuel prices near any postcode</span>
+      <div class="flex flex-col items-center justify-center text-center px-2" style="min-height:58vh;padding-top:48px;padding-bottom:32px;">
+        <div style="font-size:52px;margin-bottom:16px;line-height:1">👁</div>
+        <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:#111">Miru</div>
+        <div style="font-size:14px;font-weight:400;color:#888;margin-top:6px;letter-spacing:0.01em">See everything, decide anything.</div>
+        <div style="margin-top:28px;display:flex;flex-direction:column;gap:8px;width:100%;max-width:300px;">
+          <button onclick="showScreen('fuel')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
+            <span style="font-size:20px;line-height:1">⛽</span>
+            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">Fuel Prices</span>
           </button>
-          <button onclick="showScreen('report')" class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 active:bg-gray-50 text-left w-full">
-            <span class="text-xl">🏠</span><span class="text-gray-700 font-medium text-sm">House prices, schools & local pubs</span>
+          <button onclick="showScreen('report')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
+            <span style="font-size:20px;line-height:1">🏠</span>
+            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">Area Report</span>
           </button>
-          <button onclick="showScreen('company')" class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 active:bg-gray-50 text-left w-full">
-            <span class="text-xl">🏢</span><span class="text-gray-700 font-medium text-sm">Company overview, facts & jobs</span>
+          <button onclick="showScreen('company')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
+            <span style="font-size:20px;line-height:1">🏢</span>
+            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">Company Intel</span>
           </button>
-          <button onclick="showScreen('library')" class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 active:bg-gray-50 text-left w-full">
-            <span class="text-xl">📚</span><span class="text-gray-700 font-medium text-sm">Your notes, PDFs & AI chat</span>
+          <button onclick="showScreen('library')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
+            <span style="font-size:20px;line-height:1">📚</span>
+            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">My Library</span>
           </button>
         </div>
       </div>
