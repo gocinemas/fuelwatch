@@ -404,19 +404,22 @@ def api_company():
     return jsonify(fetch_company_info(name))
 
 
-def _groq_chat(system, messages, max_tokens=600):
+def _groq_chat(system, messages, max_tokens=600, json_mode=False):
     """Call Groq API (OpenAI-compatible). Returns reply text."""
+    body = {
+        "model": "llama-3.3-70b-versatile",
+        "max_tokens": max_tokens,
+        "messages": [{"role": "system", "content": system}] + messages,
+    }
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
     r = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
             "Content-Type": "application/json",
         },
-        json={
-            "model": "llama-3.1-8b-instant",
-            "max_tokens": max_tokens,
-            "messages": [{"role": "system", "content": system}] + messages,
-        },
+        json=body,
         timeout=15,
     )
     r.raise_for_status()
@@ -441,27 +444,25 @@ def api_company_results():
             if results_news else "No recent results news found."
 
         text = _groq_chat(
-            "You are a financial analyst covering UK-listed companies. Return ONLY valid JSON, no markdown fences.",
+            "You are a financial analyst covering UK-listed companies. Always respond with valid JSON only.",
             [{"role": "user", "content": f"""Based on these recent news headlines about {company}'s financial results:
 
 {context}
 
-Return ONLY valid JSON (no markdown, no backticks):
-{{
-  "period": "e.g. FY2025 or H1 2025",
-  "headline": "one sentence summary of the key result",
-  "highlights": ["metric or highlight 1", "metric or highlight 2", "metric or highlight 3"],
-  "sentiment": "positive|neutral|negative",
-  "context": "2-3 sentences summarising the results for follow-up questions"
-}}"""}],
+Return a JSON object with exactly these fields:
+- period: string (e.g. "FY2025" or "H1 2025")
+- headline: string (one sentence summary of the key result)
+- highlights: array of 3 strings (key metrics or highlights)
+- sentiment: string ("positive", "neutral", or "negative")
+- context: string (2-3 sentences summarising the results)"""}],
             max_tokens=600,
+            json_mode=True,
         )
-        clean = re.sub(r"```json|```", "", text).strip()
         try:
-            result = json.loads(clean)
+            result = json.loads(text)
         except Exception:
-            m = re.search(r'\{[\s\S]*\}', clean)
-            result = json.loads(m.group(0)) if m else {"headline": clean, "highlights": [], "context": clean}
+            m = re.search(r'\{[\s\S]*\}', text)
+            result = json.loads(m.group(0)) if m else {"headline": text, "highlights": [], "context": text}
 
         result["news"] = results_news[:3]
         return jsonify(result)
