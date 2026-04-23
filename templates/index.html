@@ -752,6 +752,7 @@
       const d = JSON.parse(txt);
       if (d.error) { setError("company", d.error); setLoading("company", false); return; }
       renderCompany(d);
+      if (_pendingCoTab) { switchCoTab(_pendingCoTab); _pendingCoTab = null; }
     } catch(e) {
       setError("company", "Search timed out — try again.");
     }
@@ -759,10 +760,12 @@
   }
 
   let _coCurrentName = "";
+  let _pendingCoTab = null;
 
   function shareCompany() {
     const slug = _coCurrentName.toLowerCase().replace(/\s+/g, "-");
-    const url = `${location.origin}/${slug}`;
+    const tab = _coActiveTab !== "overview" ? `?tab=${_coActiveTab}` : "";
+    const url = `${location.origin}/${slug}${tab}`;
     if (navigator.share) {
       navigator.share({ title: _coCurrentName, url });
     } else {
@@ -995,7 +998,9 @@
 
   // ── Company tabs ────────────────────────────────────────────────────────────
   const CO_TABS = ["overview","financials","intel","jobs"];
+  let _coActiveTab = "overview";
   function switchCoTab(tab) {
+    _coActiveTab = tab;
     CO_TABS.forEach(t => {
       document.getElementById("co-tab-" + t).classList.toggle("hidden", t !== tab);
       document.getElementById("co-tab-btn-" + t).classList.toggle("active", t === tab);
@@ -1123,6 +1128,8 @@
   // ── Shareable company URL ───────────────────────────────────────────────────
   {% if prefill_company %}
   window.addEventListener("DOMContentLoaded", () => {
+    const _urlTab = new URLSearchParams(location.search).get("tab");
+    if (_urlTab && CO_TABS.includes(_urlTab)) _pendingCoTab = _urlTab;
     showScreen("company");
     document.getElementById("company-input").value = "{{ prefill_company }}";
     searchCompany();
