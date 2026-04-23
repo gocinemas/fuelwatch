@@ -497,6 +497,13 @@ def api_company_chat():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/company/youtube-test")
+def api_youtube_test():
+    from search import _fetch_youtube
+    results = _fetch_youtube("Unilever")
+    return jsonify({"count": len(results), "items": results})
+
+
 @app.route("/api/company/groq-test")
 def api_groq_test():
     key = os.environ.get("GROQ_API_KEY", "")

@@ -909,7 +909,7 @@ def _fetch_ashby(slugs: list) -> list:
 
 def _fetch_youtube(company: str) -> list:
     """Search YouTube for company videos — interviews, overviews, podcasts."""
-    key = os.environ.get("GOOGLE_API_KEY", "")
+    key = GOOGLE_API_KEY
     if not key:
         return []
     try:
