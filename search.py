@@ -952,10 +952,12 @@ def fetch_company_info(company: str) -> dict:
     enc = requests.utils.quote(company)
     slug = slugs[0] if slugs else ""
     links = {
-        "linkedin":    f"https://www.linkedin.com/company/{slug}",
-        "glassdoor":   f"https://www.glassdoor.co.uk/Search/results.htm?keyword={enc}",
-        "ch":          f"https://find-and-update.company-information.service.gov.uk/search?q={enc}",
-        "indeed":      f"https://uk.indeed.com/jobs?q={enc}",
+        "linkedin":       f"https://www.linkedin.com/company/{slug}",
+        "linkedin_jobs":  f"https://www.linkedin.com/jobs/search/?keywords={enc}",
+        "glassdoor":      f"https://www.glassdoor.co.uk/Search/results.htm?keyword={enc}",
+        "indeed":         f"https://uk.indeed.com/jobs?q={enc}",
+        "reed":           f"https://www.reed.co.uk/jobs/{enc}-jobs",
+        "totaljobs":      f"https://www.totaljobs.com/jobs/{enc}",
     }
 
     with _cf.ThreadPoolExecutor(max_workers=10) as pool:

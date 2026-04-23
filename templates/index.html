@@ -323,8 +323,11 @@
           </div>
           <div id="co-jobs" class="co-card hidden">
             <div class="co-card-title">💼 Open Positions</div>
-            <p id="co-jobs-source" class="text-xs text-gray-400 mb-3"></p>
+            <p id="co-jobs-source" class="text-xs text-gray-400 mb-2"></p>
+            <input id="co-jobs-filter" type="text" placeholder="Filter roles…" oninput="filterJobs()"
+              class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50">
             <div id="co-jobs-list" class="divide-y divide-gray-50 text-sm"></div>
+            <p id="co-jobs-none" class="hidden text-sm text-gray-400 text-center py-3">No matching roles</p>
           </div>
           <div id="co-no-jobs" class="hidden"></div>
           <div id="co-links" class="co-card hidden">
@@ -942,24 +945,38 @@
 
     // Job signals
     const sig = d.job_signals || {};
+    const ai  = d.ai_signals  || {};
     if (sig.total) {
-      let sHtml = `<div class="flex gap-4 mb-3">
-        <div class="bg-indigo-50 rounded-xl px-4 py-2 text-center">
-          <div class="text-xl font-bold text-indigo-700">${sig.total}</div>
-          <div class="text-xs text-gray-500">Open roles</div>
+      const remotePct = sig.remote ? Math.round(sig.remote / sig.total * 100) : 0;
+      let sHtml = `<div class="flex flex-wrap gap-2 mb-4">
+        <div class="bg-indigo-50 rounded-xl px-4 py-2.5 text-center min-w-[72px]">
+          <div class="text-2xl font-bold text-indigo-700">${sig.total}</div>
+          <div class="text-xs text-gray-500 mt-0.5">Open roles</div>
         </div>
-        ${sig.remote ? `<div class="bg-green-50 rounded-xl px-4 py-2 text-center">
-          <div class="text-xl font-bold text-green-700">${sig.remote}</div>
-          <div class="text-xs text-gray-500">Remote</div>
+        ${sig.remote ? `<div class="bg-green-50 rounded-xl px-4 py-2.5 text-center min-w-[72px]">
+          <div class="text-2xl font-bold text-green-700">${sig.remote}</div>
+          <div class="text-xs text-gray-500 mt-0.5">Remote (${remotePct}%)</div>
+        </div>` : ""}
+        ${ai.ai_role_count > 0 ? `<div class="bg-violet-50 rounded-xl px-4 py-2.5 text-center min-w-[72px]">
+          <div class="text-2xl font-bold text-violet-700">${ai.ai_role_count}</div>
+          <div class="text-xs text-gray-500 mt-0.5">AI / ML roles</div>
         </div>` : ""}
       </div>`;
       if (sig.departments && sig.departments.length) {
-        sHtml += `<div class="text-xs text-gray-500 font-medium mb-1">Hiring most in:</div>`;
-        sHtml += sig.departments.map(d2 =>
-          `<div class="flex justify-between py-1 border-b border-gray-50 last:border-0">
-            <span class="text-gray-700">${d2.name}</span>
-            <span class="text-gray-400">${d2.count} role${d2.count > 1 ? "s" : ""}</span>
-          </div>`).join("");
+        const maxCount = sig.departments[0].count;
+        sHtml += `<div class="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">Hiring most in</div>`;
+        sHtml += sig.departments.map(d2 => {
+          const pct = Math.round(d2.count / maxCount * 100);
+          return `<div class="mb-2">
+            <div class="flex justify-between text-sm mb-1">
+              <span class="text-gray-700 font-medium">${d2.name}</span>
+              <span class="text-gray-400 text-xs">${d2.count} role${d2.count > 1 ? "s" : ""}</span>
+            </div>
+            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-400 rounded-full" style="width:${pct}%"></div>
+            </div>
+          </div>`;
+        }).join("");
       }
       document.getElementById("co-signals-body").innerHTML = sHtml;
       document.getElementById("co-signals").classList.remove("hidden");
@@ -968,26 +985,52 @@
     // Jobs
     if (d.jobs && d.jobs.length) {
       document.getElementById("co-jobs-source").textContent = `Via ${d.jobs_source} · ${d.jobs.length} open role${d.jobs.length !== 1 ? "s" : ""}`;
-      document.getElementById("co-jobs-list").innerHTML = d.jobs.map(j => `
-        <div class="py-2.5">
-          <div class="font-medium text-gray-800 text-sm">${j.title}</div>
-          ${j.location ? `<div class="text-xs text-gray-400 mt-0.5">📍 ${j.location}</div>` : ""}
+      const deptColors = {
+        "Engineering": "bg-blue-50 text-blue-600", "Tech": "bg-blue-50 text-blue-600",
+        "Product": "bg-purple-50 text-purple-600", "Design": "bg-pink-50 text-pink-600",
+        "Sales": "bg-orange-50 text-orange-600", "Marketing": "bg-yellow-50 text-yellow-700",
+        "Finance": "bg-emerald-50 text-emerald-600", "Legal": "bg-emerald-50 text-emerald-600",
+        "Operations": "bg-gray-100 text-gray-600", "People": "bg-rose-50 text-rose-600",
+        "Data": "bg-cyan-50 text-cyan-600", "AI": "bg-violet-50 text-violet-600",
+      };
+      function _deptTag(title) {
+        const t = title.toLowerCase();
+        for (const [k, cls] of Object.entries(deptColors)) {
+          if (t.includes(k.toLowerCase())) return `<span class="text-xs font-medium px-2 py-0.5 rounded-full ${cls}">${k}</span>`;
+        }
+        return "";
+      }
+      window._allJobs = d.jobs;
+      document.getElementById("co-jobs-list").innerHTML = d.jobs.map(j => {
+        const isRemote = (j.location||"").toLowerCase().includes("remote");
+        return `<div class="py-2.5 job-row" data-title="${j.title.toLowerCase()}">
+          <div class="flex items-start justify-between gap-2">
+            <div class="font-medium text-gray-800 text-sm leading-snug">${j.title}</div>
+            ${isRemote ? `<span class="shrink-0 text-xs bg-green-50 text-green-600 font-medium px-2 py-0.5 rounded-full">Remote</span>` : ""}
+          </div>
+          <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+            ${_deptTag(j.title)}
+            ${j.location && !isRemote ? `<span class="text-xs text-gray-400">📍 ${j.location}</span>` : ""}
+          </div>
           <a href="${j.url}" target="_blank"
             class="inline-block mt-1.5 text-xs bg-indigo-50 text-indigo-600 font-medium px-2.5 py-1 rounded-lg hover:bg-indigo-100 transition">
             Apply →
           </a>
-        </div>`).join("");
+        </div>`;
+      }).join("");
       document.getElementById("co-jobs").classList.remove("hidden");
     }
 
-    // Practical links (always shown; Indeed added when no direct job listings)
+    // Practical links
     const L = d.links || {};
     const hasJobs = (d.jobs || []).length > 0;
     const linksHtml = [
-      !hasJobs && L.indeed   && `<a href="${L.indeed}"    target="_blank" class="bg-blue-50 text-blue-700 font-medium px-4 py-2 rounded-xl hover:bg-blue-100 transition">Search jobs on Indeed →</a>`,
+      !hasJobs && L.indeed        && `<a href="${L.indeed}"       target="_blank" class="bg-blue-50 text-blue-700 font-medium px-4 py-2 rounded-xl hover:bg-blue-100 transition">Search on Indeed →</a>`,
+      !hasJobs && L.linkedin_jobs && `<a href="${L.linkedin_jobs}" target="_blank" class="bg-indigo-50 text-indigo-700 font-medium px-4 py-2 rounded-xl hover:bg-indigo-100 transition">Search on LinkedIn Jobs →</a>`,
+      !hasJobs && L.reed          && `<a href="${L.reed}"         target="_blank" class="bg-red-50 text-red-700 font-medium px-4 py-2 rounded-xl hover:bg-red-100 transition">Search on Reed →</a>`,
+      !hasJobs && L.totaljobs     && `<a href="${L.totaljobs}"    target="_blank" class="bg-orange-50 text-orange-700 font-medium px-4 py-2 rounded-xl hover:bg-orange-100 transition">Search on Totaljobs →</a>`,
       L.linkedin  && `<a href="${L.linkedin}"  target="_blank" class="bg-indigo-50 text-indigo-700 font-medium px-4 py-2 rounded-xl hover:bg-indigo-100 transition">LinkedIn page →</a>`,
       L.glassdoor && `<a href="${L.glassdoor}" target="_blank" class="bg-green-50 text-green-700 font-medium px-4 py-2 rounded-xl hover:bg-green-100 transition">Glassdoor reviews →</a>`,
-      L.ch        && `<a href="${L.ch}"        target="_blank" class="bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-xl hover:bg-gray-100 transition">Companies House →</a>`,
     ].filter(Boolean).join("");
     if (linksHtml) {
       document.getElementById("co-links-body").innerHTML = linksHtml;
@@ -995,6 +1038,18 @@
     }
   }
 
+
+  function filterJobs() {
+    const q = document.getElementById("co-jobs-filter").value.toLowerCase();
+    const rows = document.querySelectorAll("#co-jobs-list .job-row");
+    let visible = 0;
+    rows.forEach(r => {
+      const match = !q || r.dataset.title.includes(q);
+      r.classList.toggle("hidden", !match);
+      if (match) visible++;
+    });
+    document.getElementById("co-jobs-none").classList.toggle("hidden", visible > 0);
+  }
 
   // ── Company tabs ────────────────────────────────────────────────────────────
   const CO_TABS = ["overview","financials","intel","jobs"];
