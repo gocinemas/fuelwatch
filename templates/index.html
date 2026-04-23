@@ -8,6 +8,9 @@
   <meta name="apple-mobile-web-app-title" content="Miru">
   <meta name="theme-color" content="#dc2626">
   <title>Miru</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .spinner { border: 3px solid #f3f3f3; border-top: 3px solid currentColor; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; display:inline-block; }
@@ -38,9 +41,12 @@
 
     /* Tap highlight off globally */
     * { -webkit-tap-highlight-color: transparent; }
+
+    /* Inter font */
+    body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen font-sans">
+<body class="bg-gray-50 min-h-screen">
 
   <!-- Header -->
   <div class="bg-red-600 text-white px-4 py-4 shadow sticky top-0 z-50">
@@ -56,37 +62,26 @@
   <div class="max-w-xl mx-auto px-4 main-content">
 
     <!-- ── HOME SCREEN ── -->
-    <div id="screen-home" class="screen active pt-8">
-      <p class="text-center text-gray-500 text-sm mb-6">What would you like to look up?</p>
-      <div class="grid grid-cols-2 gap-4">
-
-        <button onclick="showScreen('fuel')"
-          class="bg-red-600 hover:bg-red-700 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
-          <div class="text-4xl mb-3">⛽</div>
-          <div class="font-bold text-lg">Fuel Prices</div>
-          <div class="text-red-200 text-xs mt-1">Live petrol & diesel near any postcode</div>
-        </button>
-
-        <button onclick="showScreen('report')"
-          class="bg-gray-800 hover:bg-gray-900 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
-          <div class="text-4xl mb-3">🏠</div>
-          <div class="font-bold text-lg">Area Report</div>
-          <div class="text-gray-400 text-xs mt-1">House prices, schools & pubs nearby</div>
-        </button>
-        <button onclick="showScreen('company')"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
-          <div class="text-4xl mb-3">🏢</div>
-          <div class="font-bold text-lg">Company Intel</div>
-          <div class="text-indigo-200 text-xs mt-1">Overview, key facts & vacancies</div>
-        </button>
-
-        <button onclick="showScreen('library')"
-          class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl p-6 text-left shadow-lg transition active:scale-95">
-          <div class="text-4xl mb-3">📚</div>
-          <div class="font-bold text-lg">My Library</div>
-          <div class="text-emerald-200 text-xs mt-1">Notes, PDFs & chat with docs</div>
-        </button>
-
+    <div id="screen-home" class="screen active">
+      <div class="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div class="text-6xl mb-5">👁</div>
+        <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">Miru</h2>
+        <p class="text-gray-500 mt-2 text-base max-w-xs">See everything, decide anything.</p>
+        <div class="mt-8 flex flex-col gap-2 w-full max-w-xs text-sm text-gray-400">
+          <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+            <span class="text-xl">⛽</span><span class="text-gray-600 font-medium">Live fuel prices near any postcode</span>
+          </div>
+          <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+            <span class="text-xl">🏠</span><span class="text-gray-600 font-medium">House prices, schools & local pubs</span>
+          </div>
+          <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+            <span class="text-xl">🏢</span><span class="text-gray-600 font-medium">Company overview, facts & jobs</span>
+          </div>
+          <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+            <span class="text-xl">📚</span><span class="text-gray-600 font-medium">Your notes, PDFs & AI chat</span>
+          </div>
+        </div>
+        <p class="mt-8 text-xs text-gray-400">Tap a section below to get started</p>
       </div>
     </div>
 
