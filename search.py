@@ -644,7 +644,7 @@ def _fetch_share_price(company: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v5"  # bump when result schema changes to bust stale cache
+_COMPANY_VER = "v6"  # bump when result schema changes to bust stale cache
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -810,6 +810,17 @@ def _fetch_wikipedia(company: str) -> dict:
         employees = _field("num_employees") or _field("employees")
         hq        = _field("headquarters") or _field("location_city") or _field("location")
         industry  = _field("industry") or _field("type")
+        brands_raw = _field("products") or _field("brands") or _field("subsidiaries")
+        # Split on commas/newlines and keep up to 6 clean names
+        brands = []
+        if brands_raw:
+            parts = _re.split(r'[,\n•]+', brands_raw)
+            for p in parts:
+                p = p.strip()
+                if p and len(p) > 1:
+                    brands.append(p[:40])
+                if len(brands) >= 6:
+                    break
 
         mf = _re.search(r'\|\s*(?:founded|foundation)\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
         if mf:
@@ -824,7 +835,7 @@ def _fetch_wikipedia(company: str) -> dict:
         pass
 
     return {**result, "employees": employees, "revenue": revenue,
-            "founded": founded, "hq": hq, "industry": industry}
+            "founded": founded, "hq": hq, "industry": industry, "brands": brands}
 
 def _co_slugs(name: str) -> list:
     """Generate ATS slug candidates from a company name."""

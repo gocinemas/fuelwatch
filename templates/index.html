@@ -218,7 +218,15 @@
           </div>
           <div id="co-stats" class="co-card hidden">
             <div class="co-card-title">Key Facts</div>
-            <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm"></div>
+            <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm mb-3"></div>
+            <div id="co-brands" class="hidden">
+              <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Famous Brands</div>
+              <div id="co-brands-list" class="flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+          <div id="co-news" class="co-card hidden">
+            <div class="co-card-title">📰 Latest News</div>
+            <div id="co-news-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
           <div id="co-overview-empty" class="hidden co-card text-sm text-gray-400 text-center py-4">
             No overview data found. Try the <strong>Intel</strong> tab for news.
@@ -286,10 +294,6 @@
           <div id="co-strategy" class="co-card hidden">
             <div class="co-card-title">🧭 Strategy & Direction</div>
             <div id="co-strategy-list" class="divide-y divide-gray-50 text-sm"></div>
-          </div>
-          <div id="co-news" class="co-card hidden">
-            <div class="co-card-title">📰 Latest News</div>
-            <div id="co-news-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
         </div>
 
@@ -730,7 +734,7 @@
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
     switchCoTab("overview");
-    ["co-overview","co-stats","co-share","co-results","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links","co-overview-empty"].forEach(id =>
+    ["co-overview","co-stats","co-share","co-results","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links","co-overview-empty","co-brands"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
       const r = await _fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
@@ -756,26 +760,33 @@
       document.getElementById("co-overview").classList.remove("hidden");
     }
 
-    // Stats grid
+    // Stats grid + brands
     const stats = [
-      w.industry  && ["Industry",   w.industry],
-      w.employees && ["Employees",  w.employees],
-      w.revenue   && ["Revenue",    w.revenue],
-      w.founded   && ["Founded",    w.founded],
-      w.hq        && ["HQ",         w.hq],
+      w.employees && ["👥 Employees", w.employees],
+      w.founded   && ["📅 Founded",   w.founded],
+      w.hq        && ["📍 HQ",        w.hq],
+      w.industry  && ["🏭 Industry",  w.industry],
+      w.revenue   && ["💰 Revenue",   w.revenue],
     ].filter(Boolean);
-    if (stats.length) {
+    const brands = w.brands || [];
+    if (stats.length || brands.length) {
       document.getElementById("co-stats-body").innerHTML = stats.map(([label, val]) =>
         `<div class="bg-gray-50 rounded-xl p-3">
           <div class="text-xs text-gray-400 mb-0.5">${label}</div>
           <div class="font-semibold text-gray-800 text-sm">${val}</div>
         </div>`
       ).join("");
+      if (brands.length) {
+        document.getElementById("co-brands-list").innerHTML = brands.map(b =>
+          `<span class="bg-indigo-50 text-indigo-700 text-xs font-medium px-2.5 py-1 rounded-lg">${b}</span>`
+        ).join("");
+        document.getElementById("co-brands").classList.remove("hidden");
+      }
       document.getElementById("co-stats").classList.remove("hidden");
     }
 
-    // Show fallback if overview tab has no content
-    if (!w.extract && !stats.length) {
+    // Show fallback if overview tab has no content at all
+    if (!w.extract && !stats.length && !brands.length && !(d.news && d.news.length)) {
       document.getElementById("co-overview-empty").classList.remove("hidden");
     }
 
