@@ -439,6 +439,49 @@ def api_library_reindex():
         return jsonify({"error": str(e)}), 500
 
 
+_tweets_cache = {"data": None, "ts": 0}
+
+@app.route("/api/tweets")
+def api_tweets():
+    bearer = os.environ.get("X_BEARER_TOKEN", "")
+    if not bearer:
+        return jsonify({"error": "X API not configured"}), 503
+
+    # Cache for 15 minutes to stay within rate limits
+    if _tweets_cache["data"] and (time.time() - _tweets_cache["ts"]) < 900:
+        resp = jsonify(_tweets_cache["data"])
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+
+    try:
+        uid_r = requests.get(
+            "https://api.twitter.com/2/users/by/username/mekalav",
+            headers={"Authorization": f"Bearer {bearer}"}, timeout=8
+        )
+        uid_r.raise_for_status()
+        user_id = uid_r.json()["data"]["id"]
+
+        tw_r = requests.get(
+            f"https://api.twitter.com/2/users/{user_id}/tweets",
+            headers={"Authorization": f"Bearer {bearer}"},
+            params={
+                "max_results": 10,
+                "tweet.fields": "created_at,text,public_metrics",
+                "exclude": "retweets,replies",
+            },
+            timeout=8,
+        )
+        tw_r.raise_for_status()
+        tweets = tw_r.json().get("data", [])
+        _tweets_cache["data"] = tweets
+        _tweets_cache["ts"] = time.time()
+        resp = jsonify(tweets)
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/library/search")
 def api_library_search():
     q = request.args.get("q", "").strip()
