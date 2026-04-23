@@ -499,11 +499,13 @@ def api_company_chat():
 @app.route("/api/company/groq-test")
 def api_groq_test():
     key = os.environ.get("GROQ_API_KEY", "")
+    # Show all env var names that contain "groq" or "key" (case-insensitive) to debug naming issues
+    env_keys = [k for k in os.environ if "groq" in k.lower() or "key" in k.lower()]
     if not key:
-        return jsonify({"status": "error", "detail": "GROQ_API_KEY not set"}), 500
+        return jsonify({"status": "error", "detail": "GROQ_API_KEY not set", "env_keys_found": env_keys}), 500
     try:
         text = _groq_chat("You are helpful.", [{"role": "user", "content": "Say OK"}], max_tokens=10)
-        return jsonify({"status": "ok", "reply": text})
+        return jsonify({"status": "ok", "reply": text, "key_prefix": key[:8] + "..."})
     except Exception as e:
         return jsonify({"status": "error", "detail": str(e)}), 500
 
