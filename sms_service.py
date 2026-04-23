@@ -404,9 +404,27 @@ def api_company():
     return jsonify(fetch_company_info(name))
 
 
+def _groq_chat(system, messages, max_tokens=600):
+    """Call Groq API (OpenAI-compatible). Returns reply text."""
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": "llama-3.1-8b-instant",
+            "max_tokens": max_tokens,
+            "messages": [{"role": "system", "content": system}] + messages,
+        },
+        timeout=15,
+    )
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
+
+
 @app.route("/api/company/results", methods=["POST"])
 def api_company_results():
-    import anthropic as _anthropic
     data = request.json or {}
     company = data.get("company", "").strip()
     if not company:
@@ -421,27 +439,24 @@ def api_company_results():
     context = "\n".join(f"- {n['title']} ({n['source']}, {n['date']})" for n in results_news) \
         if results_news else "No recent results news found."
 
-    client = _anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-    msg = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=600,
-        messages=[{"role": "user", "content": f"""You are a financial analyst covering UK-listed companies.
-Based on these recent news headlines about {company}'s financial results:
+    text = _groq_chat(
+        "You are a financial analyst covering UK-listed companies. Return ONLY valid JSON, no markdown.",
+        [{"role": "user", "content": f"""Based on these recent news headlines about {company}'s financial results:
 
 {context}
 
-Return ONLY valid JSON (no markdown fences):
+Return ONLY valid JSON:
 {{
   "period": "e.g. FY2025 or H1 2025",
   "headline": "one sentence summary of the key result",
   "highlights": ["metric or highlight 1", "metric or highlight 2", "metric or highlight 3"],
   "sentiment": "positive|neutral|negative",
   "context": "2-3 sentences summarising the results for follow-up questions"
-}}"""}]
+}}"""}],
+        max_tokens=600,
     )
-    text = msg.content[0].text.strip()
     try:
-        result = json.loads(text)
+        result = json.loads(text.strip())
     except Exception:
         m = re.search(r'\{[\s\S]*\}', text)
         result = json.loads(m.group(0)) if m else {"headline": text, "highlights": [], "context": text}
@@ -452,7 +467,6 @@ Return ONLY valid JSON (no markdown fences):
 
 @app.route("/api/company/chat", methods=["POST"])
 def api_company_chat():
-    import anthropic as _anthropic
     data = request.json or {}
     company = data.get("company", "").strip()
     message = data.get("message", "").strip()
@@ -462,17 +476,15 @@ def api_company_chat():
     if not company or not message:
         return jsonify({"error": "Missing fields"}), 400
 
-    client = _anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-    msg = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    reply = _groq_chat(
+        f"You are a concise financial analyst assistant specialising in UK companies. "
+        f"The user is asking about {company}'s latest financial results. "
+        f"Context: {context} "
+        f"Keep answers to 2-4 sentences. Be factual and direct.",
+        history + [{"role": "user", "content": message}],
         max_tokens=300,
-        system=f"""You are a concise financial analyst assistant specialising in UK companies.
-The user is asking about {company}'s latest financial results.
-Context: {context}
-Keep answers to 2-4 sentences. Be factual and direct.""",
-        messages=history + [{"role": "user", "content": message}]
     )
-    return jsonify({"reply": msg.content[0].text})
+    return jsonify({"reply": reply})
 
 
 @app.route("/admin")
