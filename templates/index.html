@@ -422,6 +422,7 @@
     document.getElementById("screen-home").classList.add("active");
     window.scrollTo({top:0, behavior:"smooth"});
     setFooter("home");
+    history.replaceState(null, "", "/");
   }
   function showScreen(name) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
