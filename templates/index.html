@@ -379,10 +379,13 @@
             <div id="lib-doc-title" class="font-bold text-gray-800 text-base leading-snug"></div>
             <div id="lib-doc-meta" class="text-xs text-gray-400 mt-0.5"></div>
           </div>
-          <button id="lib-doc-share-btn" onclick="libShareDoc()" class="ml-auto flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-            Share
-          </button>
+          <div class="ml-auto flex items-center gap-2">
+            <button id="lib-doc-bookmark-btn" onclick="libDocToggleBookmark()" class="text-2xl transition" title="Bookmark">☆</button>
+            <button id="lib-doc-share-btn" onclick="libShareDoc()" class="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              Share
+            </button>
+          </div>
         </div>
 
         <!-- Chat -->
@@ -1349,6 +1352,40 @@
   let _libCurrentDoc = null;
   let _libChatHistory = [];
 
+  function libGetBookmarks() {
+    try { return JSON.parse(localStorage.getItem("miru_bookmarks") || "[]"); } catch { return []; }
+  }
+  function libToggleBookmark(shareId, e) {
+    e.stopPropagation();
+    const bm = libGetBookmarks();
+    const idx = bm.indexOf(shareId);
+    if (idx === -1) bm.push(shareId); else bm.splice(idx, 1);
+    localStorage.setItem("miru_bookmarks", JSON.stringify(bm));
+    libLoadDocs();
+  }
+
+  function _libDocCard(d, bookmarked) {
+    const icon = d.doc_type === "pdf" ? "📄" : "📝";
+    const meta = d.doc_type === "pdf"
+      ? `${d.page_count} page${d.page_count !== 1 ? "s" : ""}`
+      : `${Math.round((d.char_count || 0) / 5)} words`;
+    const date = new Date(d.created_at).toLocaleDateString("en-GB", {day:"numeric", month:"short"});
+    return `<div class="bg-white rounded-2xl shadow-sm border ${bookmarked ? "border-amber-200" : "border-gray-100"} p-4 flex items-start gap-3 cursor-pointer hover:border-indigo-200 transition"
+              onclick="libOpenDoc('${d.share_id}')">
+      <div class="text-2xl mt-0.5">${icon}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-gray-800 text-sm leading-snug truncate">${d.title}</div>
+        <div class="text-xs text-gray-400 mt-1">${meta} · ${date}</div>
+      </div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button onclick="libToggleBookmark('${d.share_id}', event)"
+          class="text-xl transition ${bookmarked ? "opacity-100" : "opacity-30 hover:opacity-80"}" title="${bookmarked ? "Remove bookmark" : "Bookmark"}">${bookmarked ? "⭐" : "☆"}</button>
+        <button onclick="event.stopPropagation(); libDeleteDoc('${d.share_id}', this)"
+          class="text-gray-300 hover:text-red-400 text-lg transition ml-1">✕</button>
+      </div>
+    </div>`;
+  }
+
   async function libLoadDocs() {
     document.getElementById("lib-loading").classList.remove("hidden");
     document.getElementById("lib-empty").classList.add("hidden");
@@ -1358,23 +1395,17 @@
       const docs = await r.json();
       document.getElementById("lib-loading").classList.add("hidden");
       if (!docs.length) { document.getElementById("lib-empty").classList.remove("hidden"); return; }
-      document.getElementById("lib-docs").innerHTML = docs.map(d => {
-        const icon = d.doc_type === "pdf" ? "📄" : "📝";
-        const meta = d.doc_type === "pdf"
-          ? `${d.page_count} page${d.page_count !== 1 ? "s" : ""}`
-          : `${Math.round((d.char_count || 0) / 5)} words`;
-        const date = new Date(d.created_at).toLocaleDateString("en-GB", {day:"numeric", month:"short", year:"numeric"});
-        return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-start gap-3 cursor-pointer hover:border-indigo-200 transition"
-                  onclick="libOpenDoc('${d.share_id}')">
-          <div class="text-2xl mt-0.5">${icon}</div>
-          <div class="flex-1 min-w-0">
-            <div class="font-semibold text-gray-800 text-sm leading-snug truncate">${d.title}</div>
-            <div class="text-xs text-gray-400 mt-1">${meta} · ${date}</div>
-          </div>
-          <button onclick="event.stopPropagation(); libDeleteDoc('${d.share_id}', this)"
-            class="text-gray-300 hover:text-red-400 text-lg transition shrink-0">✕</button>
-        </div>`;
-      }).join("");
+      const bm = libGetBookmarks();
+      const pinned = docs.filter(d => bm.includes(d.share_id));
+      const rest   = docs.filter(d => !bm.includes(d.share_id));
+      let html = "";
+      if (pinned.length) {
+        html += `<div class="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2 px-1">⭐ Bookmarked</div>`;
+        html += pinned.map(d => _libDocCard(d, true)).join("");
+        if (rest.length) html += `<div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-4 mb-2 px-1">All Documents</div>`;
+      }
+      html += rest.map(d => _libDocCard(d, false)).join("");
+      document.getElementById("lib-docs").innerHTML = html;
     } catch(e) {
       document.getElementById("lib-loading").classList.add("hidden");
     }
@@ -1401,9 +1432,25 @@
         `<div class="self-start bg-emerald-50 text-emerald-700 text-sm px-3 py-2 rounded-2xl rounded-tl-sm max-w-xs leading-relaxed">
           Hi! Ask me anything about <strong>${doc.title}</strong>.
         </div>`;
+      const bmBtn = document.getElementById("lib-doc-bookmark-btn");
+      const isBm = libGetBookmarks().includes(doc.share_id);
+      bmBtn.textContent = isBm ? "⭐" : "☆";
+      bmBtn.style.opacity = isBm ? "1" : "0.35";
     } catch(e) {
       document.getElementById("lib-doc-title").textContent = "Error loading document";
     }
+  }
+
+  function libDocToggleBookmark() {
+    if (!_libCurrentDoc) return;
+    const bm = libGetBookmarks();
+    const idx = bm.indexOf(_libCurrentDoc.share_id);
+    if (idx === -1) bm.push(_libCurrentDoc.share_id); else bm.splice(idx, 1);
+    localStorage.setItem("miru_bookmarks", JSON.stringify(bm));
+    const isBm = bm.includes(_libCurrentDoc.share_id);
+    const btn = document.getElementById("lib-doc-bookmark-btn");
+    btn.textContent = isBm ? "⭐" : "☆";
+    btn.style.opacity = isBm ? "1" : "0.35";
   }
 
   function libCloseDoc() {
