@@ -242,21 +242,39 @@
           </div>
         </details>
 
+        <!-- Last Results -->
+        <details id="co-results" class="co-section hidden" open>
+          <summary>📊 Last Results</summary>
+          <div class="co-body">
+            <div id="co-results-loading" class="text-center py-4 text-sm text-gray-400">
+              <div class="spinner text-indigo-600 mx-auto mb-2"></div>Fetching latest results…
+            </div>
+            <div id="co-results-content" class="hidden">
+              <div id="co-results-header" class="mb-3"></div>
+              <div id="co-results-highlights" class="mb-3"></div>
+              <div id="co-results-link" class="mb-4 flex flex-col gap-1"></div>
+              <div class="border-t border-gray-100 pt-3">
+                <div class="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide">Ask about these results</div>
+                <div id="co-results-chat-messages" class="flex flex-col gap-2 mb-3 max-h-52 overflow-y-auto"></div>
+                <div class="flex gap-2">
+                  <input id="co-results-chat-input" type="text"
+                    placeholder="e.g. How did revenue change vs last year?"
+                    class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                  <button onclick="sendResultsChat()"
+                    class="bg-indigo-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-indigo-700 transition">→</button>
+                </div>
+              </div>
+            </div>
+            <div id="co-results-error" class="hidden text-sm text-gray-400 text-center py-3">Could not load results summary.</div>
+          </div>
+        </details>
+
         <!-- AI & Tech Focus -->
         <details id="co-ai" class="co-section hidden" open>
           <summary>🤖 AI & Tech Focus</summary>
           <div class="co-body">
             <div id="co-ai-job-bar" class="hidden mb-4"></div>
             <div id="co-ai-news-list" class="divide-y divide-gray-50 text-sm"></div>
-          </div>
-        </details>
-
-        <!-- Last Results -->
-        <details id="co-results" class="co-section hidden" open>
-          <summary>📊 Last Results</summary>
-          <div class="co-body">
-            <div id="co-results-summary" class="text-sm text-gray-600 leading-relaxed mb-3"></div>
-            <div id="co-results-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
         </details>
 
@@ -723,7 +741,7 @@
     _saveRecent("miru_company", name);
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
-    ["co-overview","co-stats","co-share","co-ai","co-results","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links"].forEach(id =>
+    ["co-overview","co-stats","co-share","co-results","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
       const r = await _fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
@@ -857,22 +875,9 @@
       document.getElementById("co-ai").classList.remove("hidden");
     }
 
-    // Last Results
-    const resultsNews = d.results_news || [];
-    if (resultsNews.length) {
-      const top = resultsNews[0];
-      document.getElementById("co-results-summary").innerHTML =
-        `<p class="mb-2">${top.title}</p>` +
-        `<div class="text-xs text-gray-400">${top.source ? top.source + " · " : ""}${top.date}</div>`;
-      document.getElementById("co-results-list").innerHTML = resultsNews.slice(1).map(n => `
-        <div class="py-2.5">
-          <a href="${n.url}" target="_blank" class="font-medium text-gray-800 hover:text-indigo-600 leading-snug block">${n.title}</a>
-          <div class="text-xs text-gray-400 mt-0.5">${n.source ? n.source + " · " : ""}${n.date}</div>
-        </div>`).join("");
-      const topLink = `<a href="${top.url}" target="_blank" class="inline-block mt-3 text-xs bg-indigo-50 text-indigo-600 font-medium px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">View full results →</a>`;
-      document.getElementById("co-results-summary").innerHTML += topLink;
-      document.getElementById("co-results").classList.remove("hidden");
-    }
+    // Last Results — load async via Claude summary
+    document.getElementById("co-results").classList.remove("hidden");
+    loadResultsSummary(d.name || query);
 
     // Strategy & Direction
     const stratNews = d.strategy_news || [];
@@ -943,6 +948,110 @@
     }
   }
 
+
+  // ── Results summary + chat ──────────────────────────────────────────────────
+  let _resultsCompany = "";
+  let _resultsChatContext = "";
+  let _resultsChatHistory = [];
+
+  async function loadResultsSummary(company) {
+    _resultsCompany = company;
+    _resultsChatContext = "";
+    _resultsChatHistory = [];
+    document.getElementById("co-results-loading").classList.remove("hidden");
+    document.getElementById("co-results-content").classList.add("hidden");
+    document.getElementById("co-results-error").classList.add("hidden");
+    document.getElementById("co-results-chat-messages").innerHTML = "";
+
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 20000);
+      const r = await fetch("/api/company/results", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({company}),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+
+      const sentBg = d.sentiment === "positive" ? "bg-green-50 text-green-700"
+                   : d.sentiment === "negative"  ? "bg-red-50 text-red-600"
+                   : "bg-gray-100 text-gray-600";
+
+      document.getElementById("co-results-header").innerHTML =
+        (d.period ? `<span class="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 mb-2">${d.period}</span><br>` : "") +
+        `<p class="font-semibold text-gray-800 text-sm leading-snug">${d.headline || ""}</p>` +
+        (d.sentiment ? `<span class="inline-block mt-2 text-xs px-2 py-0.5 rounded-full ${sentBg}">${d.sentiment}</span>` : "");
+
+      if (d.highlights && d.highlights.length) {
+        document.getElementById("co-results-highlights").innerHTML =
+          `<ul class="mt-2 flex flex-col gap-1.5">${
+            d.highlights.map(h =>
+              `<li class="flex gap-2 text-sm text-gray-600"><span class="text-indigo-400 flex-shrink-0">◆</span><span>${h}</span></li>`
+            ).join("")
+          }</ul>`;
+      }
+
+      if (d.news && d.news.length) {
+        document.getElementById("co-results-link").innerHTML = d.news.map(n =>
+          `<a href="${n.url}" target="_blank"
+            class="text-xs text-indigo-500 hover:text-indigo-700 underline truncate block">${n.title}</a>`
+        ).join("");
+      }
+
+      _resultsChatContext = d.context || d.headline || "";
+      document.getElementById("co-results-loading").classList.add("hidden");
+      document.getElementById("co-results-content").classList.remove("hidden");
+    } catch(e) {
+      document.getElementById("co-results-loading").classList.add("hidden");
+      document.getElementById("co-results-error").classList.remove("hidden");
+    }
+  }
+
+  async function sendResultsChat() {
+    const input = document.getElementById("co-results-chat-input");
+    const msg = input.value.trim();
+    if (!msg || !_resultsCompany) return;
+    input.value = "";
+    input.disabled = true;
+
+    const msgs = document.getElementById("co-results-chat-messages");
+    msgs.innerHTML += `<div class="self-end bg-indigo-600 text-white text-sm px-3 py-2 rounded-2xl rounded-tr-sm max-w-xs ml-auto">${msg}</div>`;
+    msgs.innerHTML += `<div id="co-chat-thinking" class="self-start bg-gray-100 text-gray-400 text-xs px-3 py-2 rounded-2xl rounded-tl-sm">Thinking…</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+
+    try {
+      const r = await fetch("/api/company/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          company: _resultsCompany,
+          message: msg,
+          context: _resultsChatContext,
+          history: _resultsChatHistory,
+        }),
+      });
+      const d = await r.json();
+      document.getElementById("co-chat-thinking")?.remove();
+      const reply = d.reply || "Sorry, no response.";
+      _resultsChatHistory.push({role: "user", content: msg});
+      _resultsChatHistory.push({role: "assistant", content: reply});
+      msgs.innerHTML += `<div class="self-start bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded-2xl rounded-tl-sm max-w-xs leading-relaxed">${reply}</div>`;
+    } catch(e) {
+      document.getElementById("co-chat-thinking")?.remove();
+      msgs.innerHTML += `<div class="self-start bg-red-50 text-red-500 text-xs px-3 py-2 rounded-2xl">Error — please try again.</div>`;
+    }
+    input.disabled = false;
+    input.focus();
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // Allow Enter key in chat input
+  document.addEventListener("keydown", e => {
+    if (e.target.id === "co-results-chat-input" && e.key === "Enter") sendResultsChat();
+  });
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   function setLoading(screen, on) {

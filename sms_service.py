@@ -404,6 +404,77 @@ def api_company():
     return jsonify(fetch_company_info(name))
 
 
+@app.route("/api/company/results", methods=["POST"])
+def api_company_results():
+    import anthropic as _anthropic
+    data = request.json or {}
+    company = data.get("company", "").strip()
+    if not company:
+        return jsonify({"error": "Company name required"}), 400
+
+    from search import _fetch_news
+    results_news = _fetch_news(
+        company,
+        'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"',
+        5
+    )
+    context = "\n".join(f"- {n['title']} ({n['source']}, {n['date']})" for n in results_news) \
+        if results_news else "No recent results news found."
+
+    client = _anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=600,
+        messages=[{"role": "user", "content": f"""You are a financial analyst covering UK-listed companies.
+Based on these recent news headlines about {company}'s financial results:
+
+{context}
+
+Return ONLY valid JSON (no markdown fences):
+{{
+  "period": "e.g. FY2025 or H1 2025",
+  "headline": "one sentence summary of the key result",
+  "highlights": ["metric or highlight 1", "metric or highlight 2", "metric or highlight 3"],
+  "sentiment": "positive|neutral|negative",
+  "context": "2-3 sentences summarising the results for follow-up questions"
+}}"""}]
+    )
+    text = msg.content[0].text.strip()
+    try:
+        result = json.loads(text)
+    except Exception:
+        m = re.search(r'\{[\s\S]*\}', text)
+        result = json.loads(m.group(0)) if m else {"headline": text, "highlights": [], "context": text}
+
+    result["news"] = results_news[:3]
+    return jsonify(result)
+
+
+@app.route("/api/company/chat", methods=["POST"])
+def api_company_chat():
+    import anthropic as _anthropic
+    data = request.json or {}
+    company = data.get("company", "").strip()
+    message = data.get("message", "").strip()
+    context = data.get("context", "")
+    history = data.get("history", [])
+
+    if not company or not message:
+        return jsonify({"error": "Missing fields"}), 400
+
+    client = _anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=300,
+        system=f"""You are a concise financial analyst assistant specialising in UK companies.
+The user is asking about {company}'s latest financial results.
+Context: {context}
+Keep answers to 2-4 sentences. Be factual and direct.""",
+        messages=history + [{"role": "user", "content": message}]
+    )
+    return jsonify({"reply": msg.content[0].text})
+
+
 @app.route("/admin")
 def admin():
     pw = os.environ.get("ADMIN_PASSWORD", "miru2024")
