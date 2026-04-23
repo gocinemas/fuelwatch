@@ -195,11 +195,16 @@
       <div id="company-results" class="hidden">
 
         <style>
-          .co-card { background:#fff; border-radius:1rem; box-shadow:0 1px 3px rgba(0,0,0,.08); margin-bottom:1rem; padding:1.25rem; }
-          .co-card-title { font-size:13px; font-weight:700; color:#374151; margin-bottom:.75rem; }
-          .co-tab-bar { display:flex; gap:4px; background:#f3f4f6; padding:4px; border-radius:1rem; margin-bottom:1rem; }
-          .co-tab-btn { flex:1; font-size:11px; font-weight:600; padding:7px 4px; border-radius:.65rem; border:none; cursor:pointer; transition:all .15s; background:transparent; color:#6b7280; }
-          .co-tab-btn.active { background:#fff; color:#4f46e5; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+          .co-card { background:#fff; border-radius:1.25rem; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:1rem; padding:1.35rem; }
+          .co-card-title { font-size:15px; font-weight:700; color:#111827; margin-bottom:1rem; padding-bottom:.65rem; border-bottom:1.5px solid #f3f4f6; display:flex; align-items:center; gap:.4rem; }
+          .co-tab-bar { display:flex; gap:5px; background:#f3f4f6; padding:5px; border-radius:1rem; margin-bottom:1.25rem; }
+          .co-tab-btn { flex:1; font-size:13px; font-weight:600; padding:10px 4px; border-radius:.75rem; border:none; cursor:pointer; transition:all .2s; background:transparent; color:#6b7280; line-height:1.3; }
+          .co-tab-btn.active { background:#fff; color:#4f46e5; box-shadow:0 2px 6px rgba(0,0,0,.1); }
+          .co-news-item { padding:.75rem 0; border-bottom:1px solid #f9fafb; }
+          .co-news-item:last-child { border-bottom:none; padding-bottom:0; }
+          .co-news-item a { font-size:14px; font-weight:500; color:#1f2937; line-height:1.5; display:block; }
+          .co-news-item a:hover { color:#4f46e5; }
+          .co-news-meta { font-size:12px; color:#9ca3af; margin-top:3px; }
         </style>
 
         <!-- Tab bar -->
@@ -798,9 +803,9 @@
     // News
     if (d.news && d.news.length) {
       document.getElementById("co-news-list").innerHTML = d.news.map(n => `
-        <div class="py-2.5">
-          <a href="${n.url}" target="_blank" class="font-medium text-gray-800 hover:text-indigo-600 leading-snug block">${n.title}</a>
-          <div class="text-xs text-gray-400 mt-0.5">${n.source ? n.source + " · " : ""}${n.date}</div>
+        <div class="co-news-item">
+          <a href="${n.url}" target="_blank">${n.title}</a>
+          <div class="co-news-meta">${n.source ? n.source + " · " : ""}${n.date}</div>
         </div>`).join("");
       document.getElementById("co-news").classList.remove("hidden");
     }
@@ -890,9 +895,9 @@
       }
       if (aiNews.length) {
         document.getElementById("co-ai-news-list").innerHTML = aiNews.map(n => `
-          <div class="py-2.5">
-            <a href="${n.url}" target="_blank" class="font-medium text-gray-800 hover:text-violet-600 leading-snug block">${n.title}</a>
-            <div class="text-xs text-gray-400 mt-0.5">${n.source ? n.source + " · " : ""}${n.date}</div>
+          <div class="co-news-item">
+            <a href="${n.url}" target="_blank">${n.title}</a>
+            <div class="co-news-meta">${n.source ? n.source + " · " : ""}${n.date}</div>
           </div>`).join("");
       }
       document.getElementById("co-ai").classList.remove("hidden");
@@ -906,9 +911,9 @@
     const stratNews = d.strategy_news || [];
     if (stratNews.length) {
       document.getElementById("co-strategy-list").innerHTML = stratNews.map(n => `
-        <div class="py-2.5">
-          <a href="${n.url}" target="_blank" class="font-medium text-gray-800 hover:text-amber-600 leading-snug block">${n.title}</a>
-          <div class="text-xs text-gray-400 mt-0.5">${n.source ? n.source + " · " : ""}${n.date}</div>
+        <div class="co-news-item">
+          <a href="${n.url}" target="_blank">${n.title}</a>
+          <div class="co-news-meta">${n.source ? n.source + " · " : ""}${n.date}</div>
         </div>`).join("");
       document.getElementById("co-strategy").classList.remove("hidden");
     }
@@ -1098,6 +1103,17 @@
     el.textContent = msg;
     el.classList.remove("hidden");
   }
+
+  // ── Shareable company URL ───────────────────────────────────────────────────
+  {% if prefill_company %}
+  window.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("company-input");
+    input.value = "{{ prefill_company }}";
+    // Switch to company tab then trigger search
+    showTab("company");
+    searchCompany();
+  });
+  {% endif %}
 </script>
 </body>
 </html>

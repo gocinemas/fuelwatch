@@ -309,7 +309,12 @@ def sms_reply():
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", prefill_company=None)
+
+@app.route("/<company_slug>")
+def company_page(company_slug):
+    # Only treat as company shortlink if it looks like a name, not a known route
+    return render_template("index.html", prefill_company=company_slug.replace("-", " "))
 
 
 def _resolve_postcode(postcode):
