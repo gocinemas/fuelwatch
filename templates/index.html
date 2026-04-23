@@ -449,39 +449,45 @@
 
         <!-- Upload panel -->
         <div id="lib-upload-panel" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
-          <div class="text-sm font-semibold text-gray-700 mb-3">Add to Library</div>
-
-          <!-- Type toggle -->
-          <div class="flex gap-2 mb-3">
-            <button id="lib-type-note" onclick="libSetType('note')"
-              class="flex-1 text-xs font-semibold py-2 rounded-xl border-2 border-indigo-500 bg-indigo-50 text-indigo-700 transition">📝 Note / Text</button>
-            <button id="lib-type-pdf" onclick="libSetType('pdf')"
-              class="flex-1 text-xs font-semibold py-2 rounded-xl border-2 border-gray-200 text-gray-500 transition">📄 PDF Upload</button>
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-sm font-semibold text-gray-700">Add to Library</div>
+            <button onclick="libCancelUpload()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
           </div>
 
-          <input id="lib-title-input" type="text" placeholder="Title (optional)"
-            class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50">
-
-          <div id="lib-note-area">
-            <textarea id="lib-text-input" rows="5" placeholder="Paste your note, article, or any text here…"
-              class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 resize-none"></textarea>
+          <!-- Drop zone -->
+          <div id="lib-dropzone"
+            class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer transition mb-3"
+            onclick="document.getElementById('lib-file-input').click()"
+            ondrop="libHandleDrop(event)" ondragover="event.preventDefault()"
+            ondragenter="document.getElementById('lib-dropzone').style.borderColor='#4f46e5'"
+            ondragleave="document.getElementById('lib-dropzone').style.borderColor=''">
+            <div class="text-3xl mb-2">📁</div>
+            <div class="text-sm font-medium text-gray-600">Drop files here or tap to choose</div>
+            <div class="text-xs text-gray-400 mt-1">PDF · TXT · MD — select multiple at once</div>
+            <input type="file" accept=".pdf,.txt,.md" multiple id="lib-file-input" class="hidden" onchange="libFilesChosen(this)">
           </div>
 
-          <div id="lib-pdf-area" class="hidden">
-            <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl py-6 mb-3 cursor-pointer hover:border-indigo-400 transition">
-              <span class="text-2xl mb-1">📄</span>
-              <span class="text-sm text-gray-500">Tap to choose PDF</span>
-              <input type="file" accept=".pdf" id="lib-file-input" class="hidden" onchange="libFileChosen(this)">
-            </label>
-            <div id="lib-file-name" class="text-xs text-gray-400 text-center mb-3"></div>
+          <!-- File queue -->
+          <div id="lib-file-queue" class="hidden flex flex-col gap-1.5 mb-3 max-h-48 overflow-y-auto"></div>
+
+          <!-- Divider -->
+          <div class="flex items-center gap-3 mb-3">
+            <div class="flex-1 h-px bg-gray-100"></div>
+            <span class="text-xs text-gray-400">or paste text</span>
+            <div class="flex-1 h-px bg-gray-100"></div>
           </div>
 
-          <div id="lib-upload-error" class="hidden text-xs text-red-600 mb-2"></div>
-          <div class="flex gap-2">
-            <button onclick="libCancelUpload()" class="flex-1 text-sm font-medium text-gray-500 border border-gray-200 py-2 rounded-xl hover:bg-gray-50 transition">Cancel</button>
-            <button onclick="libSubmitUpload()" class="flex-1 text-sm font-semibold bg-emerald-600 text-white py-2 rounded-xl hover:bg-emerald-700 transition">
-              <span id="lib-upload-btn-text">Save to Library</span>
-            </button>
+          <!-- Paste text -->
+          <input id="lib-paste-title" type="text" placeholder="Title (optional)"
+            class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50">
+          <textarea id="lib-text-input" rows="4" placeholder="Paste a note, article, or any text here…"
+            class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 mb-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 resize-none"></textarea>
+          <button onclick="libSubmitPaste()" id="lib-paste-btn"
+            class="w-full text-sm font-semibold bg-emerald-600 text-white py-2 rounded-xl hover:bg-emerald-700 transition mb-3">Save Note</button>
+
+          <!-- Google Keep hint -->
+          <div class="bg-yellow-50 border border-yellow-100 rounded-xl px-3 py-2.5 text-xs text-yellow-800 leading-relaxed">
+            <strong>Google Keep?</strong> Open <a href="https://takeout.google.com" target="_blank" class="underline">Google Takeout</a>, export Keep, then import the .txt files above. Or copy-paste individual notes into the text box.
           </div>
         </div>
 
@@ -1501,71 +1507,111 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
 
+  let _libFileQueue = [];
+  let _libUploading = false;
+
   function libShowUpload() {
     document.getElementById("lib-upload-panel").classList.remove("hidden");
     document.getElementById("lib-add-btn").classList.add("hidden");
+    _libFileQueue = [];
+    document.getElementById("lib-file-queue").classList.add("hidden");
+    document.getElementById("lib-file-queue").innerHTML = "";
+    document.getElementById("lib-paste-title").value = "";
+    document.getElementById("lib-text-input").value = "";
+    document.getElementById("lib-file-input").value = "";
   }
 
   function libCancelUpload() {
     document.getElementById("lib-upload-panel").classList.add("hidden");
     document.getElementById("lib-add-btn").classList.remove("hidden");
-    document.getElementById("lib-title-input").value = "";
-    document.getElementById("lib-text-input").value = "";
-    document.getElementById("lib-file-input").value = "";
-    document.getElementById("lib-file-name").textContent = "";
-    document.getElementById("lib-upload-error").classList.add("hidden");
-    libSetType("note");
+    _libFileQueue = [];
+    _libUploading = false;
   }
 
-  function libSetType(type) {
-    document.getElementById("lib-note-area").classList.toggle("hidden", type !== "note");
-    document.getElementById("lib-pdf-area").classList.toggle("hidden", type !== "pdf");
-    document.getElementById("lib-type-note").className = `flex-1 text-xs font-semibold py-2 rounded-xl border-2 transition ${type==="note" ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-gray-200 text-gray-500"}`;
-    document.getElementById("lib-type-pdf").className  = `flex-1 text-xs font-semibold py-2 rounded-xl border-2 transition ${type==="pdf"  ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-gray-200 text-gray-500"}`;
+  function libHandleDrop(e) {
+    e.preventDefault();
+    document.getElementById("lib-dropzone").style.borderColor = "";
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      /\.(pdf|txt|md)$/i.test(f.name));
+    if (files.length) libQueueFiles(files);
   }
 
-  function libFileChosen(input) {
-    document.getElementById("lib-file-name").textContent = input.files[0]?.name || "";
-    const name = input.files[0]?.name?.replace(".pdf","").replace(/[_-]/g," ");
-    if (name && !document.getElementById("lib-title-input").value) {
-      document.getElementById("lib-title-input").value = name;
+  function libFilesChosen(input) {
+    libQueueFiles(Array.from(input.files));
+  }
+
+  function libQueueFiles(files) {
+    _libFileQueue = files.map(f => ({ file: f, status: "pending" }));
+    libRenderQueue();
+    libProcessQueue();
+  }
+
+  function libRenderQueue() {
+    const el = document.getElementById("lib-file-queue");
+    if (!_libFileQueue.length) { el.classList.add("hidden"); return; }
+    el.classList.remove("hidden");
+    el.innerHTML = _libFileQueue.map(item => {
+      const icon = /\.pdf$/i.test(item.file.name) ? "📄" : "📝";
+      const name = item.file.name.replace(/\.[^.]+$/, "");
+      const s = item.status;
+      const statusEl = s === "done"      ? `<span style="color:#059669">✓</span>`
+                     : s === "error"     ? `<span style="color:#dc2626">✕</span>`
+                     : s === "uploading" ? `<span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:middle"></span>`
+                     :                    `<span style="color:#9ca3af">·</span>`;
+      return `<div class="flex items-center gap-2 text-sm px-1 py-1">
+        ${statusEl}
+        <span class="flex-1 truncate text-gray-700">${icon} ${name}</span>
+      </div>`;
+    }).join("");
+  }
+
+  async function libProcessQueue() {
+    if (_libUploading) return;
+    _libUploading = true;
+    for (const item of _libFileQueue) {
+      if (item.status !== "pending") continue;
+      item.status = "uploading";
+      libRenderQueue();
+      try {
+        const fd = new FormData();
+        const title = item.file.name.replace(/\.[^.]+$/, "").replace(/[_-]/g, " ");
+        fd.append("title", title);
+        if (/\.pdf$/i.test(item.file.name)) {
+          fd.append("doc_type", "pdf");
+          fd.append("file", item.file);
+        } else {
+          fd.append("doc_type", "note");
+          fd.append("text", await item.file.text());
+        }
+        const r = await fetch("/api/library/upload", { method: "POST", body: fd });
+        const d = await r.json();
+        item.status = d.error ? "error" : "done";
+      } catch { item.status = "error"; }
+      libRenderQueue();
     }
+    _libUploading = false;
+    setTimeout(() => { libCancelUpload(); libLoadDocs(); }, 1000);
   }
 
-  async function libSubmitUpload() {
-    const title = document.getElementById("lib-title-input").value.trim();
-    const isPdf = !document.getElementById("lib-pdf-area").classList.contains("hidden");
-    const errEl = document.getElementById("lib-upload-error");
-    errEl.classList.add("hidden");
-
-    const fd = new FormData();
-    fd.append("title", title || "Untitled");
-
-    if (isPdf) {
-      const file = document.getElementById("lib-file-input").files[0];
-      if (!file) { errEl.textContent = "Please choose a PDF file."; errEl.classList.remove("hidden"); return; }
-      fd.append("doc_type", "pdf");
-      fd.append("file", file);
-    } else {
-      const text = document.getElementById("lib-text-input").value.trim();
-      if (!text) { errEl.textContent = "Please enter some text."; errEl.classList.remove("hidden"); return; }
-      fd.append("doc_type", "note");
-      fd.append("text", text);
-    }
-
-    const btn = document.getElementById("lib-upload-btn-text");
+  async function libSubmitPaste() {
+    const title = document.getElementById("lib-paste-title").value.trim();
+    const text  = document.getElementById("lib-text-input").value.trim();
+    if (!text) return;
+    const btn = document.getElementById("lib-paste-btn");
     btn.textContent = "Saving…";
+    btn.disabled = true;
+    const fd = new FormData();
+    fd.append("title", title || "Untitled note");
+    fd.append("doc_type", "note");
+    fd.append("text", text);
     try {
-      const r = await fetch("/api/library/upload", { method: "POST", body: fd });
-      const d = await r.json();
-      if (d.error) { errEl.textContent = d.error; errEl.classList.remove("hidden"); btn.textContent = "Save to Library"; return; }
+      await fetch("/api/library/upload", { method: "POST", body: fd });
       libCancelUpload();
       libLoadDocs();
     } catch(e) {
-      errEl.textContent = "Upload failed — try again.";
-      errEl.classList.remove("hidden");
+      btn.textContent = "Save Note";
+      btn.disabled = false;
     }
-    btn.textContent = "Save to Library";
   }
 
   async function libDeleteDoc(shareId, btn) {
