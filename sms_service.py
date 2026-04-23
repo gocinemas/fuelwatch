@@ -430,22 +430,23 @@ def api_company_results():
     if not company:
         return jsonify({"error": "Company name required"}), 400
 
-    from search import _fetch_news
-    results_news = _fetch_news(
-        company,
-        'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"',
-        5
-    )
-    context = "\n".join(f"- {n['title']} ({n['source']}, {n['date']})" for n in results_news) \
-        if results_news else "No recent results news found."
+    try:
+        from search import _fetch_news
+        results_news = _fetch_news(
+            company,
+            'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"',
+            5
+        )
+        context = "\n".join(f"- {n['title']} ({n['source']}, {n['date']})" for n in results_news) \
+            if results_news else "No recent results news found."
 
-    text = _groq_chat(
-        "You are a financial analyst covering UK-listed companies. Return ONLY valid JSON, no markdown.",
-        [{"role": "user", "content": f"""Based on these recent news headlines about {company}'s financial results:
+        text = _groq_chat(
+            "You are a financial analyst covering UK-listed companies. Return ONLY valid JSON, no markdown fences.",
+            [{"role": "user", "content": f"""Based on these recent news headlines about {company}'s financial results:
 
 {context}
 
-Return ONLY valid JSON:
+Return ONLY valid JSON (no markdown, no backticks):
 {{
   "period": "e.g. FY2025 or H1 2025",
   "headline": "one sentence summary of the key result",
@@ -453,16 +454,20 @@ Return ONLY valid JSON:
   "sentiment": "positive|neutral|negative",
   "context": "2-3 sentences summarising the results for follow-up questions"
 }}"""}],
-        max_tokens=600,
-    )
-    try:
-        result = json.loads(text.strip())
-    except Exception:
-        m = re.search(r'\{[\s\S]*\}', text)
-        result = json.loads(m.group(0)) if m else {"headline": text, "highlights": [], "context": text}
+            max_tokens=600,
+        )
+        clean = re.sub(r"```json|```", "", text).strip()
+        try:
+            result = json.loads(clean)
+        except Exception:
+            m = re.search(r'\{[\s\S]*\}', clean)
+            result = json.loads(m.group(0)) if m else {"headline": clean, "highlights": [], "context": clean}
 
-    result["news"] = results_news[:3]
-    return jsonify(result)
+        result["news"] = results_news[:3]
+        return jsonify(result)
+    except Exception as e:
+        print(f"[company/results] error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/company/chat", methods=["POST"])
@@ -476,15 +481,31 @@ def api_company_chat():
     if not company or not message:
         return jsonify({"error": "Missing fields"}), 400
 
-    reply = _groq_chat(
-        f"You are a concise financial analyst assistant specialising in UK companies. "
-        f"The user is asking about {company}'s latest financial results. "
-        f"Context: {context} "
-        f"Keep answers to 2-4 sentences. Be factual and direct.",
-        history + [{"role": "user", "content": message}],
-        max_tokens=300,
-    )
-    return jsonify({"reply": reply})
+    try:
+        reply = _groq_chat(
+            f"You are a concise financial analyst assistant specialising in UK companies. "
+            f"The user is asking about {company}'s latest financial results. "
+            f"Context: {context} "
+            f"Keep answers to 2-4 sentences. Be factual and direct.",
+            history + [{"role": "user", "content": message}],
+            max_tokens=300,
+        )
+        return jsonify({"reply": reply})
+    except Exception as e:
+        print(f"[company/chat] error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/company/groq-test")
+def api_groq_test():
+    key = os.environ.get("GROQ_API_KEY", "")
+    if not key:
+        return jsonify({"status": "error", "detail": "GROQ_API_KEY not set"}), 500
+    try:
+        text = _groq_chat("You are helpful.", [{"role": "user", "content": "Say OK"}], max_tokens=10)
+        return jsonify({"status": "ok", "reply": text})
+    except Exception as e:
+        return jsonify({"status": "error", "detail": str(e)}), 500
 
 
 @app.route("/admin")

@@ -265,7 +265,7 @@
                 </div>
               </div>
             </div>
-            <div id="co-results-error" class="hidden text-sm text-gray-400 text-center py-3">Could not load results summary.</div>
+            <div id="co-results-error" class="hidden text-sm text-red-400 text-center py-3"></div>
           </div>
         </details>
 
@@ -1006,7 +1006,9 @@
       document.getElementById("co-results-content").classList.remove("hidden");
     } catch(e) {
       document.getElementById("co-results-loading").classList.add("hidden");
-      document.getElementById("co-results-error").classList.remove("hidden");
+      const errEl = document.getElementById("co-results-error");
+      errEl.textContent = e.message || "Could not load results summary.";
+      errEl.classList.remove("hidden");
     }
   }
 
