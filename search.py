@@ -644,7 +644,7 @@ def _fetch_share_price(company: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v8"  # bump when result schema changes to bust stale cache
+_COMPANY_VER = "v9"  # bump when result schema changes to bust stale cache
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -799,11 +799,15 @@ def _fetch_wikipedia(company: str) -> dict:
             m = _re.search(rf'\|\s*{key}\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
             if not m: return ""
             v = m.group(1).strip()
-            if v.startswith("{{"):
-                inner = _re.search(r'\{\{[^|{}]*\|([^|{}]+)', v)
-                return inner.group(1).strip()[:120] if inner else ""
-            v = v.split("{{")[0]
+            # Strip simple no-param templates: {{increase}}, {{decrease}}, {{nobr}}, etc.
+            v = _re.sub(r'\{\{[^|{}]{1,20}\}\}', '', v)
+            # Extract first param from templates: {{US$|60.1 billion}} → 60.1 billion
+            v = _re.sub(r'\{\{[^|{}]+\|([^|{}]+)(?:\|[^{}]*)?\}\}', r'\1', v)
+            # Drop any remaining templates
+            v = _re.sub(r'\{\{[^{}]*\}\}', '', v)
+            # Unwrap wiki links: [[London|London, UK]] → London, UK
             v = _re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', v)
+            # Strip HTML tags and reference markers
             v = _re.sub(r'<[^>]+>|\[\d+\]', '', v)
             return " ".join(v.split())[:120]
 
