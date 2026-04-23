@@ -449,13 +449,22 @@ def api_library_chat():
         if not doc:
             return jsonify({"error": "Document not found"}), 404
 
-        chunks = lib.search_chunks(doc["id"], question)
-        context = "\n\n---\n\n".join(chunks)
+        # Use chunks already fetched by get_document — no extra DB call.
+        # Score by keyword overlap, fall back to first N chunks, then to text_content.
+        doc_chunks = doc.get("chunks", [])
+        if doc_chunks:
+            q_words = {w for w in question.lower().split() if len(w) > 2}
+            if q_words:
+                doc_chunks = sorted(doc_chunks,
+                    key=lambda c: -sum(1 for w in q_words if w in c.get("content", "").lower()))
+            context = "\n\n---\n\n".join(c["content"] for c in doc_chunks[:6])
+        else:
+            context = (doc.get("text_content") or "")[:4000]
 
         system = (
-            f'You are a helpful assistant. Answer questions based on the document "{doc["title"]}".\n\n'
-            f'Relevant excerpts:\n{context}\n\n'
-            f'Answer concisely and cite the document where relevant. If the answer is not in the document, say so.'
+            f'You are a helpful assistant. Answer questions ONLY based on the document "{doc["title"]}".\n\n'
+            f'Document content:\n{context}\n\n'
+            f'Answer concisely. If the answer is not in the document, say so briefly.'
         )
         messages = history[-6:] + [{"role": "user", "content": question}]
         answer = _groq_chat(system, messages, max_tokens=600)
