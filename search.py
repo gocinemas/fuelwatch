@@ -796,7 +796,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv3"
+    cache_key = brand.strip().lower() + "|brandv4"
     cached = _BRAND_CACHE.get(cache_key)
     if cached and time.time() - cached["ts"] < _BRAND_TTL:
         return cached["data"]
@@ -849,7 +849,7 @@ def fetch_brand_data(brand: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v12"  # bump when result schema changes to bust stale cache
+_COMPANY_VER = "v13"  # bump when result schema changes to bust stale cache
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -957,6 +957,7 @@ def _fetch_wikipedia(company: str) -> dict:
         if not extract:
             return {}
         return {
+            "_wiki_title": d.get("title", title),  # actual resolved article title
             "description": d.get("description", ""),
             "extract":     extract,
             "wiki_url":    d.get("content_urls", {}).get("desktop", {}).get("page", ""),
@@ -985,12 +986,15 @@ def _fetch_wikipedia(company: str) -> dict:
     if not result:
         return {}
 
-    # Step 3: try to enrich with infobox fields from wikitext (optional — don't fail if it errors)
+    # Step 3: fetch wikitext using the ACTUAL resolved title (not the original search term),
+    # so we get the right infobox even when the query was a redirect or disambiguation.
+    wiki_title = result.get("_wiki_title", company)
     employees = hq = industry = founded = revenue = ""
     try:
         r2 = requests.get("https://en.wikipedia.org/w/api.php", params={
-            "action": "query", "titles": company, "prop": "revisions",
+            "action": "query", "titles": wiki_title, "prop": "revisions",
             "rvprop": "content", "rvslots": "main", "rvsection": 0, "format": "json",
+            "redirects": 1,
         }, timeout=6, headers=ua)
         pages = r2.json().get("query", {}).get("pages", {})
         page = list(pages.values())[0] if pages else {}
