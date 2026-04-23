@@ -196,7 +196,7 @@
 
         <style>
           .co-card { background:#fff; border-radius:1rem; box-shadow:0 1px 3px rgba(0,0,0,.08); margin-bottom:1rem; padding:1.25rem; }
-          .co-card-title { font-size:10px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.75rem; }
+          .co-card-title { font-size:13px; font-weight:700; color:#374151; margin-bottom:.75rem; }
           .co-tab-bar { display:flex; gap:4px; background:#f3f4f6; padding:4px; border-radius:1rem; margin-bottom:1rem; }
           .co-tab-btn { flex:1; font-size:11px; font-weight:600; padding:7px 4px; border-radius:.65rem; border:none; cursor:pointer; transition:all .15s; background:transparent; color:#6b7280; }
           .co-tab-btn.active { background:#fff; color:#4f46e5; box-shadow:0 1px 3px rgba(0,0,0,.1); }
@@ -221,6 +221,9 @@
           <div id="co-stats" class="co-card hidden">
             <div class="co-card-title">Key Facts</div>
             <div id="co-stats-body" class="grid grid-cols-2 gap-3 text-sm"></div>
+          </div>
+          <div id="co-overview-empty" class="hidden co-card text-sm text-gray-400 text-center py-4">
+            No overview data found. Try the <strong>Intel</strong> tab for news.
           </div>
         </div>
 
@@ -729,7 +732,7 @@
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
     switchCoTab("overview");
-    ["co-overview","co-stats","co-share","co-results","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links"].forEach(id =>
+    ["co-overview","co-stats","co-share","co-results","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links","co-overview-empty"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
       const r = await _fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
@@ -771,6 +774,11 @@
         </div>`
       ).join("");
       document.getElementById("co-stats").classList.remove("hidden");
+    }
+
+    // Show fallback if overview tab has no content
+    if (!w.extract && !stats.length) {
+      document.getElementById("co-overview-empty").classList.remove("hidden");
     }
 
     // News
