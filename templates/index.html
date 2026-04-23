@@ -1382,6 +1382,8 @@
     </div>`;
   }
 
+  let _libAllDocs = [];
+
   async function libLoadDocs() {
     document.getElementById("lib-loading").classList.remove("hidden");
     document.getElementById("lib-empty").classList.add("hidden");
@@ -1389,6 +1391,7 @@
     try {
       const r = await fetch("/api/library/documents");
       const docs = await r.json();
+      _libAllDocs = docs;
       document.getElementById("lib-loading").classList.add("hidden");
       if (!docs.length) { document.getElementById("lib-empty").classList.remove("hidden"); return; }
       const bm = libGetBookmarks();
@@ -1580,38 +1583,40 @@
     if (!hidden) document.getElementById("lib-ask-input").focus();
   }
 
-  let _libSearchTimer = null;
   function libSearch() {
-    const q = document.getElementById("lib-search-input").value.trim();
-    document.getElementById("lib-search-clear").classList.toggle("hidden", !q);
-    clearTimeout(_libSearchTimer);
-    if (!q) { document.getElementById("lib-search-results").classList.add("hidden"); return; }
-    _libSearchTimer = setTimeout(async () => {
-      const r = await fetch(`/api/library/search?q=${encodeURIComponent(q)}`);
-      const hits = await r.json();
-      const list = document.getElementById("lib-search-list");
-      if (!hits.length) {
-        list.innerHTML = `<div class="text-sm text-gray-400 py-2 px-1">No documents found for "${q}".</div>`;
-      } else {
-        const icon = t => t === "pdf" ? "📄" : "📝";
-        list.innerHTML = hits.map(h => `
-          <div onclick="libOpenDoc('${h.share_id}')"
-            class="bg-white border border-gray-100 rounded-2xl p-3 cursor-pointer hover:border-indigo-200 transition">
-            <div class="flex items-center gap-2 mb-1">
-              <span>${icon(h.doc_type)}</span>
-              <span class="font-semibold text-gray-800 text-sm">${h.title}</span>
-            </div>
-            <div class="text-xs text-gray-500 leading-relaxed line-clamp-2">${h.snippet}…</div>
-          </div>`).join("");
-      }
-      document.getElementById("lib-search-results").classList.remove("hidden");
-    }, 350);
+    const q = document.getElementById("lib-search-input").value.trim().toLowerCase();
+    const clearBtn = document.getElementById("lib-search-clear");
+    const resultsEl = document.getElementById("lib-search-results");
+    const listEl = document.getElementById("lib-search-list");
+    const docsEl = document.getElementById("lib-docs");
+    clearBtn.classList.toggle("hidden", !q);
+    if (!q) { resultsEl.classList.add("hidden"); docsEl.classList.remove("hidden"); return; }
+    docsEl.classList.add("hidden");
+    const hits = _libAllDocs.filter(d => d.title.toLowerCase().includes(q));
+    if (!hits.length) {
+      listEl.innerHTML = `<div class="text-sm text-gray-400 py-2 px-1">No documents match "${q}".</div>`;
+    } else {
+      const icon = t => t === "pdf" ? "📄" : "📝";
+      listEl.innerHTML = hits.map(h => {
+        const i = h.title.toLowerCase().indexOf(q);
+        const highlighted = h.title.slice(0, i) +
+          `<mark class="bg-yellow-100 text-gray-800 rounded">${h.title.slice(i, i + q.length)}</mark>` +
+          h.title.slice(i + q.length);
+        return `<div onclick="libOpenDoc('${h.share_id}')"
+          class="bg-white border border-gray-100 rounded-2xl px-4 py-3 cursor-pointer hover:border-indigo-200 transition flex items-center gap-3">
+          <span class="text-xl">${icon(h.doc_type)}</span>
+          <span class="font-medium text-gray-800 text-sm">${highlighted}</span>
+        </div>`;
+      }).join("");
+    }
+    resultsEl.classList.remove("hidden");
   }
 
   function libSearchClear() {
     document.getElementById("lib-search-input").value = "";
     document.getElementById("lib-search-results").classList.add("hidden");
     document.getElementById("lib-search-clear").classList.add("hidden");
+    document.getElementById("lib-docs").classList.remove("hidden");
   }
 
   let _libAskHistory = [];
