@@ -908,65 +908,34 @@ def _fetch_ashby(slugs: list) -> list:
     return []
 
 def _fetch_youtube(company: str) -> list:
-    """Search YouTube via RSS/scrape — no API key needed."""
+    """Search YouTube for company videos using the Data API v3."""
+    key = os.environ.get("YOUTUBE_API_KEY", "")
+    if not key:
+        return []
     try:
-        import xml.etree.ElementTree as ET
-        q = requests.utils.quote(f"{company} CEO interview OR overview OR founder OR podcast")
-        # Use YouTube's search RSS feed (no key required)
+        q = f"{company} CEO interview OR company overview OR founder story OR podcast OR earnings"
         r = requests.get(
-            f"https://www.youtube.com/results?search_query={q}&sp=EgIQAQ%253D%253D",
+            "https://www.googleapis.com/youtube/v3/search",
+            params={"q": q, "part": "snippet", "type": "video",
+                    "maxResults": 5, "key": key, "relevanceLanguage": "en"},
             timeout=8,
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"},
         )
         if r.status_code != 200:
             return []
-        # Extract structured video renderer blocks
-        blocks = _re.findall(r'"videoRenderer":\{(.*?)\},"(?:videoRenderer|playlistRenderer|adSlot)', r.text)
-        if not blocks:
-            # Fallback: pair up IDs with titles extracted independently
-            video_ids = list(dict.fromkeys(_re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})"', r.text)))
-            titles    = _re.findall(r'"title":\{"runs":\[\{"text":"([^"]+)"', r.text)
-            channels  = _re.findall(r'"ownerText":\{"runs":\[\{"text":"([^"]+)"', r.text)
-            dates     = _re.findall(r'"publishedTimeText":\{"simpleText":"([^"]+)"', r.text)
-            out = []
-            for i, vid_id in enumerate(video_ids[:8]):
-                title = titles[i] if i < len(titles) else ""
-                if not title:
-                    continue
-                out.append({
-                    "video_id":  vid_id,
-                    "title":     title,
-                    "channel":   channels[i] if i < len(channels) else "",
-                    "published": dates[i]    if i < len(dates)    else "",
-                    "thumbnail": f"https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg",
-                    "url":       f"https://www.youtube.com/watch?v={vid_id}",
-                })
-                if len(out) >= 5:
-                    break
-            return out
-
-        seen, out = set(), []
-        for block in blocks:
-            vid_m  = _re.search(r'"videoId":"([a-zA-Z0-9_-]{11})"', block)
-            title_m = _re.search(r'"title":\{"runs":\[\{"text":"([^"]+)"', block)
-            chan_m  = _re.search(r'"ownerText":\{"runs":\[\{"text":"([^"]+)"', block)
-            date_m  = _re.search(r'"publishedTimeText":\{"simpleText":"([^"]+)"', block)
-            if not vid_m or not title_m:
+        out = []
+        for item in r.json().get("items", []):
+            vid_id  = item.get("id", {}).get("videoId", "")
+            snippet = item.get("snippet", {})
+            if not vid_id:
                 continue
-            vid_id = vid_m.group(1)
-            if vid_id in seen:
-                continue
-            seen.add(vid_id)
             out.append({
                 "video_id":  vid_id,
-                "title":     title_m.group(1),
-                "channel":   chan_m.group(1)  if chan_m  else "",
-                "published": date_m.group(1)  if date_m  else "",
-                "thumbnail": f"https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg",
+                "title":     snippet.get("title", ""),
+                "channel":   snippet.get("channelTitle", ""),
+                "published": snippet.get("publishedAt", "")[:10],
+                "thumbnail": snippet.get("thumbnails", {}).get("medium", {}).get("url", ""),
                 "url":       f"https://www.youtube.com/watch?v={vid_id}",
             })
-            if len(out) >= 5:
-                break
         return out
     except Exception:
         return []

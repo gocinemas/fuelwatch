@@ -500,8 +500,9 @@ def api_company_chat():
 @app.route("/api/company/youtube-test")
 def api_youtube_test():
     from search import _fetch_youtube
+    key = os.environ.get("YOUTUBE_API_KEY", "")
     results = _fetch_youtube("Unilever")
-    return jsonify({"count": len(results), "items": results})
+    return jsonify({"count": len(results), "key_set": bool(key), "items": results})
 
 
 @app.route("/api/company/groq-test")
