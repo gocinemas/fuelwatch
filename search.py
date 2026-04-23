@@ -644,7 +644,7 @@ def _fetch_share_price(company: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v6"  # bump when result schema changes to bust stale cache
+_COMPANY_VER = "v7"  # bump when result schema changes to bust stale cache
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -897,6 +897,42 @@ def _fetch_ashby(slugs: list) -> list:
             pass
     return []
 
+def _fetch_youtube(company: str) -> list:
+    """Search YouTube for company videos — interviews, overviews, podcasts."""
+    key = os.environ.get("GOOGLE_API_KEY", "")
+    if not key:
+        return []
+    try:
+        q = f"{company} CEO interview OR company overview OR founder story OR podcast OR earnings"
+        r = requests.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params={"q": q, "part": "snippet", "type": "video",
+                    "maxResults": 5, "key": key,
+                    "relevanceLanguage": "en", "safeSearch": "moderate"},
+            timeout=8,
+        )
+        if r.status_code != 200:
+            return []
+        items = r.json().get("items", [])
+        out = []
+        for item in items:
+            vid_id  = item.get("id", {}).get("videoId", "")
+            snippet = item.get("snippet", {})
+            if not vid_id:
+                continue
+            out.append({
+                "video_id":    vid_id,
+                "title":       snippet.get("title", ""),
+                "channel":     snippet.get("channelTitle", ""),
+                "published":   snippet.get("publishedAt", "")[:10],
+                "thumbnail":   snippet.get("thumbnails", {}).get("medium", {}).get("url", ""),
+                "url":         f"https://www.youtube.com/watch?v={vid_id}",
+            })
+        return out
+    except Exception:
+        return []
+
+
 def fetch_company_info(company: str) -> dict:
     key = company.strip().lower() + "|" + _COMPANY_VER
     cached = _COMPANY_CACHE.get(key)
@@ -914,12 +950,13 @@ def fetch_company_info(company: str) -> dict:
         "indeed":      f"https://uk.indeed.com/jobs?q={enc}",
     }
 
-    with _cf.ThreadPoolExecutor(max_workers=9) as pool:
+    with _cf.ThreadPoolExecutor(max_workers=10) as pool:
         wiki_f     = pool.submit(_fetch_wikipedia, company)
         news_f     = pool.submit(_fetch_news, company, "", 6)
         ai_news_f  = pool.submit(_fetch_news, company, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
         strat_f    = pool.submit(_fetch_news, company, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
         results_f  = pool.submit(_fetch_news, company, 'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"', 3)
+        youtube_f  = pool.submit(_fetch_youtube, company)
         share_f    = pool.submit(_fetch_share_price, company)
         gh_f       = pool.submit(_fetch_greenhouse, slugs)
         lv_f       = pool.submit(_fetch_lever, slugs)
@@ -956,6 +993,12 @@ def fetch_company_info(company: str) -> dict:
         except Exception:
             pass
 
+        youtube = []
+        try:
+            youtube = youtube_f.result(timeout=10) or []
+        except Exception:
+            pass
+
         share = {}
         try:
             share = share_f.result(timeout=8) or {}
@@ -979,6 +1022,7 @@ def fetch_company_info(company: str) -> dict:
         "ai_news":       ai_news,
         "strategy_news": strategy_news,
         "results_news":  results_news,
+        "youtube":       youtube,
         "share":         share,
         "ai_signals":    _ai_job_signals(jobs),
         "jobs":          jobs,

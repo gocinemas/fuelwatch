@@ -228,6 +228,10 @@
             <div class="co-card-title">📰 Latest News</div>
             <div id="co-news-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
+          <div id="co-youtube" class="co-card hidden">
+            <div class="co-card-title">📺 Watch & Listen</div>
+            <div id="co-youtube-list" class="flex flex-col gap-3"></div>
+          </div>
           <div id="co-overview-empty" class="hidden co-card text-sm text-gray-400 text-center py-4">
             No overview data found. Try the <strong>Intel</strong> tab for news.
           </div>
@@ -734,7 +738,7 @@
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
     switchCoTab("overview");
-    ["co-overview","co-stats","co-share","co-results","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links","co-overview-empty","co-brands"].forEach(id =>
+    ["co-overview","co-stats","co-share","co-results","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links","co-overview-empty","co-brands","co-youtube"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
     try {
       const r = await _fetchWithTimeout(`/api/company?name=${encodeURIComponent(name)}`, 30000);
@@ -799,6 +803,19 @@
           <div class="text-xs text-gray-400 mt-0.5">${n.source ? n.source + " · " : ""}${n.date}</div>
         </div>`).join("");
       document.getElementById("co-news").classList.remove("hidden");
+    }
+
+    // YouTube
+    if (d.youtube && d.youtube.length) {
+      document.getElementById("co-youtube-list").innerHTML = d.youtube.map(v => `
+        <a href="${v.url}" target="_blank" class="flex gap-3 items-start hover:bg-gray-50 rounded-xl p-1 transition">
+          <img src="${v.thumbnail}" alt="" class="w-24 h-14 object-cover rounded-lg flex-shrink-0 bg-gray-100" loading="lazy" />
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-gray-800 leading-snug line-clamp-2">${v.title}</div>
+            <div class="text-xs text-gray-400 mt-1">${v.channel} · ${v.published}</div>
+          </div>
+        </a>`).join("");
+      document.getElementById("co-youtube").classList.remove("hidden");
     }
 
     // Share Price
