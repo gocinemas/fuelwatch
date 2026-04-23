@@ -644,7 +644,7 @@ def _fetch_share_price(company: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v7"  # bump when result schema changes to bust stale cache
+_COMPANY_VER = "v8"  # bump when result schema changes to bust stale cache
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -810,15 +810,25 @@ def _fetch_wikipedia(company: str) -> dict:
         employees = _field("num_employees") or _field("employees")
         hq        = _field("headquarters") or _field("location_city") or _field("location")
         industry  = _field("industry") or _field("type")
-        brands_raw = _field("products") or _field("brands") or _field("subsidiaries")
-        # Split on commas/newlines and keep up to 6 clean names
+        # Only use dedicated brands/subsidiaries fields — not products (which gives service descriptions)
+        brands_raw = _field("brands") or _field("subsidiaries")
+        _service_words = {"account", "card", "trading", "payment", "transfer", "loan",
+                          "insurance", "banking", "service", "plan", "fee", "deposit",
+                          "withdrawal", "exchange", "invest", "crypto", "saving"}
         brands = []
         if brands_raw:
             parts = _re.split(r'[,\n•]+', brands_raw)
             for p in parts:
                 p = p.strip()
-                if p and len(p) > 1:
-                    brands.append(p[:40])
+                if not p or len(p) < 2:
+                    continue
+                # Skip items that look like service descriptions (mostly lowercase or contain service words)
+                words = p.split()
+                if any(w.lower() in _service_words for w in words):
+                    continue
+                if not words[0][0].isupper():
+                    continue
+                brands.append(p[:40])
                 if len(brands) >= 6:
                     break
 
