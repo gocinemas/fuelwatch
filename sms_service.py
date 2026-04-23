@@ -440,46 +440,46 @@ def api_library_reindex():
 
 
 _tweets_cache = {"data": None, "ts": 0}
+_NITTER = [
+    "https://nitter.privacydev.net",
+    "https://nitter.poast.org",
+    "https://nitter.1d4.us",
+    "https://nitter.net",
+]
 
 @app.route("/api/tweets")
 def api_tweets():
-    bearer = os.environ.get("X_BEARER_TOKEN", "")
-    if not bearer:
-        return jsonify({"error": "X API not configured"}), 503
+    import xml.etree.ElementTree as ET
 
-    # Cache for 15 minutes to stay within rate limits
-    if _tweets_cache["data"] and (time.time() - _tweets_cache["ts"]) < 900:
+    if _tweets_cache["data"] and (time.time() - _tweets_cache["ts"]) < 1800:
         resp = jsonify(_tweets_cache["data"])
         resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
 
-    try:
-        uid_r = requests.get(
-            "https://api.twitter.com/2/users/by/username/mekalav",
-            headers={"Authorization": f"Bearer {bearer}"}, timeout=8
-        )
-        uid_r.raise_for_status()
-        user_id = uid_r.json()["data"]["id"]
+    ua = {"User-Agent": "Mozilla/5.0"}
+    for base in _NITTER:
+        try:
+            r = requests.get(f"{base}/mekalav/rss", timeout=8, headers=ua)
+            if r.status_code != 200:
+                continue
+            root = ET.fromstring(r.text)
+            tweets = []
+            for item in root.findall(".//item")[:10]:
+                link  = item.findtext("link") or ""
+                date  = item.findtext("pubDate") or ""
+                desc  = item.findtext("description") or item.findtext("title") or ""
+                text  = re.sub(r'<[^>]+>', '', desc).strip()
+                tweets.append({"text": text, "link": link, "date": date})
+            if tweets:
+                _tweets_cache["data"] = tweets
+                _tweets_cache["ts"] = time.time()
+                resp = jsonify(tweets)
+                resp.headers["Access-Control-Allow-Origin"] = "*"
+                return resp
+        except Exception:
+            continue
 
-        tw_r = requests.get(
-            f"https://api.twitter.com/2/users/{user_id}/tweets",
-            headers={"Authorization": f"Bearer {bearer}"},
-            params={
-                "max_results": 10,
-                "tweet.fields": "created_at,text,public_metrics",
-                "exclude": "retweets,replies",
-            },
-            timeout=8,
-        )
-        tw_r.raise_for_status()
-        tweets = tw_r.json().get("data", [])
-        _tweets_cache["data"] = tweets
-        _tweets_cache["ts"] = time.time()
-        resp = jsonify(tweets)
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        return resp
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Could not fetch tweets"}), 503
 
 
 @app.route("/api/library/search")
