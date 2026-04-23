@@ -760,18 +760,19 @@
       document.getElementById("co-overview").classList.remove("hidden");
     }
 
-    // Stats grid + brands
-    const stats = [
-      w.employees && ["👥 Employees", w.employees],
-      w.founded   && ["📅 Founded",   w.founded],
-      w.hq        && ["📍 HQ",        w.hq],
-      w.industry  && ["🏭 Industry",  w.industry],
-      w.revenue   && ["💰 Revenue",   w.revenue],
+    // Key Facts — always show if we have any wiki data
+    const statRows = [
+      w.description && ["📌 What they do", w.description],
+      w.employees   && ["👥 Employees",    w.employees],
+      w.founded     && ["📅 Founded",      w.founded],
+      w.hq          && ["📍 HQ",           w.hq],
+      w.industry    && ["🏭 Industry",     w.industry],
+      w.revenue     && ["💰 Revenue",      w.revenue],
     ].filter(Boolean);
     const brands = w.brands || [];
-    if (stats.length || brands.length) {
-      document.getElementById("co-stats-body").innerHTML = stats.map(([label, val]) =>
-        `<div class="bg-gray-50 rounded-xl p-3">
+    if (statRows.length || brands.length) {
+      document.getElementById("co-stats-body").innerHTML = statRows.map(([label, val]) =>
+        `<div class="bg-gray-50 rounded-xl p-3 col-span-${label === "📌 What they do" ? "2" : "1"}">
           <div class="text-xs text-gray-400 mb-0.5">${label}</div>
           <div class="font-semibold text-gray-800 text-sm">${val}</div>
         </div>`
@@ -785,8 +786,8 @@
       document.getElementById("co-stats").classList.remove("hidden");
     }
 
-    // Show fallback if overview tab has no content at all
-    if (!w.extract && !stats.length && !brands.length && !(d.news && d.news.length)) {
+    // Show fallback only if overview tab has truly nothing
+    if (!w.extract && !statRows.length && !brands.length && !(d.news && d.news.length)) {
       document.getElementById("co-overview-empty").classList.remove("hidden");
     }
 
