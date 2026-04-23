@@ -945,7 +945,7 @@
 
     // Job signals
     const sig = d.job_signals || {};
-    const ai  = d.ai_signals  || {};
+    const jobAi = d.ai_signals || {};
     if (sig.total) {
       const remotePct = sig.remote ? Math.round(sig.remote / sig.total * 100) : 0;
       let sHtml = `<div class="flex flex-wrap gap-2 mb-4">
@@ -957,8 +957,8 @@
           <div class="text-2xl font-bold text-green-700">${sig.remote}</div>
           <div class="text-xs text-gray-500 mt-0.5">Remote (${remotePct}%)</div>
         </div>` : ""}
-        ${ai.ai_role_count > 0 ? `<div class="bg-violet-50 rounded-xl px-4 py-2.5 text-center min-w-[72px]">
-          <div class="text-2xl font-bold text-violet-700">${ai.ai_role_count}</div>
+        ${jobAi.ai_role_count > 0 ? `<div class="bg-violet-50 rounded-xl px-4 py-2.5 text-center min-w-[72px]">
+          <div class="text-2xl font-bold text-violet-700">${jobAi.ai_role_count}</div>
           <div class="text-xs text-gray-500 mt-0.5">AI / ML roles</div>
         </div>` : ""}
       </div>`;
