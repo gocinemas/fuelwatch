@@ -642,28 +642,32 @@ _BRAND_CACHE: dict = {}
 _BRAND_TTL = 3600
 
 def _fetch_brand_ai(brand: str, extract: str) -> dict:
-    """Ask Groq to extract timeline milestones and famous campaigns for a brand."""
+    """Ask Groq for timeline, campaigns, and top competitors for a brand."""
     import json
     groq_key = os.environ.get("GROQ_API_KEY", "")
     if not groq_key:
-        return {"timeline": [], "campaigns": []}
-    prompt = f"""You are a brand historian. Provide structured data about the brand "{brand}".
+        return {"timeline": [], "campaigns": [], "competitors": []}
+    prompt = f"""You are a brand historian and market analyst. Provide structured data about the brand "{brand}".
 
 Wikipedia context: {extract[:1800] if extract else "Not provided"}
 
-Return ONLY a valid JSON object with exactly these two fields:
+Return ONLY a valid JSON object with exactly these three fields:
 {{
   "timeline": [
     {{"year": "1971", "event": "Short description under 12 words"}}
   ],
   "campaigns": [
     {{"name": "Campaign Name", "year": "1984", "description": "One sentence about this campaign or slogan"}}
+  ],
+  "competitors": [
+    {{"name": "Competitor Name", "description": "One sentence on how they compete with {brand}"}}
   ]
 }}
 
 Rules:
-- timeline: 8–14 key milestones (founding, major launches, rebrands, acquisitions, revenue records). Sort ascending by year.
-- campaigns: 4–6 most iconic advertising campaigns or slogans. Use your knowledge if Wikipedia doesn't mention them.
+- timeline: 8–14 key milestones (founding, launches, rebrands, acquisitions, revenue records). Sort ascending by year.
+- campaigns: 4–6 most iconic advertising campaigns or slogans. Use your knowledge.
+- competitors: top 4–5 direct competitors. Include brief positioning vs {brand}.
 - Return ONLY the JSON object. No markdown, no explanation."""
     try:
         r = requests.post(
@@ -673,7 +677,7 @@ Rules:
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 1400,
+                "max_tokens": 1600,
             },
             timeout=20,
         )
@@ -683,30 +687,141 @@ Rules:
             return json.loads(m.group(0))
     except Exception as e:
         print(f"[brand_ai] error: {e}")
-    return {"timeline": [], "campaigns": []}
+    return {"timeline": [], "campaigns": [], "competitors": []}
+
+
+def _fetch_brand_ads(brand: str) -> list:
+    """Search YouTube for iconic brand ad videos."""
+    key = os.environ.get("YOUTUBE_API_KEY", "")
+    if not key:
+        return []
+    try:
+        q = f"{brand} iconic advertisement OR famous commercial OR brand campaign"
+        r = requests.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params={"q": q, "part": "snippet", "type": "video",
+                    "maxResults": 4, "key": key, "relevanceLanguage": "en", "order": "relevance"},
+            timeout=8,
+        )
+        if r.status_code != 200:
+            return []
+        out = []
+        for item in r.json().get("items", []):
+            vid_id  = item.get("id", {}).get("videoId", "")
+            snippet = item.get("snippet", {})
+            if not vid_id:
+                continue
+            out.append({
+                "video_id":  vid_id,
+                "title":     snippet.get("title", ""),
+                "channel":   snippet.get("channelTitle", ""),
+                "thumbnail": snippet.get("thumbnails", {}).get("medium", {}).get("url", ""),
+                "url":       f"https://www.youtube.com/watch?v={vid_id}",
+            })
+        return out
+    except Exception as e:
+        print(f"[brand_ads] {e}")
+        return []
+
+
+def _fetch_brand_financials(brand: str) -> dict:
+    """Fetch market cap, revenue, net income, margins from Yahoo Finance."""
+    from datetime import datetime as _dt
+    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+    hdrs = {"User-Agent": ua, "Accept": "application/json"}
+
+    ticker = ""
+    currency = "USD"
+    try:
+        sr = requests.get(
+            "https://query2.finance.yahoo.com/v1/finance/search",
+            params={"q": brand, "quotesCount": 5, "newsCount": 0},
+            timeout=6, headers=hdrs,
+        )
+        quotes = sr.json().get("quotes", [])
+        equity = [q for q in quotes if q.get("quoteType") == "EQUITY"]
+        if equity:
+            pick = equity[0]
+            ticker   = pick.get("symbol", "")
+            currency = pick.get("currency", "USD")
+    except Exception:
+        pass
+
+    if not ticker:
+        return {}
+
+    def _fmt(val_dict, curr="$"):
+        v = val_dict.get("raw") if isinstance(val_dict, dict) else val_dict
+        if not v:
+            return ""
+        try:
+            v = float(v)
+        except Exception:
+            return ""
+        sym = {"USD": "$", "GBP": "£", "GBp": "£", "EUR": "€"}.get(currency, "$")
+        if v >= 1e12: return f"{sym}{v/1e12:.2f}T"
+        if v >= 1e9:  return f"{sym}{v/1e9:.1f}B"
+        if v >= 1e6:  return f"{sym}{v/1e6:.0f}M"
+        return f"{sym}{v:,.0f}"
+
+    def _pct(val_dict):
+        v = val_dict.get("raw") if isinstance(val_dict, dict) else val_dict
+        if v is None: return ""
+        try: return f"{round(float(v)*100, 1)}%"
+        except Exception: return ""
+
+    try:
+        r = requests.get(
+            f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}",
+            params={"modules": "defaultKeyStatistics,summaryDetail,financialData"},
+            timeout=8, headers=hdrs,
+        )
+        result = r.json().get("quoteSummary", {}).get("result", [None])[0] or {}
+        fin    = result.get("financialData", {})
+        stats  = result.get("defaultKeyStatistics", {})
+        summ   = result.get("summaryDetail", {})
+        return {
+            "ticker":         ticker,
+            "market_cap":     _fmt(summ.get("marketCap", {})),
+            "total_revenue":  _fmt(fin.get("totalRevenue", {})),
+            "net_income":     _fmt(fin.get("netIncomeToCommon") or stats.get("netIncomeToCommon") or {}),
+            "profit_margin":  _pct(fin.get("profitMargins", {})),
+            "gross_margin":   _pct(fin.get("grossMargins", {})),
+            "revenue_growth": _pct(fin.get("revenueGrowth", {})),
+            "ebitda":         _fmt(fin.get("ebitda", {})),
+        }
+    except Exception as e:
+        print(f"[brand_financials] {e}")
+        return {"ticker": ticker}
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv2"
+    cache_key = brand.strip().lower() + "|brandv3"
     cached = _BRAND_CACHE.get(cache_key)
     if cached and time.time() - cached["ts"] < _BRAND_TTL:
         return cached["data"]
 
-    with _cf.ThreadPoolExecutor(max_workers=3) as pool:
+    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
         wiki_f = pool.submit(_fetch_wikipedia, brand)
         news_f = pool.submit(_fetch_news, brand, "brand OR campaign OR advertising OR revenue OR launch", 6)
+        ads_f  = pool.submit(_fetch_brand_ads, brand)
+        fin_f  = pool.submit(_fetch_brand_financials, brand)
 
         wiki = {}
-        try:
-            wiki = wiki_f.result(timeout=12) or {}
-        except Exception:
-            pass
+        try: wiki = wiki_f.result(timeout=12) or {}
+        except Exception: pass
 
         news = []
-        try:
-            news = news_f.result(timeout=10) or []
-        except Exception:
-            pass
+        try: news = news_f.result(timeout=10) or []
+        except Exception: pass
+
+        ads = []
+        try: ads = ads_f.result(timeout=10) or []
+        except Exception: pass
+
+        financials = {}
+        try: financials = fin_f.result(timeout=10) or {}
+        except Exception: pass
 
     ai = _fetch_brand_ai(brand, wiki.get("extract", ""))
 
@@ -722,6 +837,9 @@ def fetch_brand_data(brand: str) -> dict:
         "wiki_url":    wiki.get("wiki_url", ""),
         "timeline":    ai.get("timeline", []),
         "campaigns":   ai.get("campaigns", []),
+        "competitors": ai.get("competitors", []),
+        "ads":         ads,
+        "financials":  financials,
         "news":        news,
     }
     _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
