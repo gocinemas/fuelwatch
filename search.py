@@ -920,30 +920,53 @@ def _fetch_youtube(company: str) -> list:
         )
         if r.status_code != 200:
             return []
-        # Extract video IDs and titles from the HTML
-        video_ids = _re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})"', r.text)
-        titles    = _re.findall(r'"title":\{"runs":\[\{"text":"([^"]+)"', r.text)
-        channels  = _re.findall(r'"ownerText":\{"runs":\[\{"text":"([^"]+)"', r.text)
-        dates     = _re.findall(r'"publishedTimeText":\{"simpleText":"([^"]+)"', r.text)
+        # Extract structured video renderer blocks
+        blocks = _re.findall(r'"videoRenderer":\{(.*?)\},"(?:videoRenderer|playlistRenderer|adSlot)', r.text)
+        if not blocks:
+            # Fallback: pair up IDs with titles extracted independently
+            video_ids = list(dict.fromkeys(_re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})"', r.text)))
+            titles    = _re.findall(r'"title":\{"runs":\[\{"text":"([^"]+)"', r.text)
+            channels  = _re.findall(r'"ownerText":\{"runs":\[\{"text":"([^"]+)"', r.text)
+            dates     = _re.findall(r'"publishedTimeText":\{"simpleText":"([^"]+)"', r.text)
+            out = []
+            for i, vid_id in enumerate(video_ids[:8]):
+                title = titles[i] if i < len(titles) else ""
+                if not title:
+                    continue
+                out.append({
+                    "video_id":  vid_id,
+                    "title":     title,
+                    "channel":   channels[i] if i < len(channels) else "",
+                    "published": dates[i]    if i < len(dates)    else "",
+                    "thumbnail": f"https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg",
+                    "url":       f"https://www.youtube.com/watch?v={vid_id}",
+                })
+                if len(out) >= 5:
+                    break
+            return out
 
         seen, out = set(), []
-        for i, vid_id in enumerate(video_ids):
-            if vid_id in seen or len(out) >= 5:
-                break
-            seen.add(vid_id)
-            title   = titles[i]   if i < len(titles)   else ""
-            channel = channels[i] if i < len(channels) else ""
-            date    = dates[i]    if i < len(dates)    else ""
-            if not title:
+        for block in blocks:
+            vid_m  = _re.search(r'"videoId":"([a-zA-Z0-9_-]{11})"', block)
+            title_m = _re.search(r'"title":\{"runs":\[\{"text":"([^"]+)"', block)
+            chan_m  = _re.search(r'"ownerText":\{"runs":\[\{"text":"([^"]+)"', block)
+            date_m  = _re.search(r'"publishedTimeText":\{"simpleText":"([^"]+)"', block)
+            if not vid_m or not title_m:
                 continue
+            vid_id = vid_m.group(1)
+            if vid_id in seen:
+                continue
+            seen.add(vid_id)
             out.append({
                 "video_id":  vid_id,
-                "title":     title,
-                "channel":   channel,
-                "published": date,
+                "title":     title_m.group(1),
+                "channel":   chan_m.group(1)  if chan_m  else "",
+                "published": date_m.group(1)  if date_m  else "",
                 "thumbnail": f"https://i.ytimg.com/vi/{vid_id}/mqdefault.jpg",
                 "url":       f"https://www.youtube.com/watch?v={vid_id}",
             })
+            if len(out) >= 5:
+                break
         return out
     except Exception:
         return []
