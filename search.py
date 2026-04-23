@@ -644,7 +644,7 @@ def _fetch_share_price(company: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v4"  # bump when result schema changes to bust stale cache
+_COMPANY_VER = "v5"  # bump when result schema changes to bust stale cache
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -734,37 +734,75 @@ def _ai_job_signals(jobs: list) -> dict:
 
 
 def _fetch_wikipedia(company: str) -> dict:
-    """Fetch company overview from Wikipedia summary API."""
-    try:
-        slug = requests.utils.quote(company.replace(" ", "_"))
+    """Fetch company overview from Wikipedia summary API with search fallback."""
+    ua = {"User-Agent": "Miru/1.0 (company research tool)"}
+
+    def _summary(title: str) -> dict:
+        slug = requests.utils.quote(title.replace(" ", "_"))
         r = requests.get(
             f"https://en.wikipedia.org/api/rest_v1/page/summary/{slug}",
-            timeout=8, headers={"User-Agent": "LocalIQ/1.0"},
+            timeout=8, headers=ua,
         )
         if r.status_code != 200:
             return {}
         d = r.json()
-        if d.get("type") == "disambiguation":
+        if d.get("type") in ("disambiguation", "no-extract"):
             return {}
-        # Also grab infobox fields from wikitext
+        extract = (d.get("extract") or "")[:600]
+        if not extract:
+            return {}
+        return {
+            "description": d.get("description", ""),
+            "extract":     extract,
+            "wiki_url":    d.get("content_urls", {}).get("desktop", {}).get("page", ""),
+        }
+
+    # Step 1: try direct title match
+    result = _summary(company)
+
+    # Step 2: if that fails, search Wikipedia for the best matching article
+    if not result:
+        try:
+            sr = requests.get(
+                "https://en.wikipedia.org/w/api.php",
+                params={"action": "query", "list": "search", "srsearch": company,
+                        "srlimit": 3, "format": "json"},
+                timeout=6, headers=ua,
+            )
+            hits = sr.json().get("query", {}).get("search", [])
+            for hit in hits:
+                result = _summary(hit["title"])
+                if result:
+                    break
+        except Exception:
+            pass
+
+    if not result:
+        return {}
+
+    # Step 3: try to enrich with infobox fields from wikitext (optional — don't fail if it errors)
+    employees = hq = industry = founded = revenue = ""
+    try:
         r2 = requests.get("https://en.wikipedia.org/w/api.php", params={
             "action": "query", "titles": company, "prop": "revisions",
-            "rvprop": "content", "rvsection": 0, "format": "json",
-        }, timeout=8, headers={"User-Agent": "LocalIQ/1.0"})
+            "rvprop": "content", "rvslots": "main", "rvsection": 0, "format": "json",
+        }, timeout=6, headers=ua)
         pages = r2.json().get("query", {}).get("pages", {})
-        wikitext = list(pages.values())[0].get("revisions", [{}])[0].get("*", "")
+        page = list(pages.values())[0] if pages else {}
+        revs = page.get("revisions", [])
+        wikitext = ""
+        if revs:
+            slots = revs[0].get("slots", {})
+            wikitext = slots.get("main", {}).get("*", "") or revs[0].get("*", "")
 
         def _field(key):
             m = _re.search(rf'\|\s*{key}\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
             if not m: return ""
             v = m.group(1).strip()
-            # If value starts with a template, try to extract first pipe argument
             if v.startswith("{{"):
                 inner = _re.search(r'\{\{[^|{}]*\|([^|{}]+)', v)
                 return inner.group(1).strip()[:120] if inner else ""
-            # Strip any trailing templates/citations
             v = v.split("{{")[0]
-            # Strip wikilinks
             v = _re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', v)
             v = _re.sub(r'<[^>]+>|\[\d+\]', '', v)
             return " ".join(v.split())[:120]
@@ -773,32 +811,20 @@ def _fetch_wikipedia(company: str) -> dict:
         hq        = _field("headquarters") or _field("location_city") or _field("location")
         industry  = _field("industry") or _field("type")
 
-        # Founded: extract 4-digit year from raw wikitext field
-        founded = ""
         mf = _re.search(r'\|\s*(?:founded|foundation)\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
         if mf:
             ym = _re.search(r'\b(1[5-9]\d{2}|20\d{2})\b', mf.group(1))
             founded = ym.group(1) if ym else ""
 
-        # Revenue: look for monetary value pattern
-        revenue = ""
         mr = _re.search(r'\|\s*revenue\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
         if mr:
             vm = _re.search(r'[£$€]?[\d,\.]+\s*(?:billion|million|trillion)', mr.group(1), _re.IGNORECASE)
             revenue = vm.group(0).strip() if vm else ""
-
-        return {
-            "description": d.get("description", ""),
-            "extract":     d.get("extract", "")[:600],
-            "employees":   employees,
-            "revenue":     revenue,
-            "founded":     founded,
-            "hq":          hq,
-            "industry":    industry,
-            "wiki_url":    d.get("content_urls", {}).get("desktop", {}).get("page", ""),
-        }
     except Exception:
-        return {}
+        pass
+
+    return {**result, "employees": employees, "revenue": revenue,
+            "founded": founded, "hq": hq, "industry": industry}
 
 def _co_slugs(name: str) -> list:
     """Generate ATS slug candidates from a company name."""
