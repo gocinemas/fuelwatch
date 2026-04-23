@@ -326,15 +326,7 @@
             <p id="co-jobs-source" class="text-xs text-gray-400 mb-3"></p>
             <div id="co-jobs-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-          <div id="co-no-jobs" class="co-card hidden">
-            <div class="co-card-title">💼 Jobs</div>
-            <p class="text-sm text-gray-500 mb-3">No direct listings found. Search on:</p>
-            <div class="flex flex-col gap-2">
-              <a id="co-indeed-link" href="#" target="_blank" class="text-sm bg-blue-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-blue-700 transition">Indeed →</a>
-              <a id="co-linkedin-link" href="#" target="_blank" class="text-sm bg-indigo-700 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-indigo-800 transition">LinkedIn →</a>
-              <a id="co-glassdoor-link" href="#" target="_blank" class="text-sm bg-green-600 text-white font-semibold px-4 py-2 rounded-xl text-center hover:bg-green-700 transition">Glassdoor →</a>
-            </div>
-          </div>
+          <div id="co-no-jobs" class="hidden"></div>
           <div id="co-links" class="co-card hidden">
             <div class="co-card-title">🔗 Useful Links</div>
             <div id="co-links-body" class="flex flex-col gap-2 text-sm"></div>
@@ -983,22 +975,19 @@
           </a>
         </div>`).join("");
       document.getElementById("co-jobs").classList.remove("hidden");
-    } else {
-      const L = d.links || {};
-      document.getElementById("co-indeed-link").href    = L.indeed    || "#";
-      document.getElementById("co-linkedin-link").href  = L.linkedin  || "#";
-      document.getElementById("co-glassdoor-link").href = L.glassdoor || "#";
-      document.getElementById("co-no-jobs").classList.remove("hidden");
     }
 
-    // Practical links
+    // Practical links (always shown; Indeed added when no direct job listings)
     const L = d.links || {};
-    if (L.linkedin || L.glassdoor || L.ch) {
-      document.getElementById("co-links-body").innerHTML = [
-        L.linkedin  && `<a href="${L.linkedin}"  target="_blank" class="bg-indigo-50 text-indigo-700 font-medium px-4 py-2 rounded-xl hover:bg-indigo-100 transition">LinkedIn page →</a>`,
-        L.glassdoor && `<a href="${L.glassdoor}" target="_blank" class="bg-green-50 text-green-700 font-medium px-4 py-2 rounded-xl hover:bg-green-100 transition">Glassdoor reviews →</a>`,
-        L.ch        && `<a href="${L.ch}"        target="_blank" class="bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-xl hover:bg-gray-100 transition">Companies House →</a>`,
-      ].filter(Boolean).join("");
+    const hasJobs = (d.jobs || []).length > 0;
+    const linksHtml = [
+      !hasJobs && L.indeed   && `<a href="${L.indeed}"    target="_blank" class="bg-blue-50 text-blue-700 font-medium px-4 py-2 rounded-xl hover:bg-blue-100 transition">Search jobs on Indeed →</a>`,
+      L.linkedin  && `<a href="${L.linkedin}"  target="_blank" class="bg-indigo-50 text-indigo-700 font-medium px-4 py-2 rounded-xl hover:bg-indigo-100 transition">LinkedIn page →</a>`,
+      L.glassdoor && `<a href="${L.glassdoor}" target="_blank" class="bg-green-50 text-green-700 font-medium px-4 py-2 rounded-xl hover:bg-green-100 transition">Glassdoor reviews →</a>`,
+      L.ch        && `<a href="${L.ch}"        target="_blank" class="bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-xl hover:bg-gray-100 transition">Companies House →</a>`,
+    ].filter(Boolean).join("");
+    if (linksHtml) {
+      document.getElementById("co-links-body").innerHTML = linksHtml;
       document.getElementById("co-links").classList.remove("hidden");
     }
   }
