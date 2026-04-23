@@ -499,9 +499,15 @@ def api_company_chat():
 
 @app.route("/api/company/youtube-test")
 def api_youtube_test():
-    from search import _fetch_youtube
-    results = _fetch_youtube("Unilever")
-    return jsonify({"count": len(results), "items": results})
+    import requests as _req
+    from search import GOOGLE_API_KEY
+    r = _req.get(
+        "https://www.googleapis.com/youtube/v3/search",
+        params={"q": "Unilever CEO interview", "part": "snippet",
+                "type": "video", "maxResults": 3, "key": GOOGLE_API_KEY},
+        timeout=8,
+    )
+    return jsonify({"status": r.status_code, "key_prefix": GOOGLE_API_KEY[:12] + "...", "body": r.json()})
 
 
 @app.route("/api/company/groq-test")
