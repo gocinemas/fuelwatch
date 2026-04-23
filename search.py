@@ -644,7 +644,7 @@ def _fetch_share_price(company: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v9"  # bump when result schema changes to bust stale cache
+_COMPANY_VER = "v10"  # bump when result schema changes to bust stale cache
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -799,8 +799,13 @@ def _fetch_wikipedia(company: str) -> dict:
             m = _re.search(rf'\|\s*{key}\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
             if not m: return ""
             v = m.group(1).strip()
-            # Strip simple no-param templates: {{increase}}, {{decrease}}, {{nobr}}, etc.
-            v = _re.sub(r'\{\{[^|{}]{1,20}\}\}', '', v)
+            # Strip <ref>...</ref> blocks first
+            v = _re.sub(r'<ref[^>]*>.*?</ref>', '', v, flags=_re.DOTALL)
+            v = _re.sub(r'<ref[^/]*/>', '', v)
+            # Normalise non-breaking spaces
+            v = v.replace('&nbsp;', ' ')
+            # Strip simple no-param templates: {{increase}}, {{decrease}}, etc.
+            v = _re.sub(r'\{\{[^|{}]{1,30}\}\}', '', v)
             # Extract first param from templates: {{US$|60.1 billion}} → 60.1 billion
             v = _re.sub(r'\{\{[^|{}]+\|([^|{}]+)(?:\|[^{}]*)?\}\}', r'\1', v)
             # Drop any remaining templates
@@ -812,7 +817,7 @@ def _fetch_wikipedia(company: str) -> dict:
             return " ".join(v.split())[:120]
 
         employees = _field("num_employees") or _field("employees")
-        hq        = _field("headquarters") or _field("location_city") or _field("location")
+        hq        = _field("hq_location_city") or _field("headquarters") or _field("location_city") or _field("location")
         industry  = _field("industry") or _field("type")
         # Only use dedicated brands/subsidiaries fields — not products (which gives service descriptions)
         brands_raw = _field("brands") or _field("subsidiaries")
@@ -841,10 +846,10 @@ def _fetch_wikipedia(company: str) -> dict:
             ym = _re.search(r'\b(1[5-9]\d{2}|20\d{2})\b', mf.group(1))
             founded = ym.group(1) if ym else ""
 
-        mr = _re.search(r'\|\s*revenue\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
-        if mr:
-            vm = _re.search(r'[£$€]?[\d,\.]+\s*(?:billion|million|trillion)', mr.group(1), _re.IGNORECASE)
-            revenue = vm.group(0).strip() if vm else ""
+        rev_raw = _field("revenue")
+        if rev_raw:
+            vm = _re.search(r'[£$€]?\s*[\d,\.]+\s*(?:billion|million|trillion)', rev_raw, _re.IGNORECASE)
+            revenue = vm.group(0).strip() if vm else rev_raw[:60]
     except Exception:
         pass
 
