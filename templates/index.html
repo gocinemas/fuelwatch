@@ -413,34 +413,15 @@
           </button>
         </div>
 
-        <!-- Search bar -->
-        <div class="relative mb-3">
-          <input id="lib-search-input" type="text" placeholder="Search your library…"
-            oninput="libSearch()"
-            class="w-full text-sm border border-gray-200 rounded-2xl pl-9 pr-4 py-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 bg-white">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base">🔍</span>
-          <button id="lib-search-clear" onclick="libSearchClear()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg">✕</button>
-        </div>
-
-        <!-- Search results -->
-        <div id="lib-search-results" class="hidden mb-4">
-          <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Search Results</div>
-          <div id="lib-search-list" class="flex flex-col gap-2"></div>
-        </div>
-
-        <!-- Ask your Library -->
+        <!-- Single ask/search bar -->
         <div id="lib-ask-panel" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-          <div class="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
-            <span class="text-sm font-semibold text-gray-700">🤖 Ask your Library</span>
-            <span class="text-xs text-gray-400">— searches across all documents</span>
-          </div>
-          <div id="lib-ask-msgs" class="flex flex-col gap-3 px-4 py-3 max-h-[280px] overflow-y-auto text-sm">
-            <div class="self-start bg-emerald-50 text-emerald-700 text-sm px-3 py-2 rounded-2xl rounded-tl-sm max-w-xs leading-relaxed">
-              Ask me anything — I'll search across all your documents to find the answer.
+          <div id="lib-ask-msgs" class="flex flex-col gap-3 px-4 py-4 max-h-[260px] overflow-y-auto text-sm">
+            <div class="self-start bg-emerald-50 text-emerald-700 text-sm px-3 py-2 rounded-2xl rounded-tl-sm leading-relaxed">
+              Ask me anything — I'll find the answer across all your documents.
             </div>
           </div>
           <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
-            <input id="lib-ask-input" type="text" placeholder="Ask anything across all docs…"
+            <input id="lib-ask-input" type="text" placeholder="Search or ask your library…"
               class="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50"
               onkeydown="if(event.key==='Enter') libAsk()">
             <button onclick="libAsk()" class="bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-emerald-700 transition">Ask</button>
@@ -483,12 +464,6 @@
               <span id="lib-upload-btn-text">Save to Library</span>
             </button>
           </div>
-        </div>
-
-        <!-- Doc list -->
-        <div class="flex items-start gap-2.5 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 mb-4 text-sm text-emerald-800">
-          <span class="text-lg mt-0.5">💬</span>
-          <span>Upload a PDF or paste any text — then <strong>chat with it</strong> to get instant answers from your documents.</span>
         </div>
 
         <div id="lib-loading" class="hidden text-center py-8 text-gray-400 text-sm">Loading…</div>
