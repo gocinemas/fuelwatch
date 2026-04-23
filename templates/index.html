@@ -200,8 +200,6 @@
           .co-tab-bar { display:flex; gap:4px; background:#f3f4f6; padding:4px; border-radius:1rem; margin-bottom:1rem; }
           .co-tab-btn { flex:1; font-size:11px; font-weight:600; padding:7px 4px; border-radius:.65rem; border:none; cursor:pointer; transition:all .15s; background:transparent; color:#6b7280; }
           .co-tab-btn.active { background:#fff; color:#4f46e5; box-shadow:0 1px 3px rgba(0,0,0,.1); }
-          .co-tab-panel { display:none; }
-          .co-tab-panel.active { display:block; }
         </style>
 
         <!-- Tab bar -->
@@ -213,7 +211,7 @@
         </div>
 
         <!-- ── Overview ── -->
-        <div id="co-tab-overview" class="co-tab-panel active">
+        <div id="co-tab-overview">
           <div id="co-overview" class="co-card hidden">
             <div class="co-card-title">About</div>
             <div id="co-overview-body" class="text-sm text-gray-600 leading-relaxed"></div>
@@ -228,7 +226,7 @@
         </div>
 
         <!-- ── Financials ── -->
-        <div id="co-tab-financials" class="co-tab-panel">
+        <div id="co-tab-financials" class="hidden">
           <div id="co-share" class="co-card hidden">
             <div class="flex items-center justify-between mb-3">
               <div class="co-card-title mb-0">Share Price</div>
@@ -279,7 +277,7 @@
         </div>
 
         <!-- ── Intel ── -->
-        <div id="co-tab-intel" class="co-tab-panel">
+        <div id="co-tab-intel" class="hidden">
           <div id="co-ai" class="co-card hidden">
             <div class="co-card-title">🤖 AI & Tech Focus</div>
             <div id="co-ai-job-bar" class="hidden mb-4"></div>
@@ -296,7 +294,7 @@
         </div>
 
         <!-- ── Jobs ── -->
-        <div id="co-tab-jobs" class="co-tab-panel">
+        <div id="co-tab-jobs" class="hidden">
           <div id="co-signals" class="co-card hidden">
             <div class="co-card-title">📊 Hiring Signals</div>
             <div id="co-signals-body" class="text-sm"></div>
@@ -946,11 +944,12 @@
 
 
   // ── Company tabs ────────────────────────────────────────────────────────────
+  const CO_TABS = ["overview","financials","intel","jobs"];
   function switchCoTab(tab) {
-    document.querySelectorAll(".co-tab-panel").forEach(p => p.classList.remove("active"));
-    document.querySelectorAll(".co-tab-btn").forEach(b => b.classList.remove("active"));
-    document.getElementById("co-tab-" + tab).classList.add("active");
-    document.getElementById("co-tab-btn-" + tab).classList.add("active");
+    CO_TABS.forEach(t => {
+      document.getElementById("co-tab-" + t).classList.toggle("hidden", t !== tab);
+      document.getElementById("co-tab-btn-" + t).classList.toggle("active", t === tab);
+    });
   }
 
   // ── Results summary + chat ──────────────────────────────────────────────────
