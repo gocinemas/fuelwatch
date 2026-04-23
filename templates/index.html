@@ -936,10 +936,13 @@
       w.revenue     && `💰 ${w.revenue}`,
     ].filter(Boolean);
     const brands = w.brands || [];
-    if (factParts.length || brands.length) {
+    if (factParts.length || brands.length || w.description) {
       let statsHtml = "";
+      if (w.description) {
+        statsHtml += `<div class="text-sm text-gray-700 font-medium mb-2">📌 ${w.description}</div>`;
+      }
       if (factParts.length) {
-        statsHtml += `<div class="text-sm text-gray-600 leading-relaxed">${factParts.join(" &nbsp;·&nbsp; ")}</div>`;
+        statsHtml += `<div class="text-sm text-gray-500 leading-relaxed">${factParts.join(" &nbsp;·&nbsp; ")}</div>`;
       }
       if (brands.length) {
         statsHtml += `<div class="mt-2.5 flex flex-wrap gap-1.5">${brands.map(b =>
@@ -952,7 +955,7 @@
     }
 
     // Show fallback only if overview tab has truly nothing
-    if (!w.extract && !statRows.length && !brands.length && !(d.news && d.news.length)) {
+    if (!w.extract && !factParts.length && !brands.length && !w.description && !(d.news && d.news.length)) {
       document.getElementById("co-overview-empty").classList.remove("hidden");
     }
 
