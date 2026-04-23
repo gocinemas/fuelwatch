@@ -394,6 +394,45 @@ def api_library_doc(share_id):
         return jsonify({"error": str(e)}), 500
 
 
+def _generate_doc_questions(title: str, text: str) -> list:
+    """Generate 3 tailored suggested questions using Groq."""
+    import json, re as _re2
+    if not text or not os.environ.get("GROQ_API_KEY"):
+        return []
+    prompt = f"""Document title: "{title}"
+
+Excerpt:
+{text[:1400]}
+
+Generate exactly 3 short, specific questions a reader would naturally want answered from this document.
+Rules: under 12 words each, must be answerable from the content, no numbering.
+Return ONLY a JSON array of 3 strings.
+Example: ["What is the main conclusion?", "What evidence supports this?", "What action is recommended?"]"""
+    try:
+        reply = _groq_chat("You are a helpful document reading assistant.",
+                           [{"role": "user", "content": prompt}], max_tokens=220)
+        m = _re2.search(r'\[.*?\]', reply, _re2.DOTALL)
+        if m:
+            qs = json.loads(m.group(0))
+            return [q for q in qs if isinstance(q, str) and len(q) > 5][:3]
+    except Exception as e:
+        print(f"[doc_questions] {e}")
+    return []
+
+
+@app.route("/api/library/doc-questions/<share_id>")
+def api_library_doc_questions(share_id):
+    err = _check_library_pin()
+    if err: return err
+    doc = lib.get_document(share_id)
+    if not doc:
+        return jsonify({"questions": []}), 404
+    chunks = doc.get("chunks", [])
+    text = chunks[0]["content"] if chunks else (doc.get("text_content") or "")[:800]
+    questions = _generate_doc_questions(doc.get("title", ""), text)
+    return jsonify({"questions": questions})
+
+
 @app.route("/api/library/chat", methods=["POST"])
 def api_library_chat():
     err = _check_library_pin()

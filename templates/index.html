@@ -501,6 +501,7 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div class="px-4 py-3 border-b border-gray-50 flex items-center gap-2">
             <span class="text-sm font-semibold text-gray-700">💬 Chat with this document</span>
+            <span class="text-xs text-gray-400 ml-auto">Tap a question or type your own</span>
           </div>
           <div id="lib-chat-msgs" class="flex flex-col gap-3 px-4 py-4 min-h-[160px] max-h-[360px] overflow-y-auto text-sm"></div>
           <div class="px-4 py-3 border-t border-gray-100 flex gap-2">
@@ -1667,16 +1668,52 @@
         : `${Math.round(doc.char_count / 5)} words`;
       document.getElementById("lib-doc-meta").textContent = `${icon} ${meta}`;
       document.getElementById("lib-chat-msgs").innerHTML =
-        `<div class="self-start bg-emerald-50 text-emerald-700 text-sm px-3 py-2 rounded-2xl rounded-tl-sm max-w-xs leading-relaxed">
-          Hi! Ask me anything about <strong>${doc.title}</strong>.
+        `<div class="self-start bg-emerald-50 text-emerald-700 text-sm px-3 py-2 rounded-2xl rounded-tl-sm leading-relaxed" style="max-width:90%">
+          Hi! I've read <strong>${doc.title}</strong>. Here are a few questions to get you started:
+        </div>
+        <div id="lib-question-chips" style="display:flex;flex-direction:column;gap:7px;margin-top:2px">
+          <div style="font-size:12px;color:#d1d5db;padding:4px 2px;animation:pulse 1.5s infinite">Generating questions…</div>
         </div>`;
       const bmBtn = document.getElementById("lib-doc-bookmark-btn");
       const isBm = libGetBookmarks().includes(doc.share_id);
       bmBtn.textContent = isBm ? "⭐" : "☆";
       bmBtn.style.opacity = isBm ? "1" : "0.35";
+      // Load questions async — don't block doc open
+      libLoadDocQuestions(shareId);
     } catch(e) {
       document.getElementById("lib-doc-title").textContent = "Error loading document";
     }
+  }
+
+  async function libLoadDocQuestions(shareId) {
+    try {
+      const r = await fetch(`/api/library/doc-questions/${shareId}`, {headers: _libHeaders()});
+      const d = await r.json();
+      const chips = document.getElementById("lib-question-chips");
+      if (!chips) return;
+      const qs = d.questions || [];
+      if (!qs.length) { chips.style.display = "none"; return; }
+      chips.innerHTML = qs.map(q => `
+        <button onclick="libSendSuggestedQ(this)"
+          data-q="${q.replace(/"/g, '&quot;')}"
+          style="text-align:left;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:9px 13px;font-size:13px;color:#065f46;cursor:pointer;line-height:1.4;transition:all .15s;font-family:inherit"
+          onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">
+          ${q}
+        </button>`).join("");
+      const msgs = document.getElementById("lib-chat-msgs");
+      if (msgs) msgs.scrollTop = msgs.scrollHeight;
+    } catch(e) {
+      const chips = document.getElementById("lib-question-chips");
+      if (chips) chips.style.display = "none";
+    }
+  }
+
+  function libSendSuggestedQ(btn) {
+    const q = btn.getAttribute("data-q");
+    const chips = document.getElementById("lib-question-chips");
+    if (chips) chips.remove();
+    document.getElementById("lib-chat-input").value = q;
+    libSendChat();
   }
 
   function libDocToggleBookmark() {
