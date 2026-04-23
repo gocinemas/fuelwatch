@@ -1134,10 +1134,8 @@
   // ── Shareable company URL ───────────────────────────────────────────────────
   {% if prefill_company %}
   window.addEventListener("DOMContentLoaded", () => {
-    const input = document.getElementById("company-input");
-    input.value = "{{ prefill_company }}";
-    // Switch to company tab then trigger search
-    showTab("company");
+    showScreen("company");
+    document.getElementById("company-input").value = "{{ prefill_company }}";
     searchCompany();
   });
   {% endif %}
