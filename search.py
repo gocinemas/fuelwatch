@@ -706,12 +706,18 @@ Rules: facts all 5 fields filled including revenue. competitors 4-5 entries each
             print(f"[brand_ai] HTTP {r.status_code}: {r.text[:200]}")
             return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
         content = r.json()["choices"][0]["message"]["content"].strip()
+        print(f"[brand_ai] raw ({len(content)} chars): {content[:300]}")
         m = _re.search(r'\{.*\}', content, _re.DOTALL)
         if m:
-            return json.loads(m.group(0))
+            try:
+                return json.loads(m.group(0))
+            except Exception as je:
+                print(f"[brand_ai] JSON parse error: {je} | snippet: {m.group(0)[:200]}")
+        else:
+            print(f"[brand_ai] no JSON object found in response")
     except Exception as e:
         print(f"[brand_ai] error: {e}")
-    return {"timeline": [], "campaigns": [], "competitors": []}
+    return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
 
 
 def _fetch_brand_ads(brand: str) -> list:

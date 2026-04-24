@@ -692,6 +692,33 @@ def api_brand():
     return jsonify(fetch_brand_data(name))
 
 
+@app.route("/api/brand/debug")
+def api_brand_debug():
+    """Raw AI response debug — shows exactly what Groq returns."""
+    from search import _fetch_brand_ai
+    name = request.args.get("name", "Unilever").strip()
+    import requests as _req, os
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "GROQ_API_KEY not set"})
+    r = _req.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+        json={"model": "llama-3.3-70b-versatile",
+              "messages": [{"role": "user", "content": f'Brand: "{name}". Return ONLY valid JSON with keys: facts, competitors, campaigns, timeline.'}],
+              "temperature": 0.2, "max_tokens": 3000},
+        timeout=30,
+    )
+    parsed = _fetch_brand_ai(name, "")
+    return jsonify({
+        "http_status": r.status_code,
+        "raw_content": r.json().get("choices", [{}])[0].get("message", {}).get("content", "")[:2000] if r.status_code == 200 else r.text[:500],
+        "parsed_timeline_count": len(parsed.get("timeline", [])),
+        "parsed_competitors_count": len(parsed.get("competitors", [])),
+        "parsed_facts": parsed.get("facts", {}),
+    })
+
+
 @app.route("/api/company")
 def api_company():
     from search import _COMPANY_CACHE
