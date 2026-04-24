@@ -1578,13 +1578,16 @@
     // Timeline
     const tl = d.timeline || [];
     document.getElementById("brand-timeline-el").innerHTML = tl.length
-      ? `<div style="position:relative;padding-left:28px">
-          <div style="position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:#e9d5ff;border-radius:2px"></div>
+      ? `<div style="position:relative;padding-left:32px">
+          <div style="position:absolute;left:10px;top:8px;bottom:8px;width:2px;background:linear-gradient(to bottom,#7c3aed,#ddd8fe);border-radius:2px"></div>
           ${tl.map((item, i) => `
-            <div style="position:relative;margin-bottom:${i < tl.length-1 ? '18px' : '0'}">
-              <div style="position:absolute;left:-22px;top:3px;width:10px;height:10px;border-radius:50%;background:#7c3aed;border:2px solid #fff;box-shadow:0 0 0 2px #ddd8fe"></div>
-              <div style="font-size:11px;font-weight:800;color:#7c3aed;letter-spacing:.02em;margin-bottom:2px">${item.year || ""}</div>
-              <div style="font-size:13px;color:#374151;line-height:1.5">${item.event || ""}</div>
+            <div style="position:relative;margin-bottom:${i < tl.length-1 ? '20px' : '0'}">
+              <div style="position:absolute;left:-24px;top:8px;width:12px;height:12px;border-radius:50%;background:#7c3aed;border:2px solid #fff;box-shadow:0 0 0 3px #ede9fe"></div>
+              <div style="background:#faf5ff;border:1px solid #ede9fe;border-radius:14px;padding:12px 14px">
+                <div style="font-size:11px;font-weight:800;color:#7c3aed;letter-spacing:.06em;margin-bottom:4px">${item.year || ""}</div>
+                <div style="font-size:14px;font-weight:800;color:#111;letter-spacing:-0.3px;line-height:1.3;margin-bottom:4px">${item.title || item.event || ""}</div>
+                ${item.description ? `<div style="font-size:13px;color:#6b7280;line-height:1.55">${item.description}</div>` : ""}
+              </div>
             </div>`).join("")}
         </div>`
       : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:24px 0">No timeline available.</div>`;
@@ -1592,14 +1595,23 @@
     // Campaigns
     const camps = d.campaigns || [];
     document.getElementById("brand-campaigns-el").innerHTML = camps.length
-      ? camps.map(c => `
-          <div style="border-left:3px solid #7c3aed;padding:8px 12px;margin-bottom:10px;background:#faf5ff;border-radius:0 10px 10px 0">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-              <span style="font-size:13px;font-weight:800;color:#5b21b6">${c.name || ""}</span>
-              ${c.year ? `<span style="font-size:11px;font-weight:600;color:#a78bfa;background:#ede9fe;padding:1px 7px;border-radius:99px">${c.year}</span>` : ""}
+      ? camps.map(c => {
+          const ytQ = encodeURIComponent(`${d.name} ${c.name} advertisement`);
+          return `<div style="border-left:3px solid #7c3aed;padding:10px 14px;margin-bottom:10px;background:#faf5ff;border-radius:0 12px 12px 0">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+              <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+                <span style="font-size:13px;font-weight:800;color:#5b21b6;letter-spacing:-0.2px">${c.name || ""}</span>
+                ${c.year ? `<span style="font-size:11px;font-weight:700;color:#a78bfa;background:#ede9fe;padding:1px 7px;border-radius:99px;flex-shrink:0">${c.year}</span>` : ""}
+              </div>
+              <a href="https://www.youtube.com/results?search_query=${ytQ}" target="_blank" rel="noopener"
+                style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#dc2626;text-decoration:none;flex-shrink:0;background:#fff;border:1px solid #fecaca;border-radius:8px;padding:3px 8px;white-space:nowrap">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#dc2626"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.3 3.5-6.3 3.5z"/></svg>
+                Watch
+              </a>
             </div>
-            <div style="font-size:13px;color:#6b7280;line-height:1.5">${c.description || ""}</div>
-          </div>`).join("")
+            <div style="font-size:13px;color:#6b7280;line-height:1.55">${c.description || ""}</div>
+          </div>`;
+        }).join("")
       : "";
     document.getElementById("brand-campaigns-section").style.display = camps.length ? "" : "none";
 

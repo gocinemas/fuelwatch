@@ -685,11 +685,11 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
 Return ONLY valid JSON (no markdown) with exactly these four keys:
 {{
   "facts": {{"founded": "1892", "hq": "City, Country", "industry": "Beverages", "employees": "80,000", "revenue": "$91B"}},
-  "timeline": [{{"year": "1892", "event": "Describe in under 12 words"}}],
-  "campaigns": [{{"name": "Campaign name", "year": "1984", "description": "One sentence."}}],
+  "timeline": [{{"year": "1892", "title": "Short headline 5-7 words", "description": "One full sentence of context."}}],
+  "campaigns": [{{"name": "Campaign name", "year": "1984", "description": "One sentence about the campaign or slogan and its impact."}}],
   "competitors": [{{"name": "Competitor", "revenue": "$45B", "description": "One sentence."}}]
 }}
-Rules: facts all 5 fields filled including revenue. timeline 10-14 milestones ascending through present day. campaigns 4-5. competitors 4-5 each MUST include revenue field."""
+Rules: facts all 5 fields filled including revenue. timeline 10-14 milestones ascending through present day, each with a title AND description. campaigns 4-6. competitors 4-5 each MUST include revenue field."""
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -873,7 +873,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv10"
+    cache_key = brand.strip().lower() + "|brandv11"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
