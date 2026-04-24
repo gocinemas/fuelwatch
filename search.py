@@ -685,11 +685,11 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
 Return ONLY valid JSON (no markdown) with exactly these four keys:
 {{
   "facts": {{"founded": "1892", "hq": "City, Country", "industry": "Beverages", "employees": "80,000", "revenue": "$91B"}},
-  "timeline": [{{"year": "1892", "title": "Short headline 5-7 words", "description": "One full sentence of context."}}],
+  "competitors": [{{"name": "Competitor", "revenue": "$45B", "description": "One sentence."}}],
   "campaigns": [{{"name": "Campaign name", "year": "1984", "description": "One sentence about the campaign or slogan and its impact."}}],
-  "competitors": [{{"name": "Competitor", "revenue": "$45B", "description": "One sentence."}}]
+  "timeline": [{{"year": "1892", "title": "Short headline 5-7 words", "description": "One full sentence of context."}}]
 }}
-Rules: facts all 5 fields filled including revenue. timeline 10-14 milestones ascending through present day, each with a title AND description. campaigns 4-6. competitors 4-5 each MUST include revenue field."""
+Rules: facts all 5 fields filled including revenue. competitors 4-5 entries each MUST include revenue field. campaigns 4-6 entries. timeline 10-14 milestones ascending through present day, each with a title AND description."""
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -698,7 +698,7 @@ Rules: facts all 5 fields filled including revenue. timeline 10-14 milestones as
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 2000,
+                "max_tokens": 3000,
             },
             timeout=25,
         )
@@ -875,7 +875,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv13"
+    cache_key = brand.strip().lower() + "|brandv14"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
