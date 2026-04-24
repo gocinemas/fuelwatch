@@ -874,12 +874,42 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
+    original = brand.strip()
+    canonical = original
+
+    # Canonicalise via Groq before cache lookup (handles misspellings like "Nkie" → "Nike")
+    try:
+        groq_key = os.environ.get("GROQ_API_KEY", "")
+        if groq_key:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={"model": "llama-3.1-8b-instant",
+                      "messages": [{"role": "user", "content":
+                          f'The user searched for brand/company: "{original}".\n'
+                          'Return ONLY the canonical well-known brand or company name (fix spelling, '
+                          'expand abbreviations). If already correct, return it unchanged. '
+                          'Return ONLY the name, nothing else.'}],
+                      "max_tokens": 40, "temperature": 0.1},
+                timeout=6,
+            )
+            resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+            if resolved and len(resolved) < 80:
+                canonical = resolved
+    except Exception:
+        pass
+
+    suggested = canonical if canonical.lower() != original.lower() else ""
+    brand = canonical
+
     cache_key = brand.strip().lower() + "|brandv15"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
     if cached and time.time() - cached["ts"] < _BRAND_TTL:
-        return cached["data"]
+        data = dict(cached["data"])
+        data["suggested_name"] = suggested
+        return data
 
     # Stampede protection: if another thread is already fetching, wait for it
     with _BRAND_LOCK:
@@ -904,7 +934,7 @@ def fetch_brand_data(brand: str) -> dict:
         sb_data = _sb_cache_get("brand:" + cache_key)
         if sb_data and (sb_data.get("timeline") or sb_data.get("competitors")):
             _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": sb_data}
-            return sb_data
+            return {**sb_data, "suggested_name": suggested}
 
         fetch_start = time.time()
 
@@ -948,6 +978,7 @@ def fetch_brand_data(brand: str) -> dict:
 
         result = {
             "name":        brand,
+            "suggested_name": suggested,
             "description": wiki.get("description", ""),
             "extract":     wiki.get("extract", ""),
             "founded":     _val("founded"),
