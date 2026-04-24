@@ -1087,14 +1087,21 @@ def api_product():
     import requests as _req, json as _json
     barcode = request.args.get("barcode", "").strip()
     name    = request.args.get("name", "").strip()
+    debug   = request.args.get("debug") == "1"
 
     product = None
+    _errors = []
+
+    OFF_HEADERS = {
+        "User-Agent": "MiruApp/1.0 (https://miru.humanagency.co; contact@humanagency.co)",
+        "Accept": "application/json",
+    }
 
     # --- barcode lookup via Open Food Facts ---
     if barcode:
         try:
             r = _req.get(f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json",
-                         timeout=8, headers={"User-Agent": "MiruApp/1.0"})
+                         timeout=10, headers=OFF_HEADERS)
             d = r.json()
             if d.get("status") == 1:
                 p = d["product"]
@@ -1107,16 +1114,20 @@ def api_product():
                     "image":    p.get("image_url", ""),
                     "barcode":  barcode,
                 }
+            else:
+                _errors.append(f"OFF barcode status={d.get('status')} http={r.status_code}")
         except Exception as e:
+            _errors.append(f"OFF barcode exc: {e}")
             print(f"[product] barcode lookup error: {e}")
 
-    # --- name search via Open Food Facts ---
+    # --- name search via Open Food Facts v2 search ---
     if not product and name:
         try:
             r = _req.get("https://world.openfoodfacts.org/cgi/search.pl",
                          params={"search_terms": name, "json": 1, "page_size": 5,
                                  "lc": "en", "action": "process"},
-                         timeout=8, headers={"User-Agent": "MiruApp/1.0"})
+                         timeout=10, headers=OFF_HEADERS)
+            _errors.append(f"OFF search http={r.status_code} len={len(r.text)}")
             products = r.json().get("products", [])
             if products:
                 p = products[0]
@@ -1128,7 +1139,10 @@ def api_product():
                     "category": cat,
                     "image":    p.get("image_url", ""),
                 }
+            else:
+                _errors.append(f"OFF search returned 0 products")
         except Exception as e:
+            _errors.append(f"OFF search exc: {e}")
             print(f"[product] name search error: {e}")
 
     # --- AI alternatives via Groq ---
@@ -1157,7 +1171,10 @@ def api_product():
         except Exception as e:
             print(f"[product] alternatives error: {e}")
 
-    return jsonify({"product": product, "alternatives": alternatives, "query": search_term})
+    out = {"product": product, "alternatives": alternatives, "query": search_term}
+    if debug:
+        out["_errors"] = _errors
+    return jsonify(out)
 
 
 @app.route("/whatsapp", methods=["POST"])
