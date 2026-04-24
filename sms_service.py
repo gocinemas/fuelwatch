@@ -684,22 +684,41 @@ def api_local():
 
 
 _KAGI_CACHE: dict = {}
-_KAGI_CATEGORIES = {
-    "business":   "9627636d-9d19-4531-9ca0-69f9c3e3ad48",
-    "world":      "a11d012a-0d48-4f3b-a80e-550382b871bb",
-    "uk":         "85311fe2-99a4-4384-93d9-37f4e770f38d",
-    "technology": "5e3b2ec5-1ec4-47c5-b17b-1b23a3dabb4a",
-    "ai":         "57eddae4-9bf6-459e-87a8-d875a18f57a2",
-    "science":    "7100e2fe-8721-49f2-9b64-af10c415acaa",
-    "finance":    "4023c708-a40b-49f6-94d9-cdfa51c56e3c",
-    "sports":     "f67e579c-a976-4e09-814c-cc2563f06f52",
+# Map our category names to Kagi's stable categoryId slugs
+_KAGI_SLUG_MAP = {
+    "business":   "business",
+    "world":      "world",
+    "uk":         "uk",
+    "technology": "tech",
+    "ai":         "ai",
+    "science":    "science",
+    "finance":    "economy",
+    "sports":     "sports",
 }
+_KAGI_CAT_IDS: dict = {}   # populated dynamically, refreshed with news cache
+_KAGI_CAT_IDS_TS: float = 0
+
+def _kagi_resolve_id(slug: str) -> str:
+    """Look up the current UUID for a Kagi category slug. Refreshes every 30 min."""
+    import time as _time, requests as _req
+    global _KAGI_CAT_IDS, _KAGI_CAT_IDS_TS
+    if not _KAGI_CAT_IDS or _time.time() - _KAGI_CAT_IDS_TS > 1800:
+        try:
+            r = _req.get("https://kite.kagi.com/api/batches/latest/categories",
+                         params={"lang": "en"}, timeout=8, allow_redirects=True)
+            cats = r.json().get("categories", [])
+            _KAGI_CAT_IDS = {c["categoryId"]: c["id"] for c in cats}
+            _KAGI_CAT_IDS_TS = _time.time()
+            print(f"[kagi] refreshed {len(_KAGI_CAT_IDS)} category IDs")
+        except Exception as e:
+            print(f"[kagi] category lookup failed: {e}")
+    return _KAGI_CAT_IDS.get(slug, "")
 
 @app.route("/api/kagi-news")
 def api_kagi_news():
     import time as _time
     category = request.args.get("category", "business").lower()
-    cat_id = _KAGI_CATEGORIES.get(category, _KAGI_CATEGORIES["business"])
+    slug = _KAGI_SLUG_MAP.get(category, category)
     cache_key = f"kagi:{category}"
     cached = _KAGI_CACHE.get(cache_key)
     if cached and _time.time() - cached["ts"] < 1800:
@@ -708,6 +727,9 @@ def api_kagi_news():
         return resp
     try:
         import requests as _req
+        cat_id = _kagi_resolve_id(slug)
+        if not cat_id:
+            raise ValueError(f"No category ID found for slug '{slug}'")
         r = _req.get(
             f"https://kite.kagi.com/api/batches/latest/categories/{cat_id}/stories",
             params={"limit": 9, "lang": "en"},
