@@ -1476,10 +1476,13 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
     if live_tesco:
         prices["tesco"] = live_tesco + " ✓"
 
+    search_term = product["name"]
+    brand = product["brand"]
+
     # Format reply
     lines = [f"🛒 {search_term}"]
     if brand:
-        lines.append(f"Brand: {brand}" + (f" | {product['category']}" if product and product.get("category") else ""))
+        lines.append(f"Brand: {brand}" + (f" | {product['category']}" if product.get("category") else ""))
     lines.append("")
 
     if prices:
@@ -1488,9 +1491,10 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
         lines.append("Prices:")
         for store, price in sorted_prices:
             lines.append(f"  {store.title()}: {price}")
-        # Highlight cheapest
+        # Highlight cheapest (strip £, ✓, spaces for comparison)
         try:
-            cheapest_store, cheapest_price = min(prices.items(), key=lambda x: float(x[1].replace("£","")))
+            def _num(v): return float(re.sub(r'[^0-9.]', '', v))
+            cheapest_store, cheapest_price = min(prices.items(), key=lambda x: _num(x[1]))
             lines.append(f"\n💰 Cheapest: {cheapest_store.title()} at {cheapest_price}")
         except Exception:
             pass

@@ -165,9 +165,12 @@
   <!-- Header -->
   <header id="app-header">
     <div class="inner">
-      <div class="logo">
-        <div class="logo-dot">👁</div>
-        <span class="logo-text">Miru</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="logo">
+          <div class="logo-dot">👁</div>
+          <span class="logo-text">Miru</span>
+        </div>
+        <button class="home-btn" onclick="showHome()">Home</button>
       </div>
       <div style="display:flex;align-items:center;gap:4px">
         <button id="music-btn" onclick="toggleMusic()"
@@ -178,7 +181,6 @@
         <button id="theme-btn" onclick="cycleTheme()"
           style="font-size:16px;border:none;background:transparent;cursor:pointer;padding:6px 8px;border-radius:8px;line-height:1;color:var(--subtle)"
           title="Toggle theme"></button>
-        <button class="home-btn" onclick="showHome()">Home</button>
       </div>
     </div>
   </header>
