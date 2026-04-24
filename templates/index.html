@@ -245,8 +245,8 @@
         </div>
         <!-- Category pills -->
         <style>
-          .kpill { flex-shrink:0; font-size:13px; font-weight:600; padding:8px 15px; border-radius:22px; border:none; background:#f0f0ee; color:#555; cursor:pointer; white-space:nowrap; transition:background .15s,color .15s; }
-          .kpill.active { background:var(--text); color:#fff; }
+          .kpill { flex-shrink:0; font-size:13px; font-weight:600; padding:8px 15px; border-radius:22px; border:1px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; white-space:nowrap; transition:background .15s,color .15s,border-color .15s; }
+          .kpill.active { background:var(--text); color:var(--bg); border-color:var(--text); }
           #kagi-pill-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:14px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
           #kagi-pill-row::-webkit-scrollbar { display:none; }
         </style>
@@ -2338,12 +2338,12 @@
       if (!d.stories || !d.stories.length) { el.innerHTML = `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">No stories available.</div>`; return; }
       el.innerHTML = d.stories.map(s => `
         <a href="${s.url}" target="_blank" rel="noopener"
-           style="display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:12px 14px;text-decoration:none;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-          ${s.image ? `<img src="${s.image}" alt="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">` : `<div style="width:40px;height:40px;border-radius:10px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${s.emoji||"📰"}</div>`}
+           style="display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;text-decoration:none">
+          ${s.image ? `<img src="${s.image}" alt="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">` : `<div style="width:40px;height:40px;border-radius:10px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${s.emoji||"📰"}</div>`}
           <div style="min-width:0">
-            <div style="font-size:13px;font-weight:700;color:#111;line-height:1.35;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${s.title}</div>
-            <div style="font-size:12px;color:#6b7280;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${s.summary}</div>
-            <div style="margin-top:5px;font-size:11px;color:#9ca3af">${s.domain || ""} ${s.sources > 1 ? `· ${s.sources} sources` : ""}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.35;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${s.title}</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${s.summary}</div>
+            <div style="margin-top:5px;font-size:11px;color:var(--subtle)">${s.domain || ""} ${s.sources > 1 ? `· ${s.sources} sources` : ""}</div>
           </div>
         </a>`).join("");
     } catch(e) {
