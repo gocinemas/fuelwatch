@@ -528,6 +528,23 @@
 
         <!-- ── Intel ── -->
         <div id="co-tab-intel" class="hidden">
+
+          <!-- Featured watch/listen -->
+          <div id="co-featured-wrap" class="hidden co-card" style="padding:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div class="co-card-title" style="margin-bottom:0;border:none;padding:0">🎧 Watch / Listen</div>
+              <button id="co-featured-edit-btn" onclick="coFeaturedEdit()" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;display:none">Edit</button>
+            </div>
+            <div id="co-featured-note" style="font-size:12px;color:var(--muted);margin-bottom:8px;display:none"></div>
+            <div id="co-featured-embed"></div>
+          </div>
+
+          <!-- Add recommendation button (admin only) -->
+          <button id="co-featured-add-btn" onclick="coFeaturedEdit()" class="hidden"
+            style="width:100%;padding:11px;border-radius:12px;border:1px dashed var(--border);background:none;color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:12px">
+            + Add watch / listen recommendation
+          </button>
+
           <div id="co-ai" class="co-card hidden">
             <div class="co-card-title">🤖 AI & Tech Focus</div>
             <div id="co-ai-job-bar" class="hidden mb-4"></div>
@@ -1287,6 +1304,7 @@
     document.getElementById("company-results").classList.remove("hidden");
     _coCurrentName = d.name || document.getElementById("company-input").value.trim();
     document.getElementById("co-share-name").textContent = _coCurrentName;
+    coFeaturedLoad(_coCurrentName);
 
     // Wikipedia overview
     const w = d.wiki || {};
@@ -1542,6 +1560,91 @@
     }
   }
 
+
+  // ── Featured media (watch/listen) ───────────────────────────────────────
+  let _coFeaturedCompany = "";
+
+  function _ytId(url) {
+    try {
+      const u = new URL(url);
+      if (u.hostname.includes("youtu.be")) return u.pathname.slice(1).split("?")[0];
+      return u.searchParams.get("v") || "";
+    } catch(_) { return ""; }
+  }
+
+  function _isAdmin() {
+    return sessionStorage.getItem("miru_admin") === "1";
+  }
+
+  async function coFeaturedLoad(companyName) {
+    _coFeaturedCompany = companyName;
+    const wrap    = document.getElementById("co-featured-wrap");
+    const addBtn  = document.getElementById("co-featured-add-btn");
+    const editBtn = document.getElementById("co-featured-edit-btn");
+
+    // show add button for admin even before fetch
+    if (_isAdmin()) {
+      addBtn.classList.remove("hidden");
+      editBtn.style.display = "inline";
+    }
+
+    try {
+      const r = await fetch(`/api/company/media?name=${encodeURIComponent(companyName)}`);
+      const d = await r.json();
+      if (!d.url) { wrap.classList.add("hidden"); return; }
+
+      const ytId = _ytId(d.url);
+      const embedEl = document.getElementById("co-featured-embed");
+      if (ytId) {
+        embedEl.innerHTML = `<iframe src="https://www.youtube.com/embed/${ytId}" width="100%" height="200"
+          frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
+          allowfullscreen style="border-radius:10px;display:block"></iframe>`;
+      } else {
+        embedEl.innerHTML = `<a href="${d.url}" target="_blank" rel="noopener"
+          style="display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--border);text-decoration:none">
+          <span style="font-size:24px">🎧</span>
+          <span style="font-size:13px;color:var(--accent);word-break:break-all">${d.title || d.url}</span></a>`;
+      }
+      const noteEl = document.getElementById("co-featured-note");
+      if (d.note) { noteEl.textContent = d.note; noteEl.style.display = "block"; }
+      else          { noteEl.style.display = "none"; }
+      wrap.classList.remove("hidden");
+      addBtn.classList.add("hidden"); // hide add if content exists
+    } catch(_) {}
+  }
+
+  function coFeaturedEdit() {
+    if (!_isAdmin()) {
+      const pw = prompt("Admin password:");
+      if (!pw) return;
+      fetch("/api/admin/stats", { headers: { "X-Admin-Password": pw } })
+        .then(r => { if (r.ok) { sessionStorage.setItem("miru_admin","1"); sessionStorage.setItem("miru_admin_pw", pw); coFeaturedEdit(); } else alert("Wrong password"); });
+      return;
+    }
+    const modal = document.getElementById("co-featured-modal");
+    modal.style.display = "flex";
+    document.getElementById("co-featured-url-input").value  = "";
+    document.getElementById("co-featured-note-input").value = "";
+    document.getElementById("co-featured-modal-err").style.display = "none";
+    setTimeout(() => document.getElementById("co-featured-url-input").focus(), 100);
+  }
+
+  async function coFeaturedSave() {
+    const url  = document.getElementById("co-featured-url-input").value.trim();
+    const note = document.getElementById("co-featured-note-input").value.trim();
+    const errEl = document.getElementById("co-featured-modal-err");
+    if (!url) { errEl.textContent = "Please enter a URL"; errEl.style.display = "block"; return; }
+
+    const r = await fetch("/api/company/media", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: _coFeaturedCompany, url, note, password: sessionStorage.getItem("miru_admin_pw") || "" }),
+    });
+    const d = await r.json();
+    if (!r.ok) { errEl.textContent = d.error || "Save failed"; errEl.style.display = "block"; return; }
+    document.getElementById("co-featured-modal").style.display = "none";
+    coFeaturedLoad(_coFeaturedCompany);
+  }
 
   function filterJobs() {
     const q = document.getElementById("co-jobs-filter").value.toLowerCase();
@@ -2957,5 +3060,22 @@
     <span class="bnav-icon">📚</span>Library
   </button>
 </nav>
+
+<!-- Featured media modal -->
+<div id="co-featured-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border-radius:20px;padding:24px;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px">Watch / Listen recommendation</div>
+    <input id="co-featured-url-input" type="url" placeholder="YouTube or podcast URL"
+      style="width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;margin-bottom:10px;box-sizing:border-box">
+    <input id="co-featured-note-input" type="text" placeholder="Short note (optional) e.g. Great origin story"
+      style="width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;margin-bottom:14px;box-sizing:border-box">
+    <div style="display:flex;gap:10px">
+      <button onclick="coFeaturedSave()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">Save</button>
+      <button onclick="document.getElementById('co-featured-modal').style.display='none'" style="padding:12px 18px;border-radius:12px;border:1px solid var(--border);background:none;color:var(--muted);font-size:14px;cursor:pointer">Cancel</button>
+    </div>
+    <div id="co-featured-modal-err" style="font-size:12px;color:#ef4444;margin-top:8px;display:none"></div>
+  </div>
+</div>
+
 </body>
 </html>

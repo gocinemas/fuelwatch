@@ -945,6 +945,34 @@ def api_company_chat():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/company/media")
+def api_company_media_get():
+    from search import _sb_cache_get
+    name = request.args.get("name", "").strip().lower()
+    if not name:
+        return jsonify({}), 400
+    data = _sb_cache_get(f"featured_media:{name}") or {}
+    return jsonify(data)
+
+
+@app.route("/api/company/media", methods=["POST"])
+def api_company_media_set():
+    from search import _sb_cache_set
+    data = request.json or {}
+    pw = data.get("password", "")
+    if pw != os.environ.get("ADMIN_PASSWORD", "miru2024"):
+        return jsonify({"error": "Unauthorized"}), 403
+    name = data.get("name", "").strip().lower()
+    if not name:
+        return jsonify({"error": "Company name required"}), 400
+    _sb_cache_set(f"featured_media:{name}", {
+        "url":   data.get("url", "").strip(),
+        "note":  data.get("note", "").strip(),
+        "title": data.get("title", "").strip(),
+    })
+    return jsonify({"ok": True})
+
+
 @app.route("/api/company/youtube-test")
 def api_youtube_test():
     from search import _fetch_youtube
