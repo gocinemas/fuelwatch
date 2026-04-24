@@ -191,9 +191,11 @@
       <!-- Greeting -->
       <div style="padding:22px 0 18px">
         <div id="home-greeting" style="font-size:22px;font-weight:800;letter-spacing:-0.6px;color:var(--text)">Good morning.</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
-          <span id="home-date" style="font-size:13px;color:var(--subtle)"></span>
-          <span id="home-weather" style="font-size:13px;color:var(--subtle);display:none">·&nbsp;<span id="home-weather-val"></span>&nbsp;·&nbsp;<span id="home-weather-tip"></span></span>
+        <div style="margin-top:4px">
+          <div style="font-size:13px;color:var(--subtle);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            <span id="home-date"></span><span id="home-weather" style="display:none">&nbsp;·&nbsp;<span id="home-weather-val"></span></span>
+          </div>
+          <div id="home-weather-tip" style="font-size:12px;color:var(--subtle);margin-top:2px;display:none"></div>
         </div>
         <!-- Daily quote -->
         <div id="home-quote" style="margin-top:10px;font-size:13px;color:var(--muted);font-style:italic;line-height:1.5;max-width:340px"></div>
@@ -2480,8 +2482,10 @@
           const temp = Math.round(cur.temperature_2m ?? cur.temperature ?? 0);
           const code = cur.weather_code ?? cur.weathercode ?? 0;
           document.getElementById("home-weather-val").textContent = `${_wCode(code)} ${temp}°C`;
-          document.getElementById("home-weather-tip").textContent = _wTip(code, temp);
           document.getElementById("home-weather").style.display = "inline";
+          const tipEl = document.getElementById("home-weather-tip");
+          tipEl.textContent = _wTip(code, temp);
+          tipEl.style.display = "block";
         }).catch(() => {});
     }
     function _ipWeather() {
