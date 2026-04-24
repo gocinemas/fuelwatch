@@ -683,6 +683,56 @@ def api_local():
 
 
 
+_KAGI_CACHE: dict = {}
+_KAGI_CATEGORIES = {
+    "business":    "9627636d-9d19-4531-9ca0-69f9c3e3ad48",
+    "technology":  "5e3b2ec5-1ec4-47c5-b17b-1b23a3dabb4a",
+    "world":       "a11d012a-0d48-4f3b-a80e-550382b871bb",
+}
+
+@app.route("/api/kagi-news")
+def api_kagi_news():
+    import time as _time
+    category = request.args.get("category", "business").lower()
+    cat_id = _KAGI_CATEGORIES.get(category, _KAGI_CATEGORIES["business"])
+    cache_key = f"kagi:{category}"
+    cached = _KAGI_CACHE.get(cache_key)
+    if cached and _time.time() - cached["ts"] < 1800:
+        resp = jsonify(cached["data"])
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
+    try:
+        import requests as _req
+        r = _req.get(
+            f"https://kite.kagi.com/api/batches/latest/categories/{cat_id}/stories",
+            params={"limit": 9, "lang": "en"},
+            timeout=10,
+            allow_redirects=True,
+        )
+        raw = r.json()
+        stories = []
+        for s in raw.get("stories", []):
+            img = s.get("primary_image") or {}
+            articles = s.get("articles", [])
+            stories.append({
+                "title":    s.get("title", ""),
+                "summary":  s.get("short_summary", ""),
+                "emoji":    s.get("emoji", ""),
+                "image":    img.get("url", ""),
+                "sources":  len(articles),
+                "url":      articles[0].get("link", "") if articles else "",
+                "domain":   articles[0].get("domain", "") if articles else "",
+            })
+        data = {"stories": stories, "category": category}
+        _KAGI_CACHE[cache_key] = {"ts": _time.time(), "data": data}
+    except Exception as e:
+        print(f"[kagi-news] error: {e}")
+        data = {"stories": [], "category": category}
+    resp = jsonify(data)
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    return resp
+
+
 @app.route("/api/brand")
 def api_brand():
     name = request.args.get("name", "").strip()
