@@ -680,25 +680,18 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
     groq_key = os.environ.get("GROQ_API_KEY", "")
     if not groq_key:
         return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
-    prompt = f"""Brand: "{brand}". Wikipedia: {extract[:900] if extract else "N/A"}
-
-Return ONLY valid JSON (no markdown) with exactly these four keys:
-{{
-  "facts": {{"founded": "1892", "hq": "City, Country", "industry": "Beverages", "employees": "80,000", "revenue": "$91B"}},
-  "competitors": [{{"name": "Competitor", "revenue": "$45B", "description": "One sentence."}}],
-  "campaigns": [{{"name": "Campaign name", "year": "1984", "description": "One sentence about the campaign or slogan and its impact."}}],
-  "timeline": [{{"year": "1892", "title": "Short headline 5-7 words", "description": "One full sentence of context."}}]
-}}
-Rules: facts all 5 fields filled including revenue. competitors 4-5 entries each MUST include revenue field. campaigns 4-6 entries. timeline 10-14 milestones ascending through present day, each with a title AND description."""
+    prompt = f"""Return ONLY valid JSON for brand "{brand}". No markdown, no explanation.
+{{"facts":{{"founded":"","hq":"","industry":"","employees":"","revenue":""}},"competitors":[{{"name":"","revenue":"","description":""}}],"campaigns":[{{"name":"","year":"","description":""}}],"timeline":[{{"year":"","title":"","description":""}}]}}
+Rules: facts fill all 5 fields. competitors: 4 items each with revenue. campaigns: 4 items. timeline: 8-10 milestones oldest to newest each with title+description."""
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.3-70b-versatile",
+                "model": "llama-3.1-8b-instant",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 3000,
+                "max_tokens": 1500,
             },
             timeout=25,
         )
