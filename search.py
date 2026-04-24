@@ -1309,18 +1309,52 @@ def _fetch_youtube(company: str) -> list:
 
 
 def fetch_company_info(company: str) -> dict:
+    original = company.strip()
+
+    # Step 1: canonicalise via Groq BEFORE cache lookup so we always use the right key
+    canonical = original
+    try:
+        groq_key = os.environ.get("GROQ_API_KEY", "")
+        if groq_key:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [{"role": "user", "content":
+                        f'What is the correct full legal or well-known name of the company "{original}"? '
+                        f'Reply with ONLY the company name, nothing else. '
+                        f'If it is already correct, repeat it unchanged.'}],
+                    "temperature": 0.1,
+                    "max_tokens": 30,
+                },
+                timeout=6,
+            )
+            resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+            if resolved and len(resolved) < 120:
+                canonical = resolved
+    except Exception:
+        pass
+
+    suggested = canonical if canonical.lower() != original.lower() else ""
+    company = canonical
+
     key = company.strip().lower() + "|" + _COMPANY_VER
 
-    # L1: in-memory
+    # L1: in-memory (under canonical key)
     cached = _COMPANY_CACHE.get(key)
     if cached and time.time() - cached["ts"] < _COMPANY_TTL:
-        return cached["data"]
+        data = dict(cached["data"])
+        data["suggested_name"] = suggested  # always reflect current query's suggestion
+        return data
 
     # Stampede protection
     with _COMPANY_LOCK:
         cached = _COMPANY_CACHE.get(key)
         if cached and time.time() - cached["ts"] < _COMPANY_TTL:
-            return cached["data"]
+            data = dict(cached["data"])
+            data["suggested_name"] = suggested
+            return data
         if key in _COMPANY_INFLIGHT:
             ev = _COMPANY_INFLIGHT[key]
         else:
@@ -1331,43 +1365,20 @@ def fetch_company_info(company: str) -> dict:
     if ev is not None:
         ev.wait(timeout=30)
         cached = _COMPANY_CACHE.get(key)
-        return cached["data"] if cached else {}
+        if cached:
+            data = dict(cached["data"])
+            data["suggested_name"] = suggested
+            return data
+        return {}
 
     try:
-        # L2: Supabase persistent cache
+        # L2: Supabase persistent cache (under canonical key)
         sb_data = _sb_cache_get("company:" + key)
         if sb_data:
             _COMPANY_CACHE[key] = {"ts": time.time(), "data": sb_data}
-            return sb_data
-
-        # Canonicalise name via Groq — fixes misspellings, abbreviations, casual names
-        canonical = company
-        original  = company
-        try:
-            groq_key = os.environ.get("GROQ_API_KEY", "")
-            if groq_key:
-                r = requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                    json={
-                        "model": "llama-3.1-8b-instant",
-                        "messages": [{"role": "user", "content":
-                            f'What is the correct full legal or well-known name of the company "{company}"? '
-                            f'Reply with ONLY the company name, nothing else. '
-                            f'If it is already correct, repeat it unchanged.'}],
-                        "temperature": 0.1,
-                        "max_tokens": 30,
-                    },
-                    timeout=6,
-                )
-                resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
-                if resolved and len(resolved) < 120:
-                    canonical = resolved
-        except Exception:
-            pass
-
-        suggested = canonical if canonical.lower() != original.lower() else ""
-        company = canonical  # use corrected name for all lookups below
+            data = dict(sb_data)
+            data["suggested_name"] = suggested
+            return data
 
         slugs = _co_slugs(company)
         enc = requests.utils.quote(company)

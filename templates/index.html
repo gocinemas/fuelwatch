@@ -412,7 +412,7 @@
         <div class="spinner text-indigo-600 mx-auto mb-2"></div>Looking up company…
       </div>
       <div id="company-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
-      <div id="co-did-you-mean" class="hidden mb-3 px-4 py-2.5 rounded-2xl text-sm" style="background:var(--surface);border:1px solid var(--border)"></div>
+      <div id="co-did-you-mean" class="hidden mb-3 px-4 py-3 rounded-2xl text-sm font-medium" style="background:#fef9c3;border:1px solid #fde047;color:#713f12"></div>
       <div id="company-results" class="hidden">
 
         <style>
@@ -1251,7 +1251,7 @@
       if (d.error) { setError("company", d.error); setLoading("company", false); return; }
       const dymEl = document.getElementById("co-did-you-mean");
       if (d.suggested_name && d.suggested_name.toLowerCase() !== name.toLowerCase()) {
-        dymEl.innerHTML = `Did you mean <a href="#" onclick="document.getElementById('company-input').value=${JSON.stringify(d.suggested_name)};searchCompany();return false;" style="font-weight:700;color:var(--accent);text-decoration:none">${d.suggested_name}</a>?`;
+        dymEl.innerHTML = `🔍 Showing results for <strong>${d.suggested_name}</strong> &nbsp;·&nbsp; Did you mean this? &nbsp;<a href="#" onclick="document.getElementById('company-input').value=${JSON.stringify(d.suggested_name)};searchCompany();return false;" style="font-weight:700;color:#92400e;text-decoration:underline">Yes</a> &nbsp;/&nbsp; <a href="#" onclick="document.getElementById('co-did-you-mean').classList.add('hidden');return false;" style="color:#92400e;text-decoration:underline">Dismiss</a>`;
         dymEl.classList.remove("hidden");
       } else {
         dymEl.classList.add("hidden");
