@@ -192,8 +192,9 @@
       <div style="padding:22px 0 18px">
         <div id="home-greeting" style="font-size:22px;font-weight:800;letter-spacing:-0.6px;color:var(--text)">Good morning.</div>
         <div style="margin-top:4px">
-          <div style="font-size:13px;color:var(--subtle);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            <span id="home-date"></span><span id="home-weather" style="display:none">&nbsp;·&nbsp;<span id="home-weather-val"></span></span>
+          <div id="home-date" style="font-size:13px;color:var(--subtle)"></div>
+          <div style="font-size:13px;color:var(--subtle);display:flex;align-items:center;gap:0">
+            <span id="home-time"></span><span id="home-weather" style="display:none">&nbsp;·&nbsp;<span id="home-weather-val"></span></span>
           </div>
           <div id="home-weather-tip" style="font-size:12px;color:var(--subtle);margin-top:2px;display:none"></div>
         </div>
@@ -2409,7 +2410,8 @@
       document.getElementById("home-greeting").textContent = greet;
       const time = now.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
       const date = now.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
-      document.getElementById("home-date").textContent = `${date} · ${time}`;
+      document.getElementById("home-date").textContent = date;
+      document.getElementById("home-time").textContent = time;
     }
     _updateClock();
     setInterval(_updateClock, 60000);
