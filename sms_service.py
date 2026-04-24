@@ -1169,6 +1169,7 @@ def api_product():
             if start != -1 and end != -1:
                 alternatives = _json.loads(raw[start:end+1])
         except Exception as e:
+            _errors.append(f"alternatives exc: {e}")
             print(f"[product] alternatives error: {e}")
 
     out = {"product": product, "alternatives": alternatives, "query": search_term}
