@@ -1368,6 +1368,170 @@ def api_product():
     return jsonify(out)
 
 
+_FUEL_WORDS = {"petrol", "diesel", "unleaded", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
+
+def _split_product_postcode(body: str):
+    """Return (product_name, postcode_or_None) from a freeform message."""
+    m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
+    if not m:
+        return body.strip(), None
+    postcode = m.group(1).replace(" ", "")
+    remaining = (body[:m.start()] + " " + body[m.end():]).strip()
+    return remaining, postcode
+
+
+def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
+    """Look up a grocery product and return a WhatsApp-friendly price summary."""
+    import requests as _req, json as _json
+    from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
+
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    product = None
+    _errs = []
+
+    def _groq(prompt, max_tokens=400):
+        r = _req.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant",
+                  "messages": [{"role": "user", "content": prompt}],
+                  "max_tokens": max_tokens, "temperature": 0.3},
+            timeout=12,
+        )
+        return r.json()["choices"][0]["message"]["content"].strip()
+
+    def _obj(text):
+        s, e = text.find("{"), text.rfind("}")
+        return _json.loads(text[s:e+1]) if s != -1 and e != -1 else {}
+
+    # Resolve product via Groq
+    if groq_key:
+        try:
+            raw = _groq(
+                f'UK grocery product: "{product_name}". Give the exact product name, brand, and category.\n'
+                'Return ONLY JSON: {"name":"...","brand":"...","category":"..."}',
+                max_tokens=120,
+            )
+            obj = _obj(raw)
+            if obj.get("name"):
+                product = {"name": obj["name"], "brand": obj.get("brand",""), "category": obj.get("category","")}
+        except Exception as e:
+            _errs.append(str(e))
+
+    search_term = product["name"] if product else product_name
+    brand = product["brand"] if product else ""
+    full_name = f"{search_term} by {brand}" if brand else search_term
+
+    # Real prices: Tesco + Waitrose in parallel
+    prices = {}
+
+    def _tesco(q):
+        try:
+            r = _req.get(
+                "https://api.tesco.com/shoppingexperience/v1/api/products/search",
+                params={"query": q, "count": "3", "offset": "0"},
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+                timeout=6,
+            )
+            if r.status_code == 200:
+                items = r.json().get("uk", {}).get("ghs", {}).get("products", {}).get("results", [])
+                if items:
+                    p = items[0].get("price") or items[0].get("unitPrice")
+                    if p:
+                        return "tesco", f"£{float(p):.2f}"
+        except Exception:
+            pass
+        return "tesco", None
+
+    def _waitrose(q):
+        try:
+            r = _req.get(
+                "https://www.waitrose.com/api/content-prod/v2/cms/page/products",
+                params={"q": q, "start": "0", "size": "3", "sortBy": "RELEVANCE", "searchSource": "search"},
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json",
+                         "Referer": "https://www.waitrose.com/"},
+                timeout=6,
+            )
+            if r.status_code == 200:
+                for item in r.json().get("componentsAndProducts", []):
+                    prod = item.get("searchProduct") or item.get("product") or {}
+                    price = prod.get("currentSaleUnitPrice", {}).get("price", {}).get("amount")
+                    if price:
+                        return "waitrose", f"£{float(price):.2f}"
+        except Exception:
+            pass
+        return "waitrose", None
+
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        for store, price in [f.result() for f in _as_completed([ex.submit(_tesco, search_term), ex.submit(_waitrose, search_term)])]:
+            if price:
+                prices[store] = price
+
+    # Fill remaining stores + get alternatives via Groq
+    alternatives = []
+    if groq_key:
+        try:
+            missing = [s for s in ["tesco", "asda", "sainsburys", "aldi", "lidl"] if s not in prices]
+            prompt = f'UK grocery product: "{full_name}".\n'
+            if missing:
+                prompt += (f'Give current typical UK shelf price at: {", ".join(s.title() for s in missing)}. '
+                           f'Return as JSON: {{"prices":{{"tesco":"£X.XX",...}}}}.\n')
+            prompt += ('Also suggest 2 cheaper/equivalent alternatives. '
+                       'Return ONLY JSON: {"prices":{...},"alternatives":[{"name":"...","price":"£X.XX"}]}')
+            raw = _groq(prompt, max_tokens=350)
+            obj = _obj(raw)
+            for k, v in obj.get("prices", {}).items():
+                if k not in prices:
+                    prices[k] = v
+            alternatives = obj.get("alternatives", [])
+        except Exception:
+            pass
+
+    # Format reply
+    lines = [f"🛒 {search_term}"]
+    if brand:
+        lines.append(f"Brand: {brand}" + (f" | {product['category']}" if product and product.get("category") else ""))
+    lines.append("")
+
+    if prices:
+        store_order = ["aldi", "lidl", "asda", "sainsburys", "tesco", "waitrose", "amazon"]
+        sorted_prices = sorted(prices.items(), key=lambda x: (store_order.index(x[0]) if x[0] in store_order else 99))
+        lines.append("Prices:")
+        for store, price in sorted_prices:
+            lines.append(f"  {store.title()}: {price}")
+        # Highlight cheapest
+        try:
+            cheapest_store, cheapest_price = min(prices.items(), key=lambda x: float(x[1].replace("£","")))
+            lines.append(f"\n💰 Cheapest: {cheapest_store.title()} at {cheapest_price}")
+        except Exception:
+            pass
+    else:
+        lines.append("⚠️ Couldn't find live prices right now.")
+
+    if alternatives:
+        lines.append("\nAlternatives:")
+        for a in alternatives[:2]:
+            lines.append(f"  {a['name']} — {a.get('price','')}")
+
+    # Nearby supermarkets if postcode given
+    if postcode:
+        latlon = postcode_to_latlon(postcode)
+        if latlon:
+            try:
+                amenities = fetch_nearby_amenities(latlon[0], latlon[1], 8.0)
+                supers = amenities.get("supermarkets", [])[:4]
+                if supers:
+                    lines.append(f"\nNearby supermarkets ({postcode}):")
+                    for s in supers:
+                        lines.append(f"  {s['name']} ({s['dist_mi']:.1f}mi)")
+            except Exception:
+                pass
+
+    lines.append("\nReply with a product name to compare prices")
+    lines.append("Or a postcode for fuel prices")
+    return "\n".join(lines)
+
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     body        = request.form.get("Body", "").strip()
@@ -1377,16 +1541,50 @@ def whatsapp_reply():
     resp = MessagingResponse()
 
     if not body:
-        resp.message("FuelWatch UK 🇬🇧\nText your postcode to get live fuel prices.\nExample: SW1A 1AA\nOr: SW1A 1AA diesel 10")
+        resp.message(
+            "FuelWatch UK 🇬🇧\n"
+            "Text a UK postcode for fuel prices:\n  SW1A 1AA\n  SW1A 1AA diesel\n"
+            "\nText a product name for prices:\n  Heinz Baked Beans\n  Hobnobs SW1A 1AA"
+        )
         return str(resp)
 
     postcode, fuel, radius, retailer = parse_sms(body)
 
+    # Decide: fuel query or product query
+    # Product query if: no postcode at all, OR postcode present but there's
+    # substantial non-fuel text alongside it
+    is_product = False
+    product_name = None
     if not postcode:
-        resp.message("FuelWatch UK 🇬🇧\nCouldn't read that postcode.\nTry: SW1A 1AA\nOr: SW1A 1AA diesel 10")
+        # No postcode found — treat whole message as product
+        is_product = True
+        product_name = body
+    else:
+        # Postcode found — check how much text remains after removing postcode + fuel words
+        remaining = re.sub(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', '', body.upper()).strip()
+        extra_words = [w for w in remaining.split() if w.lower() not in _FUEL_WORDS and not w.isdigit()]
+        if extra_words:
+            is_product = True
+            product_name, _ = _split_product_postcode(body)
+
+    if is_product and product_name and len(product_name.strip()) > 1:
+        _, loc_postcode = _split_product_postcode(body)
+        cache_key = f"product:{product_name.lower().strip()}:{loc_postcode or ''}"
+        cached = _WA_CACHE.get(cache_key)
+        if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
+            resp.message(cached[1])
+            return str(resp)
+        reply = whatsapp_product_format(product_name.strip(), loc_postcode)
+        _WA_CACHE[cache_key] = (time.time(), reply)
+        resp.message(reply)
         return str(resp)
 
-    cache_key = f"{postcode}:{fuel}:{radius}:{retailer or ''}"
+    # Fuel query
+    if not postcode:
+        resp.message("FuelWatch UK 🇬🇧\nCouldn't read that.\nFor fuel: SW1A 1AA\nFor prices: Heinz Baked Beans")
+        return str(resp)
+
+    cache_key = f"fuel:{postcode}:{fuel}:{radius}:{retailer or ''}"
     cached = _WA_CACHE.get(cache_key)
     if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
         print(f"WhatsApp cache hit for {cache_key}")
