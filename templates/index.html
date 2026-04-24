@@ -2503,26 +2503,22 @@
     <!-- Results -->
     <div id="scan-results" style="display:none">
 
-      <!-- Product card -->
-      <div id="scan-product-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;display:flex;gap:14px;align-items:flex-start">
-        <img id="scan-img" src="" alt="" style="width:72px;height:72px;object-fit:contain;border-radius:8px;background:#f9f9f9;display:none;flex-shrink:0">
+      <!-- Product header -->
+      <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">
+        <img id="scan-img" src="" alt="" style="width:64px;height:64px;object-fit:contain;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:none;flex-shrink:0">
         <div>
           <div id="scan-name" style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px"></div>
-          <div id="scan-brand" style="font-size:13px;color:var(--muted);margin-bottom:4px"></div>
+          <div id="scan-brand" style="font-size:13px;color:var(--muted)"></div>
           <div id="scan-cat" style="font-size:12px;color:var(--subtle)"></div>
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-            <a id="scan-tesco-link" href="#" target="_blank"
-              style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;background:#00539f;color:#fff;text-decoration:none">Tesco</a>
-            <a id="scan-asda-link" href="#" target="_blank"
-              style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;background:#78ae01;color:#fff;text-decoration:none">ASDA</a>
-            <a id="scan-amazon-link" href="#" target="_blank"
-              style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;background:#ff9900;color:#000;text-decoration:none">Amazon</a>
-          </div>
         </div>
       </div>
 
+      <!-- Price grid -->
+      <div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Prices</div>
+      <div id="scan-price-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px"></div>
+
       <!-- Alternatives -->
-      <div style="font-size:12px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Alternatives</div>
+      <div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Alternatives</div>
       <div id="scan-alts"></div>
 
     </div>
@@ -2611,43 +2607,47 @@
   }
 
   function renderProduct(d) {
-    const p = d.product;
-    const q = d.query || "";
-    const enc = encodeURIComponent(q);
+    const p   = d.product;
+    const q   = d.query || d.search_q || "";
+    const sq  = encodeURIComponent(d.search_q || q);
 
-    if (p) {
-      document.getElementById("scan-name").textContent  = p.name  || q;
-      document.getElementById("scan-brand").textContent = p.brand || "";
-      document.getElementById("scan-cat").textContent   = p.category || "";
-      const img = document.getElementById("scan-img");
-      if (p.image) { img.src = p.image; img.style.display = "block"; }
-      else           img.style.display = "none";
-    } else {
-      document.getElementById("scan-name").textContent  = q;
-      document.getElementById("scan-brand").textContent = "";
-      document.getElementById("scan-cat").textContent   = "";
-      document.getElementById("scan-img").style.display = "none";
-    }
+    // Header
+    document.getElementById("scan-name").textContent  = (p && p.name)  || q;
+    document.getElementById("scan-brand").textContent = (p && p.brand) || "";
+    document.getElementById("scan-cat").textContent   = (p && p.category) || "";
+    const img = document.getElementById("scan-img");
+    if (p && p.image) { img.src = p.image; img.style.display = "block"; }
+    else img.style.display = "none";
 
-    const sq = encodeURIComponent(d.search_q || q);
-    document.getElementById("scan-tesco-link").href  = `https://www.tesco.com/groceries/en-GB/search?query=${sq}`;
-    document.getElementById("scan-asda-link").href   = `https://groceries.asda.com/search/${sq}`;
-    document.getElementById("scan-amazon-link").href = `https://www.amazon.co.uk/s?k=${sq}`;
-    document.getElementById("scan-tesco-link").textContent  = "Tesco";
-    document.getElementById("scan-asda-link").textContent   = "ASDA";
-    document.getElementById("scan-amazon-link").textContent = "Amazon";
+    // Price grid — 5 stores
+    const stores = [
+      { id:"tesco",    label:"Tesco",    color:"#00539f", href:`https://www.tesco.com/groceries/en-GB/search?query=${sq}` },
+      { id:"asda",     label:"ASDA",     color:"#78ae01", href:`https://groceries.asda.com/search/${sq}` },
+      { id:"waitrose", label:"Waitrose", color:"#007a34", href:`https://www.waitrose.com/ecom/shop/search?searchTerm=${sq}` },
+      { id:"aldi",     label:"Aldi",     color:"#003087", href:`https://www.aldi.co.uk/search?text=${sq}` },
+      { id:"amazon",   label:"Amazon",   color:"#ff9900", href:`https://www.amazon.co.uk/s?k=${sq}`, dark:true },
+    ];
+    const prices = d.prices || {};
+    document.getElementById("scan-price-grid").innerHTML = stores.map(s => {
+      const price = prices[s.id];
+      return `<a href="${s.href}" target="_blank" style="text-decoration:none;background:${s.color};border-radius:12px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:4px">
+        <span style="font-size:11px;font-weight:700;color:${s.dark?'#000':'rgba(255,255,255,0.85)'};letter-spacing:.3px">${s.label}</span>
+        <span style="font-size:${price?'18':'13'}px;font-weight:800;color:${s.dark?'#000':'#fff'}">${price || 'See →'}</span>
+      </a>`;
+    }).join("");
 
+    // Alternatives
     const alts = d.alternatives || [];
     document.getElementById("scan-alts").innerHTML = alts.length
       ? alts.map(a => `
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
             <div>
               <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">${a.name}</div>
               <div style="font-size:12px;color:var(--muted)">${a.reason}</div>
             </div>
-            <div style="font-size:14px;font-weight:800;color:var(--accent);white-space:nowrap">${a.price}</div>
+            <div style="font-size:15px;font-weight:800;color:var(--accent);white-space:nowrap">${a.price}</div>
           </div>`).join("")
-      : '<div style="font-size:13px;color:var(--subtle)">No alternatives found.</div>';
+      : "";
 
     document.getElementById("scan-results").style.display = "block";
   }
