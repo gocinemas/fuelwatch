@@ -698,11 +698,13 @@ Rules: facts all 5 fields filled including revenue. timeline 10-14 milestones as
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 1600,
-                "response_format": {"type": "json_object"},
+                "max_tokens": 2000,
             },
-            timeout=20,
+            timeout=25,
         )
+        if r.status_code != 200:
+            print(f"[brand_ai] HTTP {r.status_code}: {r.text[:200]}")
+            return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
         content = r.json()["choices"][0]["message"]["content"].strip()
         m = _re.search(r'\{.*\}', content, _re.DOTALL)
         if m:
@@ -873,7 +875,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv11"
+    cache_key = brand.strip().lower() + "|brandv12"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)

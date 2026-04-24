@@ -488,9 +488,9 @@
 
         <!-- TAB: Rivals -->
         <div id="brand-tab-rivals" style="display:none">
-          <div id="brand-competitors-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
             <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">⚔️ Closest Competitors</div>
-            <div id="brand-competitors-el"></div>
+            <div id="brand-competitors-el"><div style="font-size:13px;color:#9ca3af;text-align:center;padding:20px 0">Loading competitors…</div></div>
           </div>
         </div>
 
@@ -1668,24 +1668,23 @@
 
     // Competitors — each with Clearbit logo
     const comps = d.competitors || [];
-    if (comps.length) {
-      document.getElementById("brand-competitors-el").innerHTML = comps.map((c, i) => {
-        const cSlug = (c.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        return `<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;${i < comps.length-1 ? 'border-bottom:1px solid #f3f4f6' : ''}">
-          <img src="https://logo.clearbit.com/${cSlug}.com" alt="${c.name}"
-            style="width:36px;height:36px;border-radius:10px;object-fit:contain;border:1px solid #f0f0f0;background:#fafafa;padding:4px;flex-shrink:0"
-            onerror="this.style.display='none'">
-          <div>
-            <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">
-              <span style="font-size:14px;font-weight:800;color:#111;letter-spacing:-0.2px">${c.name || ""}</span>
-              ${c.revenue ? `<span style="font-size:12px;font-weight:600;color:#6b7280">(${c.revenue})</span>` : ""}
+    document.getElementById("brand-competitors-el").innerHTML = comps.length
+      ? comps.map((c, i) => {
+          const cSlug = (c.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          return `<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;${i < comps.length-1 ? 'border-bottom:1px solid #f3f4f6' : ''}">
+            <img src="https://logo.clearbit.com/${cSlug}.com" alt="${c.name}"
+              style="width:36px;height:36px;border-radius:10px;object-fit:contain;border:1px solid #f0f0f0;background:#fafafa;padding:4px;flex-shrink:0"
+              onerror="this.style.display='none'">
+            <div>
+              <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">
+                <span style="font-size:14px;font-weight:800;color:#111;letter-spacing:-0.2px">${c.name || ""}</span>
+                ${c.revenue ? `<span style="font-size:12px;font-weight:600;color:#6b7280">(${c.revenue})</span>` : ""}
+              </div>
+              <div style="font-size:13px;color:#6b7280;margin-top:2px;line-height:1.45">${c.description || ""}</div>
             </div>
-            <div style="font-size:13px;color:#6b7280;margin-top:2px;line-height:1.45">${c.description || ""}</div>
-          </div>
-        </div>`;
-      }).join("");
-      document.getElementById("brand-competitors-section").style.display = "";
-    }
+          </div>`;
+        }).join("")
+      : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:20px 0">No competitor data available.</div>`;
 
     // News
     const news = d.news || [];
