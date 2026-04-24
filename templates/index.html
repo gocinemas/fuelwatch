@@ -687,12 +687,21 @@
     localStorage.setItem(key, JSON.stringify(list));
   }
 
+  function _clearRecent(key, containerId, inputId, searchFn) {
+    localStorage.removeItem(key);
+    _renderRecent(key, containerId, inputId, searchFn);
+  }
+
   function _renderRecent(key, containerId, inputId, searchFn) {
     const list = JSON.parse(localStorage.getItem(key) || "[]");
     const el = document.getElementById(containerId);
     if (!list.length) { el.classList.add("hidden"); return; }
     el.classList.remove("hidden");
-    el.innerHTML = `<div class="text-xs text-gray-400 mb-1.5">Recent</div>
+    el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span class="text-xs text-gray-400">Recent</span>
+        <button onclick="_clearRecent('${key}','${containerId}','${inputId}','${searchFn}')"
+          style="font-size:11px;font-weight:600;color:#9ca3af;background:none;border:none;cursor:pointer;padding:0;letter-spacing:0">Clear</button>
+      </div>
       <div class="flex flex-wrap gap-1.5">` +
       list.map(v => `<button onclick="document.getElementById('${inputId}').value='${v}';${searchFn}"
         class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-1.5 rounded-full transition">${v}</button>`

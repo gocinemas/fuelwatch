@@ -684,12 +684,12 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
 
 Return ONLY valid JSON (no markdown) with exactly these four keys:
 {{
-  "facts": {{"founded": "1892", "hq": "City, Country", "industry": "Beverages", "employees": "80,000"}},
+  "facts": {{"founded": "1892", "hq": "City, Country", "industry": "Beverages", "employees": "80,000", "revenue": "$91B"}},
   "timeline": [{{"year": "1892", "event": "Describe in under 12 words"}}],
   "campaigns": [{{"name": "Campaign name", "year": "1984", "description": "One sentence."}}],
   "competitors": [{{"name": "Competitor", "revenue": "$45B", "description": "One sentence."}}]
 }}
-Rules: facts all 4 fields filled. timeline 8-12 milestones ascending. campaigns 4-5. competitors 4-5 each MUST include revenue field."""
+Rules: facts all 5 fields filled including revenue. timeline 10-14 milestones ascending through present day. campaigns 4-5. competitors 4-5 each MUST include revenue field."""
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -698,7 +698,7 @@ Rules: facts all 4 fields filled. timeline 8-12 milestones ascending. campaigns 
                 "model": "llama-3.1-8b-instant",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 1000,
+                "max_tokens": 1600,
             },
             timeout=20,
         )
@@ -782,14 +782,11 @@ def _fetch_wiki_images(wiki_title: str) -> list:
                 continue
             if any(w in title for w in _skip):
                 continue
-            # Pick a reasonably-sized URL from srcset, else use src
-            src = item.get("src", "")
-            best = src
-            for t in item.get("srcset", []):
-                w = t.get("width", 0)
-                if 300 <= w <= 700:
-                    best = t.get("src", src)
-                    break
+            # srcset has {src, scale} entries — pick 1x (first) for mobile-friendly size
+            srcset = item.get("srcset", [])
+            if not srcset:
+                continue
+            best = srcset[0].get("src", "")
             if not best:
                 continue
             if best.startswith("//"):
@@ -875,7 +872,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv7"
+    cache_key = brand.strip().lower() + "|brandv8"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
