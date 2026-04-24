@@ -108,8 +108,8 @@
       font-size: 18px; font-weight: 900; letter-spacing: -0.8px; color: var(--text);
     }
     #app-header .home-btn {
-      font-size: 12px; font-weight: 600; color: var(--subtle);
-      border: none; background: transparent; cursor: pointer; padding: 6px 4px;
+      font-size: 15px; font-weight: 700; color: var(--text);
+      border: none; background: transparent; cursor: pointer; padding: 6px 8px;
     }
 
     /* Bottom nav */
@@ -166,11 +166,11 @@
   <header id="app-header">
     <div class="inner">
       <div style="display:flex;align-items:center;gap:8px">
+        <button class="home-btn" onclick="showHome()">Home</button>
         <div class="logo">
           <div class="logo-dot">👁</div>
           <span class="logo-text">Miru</span>
         </div>
-        <button class="home-btn" onclick="showHome()">Home</button>
       </div>
       <div style="display:flex;align-items:center;gap:4px">
         <button id="music-btn" onclick="toggleMusic()"
