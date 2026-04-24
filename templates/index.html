@@ -919,13 +919,13 @@
     if (!list.length) { el.classList.add("hidden"); return; }
     el.classList.remove("hidden");
     el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <span class="text-xs text-gray-400">Recent</span>
+        <span style="font-size:12px;color:var(--subtle)">Recent</span>
         <button onclick="_clearRecent('${key}','${containerId}','${inputId}','${searchFn}')"
-          style="font-size:11px;font-weight:600;color:#9ca3af;background:none;border:none;cursor:pointer;padding:0;letter-spacing:0">Clear</button>
+          style="font-size:11px;font-weight:600;color:var(--subtle);background:none;border:none;cursor:pointer;padding:0;letter-spacing:0">Clear</button>
       </div>
-      <div class="flex flex-wrap gap-1.5">` +
+      <div style="display:flex;flex-wrap:wrap;gap:6px">` +
       list.map(v => `<button onclick="document.getElementById('${inputId}').value='${v}';${searchFn}"
-        class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium px-3 py-1.5 rounded-full transition">${v}</button>`
+        style="font-size:12px;font-weight:500;color:var(--text);background:var(--surface);border:1px solid var(--border);padding:5px 12px;border-radius:99px;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">${v}</button>`
       ).join("") + `</div>`;
   }
 
