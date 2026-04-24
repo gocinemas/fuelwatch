@@ -1165,9 +1165,12 @@ def api_product():
                 max_tokens=400, temperature=0.4,
             )
             raw = resp.choices[0].message.content.strip()
+            _errors.append(f"groq_raw: {raw[:300]}")
             start, end = raw.find("["), raw.rfind("]")
             if start != -1 and end != -1:
                 alternatives = _json.loads(raw[start:end+1])
+            else:
+                _errors.append(f"no JSON array found in groq response")
         except Exception as e:
             _errors.append(f"alternatives exc: {e}")
             print(f"[product] alternatives error: {e}")
