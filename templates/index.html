@@ -192,8 +192,7 @@
       <div style="padding:22px 0 18px">
         <div id="home-greeting" style="font-size:22px;font-weight:800;letter-spacing:-0.6px;color:var(--text)">Good morning.</div>
         <div style="margin-top:4px;font-size:13px;color:var(--subtle);line-height:1.6">
-          <div id="home-date"></div>
-          <div style="font-size:13px"><span id="home-time"></span><span id="home-weather" hidden> · <span id="home-weather-val"></span></span><span id="home-weather-tip" hidden> · <span id="home-weather-tip-text"></span></span></div>
+          <span id="home-date"></span><span id="home-time"> · </span><span hidden id="home-weather"><span id="home-weather-val"></span></span><span id="home-weather-tip" hidden> · <span id="home-weather-tip-text"></span></span>
         </div>
         <!-- Daily quote -->
         <div id="home-quote" style="margin-top:10px;font-size:13px;color:var(--muted);font-style:italic;line-height:1.5;max-width:340px"></div>
@@ -2535,7 +2534,7 @@
       const time = now.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
       const date = now.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
       document.getElementById("home-date").textContent = date;
-      document.getElementById("home-time").textContent = time;
+      document.getElementById("home-time").textContent = ` · ${time}`;
     }
     _updateClock();
     setInterval(_updateClock, 60000);
@@ -2610,7 +2609,7 @@
           if (!cur) return;
           const temp = Math.round(cur.temperature_2m ?? cur.temperature ?? 0);
           const code = cur.weather_code ?? cur.weathercode ?? 0;
-          document.getElementById("home-weather-val").textContent = `${_wCode(code)} ${temp}°C`;
+          document.getElementById("home-weather-val").textContent = ` · ${_wCode(code)} ${temp}°C`;
           document.getElementById("home-weather").removeAttribute("hidden");
           const tip = _wTip(code, temp);
           const tipWrap = document.getElementById("home-weather-tip");
