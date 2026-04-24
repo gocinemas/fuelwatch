@@ -186,20 +186,26 @@
       </div>
 
       <!-- News Feed (Kagi) -->
-      <div style="padding:0 4px 24px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <span style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.4px">Latest News</span>
-          <select id="kagi-cat-select" onchange="kagiSelect(this.value)"
-            style="font-size:13px;font-weight:600;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:6px 10px;background:var(--surface);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px">
-            <option value="business">💼 Business</option>
-            <option value="world">🌍 World</option>
-            <option value="uk">🇬🇧 UK</option>
-            <option value="technology">💻 Technology</option>
-            <option value="ai">🤖 AI</option>
-            <option value="science">🔬 Science</option>
-            <option value="finance">📈 Finance</option>
-            <option value="sports">🏆 Sports</option>
-          </select>
+      <div style="padding:0 4px 28px">
+        <div style="margin-bottom:14px">
+          <span style="font-size:17px;font-weight:800;color:var(--text);letter-spacing:-0.4px">Latest News</span>
+        </div>
+        <!-- Category pills -->
+        <style>
+          .kpill { flex-shrink:0; font-size:13px; font-weight:600; padding:8px 15px; border-radius:22px; border:none; background:#f0f0ee; color:#555; cursor:pointer; white-space:nowrap; transition:background .15s,color .15s; }
+          .kpill.active { background:var(--text); color:#fff; }
+          #kagi-pill-row { display:flex; gap:8px; overflow-x:auto; padding-bottom:14px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+          #kagi-pill-row::-webkit-scrollbar { display:none; }
+        </style>
+        <div id="kagi-pill-row">
+          <button class="kpill active"  onclick="kagiSelect('business',this)">💼 Business</button>
+          <button class="kpill"         onclick="kagiSelect('world',this)">🌍 World</button>
+          <button class="kpill"         onclick="kagiSelect('uk',this)">🇬🇧 UK</button>
+          <button class="kpill"         onclick="kagiSelect('technology',this)">💻 Tech</button>
+          <button class="kpill"         onclick="kagiSelect('ai',this)">🤖 AI</button>
+          <button class="kpill"         onclick="kagiSelect('science',this)">🔬 Science</button>
+          <button class="kpill"         onclick="kagiSelect('finance',this)">📈 Finance</button>
+          <button class="kpill"         onclick="kagiSelect('sports',this)">🏆 Sports</button>
         </div>
         <div id="kagi-news-list" style="display:flex;flex-direction:column;gap:10px">
           <div style="font-size:13px;color:#d1d5db;text-align:center;padding:16px 0">Loading…</div>
@@ -2259,16 +2265,23 @@
 
   // ── Kagi News ────────────────────────────────────────────────────────────
   const _kagiCache = {};
-  async function kagiSelect(cat) {
+  const _kagiCats = ["business","world","uk","technology","ai","science","finance","sports"];
+
+  async function _kagiFetch(cat) {
+    if (_kagiCache[cat]) return _kagiCache[cat];
+    const r = await fetch(`/api/kagi-news?category=${cat}`);
+    const d = await r.json();
+    _kagiCache[cat] = d;
+    return d;
+  }
+
+  async function kagiSelect(cat, btn) {
+    document.querySelectorAll(".kpill").forEach(b => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
     const el = document.getElementById("kagi-news-list");
     el.innerHTML = `<div style="font-size:13px;color:#d1d5db;text-align:center;padding:16px 0">Loading…</div>`;
     try {
-      let d = _kagiCache[cat];
-      if (!d) {
-        const r = await fetch(`/api/kagi-news?category=${cat}`);
-        d = await r.json();
-        _kagiCache[cat] = d;
-      }
+      const d = await _kagiFetch(cat);
       if (!d.stories || !d.stories.length) { el.innerHTML = `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">No stories available.</div>`; return; }
       el.innerHTML = d.stories.map(s => `
         <a href="${s.url}" target="_blank" rel="noopener"
@@ -2284,7 +2297,13 @@
       el.innerHTML = `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">Could not load news.</div>`;
     }
   }
-  kagiSelect("business");
+  // Load business first, then silently pre-fetch the rest
+  kagiSelect("business", document.querySelector(".kpill.active"));
+  setTimeout(() => {
+    _kagiCats.filter(c => c !== "business").forEach((c, i) =>
+      setTimeout(() => _kagiFetch(c), i * 400)
+    );
+  }, 1500);
 
   // ── Home greeting + weather ──────────────────────────────────────────────
   (function() {
