@@ -1269,7 +1269,7 @@
       if (d.error) { setError("company", d.error); setLoading("company", false); return; }
       const dymEl = document.getElementById("co-did-you-mean");
       if (d.suggested_name && d.suggested_name.toLowerCase() !== name.toLowerCase()) {
-        dymEl.innerHTML = `🔍 Showing results for <strong>${d.suggested_name}</strong> &nbsp;·&nbsp; Did you mean this? &nbsp;<a href="#" onclick="document.getElementById('company-input').value=${JSON.stringify(d.suggested_name)};searchCompany();return false;" style="font-weight:700;color:#92400e;text-decoration:underline">Yes</a> &nbsp;/&nbsp; <a href="#" onclick="document.getElementById('co-did-you-mean').classList.add('hidden');return false;" style="color:#92400e;text-decoration:underline">Dismiss</a>`;
+        dymEl.innerHTML = `🔍 Did you mean <strong>${d.suggested_name}</strong>? &nbsp;<a href="#" onclick="document.getElementById('company-input').value=${JSON.stringify(d.suggested_name)};document.getElementById('co-did-you-mean').classList.add('hidden');return false;" style="font-weight:700;color:#92400e;text-decoration:underline">Yes, update</a> &nbsp;/&nbsp; <a href="#" onclick="document.getElementById('co-did-you-mean').classList.add('hidden');return false;" style="color:#92400e;text-decoration:underline">Dismiss</a>`;
         dymEl.classList.remove("hidden");
       } else {
         dymEl.classList.add("hidden");
@@ -1617,8 +1617,16 @@
     if (!_isAdmin()) {
       const pw = prompt("Admin password:");
       if (!pw) return;
-      fetch("/api/admin/stats", { headers: { "X-Admin-Password": pw } })
-        .then(r => { if (r.ok) { sessionStorage.setItem("miru_admin","1"); sessionStorage.setItem("miru_admin_pw", pw); coFeaturedEdit(); } else alert("Wrong password"); });
+      fetch(`/api/admin/stats?pw=${encodeURIComponent(pw)}`)
+        .then(r => {
+          if (r.ok) {
+            sessionStorage.setItem("miru_admin", "1");
+            sessionStorage.setItem("miru_admin_pw", pw);
+            coFeaturedEdit();
+          } else {
+            alert("Wrong password");
+          }
+        });
       return;
     }
     const modal = document.getElementById("co-featured-modal");
