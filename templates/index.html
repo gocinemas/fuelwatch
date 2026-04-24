@@ -193,8 +193,7 @@
         <div id="home-greeting" style="font-size:22px;font-weight:800;letter-spacing:-0.6px;color:var(--text)">Good morning.</div>
         <div style="margin-top:4px;font-size:13px;color:var(--subtle);line-height:1.6">
           <div id="home-date"></div>
-          <div><span id="home-time"></span><span id="home-weather" hidden> · <span id="home-weather-val"></span></span></div>
-          <div id="home-weather-tip" style="font-size:12px;margin-top:1px;display:none"></div>
+          <div style="font-size:13px"><span id="home-time"></span><span id="home-weather" hidden> · <span id="home-weather-val"></span></span><span id="home-weather-tip" hidden> · <span id="home-weather-tip-text"></span></span></div>
         </div>
         <!-- Daily quote -->
         <div id="home-quote" style="margin-top:10px;font-size:13px;color:var(--muted);font-style:italic;line-height:1.5;max-width:340px"></div>
@@ -2599,10 +2598,14 @@
           const code = cur.weather_code ?? cur.weathercode ?? 0;
           document.getElementById("home-weather-val").textContent = `${_wCode(code)} ${temp}°C`;
           document.getElementById("home-weather").removeAttribute("hidden");
-          const tipEl = document.getElementById("home-weather-tip");
           const tip = _wTip(code, temp);
-          tipEl.textContent = tip;
-          tipEl.style.display = tip ? "block" : "none";
+          const tipWrap = document.getElementById("home-weather-tip");
+          if (tip) {
+            document.getElementById("home-weather-tip-text").textContent = tip;
+            tipWrap.removeAttribute("hidden");
+          } else {
+            tipWrap.setAttribute("hidden", "");
+          }
         }).catch(() => {});
     }
     function _ipWeather() {
