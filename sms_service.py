@@ -40,6 +40,10 @@ app = Flask(__name__)
 # Initialise analytics DB on startup
 analytics.init_db()
 
+# WhatsApp response cache — keyed by "postcode:fuel:radius", 30-min TTL
+_WA_CACHE: dict = {}
+_WA_CACHE_TTL = 1800
+
 # ── Price history files ────────────────────────────────────────────────────────
 NATIONAL_HISTORY_FILE = "price_history_national.json"
 POSTCODE_HISTORY_FILE = "price_history_postcodes.json"
@@ -277,6 +281,62 @@ def search_and_format(postcode: str, fuel: str, radius_miles: float, retailer: s
             lines.append(f"  {c['name']}{c['rating']} ({c['dist_mi']:.1f}mi)")
 
     return "\n".join(l for l in lines if l is not None)
+
+
+def whatsapp_search_and_format(postcode: str, fuel: str, radius_miles: float, retailer: str = None) -> str:
+    """Lean WhatsApp reply — fuel prices + weather only, no amenities fetch."""
+    latlon = postcode_to_latlon(postcode)
+    if not latlon:
+        return f"Sorry, couldn't find postcode {postcode}. Please check and try again."
+
+    lat, lon = latlon
+    radius_km = radius_miles * 1.60934
+    stations = get_stations()
+
+    nearby = []
+    for s in stations:
+        price = s.get(fuel)
+        if not price or price <= 0:
+            continue
+        if retailer and retailer.lower() not in s.get("brand", "").lower():
+            continue
+        dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
+        if dist_km <= radius_km:
+            nearby.append({**s, "dist_mi": dist_km / 1.60934, "price": price})
+
+    if not nearby:
+        retailer_msg = f" {retailer.title()}" if retailer else ""
+        return (f"No{retailer_msg} {fuel} stations found within {radius_miles:.0f} miles of {postcode}.\n"
+                f"Try: {postcode} {fuel} 10")
+
+    nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
+    log_postcode_snapshot(postcode, fuel, nearby)
+    avg = sum(s["price"] for s in nearby) / len(nearby)
+    cheapest = nearby[0]
+    tank_saving = (avg - cheapest["price"]) * 55 / 100
+
+    fuel_label = "Petrol" if fuel == "petrol" else "Diesel"
+    now = datetime.now().strftime("%d %b %Y %H:%M")
+    weather = get_weather(lat, lon)
+
+    lines = [f"FuelWatch 🇬🇧 {now}"]
+    if weather:
+        lines.append(weather)
+    lines += ["", f"-- {fuel_label} near {postcode} --",
+              f"Radius: {radius_miles:.0f}mi | {len(nearby)} stations", ""]
+
+    for i, s in enumerate(nearby[:5], 1):
+        marker = ">>>" if i == 1 else f" {i}."
+        maps_url = f"https://maps.google.com/?q={s['lat']},{s['lon']}"
+        lines.append(f"{marker} {s['brand']} {s['price']:.1f}p ({s['dist_mi']:.1f}mi)")
+        if s["address"]:
+            lines.append(f"    {s['address'][:35]}")
+        lines.append(f"    {maps_url}")
+
+    lines += ["", f"Avg: {avg:.1f}p | Save vs avg: {avg - cheapest['price']:.1f}p/L",
+              f"Full tank saving: £{tank_saving:.2f}",
+              "", "Reply with postcode [diesel] [radius]"]
+    return "\n".join(lines)
 
 
 # ── Webhook ───────────────────────────────────────────────────────────────────
@@ -1317,16 +1377,24 @@ def whatsapp_reply():
     resp = MessagingResponse()
 
     if not body:
-        resp.message("FuelWatch UK\nText your postcode to get fuel prices.\nExample: KT16 0DA\nOr: KT16 0DA diesel 10")
+        resp.message("FuelWatch UK 🇬🇧\nText your postcode to get live fuel prices.\nExample: SW1A 1AA\nOr: SW1A 1AA diesel 10")
         return str(resp)
 
     postcode, fuel, radius, retailer = parse_sms(body)
 
     if not postcode:
-        resp.message("FuelWatch UK\nCouldn't read that postcode.\nTry: KT16 0DA\nOr: KT16 0DA diesel 10")
+        resp.message("FuelWatch UK 🇬🇧\nCouldn't read that postcode.\nTry: SW1A 1AA\nOr: SW1A 1AA diesel 10")
         return str(resp)
 
-    reply = search_and_format(postcode, fuel, radius, retailer)
+    cache_key = f"{postcode}:{fuel}:{radius}:{retailer or ''}"
+    cached = _WA_CACHE.get(cache_key)
+    if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
+        print(f"WhatsApp cache hit for {cache_key}")
+        resp.message(cached[1])
+        return str(resp)
+
+    reply = whatsapp_search_and_format(postcode, fuel, radius, retailer)
+    _WA_CACHE[cache_key] = (time.time(), reply)
     resp.message(reply)
     return str(resp)
 
