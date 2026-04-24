@@ -2555,7 +2555,7 @@
     _scanner = new Html5Qrcode("scan-reader", { formatsToSupport: formats, verbose: false });
     _scanner.start(
       { facingMode: "environment" },
-      { fps: 15, qrbox: { width: 280, height: 100 } },
+      { fps: 15, qrbox: (w) => ({ width: Math.min(w * 0.85, 340), height: 120 }) },
       (code) => {
         stopScanner();
         doProductLookup(null, code);
@@ -2629,16 +2629,13 @@
       document.getElementById("scan-img").style.display = "none";
     }
 
-    const rp = d.retail_prices || {};
-    const tescoEl  = document.getElementById("scan-tesco-link");
-    const asdaEl   = document.getElementById("scan-asda-link");
-    const amazonEl = document.getElementById("scan-amazon-link");
-    tescoEl.href   = `https://www.tesco.com/groceries/en-GB/search?query=${enc}`;
-    asdaEl.href    = `https://groceries.asda.com/search/${enc}`;
-    amazonEl.href  = `https://www.amazon.co.uk/s?k=${enc}`;
-    tescoEl.textContent  = rp.tesco  ? `Tesco (${rp.tesco})`  : "Tesco";
-    asdaEl.textContent   = rp.asda   ? `ASDA (${rp.asda})`    : "ASDA";
-    amazonEl.textContent = rp.amazon ? `Amazon (${rp.amazon})` : "Amazon";
+    const sq = encodeURIComponent(d.search_q || q);
+    document.getElementById("scan-tesco-link").href  = `https://www.tesco.com/groceries/en-GB/search?query=${sq}`;
+    document.getElementById("scan-asda-link").href   = `https://groceries.asda.com/search/${sq}`;
+    document.getElementById("scan-amazon-link").href = `https://www.amazon.co.uk/s?k=${sq}`;
+    document.getElementById("scan-tesco-link").textContent  = "Tesco";
+    document.getElementById("scan-asda-link").textContent   = "ASDA";
+    document.getElementById("scan-amazon-link").textContent = "Amazon";
 
     const alts = d.alternatives || [];
     document.getElementById("scan-alts").innerHTML = alts.length

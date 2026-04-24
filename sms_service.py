@@ -1093,114 +1093,109 @@ def api_product():
     _errors = []
     groq_key = os.environ.get("GROQ_API_KEY", "")
 
-    OFF_HEADERS = {
-        "User-Agent": "MiruApp/1.0 (https://miru.humanagency.co; contact@humanagency.co)",
-        "Accept": "application/json",
-    }
-
-    def _groq(prompt, max_tokens=400):
-        """Call Groq via raw HTTP (no groq package needed)."""
+    def _groq(prompt, max_tokens=500):
         r = _req.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={"model": "llama-3.1-8b-instant",
                   "messages": [{"role": "user", "content": prompt}],
-                  "max_tokens": max_tokens, "temperature": 0.4},
+                  "max_tokens": max_tokens, "temperature": 0.3},
             timeout=15,
         )
-        return r.json()["choices"][0]["message"]["content"].strip()
+        d = r.json()
+        if "choices" not in d:
+            raise RuntimeError(f"Groq error: {d.get('error', d)}")
+        return d["choices"][0]["message"]["content"].strip()
 
-    def _parse_json_array(text):
+    def _extract_obj(text):
+        s, e = text.find("{"), text.rfind("}")
+        return _json.loads(text[s:e+1]) if s != -1 and e != -1 else {}
+
+    def _extract_arr(text):
         s, e = text.find("["), text.rfind("]")
         return _json.loads(text[s:e+1]) if s != -1 and e != -1 else []
 
-    def _off_product(p, fallback_name=""):
-        cats = p.get("categories", "")
-        cat  = cats.split(",")[0].strip() if cats else ""
-        return {
-            "name":     p.get("product_name_en") or p.get("product_name", fallback_name),
-            "brand":    p.get("brands", ""),
-            "category": cat,
-            "image":    p.get("image_url", ""),
-        }
-
-    # --- barcode lookup via Open Food Facts ---
+    # --- 1. Barcode lookup via UPC Item DB (free, no key needed) ---
     if barcode:
         try:
+            r = _req.get(f"https://api.upcitemdb.com/prod/trial/lookup?upc={barcode}",
+                         timeout=8, headers={"User-Agent": "MiruApp/1.0"})
+            if r.status_code == 200:
+                items = r.json().get("items", [])
+                if items:
+                    it = items[0]
+                    product = {
+                        "name":     it.get("title", ""),
+                        "brand":    it.get("brand", ""),
+                        "category": it.get("category", ""),
+                        "image":    (it.get("images") or [""])[0],
+                        "barcode":  barcode,
+                    }
+                    _errors.append("product via upcitemdb")
+            else:
+                _errors.append(f"upcitemdb http={r.status_code}")
+        except Exception as e:
+            _errors.append(f"upcitemdb exc: {e}")
+
+    # --- 2. Open Food Facts barcode fallback ---
+    if not product and barcode:
+        try:
             r = _req.get(f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json",
-                         timeout=10, headers=OFF_HEADERS)
+                         timeout=8, headers={"User-Agent": "MiruApp/1.0", "Accept": "application/json"})
             if r.status_code == 200:
                 d = r.json()
                 if d.get("status") == 1:
-                    product = _off_product(d["product"])
-                    product["barcode"] = barcode
-                else:
-                    _errors.append(f"OFF barcode not found, status={d.get('status')}")
-            else:
-                _errors.append(f"OFF barcode http={r.status_code}")
+                    p = d["product"]
+                    cats = p.get("categories", "")
+                    product = {
+                        "name":     p.get("product_name_en") or p.get("product_name", ""),
+                        "brand":    p.get("brands", ""),
+                        "category": cats.split(",")[0].strip() if cats else "",
+                        "image":    p.get("image_url", ""),
+                        "barcode":  barcode,
+                    }
+                    _errors.append("product via OFF barcode")
         except Exception as e:
             _errors.append(f"OFF barcode exc: {e}")
 
-    # --- name search via Open Food Facts ---
-    if not product and name:
-        try:
-            r = _req.get("https://world.openfoodfacts.org/cgi/search.pl",
-                         params={"search_terms": name, "json": 1, "page_size": 5,
-                                 "lc": "en", "action": "process"},
-                         timeout=10, headers=OFF_HEADERS)
-            if r.status_code == 200:
-                products = r.json().get("products", [])
-                if products:
-                    product = _off_product(products[0], name)
-                else:
-                    _errors.append("OFF search: 0 results")
-            else:
-                _errors.append(f"OFF search http={r.status_code}")
-        except Exception as e:
-            _errors.append(f"OFF search exc: {e}")
-
-    # --- Groq fallback: identify product by name when OFF fails ---
+    # --- 3. Name search via Groq AI (most reliable from Railway) ---
     if not product and name and groq_key:
         try:
             raw = _groq(
-                f'Identify the UK retail product "{name}". '
-                'Return ONE JSON object only: {"name":"...","brand":"...","category":"..."}',
-                max_tokens=120,
+                f'You are a UK grocery expert. Identify the product: "{name}".\n'
+                'Return ONLY JSON: {{"name":"exact product name","brand":"brand name","category":"food category"}}',
+                max_tokens=150,
             )
-            obj = _json.loads(raw[raw.find("{"):raw.rfind("}")+1])
-            product = {"name": obj.get("name", name), "brand": obj.get("brand", ""),
-                       "category": obj.get("category", ""), "image": ""}
-            _errors.append("product via groq fallback")
+            obj = _extract_obj(raw)
+            if obj.get("name"):
+                product = {"name": obj["name"], "brand": obj.get("brand", ""),
+                           "category": obj.get("category", ""), "image": ""}
+                _errors.append("product via groq")
         except Exception as e:
-            _errors.append(f"groq product fallback exc: {e}")
+            _errors.append(f"groq product exc: {e}")
 
-    # --- AI: retail prices + alternatives via single Groq call ---
+    # --- 4. Alternatives via Groq ---
     alternatives = []
-    retail_prices = {}
     search_term = (product["name"] if product else name) or barcode
     if search_term and groq_key:
         try:
             brand_ctx = f" by {product['brand']}" if product and product.get("brand") else ""
             raw = _groq(
-                f'Product: "{search_term}"{brand_ctx}.\n'
-                "1. Estimate current UK prices at Tesco, ASDA, Amazon UK.\n"
-                "2. Suggest 3 alternatives in UK supermarkets (Tesco, Sainsbury's, ASDA, Lidl, Aldi) "
-                "with name, estimated UK price, one-line reason.\n"
-                'Return ONLY this JSON: {"prices":{"tesco":"£X.XX","asda":"£X.XX","amazon":"£X.XX"},'
-                '"alternatives":[{"name":"...","price":"£X.XX","reason":"..."}]}',
-                max_tokens=500,
+                f'UK grocery product: "{search_term}"{brand_ctx}.\n'
+                'Suggest 3 cheaper or equivalent alternatives sold in UK supermarkets (Tesco, ASDA, Sainsbury\'s, Lidl, Aldi).\n'
+                'For each give the real product name, realistic UK supermarket price, and a one-line reason.\n'
+                'Return ONLY a JSON array: [{{"name":"...","price":"£X.XX","reason":"..."}}]',
+                max_tokens=400,
             )
-            s, e = raw.find("{"), raw.rfind("}")
-            if s != -1 and e != -1:
-                obj = _json.loads(raw[s:e+1])
-                retail_prices = obj.get("prices", {})
-                alternatives  = obj.get("alternatives", [])
-            _errors.append(f"ai ok prices={retail_prices} alts={len(alternatives)}")
+            alternatives = _extract_arr(raw)
+            _errors.append(f"alternatives ok ({len(alternatives)})")
         except Exception as e:
-            _errors.append(f"ai exc: {e}")
+            _errors.append(f"alternatives exc: {e}")
 
+    # --- 5. Store search links (no fake AI prices on buttons) ---
+    search_q = search_term or name or barcode
     out = {"product": product, "alternatives": alternatives,
-           "retail_prices": retail_prices, "query": search_term}
+           "query": search_term, "search_q": search_q}
     if debug:
         out["_errors"] = _errors
     return jsonify(out)
