@@ -2463,14 +2463,17 @@
       return "⛈️";
     }
     function _wTip(code, temp) {
-      if (code === 0)       return "Beautiful day - Perfect for a walk 🌳 Don't forget sunscreen!";
-      if (code <= 2)        return temp > 16 ? "Lovely day - Get some fresh air 🌿" : "Crisp and clear - Good for a brisk walk";
-      if (code === 3)       return "Overcast day - Great excuse for a coffee ☕";
-      if (code <= 48)       return "Misty outside - Cosy up indoors 🕯️";
-      if (code <= 57)       return "Light drizzle - Perfect excuse for a coffee ☕";
-      if (code <= 67)       return "Rainy day - Find a nice café and settle in ☕";
-      if (code <= 77)       return "Snowing outside - Stay warm and cosy ❄️";
-      if (code <= 82)       return "Showery - Grab an umbrella if you head out ☂️";
+      const h = new Date().getHours();
+      if (h >= 22 || h < 6) return "";  // night — no tip
+      const evening = h >= 19;
+      if (code === 0)  return evening ? "Have a good evening stroll 🌙" : "Beautiful day - Perfect for a walk 🌳 Don't forget sunscreen!";
+      if (code <= 2)   return evening ? "Have a good evening stroll 🌙" : (temp > 16 ? "Lovely day - Get some fresh air 🌿" : "Crisp and clear - Good for a brisk walk");
+      if (code === 3)  return "Overcast day - Great excuse for a coffee ☕";
+      if (code <= 48)  return "Misty outside - Cosy up indoors 🕯️";
+      if (code <= 57)  return "Light drizzle - Perfect excuse for a coffee ☕";
+      if (code <= 67)  return "Rainy day - Find a nice café and settle in ☕";
+      if (code <= 77)  return "Snowing outside - Stay warm and cosy ❄️";
+      if (code <= 82)  return "Showery - Grab an umbrella if you head out ☂️";
       return "Stormy out there - Best day to stay in and relax 🛋️";
     }
     function _showWeather(lat, lon) {
@@ -2484,8 +2487,9 @@
           document.getElementById("home-weather-val").textContent = `${_wCode(code)} ${temp}°C`;
           document.getElementById("home-weather").style.display = "inline";
           const tipEl = document.getElementById("home-weather-tip");
-          tipEl.textContent = _wTip(code, temp);
-          tipEl.style.display = "block";
+          const tip = _wTip(code, temp);
+          tipEl.textContent = tip;
+          tipEl.style.display = tip ? "block" : "none";
         }).catch(() => {});
     }
     function _ipWeather() {
