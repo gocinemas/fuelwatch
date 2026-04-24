@@ -875,7 +875,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv6"
+    cache_key = brand.strip().lower() + "|brandv7"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -1143,9 +1143,12 @@ def _fetch_wikipedia(company: str) -> dict:
             v = _re.sub(r'<ref[^/]*/>', '', v)
             # Normalise non-breaking spaces
             v = v.replace('&nbsp;', ' ')
+            # Strip named template params (e.g. |class=nowrap, |style=..., |abbr=on)
+            # so positional params like [[Footwear]] are captured correctly
+            v = _re.sub(r'\|[a-zA-Z][a-zA-Z0-9_-]*\s*=\s*[^|{}]*', '', v)
             # Strip simple no-param templates: {{increase}}, {{decrease}}, etc.
             v = _re.sub(r'\{\{[^|{}]{1,30}\}\}', '', v)
-            # Extract first param from templates: {{US$|60.1 billion}} → 60.1 billion
+            # Extract first positional param from templates: {{US$|60.1 billion}} → 60.1 billion
             v = _re.sub(r'\{\{[^|{}]+\|([^|{}]+)(?:\|[^{}]*)?\}\}', r'\1', v)
             # Drop any remaining templates
             v = _re.sub(r'\{\{[^{}]*\}\}', '', v)
