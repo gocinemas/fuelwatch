@@ -2471,22 +2471,33 @@
       if (code <= 82)       return "Showery - Grab an umbrella if you head out ☂️";
       return "Stormy out there - Best day to stay in and relax 🛋️";
     }
+    function _showWeather(lat, lon) {
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(3)}&longitude=${(+lon).toFixed(3)}&current=temperature_2m,weather_code&timezone=auto`)
+        .then(r => r.json())
+        .then(d => {
+          const cur = d && (d.current || d.current_weather);
+          if (!cur) return;
+          const temp = Math.round(cur.temperature_2m ?? cur.temperature ?? 0);
+          const code = cur.weather_code ?? cur.weathercode ?? 0;
+          document.getElementById("home-weather-val").textContent = `${_wCode(code)} ${temp}°C`;
+          document.getElementById("home-weather-tip").textContent = _wTip(code, temp);
+          document.getElementById("home-weather").style.display = "inline";
+        }).catch(() => {});
+    }
+    function _ipWeather() {
+      fetch("https://get.geojs.io/v1/ip/geo.json")
+        .then(r => r.json())
+        .then(d => { if (d.latitude && d.longitude) _showWeather(d.latitude, d.longitude); })
+        .catch(() => {});
+    }
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function(pos) {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,weather_code&timezone=auto`)
-          .then(r => r.json())
-          .then(d => {
-            const cur = d && (d.current || d.current_weather);
-            if (!cur) return;
-            const temp = Math.round(cur.temperature_2m ?? cur.temperature);
-            const code = cur.weather_code ?? cur.weathercode ?? 0;
-            const icon = _wCode(code);
-            document.getElementById("home-weather-val").textContent = `${icon} ${temp}°C`;
-            document.getElementById("home-weather-tip").textContent = _wTip(code, temp);
-            document.getElementById("home-weather").style.display = "inline";
-          }).catch(() => {});
-      }, () => {});
+      navigator.geolocation.getCurrentPosition(
+        pos => _showWeather(pos.coords.latitude, pos.coords.longitude),
+        ()  => _ipWeather(),
+        { timeout: 8000, maximumAge: 600000 }
+      );
+    } else {
+      _ipWeather();
     }
   })();
 </script>
