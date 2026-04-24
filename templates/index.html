@@ -184,26 +184,20 @@
 
       <!-- News Feed (Kagi) -->
       <div style="padding:0 4px 24px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em">News</span>
-          <span id="kagi-updated" style="font-size:10px;color:#d1d5db">via Kagi</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.4px">Latest News</span>
+          <select id="kagi-cat-select" onchange="kagiSelect(this.value)"
+            style="font-size:13px;font-weight:600;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:6px 10px;background:var(--surface);cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px">
+            <option value="business">💼 Business</option>
+            <option value="world">🌍 World</option>
+            <option value="uk">🇬🇧 UK</option>
+            <option value="technology">💻 Technology</option>
+            <option value="ai">🤖 AI</option>
+            <option value="science">🔬 Science</option>
+            <option value="finance">📈 Finance</option>
+            <option value="sports">🏆 Sports</option>
+          </select>
         </div>
-        <!-- Category tabs -->
-        <div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="kagi-tabs">
-          <button onclick="kagiSelect('business',this)"    data-cat="business"    class="kagi-tab kagi-tab-active">💼 Business</button>
-          <button onclick="kagiSelect('world',this)"       data-cat="world"       class="kagi-tab">🌍 World</button>
-          <button onclick="kagiSelect('uk',this)"          data-cat="uk"          class="kagi-tab">🇬🇧 UK</button>
-          <button onclick="kagiSelect('technology',this)"  data-cat="technology"  class="kagi-tab">💻 Tech</button>
-          <button onclick="kagiSelect('ai',this)"          data-cat="ai"          class="kagi-tab">🤖 AI</button>
-          <button onclick="kagiSelect('science',this)"     data-cat="science"     class="kagi-tab">🔬 Science</button>
-          <button onclick="kagiSelect('finance',this)"     data-cat="finance"     class="kagi-tab">📈 Finance</button>
-          <button onclick="kagiSelect('sports',this)"      data-cat="sports"      class="kagi-tab">🏆 Sports</button>
-        </div>
-        <style>
-          .kagi-tab { flex-shrink:0; font-size:12px; font-weight:600; padding:6px 13px; border-radius:20px; border:1px solid #e5e7eb; background:#fff; color:#6b7280; cursor:pointer; white-space:nowrap; }
-          .kagi-tab-active { background:#111; color:#fff; border-color:#111; }
-          #kagi-tabs::-webkit-scrollbar { display:none; }
-        </style>
         <div id="kagi-news-list" style="display:flex;flex-direction:column;gap:10px">
           <div style="font-size:13px;color:#d1d5db;text-align:center;padding:16px 0">Loading…</div>
         </div>
@@ -2262,9 +2256,7 @@
 
   // ── Kagi News ────────────────────────────────────────────────────────────
   const _kagiCache = {};
-  async function kagiSelect(cat, btn) {
-    document.querySelectorAll(".kagi-tab").forEach(b => b.classList.remove("kagi-tab-active"));
-    if (btn) btn.classList.add("kagi-tab-active");
+  async function kagiSelect(cat) {
     const el = document.getElementById("kagi-news-list");
     el.innerHTML = `<div style="font-size:13px;color:#d1d5db;text-align:center;padding:16px 0">Loading…</div>`;
     try {
@@ -2289,7 +2281,7 @@
       el.innerHTML = `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">Could not load news.</div>`;
     }
   }
-  kagiSelect("business", document.querySelector(".kagi-tab-active"));
+  kagiSelect("business");
 
   // ── Home greeting ────────────────────────────────────────────────────────
   (function() {
