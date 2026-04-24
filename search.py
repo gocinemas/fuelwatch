@@ -881,7 +881,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv14"
+    cache_key = brand.strip().lower() + "|brandv15"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -907,11 +907,13 @@ def fetch_brand_data(brand: str) -> dict:
         return cached["data"] if cached else {}
 
     try:
-        # L2: Supabase persistent cache
+        # L2: Supabase persistent cache — skip if AI data is absent
         sb_data = _sb_cache_get("brand:" + cache_key)
-        if sb_data:
+        if sb_data and (sb_data.get("timeline") or sb_data.get("competitors")):
             _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": sb_data}
             return sb_data
+
+        fetch_start = time.time()
 
         with _cf.ThreadPoolExecutor(max_workers=6) as pool:
             wiki_f = pool.submit(_fetch_wikipedia, brand)
@@ -921,25 +923,30 @@ def fetch_brand_data(brand: str) -> dict:
             ai_f   = pool.submit(_fetch_brand_ai, brand, "")
 
             wiki = {}
-            try: wiki = wiki_f.result(timeout=12) or {}
+            try: wiki = wiki_f.result(timeout=10) or {}
             except Exception: pass
 
             news = []
-            try: news = news_f.result(timeout=10) or []
+            try: news = news_f.result(timeout=8) or []
             except Exception: pass
 
             ads = []
-            try: ads = ads_f.result(timeout=10) or []
+            try: ads = ads_f.result(timeout=8) or []
             except Exception: pass
 
             financials = {}
-            try: financials = fin_f.result(timeout=10) or {}
+            try: financials = fin_f.result(timeout=8) or {}
             except Exception: pass
 
+            # Give AI the remainder of a 27s wall-clock budget from fetch start
+            ai_budget = max(27 - (time.time() - fetch_start), 3)
             ai = {}
-            try: ai = ai_f.result(timeout=25) or {}
-            except Exception as e: print(f"[brand_ai] parallel fetch error: {e}")
-            print(f"[brand_ai] {brand}: timeline={len(ai.get('timeline',[]))}, rivals={len(ai.get('competitors',[]))}, facts={bool(ai.get('facts'))}")
+            try:
+                ai = ai_f.result(timeout=ai_budget) or {}
+            except Exception as e:
+                print(f"[brand_ai] timeout/error after {time.time()-fetch_start:.1f}s: {e}")
+            print(f"[brand_ai] {brand}: tl={len(ai.get('timeline',[]))} rivals={len(ai.get('competitors',[]))} facts={bool(ai.get('facts'))} elapsed={time.time()-fetch_start:.1f}s")
+
         ai_facts = ai.get("facts", {}) or {}
 
         def _val(wiki_key):
@@ -965,8 +972,13 @@ def fetch_brand_data(brand: str) -> dict:
             "financials":  financials,
             "news":        news,
         }
+        # Only cache if AI data came back — don't lock in empty timeline/rivals
+        ai_ok = bool(result["timeline"] or result["competitors"])
         _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
-        _sb_cache_set("brand:" + cache_key, result)
+        if ai_ok:
+            _sb_cache_set("brand:" + cache_key, result)
+        else:
+            print(f"[brand_ai] {brand}: AI empty — skipping Supabase cache so next request retries")
         return result
     finally:
         with _BRAND_LOCK:
