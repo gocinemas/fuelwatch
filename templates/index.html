@@ -234,14 +234,10 @@
           <div class="tc-desc">Scan or search any product</div>
         </button>
 
-        <button class="tool-card" onclick="showScreen('brand')" style="grid-column:span 2">
-          <div style="display:flex;align-items:center;gap:14px">
-            <div class="tc-icon" style="background:#fff1f2;margin-bottom:0;flex-shrink:0">🏷️</div>
-            <div>
-              <div class="tc-name" style="font-size:15px">Brand Intel</div>
-              <div class="tc-desc">Timeline, rivals, campaigns & more</div>
-            </div>
-          </div>
+        <button class="tool-card" onclick="showScreen('brand')">
+          <div class="tc-icon" style="background:#fff1f2">🏷️</div>
+          <div class="tc-name">Brand Intel</div>
+          <div class="tc-desc">Timeline, rivals & more</div>
         </button>
 
       </div>
@@ -559,7 +555,10 @@
     </div>
 
     <!-- ── BRAND INTEL SCREEN ── -->
-    <div id="screen-brand" class="screen pt-4">
+    <div id="screen-brand" class="screen pt-5">
+
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Brand Intel</div>
+      <div style="font-size:13px;color:var(--subtle);margin-bottom:18px">Timeline, rivals, campaigns & more</div>
 
       <!-- Search bar -->
       <div style="display:flex;gap:8px;margin-bottom:16px">
