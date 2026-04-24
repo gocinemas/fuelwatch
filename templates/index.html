@@ -2454,13 +2454,8 @@
     </button>
 
     <!-- Camera viewfinder -->
-    <div id="scan-reader-wrap" style="display:none;margin-bottom:16px;border-radius:14px;overflow:hidden;position:relative">
-      <video id="scan-video" autoplay playsinline muted
-        style="width:100%;display:block;background:#000;max-height:260px;object-fit:cover"></video>
-      <!-- barcode guide overlay -->
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
-        <div style="width:260px;height:90px;border:2px solid rgba(255,255,255,0.7);border-radius:8px;box-shadow:0 0 0 1000px rgba(0,0,0,0.35)"></div>
-      </div>
+    <div id="scan-reader-wrap" style="display:none;margin-bottom:16px;border-radius:14px;overflow:hidden">
+      <div id="scan-reader" style="width:100%"></div>
       <button onclick="stopScanner()"
         style="width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
         Stop camera
@@ -2504,92 +2499,54 @@
   </div>
 </div>
 
-<!-- ZXing fallback for browsers without native BarcodeDetector -->
-<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 (function(){
-  let _stream = null;
-  let _raf    = null;
-  let _zxing  = null;
+  let _scanner = null;
 
-  const FORMATS = ["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code","itf","codabar"];
-
-  // ── Native BarcodeDetector (uses ML Kit on Android Chrome) ──
-  async function _startNative(video) {
-    const bd = new BarcodeDetector({ formats: FORMATS });
-    async function tick() {
-      if (!_stream) return;
-      try {
-        const results = await bd.detect(video);
-        if (results.length) {
-          const code = results[0].rawValue;
-          stopScanner();
-          doProductLookup(null, code);
-          return;
-        }
-      } catch(_) {}
-      _raf = requestAnimationFrame(tick);
-    }
-    _raf = requestAnimationFrame(tick);
-  }
-
-  // ── ZXing fallback ──
-  function _startZxing(video) {
-    const hints = new Map();
-    const fmts = [
-      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.UPC_A,  ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.QR_CODE,
-    ];
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, fmts);
-    const reader = new ZXing.BrowserMultiFormatReader(hints, 200);
-    _zxing = reader;
-    reader.decodeFromStream(_stream, video, (result, err) => {
-      if (result) {
-        stopScanner();
-        doProductLookup(null, result.getText());
-      }
-    });
-  }
-
-  window.toggleScanner = async function() {
+  window.toggleScanner = function() {
     const wrap = document.getElementById("scan-reader-wrap");
-    if (wrap.style.display === "none") {
-      try {
-        _stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
-        });
-        const video = document.getElementById("scan-video");
-        video.srcObject = _stream;
-        await video.play();
-        wrap.style.display = "block";
-        document.getElementById("scan-cam-btn").innerHTML = '<span style="font-size:20px">📷</span> Scanning… tap to stop';
+    if (_scanner) { stopScanner(); return; }
 
-        if ("BarcodeDetector" in window) {
-          _startNative(video);
-        } else if (window.ZXing) {
-          _startZxing(video);
-        } else {
-          showScanError("Barcode scanner not supported in this browser.");
-          stopScanner();
-        }
-      } catch(e) {
-        showScanError("Camera not available: " + e.message);
-      }
-    } else {
-      stopScanner();
-    }
+    wrap.style.display = "block";
+    document.getElementById("scan-cam-btn").innerHTML = '<span style="font-size:20px">📷</span> Scanning… tap to stop';
+
+    const formats = [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.QR_CODE,
+    ];
+
+    _scanner = new Html5Qrcode("scan-reader", { formatsToSupport: formats, verbose: false });
+    _scanner.start(
+      { facingMode: "environment" },
+      { fps: 15, qrbox: { width: 280, height: 100 } },
+      (code) => {
+        stopScanner();
+        doProductLookup(null, code);
+      },
+      () => {}
+    ).catch(err => {
+      wrap.style.display = "none";
+      _scanner = null;
+      document.getElementById("scan-cam-btn").innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
+      showScanError("Camera not available — " + err);
+    });
   };
 
   window.stopScanner = function() {
-    cancelAnimationFrame(_raf); _raf = null;
-    if (_zxing) { try { _zxing.reset(); } catch(_) {} _zxing = null; }
-    if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
-    const video = document.getElementById("scan-video");
-    if (video) video.srcObject = null;
-    document.getElementById("scan-reader-wrap").style.display = "none";
-    document.getElementById("scan-cam-btn").innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
+    if (_scanner) {
+      _scanner.stop().catch(() => {}).finally(() => {
+        _scanner = null;
+        document.getElementById("scan-reader-wrap").style.display = "none";
+        document.getElementById("scan-cam-btn").innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
+      });
+    }
   };
 
   window.scanSearch = function() {
