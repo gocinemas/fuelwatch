@@ -2642,9 +2642,16 @@
       document.getElementById("scan-img").style.display = "none";
     }
 
-    document.getElementById("scan-tesco-link").href  = `https://www.tesco.com/groceries/en-GB/search?query=${enc}`;
-    document.getElementById("scan-asda-link").href   = `https://groceries.asda.com/search/${enc}`;
-    document.getElementById("scan-amazon-link").href = `https://www.amazon.co.uk/s?k=${enc}`;
+    const rp = d.retail_prices || {};
+    const tescoEl  = document.getElementById("scan-tesco-link");
+    const asdaEl   = document.getElementById("scan-asda-link");
+    const amazonEl = document.getElementById("scan-amazon-link");
+    tescoEl.href   = `https://www.tesco.com/groceries/en-GB/search?query=${enc}`;
+    asdaEl.href    = `https://groceries.asda.com/search/${enc}`;
+    amazonEl.href  = `https://www.amazon.co.uk/s?k=${enc}`;
+    tescoEl.textContent  = rp.tesco  ? `Tesco (${rp.tesco})`  : "Tesco";
+    asdaEl.textContent   = rp.asda   ? `ASDA (${rp.asda})`    : "ASDA";
+    amazonEl.textContent = rp.amazon ? `Amazon (${rp.amazon})` : "Amazon";
 
     const alts = d.alternatives || [];
     document.getElementById("scan-alts").innerHTML = alts.length

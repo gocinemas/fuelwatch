@@ -1174,25 +1174,33 @@ def api_product():
         except Exception as e:
             _errors.append(f"groq product fallback exc: {e}")
 
-    # --- AI alternatives via Groq (raw HTTP) ---
+    # --- AI: retail prices + alternatives via single Groq call ---
     alternatives = []
+    retail_prices = {}
     search_term = (product["name"] if product else name) or barcode
     if search_term and groq_key:
         try:
             brand_ctx = f" by {product['brand']}" if product and product.get("brand") else ""
             raw = _groq(
                 f'Product: "{search_term}"{brand_ctx}.\n'
-                "Suggest 3 alternatives available in UK supermarkets (Tesco, Sainsbury's, ASDA, Lidl, Aldi). "
-                "For each: name, estimated UK price, one-line reason. "
-                'Return ONLY JSON array: [{"name":"...","price":"£X.XX","reason":"..."}]',
-                max_tokens=400,
+                "1. Estimate current UK prices at Tesco, ASDA, Amazon UK.\n"
+                "2. Suggest 3 alternatives in UK supermarkets (Tesco, Sainsbury's, ASDA, Lidl, Aldi) "
+                "with name, estimated UK price, one-line reason.\n"
+                'Return ONLY this JSON: {"prices":{"tesco":"£X.XX","asda":"£X.XX","amazon":"£X.XX"},'
+                '"alternatives":[{"name":"...","price":"£X.XX","reason":"..."}]}',
+                max_tokens=500,
             )
-            alternatives = _parse_json_array(raw)
-            _errors.append(f"alternatives ok ({len(alternatives)})")
+            s, e = raw.find("{"), raw.rfind("}")
+            if s != -1 and e != -1:
+                obj = _json.loads(raw[s:e+1])
+                retail_prices = obj.get("prices", {})
+                alternatives  = obj.get("alternatives", [])
+            _errors.append(f"ai ok prices={retail_prices} alts={len(alternatives)}")
         except Exception as e:
-            _errors.append(f"alternatives exc: {e}")
+            _errors.append(f"ai exc: {e}")
 
-    out = {"product": product, "alternatives": alternatives, "query": search_term}
+    out = {"product": product, "alternatives": alternatives,
+           "retail_prices": retail_prices, "query": search_term}
     if debug:
         out["_errors"] = _errors
     return jsonify(out)
