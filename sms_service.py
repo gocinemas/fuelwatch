@@ -737,6 +737,18 @@ def api_kagi_news():
             allow_redirects=True,
         )
         raw = r.json()
+        def _unwrap(link):
+            """Strip kagiproxy.com wrapper and return the real article URL."""
+            if not link:
+                return link
+            from urllib.parse import urlparse, parse_qs, unquote
+            p = urlparse(link)
+            if "kagiproxy" in p.netloc:
+                qs = parse_qs(p.query)
+                real = qs.get("url", [""])[0] or unquote(p.path.lstrip("/"))
+                return real if real else link
+            return link
+
         stories = []
         for s in raw.get("stories", []):
             img = s.get("primary_image") or {}
@@ -747,7 +759,7 @@ def api_kagi_news():
                 "emoji":    s.get("emoji", ""),
                 "image":    img.get("url", ""),
                 "sources":  len(articles),
-                "url":      articles[0].get("link", "") if articles else "",
+                "url":      _unwrap(articles[0].get("link", "")) if articles else "",
                 "domain":   articles[0].get("domain", "") if articles else "",
             })
         data = {"stories": stories, "category": category}
