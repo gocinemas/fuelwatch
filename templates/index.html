@@ -23,6 +23,43 @@
       --accent:  #dc2626;
     }
 
+    /* Dark theme */
+    [data-theme="dark"] {
+      --bg:      #0f0f0f;
+      --surface: #1a1a1a;
+      --border:  #2a2a2a;
+      --text:    #f0f0f0;
+      --muted:   #888888;
+      --subtle:  #555555;
+      --accent:  #ef4444;
+    }
+
+    /* System dark */
+    @media (prefers-color-scheme: dark) {
+      [data-theme="system"] {
+        --bg:      #0f0f0f;
+        --surface: #1a1a1a;
+        --border:  #2a2a2a;
+        --text:    #f0f0f0;
+        --muted:   #888888;
+        --subtle:  #555555;
+        --accent:  #ef4444;
+      }
+    }
+
+    /* Tailwind dark-mode compat */
+    [data-theme="dark"] .bg-white,
+    [data-theme="dark"] .bg-gray-50 { background-color: var(--surface) !important; }
+    [data-theme="dark"] .text-gray-800,
+    [data-theme="dark"] .text-gray-700,
+    [data-theme="dark"] .text-gray-600 { color: var(--text) !important; }
+    [data-theme="dark"] .border-gray-200 { border-color: var(--border) !important; }
+    [data-theme="dark"] input,
+    [data-theme="dark"] select,
+    [data-theme="dark"] textarea { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
+    [data-theme="dark"] .shadow,
+    [data-theme="dark"] .rounded-2xl { box-shadow: none !important; }
+
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 
     body {
@@ -128,7 +165,12 @@
         <div class="logo-dot">👁</div>
         <span class="logo-text">Miru</span>
       </div>
-      <button class="home-btn" onclick="showHome()">Home</button>
+      <div style="display:flex;align-items:center;gap:4px">
+        <button id="theme-btn" onclick="cycleTheme()"
+          style="font-size:16px;border:none;background:transparent;cursor:pointer;padding:6px 8px;border-radius:8px;line-height:1;color:var(--subtle)"
+          title="Toggle theme"></button>
+        <button class="home-btn" onclick="showHome()">Home</button>
+      </div>
     </div>
   </header>
 
@@ -2304,6 +2346,21 @@
       setTimeout(() => _kagiFetch(c), i * 400)
     );
   }, 1500);
+
+  // ── Theme ────────────────────────────────────────────────────────────────
+  const _themes = ["system","light","dark"];
+  const _themeIcons = { system:"⚙️", light:"☀️", dark:"🌙" };
+  function _applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    document.getElementById("theme-btn").textContent = _themeIcons[t];
+    localStorage.setItem("miru_theme", t);
+  }
+  function cycleTheme() {
+    const cur = localStorage.getItem("miru_theme") || "system";
+    const next = _themes[(_themes.indexOf(cur) + 1) % _themes.length];
+    _applyTheme(next);
+  }
+  _applyTheme(localStorage.getItem("miru_theme") || "system");
 
   // ── Home greeting + weather ──────────────────────────────────────────────
   (function() {
