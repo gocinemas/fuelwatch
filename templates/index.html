@@ -185,6 +185,17 @@
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
           <span id="home-date" style="font-size:13px;color:var(--subtle)"></span>
           <span id="home-weather" style="font-size:13px;color:var(--subtle);display:none">·&nbsp;<span id="home-weather-val"></span></span>
+          <button id="music-btn" onclick="toggleMusic()"
+            style="font-size:13px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:0;line-height:1;display:flex;align-items:center;gap:4px;letter-spacing:0"
+            title="Toggle music">· 🎵</button>
+        </div>
+        <!-- Spotify player -->
+        <div id="music-player" style="display:none;margin-top:12px">
+          <iframe src="https://open.spotify.com/embed/track/7ogpGbKc4Io6NCU6ydxXwZ?utm_source=generator"
+            width="100%" height="80" frameborder="0"
+            style="border-radius:12px"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"></iframe>
         </div>
       </div>
 
@@ -2346,6 +2357,15 @@
       setTimeout(() => _kagiFetch(c), i * 400)
     );
   }, 1500);
+
+  // ── Music toggle ─────────────────────────────────────────────────────────
+  function toggleMusic() {
+    const player = document.getElementById("music-player");
+    const btn    = document.getElementById("music-btn");
+    const on     = player.style.display === "none";
+    player.style.display = on ? "block" : "none";
+    btn.style.color = on ? "var(--accent)" : "var(--subtle)";
+  }
 
   // ── Theme ────────────────────────────────────────────────────────────────
   const _themes = ["system","light","dark"];
