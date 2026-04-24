@@ -1269,7 +1269,11 @@
       if (d.error) { setError("company", d.error); setLoading("company", false); return; }
       const dymEl = document.getElementById("co-did-you-mean");
       if (d.suggested_name && d.suggested_name.toLowerCase() !== name.toLowerCase()) {
-        dymEl.innerHTML = `🔍 Did you mean <strong>${d.suggested_name}</strong>? &nbsp;<a href="#" onclick="document.getElementById('company-input').value=${JSON.stringify(d.suggested_name)};document.getElementById('co-did-you-mean').classList.add('hidden');return false;" style="font-weight:700;color:#92400e;text-decoration:underline">Yes, update</a> &nbsp;/&nbsp; <a href="#" onclick="document.getElementById('co-did-you-mean').classList.add('hidden');return false;" style="color:#92400e;text-decoration:underline">Dismiss</a>`;
+        window._dymAccept = function() {
+          document.getElementById("company-input").value = d.suggested_name;
+          dymEl.classList.add("hidden");
+        };
+        dymEl.innerHTML = `🔍 Did you mean <strong>${d.suggested_name}</strong>? &nbsp;<a href="#" onclick="_dymAccept();return false;" style="font-weight:700;color:#92400e;text-decoration:underline">Yes</a> &nbsp;/&nbsp; <a href="#" onclick="document.getElementById('co-did-you-mean').classList.add('hidden');return false;" style="color:#92400e;text-decoration:underline">Dismiss</a>`;
         dymEl.classList.remove("hidden");
       } else {
         dymEl.classList.add("hidden");
@@ -1582,11 +1586,9 @@
     const addBtn  = document.getElementById("co-featured-add-btn");
     const editBtn = document.getElementById("co-featured-edit-btn");
 
-    // show add button for admin even before fetch
-    if (_isAdmin()) {
-      addBtn.classList.remove("hidden");
-      editBtn.style.display = "inline";
-    }
+    // always show add button — clicking it will prompt for password
+    addBtn.classList.remove("hidden");
+    editBtn.style.display = "inline";
 
     try {
       const r = await fetch(`/api/company/media?name=${encodeURIComponent(companyName)}`);
