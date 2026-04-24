@@ -1073,6 +1073,15 @@ def admin():
     return html
 
 
+@app.route("/api/admin/stats")
+def api_admin_stats():
+    pw = os.environ.get("ADMIN_PASSWORD", "miru2024")
+    if request.args.get("pw") != pw:
+        return jsonify({"error": "unauthorized"}), 401
+    s = analytics.get_stats()
+    return jsonify(s)
+
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     body        = request.form.get("Body", "").strip()

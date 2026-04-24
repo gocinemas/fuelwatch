@@ -169,6 +169,9 @@
         <button id="theme-btn" onclick="cycleTheme()"
           style="font-size:16px;border:none;background:transparent;cursor:pointer;padding:6px 8px;border-radius:8px;line-height:1;color:var(--subtle)"
           title="Toggle theme"></button>
+        <button onclick="showScreen('admin')"
+          style="font-size:15px;border:none;background:transparent;cursor:pointer;padding:6px 8px;border-radius:8px;line-height:1;color:var(--subtle)"
+          title="Admin">📊</button>
         <button class="home-btn" onclick="showHome()">Home</button>
       </div>
     </div>
@@ -2424,6 +2427,155 @@
       }, () => {});
     }
   })();
+</script>
+
+<!-- Admin Screen -->
+<div id="screen-admin" class="screen pt-5">
+  <div style="max-width:680px;margin:0 auto;padding:0 16px 100px">
+    <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Analytics</div>
+    <div style="font-size:12px;color:var(--subtle);margin-bottom:20px">Miru usage dashboard</div>
+
+    <!-- Password gate -->
+    <div id="admin-gate" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Enter admin password</div>
+      <div style="display:flex;gap:8px">
+        <input id="admin-pw-input" type="password" placeholder="Password"
+          style="flex:1;padding:9px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px"
+          onkeydown="if(event.key==='Enter')adminLogin()">
+        <button onclick="adminLogin()"
+          style="padding:9px 18px;border-radius:10px;border:none;background:var(--text);color:var(--bg);font-size:13px;font-weight:700;cursor:pointer">Go</button>
+      </div>
+      <div id="admin-pw-err" style="font-size:12px;color:#ef4444;margin-top:8px;display:none">Wrong password</div>
+    </div>
+
+    <!-- Stats content -->
+    <div id="admin-content" style="display:none">
+      <!-- KPI cards -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+          <div id="adm-total" style="font-size:28px;font-weight:800;color:var(--text)">—</div>
+          <div style="font-size:11px;color:var(--subtle);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Total</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+          <div id="adm-today" style="font-size:28px;font-weight:800;color:var(--text)">—</div>
+          <div style="font-size:11px;color:var(--subtle);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Today</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+          <div id="adm-week" style="font-size:28px;font-weight:800;color:var(--text)">—</div>
+          <div style="font-size:11px;color:var(--subtle);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">7 days</div>
+        </div>
+      </div>
+
+      <!-- Bar chart -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Activity — last 14 days</div>
+        <div id="adm-bars" style="display:flex;align-items:flex-end;gap:3px;height:56px"></div>
+        <div id="adm-bar-labels" style="display:flex;gap:3px;margin-top:4px"></div>
+      </div>
+
+      <!-- By type + top searches -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+          <div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">By type</div>
+          <div id="adm-by-type"></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+          <div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Top brands</div>
+          <div id="adm-top-co"></div>
+        </div>
+      </div>
+
+      <!-- Recent -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px">
+        <div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Recent searches</div>
+        <div id="adm-recent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const ADM_PW_KEY = "miru_admin_pw";
+
+  function adminLogin() {
+    const pw = document.getElementById("admin-pw-input").value.trim();
+    sessionStorage.setItem(ADM_PW_KEY, pw);
+    adminLoad(pw);
+  }
+
+  function adminLoad(pw) {
+    fetch(`/api/admin/stats?pw=${encodeURIComponent(pw)}`)
+      .then(r => r.json())
+      .then(s => {
+        if (s.error === "unauthorized") {
+          document.getElementById("admin-pw-err").style.display = "block";
+          sessionStorage.removeItem(ADM_PW_KEY);
+          return;
+        }
+        document.getElementById("admin-gate").style.display = "none";
+        document.getElementById("admin-content").style.display = "block";
+        renderAdmin(s);
+      })
+      .catch(() => {
+        document.getElementById("admin-gate").style.display = "block";
+      });
+  }
+
+  function renderAdmin(s) {
+    document.getElementById("adm-total").textContent = s.total ?? "—";
+    document.getElementById("adm-today").textContent = s.today ?? "—";
+    document.getElementById("adm-week").textContent  = s.week  ?? "—";
+
+    // Bar chart
+    const daily = s.daily || [];
+    const maxC = Math.max(...daily.map(d => d.count), 1);
+    document.getElementById("adm-bars").innerHTML = daily.map(d =>
+      `<div style="flex:1;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px;height:${Math.round(d.count/maxC*52)+4}px" title="${d.day}: ${d.count}"></div>`
+    ).join("");
+    document.getElementById("adm-bar-labels").innerHTML = daily.map(d =>
+      `<span style="flex:1;font-size:9px;color:var(--subtle);text-align:center;overflow:hidden">${d.day.slice(5)}</span>`
+    ).join("");
+
+    // By type
+    document.getElementById("adm-by-type").innerHTML = (s.by_type || []).map(r =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <span style="color:var(--muted)">${r.type}</span><b style="color:var(--text)">${r.count}</b></div>`
+    ).join("") || '<div style="font-size:12px;color:var(--subtle)">No data</div>';
+
+    // Top companies
+    document.getElementById("adm-top-co").innerHTML = (s.top_companies || []).map(r =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <span style="color:var(--muted)">${r.query}</span><b style="color:var(--text)">${r.count}</b></div>`
+    ).join("") || '<div style="font-size:12px;color:var(--subtle)">No data</div>';
+
+    // Recent
+    document.getElementById("adm-recent").innerHTML = (s.recent || []).map(r =>
+      `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:baseline">
+        <span style="color:var(--subtle);white-space:nowrap;min-width:72px">${r.at}</span>
+        <span style="color:var(--accent);min-width:52px">${r.type}</span>
+        <span style="color:var(--text);font-weight:600">${r.query}</span>
+      </div>`
+    ).join("") || '<div style="font-size:12px;color:var(--subtle)">No recent searches</div>';
+  }
+
+  // Hook into showScreen to trigger load
+  const _origShow = window.showScreen;
+  window.showScreen = function(name) {
+    _origShow(name);
+    if (name === "admin") {
+      const saved = sessionStorage.getItem(ADM_PW_KEY);
+      if (saved) {
+        adminLoad(saved);
+      } else {
+        document.getElementById("admin-gate").style.display = "block";
+        document.getElementById("admin-content").style.display = "none";
+      }
+    }
+  };
+
+  window.adminLogin = adminLogin;
+})();
 </script>
 
 <!-- Bottom Navigation -->
