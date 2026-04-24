@@ -28,7 +28,7 @@ def _idx():
     return client.init_index(_INDEX_NAME)
 
 
-def chunk_text(text: str, chunk_size: int = 600, overlap: int = 80) -> list:
+def chunk_text(text: str, chunk_size: int = 350, overlap: int = 50) -> list:
     words = text.split()
     chunks, i = [], 0
     while i < len(words):

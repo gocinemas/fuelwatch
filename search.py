@@ -264,6 +264,7 @@ out body 40;
 
 
 import re as _re
+import threading as _threading
 import concurrent.futures as _cf
 
 FSA_API = "https://api.ratings.food.gov.uk/Establishments"
@@ -637,47 +638,67 @@ def _fetch_share_price(company: str) -> dict:
     }
 
 
+# ── Supabase L2 cache (survives restarts) ─────────────────────────────────────
+# Requires table: CREATE TABLE ai_cache (key TEXT PRIMARY KEY, data JSONB NOT NULL, cached_at TIMESTAMPTZ DEFAULT NOW());
+_SB_CACHE_TTL = 86400  # 24 h for brand; company uses same table with its own key
+
+def _sb_cache_get(key: str):
+    try:
+        from supabase import create_client
+        sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        rows = sb.table("ai_cache").select("data,cached_at").eq("key", key).execute().data
+        if not rows:
+            return None
+        import datetime as _datetime
+        cached_at_str = rows[0]["cached_at"]
+        cached_at = _datetime.datetime.fromisoformat(cached_at_str.replace("Z", "+00:00"))
+        age = (_datetime.datetime.now(_datetime.timezone.utc) - cached_at).total_seconds()
+        if age > _SB_CACHE_TTL:
+            return None
+        return rows[0]["data"]
+    except Exception:
+        return None
+
+def _sb_cache_set(key: str, data: dict) -> None:
+    try:
+        from supabase import create_client
+        sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        sb.table("ai_cache").upsert({"key": key, "data": data, "cached_at": "now()"}).execute()
+    except Exception:
+        pass
+
+
 # ── Brand research ────────────────────────────────────────────────────────────
 _BRAND_CACHE: dict = {}
 _BRAND_TTL = 3600
+_BRAND_INFLIGHT: dict = {}
+_BRAND_LOCK = _threading.Lock()
 
 def _fetch_brand_ai(brand: str, extract: str) -> dict:
-    """Ask Groq for timeline, campaigns, and top competitors for a brand."""
+    """Ask Groq for timeline, campaigns, competitors, and key facts for a brand."""
     import json
     groq_key = os.environ.get("GROQ_API_KEY", "")
     if not groq_key:
-        return {"timeline": [], "campaigns": [], "competitors": []}
-    prompt = f"""You are a brand historian and market analyst. Provide structured data about the brand "{brand}".
+        return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
+    prompt = f"""Brand: "{brand}". Wikipedia: {extract[:900] if extract else "N/A"}
 
-Wikipedia context: {extract[:1800] if extract else "Not provided"}
-
-Return ONLY a valid JSON object with exactly these three fields:
+Return ONLY valid JSON (no markdown) with exactly these four keys:
 {{
-  "timeline": [
-    {{"year": "1971", "event": "Short description under 12 words"}}
-  ],
-  "campaigns": [
-    {{"name": "Campaign Name", "year": "1984", "description": "One sentence about this campaign or slogan"}}
-  ],
-  "competitors": [
-    {{"name": "Competitor Name", "description": "One sentence on how they compete with {brand}"}}
-  ]
+  "facts": {{"founded": "1892", "hq": "City, Country", "industry": "Beverages", "employees": "80,000"}},
+  "timeline": [{{"year": "1892", "event": "Describe in under 12 words"}}],
+  "campaigns": [{{"name": "Campaign name", "year": "1984", "description": "One sentence."}}],
+  "competitors": [{{"name": "Competitor", "revenue": "$45B", "description": "One sentence."}}]
 }}
-
-Rules:
-- timeline: 8–14 key milestones (founding, launches, rebrands, acquisitions, revenue records). Sort ascending by year.
-- campaigns: 4–6 most iconic advertising campaigns or slogans. Use your knowledge.
-- competitors: top 4–5 direct competitors. Include brief positioning vs {brand}.
-- Return ONLY the JSON object. No markdown, no explanation."""
+Rules: facts all 4 fields filled. timeline 8-12 milestones ascending. campaigns 4-5. competitors 4-5 each MUST include revenue field."""
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.3-70b-versatile",
+                "model": "llama-3.1-8b-instant",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 1600,
+                "max_tokens": 1000,
             },
             timeout=20,
         )
@@ -691,16 +712,21 @@ Rules:
 
 
 def _fetch_brand_ads(brand: str) -> list:
-    """Search YouTube for iconic brand ad videos."""
+    """Search YouTube for brand ad videos — recent first, falling back to all-time."""
     key = os.environ.get("YOUTUBE_API_KEY", "")
     if not key:
         return []
-    try:
-        q = f"{brand} iconic advertisement OR famous commercial OR brand campaign"
+
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    two_years_ago = (_dt.now(_tz.utc) - _td(days=730)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def _search(extra_params: dict) -> list:
+        q = f"{brand} advertisement OR commercial OR brand campaign"
         r = requests.get(
             "https://www.googleapis.com/youtube/v3/search",
             params={"q": q, "part": "snippet", "type": "video",
-                    "maxResults": 4, "key": key, "relevanceLanguage": "en", "order": "relevance"},
+                    "maxResults": 6, "key": key, "relevanceLanguage": "en",
+                    **extra_params},
             timeout=8,
         )
         if r.status_code != 200:
@@ -711,16 +737,69 @@ def _fetch_brand_ads(brand: str) -> list:
             snippet = item.get("snippet", {})
             if not vid_id:
                 continue
+            pub  = snippet.get("publishedAt", "")
+            year = pub[:4] if pub else ""
             out.append({
                 "video_id":  vid_id,
                 "title":     snippet.get("title", ""),
                 "channel":   snippet.get("channelTitle", ""),
                 "thumbnail": snippet.get("thumbnails", {}).get("medium", {}).get("url", ""),
                 "url":       f"https://www.youtube.com/watch?v={vid_id}",
+                "year":      year,
             })
         return out
+
+    try:
+        recent = _search({"order": "viewCount", "publishedAfter": two_years_ago})
+        if len(recent) >= 2:
+            return recent[:4]
+        return _search({"order": "viewCount"})[:4]
     except Exception as e:
         print(f"[brand_ads] {e}")
+        return []
+
+
+def _fetch_wiki_images(wiki_title: str) -> list:
+    """Fetch up to 6 real article photos from Wikipedia's media-list endpoint."""
+    if not wiki_title:
+        return []
+    try:
+        slug = requests.utils.quote(wiki_title.replace(" ", "_"))
+        r = requests.get(
+            f"https://en.wikipedia.org/api/rest_v1/page/media-list/{slug}",
+            timeout=8, headers={"User-Agent": "Miru/1.0"},
+        )
+        if r.status_code != 200:
+            return []
+        _skip = {"logo", "flag", "icon", "seal", "signature", "map",
+                 "coat_of_arms", "coa", "blank", "wordmark", "logotype"}
+        photos = []
+        for item in r.json().get("items", []):
+            if item.get("type") != "image":
+                continue
+            title = (item.get("title") or "").lower()
+            if title.endswith(".svg"):
+                continue
+            if any(w in title for w in _skip):
+                continue
+            # Pick a reasonably-sized URL from srcset, else use src
+            src = item.get("src", "")
+            best = src
+            for t in item.get("srcset", []):
+                w = t.get("width", 0)
+                if 300 <= w <= 700:
+                    best = t.get("src", src)
+                    break
+            if not best:
+                continue
+            if best.startswith("//"):
+                best = "https:" + best
+            photos.append(best)
+            if len(photos) >= 6:
+                break
+        return photos
+    except Exception as e:
+        print(f"[wiki_images] {e}")
         return []
 
 
@@ -796,62 +875,110 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv5"
+    cache_key = brand.strip().lower() + "|brandv6"
+
+    # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
     if cached and time.time() - cached["ts"] < _BRAND_TTL:
         return cached["data"]
 
-    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
-        wiki_f = pool.submit(_fetch_wikipedia, brand)
-        news_f = pool.submit(_fetch_news, brand, "brand OR campaign OR advertising OR revenue OR launch", 6)
-        ads_f  = pool.submit(_fetch_brand_ads, brand)
-        fin_f  = pool.submit(_fetch_brand_financials, brand)
+    # Stampede protection: if another thread is already fetching, wait for it
+    with _BRAND_LOCK:
+        # Re-check after acquiring lock — another thread may have just finished
+        cached = _BRAND_CACHE.get(cache_key)
+        if cached and time.time() - cached["ts"] < _BRAND_TTL:
+            return cached["data"]
+        if cache_key in _BRAND_INFLIGHT:
+            ev = _BRAND_INFLIGHT[cache_key]
+        else:
+            ev = _threading.Event()
+            _BRAND_INFLIGHT[cache_key] = ev
+            ev = None  # this thread is the fetcher
 
-        wiki = {}
-        try: wiki = wiki_f.result(timeout=12) or {}
+    if ev is not None:
+        ev.wait(timeout=25)
+        cached = _BRAND_CACHE.get(cache_key)
+        return cached["data"] if cached else {}
+
+    try:
+        # L2: Supabase persistent cache
+        sb_data = _sb_cache_get("brand:" + cache_key)
+        if sb_data:
+            _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": sb_data}
+            return sb_data
+
+        with _cf.ThreadPoolExecutor(max_workers=5) as pool:
+            wiki_f = pool.submit(_fetch_wikipedia, brand)
+            news_f = pool.submit(_fetch_news, brand, "brand OR campaign OR advertising OR revenue OR launch", 6)
+            ads_f  = pool.submit(_fetch_brand_ads, brand)
+            fin_f  = pool.submit(_fetch_brand_financials, brand)
+
+            wiki = {}
+            try: wiki = wiki_f.result(timeout=12) or {}
+            except Exception: pass
+
+            news = []
+            try: news = news_f.result(timeout=10) or []
+            except Exception: pass
+
+            ads = []
+            try: ads = ads_f.result(timeout=10) or []
+            except Exception: pass
+
+            financials = {}
+            try: financials = fin_f.result(timeout=10) or {}
+            except Exception: pass
+
+        wiki_title = wiki.get("_wiki_title", brand)
+        images = []
+        try: images = _fetch_wiki_images(wiki_title) or []
         except Exception: pass
 
-        news = []
-        try: news = news_f.result(timeout=10) or []
-        except Exception: pass
+        # Only call AI if Wikipedia is missing key fields (founded/hq/industry)
+        wiki_complete = all(wiki.get(f) for f in ("founded", "hq", "industry"))
+        ai = _fetch_brand_ai(brand, wiki.get("extract", "")) if not wiki_complete else {}
+        ai_facts = ai.get("facts", {}) or {}
 
-        ads = []
-        try: ads = ads_f.result(timeout=10) or []
-        except Exception: pass
+        def _val(wiki_key):
+            v = wiki.get(wiki_key, "")
+            return v if v else ai_facts.get(wiki_key, "")
 
-        financials = {}
-        try: financials = fin_f.result(timeout=10) or {}
-        except Exception: pass
-
-    ai = _fetch_brand_ai(brand, wiki.get("extract", ""))
-
-    result = {
-        "name":        brand,
-        "description": wiki.get("description", ""),
-        "extract":     wiki.get("extract", ""),
-        "founded":     wiki.get("founded", ""),
-        "hq":          wiki.get("hq", ""),
-        "revenue":     wiki.get("revenue", ""),
-        "employees":   wiki.get("employees", ""),
-        "industry":    wiki.get("industry", ""),
-        "wiki_url":    wiki.get("wiki_url", ""),
-        "domain":      wiki.get("domain", ""),
-        "thumbnail":   wiki.get("thumbnail", ""),
-        "timeline":    ai.get("timeline", []),
-        "campaigns":   ai.get("campaigns", []),
-        "competitors": ai.get("competitors", []),
-        "ads":         ads,
-        "financials":  financials,
-        "news":        news,
-    }
-    _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
-    return result
+        result = {
+            "name":        brand,
+            "description": wiki.get("description", ""),
+            "extract":     wiki.get("extract", ""),
+            "founded":     _val("founded"),
+            "hq":          _val("hq"),
+            "revenue":     _val("revenue"),
+            "employees":   _val("employees"),
+            "industry":    _val("industry"),
+            "wiki_url":    wiki.get("wiki_url", ""),
+            "domain":      wiki.get("domain", ""),
+            "thumbnail":   wiki.get("thumbnail", ""),
+            "images":      images,
+            "timeline":    ai.get("timeline", []),
+            "campaigns":   ai.get("campaigns", []),
+            "competitors": ai.get("competitors", []),
+            "ads":         ads,
+            "financials":  financials,
+            "news":        news,
+        }
+        _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
+        _sb_cache_set("brand:" + cache_key, result)
+        return result
+    finally:
+        with _BRAND_LOCK:
+            ev = _BRAND_INFLIGHT.pop(cache_key, None)
+        if ev:
+            ev.set()
 
 
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v13"  # bump when result schema changes to bust stale cache
+_COMPANY_VER = "v13"
+_COMPANY_INFLIGHT: dict = {}
+_COMPANY_LOCK = _threading.Lock()
 
 def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
     """Fetch recent news via Google News RSS. Pass extra to narrow the search."""
@@ -1173,106 +1300,137 @@ def _fetch_youtube(company: str) -> list:
 
 def fetch_company_info(company: str) -> dict:
     key = company.strip().lower() + "|" + _COMPANY_VER
+
+    # L1: in-memory
     cached = _COMPANY_CACHE.get(key)
     if cached and time.time() - cached["ts"] < _COMPANY_TTL:
         return cached["data"]
 
-    slugs = _co_slugs(company)
+    # Stampede protection
+    with _COMPANY_LOCK:
+        cached = _COMPANY_CACHE.get(key)
+        if cached and time.time() - cached["ts"] < _COMPANY_TTL:
+            return cached["data"]
+        if key in _COMPANY_INFLIGHT:
+            ev = _COMPANY_INFLIGHT[key]
+        else:
+            ev = _threading.Event()
+            _COMPANY_INFLIGHT[key] = ev
+            ev = None
 
-    enc = requests.utils.quote(company)
-    slug = slugs[0] if slugs else ""
-    links = {
-        "linkedin":       f"https://www.linkedin.com/company/{slug}",
-        "linkedin_jobs":  f"https://www.linkedin.com/jobs/search/?keywords={enc}",
-        "glassdoor":      f"https://www.glassdoor.co.uk/Search/results.htm?keyword={enc}",
-        "indeed":         f"https://uk.indeed.com/jobs?q={enc}",
-        "reed":           f"https://www.reed.co.uk/jobs/{enc}-jobs",
-        "totaljobs":      f"https://www.totaljobs.com/jobs/{enc}",
-    }
+    if ev is not None:
+        ev.wait(timeout=30)
+        cached = _COMPANY_CACHE.get(key)
+        return cached["data"] if cached else {}
 
-    with _cf.ThreadPoolExecutor(max_workers=10) as pool:
-        wiki_f     = pool.submit(_fetch_wikipedia, company)
-        news_f     = pool.submit(_fetch_news, company, "", 6)
-        ai_news_f  = pool.submit(_fetch_news, company, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
-        strat_f    = pool.submit(_fetch_news, company, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
-        results_f  = pool.submit(_fetch_news, company, 'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"', 3)
-        youtube_f  = pool.submit(_fetch_youtube, company)
-        share_f    = pool.submit(_fetch_share_price, company)
-        gh_f       = pool.submit(_fetch_greenhouse, slugs)
-        lv_f       = pool.submit(_fetch_lever, slugs)
-        sr_f       = pool.submit(_fetch_smartrecruiters, slugs)
-        ab_f       = pool.submit(_fetch_ashby, slugs)
+    try:
+        # L2: Supabase persistent cache
+        sb_data = _sb_cache_get("company:" + key)
+        if sb_data:
+            _COMPANY_CACHE[key] = {"ts": time.time(), "data": sb_data}
+            return sb_data
 
-        wiki = {}
-        try:
-            wiki = wiki_f.result(timeout=10) or {}
-        except Exception:
-            pass
+        slugs = _co_slugs(company)
+        enc = requests.utils.quote(company)
+        slug = slugs[0] if slugs else ""
+        links = {
+            "linkedin":       f"https://www.linkedin.com/company/{slug}",
+            "linkedin_jobs":  f"https://www.linkedin.com/jobs/search/?keywords={enc}",
+            "glassdoor":      f"https://www.glassdoor.co.uk/Search/results.htm?keyword={enc}",
+            "indeed":         f"https://uk.indeed.com/jobs?q={enc}",
+            "reed":           f"https://www.reed.co.uk/jobs/{enc}-jobs",
+            "totaljobs":      f"https://www.totaljobs.com/jobs/{enc}",
+        }
 
-        news = []
-        try:
-            news = news_f.result(timeout=10) or []
-        except Exception:
-            pass
+        with _cf.ThreadPoolExecutor(max_workers=10) as pool:
+            wiki_f     = pool.submit(_fetch_wikipedia, company)
+            news_f     = pool.submit(_fetch_news, company, "", 6)
+            ai_news_f  = pool.submit(_fetch_news, company, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
+            strat_f    = pool.submit(_fetch_news, company, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
+            results_f  = pool.submit(_fetch_news, company, 'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"', 3)
+            youtube_f  = pool.submit(_fetch_youtube, company)
+            share_f    = pool.submit(_fetch_share_price, company)
+            gh_f       = pool.submit(_fetch_greenhouse, slugs)
+            lv_f       = pool.submit(_fetch_lever, slugs)
+            sr_f       = pool.submit(_fetch_smartrecruiters, slugs)
+            ab_f       = pool.submit(_fetch_ashby, slugs)
 
-        ai_news = []
-        try:
-            ai_news = ai_news_f.result(timeout=10) or []
-        except Exception:
-            pass
-
-        strategy_news = []
-        try:
-            strategy_news = strat_f.result(timeout=10) or []
-        except Exception:
-            pass
-
-        results_news = []
-        try:
-            results_news = results_f.result(timeout=10) or []
-        except Exception:
-            pass
-
-        youtube = []
-        try:
-            youtube = youtube_f.result(timeout=10) or []
-        except Exception:
-            pass
-
-        share = {}
-        try:
-            share = share_f.result(timeout=8) or {}
-        except Exception:
-            pass
-
-        jobs, source = [], ""
-        for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (ab_f, "Ashby"), (sr_f, "SmartRecruiters")]:
+            wiki = {}
             try:
-                j = fut.result(timeout=10)
-                if j:
-                    jobs, source = j, src
-                    break
+                wiki = wiki_f.result(timeout=10) or {}
             except Exception:
                 pass
 
-    result = {
-        "name":          company,
-        "wiki":          wiki,
-        "news":          news,
-        "ai_news":       ai_news,
-        "strategy_news": strategy_news,
-        "results_news":  results_news,
-        "youtube":       youtube,
-        "share":         share,
-        "ai_signals":    _ai_job_signals(jobs),
-        "jobs":          jobs,
-        "jobs_source":   source,
-        "job_signals":   _job_signals(jobs),
-        "links":         links,
-        "slug":          slug,
-    }
-    _COMPANY_CACHE[key] = {"ts": time.time(), "data": result}
-    return result
+            news = []
+            try:
+                news = news_f.result(timeout=10) or []
+            except Exception:
+                pass
+
+            ai_news = []
+            try:
+                ai_news = ai_news_f.result(timeout=10) or []
+            except Exception:
+                pass
+
+            strategy_news = []
+            try:
+                strategy_news = strat_f.result(timeout=10) or []
+            except Exception:
+                pass
+
+            results_news = []
+            try:
+                results_news = results_f.result(timeout=10) or []
+            except Exception:
+                pass
+
+            youtube = []
+            try:
+                youtube = youtube_f.result(timeout=10) or []
+            except Exception:
+                pass
+
+            share = {}
+            try:
+                share = share_f.result(timeout=8) or {}
+            except Exception:
+                pass
+
+            jobs, source = [], ""
+            for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (ab_f, "Ashby"), (sr_f, "SmartRecruiters")]:
+                try:
+                    j = fut.result(timeout=10)
+                    if j:
+                        jobs, source = j, src
+                        break
+                except Exception:
+                    pass
+
+        result = {
+            "name":          company,
+            "wiki":          wiki,
+            "news":          news,
+            "ai_news":       ai_news,
+            "strategy_news": strategy_news,
+            "results_news":  results_news,
+            "youtube":       youtube,
+            "share":         share,
+            "ai_signals":    _ai_job_signals(jobs),
+            "jobs":          jobs,
+            "jobs_source":   source,
+            "job_signals":   _job_signals(jobs),
+            "links":         links,
+            "slug":          slug,
+        }
+        _COMPANY_CACHE[key] = {"ts": time.time(), "data": result}
+        _sb_cache_set("company:" + key, result)
+        return result
+    finally:
+        with _COMPANY_LOCK:
+            ev = _COMPANY_INFLIGHT.pop(key, None)
+        if ev:
+            ev.set()
 
 
 def _format_postcode(postcode: str) -> str:

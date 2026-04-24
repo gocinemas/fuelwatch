@@ -457,7 +457,9 @@ def api_library_chat():
             if q_words:
                 doc_chunks = sorted(doc_chunks,
                     key=lambda c: -sum(1 for w in q_words if w in c.get("content", "").lower()))
-            context = "\n\n---\n\n".join(c["content"] for c in doc_chunks[:6])
+            _complex = any(w in question.lower() for w in ("compare", "summar", "all", "every", "list", "overview", "explain"))
+            top_n = 6 if _complex else 3
+            context = "\n\n---\n\n".join(c["content"] for c in doc_chunks[:top_n])
         else:
             context = (doc.get("text_content") or "")[:4000]
 
