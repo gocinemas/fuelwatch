@@ -875,7 +875,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv12"
+    cache_key = brand.strip().lower() + "|brandv13"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -907,11 +907,12 @@ def fetch_brand_data(brand: str) -> dict:
             _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": sb_data}
             return sb_data
 
-        with _cf.ThreadPoolExecutor(max_workers=5) as pool:
+        with _cf.ThreadPoolExecutor(max_workers=6) as pool:
             wiki_f = pool.submit(_fetch_wikipedia, brand)
             news_f = pool.submit(_fetch_news, brand, "brand OR campaign OR advertising OR revenue OR launch", 6)
             ads_f  = pool.submit(_fetch_brand_ads, brand)
             fin_f  = pool.submit(_fetch_brand_financials, brand)
+            ai_f   = pool.submit(_fetch_brand_ai, brand, "")
 
             wiki = {}
             try: wiki = wiki_f.result(timeout=12) or {}
@@ -929,8 +930,10 @@ def fetch_brand_data(brand: str) -> dict:
             try: financials = fin_f.result(timeout=10) or {}
             except Exception: pass
 
-        # Always fetch AI for timeline/campaigns/competitors; facts used as fallback for empty wiki fields
-        ai = _fetch_brand_ai(brand, wiki.get("extract", ""))
+            ai = {}
+            try: ai = ai_f.result(timeout=25) or {}
+            except Exception as e: print(f"[brand_ai] parallel fetch error: {e}")
+            print(f"[brand_ai] {brand}: timeline={len(ai.get('timeline',[]))}, rivals={len(ai.get('competitors',[]))}, facts={bool(ai.get('facts'))}")
         ai_facts = ai.get("facts", {}) or {}
 
         def _val(wiki_key):
