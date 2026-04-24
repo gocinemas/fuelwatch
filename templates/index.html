@@ -47,36 +47,36 @@
       }
     }
 
-    /* Tailwind dark-mode compat */
-    [data-theme="dark"] .bg-white,
-    [data-theme="dark"] .bg-gray-50  { background-color: var(--surface) !important; }
-    [data-theme="dark"] .bg-gray-100,
-    [data-theme="dark"] .bg-gray-200 { background-color: var(--border) !important; }
-    [data-theme="dark"] .text-gray-900,
-    [data-theme="dark"] .text-gray-800,
-    [data-theme="dark"] .text-gray-700,
-    [data-theme="dark"] .text-gray-600 { color: var(--text) !important; }
-    [data-theme="dark"] .text-gray-500,
-    [data-theme="dark"] .text-gray-400,
-    [data-theme="dark"] .text-gray-300 { color: var(--subtle) !important; }
-    [data-theme="dark"] .border-gray-50,
-    [data-theme="dark"] .border-gray-100,
-    [data-theme="dark"] .border-gray-200 { border-color: var(--border) !important; }
-    [data-theme="dark"] .divide-gray-50 > * + *,
-    [data-theme="dark"] .divide-gray-100 > * + * { border-color: var(--border) !important; }
-    [data-theme="dark"] .bg-gray-800,
-    [data-theme="dark"] .bg-gray-900 { background-color: var(--text) !important; color: var(--bg) !important; }
-    [data-theme="dark"] .hover\:bg-gray-200:hover { background-color: var(--border) !important; }
-    [data-theme="dark"] .active\:bg-gray-100:active,
-    [data-theme="dark"] .active\:bg-gray-300:active { background-color: var(--border) !important; }
-    [data-theme="dark"] input,
-    [data-theme="dark"] select,
-    [data-theme="dark"] textarea { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
-    [data-theme="dark"] .shadow,
-    [data-theme="dark"] .shadow-sm,
-    [data-theme="dark"] .shadow-2xl { box-shadow: 0 0 0 1px var(--border) !important; }
-    [data-theme="dark"] .rounded-2xl { box-shadow: none !important; }
-    [data-theme="dark"] #nav-sheet { background: var(--surface) !important; }
+    /* Tailwind dark-mode compat — keyed on .is-dark set by JS on <html> */
+    .is-dark .bg-white,
+    .is-dark .bg-gray-50  { background-color: var(--surface) !important; }
+    .is-dark .bg-gray-100,
+    .is-dark .bg-gray-200 { background-color: var(--border) !important; }
+    .is-dark .text-gray-900,
+    .is-dark .text-gray-800,
+    .is-dark .text-gray-700,
+    .is-dark .text-gray-600 { color: var(--text) !important; }
+    .is-dark .text-gray-500,
+    .is-dark .text-gray-400,
+    .is-dark .text-gray-300 { color: var(--subtle) !important; }
+    .is-dark .border-gray-50,
+    .is-dark .border-gray-100,
+    .is-dark .border-gray-200 { border-color: var(--border) !important; }
+    .is-dark .divide-gray-50 > * + *,
+    .is-dark .divide-gray-100 > * + * { border-color: var(--border) !important; }
+    .is-dark .bg-gray-800,
+    .is-dark .bg-gray-900 { background-color: var(--text) !important; color: var(--bg) !important; }
+    .is-dark .hover\:bg-gray-200:hover { background-color: var(--border) !important; }
+    .is-dark .active\:bg-gray-100:active,
+    .is-dark .active\:bg-gray-300:active { background-color: var(--border) !important; }
+    .is-dark input,
+    .is-dark select,
+    .is-dark textarea { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
+    .is-dark .shadow,
+    .is-dark .shadow-sm,
+    .is-dark .shadow-2xl { box-shadow: 0 0 0 1px var(--border) !important; }
+    .is-dark .rounded-2xl { box-shadow: none !important; }
+    .is-dark #nav-sheet { background: var(--surface) !important; }
 
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 
@@ -2557,12 +2557,19 @@
     document.documentElement.setAttribute("data-theme", t);
     document.getElementById("theme-btn").textContent = _themeIcons[t];
     localStorage.setItem("miru_theme", t);
+    const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = t === "dark" || (t === "system" && sysDark);
+    document.documentElement.classList.toggle("is-dark", isDark);
   }
   function cycleTheme() {
     const cur = localStorage.getItem("miru_theme") || "system";
     const next = _themes[(_themes.indexOf(cur) + 1) % _themes.length];
     _applyTheme(next);
   }
+  // Re-apply when OS dark mode changes (for system users)
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    _applyTheme(localStorage.getItem("miru_theme") || "system");
+  });
   _applyTheme(localStorage.getItem("miru_theme") || "system");
 
   // ── Home greeting + weather ──────────────────────────────────────────────
