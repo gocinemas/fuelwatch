@@ -1115,66 +1115,77 @@ def api_product():
         s, e = text.find("["), text.rfind("]")
         return _json.loads(text[s:e+1]) if s != -1 and e != -1 else []
 
-    # --- 1. Barcode lookup via UPC Item DB (free, no key needed) ---
+    # --- 1. Open Food Facts (best UK coverage, try first) ---
     if barcode:
-        try:
-            r = _req.get(f"https://api.upcitemdb.com/prod/trial/lookup?upc={barcode}",
-                         timeout=8, headers={"User-Agent": "MiruApp/1.0"})
-            if r.status_code == 200:
-                items = r.json().get("items", [])
-                if items:
-                    it = items[0]
-                    product = {
-                        "name":     it.get("title", ""),
-                        "brand":    it.get("brand", ""),
-                        "category": it.get("category", ""),
-                        "image":    (it.get("images") or [""])[0],
-                        "barcode":  barcode,
-                    }
-                    _errors.append("product via upcitemdb")
-            else:
-                _errors.append(f"upcitemdb http={r.status_code}")
-        except Exception as e:
-            _errors.append(f"upcitemdb exc: {e}")
+        for off_url in [
+            f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json",
+            f"https://world.openfoodfacts.net/api/v2/product/{barcode}.json",
+        ]:
+            try:
+                r = _req.get(off_url, timeout=6,
+                             headers={"User-Agent": "MiruApp/1.0 (+https://miru.humanagency.co)", "Accept": "application/json"})
+                if r.status_code == 200:
+                    d = r.json()
+                    if d.get("status") == 1:
+                        p = d["product"]
+                        cats = p.get("categories", "")
+                        product = {
+                            "name":     p.get("product_name_en") or p.get("product_name", ""),
+                            "brand":    p.get("brands", "").split(",")[0].strip(),
+                            "category": cats.split(",")[0].strip() if cats else "",
+                            "image":    p.get("image_url", ""),
+                            "barcode":  barcode,
+                        }
+                        _errors.append(f"product via OFF ({off_url.split('/')[2]})")
+                        break
+                else:
+                    _errors.append(f"OFF http={r.status_code}")
+            except Exception as e:
+                _errors.append(f"OFF exc: {e}")
+            if product:
+                break
 
-    # --- 2. Open Food Facts barcode fallback ---
-    if not product and barcode:
+    # --- 2. Groq barcode identification (works for popular UK products) ---
+    if not product and barcode and groq_key:
         try:
-            r = _req.get(f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json",
-                         timeout=8, headers={"User-Agent": "MiruApp/1.0", "Accept": "application/json"})
-            if r.status_code == 200:
-                d = r.json()
-                if d.get("status") == 1:
-                    p = d["product"]
-                    cats = p.get("categories", "")
-                    product = {
-                        "name":     p.get("product_name_en") or p.get("product_name", ""),
-                        "brand":    p.get("brands", ""),
-                        "category": cats.split(",")[0].strip() if cats else "",
-                        "image":    p.get("image_url", ""),
-                        "barcode":  barcode,
-                    }
-                    _errors.append("product via OFF barcode")
+            raw = _groq(
+                f'A UK product has barcode/EAN: {barcode}.\n'
+                'If you know this product, give its exact name and brand. '
+                'If unsure, reply with "unknown".\n'
+                'Return ONLY JSON: {{"name":"...","brand":"...","category":"...","known":true/false}}',
+                max_tokens=120,
+            )
+            obj = _extract_obj(raw)
+            if obj.get("known") and obj.get("name") and obj["name"].lower() != "unknown":
+                product = {"name": obj["name"], "brand": obj.get("brand", ""),
+                           "category": obj.get("category", ""), "image": "", "barcode": barcode}
+                _errors.append("product via groq barcode")
         except Exception as e:
-            _errors.append(f"OFF barcode exc: {e}")
+            _errors.append(f"groq barcode exc: {e}")
 
-    # --- 3. Name search via Groq AI (most reliable from Railway) ---
+    # --- 3. Name search via Groq AI ---
     if not product and name and groq_key:
         try:
             raw = _groq(
-                f'You are a UK grocery expert. Identify the product: "{name}".\n'
-                'Return ONLY JSON: {{"name":"exact product name","brand":"brand name","category":"food category"}}',
-                max_tokens=150,
+                f'UK grocery product: "{name}". Give the exact product name, brand, and category.\n'
+                'Return ONLY JSON: {{"name":"...","brand":"...","category":"..."}}',
+                max_tokens=120,
             )
             obj = _extract_obj(raw)
             if obj.get("name"):
                 product = {"name": obj["name"], "brand": obj.get("brand", ""),
                            "category": obj.get("category", ""), "image": ""}
-                _errors.append("product via groq")
+                _errors.append("product via groq name")
         except Exception as e:
-            _errors.append(f"groq product exc: {e}")
+            _errors.append(f"groq name exc: {e}")
 
-    search_term = (product["name"] if product else name) or barcode
+    # If still no product and only have a barcode, don't guess prices
+    search_term = (product["name"] if product else name) or None
+    if not search_term:
+        return jsonify({"product": None, "alternatives": [], "prices": {},
+                        "query": barcode, "search_q": barcode,
+                        "_errors": _errors if debug else None,
+                        "not_found": True})
     brand_ctx   = f" by {product['brand']}" if product and product.get("brand") else ""
     full_name   = f"{search_term}{brand_ctx}"
 

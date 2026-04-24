@@ -154,6 +154,10 @@
     .tool-card .tc-desc {
       font-size: 11px; color: var(--subtle); margin-top: 3px; line-height: 1.4;
     }
+  /* Scanner centering */
+  #scan-reader { background:#000; }
+  #scan-reader video { display:block!important; margin:0 auto!important; }
+  #scan-reader img   { display:block!important; margin:0 auto!important; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -2487,7 +2491,7 @@
 
     <!-- Camera viewfinder -->
     <div id="scan-reader-wrap" style="display:none;margin-bottom:16px;border-radius:14px;overflow:hidden">
-      <div id="scan-reader" style="width:100%"></div>
+      <div id="scan-reader" style="width:100%;display:flex;justify-content:center"></div>
       <button onclick="stopScanner()"
         style="width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
         Stop camera
@@ -2596,8 +2600,12 @@
       .then(r => r.json())
       .then(d => {
         document.getElementById("scan-loading").style.display = "none";
+        if (d.not_found) {
+          showScanError("Barcode not recognised. Type the product name above to search.");
+          return;
+        }
         if (!d.product && !d.alternatives?.length) {
-          showScanError("No product found. Try a different name.");
+          showScanError("Product not found. Try a different name.");
           return;
         }
         renderProduct(d);
