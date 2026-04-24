@@ -902,7 +902,7 @@ def fetch_brand_data(brand: str) -> dict:
     suggested = canonical if canonical.lower() != original.lower() else ""
     brand = canonical
 
-    cache_key = brand.strip().lower() + "|brandv15"
+    cache_key = brand.strip().lower() + "|brandv16"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -1197,8 +1197,10 @@ def _fetch_wikipedia(company: str) -> dict:
             return " ".join(v.split())[:120]
 
         employees = _field("num_employees") or _field("employees")
-        hq        = _field("hq_location_city") or _field("headquarters") or _field("location_city") or _field("location")
-        industry  = _field("industry") or _field("type")
+        hq        = (_field("hq_location_city") or _field("headquarters") or
+                     _field("location_city") or _field("location") or
+                     _field("origin") or _field("country"))
+        industry  = _field("industry") or _field("type") or _field("genre")
         # Only use dedicated brands/subsidiaries fields — not products (which gives service descriptions)
         brands_raw = _field("brands") or _field("subsidiaries")
         _service_words = {"account", "card", "trading", "payment", "transfer", "loan",
@@ -1221,7 +1223,9 @@ def _fetch_wikipedia(company: str) -> dict:
                 if len(brands) >= 6:
                     break
 
-        mf = _re.search(r'\|\s*(?:founded|foundation)\s*=\s*([^\n]+)', wikitext, _re.IGNORECASE)
+        mf = _re.search(
+            r'\|\s*(?:founded|foundation|introduced|launch_date|inception|start_date)\s*=\s*([^\n]+)',
+            wikitext, _re.IGNORECASE)
         if mf:
             ym = _re.search(r'\b(1[5-9]\d{2}|20\d{2})\b', mf.group(1))
             founded = ym.group(1) if ym else ""
