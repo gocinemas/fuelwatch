@@ -796,7 +796,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv4"
+    cache_key = brand.strip().lower() + "|brandv5"
     cached = _BRAND_CACHE.get(cache_key)
     if cached and time.time() - cached["ts"] < _BRAND_TTL:
         return cached["data"]
@@ -835,6 +835,8 @@ def fetch_brand_data(brand: str) -> dict:
         "employees":   wiki.get("employees", ""),
         "industry":    wiki.get("industry", ""),
         "wiki_url":    wiki.get("wiki_url", ""),
+        "domain":      wiki.get("domain", ""),
+        "thumbnail":   wiki.get("thumbnail", ""),
         "timeline":    ai.get("timeline", []),
         "campaigns":   ai.get("campaigns", []),
         "competitors": ai.get("competitors", []),
@@ -961,6 +963,7 @@ def _fetch_wikipedia(company: str) -> dict:
             "description": d.get("description", ""),
             "extract":     extract,
             "wiki_url":    d.get("content_urls", {}).get("desktop", {}).get("page", ""),
+            "thumbnail":   (d.get("thumbnail") or d.get("originalimage") or {}).get("source", ""),
         }
 
     # Step 1: try direct title match
@@ -1059,11 +1062,20 @@ def _fetch_wikipedia(company: str) -> dict:
         if rev_raw:
             vm = _re.search(r'[£$€]?\s*[\d,\.]+\s*(?:billion|million|trillion)', rev_raw, _re.IGNORECASE)
             revenue = vm.group(0).strip() if vm else rev_raw[:60]
+
+        # Extract domain from website infobox field for logo lookup
+        domain = ""
+        website_raw = _field("website") or _field("url") or ""
+        if website_raw:
+            dm = _re.search(r'(?:https?://)?(?:www\.)?([a-zA-Z0-9][a-zA-Z0-9\-]+\.[a-zA-Z]{2,})', website_raw)
+            if dm:
+                domain = dm.group(1).lower()
     except Exception:
-        pass
+        domain = ""
 
     return {**result, "employees": employees, "revenue": revenue,
-            "founded": founded, "hq": hq, "industry": industry, "brands": brands}
+            "founded": founded, "hq": hq, "industry": industry, "brands": brands,
+            "domain": domain, "thumbnail": result.get("thumbnail", "")}
 
 def _co_slugs(name: str) -> list:
     """Generate ATS slug candidates from a company name."""

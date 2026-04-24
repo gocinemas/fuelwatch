@@ -415,9 +415,14 @@
 
         <!-- Header card — always visible -->
         <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-          <div id="brand-name-el" style="font-size:22px;font-weight:900;letter-spacing:-0.8px;color:#111"></div>
-          <div id="brand-desc-el" style="font-size:12px;color:#9ca3af;margin-top:2px"></div>
-          <div id="brand-extract-el" style="font-size:14px;color:#374151;margin-top:10px;line-height:1.65"></div>
+          <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:10px">
+            <img id="brand-logo-el" src="" alt="" style="width:54px;height:54px;border-radius:14px;object-fit:contain;border:1px solid #f0f0f0;background:#fafafa;padding:6px;flex-shrink:0;display:none" onerror="this.style.display='none'">
+            <div style="flex:1;min-width:0">
+              <div id="brand-name-el" style="font-size:22px;font-weight:900;letter-spacing:-0.8px;color:#111"></div>
+              <div id="brand-desc-el" style="font-size:12px;color:#9ca3af;margin-top:2px"></div>
+            </div>
+          </div>
+          <div id="brand-extract-el" style="font-size:14px;color:#374151;line-height:1.65"></div>
         </div>
 
         <!-- Tab bar -->
@@ -457,6 +462,13 @@
         <!-- TAB: Timeline -->
         <div id="brand-tab-timeline" style="display:none">
           <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #f3f4f6">
+              <img id="brand-tl-logo" src="" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:contain;border:1px solid #f0f0f0;background:#fafafa;padding:5px;flex-shrink:0" onerror="this.style.opacity='.15'">
+              <div>
+                <div id="brand-tl-name" style="font-size:15px;font-weight:900;color:#111;letter-spacing:-0.3px"></div>
+                <div style="font-size:11px;color:#9ca3af;margin-top:1px">Brand History</div>
+              </div>
+            </div>
             <div id="brand-timeline-el"></div>
           </div>
         </div>
@@ -1524,8 +1536,31 @@
     }
   }
 
+  function _brandLogoUrl(d) {
+    if (d.domain) return `https://logo.clearbit.com/${d.domain}`;
+    const slug = (d.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    return `https://logo.clearbit.com/${slug}.com`;
+  }
+
   function _renderBrand(d) {
     brandTab("overview");
+
+    // Logo (Clearbit, fallback to Wikipedia thumbnail, then hidden)
+    const logoUrl = _brandLogoUrl(d);
+    const thumb   = d.thumbnail || "";
+    const logoEl  = document.getElementById("brand-logo-el");
+    logoEl.src = logoUrl;
+    logoEl.style.display = "";
+    logoEl.onerror = function() {
+      if (thumb) { this.src = thumb; this.onerror = function() { this.style.display = "none"; }; }
+      else { this.style.display = "none"; }
+    };
+
+    // Timeline logo + name
+    document.getElementById("brand-tl-logo").src = logoUrl;
+    document.getElementById("brand-tl-logo").onerror = function() { this.style.opacity = ".15"; };
+    document.getElementById("brand-tl-name").textContent = d.name || "";
+
     document.getElementById("brand-name-el").textContent = d.name || "";
     document.getElementById("brand-desc-el").textContent = d.description || "";
     document.getElementById("brand-extract-el").textContent = d.extract || "";
@@ -1536,42 +1571,34 @@
 
     // Timeline
     const tl = d.timeline || [];
-    const tlEl = document.getElementById("brand-timeline-el");
-    if (tl.length) {
-      tlEl.innerHTML = `<div style="position:relative;padding-left:28px">
-        <div style="position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:#e9d5ff;border-radius:2px"></div>
-        ${tl.map((item, i) => `
-          <div style="position:relative;margin-bottom:${i < tl.length-1 ? '16px' : '0'}">
-            <div style="position:absolute;left:-22px;top:3px;width:10px;height:10px;border-radius:50%;background:#7c3aed;border:2px solid #fff;box-shadow:0 0 0 2px #ddd8fe"></div>
-            <div style="font-size:11px;font-weight:800;color:#7c3aed;letter-spacing:.02em;margin-bottom:1px">${item.year || ""}</div>
-            <div style="font-size:13px;color:#374151;line-height:1.5">${item.event || ""}</div>
-          </div>`).join("")}
-      </div>`;
-      document.getElementById("brand-timeline-section").classList.remove("hidden");
-    } else {
-      document.getElementById("brand-timeline-section").style.display = "none";
-    }
+    document.getElementById("brand-timeline-el").innerHTML = tl.length
+      ? `<div style="position:relative;padding-left:28px">
+          <div style="position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:#e9d5ff;border-radius:2px"></div>
+          ${tl.map((item, i) => `
+            <div style="position:relative;margin-bottom:${i < tl.length-1 ? '18px' : '0'}">
+              <div style="position:absolute;left:-22px;top:3px;width:10px;height:10px;border-radius:50%;background:#7c3aed;border:2px solid #fff;box-shadow:0 0 0 2px #ddd8fe"></div>
+              <div style="font-size:11px;font-weight:800;color:#7c3aed;letter-spacing:.02em;margin-bottom:2px">${item.year || ""}</div>
+              <div style="font-size:13px;color:#374151;line-height:1.5">${item.event || ""}</div>
+            </div>`).join("")}
+        </div>`
+      : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:24px 0">No timeline available.</div>`;
 
     // Campaigns
     const camps = d.campaigns || [];
-    const campsEl = document.getElementById("brand-campaigns-el");
-    if (camps.length) {
-      campsEl.innerHTML = camps.map(c => `
-        <div style="border-left:3px solid #7c3aed;padding:8px 12px;margin-bottom:10px;background:#faf5ff;border-radius:0 10px 10px 0">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-            <span style="font-size:13px;font-weight:800;color:#5b21b6">${c.name || ""}</span>
-            ${c.year ? `<span style="font-size:11px;font-weight:600;color:#a78bfa;background:#ede9fe;padding:1px 7px;border-radius:99px">${c.year}</span>` : ""}
-          </div>
-          <div style="font-size:13px;color:#6b7280;line-height:1.5">${c.description || ""}</div>
-        </div>`).join("");
-      document.getElementById("brand-campaigns-section").style.display = "";
-    } else {
-      document.getElementById("brand-campaigns-section").style.display = "none";
-    }
+    document.getElementById("brand-campaigns-el").innerHTML = camps.length
+      ? camps.map(c => `
+          <div style="border-left:3px solid #7c3aed;padding:8px 12px;margin-bottom:10px;background:#faf5ff;border-radius:0 10px 10px 0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+              <span style="font-size:13px;font-weight:800;color:#5b21b6">${c.name || ""}</span>
+              ${c.year ? `<span style="font-size:11px;font-weight:600;color:#a78bfa;background:#ede9fe;padding:1px 7px;border-radius:99px">${c.year}</span>` : ""}
+            </div>
+            <div style="font-size:13px;color:#6b7280;line-height:1.5">${c.description || ""}</div>
+          </div>`).join("")
+      : "";
+    document.getElementById("brand-campaigns-section").style.display = camps.length ? "" : "none";
 
     // Financials
     const fin = d.financials || {};
-    const finEl = document.getElementById("brand-fin-el");
     const finItems = [
       ["Market Cap",      fin.market_cap],
       ["Revenue",         fin.total_revenue || d.revenue],
@@ -1583,16 +1610,16 @@
       ["Employees",       d.employees],
     ].filter(([, v]) => v);
     if (finItems.length) {
-      finEl.innerHTML = finItems.map(([label, val]) => `
+      document.getElementById("brand-fin-el").innerHTML = finItems.map(([label, val]) => `
         <div style="background:#f8fafc;border-radius:12px;padding:10px 12px">
           <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">${label}</div>
           <div style="font-size:15px;font-weight:800;color:#111;margin-top:2px">${val}</div>
         </div>`).join("");
       document.getElementById("brand-fin-section").style.display = "";
-    }
-    if (fin.ticker) {
-      const hdr = document.getElementById("brand-fin-section").querySelector("div");
-      hdr.innerHTML += ` <span style="font-size:11px;font-weight:600;color:#9ca3af;margin-left:6px">${fin.ticker}</span>`;
+      if (fin.ticker) {
+        document.getElementById("brand-fin-header").innerHTML =
+          `📊 Financial Snapshot <span style="font-size:11px;font-weight:600;color:#9ca3af;margin-left:6px">${fin.ticker}</span>`;
+      }
     }
 
     // Ad videos
@@ -1618,25 +1645,28 @@
       document.getElementById("brand-ads-section").style.display = "";
     }
 
-    // Competitors
+    // Competitors — each with Clearbit logo
     const comps = d.competitors || [];
     if (comps.length) {
-      document.getElementById("brand-competitors-el").innerHTML = comps.map((c, i) => `
-        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;${i < comps.length-1 ? 'border-bottom:1px solid #f3f4f6' : ''}">
-          <div style="width:32px;height:32px;border-radius:10px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚔️</div>
+      document.getElementById("brand-competitors-el").innerHTML = comps.map((c, i) => {
+        const cSlug = (c.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        return `<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;${i < comps.length-1 ? 'border-bottom:1px solid #f3f4f6' : ''}">
+          <img src="https://logo.clearbit.com/${cSlug}.com" alt="${c.name}"
+            style="width:36px;height:36px;border-radius:10px;object-fit:contain;border:1px solid #f0f0f0;background:#fafafa;padding:4px;flex-shrink:0"
+            onerror="this.style.display='none'">
           <div>
             <div style="font-size:14px;font-weight:800;color:#111;letter-spacing:-0.2px">${c.name || ""}</div>
             <div style="font-size:13px;color:#6b7280;margin-top:2px;line-height:1.45">${c.description || ""}</div>
           </div>
-        </div>`).join("");
+        </div>`;
+      }).join("");
       document.getElementById("brand-competitors-section").style.display = "";
     }
 
     // News
     const news = d.news || [];
-    const newsEl = document.getElementById("brand-news-el");
     if (news.length) {
-      newsEl.innerHTML = news.map(n => `
+      document.getElementById("brand-news-el").innerHTML = news.map(n => `
         <a href="${n.url}" target="_blank" rel="noopener"
            style="display:block;text-decoration:none;padding:8px 0;border-bottom:1px solid #f3f4f6">
           <div style="font-size:13px;font-weight:600;color:#111;line-height:1.4">${n.title}</div>
