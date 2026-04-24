@@ -685,9 +685,14 @@ def api_local():
 
 _KAGI_CACHE: dict = {}
 _KAGI_CATEGORIES = {
-    "business":    "9627636d-9d19-4531-9ca0-69f9c3e3ad48",
-    "technology":  "5e3b2ec5-1ec4-47c5-b17b-1b23a3dabb4a",
-    "world":       "a11d012a-0d48-4f3b-a80e-550382b871bb",
+    "business":   "9627636d-9d19-4531-9ca0-69f9c3e3ad48",
+    "world":      "a11d012a-0d48-4f3b-a80e-550382b871bb",
+    "uk":         "85311fe2-99a4-4384-93d9-37f4e770f38d",
+    "technology": "5e3b2ec5-1ec4-47c5-b17b-1b23a3dabb4a",
+    "ai":         "57eddae4-9bf6-459e-87a8-d875a18f57a2",
+    "science":    "7100e2fe-8721-49f2-9b64-af10c415acaa",
+    "finance":    "4023c708-a40b-49f6-94d9-cdfa51c56e3c",
+    "sports":     "f67e579c-a976-4e09-814c-cc2563f06f52",
 }
 
 @app.route("/api/kagi-news")

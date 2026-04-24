@@ -98,12 +98,28 @@
         </div>
       </div>
 
-      <!-- Business News (Kagi) -->
+      <!-- News Feed (Kagi) -->
       <div style="padding:0 4px 24px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em">Business Briefing</span>
-          <span id="kagi-updated" style="font-size:10px;color:#d1d5db"></span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em">News</span>
+          <span id="kagi-updated" style="font-size:10px;color:#d1d5db">via Kagi</span>
         </div>
+        <!-- Category tabs -->
+        <div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none;-webkit-overflow-scrolling:touch" id="kagi-tabs">
+          <button onclick="kagiSelect('business',this)"    data-cat="business"    class="kagi-tab kagi-tab-active">💼 Business</button>
+          <button onclick="kagiSelect('world',this)"       data-cat="world"       class="kagi-tab">🌍 World</button>
+          <button onclick="kagiSelect('uk',this)"          data-cat="uk"          class="kagi-tab">🇬🇧 UK</button>
+          <button onclick="kagiSelect('technology',this)"  data-cat="technology"  class="kagi-tab">💻 Tech</button>
+          <button onclick="kagiSelect('ai',this)"          data-cat="ai"          class="kagi-tab">🤖 AI</button>
+          <button onclick="kagiSelect('science',this)"     data-cat="science"     class="kagi-tab">🔬 Science</button>
+          <button onclick="kagiSelect('finance',this)"     data-cat="finance"     class="kagi-tab">📈 Finance</button>
+          <button onclick="kagiSelect('sports',this)"      data-cat="sports"      class="kagi-tab">🏆 Sports</button>
+        </div>
+        <style>
+          .kagi-tab { flex-shrink:0; font-size:12px; font-weight:600; padding:6px 13px; border-radius:20px; border:1px solid #e5e7eb; background:#fff; color:#6b7280; cursor:pointer; white-space:nowrap; }
+          .kagi-tab-active { background:#111; color:#fff; border-color:#111; }
+          #kagi-tabs::-webkit-scrollbar { display:none; }
+        </style>
         <div id="kagi-news-list" style="display:flex;flex-direction:column;gap:10px">
           <div style="font-size:13px;color:#d1d5db;text-align:center;padding:16px 0">Loading…</div>
         </div>
@@ -2160,15 +2176,21 @@
     ["fuel","report","company","library","brand"].forEach(s => document.getElementById("bnav-"+s).classList.remove("active"));
   };
 
-  // ── Kagi Business News ──────────────────────────────────────────────────
-  (async function loadKagiNews() {
+  // ── Kagi News ────────────────────────────────────────────────────────────
+  const _kagiCache = {};
+  async function kagiSelect(cat, btn) {
+    document.querySelectorAll(".kagi-tab").forEach(b => b.classList.remove("kagi-tab-active"));
+    if (btn) btn.classList.add("kagi-tab-active");
+    const el = document.getElementById("kagi-news-list");
+    el.innerHTML = `<div style="font-size:13px;color:#d1d5db;text-align:center;padding:16px 0">Loading…</div>`;
     try {
-      const r = await fetch("/api/kagi-news?category=business");
-      const d = await r.json();
-      const el = document.getElementById("kagi-news-list");
-      const upEl = document.getElementById("kagi-updated");
-      if (!d.stories || !d.stories.length) { el.innerHTML = ""; return; }
-      upEl.textContent = "via Kagi News";
+      let d = _kagiCache[cat];
+      if (!d) {
+        const r = await fetch(`/api/kagi-news?category=${cat}`);
+        d = await r.json();
+        _kagiCache[cat] = d;
+      }
+      if (!d.stories || !d.stories.length) { el.innerHTML = `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">No stories available.</div>`; return; }
       el.innerHTML = d.stories.map(s => `
         <a href="${s.url}" target="_blank" rel="noopener"
            style="display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:12px 14px;text-decoration:none;box-shadow:0 1px 4px rgba(0,0,0,.04)">
@@ -2180,9 +2202,10 @@
           </div>
         </a>`).join("");
     } catch(e) {
-      document.getElementById("kagi-news-list").innerHTML = "";
+      el.innerHTML = `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">Could not load news.</div>`;
     }
-  })();
+  }
+  kagiSelect("business", document.querySelector(".kagi-tab-active"));
 </script>
 
 <!-- Bottom Navigation -->
