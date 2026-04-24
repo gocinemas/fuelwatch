@@ -191,6 +191,9 @@
             <span id="music-btn-label">Now Listening</span>
           </button>
         </div>
+        <!-- Daily quote -->
+        <div id="home-quote" style="margin-top:10px;font-size:13px;color:var(--muted);font-style:italic;line-height:1.5;max-width:340px"></div>
+
         <!-- Spotify player -->
         <div id="music-player" style="display:none;margin-top:12px">
           <iframe src="https://open.spotify.com/embed/track/7ogpGbKc4Io6NCU6ydxXwZ?utm_source=generator"
@@ -2403,6 +2406,33 @@
     }
     _updateClock();
     setInterval(_updateClock, 60000);
+
+    // Daily quote — seeded by date so it changes each day, not each refresh
+    const _quotes = [
+      "The best time to start was yesterday. The next best time is now.",
+      "Small steps every day lead to big changes over time.",
+      "Your only limit is your mind.",
+      "Do one thing today that your future self will thank you for.",
+      "Progress, not perfection.",
+      "Energy flows where attention goes.",
+      "Clarity comes from action, not thought.",
+      "Be stubborn about your goals and flexible about your methods.",
+      "The secret of getting ahead is getting started.",
+      "You don't have to be great to start, but you have to start to be great.",
+      "Focus on what you can control. Let go of the rest.",
+      "Every expert was once a beginner.",
+      "Make it simple, but significant.",
+      "Discipline is choosing between what you want now and what you want most.",
+      "The harder you work, the luckier you get.",
+      "Don't watch the clock; do what it does — keep going.",
+      "It always seems impossible until it's done.",
+      "Dream big. Start small. Act now.",
+      "Success is the sum of small efforts repeated daily.",
+      "What you do today can improve all your tomorrows.",
+    ];
+    const _today = new Date();
+    const _seed  = _today.getFullYear() * 1000 + _today.getMonth() * 31 + _today.getDate();
+    document.getElementById("home-quote").textContent = `"${_quotes[_seed % _quotes.length]}"`;
 
     // Weather via Open-Meteo (free, no key)
     function _wCode(code) {
