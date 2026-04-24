@@ -747,31 +747,62 @@ def api_brand():
     return jsonify(fetch_brand_data(name))
 
 
-@app.route("/api/brand/debug")
-def api_brand_debug():
-    """Raw AI response debug — shows exactly what Groq returns."""
-    from search import _fetch_brand_ai
-    name = request.args.get("name", "Unilever").strip()
-    import requests as _req, os
-    groq_key = os.environ.get("GROQ_API_KEY", "")
+@app.route("/api/health")
+def api_health():
+    """Full diagnostic: env vars, Groq API call, JSON parse."""
+    import requests as _req, os, time as _t, json as _json
+    out = {}
+
+    # 1. Environment keys
+    groq_key  = os.environ.get("GROQ_API_KEY", "")
+    out["env"] = {
+        "GROQ_API_KEY":    "SET" if groq_key else "MISSING ❌",
+        "SUPABASE_URL":    "SET" if os.environ.get("SUPABASE_URL") else "MISSING",
+        "YOUTUBE_API_KEY": "SET" if os.environ.get("YOUTUBE_API_KEY") else "MISSING",
+    }
+
     if not groq_key:
-        return jsonify({"error": "GROQ_API_KEY not set"})
-    r = _req.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-        json={"model": "llama-3.3-70b-versatile",
-              "messages": [{"role": "user", "content": f'Brand: "{name}". Return ONLY valid JSON with keys: facts, competitors, campaigns, timeline.'}],
-              "temperature": 0.2, "max_tokens": 3000},
-        timeout=30,
-    )
-    parsed = _fetch_brand_ai(name, "")
-    return jsonify({
-        "http_status": r.status_code,
-        "raw_content": r.json().get("choices", [{}])[0].get("message", {}).get("content", "")[:2000] if r.status_code == 200 else r.text[:500],
-        "parsed_timeline_count": len(parsed.get("timeline", [])),
-        "parsed_competitors_count": len(parsed.get("competitors", [])),
-        "parsed_facts": parsed.get("facts", {}),
-    })
+        out["groq"] = "SKIPPED — no key"
+        return jsonify(out)
+
+    # 2. Live Groq call
+    t0 = _t.time()
+    try:
+        r = _req.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": 'Brand: "Pepsi". Return ONLY valid JSON with keys: facts (founded,hq,revenue), competitors (array, 3 items), timeline (array, 3 items).'}],
+                "temperature": 0.2, "max_tokens": 800,
+            },
+            timeout=30,
+        )
+        elapsed = round(_t.time() - t0, 2)
+        out["groq"] = {"http_status": r.status_code, "elapsed_s": elapsed}
+
+        if r.status_code == 200:
+            content = r.json()["choices"][0]["message"]["content"].strip()
+            out["groq"]["raw_preview"] = content[:600]
+            import re as _re
+            m = _re.search(r'\{.*\}', content, _re.DOTALL)
+            if m:
+                try:
+                    parsed = _json.loads(m.group(0))
+                    out["groq"]["parse"] = "OK ✅"
+                    out["groq"]["timeline_items"] = len(parsed.get("timeline", []))
+                    out["groq"]["competitor_items"] = len(parsed.get("competitors", []))
+                    out["groq"]["facts"] = parsed.get("facts", {})
+                except Exception as je:
+                    out["groq"]["parse"] = f"JSON error: {je}"
+            else:
+                out["groq"]["parse"] = "No JSON object found in response ❌"
+        else:
+            out["groq"]["error_body"] = r.text[:400]
+    except Exception as e:
+        out["groq"] = {"error": str(e), "elapsed_s": round(_t.time() - t0, 2)}
+
+    return jsonify(out)
 
 
 @app.route("/api/company")
