@@ -2430,9 +2430,19 @@
       "Success is the sum of small efforts repeated daily.",
       "What you do today can improve all your tomorrows.",
     ];
-    const _today = new Date();
-    const _seed  = _today.getFullYear() * 1000 + _today.getMonth() * 31 + _today.getDate();
-    document.getElementById("home-quote").textContent = `"${_quotes[_seed % _quotes.length]}"`;
+    let _qIdx = Math.floor(Math.random() * _quotes.length);
+    const _qEl = document.getElementById("home-quote");
+    function _showQuote() {
+      _qEl.style.opacity = "0";
+      setTimeout(() => {
+        _qIdx = (_qIdx + 1) % _quotes.length;
+        _qEl.textContent = `"${_quotes[_qIdx]}"`;
+        _qEl.style.opacity = "1";
+      }, 400);
+    }
+    _qEl.style.transition = "opacity 0.4s";
+    _qEl.textContent = `"${_quotes[_qIdx]}"`;
+    setInterval(_showQuote, 10000);
 
     // Weather via Open-Meteo (free, no key)
     function _wCode(code) {
