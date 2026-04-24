@@ -140,7 +140,10 @@
       <!-- Greeting -->
       <div style="padding:22px 0 18px">
         <div id="home-greeting" style="font-size:22px;font-weight:800;letter-spacing:-0.6px;color:var(--text)">Good morning.</div>
-        <div id="home-date" style="font-size:13px;color:var(--subtle);margin-top:3px"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
+          <span id="home-date" style="font-size:13px;color:var(--subtle)"></span>
+          <span id="home-weather" style="font-size:13px;color:var(--subtle);display:none">·&nbsp;<span id="home-weather-val"></span></span>
+        </div>
       </div>
 
       <!-- Tool grid -->
@@ -2283,13 +2286,41 @@
   }
   kagiSelect("business");
 
-  // ── Home greeting ────────────────────────────────────────────────────────
+  // ── Home greeting + weather ──────────────────────────────────────────────
   (function() {
-    const h = new Date().getHours();
+    const now = new Date();
+    const h = now.getHours();
     const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
     document.getElementById("home-greeting").textContent = greet;
-    const opts = { weekday:"long", day:"numeric", month:"long", year:"numeric" };
-    document.getElementById("home-date").textContent = new Date().toLocaleDateString("en-GB", opts);
+
+    const time = now.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
+    const date = now.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
+    document.getElementById("home-date").textContent = `${date} · ${time}`;
+
+    // Weather via Open-Meteo (free, no key)
+    function _wCode(code) {
+      if (code === 0)           return "☀️";
+      if (code <= 3)            return "⛅";
+      if (code <= 48)           return "🌫️";
+      if (code <= 55)           return "🌦️";
+      if (code <= 65)           return "🌧️";
+      if (code <= 77)           return "❄️";
+      if (code <= 82)           return "🌧️";
+      return "⛈️";
+    }
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,weather_code&timezone=auto`)
+          .then(r => r.json())
+          .then(d => {
+            const temp = Math.round(d.current.temperature_2m);
+            const icon = _wCode(d.current.weather_code);
+            document.getElementById("home-weather-val").textContent = `${icon} ${temp}°C`;
+            document.getElementById("home-weather").style.display = "inline";
+          }).catch(() => {});
+      }, () => {});
+    }
   })();
 </script>
 
