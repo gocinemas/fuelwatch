@@ -872,7 +872,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv8"
+    cache_key = brand.strip().lower() + "|brandv9"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -931,9 +931,8 @@ def fetch_brand_data(brand: str) -> dict:
         try: images = _fetch_wiki_images(wiki_title) or []
         except Exception: pass
 
-        # Only call AI if Wikipedia is missing key fields (founded/hq/industry)
-        wiki_complete = all(wiki.get(f) for f in ("founded", "hq", "industry"))
-        ai = _fetch_brand_ai(brand, wiki.get("extract", "")) if not wiki_complete else {}
+        # Always fetch AI for timeline/campaigns/competitors; facts used as fallback for empty wiki fields
+        ai = _fetch_brand_ai(brand, wiki.get("extract", ""))
         ai_facts = ai.get("facts", {}) or {}
 
         def _val(wiki_key):
