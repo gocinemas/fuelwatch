@@ -413,67 +413,76 @@
       <!-- Result -->
       <div id="brand-result" class="hidden">
 
-        <!-- Header card -->
+        <!-- Header card — always visible -->
         <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
           <div id="brand-name-el" style="font-size:22px;font-weight:900;letter-spacing:-0.8px;color:#111"></div>
           <div id="brand-desc-el" style="font-size:12px;color:#9ca3af;margin-top:2px"></div>
           <div id="brand-extract-el" style="font-size:14px;color:#374151;margin-top:10px;line-height:1.65"></div>
         </div>
 
-        <!-- Quick stats -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
-            <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Founded</div>
-            <div id="brand-founded-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+        <!-- Tab bar -->
+        <div style="display:flex;gap:4px;background:#f3f4f6;border-radius:14px;padding:4px;margin-bottom:12px">
+          <button id="btab-overview"  onclick="brandTab('overview')"  style="flex:1;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:#7c3aed;color:#fff">Overview</button>
+          <button id="btab-timeline"  onclick="brandTab('timeline')"  style="flex:1;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:#6b7280">Timeline</button>
+          <button id="btab-ads"       onclick="brandTab('ads')"       style="flex:1;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:#6b7280">Ads</button>
+          <button id="btab-rivals"    onclick="brandTab('rivals')"    style="flex:1;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:#6b7280">Rivals</button>
+        </div>
+
+        <!-- TAB: Overview -->
+        <div id="brand-tab-overview">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
+              <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Founded</div>
+              <div id="brand-founded-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+            </div>
+            <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
+              <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Headquarters</div>
+              <div id="brand-hq-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+            </div>
+            <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
+              <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Revenue</div>
+              <div id="brand-revenue-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+            </div>
+            <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
+              <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Industry</div>
+              <div id="brand-industry-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+            </div>
           </div>
-          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
-            <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Headquarters</div>
-            <div id="brand-hq-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
-          </div>
-          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
-            <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Revenue</div>
-            <div id="brand-revenue-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
-          </div>
-          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
-            <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Industry</div>
-            <div id="brand-industry-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
+          <div id="brand-fin-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+            <div id="brand-fin-header" style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">📊 Financial Snapshot</div>
+            <div id="brand-fin-el" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
           </div>
         </div>
 
-        <!-- Financials -->
-        <div id="brand-fin-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-          <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">📊 Financial Snapshot</div>
-          <div id="brand-fin-el" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+        <!-- TAB: Timeline -->
+        <div id="brand-tab-timeline" style="display:none">
+          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+            <div id="brand-timeline-el"></div>
+          </div>
         </div>
 
-        <!-- Timeline -->
-        <div id="brand-timeline-section" style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-          <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:16px;letter-spacing:-0.2px">📅 Brand Timeline</div>
-          <div id="brand-timeline-el"></div>
+        <!-- TAB: Ads -->
+        <div id="brand-tab-ads" style="display:none">
+          <div id="brand-campaigns-section" style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
+            <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">🎯 Iconic Campaigns & Slogans</div>
+            <div id="brand-campaigns-el"></div>
+          </div>
+          <div id="brand-ads-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+            <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">📺 Watch Ads</div>
+            <div id="brand-ads-el" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
         </div>
 
-        <!-- Campaigns -->
-        <div id="brand-campaigns-section" style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-          <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">🎯 Iconic Campaigns & Slogans</div>
-          <div id="brand-campaigns-el"></div>
-        </div>
-
-        <!-- Ad Videos -->
-        <div id="brand-ads-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-          <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">📺 Watch Ads</div>
-          <div id="brand-ads-el" style="display:flex;flex-direction:column;gap:10px"></div>
-        </div>
-
-        <!-- Competitors -->
-        <div id="brand-competitors-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-          <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">⚔️ Closest Competitors</div>
-          <div id="brand-competitors-el"></div>
-        </div>
-
-        <!-- News -->
-        <div id="brand-news-section" style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-          <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">📰 Latest News</div>
-          <div id="brand-news-el"></div>
+        <!-- TAB: Rivals -->
+        <div id="brand-tab-rivals" style="display:none">
+          <div id="brand-competitors-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
+            <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">⚔️ Closest Competitors</div>
+            <div id="brand-competitors-el"></div>
+          </div>
+          <div id="brand-news-section" style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+            <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">📰 Latest News</div>
+            <div id="brand-news-el"></div>
+          </div>
         </div>
 
       </div>
@@ -1478,6 +1487,17 @@
   {% endif %}
 
   // ── Brand Intel ─────────────────────────────────────────────────────────────
+  function brandTab(name) {
+    ["overview","timeline","ads","rivals"].forEach(t => {
+      const panel = document.getElementById("brand-tab-" + t);
+      const btn   = document.getElementById("btab-" + t);
+      const active = t === name;
+      panel.style.display = active ? "" : "none";
+      btn.style.background = active ? "#7c3aed" : "transparent";
+      btn.style.color      = active ? "#fff"     : "#6b7280";
+    });
+  }
+
   async function searchBrand() {
     const input = document.getElementById("brand-input");
     const name = input.value.trim();
@@ -1505,6 +1525,7 @@
   }
 
   function _renderBrand(d) {
+    brandTab("overview");
     document.getElementById("brand-name-el").textContent = d.name || "";
     document.getElementById("brand-desc-el").textContent = d.description || "";
     document.getElementById("brand-extract-el").textContent = d.extract || "";
