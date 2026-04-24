@@ -384,13 +384,16 @@ def company_page(company_slug):
 # ── Library API ───────────────────────────────────────────────────────────────
 
 def _check_library_pin():
-    """Return 401 response if PIN is wrong, else None."""
-    pin = os.environ.get("LIBRARY_PIN", "")
-    if not pin:
-        return None  # no PIN set — open access
-    supplied = request.headers.get("X-Library-PIN") or request.args.get("pin", "")
-    if supplied != pin:
-        return jsonify({"error": "PIN required", "auth": True}), 401
+    """Return 401 if wrong password, else None. Uses ADMIN_PASSWORD env var."""
+    pw = os.environ.get("ADMIN_PASSWORD", "")
+    if not pw:
+        return None  # no password set — open access
+    supplied = (request.headers.get("X-Library-PIN")
+                or request.headers.get("X-Admin-Password")
+                or request.args.get("pin", "")
+                or request.args.get("pw", ""))
+    if supplied != pw:
+        return jsonify({"error": "Password required", "auth": True}), 401
     return None
 
 

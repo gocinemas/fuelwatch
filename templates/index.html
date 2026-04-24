@@ -744,18 +744,18 @@
     <!-- ── LIBRARY SCREEN ── -->
     <div id="screen-library" class="screen pt-5">
 
-      <!-- PIN lock -->
-      <div id="lib-pin-screen" class="hidden flex flex-col items-center justify-center py-20 px-4 text-center">
-        <div class="text-4xl mb-4">🔒</div>
-        <h2 class="text-lg font-bold text-gray-800 mb-1">Private Library</h2>
-        <p class="text-sm text-gray-400 mb-6">Enter your PIN to access your documents.</p>
-        <div class="flex gap-2 w-full max-w-xs">
-          <input id="lib-pin-input" type="password" placeholder="PIN"
-            class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 text-center tracking-widest"
+      <!-- Password lock -->
+      <div id="lib-pin-screen" class="hidden" style="display:none!important;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
+        <div style="font-size:36px;margin-bottom:12px">🔒</div>
+        <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px">Private Library</div>
+        <div style="font-size:13px;color:var(--subtle);margin-bottom:20px">Enter your password to continue.</div>
+        <div style="display:flex;gap:8px;width:100%;max-width:280px">
+          <input id="lib-pin-input" type="password" placeholder="Password"
+            style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;text-align:center"
             onkeydown="if(event.key==='Enter') libSubmitPin()">
-          <button onclick="libSubmitPin()" class="bg-indigo-600 text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-indigo-700 transition">Unlock</button>
+          <button onclick="libSubmitPin()" style="background:#4f46e5;color:#fff;font-size:14px;font-weight:600;padding:11px 16px;border-radius:12px;border:none;cursor:pointer">Unlock</button>
         </div>
-        <p id="lib-pin-error" class="hidden text-xs text-red-500 mt-3">Incorrect PIN — try again.</p>
+        <div id="lib-pin-error" style="display:none;font-size:12px;color:#dc2626;margin-top:10px">Incorrect password — try again.</div>
       </div>
 
 
@@ -2078,12 +2078,30 @@
   let _libChatHistory = [];
 
   function _libPin() { return sessionStorage.getItem("lib_pin") || ""; }
-  function _libHeaders() { return _libPin() ? {"X-Library-PIN": _libPin()} : {}; }
+  function _libHeaders() { const p = _libPin(); return p ? {"X-Library-PIN": p} : {}; }
+
+  function _libShowLock() {
+    document.getElementById("lib-pin-screen").style.cssText = "display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center";
+    document.getElementById("lib-list-view").classList.add("hidden");
+    document.getElementById("lib-doc-view").classList.add("hidden");
+    setTimeout(() => document.getElementById("lib-pin-input").focus(), 100);
+  }
 
   function libCheckPin() {
-    document.getElementById("lib-pin-screen").classList.add("hidden");
-    document.getElementById("lib-list-view").classList.remove("hidden");
-    libLoadDocs();
+    // If we already have a cached password, go straight to list; otherwise show lock screen
+    if (_libPin()) {
+      document.getElementById("lib-pin-screen").style.display = "none";
+      document.getElementById("lib-list-view").classList.remove("hidden");
+      libLoadDocs();
+    } else {
+      // Try without password first — server may have no password set
+      fetch("/api/library/documents")
+        .then(r => {
+          if (r.status === 401) { _libShowLock(); }
+          else { document.getElementById("lib-pin-screen").style.display = "none"; document.getElementById("lib-list-view").classList.remove("hidden"); libLoadDocs(); }
+        })
+        .catch(() => { document.getElementById("lib-pin-screen").style.display = "none"; document.getElementById("lib-list-view").classList.remove("hidden"); libLoadDocs(); });
+    }
   }
 
   async function libSubmitPin() {
@@ -2091,15 +2109,15 @@
     if (!pin) return;
     const r = await fetch("/api/library/documents", {headers: {"X-Library-PIN": pin}});
     if (r.status === 401) {
-      document.getElementById("lib-pin-error").classList.remove("hidden");
+      document.getElementById("lib-pin-error").style.display = "block";
       return;
     }
     sessionStorage.setItem("lib_pin", pin);
-    document.getElementById("lib-pin-error").classList.add("hidden");
-    document.getElementById("lib-pin-screen").classList.add("hidden");
+    document.getElementById("lib-pin-error").style.display = "none";
+    document.getElementById("lib-pin-screen").style.display = "none";
     document.getElementById("lib-list-view").classList.remove("hidden");
     const docs = await r.json();
-    _libAllDocs = docs;
+    _libAllDocs = Array.isArray(docs) ? docs : [];
     libLoadDocs();
   }
 
@@ -2147,8 +2165,9 @@
     document.getElementById("lib-docs").innerHTML = "";
     try {
       const r = await fetch("/api/library/documents", {headers: _libHeaders()});
+      if (r.status === 401) { sessionStorage.removeItem("lib_pin"); _libShowLock(); return; }
       const docs = await r.json();
-      _libAllDocs = docs;
+      _libAllDocs = Array.isArray(docs) ? docs : [];
       document.getElementById("lib-loading").classList.add("hidden");
       if (!docs.length) { document.getElementById("lib-empty").classList.remove("hidden"); return; }
       const bm = libGetBookmarks();
@@ -2345,9 +2364,12 @@
                      : s === "error"     ? `<span style="color:#dc2626">✕</span>`
                      : s === "uploading" ? `<span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:middle"></span>`
                      :                    `<span style="color:#9ca3af">·</span>`;
-      return `<div class="flex items-center gap-2 text-sm px-1 py-1">
-        ${statusEl}
-        <span class="flex-1 truncate text-gray-700">${icon} ${name}</span>
+      const errNote = s === "error" && item.errorMsg ? `<div style="font-size:11px;color:#dc2626;margin-top:2px">${item.errorMsg}</div>` : "";
+      return `<div style="padding:4px 4px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+          ${statusEl}
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${icon} ${name}</span>
+        </div>${errNote}
       </div>`;
     }).join("");
   }
@@ -2371,9 +2393,11 @@
           fd.append("text", await item.file.text());
         }
         const r = await fetch("/api/library/upload", { method: "POST", headers: _libHeaders(), body: fd });
+        if (r.status === 401) { sessionStorage.removeItem("lib_pin"); _libShowLock(); _libUploading = false; return; }
         const d = await r.json();
         item.status = d.error ? "error" : "done";
-      } catch { item.status = "error"; }
+        if (d.error) item.errorMsg = d.error;
+      } catch(err) { item.status = "error"; item.errorMsg = err.message; }
       libRenderQueue();
     }
     _libUploading = false;
