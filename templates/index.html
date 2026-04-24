@@ -1888,17 +1888,9 @@
   function _libHeaders() { return _libPin() ? {"X-Library-PIN": _libPin()} : {}; }
 
   function libCheckPin() {
-    const pin = _libPin();
-    const pinScreen  = document.getElementById("lib-pin-screen");
-    const listView   = document.getElementById("lib-list-view");
-    if (pin) {
-      pinScreen.classList.add("hidden");
-      listView.classList.remove("hidden");
-      libLoadDocs();
-    } else {
-      pinScreen.classList.remove("hidden");
-      listView.classList.add("hidden");
-    }
+    document.getElementById("lib-pin-screen").classList.add("hidden");
+    document.getElementById("lib-list-view").classList.remove("hidden");
+    libLoadDocs();
   }
 
   async function libSubmitPin() {
