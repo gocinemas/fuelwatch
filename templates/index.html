@@ -2387,14 +2387,17 @@
 
   // ── Home greeting + weather ──────────────────────────────────────────────
   (function() {
-    const now = new Date();
-    const h = now.getHours();
-    const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
-    document.getElementById("home-greeting").textContent = greet;
-
-    const time = now.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
-    const date = now.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
-    document.getElementById("home-date").textContent = `${date} · ${time}`;
+    function _updateClock() {
+      const now = new Date();
+      const h = now.getHours();
+      const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
+      document.getElementById("home-greeting").textContent = greet;
+      const time = now.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
+      const date = now.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
+      document.getElementById("home-date").textContent = `${date} · ${time}`;
+    }
+    _updateClock();
+    setInterval(_updateClock, 60000);
 
     // Weather via Open-Meteo (free, no key)
     function _wCode(code) {
