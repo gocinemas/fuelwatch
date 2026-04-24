@@ -1340,6 +1340,35 @@ def fetch_company_info(company: str) -> dict:
             _COMPANY_CACHE[key] = {"ts": time.time(), "data": sb_data}
             return sb_data
 
+        # Canonicalise name via Groq — fixes misspellings, abbreviations, casual names
+        canonical = company
+        original  = company
+        try:
+            groq_key = os.environ.get("GROQ_API_KEY", "")
+            if groq_key:
+                r = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": "llama-3.1-8b-instant",
+                        "messages": [{"role": "user", "content":
+                            f'What is the correct full legal or well-known name of the company "{company}"? '
+                            f'Reply with ONLY the company name, nothing else. '
+                            f'If it is already correct, repeat it unchanged.'}],
+                        "temperature": 0.1,
+                        "max_tokens": 30,
+                    },
+                    timeout=6,
+                )
+                resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+                if resolved and len(resolved) < 120:
+                    canonical = resolved
+        except Exception:
+            pass
+
+        suggested = canonical if canonical.lower() != original.lower() else ""
+        company = canonical  # use corrected name for all lookups below
+
         slugs = _co_slugs(company)
         enc = requests.utils.quote(company)
         slug = slugs[0] if slugs else ""
@@ -1416,9 +1445,6 @@ def fetch_company_info(company: str) -> dict:
                         break
                 except Exception:
                     pass
-
-        wiki_title = wiki.get("_wiki_title", "")
-        suggested = wiki_title if wiki_title and wiki_title.lower() != company.lower() else ""
 
         result = {
             "name":           company,
