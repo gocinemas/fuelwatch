@@ -412,6 +412,7 @@
         <div class="spinner text-indigo-600 mx-auto mb-2"></div>Looking up company…
       </div>
       <div id="company-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
+      <div id="co-did-you-mean" class="hidden mb-3 px-4 py-2.5 rounded-2xl text-sm" style="background:var(--surface);border:1px solid var(--border)"></div>
       <div id="company-results" class="hidden">
 
         <style>
@@ -1239,6 +1240,7 @@
     _saveRecent("miru_company", name);
     setLoading("company", true);
     document.getElementById("company-results").classList.add("hidden");
+    document.getElementById("co-did-you-mean").classList.add("hidden");
     switchCoTab("overview");
     ["co-overview","co-stats","co-share","co-results","co-ai","co-strategy","co-news","co-signals","co-jobs","co-no-jobs","co-links","co-overview-empty","co-brands","co-youtube"].forEach(id =>
       document.getElementById(id).classList.add("hidden"));
@@ -1247,6 +1249,13 @@
       const txt = await r.text();
       const d = JSON.parse(txt);
       if (d.error) { setError("company", d.error); setLoading("company", false); return; }
+      const dymEl = document.getElementById("co-did-you-mean");
+      if (d.suggested_name && d.suggested_name.toLowerCase() !== name.toLowerCase()) {
+        dymEl.innerHTML = `Did you mean <a href="#" onclick="document.getElementById('company-input').value=${JSON.stringify(d.suggested_name)};searchCompany();return false;" style="font-weight:700;color:var(--accent);text-decoration:none">${d.suggested_name}</a>?`;
+        dymEl.classList.remove("hidden");
+      } else {
+        dymEl.classList.add("hidden");
+      }
       renderCompany(d);
       if (_pendingCoTab) { switchCoTab(_pendingCoTab); _pendingCoTab = null; }
     } catch(e) {

@@ -1417,21 +1417,25 @@ def fetch_company_info(company: str) -> dict:
                 except Exception:
                     pass
 
+        wiki_title = wiki.get("_wiki_title", "")
+        suggested = wiki_title if wiki_title and wiki_title.lower() != company.lower() else ""
+
         result = {
-            "name":          company,
-            "wiki":          wiki,
-            "news":          news,
-            "ai_news":       ai_news,
-            "strategy_news": strategy_news,
-            "results_news":  results_news,
-            "youtube":       youtube,
-            "share":         share,
-            "ai_signals":    _ai_job_signals(jobs),
-            "jobs":          jobs,
-            "jobs_source":   source,
-            "job_signals":   _job_signals(jobs),
-            "links":         links,
-            "slug":          slug,
+            "name":           company,
+            "suggested_name": suggested,
+            "wiki":           wiki,
+            "news":           news,
+            "ai_news":        ai_news,
+            "strategy_news":  strategy_news,
+            "results_news":   results_news,
+            "youtube":        youtube,
+            "share":          share,
+            "ai_signals":     _ai_job_signals(jobs),
+            "jobs":           jobs,
+            "jobs_source":    source,
+            "job_signals":    _job_signals(jobs),
+            "links":          links,
+            "slug":           slug,
         }
         _COMPANY_CACHE[key] = {"ts": time.time(), "data": result}
         _sb_cache_set("company:" + key, result)
