@@ -2560,17 +2560,35 @@
   </div>
 </div>
 
+<script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
 <script>
 (function(){
-  let _stream = null;
-  let _rafId  = null;
-  let _detector = null;
+  let _stream    = null;
+  let _rafId     = null;
+  let _zxReader  = null;
+  let _nativeDetector = null;
 
-  // Initialise BarcodeDetector once (Chrome/Android/Edge)
+  // Native BarcodeDetector (Chrome/Android/Edge) — fastest
   if ('BarcodeDetector' in window) {
-    _detector = new BarcodeDetector({
-      formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code']
-    });
+    try {
+      _nativeDetector = new BarcodeDetector({
+        formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code']
+      });
+    } catch(_) {}
+  }
+
+  function _getZX() {
+    if (_zxReader) return _zxReader;
+    if (typeof ZXing === 'undefined') return null;
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.UPC_A,  ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.ITF,    ZXing.BarcodeFormat.QR_CODE,
+    ]);
+    _zxReader = new ZXing.BrowserMultiFormatReader(hints);
+    return _zxReader;
   }
 
   window.toggleScanner = async function() {
@@ -2578,52 +2596,55 @@
 
     const btn  = document.getElementById("scan-cam-btn");
     const wrap = document.getElementById("scan-reader-wrap");
-
-    // iOS Safari: BarcodeDetector not available → use file capture
-    if (!_detector) {
-      document.getElementById("scan-file").click();
-      return;
-    }
+    const video = document.getElementById("scan-video");
 
     btn.innerHTML = '<span style="font-size:20px">⏳</span> Starting camera…';
+
+    // Request camera
     try {
       _stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
       });
     } catch(e) {
       btn.innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
-      const msg = (e.name === "NotAllowedError" || e.name === "PermissionDeniedError")
-        ? "Camera permission denied — please allow camera access in your browser settings, or type the product name above."
-        : "Camera not available. Please type the product name above.";
-      showScanError(msg);
-      // graceful fallback: open file picker
-      document.getElementById("scan-file").click();
+      if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
+        showScanError("Camera permission denied — please allow camera access in your browser settings, then try again.");
+      } else {
+        showScanError("Camera not available on this device. Please type the product name above.");
+      }
       return;
     }
 
-    const video = document.getElementById("scan-video");
     video.srcObject = _stream;
     wrap.style.display = "block";
     btn.innerHTML = '<span style="font-size:20px">📷</span> Scanning… tap to stop';
 
-    async function _tick() {
-      if (!_stream) return;
-      try {
-        const barcodes = await _detector.detect(video);
-        if (barcodes.length > 0) {
-          const code = barcodes[0].rawValue;
-          stopScanner();
-          doProductLookup(null, code);
-          return;
-        }
-      } catch(_) {}
-      _rafId = requestAnimationFrame(_tick);
+    if (_nativeDetector) {
+      // Fast path: Chrome/Android native BarcodeDetector
+      async function _tick() {
+        if (!_stream) return;
+        try {
+          const codes = await _nativeDetector.detect(video);
+          if (codes.length > 0) { stopScanner(); doProductLookup(null, codes[0].rawValue); return; }
+        } catch(_) {}
+        _rafId = requestAnimationFrame(_tick);
+      }
+      video.addEventListener("loadeddata", () => { _rafId = requestAnimationFrame(_tick); }, { once: true });
+    } else {
+      // ZXing path: iOS Safari, Firefox, others
+      const zx = _getZX();
+      if (!zx) { stopScanner(); showScanError("Scanner not ready — please type the product name above."); return; }
+      video.addEventListener("loadeddata", () => {
+        zx.decodeFromStream(_stream, video, (result, err) => {
+          if (result) { stopScanner(); doProductLookup(null, result.getText()); }
+        });
+      }, { once: true });
     }
-    video.addEventListener("loadeddata", () => { _rafId = requestAnimationFrame(_tick); }, { once: true });
   };
 
   window.stopScanner = function() {
     if (_rafId)  { cancelAnimationFrame(_rafId); _rafId = null; }
+    if (_zxReader) { try { _zxReader.reset(); } catch(_) {} }
     if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
     const video = document.getElementById("scan-video");
     video.srcObject = null;
@@ -2631,33 +2652,39 @@
     document.getElementById("scan-cam-btn").innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
   };
 
-  // iOS fallback: decode image file using canvas + BarcodeDetector (if available) or send barcode as name
+  // Photo fallback for file input (if user grants via file picker)
   window.scanFromFile = async function(input) {
     const file = input.files[0];
     if (!file) return;
     input.value = "";
+    document.getElementById("scan-loading").style.display = "block";
 
-    if (_detector) {
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      img.onload = async () => {
-        try {
-          const barcodes = await _detector.detect(img);
-          URL.revokeObjectURL(img.src);
-          if (barcodes.length > 0) {
-            doProductLookup(null, barcodes[0].rawValue);
-          } else {
-            showScanError("No barcode found in photo. Try again in better light, or type the product name above.");
-          }
-        } catch(_) {
-          URL.revokeObjectURL(img.src);
-          showScanError("Could not read barcode. Try typing the product name above.");
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.src = url;
+    img.onload = async () => {
+      let decoded = null;
+      try {
+        if (_nativeDetector) {
+          const codes = await _nativeDetector.detect(img);
+          if (codes.length) decoded = codes[0].rawValue;
         }
-      };
-    } else {
-      // Last resort: upload image and let the server try
-      showScanError("Live scanning not supported on this browser. Please type the product name above.");
-    }
+        if (!decoded) {
+          const zx = _getZX();
+          if (zx) {
+            const result = await zx.decodeFromImageElement(img);
+            decoded = result.getText();
+          }
+        }
+      } catch(_) {}
+      URL.revokeObjectURL(url);
+      document.getElementById("scan-loading").style.display = "none";
+      if (decoded) {
+        doProductLookup(null, decoded);
+      } else {
+        showScanError("No barcode found in photo. Try in better light, or type the product name above.");
+      }
+    };
   };
 
   window.scanSearch = function() {
