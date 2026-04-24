@@ -169,10 +169,7 @@
         <button id="theme-btn" onclick="cycleTheme()"
           style="font-size:16px;border:none;background:transparent;cursor:pointer;padding:6px 8px;border-radius:8px;line-height:1;color:var(--subtle)"
           title="Toggle theme"></button>
-        <button onclick="showScreen('admin')"
-          style="font-size:15px;border:none;background:transparent;cursor:pointer;padding:6px 8px;border-radius:8px;line-height:1;color:var(--subtle)"
-          title="Admin">📊</button>
-        <button class="home-btn" onclick="showHome()">Home</button>
+<button class="home-btn" onclick="showHome()">Home</button>
       </div>
     </div>
   </header>
@@ -229,6 +226,12 @@
           <div class="tc-icon" style="background:#faf5ff">📚</div>
           <div class="tc-name">My Library</div>
           <div class="tc-desc">Docs, PDFs & chat</div>
+        </button>
+
+        <button class="tool-card" onclick="showScreen('scan')">
+          <div class="tc-icon" style="background:#f0fdf4">📦</div>
+          <div class="tc-name">Product Finder</div>
+          <div class="tc-desc">Scan or search any product</div>
         </button>
 
         <button class="tool-card" onclick="showScreen('brand')" style="grid-column:span 2">
@@ -2427,6 +2430,186 @@
       }, () => {});
     }
   })();
+</script>
+
+<!-- Product Finder Screen -->
+<div id="screen-scan" class="screen pt-5">
+  <div style="max-width:540px;margin:0 auto;padding:0 16px 100px">
+
+    <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Product Finder</div>
+    <div style="font-size:13px;color:var(--subtle);margin-bottom:18px">Scan a barcode or search by name</div>
+
+    <!-- Search bar -->
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="scan-input" type="text" placeholder="Product name e.g. Heinz Ketchup"
+        style="flex:1;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:15px"
+        onkeydown="if(event.key==='Enter')scanSearch()">
+      <button onclick="scanSearch()"
+        style="padding:11px 20px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">Search</button>
+    </div>
+
+    <!-- Scan button -->
+    <button id="scan-cam-btn" onclick="toggleScanner()"
+      style="width:100%;padding:12px;border-radius:12px;border:1px dashed var(--border);background:var(--surface);color:var(--muted);font-size:14px;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px">
+      <span style="font-size:20px">📷</span> Scan barcode
+    </button>
+
+    <!-- Camera viewfinder -->
+    <div id="scan-reader-wrap" style="display:none;margin-bottom:16px;border-radius:14px;overflow:hidden">
+      <div id="scan-reader" style="width:100%"></div>
+      <button onclick="stopScanner()"
+        style="width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+        Stop camera
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div id="scan-loading" style="display:none;text-align:center;padding:32px 0;color:var(--muted);font-size:14px">
+      Looking up product…
+    </div>
+
+    <!-- Error -->
+    <div id="scan-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px;font-size:13px;color:#b91c1c;margin-bottom:12px"></div>
+
+    <!-- Results -->
+    <div id="scan-results" style="display:none">
+
+      <!-- Product card -->
+      <div id="scan-product-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;display:flex;gap:14px;align-items:flex-start">
+        <img id="scan-img" src="" alt="" style="width:72px;height:72px;object-fit:contain;border-radius:8px;background:#f9f9f9;display:none;flex-shrink:0">
+        <div>
+          <div id="scan-name" style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px"></div>
+          <div id="scan-brand" style="font-size:13px;color:var(--muted);margin-bottom:4px"></div>
+          <div id="scan-cat" style="font-size:12px;color:var(--subtle)"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <a id="scan-tesco-link" href="#" target="_blank"
+              style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;background:#00539f;color:#fff;text-decoration:none">Tesco</a>
+            <a id="scan-asda-link" href="#" target="_blank"
+              style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;background:#78ae01;color:#fff;text-decoration:none">ASDA</a>
+            <a id="scan-amazon-link" href="#" target="_blank"
+              style="font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;background:#ff9900;color:#000;text-decoration:none">Amazon</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alternatives -->
+      <div style="font-size:12px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Alternatives</div>
+      <div id="scan-alts"></div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+(function(){
+  let _scanner = null;
+
+  window.toggleScanner = function() {
+    const wrap = document.getElementById("scan-reader-wrap");
+    if (wrap.style.display === "none") {
+      wrap.style.display = "block";
+      _scanner = new Html5Qrcode("scan-reader");
+      _scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 260, height: 160 } },
+        (barcode) => {
+          stopScanner();
+          document.getElementById("scan-input").value = "";
+          doProductLookup(null, barcode);
+        },
+        () => {}
+      ).catch(e => {
+        wrap.style.display = "none";
+        showScanError("Camera not available: " + e);
+      });
+      document.getElementById("scan-cam-btn").textContent = "Scanning…";
+    } else {
+      stopScanner();
+    }
+  };
+
+  window.stopScanner = function() {
+    if (_scanner) { _scanner.stop().catch(() => {}); _scanner = null; }
+    document.getElementById("scan-reader-wrap").style.display = "none";
+    document.getElementById("scan-cam-btn").innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
+  };
+
+  window.scanSearch = function() {
+    const name = document.getElementById("scan-input").value.trim();
+    if (!name) return;
+    doProductLookup(name, null);
+  };
+
+  function doProductLookup(name, barcode) {
+    document.getElementById("scan-loading").style.display = "block";
+    document.getElementById("scan-results").style.display = "none";
+    document.getElementById("scan-error").style.display = "none";
+
+    const params = new URLSearchParams();
+    if (barcode) params.set("barcode", barcode);
+    if (name)    params.set("name", name);
+
+    fetch("/api/product?" + params)
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById("scan-loading").style.display = "none";
+        if (!d.product && !d.alternatives?.length) {
+          showScanError("No product found. Try a different name.");
+          return;
+        }
+        renderProduct(d);
+      })
+      .catch(() => {
+        document.getElementById("scan-loading").style.display = "none";
+        showScanError("Something went wrong. Please try again.");
+      });
+  }
+
+  function renderProduct(d) {
+    const p = d.product;
+    const q = d.query || "";
+    const enc = encodeURIComponent(q);
+
+    if (p) {
+      document.getElementById("scan-name").textContent  = p.name  || q;
+      document.getElementById("scan-brand").textContent = p.brand || "";
+      document.getElementById("scan-cat").textContent   = p.category || "";
+      const img = document.getElementById("scan-img");
+      if (p.image) { img.src = p.image; img.style.display = "block"; }
+      else           img.style.display = "none";
+    } else {
+      document.getElementById("scan-name").textContent  = q;
+      document.getElementById("scan-brand").textContent = "";
+      document.getElementById("scan-cat").textContent   = "";
+      document.getElementById("scan-img").style.display = "none";
+    }
+
+    document.getElementById("scan-tesco-link").href  = `https://www.tesco.com/groceries/en-GB/search?query=${enc}`;
+    document.getElementById("scan-asda-link").href   = `https://groceries.asda.com/search/${enc}`;
+    document.getElementById("scan-amazon-link").href = `https://www.amazon.co.uk/s?k=${enc}`;
+
+    const alts = d.alternatives || [];
+    document.getElementById("scan-alts").innerHTML = alts.length
+      ? alts.map(a => `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">${a.name}</div>
+              <div style="font-size:12px;color:var(--muted)">${a.reason}</div>
+            </div>
+            <div style="font-size:14px;font-weight:800;color:var(--accent);white-space:nowrap">${a.price}</div>
+          </div>`).join("")
+      : '<div style="font-size:13px;color:var(--subtle)">No alternatives found.</div>';
+
+    document.getElementById("scan-results").style.display = "block";
+  }
+
+  function showScanError(msg) {
+    const el = document.getElementById("scan-error");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+})();
 </script>
 
 <!-- Admin Screen -->

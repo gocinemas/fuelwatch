@@ -1082,6 +1082,84 @@ def api_admin_stats():
     return jsonify(s)
 
 
+@app.route("/api/product")
+def api_product():
+    import requests as _req, json as _json
+    barcode = request.args.get("barcode", "").strip()
+    name    = request.args.get("name", "").strip()
+
+    product = None
+
+    # --- barcode lookup via Open Food Facts ---
+    if barcode:
+        try:
+            r = _req.get(f"https://world.openfoodfacts.org/api/v2/product/{barcode}.json",
+                         timeout=8, headers={"User-Agent": "MiruApp/1.0"})
+            d = r.json()
+            if d.get("status") == 1:
+                p = d["product"]
+                cats = p.get("categories", "")
+                cat  = cats.split(",")[0].strip() if cats else ""
+                product = {
+                    "name":     p.get("product_name_en") or p.get("product_name", ""),
+                    "brand":    p.get("brands", ""),
+                    "category": cat,
+                    "image":    p.get("image_url", ""),
+                    "barcode":  barcode,
+                }
+        except Exception as e:
+            print(f"[product] barcode lookup error: {e}")
+
+    # --- name search via Open Food Facts ---
+    if not product and name:
+        try:
+            r = _req.get("https://world.openfoodfacts.org/cgi/search.pl",
+                         params={"search_terms": name, "json": 1, "page_size": 5,
+                                 "lc": "en", "action": "process"},
+                         timeout=8, headers={"User-Agent": "MiruApp/1.0"})
+            products = r.json().get("products", [])
+            if products:
+                p = products[0]
+                cats = p.get("categories", "")
+                cat  = cats.split(",")[0].strip() if cats else ""
+                product = {
+                    "name":     p.get("product_name_en") or p.get("product_name", name),
+                    "brand":    p.get("brands", ""),
+                    "category": cat,
+                    "image":    p.get("image_url", ""),
+                }
+        except Exception as e:
+            print(f"[product] name search error: {e}")
+
+    # --- AI alternatives via Groq ---
+    alternatives = []
+    search_term = (product["name"] if product else name) or barcode
+    if search_term:
+        try:
+            from groq import Groq as _Groq
+            gc = _Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+            brand_ctx = f" by {product['brand']}" if product and product.get("brand") else ""
+            prompt = (
+                f"Product: \"{search_term}\"{brand_ctx}.\n"
+                "Suggest 3 alternative products available in UK supermarkets (Tesco, Sainsbury's, ASDA, Lidl, Aldi). "
+                "For each give name, estimated UK price, and a one-line reason. "
+                'Return ONLY a JSON array: [{"name":"...","price":"£X.XX","reason":"..."}]'
+            )
+            resp = gc.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=400, temperature=0.4,
+            )
+            raw = resp.choices[0].message.content.strip()
+            start, end = raw.find("["), raw.rfind("]")
+            if start != -1 and end != -1:
+                alternatives = _json.loads(raw[start:end+1])
+        except Exception as e:
+            print(f"[product] alternatives error: {e}")
+
+    return jsonify({"product": product, "alternatives": alternatives, "query": search_term})
+
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     body        = request.form.get("Body", "").strip()
