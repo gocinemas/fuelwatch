@@ -10,92 +10,176 @@
   <title>Miru</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    :root {
+      --bg:      #f8f7f5;
+      --surface: #ffffff;
+      --border:  #ebebeb;
+      --text:    #111111;
+      --muted:   #6b7280;
+      --subtle:  #9ca3af;
+      --accent:  #dc2626;
+    }
+
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-top: env(safe-area-inset-top);
+      overscroll-behavior: none;
+    }
+
     .spinner { border: 3px solid #f3f3f3; border-top: 3px solid currentColor; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; display:inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
     .screen { display: none; }
     .screen.active { display: block; }
     #nav-sheet { transition: transform 0.25s ease; transform: translateY(100%); }
     #nav-sheet.open { transform: translateY(0); }
 
-    /* Safe area insets for iPhone notch / Dynamic Island / home indicator */
-    body { padding-top: env(safe-area-inset-top); overscroll-behavior: none; }
-    #bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
     .main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 
-    /* Prevent iOS input zoom — all inputs/selects must be >= 16px */
-    input, select, textarea { font-size: 16px !important; }
+    input, select, textarea { font-size: 16px !important; font-family: inherit; }
+
+    /* Header */
+    #app-header {
+      position: sticky; top: 0; z-index: 50;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 13px 16px calc(13px + env(safe-area-inset-top));
+      padding-top: calc(13px + env(safe-area-inset-top));
+    }
+    #app-header .inner {
+      max-width: 480px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    #app-header .logo {
+      display: flex; align-items: center; gap: 8px;
+    }
+    #app-header .logo-dot {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--accent); display: flex; align-items: center;
+      justify-content: center; font-size: 14px; line-height: 1;
+    }
+    #app-header .logo-text {
+      font-size: 18px; font-weight: 900; letter-spacing: -0.8px; color: var(--text);
+    }
+    #app-header .home-btn {
+      font-size: 12px; font-weight: 600; color: var(--subtle);
+      border: none; background: transparent; cursor: pointer; padding: 6px 4px;
+    }
 
     /* Bottom nav */
-    #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff;
-      border-top: 1px solid #f3f4f6; display: flex; z-index: 100;
-      box-shadow: 0 -2px 12px rgba(0,0,0,.06); }
-    .bnav-btn { flex: 1; display: flex; flex-direction: column; align-items: center;
+    #bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface); border-top: 1px solid var(--border);
+      display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom);
+    }
+    .bnav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
       justify-content: center; gap: 3px; padding: 10px 4px 8px;
-      font-size: 11px; font-weight: 600; color: #9ca3af; border: none;
-      background: transparent; cursor: pointer; transition: color .15s; -webkit-tap-highlight-color: transparent; }
-    .bnav-btn.active { color: #4f46e5; }
-    .bnav-btn .bnav-icon { font-size: 22px; line-height: 1; }
+      font-size: 10px; font-weight: 600; color: var(--subtle);
+      border: none; background: transparent; cursor: pointer; transition: color .15s;
+      letter-spacing: 0.02em; text-transform: uppercase;
+    }
+    .bnav-btn.active { color: var(--accent); }
+    .bnav-btn .bnav-icon { font-size: 20px; line-height: 1; }
 
-    /* Tap highlight off globally */
-    * { -webkit-tap-highlight-color: transparent; }
+    /* Section label */
+    .sec-label {
+      font-size: 10px; font-weight: 700; color: var(--subtle);
+      text-transform: uppercase; letter-spacing: .1em;
+    }
 
-    /* Typography — matches humanagency.co */
-    body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.6; color: #111111; }
-    h1, h2, h3 { line-height: 1.2; }
-    h1 { font-weight: 900; letter-spacing: -1.5px; }
-    h2 { font-weight: 800; letter-spacing: -0.5px; }
-    h3 { font-weight: 700; letter-spacing: -0.5px; }
-    .font-bold, .font-extrabold, .font-black { letter-spacing: -0.5px; }
-    .font-semibold { letter-spacing: -0.3px; }
-    .text-xs, .uppercase { letter-spacing: 1px; }
+    /* Tool cards */
+    .tool-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 18px 16px; text-align: left;
+      cursor: pointer; transition: box-shadow .15s, transform .1s;
+      width: 100%;
+    }
+    .tool-card:active { transform: scale(0.97); }
+    .tool-card .tc-icon {
+      width: 46px; height: 46px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 12px;
+    }
+    .tool-card .tc-name {
+      font-size: 14px; font-weight: 700; color: var(--text);
+      letter-spacing: -0.3px; line-height: 1.2;
+    }
+    .tool-card .tc-desc {
+      font-size: 11px; color: var(--subtle); margin-top: 3px; line-height: 1.4;
+    }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="min-h-screen">
 
   <!-- Header -->
-  <div class="bg-red-600 text-white px-4 shadow sticky top-0 z-50" style="padding-top:14px;padding-bottom:14px;">
-    <div class="max-w-xl mx-auto flex items-center justify-between">
-      <div style="line-height:1">
-        <div style="font-size:20px;font-weight:900;letter-spacing:-0.8px;color:#fff">Miru</div>
-        <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.6);margin-top:2px;letter-spacing:0.02em">See everything, decide anything.</div>
+  <header id="app-header">
+    <div class="inner">
+      <div class="logo">
+        <div class="logo-dot">👁</div>
+        <span class="logo-text">Miru</span>
       </div>
-      <button onclick="showHome()" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);padding:6px 10px;border:none;background:transparent;cursor:pointer">Home</button>
+      <button class="home-btn" onclick="showHome()">Home</button>
     </div>
-  </div>
+  </header>
 
   <div class="max-w-xl mx-auto px-4 main-content">
 
     <!-- ── HOME SCREEN ── -->
     <div id="screen-home" class="screen active">
-      <div class="flex flex-col items-center justify-center text-center px-2" style="min-height:58vh;padding-top:48px;padding-bottom:32px;">
-        <div style="font-size:52px;margin-bottom:16px;line-height:1">👁</div>
-        <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:#111">Miru</div>
-        <div style="font-size:14px;font-weight:400;color:#888;margin-top:6px;letter-spacing:0.01em">See everything, decide anything.</div>
-        <div style="margin-top:28px;display:flex;flex-direction:column;gap:8px;width:100%;max-width:300px;">
-          <button onclick="showScreen('fuel')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
-            <span style="font-size:20px;line-height:1">⛽</span>
-            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">Fuel Prices</span>
-          </button>
-          <button onclick="showScreen('report')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
-            <span style="font-size:20px;line-height:1">🏠</span>
-            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">Area Report</span>
-          </button>
-          <button onclick="showScreen('company')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
-            <span style="font-size:20px;line-height:1">🏢</span>
-            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">Company Intel</span>
-          </button>
-          <button onclick="showScreen('library')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
-            <span style="font-size:20px;line-height:1">📚</span>
-            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">My Library</span>
-          </button>
-          <button onclick="showScreen('brand')" style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #ebebeb;border-radius:14px;padding:13px 16px;text-align:left;width:100%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)">
-            <span style="font-size:20px;line-height:1">🏷️</span>
-            <span style="font-size:14px;font-weight:600;color:#222;letter-spacing:-0.2px">Brand Intel</span>
-          </button>
-        </div>
+
+      <!-- Greeting -->
+      <div style="padding:22px 0 18px">
+        <div id="home-greeting" style="font-size:22px;font-weight:800;letter-spacing:-0.6px;color:var(--text)">Good morning.</div>
+        <div id="home-date" style="font-size:13px;color:var(--subtle);margin-top:3px"></div>
+      </div>
+
+      <!-- Tool grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px">
+
+        <button class="tool-card" onclick="showScreen('fuel')">
+          <div class="tc-icon" style="background:#fff7ed">⛽</div>
+          <div class="tc-name">Fuel Prices</div>
+          <div class="tc-desc">Live UK prices near you</div>
+        </button>
+
+        <button class="tool-card" onclick="showScreen('report')">
+          <div class="tc-icon" style="background:#f0fdf4">🏠</div>
+          <div class="tc-name">Area Report</div>
+          <div class="tc-desc">Property & local intel</div>
+        </button>
+
+        <button class="tool-card" onclick="showScreen('company')">
+          <div class="tc-icon" style="background:#eff6ff">🏢</div>
+          <div class="tc-name">Company Intel</div>
+          <div class="tc-desc">Research any company</div>
+        </button>
+
+        <button class="tool-card" onclick="showScreen('library')">
+          <div class="tc-icon" style="background:#faf5ff">📚</div>
+          <div class="tc-name">My Library</div>
+          <div class="tc-desc">Docs, PDFs & chat</div>
+        </button>
+
+        <button class="tool-card" onclick="showScreen('brand')" style="grid-column:span 2">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div class="tc-icon" style="background:#fff1f2;margin-bottom:0;flex-shrink:0">🏷️</div>
+            <div>
+              <div class="tc-name" style="font-size:15px">Brand Intel</div>
+              <div class="tc-desc">Timeline, rivals, campaigns & more</div>
+            </div>
+          </div>
+        </button>
+
       </div>
 
       <!-- News Feed (Kagi) -->
@@ -2206,6 +2290,15 @@
     }
   }
   kagiSelect("business", document.querySelector(".kagi-tab-active"));
+
+  // ── Home greeting ────────────────────────────────────────────────────────
+  (function() {
+    const h = new Date().getHours();
+    const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
+    document.getElementById("home-greeting").textContent = greet;
+    const opts = { weekday:"long", day:"numeric", month:"long", year:"numeric" };
+    document.getElementById("home-date").textContent = new Date().toLocaleDateString("en-GB", opts);
+  })();
 </script>
 
 <!-- Bottom Navigation -->
