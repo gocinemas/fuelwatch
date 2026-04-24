@@ -1386,106 +1386,95 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
     from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
 
     groq_key = os.environ.get("GROQ_API_KEY", "")
-    product = None
-    _errs = []
-
-    def _groq(prompt, max_tokens=400):
-        r = _req.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant",
-                  "messages": [{"role": "user", "content": prompt}],
-                  "max_tokens": max_tokens, "temperature": 0.3},
-            timeout=12,
-        )
-        return r.json()["choices"][0]["message"]["content"].strip()
 
     def _obj(text):
         s, e = text.find("{"), text.rfind("}")
         return _json.loads(text[s:e+1]) if s != -1 and e != -1 else {}
 
-    # Resolve product via Groq
-    if groq_key:
-        try:
-            raw = _groq(
-                f'UK grocery product: "{product_name}". Give the exact product name, brand, and category.\n'
-                'Return ONLY JSON: {"name":"...","brand":"...","category":"..."}',
-                max_tokens=120,
-            )
-            obj = _obj(raw)
-            if obj.get("name"):
-                product = {"name": obj["name"], "brand": obj.get("brand",""), "category": obj.get("category","")}
-        except Exception as e:
-            _errs.append(str(e))
-
-    search_term = product["name"] if product else product_name
-    brand = product["brand"] if product else ""
-    full_name = f"{search_term} by {brand}" if brand else search_term
-
-    # Real prices: Tesco + Waitrose in parallel
-    prices = {}
+    def _groq(prompt, max_tokens=500, model="llama-3.3-70b-versatile"):
+        r = _req.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={"model": model,
+                  "messages": [{"role": "user", "content": prompt}],
+                  "max_tokens": max_tokens, "temperature": 0.2},
+            timeout=15,
+        )
+        return r.json()["choices"][0]["message"]["content"].strip()
 
     def _tesco(q):
+        """Try Tesco grocery API for a live price."""
         try:
             r = _req.get(
                 "https://api.tesco.com/shoppingexperience/v1/api/products/search",
                 params={"query": q, "count": "3", "offset": "0"},
                 headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
-                timeout=6,
+                timeout=5,
             )
             if r.status_code == 200:
                 items = r.json().get("uk", {}).get("ghs", {}).get("products", {}).get("results", [])
                 if items:
                     p = items[0].get("price") or items[0].get("unitPrice")
                     if p:
-                        return "tesco", f"£{float(p):.2f}"
+                        return f"£{float(p):.2f}"
         except Exception:
             pass
-        return "tesco", None
+        return None
 
-    def _waitrose(q):
-        try:
-            r = _req.get(
-                "https://www.waitrose.com/api/content-prod/v2/cms/page/products",
-                params={"q": q, "start": "0", "size": "3", "sortBy": "RELEVANCE", "searchSource": "search"},
-                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json",
-                         "Referer": "https://www.waitrose.com/"},
-                timeout=6,
-            )
-            if r.status_code == 200:
-                for item in r.json().get("componentsAndProducts", []):
-                    prod = item.get("searchProduct") or item.get("product") or {}
-                    price = prod.get("currentSaleUnitPrice", {}).get("price", {}).get("amount")
-                    if price:
-                        return "waitrose", f"£{float(price):.2f}"
-        except Exception:
-            pass
-        return "waitrose", None
-
-    with ThreadPoolExecutor(max_workers=2) as ex:
-        for store, price in [f.result() for f in _as_completed([ex.submit(_tesco, search_term), ex.submit(_waitrose, search_term)])]:
-            if price:
-                prices[store] = price
-
-    # Fill remaining stores + get alternatives via Groq
+    # Single Groq call: product info + all store prices + alternatives
+    product = {"name": product_name, "brand": "", "category": ""}
+    prices = {}
     alternatives = []
+
     if groq_key:
         try:
-            missing = [s for s in ["tesco", "asda", "sainsburys", "aldi", "lidl"] if s not in prices]
-            prompt = f'UK grocery product: "{full_name}".\n'
-            if missing:
-                prompt += (f'Give current typical UK shelf price at: {", ".join(s.title() for s in missing)}. '
-                           f'Return as JSON: {{"prices":{{"tesco":"£X.XX",...}}}}.\n')
-            prompt += ('Also suggest 2 cheaper/equivalent alternatives. '
-                       'Return ONLY JSON: {"prices":{...},"alternatives":[{"name":"...","price":"£X.XX"}]}')
-            raw = _groq(prompt, max_tokens=350)
+            prompt = (
+                f'You are a UK grocery price expert. The user asked about: "{product_name}".\n'
+                'Return ONLY valid JSON with these fields:\n'
+                '{\n'
+                '  "name": "exact product name and size e.g. Heinz Baked Beans 415g",\n'
+                '  "brand": "brand name",\n'
+                '  "category": "category",\n'
+                '  "prices": {\n'
+                '    "aldi": "£X.XX",\n'
+                '    "lidl": "£X.XX",\n'
+                '    "asda": "£X.XX",\n'
+                '    "sainsburys": "£X.XX",\n'
+                '    "tesco": "£X.XX",\n'
+                '    "waitrose": "£X.XX"\n'
+                '  },\n'
+                '  "alternatives": [\n'
+                '    {"name": "...", "price": "£X.XX", "store": "..."}\n'
+                '  ]\n'
+                '}\n'
+                'Use typical current UK shelf prices. Only include stores where the product is commonly sold.'
+            )
+            raw = _groq(prompt, max_tokens=500)
             obj = _obj(raw)
-            for k, v in obj.get("prices", {}).items():
-                if k not in prices:
-                    prices[k] = v
-            alternatives = obj.get("alternatives", [])
+            if obj.get("name"):
+                product = {"name": obj["name"], "brand": obj.get("brand",""), "category": obj.get("category","")}
+            prices = {k: v for k, v in obj.get("prices", {}).items() if v and "X" not in v}
+            alternatives = obj.get("alternatives", [])[:2]
         except Exception:
-            pass
+            # Fallback: simpler prompt with smaller model
+            try:
+                raw = _groq(
+                    f'UK grocery "{product_name}": give typical prices at Aldi, Asda, Tesco, Sainsburys. '
+                    'Return ONLY JSON: {"name":"...","brand":"...","prices":{"aldi":"£X.XX","asda":"£X.XX","tesco":"£X.XX","sainsburys":"£X.XX"}}',
+                    max_tokens=200, model="llama-3.1-8b-instant"
+                )
+                obj = _obj(raw)
+                if obj.get("name"):
+                    product["name"] = obj["name"]
+                    product["brand"] = obj.get("brand", "")
+                prices = {k: v for k, v in obj.get("prices", {}).items() if v and "X" not in v}
+            except Exception:
+                pass
+
+    # Try to get a live Tesco price to verify/supplement AI prices
+    live_tesco = _tesco(product["name"])
+    if live_tesco:
+        prices["tesco"] = live_tesco + " ✓"
 
     # Format reply
     lines = [f"🛒 {search_term}"]
