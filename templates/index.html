@@ -470,10 +470,6 @@
                 <div style="font-size:11px;color:#9ca3af;margin-top:1px">Brand History</div>
               </div>
             </div>
-            <!-- Brand photo strip -->
-            <div id="brand-img-strip" style="display:none;overflow-x:auto;margin-bottom:18px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
-              <div id="brand-img-strip-inner" style="display:flex;gap:8px;width:max-content"></div>
-            </div>
             <div id="brand-timeline-el"></div>
           </div>
         </div>
@@ -1578,20 +1574,6 @@
     document.getElementById("brand-hq-el").textContent = d.hq || "—";
     document.getElementById("brand-revenue-el").textContent = d.revenue || "—";
     document.getElementById("brand-industry-el").textContent = d.industry || "—";
-
-    // Brand image strip
-    const imgs = d.images || [];
-    const stripEl = document.getElementById("brand-img-strip");
-    const stripInner = document.getElementById("brand-img-strip-inner");
-    if (imgs.length) {
-      stripInner.innerHTML = imgs.map(src => `
-        <img src="${src}" loading="lazy" alt=""
-          style="height:90px;width:auto;max-width:140px;border-radius:10px;object-fit:cover;border:1px solid #f0f0f0;flex-shrink:0"
-          onerror="this.style.display='none'">`).join("");
-      stripEl.style.display = "";
-    } else {
-      stripEl.style.display = "none";
-    }
 
     // Timeline
     const tl = d.timeline || [];

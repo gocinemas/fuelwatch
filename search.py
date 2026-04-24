@@ -695,10 +695,11 @@ Rules: facts all 5 fields filled including revenue. timeline 10-14 milestones as
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.1-8b-instant",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
                 "max_tokens": 1600,
+                "response_format": {"type": "json_object"},
             },
             timeout=20,
         )
@@ -872,7 +873,7 @@ def _fetch_brand_financials(brand: str) -> dict:
 
 
 def fetch_brand_data(brand: str) -> dict:
-    cache_key = brand.strip().lower() + "|brandv9"
+    cache_key = brand.strip().lower() + "|brandv10"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -926,11 +927,6 @@ def fetch_brand_data(brand: str) -> dict:
             try: financials = fin_f.result(timeout=10) or {}
             except Exception: pass
 
-        wiki_title = wiki.get("_wiki_title", brand)
-        images = []
-        try: images = _fetch_wiki_images(wiki_title) or []
-        except Exception: pass
-
         # Always fetch AI for timeline/campaigns/competitors; facts used as fallback for empty wiki fields
         ai = _fetch_brand_ai(brand, wiki.get("extract", ""))
         ai_facts = ai.get("facts", {}) or {}
@@ -951,7 +947,6 @@ def fetch_brand_data(brand: str) -> dict:
             "wiki_url":    wiki.get("wiki_url", ""),
             "domain":      wiki.get("domain", ""),
             "thumbnail":   wiki.get("thumbnail", ""),
-            "images":      images,
             "timeline":    ai.get("timeline", []),
             "campaigns":   ai.get("campaigns", []),
             "competitors": ai.get("competitors", []),
