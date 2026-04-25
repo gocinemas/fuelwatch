@@ -1900,7 +1900,7 @@ def api_places_search():
             return jsonify({"candidates": [], "suggestions": [norm]})
         return jsonify({"candidates": [], "suggestions": []})
 
-    # Place name — Nominatim (try multiple query strategies)
+    # Place name — Nominatim + Google Places in parallel
     seen, candidates = set(), []
 
     def _add_nom_hits(hits):
@@ -1926,27 +1926,13 @@ def api_places_search():
                 "osm_class": cls,
             })
 
-    # Strategy 1: full query
-    _add_nom_hits(_nom_search(q + ", UK", limit=6))
-
-    # Strategy 2: last two words (e.g. "vedantham manor" catches "Bhaktivedanta Manor")
-    if not candidates:
-        words = [w for w in q.split() if len(w) > 2]
-        if len(words) >= 3:
-            _add_nom_hits(_nom_search(f"{words[-2]} {words[-1]}, UK", limit=4))
-
-    # Strategy 3: first + last word
-    if not candidates and len(words) >= 3:
-        _add_nom_hits(_nom_search(f"{words[0]} {words[-1]}, UK", limit=4))
-
-    # Google Places fallback
-    if not candidates:
-        for p in _google_places_search(q, limit=4):
+    def _add_google_hits(gp_hits):
+        for p in gp_hits:
             if p["name"].lower() not in seen:
                 seen.add(p["name"].lower())
                 candidates.append({
                     "name":      p["name"],
-                    "subtitle":  "",
+                    "subtitle":  p.get("subtitle", ""),
                     "icon":      "📍",
                     "type":      "venue",
                     "lat":       p["lat"],
@@ -1956,10 +1942,50 @@ def api_places_search():
                     "osm_class": "amenity",
                 })
 
+    # Fire Nominatim and Google Places in parallel
+    words = [w for w in q.split() if len(w) > 2]
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_nom = ex.submit(_nom_search, q + ", UK", 6)
+        f_gp  = ex.submit(_google_places_search, q, 4)
+        _add_nom_hits(f_nom.result())
+        gp_hits = f_gp.result()
+
+    # If Nominatim found nothing, try word-pair sub-queries
+    if not candidates:
+        if len(words) >= 3:
+            _add_nom_hits(_nom_search(f"{words[-2]} {words[-1]}, UK", limit=4))
+    if not candidates:
+        if len(words) >= 3:
+            _add_nom_hits(_nom_search(f"{words[0]} {words[-1]}, UK", limit=4))
+
+    # Merge Google Places results (always, not just fallback)
+    _add_google_hits(gp_hits)
+
     if not candidates:
         return jsonify({"candidates": [], "suggestions": _get_place_suggestions(q)})
 
     return jsonify({"candidates": candidates, "suggestions": []})
+
+
+@app.route("/api/debug/places-search")
+def api_debug_places_search():
+    """Debug: show raw Nominatim + Google Places results for a query."""
+    q = request.args.get("q", "bhakti vedantham manor").strip()
+    nom = _nom_search(q + ", UK", limit=6)
+    gp  = _google_places_search(q, limit=4)
+    words = [w for w in q.split() if len(w) > 2]
+    nom2, nom3 = [], []
+    if len(words) >= 3:
+        nom2 = _nom_search(f"{words[-2]} {words[-1]}, UK", limit=4)
+        nom3 = _nom_search(f"{words[0]} {words[-1]}, UK", limit=4)
+    return jsonify({
+        "query": q,
+        "google_key_set": bool(_GOOGLE_PLACES_KEY),
+        "nominatim_full": [h.get("display_name","") for h in nom],
+        "nominatim_last2": [h.get("display_name","") for h in nom2],
+        "nominatim_first_last": [h.get("display_name","") for h in nom3],
+        "google_places": gp,
+    })
 
 
 @app.route("/api/places")
