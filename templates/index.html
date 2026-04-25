@@ -2313,6 +2313,41 @@
       .replace(/off\b/g,"Closed");
   }
 
+  function _renderPlaceCard(p, isFeatured) {
+    const id = `pl-${++_placesIdCounter}`;
+    const reviewsId = `plr-${_placesIdCounter}`;
+    const hours = _fmtHours(p.hours);
+    const links = [];
+    if (p.phone)   links.push(`<a href="tel:${p.phone}" style="color:#3b82f6;font-size:12px;font-weight:500">📞 ${p.phone}</a>`);
+    if (p.website) links.push(`<a href="${p.website}" target="_blank" rel="noopener" style="color:#3b82f6;font-size:12px;font-weight:500">🌐 Website ↗</a>`);
+    const activitiesHtml = p.activities && p.activities.length
+      ? `<div style="margin-top:8px"><div style="font-size:11px;font-weight:600;color:var(--subtle);margin-bottom:4px">What you can do here</div>
+         <ul style="margin:0 0 0 14px;padding:0;list-style:disc;font-size:12px;color:var(--subtle);line-height:1.8">${p.activities.map(a=>`<li>${a}</li>`).join("")}</ul></div>`
+      : "";
+    const latlon = (p.lat && p.lon) ? `&lat=${p.lat}&lon=${p.lon}` : "";
+    const badge = isFeatured ? `<span style="font-size:10px;background:#7c3aed;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;margin-left:6px">You searched for</span>` : "";
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;color:var(--text)">${p.name}${badge}</div>
+          ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px">${p.address}</div>` : ""}
+          ${p.summary ? `<div style="font-size:12px;color:var(--subtle);margin-top:3px;line-height:1.45">${p.summary}</div>` : ""}
+          ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:4px">🕐 ${hours}</div>` : ""}
+          ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">${links.join("")}</div>` : ""}
+        </div>
+        <button onclick="_togglePlace('${id}','${reviewsId}',${JSON.stringify(p.name)},${JSON.stringify(latlon)},this)"
+          style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px 4px;margin-top:2px">▼</button>
+      </div>
+      <div id="${id}" style="display:none;margin-top:8px">
+        ${activitiesHtml}
+        <div id="${reviewsId}" style="margin-top:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--subtle);margin-bottom:4px">⭐ Google Reviews</div>
+          <div class="plr-content" style="font-size:12px;color:var(--subtle)">Loading…</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
   async function searchPlaces() {
     const q = document.getElementById("places-input").value.trim();
     if (!q) return;
@@ -2343,48 +2378,6 @@
       // Wire WhatsApp button
       document.getElementById("places-wa-btn").href =
         `https://wa.me/14155238886?text=${encodeURIComponent("places " + q)}`;
-
-      // Group by category
-      const groups = {};
-      for (const p of d.places) {
-        if (!groups[p.category]) groups[p.category] = {emoji: p.emoji, items: []};
-        groups[p.category].items.push(p);
-      }
-
-      function _renderPlaceCard(p, isFeatured) {
-        const id = `pl-${++_placesIdCounter}`;
-        const reviewsId = `plr-${_placesIdCounter}`;
-        const hours = _fmtHours(p.hours);
-        const links = [];
-        if (p.phone)   links.push(`<a href="tel:${p.phone}" style="color:#3b82f6;font-size:12px;font-weight:500">📞 ${p.phone}</a>`);
-        if (p.website) links.push(`<a href="${p.website}" target="_blank" rel="noopener" style="color:#3b82f6;font-size:12px;font-weight:500">🌐 Website ↗</a>`);
-        const activitiesHtml = p.activities && p.activities.length
-          ? `<div style="margin-top:8px"><div style="font-size:11px;font-weight:600;color:var(--subtle);margin-bottom:4px">What you can do here</div>
-             <ul style="margin:0 0 0 14px;padding:0;list-style:disc;font-size:12px;color:var(--subtle);line-height:1.8">${p.activities.map(a=>`<li>${a}</li>`).join("")}</ul></div>`
-          : "";
-        const latlon = (p.lat && p.lon) ? `&lat=${p.lat}&lon=${p.lon}` : "";
-        const badge = isFeatured ? `<span style="font-size:10px;background:#7c3aed;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;margin-left:6px">You searched for</span>` : "";
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:13px;color:var(--text)">${p.name}${badge}</div>
-              ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px">${p.address}</div>` : ""}
-              ${p.summary ? `<div style="font-size:12px;color:var(--subtle);margin-top:3px;line-height:1.45">${p.summary}</div>` : ""}
-              ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:4px">🕐 ${hours}</div>` : ""}
-              ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">${links.join("")}</div>` : ""}
-            </div>
-            <button onclick="_togglePlace('${id}','${reviewsId}',${JSON.stringify(p.name)},${JSON.stringify(latlon)},this)"
-              style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px 4px;margin-top:2px">▼</button>
-          </div>
-          <div id="${id}" style="display:none;margin-top:8px">
-            ${activitiesHtml}
-            <div id="${reviewsId}" style="margin-top:10px">
-              <div style="font-size:11px;font-weight:600;color:var(--subtle);margin-bottom:4px">⭐ Google Reviews</div>
-              <div class="plr-content" style="font-size:12px;color:var(--subtle)">Loading…</div>
-            </div>
-          </div>
-        </div>`;
-      }
 
       // Separate featured venue from area services
       const featured = d.places.filter(p => p.is_featured);
