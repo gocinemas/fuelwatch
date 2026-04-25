@@ -1550,6 +1550,15 @@ out center tags;"""
         # Opening hours
         hours = _html.unescape(tags.get("opening_hours", "")).strip()
 
+        # Brief summary
+        type_label = cat["label"].lower()
+        acts = _PLACE_ACTIVITIES.get(kind, [])
+        act_preview = ", ".join(a.split("(")[0].strip().lower() for a in acts[:3])
+        area = address.split(",")[-1].strip() if "," in address else ""
+        summary = f"{name} is a {type_label}{' in ' + area if area else ''}."
+        if act_preview:
+            summary += f" Services include {act_preview}."
+
         results.append({
             "name":       name,
             "kind":       kind,
@@ -1559,7 +1568,10 @@ out center tags;"""
             "phone":      phone,
             "website":    website,
             "hours":      hours,
-            "activities": _PLACE_ACTIVITIES.get(kind, []),
+            "summary":    summary,
+            "activities": acts,
+            "lat":        el.get("lat") or el.get("center", {}).get("lat"),
+            "lon":        el.get("lon") or el.get("center", {}).get("lon"),
         })
 
     # Sort by category then name
@@ -1569,6 +1581,64 @@ out center tags;"""
 
 _PLACES_CACHE: dict = {}
 _PLACES_CACHE_TTL = 3600  # 1 hour
+
+_GOOGLE_PLACES_KEY = os.environ.get("GOOGLE_PLACES_KEY", "")
+
+
+@app.route("/api/places/google")
+def api_places_google():
+    """Fetch Google Places rating + top reviews for a named venue."""
+    name    = request.args.get("name", "").strip()
+    lat     = request.args.get("lat", "")
+    lon     = request.args.get("lon", "")
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    if not _GOOGLE_PLACES_KEY:
+        return jsonify({"error": "Google Places API not configured"}), 503
+    try:
+        # Text Search to get place_id
+        query = name
+        if lat and lon:
+            query += f" near {lat},{lon}"
+        ts = requests.get(
+            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            params={"query": query, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+            timeout=8,
+        )
+        results = ts.json().get("results", [])
+        if not results:
+            return jsonify({"found": False})
+        place_id = results[0]["place_id"]
+
+        # Place Details
+        det = requests.get(
+            "https://maps.googleapis.com/maps/api/place/details/json",
+            params={
+                "place_id": place_id,
+                "fields":   "name,rating,user_ratings_total,reviews,url",
+                "key":      _GOOGLE_PLACES_KEY,
+            },
+            timeout=8,
+        )
+        p = det.json().get("result", {})
+        reviews = [
+            {
+                "author":  r.get("author_name", ""),
+                "rating":  r.get("rating", 0),
+                "text":    r.get("text", "")[:280],
+                "time":    r.get("relative_time_description", ""),
+            }
+            for r in p.get("reviews", [])[:3]
+        ]
+        return jsonify({
+            "found":         True,
+            "rating":        p.get("rating"),
+            "total_ratings": p.get("user_ratings_total"),
+            "google_url":    p.get("url"),
+            "reviews":       reviews,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/places")

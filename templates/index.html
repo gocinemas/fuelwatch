@@ -2220,6 +2220,49 @@
 
   // ── Local Places ────────────────────────────────────────────────────────────
   let _placesIdCounter = 0;
+  const _placeReviewsLoaded = new Set();
+
+  async function _togglePlace(panelId, reviewsId, name, latlon, btn) {
+    const panel = document.getElementById(panelId);
+    const open = panel.style.display === "none";
+    panel.style.display = open ? "block" : "none";
+    btn.textContent = open ? "▲" : "▼";
+    if (!open || _placeReviewsLoaded.has(reviewsId)) return;
+    _placeReviewsLoaded.add(reviewsId);
+    const revEl = document.getElementById(reviewsId);
+    const content = revEl.querySelector(".plr-content");
+    try {
+      const r = await fetch(`/api/places/google?name=${encodeURIComponent(name)}${latlon}`);
+      const d = await r.json();
+      if (!d.found || d.error) {
+        content.innerHTML = d.error === "Google Places API not configured"
+          ? `<a href="https://www.google.com/search?q=${encodeURIComponent(name)}" target="_blank" rel="noopener" style="color:#3b82f6">Search on Google ↗</a>`
+          : `<a href="https://www.google.com/search?q=${encodeURIComponent(name)}" target="_blank" rel="noopener" style="color:#3b82f6">View on Google ↗</a>`;
+        return;
+      }
+      const stars = "★".repeat(Math.round(d.rating || 0)) + "☆".repeat(5 - Math.round(d.rating || 0));
+      let html = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="color:#f59e0b;font-size:14px;letter-spacing:1px">${stars}</span>
+        <span style="font-weight:700;color:var(--text);font-size:13px">${d.rating || "?"}</span>
+        <span style="color:var(--subtle);font-size:11px">(${d.total_ratings?.toLocaleString() || "?"} reviews)</span>
+        ${d.google_url ? `<a href="${d.google_url}" target="_blank" rel="noopener" style="color:#3b82f6;font-size:11px;margin-left:auto">View all ↗</a>` : ""}
+      </div>`;
+      if (d.reviews && d.reviews.length) {
+        html += d.reviews.map(rv => `
+          <div style="background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+              <span style="color:#f59e0b;font-size:11px">${"★".repeat(rv.rating)}</span>
+              <span style="font-size:11px;font-weight:600;color:var(--text)">${rv.author}</span>
+              <span style="font-size:10px;color:var(--subtle);margin-left:auto">${rv.time}</span>
+            </div>
+            <div style="font-size:12px;color:var(--subtle);line-height:1.5">${rv.text}</div>
+          </div>`).join("");
+      }
+      content.innerHTML = html;
+    } catch(e) {
+      content.innerHTML = `<a href="https://www.google.com/search?q=${encodeURIComponent(name)}" target="_blank" rel="noopener" style="color:#3b82f6">View on Google ↗</a>`;
+    }
+  }
 
   function _fmtHours(raw) {
     if (!raw) return null;
@@ -2258,26 +2301,34 @@
       document.getElementById("places-list").innerHTML = Object.entries(groups).map(([cat, g]) => {
         const items = g.items.map(p => {
           const id = `pl-${++_placesIdCounter}`;
+          const reviewsId = `plr-${_placesIdCounter}`;
           const hours = _fmtHours(p.hours);
           const links = [];
-          if (p.phone) links.push(`<a href="tel:${p.phone}" style="color:#3b82f6;font-size:12px;font-weight:500">📞 ${p.phone}</a>`);
+          if (p.phone)   links.push(`<a href="tel:${p.phone}" style="color:#3b82f6;font-size:12px;font-weight:500">📞 ${p.phone}</a>`);
           if (p.website) links.push(`<a href="${p.website}" target="_blank" rel="noopener" style="color:#3b82f6;font-size:12px;font-weight:500">🌐 Website ↗</a>`);
           const activitiesHtml = p.activities.length
-            ? `<ul style="margin:6px 0 0 14px;padding:0;list-style:disc;font-size:12px;color:var(--subtle);line-height:1.7">${p.activities.map(a=>`<li>${a}</li>`).join("")}</ul>`
+            ? `<div style="margin-top:8px"><div style="font-size:11px;font-weight:600;color:var(--subtle);margin-bottom:4px">What you can do here</div>
+               <ul style="margin:0 0 0 14px;padding:0;list-style:disc;font-size:12px;color:var(--subtle);line-height:1.8">${p.activities.map(a=>`<li>${a}</li>`).join("")}</ul></div>`
             : "";
+          const latlon = (p.lat && p.lon) ? `&lat=${p.lat}&lon=${p.lon}` : "";
           return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
               <div style="flex:1;min-width:0">
                 <div style="font-weight:600;font-size:13px;color:var(--text)">${p.name}</div>
                 ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px">${p.address}</div>` : ""}
-                ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:3px">🕐 ${hours}</div>` : ""}
+                ${p.summary ? `<div style="font-size:12px;color:var(--subtle);margin-top:3px;line-height:1.45">${p.summary}</div>` : ""}
+                ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:4px">🕐 ${hours}</div>` : ""}
                 ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">${links.join("")}</div>` : ""}
               </div>
-              <button onclick="const el=document.getElementById('${id}');const s=el.style.display==='none';el.style.display=s?'block':'none';this.textContent=s?'▲':'▼'"
-                style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px 4px">▼</button>
+              <button onclick="_togglePlace('${id}','${reviewsId}',${JSON.stringify(p.name)},${JSON.stringify(latlon)},this)"
+                style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px 4px;margin-top:2px">▼</button>
             </div>
-            <div id="${id}" style="display:none;margin-top:6px">
+            <div id="${id}" style="display:none;margin-top:8px">
               ${activitiesHtml}
+              <div id="${reviewsId}" style="margin-top:10px">
+                <div style="font-size:11px;font-weight:600;color:var(--subtle);margin-bottom:4px">⭐ Google Reviews</div>
+                <div class="plr-content" style="font-size:12px;color:var(--subtle)">Loading…</div>
+              </div>
             </div>
           </div>`;
         }).join("");
