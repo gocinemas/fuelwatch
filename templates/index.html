@@ -2174,7 +2174,7 @@
       const dateStr = d.election_date ? new Date(d.election_date).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "7 May 2026";
       document.getElementById("elections-ward").textContent = d.ward;
       document.getElementById("elections-council").textContent = `${d.council} · ${dateStr}`;
-      document.getElementById("elections-county").textContent = d.county || "";
+      document.getElementById("elections-county").textContent = d.county ? `County: ${d.county}` : "";
 
       // Polling station
       const ps = d.polling_station;
@@ -2455,11 +2455,60 @@
         if (!groups[p.category]) groups[p.category] = {emoji: p.emoji, items: []};
         groups[p.category].items.push(p);
       }
-      const featuredHtml = featured.map(p =>
-        `<div style="background:var(--surface);border:2px solid #7c3aed;border-radius:14px;padding:12px 14px">
-           <div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:4px">${p.emoji} ${p.category}</div>
-           ${_renderPlaceCard(p, true)}
-         </div>`).join("");
+
+      function _renderFeaturedDetail(p) {
+        const statusBadge = p.is_open === true
+          ? `<span style="font-size:11px;background:#d1fae5;color:#065f46;border-radius:6px;padding:2px 8px;font-weight:600;margin-left:6px">● Open now</span>`
+          : p.is_open === false
+            ? `<span style="font-size:11px;background:#fee2e2;color:#991b1b;border-radius:6px;padding:2px 8px;font-weight:600;margin-left:6px">● Closed</span>`
+            : "";
+        const hoursHtml = (p.hours_text && p.hours_text.length)
+          ? `<div style="margin-bottom:14px">
+               <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🕐 Opening Hours</div>
+               ${p.hours_text.map(line => {
+                 const sep = line.indexOf(': ');
+                 const day   = sep > -1 ? line.slice(0, sep) : line;
+                 const times = sep > -1 ? line.slice(sep + 2) : '';
+                 const isToday = day.toLowerCase().startsWith(new Date().toLocaleDateString('en-GB',{weekday:'long'}).toLowerCase());
+                 return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)${isToday ? ';font-weight:700;color:var(--text)' : ''}">
+                   <span style="color:${isToday ? 'var(--text)' : 'var(--subtle)'}">${day}</span>
+                   <span>${times || 'Closed'}</span></div>`;
+               }).join('')}
+             </div>`
+          : p.hours
+            ? `<div style="font-size:12px;color:var(--subtle);margin-bottom:12px">🕐 ${_fmtHours(p.hours)}</div>`
+            : "";
+        const contactHtml = (p.phone || p.website)
+          ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+               ${p.phone   ? `<a href="tel:${p.phone}" style="display:inline-flex;align-items:center;gap:5px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:600;padding:8px 14px;border-radius:10px;text-decoration:none">📞 ${p.phone}</a>` : ""}
+               ${p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;background:#f5f3ff;color:#6d28d9;font-size:12px;font-weight:600;padding:8px 14px;border-radius:10px;text-decoration:none">🌐 Website ↗</a>` : ""}
+             </div>`
+          : "";
+        const activitiesHtml = (p.activities && p.activities.length)
+          ? `<div>
+               <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">✅ What you can do here</div>
+               <ul style="margin:0 0 0 16px;padding:0;font-size:13px;color:var(--text);line-height:2">${p.activities.map(a=>`<li>${a}</li>`).join("")}</ul>
+             </div>`
+          : "";
+        return `<div style="background:var(--surface);border:2px solid #7c3aed;border-radius:16px;padding:16px;margin-bottom:12px">
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
+            <div style="font-size:30px;line-height:1">${p.emoji}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.25">${p.name}</div>
+              <div style="margin-top:4px">
+                <span style="font-size:11px;background:#7c3aed;color:#fff;border-radius:6px;padding:2px 8px;font-weight:700">${p.category}</span>${statusBadge}
+              </div>
+            </div>
+          </div>
+          ${p.address ? `<div style="font-size:12px;color:var(--subtle);margin-bottom:10px">📍 ${p.address}</div>` : ""}
+          ${p.summary ? `<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:14px">${p.summary}</div>` : ""}
+          ${hoursHtml}
+          ${contactHtml}
+          ${activitiesHtml}
+        </div>`;
+      }
+
+      const featuredHtml = featured.map(p => _renderFeaturedDetail(p)).join("");
       const nearbyHtml = Object.entries(groups).map(([cat, g]) => {
         const items = g.items.map(p => _renderPlaceCard(p, false)).join("");
         return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
@@ -2469,7 +2518,7 @@
       }).join("");
       document.getElementById("places-list").innerHTML =
         featuredHtml +
-        (featured.length && nearby.length ? `<div style="font-size:12px;font-weight:600;color:var(--subtle);padding:4px 2px">📍 Nearby services</div>` : "") +
+        (featured.length && nearby.length ? `<div style="font-size:12px;font-weight:600;color:var(--subtle);padding:4px 2px 6px">📍 Nearby services</div>` : "") +
         nearbyHtml;
       document.getElementById("places-result").classList.remove("hidden");
     } catch(e) {

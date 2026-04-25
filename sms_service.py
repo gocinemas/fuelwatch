@@ -1693,12 +1693,103 @@ def _fetch_specific_venue(osm_type: str, osm_id: str, display_name: str) -> dict
         "phone":      phone,
         "website":    website,
         "hours":      hours,
+        "hours_text": [],
+        "is_open":    None,
         "summary":    summary,
         "activities": acts,
         "lat":        None,
         "lon":        None,
         "is_featured": True,
     }
+
+
+def _google_place_details(name: str, lat: float, lon: float) -> dict | None:
+    """Fetch rich details for a named venue via Google Places Details API."""
+    if not _GOOGLE_PLACES_KEY:
+        return None
+    try:
+        ts = requests.get(
+            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            params={"query": f"{name}", "key": _GOOGLE_PLACES_KEY, "region": "uk",
+                    "location": f"{lat},{lon}", "radius": 500},
+            timeout=8,
+        )
+        results = ts.json().get("results", [])
+        if not results:
+            return None
+        place_id = results[0]["place_id"]
+        gp_name  = results[0].get("name", name)
+
+        det = requests.get(
+            "https://maps.googleapis.com/maps/api/place/details/json",
+            params={
+                "place_id": place_id,
+                "fields":   "name,formatted_address,formatted_phone_number,website,opening_hours,types,editorial_summary",
+                "key":      _GOOGLE_PLACES_KEY,
+            },
+            timeout=8,
+        )
+        p = det.json().get("result", {})
+
+        hours_text = p.get("opening_hours", {}).get("weekday_text", [])
+        is_open    = p.get("opening_hours", {}).get("open_now")
+        phone      = p.get("formatted_phone_number", "")
+        website    = p.get("website", "")
+        address    = p.get("formatted_address", "")
+        summary    = (p.get("editorial_summary") or {}).get("overview", "")
+
+        gp_types = p.get("types", [])
+        # Map Google type → our category
+        _GP_TYPE_MAP = {
+            "hindu_temple": ("place_of_worship", "🛕", "Place of Worship"),
+            "church": ("place_of_worship", "⛪", "Place of Worship"),
+            "mosque": ("place_of_worship", "🕌", "Place of Worship"),
+            "synagogue": ("place_of_worship", "🕍", "Place of Worship"),
+            "place_of_worship": ("place_of_worship", "🛕", "Place of Worship"),
+            "museum": ("museum", "🏛️", "Museum"),
+            "library": ("library", "📚", "Library"),
+            "school": ("school", "🏫", "School"),
+            "university": ("university", "🎓", "University"),
+            "park": ("park", "🌳", "Park"),
+            "gym": ("fitness_centre", "🏋️", "Gym"),
+            "restaurant": ("restaurant", "🍽️", "Restaurant"),
+            "cafe": ("cafe", "☕", "Café"),
+            "hospital": ("hospital", "🏥", "Hospital"),
+            "pharmacy": ("pharmacy", "💊", "Pharmacy"),
+            "tourist_attraction": ("attraction", "🌟", "Attraction"),
+            "stadium": ("stadium", "🏟️", "Stadium"),
+        }
+        kind, emoji, cat_label = "place", "📍", "Place"
+        for gt in gp_types:
+            if gt in _GP_TYPE_MAP:
+                kind, emoji, cat_label = _GP_TYPE_MAP[gt]
+                break
+
+        acts = _PLACE_ACTIVITIES.get(kind) or _VENUE_ACTIVITIES.get(kind, [])
+
+        if not summary:
+            area = address.split(",")[0] if address else ""
+            summary = f"{gp_name} — {cat_label.lower()}{(' in ' + area) if area else ''}."
+
+        return {
+            "name":       gp_name,
+            "kind":       kind,
+            "category":   cat_label,
+            "emoji":      emoji,
+            "address":    address,
+            "phone":      phone,
+            "website":    website,
+            "hours":      "",
+            "hours_text": hours_text,
+            "is_open":    is_open,
+            "summary":    summary,
+            "activities": acts,
+            "lat":        lat,
+            "lon":        lon,
+            "is_featured": True,
+        }
+    except Exception:
+        return None
 
 
 def _overpass_places(lat: float, lon: float, radius: int = 900):
@@ -2043,13 +2134,17 @@ def api_places():
                             "suggestions": suggestions}), 404
         lat, lon, display, osm_class, osm_type, osm_id = geo
 
-    # Run area search and specific venue fetch in parallel
-    is_venue = _is_specific_venue(osm_class, osm_type) and bool(osm_id)
-    with ThreadPoolExecutor(max_workers=2) as ex:
+    # Run area search + venue detail fetch in parallel
+    is_venue  = _is_specific_venue(osm_class, osm_type) and bool(osm_id)
+    needs_gp  = not is_venue and bool(display) and bool(_GOOGLE_PLACES_KEY)
+    with ThreadPoolExecutor(max_workers=3) as ex:
         f_places = ex.submit(_overpass_places, lat, lon)
         f_venue  = ex.submit(_fetch_specific_venue, osm_type, osm_id, display) if is_venue else None
+        f_gpd    = ex.submit(_google_place_details, display, lat, lon) if needs_gp else None
         places   = f_places.result()
         featured = f_venue.result() if f_venue else None
+        if not featured and f_gpd:
+            featured = f_gpd.result()
 
     if featured:
         places = [p for p in places if p["name"].lower() != featured["name"].lower()]
