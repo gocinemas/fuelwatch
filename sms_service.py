@@ -1972,15 +1972,32 @@ def api_debug_places_search():
     """Debug: show raw Nominatim + Google Places results for a query."""
     q = request.args.get("q", "bhakti vedantham manor").strip()
     nom = _nom_search(q + ", UK", limit=6)
-    gp  = _google_places_search(q, limit=4)
     words = [w for w in q.split() if len(w) > 2]
     nom2, nom3 = [], []
     if len(words) >= 3:
         nom2 = _nom_search(f"{words[-2]} {words[-1]}, UK", limit=4)
         nom3 = _nom_search(f"{words[0]} {words[-1]}, UK", limit=4)
+
+    # Raw Google Places response for debugging
+    gp_raw, gp_error = {}, ""
+    if _GOOGLE_PLACES_KEY:
+        try:
+            r = requests.get(
+                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                params={"query": q + " UK", "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+                timeout=8,
+            )
+            gp_raw = r.json()
+        except Exception as e:
+            gp_error = str(e)
+    gp = _google_places_search(q, limit=4)
+
     return jsonify({
         "query": q,
         "google_key_set": bool(_GOOGLE_PLACES_KEY),
+        "google_status": gp_raw.get("status", ""),
+        "google_error_message": gp_raw.get("error_message", gp_error),
+        "google_results_count": len(gp_raw.get("results", [])),
         "nominatim_full": [h.get("display_name","") for h in nom],
         "nominatim_last2": [h.get("display_name","") for h in nom2],
         "nominatim_first_last": [h.get("display_name","") for h in nom3],
