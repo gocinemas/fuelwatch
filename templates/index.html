@@ -651,7 +651,7 @@
       <div id="elections-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:12px"></div>
 
       <div id="elections-result" class="hidden">
-        <!-- Compact ward header -->
+        <!-- Ward header + WhatsApp -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
           <div>
             <div id="elections-ward" style="font-size:14px;font-weight:700;color:var(--text)"></div>
@@ -664,19 +664,38 @@
           </a>
         </div>
 
+        <!-- Polling station always visible -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📍 Polling Station</div>
+              <div id="elections-ps-name" style="font-weight:700;font-size:15px;color:var(--text);line-height:1.3"></div>
+              <div id="elections-ps-addr" style="font-size:12px;color:var(--subtle);margin-top:3px;line-height:1.4"></div>
+              <div style="margin-top:8px;display:flex;align-items:center;gap:6px">
+                <span style="font-size:13px;font-weight:700;color:var(--text)">7am – 10pm</span>
+                <span style="font-size:12px;color:var(--subtle)">· Thu 7 May 2026</span>
+              </div>
+            </div>
+            <a id="elections-polling-link" href="#" target="_blank" rel="noopener"
+              style="display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:12px;font-weight:600;padding:8px 13px;border-radius:10px;text-decoration:none;flex-shrink:0;white-space:nowrap;margin-top:2px">
+              Directions ↗
+            </a>
+          </div>
+        </div>
+
         <!-- Tab bar -->
         <div style="display:flex;gap:6px;margin-bottom:14px">
           <button id="etab-candidates" onclick="eTab('candidates')"
             style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
             🗳️ Candidates
           </button>
-          <button id="etab-vote" onclick="eTab('vote')"
-            style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
-            📍 Where to Vote
-          </button>
           <button id="etab-parties" onclick="eTab('parties')"
             style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
             📋 Parties
+          </button>
+          <button id="etab-more" onclick="eTab('more')"
+            style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
+            ℹ️ More
           </button>
         </div>
 
@@ -685,32 +704,14 @@
           <div id="elections-candidates" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
 
-        <!-- Tab: Where to Vote -->
-        <div id="epanel-vote" class="hidden">
-          <div id="elections-ps-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-              <div>
-                <div style="font-size:11px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">📍 Polling Station</div>
-                <div id="elections-ps-name" style="font-weight:700;font-size:15px;color:var(--text)"></div>
-                <div id="elections-ps-addr" style="font-size:13px;color:var(--subtle);margin-top:3px;line-height:1.4"></div>
-              </div>
-              <a id="elections-polling-link" href="#" target="_blank" rel="noopener"
-                style="display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:12px;font-weight:600;padding:8px 13px;border-radius:10px;text-decoration:none;flex-shrink:0;white-space:nowrap">
-                Directions ↗
-              </a>
-            </div>
-          </div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px">
-            <div style="font-size:11px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🕖 Voting hours</div>
-            <div style="font-size:22px;font-weight:800;color:var(--text)">7am – 10pm</div>
-            <div style="font-size:13px;color:var(--subtle);margin-top:2px">Thursday 7 May 2026</div>
-          </div>
-          <div id="elections-past" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
-        </div>
-
         <!-- Tab: Parties -->
         <div id="epanel-parties" class="hidden">
           <div id="elections-manifestos" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+
+        <!-- Tab: More (past results) -->
+        <div id="epanel-more" class="hidden">
+          <div id="elections-past" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
         </div>
 
         <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">
@@ -2014,7 +2015,7 @@
   }
 
   function eTab(name) {
-    ["candidates","vote","parties"].forEach(t => {
+    ["candidates","parties","more"].forEach(t => {
       const active = t === name;
       document.getElementById("epanel-" + t).classList.toggle("hidden", !active);
       const btn = document.getElementById("etab-" + t);

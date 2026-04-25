@@ -874,8 +874,9 @@ def _fetch_polling_station(postcode: str) -> dict | None:
         if not addr_m:
             return None
         addr_html = addr_m.group(1)
-        # Extract lines: split on <br>, strip tags
-        lines = [_re.sub(r"<[^>]+>", "", l).strip()
+        # Extract lines: split on <br>, strip tags, decode HTML entities
+        import html as _html
+        lines = [_html.unescape(_re.sub(r"<[^>]+>", "", l)).strip()
                  for l in _re.split(r"<br\s*/?>", addr_html)]
         lines = [l for l in lines if l]
         if not lines:
