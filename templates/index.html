@@ -691,6 +691,7 @@
           <div>
             <div id="elections-ward" style="font-size:14px;font-weight:700;color:var(--text)"></div>
             <div id="elections-council" style="font-size:11px;color:var(--subtle);margin-top:1px"></div>
+            <div id="elections-county" style="font-size:11px;color:var(--subtle);opacity:.65;margin-top:1px"></div>
           </div>
           <a id="elections-wa-btn" href="#" target="_blank" rel="noopener"
             style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:12px;font-weight:700;padding:7px 12px;border-radius:10px;text-decoration:none;flex-shrink:0">
@@ -761,79 +762,82 @@
 
     <!-- ── LOCAL PLACES SCREEN ── -->
     <div id="screen-places" class="screen pt-5">
-      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🏛️ Local Places</div>
-      <div style="font-size:13px;color:var(--subtle);margin-bottom:18px">Enter a postcode or place name to find nearby services</div>
 
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input id="places-input" type="text" placeholder="e.g. KT1 2BA or Kingston"
-          style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
-          onkeydown="if(event.key==='Enter') searchPlaces()"
-          onfocus="this.style.boxShadow='0 0 0 3px rgba(59,130,246,.15)'"
-          onblur="this.style.boxShadow=''">
-        <button onclick="searchPlaces()"
-          style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer">Search</button>
-      </div>
+      <!-- ── Step 1: Search ── -->
+      <div id="places-step-search">
+        <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px">🏛️ Local Places</div>
+        <div style="font-size:13px;color:var(--subtle);margin-bottom:16px">Enter a place name or postcode</div>
 
-      <!-- WhatsApp join card -->
-      <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
-        style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:16px;text-decoration:none">
-        <div style="width:36px;height:36px;background:#e9faf0;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input id="places-input" type="text" placeholder="e.g. Bhaktivedanta Manor or KT1 2BA"
+            style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+            onkeydown="if(event.key==='Enter') placesSearch()"
+            onfocus="this.style.boxShadow='0 0 0 3px rgba(59,130,246,.15)'"
+            onblur="this.style.boxShadow=''">
+          <button onclick="placesSearch()"
+            style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer">Search</button>
         </div>
-        <div style="flex:1;min-width:0">
-          <div style="color:var(--text);font-weight:600;font-size:13px;line-height:1.3">Find local services on WhatsApp</div>
-          <div style="color:var(--subtle);font-size:12px;margin-top:2px">Libraries · GPs · Leisure · Post Offices · more</div>
+
+        <!-- Spinner -->
+        <div id="places-search-loading" class="hidden" style="text-align:center;padding:28px 0">
+          <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:24px;height:24px"></div>
+          <div style="font-size:13px;color:var(--subtle)">Looking up…</div>
         </div>
-        <span style="font-size:12px;font-weight:600;color:#25d366;white-space:nowrap">Join →</span>
-      </a>
-      <div style="margin:-8px 0 18px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:11.5px;color:var(--subtle)">
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <div style="font-weight:600;color:var(--text);margin-bottom:2px">How to use on WhatsApp</div>
-          <div style="display:flex;align-items:flex-start;gap:8px">
-            <span style="color:#25d366;font-weight:700;flex-shrink:0">1.</span>
-            <span>Tap <strong>Join →</strong> above and send the pre-filled message to activate</span>
+
+        <!-- Error -->
+        <div id="places-search-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:10px"></div>
+
+        <!-- Did you mean -->
+        <div id="places-did-you-mean" class="hidden" style="background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:10px 14px;font-size:13px;color:#713f12;margin-bottom:12px"></div>
+
+        <!-- Candidates -->
+        <div id="places-candidates" class="hidden" style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:600;color:var(--subtle);margin-bottom:8px;padding:0 2px">Select a place</div>
+          <div id="places-candidates-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+
+        <!-- WhatsApp join card -->
+        <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
+          style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;text-decoration:none">
+          <div style="width:36px;height:36px;background:#e9faf0;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
           </div>
-          <div style="display:flex;align-items:flex-start;gap:8px">
-            <span style="color:#25d366;font-weight:700;flex-shrink:0">2.</span>
-            <span>Text <strong>places</strong> followed by a postcode or town — e.g. <strong>places KT1 2BA</strong></span>
+          <div style="flex:1;min-width:0">
+            <div style="color:var(--text);font-weight:600;font-size:13px;line-height:1.3">Find local services on WhatsApp</div>
+            <div style="color:var(--subtle);font-size:12px;margin-top:2px">Text <strong>places KT1 2BA</strong> to get started</div>
           </div>
-          <div style="display:flex;align-items:flex-start;gap:8px">
-            <span style="color:#25d366;font-weight:700;flex-shrink:0">3.</span>
-            <span>Get a list of nearby services with opening hours &amp; contact details</span>
+          <span style="font-size:12px;font-weight:600;color:#25d366;white-space:nowrap">Join →</span>
+        </a>
+      </div>
+
+      <!-- ── Step 2: Details ── -->
+      <div id="places-step-details" style="display:none">
+        <button onclick="placesBackToSearch()"
+          style="display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--subtle);cursor:pointer;margin-bottom:14px">
+          ← Back
+        </button>
+        <div id="places-detail-title" style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:14px"></div>
+
+        <div id="places-loading" class="hidden" style="text-align:center;padding:40px 0">
+          <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:26px;height:26px"></div>
+          <div style="font-size:13px;color:var(--subtle)">Loading place details…</div>
+        </div>
+        <div id="places-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:12px"></div>
+
+        <div id="places-result" class="hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;padding:0 2px">
+            <div id="places-location" style="font-size:13px;font-weight:600;color:var(--subtle)"></div>
+            <a id="places-wa-btn" href="#" target="_blank" rel="noopener"
+              style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:12px;font-weight:700;padding:7px 12px;border-radius:10px;text-decoration:none;flex-shrink:0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              WhatsApp
+            </a>
           </div>
+          <div id="places-list" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">Data: OpenStreetMap contributors</div>
         </div>
       </div>
 
-      <!-- What you can find hint -->
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px">
-        <span style="font-size:12px;padding:4px 10px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--subtle)">📚 Libraries</span>
-        <span style="font-size:12px;padding:4px 10px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--subtle)">🩺 GPs & Dentists</span>
-        <span style="font-size:12px;padding:4px 10px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--subtle)">💊 Pharmacies</span>
-        <span style="font-size:12px;padding:4px 10px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--subtle)">🏋️ Leisure & Sport</span>
-        <span style="font-size:12px;padding:4px 10px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--subtle)">📮 Post Offices</span>
-        <span style="font-size:12px;padding:4px 10px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--subtle)">🏘️ Community Centres</span>
-      </div>
-
-      <div id="places-loading" class="hidden" style="text-align:center;padding:40px 0">
-        <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:26px;height:26px"></div>
-        <div style="font-size:13px;color:var(--subtle)">Finding local services…</div>
-      </div>
-      <div id="places-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:12px"></div>
-
-      <div id="places-did-you-mean" class="hidden" style="background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:10px 14px;font-size:13px;color:#713f12;margin-bottom:10px"></div>
-
-      <div id="places-result" class="hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;padding:0 2px">
-          <div id="places-location" style="font-size:13px;font-weight:600;color:var(--subtle)"></div>
-          <a id="places-wa-btn" href="#" target="_blank" rel="noopener"
-            style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:12px;font-weight:700;padding:7px 12px;border-radius:10px;text-decoration:none;flex-shrink:0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            WhatsApp
-          </a>
-        </div>
-        <div id="places-list" style="display:flex;flex-direction:column;gap:10px"></div>
-        <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">Data: OpenStreetMap contributors</div>
-      </div>
     </div>
 
     <!-- ── BRAND INTEL SCREEN ── -->
@@ -2170,6 +2174,7 @@
       const dateStr = d.election_date ? new Date(d.election_date).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "7 May 2026";
       document.getElementById("elections-ward").textContent = d.ward;
       document.getElementById("elections-council").textContent = `${d.council} · ${dateStr}`;
+      document.getElementById("elections-county").textContent = d.county || "";
 
       // Polling station
       const ps = d.polling_station;
@@ -2283,16 +2288,14 @@
       const r = await fetch(`/api/places/google?name=${encodeURIComponent(name)}${latlon}`);
       const d = await r.json();
       if (!d.found || d.error) {
-        content.innerHTML = d.error === "Google Places API not configured"
-          ? `<a href="https://www.google.com/search?q=${encodeURIComponent(name)}" target="_blank" rel="noopener" style="color:#3b82f6">Search on Google ↗</a>`
-          : `<a href="https://www.google.com/search?q=${encodeURIComponent(name)}" target="_blank" rel="noopener" style="color:#3b82f6">View on Google ↗</a>`;
+        content.innerHTML = `<a href="https://www.google.com/search?q=${encodeURIComponent(name)}" target="_blank" rel="noopener" style="color:#3b82f6">View on Google ↗</a>`;
         return;
       }
       const stars = "★".repeat(Math.round(d.rating || 0)) + "☆".repeat(5 - Math.round(d.rating || 0));
       let html = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <span style="color:#f59e0b;font-size:14px;letter-spacing:1px">${stars}</span>
         <span style="font-weight:700;color:var(--text);font-size:13px">${d.rating || "?"}</span>
-        <span style="color:var(--subtle);font-size:11px">(${d.total_ratings?.toLocaleString() || "?"} reviews)</span>
+        <span style="color:var(--subtle);font-size:11px">(${(d.total_ratings||0).toLocaleString()} reviews)</span>
         ${d.google_url ? `<a href="${d.google_url}" target="_blank" rel="noopener" style="color:#3b82f6;font-size:11px;margin-left:auto">View all ↗</a>` : ""}
       </div>`;
       if (d.reviews && d.reviews.length) {
@@ -2314,7 +2317,6 @@
 
   function _fmtHours(raw) {
     if (!raw) return null;
-    // Convert OSM shorthand: Mo → Mon, Tu → Tue, etc.
     return raw
       .replace(/Mo\b/g,"Mon").replace(/Tu\b/g,"Tue").replace(/We\b/g,"Wed")
       .replace(/Th\b/g,"Thu").replace(/Fr\b/g,"Fri").replace(/Sa\b/g,"Sat")
@@ -2334,7 +2336,7 @@
          <ul style="margin:0 0 0 14px;padding:0;list-style:disc;font-size:12px;color:var(--subtle);line-height:1.8">${p.activities.map(a=>`<li>${a}</li>`).join("")}</ul></div>`
       : "";
     const latlon = (p.lat && p.lon) ? `&lat=${p.lat}&lon=${p.lon}` : "";
-    const badge = isFeatured ? `<span style="font-size:10px;background:#7c3aed;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;margin-left:6px">You searched for</span>` : "";
+    const badge = isFeatured ? `<span style="font-size:10px;background:#7c3aed;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;margin-left:6px">Featured</span>` : "";
     return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="flex:1;min-width:0">
@@ -2357,75 +2359,129 @@
     </div>`;
   }
 
-  async function searchPlaces() {
+  // Step 1: search → show candidates
+  async function placesSearch() {
     const q = document.getElementById("places-input").value.trim();
     if (!q) return;
-    ["places-result","places-error","places-did-you-mean"].forEach(id => document.getElementById(id).classList.add("hidden"));
-    document.getElementById("places-loading").classList.remove("hidden");
+    ["places-candidates","places-search-error","places-did-you-mean"].forEach(id => document.getElementById(id).classList.add("hidden"));
+    document.getElementById("places-search-loading").classList.remove("hidden");
     try {
-      const r = await fetch(`/api/places?q=${encodeURIComponent(q)}`);
+      const r = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`);
       const d = await r.json();
-      document.getElementById("places-loading").classList.add("hidden");
+      document.getElementById("places-search-loading").classList.add("hidden");
       if (d.error) {
-        document.getElementById("places-error").textContent = d.error;
-        document.getElementById("places-error").classList.remove("hidden");
-        const suggs = d.suggestions || [];
-        if (suggs.length) {
+        document.getElementById("places-search-error").textContent = d.error;
+        document.getElementById("places-search-error").classList.remove("hidden");
+        return;
+      }
+      const candidates = d.candidates || [];
+      const suggestions = d.suggestions || [];
+      if (!candidates.length) {
+        document.getElementById("places-search-error").textContent = `Couldn't find "${q}". Check the spelling and try again.`;
+        document.getElementById("places-search-error").classList.remove("hidden");
+        if (suggestions.length) {
           const dym = document.getElementById("places-did-you-mean");
           dym.innerHTML = `<span style="font-weight:600">Did you mean?</span> `;
-          suggs.forEach(s => {
+          suggestions.forEach(s => {
             const btn = document.createElement("button");
             btn.textContent = s;
-            btn.style.cssText = "background:#fef3c7;border:1px solid #fbbf24;color:#92400e;font-size:12px;font-weight:600;padding:3px 10px;border-radius:8px;cursor:pointer;margin:3px 4px 3px 0";
-            btn.onclick = () => { document.getElementById("places-input").value = s; searchPlaces(); };
+            btn.style.cssText = "background:#fef3c7;border:1px solid #fbbf24;color:#92400e;font-size:12px;font-weight:600;padding:4px 12px;border-radius:8px;cursor:pointer;margin:4px 4px 0 0";
+            btn.onclick = () => { document.getElementById("places-input").value = s; placesSearch(); };
             dym.appendChild(btn);
           });
           dym.classList.remove("hidden");
         }
         return;
       }
+      // If only one unambiguous result (postcode), skip the picker and go straight to details
+      if (candidates.length === 1 && candidates[0].type === "postcode") {
+        const c = candidates[0];
+        placesLoadDetails(c.lat, c.lon, c.osm_type, c.osm_id, c.osm_class, c.name, q);
+        return;
+      }
+      // Show candidate picker
+      document.getElementById("places-candidates-list").innerHTML = candidates.map(c => {
+        const data = JSON.stringify({lat:c.lat,lon:c.lon,osm_type:c.osm_type||"",osm_id:c.osm_id||"",osm_class:c.osm_class||"",name:c.name,q});
+        return `<button onclick='placesPickCandidate(${data})'
+          style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;cursor:pointer">
+          <span style="font-size:22px;flex-shrink:0">${c.icon || "📍"}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px;color:var(--text)">${c.name}</div>
+            ${c.subtitle ? `<div style="font-size:12px;color:var(--subtle);margin-top:1px">${c.subtitle}</div>` : ""}
+          </div>
+          <span style="color:var(--subtle);font-size:16px">›</span>
+        </button>`;
+      }).join("");
+      document.getElementById("places-candidates").classList.remove("hidden");
+    } catch(e) {
+      document.getElementById("places-search-loading").classList.add("hidden");
+      document.getElementById("places-search-error").textContent = "Could not search. Try again.";
+      document.getElementById("places-search-error").classList.remove("hidden");
+    }
+  }
+
+  function placesPickCandidate({lat, lon, osm_type, osm_id, osm_class, name, q}) {
+    placesLoadDetails(lat, lon, osm_type, osm_id, osm_class, name, q);
+  }
+
+  // Step 2: load details for selected candidate
+  async function placesLoadDetails(lat, lon, osm_type, osm_id, osm_class, name, q) {
+    document.getElementById("places-step-search").style.display = "none";
+    document.getElementById("places-step-details").style.display = "";
+    document.getElementById("places-detail-title").textContent = name;
+    ["places-result","places-error"].forEach(id => document.getElementById(id).classList.add("hidden"));
+    document.getElementById("places-loading").classList.remove("hidden");
+    window.scrollTo({top:0, behavior:"smooth"});
+    try {
+      const params = new URLSearchParams({lat, lon, name, osm_type: osm_type||"", osm_id: osm_id||"", osm_class: osm_class||""});
+      const r = await fetch(`/api/places?${params}`);
+      const d = await r.json();
+      document.getElementById("places-loading").classList.add("hidden");
+      if (d.error) {
+        document.getElementById("places-error").textContent = d.error;
+        document.getElementById("places-error").classList.remove("hidden");
+        return;
+      }
       document.getElementById("places-location").textContent =
         `${d.count} ${d.count === 1 ? "result" : "results"} near ${d.location}`;
-      // Wire WhatsApp button
       document.getElementById("places-wa-btn").href =
-        `https://wa.me/14155238886?text=${encodeURIComponent("places " + q)}`;
+        `https://wa.me/14155238886?text=${encodeURIComponent("places " + (q||name))}`;
 
-      // Separate featured venue from area services
       const featured = d.places.filter(p => p.is_featured);
       const nearby   = d.places.filter(p => !p.is_featured);
-
-      // Group nearby by category
       const groups = {};
       for (const p of nearby) {
         if (!groups[p.category]) groups[p.category] = {emoji: p.emoji, items: []};
         groups[p.category].items.push(p);
       }
-
       const featuredHtml = featured.map(p =>
-        `<div style="background:var(--surface);border:2px solid #7c3aed;border-radius:14px;padding:12px 14px;margin-bottom:0">
-           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${p.emoji} ${p.category}</div>
+        `<div style="background:var(--surface);border:2px solid #7c3aed;border-radius:14px;padding:12px 14px">
+           <div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:4px">${p.emoji} ${p.category}</div>
            ${_renderPlaceCard(p, true)}
-         </div>`
-      ).join("");
-
+         </div>`).join("");
       const nearbyHtml = Object.entries(groups).map(([cat, g]) => {
         const items = g.items.map(p => _renderPlaceCard(p, false)).join("");
         return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${g.emoji} ${cat} <span style="font-size:11px;font-weight:400;color:var(--subtle)">${g.items.length > 1 ? g.items.length + " nearby" : ""}</span></div>
-          ${items}
-        </div>`;
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${g.emoji} ${cat}
+            <span style="font-size:11px;font-weight:400;color:var(--subtle)">${g.items.length > 1 ? g.items.length + " nearby" : ""}</span>
+          </div>${items}</div>`;
       }).join("");
-
-      document.getElementById("places-list").innerHTML = featuredHtml + (featured.length && nearby.length
-        ? `<div style="font-size:12px;font-weight:600;color:var(--subtle);padding:4px 2px">📍 Other services nearby</div>`
-        : "") + nearbyHtml;
-
+      document.getElementById("places-list").innerHTML =
+        featuredHtml +
+        (featured.length && nearby.length ? `<div style="font-size:12px;font-weight:600;color:var(--subtle);padding:4px 2px">📍 Nearby services</div>` : "") +
+        nearbyHtml;
       document.getElementById("places-result").classList.remove("hidden");
     } catch(e) {
       document.getElementById("places-loading").classList.add("hidden");
-      document.getElementById("places-error").textContent = "Could not load places. Try again.";
+      document.getElementById("places-error").textContent = "Could not load place details. Try again.";
       document.getElementById("places-error").classList.remove("hidden");
     }
+  }
+
+  function placesBackToSearch() {
+    document.getElementById("places-step-details").style.display = "none";
+    document.getElementById("places-step-search").style.display = "";
+    window.scrollTo({top:0, behavior:"smooth"});
   }
 
   // ── Brand Intel ─────────────────────────────────────────────────────────────

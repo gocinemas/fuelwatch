@@ -1070,10 +1070,13 @@ def api_elections():
         # Fetch actual polling station
         polling_station = _fetch_polling_station(postcode)
 
+        county_name = result.get("admin_county") or ""
+
         return jsonify({
             "postcode":          postcode_fmt,
             "ward":              ward_data.get("ward") or ward_name,
             "council":           ward_data.get("council") or district,
+            "county":            county_name,
             "election_date":     ward_data.get("election_date", ""),
             "ward_gss":          ward_gss,
             "candidates":        candidates,
@@ -1838,29 +1841,145 @@ def api_places_google():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/places")
-def api_places():
+@app.route("/api/places/search")
+def api_places_search():
+    """Step 1: return candidate places for the user to pick from."""
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify({"error": "Enter a place name or postcode"}), 400
 
-    cache_key = f"places:{q.lower()}"
-    cached = _PLACES_CACHE.get(cache_key)
-    if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
-        return jsonify(cached[1])
+    _ICON_MAP = {
+        ("amenity","place_of_worship"): "🛕",
+        ("amenity","library"):          "📚",
+        ("amenity","community_centre"): "🏘️",
+        ("amenity","doctors"):          "🩺",
+        ("amenity","hospital"):         "🏥",
+        ("amenity","pharmacy"):         "💊",
+        ("amenity","post_office"):      "📮",
+        ("amenity","townhall"):         "🏛️",
+        ("amenity","theatre"):          "🎭",
+        ("amenity","cinema"):           "🎬",
+        ("amenity","museum"):           "🏛️",
+        ("leisure","sports_centre"):    "🏋️",
+        ("leisure","swimming_pool"):    "🏊",
+        ("leisure","park"):             "🌳",
+        ("tourism","museum"):           "🏛️",
+        ("tourism","attraction"):       "🌟",
+        ("tourism","hotel"):            "🏨",
+    }
 
-    geo = _geocode_place(q)
-    if not geo or geo[0] is None:
-        # Postcode normalization (e.g. "KT12BA" → "KT1 2BA")
+    # Postcode
+    if re.match(r'^[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}$', q.upper()):
+        pc = q.replace(" ", "").upper()
+        r = requests.get(f"https://api.postcodes.io/postcodes/{pc}", timeout=6)
+        if r.status_code == 200:
+            res = r.json().get("result", {})
+            pc_display = pc[:-3] + " " + pc[-3:]
+            ward = res.get("admin_ward", "")
+            district = res.get("admin_district", "")
+            subtitle = ", ".join(p for p in [ward, district] if p)
+            return jsonify({"candidates": [{
+                "name":      pc_display,
+                "subtitle":  subtitle,
+                "icon":      "📮",
+                "type":      "postcode",
+                "lat":       res.get("latitude"),
+                "lon":       res.get("longitude"),
+                "osm_type":  "",
+                "osm_id":    "",
+                "osm_class": "place",
+            }], "suggestions": []})
+        # Bad postcode — try to normalise
         q_up = q.upper().replace(" ", "")
         if re.match(r'^[A-Z]{1,2}\d{1,2}[A-Z]?\d[A-Z]{2}$', q_up):
             norm = q_up[:-3] + " " + q_up[-3:]
-            return jsonify({"error": f"Couldn't find '{q}'.", "suggestions": [norm]}), 404
-        # Fuzzy place name suggestions
-        suggestions = _get_place_suggestions(q)
-        return jsonify({"error": f"Couldn't find '{q}'. Try a postcode or town name.",
-                        "suggestions": suggestions}), 404
-    lat, lon, display, osm_class, osm_type, osm_id = geo
+            return jsonify({"candidates": [], "suggestions": [norm]})
+        return jsonify({"candidates": [], "suggestions": []})
+
+    # Place name — Nominatim
+    seen, candidates = set(), []
+    for h in _nom_search(q + ", UK", limit=6):
+        parts  = [p.strip() for p in h.get("display_name","").split(",")]
+        name   = parts[0]
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        subtitle = ", ".join(parts[1:3])
+        cls  = h.get("class", "")
+        typ  = h.get("type", "")
+        icon = _ICON_MAP.get((cls, typ), "🏛️" if cls in ("amenity","tourism","leisure") else "📍")
+        candidates.append({
+            "name":      name,
+            "subtitle":  subtitle,
+            "icon":      icon,
+            "type":      cls,
+            "lat":       float(h["lat"]),
+            "lon":       float(h["lon"]),
+            "osm_type":  h.get("osm_type",""),
+            "osm_id":    str(h.get("osm_id","")),
+            "osm_class": cls,
+        })
+
+    # Google Places fallback
+    if not candidates:
+        for p in _google_places_search(q, limit=4):
+            if p["name"].lower() not in seen:
+                seen.add(p["name"].lower())
+                candidates.append({
+                    "name":      p["name"],
+                    "subtitle":  "",
+                    "icon":      "📍",
+                    "type":      "venue",
+                    "lat":       p["lat"],
+                    "lon":       p["lon"],
+                    "osm_type":  "",
+                    "osm_id":    "",
+                    "osm_class": "amenity",
+                })
+
+    if not candidates:
+        return jsonify({"candidates": [], "suggestions": _get_place_suggestions(q)})
+
+    return jsonify({"candidates": candidates, "suggestions": []})
+
+
+@app.route("/api/places")
+def api_places():
+    # Accepts either lat/lon directly (from candidate selection) or q= for legacy
+    lat_p = request.args.get("lat", "")
+    lon_p = request.args.get("lon", "")
+    q     = request.args.get("q", "").strip()
+
+    if lat_p and lon_p:
+        try:
+            lat, lon = float(lat_p), float(lon_p)
+        except ValueError:
+            return jsonify({"error": "Invalid coordinates"}), 400
+        display   = request.args.get("name", "") or q or f"{lat:.3f},{lon:.3f}"
+        osm_class = request.args.get("osm_class", "")
+        osm_type  = request.args.get("osm_type", "")
+        osm_id    = request.args.get("osm_id", "")
+        cache_key = f"places:{lat:.4f},{lon:.4f}:{osm_id}"
+        cached = _PLACES_CACHE.get(cache_key)
+        if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+            return jsonify(cached[1])
+    else:
+        if not q:
+            return jsonify({"error": "Enter a place name or postcode"}), 400
+        cache_key = f"places:{q.lower()}"
+        cached = _PLACES_CACHE.get(cache_key)
+        if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+            return jsonify(cached[1])
+        geo = _geocode_place(q)
+        if not geo or geo[0] is None:
+            q_up = q.upper().replace(" ", "")
+            if re.match(r'^[A-Z]{1,2}\d{1,2}[A-Z]?\d[A-Z]{2}$', q_up):
+                norm = q_up[:-3] + " " + q_up[-3:]
+                return jsonify({"error": f"Couldn't find '{q}'.", "suggestions": [norm]}), 404
+            suggestions = _get_place_suggestions(q)
+            return jsonify({"error": f"Couldn't find '{q}'. Try a postcode or town name.",
+                            "suggestions": suggestions}), 404
+        lat, lon, display, osm_class, osm_type, osm_id = geo
 
     # Run area search and specific venue fetch in parallel
     is_venue = _is_specific_venue(osm_class, osm_type) and bool(osm_id)
