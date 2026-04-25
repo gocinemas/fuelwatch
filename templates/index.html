@@ -339,17 +339,17 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="color:var(--text);font-weight:600;font-size:13px;line-height:1.3">Fuel prices on WhatsApp</div>
-          <div style="color:var(--subtle);font-size:12px;margin-top:2px">Text your postcode · get live prices instantly</div>
+          <div style="color:var(--text);font-weight:600;font-size:13px;line-height:1.3">Miru on WhatsApp</div>
+          <div style="color:var(--subtle);font-size:12px;margin-top:2px">Fuel prices · grocery prices · election info</div>
         </div>
         <span style="font-size:12px;font-weight:600;color:#25d366;white-space:nowrap">Join →</span>
       </a>
       <div style="display:flex;gap:0;margin:-8px 0 18px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:11.5px;color:var(--subtle)">
         <div style="display:flex;flex-direction:column;gap:6px;width:100%">
-          <div style="font-weight:600;color:var(--text);margin-bottom:2px">How it works</div>
-          <div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#25d366;font-weight:700;flex-shrink:0">1.</span><span>Tap <strong>Join →</strong> above and send the message to start the bot</span></div>
-          <div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#25d366;font-weight:700;flex-shrink:0">2.</span><span>Text any UK postcode — e.g. <strong>SW1A 1AA</strong></span></div>
-          <div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#25d366;font-weight:700;flex-shrink:0">3.</span><span>Get live nearby fuel prices instantly, no app needed</span></div>
+          <div style="font-weight:600;color:var(--text);margin-bottom:2px">What you can ask</div>
+          <div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#25d366;font-weight:700;flex-shrink:0">⛽</span><span>Text a postcode for nearby fuel prices — <strong>SW1A 1AA</strong></span></div>
+          <div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#25d366;font-weight:700;flex-shrink:0">🛒</span><span>Text a product for supermarket prices — <strong>Heinz Beans</strong></span></div>
+          <div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#25d366;font-weight:700;flex-shrink:0">🗳️</span><span>Text <strong>vote [postcode]</strong> for election candidates &amp; polling station</span></div>
         </div>
       </div>
 
@@ -651,16 +651,24 @@
       <div id="elections-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:12px"></div>
 
       <div id="elections-result" class="hidden">
-        <!-- Ward / polling station header -->
+        <!-- Ward header -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div id="elections-ward" style="font-size:15px;font-weight:700;color:var(--text)"></div>
+          <div id="elections-council" style="font-size:12px;color:var(--subtle);margin-top:2px"></div>
+        </div>
+
+        <!-- Polling station card -->
+        <div id="elections-ps-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
             <div>
-              <div id="elections-ward" style="font-size:15px;font-weight:700;color:var(--text)"></div>
-              <div id="elections-council" style="font-size:12px;color:var(--subtle);margin-top:2px"></div>
+              <div style="font-size:12px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📍 Your polling station</div>
+              <div id="elections-ps-name" style="font-weight:700;font-size:14px;color:var(--text)"></div>
+              <div id="elections-ps-addr" style="font-size:12px;color:var(--subtle);margin-top:2px"></div>
+              <div style="font-size:12px;color:var(--subtle);margin-top:4px">Voting: <strong style="color:var(--text)">7am – 10pm, 7 May 2026</strong></div>
             </div>
             <a id="elections-polling-link" href="#" target="_blank" rel="noopener"
-              style="display:inline-flex;align-items:center;gap:6px;background:#16a34a;color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:10px;text-decoration:none">
-              📍 Find polling station
+              style="display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:11px;font-weight:600;padding:7px 12px;border-radius:10px;text-decoration:none;flex-shrink:0;white-space:nowrap">
+              Directions ↗
             </a>
           </div>
         </div>
@@ -1999,7 +2007,20 @@
       const dateStr = d.election_date ? new Date(d.election_date).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "7 May 2026";
       document.getElementById("elections-ward").textContent = d.ward;
       document.getElementById("elections-council").textContent = `${d.council} · ${dateStr}`;
-      document.getElementById("elections-polling-link").href = d.polling_station_url;
+
+      // Polling station
+      const ps = d.polling_station;
+      if (ps) {
+        document.getElementById("elections-ps-name").textContent = ps.name;
+        document.getElementById("elections-ps-addr").textContent = ps.address;
+        document.getElementById("elections-polling-link").href =
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ps.name + ', ' + ps.address)}`;
+      } else {
+        document.getElementById("elections-ps-name").textContent = "Tap to find your polling station";
+        document.getElementById("elections-ps-addr").textContent = "Data available closer to election day";
+        document.getElementById("elections-polling-link").href = d.polling_station_url;
+        document.getElementById("elections-polling-link").textContent = "Find ↗";
+      }
 
       // Past results section
       const pastEl = document.getElementById("elections-past");

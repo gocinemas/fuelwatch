@@ -846,6 +846,50 @@ def api_brand():
 
 # ── Elections ─────────────────────────────────────────────────────────────────
 
+def _fetch_polling_station(postcode: str) -> dict | None:
+    """Scrape wheredoivote.co.uk to get the polling station name and address."""
+    import re as _re
+    try:
+        pc = postcode.replace(" ", "").upper()
+        s = requests.Session()
+        s.headers["User-Agent"] = "Mozilla/5.0 (compatible; Miru/1.0)"
+        r = s.get(f"https://wheredoivote.co.uk/postcode/{pc}/", timeout=8)
+        if r.status_code != 200:
+            return None
+        csrf_m = _re.search(r'name="csrfmiddlewaretoken".*?value="([^"]+)"', r.text)
+        if not csrf_m:
+            return None
+        csrf = csrf_m.group(1)
+        opts = [(v, t) for v, t in _re.findall(r'<option value="([^"]+)">([^<]+)</option>', r.text)
+                if v.isdigit()]
+        if not opts:
+            return None
+        val, _ = opts[0]
+        r2 = s.post(r.url, data={"csrfmiddlewaretoken": csrf, "address": val},
+                    headers={"Referer": r.url}, timeout=8)
+        if "vote in person" not in r2.text:
+            return None
+        # Parse <address> block
+        addr_m = _re.search(r'<address>(.*?)</address>', r2.text, _re.DOTALL)
+        if not addr_m:
+            return None
+        addr_html = addr_m.group(1)
+        # Extract lines: split on <br>, strip tags
+        lines = [_re.sub(r"<[^>]+>", "", l).strip()
+                 for l in _re.split(r"<br\s*/?>", addr_html)]
+        lines = [l for l in lines if l]
+        if not lines:
+            return None
+        name = lines[0]
+        address = ", ".join(lines[1:]) if len(lines) > 1 else ""
+        return {
+            "name":    name,
+            "address": address,
+            "url":     r2.url,
+        }
+    except Exception:
+        return None
+
 # Old district GSS → new merged council slug
 _DISTRICT_TO_COUNCIL_SLUG = {
     "E07000212": "west-surrey",  # Runnymede
@@ -994,11 +1038,13 @@ def api_elections():
 
         is_new_council = bool(council_slug and council_slug in _COUNCIL_PREDECESSORS)
         predecessors   = _COUNCIL_PREDECESSORS.get(council_slug or "", [])
-        # Link to Democracy Club results for established councils
         dc_results_url = (
             None if is_new_council else
             f"https://candidates.democracyclub.org.uk/elections/local.{district.lower().replace(' ','-')}.2022-05-05/"
         )
+
+        # Fetch actual polling station
+        polling_station = _fetch_polling_station(postcode)
 
         return jsonify({
             "postcode":          postcode_fmt,
@@ -1010,7 +1056,9 @@ def api_elections():
             "is_new_council":    is_new_council,
             "predecessor_areas": predecessors,
             "dc_results_url":    dc_results_url,
-            "polling_station_url": f"https://wheredoivote.co.uk/address/?postcode={postcode_fmt.replace(' ', '+')}",
+            "polling_station":   polling_station,
+            "polling_station_url": (polling_station or {}).get("url") or
+                                   f"https://wheredoivote.co.uk/postcode/{postcode}/",
             "found": bool(candidates),
         })
     except Exception as e:
@@ -1545,6 +1593,75 @@ def api_product():
 
 
 _FUEL_WORDS = {"petrol", "diesel", "unleaded", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
+_ELECTION_WORDS = {"vote", "voting", "election", "elections", "candidate", "candidates",
+                   "polling", "ballot", "stand", "standing", "mp", "councillor"}
+
+
+def whatsapp_elections_format(postcode: str) -> str:
+    """Format election info for WhatsApp reply."""
+    try:
+        pc = postcode.replace(" ", "").upper()
+        r = requests.get(f"https://api.postcodes.io/postcodes/{pc}", timeout=6)
+        if r.status_code != 200:
+            return f"Couldn't find postcode {postcode}. Please check and try again."
+        result   = r.json().get("result", {})
+        codes    = result.get("codes", {})
+        ward_gss      = codes.get("admin_ward", "")
+        ward_name     = result.get("admin_ward", "")
+        district      = result.get("admin_district", "")
+        district_code = codes.get("admin_district", "")
+        county_code   = codes.get("admin_county", "")
+        ua_code       = district_code
+
+        elections  = _get_elections()
+        ward_data  = elections["by_gss"].get(ward_gss, {})
+        council_slug = None
+        if not ward_data:
+            council_slug = (
+                _DISTRICT_TO_COUNCIL_SLUG.get(district_code) or
+                _UA_TO_COUNCIL_SLUG.get(ua_code) or
+                _COUNTY_TO_COUNCIL_SLUG.get(county_code)
+            )
+            if council_slug:
+                slug_wards = elections["by_slug"].get(council_slug, {})
+                best = _best_ward_match(ward_name, slug_wards)
+                if best:
+                    ward_data = slug_wards[best]
+
+        if not ward_data or not ward_data.get("candidates"):
+            return (f"No local elections found for {postcode.upper()} on 7 May 2026.\n"
+                    "Your area may not be holding elections this year.")
+
+        candidates = sorted(ward_data["candidates"], key=lambda c: (c["party"], c["name"]))
+        ward    = ward_data.get("ward") or ward_name
+        council = ward_data.get("council") or district
+        date    = ward_data.get("election_date", "2026-05-07")
+
+        # Polling station
+        ps = _fetch_polling_station(pc)
+        ps_line = ""
+        if ps:
+            ps_line = f"\n\n📍 Polling station:\n{ps['name']}\n{ps['address']}"
+        else:
+            postcode_fmt = f"{pc[:-3]} {pc[-3:]}"
+            ps_line = f"\n\n📍 Find polling station:\nhttps://wheredoivote.co.uk/postcode/{pc}/"
+
+        # Build candidates block — group by party
+        from itertools import groupby
+        cand_lines = []
+        for party, group in groupby(candidates, key=lambda c: c["party"]):
+            names = [c["name"] for c in group]
+            cand_lines.append(f"• {party}: {', '.join(names)}")
+
+        return (
+            f"🗳️ Local Elections — 7 May 2026\n"
+            f"Ward: {ward}\n"
+            f"{council}{ps_line}\n\n"
+            f"Candidates:\n" + "\n".join(cand_lines) +
+            "\n\nVoting hours: 7am–10pm"
+        )
+    except Exception as e:
+        return f"Sorry, couldn't load election info. Try miru.app instead."
 
 def _split_product_postcode(body: str):
     """Return (product_name, postcode_or_None) from a freeform message."""
@@ -1713,11 +1830,31 @@ def whatsapp_reply():
         resp.message(
             "FuelWatch UK 🇬🇧\n"
             "Text a UK postcode for fuel prices:\n  SW1A 1AA\n  SW1A 1AA diesel\n"
-            "\nText a product name for prices:\n  Heinz Baked Beans\n  Hobnobs SW1A 1AA"
+            "\nText a product name for prices:\n  Heinz Baked Beans\n  Hobnobs SW1A 1AA\n"
+            "\nText 'vote [postcode]' for election candidates & polling station:\n  vote SW1A 1AA"
         )
         return str(resp)
 
     postcode, fuel, radius, retailer = parse_sms(body)
+    body_words = set(body.lower().split())
+
+    # ── Elections query ────────────────────────────────────────────────────────
+    if body_words & _ELECTION_WORDS:
+        pc_m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
+        elec_postcode = pc_m.group(1).replace(" ", "") if pc_m else None
+        if elec_postcode:
+            cache_key = f"elections:{elec_postcode}"
+            cached = _WA_CACHE.get(cache_key)
+            if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
+                resp.message(cached[1])
+                return str(resp)
+            reply = whatsapp_elections_format(elec_postcode)
+            _WA_CACHE[cache_key] = (time.time(), reply)
+            resp.message(reply)
+            return str(resp)
+        else:
+            resp.message("Please include your postcode, e.g.:\nvote KT16 0DA")
+            return str(resp)
 
     # Decide: fuel query or product query
     # Product query if: no postcode at all, OR postcode present but there's
