@@ -1471,6 +1471,30 @@ _PLACE_ACTIVITIES = {
 }
 
 
+def _get_place_suggestions(q: str) -> list:
+    """Return up to 3 place name suggestions from Nominatim for a failed/misspelled query."""
+    try:
+        r = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": q, "format": "json", "limit": 5, "countrycodes": "gb"},
+            headers={"User-Agent": "Miru/1.0 (miru.app)"},
+            timeout=6,
+        )
+        if r.status_code == 200 and r.json():
+            seen, out = set(), []
+            for h in r.json():
+                name = h.get("display_name", "").split(",")[0].strip()
+                if name and name.lower() not in seen:
+                    seen.add(name.lower())
+                    out.append(name)
+                if len(out) >= 3:
+                    break
+            return out
+    except Exception:
+        pass
+    return []
+
+
 def _geocode_place(q: str):
     """Return (lat, lon, display_name, osm_class, osm_type, osm_id) or None."""
     q = q.strip()
@@ -1774,22 +1798,27 @@ def api_places():
 
     geo = _geocode_place(q)
     if not geo or geo[0] is None:
-        # Suggest postcode normalization (e.g. "KT12BA" → "KT1 2BA")
-        suggestion = None
+        # Postcode normalization (e.g. "KT12BA" → "KT1 2BA")
         q_up = q.upper().replace(" ", "")
         if re.match(r'^[A-Z]{1,2}\d{1,2}[A-Z]?\d[A-Z]{2}$', q_up):
-            suggestion = q_up[:-3] + " " + q_up[-3:]
-        return jsonify({"error": f"Couldn't find '{q}'. Try a postcode or town name.", "suggestion": suggestion}), 404
+            norm = q_up[:-3] + " " + q_up[-3:]
+            return jsonify({"error": f"Couldn't find '{q}'.", "suggestions": [norm]}), 404
+        # Fuzzy place name suggestions
+        suggestions = _get_place_suggestions(q)
+        return jsonify({"error": f"Couldn't find '{q}'. Try a postcode or town name.",
+                        "suggestions": suggestions}), 404
     lat, lon, display, osm_class, osm_type, osm_id = geo
 
-    places = _overpass_places(lat, lon)
+    # Run area search and specific venue fetch in parallel
+    is_venue = _is_specific_venue(osm_class, osm_type) and bool(osm_id)
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_places = ex.submit(_overpass_places, lat, lon)
+        f_venue  = ex.submit(_fetch_specific_venue, osm_type, osm_id, display) if is_venue else None
+        places   = f_places.result()
+        featured = f_venue.result() if f_venue else None
 
-    # If this is a specific named venue, fetch it and prepend
-    featured = None
-    if _is_specific_venue(osm_class, osm_type) and osm_id:
-        featured = _fetch_specific_venue(osm_type, osm_id, display)
-        if featured:
-            places = [p for p in places if p["name"].lower() != featured["name"].lower()]
+    if featured:
+        places = [p for p in places if p["name"].lower() != featured["name"].lower()]
 
     all_places = ([featured] if featured else []) + places
     if not all_places:
@@ -2520,6 +2549,23 @@ def chart_postcode(postcode, fuel="petrol"):
     ax.set_ylim(min(all_vals) - 1, max(all_vals) + 1)
     fig.tight_layout()
     return _make_chart(fig)
+
+
+# ── Startup pre-warm (runs when gunicorn imports the module) ──────────────────
+import threading as _threading
+
+def _prewarm():
+    try:
+        _get_elections_data()
+    except Exception:
+        pass
+
+_threading.Thread(target=_prewarm, daemon=True).start()
+
+
+@app.route("/ping")
+def ping():
+    return "OK", 200
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

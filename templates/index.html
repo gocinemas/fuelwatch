@@ -350,12 +350,11 @@
         </div>
         <span style="font-size:12px;font-weight:600;color:#25d366;white-space:nowrap">Join →</span>
       </a>
-      <div style="display:flex;gap:0;margin:-8px 0 18px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:11.5px;color:var(--subtle)">
-        <div style="display:flex;flex-direction:column;gap:6px;width:100%">
-          <div style="font-weight:600;color:var(--text);margin-bottom:2px">What you can ask</div>
-          <div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#25d366;font-weight:700;flex-shrink:0">⛽</span><span>Text a postcode for nearby fuel prices — <strong>SW1A 1AA</strong></span></div>
-          <div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#25d366;font-weight:700;flex-shrink:0">🛒</span><span>Text a product for supermarket prices — <strong>Heinz Beans</strong></span></div>
-          <div style="display:flex;align-items:flex-start;gap:8px"><span style="color:#25d366;font-weight:700;flex-shrink:0">🗳️</span><span>Text <strong>vote [postcode]</strong> for election candidates &amp; polling station</span></div>
+      <div style="margin:-8px 0 18px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:11.5px;color:var(--subtle)">
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px">How to use on WhatsApp</div>
+        <div style="display:flex;align-items:flex-start;gap:8px">
+          <span style="color:#25d366;font-weight:700;flex-shrink:0">⛽</span>
+          <span>Text a postcode to get nearby fuel prices — e.g. <strong>SW1A 1AA</strong></span>
         </div>
       </div>
 
@@ -2360,15 +2359,17 @@
       if (d.error) {
         document.getElementById("places-error").textContent = d.error;
         document.getElementById("places-error").classList.remove("hidden");
-        if (d.suggestion) {
+        const suggs = d.suggestions || [];
+        if (suggs.length) {
           const dym = document.getElementById("places-did-you-mean");
-          dym.textContent = "";
-          const link = document.createElement("a");
-          link.href = "#";
-          link.style.cssText = "color:#92400e;font-weight:700;text-decoration:underline";
-          link.textContent = `Did you mean: ${d.suggestion}?`;
-          link.onclick = e => { e.preventDefault(); document.getElementById("places-input").value = d.suggestion; searchPlaces(); };
-          dym.appendChild(link);
+          dym.innerHTML = `<span style="font-weight:600">Did you mean?</span> `;
+          suggs.forEach(s => {
+            const btn = document.createElement("button");
+            btn.textContent = s;
+            btn.style.cssText = "background:#fef3c7;border:1px solid #fbbf24;color:#92400e;font-size:12px;font-weight:600;padding:3px 10px;border-radius:8px;cursor:pointer;margin:3px 4px 3px 0";
+            btn.onclick = () => { document.getElementById("places-input").value = s; searchPlaces(); };
+            dym.appendChild(btn);
+          });
           dym.classList.remove("hidden");
         }
         return;
