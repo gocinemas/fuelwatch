@@ -374,7 +374,11 @@ def index():
 
 @app.route("/test-places")
 def test_places():
-    return render_template("index.html", prefill_company=None, prefill_doc=None, autoscreen="places")
+    resp = app.make_response(
+        render_template("index.html", prefill_company=None, prefill_doc=None, autoscreen="places")
+    )
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.route("/doc/<share_id>")
 def doc_page(share_id):
@@ -1896,29 +1900,44 @@ def api_places_search():
             return jsonify({"candidates": [], "suggestions": [norm]})
         return jsonify({"candidates": [], "suggestions": []})
 
-    # Place name — Nominatim
+    # Place name — Nominatim (try multiple query strategies)
     seen, candidates = set(), []
-    for h in _nom_search(q + ", UK", limit=6):
-        parts  = [p.strip() for p in h.get("display_name","").split(",")]
-        name   = parts[0]
-        if not name or name.lower() in seen:
-            continue
-        seen.add(name.lower())
-        subtitle = ", ".join(parts[1:3])
-        cls  = h.get("class", "")
-        typ  = h.get("type", "")
-        icon = _ICON_MAP.get((cls, typ), "🏛️" if cls in ("amenity","tourism","leisure") else "📍")
-        candidates.append({
-            "name":      name,
-            "subtitle":  subtitle,
-            "icon":      icon,
-            "type":      cls,
-            "lat":       float(h["lat"]),
-            "lon":       float(h["lon"]),
-            "osm_type":  h.get("osm_type",""),
-            "osm_id":    str(h.get("osm_id","")),
-            "osm_class": cls,
-        })
+
+    def _add_nom_hits(hits):
+        for h in hits:
+            parts  = [p.strip() for p in h.get("display_name","").split(",")]
+            name   = parts[0]
+            if not name or name.lower() in seen:
+                continue
+            seen.add(name.lower())
+            subtitle = ", ".join(parts[1:3])
+            cls  = h.get("class", "")
+            typ  = h.get("type", "")
+            icon = _ICON_MAP.get((cls, typ), "🏛️" if cls in ("amenity","tourism","leisure") else "📍")
+            candidates.append({
+                "name":      name,
+                "subtitle":  subtitle,
+                "icon":      icon,
+                "type":      cls,
+                "lat":       float(h["lat"]),
+                "lon":       float(h["lon"]),
+                "osm_type":  h.get("osm_type",""),
+                "osm_id":    str(h.get("osm_id","")),
+                "osm_class": cls,
+            })
+
+    # Strategy 1: full query
+    _add_nom_hits(_nom_search(q + ", UK", limit=6))
+
+    # Strategy 2: last two words (e.g. "vedantham manor" catches "Bhaktivedanta Manor")
+    if not candidates:
+        words = [w for w in q.split() if len(w) > 2]
+        if len(words) >= 3:
+            _add_nom_hits(_nom_search(f"{words[-2]} {words[-1]}, UK", limit=4))
+
+    # Strategy 3: first + last word
+    if not candidates and len(words) >= 3:
+        _add_nom_hits(_nom_search(f"{words[0]} {words[-1]}, UK", limit=4))
 
     # Google Places fallback
     if not candidates:
