@@ -847,8 +847,8 @@ def api_brand():
 # ── Elections ─────────────────────────────────────────────────────────────────
 
 def _fetch_polling_station(postcode: str) -> dict | None:
-    """Scrape wheredoivote.co.uk to get the polling station name and address."""
-    import re as _re
+    """Scrape wheredoivote.co.uk. Returns station info, a 'not yet available' notice, or None."""
+    import re as _re, html as _html
     try:
         pc = postcode.replace(" ", "").upper()
         s = requests.Session()
@@ -856,36 +856,55 @@ def _fetch_polling_station(postcode: str) -> dict | None:
         r = s.get(f"https://wheredoivote.co.uk/postcode/{pc}/", timeout=8)
         if r.status_code != 200:
             return None
+
+        # Case 1: council hasn't uploaded data yet — "printed on your polling card"
+        if "printed on your polling card" in r.text:
+            # Try to extract council name and phone
+            plain = _html.unescape(_re.sub(r"<[^>]+>", " ", r.text))
+            plain = _re.sub(r"\s+", " ", plain)
+            phone_m = _re.search(r"call ([^o]+?) on ([\d\s]+)", plain)
+            phone = phone_m.group(2).strip() if phone_m else None
+            council_m = _re.search(r"contact ([^.]+?) electoral", plain, _re.I)
+            council = council_m.group(1).strip() if council_m else None
+            return {
+                "name":        "Not yet available",
+                "address":     "Check your poll card or contact your council",
+                "phone":       phone,
+                "council_contact": council,
+                "not_available": True,
+                "url":         r.url,
+            }
+
         csrf_m = _re.search(r'name="csrfmiddlewaretoken".*?value="([^"]+)"', r.text)
         if not csrf_m:
             return None
         csrf = csrf_m.group(1)
+
+        # Case 2: address selection form
         opts = [(v, t) for v, t in _re.findall(r'<option value="([^"]+)">([^<]+)</option>', r.text)
                 if v.isdigit()]
-        if not opts:
-            return None
-        val, _ = opts[0]
-        r2 = s.post(r.url, data={"csrfmiddlewaretoken": csrf, "address": val},
-                    headers={"Referer": r.url}, timeout=8)
+        if opts:
+            val, _ = opts[0]
+            r2 = s.post(r.url, data={"csrfmiddlewaretoken": csrf, "address": val},
+                        headers={"Referer": r.url}, timeout=8)
+        else:
+            r2 = r  # single-address postcode — result already on this page
+
         if "vote in person" not in r2.text:
             return None
-        # Parse <address> block
+
         addr_m = _re.search(r'<address>(.*?)</address>', r2.text, _re.DOTALL)
         if not addr_m:
             return None
         addr_html = addr_m.group(1)
-        # Extract lines: split on <br>, strip tags, decode HTML entities
-        import html as _html
         lines = [_html.unescape(_re.sub(r"<[^>]+>", "", l)).strip()
                  for l in _re.split(r"<br\s*/?>", addr_html)]
         lines = [l for l in lines if l]
         if not lines:
             return None
-        name = lines[0]
-        address = ", ".join(lines[1:]) if len(lines) > 1 else ""
         return {
-            "name":    name,
-            "address": address,
+            "name":    lines[0],
+            "address": ", ".join(lines[1:]) if len(lines) > 1 else "",
             "url":     r2.url,
         }
     except Exception:
@@ -1640,11 +1659,13 @@ def whatsapp_elections_format(postcode: str) -> str:
 
         # Polling station
         ps = _fetch_polling_station(pc)
-        ps_line = ""
-        if ps:
+        postcode_fmt = f"{pc[:-3]} {pc[-3:]}"
+        if ps and not ps.get("not_available"):
             ps_line = f"\n\n📍 Polling station:\n{ps['name']}\n{ps['address']}"
+        elif ps and ps.get("not_available"):
+            phone = f" · Call {ps['phone']}" if ps.get("phone") else ""
+            ps_line = f"\n\n📍 Polling station:\nNot yet uploaded by council{phone}\nCheck your poll card when it arrives"
         else:
-            postcode_fmt = f"{pc[:-3]} {pc[-3:]}"
             ps_line = f"\n\n📍 Find polling station:\nhttps://wheredoivote.co.uk/postcode/{pc}/"
 
         # Build candidates block — group by party

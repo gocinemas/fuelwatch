@@ -2081,16 +2081,24 @@
 
       // Polling station
       const ps = d.polling_station;
-      if (ps) {
+      const psLink = document.getElementById("elections-polling-link");
+      if (ps && !ps.not_available) {
         document.getElementById("elections-ps-name").textContent = ps.name;
         document.getElementById("elections-ps-addr").textContent = ps.address;
-        document.getElementById("elections-polling-link").href =
-          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ps.name + ', ' + ps.address)}`;
+        psLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ps.name + ', ' + ps.address)}`;
+        psLink.textContent = "Directions ↗";
+      } else if (ps && ps.not_available) {
+        document.getElementById("elections-ps-name").textContent = "Not yet uploaded by council";
+        const phoneNote = ps.phone ? ` · Call ${ps.phone}` : "";
+        document.getElementById("elections-ps-addr").textContent =
+          "Check your poll card when it arrives" + phoneNote;
+        psLink.href = d.polling_station_url;
+        psLink.textContent = "Check ↗";
       } else {
-        document.getElementById("elections-ps-name").textContent = "Tap to find your polling station";
-        document.getElementById("elections-ps-addr").textContent = "Data available closer to election day";
-        document.getElementById("elections-polling-link").href = d.polling_station_url;
-        document.getElementById("elections-polling-link").textContent = "Find ↗";
+        document.getElementById("elections-ps-name").textContent = "Data not yet available";
+        document.getElementById("elections-ps-addr").textContent = "Check your poll card or wheredoivote.co.uk";
+        psLink.href = `https://wheredoivote.co.uk/postcode/${postcode.replace(/ /g,'')}/`;
+        psLink.textContent = "Check ↗";
       }
 
       // Past results section
