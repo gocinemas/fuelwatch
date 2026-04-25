@@ -1472,7 +1472,7 @@ _PLACE_ACTIVITIES = {
 
 
 def _geocode_place(q: str):
-    """Return (lat, lon, display_name) for a postcode or place name. None on failure."""
+    """Return (lat, lon, display_name, osm_class, osm_type, osm_id) or None."""
     q = q.strip()
     # Postcode pattern
     if re.match(r'^[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}$', q.upper()):
@@ -1480,7 +1480,7 @@ def _geocode_place(q: str):
         r = requests.get(f"https://api.postcodes.io/postcodes/{pc}", timeout=6)
         if r.status_code == 200:
             res = r.json().get("result", {})
-            return res.get("latitude"), res.get("longitude"), res.get("admin_ward", q)
+            return res.get("latitude"), res.get("longitude"), res.get("admin_ward", q), "place", "postcode", None
         return None
     # Place name → Nominatim
     r = requests.get(
@@ -1493,8 +1493,128 @@ def _geocode_place(q: str):
         hits = r.json()
         if hits:
             h = hits[0]
-            return float(h["lat"]), float(h["lon"]), h.get("display_name", q).split(",")[0]
+            return (
+                float(h["lat"]),
+                float(h["lon"]),
+                h.get("display_name", q).split(",")[0],
+                h.get("class", ""),
+                h.get("type", ""),
+                str(h.get("osm_id", "")),
+            )
     return None
+
+
+_SPECIFIC_VENUE_CLASSES = {"amenity", "tourism", "leisure", "religion", "shop", "sport", "historic"}
+_AREA_TYPES = {"city", "town", "village", "suburb", "neighbourhood", "district", "county",
+               "postcode", "municipality", "administrative", "region"}
+
+
+def _is_specific_venue(osm_class: str, osm_type: str) -> bool:
+    return osm_class in _SPECIFIC_VENUE_CLASSES or (osm_class == "place" and osm_type not in _AREA_TYPES)
+
+
+_VENUE_CATEGORY = {
+    "place_of_worship": {"label": "Place of Worship", "emoji": "🛕"},
+    "museum":           {"label": "Museum",           "emoji": "🏛️"},
+    "theatre":          {"label": "Theatre",          "emoji": "🎭"},
+    "cinema":           {"label": "Cinema",           "emoji": "🎬"},
+    "hotel":            {"label": "Hotel",            "emoji": "🏨"},
+    "school":           {"label": "School",           "emoji": "🏫"},
+    "college":          {"label": "College",          "emoji": "🎓"},
+    "university":       {"label": "University",       "emoji": "🎓"},
+    "stadium":          {"label": "Stadium",          "emoji": "🏟️"},
+    "attraction":       {"label": "Attraction",       "emoji": "🌟"},
+    "castle":           {"label": "Historic Site",    "emoji": "🏰"},
+    "ruins":            {"label": "Historic Site",    "emoji": "🏰"},
+    "restaurant":       {"label": "Restaurant",       "emoji": "🍽️"},
+    "cafe":             {"label": "Café",             "emoji": "☕"},
+    "pub":              {"label": "Pub",              "emoji": "🍺"},
+    "supermarket":      {"label": "Supermarket",      "emoji": "🛒"},
+}
+
+_VENUE_ACTIVITIES = {
+    "place_of_worship": ["Religious services & ceremonies", "Community events & gatherings",
+                         "Visitor tours (check timings)", "Meditation & spiritual programmes",
+                         "Cultural celebrations & festivals"],
+    "museum":           ["Permanent & temporary exhibitions", "Guided tours", "School & group visits",
+                         "Workshops & family activities", "Gift shop & café"],
+    "theatre":          ["Live performances & shows", "Workshops & drama classes", "Community events",
+                         "Children's productions", "Bar & interval service"],
+    "school":           ["Primary / secondary education", "After-school clubs", "Parent consultations",
+                         "Open days & events"],
+    "university":       ["Degree & postgraduate courses", "Research & seminars", "Open lectures",
+                         "Student union & societies", "Library & sports facilities"],
+    "restaurant":       ["Dine-in meals", "Takeaway & delivery", "Private dining & group bookings",
+                         "Special dietary menus"],
+    "cafe":             ["Coffee, tea & light bites", "Breakfast & lunch", "Wi-Fi & relaxed seating",
+                         "Cakes & pastries"],
+}
+
+
+def _fetch_specific_venue(osm_type: str, osm_id: str, display_name: str) -> dict | None:
+    """Fetch full OSM tags for a specific element and return a formatted place dict."""
+    import urllib.parse as _up, html as _html
+    type_map = {"node": "node", "way": "way", "relation": "relation"}
+    oql_type = type_map.get(osm_type)
+    if not oql_type or not osm_id:
+        return None
+    query = f"[out:json];{oql_type}({osm_id});out tags;"
+    url = "https://overpass-api.de/api/interpreter?data=" + _up.quote(query)
+    try:
+        r = requests.get(url, timeout=15, headers={"User-Agent": "Miru/1.0"})
+        if r.status_code != 200:
+            return None
+        elements = r.json().get("elements", [])
+        if not elements:
+            return None
+        tags = elements[0].get("tags", {})
+    except Exception:
+        return None
+
+    name = tags.get("name", display_name)
+    kind = (tags.get("amenity") or tags.get("tourism") or tags.get("leisure") or
+            tags.get("historic") or "")
+    cat  = _PLACE_CATEGORY.get(kind) or _VENUE_CATEGORY.get(kind) or {
+        "label": kind.replace("_", " ").title() if kind else "Place", "emoji": "📍"
+    }
+
+    phone   = (tags.get("phone") or tags.get("contact:phone") or tags.get("contact:mobile") or "").strip()
+    website = (tags.get("website") or tags.get("contact:website") or tags.get("url") or "").strip()
+    hours   = _html.unescape(tags.get("opening_hours", "")).strip()
+
+    parts   = [tags.get("addr:housenumber", ""), tags.get("addr:street", ""), tags.get("addr:city", "")]
+    address = " ".join(p for p in parts if p).strip(", ") or ""
+
+    description  = tags.get("description", "")
+    denomination = tags.get("denomination", "")
+    religion     = tags.get("religion", "")
+
+    if description:
+        summary = description[:240]
+    else:
+        type_label = cat["label"].lower()
+        area = address.split(",")[-1].strip() if "," in address else ""
+        summary = f"{name} is a {type_label}{' in ' + area if area else ''}."
+        if denomination:
+            summary += f" {denomination.title()} {religion}." if religion else f" {denomination.title()}."
+
+    acts = _PLACE_ACTIVITIES.get(kind) or _VENUE_ACTIVITIES.get(kind, [])
+
+    return {
+        "name":       name,
+        "kind":       kind,
+        "category":   cat["label"],
+        "emoji":      cat["emoji"],
+        "address":    address,
+        "phone":      phone,
+        "website":    website,
+        "hours":      hours,
+        "summary":    summary,
+        "activities": acts,
+        "lat":        None,
+        "lon":        None,
+        "is_featured": True,
+    }
 
 
 def _overpass_places(lat: float, lon: float, radius: int = 900):
@@ -1654,14 +1774,28 @@ def api_places():
 
     geo = _geocode_place(q)
     if not geo or geo[0] is None:
-        return jsonify({"error": f"Couldn't find '{q}'. Try a postcode or town name."}), 404
-    lat, lon, display = geo
+        # Suggest postcode normalization (e.g. "KT12BA" → "KT1 2BA")
+        suggestion = None
+        q_up = q.upper().replace(" ", "")
+        if re.match(r'^[A-Z]{1,2}\d{1,2}[A-Z]?\d[A-Z]{2}$', q_up):
+            suggestion = q_up[:-3] + " " + q_up[-3:]
+        return jsonify({"error": f"Couldn't find '{q}'. Try a postcode or town name.", "suggestion": suggestion}), 404
+    lat, lon, display, osm_class, osm_type, osm_id = geo
 
     places = _overpass_places(lat, lon)
-    if not places:
+
+    # If this is a specific named venue, fetch it and prepend
+    featured = None
+    if _is_specific_venue(osm_class, osm_type) and osm_id:
+        featured = _fetch_specific_venue(osm_type, osm_id, display)
+        if featured:
+            places = [p for p in places if p["name"].lower() != featured["name"].lower()]
+
+    all_places = ([featured] if featured else []) + places
+    if not all_places:
         return jsonify({"error": "No local services found nearby. Try a different location."}), 404
 
-    result = {"location": display, "lat": lat, "lon": lon, "count": len(places), "places": places}
+    result = {"location": display, "lat": lat, "lon": lon, "count": len(all_places), "places": all_places}
     _PLACES_CACHE[cache_key] = (time.time(), result)
     return jsonify(result)
 
@@ -1855,6 +1989,48 @@ def api_product():
 _FUEL_WORDS = {"petrol", "diesel", "unleaded", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
 _ELECTION_WORDS = {"vote", "voting", "election", "elections", "candidate", "candidates",
                    "polling", "ballot", "stand", "standing", "mp", "councillor"}
+_PLACES_WORDS = {"places", "services", "local", "near", "nearby", "around",
+                 "library", "gp", "doctor", "pharmacy", "dentist", "leisure",
+                 "gym", "pool", "community", "postoffice", "council", "park"}
+
+
+def whatsapp_places_format(q: str) -> str:
+    """Format local places info for WhatsApp reply."""
+    try:
+        geo = _geocode_place(q)
+        if not geo or geo[0] is None:
+            return f"Couldn't find '{q}'. Try a postcode or town name — e.g. places KT1 2BA"
+        lat, lon, display = geo[0], geo[1], geo[2]
+        places = _overpass_places(lat, lon)
+        if not places:
+            return f"No local services found near {display}. Try a different postcode or area."
+
+        # Group by category, pick top 1-2 per category, cap total at 12 entries
+        from itertools import groupby
+        lines = [f"🏛️ Local services near {display}\n"]
+        count = 0
+        for cat, group in groupby(places, key=lambda p: p["category"]):
+            items = list(group)[:2]
+            for p in items:
+                if count >= 12:
+                    break
+                hours = p["hours"][:40] if p["hours"] else ""
+                phone = p["phone"] or ""
+                line = f"{p['emoji']} {p['name']}"
+                if hours:
+                    # Simplify OSM hours for SMS
+                    import re as _re
+                    hours_short = _re.sub(r'[A-Z][a-z]-[A-Z][a-z]', lambda m: m.group(), hours)
+                    line += f"\n  🕐 {hours_short}"
+                if phone:
+                    line += f"\n  📞 {phone}"
+                lines.append(line)
+                count += 1
+
+        lines.append(f"\n📍 Within 900m · miru.app")
+        return "\n\n".join(lines)
+    except Exception:
+        return "Sorry, couldn't load local services. Try miru.app instead."
 
 
 def whatsapp_elections_format(postcode: str) -> str:
@@ -2090,15 +2266,40 @@ def whatsapp_reply():
 
     if not body:
         resp.message(
-            "FuelWatch UK 🇬🇧\n"
-            "Text a UK postcode for fuel prices:\n  SW1A 1AA\n  SW1A 1AA diesel\n"
-            "\nText a product name for prices:\n  Heinz Baked Beans\n  Hobnobs SW1A 1AA\n"
-            "\nText 'vote [postcode]' for election candidates & polling station:\n  vote SW1A 1AA"
+            "Miru 🇬🇧\n"
+            "⛽ Fuel prices: SW1A 1AA\n"
+            "🛒 Grocery prices: Heinz Beans\n"
+            "🗳️ Elections: vote SW1A 1AA\n"
+            "🏛️ Local services: places SW1A 1AA"
         )
         return str(resp)
 
     postcode, fuel, radius, retailer = parse_sms(body)
     body_words = set(body.lower().split())
+
+    # ── Places query ──────────────────────────────────────────────────────────
+    if body_words & _PLACES_WORDS:
+        # Extract postcode or strip trigger word to get place name
+        pc_m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
+        if pc_m:
+            places_q = pc_m.group(1).strip()
+        else:
+            places_q = re.sub(
+                r'\b(?:places|services|local|near|nearby|around)\b', '', body, flags=re.I
+            ).strip()
+        if places_q:
+            cache_key = f"places_wa:{places_q.lower()}"
+            cached = _WA_CACHE.get(cache_key)
+            if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
+                resp.message(cached[1])
+                return str(resp)
+            reply = whatsapp_places_format(places_q)
+            _WA_CACHE[cache_key] = (time.time(), reply)
+            resp.message(reply)
+            return str(resp)
+        else:
+            resp.message("Please include a postcode or place name, e.g.:\nplaces KT1 2BA")
+            return str(resp)
 
     # ── Elections query ────────────────────────────────────────────────────────
     if body_words & _ELECTION_WORDS:
