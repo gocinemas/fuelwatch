@@ -372,6 +372,10 @@ def sms_reply():
 def index():
     return render_template("index.html", prefill_company=None, prefill_doc=None)
 
+@app.route("/test-places")
+def test_places():
+    return render_template("index.html", prefill_company=None, prefill_doc=None, autoscreen="places")
+
 @app.route("/doc/<share_id>")
 def doc_page(share_id):
     return render_template("index.html", prefill_company=None, prefill_doc=share_id)

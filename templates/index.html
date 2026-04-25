@@ -1209,9 +1209,11 @@
 
   // Hash-based deep links — e.g. /#places opens Local Places directly
   (function() {
+    const auto = "{{ autoscreen|default('') }}";
     const hash = window.location.hash.replace("#", "").toLowerCase();
-    if (hash && document.getElementById("screen-" + hash)) {
-      showScreen(hash);
+    const target = auto || hash;
+    if (target && document.getElementById("screen-" + target)) {
+      showScreen(target);
     }
   })();
 
