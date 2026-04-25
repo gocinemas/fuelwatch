@@ -665,9 +665,16 @@
           </div>
         </div>
 
+        <!-- Past results -->
+        <div id="elections-past" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px"></div>
+
         <!-- Candidates list -->
         <div style="font-size:13px;font-weight:600;color:var(--subtle);margin-bottom:10px;padding:0 2px">Candidates on your ballot</div>
         <div id="elections-candidates" style="display:flex;flex-direction:column;gap:8px"></div>
+
+        <!-- Party manifestos -->
+        <div style="font-size:13px;font-weight:600;color:var(--subtle);margin:18px 0 10px;padding:0 2px">Party manifestos &amp; positions</div>
+        <div id="elections-manifestos" style="display:flex;flex-direction:column;gap:8px"></div>
 
         <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">
           Data: Democracy Club · Local elections 7 May 2026
@@ -1930,13 +1937,46 @@
     "Plaid Cymru":                        {bg:"#16a34a",text:"#fff"},
     "Independent":                        {bg:"#6b7280",text:"#fff"},
   };
+  const _partyManifesto = {
+    "Labour Party": {
+      url: "https://labour.org.uk/",
+      summary: "Focusing on building more homes, protecting local services, and tackling the cost of living. Backing clean energy, better buses, and public investment in communities."
+    },
+    "Conservative and Unionist Party": {
+      url: "https://www.conservatives.com/",
+      summary: "Prioritising lower council tax, supporting local businesses, improving roads and infrastructure. Backing tough action on crime and planning reform."
+    },
+    "Liberal Democrats": {
+      url: "https://www.libdems.org.uk/",
+      summary: "Campaigning for better local NHS services, greener transport, protecting the greenbelt, and fixing potholes. Strong record in local government across the South East."
+    },
+    "Reform UK": {
+      url: "https://www.reformparty.uk/",
+      summary: "Pledging to cut council spending, scrap net-zero policies, oppose new housing developments, and stop what they call 'woke' spending by councils."
+    },
+    "Green Party": {
+      url: "https://www.greenparty.org.uk/",
+      summary: "Pushing for zero-carbon councils, better cycling and walking infrastructure, protecting green spaces, and a transition away from fossil fuels in local services."
+    },
+    "Independent": {
+      url: null,
+      summary: "Candidates not affiliated with a major party. Often focus on specific local issues, community campaigning, or represent dissatisfaction with mainstream parties."
+    },
+  };
   function _partyStyle(party) {
     for (const [k,v] of Object.entries(_partyColour)) {
       if (party.toLowerCase().includes(k.toLowerCase().split(" ")[0].toLowerCase())) return v;
     }
     return {bg:"#6b7280", text:"#fff"};
   }
+  function _partyInfo(party) {
+    for (const [k,v] of Object.entries(_partyManifesto)) {
+      if (party.toLowerCase().includes(k.toLowerCase().split(" ")[0].toLowerCase())) return v;
+    }
+    return null;
+  }
 
+  let _elecIdCounter = 0;
   async function searchElections() {
     const input = document.getElementById("elections-input");
     const postcode = input.value.trim();
@@ -1957,24 +1997,70 @@
         return;
       }
       const dateStr = d.election_date ? new Date(d.election_date).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "7 May 2026";
-      document.getElementById("elections-ward").textContent = `${d.ward}`;
+      document.getElementById("elections-ward").textContent = d.ward;
       document.getElementById("elections-council").textContent = `${d.council} · ${dateStr}`;
       document.getElementById("elections-polling-link").href = d.polling_station_url;
+
+      // Past results section
+      const pastEl = document.getElementById("elections-past");
+      if (d.is_new_council && d.predecessor_areas && d.predecessor_areas.length) {
+        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:4px">📋 Previous election results</div>
+          <div style="color:var(--subtle);font-size:12px;line-height:1.5"><strong>${d.council}</strong> is a newly created council (first election 7 May 2026), formed by merging ${d.predecessor_areas.join(", ")}. No directly comparable past results exist for these ward boundaries.</div>`;
+      } else if (d.dc_results_url) {
+        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:4px">📋 Previous election results</div>
+          <div style="font-size:12px;color:var(--subtle)">View 2022 results for this area on Democracy Club: <a href="${d.dc_results_url}" target="_blank" rel="noopener" style="color:#4f46e5">View results ↗</a></div>`;
+      } else {
+        pastEl.style.display = "none";
+      }
+
+      // Candidates
       document.getElementById("elections-candidates").innerHTML = d.candidates.map(c => {
         const col = _partyStyle(c.party);
         const links = [];
-        if (c.homepage) links.push(`<a href="${c.homepage}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5">Website</a>`);
-        if (c.twitter)  links.push(`<a href="https://twitter.com/${c.twitter}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5">@${c.twitter}</a>`);
-        if (c.email)    links.push(`<a href="mailto:${c.email}" style="font-size:11px;color:#4f46e5">Email</a>`);
-        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px">
-          <div style="width:4px;align-self:stretch;border-radius:4px;background:${col.bg};flex-shrink:0"></div>
+        if (c.homepage) links.push(`<a href="${c.homepage}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500">Website ↗</a>`);
+        if (c.twitter)  links.push(`<a href="https://x.com/${c.twitter}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500">@${c.twitter}</a>`);
+        if (c.email)    links.push(`<a href="mailto:${c.email}" style="font-size:11px;color:#4f46e5;font-weight:500">Email</a>`);
+        const stmtId = `stmt-${++_elecIdCounter}`;
+        const stmtHtml = c.statement ? `
+          <div style="margin-top:7px">
+            <button onclick="const el=document.getElementById('${stmtId}');const show=el.style.display==='none';el.style.display=show?'block':'none';this.textContent=show?'Hide statement ▲':'Candidate statement ▼'"
+              style="font-size:11px;color:#4f46e5;font-weight:500;background:none;border:none;cursor:pointer;padding:0">Candidate statement ▼</button>
+            <div id="${stmtId}" style="display:none;font-size:12px;color:var(--subtle);line-height:1.55;margin-top:6px;padding:8px 10px;background:var(--bg);border-radius:8px;border-left:3px solid ${col.bg}">${c.statement}</div>
+          </div>` : "";
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px">
+          <div style="width:4px;min-height:36px;border-radius:4px;background:${col.bg};flex-shrink:0;margin-top:2px"></div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:14px;color:var(--text)">${c.name}</div>
             <div style="margin-top:3px"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text}">${c.party}</span></div>
-            ${links.length ? `<div style="display:flex;gap:10px;margin-top:6px">${links.join("")}</div>` : ""}
+            ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">${links.join("")}</div>` : ""}
+            ${stmtHtml}
           </div>
         </div>`;
       }).join("");
+
+      // Party manifestos — one card per unique party present
+      const partiesSeen = new Set();
+      const manifestoCards = [];
+      for (const c of d.candidates) {
+        if (partiesSeen.has(c.party)) continue;
+        partiesSeen.add(c.party);
+        const col = _partyStyle(c.party);
+        const info = _partyInfo(c.party);
+        if (!info) continue;
+        manifestoCards.push(`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px">
+          <div style="width:4px;min-height:36px;border-radius:4px;background:${col.bg};flex-shrink:0;margin-top:2px"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:4px">
+              ${c.party}
+              ${info.url ? `<a href="${info.url}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500;margin-left:8px">Website ↗</a>` : ""}
+            </div>
+            <div style="font-size:12px;color:var(--subtle);line-height:1.55">${info.summary}</div>
+          </div>
+        </div>`);
+      }
+      document.getElementById("elections-manifestos").innerHTML = manifestoCards.join("") ||
+        `<div style="font-size:12px;color:var(--subtle)">No manifesto info available.</div>`;
+
       document.getElementById("elections-result").classList.remove("hidden");
     } catch(e) {
       document.getElementById("elections-loading").classList.add("hidden");

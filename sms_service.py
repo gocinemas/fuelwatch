@@ -856,8 +856,13 @@ _DISTRICT_TO_COUNCIL_SLUG = {
     "E07000211": "east-surrey",  # Reigate and Banstead
     "E07000213": "east-surrey",  # Tandridge
     "E07000216": "east-surrey",  # Elmbridge
-    "E07000217": "east-surrey",  # Surrey Heath (if applicable)
+    "E07000217": "east-surrey",  # Surrey Heath
     "E07000207": "east-surrey",  # Epsom and Ewell
+}
+# New council slug → human-readable predecessor area list (for "no past results" message)
+_COUNCIL_PREDECESSORS = {
+    "west-surrey": ["Runnymede", "Guildford", "Waverley", "Woking"],
+    "east-surrey": ["Mole Valley", "Reigate & Banstead", "Tandridge", "Elmbridge", "Epsom & Ewell"],
 }
 # Old county GSS → county-level council slug
 _COUNTY_TO_COUNCIL_SLUG = {
@@ -886,11 +891,12 @@ def _load_elections_csv():
         for row in _csv.DictReader(f):
             gss = row.get("gss", "").strip()
             candidate = {
-                "name":     row.get("person_name", "").strip(),
-                "party":    row.get("party_name", "").strip(),
-                "email":    row.get("email", "").strip().strip('"'),
-                "twitter":  row.get("twitter_username", "").strip().strip('"'),
-                "homepage": row.get("homepage_url", "").strip().strip('"'),
+                "name":      row.get("person_name", "").strip(),
+                "party":     row.get("party_name", "").strip(),
+                "email":     row.get("email", "").strip().strip('"'),
+                "twitter":   row.get("twitter_username", "").strip().strip('"'),
+                "homepage":  row.get("homepage_url", "").strip().strip('"'),
+                "statement": row.get("statement_to_voters", "").strip().strip('"'),
             }
             if gss:
                 if gss not in by_gss:
@@ -966,6 +972,7 @@ def api_elections():
 
         elections = _get_elections()
         ward_data = elections["by_gss"].get(ward_gss, {})
+        council_slug = None
 
         # Fallback: reorganised/merged council lookup by ward name token matching
         if not ward_data:
@@ -985,13 +992,24 @@ def api_elections():
             key=lambda c: (c["party"], c["name"])
         )
 
+        is_new_council = bool(council_slug and council_slug in _COUNCIL_PREDECESSORS)
+        predecessors   = _COUNCIL_PREDECESSORS.get(council_slug or "", [])
+        # Link to Democracy Club results for established councils
+        dc_results_url = (
+            None if is_new_council else
+            f"https://candidates.democracyclub.org.uk/elections/local.{district.lower().replace(' ','-')}.2022-05-05/"
+        )
+
         return jsonify({
-            "postcode": postcode_fmt,
-            "ward": ward_data.get("ward") or ward_name,
-            "council": ward_data.get("council") or district,
-            "election_date": ward_data.get("election_date", ""),
-            "ward_gss": ward_gss,
-            "candidates": candidates,
+            "postcode":          postcode_fmt,
+            "ward":              ward_data.get("ward") or ward_name,
+            "council":           ward_data.get("council") or district,
+            "election_date":     ward_data.get("election_date", ""),
+            "ward_gss":          ward_gss,
+            "candidates":        candidates,
+            "is_new_council":    is_new_council,
+            "predecessor_areas": predecessors,
+            "dc_results_url":    dc_results_url,
             "polling_station_url": f"https://wheredoivote.co.uk/address/?postcode={postcode_fmt.replace(' ', '+')}",
             "found": bool(candidates),
         })
