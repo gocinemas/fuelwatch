@@ -691,7 +691,7 @@ Rules: facts fill all 5 fields. competitors: 4 items each with revenue. campaign
                 "model": "llama-3.1-8b-instant",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 1500,
+                "max_tokens": 2500,
             },
             timeout=25,
         )
@@ -996,13 +996,13 @@ def fetch_brand_data(brand: str) -> dict:
             "financials":  financials,
             "news":        news,
         }
-        # Only cache if AI data came back — don't lock in empty timeline/rivals
+        # Only cache if AI data came back — never lock in empty timeline/rivals
         ai_ok = bool(result["timeline"] or result["competitors"])
-        _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
         if ai_ok:
+            _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
             _sb_cache_set("brand:" + cache_key, result)
         else:
-            print(f"[brand_ai] {brand}: AI empty — skipping Supabase cache so next request retries")
+            print(f"[brand_ai] {brand}: AI empty — skipping all caches so next request retries")
         return result
     finally:
         with _BRAND_LOCK:
