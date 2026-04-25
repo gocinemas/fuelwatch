@@ -1426,6 +1426,176 @@ def api_admin_stats():
     return jsonify(s)
 
 
+# ── Local Places ──────────────────────────────────────────────────────────────
+
+_PLACE_CATEGORY = {
+    "library":          {"label": "Library",           "emoji": "📚"},
+    "community_centre": {"label": "Community Centre",  "emoji": "🏘️"},
+    "arts_centre":      {"label": "Arts Centre",       "emoji": "🎭"},
+    "doctors":          {"label": "GP Surgery",        "emoji": "🩺"},
+    "hospital":         {"label": "Hospital",          "emoji": "🏥"},
+    "dentist":          {"label": "Dentist",           "emoji": "🦷"},
+    "pharmacy":         {"label": "Pharmacy",          "emoji": "💊"},
+    "post_office":      {"label": "Post Office",       "emoji": "📮"},
+    "townhall":         {"label": "Town Hall / Council","emoji": "🏛️"},
+    "social_facility":  {"label": "Social Services",   "emoji": "🤝"},
+    "food_bank":        {"label": "Food Bank",         "emoji": "🍞"},
+    "police":           {"label": "Police Station",    "emoji": "👮"},
+    "fire_station":     {"label": "Fire Station",      "emoji": "🚒"},
+    "sports_centre":    {"label": "Sports Centre",     "emoji": "🏋️"},
+    "leisure_centre":   {"label": "Leisure Centre",    "emoji": "🏊"},
+    "swimming_pool":    {"label": "Swimming Pool",     "emoji": "🏊"},
+    "fitness_centre":   {"label": "Gym / Fitness",     "emoji": "💪"},
+    "park":             {"label": "Park",              "emoji": "🌳"},
+}
+
+_PLACE_ACTIVITIES = {
+    "library":          ["Borrow books, DVDs & ebooks", "Free Wi-Fi & computers", "Study & reading space", "Children's storytime & activities", "Events, talks & exhibitions"],
+    "community_centre": ["Classes & workshops", "Meeting room hire", "Social clubs & activities", "Children's & senior groups", "Events & performances"],
+    "arts_centre":      ["Exhibitions & galleries", "Live performances", "Art classes & workshops", "Cinema screenings", "Community events"],
+    "doctors":          ["GP appointments (call or book online)", "Repeat prescriptions", "Health checks & immunisations", "Referrals to specialists", "Mental health support"],
+    "hospital":         ["A&E (emergencies only)", "Outpatient clinics", "Inpatient wards", "Specialist departments", "Diagnostic services"],
+    "dentist":          ["NHS & private check-ups", "Fillings & extractions", "Hygienist & cleaning", "Orthodontics", "Emergency appointments"],
+    "pharmacy":         ["Collect NHS prescriptions", "Over-the-counter medicines & advice", "Flu & travel vaccinations", "Blood pressure & health checks", "Pharmacy First (minor illness)"],
+    "post_office":      ["Post & parcel drop-off", "Recorded & tracked delivery", "Bill payments & banking", "Travel money & passports", "Government services (DVLA, HMRC)"],
+    "townhall":         ["Council tax payments", "Planning & building control", "Licensing applications", "Register births, deaths & marriages", "Housing & benefits enquiries"],
+    "social_facility":  ["Benefits & housing advice", "Disability & carer support", "Older persons' services", "Domestic abuse referrals", "Food & financial assistance"],
+    "food_bank":        ["Emergency food parcels (referral needed)", "Toiletries & household essentials", "Signposting to other support"],
+    "police":           ["Report non-emergency crime (101)", "Lost & found property", "Community liaison", "Firearms licensing"],
+    "fire_station":     ["Emergency fire & rescue (999)", "Home fire safety visits", "Community safety advice"],
+    "sports_centre":    ["Gym & fitness classes", "Sports halls (badminton, basketball)", "Racquet courts", "Spinning & aerobics", "Junior sport sessions"],
+    "leisure_centre":   ["Swimming pool & lessons", "Gym & classes", "Sports halls", "Racquet sports", "Café & changing facilities"],
+    "swimming_pool":    ["Public lane swimming", "Aqua aerobics", "Family & children's sessions", "Swimming lessons (adults & children)", "Early-morning & evening sessions"],
+    "fitness_centre":   ["Gym equipment & free weights", "Group fitness classes", "Personal training", "Cardio & strength zones"],
+    "park":             ["Walking & running paths", "Children's play areas", "Picnic & open green space", "Outdoor fitness equipment", "Sports pitches & courts"],
+}
+
+
+def _geocode_place(q: str):
+    """Return (lat, lon, display_name) for a postcode or place name. None on failure."""
+    q = q.strip()
+    # Postcode pattern
+    if re.match(r'^[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}$', q.upper()):
+        pc = q.replace(" ", "").upper()
+        r = requests.get(f"https://api.postcodes.io/postcodes/{pc}", timeout=6)
+        if r.status_code == 200:
+            res = r.json().get("result", {})
+            return res.get("latitude"), res.get("longitude"), res.get("admin_ward", q)
+        return None
+    # Place name → Nominatim
+    r = requests.get(
+        "https://nominatim.openstreetmap.org/search",
+        params={"q": q + ", UK", "format": "json", "limit": 1, "countrycodes": "gb"},
+        headers={"User-Agent": "Miru/1.0 (miru.app)"},
+        timeout=8,
+    )
+    if r.status_code == 200:
+        hits = r.json()
+        if hits:
+            h = hits[0]
+            return float(h["lat"]), float(h["lon"]), h.get("display_name", q).split(",")[0]
+    return None
+
+
+def _overpass_places(lat: float, lon: float, radius: int = 900):
+    """Query Overpass for useful local services and return formatted list."""
+    import urllib.parse as _up, html as _html
+    amenity_types = "|".join([
+        "library", "community_centre", "arts_centre", "doctors", "hospital",
+        "dentist", "pharmacy", "post_office", "townhall", "social_facility",
+        "food_bank", "police", "fire_station", "leisure_centre",
+    ])
+    leisure_types = "sports_centre|swimming_pool|fitness_centre|park"
+    query = f"""[out:json][timeout:20];
+(
+  node["amenity"~"^({amenity_types})$"](around:{radius},{lat},{lon});
+  way["amenity"~"^({amenity_types})$"](around:{radius},{lat},{lon});
+  node["leisure"~"^({leisure_types})$"](around:{radius},{lat},{lon});
+  way["leisure"~"^({leisure_types})$"](around:{radius},{lat},{lon});
+);
+out center tags;"""
+    url = "https://overpass-api.de/api/interpreter?data=" + _up.quote(query)
+    r = requests.get(url, timeout=25, headers={"User-Agent": "Miru/1.0"})
+    if r.status_code != 200:
+        return []
+    elements = r.json().get("elements", [])
+
+    seen, results = set(), []
+    for el in elements:
+        tags = el.get("tags", {})
+        name = tags.get("name", "").strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+
+        kind = tags.get("amenity") or tags.get("leisure", "")
+        cat  = _PLACE_CATEGORY.get(kind, {"label": kind.replace("_", " ").title(), "emoji": "📍"})
+
+        # Address
+        parts = [tags.get("addr:housenumber", ""), tags.get("addr:street", ""),
+                 tags.get("addr:city", "")]
+        address = " ".join(p for p in parts if p).strip(", ") or ""
+
+        # Phone
+        phone = (tags.get("phone") or tags.get("contact:phone") or
+                 tags.get("contact:mobile") or "").strip()
+
+        # Website
+        website = (tags.get("website") or tags.get("contact:website") or
+                   tags.get("url") or "").strip()
+
+        # Opening hours
+        hours = _html.unescape(tags.get("opening_hours", "")).strip()
+
+        results.append({
+            "name":       name,
+            "kind":       kind,
+            "category":   cat["label"],
+            "emoji":      cat["emoji"],
+            "address":    address,
+            "phone":      phone,
+            "website":    website,
+            "hours":      hours,
+            "activities": _PLACE_ACTIVITIES.get(kind, []),
+        })
+
+    # Sort by category then name
+    results.sort(key=lambda x: (x["category"], x["name"]))
+    return results
+
+
+_PLACES_CACHE: dict = {}
+_PLACES_CACHE_TTL = 3600  # 1 hour
+
+
+@app.route("/api/places")
+def api_places():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"error": "Enter a place name or postcode"}), 400
+
+    cache_key = f"places:{q.lower()}"
+    cached = _PLACES_CACHE.get(cache_key)
+    if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+        return jsonify(cached[1])
+
+    geo = _geocode_place(q)
+    if not geo or geo[0] is None:
+        return jsonify({"error": f"Couldn't find '{q}'. Try a postcode or town name."}), 404
+    lat, lon, display = geo
+
+    places = _overpass_places(lat, lon)
+    if not places:
+        return jsonify({"error": "No local services found nearby. Try a different location."}), 404
+
+    result = {"location": display, "lat": lat, "lon": lon, "count": len(places), "places": places}
+    _PLACES_CACHE[cache_key] = (time.time(), result)
+    return jsonify(result)
+
+
 @app.route("/api/product")
 def api_product():
     import requests as _req, json as _json
