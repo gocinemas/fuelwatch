@@ -844,6 +844,84 @@ def api_brand():
     return jsonify(fetch_brand_data(name))
 
 
+# ── Elections ─────────────────────────────────────────────────────────────────
+
+def _load_elections_csv():
+    """Load candidates CSV into a dict keyed by ward GSS code."""
+    import csv as _csv
+    path = os.path.join(os.path.dirname(__file__), "elections_candidates.csv")
+    if not os.path.exists(path):
+        return {}
+    by_ward = {}
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in _csv.DictReader(f):
+            gss = row.get("gss", "").strip()
+            if not gss:
+                continue
+            if gss not in by_ward:
+                by_ward[gss] = {
+                    "ward": row.get("post_label", "").strip(),
+                    "council": row.get("organisation_name", "").strip().strip('"'),
+                    "election_date": row.get("election_date", "").strip(),
+                    "candidates": []
+                }
+            by_ward[gss]["candidates"].append({
+                "name":  row.get("person_name", "").strip(),
+                "party": row.get("party_name", "").strip(),
+                "email": row.get("email", "").strip().strip('"'),
+                "twitter": row.get("twitter_username", "").strip().strip('"'),
+                "homepage": row.get("homepage_url", "").strip().strip('"'),
+            })
+    return by_ward
+
+_ELECTIONS_DATA = None
+
+def _get_elections():
+    global _ELECTIONS_DATA
+    if _ELECTIONS_DATA is None:
+        _ELECTIONS_DATA = _load_elections_csv()
+    return _ELECTIONS_DATA
+
+
+@app.route("/api/elections")
+def api_elections():
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+    try:
+        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
+        if r.status_code != 200:
+            return jsonify({"error": f"Could not find postcode {postcode}"}), 404
+        result = r.json().get("result", {})
+        codes  = result.get("codes", {})
+        ward_gss   = codes.get("admin_ward", "")
+        ward_name  = result.get("admin_ward", "")
+        district   = result.get("admin_district", "")
+        postcode_fmt = f"{postcode[:-3]} {postcode[-3:]}"
+
+        elections = _get_elections()
+        ward_data = elections.get(ward_gss, {})
+
+        # Sort candidates alphabetically by party then name
+        candidates = sorted(
+            ward_data.get("candidates", []),
+            key=lambda c: (c["party"], c["name"])
+        )
+
+        return jsonify({
+            "postcode": postcode_fmt,
+            "ward": ward_data.get("ward") or ward_name,
+            "council": ward_data.get("council") or district,
+            "election_date": ward_data.get("election_date", ""),
+            "ward_gss": ward_gss,
+            "candidates": candidates,
+            "polling_station_url": f"https://wheredoivote.co.uk/address/?postcode={postcode_fmt.replace(' ', '+')}",
+            "found": bool(candidates),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/health")
 def api_health():
     """Full diagnostic: env vars, Groq API call, JSON parse."""

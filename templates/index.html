@@ -266,6 +266,12 @@
           <div class="tc-desc">Timeline, rivals & more</div>
         </button>
 
+        <button class="tool-card" onclick="showScreen('elections')">
+          <div class="tc-icon" style="background:#f0fdf4">🗳️</div>
+          <div class="tc-name">Elections</div>
+          <div class="tc-desc">Candidates & polling station</div>
+        </button>
+
       </div>
 
       <!-- News Feed (Kagi) -->
@@ -620,6 +626,56 @@
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- ── ELECTIONS SCREEN ── -->
+    <div id="screen-elections" class="screen pt-5">
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🗳️ Elections</div>
+      <div style="font-size:13px;color:var(--subtle);margin-bottom:18px">Local elections · 7 May 2026 · Enter your postcode</div>
+
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input id="elections-input" type="text" placeholder="e.g. TW3 3SF"
+          style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+          onkeydown="if(event.key==='Enter') searchElections()"
+          onfocus="this.style.boxShadow='0 0 0 3px rgba(34,197,94,.15)'"
+          onblur="this.style.boxShadow=''">
+        <button onclick="searchElections()"
+          style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer">Search</button>
+      </div>
+
+      <div id="elections-loading" class="hidden" style="text-align:center;padding:40px 0">
+        <div class="spinner mx-auto mb-3" style="border-top-color:#16a34a;width:26px;height:26px"></div>
+        <div style="font-size:13px;color:var(--subtle)">Looking up your ward…</div>
+      </div>
+      <div id="elections-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:12px"></div>
+
+      <div id="elections-result" class="hidden">
+        <!-- Ward / polling station header -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div>
+              <div id="elections-ward" style="font-size:15px;font-weight:700;color:var(--text)"></div>
+              <div id="elections-council" style="font-size:12px;color:var(--subtle);margin-top:2px"></div>
+            </div>
+            <a id="elections-polling-link" href="#" target="_blank" rel="noopener"
+              style="display:inline-flex;align-items:center;gap:6px;background:#16a34a;color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:10px;text-decoration:none">
+              📍 Find polling station
+            </a>
+          </div>
+        </div>
+
+        <!-- Candidates list -->
+        <div style="font-size:13px;font-weight:600;color:var(--subtle);margin-bottom:10px;padding:0 2px">Candidates on your ballot</div>
+        <div id="elections-candidates" style="display:flex;flex-direction:column;gap:8px"></div>
+
+        <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">
+          Data: Democracy Club · Local elections 7 May 2026
+        </div>
+      </div>
+
+      <div id="elections-none" class="hidden" style="text-align:center;padding:40px 16px;color:var(--subtle);font-size:14px">
+        No candidates found for this postcode.<br>Your area may not have elections on 7 May 2026.
       </div>
     </div>
 
@@ -985,7 +1041,8 @@
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); }
     if (name === "company") { document.getElementById("company-input").focus();   _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()"); }
     if (name === "library") { libCheckPin(); }
-    if (name === "brand")   { document.getElementById("brand-input").focus(); _renderRecent("miru_brand", "brand-recent", "brand-input", "searchBrand()"); }
+    if (name === "brand")     { document.getElementById("brand-input").focus(); _renderRecent("miru_brand", "brand-recent", "brand-input", "searchBrand()"); }
+    if (name === "elections") { document.getElementById("elections-input").focus(); }
     setFooter(name);
   }
 
@@ -1861,6 +1918,70 @@
     searchCompany();
   });
   {% endif %}
+
+  // ── Elections ────────────────────────────────────────────────────────────────
+  const _partyColour = {
+    "Labour Party":                      {bg:"#e11d48",text:"#fff"},
+    "Conservative and Unionist Party":   {bg:"#1d4ed8",text:"#fff"},
+    "Liberal Democrats":                 {bg:"#f59e0b",text:"#000"},
+    "Reform UK":                         {bg:"#06b6d4",text:"#fff"},
+    "Green Party":                       {bg:"#16a34a",text:"#fff"},
+    "Scottish National Party (SNP)":     {bg:"#fbbf24",text:"#000"},
+    "Plaid Cymru":                        {bg:"#16a34a",text:"#fff"},
+    "Independent":                        {bg:"#6b7280",text:"#fff"},
+  };
+  function _partyStyle(party) {
+    for (const [k,v] of Object.entries(_partyColour)) {
+      if (party.toLowerCase().includes(k.toLowerCase().split(" ")[0].toLowerCase())) return v;
+    }
+    return {bg:"#6b7280", text:"#fff"};
+  }
+
+  async function searchElections() {
+    const input = document.getElementById("elections-input");
+    const postcode = input.value.trim();
+    if (!postcode) return;
+    ["elections-result","elections-error","elections-none"].forEach(id => document.getElementById(id).classList.add("hidden"));
+    document.getElementById("elections-loading").classList.remove("hidden");
+    try {
+      const r = await fetch(`/api/elections?postcode=${encodeURIComponent(postcode)}`);
+      const d = await r.json();
+      document.getElementById("elections-loading").classList.add("hidden");
+      if (d.error) {
+        document.getElementById("elections-error").textContent = d.error;
+        document.getElementById("elections-error").classList.remove("hidden");
+        return;
+      }
+      if (!d.found || !d.candidates.length) {
+        document.getElementById("elections-none").classList.remove("hidden");
+        return;
+      }
+      const dateStr = d.election_date ? new Date(d.election_date).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "7 May 2026";
+      document.getElementById("elections-ward").textContent = `${d.ward}`;
+      document.getElementById("elections-council").textContent = `${d.council} · ${dateStr}`;
+      document.getElementById("elections-polling-link").href = d.polling_station_url;
+      document.getElementById("elections-candidates").innerHTML = d.candidates.map(c => {
+        const col = _partyStyle(c.party);
+        const links = [];
+        if (c.homepage) links.push(`<a href="${c.homepage}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5">Website</a>`);
+        if (c.twitter)  links.push(`<a href="https://twitter.com/${c.twitter}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5">@${c.twitter}</a>`);
+        if (c.email)    links.push(`<a href="mailto:${c.email}" style="font-size:11px;color:#4f46e5">Email</a>`);
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+          <div style="width:4px;align-self:stretch;border-radius:4px;background:${col.bg};flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:14px;color:var(--text)">${c.name}</div>
+            <div style="margin-top:3px"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text}">${c.party}</span></div>
+            ${links.length ? `<div style="display:flex;gap:10px;margin-top:6px">${links.join("")}</div>` : ""}
+          </div>
+        </div>`;
+      }).join("");
+      document.getElementById("elections-result").classList.remove("hidden");
+    } catch(e) {
+      document.getElementById("elections-loading").classList.add("hidden");
+      document.getElementById("elections-error").textContent = "Could not load election data. Try again.";
+      document.getElementById("elections-error").classList.remove("hidden");
+    }
+  }
 
   // ── Brand Intel ─────────────────────────────────────────────────────────────
   function brandTab(name) {
