@@ -1207,6 +1207,14 @@
   document.getElementById("report-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchReport(); });
   document.getElementById("company-input").addEventListener("keydown", e => { if (e.key==="Enter") searchCompany(); });
 
+  // Hash-based deep links — e.g. /#places opens Local Places directly
+  (function() {
+    const hash = window.location.hash.replace("#", "").toLowerCase();
+    if (hash && document.getElementById("screen-" + hash)) {
+      showScreen(hash);
+    }
+  })();
+
   // ── Current Location ─────────────────────────────────────────────────────────
   function useLocation(screen) {
     const btn = document.getElementById(screen + "-loc-btn");
