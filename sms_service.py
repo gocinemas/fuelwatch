@@ -846,33 +846,95 @@ def api_brand():
 
 # ── Elections ─────────────────────────────────────────────────────────────────
 
+# Old district GSS → new merged council slug
+_DISTRICT_TO_COUNCIL_SLUG = {
+    "E07000212": "west-surrey",  # Runnymede
+    "E07000209": "west-surrey",  # Guildford
+    "E07000214": "west-surrey",  # Waverley
+    "E07000215": "west-surrey",  # Woking
+    "E07000210": "east-surrey",  # Mole Valley
+    "E07000211": "east-surrey",  # Reigate and Banstead
+    "E07000213": "east-surrey",  # Tandridge
+    "E07000216": "east-surrey",  # Elmbridge
+    "E07000217": "east-surrey",  # Surrey Heath (if applicable)
+    "E07000207": "east-surrey",  # Epsom and Ewell
+}
+# Old county GSS → county-level council slug
+_COUNTY_TO_COUNCIL_SLUG = {
+    "E10000030": "surrey",
+    "E10000012": "essex",
+    "E10000020": "norfolk",
+    "E10000029": "suffolk",
+    "E10000013": "gloucestershire",
+}
+# Unitary authority GSS → council slug
+_UA_TO_COUNCIL_SLUG = {
+    "E06000042": "milton-keynes",
+    "E06000030": "swindon",
+    "E06000034": "thurrock",
+}
+
+
 def _load_elections_csv():
-    """Load candidates CSV into a dict keyed by ward GSS code."""
+    """Load candidates CSV; returns {by_gss: {...}, by_slug: {council: {ward: {...}}}}."""
     import csv as _csv
     path = os.path.join(os.path.dirname(__file__), "elections_candidates.csv")
     if not os.path.exists(path):
-        return {}
-    by_ward = {}
+        return {"by_gss": {}, "by_slug": {}}
+    by_gss, by_slug = {}, {}
     with open(path, newline="", encoding="utf-8") as f:
         for row in _csv.DictReader(f):
             gss = row.get("gss", "").strip()
-            if not gss:
-                continue
-            if gss not in by_ward:
-                by_ward[gss] = {
-                    "ward": row.get("post_label", "").strip(),
-                    "council": row.get("organisation_name", "").strip().strip('"'),
-                    "election_date": row.get("election_date", "").strip(),
-                    "candidates": []
-                }
-            by_ward[gss]["candidates"].append({
-                "name":  row.get("person_name", "").strip(),
-                "party": row.get("party_name", "").strip(),
-                "email": row.get("email", "").strip().strip('"'),
-                "twitter": row.get("twitter_username", "").strip().strip('"'),
+            candidate = {
+                "name":     row.get("person_name", "").strip(),
+                "party":    row.get("party_name", "").strip(),
+                "email":    row.get("email", "").strip().strip('"'),
+                "twitter":  row.get("twitter_username", "").strip().strip('"'),
                 "homepage": row.get("homepage_url", "").strip().strip('"'),
-            })
-    return by_ward
+            }
+            if gss:
+                if gss not in by_gss:
+                    by_gss[gss] = {
+                        "ward": row.get("post_label", "").strip(),
+                        "council": row.get("organisation_name", "").strip().strip('"'),
+                        "election_date": row.get("election_date", "").strip(),
+                        "candidates": [],
+                    }
+                by_gss[gss]["candidates"].append(candidate)
+            else:
+                # Reorganised councils: parse council/ward slug from ballot_paper_id
+                # e.g. local.west-surrey.chertsey.2026-05-07
+                bp = row.get("ballot_paper_id", "")
+                parts = bp.split(".")
+                if len(parts) >= 4:
+                    council_slug = parts[1]
+                    ward_slug = parts[2]
+                    by_slug.setdefault(council_slug, {})
+                    if ward_slug not in by_slug[council_slug]:
+                        by_slug[council_slug][ward_slug] = {
+                            "ward": row.get("post_label", "").strip().strip('"'),
+                            "council": row.get("organisation_name", "").strip().strip('"'),
+                            "election_date": row.get("election_date", "").strip(),
+                            "candidates": [],
+                        }
+                    by_slug[council_slug][ward_slug]["candidates"].append(candidate)
+    return {"by_gss": by_gss, "by_slug": by_slug}
+
+
+def _best_ward_match(ward_name: str, wards: dict) -> str | None:
+    """Token-overlap match; weighted by token length so specific place names win ties."""
+    tokens = set(re.sub(r"[^a-z0-9 ]", "", ward_name.lower()).split()) - {"and", "the", ""}
+    best_slug, best_score = None, 0
+    for slug, data in wards.items():
+        wt = set(re.sub(r"[^a-z0-9 ]", "", data["ward"].lower()).split()) - {"and", "the", ""}
+        st = set(slug.replace("-", " ").split())
+        matched = tokens & (wt | st)
+        score = sum(len(t) for t in matched)
+        if score > best_score:
+            best_score = score
+            best_slug = slug
+    return best_slug if best_score > 0 else None
+
 
 _ELECTIONS_DATA = None
 
@@ -893,16 +955,31 @@ def api_elections():
         if r.status_code != 200:
             return jsonify({"error": f"Could not find postcode {postcode}"}), 404
         result = r.json().get("result", {})
-        codes  = result.get("codes", {})
-        ward_gss   = codes.get("admin_ward", "")
-        ward_name  = result.get("admin_ward", "")
-        district   = result.get("admin_district", "")
+        codes        = result.get("codes", {})
+        ward_gss     = codes.get("admin_ward", "")
+        ward_name    = result.get("admin_ward", "")
+        district     = result.get("admin_district", "")
+        district_code = codes.get("admin_district", "")
+        county_code  = codes.get("admin_county", "")
+        ua_code      = codes.get("admin_district", "")  # unitaries use district code
         postcode_fmt = f"{postcode[:-3]} {postcode[-3:]}"
 
         elections = _get_elections()
-        ward_data = elections.get(ward_gss, {})
+        ward_data = elections["by_gss"].get(ward_gss, {})
 
-        # Sort candidates alphabetically by party then name
+        # Fallback: reorganised/merged council lookup by ward name token matching
+        if not ward_data:
+            council_slug = (
+                _DISTRICT_TO_COUNCIL_SLUG.get(district_code) or
+                _UA_TO_COUNCIL_SLUG.get(ua_code) or
+                _COUNTY_TO_COUNCIL_SLUG.get(county_code)
+            )
+            if council_slug:
+                slug_wards = elections["by_slug"].get(council_slug, {})
+                best = _best_ward_match(ward_name, slug_wards)
+                if best:
+                    ward_data = slug_wards[best]
+
         candidates = sorted(
             ward_data.get("candidates", []),
             key=lambda c: (c["party"], c["name"])
