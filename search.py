@@ -1014,7 +1014,7 @@ def fetch_brand_data(brand: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v13"
+_COMPANY_VER = "v14"
 _COMPANY_INFLIGHT: dict = {}
 _COMPANY_LOCK = _threading.Lock()
 
@@ -1309,6 +1309,23 @@ def _fetch_ashby(slugs: list) -> list:
             pass
     return []
 
+def _fetch_workable(slugs: list) -> list:
+    for slug in slugs:
+        try:
+            r = requests.get(
+                f"https://apply.workable.com/api/v1/widget/accounts/{slug}/jobs",
+                params={"details": "true"},
+                timeout=6, headers=HEADERS,
+            )
+            if r.status_code == 200:
+                jobs = r.json().get("jobs") or []
+                if jobs:
+                    return [{"title": j.get("title",""), "location": j.get("city","") or ("Remote" if j.get("remote") else ""), "url": j.get("url","")} for j in jobs[:30]]
+        except Exception:
+            pass
+    return []
+
+
 def _fetch_youtube(company: str) -> list:
     """Search YouTube for company videos using the Data API v3."""
     key = os.environ.get("YOUTUBE_API_KEY", "")
@@ -1439,6 +1456,7 @@ def fetch_company_info(company: str) -> dict:
             lv_f       = pool.submit(_fetch_lever, slugs)
             sr_f       = pool.submit(_fetch_smartrecruiters, slugs)
             ab_f       = pool.submit(_fetch_ashby, slugs)
+            wk_f       = pool.submit(_fetch_workable, slugs)
 
             wiki = {}
             try:
@@ -1483,7 +1501,7 @@ def fetch_company_info(company: str) -> dict:
                 pass
 
             jobs, source = [], ""
-            for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (ab_f, "Ashby"), (sr_f, "SmartRecruiters")]:
+            for fut, src in [(gh_f, "Greenhouse"), (lv_f, "Lever"), (ab_f, "Ashby"), (sr_f, "SmartRecruiters"), (wk_f, "Workable")]:
                 try:
                     j = fut.result(timeout=10)
                     if j:
@@ -1510,7 +1528,12 @@ def fetch_company_info(company: str) -> dict:
             "slug":           slug,
         }
         _COMPANY_CACHE[key] = {"ts": time.time(), "data": result}
-        _sb_cache_set("company:" + key, result)
+        # Only persist to Supabase when jobs were found — empty jobs may be a transient
+        # fetch failure, so let the next request retry rather than caching the miss for 24h
+        if jobs:
+            _sb_cache_set("company:" + key, result)
+        else:
+            print(f"[company] {company}: no jobs found — skipping Supabase cache so next request retries")
         return result
     finally:
         with _COMPANY_LOCK:
