@@ -2377,8 +2377,6 @@
       const candidates = d.candidates || [];
       const suggestions = d.suggestions || [];
       if (!candidates.length) {
-        document.getElementById("places-search-error").textContent = `Couldn't find "${q}". Check the spelling and try again.`;
-        document.getElementById("places-search-error").classList.remove("hidden");
         if (suggestions.length) {
           const dym = document.getElementById("places-did-you-mean");
           dym.innerHTML = `<span style="font-weight:600">Did you mean?</span> `;
@@ -2390,6 +2388,9 @@
             dym.appendChild(btn);
           });
           dym.classList.remove("hidden");
+        } else {
+          document.getElementById("places-search-error").textContent = `Couldn't find "${q}". Check the spelling and try again.`;
+          document.getElementById("places-search-error").classList.remove("hidden");
         }
         return;
       }
