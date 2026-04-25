@@ -1471,28 +1471,76 @@ _PLACE_ACTIVITIES = {
 }
 
 
-def _get_place_suggestions(q: str) -> list:
-    """Return up to 3 place name suggestions from Nominatim for a failed/misspelled query."""
+def _nom_search(query: str, limit: int = 5) -> list:
+    """Nominatim search, returns list of (name, lat, lon, class, type, osm_id)."""
     try:
         r = requests.get(
             "https://nominatim.openstreetmap.org/search",
-            params={"q": q, "format": "json", "limit": 5, "countrycodes": "gb"},
+            params={"q": query, "format": "json", "limit": limit, "countrycodes": "gb"},
             headers={"User-Agent": "Miru/1.0 (miru.app)"},
-            timeout=6,
+            timeout=7,
         )
-        if r.status_code == 200 and r.json():
-            seen, out = set(), []
-            for h in r.json():
-                name = h.get("display_name", "").split(",")[0].strip()
-                if name and name.lower() not in seen:
-                    seen.add(name.lower())
-                    out.append(name)
-                if len(out) >= 3:
-                    break
-            return out
+        if r.status_code == 200:
+            return r.json()
     except Exception:
         pass
     return []
+
+
+def _google_places_search(query: str, limit: int = 3) -> list:
+    """Google Places Text Search. Returns list of dicts with name, lat, lon."""
+    if not _GOOGLE_PLACES_KEY:
+        return []
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            params={"query": query + " UK", "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+            timeout=8,
+        )
+        results = []
+        for p in r.json().get("results", [])[:limit]:
+            loc = p.get("geometry", {}).get("location", {})
+            if loc:
+                results.append({
+                    "name": p.get("name", ""),
+                    "lat":  loc["lat"],
+                    "lon":  loc["lng"],
+                })
+        return results
+    except Exception:
+        return []
+
+
+def _get_place_suggestions(q: str) -> list:
+    """Return up to 3 place name suggestions for a failed/misspelled query."""
+    seen, out = set(), []
+
+    def _add(name):
+        if name and name.lower() not in seen:
+            seen.add(name.lower())
+            out.append(name)
+
+    # Strategy 1: Nominatim with full query (no UK suffix — more lenient)
+    for h in _nom_search(q):
+        _add(h.get("display_name", "").split(",")[0].strip())
+        if len(out) >= 3:
+            return out
+
+    # Strategy 2: first word + last word (e.g. "Bhakti manor" from "Bhakti vedantham manor")
+    words = [w for w in q.split() if len(w) > 2]
+    if len(words) >= 3:
+        for h in _nom_search(f"{words[0]} {words[-1]}"):
+            _add(h.get("display_name", "").split(",")[0].strip())
+        if len(out) >= 3:
+            return out
+
+    # Strategy 3: Google Places (handles misspellings/phonetic variants)
+    for p in _google_places_search(q):
+        _add(p["name"])
+        if len(out) >= 3:
+            return out
+
+    return out
 
 
 def _geocode_place(q: str):
@@ -1506,25 +1554,26 @@ def _geocode_place(q: str):
             res = r.json().get("result", {})
             return res.get("latitude"), res.get("longitude"), res.get("admin_ward", q), "place", "postcode", None
         return None
-    # Place name → Nominatim
-    r = requests.get(
-        "https://nominatim.openstreetmap.org/search",
-        params={"q": q + ", UK", "format": "json", "limit": 1, "countrycodes": "gb"},
-        headers={"User-Agent": "Miru/1.0 (miru.app)"},
-        timeout=8,
-    )
-    if r.status_code == 200:
-        hits = r.json()
-        if hits:
-            h = hits[0]
-            return (
-                float(h["lat"]),
-                float(h["lon"]),
-                h.get("display_name", q).split(",")[0],
-                h.get("class", ""),
-                h.get("type", ""),
-                str(h.get("osm_id", "")),
-            )
+
+    # Primary: Nominatim
+    hits = _nom_search(q + ", UK", limit=1)
+    if hits:
+        h = hits[0]
+        return (
+            float(h["lat"]),
+            float(h["lon"]),
+            h.get("display_name", q).split(",")[0],
+            h.get("class", ""),
+            h.get("type", ""),
+            str(h.get("osm_id", "")),
+        )
+
+    # Fallback: Google Places (handles misspellings, branded names, etc.)
+    gp = _google_places_search(q, limit=1)
+    if gp:
+        p = gp[0]
+        return float(p["lat"]), float(p["lon"]), p["name"], "amenity", "venue", ""
+
     return None
 
 
