@@ -278,10 +278,10 @@
           <div class="tc-desc">Candidates & polling station</div>
         </button>
 
-        <button class="tool-card" onclick="showScreen('places')" style="display:none">
-          <div class="tc-icon" style="background:#eff6ff">🏛️</div>
-          <div class="tc-name">Local Places</div>
-          <div class="tc-desc">Services, hours & contacts</div>
+        <button class="tool-card" onclick="showScreen('places')">
+          <div class="tc-icon" style="background:#eff6ff">📍</div>
+          <div class="tc-name">Interesting Places</div>
+          <div class="tc-desc">Cafes, pubs, parks & more nearby</div>
         </button>
 
       </div>
@@ -3819,7 +3819,7 @@
 
   // ── Bottom nav active state ──────────────────────────────────────────────────
   function _updateBottomNav(name) {
-    ["fuel","report","company","library","brand"].forEach(s => {
+    ["fuel","report","places","company","library"].forEach(s => {
       document.getElementById("bnav-" + s).classList.toggle("active", s === name);
     });
   }
@@ -3827,7 +3827,7 @@
   showScreen = function(name) { _origShowScreen(name); _updateBottomNav(name); };
   const _origShowHome = showHome;
   showHome = function() { _origShowHome();
-    ["fuel","report","company","library","brand"].forEach(s => document.getElementById("bnav-"+s).classList.remove("active"));
+    ["fuel","report","places","company","library"].forEach(s => document.getElementById("bnav-"+s).classList.remove("active"));
   };
 
   // ── Kagi News ────────────────────────────────────────────────────────────
@@ -4035,27 +4035,32 @@
         style="padding:11px 20px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">Search</button>
     </div>
 
-    <!-- Scan button -->
-    <button id="scan-cam-btn" onclick="toggleScanner()"
-      style="width:100%;padding:12px;border-radius:12px;border:1px dashed var(--border);background:var(--surface);color:var(--muted);font-size:14px;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px">
-      <span style="font-size:20px">📷</span> Scan barcode
-    </button>
-
-    <!-- iOS photo fallback (hidden) -->
+    <!-- Scan buttons -->
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button id="scan-cam-btn" onclick="toggleScanner()"
+        style="flex:1;padding:12px;border-radius:12px;border:1px dashed var(--border);background:var(--surface);color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+        <span style="font-size:20px">📷</span> <span id="scan-cam-label">Live scan</span>
+      </button>
+      <label for="scan-file"
+        style="flex:1;padding:12px;border-radius:12px;border:1px dashed var(--border);background:var(--surface);color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center">
+        <span style="font-size:20px">📸</span> Take photo
+      </label>
+    </div>
     <input id="scan-file" type="file" accept="image/*" capture="environment"
       style="display:none" onchange="scanFromFile(this)">
 
-    <!-- Camera viewfinder -->
+    <!-- Camera viewfinder (BarcodeDetector / Chrome path) -->
     <div id="scan-reader-wrap" style="display:none;margin-bottom:16px;border-radius:14px;overflow:hidden;position:relative;background:#000">
       <video id="scan-video" autoplay playsinline muted
         style="width:100%;max-height:280px;display:block;object-fit:cover"></video>
-      <!-- aiming line -->
       <div style="position:absolute;top:50%;left:8%;right:8%;height:2px;background:rgba(99,102,241,.8);transform:translateY(-50%);border-radius:2px;pointer-events:none"></div>
       <button onclick="stopScanner()"
         style="width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
         Stop camera
       </button>
     </div>
+    <!-- Hidden container for html5-qrcode scanFile calls -->
+    <div id="scan-h5qr-hidden" style="display:none;visibility:hidden;width:1px;height:1px;overflow:hidden"></div>
 
     <!-- Loading -->
     <div id="scan-loading" style="display:none;text-align:center;padding:32px 0;color:var(--muted);font-size:14px">
@@ -4090,124 +4095,110 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 (function(){
   let _scanActive = false;
-  let _zxControls = null;
   let _nativeStream = null;
-  let _nativeRaf = null;
-  let _detector = null;
+  let _nativeRaf    = null;
+  let _detector     = null;
 
   if ('BarcodeDetector' in window) {
     try { _detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code'] }); } catch(_) {}
   }
 
-  function _zxReader() {
-    if (typeof ZXing === 'undefined') return null;
-    const hints = new Map();
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-      ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-      ZXing.BarcodeFormat.UPC_A,  ZXing.BarcodeFormat.UPC_E,
-      ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.ITF,    ZXing.BarcodeFormat.QR_CODE,
-    ]);
-    return new ZXing.BrowserMultiFormatReader(hints);
+  // On iOS/Safari (no BarcodeDetector), "Live scan" button becomes "Take Photo" — same as the label
+  if (!_detector) {
+    const lbl = document.getElementById("scan-cam-label");
+    if (lbl) lbl.textContent = "Live scan (beta)";
   }
 
   window.toggleScanner = async function() {
     if (_scanActive) { stopScanner(); return; }
-    _scanActive = true;
 
+    if (!_detector) {
+      // iOS / Firefox: live camera unreliable — just open native camera via file input
+      document.getElementById("scan-file").click();
+      return;
+    }
+
+    // BarcodeDetector path (Chrome/Android/Edge)
+    _scanActive = true;
     const btn   = document.getElementById("scan-cam-btn");
     const wrap  = document.getElementById("scan-reader-wrap");
     const video = document.getElementById("scan-video");
     btn.innerHTML = '<span style="font-size:20px">⏳</span> Starting camera…';
-    wrap.style.display = "block";
-
-    if (_detector) {
-      // Native BarcodeDetector path (Chrome/Android/Edge)
-      try {
-        _nativeStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
-        });
-      } catch(e) {
-        wrap.style.display = "none"; _scanActive = false;
-        btn.innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
-        showScanError(e.name === "NotAllowedError"
-          ? "Camera permission denied — allow camera in browser settings, then try again."
-          : "Camera not available. Type the product name above.");
-        return;
-      }
-      video.srcObject = _nativeStream;
-      btn.innerHTML = '<span style="font-size:20px">📷</span> Scanning… tap to stop';
-      async function _tick() {
-        if (!_scanActive) return;
-        try {
-          const codes = await _detector.detect(video);
-          if (codes.length) { stopScanner(); doProductLookup(null, codes[0].rawValue); return; }
-        } catch(_) {}
-        _nativeRaf = requestAnimationFrame(_tick);
-      }
-      video.addEventListener("loadeddata", () => { _nativeRaf = requestAnimationFrame(_tick); }, { once: true });
-
-    } else {
-      // ZXing path — iOS Safari, Firefox, everything else
-      const zx = _zxReader();
-      if (!zx) {
-        wrap.style.display = "none"; _scanActive = false;
-        btn.innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
-        showScanError("Scanner failed to load. Please type the product name above.");
-        return;
-      }
-      try {
-        _zxControls = await zx.decodeFromConstraints(
-          { video: { facingMode: "environment" } },
-          video,
-          (result, err) => {
-            if (result) { stopScanner(); doProductLookup(null, result.getText()); }
-          }
-        );
-        btn.innerHTML = '<span style="font-size:20px">📷</span> Scanning… tap to stop';
-      } catch(e) {
-        wrap.style.display = "none"; _scanActive = false;
-        btn.innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
-        showScanError(e.name === "NotAllowedError"
-          ? "Camera permission denied — allow camera in browser settings, then try again."
-          : "Camera not available. Type the product name above.");
-      }
+    try {
+      _nativeStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+    } catch(e) {
+      _scanActive = false;
+      btn.innerHTML = '<span style="font-size:20px">📷</span> <span id="scan-cam-label">Live scan</span>';
+      showScanError(e.name === "NotAllowedError"
+        ? "Camera permission denied — allow camera in browser settings, then try again."
+        : "Camera not available. Use Take Photo instead.");
+      return;
     }
+    video.srcObject = _nativeStream;
+    wrap.style.display = "block";
+    btn.innerHTML = '<span style="font-size:20px">📷</span> Scanning… tap to stop';
+    async function _tick() {
+      if (!_scanActive) return;
+      try {
+        const codes = await _detector.detect(video);
+        if (codes.length) { stopScanner(); doProductLookup(null, codes[0].rawValue); return; }
+      } catch(_) {}
+      _nativeRaf = requestAnimationFrame(_tick);
+    }
+    video.addEventListener("loadeddata", () => { _nativeRaf = requestAnimationFrame(_tick); }, { once: true });
   };
 
   window.stopScanner = function() {
     _scanActive = false;
-    if (_nativeRaf)  { cancelAnimationFrame(_nativeRaf); _nativeRaf = null; }
+    if (_nativeRaf)    { cancelAnimationFrame(_nativeRaf); _nativeRaf = null; }
     if (_nativeStream) { _nativeStream.getTracks().forEach(t => t.stop()); _nativeStream = null; }
-    if (_zxControls)   { try { _zxControls.stop(); } catch(_) {} _zxControls = null; }
     const video = document.getElementById("scan-video");
-    video.srcObject = null;
+    if (video) video.srcObject = null;
     document.getElementById("scan-reader-wrap").style.display = "none";
-    document.getElementById("scan-cam-btn").innerHTML = '<span style="font-size:20px">📷</span> Scan barcode';
+    document.getElementById("scan-cam-btn").innerHTML = '<span style="font-size:20px">📷</span> <span id="scan-cam-label">Live scan</span>';
   };
 
   window.scanFromFile = async function(input) {
     const file = input.files[0]; if (!file) return;
     input.value = "";
     document.getElementById("scan-loading").style.display = "block";
-    document.getElementById("scan-error").style.display  = "none";
-    const url = URL.createObjectURL(file);
-    const img = new Image(); img.src = url;
-    img.onload = async () => {
-      let decoded = null;
+    document.getElementById("scan-error").style.display   = "none";
+    document.getElementById("scan-results").style.display = "none";
+
+    let decoded = null;
+
+    // 1. Try BarcodeDetector (Chrome/Android — instant)
+    if (_detector) {
       try {
-        if (_detector) { const r = await _detector.detect(img); if (r.length) decoded = r[0].rawValue; }
-        if (!decoded) { const zx = _zxReader(); if (zx) decoded = (await zx.decodeFromImageElement(img)).getText(); }
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await new Promise(r => { img.onload = r; });
+        const codes = await _detector.detect(img);
+        if (codes.length) decoded = codes[0].rawValue;
+        URL.revokeObjectURL(img.src);
       } catch(_) {}
-      URL.revokeObjectURL(url);
-      document.getElementById("scan-loading").style.display = "none";
-      decoded ? doProductLookup(null, decoded)
-              : showScanError("No barcode found. Try in better light or type the product name above.");
-    };
+    }
+
+    // 2. html5-qrcode scanFile — works on iOS Safari (uses internal WASM decoder)
+    if (!decoded && typeof Html5Qrcode !== 'undefined') {
+      try {
+        const h5 = new Html5Qrcode("scan-h5qr-hidden");
+        decoded = await h5.scanFile(file, /* showImage= */ false);
+      } catch(_) {}
+    }
+
+    document.getElementById("scan-loading").style.display = "none";
+    if (decoded) {
+      doProductLookup(null, decoded);
+    } else {
+      showScanError("No barcode found in photo. Try in better light, hold steady, and make sure the barcode fills most of the frame. Or type the product name above.");
+    }
   };
 
   window.scanSearch = function() {
@@ -4456,11 +4447,11 @@
   <button class="bnav-btn" id="bnav-report" onclick="showScreen('report')">
     <span class="bnav-icon">🏠</span>Area
   </button>
+  <button class="bnav-btn" id="bnav-places" onclick="showScreen('places')">
+    <span class="bnav-icon">📍</span>Places
+  </button>
   <button class="bnav-btn" id="bnav-company" onclick="showScreen('company')">
     <span class="bnav-icon">🏢</span>Company
-  </button>
-  <button class="bnav-btn" id="bnav-brand" onclick="showScreen('brand')">
-    <span class="bnav-icon">🏷️</span>Brand
   </button>
   <button class="bnav-btn" id="bnav-library" onclick="showScreen('library')">
     <span class="bnav-icon">📚</span>Library
