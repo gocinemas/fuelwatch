@@ -1821,7 +1821,7 @@ def _overpass_places(lat: float, lon: float, radius: int = 900):
     """Query Overpass for useful local services and return formatted list."""
     import urllib.parse as _up, html as _html
     amenity_types = "|".join([
-        "library", "community_centre", "arts_centre", "doctors", "hospital",
+        "library", "community_centre", "arts_centre", "hospital",
         "dentist", "pharmacy", "post_office", "townhall", "social_facility",
         "food_bank", "police", "fire_station", "leisure_centre",
         "cafe", "restaurant", "fast_food", "pub", "bar", "fuel",
