@@ -358,7 +358,7 @@ _house_cache: dict = {}
 _HOUSE_CACHE_TTL = 1800  # 30 minutes
 
 
-def fetch_local_amenities(lat: float, lon: float, school_km: float = 3.0, pub_km: float = 3.0) -> dict:
+def fetch_local_amenities(lat: float, lon: float, school_km: float = 3.0, pub_km: float = 5.0) -> dict:
     """Single Overpass query for schools, universities, pubs, bars and cafes.
     Results are cached for 1 hour per location to dramatically speed up the Area Report."""
     cache_key = (round(lat, 3), round(lon, 3))
