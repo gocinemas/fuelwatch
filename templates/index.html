@@ -771,12 +771,12 @@
 
       <!-- ── Tab switcher ── -->
       <div style="display:flex;gap:8px;padding:0 18px 16px">
-        <button id="places-tab-explore" class="places-tab active" onclick="placesSetTab('explore')">📍 Explore nearby</button>
-        <button id="places-tab-find"    class="places-tab"        onclick="placesSetTab('find')">🔍 Find a place</button>
+        <button id="places-tab-find"    class="places-tab active" onclick="placesSetTab('find')">🔍 Find a place</button>
+        <button id="places-tab-explore" class="places-tab"        onclick="placesSetTab('explore')">📍 Explore nearby</button>
       </div>
 
       <!-- ══ EXPLORE PANEL ══ -->
-      <div id="places-panel-explore" style="padding:0 18px 24px">
+      <div id="places-panel-explore" style="display:none;padding:0 18px 24px">
 
         <button id="places-loc-btn" onclick="placesUseLocation()"
           style="width:100%;padding:14px;border-radius:14px;border:2px dashed #3b82f6;background:#eff6ff;color:#1d4ed8;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">
@@ -823,7 +823,7 @@
       </div>
 
       <!-- ══ FIND A PLACE PANEL ══ -->
-      <div id="places-panel-find" style="display:none;padding:0 18px 24px">
+      <div id="places-panel-find" style="padding:0 18px 24px">
 
         <!-- Step 1: Search -->
         <div id="places-step-search">
@@ -2400,11 +2400,11 @@
 
   // ── Places tab switching ────────────────────────────────────────────────────
   function placesSetTab(tab) {
-    const isExplore = tab === "explore";
-    document.getElementById("places-panel-explore").style.display = isExplore ? "" : "none";
-    document.getElementById("places-panel-find").style.display    = isExplore ? "none" : "";
-    document.getElementById("places-tab-explore").classList.toggle("active",  isExplore);
-    document.getElementById("places-tab-find").classList.toggle("active",    !isExplore);
+    const isFind = tab === "find";
+    document.getElementById("places-panel-find").style.display    = isFind ? "" : "none";
+    document.getElementById("places-panel-explore").style.display = isFind ? "none" : "";
+    document.getElementById("places-tab-find").classList.toggle("active",     isFind);
+    document.getElementById("places-tab-explore").classList.toggle("active", !isFind);
   }
 
   // ── Explore nearby ──────────────────────────────────────────────────────────

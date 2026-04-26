@@ -2202,7 +2202,9 @@ def api_places():
 
     # Run area search + venue detail fetch in parallel
     is_venue  = _is_specific_venue(osm_class, osm_type) and bool(osm_id)
-    needs_gp  = not is_venue and bool(display) and bool(_GOOGLE_PLACES_KEY)
+    # Only call Google Place Details when a real name was supplied (not a fallback coord string)
+    explicit_name = request.args.get("name", "").strip() or q
+    needs_gp  = not is_venue and bool(explicit_name) and bool(_GOOGLE_PLACES_KEY)
     with ThreadPoolExecutor(max_workers=3) as ex:
         f_places = ex.submit(_overpass_places, lat, lon)
         f_venue  = ex.submit(_fetch_specific_venue, osm_type, osm_id, display) if is_venue else None
