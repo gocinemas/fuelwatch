@@ -2645,32 +2645,42 @@
       errEl.classList.remove("hidden");
       return;
     }
-    btn.style.opacity = "0.5";
-    btn.disabled = true;
 
-    const onSuccess = pos => {
-      btn.style.opacity = "1";
+    btn.textContent = "⏳";
+    btn.disabled = true;
+    errEl.textContent = "Getting your location…";
+    errEl.style.background = "#eff6ff";
+    errEl.style.borderColor = "#bfdbfe";
+    errEl.style.color = "#1d4ed8";
+    errEl.classList.remove("hidden");
+
+    const reset = () => {
+      btn.textContent = "📍";
       btn.disabled = false;
+    };
+    const onSuccess = pos => {
+      reset();
+      errEl.classList.add("hidden");
+      errEl.style.background = "";
+      errEl.style.borderColor = "";
+      errEl.style.color = "";
       placesLoadDetails(pos.coords.latitude, pos.coords.longitude, "", "", "", "your location", "your location");
     };
     const onError = err => {
-      btn.style.opacity = "1";
-      btn.disabled = false;
+      reset();
+      errEl.style.background = "";
+      errEl.style.borderColor = "";
+      errEl.style.color = "";
       const msgs = {
         1: "Location access was denied. Allow location in your phone settings, then try again.",
         2: "Couldn't detect your location. Check your signal or enter a postcode.",
         3: "Location timed out. Enter a postcode instead.",
       };
       errEl.textContent = msgs[err.code] || "Couldn't get your location. Enter a postcode instead.";
-      errEl.classList.remove("hidden");
     };
 
-    // Stage 1: use any cached position instantly (timeout 200ms)
-    navigator.geolocation.getCurrentPosition(onSuccess, () => {
-      // Stage 2: no cache available — request fresh position with longer timeout
-      navigator.geolocation.getCurrentPosition(onSuccess, onError,
-        {timeout: 20000, enableHighAccuracy: false, maximumAge: 0});
-    }, {maximumAge: Infinity, timeout: 200, enableHighAccuracy: false});
+    navigator.geolocation.getCurrentPosition(onSuccess, onError,
+      {timeout: 20000, enableHighAccuracy: false, maximumAge: 60000});
   }
 
   async function placesExplorePostcode() {
