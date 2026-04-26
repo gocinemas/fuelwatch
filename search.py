@@ -358,7 +358,7 @@ _house_cache: dict = {}
 _HOUSE_CACHE_TTL = 1800  # 30 minutes
 
 
-def fetch_local_amenities(lat: float, lon: float, school_km: float = 3.0, pub_km: float = 1.5) -> dict:
+def fetch_local_amenities(lat: float, lon: float, school_km: float = 3.0, pub_km: float = 3.0) -> dict:
     """Single Overpass query for schools, universities, pubs, bars and cafes.
     Results are cached for 1 hour per location to dramatically speed up the Area Report."""
     cache_key = (round(lat, 3), round(lon, 3))
@@ -442,11 +442,11 @@ out center 80;
             }
             pub_rating_futures = {
                 i: pool.submit(_google_rating, p["name"], p["lat"], p["lon"])
-                for i, p in enumerate(pubs[:8])
+                for i, p in enumerate(pubs[:15])
             }
             cafe_rating_futures = {
                 i: pool.submit(_google_rating, c["name"], c["lat"], c["lon"])
-                for i, c in enumerate(cafes[:6])
+                for i, c in enumerate(cafes[:10])
             }
             for i, fut in ofsted_futures.items():
                 try:
@@ -489,8 +489,8 @@ out center 80;
     result = {
         "schools":      schools[:10],
         "universities": universities[:3],
-        "pubs":         pubs[:8],
-        "cafes":        cafes[:6],
+        "pubs":         pubs[:15],
+        "cafes":        cafes[:10],
     }
     _local_cache[cache_key] = {"ts": time.time(), "data": result}
     return result
