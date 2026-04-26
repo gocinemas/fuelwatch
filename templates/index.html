@@ -2269,7 +2269,22 @@
       function _renderResultsTable(results, title) {
         const maxV = Math.max(...results.map(r => r.votes || 0), 1);
         const totV = results.reduce((s, r) => s + (r.votes || 0), 0);
+        const winners = results.filter(r => r.elected);
+        const winnerSummary = winners.length
+          ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+               <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">✅ Who won</div>
+               ${winners.map(r => {
+                 const col = _partyStyle(r.party);
+                 return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                   <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col.bg};flex-shrink:0"></span>
+                   <span style="font-size:13px;font-weight:600;color:var(--text)">${r.name}</span>
+                   <span style="font-size:11px;padding:1px 6px;border-radius:99px;background:${col.bg};color:${col.text}">${r.party}</span>
+                   ${r.votes!=null?`<span style="font-size:11px;color:var(--subtle);margin-left:auto">${r.votes.toLocaleString()} votes</span>`:''}
+                 </div>`;
+               }).join('')}
+             </div>` : '';
         return `<div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:10px">📊 ${title}</div>` +
+          winnerSummary +
           results.map(r => {
             const col = _partyStyle(r.party);
             const pct = totV > 0 && r.votes != null ? Math.round(r.votes * 100 / totV) : null;
@@ -2369,6 +2384,112 @@
   // ── Local Places ────────────────────────────────────────────────────────────
   let _placesIdCounter = 0;
   const _placeReviewsLoaded = new Set();
+  let _nearbySearchLat = 0, _nearbySearchLon = 0;
+  const _nearbyFoodGroups = {};   // groupId → {items, sort}
+  const _nearbyMore = {};         // moreId  → html string
+
+  const _FOOD_CATS = new Set(["Café","Restaurant","Fast Food","Pub","Bar"]);
+
+  function _distKmNearby(p) {
+    if (!p.lat || !p.lon || !_nearbySearchLat) return 999;
+    return _distKm(_nearbySearchLat, _nearbySearchLon, p.lat, p.lon);
+  }
+
+  function _foodPlaceCard(p) {
+    const id = `pl-${++_placesIdCounter}`;
+    const rId = `plr-${_placesIdCounter}`;
+    const ratingId = `prat-${_placesIdCounter}`;
+    p._ratingId = ratingId; p._reviewsId = rId; p._panelId = id;
+    const dist = _nearbySearchLat && p.lat && p.lon ? ` · <span style="color:var(--subtle);font-size:10px">${_distLabel(_distKmNearby(p))}</span>` : "";
+    const latlon = p.lat && p.lon ? `&lat=${p.lat}&lon=${p.lon}` : "";
+    return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;color:var(--text)">${p.name}${dist}</div>
+          <div id="${ratingId}" style="font-size:12px;margin-top:2px;min-height:16px"><span style="color:var(--subtle);font-size:10px">⌛ loading rating…</span></div>
+          ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.address}</div>` : ""}
+        </div>
+        <button data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-latlon="${latlon}"
+          onclick="_togglePlace('${id}','${rId}',this.dataset.name,this.dataset.latlon,this)"
+          style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px 4px;margin-top:2px">⭐ Reviews</button>
+      </div>
+      <div id="${id}" style="display:none;margin-top:8px">
+        <div id="${rId}" style="margin-top:4px">
+          <div class="plr-content" style="font-size:12px;color:var(--subtle)">Loading…</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function _fetchInlineRating(p) {
+    const latlon = p.lat && p.lon ? `&lat=${p.lat}&lon=${p.lon}` : "";
+    fetch(`/api/places/google?name=${encodeURIComponent(p.name)}${latlon}`)
+      .then(r => r.json())
+      .then(d => {
+        p._rating = d.rating || 0;
+        p._total_ratings = d.total_ratings || 0;
+        p._reviews_data = d.reviews || [];
+        const el = document.getElementById(p._ratingId);
+        if (!el) return;
+        if (d.found && d.rating) {
+          const stars = Math.round(d.rating);
+          el.innerHTML = `<span style="color:#f59e0b">${"★".repeat(stars)}${"☆".repeat(5-stars)}</span> <span style="font-weight:600;color:var(--text);font-size:12px">${d.rating}</span> <span style="color:var(--subtle);font-size:10px">(${(d.total_ratings||0).toLocaleString()})</span>`;
+        } else {
+          el.innerHTML = `<span style="color:var(--subtle);font-size:10px">No rating found</span>`;
+        }
+      })
+      .catch(() => {
+        const el = document.getElementById(p._ratingId);
+        if (el) el.innerHTML = '';
+      });
+  }
+
+  function _renderFoodGroupList(groupId) {
+    const g = _nearbyFoodGroups[groupId];
+    if (!g) return;
+    let sorted = [...g.items];
+    if (g.sort === 'reviews') sorted.sort((a,b) => (b._rating||0) - (a._rating||0));
+    else sorted.sort((a,b) => _distKmNearby(a) - _distKmNearby(b));
+    const cap = 6, shown = sorted.slice(0, cap), more = sorted.length - cap;
+    const moreId = `${groupId}-more`;
+    if (more > 0) _nearbyMore[moreId] = sorted.slice(cap).map(p => _foodPlaceCard(p)).join("");
+    const moreBtn = more > 0
+      ? `<button id="${moreId}" onclick="document.getElementById('${moreId}').outerHTML=_nearbyMore['${moreId}']||''" style="margin-top:8px;width:100%;text-align:center;font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:4px 0">Show ${more} more ›</button>`
+      : "";
+    const listEl = document.getElementById(`${groupId}-list`);
+    if (listEl) { listEl.innerHTML = shown.map(p => _foodPlaceCard(p)).join("") + moreBtn; }
+    shown.forEach(p => _fetchInlineRating(p));
+  }
+
+  function setFoodSort(groupId, sort, btn) {
+    const g = _nearbyFoodGroups[groupId];
+    if (!g) return;
+    g.sort = sort;
+    document.querySelectorAll(`[data-gid="${groupId}"]`).forEach(b => {
+      b.style.background = b.dataset.sort === sort ? "var(--text)" : "var(--surface)";
+      b.style.color      = b.dataset.sort === sort ? "var(--bg)"   : "var(--subtle)";
+    });
+    _renderFoodGroupList(groupId);
+  }
+
+  function _buildFoodGroupCard(cat, g) {
+    const groupId = `fg-${cat.replace(/\W/g,"_")}`;
+    _nearbyFoodGroups[groupId] = {items: g.items, sort: "distance"};
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${g.emoji} ${cat}
+          <span style="font-size:11px;font-weight:400;color:var(--subtle)">${g.items.length > 1 ? g.items.length+" nearby" : ""}</span>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button data-gid="${groupId}" data-sort="distance" onclick="setFoodSort('${groupId}','distance',this)"
+            style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--text);color:var(--bg)">📍 Distance</button>
+          <button data-gid="${groupId}" data-sort="reviews" onclick="setFoodSort('${groupId}','reviews',this)"
+            style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--surface);color:var(--subtle)">⭐ Reviews</button>
+        </div>
+      </div>
+      <div id="${groupId}-list"></div>
+    </div>`;
+  }
 
   async function _togglePlace(panelId, reviewsId, name, latlon, btn) {
     const panel = document.getElementById(panelId);
@@ -2847,30 +2968,38 @@
 
       const featuredHtml = featured.map(p => _renderFeaturedDetail(p)).join("");
 
-      // Split nearby into food+fuel (shown first) vs services
-      const FOOD_FUEL = new Set(["Café","Restaurant","Fast Food","Pub","Bar","Petrol Station"]);
-      const foodFuelGroups = {}, serviceGroups = {};
+      // Store search coords for distance sorting
+      _nearbySearchLat = lat; _nearbySearchLon = lon;
+      // Clear previous food group state
+      for (const k of Object.keys(_nearbyFoodGroups)) delete _nearbyFoodGroups[k];
+      for (const k of Object.keys(_nearbyMore)) delete _nearbyMore[k];
+
+      // Split nearby into food (with ratings/sort) vs services
+      const FOOD_CATS_DETAIL = new Set(["Café","Restaurant","Fast Food","Pub","Bar"]);
+      const foodGroups = {}, serviceGroups = {};
       for (const [cat, g] of Object.entries(groups)) {
-        if (FOOD_FUEL.has(cat)) foodFuelGroups[cat] = g;
+        if (FOOD_CATS_DETAIL.has(cat)) foodGroups[cat] = g;
         else serviceGroups[cat] = g;
       }
       function _groupCard([cat, g]) {
         const items = g.items.map(p => _renderPlaceCard(p, false)).join("");
-        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${g.emoji} ${cat}
             <span style="font-size:11px;font-weight:400;color:var(--subtle)">${g.items.length > 1 ? g.items.length + " nearby" : ""}</span>
           </div>${items}</div>`;
       }
-      const foodFuelHtml   = Object.entries(foodFuelGroups).map(_groupCard).join("");
-      const servicesHtml   = Object.entries(serviceGroups).map(_groupCard).join("");
+      const foodHtml     = Object.entries(foodGroups).map(([cat, g]) => _buildFoodGroupCard(cat, g)).join("");
+      const servicesHtml = Object.entries(serviceGroups).map(_groupCard).join("");
 
       document.getElementById("places-list").innerHTML =
         featuredHtml +
-        (featured.length && nearby.length ? `<div style="font-size:12px;font-weight:600;color:var(--subtle);padding:4px 2px 6px">📍 Nearby</div>` : "") +
-        foodFuelHtml +
-        (foodFuelHtml && servicesHtml ? `<div style="font-size:11px;font-weight:600;color:var(--subtle);padding:6px 2px 4px">Other local services</div>` : "") +
+        (nearby.length ? `<div style="font-size:12px;font-weight:600;color:var(--subtle);padding:4px 2px 6px">📍 Nearby</div>` : "") +
+        foodHtml +
+        (foodHtml && servicesHtml ? `<div style="font-size:11px;font-weight:600;color:var(--subtle);padding:6px 2px 4px">Other local services</div>` : "") +
         servicesHtml;
       document.getElementById("places-result").classList.remove("hidden");
+      // Trigger food group renders (fills lists + kicks off rating fetches)
+      for (const groupId of Object.keys(_nearbyFoodGroups)) _renderFoodGroupList(groupId);
     } catch(e) {
       document.getElementById("places-loading").classList.add("hidden");
       document.getElementById("places-error").textContent = "Could not load place details. Try again.";
