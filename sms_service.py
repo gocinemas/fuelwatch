@@ -1832,23 +1832,26 @@ def _overpass_query(query: str, timeout: int = 30) -> list:
 def _overpass_places(lat: float, lon: float, radius: int = 1500):
     """Query Overpass for useful local services and return formatted list."""
     import html as _html
-    amenity_types = "|".join([
+    services_types = "|".join([
         "library", "community_centre", "arts_centre", "hospital",
         "dentist", "pharmacy", "post_office", "townhall", "social_facility",
-        "food_bank", "police", "fire_station", "leisure_centre",
-        "cafe", "restaurant", "fast_food", "pub", "bar", "fuel",
+        "food_bank", "police", "fire_station", "leisure_centre", "fuel",
     ])
+    food_types = "cafe|restaurant|fast_food|pub|bar"
     leisure_types = "sports_centre|swimming_pool|fitness_centre|park|playground|attraction"
+    # Services + leisure: 1500m; food + fuel: 3000m (food is sparse in residential areas)
     query = f"""[out:json][timeout:25];
 (
-  node["amenity"~"^({amenity_types})$"](around:{radius},{lat},{lon});
-  way["amenity"~"^({amenity_types})$"](around:{radius},{lat},{lon});
+  node["amenity"~"^({services_types})$"](around:{radius},{lat},{lon});
+  way["amenity"~"^({services_types})$"](around:{radius},{lat},{lon});
+  node["amenity"~"^({food_types})$"](around:{radius * 2},{lat},{lon});
+  way["amenity"~"^({food_types})$"](around:{radius * 2},{lat},{lon});
   node["leisure"~"^({leisure_types})$"](around:{radius},{lat},{lon});
   way["leisure"~"^({leisure_types})$"](around:{radius},{lat},{lon});
 );
 out center tags;"""
     elements = _overpass_query(query)
-    # Retry with larger radius if nothing found (sparse areas)
+    # Retry with larger radius if still nothing found (very sparse areas)
     if not elements:
         query2 = query.replace(f"around:{radius}", f"around:{radius * 2}")
         elements = _overpass_query(query2)

@@ -2445,21 +2445,33 @@
   }
 
   async function placesExplorePostcode() {
-    const pc = document.getElementById("places-pc-input").value.trim();
+    const pc = document.getElementById("places-pc-input").value.trim().replace(/\s+/g,"").toUpperCase();
     if (!pc) return;
     ["places-explore-error","places-explore-results"].forEach(id => document.getElementById(id).classList.add("hidden"));
     document.getElementById("places-explore-loading").classList.remove("hidden");
+    const isPostcode = /^[A-Z]{1,2}\d{1,2}[A-Z]?\d[A-Z]{2}$/.test(pc);
     try {
-      const r = await fetch(`/api/places/search?q=${encodeURIComponent(pc)}`);
-      const d = await r.json();
+      if (isPostcode) {
+        // postcodes.io gives accurate UK postcode centroids (Nominatim is unreliable for postcodes)
+        const r = await fetch(`https://api.postcodes.io/postcodes/${pc}`);
+        const d = await r.json();
+        document.getElementById("places-explore-loading").classList.add("hidden");
+        if (d.status === 200 && d.result) {
+          _doExplore(d.result.latitude, d.result.longitude, pc.slice(0,-3)+" "+pc.slice(-3));
+          return;
+        }
+      }
+      // Fallback: use Nominatim-based search for place names
+      const r2 = await fetch(`/api/places/search?q=${encodeURIComponent(pc)}`);
+      const d2 = await r2.json();
       document.getElementById("places-explore-loading").classList.add("hidden");
-      const c = (d.candidates || [])[0];
+      const c = (d2.candidates || [])[0];
       if (!c) {
         document.getElementById("places-explore-error").textContent = `Couldn't find "${pc}". Check the postcode and try again.`;
         document.getElementById("places-explore-error").classList.remove("hidden");
         return;
       }
-      _doExplore(c.lat, c.lon, c.name || pc.toUpperCase());
+      _doExplore(c.lat, c.lon, c.name || pc);
     } catch(e) {
       document.getElementById("places-explore-loading").classList.add("hidden");
       document.getElementById("places-explore-error").textContent = "Could not look up postcode. Try again.";
