@@ -176,6 +176,12 @@
   #scan-reader { background:#000; }
   #scan-reader video { display:block!important; margin:0 auto!important; }
   #scan-reader img   { display:block!important; margin:0 auto!important; }
+  /* Places filter pills */
+  .pf-btn { flex-shrink:0; padding:6px 14px; border-radius:20px; border:1.5px solid var(--border); background:var(--surface); color:var(--subtle); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:all .15s; }
+  .pf-btn.active { background:var(--text); color:var(--bg); border-color:var(--text); }
+  /* Places tab buttons */
+  .places-tab { flex:1; padding:10px 8px; border-radius:12px; border:1.5px solid var(--border); background:var(--surface); color:var(--subtle); font-weight:600; font-size:13px; cursor:pointer; transition:all .15s; }
+  .places-tab.active { background:var(--text); color:var(--bg); border-color:var(--text); }
   </style>
 </head>
 <body class="min-h-screen">
@@ -763,79 +769,112 @@
     <!-- ── LOCAL PLACES SCREEN ── -->
     <div id="screen-places" class="screen pt-5">
 
-      <!-- ── Step 1: Search ── -->
-      <div id="places-step-search">
-        <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px">🏛️ Local Places</div>
-        <div style="font-size:13px;color:var(--subtle);margin-bottom:16px">Enter a place name or postcode</div>
-
-        <div style="display:flex;gap:8px;margin-bottom:14px">
-          <input id="places-input" type="text" placeholder="e.g. Bhaktivedanta Manor or KT1 2BA"
-            style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
-            onkeydown="if(event.key==='Enter') placesSearch()"
-            onfocus="this.style.boxShadow='0 0 0 3px rgba(59,130,246,.15)'"
-            onblur="this.style.boxShadow=''">
-          <button onclick="placesSearch()"
-            style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer">Search</button>
-        </div>
-
-        <!-- Spinner -->
-        <div id="places-search-loading" class="hidden" style="text-align:center;padding:28px 0">
-          <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:24px;height:24px"></div>
-          <div style="font-size:13px;color:var(--subtle)">Looking up…</div>
-        </div>
-
-        <!-- Error -->
-        <div id="places-search-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:10px"></div>
-
-        <!-- Did you mean -->
-        <div id="places-did-you-mean" class="hidden" style="background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:10px 14px;font-size:13px;color:#713f12;margin-bottom:12px"></div>
-
-        <!-- Candidates -->
-        <div id="places-candidates" class="hidden" style="margin-bottom:16px">
-          <div style="font-size:12px;font-weight:600;color:var(--subtle);margin-bottom:8px;padding:0 2px">Select a place</div>
-          <div id="places-candidates-list" style="display:flex;flex-direction:column;gap:8px"></div>
-        </div>
-
-        <!-- WhatsApp join card -->
-        <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
-          style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;text-decoration:none">
-          <div style="width:36px;height:36px;background:#e9faf0;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          </div>
-          <div style="flex:1;min-width:0">
-            <div style="color:var(--text);font-weight:600;font-size:13px;line-height:1.3">Find local services on WhatsApp</div>
-            <div style="color:var(--subtle);font-size:12px;margin-top:2px">Text <strong>places KT1 2BA</strong> to get started</div>
-          </div>
-          <span style="font-size:12px;font-weight:600;color:#25d366;white-space:nowrap">Join →</span>
-        </a>
+      <!-- ── Tab switcher ── -->
+      <div style="display:flex;gap:8px;padding:0 18px 16px">
+        <button id="places-tab-explore" class="places-tab active" onclick="placesSetTab('explore')">📍 Explore nearby</button>
+        <button id="places-tab-find"    class="places-tab"        onclick="placesSetTab('find')">🔍 Find a place</button>
       </div>
 
-      <!-- ── Step 2: Details ── -->
-      <div id="places-step-details" style="display:none">
-        <button onclick="placesBackToSearch()"
-          style="display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--subtle);cursor:pointer;margin-bottom:14px">
-          ← Back
+      <!-- ══ EXPLORE PANEL ══ -->
+      <div id="places-panel-explore" style="padding:0 18px 24px">
+
+        <button id="places-loc-btn" onclick="placesUseLocation()"
+          style="width:100%;padding:14px;border-radius:14px;border:2px dashed #3b82f6;background:#eff6ff;color:#1d4ed8;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">
+          📍 Use my location
         </button>
-        <div id="places-detail-title" style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:14px"></div>
-
-        <div id="places-loading" class="hidden" style="text-align:center;padding:40px 0">
-          <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:26px;height:26px"></div>
-          <div style="font-size:13px;color:var(--subtle)">Loading place details…</div>
+        <div style="text-align:center;font-size:12px;color:var(--subtle);margin-bottom:10px">or enter a postcode</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <input id="places-pc-input" type="text" placeholder="e.g. WD25 8EZ or KT1 2BA"
+            style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+            onkeydown="if(event.key==='Enter') placesExplorePostcode()"
+            onfocus="this.style.boxShadow='0 0 0 3px rgba(59,130,246,.15)'"
+            onblur="this.style.boxShadow=''">
+          <button onclick="placesExplorePostcode()"
+            style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer">Go</button>
         </div>
-        <div id="places-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:12px"></div>
 
-        <div id="places-result" class="hidden">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;padding:0 2px">
-            <div id="places-location" style="font-size:13px;font-weight:600;color:var(--subtle)"></div>
-            <a id="places-wa-btn" href="#" target="_blank" rel="noopener"
-              style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:12px;font-weight:700;padding:7px 12px;border-radius:10px;text-decoration:none;flex-shrink:0">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              WhatsApp
-            </a>
+        <div id="places-explore-loading" class="hidden" style="text-align:center;padding:28px 0">
+          <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:24px;height:24px"></div>
+          <div style="font-size:13px;color:var(--subtle)">Finding places nearby…</div>
+        </div>
+        <div id="places-explore-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin:10px 0"></div>
+
+        <!-- Results (hidden until location set) -->
+        <div id="places-explore-results" class="hidden">
+          <div id="places-explore-loc-label" style="font-size:13px;font-weight:600;color:var(--subtle);margin:12px 0 10px;padding:0 2px"></div>
+
+          <!-- Filter pills (horizontal scroll) -->
+          <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+            <button class="pf-btn active" onclick="placesSetFilter('all',this)">All</button>
+            <button class="pf-btn" onclick="placesSetFilter('kids',this)">🧒 Kids</button>
+            <button class="pf-btn" onclick="placesSetFilter('adventure',this)">🏕️ Adventure</button>
+            <button class="pf-btn" onclick="placesSetFilter('food',this)">🍽️ Food & Drink</button>
+            <button class="pf-btn" onclick="placesSetFilter('petrol',this)">⛽ Petrol</button>
+            <button class="pf-btn" onclick="placesSetFilter('health',this)">💊 Health</button>
+            <button class="pf-btn" onclick="placesSetFilter('services',this)">🏛️ Services</button>
           </div>
-          <div id="places-list" style="display:flex;flex-direction:column;gap:10px"></div>
+
+          <div id="places-explore-list" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div id="places-explore-none" class="hidden" style="text-align:center;font-size:13px;color:var(--subtle);padding:24px 0">
+            Nothing found for this filter near you. Try "All" or a different location.
+          </div>
           <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">Data: OpenStreetMap contributors</div>
         </div>
+      </div>
+
+      <!-- ══ FIND A PLACE PANEL ══ -->
+      <div id="places-panel-find" style="display:none;padding:0 18px 24px">
+
+        <!-- Step 1: Search -->
+        <div id="places-step-search">
+          <div style="font-size:13px;color:var(--subtle);margin-bottom:14px">Search by name — temple, library, leisure centre…</div>
+          <div style="display:flex;gap:8px;margin-bottom:14px">
+            <input id="places-input" type="text" placeholder="e.g. Bhaktivedanta Manor"
+              style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+              onkeydown="if(event.key==='Enter') placesSearch()"
+              onfocus="this.style.boxShadow='0 0 0 3px rgba(59,130,246,.15)'"
+              onblur="this.style.boxShadow=''">
+            <button onclick="placesSearch()"
+              style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer">Search</button>
+          </div>
+          <div id="places-search-loading" class="hidden" style="text-align:center;padding:28px 0">
+            <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:24px;height:24px"></div>
+            <div style="font-size:13px;color:var(--subtle)">Looking up…</div>
+          </div>
+          <div id="places-search-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:10px"></div>
+          <div id="places-did-you-mean" class="hidden" style="background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:10px 14px;font-size:13px;color:#713f12;margin-bottom:12px"></div>
+          <div id="places-candidates" class="hidden" style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:600;color:var(--subtle);margin-bottom:8px;padding:0 2px">Select a place</div>
+            <div id="places-candidates-list" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+        </div>
+
+        <!-- Step 2: Details -->
+        <div id="places-step-details" style="display:none">
+          <button onclick="placesBackToSearch()"
+            style="display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--subtle);cursor:pointer;margin-bottom:14px">
+            ← Back
+          </button>
+          <div id="places-detail-title" style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:14px"></div>
+          <div id="places-loading" class="hidden" style="text-align:center;padding:40px 0">
+            <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:26px;height:26px"></div>
+            <div style="font-size:13px;color:var(--subtle)">Loading place details…</div>
+          </div>
+          <div id="places-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:12px"></div>
+          <div id="places-result" class="hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;padding:0 2px">
+              <div id="places-location" style="font-size:13px;font-weight:600;color:var(--subtle)"></div>
+              <a id="places-wa-btn" href="#" target="_blank" rel="noopener"
+                style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:12px;font-weight:700;padding:7px 12px;border-radius:10px;text-decoration:none;flex-shrink:0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                WhatsApp
+              </a>
+            </div>
+            <div id="places-list" style="display:flex;flex-direction:column;gap:10px"></div>
+            <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">Data: OpenStreetMap contributors</div>
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -2359,7 +2398,128 @@
     </div>`;
   }
 
-  // Step 1: search → show candidates
+  // ── Places tab switching ────────────────────────────────────────────────────
+  function placesSetTab(tab) {
+    const isExplore = tab === "explore";
+    document.getElementById("places-panel-explore").style.display = isExplore ? "" : "none";
+    document.getElementById("places-panel-find").style.display    = isExplore ? "none" : "";
+    document.getElementById("places-tab-explore").classList.toggle("active",  isExplore);
+    document.getElementById("places-tab-find").classList.toggle("active",    !isExplore);
+  }
+
+  // ── Explore nearby ──────────────────────────────────────────────────────────
+  const _PLACE_FILTERS = {
+    all:       null,
+    kids:      ["Park","Library","Community Centre","Sports Centre","Leisure Centre","Swimming Pool","Arts Centre"],
+    adventure: ["Park","Sports Centre","Gym / Fitness","Leisure Centre","Swimming Pool","Arts Centre"],
+    food:      ["Café","Restaurant","Fast Food","Pub","Bar"],
+    petrol:    ["Petrol Station"],
+    health:    ["Pharmacy","Hospital","Dentist"],
+    services:  ["Library","Post Office","Town Hall / Council","Police Station","Social Services","Community Centre","Food Bank"],
+  };
+  let _exploreAllGroups = {};
+
+  function placesUseLocation() {
+    const btn = document.getElementById("places-loc-btn");
+    if (!navigator.geolocation) {
+      document.getElementById("places-explore-error").textContent = "Location not available in this browser. Enter a postcode instead.";
+      document.getElementById("places-explore-error").classList.remove("hidden");
+      return;
+    }
+    btn.textContent = "⏳ Getting location…";
+    btn.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        btn.textContent = "✅ Location found";
+        btn.disabled = false;
+        _doExplore(pos.coords.latitude, pos.coords.longitude, "your location");
+      },
+      () => {
+        btn.textContent = "📍 Use my location";
+        btn.disabled = false;
+        document.getElementById("places-explore-error").textContent = "Couldn't get location. Enter a postcode instead.";
+        document.getElementById("places-explore-error").classList.remove("hidden");
+      },
+      {timeout: 10000}
+    );
+  }
+
+  async function placesExplorePostcode() {
+    const pc = document.getElementById("places-pc-input").value.trim();
+    if (!pc) return;
+    ["places-explore-error","places-explore-results"].forEach(id => document.getElementById(id).classList.add("hidden"));
+    document.getElementById("places-explore-loading").classList.remove("hidden");
+    try {
+      const r = await fetch(`/api/places/search?q=${encodeURIComponent(pc)}`);
+      const d = await r.json();
+      document.getElementById("places-explore-loading").classList.add("hidden");
+      const c = (d.candidates || [])[0];
+      if (!c) {
+        document.getElementById("places-explore-error").textContent = `Couldn't find "${pc}". Check the postcode and try again.`;
+        document.getElementById("places-explore-error").classList.remove("hidden");
+        return;
+      }
+      _doExplore(c.lat, c.lon, c.name || pc.toUpperCase());
+    } catch(e) {
+      document.getElementById("places-explore-loading").classList.add("hidden");
+      document.getElementById("places-explore-error").textContent = "Could not look up postcode. Try again.";
+      document.getElementById("places-explore-error").classList.remove("hidden");
+    }
+  }
+
+  async function _doExplore(lat, lon, label) {
+    document.getElementById("places-explore-error").classList.add("hidden");
+    document.getElementById("places-explore-results").classList.add("hidden");
+    document.getElementById("places-explore-loading").classList.remove("hidden");
+    try {
+      const r = await fetch(`/api/places?lat=${lat}&lon=${lon}`);
+      const d = await r.json();
+      document.getElementById("places-explore-loading").classList.add("hidden");
+      if (d.error) {
+        document.getElementById("places-explore-error").textContent = d.error;
+        document.getElementById("places-explore-error").classList.remove("hidden");
+        return;
+      }
+      const places = (d.places || []).filter(p => !p.is_featured);
+      document.getElementById("places-explore-loc-label").textContent = `${places.length} places near ${label}`;
+      _exploreAllGroups = {};
+      for (const p of places) {
+        if (!_exploreAllGroups[p.category]) _exploreAllGroups[p.category] = {emoji: p.emoji, items: []};
+        _exploreAllGroups[p.category].items.push(p);
+      }
+      // Reset filter to All
+      document.querySelectorAll(".pf-btn").forEach(b => b.classList.remove("active"));
+      document.querySelector(".pf-btn[onclick*=\"'all'\"]").classList.add("active");
+      _renderExploreFilter("all");
+      document.getElementById("places-explore-results").classList.remove("hidden");
+    } catch(e) {
+      document.getElementById("places-explore-loading").classList.add("hidden");
+      document.getElementById("places-explore-error").textContent = "Could not load nearby places. Try again.";
+      document.getElementById("places-explore-error").classList.remove("hidden");
+    }
+  }
+
+  function placesSetFilter(f, btn) {
+    document.querySelectorAll(".pf-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    _renderExploreFilter(f);
+  }
+
+  function _renderExploreFilter(f) {
+    const allowed = _PLACE_FILTERS[f];
+    const filtered = Object.entries(_exploreAllGroups).filter(([cat]) => !allowed || allowed.includes(cat));
+    const html = filtered.map(([cat, g]) => {
+      const items = g.items.map(p => _renderPlaceCard(p, false)).join("");
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${g.emoji} ${cat}
+          <span style="font-size:11px;font-weight:400;color:var(--subtle)">${g.items.length > 1 ? g.items.length + " nearby" : ""}</span>
+        </div>${items}</div>`;
+    }).join("");
+    document.getElementById("places-explore-list").innerHTML = html;
+    document.getElementById("places-explore-none").classList.toggle("hidden", filtered.length > 0);
+  }
+
+  // ── Find a place: Step 1: search → show candidates ───────────────────────
   async function placesSearch() {
     const q = document.getElementById("places-input").value.trim();
     if (!q) return;
