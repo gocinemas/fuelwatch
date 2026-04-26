@@ -2621,27 +2621,34 @@
   let _exploreAllGroups = {};
 
   function placesUseLocation() {
-    const btn = document.getElementById("places-loc-btn");
+    const btn    = document.getElementById("places-loc-btn");
+    const errEl  = document.getElementById("places-explore-error");
+    errEl.classList.add("hidden");
     if (!navigator.geolocation) {
-      document.getElementById("places-explore-error").textContent = "Location not available in this browser. Enter a postcode instead.";
-      document.getElementById("places-explore-error").classList.remove("hidden");
+      errEl.textContent = "Location isn't supported in this browser. Enter a postcode instead.";
+      errEl.classList.remove("hidden");
       return;
     }
     btn.textContent = "⏳ Getting location…";
     btn.disabled = true;
     navigator.geolocation.getCurrentPosition(
       pos => {
-        btn.textContent = "✅ Location found";
+        btn.textContent = "📍 Use my location";
         btn.disabled = false;
         _doExplore(pos.coords.latitude, pos.coords.longitude, "your location");
       },
-      () => {
+      err => {
         btn.textContent = "📍 Use my location";
         btn.disabled = false;
-        document.getElementById("places-explore-error").textContent = "Couldn't get location. Enter a postcode instead.";
-        document.getElementById("places-explore-error").classList.remove("hidden");
+        const msgs = {
+          1: "Location access was denied. Please allow location in your browser/phone settings and try again.",
+          2: "Your location couldn't be detected. Check your signal or enter a postcode instead.",
+          3: "Location request timed out. Try again or enter a postcode.",
+        };
+        errEl.textContent = msgs[err.code] || "Couldn't get your location. Enter a postcode instead.";
+        errEl.classList.remove("hidden");
       },
-      {timeout: 10000}
+      {timeout: 15000, maximumAge: 60000, enableHighAccuracy: false}
     );
   }
 
@@ -3002,15 +3009,17 @@
       for (const k of Object.keys(_nearbyFoodGroups)) delete _nearbyFoodGroups[k];
       for (const k of Object.keys(_nearbyMore)) delete _nearbyMore[k];
 
-      // Split nearby into food (with ratings/sort) vs services
+      // Split nearby into kids / food / services
+      const KIDS_CATS        = new Set(["Park","Playground","Attraction","Sports Centre","Leisure Centre","Swimming Pool","Arts Centre","Community Centre","Theme Park","Zoo","Museum","Cinema","Bowling","Soft Play","Farm"]);
       const FOOD_CATS_DETAIL = new Set(["Café","Restaurant","Fast Food","Pub","Bar"]);
       const CAFE_REST_CATS   = new Set(["Café","Restaurant"]);
-      const foodGroups = {}, serviceGroups = {};
+      const kidsGroups = {}, foodGroups = {}, serviceGroups = {};
       for (const [cat, g] of Object.entries(groups)) {
-        if (FOOD_CATS_DETAIL.has(cat)) foodGroups[cat] = g;
-        else serviceGroups[cat] = g;
+        if (KIDS_CATS.has(cat))             kidsGroups[cat]   = g;
+        else if (FOOD_CATS_DETAIL.has(cat)) foodGroups[cat]   = g;
+        else                                serviceGroups[cat] = g;
       }
-      // Cafes + Restaurants always first, then other food
+      // Cafes + Restaurants always first within food
       const FOOD_ORDER = ["Café","Restaurant"];
       const sortedFoodEntries = Object.entries(foodGroups).sort(([a],[b]) => {
         const ai = FOOD_ORDER.indexOf(a), bi = FOOD_ORDER.indexOf(b);
@@ -3030,14 +3039,16 @@
           </div>${items}</div>`;
       }
 
+      const kidsHtml      = Object.entries(kidsGroups).map(([cat,g]) => _buildFoodGroupCard(cat, g)).join("");
       const cafeRestHtml  = cafeRestEntries.map(([cat,g]) => _buildFoodGroupCard(cat, g)).join("");
       const otherFoodHtml = otherFoodEntries.map(([cat,g]) => _buildFoodGroupCard(cat, g)).join("");
       const servicesHtml  = Object.entries(serviceGroups).map(_groupCard).join("");
 
-      // Category tabs — only render when there are multiple sections to filter
-      const _secs = [cafeRestHtml, otherFoodHtml, servicesHtml].filter(Boolean);
+      // Category tabs — only render when there are multiple sections
+      const _secs = [kidsHtml, cafeRestHtml, otherFoodHtml, servicesHtml].filter(Boolean);
       const tabsHtml = _secs.length > 1 ? `<div id="places-cat-tabs" style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
         <button class="pct-btn" onclick="placesCatFilter('all',this)" style="flex-shrink:0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid var(--text);background:var(--text);color:var(--bg);cursor:pointer;white-space:nowrap">All</button>
+        ${kidsHtml      ? `<button class="pct-btn" onclick="placesCatFilter('kids',this)"     style="flex-shrink:0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--subtle);cursor:pointer;white-space:nowrap">🧒 Kids</button>` : ""}
         ${cafeRestHtml  ? `<button class="pct-btn" onclick="placesCatFilter('cafes',this)"    style="flex-shrink:0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--subtle);cursor:pointer;white-space:nowrap">☕ Cafes & Restaurants</button>` : ""}
         ${otherFoodHtml ? `<button class="pct-btn" onclick="placesCatFilter('otherfood',this)" style="flex-shrink:0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--subtle);cursor:pointer;white-space:nowrap">🍺 Pubs & Bars</button>` : ""}
         ${servicesHtml  ? `<button class="pct-btn" onclick="placesCatFilter('services',this)" style="flex-shrink:0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--subtle);cursor:pointer;white-space:nowrap">🏛️ Other</button>` : ""}
@@ -3047,6 +3058,7 @@
         featuredHtml +
         (nearby.length ? `<div style="font-size:12px;font-weight:600;color:var(--subtle);padding:4px 2px 6px">📍 Nearby</div>` : "") +
         tabsHtml +
+        (kidsHtml      ? `<div id="places-sec-kids">${kidsHtml}</div>` : "") +
         (cafeRestHtml  ? `<div id="places-sec-cafes">${cafeRestHtml}</div>` : "") +
         (otherFoodHtml ? `<div id="places-sec-otherfood">${otherFoodHtml}</div>` : "") +
         (servicesHtml  ? `<div id="places-sec-services">${servicesHtml}</div>` : "");
@@ -3075,7 +3087,7 @@
     btn.style.background  = "var(--text)";
     btn.style.color       = "var(--bg)";
     btn.style.borderColor = "var(--text)";
-    ['cafes','otherfood','services'].forEach(s => {
+    ['kids','cafes','otherfood','services'].forEach(s => {
       const el = document.getElementById(`places-sec-${s}`);
       if (el) el.style.display = (cat === 'all' || cat === s) ? '' : 'none';
     });
