@@ -1458,6 +1458,12 @@ _PLACE_CATEGORY = {
     "swimming_pool":    {"label": "Swimming Pool",     "emoji": "🏊"},
     "fitness_centre":   {"label": "Gym / Fitness",     "emoji": "💪"},
     "park":             {"label": "Park",              "emoji": "🌳"},
+    "cafe":             {"label": "Café",              "emoji": "☕"},
+    "restaurant":       {"label": "Restaurant",        "emoji": "🍽️"},
+    "fast_food":        {"label": "Fast Food",         "emoji": "🍔"},
+    "pub":              {"label": "Pub",               "emoji": "🍺"},
+    "bar":              {"label": "Bar",               "emoji": "🍹"},
+    "fuel":             {"label": "Petrol Station",    "emoji": "⛽"},
 }
 
 _PLACE_ACTIVITIES = {
@@ -1479,6 +1485,11 @@ _PLACE_ACTIVITIES = {
     "swimming_pool":    ["Public lane swimming", "Aqua aerobics", "Family & children's sessions", "Swimming lessons (adults & children)", "Early-morning & evening sessions"],
     "fitness_centre":   ["Gym equipment & free weights", "Group fitness classes", "Personal training", "Cardio & strength zones"],
     "park":             ["Walking & running paths", "Children's play areas", "Picnic & open green space", "Outdoor fitness equipment", "Sports pitches & courts"],
+    "cafe":             ["Coffee, tea & hot drinks", "Light bites & pastries", "Breakfast & lunch", "Wi-Fi & a relaxed seat", "Takeaway available"],
+    "restaurant":       ["Dine-in meals", "Takeaway & delivery", "Private dining & group bookings", "Special dietary options"],
+    "fast_food":        ["Quick meals & snacks", "Takeaway & delivery", "Drive-through (where available)"],
+    "pub":              ["Food & drinks", "Live sport screenings", "Quiz nights & events", "Beer garden (where available)"],
+    "fuel":             ["Petrol & diesel", "Air & water point", "Car wash", "Shop & convenience items", "ATM (at many sites)"],
 }
 
 
@@ -1685,21 +1696,24 @@ def _fetch_specific_venue(osm_type: str, osm_id: str, display_name: str) -> dict
     acts = _PLACE_ACTIVITIES.get(kind) or _VENUE_ACTIVITIES.get(kind, [])
 
     return {
-        "name":       name,
-        "kind":       kind,
-        "category":   cat["label"],
-        "emoji":      cat["emoji"],
-        "address":    address,
-        "phone":      phone,
-        "website":    website,
-        "hours":      hours,
-        "hours_text": [],
-        "is_open":    None,
-        "summary":    summary,
-        "activities": acts,
-        "lat":        None,
-        "lon":        None,
-        "is_featured": True,
+        "name":           name,
+        "kind":           kind,
+        "category":       cat["label"],
+        "emoji":          cat["emoji"],
+        "address":        address,
+        "phone":          phone,
+        "website":        website,
+        "hours":          hours,
+        "hours_text":     [],
+        "is_open":        None,
+        "summary":        summary,
+        "review_summary": "",
+        "rating":         None,
+        "rating_count":   0,
+        "activities":     acts,
+        "lat":            None,
+        "lon":            None,
+        "is_featured":    True,
     }
 
 
@@ -1724,19 +1738,24 @@ def _google_place_details(name: str, lat: float, lon: float) -> dict | None:
             "https://maps.googleapis.com/maps/api/place/details/json",
             params={
                 "place_id": place_id,
-                "fields":   "name,formatted_address,formatted_phone_number,website,opening_hours,types,editorial_summary",
+                "fields":   "name,formatted_address,formatted_phone_number,website,opening_hours,types,editorial_summary,rating,user_ratings_total,reviews",
                 "key":      _GOOGLE_PLACES_KEY,
             },
             timeout=8,
         )
         p = det.json().get("result", {})
 
-        hours_text = p.get("opening_hours", {}).get("weekday_text", [])
-        is_open    = p.get("opening_hours", {}).get("open_now")
-        phone      = p.get("formatted_phone_number", "")
-        website    = p.get("website", "")
-        address    = p.get("formatted_address", "")
-        summary    = (p.get("editorial_summary") or {}).get("overview", "")
+        hours_text   = p.get("opening_hours", {}).get("weekday_text", [])
+        is_open      = p.get("opening_hours", {}).get("open_now")
+        phone        = p.get("formatted_phone_number", "")
+        website      = p.get("website", "")
+        address      = p.get("formatted_address", "")
+        summary      = (p.get("editorial_summary") or {}).get("overview", "")
+        rating       = p.get("rating")
+        rating_count = p.get("user_ratings_total", 0)
+        raw_reviews  = [{"text": rv.get("text",""), "rating": rv.get("rating",0),
+                          "author": rv.get("author_name","")}
+                         for rv in p.get("reviews", []) if rv.get("text")]
 
         gp_types = p.get("types", [])
         # Map Google type → our category
@@ -1771,22 +1790,28 @@ def _google_place_details(name: str, lat: float, lon: float) -> dict | None:
             area = address.split(",")[0] if address else ""
             summary = f"{gp_name} — {cat_label.lower()}{(' in ' + area) if area else ''}."
 
+        # AI-enriched summary + review summary (non-blocking — skip on failure)
+        ai = _groq_place_summary(gp_name, cat_label, address, summary, raw_reviews)
+
         return {
-            "name":       gp_name,
-            "kind":       kind,
-            "category":   cat_label,
-            "emoji":      emoji,
-            "address":    address,
-            "phone":      phone,
-            "website":    website,
-            "hours":      "",
-            "hours_text": hours_text,
-            "is_open":    is_open,
-            "summary":    summary,
-            "activities": acts,
-            "lat":        lat,
-            "lon":        lon,
-            "is_featured": True,
+            "name":           gp_name,
+            "kind":           kind,
+            "category":       cat_label,
+            "emoji":          emoji,
+            "address":        address,
+            "phone":          phone,
+            "website":        website,
+            "hours":          "",
+            "hours_text":     hours_text,
+            "is_open":        is_open,
+            "summary":        ai.get("summary") or summary,
+            "review_summary": ai.get("review_summary", ""),
+            "rating":         rating,
+            "rating_count":   rating_count,
+            "activities":     acts,
+            "lat":            lat,
+            "lon":            lon,
+            "is_featured":    True,
         }
     except Exception:
         return None
@@ -1799,9 +1824,12 @@ def _overpass_places(lat: float, lon: float, radius: int = 900):
         "library", "community_centre", "arts_centre", "doctors", "hospital",
         "dentist", "pharmacy", "post_office", "townhall", "social_facility",
         "food_bank", "police", "fire_station", "leisure_centre",
+        "cafe", "restaurant", "fast_food", "pub", "bar", "fuel",
     ])
     leisure_types = "sports_centre|swimming_pool|fitness_centre|park"
-    query = f"""[out:json][timeout:20];
+    # Use tighter radius for food/fuel so results stay relevant
+    food_fuel_radius = min(radius, 600)
+    query = f"""[out:json][timeout:25];
 (
   node["amenity"~"^({amenity_types})$"](around:{radius},{lat},{lon});
   way["amenity"~"^({amenity_types})$"](around:{radius},{lat},{lon});
@@ -1872,6 +1900,44 @@ out center tags;"""
     # Sort by category then name
     results.sort(key=lambda x: (x["category"], x["name"]))
     return results
+
+
+def _groq_place_summary(name: str, category: str, address: str,
+                        description: str, reviews: list) -> dict:
+    """Use Groq to write a place description and summarise reviews."""
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return {}
+    try:
+        review_block = ""
+        if reviews:
+            snippets = [f'- "{r["text"][:200]}" ({r["rating"]}★)' for r in reviews[:5] if r.get("text")]
+            review_block = "\nReviews:\n" + "\n".join(snippets)
+
+        prompt = (
+            f'Place: {name}\nType: {category}\nAddress: {address}\n'
+            f'Description: {description or "(none provided)"}\n{review_block}\n\n'
+            'Return ONLY valid JSON with two keys:\n'
+            '"summary": 2-3 sentence plain-English overview of what this place is and why people visit.\n'
+            '"review_summary": if reviews provided, 2-sentence summary of what visitors say (highlight positives and any common theme); '
+            'if no reviews, return empty string.\n'
+            'Be warm, factual, and concise. No markdown, no quotes around the JSON.'
+        )
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}],
+                  "temperature": 0.3, "max_tokens": 300},
+            timeout=10,
+        )
+        if r.status_code == 200:
+            content = r.json()["choices"][0]["message"]["content"].strip()
+            m = re.search(r'\{.*\}', content, re.DOTALL)
+            if m:
+                return json.loads(m.group(0))
+    except Exception:
+        pass
+    return {}
 
 
 _PLACES_CACHE: dict = {}
