@@ -2467,7 +2467,20 @@
     }
   }
 
+  let _exploreLat = 0, _exploreLon = 0;
+
+  function _distKm(lat1, lon1, lat2, lon2) {
+    const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function _distLabel(km) {
+    return km < 1 ? `${Math.round(km*1000)}m` : `${km.toFixed(1)}km`;
+  }
+
   async function _doExplore(lat, lon, label) {
+    _exploreLat = lat; _exploreLon = lon;
     document.getElementById("places-explore-error").classList.add("hidden");
     document.getElementById("places-explore-results").classList.add("hidden");
     document.getElementById("places-explore-loading").classList.remove("hidden");
@@ -2481,15 +2494,37 @@
         return;
       }
       const places = (d.places || []).filter(p => !p.is_featured);
-      document.getElementById("places-explore-loc-label").textContent = `${places.length} places near ${label}`;
+
+      // Attach distance and sort each group by distance
+      for (const p of places) {
+        p._dist = (p.lat && p.lon) ? _distKm(lat, lon, p.lat, p.lon) : 999;
+      }
+      places.sort((a, b) => a._dist - b._dist);
+
       _exploreAllGroups = {};
       for (const p of places) {
         if (!_exploreAllGroups[p.category]) _exploreAllGroups[p.category] = {emoji: p.emoji, items: []};
         _exploreAllGroups[p.category].items.push(p);
       }
+
+      // Badge filter pills with counts
+      for (const [f, cats] of Object.entries(_PLACE_FILTERS)) {
+        const btn = document.querySelector(`.pf-btn[onclick*="'${f}'"]`);
+        if (!btn) continue;
+        if (f === "all") {
+          btn.dataset.label = btn.dataset.label || btn.textContent.replace(/\s*\(\d+\)$/, "");
+          btn.textContent = `${btn.dataset.label || "All"} (${places.length})`;
+        } else {
+          const count = (cats||[]).reduce((n, cat) => n + (_exploreAllGroups[cat]?.items.length || 0), 0);
+          btn.dataset.label = btn.dataset.label || btn.textContent.replace(/\s*\(\d+\)$/, "");
+          if (count) btn.textContent = `${btn.dataset.label} (${count})`;
+        }
+      }
+
+      document.getElementById("places-explore-loc-label").textContent = `${places.length} places near ${label}`;
       // Reset filter to All
       document.querySelectorAll(".pf-btn").forEach(b => b.classList.remove("active"));
-      document.querySelector(".pf-btn[onclick*=\"'all'\"]").classList.add("active");
+      document.querySelector(`.pf-btn[onclick*="'all'"]`).classList.add("active");
       _renderExploreFilter("all");
       document.getElementById("places-explore-results").classList.remove("hidden");
     } catch(e) {
@@ -2505,16 +2540,60 @@
     _renderExploreFilter(f);
   }
 
+  const _EXPLORE_ALL_CAP = 3; // max items shown per category in "All" view
+
   function _renderExploreFilter(f) {
     const allowed = _PLACE_FILTERS[f];
-    const filtered = Object.entries(_exploreAllGroups).filter(([cat]) => !allowed || allowed.includes(cat));
+    const isAll   = !allowed;
+    const filtered = Object.entries(_exploreAllGroups).filter(([cat]) => isAll || allowed.includes(cat));
+
+    // In "All" view, order food/fuel first then services
+    const PRIORITY = ["Café","Restaurant","Fast Food","Pub","Bar","Petrol Station","Park"];
+    if (isAll) filtered.sort(([a], [b]) => {
+      const pa = PRIORITY.indexOf(a), pb = PRIORITY.indexOf(b);
+      if (pa !== -1 && pb !== -1) return pa - pb;
+      if (pa !== -1) return -1;
+      if (pb !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
     const html = filtered.map(([cat, g]) => {
-      const items = g.items.map(p => _renderPlaceCard(p, false)).join("");
+      const cap   = isAll ? _EXPLORE_ALL_CAP : g.items.length;
+      const shown = g.items.slice(0, cap);
+      const more  = g.items.length - cap;
+      const moreId = `exmore-${cat.replace(/\W/g,"_")}`;
+
+      const itemsHtml = shown.map(p => {
+        const dist = (p.lat && p.lon) ? `<span style="font-size:10px;color:var(--subtle);margin-left:6px">${_distLabel(p._dist)}</span>` : "";
+        const hours = _fmtHours(p.hours);
+        const links = [];
+        if (p.phone)   links.push(`<a href="tel:${p.phone}"   style="color:#3b82f6;font-size:11px">📞 ${p.phone}</a>`);
+        if (p.website) links.push(`<a href="${p.website}" target="_blank" style="color:#3b82f6;font-size:11px">🌐 Website</a>`);
+        return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+          <div style="font-weight:600;font-size:13px;color:var(--text)">${p.name}${dist}</div>
+          ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px">${p.address}</div>` : ""}
+          ${hours      ? `<div style="font-size:11px;color:var(--subtle);margin-top:2px">🕐 ${hours}</div>` : ""}
+          ${links.length ? `<div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">${links.join("")}</div>` : ""}
+        </div>`;
+      }).join("");
+
+      const moreBtn = (more > 0)
+        ? `<button id="${moreId}" onclick="
+            document.getElementById('${moreId}').outerHTML=
+            ${JSON.stringify(g.items.slice(cap).map(p => {
+              const dist = (p.lat && p.lon) ? `<span style='font-size:10px;color:var(--subtle);margin-left:6px'>${_distLabel(p._dist)}</span>` : "";
+              return `<div style='padding:9px 0;border-bottom:1px solid var(--border)'><div style='font-weight:600;font-size:13px;color:var(--text)'>${p.name}${dist}</div>${p.address ? `<div style='font-size:11px;color:var(--subtle);margin-top:1px'>${p.address}</div>` : ''}</div>`;
+            }).join(""))}"
+            style="margin-top:8px;width:100%;text-align:center;font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:4px 0">
+            Show ${more} more ›
+          </button>` : "";
+
       return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${g.emoji} ${cat}
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${g.emoji} ${cat}
           <span style="font-size:11px;font-weight:400;color:var(--subtle)">${g.items.length > 1 ? g.items.length + " nearby" : ""}</span>
-        </div>${items}</div>`;
+        </div>${itemsHtml}${moreBtn}</div>`;
     }).join("");
+
     document.getElementById("places-explore-list").innerHTML = html;
     document.getElementById("places-explore-none").classList.toggle("hidden", filtered.length > 0);
   }
