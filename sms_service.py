@@ -1648,23 +1648,16 @@ _VENUE_ACTIVITIES = {
 
 def _fetch_specific_venue(osm_type: str, osm_id: str, display_name: str) -> dict | None:
     """Fetch full OSM tags for a specific element and return a formatted place dict."""
-    import urllib.parse as _up, html as _html
+    import html as _html
     type_map = {"node": "node", "way": "way", "relation": "relation"}
     oql_type = type_map.get(osm_type)
     if not oql_type or not osm_id:
         return None
     query = f"[out:json];{oql_type}({osm_id});out tags;"
-    url = "https://overpass-api.de/api/interpreter?data=" + _up.quote(query)
-    try:
-        r = requests.get(url, timeout=15, headers={"User-Agent": "Miru/1.0"})
-        if r.status_code != 200:
-            return None
-        elements = r.json().get("elements", [])
-        if not elements:
-            return None
-        tags = elements[0].get("tags", {})
-    except Exception:
+    elements = _overpass_query(query, timeout=15)
+    if not elements:
         return None
+    tags = elements[0].get("tags", {})
 
     name = tags.get("name", display_name)
     kind = (tags.get("amenity") or tags.get("tourism") or tags.get("leisure") or
@@ -1817,9 +1810,26 @@ def _google_place_details(name: str, lat: float, lon: float) -> dict | None:
         return None
 
 
-def _overpass_places(lat: float, lon: float, radius: int = 900):
+def _overpass_query(query: str, timeout: int = 30) -> list:
+    """POST a query to Overpass and return elements list, or [] on any failure."""
+    try:
+        r = requests.post(
+            "https://overpass-api.de/api/interpreter",
+            data={"data": query},
+            timeout=timeout,
+            headers={"User-Agent": "Miru/1.0"},
+        )
+        if r.status_code == 200:
+            return r.json().get("elements", [])
+        print(f"[overpass] HTTP {r.status_code}: {r.text[:200]}")
+    except Exception as e:
+        print(f"[overpass] error: {e}")
+    return []
+
+
+def _overpass_places(lat: float, lon: float, radius: int = 1500):
     """Query Overpass for useful local services and return formatted list."""
-    import urllib.parse as _up, html as _html
+    import html as _html
     amenity_types = "|".join([
         "library", "community_centre", "arts_centre", "hospital",
         "dentist", "pharmacy", "post_office", "townhall", "social_facility",
@@ -1827,8 +1837,6 @@ def _overpass_places(lat: float, lon: float, radius: int = 900):
         "cafe", "restaurant", "fast_food", "pub", "bar", "fuel",
     ])
     leisure_types = "sports_centre|swimming_pool|fitness_centre|park"
-    # Use tighter radius for food/fuel so results stay relevant
-    food_fuel_radius = min(radius, 600)
     query = f"""[out:json][timeout:25];
 (
   node["amenity"~"^({amenity_types})$"](around:{radius},{lat},{lon});
@@ -1837,11 +1845,11 @@ def _overpass_places(lat: float, lon: float, radius: int = 900):
   way["leisure"~"^({leisure_types})$"](around:{radius},{lat},{lon});
 );
 out center tags;"""
-    url = "https://overpass-api.de/api/interpreter?data=" + _up.quote(query)
-    r = requests.get(url, timeout=25, headers={"User-Agent": "Miru/1.0"})
-    if r.status_code != 200:
-        return []
-    elements = r.json().get("elements", [])
+    elements = _overpass_query(query)
+    # Retry with larger radius if nothing found (sparse areas)
+    if not elements:
+        query2 = query.replace(f"around:{radius}", f"around:{radius * 2}")
+        elements = _overpass_query(query2)
 
     seen, results = set(), []
     for el in elements:
