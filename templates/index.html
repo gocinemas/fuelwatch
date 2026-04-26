@@ -2657,13 +2657,21 @@
       btn.textContent = "📍";
       btn.disabled = false;
     };
-    const onSuccess = pos => {
+    const onSuccess = async pos => {
       reset();
       errEl.classList.add("hidden");
       errEl.style.background = "";
       errEl.style.borderColor = "";
       errEl.style.color = "";
-      placesLoadDetails(pos.coords.latitude, pos.coords.longitude, "", "", "", "your location", "your location");
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      let areaName = "your location";
+      try {
+        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {headers:{"Accept-Language":"en"}});
+        const rj  = await rev.json();
+        const a   = rj.address || {};
+        areaName  = a.suburb || a.village || a.hamlet || a.town || a.city_district || a.city || a.county || "your location";
+      } catch(e) {}
+      placesLoadDetails(lat, lon, "", "", "", areaName, areaName);
     };
     const onError = err => {
       reset();

@@ -1918,16 +1918,16 @@ def _overpass_places(lat: float, lon: float, radius: int = 1500):
         "dentist", "pharmacy", "post_office", "townhall", "social_facility",
         "food_bank", "police", "fire_station", "leisure_centre",
     ])
-    # Food and fuel queried at 2× radius — they're often 2-3km from residential postcodes
+    # Pubs/food at 5km — rural areas (e.g. Longcross) have pubs spread 3-5km out
     food_types = "cafe|restaurant|fast_food|pub|bar|fuel"
+    food_radius = 5000
     leisure_types = "sports_centre|swimming_pool|fitness_centre|park|playground|attraction"
-    # Services + leisure: 1500m; food + fuel: 3000m (food is sparse in residential areas)
     query = f"""[out:json][timeout:25];
 (
   node["amenity"~"^({services_types})$"](around:{radius},{lat},{lon});
   way["amenity"~"^({services_types})$"](around:{radius},{lat},{lon});
-  node["amenity"~"^({food_types})$"](around:{radius * 2},{lat},{lon});
-  way["amenity"~"^({food_types})$"](around:{radius * 2},{lat},{lon});
+  node["amenity"~"^({food_types})$"](around:{food_radius},{lat},{lon});
+  way["amenity"~"^({food_types})$"](around:{food_radius},{lat},{lon});
   node["leisure"~"^({leisure_types})$"](around:{radius},{lat},{lon});
   way["leisure"~"^({leisure_types})$"](around:{radius},{lat},{lon});
 );
