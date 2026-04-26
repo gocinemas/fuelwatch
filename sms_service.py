@@ -1916,9 +1916,10 @@ def _overpass_places(lat: float, lon: float, radius: int = 1500):
     services_types = "|".join([
         "library", "community_centre", "arts_centre", "hospital",
         "dentist", "pharmacy", "post_office", "townhall", "social_facility",
-        "food_bank", "police", "fire_station", "leisure_centre", "fuel",
+        "food_bank", "police", "fire_station", "leisure_centre",
     ])
-    food_types = "cafe|restaurant|fast_food|pub|bar"
+    # Food and fuel queried at 2× radius — they're often 2-3km from residential postcodes
+    food_types = "cafe|restaurant|fast_food|pub|bar|fuel"
     leisure_types = "sports_centre|swimming_pool|fitness_centre|park|playground|attraction"
     # Services + leisure: 1500m; food + fuel: 3000m (food is sparse in residential areas)
     query = f"""[out:json][timeout:25];

@@ -2697,17 +2697,19 @@
         _exploreAllGroups[p.category].items.push(p);
       }
 
-      // Badge filter pills with counts
+      // Badge filter pills with counts; hide pills with no data
       for (const [f, cats] of Object.entries(_PLACE_FILTERS)) {
         const btn = document.querySelector(`.pf-btn[onclick*="'${f}'"]`);
         if (!btn) continue;
         if (f === "all") {
           btn.dataset.label = btn.dataset.label || btn.textContent.replace(/\s*\(\d+\)$/, "");
           btn.textContent = `${btn.dataset.label || "All"} (${places.length})`;
+          btn.style.display = "";
         } else {
           const count = (cats||[]).reduce((n, cat) => n + (_exploreAllGroups[cat]?.items.length || 0), 0);
           btn.dataset.label = btn.dataset.label || btn.textContent.replace(/\s*\(\d+\)$/, "");
-          if (count) btn.textContent = `${btn.dataset.label} (${count})`;
+          btn.textContent = count ? `${btn.dataset.label} (${count})` : btn.dataset.label;
+          btn.style.display = count ? "" : "none";
         }
       }
 
