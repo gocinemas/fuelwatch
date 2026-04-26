@@ -2385,6 +2385,15 @@
     return _distKm(_nearbySearchLat, _nearbySearchLon, p.lat, p.lon);
   }
 
+  function _waPhone(raw) {
+    if (!raw) return "";
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return "";
+    if (digits.startsWith("44")) return digits;
+    if (digits.startsWith("0"))  return "44" + digits.slice(1);
+    return digits;
+  }
+
   function _foodPlaceCard(p) {
     const id = `pl-${++_placesIdCounter}`;
     const rId = `plr-${_placesIdCounter}`;
@@ -2392,12 +2401,20 @@
     p._ratingId = ratingId; p._reviewsId = rId; p._panelId = id;
     const dist = _nearbySearchLat && p.lat && p.lon ? ` · <span style="color:var(--subtle);font-size:10px">${_distLabel(_distKmNearby(p))}</span>` : "";
     const latlon = p.lat && p.lon ? `&lat=${p.lat}&lon=${p.lon}` : "";
+    const hours = _fmtHours(p.hours);
+    const waNum = _waPhone(p.phone);
+    const contactLinks = [];
+    if (p.phone)   contactLinks.push(`<a href="tel:${p.phone}" style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;text-decoration:none">📞 Call</a>`);
+    if (waNum)     contactLinks.push(`<a href="https://wa.me/${waNum}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;text-decoration:none">💬 WhatsApp</a>`);
+    if (p.website) contactLinks.push(`<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;background:#f5f3ff;color:#6d28d9;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;text-decoration:none">🌐 Website</a>`);
     return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:13px;color:var(--text)">${p.name}${dist}</div>
           <div id="${ratingId}" style="font-size:12px;margin-top:2px;min-height:16px"><span style="color:var(--subtle);font-size:10px">⌛ loading rating…</span></div>
           ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.address}</div>` : ""}
+          ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:3px">🕐 ${hours}</div>` : ""}
+          ${contactLinks.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${contactLinks.join("")}</div>` : ""}
         </div>
         <button data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-latlon="${latlon}"
           onclick="_togglePlace('${id}','${rId}',this.dataset.name,this.dataset.latlon,this)"
@@ -2480,7 +2497,7 @@
 
   function _buildFoodGroupCard(cat, g) {
     const groupId = `fg-${cat.replace(/\W/g,"_")}`;
-    _nearbyFoodGroups[groupId] = {items: g.items, sort: "distance"};
+    _nearbyFoodGroups[groupId] = {items: g.items, sort: "reviews"};
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div style="font-size:13px;font-weight:700;color:var(--text)">${g.emoji} ${cat}
@@ -2488,9 +2505,9 @@
         </div>
         <div style="display:flex;gap:4px">
           <button data-gid="${groupId}" data-sort="distance" onclick="setFoodSort('${groupId}','distance',this)"
-            style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--text);color:var(--bg)">📍 Distance</button>
+            style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--surface);color:var(--subtle)">📍 Distance</button>
           <button data-gid="${groupId}" data-sort="reviews" onclick="setFoodSort('${groupId}','reviews',this)"
-            style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--surface);color:var(--subtle)">⭐ Reviews</button>
+            style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--text);color:var(--bg)">⭐ Reviews</button>
         </div>
       </div>
       <div id="${groupId}-list"></div>
@@ -2987,11 +3004,24 @@
 
       // Split nearby into food (with ratings/sort) vs services
       const FOOD_CATS_DETAIL = new Set(["Café","Restaurant","Fast Food","Pub","Bar"]);
+      const CAFE_REST_CATS   = new Set(["Café","Restaurant"]);
       const foodGroups = {}, serviceGroups = {};
       for (const [cat, g] of Object.entries(groups)) {
         if (FOOD_CATS_DETAIL.has(cat)) foodGroups[cat] = g;
         else serviceGroups[cat] = g;
       }
+      // Cafes + Restaurants always first, then other food
+      const FOOD_ORDER = ["Café","Restaurant"];
+      const sortedFoodEntries = Object.entries(foodGroups).sort(([a],[b]) => {
+        const ai = FOOD_ORDER.indexOf(a), bi = FOOD_ORDER.indexOf(b);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return 0;
+      });
+      const cafeRestEntries  = sortedFoodEntries.filter(([cat]) => CAFE_REST_CATS.has(cat));
+      const otherFoodEntries = sortedFoodEntries.filter(([cat]) => !CAFE_REST_CATS.has(cat));
+
       function _groupCard([cat, g]) {
         const items = g.items.map(p => _renderPlaceCard(p, false)).join("");
         return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
@@ -2999,15 +3029,27 @@
             <span style="font-size:11px;font-weight:400;color:var(--subtle)">${g.items.length > 1 ? g.items.length + " nearby" : ""}</span>
           </div>${items}</div>`;
       }
-      const foodHtml     = Object.entries(foodGroups).map(([cat, g]) => _buildFoodGroupCard(cat, g)).join("");
-      const servicesHtml = Object.entries(serviceGroups).map(_groupCard).join("");
+
+      const cafeRestHtml  = cafeRestEntries.map(([cat,g]) => _buildFoodGroupCard(cat, g)).join("");
+      const otherFoodHtml = otherFoodEntries.map(([cat,g]) => _buildFoodGroupCard(cat, g)).join("");
+      const servicesHtml  = Object.entries(serviceGroups).map(_groupCard).join("");
+
+      // Category tabs — only render when there are multiple sections to filter
+      const _secs = [cafeRestHtml, otherFoodHtml, servicesHtml].filter(Boolean);
+      const tabsHtml = _secs.length > 1 ? `<div id="places-cat-tabs" style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+        <button class="pct-btn" onclick="placesCatFilter('all',this)" style="flex-shrink:0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid var(--text);background:var(--text);color:var(--bg);cursor:pointer;white-space:nowrap">All</button>
+        ${cafeRestHtml  ? `<button class="pct-btn" onclick="placesCatFilter('cafes',this)"    style="flex-shrink:0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--subtle);cursor:pointer;white-space:nowrap">☕ Cafes & Restaurants</button>` : ""}
+        ${otherFoodHtml ? `<button class="pct-btn" onclick="placesCatFilter('otherfood',this)" style="flex-shrink:0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--subtle);cursor:pointer;white-space:nowrap">🍺 Pubs & Bars</button>` : ""}
+        ${servicesHtml  ? `<button class="pct-btn" onclick="placesCatFilter('services',this)" style="flex-shrink:0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--subtle);cursor:pointer;white-space:nowrap">🏛️ Other</button>` : ""}
+      </div>` : "";
 
       document.getElementById("places-list").innerHTML =
         featuredHtml +
         (nearby.length ? `<div style="font-size:12px;font-weight:600;color:var(--subtle);padding:4px 2px 6px">📍 Nearby</div>` : "") +
-        foodHtml +
-        (foodHtml && servicesHtml ? `<div style="font-size:11px;font-weight:600;color:var(--subtle);padding:6px 2px 4px">Other local services</div>` : "") +
-        servicesHtml;
+        tabsHtml +
+        (cafeRestHtml  ? `<div id="places-sec-cafes">${cafeRestHtml}</div>` : "") +
+        (otherFoodHtml ? `<div id="places-sec-otherfood">${otherFoodHtml}</div>` : "") +
+        (servicesHtml  ? `<div id="places-sec-services">${servicesHtml}</div>` : "");
       document.getElementById("places-result").classList.remove("hidden");
       // Trigger food group renders (fills lists + kicks off rating fetches)
       for (const groupId of Object.keys(_nearbyFoodGroups)) _renderFoodGroupList(groupId);
@@ -3022,6 +3064,21 @@
     document.getElementById("places-step-details").style.display = "none";
     document.getElementById("places-step-search").style.display = "";
     window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  function placesCatFilter(cat, btn) {
+    document.querySelectorAll('.pct-btn').forEach(b => {
+      b.style.background  = "var(--surface)";
+      b.style.color       = "var(--subtle)";
+      b.style.borderColor = "var(--border)";
+    });
+    btn.style.background  = "var(--text)";
+    btn.style.color       = "var(--bg)";
+    btn.style.borderColor = "var(--text)";
+    ['cafes','otherfood','services'].forEach(s => {
+      const el = document.getElementById(`places-sec-${s}`);
+      if (el) el.style.display = (cat === 'all' || cat === s) ? '' : 'none';
+    });
   }
 
   // ── Brand Intel ─────────────────────────────────────────────────────────────

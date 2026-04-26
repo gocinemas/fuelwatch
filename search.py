@@ -208,8 +208,10 @@ def _places_nearby(lat: float, lon: float, radius_m: int, place_type: str, api_k
         rating = r.get("rating")
         n_ratings = r.get("user_ratings_total", 0)
         rating_str = f" {rating}★({n_ratings})" if rating else ""
-        places.append({"name": name, "dist_mi": dist_mi, "rating": rating_str})
-    places.sort(key=lambda x: x["dist_mi"])
+        places.append({"name": name, "dist_mi": dist_mi, "rating": rating_str, "_r": rating or 0})
+    places.sort(key=lambda x: -x["_r"])
+    for p in places:
+        p.pop("_r")
     return places[:5]
 
 
@@ -471,6 +473,9 @@ out center 80;
                     pass
     except Exception:
         pass
+
+    pubs.sort(key=lambda x: -(x.get("google_rating") or 0))
+    cafes.sort(key=lambda x: -(x.get("google_rating") or 0))
 
     for p in pubs:
         p.pop("fhrs_id", None)
