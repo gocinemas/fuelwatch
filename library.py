@@ -99,40 +99,103 @@ def get_document(share_id: str) -> dict | None:
 
 
 def search_library(query: str, n: int = 10) -> list:
-    """Full-text search across all documents via Algolia. Returns grouped results by doc."""
+    """Full-text search across all documents. Tries Algolia first, falls back to Supabase."""
+    # Try Algolia
     try:
         idx = _idx()
         res = idx.search(query, {"hitsPerPage": n * 2, "attributesToRetrieve": [
             "share_id", "doc_title", "doc_type", "content", "chunk_index"
         ]})
         hits = res.get("hits", [])
-        # Deduplicate — one result per doc, best matching chunk
-        seen, results = set(), []
-        for h in hits:
-            if h["share_id"] not in seen:
-                seen.add(h["share_id"])
+        if hits:
+            seen, results = set(), []
+            for h in hits:
+                if h["share_id"] not in seen:
+                    seen.add(h["share_id"])
+                    results.append({
+                        "share_id": h["share_id"],
+                        "title":    h["doc_title"],
+                        "doc_type": h["doc_type"],
+                        "snippet":  h["content"][:200],
+                    })
+            return results[:n]
+    except Exception:
+        pass
+    # Fallback: keyword-scored search via Supabase
+    chunks = _search_all_chunks_supabase(query, n)
+    seen, results = set(), []
+    for c in chunks:
+        if c["share_id"] not in seen:
+            seen.add(c["share_id"])
+            results.append({
+                "share_id": c["share_id"],
+                "title":    c["title"],
+                "doc_type": "document",
+                "snippet":  c["content"][:200],
+            })
+    return results
+
+
+def _search_all_chunks_supabase(query: str, n: int = 8) -> list:
+    """Keyword-scored fallback search across all Supabase chunks."""
+    try:
+        sb = _sb()
+        docs_data = sb.table("library_docs").select("id,share_id,title").execute().data
+        if not docs_data:
+            return []
+        doc_map = {d["id"]: d for d in docs_data}
+
+        q_words = [w.lower() for w in query.split() if len(w) > 3]
+
+        if q_words:
+            # Fetch chunks containing the first keyword, then score all words
+            chunks = (sb.table("library_chunks")
+                      .select("doc_id,content")
+                      .ilike("content", f"%{q_words[0]}%")
+                      .limit(300)
+                      .execute().data)
+            if not chunks:
+                # Broaden: any chunk from these docs
+                chunks = (sb.table("library_chunks")
+                          .select("doc_id,content")
+                          .limit(200)
+                          .execute().data)
+        else:
+            chunks = (sb.table("library_chunks")
+                      .select("doc_id,content")
+                      .limit(n)
+                      .execute().data)
+
+        scored = sorted(chunks, key=lambda c: -sum(1 for w in q_words if w in c["content"].lower()))
+        results = []
+        for c in scored[:n]:
+            meta = doc_map.get(c["doc_id"])
+            if meta:
                 results.append({
-                    "share_id":  h["share_id"],
-                    "title":     h["doc_title"],
-                    "doc_type":  h["doc_type"],
-                    "snippet":   h["content"][:200],
+                    "title":    meta["title"],
+                    "share_id": meta["share_id"],
+                    "content":  c["content"],
                 })
-        return results[:n]
+        return results
     except Exception:
         return []
 
 
 def search_all_chunks(query: str, n: int = 8) -> list:
-    """Return top-n chunks across all docs for RAG, with source info."""
+    """Return top-n chunks across all docs for RAG. Tries Algolia first, falls back to Supabase."""
     try:
         idx = _idx()
         res = idx.search(query, {"hitsPerPage": n, "attributesToRetrieve": [
             "share_id", "doc_title", "content"
         ]})
-        return [{"title": h["doc_title"], "share_id": h["share_id"], "content": h["content"]}
-                for h in res.get("hits", [])]
+        hits = res.get("hits", [])
+        if hits:
+            return [{"title": h["doc_title"], "share_id": h["share_id"], "content": h["content"]}
+                    for h in hits]
     except Exception:
-        return []
+        pass
+    # Algolia unavailable or returned nothing — fall back to Supabase keyword search
+    return _search_all_chunks_supabase(query, n)
 
 
 def search_chunks(doc_id: str, query: str, n: int = 6) -> list:
