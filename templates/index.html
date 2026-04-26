@@ -2410,7 +2410,7 @@
   // ── Explore nearby ──────────────────────────────────────────────────────────
   const _PLACE_FILTERS = {
     all:       null,
-    kids:      ["Park","Library","Community Centre","Sports Centre","Leisure Centre","Swimming Pool","Arts Centre"],
+    kids:      ["Park","Playground","Attraction","Library","Community Centre","Sports Centre","Leisure Centre","Swimming Pool","Arts Centre"],
     adventure: ["Park","Sports Centre","Gym / Fitness","Leisure Centre","Swimming Pool","Arts Centre"],
     food:      ["Café","Restaurant","Fast Food","Pub","Bar"],
     petrol:    ["Petrol Station"],
@@ -2564,16 +2564,10 @@
       const moreId = `exmore-${cat.replace(/\W/g,"_")}`;
 
       const itemsHtml = shown.map(p => {
-        const dist = (p.lat && p.lon) ? `<span style="font-size:10px;color:var(--subtle);margin-left:6px">${_distLabel(p._dist)}</span>` : "";
-        const hours = _fmtHours(p.hours);
-        const links = [];
-        if (p.phone)   links.push(`<a href="tel:${p.phone}"   style="color:#3b82f6;font-size:11px">📞 ${p.phone}</a>`);
-        if (p.website) links.push(`<a href="${p.website}" target="_blank" style="color:#3b82f6;font-size:11px">🌐 Website</a>`);
-        return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
-          <div style="font-weight:600;font-size:13px;color:var(--text)">${p.name}${dist}</div>
-          ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px">${p.address}</div>` : ""}
-          ${hours      ? `<div style="font-size:11px;color:var(--subtle);margin-top:2px">🕐 ${hours}</div>` : ""}
-          ${links.length ? `<div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">${links.join("")}</div>` : ""}
+        const dist = (p.lat && p.lon) ? ` · ${_distLabel(p._dist)}` : "";
+        return `<div style="padding:7px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:13px;color:var(--text)">${p.name}<span style="color:var(--subtle);font-size:11px">${dist}</span></div>
+          ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.address}</div>` : ""}
         </div>`;
       }).join("");
 
@@ -2581,8 +2575,8 @@
         ? `<button id="${moreId}" onclick="
             document.getElementById('${moreId}').outerHTML=
             ${JSON.stringify(g.items.slice(cap).map(p => {
-              const dist = (p.lat && p.lon) ? `<span style='font-size:10px;color:var(--subtle);margin-left:6px'>${_distLabel(p._dist)}</span>` : "";
-              return `<div style='padding:9px 0;border-bottom:1px solid var(--border)'><div style='font-weight:600;font-size:13px;color:var(--text)'>${p.name}${dist}</div>${p.address ? `<div style='font-size:11px;color:var(--subtle);margin-top:1px'>${p.address}</div>` : ''}</div>`;
+              const dist = (p.lat && p.lon) ? ` · ${_distLabel(p._dist)}` : "";
+              return `<div style='padding:7px 0;border-bottom:1px solid var(--border)'><div style='font-size:13px;color:var(--text)'>${p.name}<span style='color:var(--subtle);font-size:11px'>${dist}</span></div>${p.address ? `<div style='font-size:11px;color:var(--subtle);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>${p.address}</div>` : ''}</div>`;
             }).join(""))}"
             style="margin-top:8px;width:100%;text-align:center;font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:4px 0">
             Show ${more} more ›

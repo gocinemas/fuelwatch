@@ -1458,6 +1458,8 @@ _PLACE_CATEGORY = {
     "swimming_pool":    {"label": "Swimming Pool",     "emoji": "🏊"},
     "fitness_centre":   {"label": "Gym / Fitness",     "emoji": "💪"},
     "park":             {"label": "Park",              "emoji": "🌳"},
+    "playground":       {"label": "Playground",        "emoji": "🛝"},
+    "attraction":       {"label": "Attraction",        "emoji": "🎡"},
     "cafe":             {"label": "Café",              "emoji": "☕"},
     "restaurant":       {"label": "Restaurant",        "emoji": "🍽️"},
     "fast_food":        {"label": "Fast Food",         "emoji": "🍔"},
@@ -1836,7 +1838,7 @@ def _overpass_places(lat: float, lon: float, radius: int = 1500):
         "food_bank", "police", "fire_station", "leisure_centre",
         "cafe", "restaurant", "fast_food", "pub", "bar", "fuel",
     ])
-    leisure_types = "sports_centre|swimming_pool|fitness_centre|park"
+    leisure_types = "sports_centre|swimming_pool|fitness_centre|park|playground|attraction"
     query = f"""[out:json][timeout:25];
 (
   node["amenity"~"^({amenity_types})$"](around:{radius},{lat},{lon});
