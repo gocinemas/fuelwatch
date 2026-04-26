@@ -2672,15 +2672,21 @@
       errEl.style.borderColor = "";
       errEl.style.color = "";
       const msgs = {
-        1: "Location access was denied. Allow location in your phone settings, then try again.",
+        1: "Location access was denied. On iPhone: Settings → Privacy → Location Services → Safari → While Using. Then try again.",
         2: "Couldn't detect your location. Check your signal or enter a postcode.",
-        3: "Location timed out. Enter a postcode instead.",
+        3: "Couldn't get a location fix — you may be indoors. Try again or enter a postcode.",
       };
-      errEl.textContent = msgs[err.code] || "Couldn't get your location. Enter a postcode instead.";
+      errEl.innerHTML = (msgs[err.code] || "Couldn't get your location. Enter a postcode instead.") +
+        ` <button onclick="placesUseLocation()" style="margin-left:8px;font-size:11px;font-weight:700;color:#1d4ed8;background:none;border:none;cursor:pointer;text-decoration:underline">Try again</button>`;
     };
 
-    navigator.geolocation.getCurrentPosition(onSuccess, onError,
-      {timeout: 20000, enableHighAccuracy: false, maximumAge: 60000});
+    // Try cached position first (instant if available within 5 min)
+    navigator.geolocation.getCurrentPosition(onSuccess, () => {
+      // No cache — request a fresh fix; enableHighAccuracy:true is more
+      // reliable on iOS Safari for triggering the permission prompt
+      navigator.geolocation.getCurrentPosition(onSuccess, onError,
+        {timeout: 30000, enableHighAccuracy: true, maximumAge: 0});
+    }, {timeout: 500, enableHighAccuracy: false, maximumAge: 300000});
   }
 
   async function placesExplorePostcode() {
