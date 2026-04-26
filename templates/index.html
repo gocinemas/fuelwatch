@@ -2461,7 +2461,7 @@
     shown.forEach(p => _fetchInlineRating(p));
   }
 
-  function setFoodSort(groupId, sort, btn) {
+  async function setFoodSort(groupId, sort, btn) {
     const g = _nearbyFoodGroups[groupId];
     if (!g) return;
     g.sort = sort;
@@ -2469,6 +2469,22 @@
       b.style.background = b.dataset.sort === sort ? "var(--text)" : "var(--surface)";
       b.style.color      = b.dataset.sort === sort ? "var(--bg)"   : "var(--subtle)";
     });
+    if (sort === "reviews") {
+      // Ratings load async — fetch ALL group items before sorting so order is correct
+      const unrated = g.items.filter(p => p._rating === undefined);
+      if (unrated.length) {
+        btn.textContent = "⏳ Loading…"; btn.disabled = true;
+        await Promise.all(unrated.map(async p => {
+          try {
+            const ll = p.lat && p.lon ? `&lat=${p.lat}&lon=${p.lon}` : "";
+            const d = await fetch(`/api/places/google?name=${encodeURIComponent(p.name)}${ll}`).then(r=>r.json());
+            p._rating = d.found ? (d.rating || 0) : 0;
+            p._total_ratings = d.total_ratings || 0;
+          } catch(e) { p._rating = 0; }
+        }));
+        btn.textContent = "⭐ Reviews"; btn.disabled = false;
+      }
+    }
     _renderFoodGroupList(groupId);
   }
 
@@ -2696,6 +2712,9 @@
         if (!_exploreAllGroups[p.category]) _exploreAllGroups[p.category] = {emoji: p.emoji, items: []};
         _exploreAllGroups[p.category].items.push(p);
       }
+
+      // Reset all pills to visible before applying hide-if-empty logic
+      document.querySelectorAll(".pf-btn").forEach(b => { b.style.display = ""; });
 
       // Badge filter pills with counts; hide pills with no data
       for (const [f, cats] of Object.entries(_PLACE_FILTERS)) {
