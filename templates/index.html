@@ -741,7 +741,7 @@
           </button>
           <button id="etab-more" onclick="eTab('more')"
             style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
-            ℹ️ More
+            📊 Results
           </button>
         </div>
 
@@ -2265,14 +2265,42 @@
         psLink.textContent = "Check ↗";
       }
 
-      // Past results section
+      // Results section (2022 past + 2026 live)
+      function _renderResultsTable(results, title) {
+        const maxV = Math.max(...results.map(r => r.votes || 0), 1);
+        const totV = results.reduce((s, r) => s + (r.votes || 0), 0);
+        return `<div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:10px">📊 ${title}</div>` +
+          results.map(r => {
+            const col = _partyStyle(r.party);
+            const pct = totV > 0 && r.votes != null ? Math.round(r.votes * 100 / totV) : null;
+            const bar = r.votes != null ? Math.round(r.votes * 100 / maxV) : 0;
+            return `<div style="margin-bottom:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px">
+                <div style="font-size:13px;font-weight:600;color:var(--text);flex:1;min-width:0">${r.elected?'✅ ':''}${r.name}</div>
+                ${r.votes!=null?`<div style="font-size:12px;color:var(--subtle);flex-shrink:0">${r.votes.toLocaleString()}${pct!=null?` · ${pct}%`:''}</div>`:''}
+              </div>
+              <div style="font-size:11px;margin-bottom:4px"><span style="padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text};font-weight:600">${r.party}</span></div>
+              ${bar>0?`<div style="background:var(--border);border-radius:4px;height:5px"><div style="background:${col.bg};width:${bar}%;height:5px;border-radius:4px"></div></div>`:''}
+            </div>`;
+          }).join('');
+      }
+
       const pastEl = document.getElementById("elections-past");
-      if (d.is_new_council && d.predecessor_areas && d.predecessor_areas.length) {
-        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:4px">📋 Previous election results</div>
-          <div style="color:var(--subtle);font-size:12px;line-height:1.5"><strong>${d.council}</strong> is a newly created council (first election 7 May 2026), formed by merging ${d.predecessor_areas.join(", ")}. No directly comparable past results exist for these ward boundaries.</div>`;
+      pastEl.style.display = "";
+      if (d.live_results && d.live_results.length) {
+        pastEl.innerHTML = _renderResultsTable(d.live_results, "7 May 2026 Results");
+      } else if (d.past_results && d.past_results.length) {
+        let html = _renderResultsTable(d.past_results, "2022 Local Election Results");
+        html += `<div style="margin-top:12px;font-size:11px;color:var(--subtle);text-align:center;padding-top:8px;border-top:1px solid var(--border)">2026 results will appear here on election night · 7 May 2026</div>`;
+        pastEl.innerHTML = html;
+      } else if (d.is_new_council && d.predecessor_areas && d.predecessor_areas.length) {
+        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:4px">📊 Results</div>
+          <div style="color:var(--subtle);font-size:12px;line-height:1.5"><strong>${d.council}</strong> is a newly created council (first election 7 May 2026), formed by merging ${d.predecessor_areas.join(", ")}.</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--subtle);text-align:center">2026 results will appear here on election night</div>`;
       } else if (d.dc_results_url) {
-        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:4px">📋 Previous election results</div>
-          <div style="font-size:12px;color:var(--subtle)">View 2022 results for this area on Democracy Club: <a href="${d.dc_results_url}" target="_blank" rel="noopener" style="color:#4f46e5">View results ↗</a></div>`;
+        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:6px">📊 Results</div>
+          <div style="font-size:12px;color:var(--subtle)">2022 results: <a href="${d.dc_results_url}" target="_blank" rel="noopener" style="color:#4f46e5">View on Democracy Club ↗</a></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--subtle);text-align:center">2026 results will appear here on election night</div>`;
       } else {
         pastEl.style.display = "none";
       }
@@ -2413,7 +2441,8 @@
           ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:4px">🕐 ${hours}</div>` : ""}
           ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">${links.join("")}</div>` : ""}
         </div>
-        <button onclick="_togglePlace('${id}','${reviewsId}',${JSON.stringify(p.name)},${JSON.stringify(latlon)},this)"
+        <button data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-latlon="${latlon}"
+          onclick="_togglePlace('${id}','${reviewsId}',this.dataset.name,this.dataset.latlon,this)"
           style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px 4px;margin-top:2px">▼</button>
       </div>
       <div id="${id}" style="display:none;margin-top:8px">

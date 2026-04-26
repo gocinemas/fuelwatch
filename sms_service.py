@@ -952,6 +952,70 @@ _UA_TO_COUNCIL_SLUG = {
 }
 
 
+_DC_RESULTS_CACHE: dict = {}
+
+def _ward_to_slug(name: str) -> str:
+    import re
+    s = name.lower()
+    s = re.sub(r"['’‘`]", "", s)
+    s = re.sub(r"[^a-z0-9 ]", " ", s)
+    return re.sub(r"\s+", "-", s.strip())
+
+def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> list:
+    """Fetch results for a ward from Democracy Club API. Returns [] if not available."""
+    cache_key = f"dcr:{council_slug}:{ward_name}:{election_date}"
+    if cache_key in _DC_RESULTS_CACHE:
+        return _DC_RESULTS_CACHE[cache_key]
+    try:
+        from difflib import SequenceMatcher
+        slug = council_slug.lower().replace(" ", "-")
+        r = requests.get(
+            f"https://candidates.democracyclub.org.uk/api/next/elections/local.{slug}.{election_date}/",
+            params={"format": "json"}, timeout=8,
+            headers={"User-Agent": "Miru/1.0"},
+        )
+        if r.status_code != 200:
+            return []
+        ballots = r.json().get("ballots", [])
+        ward_slug = _ward_to_slug(ward_name)
+        # Pick best matching ward ballot
+        best, best_score = None, 0
+        for b in ballots:
+            parts = b["ballot_paper_id"].split(".")
+            if len(parts) < 3:
+                continue
+            bslug = parts[2]
+            score = SequenceMatcher(None, ward_slug, bslug).ratio()
+            if score > best_score:
+                best_score, best = score, b["ballot_paper_id"]
+        if not best or best_score < 0.4:
+            return []
+        r2 = requests.get(
+            f"https://candidates.democracyclub.org.uk/api/next/ballots/{best}/",
+            params={"format": "json"}, timeout=8,
+            headers={"User-Agent": "Miru/1.0"},
+        )
+        if r2.status_code != 200:
+            return []
+        candidacies = r2.json().get("candidacies", [])
+        results = []
+        for c in candidacies:
+            res = c.get("result") or {}
+            results.append({
+                "name":    c.get("person", {}).get("name", ""),
+                "party":   c.get("party_name", ""),
+                "elected": c.get("elected") or res.get("elected", False),
+                "votes":   res.get("num_ballots"),
+            })
+        results.sort(key=lambda x: -(x["votes"] or 0))
+        if results:
+            _DC_RESULTS_CACHE[cache_key] = results
+        return results
+    except Exception as e:
+        print(f"[dc_results] {e}")
+        return []
+
+
 def _load_elections_csv():
     """Load candidates CSV; returns {by_gss: {...}, by_slug: {council: {ward: {...}}}}."""
     import csv as _csv
@@ -1071,22 +1135,39 @@ def api_elections():
             f"https://candidates.democracyclub.org.uk/elections/local.{district.lower().replace(' ','-')}.2022-05-05/"
         )
 
-        # Fetch actual polling station
-        polling_station = _fetch_polling_station(postcode)
+        # Fetch polling station + past/live results in parallel
+        effective_council = (council_slug or district).lower().replace(" ", "-")
+        effective_ward    = ward_data.get("ward") or ward_name
+        election_date_str = ward_data.get("election_date", "2026-05-01")
+        import datetime as _dt
+        election_happened = _dt.date.today() >= _dt.date.fromisoformat(election_date_str)
+
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            f_ps   = ex.submit(_fetch_polling_station, postcode)
+            f_2022 = ex.submit(_fetch_dc_results, effective_council, effective_ward, "2022-05-05") \
+                     if not is_new_council else None
+            f_live = ex.submit(_fetch_dc_results, effective_council, effective_ward, election_date_str) \
+                     if election_happened else None
+            polling_station = f_ps.result()
+            past_results    = f_2022.result() if f_2022 else []
+            live_results    = f_live.result() if f_live else []
 
         county_name = result.get("admin_county") or ""
 
         return jsonify({
             "postcode":          postcode_fmt,
-            "ward":              ward_data.get("ward") or ward_name,
+            "ward":              effective_ward,
             "council":           ward_data.get("council") or district,
             "county":            county_name,
-            "election_date":     ward_data.get("election_date", ""),
+            "election_date":     election_date_str,
             "ward_gss":          ward_gss,
             "candidates":        candidates,
             "is_new_council":    is_new_council,
             "predecessor_areas": predecessors,
             "dc_results_url":    dc_results_url,
+            "past_results":      past_results,
+            "live_results":      live_results,
+            "election_happened": election_happened,
             "polling_station":   polling_station,
             "polling_station_url": (polling_station or {}).get("url") or
                                    f"https://wheredoivote.co.uk/postcode/{postcode}/",
