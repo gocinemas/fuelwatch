@@ -337,6 +337,7 @@
             <option value="10">10 miles</option>
           </select>
         </div>
+        <div id="fuel-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
         <div id="fuel-recent" class="hidden mb-3"></div>
         <button onclick="searchFuel()"
           class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition text-sm">
@@ -402,6 +403,7 @@
             class="shrink-0 border border-gray-200 rounded-xl px-3 py-3 text-lg hover:bg-gray-50 active:bg-gray-100 transition"
             id="report-loc-btn">📍</button>
         </div>
+        <div id="report-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
         <div id="report-recent" class="hidden mb-3"></div>
         <button onclick="searchReport()"
           class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl transition text-sm">
@@ -1260,16 +1262,18 @@
 
   // ── Current Location ─────────────────────────────────────────────────────────
   function useLocation(screen) {
-    const btn = document.getElementById(screen + "-loc-btn");
+    const btn   = document.getElementById(screen + "-loc-btn");
     const input = document.getElementById(screen + "-postcode");
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
+    const errEl = document.getElementById(screen + "-loc-err");
+    function _err(msg) { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } }
+    function _clearErr() { if (errEl) errEl.style.display = "none"; }
+    if (!navigator.geolocation) { _err("Location not available in this browser — enter postcode manually."); return; }
+    _clearErr();
     btn.textContent = "⏳";
     btn.disabled = true;
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
+        btn.textContent = "⏳";
         try {
           const res = await fetch(
             `https://api.postcodes.io/postcodes?lon=${coords.longitude}&lat=${coords.latitude}&limit=1`
@@ -1277,25 +1281,27 @@
           const data = await res.json();
           const pc = data?.result?.[0]?.postcode;
           if (pc) {
+            _clearErr();
             input.value = pc;
             if (screen === "fuel") searchFuel();
             else searchReport();
           } else {
-            alert("Couldn't find a postcode for your location.");
+            _err("No UK postcode found for your location — please enter one manually.");
           }
-        } catch {
-          alert("Location lookup failed — please enter postcode manually.");
+        } catch (e) {
+          _err("Postcode lookup failed — please enter your postcode manually.");
         } finally {
           btn.textContent = "📍";
           btn.disabled = false;
         }
       },
-      () => {
-        alert("Location access denied — please enter your postcode manually.");
+      (err) => {
         btn.textContent = "📍";
         btn.disabled = false;
+        const msgs = {1:"Location permission denied — tap 📍 again and allow access.", 2:"Location unavailable — please enter your postcode.", 3:"Location timed out — please enter your postcode."};
+        _err(msgs[err.code] || "Could not get location — please enter your postcode.");
       },
-      { timeout: 10000 }
+      { timeout: 12000, enableHighAccuracy: false }
     );
   }
 
