@@ -300,6 +300,12 @@
           <div class="tc-desc">Cafes, pubs, parks & more nearby</div>
         </button>
 
+        <button class="tool-card" onclick="showScreen('finder')">
+          <div class="tc-icon" style="background:#ecfdf5">🔍</div>
+          <div class="tc-name">Local Finder</div>
+          <div class="tc-desc">Trades, health & local services</div>
+        </button>
+
       </div>
 
       <!-- News Feed (Kagi) -->
@@ -4063,7 +4069,7 @@
 
   // ── Bottom nav active state ──────────────────────────────────────────────────
   function _updateBottomNav(name) {
-    ["fuel","report","places","company","library"].forEach(s => {
+    ["fuel","report","finder","company","library"].forEach(s => {
       document.getElementById("bnav-" + s).classList.toggle("active", s === name);
     });
   }
@@ -4071,7 +4077,7 @@
   showScreen = function(name) { _origShowScreen(name); _updateBottomNav(name); };
   const _origShowHome = showHome;
   showHome = function() { _origShowHome();
-    ["fuel","report","places","company","library"].forEach(s => document.getElementById("bnav-"+s).classList.remove("active"));
+    ["fuel","report","finder","company","library"].forEach(s => document.getElementById("bnav-"+s).classList.remove("active"));
   };
 
   // ── Kagi News ────────────────────────────────────────────────────────────
@@ -5077,8 +5083,8 @@
   <button class="bnav-btn" id="bnav-report" onclick="showScreen('report')">
     <span class="bnav-icon">🏠</span>Area
   </button>
-  <button class="bnav-btn" id="bnav-places" onclick="showScreen('places')">
-    <span class="bnav-icon">📍</span>Places
+  <button class="bnav-btn" id="bnav-finder" onclick="showScreen('finder')">
+    <span class="bnav-icon">🔍</span>Finder
   </button>
   <button class="bnav-btn" id="bnav-company" onclick="showScreen('company')">
     <span class="bnav-icon">🏢</span>Company
