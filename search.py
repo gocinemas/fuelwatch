@@ -914,7 +914,7 @@ def fetch_brand_data(brand: str) -> dict:
     suggested = canonical if canonical.lower() != original.lower() else ""
     brand = canonical
 
-    cache_key = brand.strip().lower() + "|brandv17"
+    cache_key = brand.strip().lower() + "|brandv18"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
