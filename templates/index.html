@@ -1261,47 +1261,67 @@
   })();
 
   // ── Current Location ─────────────────────────────────────────────────────────
+  async function _postcodeFromCoords(lat, lon) {
+    const res  = await fetch(`https://api.postcodes.io/postcodes?lon=${lon}&lat=${lat}&limit=1`);
+    const data = await res.json();
+    return data?.result?.[0]?.postcode || null;
+  }
+
+  async function _postcodeFromIP() {
+    const services = [
+      () => fetch("https://ipapi.co/json/").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[d.latitude,d.longitude]:null),
+      () => fetch("https://get.geojs.io/v1/ip/geo.json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[+d.latitude,+d.longitude]:null),
+    ];
+    for (const svc of services) {
+      try {
+        const coords = await svc();
+        if (coords) {
+          const pc = await _postcodeFromCoords(coords[0], coords[1]);
+          if (pc) return pc;
+        }
+      } catch(_) {}
+    }
+    return null;
+  }
+
   function useLocation(screen) {
     const btn   = document.getElementById(screen + "-loc-btn");
     const input = document.getElementById(screen + "-postcode");
     const errEl = document.getElementById(screen + "-loc-err");
     function _err(msg) { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } }
     function _clearErr() { if (errEl) errEl.style.display = "none"; }
-    if (!navigator.geolocation) { _err("Location not available in this browser — enter postcode manually."); return; }
+    function _done(pc) {
+      btn.textContent = "📍"; btn.disabled = false;
+      if (!pc) { _err("Couldn't find a UK postcode for your location — please enter one manually."); return; }
+      _clearErr(); input.value = pc;
+      if (screen === "fuel") searchFuel(); else searchReport();
+    }
     _clearErr();
-    btn.textContent = "⏳";
-    btn.disabled = true;
+    btn.textContent = "⏳"; btn.disabled = true;
+
+    if (!navigator.geolocation) {
+      // No GPS at all — go straight to IP lookup
+      _postcodeFromIP().then(_done).catch(() => _done(null));
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
-        btn.textContent = "⏳";
         try {
-          const res = await fetch(
-            `https://api.postcodes.io/postcodes?lon=${coords.longitude}&lat=${coords.latitude}&limit=1`
-          );
-          const data = await res.json();
-          const pc = data?.result?.[0]?.postcode;
-          if (pc) {
-            _clearErr();
-            input.value = pc;
-            if (screen === "fuel") searchFuel();
-            else searchReport();
-          } else {
-            _err("No UK postcode found for your location — please enter one manually.");
-          }
-        } catch (e) {
-          _err("Postcode lookup failed — please enter your postcode manually.");
-        } finally {
-          btn.textContent = "📍";
-          btn.disabled = false;
+          const pc = await _postcodeFromCoords(coords.latitude, coords.longitude);
+          _done(pc);
+        } catch(e) {
+          // GPS worked but postcode lookup failed — try IP fallback
+          const pc = await _postcodeFromIP().catch(()=>null);
+          _done(pc);
         }
       },
-      (err) => {
-        btn.textContent = "📍";
-        btn.disabled = false;
-        const msgs = {1:"Location permission denied — tap 📍 again and allow access.", 2:"Location unavailable — please enter your postcode.", 3:"Location timed out — please enter your postcode."};
-        _err(msgs[err.code] || "Could not get location — please enter your postcode.");
+      async () => {
+        // GPS denied or timed out — silently fall back to IP geolocation
+        const pc = await _postcodeFromIP().catch(()=>null);
+        _done(pc);
       },
-      { timeout: 30000, enableHighAccuracy: false, maximumAge: 300000 }
+      { timeout: 8000, enableHighAccuracy: false, maximumAge: 600000 }
     );
   }
 
