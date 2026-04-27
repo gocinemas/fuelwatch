@@ -1235,13 +1235,21 @@
     const auto = "{{ autoscreen|default('') }}";
     const hash = window.location.hash.replace("#", "").toLowerCase();
     const params = new URLSearchParams(window.location.search);
-    const placesQ = params.get("places");
-    if (placesQ) {
+    const placesQ   = params.get("places");
+    const placesLat = parseFloat(params.get("lat"));
+    const placesLon = parseFloat(params.get("lon"));
+    if (placesQ || (!isNaN(placesLat) && !isNaN(placesLon))) {
       showScreen("places");
-      // Defer so placesSearch functions are defined
       setTimeout(() => {
-        document.getElementById("places-input").value = placesQ;
-        placesSearch();
+        if (!isNaN(placesLat) && !isNaN(placesLon)) {
+          // Exact coordinates — skip geocoding, load directly
+          const displayName = placesQ || "Shared location";
+          document.getElementById("places-input").value = placesQ || "";
+          placesLoadDetails(placesLat, placesLon, "", "", "", displayName, placesQ || displayName);
+        } else {
+          document.getElementById("places-input").value = placesQ;
+          placesSearch();
+        }
       }, 50);
       return;
     }
@@ -2467,9 +2475,7 @@
   function _sharePlacesResults() {
     const locEl = document.getElementById('places-location');
     const areaName = locEl?.textContent?.replace(/^\d+ results? near /,'').trim() || _placesShareQuery || 'nearby';
-    const shareUrl = _placesShareQuery
-      ? `${location.origin}/?places=${encodeURIComponent(_placesShareQuery)}`
-      : location.href;
+    const shareUrl = location.href;  // already has ?places=&lat=&lon= set by placesLoadDetails
     const title = `Places near ${areaName}`;
     if (navigator.share) {
       navigator.share({ title, text: `Check out places near ${areaName} on Miru`, url: shareUrl }).catch(()=>{});
@@ -3031,10 +3037,18 @@
 
   // Step 2: load details for selected candidate
   let _placesShareQuery = "";
+  let _placesShareLat   = null;
+  let _placesShareLon   = null;
 
   async function placesLoadDetails(lat, lon, osm_type, osm_id, osm_class, name, q) {
     _placesShareQuery = q || name || "";
-    if (_placesShareQuery) history.replaceState(null, '', '?places=' + encodeURIComponent(_placesShareQuery));
+    _placesShareLat   = lat;
+    _placesShareLon   = lon;
+    const urlP = new URLSearchParams();
+    if (_placesShareQuery) urlP.set("places", _placesShareQuery);
+    if (lat)  urlP.set("lat",  parseFloat(lat).toFixed(5));
+    if (lon)  urlP.set("lon",  parseFloat(lon).toFixed(5));
+    history.replaceState(null, '', '?' + urlP.toString());
     document.getElementById("places-step-home").style.display = "none";
     document.getElementById("places-candidates").classList.add("hidden");
     document.getElementById("places-step-details").style.display = "";
