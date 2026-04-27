@@ -2323,9 +2323,9 @@ def api_places():
 
 @app.route("/api/scan-barcode", methods=["POST"])
 def api_scan_barcode():
-    """Decode a barcode from an uploaded image using ZXing C++ (server-side, works on all devices)."""
+    """Decode a barcode from an uploaded image using pyzbar (server-side, works on all devices)."""
     try:
-        import zxingcpp
+        from pyzbar import pyzbar as _pyzbar
         from PIL import Image
         import io
     except ImportError as e:
@@ -2336,9 +2336,9 @@ def api_scan_barcode():
         return jsonify({"error": "No image uploaded"}), 400
     try:
         img = Image.open(io.BytesIO(f.read())).convert("RGB")
-        results = zxingcpp.read_barcodes(img)
+        results = _pyzbar.decode(img)
         if results:
-            return jsonify({"barcode": results[0].text, "format": str(results[0].format)})
+            return jsonify({"barcode": results[0].data.decode("utf-8"), "format": results[0].type})
         return jsonify({"error": "No barcode found in image"})
     except Exception as e:
         print(f"[scan-barcode] {e}")
