@@ -1301,7 +1301,7 @@
         const msgs = {1:"Location permission denied — tap 📍 again and allow access.", 2:"Location unavailable — please enter your postcode.", 3:"Location timed out — please enter your postcode."};
         _err(msgs[err.code] || "Could not get location — please enter your postcode.");
       },
-      { timeout: 12000, enableHighAccuracy: false }
+      { timeout: 30000, enableHighAccuracy: false, maximumAge: 300000 }
     );
   }
 
@@ -2277,7 +2277,7 @@
         errEl.textContent = msgs[err.code] || "Could not get location. Please enter your postcode manually.";
         errEl.style.display = "block";
       },
-      {timeout: 10000, enableHighAccuracy: false}
+      {timeout: 30000, enableHighAccuracy: false, maximumAge: 300000}
     );
   }
 
@@ -4300,7 +4300,7 @@
       if(btn){ btn.textContent=origTxt; btn.disabled=false; }
       const msgs={1:"Location permission denied — please allow and try again.",2:"Location unavailable.",3:"Timed out getting location."};
       _showErr(msgs[err.code]||"Could not get location.");
-    }, {timeout:12000, enableHighAccuracy:false});
+    }, {timeout:30000, enableHighAccuracy:false, maximumAge:300000});
   };
 
   window.finderPostcodeInput = function(val){
