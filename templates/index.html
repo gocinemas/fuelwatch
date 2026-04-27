@@ -1234,6 +1234,17 @@
   (function() {
     const auto = "{{ autoscreen|default('') }}";
     const hash = window.location.hash.replace("#", "").toLowerCase();
+    const params = new URLSearchParams(window.location.search);
+    const placesQ = params.get("places");
+    if (placesQ) {
+      showScreen("places");
+      // Defer so placesSearch functions are defined
+      setTimeout(() => {
+        document.getElementById("places-input").value = placesQ;
+        placesSearch();
+      }, 50);
+      return;
+    }
     const target = auto || hash;
     if (target && document.getElementById("screen-" + target)) {
       showScreen(target);
@@ -2455,17 +2466,17 @@
 
   function _sharePlacesResults() {
     const locEl = document.getElementById('places-location');
-    const title = locEl?.textContent?.replace(/^\d+ results? near /,'') || 'Places nearby';
-    const cards = [...document.querySelectorAll('#places-list [style*="font-weight:600;font-size:13px"]')]
-      .map(el => el.textContent.replace(/[▼▲⬇⬆]+/g,'').trim()).filter(Boolean).slice(0,12);
-    const appUrl = window.location.origin;
-    const shareText = `📍 Places near ${title}\n\n${cards.join('\n')}\n\nSearch on Miru: ${appUrl}`;
+    const areaName = locEl?.textContent?.replace(/^\d+ results? near /,'').trim() || _placesShareQuery || 'nearby';
+    const shareUrl = _placesShareQuery
+      ? `${location.origin}/?places=${encodeURIComponent(_placesShareQuery)}`
+      : location.href;
+    const title = `Places near ${areaName}`;
     if (navigator.share) {
-      navigator.share({ title: `Places near ${title}`, text: shareText, url: appUrl }).catch(()=>{});
+      navigator.share({ title, text: `Check out places near ${areaName} on Miru`, url: shareUrl }).catch(()=>{});
     } else {
-      navigator.clipboard.writeText(shareText)
-        .then(()=>{ const t=document.createElement('div'); t.textContent='📋 Copied to clipboard!'; t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999'; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); })
-        .catch(()=>alert(shareText));
+      navigator.clipboard.writeText(shareUrl)
+        .then(()=>{ const t=document.createElement('div'); t.textContent='📋 Link copied!'; t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999'; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); })
+        .catch(()=>alert(shareUrl));
     }
   }
 
@@ -3019,7 +3030,11 @@
   }
 
   // Step 2: load details for selected candidate
+  let _placesShareQuery = "";
+
   async function placesLoadDetails(lat, lon, osm_type, osm_id, osm_class, name, q) {
+    _placesShareQuery = q || name || "";
+    if (_placesShareQuery) history.replaceState(null, '', '?places=' + encodeURIComponent(_placesShareQuery));
     document.getElementById("places-step-home").style.display = "none";
     document.getElementById("places-candidates").classList.add("hidden");
     document.getElementById("places-step-details").style.display = "";
@@ -3201,6 +3216,8 @@
   }
 
   function placesBackToSearch() {
+    _placesShareQuery = "";
+    history.replaceState(null, '', location.pathname);
     document.getElementById("places-step-details").style.display = "none";
     document.getElementById("places-step-home").style.display = "";
     ["places-search-error","places-did-you-mean","places-search-loading"].forEach(id =>
