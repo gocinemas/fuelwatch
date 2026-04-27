@@ -1235,19 +1235,18 @@
     const auto = "{{ autoscreen|default('') }}";
     const hash = window.location.hash.replace("#", "").toLowerCase();
     const params = new URLSearchParams(window.location.search);
-    const placesQ   = params.get("places");
-    const placesLat = parseFloat(params.get("lat"));
-    const placesLon = parseFloat(params.get("lon"));
-    if (placesQ || (!isNaN(placesLat) && !isNaN(placesLon))) {
+    const placesQ  = params.get("places");
+    const llParam  = params.get("ll");
+    const llParts  = llParam ? llParam.split(",").map(Number) : [];
+    const hasLL    = llParts.length === 2 && !isNaN(llParts[0]) && !isNaN(llParts[1]);
+    if (placesQ || hasLL) {
       showScreen("places");
       setTimeout(() => {
-        if (!isNaN(placesLat) && !isNaN(placesLon)) {
-          // Exact coordinates — skip geocoding, load directly
-          const displayName = placesQ || "Shared location";
-          document.getElementById("places-input").value = placesQ || "";
-          placesLoadDetails(placesLat, placesLon, "", "", "", displayName, placesQ || displayName);
+        const displayName = placesQ || "Shared location";
+        document.getElementById("places-input").value = placesQ || "";
+        if (hasLL) {
+          placesLoadDetails(llParts[0], llParts[1], "", "", "", displayName, displayName);
         } else {
-          document.getElementById("places-input").value = placesQ;
           placesSearch();
         }
       }, 50);
@@ -3046,8 +3045,7 @@
     _placesShareLon   = lon;
     const urlP = new URLSearchParams();
     if (_placesShareQuery) urlP.set("places", _placesShareQuery);
-    if (lat)  urlP.set("lat",  parseFloat(lat).toFixed(5));
-    if (lon)  urlP.set("lon",  parseFloat(lon).toFixed(5));
+    if (lat && lon) urlP.set("ll", parseFloat(lat).toFixed(5) + "," + parseFloat(lon).toFixed(5));
     history.replaceState(null, '', '?' + urlP.toString());
     document.getElementById("places-step-home").style.display = "none";
     document.getElementById("places-candidates").classList.add("hidden");
