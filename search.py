@@ -1191,17 +1191,20 @@ def _fetch_wikipedia(company: str) -> dict:
             # Strip <ref>...</ref> blocks first
             v = _re.sub(r'<ref[^>]*>.*?</ref>', '', v, flags=_re.DOTALL)
             v = _re.sub(r'<ref[^/]*/>', '', v)
+            # Strip citation/footnote templates that start mid-value and run to end-of-line
+            # e.g. 2,000+ (2021){{Cite web|...  or  £10M{{sfn|...
+            v = _re.sub(r'\{\{(?:Cite|cite|sfn|harvnb|harvp|r|Refn|efn|note)[^}]*(?:\}[^}].*)?$', '', v)
+            # Iteratively strip inner {{ }} pairs (handles nested templates)
+            for _ in range(4):
+                v = _re.sub(r'\{\{[^{}]*\}\}', '', v)
             # Normalise non-breaking spaces
             v = v.replace('&nbsp;', ' ')
             # Strip named template params (e.g. |class=nowrap, |style=..., |abbr=on)
-            # so positional params like [[Footwear]] are captured correctly
             v = _re.sub(r'\|[a-zA-Z][a-zA-Z0-9_-]*\s*=\s*[^|{}]*', '', v)
-            # Strip simple no-param templates: {{increase}}, {{decrease}}, etc.
-            v = _re.sub(r'\{\{[^|{}]{1,30}\}\}', '', v)
             # Extract first positional param from templates: {{US$|60.1 billion}} → 60.1 billion
             v = _re.sub(r'\{\{[^|{}]+\|([^|{}]+)(?:\|[^{}]*)?\}\}', r'\1', v)
-            # Drop any remaining templates
-            v = _re.sub(r'\{\{[^{}]*\}\}', '', v)
+            # Drop any remaining {{ fragments
+            v = _re.sub(r'\{\{.*', '', v)
             # Unwrap wiki links: [[London|London, UK]] → London, UK
             v = _re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', v)
             # Strip HTML tags and reference markers
