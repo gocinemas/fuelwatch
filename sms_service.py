@@ -2487,7 +2487,7 @@ def api_finder():
         lat, lon = float(lat_p), float(lon_p)
     except ValueError:
         return jsonify({"error": "Invalid coordinates"}), 400
-    cache_key = f"finder:{lat:.4f},{lon:.4f}"
+    cache_key = f"finder3:{lat:.4f},{lon:.4f}"
     cached = _PLACES_CACHE.get(cache_key)
     if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
         return jsonify(cached[1])

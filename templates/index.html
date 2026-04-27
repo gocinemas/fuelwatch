@@ -4112,11 +4112,19 @@
           }
         }).catch(() => {});
     }
-    function _ipWeather() {
-      fetch("https://get.geojs.io/v1/ip/geo.json")
-        .then(r => r.json())
-        .then(d => { if (d.latitude && d.longitude) _showWeather(d.latitude, d.longitude); })
-        .catch(() => {});
+    async function _ipWeather() {
+      // Try multiple IP geolocation services in order
+      const services = [
+        () => fetch("https://ipapi.co/json/").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[d.latitude,d.longitude]:null),
+        () => fetch("https://get.geojs.io/v1/ip/geo.json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[+d.latitude,+d.longitude]:null),
+        () => fetch("https://freeipapi.com/api/json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[d.latitude,d.longitude]:null),
+      ];
+      for (const svc of services) {
+        try {
+          const coords = await svc();
+          if (coords) { _showWeather(coords[0], coords[1]); return; }
+        } catch(_) {}
+      }
     }
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
