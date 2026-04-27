@@ -1294,7 +1294,7 @@
       btn.textContent = "📍"; btn.disabled = false;
       if (!pc) { _err("Couldn't find a UK postcode for your location — please enter one manually."); return; }
       _clearErr(); input.value = pc;
-      if (screen === "fuel") searchFuel(); else searchReport();
+      if (screen === "fuel") searchFuel(); else if (screen === "finder") finderSearch(); else searchReport();
     }
     _clearErr();
     btn.textContent = "⏳"; btn.disabled = true;
@@ -4257,7 +4257,7 @@
     <div id="finder-didyoumean" style="display:none;font-size:13px;color:var(--accent);margin-bottom:10px;cursor:pointer" onclick="finderAcceptSuggestion()"></div>
 
     <!-- Error -->
-    <div id="finder-err" style="display:none;font-size:13px;color:#ef4444;margin-bottom:10px"></div>
+    <div id="finder-loc-err" style="display:none;font-size:13px;color:#ef4444;margin-bottom:10px"></div>
 
     <!-- Search button -->
     <button onclick="finderSearch()" style="width:100%;padding:12px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:18px">Search</button>
@@ -4296,46 +4296,9 @@
   let _finderActiveTab = "cowork";
   let _finderSuggestion = null;
 
-  function _showErr(msg){ const e=document.getElementById("finder-err"); e.textContent=msg; e.style.display=msg?"block":"none"; }
+  function _showErr(msg){ const e=document.getElementById("finder-loc-err"); e.textContent=msg; e.style.display=msg?"block":"none"; }
 
-  window.finderUseLocation = function(){
-    _showErr("");
-    const btn = document.getElementById("finder-loc-btn");
-    const origTxt = btn ? btn.textContent : "";
-    if(btn){ btn.textContent="⏳ Getting location…"; btn.disabled=true; }
-
-    async function _doWithCoords(lat, lon) {
-      _finderLat = lat; _finderLon = lon;
-      try{
-        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,{headers:{"Accept-Language":"en"}});
-        const rj  = await rev.json();
-        const a   = rj.address||{};
-        const area= a.suburb||a.village||a.hamlet||a.town||a.city_district||a.city||"";
-        if(area) document.getElementById("finder-postcode").placeholder = area;
-      }catch(_){}
-      if(btn){ btn.textContent=origTxt; btn.disabled=false; }
-      _finderDoSearch(lat, lon);
-    }
-
-    async function _ipFallback() {
-      const svcs = [
-        ()=>fetch("https://ipapi.co/json/").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[d.latitude,d.longitude]:null),
-        ()=>fetch("https://get.geojs.io/v1/ip/geo.json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[+d.latitude,+d.longitude]:null),
-      ];
-      for(const svc of svcs){
-        try{ const c=await svc(); if(c){ await _doWithCoords(c[0],c[1]); return; } }catch(_){}
-      }
-      if(btn){ btn.textContent=origTxt; btn.disabled=false; }
-      _showErr("Could not determine location — please enter a postcode.");
-    }
-
-    if(!navigator.geolocation){ _ipFallback(); return; }
-    navigator.geolocation.getCurrentPosition(
-      pos => _doWithCoords(pos.coords.latitude, pos.coords.longitude),
-      ()  => _ipFallback(),
-      {timeout:8000, enableHighAccuracy:false, maximumAge:600000}
-    );
-  };
+  window.finderUseLocation = function(){ useLocation("finder"); };
 
   window.finderPostcodeInput = function(val){
     _finderSuggestion = null;
