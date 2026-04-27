@@ -4245,7 +4245,7 @@
 
     <!-- Location row -->
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
-      <button id="finder-loc-btn" onclick="finderUseLocation()" style="flex:0 0 auto;padding:10px 14px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer">📍 Use my location</button>
+      <button id="finder-loc-btn" onclick="useLocation('finder')" style="flex:0 0 auto;padding:10px 14px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer">📍 Use my location</button>
       <span style="color:var(--subtle);font-size:12px">or</span>
       <input id="finder-postcode" type="text" placeholder="Enter postcode…" maxlength="10"
         style="flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px"
@@ -4369,27 +4369,12 @@
     finally{ document.getElementById("finder-loading").style.display = "none"; }
   }
 
-  const _PAGE = 10;
-
   function _renderFinderList(items, emptyMsg, extra){
     const list = document.getElementById("finder-list");
     if(!items.length){ list.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">${emptyMsg}</div>`+(extra||""); }
-    else {
-      const first = items.slice(0,_PAGE);
-      const rest  = items.slice(_PAGE);
-      list.innerHTML = first.map(_finderCard).join("")
-        + (rest.length ? `<div id="finder-more-wrap"><button onclick="_finderShowMore()" style="width:100%;margin-top:4px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">Show ${rest.length} more…</button></div>` : "")
-        + (extra||"");
-      list._restItems = rest;
-    }
+    else { list.innerHTML = items.map(_finderCard).join("") + (extra||""); }
     document.getElementById("finder-results").style.display = "block";
   }
-
-  window._finderShowMore = function(){
-    const wrap = document.getElementById("finder-more-wrap");
-    const rest  = document.getElementById("finder-list")._restItems || [];
-    if(wrap) wrap.outerHTML = rest.map(_finderCard).join("");
-  };
 
   window.finderTab = function(tab){
     _finderActiveTab = tab;

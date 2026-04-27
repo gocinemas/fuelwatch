@@ -2399,42 +2399,72 @@ def _gplaces_details(place_id: str) -> dict:
         return {}
 
 
+def _gplaces_text_search(query: str, lat: float, lon: float, radius: int) -> list:
+    """Run a single Google Places Text Search and return raw result list."""
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            params={"query": query, "location": f"{lat},{lon}",
+                    "radius": radius, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+            timeout=8,
+        )
+        return r.json().get("results", [])
+    except Exception:
+        return []
+
+
+def _gplaces_nearby_search(keyword: str, lat: float, lon: float, radius: int) -> list:
+    """Run a Google Places Nearby Search and return raw result list."""
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params={"keyword": keyword, "location": f"{lat},{lon}",
+                    "radius": radius, "key": _GOOGLE_PLACES_KEY},
+            timeout=8,
+        )
+        return r.json().get("results", [])
+    except Exception:
+        return []
+
+
+def _gplaces_collect(raw_list: list, lat: float, lon: float, seen: set, results: list):
+    """Append unique places from a raw Places API result list."""
+    for p in raw_list:
+        name = p.get("name", "")
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        loc = p.get("geometry", {}).get("location", {})
+        plat, plon = loc.get("lat"), loc.get("lng")
+        dist_km = haversine_km(lat, lon, plat, plon) if plat and plon else 999
+        addr = p.get("formatted_address") or p.get("vicinity") or ""
+        results.append({
+            "name": name, "address": addr,
+            "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
+            "rating": p.get("rating"), "phone": "", "website": "", "hours_detail": [],
+            "_place_id": p.get("place_id", ""),
+        })
+
+
 def _finder_cowork_places(lat: float, lon: float) -> list:
-    """Google Places text search for co-working spaces to supplement OSM."""
+    """Google Places search for co-working spaces — text + nearby to maximise results."""
     if not _GOOGLE_PLACES_KEY:
         return []
     results, seen = [], set()
-    for query in ["coworking space", "shared office space", "serviced office", "hot desk", "business centre"]:
-        try:
-            r = requests.get(
-                "https://maps.googleapis.com/maps/api/place/textsearch/json",
-                params={"query": query, "location": f"{lat},{lon}",
-                        "radius": 15000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
-                timeout=8,
-            )
-            for p in r.json().get("results", [])[:20]:
-                name = p.get("name","")
-                if not name or name.lower() in seen:
-                    continue
-                seen.add(name.lower())
-                loc = p.get("geometry",{}).get("location",{})
-                plat, plon = loc.get("lat"), loc.get("lng")
-                dist_km = haversine_km(lat, lon, plat, plon) if plat and plon else 999
-                results.append({
-                    "name": name, "address": p.get("formatted_address",""),
-                    "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
-                    "rating": p.get("rating"), "phone": "", "website": "", "hours_detail": [],
-                    "_place_id": p.get("place_id",""),
-                })
-        except Exception:
-            pass
+    from concurrent.futures import ThreadPoolExecutor as _TPE
+    text_queries  = ["coworking space", "shared office space", "serviced office", "hot desk", "business centre", "flexible workspace"]
+    nearby_kws    = ["coworking", "shared office", "serviced offices"]
+    radius        = 25000
+    with _TPE(max_workers=8) as ex:
+        text_futs   = [ex.submit(_gplaces_text_search,   q, lat, lon, radius) for q in text_queries]
+        nearby_futs = [ex.submit(_gplaces_nearby_search, k, lat, lon, radius) for k in nearby_kws]
+        for f in text_futs + nearby_futs:
+            _gplaces_collect(f.result(), lat, lon, seen, results)
     results.sort(key=lambda x: x["dist_km"])
-    top = results[:50]
+    top = results[:60]
     if top:
-        from concurrent.futures import ThreadPoolExecutor as _TPE
-        place_ids = [p.get("_place_id","") for p in top]
-        with _TPE(max_workers=6) as ex:
-            details = list(ex.map(_gplaces_details, place_ids))
+        with _TPE(max_workers=8) as ex:
+            details = list(ex.map(_gplaces_details, [p["_place_id"] for p in top]))
         for item, det in zip(top, details):
             if det.get("phone"):        item["phone"]        = det["phone"]
             if det.get("website"):      item["website"]      = det["website"]
@@ -2443,41 +2473,25 @@ def _finder_cowork_places(lat: float, lon: float) -> list:
 
 
 def _finder_nanny_search(lat: float, lon: float) -> list:
+    """Google Places search for nanny/childcare agencies — text + nearby to maximise results."""
     if not _GOOGLE_PLACES_KEY:
         return []
     results, seen = [], set()
-    for query in ["nanny agency", "au pair agency", "childminder agency", "childcare agency",
-                  "nursery", "babysitter agency"]:
-        try:
-            r = requests.get(
-                "https://maps.googleapis.com/maps/api/place/textsearch/json",
-                params={"query": query, "location": f"{lat},{lon}",
-                        "radius": 25000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
-                timeout=8,
-            )
-            for p in r.json().get("results", [])[:20]:
-                name = p.get("name","")
-                if not name or name.lower() in seen:
-                    continue
-                seen.add(name.lower())
-                loc = p.get("geometry",{}).get("location",{})
-                plat, plon = loc.get("lat"), loc.get("lng")
-                dist_km = haversine_km(lat, lon, plat, plon) if plat and plon else 999
-                results.append({
-                    "name": name, "address": p.get("formatted_address",""),
-                    "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
-                    "rating": p.get("rating"), "website": "", "phone": "", "hours_detail": [],
-                    "_place_id": p.get("place_id",""),
-                })
-        except Exception:
-            pass
+    from concurrent.futures import ThreadPoolExecutor as _TPE
+    text_queries  = ["nanny agency", "au pair agency", "childminder agency", "childcare agency",
+                     "nursery", "babysitter agency", "childcare centre"]
+    nearby_kws    = ["nanny agency", "childcare", "nursery"]
+    radius        = 30000
+    with _TPE(max_workers=8) as ex:
+        text_futs   = [ex.submit(_gplaces_text_search,   q, lat, lon, radius) for q in text_queries]
+        nearby_futs = [ex.submit(_gplaces_nearby_search, k, lat, lon, radius) for k in nearby_kws]
+        for f in text_futs + nearby_futs:
+            _gplaces_collect(f.result(), lat, lon, seen, results)
     results.sort(key=lambda x: x["dist_km"])
-    top = results[:50]
+    top = results[:60]
     if top:
-        from concurrent.futures import ThreadPoolExecutor as _TPE
-        place_ids = [p.get("_place_id","") for p in top]
-        with _TPE(max_workers=6) as ex:
-            details = list(ex.map(_gplaces_details, place_ids))
+        with _TPE(max_workers=8) as ex:
+            details = list(ex.map(_gplaces_details, [p["_place_id"] for p in top]))
         for item, det in zip(top, details):
             if det.get("phone"):        item["phone"]        = det["phone"]
             if det.get("website"):      item["website"]      = det["website"]
@@ -2495,7 +2509,7 @@ def api_finder():
         lat, lon = float(lat_p), float(lon_p)
     except ValueError:
         return jsonify({"error": "Invalid coordinates"}), 400
-    cache_key = f"finder4:{lat:.4f},{lon:.4f}"
+    cache_key = f"finder5:{lat:.4f},{lon:.4f}"
     cached = _PLACES_CACHE.get(cache_key)
     if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
         return jsonify(cached[1])
@@ -2516,7 +2530,7 @@ def api_finder():
             seen_names.add(p["name"].lower())
     osm_cowork.sort(key=lambda x: x["dist_km"])
     result = {
-        "coworking":      osm_cowork[:50],
+        "coworking":      osm_cowork[:60],
         "childcare":      osm.get("childcare", []),
         "nanny_agencies": nannies,
         "platforms": {
