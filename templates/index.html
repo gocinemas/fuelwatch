@@ -4450,10 +4450,11 @@
 </div>
 
 <style>
-.fcat-group{margin-bottom:14px}
-.fcat-label{font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
-.fcat-chips{display:flex;flex-wrap:wrap;gap:6px}
-.fcat{padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;line-height:1}
+.fcat-group{margin-bottom:10px}
+.fcat-label{font-size:10px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+.fcat-chips{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:7px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.fcat-chips::-webkit-scrollbar{display:none}
+.fcat{flex-shrink:0;white-space:nowrap;padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s;line-height:1}
 .fcat.fcat-on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .finder-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
 </style>
