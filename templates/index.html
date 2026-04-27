@@ -4111,7 +4111,7 @@
 </div>
 
 <!-- ===================== FINDER SCREEN ===================== -->
-<div id="screen-finder" class="screen" style="display:none">
+<div id="screen-finder" class="screen pt-5">
   <div class="screen-header">
     <button class="back-btn" onclick="history.back()">&#8592;</button>
     <div class="screen-title">Finder</div>
@@ -4301,7 +4301,7 @@
 
   // Auto-open if URL has ?finder or #finder
   if(location.search.includes("finder") || location.hash === "#finder"){
-    document.addEventListener("DOMContentLoaded", ()=>{ if(typeof showScreen==="function") showScreen("finder"); });
+    if(typeof showScreen === "function") showScreen("finder");
   }
 })();
 </script>
