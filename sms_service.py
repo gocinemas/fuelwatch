@@ -2321,9 +2321,6 @@ def api_places():
     return jsonify(result)
 
 
-_EVENTBRITE_KEY = os.environ.get("EVENTBRITE_API_KEY", "")
-
-
 def _kids_venues_gplaces(lat: float, lon: float) -> list:
     """Google Places search for kids activity venues (soft play, trampoline parks, etc.)."""
     if not _GOOGLE_PLACES_KEY:
@@ -2352,44 +2349,21 @@ def _kids_venues_gplaces(lat: float, lon: float) -> list:
     return top
 
 
-def _kids_events_eventbrite(lat: float, lon: float) -> list:
-    """Fetch upcoming family/kids events from Eventbrite (requires EVENTBRITE_API_KEY)."""
-    if not _EVENTBRITE_KEY:
-        return []
+def _kids_events_search_url(lat: float, lon: float) -> str:
+    """Return an Eventbrite website search URL for kids events near the given location."""
     try:
         r = requests.get(
-            "https://www.eventbriteapi.com/v3/events/search/",
-            headers={"Authorization": f"Bearer {_EVENTBRITE_KEY}"},
-            params={
-                "q": "kids children family activities",
-                "location.latitude":  lat,
-                "location.longitude": lon,
-                "location.within":    "10km",
-                "categories":         "115",   # Family & Education
-                "expand":             "venue",
-                "page_size":          20,
-                "sort_by":            "date",
-            },
-            timeout=8,
+            "https://api.postcodes.io/postcodes",
+            params={"lon": lon, "lat": lat, "limit": 1},
+            timeout=4,
         )
-        events = []
-        for e in r.json().get("events", []):
-            venue = e.get("venue") or {}
-            addr  = venue.get("address") or {}
-            name  = (e.get("name") or {}).get("text", "")
-            if not name:
-                continue
-            events.append({
-                "name":       name,
-                "date":       (e.get("start") or {}).get("local", "")[:16].replace("T", " "),
-                "url":        e.get("url", ""),
-                "venue_name": venue.get("name", ""),
-                "address":    addr.get("localized_address_display", ""),
-                "free":       e.get("is_free", False),
-            })
-        return events
+        pc = (r.json().get("result") or [{}])[0].get("admin_district", "")
+        area = pc.replace(" ", "-").lower() if pc else ""
     except Exception:
-        return []
+        area = ""
+    if area:
+        return f"https://www.eventbrite.co.uk/d/united-kingdom--{area}/family-education--events/"
+    return "https://www.eventbrite.co.uk/d/united-kingdom/family-education--events/"
 
 
 @app.route("/api/kids-activities")
@@ -2408,11 +2382,11 @@ def api_kids_activities():
         return jsonify(cached[1])
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=2) as ex:
-        venues_f = ex.submit(_kids_venues_gplaces, lat, lon)
-        events_f = ex.submit(_kids_events_eventbrite, lat, lon)
-        venues = venues_f.result()
-        events = events_f.result()
-    result = {"venues": venues, "events": events}
+        venues_f    = ex.submit(_kids_venues_gplaces, lat, lon)
+        ev_url_f    = ex.submit(_kids_events_search_url, lat, lon)
+        venues      = venues_f.result()
+        events_url  = ev_url_f.result()
+    result = {"venues": venues, "events_url": events_url}
     _PLACES_CACHE[cache_key] = (time.time(), result)
     return jsonify(result)
 

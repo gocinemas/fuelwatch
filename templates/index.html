@@ -3264,7 +3264,7 @@
     try {
       const r = await fetch(`/api/kids-activities?lat=${lat}&lon=${lon}`);
       const d = await r.json();
-      if (d.error || (!d.venues?.length && !d.events?.length)) {
+      if (d.error || !d.venues?.length) {
         wrap.style.display = "none"; return;
       }
       const wdIdx = [6,0,1,2,3,4,5][new Date().getDay()];
@@ -3295,25 +3295,18 @@
         </div>`;
       }
 
-      function _kEventCard(ev) {
-        const dateStr = ev.date ? new Date(ev.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "";
-        const freeBadge = ev.free ? `<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px">FREE</span>` : "";
-        return `<a href="${ev.url}" target="_blank" rel="noopener" style="display:block;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${ev.name}${freeBadge}</div>
-          ${dateStr    ? `<div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:3px">📅 ${dateStr}</div>` : ""}
-          ${ev.venue_name ? `<div style="font-size:12px;color:var(--muted)">📍 ${ev.venue_name}${ev.address ? ` · ${ev.address.split(",")[0]}` : ""}</div>` : ""}
-          <div style="font-size:11px;color:var(--subtle);margin-top:6px">Tap to view on Eventbrite ↗</div>
-        </a>`;
-      }
-
       let html = `<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">🎉 Kids Activities Nearby</div>`;
-      if (d.venues?.length) {
-        html += `<div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏟️ Activity Venues</div>`;
-        html += d.venues.map(_kVenueCard).join("");
-      }
-      if (d.events?.length) {
-        html += `<div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px">📅 Upcoming Events</div>`;
-        html += d.events.map(_kEventCard).join("");
+      html += `<div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏟️ Activity Venues</div>`;
+      html += d.venues.map(_kVenueCard).join("");
+      if (d.events_url) {
+        html += `<a href="${d.events_url}" target="_blank" rel="noopener"
+          style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#fdf4ff,#ede9fe);border:1px solid #ddd6fe;text-decoration:none">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#6d28d9">📅 Browse Kids &amp; Family Events</div>
+            <div style="font-size:12px;color:#7c3aed;margin-top:2px">Find upcoming events near you on Eventbrite →</div>
+          </div>
+          <span style="font-size:20px">🎟️</span>
+        </a>`;
       }
       wrap.innerHTML = html;
     } catch(e) { wrap.style.display = "none"; }
