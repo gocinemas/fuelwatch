@@ -2321,7 +2321,7 @@ def api_places():
     return jsonify(result)
 
 
-def _finder_nearby(lat: float, lon: float, radius: int = 5000) -> dict:
+def _finder_nearby(lat: float, lon: float, radius: int = 10000) -> dict:
     query = f"""[out:json][timeout:20];
 (
   node["amenity"="coworking_space"](around:{radius},{lat},{lon});
@@ -2373,7 +2373,7 @@ out center tags;"""
             childcare.append(entry)
     coworking.sort(key=lambda x: x["dist_km"])
     childcare.sort(key=lambda x: x["dist_km"])
-    return {"coworking": coworking[:20], "childcare": childcare[:20]}
+    return {"coworking": coworking[:30], "childcare": childcare[:30]}
 
 
 def _gplaces_details(place_id: str) -> dict:
@@ -2406,7 +2406,7 @@ def _finder_cowork_places(lat: float, lon: float) -> list:
                         "radius": 10000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
                 timeout=8,
             )
-            for p in r.json().get("results", [])[:6]:
+            for p in r.json().get("results", [])[:10]:
                 name = p.get("name","")
                 if not name or name.lower() in seen:
                     continue
@@ -2423,7 +2423,7 @@ def _finder_cowork_places(lat: float, lon: float) -> list:
         except Exception:
             pass
     results.sort(key=lambda x: x["dist_km"])
-    top = results[:15]
+    top = results[:25]
     if top:
         from concurrent.futures import ThreadPoolExecutor as _TPE
         place_ids = [p.get("_place_id","") for p in top]
@@ -2447,7 +2447,7 @@ def _finder_nanny_search(lat: float, lon: float) -> list:
                         "radius": 20000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
                 timeout=8,
             )
-            for p in r.json().get("results", [])[:5]:
+            for p in r.json().get("results", [])[:10]:
                 name = p.get("name","")
                 if not name or name.lower() in seen:
                     continue
@@ -2464,7 +2464,7 @@ def _finder_nanny_search(lat: float, lon: float) -> list:
         except Exception:
             pass
     results.sort(key=lambda x: x["dist_km"])
-    top = results[:15]
+    top = results[:25]
     # Fetch phone + website for top results in parallel
     if top:
         from concurrent.futures import ThreadPoolExecutor as _TPE
@@ -2508,7 +2508,7 @@ def api_finder():
             seen_names.add(p["name"].lower())
     osm_cowork.sort(key=lambda x: x["dist_km"])
     result = {
-        "coworking":      osm_cowork[:20],
+        "coworking":      osm_cowork[:30],
         "childcare":      osm.get("childcare", []),
         "nanny_agencies": nannies,
         "platforms": {
