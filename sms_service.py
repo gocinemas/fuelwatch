@@ -2349,8 +2349,50 @@ def _kids_venues_gplaces(lat: float, lon: float) -> list:
     return top
 
 
+_SKIDDLE_KEY = os.environ.get("SKIDDLE_API_KEY", "")
+
+
+def _kids_events_skiddle(lat: float, lon: float) -> list:
+    """Fetch upcoming kids/family events from Skiddle (requires SKIDDLE_API_KEY)."""
+    if not _SKIDDLE_KEY:
+        return []
+    try:
+        r = requests.get(
+            "https://www.skiddle.com/api/v1/events/search/",
+            params={
+                "api_key":        _SKIDDLE_KEY,
+                "latitude":       lat,
+                "longitude":      lon,
+                "radius":         10,           # miles
+                "eventcode":      "KIDS",
+                "limit":          20,
+                "order":          "distance",
+                "ticketsavailable": 1,
+                "getdistance":    1,
+            },
+            timeout=8,
+        )
+        events = []
+        for e in r.json().get("results", []):
+            events.append({
+                "name":      e.get("eventname", ""),
+                "date":      e.get("startdate", ""),
+                "url":       e.get("link", ""),
+                "venue":     e.get("venue", {}).get("name", ""),
+                "address":   e.get("venue", {}).get("address", ""),
+                "town":      e.get("venue", {}).get("town", ""),
+                "image":     e.get("imageurl", ""),
+                "dist_miles":e.get("distance", ""),
+                "free":      e.get("entryprice") in ("0.00", "0", None, ""),
+                "price":     e.get("entryprice", ""),
+            })
+        return [e for e in events if e["name"]]
+    except Exception:
+        return []
+
+
 def _kids_events_search_url(lat: float, lon: float) -> str:
-    """Return an Eventbrite website search URL for kids events near the given location."""
+    """Return a Skiddle/Eventbrite website search URL for kids events near the given location."""
     try:
         r = requests.get(
             "https://api.postcodes.io/postcodes",
@@ -2362,8 +2404,8 @@ def _kids_events_search_url(lat: float, lon: float) -> str:
     except Exception:
         area = ""
     if area:
-        return f"https://www.eventbrite.co.uk/d/united-kingdom--{area}/family-education--events/"
-    return "https://www.eventbrite.co.uk/d/united-kingdom/family-education--events/"
+        return f"https://www.skiddle.com/whats-on/{area.replace('-',' ').title()}/Kids-Family/"
+    return "https://www.skiddle.com/whats-on/Kids-Family/"
 
 
 @app.route("/api/kids-activities")
@@ -2381,12 +2423,14 @@ def api_kids_activities():
     if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
         return jsonify(cached[1])
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=2) as ex:
-        venues_f    = ex.submit(_kids_venues_gplaces, lat, lon)
-        ev_url_f    = ex.submit(_kids_events_search_url, lat, lon)
-        venues      = venues_f.result()
-        events_url  = ev_url_f.result()
-    result = {"venues": venues, "events_url": events_url}
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        venues_f = ex.submit(_kids_venues_gplaces, lat, lon)
+        events_f = ex.submit(_kids_events_skiddle, lat, lon)
+        url_f    = ex.submit(_kids_events_search_url, lat, lon)
+        venues     = venues_f.result()
+        events     = events_f.result()
+        events_url = url_f.result()
+    result = {"venues": venues, "events": events, "events_url": events_url}
     _PLACES_CACHE[cache_key] = (time.time(), result)
     return jsonify(result)
 
