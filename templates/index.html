@@ -4265,7 +4265,7 @@
     <!-- Tabs -->
     <div id="finder-tabs" style="display:none;display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       <button id="finder-tab-cowork"    class="finder-tab active-tab" onclick="finderTab('cowork')">🖥️ Co-working</button>
-      <button id="finder-tab-childcare" class="finder-tab"            onclick="finderTab('childcare')">👶 Childcare</button>
+      <button id="finder-tab-childcare" class="finder-tab"            onclick="finderTab('childcare')">🏫 Nurseries & Childcare</button>
       <button id="finder-tab-nanny"     class="finder-tab"            onclick="finderTab('nanny')">🤱 Nannies / Au Pairs</button>
     </div>
 
@@ -4385,7 +4385,7 @@
     if(tab==="cowork"){
       _renderFinderList(_finderData.coworking||[], "No co-working spaces found nearby.<br><small>Try a nearby town or city postcode.</small>");
     } else if(tab==="childcare"){
-      _renderFinderList(_finderData.childcare||[], "No nurseries or childcare centres found nearby.");
+      _renderFinderList(_finderData.childcare||[], "No nurseries or childcare centres found nearby.<br><small>Try a nearby town or city postcode.</small>");
     } else if(tab==="nanny"){
       _renderFinderList(_finderData.nanny_agencies||[], "No local nanny agencies found.");
     }

@@ -2473,16 +2473,43 @@ def _finder_cowork_places(lat: float, lon: float) -> list:
 
 
 def _finder_nanny_search(lat: float, lon: float) -> list:
-    """Google Places search for nanny/childcare agencies — text + nearby to maximise results."""
+    """Google Places search for nanny/au pair agencies only — no nurseries."""
     if not _GOOGLE_PLACES_KEY:
         return []
     results, seen = [], set()
     from concurrent.futures import ThreadPoolExecutor as _TPE
-    text_queries  = ["nanny agency", "au pair agency", "childminder agency", "childcare agency",
-                     "nursery", "babysitter agency", "childcare centre"]
-    nearby_kws    = ["nanny agency", "childcare", "nursery"]
-    radius        = 30000
-    with _TPE(max_workers=8) as ex:
+    text_queries = ["nanny agency", "au pair agency", "childminder agency", "babysitter agency",
+                    "nanny service", "au pair service"]
+    nearby_kws   = ["nanny agency", "au pair agency"]
+    radius       = 30000
+    with _TPE(max_workers=6) as ex:
+        text_futs   = [ex.submit(_gplaces_text_search,   q, lat, lon, radius) for q in text_queries]
+        nearby_futs = [ex.submit(_gplaces_nearby_search, k, lat, lon, radius) for k in nearby_kws]
+        for f in text_futs + nearby_futs:
+            _gplaces_collect(f.result(), lat, lon, seen, results)
+    results.sort(key=lambda x: x["dist_km"])
+    top = results[:60]
+    if top:
+        with _TPE(max_workers=8) as ex:
+            details = list(ex.map(_gplaces_details, [p["_place_id"] for p in top]))
+        for item, det in zip(top, details):
+            if det.get("phone"):        item["phone"]        = det["phone"]
+            if det.get("website"):      item["website"]      = det["website"]
+            if det.get("hours_detail"): item["hours_detail"] = det["hours_detail"]
+    return top
+
+
+def _finder_nursery_places(lat: float, lon: float) -> list:
+    """Google Places search for nurseries and childcare centres."""
+    if not _GOOGLE_PLACES_KEY:
+        return []
+    results, seen = [], set()
+    from concurrent.futures import ThreadPoolExecutor as _TPE
+    text_queries = ["nursery", "day nursery", "childcare centre", "childcare nursery",
+                    "preschool", "early years nursery"]
+    nearby_kws   = ["nursery", "childcare", "preschool"]
+    radius       = 15000
+    with _TPE(max_workers=6) as ex:
         text_futs   = [ex.submit(_gplaces_text_search,   q, lat, lon, radius) for q in text_queries]
         nearby_futs = [ex.submit(_gplaces_nearby_search, k, lat, lon, radius) for k in nearby_kws]
         for f in text_futs + nearby_futs:
@@ -2509,29 +2536,39 @@ def api_finder():
         lat, lon = float(lat_p), float(lon_p)
     except ValueError:
         return jsonify({"error": "Invalid coordinates"}), 400
-    cache_key = f"finder5:{lat:.4f},{lon:.4f}"
+    cache_key = f"finder6:{lat:.4f},{lon:.4f}"
     cached = _PLACES_CACHE.get(cache_key)
     if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
         return jsonify(cached[1])
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        osm_f    = ex.submit(_finder_nearby, lat, lon)
-        nanny_f  = ex.submit(_finder_nanny_search, lat, lon)
-        cowork_f = ex.submit(_finder_cowork_places, lat, lon)
-        osm      = osm_f.result()
-        nannies  = nanny_f.result()
-        gp_cowork = cowork_f.result()
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        osm_f     = ex.submit(_finder_nearby, lat, lon)
+        nanny_f   = ex.submit(_finder_nanny_search, lat, lon)
+        cowork_f  = ex.submit(_finder_cowork_places, lat, lon)
+        nursery_f = ex.submit(_finder_nursery_places, lat, lon)
+        osm        = osm_f.result()
+        nannies    = nanny_f.result()
+        gp_cowork  = cowork_f.result()
+        gp_nursery = nursery_f.result()
     # Merge OSM + Google Places co-working, deduplicate by name
     osm_cowork = osm.get("coworking", [])
-    seen_names = {p["name"].lower() for p in osm_cowork}
+    seen_cw = {p["name"].lower() for p in osm_cowork}
     for p in gp_cowork:
-        if p["name"].lower() not in seen_names:
+        if p["name"].lower() not in seen_cw:
             osm_cowork.append(p)
-            seen_names.add(p["name"].lower())
+            seen_cw.add(p["name"].lower())
     osm_cowork.sort(key=lambda x: x["dist_km"])
+    # Merge OSM + Google Places nurseries/childcare, deduplicate by name
+    osm_childcare = osm.get("childcare", [])
+    seen_cc = {p["name"].lower() for p in osm_childcare}
+    for p in gp_nursery:
+        if p["name"].lower() not in seen_cc:
+            osm_childcare.append(p)
+            seen_cc.add(p["name"].lower())
+    osm_childcare.sort(key=lambda x: x["dist_km"])
     result = {
         "coworking":      osm_cowork[:60],
-        "childcare":      osm.get("childcare", []),
+        "childcare":      osm_childcare[:60],
         "nanny_agencies": nannies,
         "platforms": {
             "nanny":  [
