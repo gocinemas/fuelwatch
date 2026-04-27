@@ -3213,6 +3213,20 @@
     }
   }
 
+  function _fmtMoney(v) {
+    if (!v && v !== 0) return v;
+    const s = String(v).trim();
+    if (/[a-df-wyz£$€]/i.test(s)) return s; // already has currency/text marker
+    const n = parseFloat(s.replace(/[,\s]/g, ""));
+    if (isNaN(n)) return s;
+    const abs = Math.abs(n), sign = n < 0 ? "-" : "";
+    if (abs >= 1e12) return sign + (abs/1e12).toFixed(1).replace(/\.0$/,"") + "T";
+    if (abs >= 1e9)  return sign + (abs/1e9 ).toFixed(abs>=100e9?0:1).replace(/\.0$/,"") + "B";
+    if (abs >= 1e6)  return sign + (abs/1e6 ).toFixed(abs>=100e6?0:1).replace(/\.0$/,"") + "M";
+    if (abs >= 1e3)  return sign + (abs/1e3 ).toFixed(0) + "K";
+    return s;
+  }
+
   function _brandLogoUrl(d) {
     if (d.domain) return `https://logo.clearbit.com/${d.domain}`;
     const slug = (d.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -3243,7 +3257,7 @@
     document.getElementById("brand-extract-el").textContent = d.extract || "";
     document.getElementById("brand-founded-el").textContent = d.founded || "—";
     document.getElementById("brand-hq-el").textContent = d.hq || "—";
-    document.getElementById("brand-revenue-el").textContent = d.revenue || "—";
+    document.getElementById("brand-revenue-el").textContent = _fmtMoney(d.revenue) || "—";
     document.getElementById("brand-industry-el").textContent = d.industry || "—";
 
     // Timeline
@@ -3298,11 +3312,12 @@
       ["EBITDA",          fin.ebitda],
       ["Employees",       d.employees],
     ].filter(([, v]) => v);
+    const _moneyLabels = new Set(["Revenue","Net Income","EBITDA","Market Cap"]);
     if (finItems.length) {
       document.getElementById("brand-fin-el").innerHTML = finItems.map(([label, val]) => `
         <div style="background:#f8fafc;border-radius:12px;padding:10px 12px">
           <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">${label}</div>
-          <div style="font-size:15px;font-weight:800;color:#111;margin-top:2px">${val}</div>
+          <div style="font-size:15px;font-weight:800;color:#111;margin-top:2px">${_moneyLabels.has(label) ? _fmtMoney(val) : val}</div>
         </div>`).join("");
       document.getElementById("brand-fin-section").style.display = "";
       if (fin.ticker) {
@@ -3349,7 +3364,7 @@
             <div>
               <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">
                 <span style="font-size:14px;font-weight:800;color:#111;letter-spacing:-0.2px">${c.name || ""}</span>
-                ${c.revenue ? `<span style="font-size:12px;font-weight:600;color:#6b7280">(${c.revenue})</span>` : ""}
+                ${c.revenue ? `<span style="font-size:12px;font-weight:600;color:#6b7280">(${_fmtMoney(c.revenue)})</span>` : ""}
               </div>
               <div style="font-size:13px;color:#6b7280;margin-top:2px;line-height:1.45">${c.description || ""}</div>
             </div>
@@ -4095,6 +4110,202 @@
     </div>
   </div>
 </div>
+
+<!-- ===================== FINDER SCREEN ===================== -->
+<div id="screen-finder" class="screen" style="display:none">
+  <div class="screen-header">
+    <button class="back-btn" onclick="history.back()">&#8592;</button>
+    <div class="screen-title">Finder</div>
+  </div>
+  <div style="padding:16px">
+
+    <!-- Location row -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+      <button onclick="finderUseLocation()" style="flex:0 0 auto;padding:10px 14px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer">📍 Use my location</button>
+      <span style="color:var(--subtle);font-size:12px">or</span>
+      <input id="finder-postcode" type="text" placeholder="Enter postcode…" maxlength="10"
+        style="flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px"
+        oninput="finderPostcodeInput(this.value)"
+        onkeydown="if(event.key==='Enter')finderSearch()">
+    </div>
+
+    <!-- Did-you-mean -->
+    <div id="finder-didyoumean" style="display:none;font-size:13px;color:var(--accent);margin-bottom:10px;cursor:pointer" onclick="finderAcceptSuggestion()"></div>
+
+    <!-- Error -->
+    <div id="finder-err" style="display:none;font-size:13px;color:#ef4444;margin-bottom:10px"></div>
+
+    <!-- Search button -->
+    <button onclick="finderSearch()" style="width:100%;padding:12px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:18px">Search</button>
+
+    <!-- Tabs -->
+    <div id="finder-tabs" style="display:none;display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button id="finder-tab-cowork"    class="finder-tab active-tab" onclick="finderTab('cowork')">🖥️ Co-working</button>
+      <button id="finder-tab-childcare" class="finder-tab"            onclick="finderTab('childcare')">👶 Childcare</button>
+      <button id="finder-tab-nanny"     class="finder-tab"            onclick="finderTab('nanny')">🤱 Nannies / Au Pairs</button>
+    </div>
+
+    <!-- Results -->
+    <div id="finder-results" style="display:none">
+      <div id="finder-list"></div>
+    </div>
+
+    <!-- Loading -->
+    <div id="finder-loading" style="display:none;text-align:center;padding:40px 0;color:var(--subtle)">
+      <div style="font-size:28px;margin-bottom:8px">🔍</div>
+      <div style="font-size:14px">Searching nearby…</div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.finder-tab{padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
+.finder-tab.active-tab{background:var(--accent);color:#fff;border-color:var(--accent)}
+.finder-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
+</style>
+
+<script>
+(function(){
+  let _finderLat = null, _finderLon = null;
+  let _finderData = null;
+  let _finderActiveTab = "cowork";
+  let _finderSuggestion = null;
+
+  function _showErr(msg){ const e=document.getElementById("finder-err"); e.textContent=msg; e.style.display=msg?"block":"none"; }
+
+  window.finderUseLocation = function(){
+    if(!navigator.geolocation){ _showErr("Geolocation not available on this device."); return; }
+    _showErr("");
+    navigator.geolocation.getCurrentPosition(async pos=>{
+      _finderLat = pos.coords.latitude;
+      _finderLon = pos.coords.longitude;
+      try{
+        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${_finderLat}&lon=${_finderLon}`,{headers:{"Accept-Language":"en"}});
+        const rj  = await rev.json();
+        const a   = rj.address||{};
+        const area= a.suburb||a.village||a.hamlet||a.town||a.city_district||a.city||"";
+        if(area) document.getElementById("finder-postcode").placeholder = area;
+      }catch(_){}
+      _finderDoSearch(_finderLat, _finderLon);
+    }, err=>{ _showErr("Could not get location: "+err.message); }, {timeout:10000});
+  };
+
+  window.finderPostcodeInput = function(val){
+    _finderSuggestion = null;
+    document.getElementById("finder-didyoumean").style.display = "none";
+    if(val.length >= 3) _finderLookupDidYouMean(val);
+  };
+
+  async function _finderLookupDidYouMean(q){
+    try{
+      const pc = q.toUpperCase().replace(/\s+/g,"");
+      const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`);
+      const j = await r.json();
+      if(j.result && j.result.length && j.result[0].toUpperCase() !== pc){
+        _finderSuggestion = j.result[0];
+        const el = document.getElementById("finder-didyoumean");
+        el.textContent = `Did you mean: ${j.result[0]}?`;
+        el.style.display = "block";
+      }
+    }catch(_){}
+  }
+
+  window.finderAcceptSuggestion = function(){
+    if(!_finderSuggestion) return;
+    document.getElementById("finder-postcode").value = _finderSuggestion;
+    document.getElementById("finder-didyoumean").style.display = "none";
+    finderSearch();
+  };
+
+  window.finderSearch = async function(){
+    _showErr("");
+    const raw = document.getElementById("finder-postcode").value.trim();
+    if(!raw && !_finderLat){ _showErr("Please enter a postcode or use your location."); return; }
+    if(raw){
+      const pc = raw.toUpperCase().replace(/\s+/g,"");
+      try{
+        const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`);
+        const j = await r.json();
+        if(j.status===200){ _finderLat=j.result.latitude; _finderLon=j.result.longitude; }
+        else{
+          // try partial / did-you-mean via autocomplete
+          const ra = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`);
+          const ja = await ra.json();
+          if(ja.result && ja.result.length){
+            _finderSuggestion = ja.result[0];
+            const el = document.getElementById("finder-didyoumean");
+            el.textContent = `Did you mean: ${ja.result[0]}?`;
+            el.style.display = "block";
+            return;
+          }
+          _showErr("Postcode not found. Please check and try again."); return;
+        }
+      }catch(e){ _showErr("Could not look up postcode."); return; }
+    }
+    _finderDoSearch(_finderLat, _finderLon);
+  };
+
+  async function _finderDoSearch(lat, lon){
+    document.getElementById("finder-loading").style.display = "block";
+    document.getElementById("finder-results").style.display = "none";
+    document.getElementById("finder-tabs").style.display    = "none";
+    try{
+      const r = await fetch(`/api/finder?lat=${lat}&lon=${lon}`);
+      _finderData = await r.json();
+      document.getElementById("finder-tabs").style.removeProperty("display");
+      document.getElementById("finder-tabs").style.display = "flex";
+      finderTab(_finderActiveTab);
+    }catch(e){ _showErr("Search failed. Please try again."); }
+    finally{ document.getElementById("finder-loading").style.display = "none"; }
+  }
+
+  window.finderTab = function(tab){
+    _finderActiveTab = tab;
+    document.querySelectorAll(".finder-tab").forEach(b=>b.classList.remove("active-tab"));
+    const tb = document.getElementById("finder-tab-"+tab);
+    if(tb) tb.classList.add("active-tab");
+    if(!_finderData){ document.getElementById("finder-results").style.display="none"; return; }
+    const list = document.getElementById("finder-list");
+    let html = "";
+    if(tab==="cowork"){
+      const items = _finderData.coworking||[];
+      html = items.length ? items.map(_finderCard).join("") : `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">No co-working spaces found nearby.<br><small>Try a nearby town or city postcode.</small></div>`;
+    } else if(tab==="childcare"){
+      const items = _finderData.childcare||[];
+      html = items.length ? items.map(_finderCard).join("") : `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">No nurseries or childcare centres found nearby.</div>`;
+    } else if(tab==="nanny"){
+      const agencies = _finderData.nanny_agencies||[];
+      const platforms = _finderData.platforms||[];
+      html = (agencies.length ? agencies.map(_finderCard).join("") : `<div style="padding:16px 0;text-align:center;color:var(--subtle);font-size:14px">No local nanny agencies found.</div>`)
+           + _platformLinks(platforms);
+    }
+    list.innerHTML = html;
+    document.getElementById("finder-results").style.display = "block";
+  };
+
+  function _finderCard(p){
+    const dist = p.distance_km != null ? `<span style="font-size:12px;color:var(--subtle)">${p.distance_km.toFixed(1)} km away</span>` : "";
+    const rating = p.rating ? `<span style="font-size:12px;color:#f59e0b">★ ${p.rating}</span>` : "";
+    const addr = p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${p.address}</div>` : "";
+    const dirUrl = (p.lat && p.lon) ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : (p.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}` : "");
+    const dirBtn = dirUrl ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : "";
+    const web = p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : "";
+    return `<div class="finder-card"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-size:15px;font-weight:700;color:var(--text)">${p.name}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">${dist}${rating}</div></div>${addr}${dirBtn}${web}</div>`;
+  }
+
+  function _platformLinks(platforms){
+    if(!platforms||!platforms.length) return "";
+    const links = platforms.map(pl=>`<a href="${pl.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--text)"><span style="font-size:20px">${pl.icon||"🔗"}</span><div><div style="font-size:14px;font-weight:600">${pl.name}</div><div style="font-size:12px;color:var(--subtle)">${pl.desc||""}</div></div></a>`).join("");
+    return `<div style="margin-top:16px"><div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Online Platforms</div><div style="display:flex;flex-direction:column;gap:8px">${links}</div></div>`;
+  }
+
+  // Auto-open if URL has ?finder or #finder
+  if(location.search.includes("finder") || location.hash === "#finder"){
+    document.addEventListener("DOMContentLoaded", ()=>{ if(typeof showScreen==="function") showScreen("finder"); });
+  }
+})();
+</script>
 
 <script>
 (function(){

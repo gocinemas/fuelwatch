@@ -2321,6 +2321,135 @@ def api_places():
     return jsonify(result)
 
 
+def _finder_nearby(lat: float, lon: float, radius: int = 5000) -> dict:
+    query = f"""[out:json][timeout:20];
+(
+  node["amenity"="coworking_space"](around:{radius},{lat},{lon});
+  way["amenity"="coworking_space"](around:{radius},{lat},{lon});
+  node["office"="coworking"](around:{radius},{lat},{lon});
+  way["office"="coworking"](around:{radius},{lat},{lon});
+  node["office"="coworking_space"](around:{radius},{lat},{lon});
+  way["office"="coworking_space"](around:{radius},{lat},{lon});
+  node["amenity"="childcare"](around:{radius},{lat},{lon});
+  way["amenity"="childcare"](around:{radius},{lat},{lon});
+  node["amenity"="nursery"](around:{radius},{lat},{lon});
+  way["amenity"="nursery"](around:{radius},{lat},{lon});
+  node["amenity"="kindergarten"](around:{radius},{lat},{lon});
+  way["amenity"="kindergarten"](around:{radius},{lat},{lon});
+  node["social_facility"="childcare"](around:{radius},{lat},{lon});
+  way["social_facility"="childcare"](around:{radius},{lat},{lon});
+);
+out center tags;"""
+    elements = _overpass_query(query)
+    coworking, childcare = [], []
+    for el in elements:
+        tags = el.get("tags", {})
+        name = tags.get("name", "").strip()
+        if not name:
+            continue
+        if el.get("type") == "way":
+            c = el.get("center", {})
+            elat, elon = c.get("lat"), c.get("lon")
+        else:
+            elat, elon = el.get("lat"), el.get("lon")
+        if elat is None or elon is None:
+            continue
+        dist_km = haversine_km(lat, lon, elat, elon)
+        parts = [tags.get("addr:housenumber",""), tags.get("addr:street",""), tags.get("addr:city","")]
+        address = " ".join(p for p in parts if p).strip(", ")
+        entry = {
+            "name": name, "address": address, "lat": elat, "lon": elon,
+            "dist_km": round(dist_km, 2),
+            "website": tags.get("website", tags.get("contact:website", "")),
+            "phone":   tags.get("phone", tags.get("contact:phone", "")),
+            "hours":   tags.get("opening_hours", ""),
+        }
+        amenity = tags.get("amenity","")
+        office  = tags.get("office","")
+        if "coworking" in amenity or "coworking" in office:
+            entry["wifi"] = tags.get("internet_access") in ("wlan","wifi","yes")
+            coworking.append(entry)
+        else:
+            childcare.append(entry)
+    coworking.sort(key=lambda x: x["dist_km"])
+    childcare.sort(key=lambda x: x["dist_km"])
+    return {"coworking": coworking[:12], "childcare": childcare[:12]}
+
+
+def _finder_nanny_search(lat: float, lon: float) -> list:
+    if not _GOOGLE_PLACES_KEY:
+        return []
+    results, seen = [], set()
+    for query in ["nanny agency", "au pair agency", "childminder agency", "childcare agency"]:
+        try:
+            r = requests.get(
+                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                params={"query": query, "location": f"{lat},{lon}",
+                        "radius": 20000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+                timeout=8,
+            )
+            for p in r.json().get("results", [])[:4]:
+                name = p.get("name","")
+                if not name or name.lower() in seen:
+                    continue
+                seen.add(name.lower())
+                loc = p.get("geometry",{}).get("location",{})
+                plat, plon = loc.get("lat"), loc.get("lng")
+                dist_km = haversine_km(lat, lon, plat, plon) if plat and plon else 999
+                results.append({
+                    "name": name, "address": p.get("formatted_address",""),
+                    "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
+                    "rating": p.get("rating"), "website": "", "phone": "",
+                })
+        except Exception:
+            pass
+    results.sort(key=lambda x: x["dist_km"])
+    return results[:10]
+
+
+@app.route("/api/finder")
+def api_finder():
+    lat_p = request.args.get("lat","")
+    lon_p = request.args.get("lon","")
+    if not lat_p or not lon_p:
+        return jsonify({"error": "lat/lon required"}), 400
+    try:
+        lat, lon = float(lat_p), float(lon_p)
+    except ValueError:
+        return jsonify({"error": "Invalid coordinates"}), 400
+    cache_key = f"finder:{lat:.4f},{lon:.4f}"
+    cached = _PLACES_CACHE.get(cache_key)
+    if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+        return jsonify(cached[1])
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        osm_f   = ex.submit(_finder_nearby, lat, lon)
+        nanny_f = ex.submit(_finder_nanny_search, lat, lon)
+        osm     = osm_f.result()
+        nannies = nanny_f.result()
+    result = {
+        "coworking":      osm.get("coworking", []),
+        "childcare":      osm.get("childcare", []),
+        "nanny_agencies": nannies,
+        "platforms": {
+            "nanny":  [
+                {"name": "Childcare.co.uk",  "url": "https://www.childcare.co.uk/"},
+                {"name": "Nannyjob.co.uk",   "url": "https://www.nannyjob.co.uk/"},
+                {"name": "Care.com UK",      "url": "https://www.care.com/"},
+                {"name": "Gumtree Nannies",  "url": "https://www.gumtree.com/jobs/nanny"},
+            ],
+            "aupair": [
+                {"name": "Au Pair World",    "url": "https://www.aupairworld.com/"},
+                {"name": "AuPair.com",       "url": "https://www.aupair.com/"},
+                {"name": "Great Au Pair",    "url": "https://www.greataupair.com/"},
+                {"name": "Cultural Care",    "url": "https://www.culturalcare.co.uk/"},
+            ],
+        },
+    }
+    _PLACES_CACHE[cache_key] = (time.time(), result)
+    return jsonify(result)
+
+
 @app.route("/api/scan-barcode", methods=["POST"])
 def api_scan_barcode():
     """Decode a barcode from an uploaded image using pyzbar (server-side, works on all devices)."""

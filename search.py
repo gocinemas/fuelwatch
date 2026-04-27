@@ -892,8 +892,15 @@ def fetch_brand_data(brand: str) -> dict:
                 json={"model": "llama-3.1-8b-instant",
                       "messages": [{"role": "user", "content":
                           f'The user searched for brand/company: "{original}".\n'
-                          'Return ONLY the canonical well-known brand or company name (fix spelling, '
-                          'expand abbreviations). If already correct, return it unchanged. '
+                          'Return ONLY the canonical well-known brand or company name. Rules:\n'
+                          '1. Fix spelling errors (e.g. "Nkie" → "Nike").\n'
+                          '2. Expand abbreviations.\n'
+                          '3. If the input looks like a partial or incomplete company name '
+                          '(e.g. just one word of a multi-word company name), complete it to '
+                          'the single most well-known company with that name '
+                          '(e.g. "Frog" → "Frog Design", "McKinsey" → "McKinsey & Company", '
+                          '"Bain" → "Bain & Company").\n'
+                          '4. If already a complete well-known name, return it unchanged.\n'
                           'Return ONLY the name, nothing else.'}],
                       "max_tokens": 40, "temperature": 0.1},
                 timeout=6,
