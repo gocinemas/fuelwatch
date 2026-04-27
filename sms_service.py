@@ -465,6 +465,32 @@ def api_library_doc(share_id):
         return jsonify({"error": str(e)}), 500
 
 
+def _generate_follow_up_questions(title: str, question: str, answer: str) -> list:
+    """Generate 3 follow-up questions based on the Q&A exchange."""
+    import json, re as _re2
+    if not os.environ.get("GROQ_API_KEY"):
+        return []
+    prompt = f"""Document: "{title}"
+
+The user asked: "{question}"
+The answer was: "{answer[:600]}"
+
+Generate 3 natural follow-up questions that deepen understanding of this topic within the document.
+Rules: under 12 words each, directly relevant to what was just discussed, no numbering.
+Return ONLY a JSON array of 3 strings.
+Example: ["What caused this?", "How does this compare to last year?", "What should be done next?"]"""
+    try:
+        reply = _groq_chat("You are a helpful document reading assistant.",
+                           [{"role": "user", "content": prompt}], max_tokens=200)
+        m = _re2.search(r'\[.*?\]', reply, _re2.DOTALL)
+        if m:
+            qs = json.loads(m.group(0))
+            return [q for q in qs if isinstance(q, str) and len(q) > 5][:3]
+    except Exception as e:
+        print(f"[follow_up] {e}")
+    return []
+
+
 def _generate_doc_questions(title: str, text: str) -> list:
     """Generate 3 tailored suggested questions using Groq."""
     import json, re as _re2
@@ -541,7 +567,8 @@ def api_library_chat():
         )
         messages = history[-6:] + [{"role": "user", "content": question}]
         answer = _groq_chat(system, messages, max_tokens=600)
-        return jsonify({"answer": answer})
+        follow_ups = _generate_follow_up_questions(doc["title"], question, answer)
+        return jsonify({"answer": answer, "follow_ups": follow_ups})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -3816,11 +3816,24 @@
       const reply = d.answer || "Sorry, couldn't generate a response.";
       _libChatHistory.push({role:"user", content:q}, {role:"assistant", content:reply});
       msgs.innerHTML += `<div class="self-start bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded-2xl rounded-tl-sm max-w-xs leading-relaxed">${reply}</div>`;
+      if (d.follow_ups?.length) {
+        msgs.innerHTML += `<div class="lib-follow-up-chips" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;align-self:stretch">` +
+          d.follow_ups.map(fq => `<button onclick="libSendFollowUp(this)" data-q="${fq.replace(/"/g,'&quot;')}"
+            style="text-align:left;background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:8px 13px;font-size:12px;color:#0369a1;cursor:pointer;line-height:1.4;font-family:inherit;transition:background .15s"
+            onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='#f0f9ff'">💬 ${fq}</button>`).join("") +
+          `</div>`;
+      }
     } catch(e) {
       document.getElementById("lib-thinking")?.remove();
       msgs.innerHTML += `<div class="self-start bg-red-50 text-red-500 text-xs px-3 py-2 rounded-2xl">Error — please try again.</div>`;
     }
     msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function libSendFollowUp(btn) {
+    document.querySelectorAll(".lib-follow-up-chips").forEach(el => el.remove());
+    document.getElementById("lib-chat-input").value = btn.getAttribute("data-q");
+    libSendChat();
   }
 
   let _libFileQueue = [];
