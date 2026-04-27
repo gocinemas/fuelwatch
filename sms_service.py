@@ -2534,7 +2534,7 @@ out center tags;"""
 
 
 def _gplaces_details(place_id: str) -> dict:
-    """Fetch phone, website and opening hours for a Google place_id."""
+    """Fetch phone, website, opening hours and open_now for a Google place_id."""
     if not _GOOGLE_PLACES_KEY or not place_id:
         return {}
     try:
@@ -2546,11 +2546,12 @@ def _gplaces_details(place_id: str) -> dict:
             timeout=5,
         )
         res = r.json().get("result", {})
-        hours_detail = res.get("opening_hours", {}).get("weekday_text", [])
+        oh = res.get("opening_hours", {})
         return {
             "phone":        res.get("formatted_phone_number", ""),
             "website":      res.get("website", ""),
-            "hours_detail": hours_detail,
+            "hours_detail": oh.get("weekday_text", []),
+            "open_now":     oh.get("open_now"),
         }
     except Exception:
         return {}
@@ -2599,6 +2600,7 @@ def _gplaces_collect(raw_list: list, lat: float, lon: float, seen: set, results:
             "name": name, "address": addr,
             "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
             "rating": p.get("rating"), "review_count": p.get("user_ratings_total", 0),
+            "open_now": p.get("opening_hours", {}).get("open_now"),
             "phone": "", "website": "", "hours_detail": [],
             "_place_id": p.get("place_id", ""),
         })
@@ -2744,6 +2746,74 @@ def api_finder():
         },
     }
     _PLACES_CACHE[cache_key] = (time.time(), result)
+    return jsonify(result)
+
+
+_TRADE_CHECKATRADE = {
+    "plumber": "plumbers", "plumbing": "plumbers",
+    "electrician": "electricians", "electrical": "electricians",
+    "gas engineer": "gas-engineers", "boiler": "boiler-repair",
+    "builder": "builders", "roofer": "roofers", "roofing": "roofers",
+    "painter": "painters-decorators", "decorator": "painters-decorators",
+    "locksmith": "locksmiths", "handyman": "handyman",
+    "carpenter": "carpenters", "tiler": "tilers", "plasterer": "plasterers",
+    "cleaner": "cleaning-services", "cleaning": "cleaning-services",
+    "window cleaner": "window-cleaners", "pest control": "pest-control",
+    "gardener": "landscape-gardeners", "landscap": "landscape-gardeners",
+    "driveway": "driveways", "bathroom": "bathroom-fitters",
+    "kitchen": "kitchen-fitters", "extension": "house-extensions",
+}
+
+
+@app.route("/api/finder/search")
+def api_finder_search():
+    try:
+        lat = float(request.args.get("lat", ""))
+        lon = float(request.args.get("lon", ""))
+    except (ValueError, TypeError):
+        return jsonify({"error": "lat/lon required"}), 400
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"error": "query required"}), 400
+    open_now_filter = request.args.get("open_now") == "1"
+
+    cache_key = f"fsearch2:{lat:.3f},{lon:.3f}:{q.lower()[:50]}"
+    cached = _PLACES_CACHE.get(cache_key)
+    if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+        data = cached[1]
+        if open_now_filter:
+            data = {**data, "results": [p for p in data["results"] if p.get("open_now") is True]}
+        return jsonify(data)
+
+    raw = _gplaces_text_search(q, lat, lon, radius=15000)
+    results, seen = [], set()
+    _gplaces_collect(raw, lat, lon, seen, results)
+    results.sort(key=lambda p: p.get("dist_km", 999))
+    top = results[:15]
+
+    if top:
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            futs = {ex.submit(_gplaces_details, p["_place_id"]): i
+                    for i, p in enumerate(top) if p.get("_place_id")}
+            for f, i in futs.items():
+                try:
+                    top[i].update(f.result(timeout=8))
+                except Exception:
+                    pass
+    for p in top:
+        p.pop("_place_id", None)
+
+    checkatrade_url = None
+    q_lower = q.lower()
+    for kw, slug in _TRADE_CHECKATRADE.items():
+        if kw in q_lower:
+            checkatrade_url = f"https://www.checkatrade.com/search/?what={slug}"
+            break
+
+    result = {"results": top, "checkatrade_url": checkatrade_url, "query": q}
+    _PLACES_CACHE[cache_key] = (time.time(), result)
+    if open_now_filter:
+        result = {**result, "results": [p for p in top if p.get("open_now") is True]}
     return jsonify(result)
 
 

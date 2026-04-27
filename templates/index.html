@@ -4346,39 +4346,92 @@
 <div id="screen-finder" class="screen pt-5">
   <div class="screen-header">
     <button class="back-btn" onclick="history.back()">&#8592;</button>
-    <div class="screen-title">Finder</div>
+    <div class="screen-title">Local Finder</div>
   </div>
   <div style="padding:16px">
 
     <!-- Location row -->
-    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
-      <button id="finder-loc-btn" onclick="useLocation('finder')" style="flex:0 0 auto;padding:10px 14px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer">📍 Use my location</button>
-      <span style="color:var(--subtle);font-size:12px">or</span>
-      <input id="finder-postcode" type="text" placeholder="Enter postcode…" maxlength="10"
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+      <button onclick="useLocation('finder')" style="flex:0 0 auto;padding:10px 14px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer">📍 Me</button>
+      <input id="finder-postcode" type="text" placeholder="or enter postcode…" maxlength="10"
         style="flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px"
         oninput="finderPostcodeInput(this.value)"
         onkeydown="if(event.key==='Enter')finderSearch()">
     </div>
+    <div id="finder-didyoumean" style="display:none;font-size:13px;color:var(--accent);margin-bottom:6px;cursor:pointer" onclick="finderAcceptSuggestion()"></div>
+    <div id="finder-loc-err"    style="display:none;font-size:13px;color:#ef4444;margin-bottom:6px"></div>
+    <div id="finder-loc-ok"     style="display:none;font-size:13px;color:#059669;font-weight:600;margin-bottom:8px">📍 Location set! Tap a category or type your search.</div>
 
-    <!-- Did-you-mean -->
-    <div id="finder-didyoumean" style="display:none;font-size:13px;color:var(--accent);margin-bottom:10px;cursor:pointer" onclick="finderAcceptSuggestion()"></div>
-
-    <!-- Error -->
-    <div id="finder-loc-err" style="display:none;font-size:13px;color:#ef4444;margin-bottom:10px"></div>
-
-    <!-- Search button -->
-    <button onclick="finderSearch()" style="width:100%;padding:12px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:18px">Search</button>
-
-    <!-- Tabs -->
-    <div id="finder-tabs" style="display:none;display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      <button id="finder-tab-cowork"    class="finder-tab active-tab" onclick="finderTab('cowork')">🖥️ Co-working</button>
-      <button id="finder-tab-childcare" class="finder-tab"            onclick="finderTab('childcare')">🏫 Nurseries & Childcare</button>
-      <button id="finder-tab-nanny"     class="finder-tab"            onclick="finderTab('nanny')">🤱 Nannies / Au Pairs</button>
+    <!-- Search bar -->
+    <div style="display:flex;gap:8px;margin-bottom:18px">
+      <input id="finder-q" type="text" placeholder="What do you need? e.g. plumber, dentist…"
+        style="flex:1;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px"
+        onkeydown="if(event.key==='Enter')finderSearch()">
+      <button onclick="finderSearch()" style="padding:11px 16px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:16px;cursor:pointer">🔍</button>
     </div>
 
-    <!-- Results -->
-    <div id="finder-results" style="display:none">
-      <div id="finder-list"></div>
+    <!-- Category chips -->
+    <div id="finder-cats">
+      <div class="fcat-group">
+        <div class="fcat-label">🔧 Trades</div>
+        <div class="fcat-chips">
+          <button class="fcat" data-q="plumber" onclick="finderCatSearch(this)">🔧 Plumber</button>
+          <button class="fcat" data-q="electrician" onclick="finderCatSearch(this)">⚡ Electrician</button>
+          <button class="fcat" data-q="gas engineer boiler repair" onclick="finderCatSearch(this)">🔥 Gas / Boiler</button>
+          <button class="fcat" data-q="builder" onclick="finderCatSearch(this)">🔨 Builder</button>
+          <button class="fcat" data-q="painter decorator" onclick="finderCatSearch(this)">🎨 Decorator</button>
+          <button class="fcat" data-q="locksmith" onclick="finderCatSearch(this)">🔒 Locksmith</button>
+          <button class="fcat" data-q="handyman" onclick="finderCatSearch(this)">🏗️ Handyman</button>
+        </div>
+      </div>
+      <div class="fcat-group">
+        <div class="fcat-label">🏥 Health</div>
+        <div class="fcat-chips">
+          <button class="fcat" data-q="GP surgery doctor" onclick="finderCatSearch(this)">🏥 GP Surgery</button>
+          <button class="fcat" data-q="dentist" onclick="finderCatSearch(this)">🦷 Dentist</button>
+          <button class="fcat" data-q="pharmacy chemist" onclick="finderCatSearch(this)">💊 Pharmacy</button>
+          <button class="fcat" data-q="optician optometrist" onclick="finderCatSearch(this)">👁️ Optician</button>
+          <button class="fcat" data-q="physiotherapy physio" onclick="finderCatSearch(this)">🏋️ Physio</button>
+        </div>
+      </div>
+      <div class="fcat-group">
+        <div class="fcat-label">🏠 Home &amp; Life</div>
+        <div class="fcat-chips">
+          <button class="fcat" data-q="cleaning service" onclick="finderCatSearch(this)">🧹 Cleaning</button>
+          <button class="fcat" data-q="gardener landscaping" onclick="finderCatSearch(this)">🌿 Gardener</button>
+          <button class="fcat" data-q="pest control" onclick="finderCatSearch(this)">🪲 Pest Control</button>
+          <button class="fcat" data-q="veterinary vet" onclick="finderCatSearch(this)">🐾 Vet</button>
+          <button class="fcat" data-q="dog walker pet sitting" onclick="finderCatSearch(this)">🐕 Dog Walker</button>
+          <button class="fcat" data-q="tutor tutoring" onclick="finderCatSearch(this)">📚 Tutor</button>
+          <button class="fcat" data-q="gym fitness centre" onclick="finderCatSearch(this)">💪 Gym</button>
+        </div>
+      </div>
+      <div class="fcat-group">
+        <div class="fcat-label">👔 Professional</div>
+        <div class="fcat-chips">
+          <button class="fcat" data-q="solicitor lawyer" onclick="finderCatSearch(this)">⚖️ Solicitor</button>
+          <button class="fcat" data-q="accountant" onclick="finderCatSearch(this)">💰 Accountant</button>
+          <button class="fcat" data-q="estate agent" onclick="finderCatSearch(this)">🏘️ Estate Agent</button>
+          <button class="fcat" data-q="financial advisor IFA" onclick="finderCatSearch(this)">💼 Financial Advisor</button>
+        </div>
+      </div>
+      <div class="fcat-group">
+        <div class="fcat-label">👶 Family &amp; Work</div>
+        <div class="fcat-chips">
+          <button class="fcat" data-q="nursery childcare" onclick="finderCatSearch(this)">🏫 Childcare</button>
+          <button class="fcat" data-q="nanny agency" onclick="finderCatSearch(this)">🤱 Nanny Agency</button>
+          <button class="fcat" data-q="coworking space shared office" onclick="finderCatSearch(this)">🖥️ Co-working</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open Now + Saved controls -->
+    <div id="finder-controls" style="display:none;justify-content:space-between;align-items:center;margin:14px 0">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)">
+        <input type="checkbox" id="finder-open-now" onchange="finderToggleOpenNow()" style="width:16px;height:16px;cursor:pointer;accent-color:#22c55e">
+        🟢 Open Now
+      </label>
+      <button id="finder-saved-btn" onclick="finderShowSaved()" style="display:none;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer"></button>
     </div>
 
     <!-- Loading -->
@@ -4387,46 +4440,87 @@
       <div style="font-size:14px">Searching nearby…</div>
     </div>
 
+    <!-- Results -->
+    <div id="finder-results" style="display:none">
+      <div id="finder-results-hdr" style="margin-bottom:12px"></div>
+      <div id="finder-list"></div>
+    </div>
+
   </div>
 </div>
 
 <style>
-.finder-tab{padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
-.finder-tab.active-tab{background:var(--accent);color:#fff;border-color:var(--accent)}
+.fcat-group{margin-bottom:14px}
+.fcat-label{font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+.fcat-chips{display:flex;flex-wrap:wrap;gap:6px}
+.fcat{padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;line-height:1}
+.fcat.fcat-on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .finder-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
 </style>
 
 <script>
 (function(){
   let _finderLat = null, _finderLon = null;
-  let _finderData = null;
-  let _finderActiveTab = "cowork";
+  let _finderAllResults = [];
+  let _finderCheckatradeUrl = null;
+  let _finderCurrentQ = "";
   let _finderSuggestion = null;
 
+  /* ── helpers ── */
   function _showErr(msg){ const e=document.getElementById("finder-loc-err"); e.textContent=msg; e.style.display=msg?"block":"none"; }
+  function _showOk(msg){ const e=document.getElementById("finder-loc-ok"); e.textContent=msg; e.style.display=msg?"block":"none"; if(msg) setTimeout(()=>e.style.display="none", 4000); }
 
-  window.finderUseLocation = function(){ useLocation("finder"); };
+  /* ── saved places (localStorage) ── */
+  function _getSaved(){ try{ return JSON.parse(localStorage.getItem("miru_saved")||"[]"); }catch(_){ return []; } }
+  function _setSaved(a){ localStorage.setItem("miru_saved", JSON.stringify(a)); }
+  function _isSaved(key){ return _getSaved().some(p=>p._key===key); }
+  function _updateSavedBtn(){
+    const s=_getSaved(); const btn=document.getElementById("finder-saved-btn");
+    if(!btn) return;
+    if(s.length){ btn.style.display="block"; btn.textContent=`⭐ Saved (${s.length})`; }
+    else btn.style.display="none";
+  }
+  window.finderToggleSave = function(btn){
+    try{
+      const p = JSON.parse(btn.dataset.place);
+      const key = p._key;
+      const saved = _getSaved();
+      const idx = saved.findIndex(x=>x._key===key);
+      if(idx>=0) saved.splice(idx,1);
+      else saved.push(p);
+      _setSaved(saved);
+      btn.textContent = _isSaved(key) ? "⭐" : "☆";
+      _updateSavedBtn();
+    }catch(e){}
+  };
+  window.finderShowSaved = function(){
+    const saved = _getSaved();
+    if(!saved.length) return;
+    _finderAllResults = saved;
+    _finderCheckatradeUrl = null;
+    _finderCurrentQ = "saved places";
+    document.querySelectorAll(".fcat").forEach(b=>b.classList.remove("fcat-on"));
+    _finderRender();
+    document.getElementById("finder-controls").style.display = "flex";
+  };
 
+  /* ── postcode autocomplete ── */
   window.finderPostcodeInput = function(val){
     _finderSuggestion = null;
     document.getElementById("finder-didyoumean").style.display = "none";
-    if(val.length >= 3) _finderLookupDidYouMean(val);
+    if(val.length >= 3) _finderDYM(val);
   };
-
-  async function _finderLookupDidYouMean(q){
+  async function _finderDYM(q){
     try{
-      const pc = q.toUpperCase().replace(/\s+/g,"");
-      const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`);
-      const j = await r.json();
-      if(j.result && j.result.length && j.result[0].toUpperCase() !== pc){
-        _finderSuggestion = j.result[0];
-        const el = document.getElementById("finder-didyoumean");
-        el.textContent = `Did you mean: ${j.result[0]}?`;
-        el.style.display = "block";
+      const pc=q.toUpperCase().replace(/\s+/g,"");
+      const j=(await (await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`)).json());
+      if(j.result && j.result.length && j.result[0].toUpperCase()!==pc){
+        _finderSuggestion=j.result[0];
+        const el=document.getElementById("finder-didyoumean");
+        el.textContent=`Did you mean: ${j.result[0]}?`; el.style.display="block";
       }
     }catch(_){}
   }
-
   window.finderAcceptSuggestion = function(){
     if(!_finderSuggestion) return;
     document.getElementById("finder-postcode").value = _finderSuggestion;
@@ -4434,114 +4528,135 @@
     finderSearch();
   };
 
-  window.finderSearch = async function(){
-    _showErr("");
+  /* ── resolve postcode → lat/lon ── */
+  async function _resolvePostcode(){
     const raw = document.getElementById("finder-postcode").value.trim();
-    if(!raw && !_finderLat){ _showErr("Please enter a postcode or use your location."); return; }
-    if(raw){
-      const pc = raw.toUpperCase().replace(/\s+/g,"");
-      try{
-        const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`);
-        const j = await r.json();
-        if(j.status===200){ _finderLat=j.result.latitude; _finderLon=j.result.longitude; }
-        else{
-          // try partial / did-you-mean via autocomplete
-          const ra = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`);
-          const ja = await ra.json();
-          if(ja.result && ja.result.length){
-            _finderSuggestion = ja.result[0];
-            const el = document.getElementById("finder-didyoumean");
-            el.textContent = `Did you mean: ${ja.result[0]}?`;
-            el.style.display = "block";
-            return;
-          }
-          _showErr("Postcode not found. Please check and try again."); return;
-        }
-      }catch(e){ _showErr("Could not look up postcode."); return; }
-    }
-    _finderDoSearch(_finderLat, _finderLon);
+    if(!raw) return !!_finderLat;
+    const pc = raw.toUpperCase().replace(/\s+/g,"");
+    try{
+      const j=(await (await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`)).json());
+      if(j.status===200){ _finderLat=j.result.latitude; _finderLon=j.result.longitude; return true; }
+      const ja=(await (await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`)).json());
+      if(ja.result && ja.result.length){
+        _finderSuggestion=ja.result[0];
+        const el=document.getElementById("finder-didyoumean");
+        el.textContent=`Did you mean: ${ja.result[0]}?`; el.style.display="block"; return false;
+      }
+      _showErr("Postcode not found."); return false;
+    }catch(e){ _showErr("Could not look up postcode."); return false; }
+  }
+
+  /* ── main search (called from button, Enter key, and useLocation dispatch) ── */
+  window.finderSearch = async function(){
+    _showErr(""); _showOk("");
+    const ok = await _resolvePostcode();
+    if(!ok && !_finderLat){ _showErr("Please enter a postcode or use your location."); return; }
+    const q = document.getElementById("finder-q").value.trim();
+    if(!q){ _showOk("📍 Location set! Tap a category or type your search."); return; }
+    _finderCurrentQ = q;
+    await _finderFetch(q);
   };
 
-  async function _finderDoSearch(lat, lon){
+  /* ── category chip search ── */
+  window.finderCatSearch = async function(btn){
+    document.querySelectorAll(".fcat").forEach(b=>b.classList.remove("fcat-on"));
+    btn.classList.add("fcat-on");
+    const q = btn.dataset.q;
+    document.getElementById("finder-q").value = q;
+    _finderCurrentQ = q;
+    _showErr("");
+    if(!_finderLat){
+      const ok = await _resolvePostcode();
+      if(!ok){ _showErr("Please enter a postcode or tap 📍 Me first."); btn.classList.remove("fcat-on"); return; }
+    }
+    await _finderFetch(q);
+  };
+
+  /* ── fetch from /api/finder/search ── */
+  async function _finderFetch(q){
     document.getElementById("finder-loading").style.display = "block";
     document.getElementById("finder-results").style.display = "none";
-    document.getElementById("finder-tabs").style.display    = "none";
+    const openNow = document.getElementById("finder-open-now").checked ? "1" : "0";
     try{
-      const r = await fetch(`/api/finder?lat=${lat}&lon=${lon}`);
-      _finderData = await r.json();
-      document.getElementById("finder-tabs").style.removeProperty("display");
-      document.getElementById("finder-tabs").style.display = "flex";
-      finderTab(_finderActiveTab);
+      const r = await fetch(`/api/finder/search?lat=${_finderLat}&lon=${_finderLon}&q=${encodeURIComponent(q)}&open_now=${openNow}`);
+      const d = await r.json();
+      if(d.error){ _showErr(d.error); return; }
+      _finderAllResults = d.results || [];
+      _finderCheckatradeUrl = d.checkatrade_url || null;
+      _finderRender();
+      document.getElementById("finder-controls").style.display = "flex";
+      _updateSavedBtn();
     }catch(e){ _showErr("Search failed. Please try again."); }
     finally{ document.getElementById("finder-loading").style.display = "none"; }
   }
 
-  function _renderFinderList(items, emptyMsg, extra, opts){
+  /* ── render results ── */
+  function _finderRender(){
+    const openNow = document.getElementById("finder-open-now").checked;
+    const items = openNow ? _finderAllResults.filter(p=>p.open_now===true) : _finderAllResults;
+    const hdr  = document.getElementById("finder-results-hdr");
     const list = document.getElementById("finder-list");
-    if(!items.length){ list.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">${emptyMsg}</div>`+(extra||""); }
-    else { list.innerHTML = items.map(p=>_finderCard(p,opts)).join("") + (extra||""); }
+    let hdrHtml = "";
+    if(_finderCheckatradeUrl){
+      hdrHtml += `<a href="${_finderCheckatradeUrl}" target="_blank" rel="noopener"
+        style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;margin-bottom:12px;border-radius:14px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;text-decoration:none">
+        <div>
+          <div style="font-size:14px;font-weight:800;color:#92400e">🔨 Get verified quotes</div>
+          <div style="font-size:12px;color:#b45309;margin-top:2px">Find trusted tradespeople on Checkatrade →</div>
+        </div>
+        <span style="font-size:22px">✅</span>
+      </a>`;
+    }
+    hdrHtml += `<div style="font-size:12px;color:var(--subtle)">${items.length} result${items.length!==1?"s":""} for <strong style="color:var(--text)">${_finderCurrentQ}</strong>${openNow?" · open now":""}</div>`;
+    hdr.innerHTML = hdrHtml;
+    if(!items.length){
+      list.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">No results found${openNow?" — try turning off Open Now":""}</div>`;
+    } else {
+      list.innerHTML = items.map(_finderCard).join("");
+    }
     document.getElementById("finder-results").style.display = "block";
   }
 
-  window.finderTab = function(tab){
-    _finderActiveTab = tab;
-    document.querySelectorAll(".finder-tab").forEach(b=>b.classList.remove("active-tab"));
-    const tb = document.getElementById("finder-tab-"+tab);
-    if(tb) tb.classList.add("active-tab");
-    if(!_finderData){ document.getElementById("finder-results").style.display="none"; return; }
-    if(tab==="cowork"){
-      _renderFinderList(_finderData.coworking||[], "No co-working spaces found nearby.<br><small>Try a nearby town or city postcode.</small>", null, {});
-    } else if(tab==="childcare"){
-      _renderFinderList(_finderData.childcare||[], "No nurseries or childcare centres found nearby.<br><small>Try a nearby town or city postcode.</small>", null, {ofsted:true});
-    } else if(tab==="nanny"){
-      _renderFinderList(_finderData.nanny_agencies||[], "No local nanny agencies found.", null, {ofsted:true});
-    }
-  };
+  window.finderToggleOpenNow = function(){ if(_finderAllResults.length) _finderRender(); };
 
-  function _finderCard(p, opts){
-    opts = opts || {};
-    const dist   = (p.dist_km != null) ? `<span style="font-size:12px;color:var(--subtle)">${p.dist_km.toFixed(1)} km</span>` : "";
-    // Rating + review count
-    let ratingHtml = "";
-    if(p.rating){
-      const rev = p.review_count ? ` <span style="font-size:11px;color:var(--subtle)">(${p.review_count})</span>` : "";
-      ratingHtml = `<span style="font-size:12px;color:#f59e0b">★ ${p.rating}${rev}</span>`;
+  /* ── result card ── */
+  function _finderCard(p){
+    const key  = (p._key || (p.name + "|" + (p.address||""))).replace(/"/g,"");
+    const dist = p.dist_km != null ? `<span style="font-size:12px;color:var(--subtle)">${p.dist_km.toFixed(1)} km</span>` : "";
+    const stars= p.rating ? `<span style="font-size:12px;color:#f59e0b">★ ${p.rating}${p.review_count?` <span style="font-size:11px;color:var(--subtle)">(${p.review_count})</span>`:""}</span>` : "";
+    const openBadge = p.open_now===true  ? `<span style="padding:2px 8px;border-radius:20px;background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;margin-right:6px">Open</span>`
+                    : p.open_now===false ? `<span style="padding:2px 8px;border-radius:20px;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;margin-right:6px">Closed</span>` : "";
+    let hoursStr = "";
+    if(p.hours_detail && p.hours_detail.length===7){
+      const wdIdx=[6,0,1,2,3,4,5][new Date().getDay()];
+      hoursStr = (p.hours_detail[wdIdx]||"").replace(/^[^:]+:\s*/,"");
     }
-    const addr = p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">${p.address}</div>` : "";
-    // Type badge (childcare only)
-    const typeBadge = p.cc_type ? `<span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:700;text-transform:capitalize">${p.cc_type}</span> ` : "";
-    // Age range & capacity
-    const ageRange = p.age_range ? `<div style="font-size:12px;color:var(--subtle);margin-top:2px">👶 Ages: ${p.age_range}</div>` : "";
-    const capacity = p.capacity ? `<div style="font-size:12px;color:var(--subtle);margin-top:1px">👥 Up to ${p.capacity} places</div>` : "";
-    const phone    = p.phone ? `<div style="margin-top:4px"><a href="tel:${p.phone.replace(/\s/g,'')}" style="font-size:13px;color:var(--accent);font-weight:600;text-decoration:none">📞 ${p.phone}</a></div>` : "";
-    // Hours
-    let hoursHtml = "";
-    if(p.hours){
-      hoursHtml = `<div style="font-size:12px;color:var(--subtle);margin-top:2px">🕐 ${p.hours}</div>`;
-    } else if(p.hours_detail && p.hours_detail.length === 7){
-      const wdIdx = [6,0,1,2,3,4,5][new Date().getDay()];
-      const todayStr = (p.hours_detail[wdIdx] || "").replace(/^[^:]+:\s*/,"");
-      if(todayStr) hoursHtml = `<div style="font-size:12px;color:var(--subtle);margin-top:2px">🕐 Today: ${todayStr}</div>`;
-    }
-    const dirUrl  = (p.lat && p.lon) ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : (p.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}` : "");
-    const dirBtn  = dirUrl ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : "";
-    const web     = p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : "";
-    const ofsted  = opts.ofsted ? `<a href="https://reports.ofsted.gov.uk/search?q=${encodeURIComponent(p.name)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:8px;border:1px solid #fde68a;background:#fefce8;color:#92400e;font-size:12px;font-weight:600;text-decoration:none">📋 Ofsted</a>` : "";
-    return `<div class="finder-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-size:15px;font-weight:700;color:var(--text);flex:1">${p.name}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">${dist}${ratingHtml}</div></div>${addr}${typeBadge}${ageRange}${capacity}${phone}${hoursHtml}<div style="display:flex;flex-wrap:wrap;gap:0">${dirBtn}${web}${ofsted}</div></div>`;
+    const dirUrl = (p.lat && p.lon) ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : "";
+    // Escape for JSON in data attr
+    const placeJson = JSON.stringify({_key:key, name:p.name||"", address:p.address||"", phone:p.phone||"", website:p.website||"", lat:p.lat, lon:p.lon}).replace(/"/g,"&quot;");
+    const isSaved = _isSaved(key);
+    return `<div class="finder-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3">${p.name}</div>
+          ${p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${p.address}</div>` : ""}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
+          ${dist}${stars}
+          <button data-place="${placeJson}" onclick="finderToggleSave(this)" title="${isSaved?"Unsave":"Save"}" style="background:none;border:none;cursor:pointer;font-size:18px;padding:0;line-height:1">${isSaved?"⭐":"☆"}</button>
+        </div>
+      </div>
+      ${(openBadge||hoursStr) ? `<div style="margin-top:6px;font-size:12px;color:var(--subtle)">${openBadge}${hoursStr?`🕐 Today: ${hoursStr}`:""}</div>` : ""}
+      ${p.phone ? `<div style="margin-top:6px"><a href="tel:${p.phone.replace(/\s/g,"")}" style="font-size:13px;color:var(--accent);font-weight:600;text-decoration:none">📞 ${p.phone}</a></div>` : ""}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+        ${dirUrl    ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : ""}
+        ${p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : ""}
+      </div>
+    </div>`;
   }
 
-  function _platformLinks(platforms){
-    if(!platforms) return "";
-    // platforms is {nanny:[...], aupair:[...]}
-    let all = [];
-    if(Array.isArray(platforms)) all = platforms;
-    else { all = [...(platforms.nanny||[]), ...(platforms.aupair||[])]; }
-    if(!all.length) return "";
-    const links = all.map(pl=>`<a href="${pl.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--text)"><span style="font-size:20px">${pl.icon||"🔗"}</span><div><div style="font-size:14px;font-weight:600">${pl.name}</div><div style="font-size:12px;color:var(--subtle)">${pl.desc||""}</div></div></a>`).join("");
-    return `<div style="margin-top:16px"><div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Online Platforms</div><div style="display:flex;flex-direction:column;gap:8px">${links}</div></div>`;
-  }
+  _updateSavedBtn();
 
-  // Auto-open if URL has ?finder or #finder
   if(location.search.includes("finder") || location.hash === "#finder"){
     if(typeof showScreen === "function") showScreen("finder");
   }
