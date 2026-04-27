@@ -2357,6 +2357,8 @@ out center tags;"""
         dist_km = haversine_km(lat, lon, elat, elon)
         parts = [tags.get("addr:housenumber",""), tags.get("addr:street",""), tags.get("addr:city","")]
         address = " ".join(p for p in parts if p).strip(", ")
+        amenity = tags.get("amenity","")
+        office  = tags.get("office","")
         entry = {
             "name": name, "address": address, "lat": elat, "lon": elon,
             "dist_km": round(dist_km, 2),
@@ -2364,12 +2366,24 @@ out center tags;"""
             "phone":   tags.get("phone", tags.get("contact:phone", "")),
             "hours":   tags.get("opening_hours", ""),
         }
-        amenity = tags.get("amenity","")
-        office  = tags.get("office","")
         if "coworking" in amenity or "coworking" in office:
             entry["wifi"] = tags.get("internet_access") in ("wlan","wifi","yes")
             coworking.append(entry)
         else:
+            # Enrich childcare entries with extra OSM fields
+            min_age  = tags.get("min_age","")
+            max_age  = tags.get("max_age","")
+            capacity = tags.get("capacity","")
+            cc_type  = ("childminder" if "childminder" in name.lower()
+                        else "nursery"    if amenity in ("nursery","childcare") or "nursery" in name.lower()
+                        else "pre-school" if "preschool" in name.lower() or "pre-school" in name.lower()
+                        else "kindergarten" if amenity == "kindergarten"
+                        else "childcare")
+            if min_age or max_age:
+                entry["age_range"] = f"{min_age or '0'}–{max_age or '?'} yrs"
+            if capacity:
+                entry["capacity"] = capacity
+            entry["cc_type"] = cc_type
             childcare.append(entry)
     coworking.sort(key=lambda x: x["dist_km"])
     childcare.sort(key=lambda x: x["dist_km"])
@@ -2441,7 +2455,8 @@ def _gplaces_collect(raw_list: list, lat: float, lon: float, seen: set, results:
         results.append({
             "name": name, "address": addr,
             "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
-            "rating": p.get("rating"), "phone": "", "website": "", "hours_detail": [],
+            "rating": p.get("rating"), "review_count": p.get("user_ratings_total", 0),
+            "phone": "", "website": "", "hours_detail": [],
             "_place_id": p.get("place_id", ""),
         })
 
@@ -2536,7 +2551,7 @@ def api_finder():
         lat, lon = float(lat_p), float(lon_p)
     except ValueError:
         return jsonify({"error": "Invalid coordinates"}), 400
-    cache_key = f"finder6:{lat:.4f},{lon:.4f}"
+    cache_key = f"finder7:{lat:.4f},{lon:.4f}"
     cached = _PLACES_CACHE.get(cache_key)
     if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
         return jsonify(cached[1])

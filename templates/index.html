@@ -4369,10 +4369,10 @@
     finally{ document.getElementById("finder-loading").style.display = "none"; }
   }
 
-  function _renderFinderList(items, emptyMsg, extra){
+  function _renderFinderList(items, emptyMsg, extra, opts){
     const list = document.getElementById("finder-list");
     if(!items.length){ list.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">${emptyMsg}</div>`+(extra||""); }
-    else { list.innerHTML = items.map(_finderCard).join("") + (extra||""); }
+    else { list.innerHTML = items.map(p=>_finderCard(p,opts)).join("") + (extra||""); }
     document.getElementById("finder-results").style.display = "block";
   }
 
@@ -4383,32 +4383,44 @@
     if(tb) tb.classList.add("active-tab");
     if(!_finderData){ document.getElementById("finder-results").style.display="none"; return; }
     if(tab==="cowork"){
-      _renderFinderList(_finderData.coworking||[], "No co-working spaces found nearby.<br><small>Try a nearby town or city postcode.</small>");
+      _renderFinderList(_finderData.coworking||[], "No co-working spaces found nearby.<br><small>Try a nearby town or city postcode.</small>", null, {});
     } else if(tab==="childcare"){
-      _renderFinderList(_finderData.childcare||[], "No nurseries or childcare centres found nearby.<br><small>Try a nearby town or city postcode.</small>");
+      _renderFinderList(_finderData.childcare||[], "No nurseries or childcare centres found nearby.<br><small>Try a nearby town or city postcode.</small>", null, {ofsted:true});
     } else if(tab==="nanny"){
-      _renderFinderList(_finderData.nanny_agencies||[], "No local nanny agencies found.");
+      _renderFinderList(_finderData.nanny_agencies||[], "No local nanny agencies found.", null, {ofsted:true});
     }
   };
 
-  function _finderCard(p){
+  function _finderCard(p, opts){
+    opts = opts || {};
     const dist   = (p.dist_km != null) ? `<span style="font-size:12px;color:var(--subtle)">${p.dist_km.toFixed(1)} km</span>` : "";
-    const rating = p.rating ? `<span style="font-size:12px;color:#f59e0b">★ ${p.rating}</span>` : "";
-    const addr   = p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">${p.address}</div>` : "";
-    const phone  = p.phone  ? `<div style="margin-top:4px"><a href="tel:${p.phone.replace(/\s/g,'')}" style="font-size:13px;color:var(--accent);font-weight:600;text-decoration:none">📞 ${p.phone}</a></div>` : "";
-    // Hours: prefer OSM hours string, then derive today's hours from Google weekday_text array
+    // Rating + review count
+    let ratingHtml = "";
+    if(p.rating){
+      const rev = p.review_count ? ` <span style="font-size:11px;color:var(--subtle)">(${p.review_count})</span>` : "";
+      ratingHtml = `<span style="font-size:12px;color:#f59e0b">★ ${p.rating}${rev}</span>`;
+    }
+    const addr = p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">${p.address}</div>` : "";
+    // Type badge (childcare only)
+    const typeBadge = p.cc_type ? `<span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:20px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:700;text-transform:capitalize">${p.cc_type}</span> ` : "";
+    // Age range & capacity
+    const ageRange = p.age_range ? `<div style="font-size:12px;color:var(--subtle);margin-top:2px">👶 Ages: ${p.age_range}</div>` : "";
+    const capacity = p.capacity ? `<div style="font-size:12px;color:var(--subtle);margin-top:1px">👥 Up to ${p.capacity} places</div>` : "";
+    const phone    = p.phone ? `<div style="margin-top:4px"><a href="tel:${p.phone.replace(/\s/g,'')}" style="font-size:13px;color:var(--accent);font-weight:600;text-decoration:none">📞 ${p.phone}</a></div>` : "";
+    // Hours
     let hoursHtml = "";
     if(p.hours){
       hoursHtml = `<div style="font-size:12px;color:var(--subtle);margin-top:2px">🕐 ${p.hours}</div>`;
     } else if(p.hours_detail && p.hours_detail.length === 7){
-      const wdIdx = [6,0,1,2,3,4,5][new Date().getDay()]; // Google: Mon=0…Sun=6; JS: 0=Sun
+      const wdIdx = [6,0,1,2,3,4,5][new Date().getDay()];
       const todayStr = (p.hours_detail[wdIdx] || "").replace(/^[^:]+:\s*/,"");
       if(todayStr) hoursHtml = `<div style="font-size:12px;color:var(--subtle);margin-top:2px">🕐 Today: ${todayStr}</div>`;
     }
-    const dirUrl = (p.lat && p.lon) ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : (p.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}` : "");
-    const dirBtn = dirUrl ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : "";
-    const web    = p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : "";
-    return `<div class="finder-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-size:15px;font-weight:700;color:var(--text);flex:1">${p.name}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">${dist}${rating}</div></div>${addr}${phone}${hoursHtml}<div style="display:flex;flex-wrap:wrap;gap:0">${dirBtn}${web}</div></div>`;
+    const dirUrl  = (p.lat && p.lon) ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : (p.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}` : "");
+    const dirBtn  = dirUrl ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : "";
+    const web     = p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : "";
+    const ofsted  = opts.ofsted ? `<a href="https://reports.ofsted.gov.uk/search?q=${encodeURIComponent(p.name)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:8px;border:1px solid #fde68a;background:#fefce8;color:#92400e;font-size:12px;font-weight:600;text-decoration:none">📋 Ofsted</a>` : "";
+    return `<div class="finder-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-size:15px;font-weight:700;color:var(--text);flex:1">${p.name}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">${dist}${ratingHtml}</div></div>${addr}${typeBadge}${ageRange}${capacity}${phone}${hoursHtml}<div style="display:flex;flex-wrap:wrap;gap:0">${dirBtn}${web}${ofsted}</div></div>`;
   }
 
   function _platformLinks(platforms){
