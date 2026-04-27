@@ -4299,28 +4299,42 @@
   function _showErr(msg){ const e=document.getElementById("finder-err"); e.textContent=msg; e.style.display=msg?"block":"none"; }
 
   window.finderUseLocation = function(){
-    if(!navigator.geolocation){ _showErr("Geolocation not available on this device."); return; }
     _showErr("");
     const btn = document.getElementById("finder-loc-btn");
     const origTxt = btn ? btn.textContent : "";
     if(btn){ btn.textContent="⏳ Getting location…"; btn.disabled=true; }
-    navigator.geolocation.getCurrentPosition(async pos=>{
-      _finderLat = pos.coords.latitude;
-      _finderLon = pos.coords.longitude;
+
+    async function _doWithCoords(lat, lon) {
+      _finderLat = lat; _finderLon = lon;
       try{
-        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${_finderLat}&lon=${_finderLon}`,{headers:{"Accept-Language":"en"}});
+        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,{headers:{"Accept-Language":"en"}});
         const rj  = await rev.json();
         const a   = rj.address||{};
         const area= a.suburb||a.village||a.hamlet||a.town||a.city_district||a.city||"";
         if(area) document.getElementById("finder-postcode").placeholder = area;
       }catch(_){}
       if(btn){ btn.textContent=origTxt; btn.disabled=false; }
-      _finderDoSearch(_finderLat, _finderLon);
-    }, err=>{
+      _finderDoSearch(lat, lon);
+    }
+
+    async function _ipFallback() {
+      const svcs = [
+        ()=>fetch("https://ipapi.co/json/").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[d.latitude,d.longitude]:null),
+        ()=>fetch("https://get.geojs.io/v1/ip/geo.json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[+d.latitude,+d.longitude]:null),
+      ];
+      for(const svc of svcs){
+        try{ const c=await svc(); if(c){ await _doWithCoords(c[0],c[1]); return; } }catch(_){}
+      }
       if(btn){ btn.textContent=origTxt; btn.disabled=false; }
-      const msgs={1:"Location permission denied — please allow and try again.",2:"Location unavailable.",3:"Timed out getting location."};
-      _showErr(msgs[err.code]||"Could not get location.");
-    }, {timeout:30000, enableHighAccuracy:false, maximumAge:300000});
+      _showErr("Could not determine location — please enter a postcode.");
+    }
+
+    if(!navigator.geolocation){ _ipFallback(); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => _doWithCoords(pos.coords.latitude, pos.coords.longitude),
+      ()  => _ipFallback(),
+      {timeout:8000, enableHighAccuracy:false, maximumAge:600000}
+    );
   };
 
   window.finderPostcodeInput = function(val){
@@ -4434,11 +4448,19 @@
     const rating = p.rating ? `<span style="font-size:12px;color:#f59e0b">★ ${p.rating}</span>` : "";
     const addr   = p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">${p.address}</div>` : "";
     const phone  = p.phone  ? `<div style="margin-top:4px"><a href="tel:${p.phone.replace(/\s/g,'')}" style="font-size:13px;color:var(--accent);font-weight:600;text-decoration:none">📞 ${p.phone}</a></div>` : "";
-    const hours  = p.hours  ? `<div style="font-size:12px;color:var(--subtle);margin-top:2px">🕐 ${p.hours}</div>` : "";
+    // Hours: prefer OSM hours string, then derive today's hours from Google weekday_text array
+    let hoursHtml = "";
+    if(p.hours){
+      hoursHtml = `<div style="font-size:12px;color:var(--subtle);margin-top:2px">🕐 ${p.hours}</div>`;
+    } else if(p.hours_detail && p.hours_detail.length === 7){
+      const wdIdx = [6,0,1,2,3,4,5][new Date().getDay()]; // Google: Mon=0…Sun=6; JS: 0=Sun
+      const todayStr = (p.hours_detail[wdIdx] || "").replace(/^[^:]+:\s*/,"");
+      if(todayStr) hoursHtml = `<div style="font-size:12px;color:var(--subtle);margin-top:2px">🕐 Today: ${todayStr}</div>`;
+    }
     const dirUrl = (p.lat && p.lon) ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : (p.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}` : "");
     const dirBtn = dirUrl ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : "";
     const web    = p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : "";
-    return `<div class="finder-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-size:15px;font-weight:700;color:var(--text);flex:1">${p.name}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">${dist}${rating}</div></div>${addr}${phone}${hours}<div style="display:flex;flex-wrap:wrap;gap:0">${dirBtn}${web}</div></div>`;
+    return `<div class="finder-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-size:15px;font-weight:700;color:var(--text);flex:1">${p.name}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">${dist}${rating}</div></div>${addr}${phone}${hoursHtml}<div style="display:flex;flex-wrap:wrap;gap:0">${dirBtn}${web}</div></div>`;
   }
 
   function _platformLinks(platforms){
@@ -4461,6 +4483,11 @@
 
 <script>
 (function(){
+  // Auto-open if URL has ?scan or ?product or #scan
+  if(location.search.includes("scan") || location.search.includes("product") || location.hash === "#scan"){
+    if(typeof showScreen === "function") showScreen("scan");
+  }
+
   let _scanActive = false;
   let _nativeStream = null;
   let _nativeRaf    = null;

@@ -2373,22 +2373,28 @@ out center tags;"""
             childcare.append(entry)
     coworking.sort(key=lambda x: x["dist_km"])
     childcare.sort(key=lambda x: x["dist_km"])
-    return {"coworking": coworking[:30], "childcare": childcare[:30]}
+    return {"coworking": coworking[:50], "childcare": childcare[:50]}
 
 
 def _gplaces_details(place_id: str) -> dict:
-    """Fetch phone + website for a Google place_id."""
+    """Fetch phone, website and opening hours for a Google place_id."""
     if not _GOOGLE_PLACES_KEY or not place_id:
         return {}
     try:
         r = requests.get(
             "https://maps.googleapis.com/maps/api/place/details/json",
-            params={"place_id": place_id, "fields": "formatted_phone_number,website",
+            params={"place_id": place_id,
+                    "fields": "formatted_phone_number,website,opening_hours",
                     "key": _GOOGLE_PLACES_KEY},
             timeout=5,
         )
         res = r.json().get("result", {})
-        return {"phone": res.get("formatted_phone_number",""), "website": res.get("website","")}
+        hours_detail = res.get("opening_hours", {}).get("weekday_text", [])
+        return {
+            "phone":        res.get("formatted_phone_number", ""),
+            "website":      res.get("website", ""),
+            "hours_detail": hours_detail,
+        }
     except Exception:
         return {}
 
@@ -2398,15 +2404,15 @@ def _finder_cowork_places(lat: float, lon: float) -> list:
     if not _GOOGLE_PLACES_KEY:
         return []
     results, seen = [], set()
-    for query in ["coworking space", "shared office space", "serviced office"]:
+    for query in ["coworking space", "shared office space", "serviced office", "hot desk", "business centre"]:
         try:
             r = requests.get(
                 "https://maps.googleapis.com/maps/api/place/textsearch/json",
                 params={"query": query, "location": f"{lat},{lon}",
-                        "radius": 10000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+                        "radius": 15000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
                 timeout=8,
             )
-            for p in r.json().get("results", [])[:10]:
+            for p in r.json().get("results", [])[:20]:
                 name = p.get("name","")
                 if not name or name.lower() in seen:
                     continue
@@ -2417,21 +2423,22 @@ def _finder_cowork_places(lat: float, lon: float) -> list:
                 results.append({
                     "name": name, "address": p.get("formatted_address",""),
                     "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
-                    "rating": p.get("rating"), "phone": "", "website": "",
+                    "rating": p.get("rating"), "phone": "", "website": "", "hours_detail": [],
                     "_place_id": p.get("place_id",""),
                 })
         except Exception:
             pass
     results.sort(key=lambda x: x["dist_km"])
-    top = results[:25]
+    top = results[:50]
     if top:
         from concurrent.futures import ThreadPoolExecutor as _TPE
         place_ids = [p.get("_place_id","") for p in top]
-        with _TPE(max_workers=4) as ex:
+        with _TPE(max_workers=6) as ex:
             details = list(ex.map(_gplaces_details, place_ids))
         for item, det in zip(top, details):
-            if det.get("phone"):   item["phone"]   = det["phone"]
-            if det.get("website"): item["website"] = det["website"]
+            if det.get("phone"):        item["phone"]        = det["phone"]
+            if det.get("website"):      item["website"]      = det["website"]
+            if det.get("hours_detail"): item["hours_detail"] = det["hours_detail"]
     return top
 
 
@@ -2439,15 +2446,16 @@ def _finder_nanny_search(lat: float, lon: float) -> list:
     if not _GOOGLE_PLACES_KEY:
         return []
     results, seen = [], set()
-    for query in ["nanny agency", "au pair agency", "childminder agency", "childcare agency"]:
+    for query in ["nanny agency", "au pair agency", "childminder agency", "childcare agency",
+                  "nursery", "babysitter agency"]:
         try:
             r = requests.get(
                 "https://maps.googleapis.com/maps/api/place/textsearch/json",
                 params={"query": query, "location": f"{lat},{lon}",
-                        "radius": 20000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+                        "radius": 25000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
                 timeout=8,
             )
-            for p in r.json().get("results", [])[:10]:
+            for p in r.json().get("results", [])[:20]:
                 name = p.get("name","")
                 if not name or name.lower() in seen:
                     continue
@@ -2458,22 +2466,22 @@ def _finder_nanny_search(lat: float, lon: float) -> list:
                 results.append({
                     "name": name, "address": p.get("formatted_address",""),
                     "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
-                    "rating": p.get("rating"), "website": "", "phone": "",
+                    "rating": p.get("rating"), "website": "", "phone": "", "hours_detail": [],
                     "_place_id": p.get("place_id",""),
                 })
         except Exception:
             pass
     results.sort(key=lambda x: x["dist_km"])
-    top = results[:25]
-    # Fetch phone + website for top results in parallel
+    top = results[:50]
     if top:
         from concurrent.futures import ThreadPoolExecutor as _TPE
         place_ids = [p.get("_place_id","") for p in top]
-        with _TPE(max_workers=4) as ex:
+        with _TPE(max_workers=6) as ex:
             details = list(ex.map(_gplaces_details, place_ids))
         for item, det in zip(top, details):
-            if det.get("phone"):   item["phone"]   = det["phone"]
-            if det.get("website"): item["website"] = det["website"]
+            if det.get("phone"):        item["phone"]        = det["phone"]
+            if det.get("website"):      item["website"]      = det["website"]
+            if det.get("hours_detail"): item["hours_detail"] = det["hours_detail"]
     return top
 
 
@@ -2487,7 +2495,7 @@ def api_finder():
         lat, lon = float(lat_p), float(lon_p)
     except ValueError:
         return jsonify({"error": "Invalid coordinates"}), 400
-    cache_key = f"finder3:{lat:.4f},{lon:.4f}"
+    cache_key = f"finder4:{lat:.4f},{lon:.4f}"
     cached = _PLACES_CACHE.get(cache_key)
     if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
         return jsonify(cached[1])
@@ -2508,7 +2516,7 @@ def api_finder():
             seen_names.add(p["name"].lower())
     osm_cowork.sort(key=lambda x: x["dist_km"])
     result = {
-        "coworking":      osm_cowork[:30],
+        "coworking":      osm_cowork[:50],
         "childcare":      osm.get("childcare", []),
         "nanny_agencies": nannies,
         "platforms": {
