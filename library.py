@@ -198,6 +198,30 @@ def search_all_chunks(query: str, n: int = 8) -> list:
     return _search_all_chunks_supabase(query, n)
 
 
+def search_doc_chunks(share_id: str, doc_id: str, query: str, n: int = 6) -> list:
+    """Return top-n chunks for a single doc using Algolia (falls back to keyword sort)."""
+    try:
+        idx = _idx()
+        res = idx.search(query, {
+            "hitsPerPage": n,
+            "filters": f"share_id:{share_id}",
+            "attributesToRetrieve": ["content"],
+        })
+        hits = res.get("hits", [])
+        if hits:
+            return [h["content"] for h in hits]
+    except Exception:
+        pass
+    # Keyword-sort fallback
+    sb = _sb()
+    chunks = sb.table("library_chunks").select("content").eq("doc_id", doc_id).execute().data
+    if not chunks:
+        return []
+    q_words = set(w for w in query.lower().split() if len(w) > 2)
+    scored = sorted(chunks, key=lambda c: -sum(1 for w in q_words if w in c["content"].lower()))
+    return [c["content"] for c in scored[:n]]
+
+
 def search_chunks(doc_id: str, query: str, n: int = 6) -> list:
     """Keyword search within a single doc (fallback if Algolia unavailable)."""
     sb = _sb()

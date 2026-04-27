@@ -525,7 +525,13 @@ def api_library_doc_questions(share_id):
     if not doc:
         return jsonify({"questions": []}), 404
     chunks = doc.get("chunks", [])
-    text = chunks[0]["content"] if chunks else (doc.get("text_content") or "")[:800]
+    if chunks:
+        # Sample beginning, middle, and end for better coverage of large docs
+        n = len(chunks)
+        sampled = chunks[:2] + (chunks[n//2:n//2+2] if n > 4 else []) + (chunks[-1:] if n > 2 else [])
+        text = " ".join(c["content"] for c in sampled)[:1400]
+    else:
+        text = (doc.get("text_content") or "")[:1400]
     questions = _generate_doc_questions(doc.get("title", ""), text)
     return jsonify({"questions": questions})
 
@@ -546,17 +552,13 @@ def api_library_chat():
         if not doc:
             return jsonify({"error": "Document not found"}), 404
 
-        # Use chunks already fetched by get_document — no extra DB call.
-        # Score by keyword overlap, fall back to first N chunks, then to text_content.
-        doc_chunks = doc.get("chunks", [])
-        if doc_chunks:
-            q_words = {w for w in question.lower().split() if len(w) > 2}
-            if q_words:
-                doc_chunks = sorted(doc_chunks,
-                    key=lambda c: -sum(1 for w in q_words if w in c.get("content", "").lower()))
-            _complex = any(w in question.lower() for w in ("compare", "summar", "all", "every", "list", "overview", "explain"))
-            top_n = 6 if _complex else 3
-            context = "\n\n---\n\n".join(c["content"] for c in doc_chunks[:top_n])
+        # Use Algolia semantic search to find the most relevant chunks for this question.
+        # Falls back to keyword sort if Algolia is unavailable.
+        _complex = any(w in question.lower() for w in ("compare", "summar", "all", "every", "list", "overview", "explain"))
+        top_n = 6 if _complex else 4
+        relevant = lib.search_doc_chunks(share_id, doc["id"], question, n=top_n)
+        if relevant:
+            context = "\n\n---\n\n".join(relevant)
         else:
             context = (doc.get("text_content") or "")[:4000]
 
