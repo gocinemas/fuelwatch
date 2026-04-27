@@ -847,7 +847,10 @@
         <div id="places-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin:0 18px 12px"></div>
         <div id="places-result" class="hidden" style="padding:0 18px 24px">
           <div style="margin-bottom:14px;padding:0 2px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
             <div id="places-location" style="font-size:13px;font-weight:600;color:var(--subtle)"></div>
+            <button onclick="_sharePlacesResults()" style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">📤 Share</button>
+          </div>
           </div>
           <div id="places-list" style="display:flex;flex-direction:column;gap:10px"></div>
           <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">Data: OpenStreetMap contributors</div>
@@ -2436,6 +2439,36 @@
     return digits;
   }
 
+  function _sharePlace(name, address, lat, lon) {
+    const mapsUrl = (lat && lon)
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}&ll=${lat},${lon}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((name+' '+address).trim())}`;
+    const text = [name, address].filter(Boolean).join('\n');
+    if (navigator.share) {
+      navigator.share({ title: name, text, url: mapsUrl }).catch(()=>{});
+    } else {
+      navigator.clipboard.writeText(text + '\n' + mapsUrl)
+        .then(()=>{ const t=document.createElement('div'); t.textContent='📋 Copied!'; t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999'; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); })
+        .catch(()=>alert(text+'\n'+mapsUrl));
+    }
+  }
+
+  function _sharePlacesResults() {
+    const locEl = document.getElementById('places-location');
+    const title = locEl?.textContent?.replace(/^\d+ results? near /,'') || 'Places nearby';
+    const cards = [...document.querySelectorAll('#places-list [style*="font-weight:600;font-size:13px"]')]
+      .map(el => el.textContent.replace(/[▼▲⬇⬆]+/g,'').trim()).filter(Boolean).slice(0,12);
+    const appUrl = window.location.origin;
+    const shareText = `📍 Places near ${title}\n\n${cards.join('\n')}\n\nSearch on Miru: ${appUrl}`;
+    if (navigator.share) {
+      navigator.share({ title: `Places near ${title}`, text: shareText, url: appUrl }).catch(()=>{});
+    } else {
+      navigator.clipboard.writeText(shareText)
+        .then(()=>{ const t=document.createElement('div'); t.textContent='📋 Copied to clipboard!'; t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999'; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); })
+        .catch(()=>alert(shareText));
+    }
+  }
+
   function _foodPlaceCard(p) {
     const id = `pl-${++_placesIdCounter}`;
     const rId = `plr-${_placesIdCounter}`;
@@ -2459,9 +2492,13 @@
           ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:3px">🕐 ${hours}</div>` : ""}
           ${contactLinks.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${contactLinks.join("")}</div>` : ""}
         </div>
-        <button data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-latlon="${latlon}"
-          onclick="_togglePlace('${id}','${rId}',this.dataset.name,this.dataset.latlon,this)"
-          style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px 4px;margin-top:2px">⭐ Reviews</button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          <button data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-latlon="${latlon}"
+            onclick="_togglePlace('${id}','${rId}',this.dataset.name,this.dataset.latlon,this)"
+            style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:2px 4px">⭐ Reviews</button>
+          <button onclick="_sharePlace(${JSON.stringify(p.name||'')},${JSON.stringify(p.address||'')},${p.lat||'null'},${p.lon||'null'})"
+            style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:2px 4px">📤</button>
+        </div>
       </div>
       <div id="${id}" style="display:none;margin-top:8px">
         <div id="${rId}" style="margin-top:4px">
@@ -2630,9 +2667,13 @@
           ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:4px">🕐 ${hours}</div>` : ""}
           ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">${links.join("")}</div>` : ""}
         </div>
-        <button data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-latlon="${latlon}"
-          onclick="_togglePlace('${id}','${reviewsId}',this.dataset.name,this.dataset.latlon,this)"
-          style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;flex-shrink:0;padding:2px 4px;margin-top:2px">▼</button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          <button data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-latlon="${latlon}"
+            onclick="_togglePlace('${id}','${reviewsId}',this.dataset.name,this.dataset.latlon,this)"
+            style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:2px 4px">▼</button>
+          <button onclick="_sharePlace(${JSON.stringify(p.name||'')},${JSON.stringify(p.address||'')},${p.lat||'null'},${p.lon||'null'})"
+            style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:2px 4px">📤</button>
+        </div>
       </div>
       <div id="${id}" style="display:none;margin-top:8px">
         ${activitiesHtml}
