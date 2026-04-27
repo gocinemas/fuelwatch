@@ -69,6 +69,22 @@
     .is-dark .hover\:bg-gray-200:hover { background-color: var(--border) !important; }
     .is-dark .active\:bg-gray-100:active,
     .is-dark .active\:bg-gray-300:active { background-color: var(--border) !important; }
+    /* Coloured light badges — desaturate in dark mode */
+    .is-dark .bg-blue-50, .is-dark .bg-indigo-50, .is-dark .bg-purple-50,
+    .is-dark .bg-violet-50, .is-dark .bg-pink-50, .is-dark .bg-rose-50,
+    .is-dark .bg-orange-50, .is-dark .bg-yellow-50, .is-dark .bg-amber-50,
+    .is-dark .bg-green-50, .is-dark .bg-emerald-50, .is-dark .bg-teal-50,
+    .is-dark .bg-cyan-50, .is-dark .bg-red-50 { background-color: var(--border) !important; }
+    .is-dark .text-blue-600, .is-dark .text-blue-700,
+    .is-dark .text-indigo-600, .is-dark .text-indigo-700,
+    .is-dark .text-purple-600, .is-dark .text-violet-600, .is-dark .text-violet-700,
+    .is-dark .text-pink-600, .is-dark .text-rose-600,
+    .is-dark .text-orange-600, .is-dark .text-yellow-700, .is-dark .text-amber-700,
+    .is-dark .text-green-600, .is-dark .text-green-700,
+    .is-dark .text-emerald-600, .is-dark .text-teal-600,
+    .is-dark .text-cyan-600, .is-dark .text-red-600, .is-dark .text-red-700 { color: var(--text) !important; }
+    /* Company "did you mean" banner */
+    .is-dark #co-did-you-mean { background: #2a1f00 !important; border-color: #4a3600 !important; color: var(--text) !important; }
     .is-dark input,
     .is-dark select,
     .is-dark textarea { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
@@ -479,16 +495,16 @@
       <div id="company-results" class="hidden">
 
         <style>
-          .co-card { background:#fff; border-radius:1.25rem; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:1rem; padding:1.35rem; }
-          .co-card-title { font-size:15px; font-weight:700; color:#111827; margin-bottom:1rem; padding-bottom:.65rem; border-bottom:1.5px solid #f3f4f6; display:flex; align-items:center; gap:.4rem; }
-          .co-tab-bar { display:flex; gap:5px; background:#f3f4f6; padding:5px; border-radius:1rem; margin-bottom:1.25rem; }
-          .co-tab-btn { flex:1; font-size:13px; font-weight:600; padding:10px 4px; border-radius:.75rem; border:none; cursor:pointer; transition:all .2s; background:transparent; color:#6b7280; line-height:1.3; }
-          .co-tab-btn.active { background:#fff; color:#4f46e5; box-shadow:0 2px 6px rgba(0,0,0,.1); }
-          .co-news-item { padding:.75rem 0; border-bottom:1px solid #f9fafb; }
+          .co-card { background:var(--surface); border-radius:1.25rem; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:1rem; padding:1.35rem; border:1px solid var(--border); }
+          .co-card-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:1rem; padding-bottom:.65rem; border-bottom:1.5px solid var(--border); display:flex; align-items:center; gap:.4rem; }
+          .co-tab-bar { display:flex; gap:5px; background:var(--border); padding:5px; border-radius:1rem; margin-bottom:1.25rem; }
+          .co-tab-btn { flex:1; font-size:13px; font-weight:600; padding:10px 4px; border-radius:.75rem; border:none; cursor:pointer; transition:all .2s; background:transparent; color:var(--muted); line-height:1.3; }
+          .co-tab-btn.active { background:var(--surface); color:#4f46e5; box-shadow:0 2px 6px rgba(0,0,0,.1); }
+          .co-news-item { padding:.75rem 0; border-bottom:1px solid var(--border); }
           .co-news-item:last-child { border-bottom:none; padding-bottom:0; }
-          .co-news-item a { font-size:14px; font-weight:500; color:#1f2937; line-height:1.5; display:block; }
+          .co-news-item a { font-size:14px; font-weight:500; color:var(--text); line-height:1.5; display:block; }
           .co-news-item a:hover { color:#4f46e5; }
-          .co-news-meta { font-size:12px; color:#9ca3af; margin-top:3px; }
+          .co-news-meta { font-size:12px; color:var(--subtle); margin-top:3px; }
         </style>
 
         <!-- Share row -->
