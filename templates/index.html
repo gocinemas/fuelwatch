@@ -4197,6 +4197,9 @@
   window.finderUseLocation = function(){
     if(!navigator.geolocation){ _showErr("Geolocation not available on this device."); return; }
     _showErr("");
+    const btn = document.querySelector("#screen-finder button[onclick='finderUseLocation()']");
+    const origTxt = btn ? btn.textContent : "";
+    if(btn){ btn.textContent="⏳ Getting location…"; btn.disabled=true; }
     navigator.geolocation.getCurrentPosition(async pos=>{
       _finderLat = pos.coords.latitude;
       _finderLon = pos.coords.longitude;
@@ -4207,8 +4210,13 @@
         const area= a.suburb||a.village||a.hamlet||a.town||a.city_district||a.city||"";
         if(area) document.getElementById("finder-postcode").placeholder = area;
       }catch(_){}
+      if(btn){ btn.textContent=origTxt; btn.disabled=false; }
       _finderDoSearch(_finderLat, _finderLon);
-    }, err=>{ _showErr("Could not get location: "+err.message); }, {timeout:10000});
+    }, err=>{
+      if(btn){ btn.textContent=origTxt; btn.disabled=false; }
+      const msgs={1:"Location permission denied — please allow and try again.",2:"Location unavailable.",3:"Timed out getting location."};
+      _showErr(msgs[err.code]||"Could not get location.");
+    }, {timeout:12000, enableHighAccuracy:false});
   };
 
   window.finderPostcodeInput = function(val){
@@ -4280,43 +4288,64 @@
     finally{ document.getElementById("finder-loading").style.display = "none"; }
   }
 
+  const _PAGE = 10;
+
+  function _renderFinderList(items, emptyMsg, extra){
+    const list = document.getElementById("finder-list");
+    if(!items.length){ list.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">${emptyMsg}</div>`+(extra||""); }
+    else {
+      const first = items.slice(0,_PAGE);
+      const rest  = items.slice(_PAGE);
+      list.innerHTML = first.map(_finderCard).join("")
+        + (rest.length ? `<div id="finder-more-wrap"><button onclick="_finderShowMore()" style="width:100%;margin-top:4px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">Show ${rest.length} more…</button></div>` : "")
+        + (extra||"");
+      list._restItems = rest;
+    }
+    document.getElementById("finder-results").style.display = "block";
+  }
+
+  window._finderShowMore = function(){
+    const wrap = document.getElementById("finder-more-wrap");
+    const rest  = document.getElementById("finder-list")._restItems || [];
+    if(wrap) wrap.outerHTML = rest.map(_finderCard).join("");
+  };
+
   window.finderTab = function(tab){
     _finderActiveTab = tab;
     document.querySelectorAll(".finder-tab").forEach(b=>b.classList.remove("active-tab"));
     const tb = document.getElementById("finder-tab-"+tab);
     if(tb) tb.classList.add("active-tab");
     if(!_finderData){ document.getElementById("finder-results").style.display="none"; return; }
-    const list = document.getElementById("finder-list");
-    let html = "";
     if(tab==="cowork"){
-      const items = _finderData.coworking||[];
-      html = items.length ? items.map(_finderCard).join("") : `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">No co-working spaces found nearby.<br><small>Try a nearby town or city postcode.</small></div>`;
+      _renderFinderList(_finderData.coworking||[], "No co-working spaces found nearby.<br><small>Try a nearby town or city postcode.</small>");
     } else if(tab==="childcare"){
-      const items = _finderData.childcare||[];
-      html = items.length ? items.map(_finderCard).join("") : `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">No nurseries or childcare centres found nearby.</div>`;
+      _renderFinderList(_finderData.childcare||[], "No nurseries or childcare centres found nearby.");
     } else if(tab==="nanny"){
-      const agencies = _finderData.nanny_agencies||[];
       const platforms = _finderData.platforms||[];
-      html = (agencies.length ? agencies.map(_finderCard).join("") : `<div style="padding:16px 0;text-align:center;color:var(--subtle);font-size:14px">No local nanny agencies found.</div>`)
-           + _platformLinks(platforms);
+      _renderFinderList(_finderData.nanny_agencies||[], "No local nanny agencies found.", _platformLinks(platforms));
     }
-    list.innerHTML = html;
-    document.getElementById("finder-results").style.display = "block";
   };
 
   function _finderCard(p){
-    const dist = p.distance_km != null ? `<span style="font-size:12px;color:var(--subtle)">${p.distance_km.toFixed(1)} km away</span>` : "";
+    const dist   = (p.dist_km != null) ? `<span style="font-size:12px;color:var(--subtle)">${p.dist_km.toFixed(1)} km</span>` : "";
     const rating = p.rating ? `<span style="font-size:12px;color:#f59e0b">★ ${p.rating}</span>` : "";
-    const addr = p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${p.address}</div>` : "";
+    const addr   = p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">${p.address}</div>` : "";
+    const phone  = p.phone  ? `<div style="margin-top:4px"><a href="tel:${p.phone.replace(/\s/g,'')}" style="font-size:13px;color:var(--accent);font-weight:600;text-decoration:none">📞 ${p.phone}</a></div>` : "";
+    const hours  = p.hours  ? `<div style="font-size:12px;color:var(--subtle);margin-top:2px">🕐 ${p.hours}</div>` : "";
     const dirUrl = (p.lat && p.lon) ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : (p.address ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.address)}` : "");
     const dirBtn = dirUrl ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : "";
-    const web = p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : "";
-    return `<div class="finder-card"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-size:15px;font-weight:700;color:var(--text)">${p.name}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">${dist}${rating}</div></div>${addr}${dirBtn}${web}</div>`;
+    const web    = p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : "";
+    return `<div class="finder-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-size:15px;font-weight:700;color:var(--text);flex:1">${p.name}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">${dist}${rating}</div></div>${addr}${phone}${hours}<div style="display:flex;flex-wrap:wrap;gap:0">${dirBtn}${web}</div></div>`;
   }
 
   function _platformLinks(platforms){
-    if(!platforms||!platforms.length) return "";
-    const links = platforms.map(pl=>`<a href="${pl.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--text)"><span style="font-size:20px">${pl.icon||"🔗"}</span><div><div style="font-size:14px;font-weight:600">${pl.name}</div><div style="font-size:12px;color:var(--subtle)">${pl.desc||""}</div></div></a>`).join("");
+    if(!platforms) return "";
+    // platforms is {nanny:[...], aupair:[...]}
+    let all = [];
+    if(Array.isArray(platforms)) all = platforms;
+    else { all = [...(platforms.nanny||[]), ...(platforms.aupair||[])]; }
+    if(!all.length) return "";
+    const links = all.map(pl=>`<a href="${pl.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:var(--text)"><span style="font-size:20px">${pl.icon||"🔗"}</span><div><div style="font-size:14px;font-weight:600">${pl.name}</div><div style="font-size:12px;color:var(--subtle)">${pl.desc||""}</div></div></a>`).join("");
     return `<div style="margin-top:16px"><div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Online Platforms</div><div style="display:flex;flex-direction:column;gap:8px">${links}</div></div>`;
   }
 

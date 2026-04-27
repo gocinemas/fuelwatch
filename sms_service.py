@@ -2373,7 +2373,66 @@ out center tags;"""
             childcare.append(entry)
     coworking.sort(key=lambda x: x["dist_km"])
     childcare.sort(key=lambda x: x["dist_km"])
-    return {"coworking": coworking[:12], "childcare": childcare[:12]}
+    return {"coworking": coworking[:20], "childcare": childcare[:20]}
+
+
+def _gplaces_details(place_id: str) -> dict:
+    """Fetch phone + website for a Google place_id."""
+    if not _GOOGLE_PLACES_KEY or not place_id:
+        return {}
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/details/json",
+            params={"place_id": place_id, "fields": "formatted_phone_number,website",
+                    "key": _GOOGLE_PLACES_KEY},
+            timeout=5,
+        )
+        res = r.json().get("result", {})
+        return {"phone": res.get("formatted_phone_number",""), "website": res.get("website","")}
+    except Exception:
+        return {}
+
+
+def _finder_cowork_places(lat: float, lon: float) -> list:
+    """Google Places text search for co-working spaces to supplement OSM."""
+    if not _GOOGLE_PLACES_KEY:
+        return []
+    results, seen = [], set()
+    for query in ["coworking space", "shared office space", "serviced office"]:
+        try:
+            r = requests.get(
+                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                params={"query": query, "location": f"{lat},{lon}",
+                        "radius": 10000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+                timeout=8,
+            )
+            for p in r.json().get("results", [])[:6]:
+                name = p.get("name","")
+                if not name or name.lower() in seen:
+                    continue
+                seen.add(name.lower())
+                loc = p.get("geometry",{}).get("location",{})
+                plat, plon = loc.get("lat"), loc.get("lng")
+                dist_km = haversine_km(lat, lon, plat, plon) if plat and plon else 999
+                results.append({
+                    "name": name, "address": p.get("formatted_address",""),
+                    "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
+                    "rating": p.get("rating"), "phone": "", "website": "",
+                    "_place_id": p.get("place_id",""),
+                })
+        except Exception:
+            pass
+    results.sort(key=lambda x: x["dist_km"])
+    top = results[:15]
+    if top:
+        from concurrent.futures import ThreadPoolExecutor as _TPE
+        place_ids = [p.get("_place_id","") for p in top]
+        with _TPE(max_workers=4) as ex:
+            details = list(ex.map(_gplaces_details, place_ids))
+        for item, det in zip(top, details):
+            if det.get("phone"):   item["phone"]   = det["phone"]
+            if det.get("website"): item["website"] = det["website"]
+    return top
 
 
 def _finder_nanny_search(lat: float, lon: float) -> list:
@@ -2388,7 +2447,7 @@ def _finder_nanny_search(lat: float, lon: float) -> list:
                         "radius": 20000, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
                 timeout=8,
             )
-            for p in r.json().get("results", [])[:4]:
+            for p in r.json().get("results", [])[:5]:
                 name = p.get("name","")
                 if not name or name.lower() in seen:
                     continue
@@ -2400,11 +2459,22 @@ def _finder_nanny_search(lat: float, lon: float) -> list:
                     "name": name, "address": p.get("formatted_address",""),
                     "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
                     "rating": p.get("rating"), "website": "", "phone": "",
+                    "_place_id": p.get("place_id",""),
                 })
         except Exception:
             pass
     results.sort(key=lambda x: x["dist_km"])
-    return results[:10]
+    top = results[:15]
+    # Fetch phone + website for top results in parallel
+    if top:
+        from concurrent.futures import ThreadPoolExecutor as _TPE
+        place_ids = [p.get("_place_id","") for p in top]
+        with _TPE(max_workers=4) as ex:
+            details = list(ex.map(_gplaces_details, place_ids))
+        for item, det in zip(top, details):
+            if det.get("phone"):   item["phone"]   = det["phone"]
+            if det.get("website"): item["website"] = det["website"]
+    return top
 
 
 @app.route("/api/finder")
@@ -2422,13 +2492,23 @@ def api_finder():
     if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
         return jsonify(cached[1])
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=2) as ex:
-        osm_f   = ex.submit(_finder_nearby, lat, lon)
-        nanny_f = ex.submit(_finder_nanny_search, lat, lon)
-        osm     = osm_f.result()
-        nannies = nanny_f.result()
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        osm_f    = ex.submit(_finder_nearby, lat, lon)
+        nanny_f  = ex.submit(_finder_nanny_search, lat, lon)
+        cowork_f = ex.submit(_finder_cowork_places, lat, lon)
+        osm      = osm_f.result()
+        nannies  = nanny_f.result()
+        gp_cowork = cowork_f.result()
+    # Merge OSM + Google Places co-working, deduplicate by name
+    osm_cowork = osm.get("coworking", [])
+    seen_names = {p["name"].lower() for p in osm_cowork}
+    for p in gp_cowork:
+        if p["name"].lower() not in seen_names:
+            osm_cowork.append(p)
+            seen_names.add(p["name"].lower())
+    osm_cowork.sort(key=lambda x: x["dist_km"])
     result = {
-        "coworking":      osm.get("coworking", []),
+        "coworking":      osm_cowork[:20],
         "childcare":      osm.get("childcare", []),
         "nanny_agencies": nannies,
         "platforms": {
