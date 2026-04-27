@@ -4433,13 +4433,15 @@
     </div>
 
     <!-- Open Now + Saved controls -->
-    <div id="finder-controls" style="display:none;justify-content:space-between;align-items:center;margin:14px 0">
-      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text)">
-        <input type="checkbox" id="finder-open-now" onchange="finderToggleOpenNow()" style="width:16px;height:16px;cursor:pointer;accent-color:#22c55e">
-        🟢 Open Now
-      </label>
+    <div id="finder-controls" style="display:none;justify-content:space-between;align-items:center;margin:14px 0 4px">
+      <!-- Pill toggle -->
+      <button id="finder-open-now-btn" onclick="finderToggleOpenNow()" style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;border:2px solid #d1fae5;background:#f0fdf4;color:#065f46;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s">
+        <span id="finder-open-now-dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
+        Open Now <span id="finder-open-now-state" style="font-weight:400;opacity:.7">Off</span>
+      </button>
       <button id="finder-saved-btn" onclick="finderShowSaved()" style="display:none;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer"></button>
     </div>
+    <input type="checkbox" id="finder-open-now" style="display:none" onchange="finderToggleOpenNow()">
 
     <!-- Loading -->
     <div id="finder-loading" style="display:none;text-align:center;padding:40px 0;color:var(--subtle)">
@@ -4618,43 +4620,71 @@
     hdrHtml += `<div style="font-size:12px;color:var(--subtle)">${items.length} result${items.length!==1?"s":""} for <strong style="color:var(--text)">${_finderCurrentQ}</strong>${openNow?" · open now":""}</div>`;
     hdr.innerHTML = hdrHtml;
     if(!items.length){
-      list.innerHTML = `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">No results found${openNow?" — try turning off Open Now":""}</div>`;
+      const total = _finderAllResults.length;
+      list.innerHTML = openNow && total
+        ? `<div style="padding:24px 16px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:14px">
+            <div style="font-size:28px;margin-bottom:10px">🔒</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">All ${total} place${total!==1?"s":""} are currently closed</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Turn off Open Now to see them anyway</div>
+            <button onclick="finderToggleOpenNow()" style="padding:9px 20px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer">Show All ${total}</button>
+           </div>`
+        : `<div style="padding:30px 0;text-align:center;color:var(--subtle);font-size:14px">No results found nearby</div>`;
     } else {
       list.innerHTML = items.map(_finderCard).join("");
     }
     document.getElementById("finder-results").style.display = "block";
   }
 
-  window.finderToggleOpenNow = function(){ if(_finderAllResults.length) _finderRender(); };
+  window.finderToggleOpenNow = function(){
+    const cb  = document.getElementById("finder-open-now");
+    const btn = document.getElementById("finder-open-now-btn");
+    const dot = document.getElementById("finder-open-now-dot");
+    const lbl = document.getElementById("finder-open-now-state");
+    cb.checked = !cb.checked;
+    if(cb.checked){
+      btn.style.background="#dcfce7"; btn.style.borderColor="#4ade80"; btn.style.color="#14532d";
+      dot.style.background="#16a34a";
+      lbl.textContent="On";
+    } else {
+      btn.style.background="#f0fdf4"; btn.style.borderColor="#d1fae5"; btn.style.color="#065f46";
+      dot.style.background="#22c55e";
+      lbl.textContent="Off";
+    }
+    if(_finderAllResults.length) _finderRender();
+  };
 
   /* ── result card ── */
   function _finderCard(p){
     const key  = (p._key || (p.name + "|" + (p.address||""))).replace(/"/g,"");
-    const dist = p.dist_km != null ? `<span style="font-size:12px;color:var(--subtle)">${p.dist_km.toFixed(1)} km</span>` : "";
-    const stars= p.rating ? `<span style="font-size:12px;color:#f59e0b">★ ${p.rating}${p.review_count?` <span style="font-size:11px;color:var(--subtle)">(${p.review_count})</span>`:""}</span>` : "";
-    const openBadge = p.open_now===true  ? `<span style="padding:2px 8px;border-radius:20px;background:#d1fae5;color:#065f46;font-size:11px;font-weight:700;margin-right:6px">Open</span>`
-                    : p.open_now===false ? `<span style="padding:2px 8px;border-radius:20px;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;margin-right:6px">Closed</span>` : "";
+    const dist = p.dist_km != null ? `<span style="font-size:12px;font-weight:600;color:var(--muted)">${p.dist_km.toFixed(1)} km away</span>` : "";
+    const stars= p.rating ? `<span style="font-size:13px;color:#f59e0b;font-weight:700">★ ${p.rating}</span>${p.review_count?`<span style="font-size:11px;color:var(--subtle);margin-left:3px">(${p.review_count})</span>`:""}` : "";
+    const price = p.price_level != null ? `<span style="font-size:12px;color:var(--muted);margin-left:4px">${"£".repeat(p.price_level)||""}</span>` : "";
+    const openBadge = p.open_now===true  ? `<span style="padding:3px 9px;border-radius:20px;background:#dcfce7;color:#15803d;font-size:12px;font-weight:700">● Open</span>`
+                    : p.open_now===false ? `<span style="padding:3px 9px;border-radius:20px;background:#fee2e2;color:#b91c1c;font-size:12px;font-weight:700">● Closed</span>` : "";
     let hoursStr = "";
     if(p.hours_detail && p.hours_detail.length===7){
       const wdIdx=[6,0,1,2,3,4,5][new Date().getDay()];
       hoursStr = (p.hours_detail[wdIdx]||"").replace(/^[^:]+:\s*/,"");
     }
     const dirUrl = (p.lat && p.lon) ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : "";
-    // Escape for JSON in data attr
     const placeJson = JSON.stringify({_key:key, name:p.name||"", address:p.address||"", phone:p.phone||"", website:p.website||"", lat:p.lat, lon:p.lon}).replace(/"/g,"&quot;");
     const isSaved = _isSaved(key);
     return `<div class="finder-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3">${p.name}</div>
-          ${p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${p.address}</div>` : ""}
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:700;color:var(--text)">${p.name}</span>
+            ${openBadge}
+          </div>
+          ${p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">📍 ${p.address}</div>` : ""}
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
-          ${dist}${stars}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">
+          ${dist}
+          <div style="display:flex;align-items:center;gap:2px">${stars}${price}</div>
           <button data-place="${placeJson}" onclick="finderToggleSave(this)" title="${isSaved?"Unsave":"Save"}" style="background:none;border:none;cursor:pointer;font-size:18px;padding:0;line-height:1">${isSaved?"⭐":"☆"}</button>
         </div>
       </div>
-      ${(openBadge||hoursStr) ? `<div style="margin-top:6px;font-size:12px;color:var(--subtle)">${openBadge}${hoursStr?`🕐 Today: ${hoursStr}`:""}</div>` : ""}
+      ${hoursStr ? `<div style="margin-top:7px;font-size:12px;color:var(--subtle)">🕐 Today: <strong style="color:var(--text)">${hoursStr}</strong></div>` : ""}
       ${p.phone ? `<div style="margin-top:6px"><a href="tel:${p.phone.replace(/\s/g,"")}" style="font-size:13px;color:var(--accent);font-weight:600;text-decoration:none">📞 ${p.phone}</a></div>` : ""}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
         ${dirUrl    ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : ""}

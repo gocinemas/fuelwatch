@@ -2600,6 +2600,7 @@ def _gplaces_collect(raw_list: list, lat: float, lon: float, seen: set, results:
             "name": name, "address": addr,
             "lat": plat, "lon": plon, "dist_km": round(dist_km, 2),
             "rating": p.get("rating"), "review_count": p.get("user_ratings_total", 0),
+            "price_level": p.get("price_level"),
             "open_now": p.get("opening_hours", {}).get("open_now"),
             "phone": "", "website": "", "hours_detail": [],
             "_place_id": p.get("place_id", ""),
