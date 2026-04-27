@@ -649,6 +649,7 @@
         style="width:100%;margin-bottom:8px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">
         📍 Use my current location
       </button>
+      <div id="elections-loc-err" style="display:none;font-size:13px;color:#ef4444;margin-bottom:8px"></div>
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <input id="elections-input" type="text" placeholder="or enter postcode, e.g. TW3 3SF"
           style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
@@ -2211,25 +2212,45 @@
   let _elecIdCounter = 0;
   async function electionsUseLocation() {
     const btn = document.getElementById("elections-loc-btn");
-    if (!navigator.geolocation) return;
+    const errEl = document.getElementById("elections-loc-err");
+    errEl.style.display = "none";
+    if (!navigator.geolocation) {
+      errEl.textContent = "Location not available on this browser.";
+      errEl.style.display = "block";
+      return;
+    }
     btn.textContent = "⏳ Getting location…";
     btn.disabled = true;
     navigator.geolocation.getCurrentPosition(
       async pos => {
+        btn.textContent = "⏳ Finding postcode…";
         try {
           const r = await fetch(`https://api.postcodes.io/postcodes?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}`);
           const d = await r.json();
           const pc = d.result?.[0]?.postcode;
           if (pc) {
             document.getElementById("elections-input").value = pc;
+            errEl.style.display = "none";
             searchElections();
+          } else {
+            errEl.textContent = "Couldn't find a UK postcode for your location. Please enter one manually.";
+            errEl.style.display = "block";
           }
-        } catch(e) {}
+        } catch(e) {
+          errEl.textContent = "Postcode lookup failed. Please enter your postcode manually.";
+          errEl.style.display = "block";
+        }
         btn.textContent = "📍 Use my current location";
         btn.disabled = false;
       },
-      () => { btn.textContent = "📍 Use my current location"; btn.disabled = false; },
-      {timeout: 10000}
+      err => {
+        btn.textContent = "📍 Use my current location";
+        btn.disabled = false;
+        const msgs = {1:"Location permission denied — please allow access and try again.", 2:"Location unavailable. Please enter your postcode manually.", 3:"Location request timed out. Please try again."};
+        errEl.textContent = msgs[err.code] || "Could not get location. Please enter your postcode manually.";
+        errEl.style.display = "block";
+      },
+      {timeout: 10000, enableHighAccuracy: false}
     );
   }
 
