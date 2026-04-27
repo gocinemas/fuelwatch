@@ -4370,58 +4370,65 @@
       <button onclick="finderSearch()" style="padding:11px 16px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:16px;cursor:pointer">🔍</button>
     </div>
 
-    <!-- Category chips -->
+    <!-- Category tabs + chips -->
     <div id="finder-cats">
-      <div class="fcat-group">
-        <div class="fcat-label">🔧 Trades</div>
-        <div class="fcat-chips">
-          <button class="fcat" data-q="plumber" onclick="finderCatSearch(this)">🔧 Plumber</button>
-          <button class="fcat" data-q="electrician" onclick="finderCatSearch(this)">⚡ Electrician</button>
-          <button class="fcat" data-q="gas engineer boiler repair" onclick="finderCatSearch(this)">🔥 Gas / Boiler</button>
-          <button class="fcat" data-q="builder" onclick="finderCatSearch(this)">🔨 Builder</button>
-          <button class="fcat" data-q="painter decorator" onclick="finderCatSearch(this)">🎨 Decorator</button>
-          <button class="fcat" data-q="locksmith" onclick="finderCatSearch(this)">🔒 Locksmith</button>
-          <button class="fcat" data-q="handyman" onclick="finderCatSearch(this)">🏗️ Handyman</button>
-        </div>
+      <!-- Tab bar -->
+      <div style="display:flex;overflow-x:auto;gap:6px;margin-bottom:12px;padding-bottom:2px;scrollbar-width:none" class="fcat-tabrow">
+        <button class="fcat-tab fcat-tab-on" data-tab="trades"  onclick="finderSwitchTab('trades',this)">🔧 Trades</button>
+        <button class="fcat-tab"             data-tab="health"  onclick="finderSwitchTab('health',this)">🏥 Health</button>
+        <button class="fcat-tab"             data-tab="home"    onclick="finderSwitchTab('home',this)">🏠 Home</button>
+        <button class="fcat-tab"             data-tab="pro"     onclick="finderSwitchTab('pro',this)">👔 Pro</button>
+        <button class="fcat-tab"             data-tab="family"  onclick="finderSwitchTab('family',this)">👶 Family</button>
       </div>
-      <div class="fcat-group">
-        <div class="fcat-label">🏥 Health</div>
-        <div class="fcat-chips">
-          <button class="fcat" data-q="GP surgery doctor" onclick="finderCatSearch(this)">🏥 GP Surgery</button>
-          <button class="fcat" data-q="dentist" onclick="finderCatSearch(this)">🦷 Dentist</button>
-          <button class="fcat" data-q="pharmacy chemist" onclick="finderCatSearch(this)">💊 Pharmacy</button>
-          <button class="fcat" data-q="optician optometrist" onclick="finderCatSearch(this)">👁️ Optician</button>
-          <button class="fcat" data-q="physiotherapy physio" onclick="finderCatSearch(this)">🏋️ Physio</button>
-        </div>
+      <!-- Chip panels (one visible at a time) -->
+      <div id="fcat-panel-trades" class="fcat-panel fcat-chips">
+        <button class="fcat" data-q="plumber"                      onclick="finderCatSearch(this)">🔧 Plumber</button>
+        <button class="fcat" data-q="electrician"                  onclick="finderCatSearch(this)">⚡ Electrician</button>
+        <button class="fcat" data-q="gas engineer boiler repair"   onclick="finderCatSearch(this)">🔥 Gas / Boiler</button>
+        <button class="fcat" data-q="builder"                      onclick="finderCatSearch(this)">🔨 Builder</button>
+        <button class="fcat" data-q="painter decorator"            onclick="finderCatSearch(this)">🎨 Decorator</button>
+        <button class="fcat" data-q="locksmith"                    onclick="finderCatSearch(this)">🔒 Locksmith</button>
+        <button class="fcat" data-q="handyman"                     onclick="finderCatSearch(this)">🏗️ Handyman</button>
+        <button class="fcat" data-q="roofer roofing"               onclick="finderCatSearch(this)">🏠 Roofer</button>
+        <button class="fcat" data-q="tiler tiling"                 onclick="finderCatSearch(this)">🪟 Tiler</button>
+        <button class="fcat" data-q="plasterer plastering"         onclick="finderCatSearch(this)">🖌️ Plasterer</button>
       </div>
-      <div class="fcat-group">
-        <div class="fcat-label">🏠 Home &amp; Life</div>
-        <div class="fcat-chips">
-          <button class="fcat" data-q="cleaning service" onclick="finderCatSearch(this)">🧹 Cleaning</button>
-          <button class="fcat" data-q="gardener landscaping" onclick="finderCatSearch(this)">🌿 Gardener</button>
-          <button class="fcat" data-q="pest control" onclick="finderCatSearch(this)">🪲 Pest Control</button>
-          <button class="fcat" data-q="veterinary vet" onclick="finderCatSearch(this)">🐾 Vet</button>
-          <button class="fcat" data-q="dog walker pet sitting" onclick="finderCatSearch(this)">🐕 Dog Walker</button>
-          <button class="fcat" data-q="tutor tutoring" onclick="finderCatSearch(this)">📚 Tutor</button>
-          <button class="fcat" data-q="gym fitness centre" onclick="finderCatSearch(this)">💪 Gym</button>
-        </div>
+      <div id="fcat-panel-health" class="fcat-panel fcat-chips" style="display:none">
+        <button class="fcat" data-q="GP surgery doctor"            onclick="finderCatSearch(this)">🏥 GP Surgery</button>
+        <button class="fcat" data-q="dentist"                      onclick="finderCatSearch(this)">🦷 Dentist</button>
+        <button class="fcat" data-q="pharmacy chemist"             onclick="finderCatSearch(this)">💊 Pharmacy</button>
+        <button class="fcat" data-q="optician optometrist"         onclick="finderCatSearch(this)">👁️ Optician</button>
+        <button class="fcat" data-q="physiotherapy physio"         onclick="finderCatSearch(this)">🏋️ Physio</button>
+        <button class="fcat" data-q="mental health counsellor therapist" onclick="finderCatSearch(this)">🧠 Therapist</button>
+        <button class="fcat" data-q="chiropractor osteopath"       onclick="finderCatSearch(this)">💆 Chiro / Osteo</button>
       </div>
-      <div class="fcat-group">
-        <div class="fcat-label">👔 Professional</div>
-        <div class="fcat-chips">
-          <button class="fcat" data-q="solicitor lawyer" onclick="finderCatSearch(this)">⚖️ Solicitor</button>
-          <button class="fcat" data-q="accountant" onclick="finderCatSearch(this)">💰 Accountant</button>
-          <button class="fcat" data-q="estate agent" onclick="finderCatSearch(this)">🏘️ Estate Agent</button>
-          <button class="fcat" data-q="financial advisor IFA" onclick="finderCatSearch(this)">💼 Financial Advisor</button>
-        </div>
+      <div id="fcat-panel-home" class="fcat-panel fcat-chips" style="display:none">
+        <button class="fcat" data-q="cleaning service"             onclick="finderCatSearch(this)">🧹 Cleaning</button>
+        <button class="fcat" data-q="gardener landscaping"         onclick="finderCatSearch(this)">🌿 Gardener</button>
+        <button class="fcat" data-q="pest control"                 onclick="finderCatSearch(this)">🪲 Pest Control</button>
+        <button class="fcat" data-q="veterinary vet"               onclick="finderCatSearch(this)">🐾 Vet</button>
+        <button class="fcat" data-q="dog walker pet sitting"       onclick="finderCatSearch(this)">🐕 Dog Walker</button>
+        <button class="fcat" data-q="tutor tutoring"               onclick="finderCatSearch(this)">📚 Tutor</button>
+        <button class="fcat" data-q="gym fitness centre"           onclick="finderCatSearch(this)">💪 Gym</button>
+        <button class="fcat" data-q="car mechanic garage"          onclick="finderCatSearch(this)">🚗 Car Mechanic</button>
+        <button class="fcat" data-q="removal company"              onclick="finderCatSearch(this)">📦 Removals</button>
       </div>
-      <div class="fcat-group">
-        <div class="fcat-label">👶 Family &amp; Work</div>
-        <div class="fcat-chips">
-          <button class="fcat" data-q="nursery childcare" onclick="finderCatSearch(this)">🏫 Childcare</button>
-          <button class="fcat" data-q="nanny agency" onclick="finderCatSearch(this)">🤱 Nanny Agency</button>
-          <button class="fcat" data-q="coworking space shared office" onclick="finderCatSearch(this)">🖥️ Co-working</button>
-        </div>
+      <div id="fcat-panel-pro" class="fcat-panel fcat-chips" style="display:none">
+        <button class="fcat" data-q="solicitor lawyer"             onclick="finderCatSearch(this)">⚖️ Solicitor</button>
+        <button class="fcat" data-q="accountant"                   onclick="finderCatSearch(this)">💰 Accountant</button>
+        <button class="fcat" data-q="estate agent"                 onclick="finderCatSearch(this)">🏘️ Estate Agent</button>
+        <button class="fcat" data-q="financial advisor IFA"        onclick="finderCatSearch(this)">💼 Financial Advisor</button>
+        <button class="fcat" data-q="mortgage broker"              onclick="finderCatSearch(this)">🏦 Mortgage Broker</button>
+        <button class="fcat" data-q="insurance broker"             onclick="finderCatSearch(this)">🛡️ Insurance</button>
+        <button class="fcat" data-q="recruitment agency"           onclick="finderCatSearch(this)">🤝 Recruitment</button>
+      </div>
+      <div id="fcat-panel-family" class="fcat-panel fcat-chips" style="display:none">
+        <button class="fcat" data-q="nursery childcare"            onclick="finderCatSearch(this)">🏫 Childcare</button>
+        <button class="fcat" data-q="nanny agency"                 onclick="finderCatSearch(this)">🤱 Nanny Agency</button>
+        <button class="fcat" data-q="coworking space shared office" onclick="finderCatSearch(this)">🖥️ Co-working</button>
+        <button class="fcat" data-q="primary school"               onclick="finderCatSearch(this)">🏫 Primary School</button>
+        <button class="fcat" data-q="after school club"            onclick="finderCatSearch(this)">🌟 After School</button>
+        <button class="fcat" data-q="children's activity class"    onclick="finderCatSearch(this)">🎨 Kids Activities</button>
       </div>
     </div>
 
@@ -4450,11 +4457,11 @@
 </div>
 
 <style>
-.fcat-group{margin-bottom:10px}
-.fcat-label{font-size:10px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
-.fcat-chips{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:7px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.fcat-chips::-webkit-scrollbar{display:none}
-.fcat{flex-shrink:0;white-space:nowrap;padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s;line-height:1}
+.fcat-tabrow::-webkit-scrollbar{display:none}
+.fcat-tab{flex-shrink:0;white-space:nowrap;padding:8px 16px;border-radius:10px;border:none;background:transparent;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+.fcat-tab.fcat-tab-on{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.fcat-chips{display:flex;flex-wrap:wrap;gap:8px;padding:4px 0 8px;min-height:44px}
+.fcat{flex-shrink:0;white-space:nowrap;padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s;line-height:1}
 .fcat.fcat-on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .finder-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
 </style>
@@ -4655,6 +4662,14 @@
       </div>
     </div>`;
   }
+
+  window.finderSwitchTab = function(tab, btn){
+    document.querySelectorAll(".fcat-tab").forEach(b=>b.classList.remove("fcat-tab-on"));
+    btn.classList.add("fcat-tab-on");
+    document.querySelectorAll(".fcat-panel").forEach(p=>p.style.display="none");
+    const panel = document.getElementById("fcat-panel-"+tab);
+    if(panel) panel.style.display="flex";
+  };
 
   _updateSavedBtn();
 
