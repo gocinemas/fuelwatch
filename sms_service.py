@@ -2321,6 +2321,102 @@ def api_places():
     return jsonify(result)
 
 
+_EVENTBRITE_KEY = os.environ.get("EVENTBRITE_API_KEY", "")
+
+
+def _kids_venues_gplaces(lat: float, lon: float) -> list:
+    """Google Places search for kids activity venues (soft play, trampoline parks, etc.)."""
+    if not _GOOGLE_PLACES_KEY:
+        return []
+    queries = [
+        "soft play centre", "trampoline park", "children's activity centre",
+        "adventure playground", "children's farm", "mini golf",
+        "bowling alley", "children's museum", "indoor play centre",
+        "family entertainment centre", "children's theatre", "kids club",
+    ]
+    results, seen = [], set()
+    from concurrent.futures import ThreadPoolExecutor as _TPE
+    with _TPE(max_workers=8) as ex:
+        futs = [ex.submit(_gplaces_text_search, q, lat, lon, 15000) for q in queries]
+        for f in futs:
+            _gplaces_collect(f.result(), lat, lon, seen, results)
+    results.sort(key=lambda x: x["dist_km"])
+    top = results[:30]
+    if top:
+        with _TPE(max_workers=8) as ex:
+            details = list(ex.map(_gplaces_details, [p["_place_id"] for p in top]))
+        for item, det in zip(top, details):
+            if det.get("phone"):        item["phone"]        = det["phone"]
+            if det.get("website"):      item["website"]      = det["website"]
+            if det.get("hours_detail"): item["hours_detail"] = det["hours_detail"]
+    return top
+
+
+def _kids_events_eventbrite(lat: float, lon: float) -> list:
+    """Fetch upcoming family/kids events from Eventbrite (requires EVENTBRITE_API_KEY)."""
+    if not _EVENTBRITE_KEY:
+        return []
+    try:
+        r = requests.get(
+            "https://www.eventbriteapi.com/v3/events/search/",
+            headers={"Authorization": f"Bearer {_EVENTBRITE_KEY}"},
+            params={
+                "q": "kids children family activities",
+                "location.latitude":  lat,
+                "location.longitude": lon,
+                "location.within":    "10km",
+                "categories":         "115",   # Family & Education
+                "expand":             "venue",
+                "page_size":          20,
+                "sort_by":            "date",
+            },
+            timeout=8,
+        )
+        events = []
+        for e in r.json().get("events", []):
+            venue = e.get("venue") or {}
+            addr  = venue.get("address") or {}
+            name  = (e.get("name") or {}).get("text", "")
+            if not name:
+                continue
+            events.append({
+                "name":       name,
+                "date":       (e.get("start") or {}).get("local", "")[:16].replace("T", " "),
+                "url":        e.get("url", ""),
+                "venue_name": venue.get("name", ""),
+                "address":    addr.get("localized_address_display", ""),
+                "free":       e.get("is_free", False),
+            })
+        return events
+    except Exception:
+        return []
+
+
+@app.route("/api/kids-activities")
+def api_kids_activities():
+    lat_p = request.args.get("lat", "")
+    lon_p = request.args.get("lon", "")
+    if not lat_p or not lon_p:
+        return jsonify({"error": "lat/lon required"}), 400
+    try:
+        lat, lon = float(lat_p), float(lon_p)
+    except ValueError:
+        return jsonify({"error": "Invalid coordinates"}), 400
+    cache_key = f"kids1:{lat:.4f},{lon:.4f}"
+    cached = _PLACES_CACHE.get(cache_key)
+    if cached and (time.time() - cached[0]) < _PLACES_CACHE_TTL:
+        return jsonify(cached[1])
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        venues_f = ex.submit(_kids_venues_gplaces, lat, lon)
+        events_f = ex.submit(_kids_events_eventbrite, lat, lon)
+        venues = venues_f.result()
+        events = events_f.result()
+    result = {"venues": venues, "events": events}
+    _PLACES_CACHE[cache_key] = (time.time(), result)
+    return jsonify(result)
+
+
 def _finder_nearby(lat: float, lon: float, radius: int = 10000) -> dict:
     query = f"""[out:json][timeout:20];
 (

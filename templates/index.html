@@ -855,6 +855,7 @@
           </div>
           </div>
           <div id="places-list" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div id="places-kidsact" style="display:none;margin-top:18px"></div>
           <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">Data: OpenStreetMap contributors</div>
         </div>
       </div>
@@ -3246,11 +3247,76 @@
       document.getElementById("places-result").classList.remove("hidden");
       // Trigger food group renders (fills lists + kicks off rating fetches)
       for (const groupId of Object.keys(_nearbyFoodGroups)) _renderFoodGroupList(groupId);
+      // Load kids activities in background (non-blocking)
+      _loadKidsActivities(lat, lon);
     } catch(e) {
       document.getElementById("places-loading").classList.add("hidden");
       document.getElementById("places-error").textContent = "Could not load place details. Try again.";
       document.getElementById("places-error").classList.remove("hidden");
     }
+  }
+
+  async function _loadKidsActivities(lat, lon) {
+    const wrap = document.getElementById("places-kidsact");
+    if (!wrap) return;
+    wrap.style.display = "";
+    wrap.innerHTML = `<div style="font-size:12px;color:var(--subtle);padding:8px 0">⏳ Loading kids activities…</div>`;
+    try {
+      const r = await fetch(`/api/kids-activities?lat=${lat}&lon=${lon}`);
+      const d = await r.json();
+      if (d.error || (!d.venues?.length && !d.events?.length)) {
+        wrap.style.display = "none"; return;
+      }
+      const wdIdx = [6,0,1,2,3,4,5][new Date().getDay()];
+
+      function _kVenueCard(v) {
+        const dist  = v.dist_km != null ? `${v.dist_km.toFixed(1)} km` : "";
+        const stars = v.rating ? `★ ${v.rating}${v.review_count ? ` (${v.review_count})` : ""}` : "";
+        let todayH = "";
+        if (v.hours_detail && v.hours_detail.length === 7) {
+          todayH = (v.hours_detail[wdIdx] || "").replace(/^[^:]+:\s*/,"");
+        }
+        const dirUrl = v.lat && v.lon ? `https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lon}` : "";
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div style="font-size:14px;font-weight:700;color:var(--text);flex:1">${v.name}</div>
+            <div style="text-align:right;flex-shrink:0">
+              ${dist ? `<div style="font-size:11px;color:var(--subtle)">${dist}</div>` : ""}
+              ${stars ? `<div style="font-size:11px;color:#f59e0b">${stars}</div>` : ""}
+            </div>
+          </div>
+          ${v.address ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">${v.address}</div>` : ""}
+          ${todayH    ? `<div style="font-size:12px;color:var(--subtle);margin-top:3px">🕐 Today: ${todayH}</div>` : ""}
+          ${v.phone   ? `<div style="margin-top:6px"><a href="tel:${v.phone.replace(/\s/g,'')}" style="font-size:13px;color:var(--accent);font-weight:600;text-decoration:none">📞 ${v.phone}</a></div>` : ""}
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+            ${dirUrl    ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="padding:5px 11px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : ""}
+            ${v.website ? `<a href="${v.website}" target="_blank" rel="noopener" style="padding:5px 11px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : ""}
+          </div>
+        </div>`;
+      }
+
+      function _kEventCard(ev) {
+        const dateStr = ev.date ? new Date(ev.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "";
+        const freeBadge = ev.free ? `<span style="background:#d1fae5;color:#065f46;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px">FREE</span>` : "";
+        return `<a href="${ev.url}" target="_blank" rel="noopener" style="display:block;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${ev.name}${freeBadge}</div>
+          ${dateStr    ? `<div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:3px">📅 ${dateStr}</div>` : ""}
+          ${ev.venue_name ? `<div style="font-size:12px;color:var(--muted)">📍 ${ev.venue_name}${ev.address ? ` · ${ev.address.split(",")[0]}` : ""}</div>` : ""}
+          <div style="font-size:11px;color:var(--subtle);margin-top:6px">Tap to view on Eventbrite ↗</div>
+        </a>`;
+      }
+
+      let html = `<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">🎉 Kids Activities Nearby</div>`;
+      if (d.venues?.length) {
+        html += `<div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏟️ Activity Venues</div>`;
+        html += d.venues.map(_kVenueCard).join("");
+      }
+      if (d.events?.length) {
+        html += `<div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px">📅 Upcoming Events</div>`;
+        html += d.events.map(_kEventCard).join("");
+      }
+      wrap.innerHTML = html;
+    } catch(e) { wrap.style.display = "none"; }
   }
 
   function placesBackToSearch() {
