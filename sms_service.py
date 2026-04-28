@@ -3628,6 +3628,27 @@ def api_crime():
     return jsonify(data)
 
 
+@app.route("/api/planning")
+def api_planning():
+    """Planning applications from planning.data.gov.uk for a postcode's council area."""
+    raw_pc = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not raw_pc:
+        return jsonify({"error": "Postcode required."}), 400
+    result = _resolve_postcode(raw_pc)
+    if not result:
+        return jsonify({"error": "Postcode not found."}), 404
+    postcode, lat, lon, pc_fmt = result
+    try:
+        r = requests.get(f"https://api.postcodes.io/postcodes/{raw_pc}", timeout=6)
+        codes = (r.json().get("result") or {}).get("codes", {})
+        council_code = codes.get("admin_district", "")
+    except Exception:
+        council_code = ""
+    from search import fetch_planning_data
+    data = fetch_planning_data(lat, lon, council_code)
+    return jsonify(data)
+
+
 def _normalize_gbook(item):
     vi = item.get("volumeInfo", {})
     isbns = [x["identifier"] for x in vi.get("industryIdentifiers", []) if x.get("type") in ("ISBN_13", "ISBN_10")]

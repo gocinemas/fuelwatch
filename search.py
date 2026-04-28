@@ -1848,6 +1848,83 @@ def fetch_crime_data(lat: float, lon: float) -> dict:
     return result
 
 
+_PLANNING_CACHE: dict = {}
+_PLANNING_CACHE_TTL = 3600  # 1 hour
+
+
+def fetch_planning_data(lat: float, lon: float, council_code: str) -> dict:
+    """Fetch planning applications from planning.data.gov.uk for the council area."""
+    import datetime
+
+    if not council_code:
+        return {"applications": [], "pending_count": 0, "decided_count": 0, "council_code": ""}
+
+    cache_key = f"planning_{council_code}"
+    cached = _PLANNING_CACHE.get(cache_key)
+    if cached and (time.time() - cached["ts"]) < _PLANNING_CACHE_TTL:
+        return cached["data"]
+
+    try:
+        r = requests.get(
+            "https://www.planning.data.gov.uk/entity.json",
+            params={
+                "dataset": "planning-application",
+                "geometry_curie": f"statistical-geography:{council_code}",
+                "limit": 100,
+                "fields": "reference,description,decision-date,point,entry-date",
+            },
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return {"applications": [], "pending_count": 0, "decided_count": 0, "council_code": council_code}
+
+        entities = r.json().get("entities", [])
+
+        apps = []
+        for e in entities:
+            ref = e.get("reference", "") or ""
+            desc = (e.get("description", "") or "").strip()
+            decision_date = e.get("decision-date", "") or ""
+            entry_date = e.get("entry-date", "") or ""
+            point_str = e.get("point", "") or ""
+
+            app_lat, app_lon = None, None
+            if point_str.startswith("POINT"):
+                try:
+                    coords = point_str.replace("POINT", "").strip(" ()").split()
+                    if len(coords) == 2:
+                        app_lon, app_lat = float(coords[0]), float(coords[1])
+                except Exception:
+                    pass
+
+            apps.append({
+                "reference":     ref,
+                "description":   desc[:250] if desc else "No description",
+                "decision_date": decision_date,
+                "entry_date":    entry_date,
+                "pending":       not bool(decision_date),
+                "lat":           app_lat,
+                "lon":           app_lon,
+            })
+
+        # Sort: pending first (by entry-date desc), then decided (by decision-date desc)
+        pending = sorted([a for a in apps if a["pending"]], key=lambda x: x["entry_date"], reverse=True)
+        decided = sorted([a for a in apps if not a["pending"]], key=lambda x: x["decision_date"], reverse=True)
+
+        result = {
+            "applications":  (pending + decided)[:50],
+            "pending_count": len(pending),
+            "decided_count": len(decided),
+            "council_code":  council_code,
+        }
+
+        _PLANNING_CACHE[cache_key] = {"ts": time.time(), "data": result}
+        return result
+
+    except Exception as e:
+        return {"applications": [], "pending_count": 0, "decided_count": 0, "council_code": council_code, "error": str(e)}
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main():
