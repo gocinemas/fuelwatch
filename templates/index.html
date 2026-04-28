@@ -4268,14 +4268,10 @@
         style="padding:11px 18px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">Search</button>
     </div>
 
-    <!-- Scan buttons (shown by JS based on capability) -->
-    <label id="book-scan-label" for="book-scan-file"
-      style="display:none;width:100%;padding:11px;border-radius:12px;border:1.5px dashed #7c3aed;background:#f5f3ff;color:#6d28d9;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-sizing:border-box;text-align:center">
-      📸 Tap to scan book barcode
-    </label>
+    <!-- Scan button — always visible, handles live/photo internally -->
     <button id="book-scan-btn" onclick="bookToggleScanner()"
-      style="display:none;width:100%;padding:11px;border-radius:12px;border:1.5px dashed #7c3aed;background:#f5f3ff;color:#6d28d9;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">
-      📷 Scan barcode (live)
+      style="display:block;width:100%;padding:11px;border-radius:12px;border:1.5px dashed #7c3aed;background:#f5f3ff;color:#6d28d9;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-sizing:border-box">
+      📷 Scan ISBN barcode
     </button>
     <input id="book-scan-file" type="file" accept="image/*" capture="environment" style="display:none" onchange="bookScanFromFile(this)">
 
@@ -4606,25 +4602,27 @@
     }, 200);
   };
 
-  /* ── Barcode scanning (reuse BarcodeDetector / file path) ── */
-  (function initBookScanner(){
-    if ("BarcodeDetector" in window) {
-      document.getElementById("book-scan-btn").style.display = "";
-    } else {
-      document.getElementById("book-scan-label").style.display = "";
-    }
-  })();
-
   window.bookToggleScanner = async function(){
     const wrap = document.getElementById("book-scan-wrap");
-    if (wrap.style.display !== "none") { bookStopScanner(); return; }
+    const btn  = document.getElementById("book-scan-btn");
+
+    // If camera is active, stop it
+    if (_bookScanStream) { bookStopScanner(); return; }
+
+    // No BarcodeDetector → fall back to photo upload immediately
+    if (!("BarcodeDetector" in window)) {
+      document.getElementById("book-scan-file").click();
+      return;
+    }
+
+    btn.textContent = "⏳ Starting camera…";
     try {
       const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
       _bookScanStream = stream;
       const vid = document.getElementById("book-scan-video");
       vid.srcObject = stream;
-      wrap.style.display = "";
-      document.getElementById("book-scan-btn").textContent = "⏹ Stop scanner";
+      wrap.style.display = "block";
+      btn.textContent = "⏹ Stop scanning";
       const detector = new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
       (async function loop(){
         if (!_bookScanStream) return;
@@ -4632,30 +4630,30 @@
           const codes = await detector.detect(vid);
           if (codes.length) {
             bookStopScanner();
-            const isbn = codes[0].rawValue.replace(/[^0-9]/g,"");
-            await _handleScannedISBN(isbn);
+            await _handleScannedISBN(codes[0].rawValue.replace(/[^0-9]/g,""));
             return;
           }
         } catch(_){}
         requestAnimationFrame(loop);
       })();
     } catch(e){
-      document.getElementById("book-scan-btn").style.display = "none";
-      document.getElementById("book-scan-label").style.display = "";
+      // Camera denied or unavailable → fall back to photo upload
+      btn.textContent = "📷 Scan ISBN barcode";
+      document.getElementById("book-scan-file").click();
     }
   };
 
   window.bookStopScanner = function(){
     if (_bookScanStream){ _bookScanStream.getTracks().forEach(t=>t.stop()); _bookScanStream = null; }
     document.getElementById("book-scan-wrap").style.display = "none";
-    document.getElementById("book-scan-btn").textContent = "📷 Scan barcode (live)";
+    document.getElementById("book-scan-btn").textContent = "📷 Scan ISBN barcode";
   };
 
   window.bookScanFromFile = async function(input){
     const file = input.files[0];
     if (!file) return;
     input.value = "";
-    document.getElementById("book-loading").style.display = "";
+    document.getElementById("book-loading").style.display = "block";
     document.getElementById("book-error").style.display = "none";
     let isbn = null;
 
@@ -4685,18 +4683,18 @@
     } else {
       document.getElementById("book-loading").style.display = "none";
       document.getElementById("book-error").textContent = "No barcode detected. Make sure the ISBN barcode is clear and well-lit, or type the title above.";
-      document.getElementById("book-error").style.display = "";
+      document.getElementById("book-error").style.display = "block";
     }
   };
 
   async function _handleScannedISBN(isbn){
-    document.getElementById("book-loading").style.display = "";
+    document.getElementById("book-loading").style.display = "block";
     const bk = await _fetchByISBN(isbn);
     document.getElementById("book-loading").style.display = "none";
     if (bk){ _showDetail(bk); }
     else {
       document.getElementById("book-error").textContent = `ISBN ${isbn} not found. Try searching by title.`;
-      document.getElementById("book-error").style.display = "";
+      document.getElementById("book-error").style.display = "block";
       document.getElementById("book-input").value = isbn;
     }
   }
