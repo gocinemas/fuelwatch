@@ -438,42 +438,57 @@
       </div>
       <div id="report-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
       <div id="report-results" class="hidden">
+        <!-- Vertical tab layout -->
+        <div style="display:flex;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:8px">
 
-        <!-- House Prices -->
-        <div id="report-house" class="hidden bg-white rounded-2xl shadow p-5 mb-2">
-          <h3 class="font-bold text-gray-800 mb-3">🏠 House Prices</h3>
-          <div id="report-house-list" class="text-sm"></div>
+          <!-- Left tab rail -->
+          <div style="display:flex;flex-direction:column;border-right:1px solid var(--border);background:#f9f8f6;flex-shrink:0;width:72px">
+            <button class="rptab rptab-on" data-tab="house" onclick="reportTabSwitch('house',this)">
+              <span style="font-size:22px">🏠</span>
+              <span class="rptab-lbl">Prices</span>
+            </button>
+            <button class="rptab" data-tab="schools" onclick="reportTabSwitch('schools',this)">
+              <span style="font-size:22px">🎓</span>
+              <span class="rptab-lbl">Schools</span>
+              <span id="rptab-badge-schools" class="rptab-badge" style="display:none"></span>
+            </button>
+            <button class="rptab" data-tab="pubs" onclick="reportTabSwitch('pubs',this)">
+              <span style="font-size:22px">🍺</span>
+              <span class="rptab-lbl">Pubs</span>
+              <span id="rptab-badge-pubs" class="rptab-badge" style="display:none"></span>
+            </button>
+            <button class="rptab" data-tab="cafes" onclick="reportTabSwitch('cafes',this)">
+              <span style="font-size:22px">☕</span>
+              <span class="rptab-lbl">Cafes</span>
+              <span id="rptab-badge-cafes" class="rptab-badge" style="display:none"></span>
+            </button>
+          </div>
+
+          <!-- Content panels -->
+          <div style="flex:1;min-width:0;padding:16px 14px">
+            <div id="rp-panel-house">
+              <div id="report-house-list" class="text-sm"></div>
+              <div id="report-rightmove" class="hidden mt-3">
+                <a id="report-rightmove-link" href="#" target="_blank"
+                  style="display:inline-block;background:#16a34a;color:#fff;font-size:13px;font-weight:600;padding:8px 16px;border-radius:10px;text-decoration:none">
+                  View on Rightmove →
+                </a>
+              </div>
+            </div>
+            <div id="rp-panel-schools" style="display:none">
+              <div id="report-schools-list" class="divide-y divide-gray-50 text-sm"></div>
+              <div id="report-unis-list" class="text-sm text-gray-500 mt-2"></div>
+            </div>
+            <div id="rp-panel-pubs" style="display:none">
+              <div id="report-pubs-list" class="divide-y divide-gray-50 text-sm"></div>
+            </div>
+            <div id="rp-panel-cafes" style="display:none">
+              <div id="report-cafes-list" class="divide-y divide-gray-50 text-sm"></div>
+            </div>
+          </div>
         </div>
 
-        <!-- Rightmove -->
-        <div id="report-rightmove" class="hidden mb-4 px-1">
-          <a id="report-rightmove-link" href="#" target="_blank"
-            class="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
-            View on Rightmove →
-          </a>
-        </div>
-
-        <!-- Schools -->
-        <div id="report-schools" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">🎓 Nearby Schools</h3>
-          <div id="report-schools-list" class="divide-y divide-gray-50 text-sm"></div>
-          <div id="report-unis-list" class="text-sm text-gray-500 mt-2"></div>
-        </div>
-
-        <!-- Pubs -->
-        <div id="report-pubs" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">🍺 Pubs & Bars</h3>
-          <div id="report-pubs-list" class="divide-y divide-gray-50 text-sm"></div>
-        </div>
-
-        <!-- Coffee -->
-        <div id="report-cafes" class="hidden bg-white rounded-2xl shadow p-5 mb-4">
-          <h3 class="font-bold text-gray-800 mb-3">☕ Coffee & Cafes</h3>
-          <div id="report-cafes-list" class="divide-y divide-gray-50 text-sm"></div>
-        </div>
-
-
-<p id="report-empty" class="hidden text-center text-gray-400 text-sm py-4">No area data found for this postcode.</p>
+        <p id="report-empty" class="hidden text-center text-gray-400 text-sm py-4">No area data found for this postcode.</p>
       </div>
     </div>
 
@@ -1466,29 +1481,44 @@
   }
 
   // ── Area Report ─────────────────────────────────────────────────────────────
+  window.reportTabSwitch = function(tab, btn) {
+    document.querySelectorAll(".rptab").forEach(b => b.classList.remove("rptab-on"));
+    if (btn) btn.classList.add("rptab-on");
+    ["house","schools","pubs","cafes"].forEach(t => {
+      const p = document.getElementById("rp-panel-" + t);
+      if (p) p.style.display = t === tab ? "block" : "none";
+    });
+  };
+
   async function searchReport() {
     const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"");
     if (!postcode) return;
     _saveRecent("miru_report", postcode);
 
-    // Reset all sections
-    ["report-house","report-schools","report-pubs","report-cafes","report-rightmove","report-empty"].forEach(id =>
-      document.getElementById(id).classList.add("hidden"));
+    // Reset panels and badges
+    document.getElementById("report-rightmove").classList.add("hidden");
+    document.getElementById("report-empty").classList.add("hidden");
     document.getElementById("report-error").classList.add("hidden");
+    ["schools","pubs","cafes"].forEach(t => {
+      const b = document.getElementById("rptab-badge-"+t);
+      if (b) { b.textContent=""; b.style.display="none"; }
+    });
 
-    // Show results container immediately with skeleton loaders
+    // Show results container with skeleton loaders in each panel
     document.getElementById("report-results").classList.remove("hidden");
+    reportTabSwitch("house", document.querySelector('.rptab[data-tab="house"]'));
     document.getElementById("report-house-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading house prices…</div>';
-    document.getElementById("report-house").classList.remove("hidden");
-    document.getElementById("report-schools-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading schools & local info…</div>';
-    document.getElementById("report-schools").classList.remove("hidden");
+    document.getElementById("report-schools-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading schools…</div>';
+    document.getElementById("report-pubs-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading pubs…</div>';
+    document.getElementById("report-cafes-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading cafes…</div>';
     document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
 
-    // Show "still loading" nudge if schools take >6s
     const slowTimer = setTimeout(() => {
-      const el = document.getElementById("report-schools-list");
-      if (el && el.querySelector(".spinner"))
-        el.innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Almost there — fetching local data…</div>';
+      ["report-schools-list","report-pubs-list","report-cafes-list"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.querySelector(".spinner"))
+          el.innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Almost there…</div>';
+      });
     }, 8000);
 
     async function fetchWithTimeout(url, ms) {
@@ -1577,6 +1607,8 @@
         ? `<div class="font-semibold text-gray-400 text-xs mt-2 mb-1">Universities & Colleges</div>` +
           unis.map(u => `<div class="py-1 flex justify-between"><span>${u.name}</span><span class="text-gray-400 text-xs">${u.dist_mi.toFixed(1)}mi</span></div>`).join("")
         : "";
+      const sb = document.getElementById("rptab-badge-schools");
+      if (sb) { sb.textContent = schools.length + unis.length; sb.style.display = "inline-block"; }
     } else {
       document.getElementById("report-schools-list").innerHTML = '<p class="text-gray-400 text-sm py-2">No schools found within 3 miles.</p>';
     }
@@ -1603,7 +1635,8 @@
           <span class="text-gray-400 text-xs shrink-0 mt-1">${p.dist_mi.toFixed(1)}mi</span>
         </div>`;
       }).join("");
-      document.getElementById("report-pubs").classList.remove("hidden");
+      const pb = document.getElementById("rptab-badge-pubs");
+      if (pb) { pb.textContent = pubs.length; pb.style.display = "inline-block"; }
     }
 
     const cafes = d.cafes || [];
@@ -1627,7 +1660,8 @@
           <span class="text-gray-400 text-xs shrink-0 mt-1">${c.dist_mi.toFixed(1)}mi</span>
         </div>`;
       }).join("");
-      document.getElementById("report-cafes").classList.remove("hidden");
+      const cb = document.getElementById("rptab-badge-cafes");
+      if (cb) { cb.textContent = cafes.length; cb.style.display = "inline-block"; }
     }
   }
 
@@ -4407,6 +4441,13 @@
 </div>
 
 <style>
+/* Area Report vertical tabs */
+.rptab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:16px 6px;border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--border);width:100%;transition:background .12s}
+.rptab:last-child{border-bottom:none}
+.rptab-lbl{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.2px;text-transform:uppercase;line-height:1}
+.rptab.rptab-on{background:var(--surface);box-shadow:inset 3px 0 0 var(--accent)}
+.rptab.rptab-on .rptab-lbl{color:var(--text)}
+.rptab-badge{display:inline-block;font-size:10px;font-weight:700;background:var(--accent);color:#fff;border-radius:99px;padding:1px 5px;line-height:1.4;margin-top:2px}
 /* Category tabs */
 .fcat-tab{padding:7px 16px;border-radius:20px;border:1.5px solid #e5e7eb;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;line-height:1}
 .fcat-tab:hover{border-color:#93c5fd;color:#1d4ed8}
