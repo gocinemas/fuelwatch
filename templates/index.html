@@ -12,6 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root {
       --bg:      #f8f7f5;
@@ -189,9 +190,10 @@
       font-size: 11px; color: var(--subtle); margin-top: 3px; line-height: 1.4;
     }
   /* Scanner centering */
-  #scan-reader { background:#000; }
-  #scan-reader video { display:block!important; margin:0 auto!important; }
-  #scan-reader img   { display:block!important; margin:0 auto!important; }
+  #book-scan-reader { background:#000; }
+  #book-scan-reader video { display:block!important; width:100%!important; }
+  #book-scan-reader img   { display:block!important; margin:0 auto!important; }
+  #book-scan-reader canvas { display:none!important; }
   /* Places filter pills */
   .pf-btn { flex-shrink:0; padding:6px 14px; border-radius:20px; border:1.5px solid var(--border); background:var(--surface); color:var(--subtle); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:all .15s; }
   .pf-btn.active { background:var(--text); color:var(--bg); border-color:var(--text); }
@@ -4325,11 +4327,15 @@
         style="padding:11px 18px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">Search</button>
     </div>
 
-    <!-- Scan button — triggers native camera/photo picker, server decodes barcode -->
-    <button onclick="document.getElementById('book-scan-file').click()"
+    <!-- Live barcode scanner (html5-qrcode) -->
+    <button id="book-scan-btn" onclick="bookToggleScanner()"
       style="display:block;width:100%;padding:11px;border-radius:12px;border:1.5px dashed #7c3aed;background:#f5f3ff;color:#6d28d9;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-sizing:border-box">
       📷 Scan ISBN barcode
     </button>
+    <div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden">
+      <div id="book-scan-reader"></div>
+      <button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
+    </div>
     <input id="book-scan-file" type="file" accept="image/*" capture="environment" style="display:none" onchange="bookScanFromFile(this)">
 
     <div id="book-loading" style="display:none;text-align:center;padding:24px 0;color:var(--muted);font-size:13px">Searching…</div>
@@ -4611,25 +4617,80 @@ function _bkRenderLib(){
 function bookOpenFromLib(bk){ _bkShowDetail(bk); }
 function bookDeleteLib(isbn){ _bkSetLib(_bkGetLib().filter(function(b){ return b.isbn!==isbn; })); _bkRenderLib(); }
 
+var _bkScanner = null;
+
+function bookToggleScanner(){
+  if(_bkScanner){ bookStopScanner(); return; }
+  var wrap = document.getElementById("book-scan-wrap");
+  var btn  = document.getElementById("book-scan-btn");
+  wrap.style.display = "block";
+  btn.textContent = "⏹ Stop scanner";
+  document.getElementById("book-error").style.display = "none";
+
+  _bkScanner = new Html5Qrcode("book-scan-reader");
+  _bkScanner.start(
+    {facingMode:"environment"},
+    {fps:10, qrbox:{width:280,height:120}, aspectRatio:1.7},
+    function(barcode){
+      var isbn = barcode.replace(/[^0-9]/g,"");
+      if(isbn.length >= 8){ bookStopScanner(); _bkHandleISBN(isbn); }
+    },
+    function(){}
+  ).catch(function(err){
+    bookStopScanner();
+    document.getElementById("book-error").textContent = "Camera not available — " + err;
+    document.getElementById("book-error").style.display = "block";
+  });
+}
+
+function bookStopScanner(){
+  var wrap = document.getElementById("book-scan-wrap");
+  var btn  = document.getElementById("book-scan-btn");
+  if(_bkScanner){
+    _bkScanner.stop().catch(function(){}).finally(function(){
+      _bkScanner.clear();
+      _bkScanner = null;
+      wrap.style.display = "none";
+      btn.textContent = "📷 Scan ISBN barcode";
+    });
+  } else {
+    wrap.style.display = "none";
+    btn.textContent = "📷 Scan ISBN barcode";
+  }
+}
+
 function bookScanFromFile(input){
   var file=input.files[0]; if(!file) return; input.value="";
   document.getElementById("book-loading").style.display="block";
   document.getElementById("book-error").style.display="none";
-  var fd=new FormData(); fd.append("image",file);
-  fetch("/api/scan-barcode",{method:"POST",body:fd})
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if(d.barcode){ _bkHandleISBN(d.barcode.replace(/[^0-9]/g,"")); }
+  Html5Qrcode.scanFile(file, true)
+    .then(function(barcode){
+      var isbn = barcode.replace(/[^0-9]/g,"");
+      if(isbn.length >= 8){ _bkHandleISBN(isbn); }
       else {
         document.getElementById("book-loading").style.display="none";
-        document.getElementById("book-error").textContent="No barcode found — make sure the barcode is clear and well-lit, then try again or use title search.";
+        document.getElementById("book-error").textContent="No barcode found — try again with better lighting.";
         document.getElementById("book-error").style.display="block";
       }
     })
     .catch(function(){
-      document.getElementById("book-loading").style.display="none";
-      document.getElementById("book-error").textContent="Scan failed. Check your connection and try again.";
-      document.getElementById("book-error").style.display="block";
+      // Fall back to server-side pyzbar
+      var fd=new FormData(); fd.append("image",file);
+      fetch("/api/scan-barcode",{method:"POST",body:fd})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.barcode){ _bkHandleISBN(d.barcode.replace(/[^0-9]/g,"")); }
+          else {
+            document.getElementById("book-loading").style.display="none";
+            document.getElementById("book-error").textContent="No barcode found — make sure the barcode is clear and well-lit.";
+            document.getElementById("book-error").style.display="block";
+          }
+        })
+        .catch(function(){
+          document.getElementById("book-loading").style.display="none";
+          document.getElementById("book-error").textContent="Scan failed. Try title search instead.";
+          document.getElementById("book-error").style.display="block";
+        });
     });
 }
 
