@@ -1756,6 +1756,98 @@ def search_near_postcode(postcode: str, fuel: str = "petrol",
     return nearby
 
 
+_CRIME_CACHE: dict = {}
+_CRIME_CACHE_TTL = 3600  # 1 hour
+
+_CRIME_LABELS = {
+    "anti-social-behaviour":  "Anti-Social Behaviour",
+    "bicycle-theft":          "Bicycle Theft",
+    "burglary":               "Burglary",
+    "criminal-damage-arson":  "Criminal Damage & Arson",
+    "drugs":                  "Drugs",
+    "other-crime":            "Other Crime",
+    "other-theft":            "Other Theft",
+    "possession-of-weapons":  "Weapons Possession",
+    "public-order":           "Public Order",
+    "robbery":                "Robbery",
+    "shoplifting":            "Shoplifting",
+    "theft-from-the-person":  "Theft from Person",
+    "vehicle-crime":          "Vehicle Crime",
+    "violent-crime":          "Violence & Sexual Offences",
+}
+
+_CRIME_SEVERITY = {
+    "violent-crime": "high", "robbery": "high", "burglary": "high",
+    "possession-of-weapons": "high", "criminal-damage-arson": "high",
+    "vehicle-crime": "medium", "drugs": "medium", "theft-from-the-person": "medium",
+    "public-order": "medium", "other-theft": "low",
+    "anti-social-behaviour": "low", "bicycle-theft": "low",
+    "shoplifting": "low", "other-crime": "low",
+}
+
+
+def fetch_crime_data(lat: float, lon: float) -> dict:
+    """Fetch street-level crime stats from police.uk API for last 3 months."""
+    import datetime
+    from collections import Counter
+
+    cache_key = f"{round(lat,3)},{round(lon,3)}"
+    cached = _CRIME_CACHE.get(cache_key)
+    if cached and (time.time() - cached["ts"]) < _CRIME_CACHE_TTL:
+        return cached["data"]
+
+    today = datetime.date.today()
+    months = []
+    d = today.replace(day=1)
+    for _ in range(3):
+        d = (d - datetime.timedelta(days=1)).replace(day=1)
+        months.append(d.strftime("%Y-%m"))
+
+    all_crimes = []
+    for month in months:
+        try:
+            r = requests.get(
+                "https://data.police.uk/api/crimes-street/all-crime",
+                params={"lat": lat, "lng": lon, "date": month},
+                timeout=12,
+            )
+            if r.status_code == 200:
+                batch = r.json()
+                if isinstance(batch, list):
+                    all_crimes.extend(batch)
+        except Exception:
+            pass
+
+    if not all_crimes:
+        return {"total": 0, "months": len(months), "breakdown": [], "months_covered": months, "level": "unknown"}
+
+    counter = Counter(c["category"] for c in all_crimes)
+    breakdown = [
+        {
+            "category": _CRIME_LABELS.get(cat, cat.replace("-", " ").title()),
+            "slug":     cat,
+            "count":    count,
+            "severity": _CRIME_SEVERITY.get(cat, "low"),
+        }
+        for cat, count in counter.most_common()
+    ]
+
+    total = len(all_crimes)
+    per_month = round(total / max(len(months), 1))
+    level = "low" if per_month < 50 else ("medium" if per_month < 150 else "high")
+
+    result = {
+        "total":          total,
+        "months":         len(months),
+        "per_month":      per_month,
+        "breakdown":      breakdown,
+        "months_covered": months,
+        "level":          level,
+    }
+    _CRIME_CACHE[cache_key] = {"ts": time.time(), "data": result}
+    return result
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main():

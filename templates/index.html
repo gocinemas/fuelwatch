@@ -462,6 +462,11 @@
               <span class="rptab-lbl">Cafes</span>
               <span id="rptab-badge-cafes" class="rptab-badge" style="display:none"></span>
             </button>
+            <button class="rptab" data-tab="crime" onclick="reportTabSwitch('crime',this)">
+              <span style="font-size:22px">🚔</span>
+              <span class="rptab-lbl">Crime</span>
+              <span id="rptab-badge-crime" class="rptab-badge" style="display:none"></span>
+            </button>
           </div>
 
           <!-- Content panels -->
@@ -484,6 +489,9 @@
             </div>
             <div id="rp-panel-cafes" style="display:none">
               <div id="report-cafes-list" class="divide-y divide-gray-50 text-sm"></div>
+            </div>
+            <div id="rp-panel-crime" style="display:none">
+              <div id="report-crime-list" class="text-sm"></div>
             </div>
           </div>
         </div>
@@ -1484,7 +1492,7 @@
   window.reportTabSwitch = function(tab, btn) {
     document.querySelectorAll(".rptab").forEach(b => b.classList.remove("rptab-on"));
     if (btn) btn.classList.add("rptab-on");
-    ["house","schools","pubs","cafes"].forEach(t => {
+    ["house","schools","pubs","cafes","crime"].forEach(t => {
       const p = document.getElementById("rp-panel-" + t);
       if (p) p.style.display = t === tab ? "block" : "none";
     });
@@ -1499,7 +1507,7 @@
     document.getElementById("report-rightmove").classList.add("hidden");
     document.getElementById("report-empty").classList.add("hidden");
     document.getElementById("report-error").classList.add("hidden");
-    ["schools","pubs","cafes"].forEach(t => {
+    ["schools","pubs","cafes","crime"].forEach(t => {
       const b = document.getElementById("rptab-badge-"+t);
       if (b) { b.textContent=""; b.style.display="none"; }
     });
@@ -1511,10 +1519,11 @@
     document.getElementById("report-schools-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading schools…</div>';
     document.getElementById("report-pubs-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading pubs…</div>';
     document.getElementById("report-cafes-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading cafes…</div>';
+    document.getElementById("report-crime-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading crime data…</div>';
     document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
 
     const slowTimer = setTimeout(() => {
-      ["report-schools-list","report-pubs-list","report-cafes-list"].forEach(id => {
+      ["report-schools-list","report-pubs-list","report-cafes-list","report-crime-list"].forEach(id => {
         const el = document.getElementById(id);
         if (el && el.querySelector(".spinner"))
           el.innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Almost there…</div>';
@@ -1552,7 +1561,20 @@
           `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
       });
 
-    await Promise.allSettled([houseP, localP]);
+    const crimeP = fetchWithTimeout(`/api/crime?postcode=${postcode}`, 20000)
+      .then(async r => {
+        const text = await r.text();
+        let data;
+        try { data = JSON.parse(text); } catch { throw new Error("Server error"); }
+        if (!r.ok) throw new Error(data.error || "Crime data lookup failed");
+        renderCrimeData(data);
+      })
+      .catch(err => {
+        document.getElementById("report-crime-list").innerHTML =
+          `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+      });
+
+    await Promise.allSettled([houseP, localP, crimeP]);
     clearTimeout(slowTimer);
   }
 
@@ -1663,6 +1685,41 @@
       const cb = document.getElementById("rptab-badge-cafes");
       if (cb) { cb.textContent = cafes.length; cb.style.display = "inline-block"; }
     }
+  }
+
+  function renderCrimeData(d) {
+    const el = document.getElementById("report-crime-list");
+    if (!d || d.total === 0) {
+      el.innerHTML = '<p class="text-gray-400 text-sm py-2">No crime data found for this area (police.uk may not cover this postcode).</p>';
+      return;
+    }
+    const levelColour = d.level === "high" ? "text-red-600 bg-red-50" : d.level === "medium" ? "text-amber-600 bg-amber-50" : "text-green-700 bg-green-50";
+    const levelLabel  = d.level === "high" ? "High" : d.level === "medium" ? "Medium" : "Low";
+    const severityBar = (severity) => severity === "high" ? "bg-red-400" : severity === "medium" ? "bg-amber-400" : "bg-blue-300";
+    const breakdown = (d.breakdown || []);
+    const maxCount = breakdown.length ? breakdown[0].count : 1;
+    el.innerHTML = `
+      <div class="flex items-center gap-3 py-3 border-b border-gray-100 mb-3">
+        <div class="flex-1">
+          <div class="text-gray-700 font-semibold text-sm">Overall crime level</div>
+          <div class="text-xs text-gray-400 mt-0.5">${d.total.toLocaleString()} incidents · ${d.months} months · ~${(d.per_month||0).toLocaleString()}/month</div>
+        </div>
+        <span class="text-xs font-bold px-3 py-1 rounded-full ${levelColour}">${levelLabel}</span>
+      </div>
+      ${breakdown.map(b => `
+        <div class="py-1.5">
+          <div class="flex justify-between items-center mb-0.5">
+            <span class="text-gray-700 text-xs">${b.category}</span>
+            <span class="text-gray-500 text-xs font-medium">${b.count}</span>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-1.5">
+            <div class="h-1.5 rounded-full ${severityBar(b.severity)}" style="width:${Math.round(b.count/maxCount*100)}%"></div>
+          </div>
+        </div>`).join("")}
+      <p class="text-xs text-gray-400 mt-3">Source: police.uk · ${d.months_covered ? d.months_covered.join(", ") : ""}</p>`;
+
+    const cb = document.getElementById("rptab-badge-crime");
+    if (cb) { cb.textContent = d.total.toLocaleString(); cb.style.display = "inline-block"; }
   }
 
   // ── Navigation sheet ─────────────────────────────────────────────────────────

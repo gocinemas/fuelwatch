@@ -2026,39 +2026,45 @@ out center tags;"""
     return results
 
 
+_PLACE_SUMMARY_CACHE: dict = {}
+_PLACE_SUMMARY_TTL = 86400  # 24 hours — place descriptions rarely change
+
 def _groq_place_summary(name: str, category: str, address: str,
                         description: str, reviews: list) -> dict:
-    """Use Groq to write a place description and summarise reviews."""
+    """Use Groq to write a place description and summarise reviews. Cached 24h."""
+    cache_key = f"{name.lower().strip()}|{category}"
+    cached = _PLACE_SUMMARY_CACHE.get(cache_key)
+    if cached and time.time() - cached["ts"] < _PLACE_SUMMARY_TTL:
+        return cached["data"]
+
     groq_key = os.environ.get("GROQ_API_KEY", "")
     if not groq_key:
         return {}
     try:
         review_block = ""
         if reviews:
-            snippets = [f'- "{r["text"][:200]}" ({r["rating"]}★)' for r in reviews[:5] if r.get("text")]
+            snippets = [f'- "{r["text"][:150]}" ({r["rating"]}★)' for r in reviews[:3] if r.get("text")]
             review_block = "\nReviews:\n" + "\n".join(snippets)
 
         prompt = (
             f'Place: {name}\nType: {category}\nAddress: {address}\n'
-            f'Description: {description or "(none provided)"}\n{review_block}\n\n'
-            'Return ONLY valid JSON with two keys:\n'
-            '"summary": 2-3 sentence plain-English overview of what this place is and why people visit.\n'
-            '"review_summary": if reviews provided, 2-sentence summary of what visitors say (highlight positives and any common theme); '
-            'if no reviews, return empty string.\n'
-            'Be warm, factual, and concise. No markdown, no quotes around the JSON.'
+            f'Description: {description or "(none)"}\n{review_block}\n\n'
+            'Return ONLY valid JSON: {"summary":"2 sentence overview","review_summary":"1 sentence review summary or empty string"}'
         )
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}],
-                  "temperature": 0.3, "max_tokens": 300},
-            timeout=10,
+                  "temperature": 0.3, "max_tokens": 160},
+            timeout=8,
         )
         if r.status_code == 200:
             content = r.json()["choices"][0]["message"]["content"].strip()
             m = re.search(r'\{.*\}', content, re.DOTALL)
             if m:
-                return json.loads(m.group(0))
+                result = json.loads(m.group(0))
+                _PLACE_SUMMARY_CACHE[cache_key] = {"ts": time.time(), "data": result}
+                return result
     except Exception:
         pass
     return {}
@@ -3596,6 +3602,18 @@ def _prewarm():
         pass
 
 _threading.Thread(target=_prewarm, daemon=True).start()
+
+
+@app.route("/api/crime")
+def api_crime():
+    """Street-level crime stats from police.uk for a postcode (last 3 months)."""
+    result = _resolve_postcode(request.args.get("postcode", ""))
+    if not result:
+        return jsonify({"error": "Postcode not found."}), 404
+    postcode, lat, lon, pc_fmt = result
+    from search import fetch_crime_data
+    data = fetch_crime_data(lat, lon)
+    return jsonify(data)
 
 
 @app.route("/api/books")
