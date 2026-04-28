@@ -2861,10 +2861,21 @@ def api_scan_barcode():
     if not f:
         return jsonify({"error": "No image uploaded"}), 400
     try:
-        img = Image.open(io.BytesIO(f.read())).convert("RGB")
+        from PIL import ImageOps
+        raw = f.read()
+        img = Image.open(io.BytesIO(raw))
+        img = ImageOps.exif_transpose(img)  # respect phone EXIF rotation
+        img = img.convert("RGB")
         results = _pyzbar.decode(img)
         if results:
             return jsonify({"barcode": results[0].data.decode("utf-8"), "format": results[0].type})
+        # Retry with greyscale + contrast enhance (helps with low-light photos)
+        from PIL import ImageEnhance
+        grey = img.convert("L")
+        enhanced = ImageEnhance.Contrast(grey).enhance(2.0)
+        results2 = _pyzbar.decode(enhanced.convert("RGB"))
+        if results2:
+            return jsonify({"barcode": results2[0].data.decode("utf-8"), "format": results2[0].type})
         return jsonify({"error": "No barcode found in image"})
     except Exception as e:
         print(f"[scan-barcode] {e}")
