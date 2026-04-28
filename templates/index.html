@@ -4310,7 +4310,7 @@
 
   <!-- Category tabs -->
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;margin-top:20px">
-    <button class="fcat-tab fcat-tab-on" data-cat="trades" onclick="finderSelectCat('trades',this)">🔧 Trades</button>
+    <button class="fcat-tab" data-cat="trades" onclick="finderSelectCat('trades',this)">🔧 Trades</button>
     <button class="fcat-tab" data-cat="health" onclick="finderSelectCat('health',this)">🏥 Health</button>
     <button class="fcat-tab" data-cat="home"   onclick="finderSelectCat('home',this)">🏠 Home</button>
     <button class="fcat-tab" data-cat="pro"    onclick="finderSelectCat('pro',this)">👔 Pro</button>
@@ -4320,7 +4320,7 @@
 
   <!-- Sub-service pills -->
   <div style="margin-bottom:20px;min-height:36px">
-    <div id="fcat-panel-trades" class="fsub-panel">
+    <div id="fcat-panel-trades" class="fsub-panel" style="display:none">
       <button class="fsub" data-q="plumber"                            onclick="finderCatSearch(this)">🔧 Plumber</button>
       <button class="fsub" data-q="electrician"                        onclick="finderCatSearch(this)">⚡ Electrician</button>
       <button class="fsub" data-q="gas engineer boiler repair"         onclick="finderCatSearch(this)">🔥 Gas / Boiler</button>
