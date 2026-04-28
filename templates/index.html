@@ -4351,12 +4351,11 @@
 <!-- ===================== FINDER SCREEN ===================== -->
 <div id="screen-finder" class="screen pt-5">
 
-  <!-- Search card — same structure as Fuel/Company -->
   <div class="bg-white rounded-2xl shadow p-5 mb-4">
-    <h2 class="font-bold text-gray-800 mb-3">🔍 Local Finder</h2>
+    <h2 class="font-bold text-gray-800 mb-1">🔍 Local Finder</h2>
+    <p class="text-xs text-gray-400 mb-4">Trades, health &amp; local services near you</p>
 
-    <!-- Postcode first, 📍 button second — matches Fuel layout -->
-    <div class="flex gap-2 mb-3">
+    <div class="flex gap-2 mb-2">
       <input id="finder-postcode" type="text" placeholder="Postcode e.g. SW1A 1AA" maxlength="10"
         class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 uppercase"
         autocomplete="off"
@@ -4365,22 +4364,10 @@
       <button id="finder-loc-btn" onclick="useLocation('finder')" title="Use my location"
         class="shrink-0 border border-gray-200 rounded-xl px-3 py-3 text-lg hover:bg-gray-50 active:bg-gray-100 transition">📍</button>
     </div>
-    <div id="finder-didyoumean" class="hidden text-sm font-medium mb-2 cursor-pointer" style="color:#2563eb" onclick="finderAcceptSuggestion()"></div>
-    <div id="finder-loc-err"    class="hidden text-sm mb-2" style="color:#ef4444"></div>
-    <div id="finder-loc-ok"     class="hidden text-sm font-semibold mb-2" style="color:#059669">📍 Location set! Tap a category or type a search.</div>
+    <div id="finder-didyoumean" class="hidden text-xs font-medium mb-2 cursor-pointer" style="color:#2563eb" onclick="finderAcceptSuggestion()"></div>
+    <div id="finder-loc-err"    class="hidden text-xs mb-2" style="color:#ef4444"></div>
+    <div id="finder-loc-ok"     class="hidden text-xs font-semibold mb-2" style="color:#059669">📍 Location set — tap a category below or type a search.</div>
 
-    <input id="finder-q" type="text" placeholder="What do you need? e.g. plumber, dentist…"
-      class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4"
-      onkeydown="if(event.key==='Enter')finderSearch()">
-
-    <button onclick="finderSearch()"
-      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition text-sm">
-      Search Nearby
-    </button>
-  </div>
-
-  <!-- Category card — segmented tabs like Company Intel -->
-  <div class="bg-white rounded-2xl shadow p-4 mb-4">
     <div class="ftab-bar">
       <button class="ftab-btn ftab-active" data-tab="trades"  onclick="finderSwitchTab('trades',this)">🔧<br>Trades</button>
       <button class="ftab-btn"             data-tab="health"  onclick="finderSwitchTab('health',this)">🏥<br>Health</button>
@@ -4438,9 +4425,16 @@
       <button class="fcat" data-q="after school club"             onclick="finderCatSearch(this)">🌟 After School</button>
       <button class="fcat" data-q="children's activity class"     onclick="finderCatSearch(this)">🎨 Kids Activities</button>
     </div>
+
+    <div class="flex gap-2 mt-4">
+      <input id="finder-q" type="text" placeholder="Or type: plumber, dentist, gym…"
+        class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        onkeydown="if(event.key==='Enter')finderSearch()">
+      <button onclick="finderSearch()"
+        class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 rounded-xl transition text-sm">Search</button>
+    </div>
   </div>
 
-  <!-- Open Now + Saved controls -->
   <div id="finder-controls" style="display:none;justify-content:space-between;align-items:center;margin-bottom:12px">
     <button id="finder-open-now-btn" onclick="finderToggleOpenNow()" style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;border:2px solid #d1fae5;background:#f0fdf4;color:#065f46;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s">
       <span id="finder-open-now-dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
@@ -4450,12 +4444,10 @@
   </div>
   <input type="checkbox" id="finder-open-now" style="display:none">
 
-  <!-- Loading -->
   <div id="finder-loading" class="hidden text-center py-6 text-gray-400 text-sm">
     <div class="spinner text-blue-600 mx-auto mb-2"></div>Searching nearby…
   </div>
 
-  <!-- Results -->
   <div id="finder-results" style="display:none">
     <div id="finder-results-hdr" style="margin-bottom:12px"></div>
     <div id="finder-list"></div>
@@ -4464,12 +4456,12 @@
 </div>
 
 <style>
-.ftab-bar{display:flex;gap:4px;background:#f1f5f9;padding:4px;border-radius:14px;margin-bottom:14px}
-.ftab-btn{flex:1;font-size:11px;font-weight:600;padding:9px 2px;border-radius:10px;border:none;cursor:pointer;transition:all .2s;background:transparent;color:#6b7280;line-height:1.4;text-align:center}
-.ftab-btn.ftab-active{background:#fff;color:#2563eb;box-shadow:0 1px 4px rgba(0,0,0,.12)}
-.fcat-chips{display:flex;flex-wrap:wrap;gap:8px;padding:2px 0 4px;min-height:44px}
-.fcat{flex-shrink:0;white-space:nowrap;padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s;line-height:1}
-.fcat.fcat-on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ftab-bar{display:flex;gap:3px;background:#f1f5f9;padding:3px;border-radius:12px;margin-bottom:12px}
+.ftab-btn{flex:1;font-size:10.5px;font-weight:600;padding:7px 2px;border-radius:9px;border:none;cursor:pointer;transition:all .2s;background:transparent;color:#9ca3af;line-height:1.4;text-align:center}
+.ftab-btn.ftab-active{background:#fff;color:#2563eb;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.fcat-chips{display:flex;flex-wrap:wrap;gap:7px;padding:0 0 2px}
+.fcat{flex-shrink:0;white-space:nowrap;padding:6px 12px;border-radius:18px;border:1px solid #e5e7eb;background:#f9fafb;color:#374151;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s;line-height:1}
+.fcat.fcat-on{background:#2563eb;color:#fff;border-color:#2563eb}
 .finder-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
 </style>
 
