@@ -3678,17 +3678,17 @@ def _algolia_index_books(docs):
 
 @app.route("/api/books")
 def api_books():
-    """Book search: Algolia first (fast, typo-tolerant), Google Books fallback + auto-index."""
+    """Book search: Algolia first (fast cache), Open Library fallback + auto-index."""
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify({"docs": []})
 
-    # 1. Try Algolia
+    # 1. Try Algolia (instant results from previous searches)
     try:
         idx = _algolia_books_index()
         if idx:
             res = idx.search(q, {"hitsPerPage": 10, "attributesToRetrieve": [
-                "key", "title", "author_name", "isbn", "cover", "first_publish_year"
+                "key", "title", "author_name", "isbn", "cover", "cover_i", "first_publish_year"
             ]})
             hits = res.get("hits", [])
             if hits:
@@ -3697,16 +3697,22 @@ def api_books():
     except Exception:
         pass
 
-    # 2. Fall back to Google Books, then index results for next time
+    # 2. Open Library — free, no rate limits, excellent coverage
     try:
         r = requests.get(
-            "https://www.googleapis.com/books/v1/volumes",
-            params={"q": q, "maxResults": 10, "printType": "books", "langRestrict": "en", "orderBy": "relevance"},
-            timeout=10,
+            "https://openlibrary.org/search.json",
+            params={"q": q, "limit": 10, "fields": "key,title,author_name,isbn,cover_i,first_publish_year"},
+            timeout=12,
         )
-        items = r.json().get("items", [])
-        docs = [_normalize_gbook(i) for i in items]
-        _algolia_index_books(docs)
+        docs = r.json().get("docs", [])
+        _algolia_index_books([{
+            "key": d.get("key", ""),
+            "title": d.get("title", ""),
+            "author_name": d.get("author_name", []),
+            "isbn": d.get("isbn", []),
+            "cover_i": d.get("cover_i"),
+            "first_publish_year": d.get("first_publish_year"),
+        } for d in docs if d.get("key")])
         return jsonify({"docs": docs})
     except Exception as e:
         return jsonify({"error": str(e), "docs": []})
