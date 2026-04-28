@@ -3651,12 +3651,53 @@ def _normalize_gbook(item):
     }
 
 
+def _algolia_books_index():
+    """Return Algolia 'books' index client, or None if not configured."""
+    try:
+        from algoliasearch.search_client import SearchClient
+        app_id = os.environ.get("ALGOLIA_APP_ID", "")
+        api_key = os.environ.get("ALGOLIA_API_KEY", "")
+        if not app_id or not api_key:
+            return None
+        return SearchClient.create(app_id, api_key).init_index("books")
+    except Exception:
+        return None
+
+
+def _algolia_index_books(docs):
+    """Save normalised book docs to Algolia books index (fire-and-forget)."""
+    try:
+        idx = _algolia_books_index()
+        if idx and docs:
+            records = [{**d, "objectID": d["key"]} for d in docs if d.get("key")]
+            if records:
+                idx.save_objects(records)
+    except Exception:
+        pass
+
+
 @app.route("/api/books")
 def api_books():
-    """Proxy Google Books search — better data quality and reliability than Open Library."""
+    """Book search: Algolia first (fast, typo-tolerant), Google Books fallback + auto-index."""
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify({"docs": []})
+
+    # 1. Try Algolia
+    try:
+        idx = _algolia_books_index()
+        if idx:
+            res = idx.search(q, {"hitsPerPage": 10, "attributesToRetrieve": [
+                "key", "title", "author_name", "isbn", "cover", "first_publish_year"
+            ]})
+            hits = res.get("hits", [])
+            if hits:
+                docs = [{k: v for k, v in h.items() if not k.startswith("_") and k != "objectID"} for h in hits]
+                return jsonify({"docs": docs})
+    except Exception:
+        pass
+
+    # 2. Fall back to Google Books, then index results for next time
     try:
         r = requests.get(
             "https://www.googleapis.com/books/v1/volumes",
@@ -3664,7 +3705,9 @@ def api_books():
             timeout=10,
         )
         items = r.json().get("items", [])
-        return jsonify({"docs": [_normalize_gbook(i) for i in items]})
+        docs = [_normalize_gbook(i) for i in items]
+        _algolia_index_books(docs)
+        return jsonify({"docs": docs})
     except Exception as e:
         return jsonify({"error": str(e), "docs": []})
 
