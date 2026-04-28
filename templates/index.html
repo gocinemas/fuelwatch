@@ -1283,68 +1283,99 @@
   })();
 
   // ── Current Location ─────────────────────────────────────────────────────────
-  async function _postcodeFromCoords(lat, lon) {
-    const res  = await fetch(`https://api.postcodes.io/postcodes?lon=${lon}&lat=${lat}&limit=1`);
-    const data = await res.json();
-    return data?.result?.[0]?.postcode || null;
-  }
+  // ── Unified Location Service ─────────────────────────────────────────────────
+  // Single source of truth for GPS + IP fallback across all modules.
+  // Returns { lat, lon, postcode } or null. Caches for 10 min.
+  window.MiruLocation = (function () {
+    let _cache = null, _cacheTime = 0;
+    const TTL = 600000;
 
-  async function _postcodeFromIP() {
-    const services = [
-      () => fetch("https://ipapi.co/json/").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[d.latitude,d.longitude]:null),
-      () => fetch("https://get.geojs.io/v1/ip/geo.json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[+d.latitude,+d.longitude]:null),
-    ];
-    for (const svc of services) {
+    async function _toPostcode(lat, lon) {
       try {
-        const coords = await svc();
-        if (coords) {
-          const pc = await _postcodeFromCoords(coords[0], coords[1]);
-          if (pc) return pc;
-        }
-      } catch(_) {}
+        const r = await fetch(`https://api.postcodes.io/postcodes?lon=${lon}&lat=${lat}&limit=1`);
+        const d = await r.json();
+        return d?.result?.[0]?.postcode || null;
+      } catch (_) { return null; }
     }
-    return null;
-  }
 
+    async function _fromIP() {
+      const svcs = [
+        () => fetch("https://ipapi.co/json/").then(r=>r.json()).then(d=>d.latitude&&d.longitude?{lat:+d.latitude,lon:+d.longitude}:null),
+        () => fetch("https://get.geojs.io/v1/ip/geo.json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?{lat:+d.latitude,lon:+d.longitude}:null),
+        () => fetch("https://freeipapi.com/api/json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?{lat:+d.latitude,lon:+d.longitude}:null),
+      ];
+      for (const svc of svcs) {
+        try { const c = await svc(); if (c) return c; } catch (_) {}
+      }
+      return null;
+    }
+
+    async function _build(lat, lon) {
+      const postcode = await _toPostcode(lat, lon);
+      const result = { lat, lon, postcode };
+      _cache = result; _cacheTime = Date.now();
+      return result;
+    }
+
+    async function _resolve() {
+      return new Promise(resolve => {
+        if (!navigator.geolocation) {
+          _fromIP().then(c => c ? _build(c.lat, c.lon).then(resolve) : resolve(null)).catch(() => resolve(null));
+          return;
+        }
+        const ok = pos => _build(pos.coords.latitude, pos.coords.longitude).then(resolve).catch(() => resolve(null));
+        const fallback = () => _fromIP().then(c => c ? _build(c.lat, c.lon).then(resolve) : resolve(null)).catch(() => resolve(null));
+        // Step 1: try a cached GPS fix instantly (≤300 s old)
+        navigator.geolocation.getCurrentPosition(ok, () => {
+          // Step 2: no cache — request a fresh fix; enableHighAccuracy triggers iOS permission prompt
+          navigator.geolocation.getCurrentPosition(ok, fallback,
+            { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 });
+        }, { timeout: 500, enableHighAccuracy: false, maximumAge: 300000 });
+      });
+    }
+
+    return {
+      async get() {
+        if (_cache && Date.now() - _cacheTime < TTL) return _cache;
+        return _resolve();
+      },
+      // Wire up a 📍 button. Calls onDone({lat,lon,postcode}) or onFail(msg).
+      async request(btn, onDone, onFail) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = "⏳"; btn.disabled = true;
+        try {
+          const loc = await this.get();
+          btn.innerHTML = orig; btn.disabled = false;
+          if (loc) onDone(loc);
+          else onFail("Couldn't detect your location. Please enter a postcode.");
+        } catch (e) {
+          btn.innerHTML = orig; btn.disabled = false;
+          onFail("Location error. Please enter a postcode.");
+        }
+      }
+    };
+  })();
+
+  // ── Generic postcode-based useLocation (fuel, report, finder) ────────────────
   function useLocation(screen) {
     const btn   = document.getElementById(screen + "-loc-btn");
     const input = document.getElementById(screen + "-postcode");
     const errEl = document.getElementById(screen + "-loc-err");
-    function _err(msg) { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } }
-    function _clearErr() { if (errEl) errEl.style.display = "none"; }
-    function _done(pc) {
-      btn.textContent = "📍"; btn.disabled = false;
-      if (!pc) { _err("Couldn't find a UK postcode for your location — please enter one manually."); return; }
-      _clearErr(); input.value = pc;
-      if (screen === "fuel") searchFuel(); else if (screen === "finder") finderSearch(); else searchReport();
-    }
-    _clearErr();
-    btn.textContent = "⏳"; btn.disabled = true;
+    function _showErr(msg) { if (!errEl) return; errEl.textContent = msg; errEl.classList.remove("hidden"); errEl.style.display = "block"; }
+    function _hideErr()    { if (!errEl) return; errEl.classList.add("hidden"); errEl.style.display = "none"; }
 
-    if (!navigator.geolocation) {
-      // No GPS at all — go straight to IP lookup
-      _postcodeFromIP().then(_done).catch(() => _done(null));
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        try {
-          const pc = await _postcodeFromCoords(coords.latitude, coords.longitude);
-          _done(pc);
-        } catch(e) {
-          // GPS worked but postcode lookup failed — try IP fallback
-          const pc = await _postcodeFromIP().catch(()=>null);
-          _done(pc);
-        }
-      },
-      async () => {
-        // GPS denied or timed out — silently fall back to IP geolocation
-        const pc = await _postcodeFromIP().catch(()=>null);
-        _done(pc);
-      },
-      { timeout: 8000, enableHighAccuracy: false, maximumAge: 600000 }
-    );
+    MiruLocation.request(btn, loc => {
+      _hideErr();
+      if (screen === "finder") {
+        // Finder keeps its own lat/lon state; expose a setter from inside its closure
+        if (typeof finderSetLocation === "function") finderSetLocation(loc.lat, loc.lon, loc.postcode);
+        return;
+      }
+      if (!loc.postcode) { _showErr("Couldn't find a UK postcode — please enter one manually."); return; }
+      if (input) input.value = loc.postcode;
+      if (screen === "fuel") searchFuel();
+      else searchReport();
+    }, _showErr);
   }
 
   // ── Fuel Search ─────────────────────────────────────────────────────────────
@@ -2280,47 +2311,15 @@
 
   let _elecIdCounter = 0;
   async function electionsUseLocation() {
-    const btn = document.getElementById("elections-loc-btn");
+    const btn   = document.getElementById("elections-loc-btn");
     const errEl = document.getElementById("elections-loc-err");
     errEl.style.display = "none";
-    if (!navigator.geolocation) {
-      errEl.textContent = "Location not available on this browser.";
-      errEl.style.display = "block";
-      return;
-    }
-    btn.textContent = "⏳ Getting location…";
-    btn.disabled = true;
-    navigator.geolocation.getCurrentPosition(
-      async pos => {
-        btn.textContent = "⏳ Finding postcode…";
-        try {
-          const r = await fetch(`https://api.postcodes.io/postcodes?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}`);
-          const d = await r.json();
-          const pc = d.result?.[0]?.postcode;
-          if (pc) {
-            document.getElementById("elections-input").value = pc;
-            errEl.style.display = "none";
-            searchElections();
-          } else {
-            errEl.textContent = "Couldn't find a UK postcode for your location. Please enter one manually.";
-            errEl.style.display = "block";
-          }
-        } catch(e) {
-          errEl.textContent = "Postcode lookup failed. Please enter your postcode manually.";
-          errEl.style.display = "block";
-        }
-        btn.textContent = "📍 Use my current location";
-        btn.disabled = false;
-      },
-      err => {
-        btn.textContent = "📍 Use my current location";
-        btn.disabled = false;
-        const msgs = {1:"Location permission denied — please allow access and try again.", 2:"Location unavailable. Please enter your postcode manually.", 3:"Location request timed out. Please try again."};
-        errEl.textContent = msgs[err.code] || "Could not get location. Please enter your postcode manually.";
-        errEl.style.display = "block";
-      },
-      {timeout: 30000, enableHighAccuracy: false, maximumAge: 300000}
-    );
+    MiruLocation.request(btn, loc => {
+      if (!loc.postcode) { errEl.textContent = "Couldn't find a UK postcode — please enter one manually."; errEl.style.display = "block"; return; }
+      document.getElementById("elections-input").value = loc.postcode;
+      errEl.style.display = "none";
+      searchElections();
+    }, msg => { errEl.textContent = msg; errEl.style.display = "block"; });
   }
 
   async function searchElections() {
@@ -2768,61 +2767,20 @@
     const btn   = document.getElementById("places-loc-btn");
     const errEl = document.getElementById("places-search-error");
     errEl.classList.add("hidden");
-    if (!navigator.geolocation) {
-      errEl.textContent = "Location isn't supported in this browser. Enter a postcode instead.";
-      errEl.classList.remove("hidden");
-      return;
-    }
-
-    btn.textContent = "⏳";
-    btn.disabled = true;
-    errEl.textContent = "Getting your location…";
-    errEl.style.background = "#eff6ff";
-    errEl.style.borderColor = "#bfdbfe";
-    errEl.style.color = "#1d4ed8";
-    errEl.classList.remove("hidden");
-
-    const reset = () => {
-      btn.textContent = "📍";
-      btn.disabled = false;
-    };
-    const onSuccess = async pos => {
-      reset();
+    MiruLocation.request(btn, async loc => {
       errEl.classList.add("hidden");
-      errEl.style.background = "";
-      errEl.style.borderColor = "";
-      errEl.style.color = "";
-      const lat = pos.coords.latitude, lon = pos.coords.longitude;
       let areaName = "your location";
       try {
-        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {headers:{"Accept-Language":"en"}});
+        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${loc.lat}&lon=${loc.lon}`, {headers:{"Accept-Language":"en"}});
         const rj  = await rev.json();
         const a   = rj.address || {};
         areaName  = a.suburb || a.village || a.hamlet || a.town || a.city_district || a.city || a.county || "your location";
-      } catch(e) {}
-      placesLoadDetails(lat, lon, "", "", "", areaName, areaName);
-    };
-    const onError = err => {
-      reset();
-      errEl.style.background = "";
-      errEl.style.borderColor = "";
-      errEl.style.color = "";
-      const msgs = {
-        1: "Location access was denied. On iPhone: Settings → Privacy → Location Services → Safari → While Using. Then try again.",
-        2: "Couldn't detect your location. Check your signal or enter a postcode.",
-        3: "Couldn't get a location fix — you may be indoors. Try again or enter a postcode.",
-      };
-      errEl.innerHTML = (msgs[err.code] || "Couldn't get your location. Enter a postcode instead.") +
-        ` <button onclick="placesUseLocation()" style="margin-left:8px;font-size:11px;font-weight:700;color:#1d4ed8;background:none;border:none;cursor:pointer;text-decoration:underline">Try again</button>`;
-    };
-
-    // Try cached position first (instant if available within 5 min)
-    navigator.geolocation.getCurrentPosition(onSuccess, () => {
-      // No cache — request a fresh fix; enableHighAccuracy:true is more
-      // reliable on iOS Safari for triggering the permission prompt
-      navigator.geolocation.getCurrentPosition(onSuccess, onError,
-        {timeout: 30000, enableHighAccuracy: true, maximumAge: 0});
-    }, {timeout: 500, enableHighAccuracy: false, maximumAge: 300000});
+      } catch(_) {}
+      placesLoadDetails(loc.lat, loc.lon, "", "", "", areaName, areaName);
+    }, msg => {
+      errEl.innerHTML = msg + ` <button onclick="placesUseLocation()" style="margin-left:8px;font-size:11px;font-weight:700;color:#1d4ed8;background:none;border:none;cursor:pointer;text-decoration:underline">Try again</button>`;
+      errEl.classList.remove("hidden");
+    });
   }
 
   async function placesExplorePostcode() {
@@ -4251,29 +4209,7 @@
           }
         }).catch(() => {});
     }
-    async function _ipWeather() {
-      // Try multiple IP geolocation services in order
-      const services = [
-        () => fetch("https://ipapi.co/json/").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[d.latitude,d.longitude]:null),
-        () => fetch("https://get.geojs.io/v1/ip/geo.json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[+d.latitude,+d.longitude]:null),
-        () => fetch("https://freeipapi.com/api/json").then(r=>r.json()).then(d=>d.latitude&&d.longitude?[d.latitude,d.longitude]:null),
-      ];
-      for (const svc of services) {
-        try {
-          const coords = await svc();
-          if (coords) { _showWeather(coords[0], coords[1]); return; }
-        } catch(_) {}
-      }
-    }
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => _showWeather(pos.coords.latitude, pos.coords.longitude),
-        ()  => _ipWeather(),
-        { timeout: 8000, maximumAge: 600000 }
-      );
-    } else {
-      _ipWeather();
-    }
+    MiruLocation.get().then(loc => { if (loc) _showWeather(loc.lat, loc.lon); }).catch(() => {});
   })();
 </script>
 
@@ -4695,6 +4631,13 @@
     document.querySelectorAll(".fcat-chips").forEach(p=>p.style.display="none");
     const panel = document.getElementById("fcat-panel-"+tab);
     if(panel) panel.style.display="flex";
+  };
+
+  window.finderSetLocation = function(lat, lon, postcode) {
+    _finderLat = lat; _finderLon = lon;
+    const inp = document.getElementById("finder-postcode");
+    if (inp && postcode) inp.value = postcode;
+    _showOk("📍 Location set — tap a category or type a search.");
   };
 
   _updateSavedBtn();
