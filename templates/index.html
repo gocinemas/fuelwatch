@@ -4315,7 +4315,9 @@
       </div>
     </div>
 
-    <div id="bd-desc" style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:18px;display:none"></div>
+    <div id="bd-desc" style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:12px;display:none"></div>
+    <div id="bd-community-rating" style="display:none;font-size:12px;color:var(--muted);padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px"></div>
+    <div id="bd-subjects" style="display:none;font-size:12px;color:var(--subtle);line-height:1.7;margin-bottom:14px"></div>
 
     <!-- Rating -->
     <div style="margin-bottom:14px">
@@ -4449,22 +4451,30 @@
     document.getElementById("book-loading").style.display = "";
     document.getElementById("book-results").innerHTML = "";
     try {
-      // Try to enrich with full description from Open Library
       let enriched = {...bk};
-      if (bk.key) {
+
+      // If we have an ISBN, use _fetchByISBN which also gets description + ratings
+      if (bk.isbn) {
+        const full = await _fetchByISBN(bk.isbn);
+        if (full) enriched = {...full, title: bk.title || full.title, author: bk.author || full.author};
+      } else if (bk.key) {
+        // Work-level fetch: description + ratings, no ISBN
         try {
-          const wr = await fetch(`https://openlibrary.org${bk.key}.json`);
+          const [wr, rr] = await Promise.all([
+            fetch(`https://openlibrary.org${bk.key}.json`),
+            fetch(`https://openlibrary.org${bk.key}/ratings.json`)
+          ]);
           const wd = await wr.json();
+          const rd = await rr.json();
           const desc = wd.description;
           enriched.description = typeof desc === "string" ? desc : (desc && desc.value) || "";
-          if (!enriched.isbn && wd.isbn_13) enriched.isbn = wd.isbn_13[0];
-          if (!enriched.isbn && wd.isbn_10) enriched.isbn = wd.isbn_10[0];
+          if (wd.subjects) enriched.subjects = wd.subjects.slice(0,6).join(" · ");
+          if (rd.summary && rd.summary.average) {
+            enriched.communityRating = { avg: Math.round(rd.summary.average * 10) / 10, count: rd.summary.count || 0 };
+          }
         } catch(_){}
       }
-      if (!enriched.description && enriched.isbn) {
-        const fb = await _fetchByISBN(enriched.isbn);
-        if (fb && fb.description) enriched.description = fb.description;
-      }
+
       document.getElementById("book-loading").style.display = "none";
       _showDetail(enriched);
     } catch(e){
@@ -4480,17 +4490,43 @@
       const d = await r.json();
       const bk = d[`ISBN:${isbn}`];
       if (!bk) return null;
-      const desc = bk.notes || "";
       const cover = bk.cover ? (bk.cover.medium || bk.cover.small || "") : "";
+      let description = "";
+      let communityRating = null;
+      let subjects = (bk.subjects || []).slice(0,6).map(s=>s.name||s).join(" · ");
+
+      const workKey = bk.works && bk.works[0] && bk.works[0].key;
+      if (workKey) {
+        try {
+          const [wr, rr] = await Promise.all([
+            fetch(`https://openlibrary.org${workKey}.json`),
+            fetch(`https://openlibrary.org${workKey}/ratings.json`)
+          ]);
+          const wd = await wr.json();
+          const rd = await rr.json();
+          const desc = wd.description;
+          description = typeof desc === "string" ? desc : (desc && desc.value) || "";
+          if (!subjects && wd.subjects) subjects = wd.subjects.slice(0,6).join(" · ");
+          if (rd.summary && rd.summary.average) {
+            communityRating = { avg: Math.round(rd.summary.average * 10) / 10, count: rd.summary.count || 0 };
+          }
+        } catch(_){}
+      }
+      if (!description) {
+        const notes = bk.notes;
+        description = typeof notes === "string" ? notes : (notes && notes.value) || "";
+      }
       return {
         isbn,
-        title:       bk.title || "",
-        author:      (bk.authors || []).map(a=>a.name).join(", ") || "Unknown author",
+        title:           bk.title || "",
+        author:          (bk.authors || []).map(a=>a.name).join(", ") || "Unknown author",
         cover,
-        description: typeof desc === "string" ? desc : "",
-        year:        bk.publish_date || "",
-        publishers:  (bk.publishers || []).map(p=>p.name).join(", "),
-        subjects:    (bk.subjects    || []).slice(0,3).map(s=>s.name||s).join(" · "),
+        description,
+        subjects,
+        communityRating,
+        year:            bk.publish_date || "",
+        publishers:      (bk.publishers || []).map(p=>p.name).join(", "),
+        workKey,
       };
     } catch(e){ return null; }
   }
@@ -4514,6 +4550,17 @@
     const descEl = document.getElementById("bd-desc");
     if (bk.description){ descEl.textContent = bk.description; descEl.style.display = ""; }
     else descEl.style.display = "none";
+
+    const crEl = document.getElementById("bd-community-rating");
+    if (bk.communityRating) {
+      const stars = "★".repeat(Math.round(bk.communityRating.avg)) + "☆".repeat(5 - Math.round(bk.communityRating.avg));
+      crEl.innerHTML = `<span style="color:#f59e0b;letter-spacing:1px">${stars}</span> <strong>${bk.communityRating.avg}</strong>/5 · ${bk.communityRating.count.toLocaleString()} reader ratings`;
+      crEl.style.display = "";
+    } else crEl.style.display = "none";
+
+    const subEl = document.getElementById("bd-subjects");
+    if (bk.subjects){ subEl.textContent = "🏷 " + bk.subjects; subEl.style.display = ""; }
+    else subEl.style.display = "none";
 
     document.getElementById("bd-notes").value = saved ? (saved.notes || "") : "";
     document.getElementById("bd-saved-msg").style.display = "none";
@@ -4666,16 +4713,35 @@
     if (!file) return;
     input.value = "";
     document.getElementById("book-loading").style.display = "";
-    try {
-      const img = await createImageBitmap(file);
-      const detector = new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
-      const codes = await detector.detect(img);
-      if (!codes.length){ throw new Error("No barcode found. Try scanning again or type the ISBN."); }
-      const isbn = codes[0].rawValue.replace(/[^0-9]/g,"");
+    document.getElementById("book-error").style.display = "none";
+    let isbn = null;
+
+    // Try BarcodeDetector first (Chrome / Android)
+    if ("BarcodeDetector" in window) {
+      try {
+        const img = await createImageBitmap(file);
+        const detector = new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
+        const codes = await detector.detect(img);
+        if (codes.length) isbn = codes[0].rawValue.replace(/[^0-9]/g,"");
+      } catch(_){}
+    }
+
+    // Fallback: server-side decode (iOS Safari, Firefox, etc.)
+    if (!isbn) {
+      try {
+        const fd = new FormData();
+        fd.append("image", file);
+        const r = await fetch("/api/scan-barcode", { method: "POST", body: fd });
+        const d = await r.json();
+        if (d.barcode) isbn = d.barcode.replace(/[^0-9]/g,"");
+      } catch(_){}
+    }
+
+    if (isbn) {
       await _handleScannedISBN(isbn);
-    } catch(e){
+    } else {
       document.getElementById("book-loading").style.display = "none";
-      document.getElementById("book-error").textContent = e.message || "Scan failed. Try typing the ISBN.";
+      document.getElementById("book-error").textContent = "No barcode detected. Make sure the ISBN barcode is clear and well-lit, or type the title above.";
       document.getElementById("book-error").style.display = "";
     }
   };
