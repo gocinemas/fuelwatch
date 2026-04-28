@@ -3598,6 +3598,89 @@ def _prewarm():
 _threading.Thread(target=_prewarm, daemon=True).start()
 
 
+@app.route("/api/books")
+def api_books():
+    """Proxy Open Library book search — avoids client-side CORS issues."""
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"docs": []})
+    try:
+        r = requests.get(
+            "https://openlibrary.org/search.json",
+            params={"q": q, "limit": 8, "fields": "key,title,author_name,isbn,cover_i,first_publish_year"},
+            timeout=10,
+        )
+        data = r.json()
+        return jsonify({"docs": data.get("docs", [])})
+    except Exception as e:
+        return jsonify({"error": str(e), "docs": []})
+
+
+@app.route("/api/book/isbn/<isbn>")
+def api_book_isbn(isbn):
+    """Fetch full book detail (description, rating, subjects) by ISBN via Open Library."""
+    isbn = isbn.strip()
+    try:
+        r = requests.get(
+            f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data",
+            timeout=10,
+        )
+        d = r.json()
+        bk = d.get(f"ISBN:{isbn}")
+        if not bk:
+            return jsonify({"found": False})
+
+        cover = ""
+        if bk.get("cover"):
+            cover = bk["cover"].get("medium") or bk["cover"].get("small") or ""
+
+        description = ""
+        community_rating = None
+        raw_subjects = bk.get("subjects", [])
+        subjects = " · ".join(
+            (s.get("name") if isinstance(s, dict) else s) for s in raw_subjects[:6]
+        )
+
+        work_key = (bk.get("works") or [{}])[0].get("key")
+        if work_key:
+            try:
+                wr = requests.get(f"https://openlibrary.org{work_key}.json", timeout=6)
+                wd = wr.json()
+                desc = wd.get("description", "")
+                description = desc if isinstance(desc, str) else (desc.get("value", "") if isinstance(desc, dict) else "")
+                if not subjects and wd.get("subjects"):
+                    subjects = " · ".join(str(s) for s in wd["subjects"][:6])
+            except Exception:
+                pass
+            try:
+                rr = requests.get(f"https://openlibrary.org{work_key}/ratings.json", timeout=6)
+                rd = rr.json()
+                avg = rd.get("summary", {}).get("average")
+                if avg:
+                    community_rating = {"avg": round(float(avg), 1), "count": rd["summary"].get("count", 0)}
+            except Exception:
+                pass
+
+        if not description:
+            notes = bk.get("notes", "")
+            description = notes if isinstance(notes, str) else (notes.get("value", "") if isinstance(notes, dict) else "")
+
+        return jsonify({
+            "found":           True,
+            "isbn":            isbn,
+            "title":           bk.get("title", ""),
+            "author":          ", ".join(a.get("name", "") for a in bk.get("authors", [])) or "Unknown author",
+            "cover":           cover,
+            "description":     description,
+            "subjects":        subjects,
+            "communityRating": community_rating,
+            "year":            bk.get("publish_date", ""),
+            "publishers":      ", ".join(p.get("name", "") for p in bk.get("publishers", [])),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e), "found": False})
+
+
 @app.route("/ping")
 def ping():
     return "OK", 200

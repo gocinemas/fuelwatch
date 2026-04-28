@@ -4400,25 +4400,25 @@
   window.bookSearch = async function(){
     const q = document.getElementById("book-input").value.trim();
     if (!q) return;
-    document.getElementById("book-loading").style.display = "";
+    document.getElementById("book-loading").style.display = "block";
     document.getElementById("book-error").style.display   = "none";
     document.getElementById("book-results").innerHTML     = "";
     document.getElementById("book-detail").style.display  = "none";
     try {
-      // If query looks like ISBN, go straight to detail
+      // ISBN typed directly — go straight to detail
       const cleanQ = q.replace(/[-\s]/g,"");
       if (/^\d{10,13}$/.test(cleanQ)) {
         const bk = await _fetchByISBN(cleanQ);
         if (bk) { document.getElementById("book-loading").style.display="none"; _showDetail(bk); return; }
       }
-      const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=8&fields=key,title,author_name,isbn,cover_i,first_publish_year,subject`);
+      const r = await fetch(`/api/books?q=${encodeURIComponent(q)}`);
       const d = await r.json();
       document.getElementById("book-loading").style.display = "none";
       _renderResults(d.docs || []);
     } catch(e) {
       document.getElementById("book-loading").style.display = "none";
-      document.getElementById("book-error").textContent = "Search failed. Please try again.";
-      document.getElementById("book-error").style.display = "";
+      document.getElementById("book-error").textContent = "Search failed — check your connection and try again.";
+      document.getElementById("book-error").style.display = "block";
     }
   };
 
@@ -4448,33 +4448,14 @@
 
   /* ── Open detail from search result ── */
   window.bookOpenFromResult = async function(bk){
-    document.getElementById("book-loading").style.display = "";
+    document.getElementById("book-loading").style.display = "block";
     document.getElementById("book-results").innerHTML = "";
     try {
       let enriched = {...bk};
-
-      // If we have an ISBN, use _fetchByISBN which also gets description + ratings
       if (bk.isbn) {
         const full = await _fetchByISBN(bk.isbn);
         if (full) enriched = {...full, title: bk.title || full.title, author: bk.author || full.author};
-      } else if (bk.key) {
-        // Work-level fetch: description + ratings, no ISBN
-        try {
-          const [wr, rr] = await Promise.all([
-            fetch(`https://openlibrary.org${bk.key}.json`),
-            fetch(`https://openlibrary.org${bk.key}/ratings.json`)
-          ]);
-          const wd = await wr.json();
-          const rd = await rr.json();
-          const desc = wd.description;
-          enriched.description = typeof desc === "string" ? desc : (desc && desc.value) || "";
-          if (wd.subjects) enriched.subjects = wd.subjects.slice(0,6).join(" · ");
-          if (rd.summary && rd.summary.average) {
-            enriched.communityRating = { avg: Math.round(rd.summary.average * 10) / 10, count: rd.summary.count || 0 };
-          }
-        } catch(_){}
       }
-
       document.getElementById("book-loading").style.display = "none";
       _showDetail(enriched);
     } catch(e){
@@ -4483,51 +4464,13 @@
     }
   };
 
-  /* ── Fetch by ISBN ── */
+  /* ── Fetch by ISBN (proxied through server) ── */
   async function _fetchByISBN(isbn){
     try {
-      const r = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+      const r = await fetch(`/api/book/isbn/${encodeURIComponent(isbn)}`);
       const d = await r.json();
-      const bk = d[`ISBN:${isbn}`];
-      if (!bk) return null;
-      const cover = bk.cover ? (bk.cover.medium || bk.cover.small || "") : "";
-      let description = "";
-      let communityRating = null;
-      let subjects = (bk.subjects || []).slice(0,6).map(s=>s.name||s).join(" · ");
-
-      const workKey = bk.works && bk.works[0] && bk.works[0].key;
-      if (workKey) {
-        try {
-          const [wr, rr] = await Promise.all([
-            fetch(`https://openlibrary.org${workKey}.json`),
-            fetch(`https://openlibrary.org${workKey}/ratings.json`)
-          ]);
-          const wd = await wr.json();
-          const rd = await rr.json();
-          const desc = wd.description;
-          description = typeof desc === "string" ? desc : (desc && desc.value) || "";
-          if (!subjects && wd.subjects) subjects = wd.subjects.slice(0,6).join(" · ");
-          if (rd.summary && rd.summary.average) {
-            communityRating = { avg: Math.round(rd.summary.average * 10) / 10, count: rd.summary.count || 0 };
-          }
-        } catch(_){}
-      }
-      if (!description) {
-        const notes = bk.notes;
-        description = typeof notes === "string" ? notes : (notes && notes.value) || "";
-      }
-      return {
-        isbn,
-        title:           bk.title || "",
-        author:          (bk.authors || []).map(a=>a.name).join(", ") || "Unknown author",
-        cover,
-        description,
-        subjects,
-        communityRating,
-        year:            bk.publish_date || "",
-        publishers:      (bk.publishers || []).map(p=>p.name).join(", "),
-        workKey,
-      };
+      if (!d.found) return null;
+      return d;
     } catch(e){ return null; }
   }
 
