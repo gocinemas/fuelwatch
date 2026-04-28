@@ -1698,7 +1698,7 @@
       const d = JSON.parse(txt);
       if (d.error) { setError("company", d.error); setLoading("company", false); return; }
       const dymEl = document.getElementById("co-did-you-mean");
-      if (d.suggested_name && d.suggested_name.toLowerCase() !== name.toLowerCase()) {
+      if (d.suggested_name && d.suggested_name.toLowerCase() !== name.toLowerCase() && !/couldn't|unable|sorry|can't|don't know|cannot|not able/i.test(d.suggested_name)) {
         window._dymAccept = function() {
           document.getElementById("company-input").value = d.suggested_name;
           dymEl.classList.add("hidden");
@@ -3400,7 +3400,7 @@
       document.getElementById("brand-loading").classList.add("hidden");
       if (d.error) { document.getElementById("brand-error").textContent = d.error; document.getElementById("brand-error").classList.remove("hidden"); return; }
       const dymEl = document.getElementById("brand-did-you-mean");
-      if (d.suggested_name && d.suggested_name.toLowerCase() !== name.toLowerCase()) {
+      if (d.suggested_name && d.suggested_name.toLowerCase() !== name.toLowerCase() && !/couldn't|unable|sorry|can't|don't know|cannot|not able/i.test(d.suggested_name)) {
         window._brandDymAccept = function() {
           document.getElementById("brand-input").value = d.suggested_name;
           dymEl.classList.add("hidden");

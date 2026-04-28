@@ -679,6 +679,17 @@ _BRAND_TTL = 3600
 _BRAND_INFLIGHT: dict = {}
 _BRAND_LOCK = _threading.Lock()
 
+_GROQ_REJECT = ("i couldn't", "i can't", "unable", "i don't", "i'm sorry", "sorry,",
+                "no information", "cannot find", "not able", "i'm not", "i am not")
+
+def _is_valid_canonical(s: str) -> bool:
+    """Return True only if the Groq response looks like a proper name, not an error sentence."""
+    if not s or len(s) > 80:
+        return False
+    low = s.lower()
+    return not any(p in low for p in _GROQ_REJECT)
+
+
 def _fetch_brand_ai(brand: str, extract: str) -> dict:
     """Ask Groq for timeline, campaigns, competitors, and key facts for a brand."""
     import json
@@ -808,11 +819,11 @@ def _fetch_wiki_images(wiki_title: str) -> list:
 
 
 def _fetch_brand_financials(brand: str) -> dict:
-    """Fetch market cap, revenue, net income, margins from Yahoo Finance."""
-    from datetime import datetime as _dt
+    """Fetch market cap, revenue, net income, margins via yfinance."""
     ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
     hdrs = {"User-Agent": ua, "Accept": "application/json"}
 
+    # Resolve ticker via Yahoo Finance search
     ticker = ""
     currency = "USD"
     try:
@@ -824,7 +835,7 @@ def _fetch_brand_financials(brand: str) -> dict:
         quotes = sr.json().get("quotes", [])
         equity = [q for q in quotes if q.get("quoteType") == "EQUITY"]
         if equity:
-            pick = equity[0]
+            pick     = equity[0]
             ticker   = pick.get("symbol", "")
             currency = pick.get("currency", "USD")
     except Exception:
@@ -833,8 +844,7 @@ def _fetch_brand_financials(brand: str) -> dict:
     if not ticker:
         return {}
 
-    def _fmt(val_dict, curr="$"):
-        v = val_dict.get("raw") if isinstance(val_dict, dict) else val_dict
+    def _fmt(v):
         if not v:
             return ""
         try:
@@ -847,31 +857,26 @@ def _fetch_brand_financials(brand: str) -> dict:
         if v >= 1e6:  return f"{sym}{v/1e6:.0f}M"
         return f"{sym}{v:,.0f}"
 
-    def _pct(val_dict):
-        v = val_dict.get("raw") if isinstance(val_dict, dict) else val_dict
-        if v is None: return ""
-        try: return f"{round(float(v)*100, 1)}%"
-        except Exception: return ""
+    def _pct(v):
+        if v is None:
+            return ""
+        try:
+            return f"{round(float(v) * 100, 1)}%"
+        except Exception:
+            return ""
 
     try:
-        r = requests.get(
-            f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}",
-            params={"modules": "defaultKeyStatistics,summaryDetail,financialData"},
-            timeout=8, headers=hdrs,
-        )
-        result = r.json().get("quoteSummary", {}).get("result", [None])[0] or {}
-        fin    = result.get("financialData", {})
-        stats  = result.get("defaultKeyStatistics", {})
-        summ   = result.get("summaryDetail", {})
+        import yfinance as yf
+        info = yf.Ticker(ticker).info
         return {
             "ticker":         ticker,
-            "market_cap":     _fmt(summ.get("marketCap", {})),
-            "total_revenue":  _fmt(fin.get("totalRevenue", {})),
-            "net_income":     _fmt(fin.get("netIncomeToCommon") or stats.get("netIncomeToCommon") or {}),
-            "profit_margin":  _pct(fin.get("profitMargins", {})),
-            "gross_margin":   _pct(fin.get("grossMargins", {})),
-            "revenue_growth": _pct(fin.get("revenueGrowth", {})),
-            "ebitda":         _fmt(fin.get("ebitda", {})),
+            "market_cap":     _fmt(info.get("marketCap")),
+            "total_revenue":  _fmt(info.get("totalRevenue")),
+            "net_income":     _fmt(info.get("netIncomeToCommon")),
+            "profit_margin":  _pct(info.get("profitMargins")),
+            "gross_margin":   _pct(info.get("grossMargins")),
+            "revenue_growth": _pct(info.get("revenueGrowth")),
+            "ebitda":         _fmt(info.get("ebitda")),
         }
     except Exception as e:
         print(f"[brand_financials] {e}")
@@ -906,7 +911,7 @@ def fetch_brand_data(brand: str) -> dict:
                 timeout=6,
             )
             resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
-            if resolved and len(resolved) < 80:
+            if _is_valid_canonical(resolved):
                 canonical = resolved
     except Exception:
         pass
@@ -1398,7 +1403,7 @@ def fetch_company_info(company: str) -> dict:
                 timeout=6,
             )
             resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
-            if resolved and len(resolved) < 120:
+            if _is_valid_canonical(resolved):
                 canonical = resolved
     except Exception:
         pass
