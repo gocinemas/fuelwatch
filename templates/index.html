@@ -4486,7 +4486,7 @@ function _bkRenderResults(docs){
   }
   document.getElementById("book-results").innerHTML = docs.map(function(doc){
     var isbn  = (doc.isbn||[])[0]||"";
-    var cover = doc.cover_i ? "https://covers.openlibrary.org/b/id/"+doc.cover_i+"-M.jpg" : "";
+    var cover = doc.cover || (doc.cover_i ? "https://covers.openlibrary.org/b/id/"+doc.cover_i+"-M.jpg" : "");
     var author= (doc.author_name||[]).slice(0,2).join(", ")||"Unknown author";
     var year  = doc.first_publish_year ? " · "+doc.first_publish_year : "";
     var data  = JSON.stringify({key:doc.key,title:doc.title,author:author,isbn:isbn,cover:cover,year:doc.first_publish_year||""}).replace(/"/g,"&quot;");
@@ -4624,18 +4624,22 @@ function bookToggleScanner(){
   if(_bookScanStream){ bookStopScanner(); return; }
   if(!("BarcodeDetector" in window)){ document.getElementById("book-scan-file").click(); return; }
   btn.textContent="⏳ Starting camera…";
-  navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(function(stream){
+  navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}}).then(function(stream){
     _bookScanStream=stream;
     var vid=document.getElementById("book-scan-video");
-    vid.srcObject=stream; wrap.style.display="block"; btn.textContent="⏹ Stop scanning";
-    var detector=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
-    (function loop(){
-      if(!_bookScanStream) return;
-      detector.detect(vid).then(function(codes){
-        if(codes.length){ bookStopScanner(); _bkHandleISBN(codes[0].rawValue.replace(/[^0-9]/g,"")); return; }
-        requestAnimationFrame(loop);
-      }).catch(function(){ requestAnimationFrame(loop); });
-    })();
+    vid.srcObject=stream;
+    vid.play().then(function(){
+      wrap.style.display="block"; btn.textContent="⏹ Stop scanning";
+      var detector=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
+      (function loop(){
+        if(!_bookScanStream) return;
+        if(vid.readyState < 2){ setTimeout(loop, 80); return; }
+        detector.detect(vid).then(function(codes){
+          if(codes.length){ bookStopScanner(); _bkHandleISBN(codes[0].rawValue.replace(/[^0-9]/g,"")); return; }
+          setTimeout(loop, 200);
+        }).catch(function(){ setTimeout(loop, 200); });
+      })();
+    }).catch(function(){ btn.textContent="📷 Scan ISBN barcode"; document.getElementById("book-scan-file").click(); });
   }).catch(function(){ btn.textContent="📷 Scan ISBN barcode"; document.getElementById("book-scan-file").click(); });
 }
 

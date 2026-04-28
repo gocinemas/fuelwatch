@@ -3617,84 +3617,86 @@ def api_crime():
     return jsonify(data)
 
 
+def _normalize_gbook(item):
+    vi = item.get("volumeInfo", {})
+    isbns = [x["identifier"] for x in vi.get("industryIdentifiers", []) if x.get("type") in ("ISBN_13", "ISBN_10")]
+    cover = ""
+    if vi.get("imageLinks"):
+        cover = vi["imageLinks"].get("thumbnail") or vi["imageLinks"].get("smallThumbnail") or ""
+        if cover:
+            cover = cover.replace("http://", "https://")
+    year = None
+    pd = vi.get("publishedDate", "")
+    if pd and len(pd) >= 4:
+        try: year = int(pd[:4])
+        except ValueError: pass
+    return {
+        "key": item.get("id", ""),
+        "title": vi.get("title", ""),
+        "author_name": vi.get("authors", []),
+        "isbn": isbns,
+        "cover": cover,
+        "first_publish_year": year,
+    }
+
+
 @app.route("/api/books")
 def api_books():
-    """Proxy Open Library book search — avoids client-side CORS issues."""
+    """Proxy Google Books search — better data quality and reliability than Open Library."""
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify({"docs": []})
     try:
         r = requests.get(
-            "https://openlibrary.org/search.json",
-            params={"q": q, "limit": 8, "fields": "key,title,author_name,isbn,cover_i,first_publish_year"},
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": q, "maxResults": 10, "printType": "books", "langRestrict": "en", "orderBy": "relevance"},
             timeout=10,
         )
-        data = r.json()
-        return jsonify({"docs": data.get("docs", [])})
+        items = r.json().get("items", [])
+        return jsonify({"docs": [_normalize_gbook(i) for i in items]})
     except Exception as e:
         return jsonify({"error": str(e), "docs": []})
 
 
 @app.route("/api/book/isbn/<isbn>")
 def api_book_isbn(isbn):
-    """Fetch full book detail (description, rating, subjects) by ISBN via Open Library."""
+    """Fetch full book detail by ISBN via Google Books API."""
     isbn = isbn.strip()
     try:
         r = requests.get(
-            f"https://openlibrary.org/api/books?bibkeys=ISBN:{isbn}&format=json&jscmd=data",
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": f"isbn:{isbn}", "maxResults": 1},
             timeout=10,
         )
-        d = r.json()
-        bk = d.get(f"ISBN:{isbn}")
-        if not bk:
+        items = r.json().get("items")
+        if not items:
             return jsonify({"found": False})
 
+        vi = items[0].get("volumeInfo", {})
         cover = ""
-        if bk.get("cover"):
-            cover = bk["cover"].get("medium") or bk["cover"].get("small") or ""
+        if vi.get("imageLinks"):
+            cover = vi["imageLinks"].get("thumbnail") or vi["imageLinks"].get("smallThumbnail") or ""
+            if cover:
+                cover = cover.replace("http://", "https://")
 
-        description = ""
-        community_rating = None
-        raw_subjects = bk.get("subjects", [])
-        subjects = " · ".join(
-            (s.get("name") if isinstance(s, dict) else s) for s in raw_subjects[:6]
-        )
+        all_isbns = [x["identifier"] for x in vi.get("industryIdentifiers", []) if x.get("type") in ("ISBN_13", "ISBN_10")]
+        subjects = " · ".join(vi.get("categories", [])[:6])
 
-        work_key = (bk.get("works") or [{}])[0].get("key")
-        if work_key:
-            try:
-                wr = requests.get(f"https://openlibrary.org{work_key}.json", timeout=6)
-                wd = wr.json()
-                desc = wd.get("description", "")
-                description = desc if isinstance(desc, str) else (desc.get("value", "") if isinstance(desc, dict) else "")
-                if not subjects and wd.get("subjects"):
-                    subjects = " · ".join(str(s) for s in wd["subjects"][:6])
-            except Exception:
-                pass
-            try:
-                rr = requests.get(f"https://openlibrary.org{work_key}/ratings.json", timeout=6)
-                rd = rr.json()
-                avg = rd.get("summary", {}).get("average")
-                if avg:
-                    community_rating = {"avg": round(float(avg), 1), "count": rd["summary"].get("count", 0)}
-            except Exception:
-                pass
-
-        if not description:
-            notes = bk.get("notes", "")
-            description = notes if isinstance(notes, str) else (notes.get("value", "") if isinstance(notes, dict) else "")
+        rating = vi.get("averageRating")
+        community_rating = {"avg": round(float(rating), 1), "count": vi.get("ratingsCount", 0)} if rating else None
 
         return jsonify({
             "found":           True,
-            "isbn":            isbn,
-            "title":           bk.get("title", ""),
-            "author":          ", ".join(a.get("name", "") for a in bk.get("authors", [])) or "Unknown author",
+            "isbn":            (all_isbns[0] if all_isbns else isbn),
+            "title":           vi.get("title", ""),
+            "author":          ", ".join(vi.get("authors", [])) or "Unknown author",
             "cover":           cover,
-            "description":     description,
+            "description":     vi.get("description", ""),
             "subjects":        subjects,
             "communityRating": community_rating,
-            "year":            bk.get("publish_date", ""),
-            "publishers":      ", ".join(p.get("name", "") for p in bk.get("publishers", [])),
+            "year":            vi.get("publishedDate", "")[:4] if vi.get("publishedDate") else "",
+            "publishers":      vi.get("publisher", ""),
+            "pageCount":       vi.get("pageCount"),
         })
     except Exception as e:
         return jsonify({"error": str(e), "found": False})
