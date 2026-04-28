@@ -2751,18 +2751,18 @@ def api_finder():
 
 
 _TRADE_CHECKATRADE = {
-    "plumber": "plumbers", "plumbing": "plumbers",
-    "electrician": "electricians", "electrical": "electricians",
-    "gas engineer": "gas-engineers", "boiler": "boiler-repair",
-    "builder": "builders", "roofer": "roofers", "roofing": "roofers",
-    "painter": "painters-decorators", "decorator": "painters-decorators",
-    "locksmith": "locksmiths", "handyman": "handyman",
-    "carpenter": "carpenters", "tiler": "tilers", "plasterer": "plasterers",
-    "cleaner": "cleaning-services", "cleaning": "cleaning-services",
-    "window cleaner": "window-cleaners", "pest control": "pest-control",
-    "gardener": "landscape-gardeners", "landscap": "landscape-gardeners",
-    "driveway": "driveways", "bathroom": "bathroom-fitters",
-    "kitchen": "kitchen-fitters", "extension": "house-extensions",
+    "plumber": "Plumbers", "plumbing": "Plumbers",
+    "electrician": "Electricians", "electrical": "Electricians",
+    "gas engineer": "Gas-Engineers", "boiler": "Boiler-Repair",
+    "builder": "Builders", "roofer": "Roofers", "roofing": "Roofers",
+    "painter": "Painters-And-Decorators", "decorator": "Painters-And-Decorators",
+    "locksmith": "Locksmiths", "handyman": "Handyman",
+    "carpenter": "Carpenters", "tiler": "Tilers", "plasterer": "Plasterers",
+    "cleaner": "Cleaning-Services", "cleaning": "Cleaning-Services",
+    "window cleaner": "Window-Cleaners", "pest control": "Pest-Control",
+    "gardener": "Landscaper", "landscap": "Landscaper",
+    "driveway": "Driveways", "bathroom": "Bathroom-Fitters",
+    "kitchen": "Kitchen-Fitters", "extension": "House-Extensions",
 }
 
 
@@ -2808,7 +2808,25 @@ def api_finder_search():
     q_lower = q.lower()
     for kw, slug in _TRADE_CHECKATRADE.items():
         if kw in q_lower:
-            checkatrade_url = f"https://www.checkatrade.com/search/?what={slug}"
+            # Resolve nearest town for location-specific URL
+            town_slug = None
+            try:
+                import requests as _req
+                pc_r = _req.get(
+                    f"https://api.postcodes.io/postcodes?lon={lon}&lat={lat}&limit=1",
+                    timeout=3
+                ).json()
+                if pc_r.get("result"):
+                    district = (pc_r["result"][0].get("admin_district")
+                                or pc_r["result"][0].get("region") or "")
+                    if district:
+                        town_slug = district.replace(" ", "-")
+            except Exception:
+                pass
+            if town_slug:
+                checkatrade_url = f"https://www.checkatrade.com/Search/{slug}/in/{town_slug}"
+            else:
+                checkatrade_url = f"https://www.checkatrade.com/Search/{slug}"
             break
 
     result = {"results": top, "checkatrade_url": checkatrade_url, "query": q}
