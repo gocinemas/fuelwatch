@@ -1578,7 +1578,7 @@
           unis.map(u => `<div class="py-1 flex justify-between"><span>${u.name}</span><span class="text-gray-400 text-xs">${u.dist_mi.toFixed(1)}mi</span></div>`).join("")
         : "";
     } else {
-      document.getElementById("report-schools-list").innerHTML = '<p class="text-gray-400 text-sm py-2">No schools found within 5 miles.</p>';
+      document.getElementById("report-schools-list").innerHTML = '<p class="text-gray-400 text-sm py-2">No schools found within 3 miles.</p>';
     }
 
     const pubs = d.pubs || [];

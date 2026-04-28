@@ -774,7 +774,7 @@ def api_local():
         return jsonify({"error": "Postcode not found."}), 404
     postcode, lat, lon, pc_fmt = result
     analytics.log_search("area", postcode, request.remote_addr, request.user_agent.string)
-    local = fetch_local_amenities(lat, lon, 3.0, 5.0)
+    local = fetch_local_amenities(lat, lon, 5.0, 5.0)
     return jsonify({
         "schools":      {"schools": local.get("schools", []), "universities": local.get("universities", [])},
         "pubs":         local.get("pubs", []),
