@@ -3664,21 +3664,20 @@ def _algolia_books_index():
         return None
 
 
-def _algolia_index_books(docs):
-    """Save normalised book docs to Algolia books index (fire-and-forget)."""
+def _algolia_index_books_bg(records):
+    """Write book records to Algolia in a background thread — never blocks a response."""
     try:
         idx = _algolia_books_index()
-        if idx and docs:
-            records = [{**d, "objectID": d["key"]} for d in docs if d.get("key")]
-            if records:
-                idx.save_objects(records)
+        if idx and records:
+            idx.save_objects(records)
     except Exception:
         pass
 
 
 @app.route("/api/books")
 def api_books():
-    """Book search: Algolia first (fast cache), Open Library fallback + auto-index."""
+    """Book search: Algolia first (fast cache), Open Library fallback + background auto-index."""
+    import threading
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify({"docs": []})
@@ -3704,17 +3703,18 @@ def api_books():
             params={"q": q, "limit": 10, "fields": "key,title,author_name,isbn,cover_i,first_publish_year"},
             timeout=12,
         )
+        r.raise_for_status()
         docs = r.json().get("docs", [])
-        _algolia_index_books([{
-            "key": d.get("key", ""),
-            "title": d.get("title", ""),
-            "author_name": d.get("author_name", []),
-            "isbn": d.get("isbn", []),
-            "cover_i": d.get("cover_i"),
-            "first_publish_year": d.get("first_publish_year"),
-        } for d in docs if d.get("key")])
+        # Index to Algolia in background — never blocks the response
+        records = [{"objectID": d["key"], "key": d.get("key",""), "title": d.get("title",""),
+                    "author_name": d.get("author_name",[]), "isbn": d.get("isbn",[]),
+                    "cover_i": d.get("cover_i"), "first_publish_year": d.get("first_publish_year")}
+                   for d in docs if d.get("key")]
+        if records:
+            threading.Thread(target=_algolia_index_books_bg, args=(records,), daemon=True).start()
         return jsonify({"docs": docs})
     except Exception as e:
+        print(f"[api/books] error: {e}")
         return jsonify({"error": str(e), "docs": []})
 
 
