@@ -4287,11 +4287,10 @@
 <!-- ===================== FINDER SCREEN ===================== -->
 <div id="screen-finder" class="screen pt-5">
 
+  <!-- Card 1: inputs — identical structure to Fuel/Company -->
   <div class="bg-white rounded-2xl shadow p-5 mb-4">
-    <h2 class="font-bold text-gray-800 mb-1">🔍 Local Finder</h2>
-    <p class="text-xs text-gray-400 mb-4">Trades, health &amp; local services near you</p>
-
-    <div class="flex gap-2 mb-2">
+    <h2 class="font-bold text-gray-800 mb-3">🔍 Local Finder</h2>
+    <div class="flex gap-2 mb-3">
       <input id="finder-postcode" type="text" placeholder="Postcode e.g. SW1A 1AA" maxlength="10"
         class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 uppercase"
         autocomplete="off"
@@ -4300,10 +4299,21 @@
       <button id="finder-loc-btn" onclick="useLocation('finder')" title="Use my location"
         class="shrink-0 border border-gray-200 rounded-xl px-3 py-3 text-lg hover:bg-gray-50 active:bg-gray-100 transition">📍</button>
     </div>
-    <div id="finder-didyoumean" class="hidden text-xs font-medium mb-2 cursor-pointer" style="color:#2563eb" onclick="finderAcceptSuggestion()"></div>
-    <div id="finder-loc-err"    class="hidden text-xs mb-2" style="color:#ef4444"></div>
-    <div id="finder-loc-ok"     class="hidden text-xs font-semibold mb-2" style="color:#059669">📍 Location set — tap a category below or type a search.</div>
+    <input id="finder-q" type="text" placeholder="e.g. plumber, dentist, gym…"
+      class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 mb-4"
+      onkeydown="if(event.key==='Enter')finderSearch()">
+    <div id="finder-didyoumean" class="hidden text-xs font-medium mb-3 cursor-pointer" style="color:#2563eb" onclick="finderAcceptSuggestion()"></div>
+    <div id="finder-loc-err" class="hidden text-xs mb-3" style="color:#ef4444"></div>
+    <div id="finder-loc-ok"  class="hidden text-xs font-semibold mb-3" style="color:#059669">📍 Location set — tap a category below or type a search.</div>
+    <button onclick="finderSearch()"
+      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition text-sm">
+      Search Nearby
+    </button>
+  </div>
 
+  <!-- Card 2: browse by category -->
+  <div class="bg-white rounded-2xl shadow p-4 mb-4">
+    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Browse by category</div>
     <div class="ftab-bar">
       <button class="ftab-btn ftab-active" data-tab="trades"  onclick="finderSwitchTab('trades',this)">🔧<br>Trades</button>
       <button class="ftab-btn"             data-tab="health"  onclick="finderSwitchTab('health',this)">🏥<br>Health</button>
@@ -4311,7 +4321,6 @@
       <button class="ftab-btn"             data-tab="pro"     onclick="finderSwitchTab('pro',this)">👔<br>Pro</button>
       <button class="ftab-btn"             data-tab="family"  onclick="finderSwitchTab('family',this)">👶<br>Family</button>
     </div>
-
     <div id="fcat-panel-trades" class="fcat-chips">
       <button class="fcat" data-q="plumber"                       onclick="finderCatSearch(this)">🔧 Plumber</button>
       <button class="fcat" data-q="electrician"                   onclick="finderCatSearch(this)">⚡ Electrician</button>
@@ -4360,14 +4369,6 @@
       <button class="fcat" data-q="primary school"                onclick="finderCatSearch(this)">🏫 Primary School</button>
       <button class="fcat" data-q="after school club"             onclick="finderCatSearch(this)">🌟 After School</button>
       <button class="fcat" data-q="children's activity class"     onclick="finderCatSearch(this)">🎨 Kids Activities</button>
-    </div>
-
-    <div class="flex gap-2 mt-4">
-      <input id="finder-q" type="text" placeholder="Or type: plumber, dentist, gym…"
-        class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        onkeydown="if(event.key==='Enter')finderSearch()">
-      <button onclick="finderSearch()"
-        class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 rounded-xl transition text-sm">Search</button>
     </div>
   </div>
 
