@@ -2751,18 +2751,18 @@ def api_finder():
 
 
 _TRADE_CHECKATRADE = {
-    "plumber": "Plumbers", "plumbing": "Plumbers",
-    "electrician": "Electricians", "electrical": "Electricians",
-    "gas engineer": "Gas-Engineers", "boiler": "Boiler-Repair",
-    "builder": "Builders", "roofer": "Roofers", "roofing": "Roofers",
-    "painter": "Painters-And-Decorators", "decorator": "Painters-And-Decorators",
-    "locksmith": "Locksmiths", "handyman": "Handyman",
-    "carpenter": "Carpenters", "tiler": "Tilers", "plasterer": "Plasterers",
+    "plumber": "Plumber", "plumbing": "Plumber",
+    "electrician": "Electrician", "electrical": "Electrician",
+    "gas engineer": "Gas-Engineer", "boiler": "Boiler-Repair",
+    "builder": "Builder", "roofer": "Roofer", "roofing": "Roofer",
+    "painter": "Painter-And-Decorator", "decorator": "Painter-And-Decorator",
+    "locksmith": "Locksmith", "handyman": "Handyman",
+    "carpenter": "Carpenter", "tiler": "Tiler", "plasterer": "Plasterer",
     "cleaner": "Cleaning-Services", "cleaning": "Cleaning-Services",
-    "window cleaner": "Window-Cleaners", "pest control": "Pest-Control",
+    "window cleaner": "Window-Cleaner", "pest control": "Pest-Control",
     "gardener": "Landscaper", "landscap": "Landscaper",
-    "driveway": "Driveways", "bathroom": "Bathroom-Fitters",
-    "kitchen": "Kitchen-Fitters", "extension": "House-Extensions",
+    "driveway": "Driveways", "bathroom": "Bathroom-Fitter",
+    "kitchen": "Kitchen-Fitter", "extension": "House-Extension",
 }
 
 
@@ -2809,6 +2809,8 @@ def api_finder_search():
     for kw, slug in _TRADE_CHECKATRADE.items():
         if kw in q_lower:
             # Resolve nearest town for location-specific URL
+            # admin_ward gives actual town names (e.g. "Weybridge", "Wimbledon")
+            # admin_district gives borough names (e.g. "Runnymede") which Checkatrade doesn't recognise
             town_slug = None
             try:
                 import requests as _req
@@ -2817,10 +2819,12 @@ def api_finder_search():
                     timeout=3
                 ).json()
                 if pc_r.get("result"):
-                    district = (pc_r["result"][0].get("admin_district")
-                                or pc_r["result"][0].get("region") or "")
+                    res = pc_r["result"][0]
+                    district = (res.get("admin_ward")
+                                or res.get("admin_district")
+                                or res.get("region") or "")
                     if district:
-                        town_slug = district.replace(" ", "-")
+                        town_slug = district.title().replace(" ", "-")
             except Exception:
                 pass
             if town_slug:
