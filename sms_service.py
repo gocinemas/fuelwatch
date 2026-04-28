@@ -3676,46 +3676,67 @@ def _algolia_index_books_bg(records):
 
 @app.route("/api/books")
 def api_books():
-    """Book search: Algolia first (fast cache), Open Library fallback + background auto-index."""
+    """Book search: Algolia + Open Library fired in parallel; fastest result wins."""
     import threading
+    from concurrent.futures import ThreadPoolExecutor
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify({"docs": []})
 
-    # 1. Try Algolia (instant results from previous searches)
-    try:
-        idx = _algolia_books_index()
-        if idx:
+    def _search_algolia():
+        try:
+            idx = _algolia_books_index()
+            if not idx:
+                return []
             res = idx.search(q, {"hitsPerPage": 10, "attributesToRetrieve": [
                 "key", "title", "author_name", "isbn", "cover", "cover_i", "first_publish_year"
             ]})
             hits = res.get("hits", [])
-            if hits:
-                docs = [{k: v for k, v in h.items() if not k.startswith("_") and k != "objectID"} for h in hits]
-                return jsonify({"docs": docs})
-    except Exception:
-        pass
+            return [{k: v for k, v in h.items() if not k.startswith("_") and k != "objectID"}
+                    for h in hits] if hits else []
+        except Exception:
+            return []
 
-    # 2. Open Library — free, no rate limits, excellent coverage
-    try:
-        r = requests.get(
-            "https://openlibrary.org/search.json",
-            params={"q": q, "limit": 10, "fields": "key,title,author_name,isbn,cover_i,first_publish_year"},
-            timeout=12,
-        )
-        r.raise_for_status()
-        docs = r.json().get("docs", [])
-        # Index to Algolia in background — never blocks the response
-        records = [{"objectID": d["key"], "key": d.get("key",""), "title": d.get("title",""),
-                    "author_name": d.get("author_name",[]), "isbn": d.get("isbn",[]),
+    def _search_ol():
+        try:
+            r = requests.get(
+                "https://openlibrary.org/search.json",
+                params={"q": q, "limit": 10, "fields": "key,title,author_name,isbn,cover_i,first_publish_year"},
+                timeout=10,
+            )
+            r.raise_for_status()
+            return r.json().get("docs", [])
+        except Exception:
+            return []
+
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        af = ex.submit(_search_algolia)
+        of = ex.submit(_search_ol)
+
+        # Algolia is fast — give it 2s; if it has data, return immediately
+        try:
+            algolia_docs = af.result(timeout=2)
+            if algolia_docs:
+                return jsonify({"docs": algolia_docs})
+        except Exception:
+            pass
+
+        # Otherwise wait for Open Library
+        try:
+            ol_docs = of.result(timeout=12)
+        except Exception:
+            ol_docs = []
+
+    # Index OL results to Algolia in background so next search is instant
+    if ol_docs:
+        records = [{"objectID": d["key"], "key": d.get("key", ""), "title": d.get("title", ""),
+                    "author_name": d.get("author_name", []), "isbn": d.get("isbn", []),
                     "cover_i": d.get("cover_i"), "first_publish_year": d.get("first_publish_year")}
-                   for d in docs if d.get("key")]
+                   for d in ol_docs if d.get("key")]
         if records:
             threading.Thread(target=_algolia_index_books_bg, args=(records,), daemon=True).start()
-        return jsonify({"docs": docs})
-    except Exception as e:
-        print(f"[api/books] error: {e}")
-        return jsonify({"error": str(e), "docs": []})
+
+    return jsonify({"docs": ol_docs})
 
 
 @app.route("/api/book/isbn/<isbn>")
