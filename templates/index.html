@@ -4347,7 +4347,6 @@
     <!-- Actions -->
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
       <button onclick="bookSave()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">💾 Save to Library</button>
-      <button onclick="bookTalkToBook()" style="padding:12px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer">💬 Talk to Book</button>
     </div>
     <div id="bd-saved-msg" style="display:none;font-size:13px;color:#059669;font-weight:600;margin-bottom:12px">✓ Saved to your library</div>
   </div>
@@ -4562,7 +4561,6 @@ function _bkRenderLib(){
 
 function bookOpenFromLib(bk){ _bkShowDetail(bk); }
 function bookDeleteLib(isbn){ _bkSetLib(_bkGetLib().filter(function(b){ return b.isbn!==isbn; })); _bkRenderLib(); }
-function bookTalkToBook(){ if(typeof showScreen==="function") showScreen("library"); }
 
 function bookToggleScanner(){
   var wrap=document.getElementById("book-scan-wrap"), btn=document.getElementById("book-scan-btn");
