@@ -266,12 +266,6 @@
           <div class="tc-desc">Property & local intel</div>
         </button>
 
-        <button class="tool-card" onclick="showScreen('compare')">
-          <div class="tc-icon" style="background:#fdf4ff">⚖️</div>
-          <div class="tc-name">Compare Areas</div>
-          <div class="tc-desc">Postcode vs postcode</div>
-        </button>
-
         <button class="tool-card" onclick="showScreen('company')">
           <div class="tc-icon" style="background:#eff6ff">🏢</div>
           <div class="tc-name">Company Intel</div>
@@ -449,10 +443,16 @@
         <!-- Share row -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <span id="report-share-label" style="font-size:13px;font-weight:600;color:var(--muted)"></span>
-          <button id="report-share-btn" onclick="shareAreaReport(this)"
-            style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">
-            📤 Share
-          </button>
+          <div style="display:flex;gap:6px">
+            <button onclick="openCompareFromReport()"
+              style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">
+              ⚖️ Compare
+            </button>
+            <button id="report-share-btn" onclick="shareAreaReport(this)"
+              style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">
+              📤 Share
+            </button>
+          </div>
         </div>
         <!-- Vertical tab layout -->
         <div style="display:flex;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:8px">
@@ -5298,7 +5298,7 @@ _bkBadge();
   <div class="bg-white rounded-2xl shadow p-5 mb-4">
     <h2 class="font-bold text-gray-800 mb-1">⚖️ Compare Areas</h2>
     <p class="text-xs text-gray-400 mb-4">Side-by-side postcode comparison — prices, crime, schools</p>
-    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:flex-end;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:14px">
       <div>
         <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">AREA 1</label>
         <input id="cmp-pc1" type="text" placeholder="e.g. SW1A 1AA" autocomplete="off" autocapitalize="characters"
@@ -5425,7 +5425,7 @@ _bkBadge();
   function _col(content, winner) {
     const bg = winner === "left" ? "#f0fdf4" : winner === "right" ? "#eff6ff" : "#f9fafb";
     const border = winner === "left" ? "1.5px solid #86efac" : winner === "right" ? "1.5px solid #93c5fd" : "1px solid #f3f4f6";
-    return `<div style="background:${bg};border:${border};border-radius:12px;padding:12px">${content}</div>`;
+    return `<div style="background:${bg};border:${border};border-radius:12px;padding:12px;display:flex;flex-direction:column;align-items:flex-start">${content}</div>`;
   }
 
   function _sectionTitle(icon, label) {
@@ -5433,12 +5433,12 @@ _bkBadge();
   }
 
   function _grid(left, right) {
-    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${left}${right}</div>`;
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">${left}${right}</div>`;
   }
 
-  function _big(val) { return `<div style="font-size:22px;font-weight:800;color:#111827;line-height:1.2">${val}</div>`; }
-  function _sub(val) { return `<div style="font-size:11px;color:#9ca3af;margin-top:2px">${val}</div>`; }
-  function _note(val) { return `<div style="font-size:12px;color:#6b7280;margin-top:5px">${val}</div>`; }
+  function _big(val) { return `<div style="font-size:20px;font-weight:800;color:#111827;line-height:1.2">${val}</div>`; }
+  function _sub(val) { return `<div style="font-size:11px;color:#9ca3af;margin-top:3px">${val}</div>`; }
+  function _note(val) { return `<div style="font-size:12px;color:#6b7280;margin-top:6px;line-height:1.4">${val}</div>`; }
 
   function _renderCmpHouse(h1, h2, pc1, pc2, salary) {
     const hp1 = h1?.house_prices || {};
@@ -5620,7 +5620,17 @@ _bkBadge();
     }
   };
 
+  document.getElementById("cmp-pc1").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("cmp-pc2").focus(); });
   document.getElementById("cmp-pc2").addEventListener("keydown", e => { if (e.key === "Enter") window.searchCompare(); });
+
+  window.openCompareFromReport = function() {
+    const pc = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"").toUpperCase();
+    showScreen("compare");
+    setTimeout(() => {
+      if (pc) document.getElementById("cmp-pc1").value = _fmtPc(pc);
+      document.getElementById("cmp-pc2").focus();
+    }, 50);
+  };
 
 })();
 </script>
