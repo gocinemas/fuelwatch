@@ -266,6 +266,12 @@
           <div class="tc-desc">Property & local intel</div>
         </button>
 
+        <button class="tool-card" onclick="showScreen('compare')">
+          <div class="tc-icon" style="background:#fdf4ff">⚖️</div>
+          <div class="tc-name">Compare Areas</div>
+          <div class="tc-desc">Postcode vs postcode</div>
+        </button>
+
         <button class="tool-card" onclick="showScreen('company')">
           <div class="tc-icon" style="background:#eff6ff">🏢</div>
           <div class="tc-name">Company Intel</div>
@@ -5288,6 +5294,51 @@ _bkBadge();
 })();
 </script>
 
+<!-- ── COMPARE SCREEN ── -->
+<div id="screen-compare" class="screen pt-5">
+  <div class="bg-white rounded-2xl shadow p-5 mb-4">
+    <h2 class="font-bold text-gray-800 mb-1">⚖️ Compare Areas</h2>
+    <p class="text-xs text-gray-400 mb-4">Side-by-side postcode comparison — prices, crime, schools</p>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:flex-end;margin-bottom:14px">
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">AREA 1</label>
+        <input id="cmp-pc1" type="text" placeholder="e.g. SW1A 1AA" autocomplete="off" autocapitalize="characters"
+          style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;box-sizing:border-box;outline:none"
+          onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e5e7eb'" />
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#9ca3af;padding-bottom:12px;text-align:center">vs</div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">AREA 2</label>
+        <input id="cmp-pc2" type="text" placeholder="e.g. KT16 0DA" autocomplete="off" autocapitalize="characters"
+          style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;box-sizing:border-box;outline:none"
+          onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e5e7eb'" />
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">ANNUAL SALARY (optional — for affordability)</label>
+      <div style="position:relative">
+        <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:14px;font-weight:600">£</span>
+        <input id="cmp-salary" type="number" placeholder="e.g. 55000" min="0" max="999999"
+          style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px 12px 28px;font-size:14px;box-sizing:border-box;outline:none"
+          onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e5e7eb'" />
+      </div>
+    </div>
+    <button onclick="searchCompare()"
+      style="width:100%;background:#1f2937;color:#fff;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;cursor:pointer">
+      Compare Areas
+    </button>
+  </div>
+
+  <div id="cmp-results" style="display:none">
+    <div id="cmp-header" class="bg-white rounded-2xl shadow p-4 mb-3"></div>
+    <div id="cmp-house"  class="bg-white rounded-2xl shadow p-4 mb-3"></div>
+    <div id="cmp-affordability" class="bg-white rounded-2xl shadow p-4 mb-3" style="display:none"></div>
+    <div id="cmp-crime"  class="bg-white rounded-2xl shadow p-4 mb-3"></div>
+    <div id="cmp-schools" class="bg-white rounded-2xl shadow p-4 mb-3"></div>
+    <div id="cmp-summary" class="bg-white rounded-2xl shadow p-4 mb-3" style="display:none"></div>
+  </div>
+</div>
+
 <!-- Bottom Navigation -->
 <nav id="bottom-nav">
   <button class="bnav-btn" id="bnav-fuel" onclick="showScreen('fuel')">
@@ -5322,6 +5373,258 @@ _bkBadge();
     <div id="co-featured-modal-err" style="font-size:12px;color:#ef4444;margin-top:8px;display:none"></div>
   </div>
 </div>
+
+<script>
+// ── Area Comparison ──────────────────────────────────────────────────────────
+(function() {
+
+  function _fmtPc(pc) {
+    return pc.replace(/^([A-Z]{1,2}\d{1,2}[A-Z]?)(\d[A-Z]{2})$/i, "$1 $2").toUpperCase();
+  }
+
+  function _calcTakeHome(gross) {
+    if (!gross || gross <= 0) return 0;
+    const pa = 12570;
+    let tax = 0, ni = 0;
+    if (gross > pa) {
+      tax += Math.min(gross - pa, 37700) * 0.20;
+      if (gross > 50270) tax += Math.min(gross - 50270, 74870) * 0.40;
+      if (gross > 125140) tax += (gross - 125140) * 0.45;
+    }
+    if (gross > 12570) {
+      ni += Math.min(gross - 12570, 37700) * 0.08;
+      if (gross > 50270) ni += (gross - 50270) * 0.02;
+    }
+    return Math.round(gross - tax - ni);
+  }
+
+  function _lowestPrice(hp) {
+    if (!hp || !Object.keys(hp).length) return {price: null, type: null};
+    const order = ["flat","terraced","semi-detached","detached"];
+    for (const t of order) {
+      const key = Object.keys(hp).find(k => k.toLowerCase().includes(t));
+      if (key) return {price: hp[key].avg, type: key};
+    }
+    const first = Object.entries(hp)[0];
+    return {price: first[1].avg, type: first[0]};
+  }
+
+  function _skel(msg) {
+    return `<div style="display:flex;align-items:center;gap:8px;padding:12px 0;color:#9ca3af;font-size:13px"><div class="spinner"></div>${msg}</div>`;
+  }
+
+  function _winTag(text, dir) {
+    const isLeft = dir === "left";
+    const bg = isLeft ? "#f0fdf4" : "#eff6ff";
+    const col = isLeft ? "#16a34a" : "#2563eb";
+    const arrow = isLeft ? "←" : "→";
+    return `<div style="text-align:center;margin-top:8px">
+      <span style="font-size:11px;font-weight:700;color:${col};background:${bg};padding:3px 10px;border-radius:99px">${arrow} ${text}</span>
+    </div>`;
+  }
+
+  function _col(content, winner) {
+    const bg = winner === "left" ? "#f0fdf4" : winner === "right" ? "#eff6ff" : "#f9fafb";
+    const border = winner === "left" ? "1.5px solid #86efac" : winner === "right" ? "1.5px solid #93c5fd" : "1px solid #f3f4f6";
+    return `<div style="background:${bg};border:${border};border-radius:12px;padding:12px">${content}</div>`;
+  }
+
+  function _sectionTitle(icon, label) {
+    return `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;margin-bottom:10px">${icon} ${label}</div>`;
+  }
+
+  function _grid(left, right) {
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${left}${right}</div>`;
+  }
+
+  function _big(val) { return `<div style="font-size:22px;font-weight:800;color:#111827;line-height:1.2">${val}</div>`; }
+  function _sub(val) { return `<div style="font-size:11px;color:#9ca3af;margin-top:2px">${val}</div>`; }
+  function _note(val) { return `<div style="font-size:12px;color:#6b7280;margin-top:5px">${val}</div>`; }
+
+  function _renderCmpHouse(h1, h2, pc1, pc2, salary) {
+    const hp1 = h1?.house_prices || {};
+    const hp2 = h2?.house_prices || {};
+    const {price: p1, type: t1} = _lowestPrice(hp1);
+    const {price: p2, type: t2} = _lowestPrice(hp2);
+
+    const fmt = p => p ? `£${Math.round(p/1000)}k` : "—";
+
+    const typeRows = (hp) => Object.entries(hp).slice(0,3).map(([k,v]) =>
+      `<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b7280;padding:2px 0">`+
+      `<span>${k}</span><span style="font-weight:600">£${Math.round(v.avg/1000)}k</span></div>`
+    ).join("");
+
+    const win = p1 && p2 ? (p1 < p2 ? "left" : p2 < p1 ? "right" : "tie") : null;
+    const winTag = win === "left" ? _winTag(`${pc1} cheaper`, "left")
+                 : win === "right" ? _winTag(`${pc2} cheaper`, "right")
+                 : win === "tie" ? `<div style="text-align:center;margin-top:8px;font-size:11px;color:#9ca3af">Similar prices</div>` : "";
+
+    const c1HTML = _big(p1 ? fmt(p1) : "No data") + (p1 ? _sub(t1 + " · 3yr avg") + typeRows(hp1) : "");
+    const c2HTML = _big(p2 ? fmt(p2) : "No data") + (p2 ? _sub(t2 + " · 3yr avg") + typeRows(hp2) : "");
+
+    document.getElementById("cmp-house").innerHTML =
+      _sectionTitle("🏠", "House Prices") +
+      _grid(_col(c1HTML, win === "left" ? "left" : null), _col(c2HTML, win === "right" ? "right" : null)) +
+      winTag;
+
+    if (salary > 0 && (p1 || p2)) {
+      const takeHome = _calcTakeHome(salary);
+      const monthlyTH = Math.round(takeHome / 12);
+      const ratio = p => p ? (p / salary).toFixed(1) : null;
+      const mtg   = p => p ? Math.round(p * 0.0045) : null;
+      const pct   = (p) => { const m = mtg(p); return m ? Math.round(m / monthlyTH * 100) : null; };
+      const ratioCol = r => +r > 10 ? "#dc2626" : +r > 7 ? "#d97706" : "#16a34a";
+
+      const r1 = ratio(p1), r2 = ratio(p2), m1 = mtg(p1), m2 = mtg(p2), pct1 = pct(p1), pct2 = pct(p2);
+      const affWin = r1 && r2 ? (+r1 < +r2 ? "left" : +r2 < +r1 ? "right" : "tie") : null;
+
+      const affCol1 = r1 ? _big(`<span style="color:${ratioCol(r1)}">${r1}×</span>`) + _sub("price-to-income") +
+        (m1 ? _note(`Est. mortgage ~£${m1.toLocaleString()}/mo · <strong>${pct1}%</strong> take-home`) : "") : _note("No price data");
+      const affCol2 = r2 ? _big(`<span style="color:${ratioCol(r2)}">${r2}×</span>`) + _sub("price-to-income") +
+        (m2 ? _note(`Est. mortgage ~£${m2.toLocaleString()}/mo · <strong>${pct2}%</strong> take-home`) : "") : _note("No price data");
+
+      const affWinTag = affWin === "left" ? _winTag(`${pc1} more affordable`, "left")
+                      : affWin === "right" ? _winTag(`${pc2} more affordable`, "right") : "";
+
+      const affEl = document.getElementById("cmp-affordability");
+      affEl.style.display = "block";
+      affEl.innerHTML =
+        _sectionTitle("💰", `Affordability · £${salary.toLocaleString()} salary`) +
+        `<div style="font-size:11px;color:#9ca3af;margin-bottom:10px">Take-home ~£${takeHome.toLocaleString()}/yr · £${monthlyTH.toLocaleString()}/mo (est. PAYE, England)</div>` +
+        _grid(_col(affCol1, affWin === "left" ? "left" : null), _col(affCol2, affWin === "right" ? "right" : null)) +
+        affWinTag +
+        `<div style="font-size:10px;color:#d1d5db;margin-top:8px">≤5× affordable · 5–8× stretched · 8×+ expensive · mortgage est. assumes 5%, 25yr repayment</div>`;
+    }
+  }
+
+  function _renderCmpCrime(c1, c2, pc1, pc2) {
+    const lvlBadge = l => l === "high"
+      ? `<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;padding:2px 7px;border-radius:99px">High</span>`
+      : l === "medium"
+      ? `<span style="font-size:11px;font-weight:700;color:#d97706;background:#fffbeb;padding:2px 7px;border-radius:99px">Medium</span>`
+      : l === "low"
+      ? `<span style="font-size:11px;font-weight:700;color:#16a34a;background:#f0fdf4;padding:2px 7px;border-radius:99px">Low</span>`
+      : "";
+
+    const pm1 = c1?.per_month ?? null, pm2 = c2?.per_month ?? null;
+    const win = pm1 !== null && pm2 !== null ? (pm1 < pm2 ? "left" : pm2 < pm1 ? "right" : "tie") : null;
+    const winTag = win === "left" ? _winTag(`${pc1} safer`, "left")
+                 : win === "right" ? _winTag(`${pc2} safer`, "right")
+                 : win === "tie" ? `<div style="text-align:center;margin-top:8px;font-size:11px;color:#9ca3af">Similar crime levels</div>` : "";
+
+    const col1 = c1 ? _big(pm1 + "/mo") + `<div style="margin-top:4px">${lvlBadge(c1.level)}</div>` + _sub(c1.total.toLocaleString() + " incidents · " + c1.months + " months") : _big("—") + _sub("No data");
+    const col2 = c2 ? _big(pm2 + "/mo") + `<div style="margin-top:4px">${lvlBadge(c2.level)}</div>` + _sub(c2.total.toLocaleString() + " incidents · " + c2.months + " months") : _big("—") + _sub("No data");
+
+    document.getElementById("cmp-crime").innerHTML =
+      _sectionTitle("🚔", "Crime (last 3 months)") +
+      _grid(_col(col1, win === "left" ? "left" : null), _col(col2, win === "right" ? "right" : null)) +
+      winTag;
+  }
+
+  function _renderCmpSchools(l1, l2, pc1, pc2) {
+    const sc1 = l1?.schools?.schools || [], sc2 = l2?.schools?.schools || [];
+    const count = arr => arr.length;
+    const outstanding = arr => arr.filter(s => (s.ofsted_rating||"").toLowerCase().startsWith("outstanding")).length;
+    const good = arr => arr.filter(s => (s.ofsted_rating||"").toLowerCase().startsWith("good")).length;
+
+    const os1 = outstanding(sc1), os2 = outstanding(sc2);
+    const g1 = good(sc1), g2 = good(sc2);
+    const n1 = count(sc1), n2 = count(sc2);
+
+    // Win logic: more outstanding > more good > more total
+    const win = (!n1 && !n2) ? null
+      : os1 > os2 ? "left" : os2 > os1 ? "right"
+      : g1 > g2 ? "left" : g2 > g1 ? "right"
+      : n1 > n2 ? "left" : n2 > n1 ? "right" : "tie";
+
+    const winTag = win === "left" ? _winTag(`${pc1} better schools`, "left")
+                 : win === "right" ? _winTag(`${pc2} better schools`, "right")
+                 : win === "tie" ? `<div style="text-align:center;margin-top:8px;font-size:11px;color:#9ca3af">Similar schools</div>` : "";
+
+    const schoolRows = (arr) => {
+      const rows = [];
+      const o = outstanding(arr), g = good(arr), rest = arr.length - o - g;
+      if (o) rows.push(`<div style="font-size:12px;color:#16a34a">⭐ ${o} Outstanding</div>`);
+      if (g) rows.push(`<div style="font-size:12px;color:#2563eb">✓ ${g} Good</div>`);
+      if (rest > 0) rows.push(`<div style="font-size:12px;color:#9ca3af">${rest} other</div>`);
+      return rows.join("");
+    };
+
+    const col1 = n1 ? _big(n1) + _sub("schools within 5km") + schoolRows(sc1) : _big("—") + _sub("No data");
+    const col2 = n2 ? _big(n2) + _sub("schools within 5km") + schoolRows(sc2) : _big("—") + _sub("No data");
+
+    document.getElementById("cmp-schools").innerHTML =
+      _sectionTitle("🎓", "Schools (5km radius)") +
+      _grid(_col(col1, win === "left" ? "left" : null), _col(col2, win === "right" ? "right" : null)) +
+      winTag;
+  }
+
+  window.searchCompare = async function() {
+    const pc1raw = (document.getElementById("cmp-pc1").value.trim().replace(/\s+/g,"") || "").toUpperCase();
+    const pc2raw = (document.getElementById("cmp-pc2").value.trim().replace(/\s+/g,"") || "").toUpperCase();
+    const salStr = document.getElementById("cmp-salary").value.trim();
+    const salary = salStr ? (parseInt(salStr,10) || 0) : 0;
+
+    if (!pc1raw || !pc2raw) {
+      alert("Please enter both postcodes.");
+      return;
+    }
+
+    const pc1 = _fmtPc(pc1raw), pc2 = _fmtPc(pc2raw);
+
+    // Show results
+    const res = document.getElementById("cmp-results");
+    res.style.display = "block";
+    res.scrollIntoView({behavior:"smooth"});
+    document.getElementById("cmp-affordability").style.display = "none";
+    document.getElementById("cmp-summary").style.display = "none";
+
+    document.getElementById("cmp-header").innerHTML = `
+      <div style="display:flex;align-items:center">
+        <div style="flex:1;text-align:center">
+          <div style="font-size:17px;font-weight:800;color:#111827">${pc1}</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:2px">Area 1</div>
+        </div>
+        <div style="font-size:15px;font-weight:700;color:#d1d5db;padding:0 12px">vs</div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:17px;font-weight:800;color:#111827">${pc2}</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:2px">Area 2</div>
+        </div>
+      </div>`;
+
+    document.getElementById("cmp-house").innerHTML   = _skel("Loading house prices…");
+    document.getElementById("cmp-crime").innerHTML   = _skel("Loading crime data…");
+    document.getElementById("cmp-schools").innerHTML = _skel("Loading schools…");
+
+    const safe = p => p.catch(() => null);
+
+    const hP1 = safe(fetch(`/api/house?postcode=${pc1raw}`).then(r=>r.json()));
+    const hP2 = safe(fetch(`/api/house?postcode=${pc2raw}`).then(r=>r.json()));
+    const cP1 = safe(fetch(`/api/crime?postcode=${pc1raw}`).then(r=>r.json()));
+    const cP2 = safe(fetch(`/api/crime?postcode=${pc2raw}`).then(r=>r.json()));
+    const lP1 = safe(fetch(`/api/local?postcode=${pc1raw}`).then(r=>r.json()));
+    const lP2 = safe(fetch(`/api/local?postcode=${pc2raw}`).then(r=>r.json()));
+
+    Promise.all([hP1, hP2]).then(([h1,h2]) => _renderCmpHouse(h1, h2, pc1, pc2, salary));
+    Promise.all([cP1, cP2]).then(([c1,c2]) => _renderCmpCrime(c1, c2, pc1, pc2));
+    Promise.all([lP1, lP2]).then(([l1,l2]) => _renderCmpSchools(l1, l2, pc1, pc2));
+
+    await Promise.allSettled([hP1, hP2, cP1, cP2, lP1, lP2]);
+  };
+
+  // Focus first input when screen opens
+  const _origShowScreenCmp = window.showScreen;
+  window.showScreen = function(name) {
+    _origShowScreenCmp(name);
+    if (name === "compare") {
+      setTimeout(() => document.getElementById("cmp-pc1").focus(), 50);
+    }
+  };
+
+  document.getElementById("cmp-pc2").addEventListener("keydown", e => { if (e.key === "Enter") window.searchCompare(); });
+
+})();
+</script>
 
 </body>
 </html>
