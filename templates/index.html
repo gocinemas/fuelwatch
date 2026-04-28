@@ -277,9 +277,9 @@
         </button>
 
         <button class="tool-card" onclick="showScreen('scan')">
-          <div class="tc-icon" style="background:#f0fdf4">📦</div>
-          <div class="tc-name">Product Finder</div>
-          <div class="tc-desc">Scan or search any product</div>
+          <div class="tc-icon" style="background:#f0fdf4">📚</div>
+          <div class="tc-name">My Books</div>
+          <div class="tc-desc">Scan, save & chat with books</div>
         </button>
 
         <button class="tool-card" onclick="showScreen('brand')">
@@ -4245,76 +4245,456 @@
   })();
 </script>
 
-<!-- Product Finder Screen -->
+<!-- ===================== MY BOOKS SCREEN ===================== -->
 <div id="screen-scan" class="screen pt-5">
-  <div style="max-width:36rem;margin:0 auto;padding:0 16px calc(72px + env(safe-area-inset-bottom))">
+<div style="max-width:36rem;margin:0 auto;padding:0 16px calc(80px + env(safe-area-inset-bottom))">
 
-    <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Product Finder</div>
-    <div style="font-size:13px;color:var(--subtle);margin-bottom:18px">Scan a barcode or search by name</div>
+  <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px">My Books</div>
+  <div style="font-size:13px;color:var(--subtle);margin-bottom:16px">Search, scan barcodes, track your reading</div>
 
-    <!-- Search bar -->
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <input id="scan-input" type="text" placeholder="Product name e.g. Heinz Ketchup"
+  <!-- Tab strip -->
+  <div style="display:flex;gap:6px;margin-bottom:18px">
+    <button id="btab-search"  class="btab btab-on" onclick="bookTab('search',this)">🔍 Find Books</button>
+    <button id="btab-library" class="btab"         onclick="bookTab('library',this)">📚 My Library <span id="books-count-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;margin-left:4px"></span></button>
+  </div>
+
+  <!-- ── SEARCH PANEL ── -->
+  <div id="books-search-panel">
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input id="book-input" type="text" placeholder="Title, author or ISBN…" autocomplete="off"
         style="flex:1;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:15px"
-        onkeydown="if(event.key==='Enter')scanSearch()">
-      <button onclick="scanSearch()"
-        style="padding:11px 20px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">Search</button>
+        onkeydown="if(event.key==='Enter')bookSearch()">
+      <button onclick="bookSearch()"
+        style="padding:11px 18px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">Search</button>
     </div>
 
-    <!-- Scan button — live on Android/Chrome, opens camera on iOS -->
-    <label id="scan-cam-label-wrap" for="scan-file"
-      style="display:none;width:100%;padding:13px;border-radius:12px;border:1.5px dashed #6366f1;background:#f5f3ff;color:#4f46e5;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;box-sizing:border-box;text-align:center">
-      📸 Tap to scan barcode
+    <!-- Scan buttons (shown by JS based on capability) -->
+    <label id="book-scan-label" for="book-scan-file"
+      style="display:none;width:100%;padding:11px;border-radius:12px;border:1.5px dashed #7c3aed;background:#f5f3ff;color:#6d28d9;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-sizing:border-box;text-align:center">
+      📸 Tap to scan book barcode
     </label>
-    <button id="scan-cam-btn" onclick="toggleScanner()" style="display:none;width:100%;padding:13px;border-radius:12px;border:1.5px dashed #6366f1;background:#f5f3ff;color:#4f46e5;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px">
+    <button id="book-scan-btn" onclick="bookToggleScanner()"
+      style="display:none;width:100%;padding:11px;border-radius:12px;border:1.5px dashed #7c3aed;background:#f5f3ff;color:#6d28d9;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">
       📷 Scan barcode (live)
     </button>
-    <input id="scan-file" type="file" accept="image/*" capture="environment"
-      style="display:none" onchange="scanFromFile(this)">
+    <input id="book-scan-file" type="file" accept="image/*" capture="environment" style="display:none" onchange="bookScanFromFile(this)">
 
-    <!-- Camera viewfinder (Chrome/Android BarcodeDetector path only) -->
-    <div id="scan-reader-wrap" style="display:none;margin-bottom:16px;border-radius:14px;overflow:hidden;position:relative;background:#000">
-      <video id="scan-video" autoplay playsinline muted
-        style="width:100%;max-height:280px;display:block;object-fit:cover"></video>
-      <div style="position:absolute;top:50%;left:8%;right:8%;height:2px;background:rgba(99,102,241,.8);transform:translateY(-50%);border-radius:2px;pointer-events:none"></div>
-      <button onclick="stopScanner()"
-        style="width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
-        Stop camera
-      </button>
+    <!-- Camera viewfinder -->
+    <div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden;position:relative;background:#000">
+      <video id="book-scan-video" autoplay playsinline muted style="width:100%;max-height:260px;display:block;object-fit:cover"></video>
+      <div style="position:absolute;top:50%;left:8%;right:8%;height:2px;background:rgba(124,58,237,.8);transform:translateY(-50%);border-radius:2px;pointer-events:none"></div>
+      <button onclick="bookStopScanner()" style="width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Stop camera</button>
     </div>
 
-    <!-- Loading -->
-    <div id="scan-loading" style="display:none;text-align:center;padding:32px 0;color:var(--muted);font-size:14px">
-      Looking up product…
-    </div>
+    <div id="book-loading" style="display:none;text-align:center;padding:24px 0;color:var(--muted);font-size:13px">Searching…</div>
+    <div id="book-error"   style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;font-size:13px;color:#b91c1c;margin-bottom:10px"></div>
 
-    <!-- Error -->
-    <div id="scan-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px;font-size:13px;color:#b91c1c;margin-bottom:12px"></div>
-
-    <!-- Results -->
-    <div id="scan-results" style="display:none">
-
-      <!-- Product header -->
-      <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">
-        <img id="scan-img" src="" alt="" style="width:64px;height:64px;object-fit:contain;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:none;flex-shrink:0">
-        <div>
-          <div id="scan-name" style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px"></div>
-          <div id="scan-brand" style="font-size:13px;color:var(--muted)"></div>
-          <div id="scan-cat" style="font-size:12px;color:var(--subtle)"></div>
-        </div>
-      </div>
-
-      <!-- Price grid -->
-      <div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Prices</div>
-      <div id="scan-price-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px"></div>
-
-      <!-- Alternatives -->
-      <div style="font-size:11px;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Alternatives</div>
-      <div id="scan-alts"></div>
-
-    </div>
+    <!-- Search results -->
+    <div id="book-results"></div>
   </div>
+
+  <!-- ── MY LIBRARY PANEL ── -->
+  <div id="books-library-panel" style="display:none">
+    <div id="books-library-empty" style="display:none;text-align:center;padding:40px 0;color:var(--muted);font-size:14px">
+      No books yet — search for one and tap Save.
+    </div>
+    <div id="books-library-list"></div>
+  </div>
+
+  <!-- ── BOOK DETAIL (inline) ── -->
+  <div id="book-detail" style="display:none;margin-top:4px">
+    <button onclick="bookCloseDetail()" style="display:flex;align-items:center;gap:5px;border:none;background:none;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;padding:0;margin-bottom:14px">
+      ← Back
+    </button>
+    <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+      <img id="bd-cover" src="" alt="" style="width:72px;min-width:72px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.15);display:none">
+      <div style="flex:1;min-width:0">
+        <div id="bd-title"  style="font-size:17px;font-weight:800;color:var(--text);line-height:1.3;margin-bottom:4px"></div>
+        <div id="bd-author" style="font-size:13px;color:var(--muted);margin-bottom:4px"></div>
+        <div id="bd-meta"   style="font-size:12px;color:var(--subtle)"></div>
+      </div>
+    </div>
+
+    <div id="bd-desc" style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:18px;display:none"></div>
+
+    <!-- Rating -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Your Rating</div>
+      <div id="bd-stars" style="display:flex;gap:4px">
+        <span class="bd-star" data-v="1" onclick="bookSetRating(1)" style="font-size:28px;cursor:pointer;line-height:1">☆</span>
+        <span class="bd-star" data-v="2" onclick="bookSetRating(2)" style="font-size:28px;cursor:pointer;line-height:1">☆</span>
+        <span class="bd-star" data-v="3" onclick="bookSetRating(3)" style="font-size:28px;cursor:pointer;line-height:1">☆</span>
+        <span class="bd-star" data-v="4" onclick="bookSetRating(4)" style="font-size:28px;cursor:pointer;line-height:1">☆</span>
+        <span class="bd-star" data-v="5" onclick="bookSetRating(5)" style="font-size:28px;cursor:pointer;line-height:1">☆</span>
+      </div>
+    </div>
+
+    <!-- Reading status -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Status</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="bstatus-btn" data-s="reading"  onclick="bookSetStatus('reading',this)" >📖 Reading</button>
+        <button class="bstatus-btn" data-s="read"     onclick="bookSetStatus('read',this)"    >✅ Read</button>
+        <button class="bstatus-btn" data-s="wishlist" onclick="bookSetStatus('wishlist',this)">🔖 Want to read</button>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Notes &amp; Thoughts</div>
+      <textarea id="bd-notes" rows="3" placeholder="Your thoughts, quotes, bookmarks…"
+        style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+      <button onclick="bookSave()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">💾 Save to Library</button>
+      <button onclick="bookTalkToBook()" style="padding:12px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer">💬 Talk to Book</button>
+    </div>
+    <div id="bd-saved-msg" style="display:none;font-size:13px;color:#059669;font-weight:600;margin-bottom:12px">✓ Saved to your library</div>
+  </div>
+
 </div>
+</div>
+
+<style>
+.btab{padding:8px 16px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:all .12s}
+.btab.btab-on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.bstatus-btn{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s}
+.bstatus-btn.bstatus-on{background:#7c3aed;color:#fff;border-color:#7c3aed}
+</style>
+
+<script>
+(function(){
+  let _bookScanStream = null;
+  let _bookCurrentDetail = null;  // the book object currently open in detail view
+  let _bookDetailRating = 0;
+  let _bookDetailStatus = "";
+
+  /* ── localStorage ── */
+  function _getLib(){ try{ return JSON.parse(localStorage.getItem("miru_books")||"[]"); }catch(){ return []; } }
+  function _setLib(a){ localStorage.setItem("miru_books", JSON.stringify(a)); }
+  function _libByIsbn(isbn){ return _getLib().find(b => b.isbn === isbn); }
+
+  function _updateBadge(){
+    const lib = _getLib();
+    const el = document.getElementById("books-count-badge");
+    if (!el) return;
+    if (lib.length){ el.textContent = lib.length; el.style.display = ""; }
+    else el.style.display = "none";
+  }
+
+  /* ── Tab switch ── */
+  window.bookTab = function(tab, btn){
+    document.querySelectorAll(".btab").forEach(b => b.classList.remove("btab-on"));
+    if (btn) btn.classList.add("btab-on");
+    document.getElementById("books-search-panel").style.display  = tab === "search"  ? "" : "none";
+    document.getElementById("books-library-panel").style.display = tab === "library" ? "" : "none";
+    document.getElementById("book-detail").style.display = "none";
+    if (tab === "library") _renderLibrary();
+  };
+
+  /* ── Search ── */
+  window.bookSearch = async function(){
+    const q = document.getElementById("book-input").value.trim();
+    if (!q) return;
+    document.getElementById("book-loading").style.display = "";
+    document.getElementById("book-error").style.display   = "none";
+    document.getElementById("book-results").innerHTML     = "";
+    document.getElementById("book-detail").style.display  = "none";
+    try {
+      // If query looks like ISBN, go straight to detail
+      const cleanQ = q.replace(/[-\s]/g,"");
+      if (/^\d{10,13}$/.test(cleanQ)) {
+        const bk = await _fetchByISBN(cleanQ);
+        if (bk) { document.getElementById("book-loading").style.display="none"; _showDetail(bk); return; }
+      }
+      const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=8&fields=key,title,author_name,isbn,cover_i,first_publish_year,subject`);
+      const d = await r.json();
+      document.getElementById("book-loading").style.display = "none";
+      _renderResults(d.docs || []);
+    } catch(e) {
+      document.getElementById("book-loading").style.display = "none";
+      document.getElementById("book-error").textContent = "Search failed. Please try again.";
+      document.getElementById("book-error").style.display = "";
+    }
+  };
+
+  function _renderResults(docs){
+    if (!docs.length){
+      document.getElementById("book-results").innerHTML = '<p style="font-size:13px;color:var(--muted);padding:20px 0 0">No books found — try a different title or author.</p>';
+      return;
+    }
+    document.getElementById("book-results").innerHTML = docs.map(doc => {
+      const isbn  = (doc.isbn || [])[0] || "";
+      const cover = doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : "";
+      const author = (doc.author_name || []).slice(0,2).join(", ") || "Unknown author";
+      const year  = doc.first_publish_year ? ` · ${doc.first_publish_year}` : "";
+      return `<div onclick="bookOpenFromResult(${JSON.stringify({key:doc.key,title:doc.title,author,isbn,cover,year:doc.first_publish_year||""}).replace(/"/g,"&quot;")})"
+        style="display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:14px;border:1px solid var(--border);background:var(--surface);margin-bottom:8px;cursor:pointer;transition:box-shadow .12s"
+        onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+        ${cover ? `<img src="${cover}" alt="" style="width:44px;min-width:44px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.12)" onerror="this.style.display='none'">` : `<div style="width:44px;min-width:44px;height:60px;border-radius:6px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:20px">📖</div>`}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:3px">${doc.title}</div>
+          <div style="font-size:12px;color:var(--muted)">${author}${year}</div>
+          ${isbn ? `<div style="font-size:11px;color:var(--subtle);margin-top:2px">ISBN: ${isbn}</div>` : ""}
+        </div>
+        <span style="font-size:18px;color:var(--subtle);align-self:center">›</span>
+      </div>`;
+    }).join("");
+  }
+
+  /* ── Open detail from search result ── */
+  window.bookOpenFromResult = async function(bk){
+    document.getElementById("book-loading").style.display = "";
+    document.getElementById("book-results").innerHTML = "";
+    try {
+      // Try to enrich with full description from Open Library
+      let enriched = {...bk};
+      if (bk.key) {
+        try {
+          const wr = await fetch(`https://openlibrary.org${bk.key}.json`);
+          const wd = await wr.json();
+          const desc = wd.description;
+          enriched.description = typeof desc === "string" ? desc : (desc && desc.value) || "";
+          if (!enriched.isbn && wd.isbn_13) enriched.isbn = wd.isbn_13[0];
+          if (!enriched.isbn && wd.isbn_10) enriched.isbn = wd.isbn_10[0];
+        } catch(_){}
+      }
+      if (!enriched.description && enriched.isbn) {
+        const fb = await _fetchByISBN(enriched.isbn);
+        if (fb && fb.description) enriched.description = fb.description;
+      }
+      document.getElementById("book-loading").style.display = "none";
+      _showDetail(enriched);
+    } catch(e){
+      document.getElementById("book-loading").style.display = "none";
+      _showDetail(bk);
+    }
+  };
+
+  /* ── Fetch by ISBN ── */
+  async function _fetchByISBN(isbn){
+    try {
+      const r = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+      const d = await r.json();
+      const bk = d[`ISBN:${isbn}`];
+      if (!bk) return null;
+      const desc = bk.notes || "";
+      const cover = bk.cover ? (bk.cover.medium || bk.cover.small || "") : "";
+      return {
+        isbn,
+        title:       bk.title || "",
+        author:      (bk.authors || []).map(a=>a.name).join(", ") || "Unknown author",
+        cover,
+        description: typeof desc === "string" ? desc : "",
+        year:        bk.publish_date || "",
+        publishers:  (bk.publishers || []).map(p=>p.name).join(", "),
+        subjects:    (bk.subjects    || []).slice(0,3).map(s=>s.name||s).join(" · "),
+      };
+    } catch(e){ return null; }
+  }
+
+  /* ── Show detail view ── */
+  function _showDetail(bk){
+    _bookCurrentDetail = bk;
+    const saved = bk.isbn ? _libByIsbn(bk.isbn) : null;
+    _bookDetailRating = saved ? saved.rating : 0;
+    _bookDetailStatus = saved ? saved.status : "";
+
+    const cover = document.getElementById("bd-cover");
+    if (bk.cover){ cover.src = bk.cover; cover.style.display = ""; }
+    else cover.style.display = "none";
+
+    document.getElementById("bd-title").textContent  = bk.title  || "Unknown title";
+    document.getElementById("bd-author").textContent = bk.author || "";
+    const metaParts = [bk.isbn ? `ISBN: ${bk.isbn}` : "", bk.year || "", bk.publishers || ""].filter(Boolean);
+    document.getElementById("bd-meta").textContent   = metaParts.join(" · ");
+
+    const descEl = document.getElementById("bd-desc");
+    if (bk.description){ descEl.textContent = bk.description; descEl.style.display = ""; }
+    else descEl.style.display = "none";
+
+    document.getElementById("bd-notes").value = saved ? (saved.notes || "") : "";
+    document.getElementById("bd-saved-msg").style.display = "none";
+
+    _renderStars(_bookDetailRating);
+    document.querySelectorAll(".bstatus-btn").forEach(b => b.classList.toggle("bstatus-on", b.dataset.s === _bookDetailStatus));
+
+    document.getElementById("books-search-panel").style.display = "none";
+    document.getElementById("books-library-panel").style.display = "none";
+    document.getElementById("book-detail").style.display = "";
+  }
+
+  window.bookCloseDetail = function(){
+    document.getElementById("book-detail").style.display = "none";
+    // Go back to whichever tab was active
+    const libVisible = document.getElementById("books-library-panel").style.display !== "none";
+    document.getElementById("books-search-panel").style.display  = libVisible ? "none" : "";
+    document.getElementById("books-library-panel").style.display = libVisible ? ""     : "none";
+    if (libVisible) _renderLibrary();
+  };
+
+  /* ── Rating ── */
+  window.bookSetRating = function(v){ _bookDetailRating = v; _renderStars(v); };
+  function _renderStars(v){
+    document.querySelectorAll(".bd-star").forEach(s => {
+      s.textContent = parseInt(s.dataset.v) <= v ? "★" : "☆";
+      s.style.color = parseInt(s.dataset.v) <= v ? "#f59e0b" : "var(--subtle)";
+    });
+  }
+
+  /* ── Status ── */
+  window.bookSetStatus = function(s, btn){
+    _bookDetailStatus = _bookDetailStatus === s ? "" : s;
+    document.querySelectorAll(".bstatus-btn").forEach(b => b.classList.toggle("bstatus-on", b.dataset.s === _bookDetailStatus));
+  };
+
+  /* ── Save to library ── */
+  window.bookSave = function(){
+    if (!_bookCurrentDetail) return;
+    const bk = _bookCurrentDetail;
+    const lib = _getLib().filter(b => b.isbn !== bk.isbn);
+    lib.unshift({
+      isbn:        bk.isbn || ("noisbn_" + Date.now()),
+      title:       bk.title  || "",
+      author:      bk.author || "",
+      cover:       bk.cover  || "",
+      description: bk.description || "",
+      year:        bk.year   || "",
+      rating:      _bookDetailRating,
+      status:      _bookDetailStatus,
+      notes:       document.getElementById("bd-notes").value.trim(),
+      added:       new Date().toISOString().slice(0,10),
+    });
+    _setLib(lib);
+    _updateBadge();
+    document.getElementById("bd-saved-msg").style.display = "";
+    setTimeout(() => document.getElementById("bd-saved-msg").style.display = "none", 2500);
+  };
+
+  /* ── Render library ── */
+  function _renderLibrary(){
+    const lib = _getLib();
+    const empty = document.getElementById("books-library-empty");
+    const list  = document.getElementById("books-library-list");
+    if (!lib.length){ empty.style.display = ""; list.innerHTML = ""; return; }
+    empty.style.display = "none";
+    const statusLabel = {reading:"📖 Reading", read:"✅ Read", wishlist:"🔖 Want to read", "":""};
+    list.innerHTML = lib.map(b => {
+      const stars = b.rating ? "★".repeat(b.rating) + "☆".repeat(5-b.rating) : "";
+      return `<div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:14px;border:1px solid var(--border);background:var(--surface);margin-bottom:8px;cursor:pointer"
+        onclick="bookOpenFromLib(${JSON.stringify(b).replace(/"/g,"&quot;")})">
+        ${b.cover ? `<img src="${b.cover}" alt="" style="width:44px;min-width:44px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.12)" onerror="this.style.display='none'">` : `<div style="width:44px;min-width:44px;height:60px;border-radius:6px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:20px">📖</div>`}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.title}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${b.author}</div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            ${stars ? `<span style="font-size:12px;color:#f59e0b;letter-spacing:1px">${stars}</span>` : ""}
+            ${b.status ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--border);color:var(--muted)">${statusLabel[b.status]||b.status}</span>` : ""}
+          </div>
+        </div>
+        <button onclick="event.stopPropagation();bookDeleteLib(${JSON.stringify(b.isbn).replace(/"/g,"&quot;")})" style="flex-shrink:0;border:none;background:none;font-size:16px;color:var(--subtle);cursor:pointer;padding:0;align-self:flex-start">✕</button>
+      </div>`;
+    }).join("");
+    _updateBadge();
+  }
+
+  window.bookOpenFromLib = function(bk){ _showDetail(bk); };
+
+  window.bookDeleteLib = function(isbn){
+    _setLib(_getLib().filter(b => b.isbn !== isbn));
+    _renderLibrary();
+  };
+
+  /* ── Talk to book ── */
+  window.bookTalkToBook = function(){
+    if (typeof showScreen === "function") showScreen("library");
+    setTimeout(() => {
+      const el = document.querySelector("#screen-library");
+      if (el) el.scrollIntoView({behavior:"smooth"});
+    }, 200);
+  };
+
+  /* ── Barcode scanning (reuse BarcodeDetector / file path) ── */
+  (function initBookScanner(){
+    if ("BarcodeDetector" in window) {
+      document.getElementById("book-scan-btn").style.display = "";
+    } else {
+      document.getElementById("book-scan-label").style.display = "";
+    }
+  })();
+
+  window.bookToggleScanner = async function(){
+    const wrap = document.getElementById("book-scan-wrap");
+    if (wrap.style.display !== "none") { bookStopScanner(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+      _bookScanStream = stream;
+      const vid = document.getElementById("book-scan-video");
+      vid.srcObject = stream;
+      wrap.style.display = "";
+      document.getElementById("book-scan-btn").textContent = "⏹ Stop scanner";
+      const detector = new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
+      (async function loop(){
+        if (!_bookScanStream) return;
+        try {
+          const codes = await detector.detect(vid);
+          if (codes.length) {
+            bookStopScanner();
+            const isbn = codes[0].rawValue.replace(/[^0-9]/g,"");
+            await _handleScannedISBN(isbn);
+            return;
+          }
+        } catch(_){}
+        requestAnimationFrame(loop);
+      })();
+    } catch(e){
+      document.getElementById("book-scan-btn").style.display = "none";
+      document.getElementById("book-scan-label").style.display = "";
+    }
+  };
+
+  window.bookStopScanner = function(){
+    if (_bookScanStream){ _bookScanStream.getTracks().forEach(t=>t.stop()); _bookScanStream = null; }
+    document.getElementById("book-scan-wrap").style.display = "none";
+    document.getElementById("book-scan-btn").textContent = "📷 Scan barcode (live)";
+  };
+
+  window.bookScanFromFile = async function(input){
+    const file = input.files[0];
+    if (!file) return;
+    input.value = "";
+    document.getElementById("book-loading").style.display = "";
+    try {
+      const img = await createImageBitmap(file);
+      const detector = new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});
+      const codes = await detector.detect(img);
+      if (!codes.length){ throw new Error("No barcode found. Try scanning again or type the ISBN."); }
+      const isbn = codes[0].rawValue.replace(/[^0-9]/g,"");
+      await _handleScannedISBN(isbn);
+    } catch(e){
+      document.getElementById("book-loading").style.display = "none";
+      document.getElementById("book-error").textContent = e.message || "Scan failed. Try typing the ISBN.";
+      document.getElementById("book-error").style.display = "";
+    }
+  };
+
+  async function _handleScannedISBN(isbn){
+    document.getElementById("book-loading").style.display = "";
+    const bk = await _fetchByISBN(isbn);
+    document.getElementById("book-loading").style.display = "none";
+    if (bk){ _showDetail(bk); }
+    else {
+      document.getElementById("book-error").textContent = `ISBN ${isbn} not found. Try searching by title.`;
+      document.getElementById("book-error").style.display = "";
+      document.getElementById("book-input").value = isbn;
+    }
+  }
+
+  _updateBadge();
+})();
+</script>
 
 <!-- ===================== FINDER SCREEN ===================== -->
 <div id="screen-finder" class="screen" style="padding:8px 20px 24px;max-width:860px;margin:0 auto">
@@ -4708,216 +5088,6 @@
 })();
 </script>
 
-<script>
-(function(){
-  // Auto-open if URL has ?scan or ?product or #scan
-  if(location.search.includes("scan") || location.search.includes("product") || location.hash === "#scan"){
-    if(typeof showScreen === "function") showScreen("scan");
-  }
-
-  let _scanActive = false;
-  let _nativeStream = null;
-  let _nativeRaf    = null;
-  let _detector     = null;
-
-  if ('BarcodeDetector' in window) {
-    try { _detector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code'] }); } catch(_) {}
-  }
-
-  // Show right button: live scan on Chrome/Android, photo label on iOS/Safari
-  if (_detector) {
-    document.getElementById("scan-cam-btn").style.display = "block";
-  } else {
-    document.getElementById("scan-cam-label-wrap").style.display = "block";
-  }
-
-  window.toggleScanner = async function() {
-    if (_scanActive) { stopScanner(); return; }
-    _scanActive = true;
-    const btn  = document.getElementById("scan-cam-btn");
-    const wrap = document.getElementById("scan-reader-wrap");
-    btn.textContent = "⏳ Starting camera…";
-    try {
-      _nativeStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
-    } catch(e) {
-      _scanActive = false;
-      btn.textContent = "📷 Scan barcode (live)";
-      showScanError(e.name === "NotAllowedError"
-        ? "Camera permission denied — allow camera in browser settings, then try again."
-        : "Camera not available.");
-      return;
-    }
-    const video = document.getElementById("scan-video");
-    video.srcObject = _nativeStream;
-    wrap.style.display = "block";
-    btn.textContent = "⏹ Stop scanning";
-    async function _tick() {
-      if (!_scanActive) return;
-      try {
-        const codes = await _detector.detect(video);
-        if (codes.length) { stopScanner(); doProductLookup(null, codes[0].rawValue); return; }
-      } catch(_) {}
-      _nativeRaf = requestAnimationFrame(_tick);
-    }
-    video.addEventListener("loadeddata", () => { _nativeRaf = requestAnimationFrame(_tick); }, { once: true });
-  };
-
-  window.stopScanner = function() {
-    _scanActive = false;
-    if (_nativeRaf)    { cancelAnimationFrame(_nativeRaf); _nativeRaf = null; }
-    if (_nativeStream) { _nativeStream.getTracks().forEach(t => t.stop()); _nativeStream = null; }
-    const video = document.getElementById("scan-video");
-    if (video) video.srcObject = null;
-    document.getElementById("scan-reader-wrap").style.display = "none";
-    document.getElementById("scan-cam-btn").textContent = "📷 Scan barcode (live)";
-  };
-
-  async function _resizeForUpload(file, maxDim) {
-    return new Promise(resolve => {
-      const img = new Image(), url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-        const c = document.createElement("canvas");
-        c.width = w; c.height = h;
-        c.getContext("2d").drawImage(img, 0, 0, w, h);
-        c.toBlob(blob => resolve(new File([blob], "scan.jpg", {type:"image/jpeg"})), "image/jpeg", 0.88);
-      };
-      img.src = url;
-    });
-  }
-
-  window.scanFromFile = async function(input) {
-    const file = input.files[0]; if (!file) return;
-    input.value = "";
-    document.getElementById("scan-loading").style.display = "block";
-    document.getElementById("scan-error").style.display   = "none";
-    document.getElementById("scan-results").style.display = "none";
-
-    let decoded = null;
-
-    // 1. BarcodeDetector — instant, no server round-trip (Chrome/Android)
-    if (_detector) {
-      try {
-        const img = new Image(), url = URL.createObjectURL(file);
-        await new Promise(r => { img.onload = r; img.src = url; });
-        const codes = await _detector.detect(img);
-        URL.revokeObjectURL(url);
-        if (codes.length) decoded = codes[0].rawValue;
-      } catch(_) {}
-    }
-
-    // 2. Server-side decode — reliable on iOS and all other browsers
-    if (!decoded) {
-      try {
-        const small = await _resizeForUpload(file, 1600);
-        const fd = new FormData();
-        fd.append("image", small);
-        const r = await fetch("/api/scan-barcode", { method: "POST", body: fd });
-        const d = await r.json();
-        if (d.barcode) decoded = d.barcode;
-      } catch(_) {}
-    }
-
-    document.getElementById("scan-loading").style.display = "none";
-    if (decoded) {
-      doProductLookup(null, decoded);
-    } else {
-      showScanError("No barcode found. Make sure the barcode is well-lit and fills most of the frame, then try again. Or type the product name above.");
-    }
-  };
-
-  window.scanSearch = function() {
-    const name = document.getElementById("scan-input").value.trim();
-    if (!name) return;
-    doProductLookup(name, null);
-  };
-
-  function doProductLookup(name, barcode) {
-    document.getElementById("scan-loading").style.display = "block";
-    document.getElementById("scan-results").style.display = "none";
-    document.getElementById("scan-error").style.display = "none";
-
-    const params = new URLSearchParams();
-    if (barcode) params.set("barcode", barcode);
-    if (name)    params.set("name", name);
-
-    fetch("/api/product?" + params)
-      .then(r => r.json())
-      .then(d => {
-        document.getElementById("scan-loading").style.display = "none";
-        if (d.not_found) {
-          showScanError("Barcode not recognised. Type the product name above to search.");
-          return;
-        }
-        if (!d.product && !d.alternatives?.length) {
-          showScanError("Product not found. Try a different name.");
-          return;
-        }
-        renderProduct(d);
-      })
-      .catch(() => {
-        document.getElementById("scan-loading").style.display = "none";
-        showScanError("Something went wrong. Please try again.");
-      });
-  }
-
-  function renderProduct(d) {
-    const p   = d.product;
-    const q   = d.query || d.search_q || "";
-    const sq  = encodeURIComponent(d.search_q || q);
-
-    // Header
-    document.getElementById("scan-name").textContent  = (p && p.name)  || q;
-    document.getElementById("scan-brand").textContent = (p && p.brand) || "";
-    document.getElementById("scan-cat").textContent   = (p && p.category) || "";
-    const img = document.getElementById("scan-img");
-    if (p && p.image) { img.src = p.image; img.style.display = "block"; }
-    else img.style.display = "none";
-
-    // Price grid — 5 stores
-    const stores = [
-      { id:"tesco",    label:"Tesco",    color:"#00539f", href:`https://www.tesco.com/groceries/en-GB/search?query=${sq}` },
-      { id:"asda",     label:"ASDA",     color:"#78ae01", href:`https://groceries.asda.com/search/${sq}` },
-      { id:"waitrose", label:"Waitrose", color:"#007a34", href:`https://www.waitrose.com/ecom/shop/search?searchTerm=${sq}` },
-      { id:"aldi",     label:"Aldi",     color:"#003087", href:`https://www.aldi.co.uk/search?text=${sq}` },
-      { id:"amazon",   label:"Amazon",   color:"#ff9900", href:`https://www.amazon.co.uk/s?k=${sq}`, dark:true },
-    ];
-    const prices = d.prices || {};
-    document.getElementById("scan-price-grid").innerHTML = stores.map(s => {
-      const price = prices[s.id];
-      return `<a href="${s.href}" target="_blank" style="text-decoration:none;background:${s.color};border-radius:12px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:4px">
-        <span style="font-size:11px;font-weight:700;color:${s.dark?'#000':'rgba(255,255,255,0.85)'};letter-spacing:.3px">${s.label}</span>
-        <span style="font-size:${price?'18':'13'}px;font-weight:800;color:${s.dark?'#000':'#fff'}">${price || 'See →'}</span>
-      </a>`;
-    }).join("");
-
-    // Alternatives
-    const alts = d.alternatives || [];
-    document.getElementById("scan-alts").innerHTML = alts.length
-      ? alts.map(a => `
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-            <div>
-              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">${a.name}</div>
-              <div style="font-size:12px;color:var(--muted)">${a.reason}</div>
-            </div>
-            <div style="font-size:15px;font-weight:800;color:var(--accent);white-space:nowrap">${a.price}</div>
-          </div>`).join("")
-      : "";
-
-    document.getElementById("scan-results").style.display = "block";
-  }
-
-  function showScanError(msg) {
-    const el = document.getElementById("scan-error");
-    el.textContent = msg;
-    el.style.display = "block";
-  }
-})();
-</script>
 
 <!-- Admin Screen -->
 <div id="screen-admin" class="screen pt-5">
