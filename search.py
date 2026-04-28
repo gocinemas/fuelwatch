@@ -707,7 +707,7 @@ Rules: facts fill all 5 fields. competitors: 4 items each with revenue. campaign
                 "model": "llama-3.1-8b-instant",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 2500,
+                "max_tokens": 1200,
             },
             timeout=25,
         )

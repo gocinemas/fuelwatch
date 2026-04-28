@@ -568,7 +568,7 @@ def api_library_chat():
             f'Answer concisely. If the answer is not in the document, say so briefly.'
         )
         messages = history[-6:] + [{"role": "user", "content": question}]
-        answer = _groq_chat(system, messages, max_tokens=600)
+        answer = _groq_chat(system, messages, max_tokens=400)
         follow_ups = _generate_follow_up_questions(doc["title"], question, answer)
         return jsonify({"answer": answer, "follow_ups": follow_ups})
     except Exception as e:
@@ -695,7 +695,7 @@ def api_library_ask():
             f"Relevant excerpts:\n{context}"
         )
         messages = history[-6:] + [{"role": "user", "content": question}]
-        answer = _groq_chat(system, messages, max_tokens=700)
+        answer = _groq_chat(system, messages, max_tokens=400)
         return jsonify({
             "answer":  answer,
             "sources": [{"share_id": sid, "title": t} for sid, t in sources],
@@ -1277,10 +1277,10 @@ def api_company():
     return jsonify(fetch_company_info(name))
 
 
-def _groq_chat(system, messages, max_tokens=600, json_mode=False):
+def _groq_chat(system, messages, max_tokens=600, json_mode=False, model="llama-3.1-8b-instant"):
     """Call Groq API (OpenAI-compatible). Returns reply text."""
     body = {
-        "model": "llama-3.3-70b-versatile",
+        "model": model,
         "max_tokens": max_tokens,
         "messages": [{"role": "system", "content": system}] + messages,
     }
@@ -1328,8 +1328,9 @@ Return a JSON object with exactly these fields:
 - highlights: array of 3 strings (key metrics or highlights)
 - sentiment: string ("positive", "neutral", or "negative")
 - context: string (2-3 sentences summarising the results)"""}],
-            max_tokens=600,
+            max_tokens=500,
             json_mode=True,
+            model="llama-3.3-70b-versatile",
         )
         try:
             result = json.loads(text)
@@ -3192,7 +3193,7 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
         s, e = text.find("{"), text.rfind("}")
         return _json.loads(text[s:e+1]) if s != -1 and e != -1 else {}
 
-    def _groq(prompt, max_tokens=500, model="llama-3.3-70b-versatile"):
+    def _groq(prompt, max_tokens=500, model="llama-3.1-8b-instant"):
         r = _req.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
