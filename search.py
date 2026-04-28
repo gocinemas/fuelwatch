@@ -1563,27 +1563,13 @@ def _format_postcode(postcode: str) -> str:
     return f"{pc[:-3]} {pc[-3:]}" if len(pc) >= 5 else pc
 
 
-def _parse_lr_items(items: list) -> dict:
-    """Parse Land Registry transaction items into a price summary dict."""
-    buckets = {}
-    for item in items:
-        pt_obj = item.get("propertyType", {})
-        labels = pt_obj.get("prefLabel", []) if isinstance(pt_obj, dict) else []
-        pt = labels[0].get("_value", "").capitalize() if labels else ""
-        price = item.get("pricePaid")
-        date  = item.get("transactionDate", "")
-        if pt and price and pt.lower() != "other":
-            buckets.setdefault(pt, []).append({"price": int(price), "date": date})
-    summary = {}
-    for pt, entries in buckets.items():
-        prices = [e["price"] for e in entries]
-        summary[pt] = {
-            "avg":    round(sum(prices) / len(prices) / 1000) * 1000,
-            "latest": entries[0]["date"],
-            "count":  len(prices),
-        }
-    return summary
-
+_LR_SPARQL = "https://landregistry.data.gov.uk/landregistry/query"
+_LR_TYPE_LABELS = {
+    "terraced":          "Terraced",
+    "detached":          "Detached",
+    "semi-detached":     "Semi-detached",
+    "flat-maisonette":   "Flat / Maisonette",
+}
 
 def _get_postcode_info(postcode: str) -> dict:
     """Return admin_district and outward code for a postcode via postcodes.io."""
@@ -1599,60 +1585,78 @@ def _get_postcode_info(postcode: str) -> dict:
         return {"admin_district": "", "outward": pc[:-3]}
 
 
+def _fetch_house_prices_sparql(district: str, cutoff_iso: str) -> dict:
+    """Query Land Registry SPARQL endpoint for average sold prices by property type."""
+    query = f"""
+PREFIX lrppi: <http://landregistry.data.gov.uk/def/ppi/>
+PREFIX lrcommon: <http://landregistry.data.gov.uk/def/common/>
+SELECT ?type (AVG(?price) AS ?avg) (COUNT(?price) AS ?cnt) (MAX(?date) AS ?latest)
+WHERE {{
+  ?t a lrppi:TransactionRecord ;
+     lrppi:pricePaid ?price ;
+     lrppi:transactionDate ?date ;
+     lrppi:propertyType ?type ;
+     lrppi:propertyAddress ?addr .
+  ?addr lrcommon:district "{district}" .
+  FILTER(?date >= "{cutoff_iso}"^^<http://www.w3.org/2001/XMLSchema#date>)
+  FILTER(?type != <http://landregistry.data.gov.uk/def/common/otherPropertyType>)
+}}
+GROUP BY ?type
+"""
+    try:
+        resp = requests.get(
+            _LR_SPARQL,
+            params={"query": query},
+            headers={"Accept": "application/sparql-results+json"},
+            timeout=15,
+        )
+        bindings = resp.json().get("results", {}).get("bindings", [])
+    except Exception:
+        return {}
+
+    summary = {}
+    for b in bindings:
+        type_uri = b.get("type", {}).get("value", "")
+        slug = type_uri.split("/")[-1]
+        label = _LR_TYPE_LABELS.get(slug)
+        if not label:
+            continue
+        avg   = round(float(b["avg"]["value"]) / 1000) * 1000
+        cnt   = int(b["cnt"]["value"])
+        # Format "2026-02-12" → "Feb 2026"
+        raw_date = b.get("latest", {}).get("value", "")
+        try:
+            from datetime import datetime as _dt
+            latest = _dt.strptime(raw_date, "%Y-%m-%d").strftime("%b %Y")
+        except Exception:
+            latest = raw_date
+        summary[label] = {"avg": avg, "count": cnt, "latest": latest, "scope": district.title()}
+    return summary
+
+
 def fetch_house_prices(postcode: str) -> dict:
-    """Fetch last 3 years of sold prices from Land Registry for any postcode.
-    Falls back to local authority district if the unit postcode has too few sales."""
-    from datetime import date, timedelta, datetime as dt
+    """Fetch last 3 years of sold prices from Land Registry SPARQL endpoint."""
+    from datetime import date, timedelta
     cache_key = postcode.strip().upper().replace(" ", "")
     cached = _house_cache.get(cache_key)
     if cached and (time.time() - cached["ts"]) < _HOUSE_CACHE_TTL:
         return cached["data"]
-    cutoff = date.today() - timedelta(days=3*365)
-    pc_formatted = _format_postcode(postcode)
-    pc_enc = pc_formatted.replace(" ", "%20")
 
-    def _fetch(param_name, param_value):
-        url = (
-            f"https://landregistry.data.gov.uk/data/ppi/transaction-record.json"
-            f"?{param_name}={param_value}"
-            f"&_pageSize=100&_sort=-transactionDate"
-        )
-        try:
-            resp = requests.get(url, timeout=10, headers=HEADERS)
-            items = resp.json().get("result", {}).get("items", [])
-            # Filter client-side to last 3 years
-            filtered = []
-            for item in items:
-                date_str = item.get("transactionDate", "")
-                try:
-                    sale_date = dt.strptime(date_str, "%a, %d %b %Y").date()
-                    if sale_date >= cutoff:
-                        filtered.append(item)
-                except Exception:
-                    filtered.append(item)  # include if date unparseable
-            return filtered
-        except Exception:
-            return []
+    cutoff_iso = (date.today() - timedelta(days=3 * 365)).strftime("%Y-%m-%d")
+    info = _get_postcode_info(postcode)
+    district = info["admin_district"]
+    if not district:
+        _house_cache[cache_key] = {"ts": time.time(), "data": {}}
+        return {}
 
-    # Try exact postcode first
-    items = _fetch("propertyAddress.postcode", pc_enc)
-    scope = pc_formatted
-    summary = _parse_lr_items(items)
+    summary = _fetch_house_prices_sparql(district, cutoff_iso)
+    # Some councils are stored as "CITY OF X" in Land Registry but postcodes.io omits "CITY OF"
+    if not summary and not district.startswith("CITY OF"):
+        summary = _fetch_house_prices_sparql("CITY OF " + district, cutoff_iso)
+        if summary:
+            for v in summary.values():
+                v["scope"] = ("CITY OF " + district).title()
 
-    # Fall back to district if: too few sales OR only 1 property type found
-    # (e.g. a postcode that's entirely flats gives misleading single-type results)
-    if len(items) < 5 or len(summary) < 2:
-        info = _get_postcode_info(postcode)
-        admin = info["admin_district"]
-        if admin:
-            fallback_items = _fetch("propertyAddress.district", admin.replace(" ", "%20"))
-            fallback_summary = _parse_lr_items(fallback_items)
-            if len(fallback_summary) > len(summary):
-                items = fallback_items
-                summary = fallback_summary
-                scope = admin.title()
-    for v in summary.values():
-        v["scope"] = scope
     _house_cache[cache_key] = {"ts": time.time(), "data": summary}
     return summary
 

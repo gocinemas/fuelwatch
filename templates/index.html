@@ -1533,9 +1533,7 @@
       return;
     }
     const scope = Object.values(hp)[0]?.scope || postcode;
-    const scopeNote = (scope || "").replace(/\s+/g,"").toUpperCase() === postcode.replace(/\s+/g,"").toUpperCase()
-      ? `${postcode} · last 3 years`
-      : `${scope} district · last 3 years (few local sales, showing district average)`;
+    const scopeNote = `${scope} · last 3 years`;
     document.getElementById("report-house-list").innerHTML =
       Object.entries(hp).map(([type, v]) =>
         `<div class="flex justify-between py-2 border-b border-gray-50 last:border-0">
