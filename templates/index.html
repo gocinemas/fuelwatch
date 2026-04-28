@@ -440,6 +440,14 @@
       </div>
       <div id="report-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
       <div id="report-results" class="hidden">
+        <!-- Share row -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span id="report-share-label" style="font-size:13px;font-weight:600;color:var(--muted)"></span>
+          <button id="report-share-btn" onclick="shareAreaReport(this)"
+            style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">
+            📤 Share
+          </button>
+        </div>
         <!-- Vertical tab layout -->
         <div style="display:flex;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:8px">
 
@@ -1239,6 +1247,34 @@
     _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()");
   }
 
+  // ── Common share utility ──────────────────────────────────────────────────────
+  function _miruToast(msg) {
+    const t = document.createElement("div");
+    t.textContent = msg;
+    t.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none;opacity:1;transition:opacity .3s";
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 1800);
+  }
+
+  function miruShare({ title, text, url, btn }) {
+    const shareUrl = url || location.href;
+    if (navigator.share) {
+      navigator.share({ title: title || "Miru", text: text || title || "Miru", url: shareUrl }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl)
+        .then(() => {
+          if (btn) {
+            const orig = btn.innerHTML;
+            btn.textContent = "✓ Copied!";
+            setTimeout(() => { btn.innerHTML = orig; }, 2000);
+          } else {
+            _miruToast("📋 Link copied!");
+          }
+        })
+        .catch(() => { try { _miruToast("📋 " + shareUrl); } catch(e) { alert(shareUrl); } });
+    }
+  }
+
   // ── Shared helpers ────────────────────────────────────────────────────────────
   async function _fetchWithTimeout(url, ms) {
     const ctrl = new AbortController();
@@ -1288,6 +1324,17 @@
     const llParam  = params.get("ll");
     const llParts  = llParam ? llParam.split(",").map(Number) : [];
     const hasLL    = llParts.length === 2 && !isNaN(llParts[0]) && !isNaN(llParts[1]);
+    // ?report=SW1A1AA — deep link into Area Report
+    const reportPC = params.get("report");
+    if (reportPC) {
+      showScreen("report");
+      setTimeout(() => {
+        document.getElementById("report-postcode").value = reportPC.toUpperCase();
+        searchReport();
+      }, 50);
+      return;
+    }
+
     if (placesQ || hasLL) {
       showScreen("places");
       setTimeout(() => {
@@ -1491,6 +1538,13 @@
   }
 
   // ── Area Report ─────────────────────────────────────────────────────────────
+  function shareAreaReport(btn) {
+    const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"").toUpperCase();
+    if (!postcode) return;
+    const url = location.origin + "?report=" + postcode;
+    miruShare({ title: "Area Report: " + postcode, text: "Check out the area report for " + postcode + " on Miru", url, btn });
+  }
+
   window.reportTabSwitch = function(tab, btn) {
     document.querySelectorAll(".rptab").forEach(b => b.classList.remove("rptab-on"));
     if (btn) btn.classList.add("rptab-on");
@@ -1516,6 +1570,8 @@
 
     // Show results container with skeleton loaders in each panel
     document.getElementById("report-results").classList.remove("hidden");
+    const pcFmt = postcode.replace(/^([A-Z]{1,2}\d{1,2}[A-Z]?)(\d[A-Z]{2})$/i, "$1 $2").toUpperCase();
+    document.getElementById("report-share-label").textContent = "Area report · " + pcFmt;
     reportTabSwitch("house", document.querySelector('.rptab[data-tab="house"]'));
     document.getElementById("report-house-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading house prices…</div>';
     document.getElementById("report-schools-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading schools…</div>';
@@ -1782,15 +1838,7 @@
     const slug = _coCurrentName.toLowerCase().replace(/\s+/g, "-");
     const tab = _coActiveTab !== "overview" ? `?tab=${_coActiveTab}` : "";
     const url = `${location.origin}/${slug}${tab}`;
-    if (navigator.share) {
-      navigator.share({ title: _coCurrentName, url });
-    } else {
-      navigator.clipboard.writeText(url).then(() => {
-        const btn = document.getElementById("co-share-btn");
-        btn.textContent = "✓ Copied!";
-        setTimeout(() => { btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> Share`; }, 2000);
-      });
-    }
+    miruShare({ title: _coCurrentName, url, btn: document.getElementById("co-share-btn") });
   }
 
   function renderCompany(d) {
@@ -2612,15 +2660,7 @@
   function _sharePlacesResults() {
     const locEl = document.getElementById('places-location');
     const areaName = locEl?.textContent?.replace(/^\d+ results? near /,'').trim() || _placesShareQuery || 'nearby';
-    const shareUrl = location.href;  // already has ?places=&lat=&lon= set by placesLoadDetails
-    const title = `Places near ${areaName}`;
-    if (navigator.share) {
-      navigator.share({ title, text: `Check out places near ${areaName} on Miru`, url: shareUrl }).catch(()=>{});
-    } else {
-      navigator.clipboard.writeText(shareUrl)
-        .then(()=>{ const t=document.createElement('div'); t.textContent='📋 Link copied!'; t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999'; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); })
-        .catch(()=>alert(shareUrl));
-    }
+    miruShare({ title: `Places near ${areaName}`, text: `Check out places near ${areaName} on Miru`, url: location.href });
   }
 
   function _foodPlaceCard(p) {
