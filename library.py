@@ -15,8 +15,13 @@ _ALGOLIA_KEY  = os.environ.get("ALGOLIA_API_KEY", "")
 _INDEX_NAME   = "library_chunks"
 
 
+_sb_client = None
+
 def _sb():
-    return create_client(_SUPABASE_URL, _SUPABASE_KEY)
+    global _sb_client
+    if _sb_client is None:
+        _sb_client = create_client(_SUPABASE_URL, _SUPABASE_KEY)
+    return _sb_client
 
 
 def _idx():

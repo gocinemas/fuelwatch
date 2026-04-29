@@ -5466,11 +5466,8 @@ _bkBadge();
   }
 
   function savesCheckPin() {
-    if (_savesPin()) { _savesShowMain(); return; }
-    fetch("/api/wa-saves").then(r => {
-      if (r.status === 401) _savesShowLock();
-      else _savesShowMain();
-    }).catch(() => _savesShowMain());
+    // Skip probe fetch — go straight to load; if 401 comes back, show lock then
+    _savesShowMain();
   }
 
   window.savesSubmitPin = async function() {
