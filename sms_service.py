@@ -2080,6 +2080,47 @@ _PLACES_CACHE_TTL = 3600  # 1 hour
 _GOOGLE_PLACES_KEY = os.environ.get("GOOGLE_PLACES_KEY", "")
 
 
+def _lookup_venue(name: str) -> dict:
+    """Look up phone, website, address, maps link for a venue by name via Google Places."""
+    out = {"phone": "", "website": "", "address": "", "maps_url": ""}
+    maps_q = name.replace(" ", "+")
+    out["maps_url"] = f"https://maps.google.com/?q={maps_q}"
+    if not _GOOGLE_PLACES_KEY:
+        return out
+    try:
+        ts = requests.get(
+            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            params={"query": name, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+            timeout=6,
+        )
+        results = ts.json().get("results", [])
+        if not results:
+            return out
+        place_id = results[0]["place_id"]
+        out["address"] = results[0].get("formatted_address", "")
+        loc = results[0].get("geometry", {}).get("location", {})
+        if loc:
+            out["maps_url"] = f"https://maps.google.com/?q={loc['lat']},{loc['lng']}"
+
+        det = requests.get(
+            "https://maps.googleapis.com/maps/api/place/details/json",
+            params={
+                "place_id": place_id,
+                "fields":   "formatted_phone_number,website,formatted_address",
+                "key":      _GOOGLE_PLACES_KEY,
+            },
+            timeout=6,
+        )
+        p = det.json().get("result", {})
+        out["phone"]   = p.get("formatted_phone_number", "")
+        out["website"] = p.get("website", "")
+        if p.get("formatted_address"):
+            out["address"] = p["formatted_address"]
+    except Exception as exc:
+        print(f"[venue lookup] {exc}")
+    return out
+
+
 @app.route("/api/places/google")
 def api_places_google():
     """Fetch Google Places rating + top reviews for a named venue."""
@@ -3256,11 +3297,11 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         )
         bullet_lines = [b.strip() for b in summary.split("•") if b.strip()]
         search_terms = ""
+        venue_raw = ""
         if bullet_lines:
             name_raw = _FILLER.sub("", bullet_lines[0]).strip().strip('"\'').strip()[:80]
             if img_type == "event":
                 # Add venue from bullet 2 if it looks like a venue line
-                venue_raw = ""
                 if len(bullet_lines) > 1:
                     b2 = _FILLER.sub("", bullet_lines[1]).strip()
                     b2_clean = _VENUE_PREFIX.sub("", b2).strip().split(",")[0].strip()[:40]
@@ -3294,6 +3335,11 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
 
         search_url = direct_url or (f"https://www.google.com/search?q={search_terms}" if search_terms else "")
 
+        # Look up venue contact details for events/ads with a known venue
+        venue_info = {}
+        if img_type in ("event", "ad", "menu") and venue_raw:
+            venue_info = _lookup_venue(venue_raw)
+
         if sid:
             try:
                 update_data = {"title": title, "summary": summary}
@@ -3304,12 +3350,22 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 pass
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
-        token = _wa_user_token(fn)
         if bullets:
             msg = f"{title}\n\n{bullets}"
             if search_url:
                 link_label = "🎟️ Book/search" if img_type == "event" else "🔍 Search"
                 msg += f"\n\n{link_label}: {search_url}"
+            # Venue details block
+            if venue_info:
+                venue_block = []
+                if venue_info.get("phone"):
+                    venue_block.append(f"📞 {venue_info['phone']}")
+                if venue_info.get("website"):
+                    venue_block.append(f"🌐 {venue_info['website']}")
+                if venue_info.get("maps_url"):
+                    venue_block.append(f"📍 Directions: {venue_info['maps_url']}")
+                if venue_block:
+                    msg += "\n\n" + "\n".join(venue_block)
         else:
             msg = f"{title}\n(couldn't read — saved anyway)"
         msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves"
