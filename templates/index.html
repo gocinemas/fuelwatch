@@ -362,6 +362,12 @@
           <div class="tc-desc">Find a plumber, GP, dentist or any local service</div>
         </button>
 
+        <button class="tool-card" onclick="showScreen('trains')">
+          <div class="tc-icon" style="background:#f0f9ff">🚆</div>
+          <div class="tc-name">Next Train</div>
+          <div class="tc-desc">Find trains from your nearest station right now</div>
+        </button>
+
       </div>
 
       <!-- WhatsApp shortcuts strip -->
@@ -6309,6 +6315,118 @@ _bkBadge();
     }, 50);
   };
 
+})();
+</script>
+
+<!-- ── TRAINS SCREEN ── -->
+<div id="screen-trains" class="screen pt-5" style="max-width:480px;margin:0 auto;padding:6px 16px 40px">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin-bottom:4px">🚆 Next Train</h2>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Find trains from your nearest station</p>
+
+  <button id="train-locate-btn" onclick="trainLocate()"
+    style="width:100%;padding:14px;border:none;background:var(--text);color:var(--bg);border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px">
+    📍 Use my location
+  </button>
+
+  <div id="train-station-row" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:16px">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Nearest station</div>
+    <div id="train-station-name" style="font-size:17px;font-weight:800;color:var(--text)"></div>
+  </div>
+
+  <div id="train-dest-row" style="display:none;margin-bottom:16px">
+    <input id="train-dest-input" type="text" placeholder="Where to? (optional — filters results)"
+      style="width:100%;box-sizing:border-box;padding:12px 16px;border:1px solid var(--border);border-radius:14px;font-size:15px;outline:none;background:var(--surface)"
+      oninput="trainFilterResults()">
+  </div>
+
+  <div id="train-loading" style="display:none;text-align:center;padding:24px;color:var(--muted);font-size:13px">Loading trains…</div>
+  <div id="train-error"   style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#b91c1c;margin-bottom:12px"></div>
+  <div id="train-results"></div>
+</div>
+
+<script>
+(function(){
+  var _trainData = [];
+  var _trainCrs  = "";
+
+  window.trainLocate = function() {
+    var btn = document.getElementById("train-locate-btn");
+    btn.textContent = "Locating…";
+    btn.disabled = true;
+    if (!navigator.geolocation) {
+      btn.textContent = "📍 Use my location";
+      btn.disabled = false;
+      _trainErr("Geolocation not supported by your browser");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      fetch("/api/train/nearest?lat="+pos.coords.latitude+"&lng="+pos.coords.longitude)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          btn.textContent = "📍 Use my location";
+          btn.disabled = false;
+          if (d.error) { _trainErr(d.error); return; }
+          _trainCrs = d.crs;
+          document.getElementById("train-station-name").textContent = d.name + (d.crs ? " ("+d.crs+")" : "");
+          document.getElementById("train-station-row").style.display = "block";
+          document.getElementById("train-dest-row").style.display = "block";
+          _trainLoadDepartures(d.crs);
+        })
+        .catch(function(){ btn.textContent="📍 Use my location"; btn.disabled=false; _trainErr("Could not find nearest station"); });
+    }, function(){
+      btn.textContent = "📍 Use my location";
+      btn.disabled = false;
+      _trainErr("Location access denied — please allow location in your browser");
+    }, {timeout:10000});
+  };
+
+  function _trainLoadDepartures(crs) {
+    document.getElementById("train-loading").style.display = "block";
+    document.getElementById("train-error").style.display   = "none";
+    document.getElementById("train-results").innerHTML     = "";
+    fetch("/api/train/departures?crs="+crs)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        document.getElementById("train-loading").style.display = "none";
+        if (d.error) { _trainErr(d.error); return; }
+        _trainData = d.trains || [];
+        trainFilterResults();
+      })
+      .catch(function(){ document.getElementById("train-loading").style.display="none"; _trainErr("Could not load departures"); });
+  }
+
+  window.trainFilterResults = function() {
+    var filter = (document.getElementById("train-dest-input").value || "").toLowerCase().trim();
+    var trains = _trainData.filter(function(t){
+      return !filter || t.destination.toLowerCase().includes(filter);
+    });
+    var el = document.getElementById("train-results");
+    if (!trains.length) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No trains found'+(filter?" to "+filter:"")+'</div>';
+      return;
+    }
+    el.innerHTML = trains.map(function(t){
+      var onTime   = t.expected === "On time" || t.expected === t.scheduled;
+      var cancelled = t.cancelled;
+      var dot = cancelled ? "#ef4444" : onTime ? "#22c55e" : "#f59e0b";
+      var status = cancelled ? "Cancelled" : onTime ? "On time" : "Exp "+t.expected;
+      var statusCol = cancelled ? "#ef4444" : onTime ? "#16a34a" : "#d97706";
+      return '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:var(--surface);margin-bottom:8px">'
+        +'<div style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0"></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:15px;font-weight:700;color:var(--text)">'+t.scheduled+' → '+t.destination+'</div>'
+        +'<div style="font-size:12px;color:var(--muted);margin-top:2px">Platform '+t.platform+'</div>'
+        +'</div>'
+        +'<div style="font-size:12px;font-weight:700;color:'+statusCol+'">'+status+'</div>'
+        +'</div>';
+    }).join("");
+  };
+
+  function _trainErr(msg) {
+    var el = document.getElementById("train-error");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
 })();
 </script>
 

@@ -4722,6 +4722,57 @@ def api_books_save():
     return jsonify({"ok": True})
 
 
+@app.route("/api/train/nearest")
+def api_train_nearest():
+    lat = request.args.get("lat", "").strip()
+    lng = request.args.get("lng", "").strip()
+    if not lat or not lng:
+        return jsonify({"error": "lat/lng required"}), 400
+    try:
+        q = f'[out:json][timeout:10];node["railway"="station"](around:3000,{lat},{lng});out 3 qt;'
+        r = requests.post("https://overpass-api.de/api/interpreter", data={"data": q}, timeout=12)
+        elements = r.json().get("elements", [])
+        if not elements:
+            return jsonify({"error": "No station found within 3km"}), 404
+        el = elements[0]
+        tags = el.get("tags", {})
+        name = tags.get("name", "Unknown Station")
+        crs  = tags.get("ref", "").upper()
+        return jsonify({"name": name, "crs": crs, "lat": el["lat"], "lng": el["lon"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/train/departures")
+def api_train_departures():
+    crs = request.args.get("crs", "").strip().upper()[:3]
+    if not crs:
+        return jsonify({"error": "crs required"}), 400
+    token = "DA1C7740-9DA0-11E4-80E6-A920340000B5"
+    try:
+        r = requests.get(
+            f"https://huxley2.azurewebsites.net/departures/{crs}/15",
+            params={"expand": "true", "accessToken": token},
+            timeout=12,
+        )
+        r.raise_for_status()
+        data = r.json()
+        services = data.get("trainServices") or []
+        trains = []
+        for s in services:
+            dest = ((s.get("destination") or [{}])[0]).get("locationName", "")
+            trains.append({
+                "scheduled":   s.get("std", ""),
+                "expected":    s.get("etd", "On time"),
+                "platform":    s.get("platform") or "—",
+                "destination": dest,
+                "cancelled":   s.get("isCancelled", False),
+            })
+        return jsonify({"station": data.get("locationName", crs), "trains": trains})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/static/miru-preview.png")
 def miru_preview_image():
     """Return an SVG open-graph preview image for Miru."""
