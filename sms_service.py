@@ -3871,31 +3871,48 @@ def wa_digest():
     sent = 0
 
     for from_number, saves in by_user.items():
-        top5 = saves[:5]
-        # Store in memory so user can reply "1 READ", "2 SKIP" etc.
+        # Cap at 9 for numbered triage replies (1–9)
+        batch = saves[:9]
         _PENDING_DIGEST[from_number] = [
             {"id": s["id"], "title": s.get("title") or "Untitled", "url": s.get("url", "")}
-            for s in top5
+            for s in batch
         ]
-        lines = [f"📬 {len(saves)} unread save{'s' if len(saves) != 1 else ''}:\n"]
-        for i, s in enumerate(top5, 1):
-            title = (s.get("title") or "Untitled")[:55]
-            lines.append(f"{i}. {title}")
+        lines = [f"📬 Daily digest — {len(saves)} saved\n"]
+        for i, s in enumerate(batch, 1):
+            title = (s.get("title") or "Untitled")[:60]
             summary = s.get("summary", "")
+            first_bullet = ""
             if summary and "•" in summary:
-                first = summary.split("•")[1].strip()[:80]
-                lines.append(f"   • {first}")
-            if s.get("url"):
-                lines.append(f"   {s['url']}")
-        if len(saves) > 5:
-            lines.append(f"\n…and {len(saves) - 5} more.")
-        lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday* etc.")
+                first_bullet = summary.split("•")[1].strip()[:90]
+            url = s.get("url", "")
+            lines.append(f"{i}. {title}")
+            if first_bullet:
+                lines.append(f"   {first_bullet}")
+            if url:
+                lines.append(f"   {url}")
+        if len(saves) > 9:
+            lines.append(f"\n+{len(saves) - 9} more in My Saves.")
+        lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday*")
+
+        # Split into chunks ≤4000 chars (WhatsApp limit)
+        body_text = "\n".join(lines)
+        chunks, current = [], ""
+        for line in lines:
+            if len(current) + len(line) + 1 > 3800:
+                chunks.append(current.strip())
+                current = line + "\n"
+            else:
+                current += line + "\n"
+        if current.strip():
+            chunks.append(current.strip())
+
         try:
-            client.messages.create(
-                body="\n".join(lines),
-                from_=f"whatsapp:{twilio_from}",
-                to=from_number,
-            )
+            for chunk in chunks:
+                client.messages.create(
+                    body=chunk,
+                    from_=f"whatsapp:{twilio_from}",
+                    to=from_number,
+                )
             sent += 1
         except Exception:
             pass
