@@ -3241,16 +3241,21 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         # Strip the TYPE: line for the summary stored
         summary = "\n".join(l for l in analysis.split("\n") if not l.startswith("TYPE:")).strip()
 
-        # Build a meaningful search URL from the first bullet point text
+        # Build a meaningful search URL — strip filler phrases, keep the key object name
+        import urllib.parse, re as _re
+        _FILLER = _re.compile(
+            r"^(the (billboard|image|photo|sign|ad|poster|document|receipt|menu) (is |are )?"
+            r"(promoting|showing|advertis\w+|for|of|reads|says|displays?|featuring?|from)?[\s:–—]*"
+            r"|this (is |appears? to be )?(a |an )?(billboard|image|photo|sign|ad|poster|document|receipt|menu)[\s:–—]*"
+            r"|it (is |appears? to be )?(promoting|showing|advertis\w+)[\s:–—]*)",
+            _re.IGNORECASE,
+        )
         search_terms = ""
         bullet_lines = [b.strip() for b in summary.split("•") if b.strip()]
         if bullet_lines:
-            import urllib.parse
-            raw = bullet_lines[0][:80]
+            raw = _FILLER.sub("", bullet_lines[0]).strip()[:80]
             if img_type == "event":
                 search_terms = urllib.parse.quote_plus(raw + " tickets")
-            elif img_type in ("ad", "menu"):
-                search_terms = urllib.parse.quote_plus(raw)
             else:
                 search_terms = urllib.parse.quote_plus(raw)
         search_url = f"https://www.google.com/search?q={search_terms}" if search_terms else ""
@@ -3273,7 +3278,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 msg += f"\n\n{link_label}: {search_url}"
         else:
             msg = f"{title}\n(couldn't read — saved anyway)"
-        msg += f"\n\n📂 Saved on Miru: miru.humanagency.co/?wa={token}"
+        msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves"
         _wa_send_proactive(fn, msg)
 
     threading.Thread(target=_bg, daemon=True).start()
@@ -3365,7 +3370,7 @@ def _wa_save_url(from_number: str, url: str) -> str:
 
     threading.Thread(target=_bg, daemon=True).start()
     token = _wa_user_token(from_number)
-    return f"📌 Saved — summary on its way ✨\nYour saves: miru.humanagency.co/?wa={token}"
+    return f"📌 Saved — summary on its way ✨\n📂 My Saves: miru.humanagency.co/?screen=saves"
 
 
 def _wa_triage_respond(from_number: str, cmd: str) -> str:
@@ -4194,7 +4199,7 @@ def wa_digest():
             lines.append(f"\n+{len(saves) - 9} more in My Saves.")
         user_token = _wa_user_token(from_number)
         lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday*")
-        lines.append(f"🔗 miru.humanagency.co/?wa={user_token}")
+        lines.append(f"🔗 miru.humanagency.co/?screen=saves")
 
         # Split into chunks ≤4000 chars (WhatsApp limit)
         body_text = "\n".join(lines)
@@ -4229,7 +4234,9 @@ def api_wa_saves():
     if err:
         return err
     try:
-        rows = lib._sb().table("wa_saves").select("*").order("created_at", desc=True).limit(100).execute().data
+        rows = lib._sb().table("wa_saves").select(
+            "id,title,url,summary,status,remind_day,created_at"
+        ).order("created_at", desc=True).limit(60).execute().data
         return jsonify({"saves": rows})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
