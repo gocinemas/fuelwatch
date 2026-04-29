@@ -3137,55 +3137,91 @@ def _fetch_url_text(url: str) -> dict:
         return {"title": url, "text": "", "ok": False, "error": str(e)}
 
 
-def _wa_save_url(from_number: str, url: str) -> str:
-    """Fetch URL, summarise, save to wa_saves, return WhatsApp reply."""
-    fetched = _fetch_url_text(url)
-    if not fetched["ok"]:
-        return "⚠️ Couldn't read that page — try a direct article link."
-
-    title = fetched["title"]
-    text = fetched["text"]
-
+def _wa_send_proactive(to: str, body: str) -> None:
+    """Send an outbound WhatsApp message via Twilio (fire-and-forget)."""
     try:
-        summary = _groq_chat(
-            system=(
-                "Summarise the article in exactly 3 bullet points starting with •. "
-                "Max 15 words each. No intro, no outro."
-            ),
-            messages=[{"role": "user", "content": f"Summarise:\n\n{text[:4000]}"}],
-            max_tokens=120,
-        ).strip()
+        from twilio.rest import Client as _TC
+        sid   = os.environ.get("TWILIO_ACCOUNT_SID", "")
+        token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+        frm   = os.environ.get("TWILIO_WHATSAPP_FROM", "")
+        if sid and token and frm:
+            _TC(sid, token).messages.create(
+                body=body, from_=f"whatsapp:{frm}", to=to
+            )
     except Exception:
-        summary = text[:200] + "…"
+        pass
 
+
+def _wa_save_url(from_number: str, url: str) -> str:
+    """Save URL immediately, summarise in background, send proactive follow-up."""
+    import threading
+
+    # 1. Save bare URL to DB right away so it's never lost
     save_id = None
     try:
         row = lib._sb().table("wa_saves").insert({
             "from_number": from_number,
-            "url": url,
-            "title": title,
-            "summary": summary,
-            "status": "pending",
+            "url":         url,
+            "title":       url,   # placeholder until background fills it
+            "summary":     "",
+            "status":      "pending",
         }).execute()
         if row.data:
             save_id = row.data[0].get("id")
     except Exception:
-        pass
+        return "⚠️ Couldn't save — database error. Try again."
 
-    # Keep pending triage in case user wants to act immediately
+    # Seed pending triage immediately (title = url for now)
     _PENDING_TRIAGE[from_number] = {
-        "id": save_id,
-        "title": title,
-        "url": url,
+        "id": save_id, "title": url, "url": url,
         "expires": time.time() + 3600,
     }
 
-    # Just confirm saved + summary. No triage prompt — they'll get digest later.
-    bullets = "\n".join(
-        f"• {b.strip()}"
-        for b in summary.split("•") if b.strip()
-    )
-    return f"📌 Saved to My Saves\n{title[:70]}\n\n{bullets}"
+    # 2. Background: fetch → summarise → update DB → proactive WA reply
+    def _bg(sid=save_id, fn=from_number, u=url):
+        fetched = _fetch_url_text(u)
+        title   = fetched.get("title") or u
+        text    = fetched.get("text", "")
+
+        summary = ""
+        if text:
+            try:
+                summary = _groq_chat(
+                    system=(
+                        "Summarise the article in exactly 3 bullet points starting with •. "
+                        "Max 15 words each. No intro, no outro."
+                    ),
+                    messages=[{"role": "user", "content": f"Summarise:\n\n{text[:4000]}"}],
+                    max_tokens=120,
+                ).strip()
+            except Exception:
+                pass
+
+        # Update DB with real title + summary
+        update = {"title": title}
+        if summary:
+            update["summary"] = summary
+        try:
+            lib._sb().table("wa_saves").update(update).eq("id", sid).execute()
+        except Exception:
+            pass
+
+        # Refresh pending triage with real title
+        _PENDING_TRIAGE[fn] = {
+            "id": sid, "title": title, "url": u,
+            "expires": time.time() + 3600,
+        }
+
+        # Send proactive summary message
+        if summary:
+            bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
+            msg = f"📖 {title[:70]}\n\n{bullets}"
+        else:
+            msg = f"📖 {title[:70]}\n(couldn't load summary — tap to read)"
+        _wa_send_proactive(fn, msg)
+
+    threading.Thread(target=_bg, daemon=True).start()
+    return "📌 Saved — summary on its way ✨"
 
 
 def _wa_triage_respond(from_number: str, cmd: str) -> str:
@@ -3507,7 +3543,8 @@ def whatsapp_reply():
             "🛒 Grocery prices: Heinz Beans\n"
             "🗳️ Elections: vote SW1A 1AA\n"
             "🏛️ Local services: places SW1A 1AA\n"
-            "🔖 Save any article: just send a URL"
+            "🔖 Save an article: send a URL\n"
+            "📋 See your saves: LIST"
         )
         return str(resp)
 
@@ -3524,7 +3561,18 @@ def whatsapp_reply():
     if digest_m:
         idx = int(digest_m.group(1)) - 1
         cmd = digest_m.group(2).strip().upper()
-        items = _PENDING_DIGEST.get(from_number, [])
+        # Re-fetch from Supabase if in-memory state was lost (e.g. server restart)
+        items = _PENDING_DIGEST.get(from_number)
+        if not items:
+            try:
+                rows = (lib._sb().table("wa_saves").select("id,title,url")
+                        .eq("from_number", from_number)
+                        .in_("status", ["pending", "remind"])
+                        .order("created_at").limit(9).execute().data)
+                items = [{"id": r["id"], "title": r.get("title") or "Untitled", "url": r.get("url", "")} for r in rows]
+                _PENDING_DIGEST[from_number] = items
+            except Exception:
+                items = []
         if 0 <= idx < len(items):
             item = items[idx]
             _PENDING_TRIAGE[from_number] = {
@@ -3533,7 +3581,7 @@ def whatsapp_reply():
             }
             reply = _wa_triage_respond(from_number, cmd)
         else:
-            reply = "Couldn't find that item — send the digest again or paste the link directly."
+            reply = "Couldn't find that item — reply LIST to see your saves, or paste the link again."
         resp.message(reply)
         return str(resp)
 
@@ -3542,6 +3590,29 @@ def whatsapp_reply():
     if cmd_up in ("READ", "SKIP") or cmd_up.startswith("REMIND"):
         reply = _wa_triage_respond(from_number, cmd_up)
         resp.message(reply)
+        return str(resp)
+
+    # ── LIST command: on-demand saves summary ─────────────────────────────────
+    if cmd_up == "LIST":
+        try:
+            rows = (lib._sb().table("wa_saves").select("id,title,url,status")
+                    .eq("from_number", from_number)
+                    .in_("status", ["pending", "remind"])
+                    .order("created_at").limit(9).execute().data)
+        except Exception:
+            rows = []
+        if not rows:
+            resp.message("No pending saves. Send any URL to save it.")
+        else:
+            _PENDING_DIGEST[from_number] = [
+                {"id": r["id"], "title": r.get("title") or "Untitled", "url": r.get("url", "")}
+                for r in rows
+            ]
+            lines = [f"📋 {len(rows)} pending:\n"]
+            for i, r in enumerate(rows, 1):
+                lines.append(f"{i}. {(r.get('title') or r.get('url',''))[:60]}")
+            lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday*")
+            resp.message("\n".join(lines))
         return str(resp)
 
     postcode, fuel, radius, retailer = parse_sms(body)
@@ -3847,7 +3918,11 @@ def wa_digest():
         return jsonify({"error": "Unauthorized"}), 401
 
     try:
-        rows = lib._sb().table("wa_saves").select("*").eq("status", "pending").execute().data
+        # Include pending + remind (overdue reminders resurface in digest)
+        rows = (lib._sb().table("wa_saves").select("*")
+                .in_("status", ["pending", "remind"])
+                .order("created_at")
+                .execute().data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
