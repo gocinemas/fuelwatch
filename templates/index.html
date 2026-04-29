@@ -4954,6 +4954,7 @@ _bkBadge();
   let _finderAllResults = [];
   let _finderCheckatradeUrl = null;
   let _finderCurrentQ = "";
+  let _finderCurrentPC = "";
   let _finderSuggestion = null;
 
   /* ── helpers ── */
@@ -5025,7 +5026,7 @@ _bkBadge();
     const pc = raw.toUpperCase().replace(/\s+/g,"");
     try{
       const j=(await (await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`)).json());
-      if(j.status===200){ _finderLat=j.result.latitude; _finderLon=j.result.longitude; return true; }
+      if(j.status===200){ _finderLat=j.result.latitude; _finderLon=j.result.longitude; _finderCurrentPC=raw.toUpperCase().trim(); return true; }
       const ja=(await (await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`)).json());
       if(ja.result && ja.result.length){
         _finderSuggestion=ja.result[0];
@@ -5097,6 +5098,8 @@ _bkBadge();
       </a>`;
     }
     hdrHtml += `<div style="font-size:12px;color:var(--subtle)">${items.length} result${items.length!==1?"s":""} for <strong style="color:var(--text)">${_finderCurrentQ}</strong>${openNow?" · open now":""}</div>`;
+    // Share button
+    hdrHtml += `<button onclick="finderShare()" style="display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:700;cursor:pointer">📤 Share these results</button>`;
     hdr.innerHTML = hdrHtml;
     if(!items.length){
       const total = _finderAllResults.length;
@@ -5184,16 +5187,47 @@ _bkBadge();
 
   window.finderSetLocation = function(lat, lon, postcode) {
     _finderLat = lat; _finderLon = lon;
+    _finderCurrentPC = postcode || "";
     const inp = document.getElementById("finder-postcode");
     if (inp && postcode) inp.value = postcode;
     _showOk("📍 Location set — tap a category or type a search.");
   };
 
-  _updateSavedBtn();
+  window.finderShare = function() {
+    const pc = _finderCurrentPC || document.getElementById("finder-postcode").value.trim();
+    const q  = _finderCurrentQ;
+    if (!pc || !q) return;
+    const base = location.origin + location.pathname;
+    const url  = `${base}?screen=finder&pc=${encodeURIComponent(pc)}&q=${encodeURIComponent(q)}`;
+    if (navigator.share) {
+      navigator.share({ title: `${q} near ${pc} — Miru`, url });
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.querySelector("button[onclick='finderShare()']");
+        if (btn) { const orig = btn.textContent; btn.textContent = "✓ Copied!"; setTimeout(()=>btn.textContent=orig, 2000); }
+      });
+    }
+  };
 
-  if(location.search.includes("finder") || location.hash === "#finder"){
-    if(typeof showScreen === "function") showScreen("finder");
-  }
+  // Deep-link: ?screen=finder&pc=KT1+2BA&q=plumber
+  (function(){
+    const p = new URLSearchParams(location.search);
+    if(p.get("screen") === "finder"){
+      const pc = p.get("pc"), q = p.get("q");
+      if(typeof showScreen === "function") showScreen("finder");
+      if(pc){
+        document.getElementById("finder-postcode").value = pc;
+        if(q){
+          document.getElementById("finder-q").value = q;
+          setTimeout(finderSearch, 200);
+        }
+      }
+    } else if(location.search.includes("finder") || location.hash === "#finder"){
+      if(typeof showScreen === "function") showScreen("finder");
+    }
+  })();
+
+  _updateSavedBtn();
 })();
 </script>
 
