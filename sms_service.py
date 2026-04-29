@@ -3241,24 +3241,58 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         # Strip the TYPE: line for the summary stored
         summary = "\n".join(l for l in analysis.split("\n") if not l.startswith("TYPE:")).strip()
 
-        # Build a meaningful search URL — strip filler phrases, keep the key object name
+        # Build a meaningful search URL — strip filler, keep key object + venue
         import urllib.parse, re as _re
         _FILLER = _re.compile(
-            r"^(the (billboard|image|photo|sign|ad|poster|document|receipt|menu) (is |are )?"
-            r"(promoting|showing|advertis\w+|for|of|reads|says|displays?|featuring?|from)?[\s:–—]*"
-            r"|this (is |appears? to be )?(a |an )?(billboard|image|photo|sign|ad|poster|document|receipt|menu)[\s:–—]*"
-            r"|it (is |appears? to be )?(promoting|showing|advertis\w+)[\s:–—]*)",
+            r"^(the (event|show|performance|concert|exhibition|gig|festival|billboard|image|photo|sign|ad|poster|document|receipt|menu)"
+            r"(\s+(is|are))?\s*(called|named|titled|known as|promoting|showing|advertis\w+|for|of|reads|says|displays?|featuring?|from)?\s*[:\-–—\"']?\s*"
+            r"|this\s+(event|show|is|appears?\s+to\s+be)\s+(called|named|titled|a|an)?\s*[:\-–—\"']?\s*"
+            r"|it\s+(is|appears?\s+to\s+be)\s+(called|named|titled|promoting|showing|advertis\w+)\s*[:\-–—\"']?\s*)",
             _re.IGNORECASE,
         )
-        search_terms = ""
+        _VENUE_PREFIX = _re.compile(
+            r"^(venue|location|at|held\s+at|taking\s+place\s+at|place)\s*[:\-–—]?\s*",
+            _re.IGNORECASE,
+        )
         bullet_lines = [b.strip() for b in summary.split("•") if b.strip()]
+        search_terms = ""
         if bullet_lines:
-            raw = _FILLER.sub("", bullet_lines[0]).strip()[:80]
+            name_raw = _FILLER.sub("", bullet_lines[0]).strip().strip('"\'').strip()[:80]
             if img_type == "event":
-                search_terms = urllib.parse.quote_plus(raw + " tickets")
+                # Add venue from bullet 2 if it looks like a venue line
+                venue_raw = ""
+                if len(bullet_lines) > 1:
+                    b2 = _FILLER.sub("", bullet_lines[1]).strip()
+                    b2_clean = _VENUE_PREFIX.sub("", b2).strip().split(",")[0].strip()[:40]
+                    if b2_clean and not any(w in b2_clean.lower() for w in ["date","time","door","ticket","price","£","admission"]):
+                        venue_raw = b2_clean
+                q = f"{name_raw} {venue_raw}".strip() + " tickets"
+                search_terms = urllib.parse.quote_plus(q)
             else:
-                search_terms = urllib.parse.quote_plus(raw)
-        search_url = f"https://www.google.com/search?q={search_terms}" if search_terms else ""
+                search_terms = urllib.parse.quote_plus(name_raw)
+
+        # Try to resolve the first organic result for a direct link
+        direct_url = ""
+        if search_terms:
+            try:
+                ddg = requests.get(
+                    "https://html.duckduckgo.com/html/",
+                    params={"q": urllib.parse.unquote_plus(search_terms)},
+                    headers={"User-Agent": "Mozilla/5.0 (compatible; MiruBot/1.0)"},
+                    timeout=6,
+                )
+                m = _re.search(r'class="result__url"[^>]*>\s*([^\s<]+)', ddg.text)
+                if m:
+                    u = m.group(1).strip()
+                    if not u.startswith("http"):
+                        u = "https://" + u
+                    # Skip ad/tracking domains
+                    if not any(x in u for x in ["duckduckgo", "bing.com", "google.com", "amazon-adsystem"]):
+                        direct_url = u
+            except Exception as exc:
+                print(f"[vision] DDG lookup failed: {exc}")
+
+        search_url = direct_url or (f"https://www.google.com/search?q={search_terms}" if search_terms else "")
 
         if sid:
             try:
