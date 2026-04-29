@@ -3198,13 +3198,14 @@ def _wa_triage_respond(from_number: str, cmd: str) -> str:
     title = pending.get("title", "item")[:60]
     cmd_up = cmd.strip().upper()
 
+    url = pending.get("url", "")
     if cmd_up == "READ":
-        status, remind_day, reply = "read", None, f"✓ Marked as read: {title}"
+        status, remind_day, reply = "read", None, f"✓ Marked as read: {title}\n{url}"
     elif cmd_up == "SKIP":
         status, remind_day, reply = "skip", None, f"🗑️ Dismissed: {title}"
     elif cmd_up.startswith("REMIND"):
         day = cmd_up.replace("REMIND", "").strip() or "later"
-        status, remind_day, reply = "remind", day, f"🔔 Reminder set ({day}): {title}"
+        status, remind_day, reply = "remind", day, f"🔔 Reminder ({day}):\n{title}\n{url}"
     else:
         return "Reply READ, SKIP, or REMIND [day] e.g. REMIND friday"
 
@@ -3860,6 +3861,8 @@ def wa_digest():
             if summary and "•" in summary:
                 first = summary.split("•")[1].strip()[:80]
                 lines.append(f"   • {first}")
+            if s.get("url"):
+                lines.append(f"   {s['url']}")
         if len(saves) > 3:
             lines.append(f"\n…and {len(saves) - 3} more unread.")
         lines.append("\nReply READ, SKIP or REMIND after sending the link again.")
