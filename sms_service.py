@@ -3082,7 +3082,8 @@ def api_product():
 # );
 # CREATE INDEX ON wa_saves(from_number, created_at DESC);
 
-_PENDING_TRIAGE: dict = {}  # from_number -> {id, title, url, expires}
+_PENDING_TRIAGE: dict = {}   # from_number -> {id, title, url, expires}
+_PENDING_DIGEST: dict  = {}  # from_number -> [{id, title, url}, ...]  (last digest sent)
 
 
 def _fetch_url_text(url: str) -> dict:
@@ -3519,7 +3520,25 @@ def whatsapp_reply():
         resp.message(reply)
         return str(resp)
 
-    # ── Triage reply ──────────────────────────────────────────────────────────
+    # ── Digest numbered reply: "1 READ", "2 SKIP", "3 REMIND Monday" ─────────
+    digest_m = re.match(r'^([1-9])\s+(READ|SKIP|REMIND\S*(?:\s+\S+)?)\s*$', body.strip(), re.I)
+    if digest_m:
+        idx = int(digest_m.group(1)) - 1
+        cmd = digest_m.group(2).strip().upper()
+        items = _PENDING_DIGEST.get(from_number, [])
+        if 0 <= idx < len(items):
+            item = items[idx]
+            _PENDING_TRIAGE[from_number] = {
+                "id": item["id"], "title": item["title"], "url": item["url"],
+                "expires": time.time() + 3600,
+            }
+            reply = _wa_triage_respond(from_number, cmd)
+        else:
+            reply = "Couldn't find that item — send the digest again or paste the link directly."
+        resp.message(reply)
+        return str(resp)
+
+    # ── Single-item triage reply (after sending a URL) ────────────────────────
     cmd_up = body.strip().upper()
     if cmd_up in ("READ", "SKIP") or cmd_up.startswith("REMIND"):
         reply = _wa_triage_respond(from_number, cmd_up)
@@ -3853,19 +3872,25 @@ def wa_digest():
     sent = 0
 
     for from_number, saves in by_user.items():
-        top3 = saves[:3]
-        lines = [f"📬 Your unread saves ({len(saves)} total):\n"]
-        for i, s in enumerate(top3, 1):
-            lines.append(f"{i}. {(s.get('title') or 'Untitled')[:60]}")
+        top5 = saves[:5]
+        # Store in memory so user can reply "1 READ", "2 SKIP" etc.
+        _PENDING_DIGEST[from_number] = [
+            {"id": s["id"], "title": s.get("title") or "Untitled", "url": s.get("url", "")}
+            for s in top5
+        ]
+        lines = [f"📬 {len(saves)} unread save{'s' if len(saves) != 1 else ''}:\n"]
+        for i, s in enumerate(top5, 1):
+            title = (s.get("title") or "Untitled")[:55]
+            lines.append(f"{i}. {title}")
             summary = s.get("summary", "")
             if summary and "•" in summary:
                 first = summary.split("•")[1].strip()[:80]
                 lines.append(f"   • {first}")
             if s.get("url"):
                 lines.append(f"   {s['url']}")
-        if len(saves) > 3:
-            lines.append(f"\n…and {len(saves) - 3} more unread.")
-        lines.append("\nReply READ, SKIP or REMIND after sending the link again.")
+        if len(saves) > 5:
+            lines.append(f"\n…and {len(saves) - 5} more.")
+        lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday* etc.")
         try:
             client.messages.create(
                 body="\n".join(lines),
