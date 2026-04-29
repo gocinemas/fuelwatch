@@ -3172,6 +3172,7 @@ def _wa_save_url(from_number: str, url: str) -> str:
     except Exception:
         pass
 
+    # Keep pending triage in case user wants to act immediately
     _PENDING_TRIAGE[from_number] = {
         "id": save_id,
         "title": title,
@@ -3179,14 +3180,12 @@ def _wa_save_url(from_number: str, url: str) -> str:
         "expires": time.time() + 3600,
     }
 
-    return (
-        f"✅ Saved: {title[:70]}\n\n"
-        f"{summary}\n\n"
-        f"Reply:\n"
-        f"• READ — mark as read\n"
-        f"• SKIP — dismiss\n"
-        f"• REMIND mon/fri/weekend"
+    # Just confirm saved + summary. No triage prompt — they'll get digest later.
+    bullets = "\n".join(
+        f"• {b.strip()}"
+        for b in summary.split("•") if b.strip()
     )
+    return f"📌 Saved to My Saves\n{title[:70]}\n\n{bullets}"
 
 
 def _wa_triage_respond(from_number: str, cmd: str) -> str:
