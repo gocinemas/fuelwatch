@@ -3177,36 +3177,48 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         pass
 
     def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime):
-        try:
-            body = {
-                "model": "llama-3.2-11b-vision-preview",
-                "max_tokens": 250,
-                "messages": [{
-                    "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
-                        {"type": "text", "text": (
-                            "Identify what this image is (pick one: event/ticket, billboard/ad, "
-                            "receipt/bill, menu, sign, document, photo). "
-                            "Then give 3 bullet points starting with • covering the key info. "
-                            "If event/ticket: include name, date, time, venue. "
-                            "If ad/billboard: what's being promoted. "
-                            "If receipt: total and main items. "
-                            "Start your reply with: TYPE: [your choice]"
-                        )}
-                    ]
-                }],
-            }
-            resp = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
-                         "Content-Type": "application/json"},
-                json=body, timeout=20,
-            )
-            resp.raise_for_status()
-            analysis = resp.json()["choices"][0]["message"]["content"].strip()
-        except Exception:
-            analysis = ""
+        _vision_models = [
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "llama-3.2-90b-vision-preview",
+            "llama-3.2-11b-vision-preview",
+        ]
+        prompt_text = (
+            "Identify what this image is (pick one: event/ticket, billboard/ad, "
+            "receipt/bill, menu, sign, document, photo). "
+            "Then give 3 bullet points starting with • covering the key info. "
+            "If event/ticket: include name, date, time, venue. "
+            "If ad/billboard: what's being promoted. "
+            "If receipt: total and main items. "
+            "Start your reply with: TYPE: [your choice]"
+        )
+        analysis = ""
+        for model in _vision_models:
+            try:
+                body = {
+                    "model": model,
+                    "max_tokens": 250,
+                    "messages": [{
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
+                            {"type": "text", "text": prompt_text},
+                        ]
+                    }],
+                }
+                resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
+                             "Content-Type": "application/json"},
+                    json=body, timeout=20,
+                )
+                print(f"[vision] model={model} status={resp.status_code}")
+                if resp.status_code == 200:
+                    analysis = resp.json()["choices"][0]["message"]["content"].strip()
+                    break
+                else:
+                    print(f"[vision] error body: {resp.text[:300]}")
+            except Exception as exc:
+                print(f"[vision] model={model} exception: {exc}")
 
         # Derive title from type
         title = "📷 Photo"
