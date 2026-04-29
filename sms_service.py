@@ -4761,7 +4761,7 @@ def api_train_nearest():
         el = elements[0]
         tags = el.get("tags", {})
         name = tags.get("name", "Unknown Station")
-        crs  = tags.get("ref", "").upper()
+        crs  = (tags.get("ref:crs") or tags.get("ref") or "").upper()
         return jsonify({"name": name, "crs": crs, "lat": el["lat"], "lng": el["lon"]})
     except Exception as e:
         return jsonify({"error": f"nearest: {str(e)}"}), 500
