@@ -4457,39 +4457,39 @@
 
   <!-- ── BOOK DETAIL (inline) ── -->
   <div id="book-detail" style="display:none;margin-top:4px">
-    <button onclick="bookCloseDetail()" style="display:flex;align-items:center;gap:5px;border:none;background:none;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;padding:0;margin-bottom:14px">
+    <button onclick="bookCloseDetail()" style="display:flex;align-items:center;gap:5px;border:none;background:none;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;padding:0;margin-bottom:16px">
       ← Back
     </button>
-    <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
-      <img id="bd-cover" src="" alt="" style="width:72px;min-width:72px;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.15);display:none">
+    <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:18px">
+      <img id="bd-cover" src="" alt="" style="width:84px;min-width:84px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.18);display:none">
       <div style="flex:1;min-width:0">
-        <div id="bd-title"  style="font-size:17px;font-weight:800;color:var(--text);line-height:1.3;margin-bottom:4px"></div>
-        <div id="bd-author" style="font-size:13px;color:var(--muted);margin-bottom:4px"></div>
+        <div id="bd-title"  style="font-size:20px;font-weight:800;color:var(--text);line-height:1.25;margin-bottom:5px;letter-spacing:-0.3px"></div>
+        <div id="bd-author" style="font-size:15px;color:var(--muted);margin-bottom:5px;font-weight:500"></div>
         <div id="bd-meta"   style="font-size:12px;color:var(--subtle)"></div>
       </div>
     </div>
 
-    <div id="bd-community-rating" style="display:none;font-size:13px;color:var(--muted);padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;margin-bottom:12px"></div>
-    <div id="bd-subjects" style="display:none;font-size:12px;color:var(--subtle);line-height:1.7;margin-bottom:14px"></div>
+    <div id="bd-community-rating" style="display:none;font-size:14px;color:var(--muted);padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;margin-bottom:14px"></div>
+    <div id="bd-subjects" style="display:none;font-size:12px;color:var(--subtle);line-height:1.8;margin-bottom:14px"></div>
 
     <!-- AI Summary & Reviews -->
-    <div id="bd-ai-section" style="margin-bottom:16px">
+    <div id="bd-ai-section" style="margin-bottom:18px">
       <button id="bd-ai-btn" onclick="bookLoadSummary()"
-        style="width:100%;padding:11px;border-radius:12px;border:1.5px solid #e0e7ff;background:#f5f3ff;color:#4f46e5;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+        style="width:100%;padding:12px;border-radius:12px;border:1.5px solid #e0e7ff;background:#f5f3ff;color:#4f46e5;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
         ✨ Get Summary &amp; Reader Reviews
       </button>
-      <div id="bd-ai-result" style="display:none;margin-top:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">What it's about</div>
-        <div id="bd-ai-summary" style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:4px"></div>
-        <div id="bd-ai-audience" style="font-size:12px;color:#7c3aed;font-style:italic;margin-bottom:14px"></div>
+      <div id="bd-ai-result" style="display:none;margin-top:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">What it's about</div>
+        <div id="bd-ai-summary" style="font-size:15px;color:var(--text);line-height:1.7;margin-bottom:6px;font-weight:400"></div>
+        <div id="bd-ai-audience" style="font-size:13px;color:#7c3aed;font-style:italic;margin-bottom:16px;font-weight:500"></div>
 
-        <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">What readers say</div>
-        <div id="bd-ai-verdict" style="font-size:12px;font-weight:600;color:#065f46;background:#d1fae5;border-radius:8px;padding:7px 12px;margin-bottom:10px"></div>
-        <div id="bd-ai-reviews" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">What readers say</div>
+        <div id="bd-ai-verdict" style="font-size:13px;font-weight:600;color:#065f46;background:#d1fae5;border-radius:10px;padding:9px 14px;margin-bottom:12px"></div>
+        <div id="bd-ai-reviews" style="display:flex;flex-direction:column;gap:10px"></div>
       </div>
     </div>
 
-    <div id="bd-desc" style="font-size:12px;color:var(--subtle);line-height:1.6;margin-bottom:14px;display:none;border-top:1px solid var(--border);padding-top:12px"></div>
+    <div id="bd-desc" style="display:none;border-top:1px solid var(--border);padding-top:14px;margin-bottom:16px"></div>
 
     <!-- Rating -->
     <div style="margin-bottom:14px">
@@ -4635,9 +4635,51 @@ function bookOpenFromResult(bk){
 }
 
 function _bkFetchISBN(isbn){
+  // Try our API (Google Books), then retry with ISBN-10 if ISBN-13 fails, then Open Library
   return fetch("/api/book/isbn/"+encodeURIComponent(isbn))
     .then(function(r){ return r.json(); })
-    .then(function(d){ return d.found ? d : null; })
+    .then(function(d){
+      if(d.found) return d;
+      // If 13-digit, try the 10-digit form (strip leading 978/979 + recalculate)
+      var alt = null;
+      if(isbn.length===13 && (isbn.startsWith("978")||isbn.startsWith("979"))){
+        alt = isbn.slice(3,12);
+      } else if(isbn.length===10){
+        alt = "978"+isbn.slice(0,9);
+      }
+      if(alt){
+        return fetch("/api/book/isbn/"+encodeURIComponent(alt))
+          .then(function(r2){ return r2.json(); })
+          .then(function(d2){ return d2.found ? d2 : _bkOpenLibrary(isbn); })
+          .catch(function(){ return _bkOpenLibrary(isbn); });
+      }
+      return _bkOpenLibrary(isbn);
+    })
+    .catch(function(){ return _bkOpenLibrary(isbn); });
+}
+
+function _bkOpenLibrary(isbn){
+  return fetch("https://openlibrary.org/api/books?bibkeys=ISBN:"+isbn+"&format=json&jscmd=data")
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var key = "ISBN:"+isbn;
+      if(!d[key]) return null;
+      var b = d[key];
+      var cover = (b.cover&&b.cover.large) || (b.cover&&b.cover.medium) || "";
+      var authors = (b.authors||[]).map(function(a){ return a.name; }).join(", ");
+      return {
+        found:       true,
+        isbn:        isbn,
+        title:       b.title||"",
+        author:      authors,
+        cover:       cover,
+        description: (b.excerpts&&b.excerpts[0]&&b.excerpts[0].text)||"",
+        subjects:    (b.subjects||[]).slice(0,5).map(function(s){ return s.name||s; }).join(" · "),
+        year:        (b.publish_date||"").slice(-4),
+        publishers:  (b.publishers||[]).map(function(p){ return p.name||p; }).join(", "),
+        communityRating: null,
+      };
+    })
     .catch(function(){ return null; });
 }
 
@@ -4656,7 +4698,11 @@ function _bkShowDetail(bk){
   document.getElementById("bd-meta").textContent = meta.join(" · ");
 
   var descEl = document.getElementById("bd-desc");
-  if(bk.description){ descEl.textContent=bk.description; descEl.style.display="block"; } else descEl.style.display="none";
+  if(bk.description){
+    var short = bk.description.length > 200 ? bk.description.slice(0,200).trimEnd()+"…" : bk.description;
+    descEl.innerHTML = '<span style="font-size:13px;color:var(--subtle);line-height:1.6">' + short + '</span>';
+    descEl.style.display = "block";
+  } else descEl.style.display="none";
 
   var crEl = document.getElementById("bd-community-rating");
   if(bk.communityRating){
@@ -4731,9 +4777,9 @@ window.bookLoadSummary = async function() {
                  "background:#fff7ed;border-left:3px solid #f97316"];
     var icons = ["⭐⭐⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐"];
     document.getElementById("bd-ai-reviews").innerHTML = (d.reviews || []).map(function(rev, i){
-      return '<div style="'+tones[i%tones.length]+';border-radius:10px;padding:10px 12px">'
-        + '<div style="font-size:11px;font-weight:700;color:var(--subtle);margin-bottom:3px">'+icons[i]+'</div>'
-        + '<div style="font-size:13px;color:var(--text);line-height:1.6">'+rev+'</div>'
+      return '<div style="'+tones[i%tones.length]+';border-radius:12px;padding:12px 14px">'
+        + '<div style="font-size:12px;font-weight:700;color:var(--subtle);margin-bottom:4px">'+icons[i]+'</div>'
+        + '<div style="font-size:14px;color:var(--text);line-height:1.65;font-weight:400">'+rev+'</div>'
         + '</div>';
     }).join("");
 
@@ -4798,9 +4844,21 @@ function bookToggleScanner(){
   _bkScanner = new Html5Qrcode("book-scan-reader");
   _bkScanner.start(
     {facingMode:"environment"},
-    {fps:10, qrbox:{width:280,height:120}, aspectRatio:1.7},
+    {
+      fps: 15,
+      qrbox: {width: 320, height: 150},
+      aspectRatio: 1.7,
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+      ]
+    },
     function(barcode){
-      var isbn = barcode.replace(/[^0-9]/g,"");
+      var isbn = barcode.replace(/[^0-9X]/gi,"");
       if(isbn.length >= 8){ bookStopScanner(); _bkHandleISBN(isbn); }
     },
     function(){}
