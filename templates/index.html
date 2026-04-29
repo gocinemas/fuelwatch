@@ -4476,9 +4476,27 @@
       </div>
     </div>
 
-    <div id="bd-desc" style="font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:12px;display:none"></div>
-    <div id="bd-community-rating" style="display:none;font-size:12px;color:var(--muted);padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px"></div>
+    <div id="bd-community-rating" style="display:none;font-size:13px;color:var(--muted);padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;margin-bottom:12px"></div>
     <div id="bd-subjects" style="display:none;font-size:12px;color:var(--subtle);line-height:1.7;margin-bottom:14px"></div>
+
+    <!-- AI Summary & Reviews -->
+    <div id="bd-ai-section" style="margin-bottom:16px">
+      <button id="bd-ai-btn" onclick="bookLoadSummary()"
+        style="width:100%;padding:11px;border-radius:12px;border:1.5px solid #e0e7ff;background:#f5f3ff;color:#4f46e5;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+        ✨ Get Summary &amp; Reader Reviews
+      </button>
+      <div id="bd-ai-result" style="display:none;margin-top:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">What it's about</div>
+        <div id="bd-ai-summary" style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:4px"></div>
+        <div id="bd-ai-audience" style="font-size:12px;color:#7c3aed;font-style:italic;margin-bottom:14px"></div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">What readers say</div>
+        <div id="bd-ai-verdict" style="font-size:12px;font-weight:600;color:#065f46;background:#d1fae5;border-radius:8px;padding:7px 12px;margin-bottom:10px"></div>
+        <div id="bd-ai-reviews" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+
+    <div id="bd-desc" style="font-size:12px;color:var(--subtle);line-height:1.6;margin-bottom:14px;display:none;border-top:1px solid var(--border);padding-top:12px"></div>
 
     <!-- Rating -->
     <div style="margin-bottom:14px">
@@ -4660,6 +4678,10 @@ function _bkShowDetail(bk){
 
   document.getElementById("bd-notes").value = saved ? (saved.notes||"") : "";
   document.getElementById("bd-saved-msg").style.display = "none";
+  // Reset AI section for new book
+  document.getElementById("bd-ai-result").style.display = "none";
+  var aiBtn = document.getElementById("bd-ai-btn");
+  aiBtn.style.display = "flex"; aiBtn.textContent = "✨ Get Summary & Reader Reviews"; aiBtn.disabled = false;
   _bkStars(_bookDetailRating);
   document.querySelectorAll(".bstatus-btn").forEach(function(b){ b.classList.toggle("bstatus-on", b.dataset.s===_bookDetailStatus); });
 
@@ -4688,6 +4710,48 @@ function bookSetStatus(s){
   _bookDetailStatus = _bookDetailStatus===s ? "" : s;
   document.querySelectorAll(".bstatus-btn").forEach(function(b){ b.classList.toggle("bstatus-on", b.dataset.s===_bookDetailStatus); });
 }
+
+window.bookLoadSummary = async function() {
+  var bk = _bookCurrentDetail;
+  if (!bk) return;
+  var btn = document.getElementById("bd-ai-btn");
+  btn.textContent = "✨ Loading…"; btn.disabled = true;
+  try {
+    var p = new URLSearchParams({
+      title:        bk.title || "",
+      author:       bk.author || "",
+      description:  bk.description || "",
+      subjects:     bk.subjects || "",
+      rating:       (bk.communityRating && bk.communityRating.avg) ? bk.communityRating.avg : "",
+      rating_count: (bk.communityRating && bk.communityRating.count) ? bk.communityRating.count : "",
+    });
+    var r = await fetch("/api/book/summary?" + p.toString());
+    var d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    document.getElementById("bd-ai-summary").textContent  = d.summary  || "";
+    document.getElementById("bd-ai-audience").textContent = d.audience || "";
+    document.getElementById("bd-ai-verdict").textContent  = "📊 " + (d.verdict || "");
+
+    var tones = ["background:#eff6ff;border-left:3px solid #3b82f6",
+                 "background:#f0fdf4;border-left:3px solid #22c55e",
+                 "background:#fff7ed;border-left:3px solid #f97316"];
+    var icons = ["⭐⭐⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐"];
+    document.getElementById("bd-ai-reviews").innerHTML = (d.reviews || []).map(function(rev, i){
+      return '<div style="'+tones[i%tones.length]+';border-radius:10px;padding:10px 12px">'
+        + '<div style="font-size:11px;font-weight:700;color:var(--subtle);margin-bottom:3px">'+icons[i]+'</div>'
+        + '<div style="font-size:13px;color:var(--text);line-height:1.6">'+rev+'</div>'
+        + '</div>';
+    }).join("");
+
+    document.getElementById("bd-ai-result").style.display = "block";
+    btn.style.display = "none";
+  } catch(e) {
+    btn.textContent = "✨ Get Summary & Reader Reviews";
+    btn.disabled = false;
+    alert("Couldn't load summary. Please try again.");
+  }
+};
 
 function bookSave(){
   if(!_bookCurrentDetail) return;

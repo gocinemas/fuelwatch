@@ -4477,6 +4477,61 @@ def api_book_isbn(isbn):
         return jsonify({"error": str(e), "found": False})
 
 
+@app.route("/api/book/summary")
+def api_book_summary():
+    """Generate AI summary + reader perspectives for a book."""
+    title       = request.args.get("title", "").strip()
+    author      = request.args.get("author", "").strip()
+    description = request.args.get("description", "").strip()
+    subjects    = request.args.get("subjects", "").strip()
+    rating      = request.args.get("rating", "").strip()
+    rating_count = request.args.get("rating_count", "").strip()
+
+    if not title:
+        return jsonify({"error": "title required"}), 400
+
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "AI not available"}), 503
+
+    rating_line = ""
+    if rating:
+        rating_line = f"Community rating: {rating}/5 from {rating_count} readers.\n"
+
+    prompt = f"""Book: "{title}" by {author or "Unknown"}.
+{rating_line}Genre/subjects: {subjects or "not specified"}.
+Publisher description: {description[:800] if description else "not available"}.
+
+Write a JSON response with exactly these keys:
+- "summary": 3-4 plain sentences anyone can understand. What the book is about, why it matters. No jargon.
+- "audience": One sentence — who would love this book (be specific, e.g. "Perfect for anyone curious about...", "Great if you enjoy...").
+- "reviews": Array of exactly 3 short review snippets (1-2 sentences each) representing different types of readers — one enthusiastic fan, one balanced/thoughtful reader, one more critical view. Make them feel like real reader quotes, varied in tone. Do NOT invent reviewer names.
+- "verdict": One punchy sentence — the overall reader consensus.
+
+Reply with only valid JSON, no markdown."""
+
+    try:
+        resp = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 500,
+                "temperature": 0.4,
+            },
+            timeout=15,
+        )
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
+        # Strip markdown code fences if present
+        import re as _re
+        raw = _re.sub(r"^```[a-z]*\n?", "", raw).rstrip("` \n")
+        data = json.loads(raw)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/ping")
 def ping():
     return "OK", 200
