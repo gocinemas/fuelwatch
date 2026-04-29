@@ -4241,17 +4241,10 @@
   {% endif %}
 
   // ── Bottom nav active state ──────────────────────────────────────────────────
-  function _updateBottomNav(name) {
-    ["fuel","report","finder","company","library"].forEach(s => {
-      document.getElementById("bnav-" + s).classList.toggle("active", s === name);
-    });
-  }
   const _origShowScreen = showScreen;
-  showScreen = function(name) { _origShowScreen(name); _updateBottomNav(name); };
+  showScreen = function(name) { _origShowScreen(name); };
   const _origShowHome = showHome;
-  showHome = function() { _origShowHome();
-    ["fuel","report","finder","company","library"].forEach(s => document.getElementById("bnav-"+s).classList.remove("active"));
-  };
+  showHome = function() { _origShowHome(); };
 
   // ── Kagi News ────────────────────────────────────────────────────────────
   const _kagiCache = {};
