@@ -3709,12 +3709,7 @@ def whatsapp_reply():
 
     resp = MessagingResponse()
 
-    body_lower = body.strip().lower()
-    if not body or body_lower in _GREETING_WORDS or body_lower.startswith("join "):
-        resp.message(_HELP_MSG)
-        return str(resp)
-
-    # ── Image/photo capture ───────────────────────────────────────────────────
+    # ── Image/photo capture (before body checks — body is empty when photo sent) ─
     num_media = int(request.form.get("NumMedia", "0") or 0)
     if num_media > 0:
         media_url  = request.form.get("MediaUrl0", "")
@@ -3723,6 +3718,11 @@ def whatsapp_reply():
             reply = _wa_process_image(from_number, media_url, media_type)
             resp.message(reply)
             return str(resp)
+
+    body_lower = body.strip().lower()
+    if not body or body_lower in _GREETING_WORDS or body_lower.startswith("join "):
+        resp.message(_HELP_MSG)
+        return str(resp)
 
     # ── URL save ──────────────────────────────────────────────────────────────
     url_m = re.search(r'https?://\S+', body)
