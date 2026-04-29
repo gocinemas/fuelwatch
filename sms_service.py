@@ -4743,7 +4743,7 @@ def api_train_nearest():
     if not lat or not lng:
         return jsonify({"error": "lat/lng required"}), 400
     try:
-        q = f'[out:json][timeout:10];node["railway"="station"](around:3000,{lat},{lng});out 3 qt;'
+        q = f'[out:json][timeout:10];node["railway"="station"]["ref:crs"](around:5000,{lat},{lng});out 5 qt;'
         r = requests.get(
             "https://overpass-api.de/api/interpreter",
             params={"data": q},
