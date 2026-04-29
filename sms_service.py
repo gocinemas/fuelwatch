@@ -3068,6 +3068,159 @@ def api_product():
     return jsonify(out)
 
 
+# ── WhatsApp Save & Triage ────────────────────────────────────────────────────
+# Supabase table required (run once in Supabase SQL editor):
+# CREATE TABLE IF NOT EXISTS wa_saves (
+#   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+#   from_number text NOT NULL,
+#   url text NOT NULL,
+#   title text,
+#   summary text,
+#   status text DEFAULT 'pending',
+#   remind_day text,
+#   created_at timestamptz DEFAULT now()
+# );
+# CREATE INDEX ON wa_saves(from_number, created_at DESC);
+
+_PENDING_TRIAGE: dict = {}  # from_number -> {id, title, url, expires}
+
+
+def _fetch_url_text(url: str) -> dict:
+    """Fetch a URL and extract title + body text using stdlib html.parser only."""
+    import html.parser as _hp
+
+    class _X(_hp.HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self._t, self._b = [], []
+            self._in_t = False
+            self._skip = 0
+            self._SKIP = {"script", "style", "nav", "footer", "noscript", "head", "aside"}
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "title":
+                self._in_t = True
+            if tag in self._SKIP:
+                self._skip += 1
+
+        def handle_endtag(self, tag):
+            if tag == "title":
+                self._in_t = False
+            if tag in self._SKIP:
+                self._skip = max(0, self._skip - 1)
+
+        def handle_data(self, data):
+            s = data.strip()
+            if not s:
+                return
+            if self._in_t:
+                self._t.append(s)
+            elif self._skip == 0:
+                self._b.append(s)
+
+    try:
+        r = requests.get(url, timeout=8, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)",
+            "Accept": "text/html,application/xhtml+xml",
+        }, allow_redirects=True)
+        ct = r.headers.get("content-type", "")
+        if "html" not in ct and "plain" not in ct:
+            return {"title": url, "text": "", "ok": False}
+        p = _X()
+        p.feed(r.text[:200000])
+        p.close()
+        title = " ".join(p._t).strip()[:200] or url
+        text = " ".join(p._b).strip()[:10000]
+        return {"title": title, "text": text, "ok": bool(text)}
+    except Exception as e:
+        return {"title": url, "text": "", "ok": False, "error": str(e)}
+
+
+def _wa_save_url(from_number: str, url: str) -> str:
+    """Fetch URL, summarise, save to wa_saves, return WhatsApp reply."""
+    fetched = _fetch_url_text(url)
+    if not fetched["ok"]:
+        return "⚠️ Couldn't read that page — try a direct article link."
+
+    title = fetched["title"]
+    text = fetched["text"]
+
+    try:
+        summary = _groq_chat(
+            system=(
+                "Summarise the article in exactly 3 bullet points starting with •. "
+                "Max 15 words each. No intro, no outro."
+            ),
+            messages=[{"role": "user", "content": f"Summarise:\n\n{text[:4000]}"}],
+            max_tokens=120,
+        ).strip()
+    except Exception:
+        summary = text[:200] + "…"
+
+    save_id = None
+    try:
+        row = lib._sb().table("wa_saves").insert({
+            "from_number": from_number,
+            "url": url,
+            "title": title,
+            "summary": summary,
+            "status": "pending",
+        }).execute()
+        if row.data:
+            save_id = row.data[0].get("id")
+    except Exception:
+        pass
+
+    _PENDING_TRIAGE[from_number] = {
+        "id": save_id,
+        "title": title,
+        "url": url,
+        "expires": time.time() + 3600,
+    }
+
+    return (
+        f"✅ Saved: {title[:70]}\n\n"
+        f"{summary}\n\n"
+        f"Reply:\n"
+        f"• READ — mark as read\n"
+        f"• SKIP — dismiss\n"
+        f"• REMIND mon/fri/weekend"
+    )
+
+
+def _wa_triage_respond(from_number: str, cmd: str) -> str:
+    """Handle READ / SKIP / REMIND reply."""
+    pending = _PENDING_TRIAGE.get(from_number)
+    if not pending or time.time() > pending.get("expires", 0):
+        return "No recent save to update. Send a URL to save something first."
+
+    save_id = pending.get("id")
+    title = pending.get("title", "item")[:60]
+    cmd_up = cmd.strip().upper()
+
+    if cmd_up == "READ":
+        status, remind_day, reply = "read", None, f"✓ Marked as read: {title}"
+    elif cmd_up == "SKIP":
+        status, remind_day, reply = "skip", None, f"🗑️ Dismissed: {title}"
+    elif cmd_up.startswith("REMIND"):
+        day = cmd_up.replace("REMIND", "").strip() or "later"
+        status, remind_day, reply = "remind", day, f"🔔 Reminder set ({day}): {title}"
+    else:
+        return "Reply READ, SKIP, or REMIND [day] e.g. REMIND friday"
+
+    if save_id:
+        try:
+            update = {"status": status}
+            if remind_day:
+                update["remind_day"] = remind_day
+            lib._sb().table("wa_saves").update(update).eq("id", save_id).execute()
+        except Exception:
+            pass
+
+    _PENDING_TRIAGE.pop(from_number, None)
+    return reply
+
+
 _FUEL_WORDS = {"petrol", "diesel", "unleaded", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
 _ELECTION_WORDS = {"vote", "voting", "election", "elections", "candidate", "candidates",
                    "polling", "ballot", "stand", "standing", "mp", "councillor"}
@@ -3352,8 +3505,24 @@ def whatsapp_reply():
             "⛽ Fuel prices: SW1A 1AA\n"
             "🛒 Grocery prices: Heinz Beans\n"
             "🗳️ Elections: vote SW1A 1AA\n"
-            "🏛️ Local services: places SW1A 1AA"
+            "🏛️ Local services: places SW1A 1AA\n"
+            "🔖 Save any article: just send a URL"
         )
+        return str(resp)
+
+    # ── URL save ──────────────────────────────────────────────────────────────
+    url_m = re.search(r'https?://\S+', body)
+    if url_m:
+        url = url_m.group(0).rstrip(".,)")
+        reply = _wa_save_url(from_number, url)
+        resp.message(reply)
+        return str(resp)
+
+    # ── Triage reply ──────────────────────────────────────────────────────────
+    cmd_up = body.strip().upper()
+    if cmd_up in ("READ", "SKIP") or cmd_up.startswith("REMIND"):
+        reply = _wa_triage_respond(from_number, cmd_up)
+        resp.message(reply)
         return str(resp)
 
     postcode, fuel, radius, retailer = parse_sms(body)
@@ -3647,6 +3816,64 @@ def api_planning():
     from search import fetch_planning_data
     data = fetch_planning_data(lat, lon, council_code)
     return jsonify(data)
+
+
+@app.route("/api/wa-digest")
+def wa_digest():
+    """Send weekly digest of pending saves to each user via WhatsApp.
+    Trigger weekly via cron-job.org: GET /api/wa-digest?token=YOUR_DIGEST_TOKEN
+    """
+    token = request.args.get("token", "")
+    if not token or token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        rows = lib._sb().table("wa_saves").select("*").eq("status", "pending").execute().data
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    if not rows:
+        return jsonify({"sent": 0, "message": "No pending saves"})
+
+    by_user = {}
+    for row in rows:
+        fn = row["from_number"]
+        by_user.setdefault(fn, []).append(row)
+
+    twilio_sid   = os.environ.get("TWILIO_ACCOUNT_SID", "")
+    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    twilio_from  = os.environ.get("TWILIO_WHATSAPP_FROM", "")
+
+    if not all([twilio_sid, twilio_token, twilio_from]):
+        return jsonify({"error": "Twilio env vars missing (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM)"}), 500
+
+    from twilio.rest import Client as _TwilioClient
+    client = _TwilioClient(twilio_sid, twilio_token)
+    sent = 0
+
+    for from_number, saves in by_user.items():
+        top3 = saves[:3]
+        lines = [f"📬 Your unread saves ({len(saves)} total):\n"]
+        for i, s in enumerate(top3, 1):
+            lines.append(f"{i}. {(s.get('title') or 'Untitled')[:60]}")
+            summary = s.get("summary", "")
+            if summary and "•" in summary:
+                first = summary.split("•")[1].strip()[:80]
+                lines.append(f"   • {first}")
+        if len(saves) > 3:
+            lines.append(f"\n…and {len(saves) - 3} more unread.")
+        lines.append("\nReply READ, SKIP or REMIND after sending the link again.")
+        try:
+            client.messages.create(
+                body="\n".join(lines),
+                from_=f"whatsapp:{twilio_from}",
+                to=from_number,
+            )
+            sent += 1
+        except Exception:
+            pass
+
+    return jsonify({"sent": sent, "total_users": len(by_user)})
 
 
 def _normalize_gbook(item):
