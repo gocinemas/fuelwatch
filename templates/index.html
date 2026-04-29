@@ -1387,13 +1387,6 @@
     const llParam  = params.get("ll");
     const llParts  = llParam ? llParam.split(",").map(Number) : [];
     const hasLL    = llParts.length === 2 && !isNaN(llParts[0]) && !isNaN(llParts[1]);
-    // ?screen=saves — deep link into My Saves (from WhatsApp)
-    if (params.get("screen") === "saves") {
-      showScreen("saves");
-      setTimeout(() => savesCheckPin(), 80);
-      return;
-    }
-
     // ?report=SW1A1AA — deep link into Area Report
     const reportPC = params.get("report");
     if (reportPC) {
@@ -5823,6 +5816,11 @@ _bkBadge();
     _origShowSaves(name);
     if (name === "saves") savesCheckPin();
   };
+
+  // Deep-link: ?screen=saves (from WhatsApp) — run after full DOM ready
+  if (new URLSearchParams(location.search).get("screen") === "saves") {
+    window.showScreen("saves");
+  }
 })();
 </script>
 
