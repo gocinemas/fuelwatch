@@ -4632,6 +4632,96 @@ Reply with a JSON object with these keys:
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/books/sync", methods=["POST"])
+def api_books_sync():
+    """Sync a user's book library against Supabase using phone as identity.
+    Body: { phone, books: [{isbn, title, author, cover, description, year, rating, status, notes, added}] }
+    Returns merged book list for that phone.
+    """
+    data  = request.get_json(force=True, silent=True) or {}
+    phone = (data.get("phone") or "").strip()
+    if not phone:
+        return jsonify({"error": "phone required"}), 400
+
+    sb = lib._sb()
+    local_books = data.get("books", [])
+
+    # Upsert local books into wa_saves (url = book:{isbn})
+    for bk in local_books:
+        isbn  = (bk.get("isbn") or "").strip()
+        title = (bk.get("title") or "Untitled").strip()
+        if not isbn:
+            continue
+        url = f"book:{isbn}"
+        existing = sb.table("wa_saves").select("id").eq("from_number", phone).eq("url", url).execute().data
+        payload = {
+            "from_number": phone,
+            "url":         url,
+            "title":       title,
+            "summary":     json.dumps(bk),
+            "status":      bk.get("status", "read"),
+        }
+        if existing:
+            sb.table("wa_saves").update(payload).eq("id", existing[0]["id"]).execute()
+        else:
+            sb.table("wa_saves").insert(payload).execute()
+
+    # Fetch all book saves for this phone
+    rows = sb.table("wa_saves") \
+        .select("id,url,title,summary,status,created_at") \
+        .eq("from_number", phone) \
+        .like("url", "book:%") \
+        .order("created_at", desc=True) \
+        .execute().data
+
+    merged = []
+    seen = set()
+    for row in rows:
+        try:
+            bk = json.loads(row["summary"] or "{}")
+        except Exception:
+            bk = {}
+        isbn = row["url"].replace("book:", "")
+        if isbn in seen:
+            continue
+        seen.add(isbn)
+        bk.setdefault("isbn",   isbn)
+        bk.setdefault("title",  row["title"] or "")
+        bk.setdefault("status", row["status"] or "read")
+        bk["_id"] = row["id"]
+        merged.append(bk)
+
+    return jsonify({"books": merged})
+
+
+@app.route("/api/books/save", methods=["POST"])
+def api_books_save():
+    """Save or update a single book for a phone number."""
+    data  = request.get_json(force=True, silent=True) or {}
+    phone = (data.get("phone") or "").strip()
+    bk    = data.get("book") or {}
+    isbn  = (bk.get("isbn") or "").strip()
+    if not phone or not isbn:
+        return jsonify({"error": "phone and isbn required"}), 400
+
+    sb  = lib._sb()
+    url = f"book:{isbn}"
+    existing = sb.table("wa_saves").select("id").eq("from_number", phone).eq("url", url).execute().data
+    payload = {
+        "from_number": phone,
+        "url":         url,
+        "title":       (bk.get("title") or "").strip(),
+        "summary":     json.dumps(bk),
+        "status":      bk.get("status", "read"),
+    }
+    if existing:
+        sb.table("wa_saves").update(payload).eq("id", existing[0]["id"]).execute()
+    else:
+        sb.table("wa_saves").insert(payload).execute()
+
+    return jsonify({"ok": True})
+
+
 @app.route("/static/miru-preview.png")
 def miru_preview_image():
     """Return an SVG open-graph preview image for Miru."""

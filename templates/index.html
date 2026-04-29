@@ -4509,6 +4509,19 @@
 
   <!-- ── MY LIBRARY PANEL ── -->
   <div id="books-library-panel" style="display:none">
+    <!-- Phone sync banner -->
+    <div id="bk-phone-banner" style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:14px;padding:14px 16px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:#4c1d95;margin-bottom:6px">📱 Sync across devices</div>
+      <div style="font-size:12px;color:#6d28d9;margin-bottom:10px;line-height:1.5">Enter your phone number to sync your library between your iPhone and laptop.</div>
+      <div style="display:flex;gap:8px">
+        <input id="bk-phone-input" type="tel" placeholder="+44 7700 900000"
+          style="flex:1;padding:8px 12px;border:1px solid #c4b5fd;border-radius:10px;font-size:13px;outline:none;background:#fff"
+          onkeydown="if(event.key==='Enter')bkPhoneSave()">
+        <button onclick="bkPhoneSave()"
+          style="padding:8px 16px;border:none;background:#7c3aed;color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Sync</button>
+      </div>
+    </div>
+    <div id="bk-phone-status" style="display:none;font-size:12px;color:var(--muted);margin-bottom:12px;padding:8px 12px;background:var(--border);border-radius:10px"></div>
     <div id="books-library-empty" style="display:none;text-align:center;padding:40px 0;color:var(--muted);font-size:14px">
       No books yet — search for one and tap Save.
     </div>
@@ -4606,6 +4619,7 @@ var _bookDetailStatus = "";
 function _bkGetLib(){ try{ return JSON.parse(localStorage.getItem("miru_books")||"[]"); }catch(e){ return []; } }
 function _bkSetLib(a){ localStorage.setItem("miru_books", JSON.stringify(a)); }
 function _bkByIsbn(isbn){ return _bkGetLib().find(function(b){ return b.isbn===isbn; }); }
+function _bkPhone(){ return localStorage.getItem("miru_phone")||""; }
 
 function _bkBadge(){
   var lib=_bkGetLib(), el=document.getElementById("books-count-badge");
@@ -4614,13 +4628,76 @@ function _bkBadge(){
   else el.style.display="none";
 }
 
+function bkSyncWithPhone(phone, onDone){
+  var local = _bkGetLib();
+  fetch("/api/books/sync", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({phone: phone, books: local})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    var remote = data.books || [];
+    // Merge: remote takes precedence, add any local-only books
+    var map = {};
+    remote.forEach(function(b){ map[b.isbn]=b; });
+    local.forEach(function(b){ if(!map[b.isbn]) map[b.isbn]=b; });
+    var merged = Object.values(map);
+    _bkSetLib(merged);
+    _bkBadge();
+    if(onDone) onDone(merged.length);
+  })
+  .catch(function(){ if(onDone) onDone(null); });
+}
+
+function bkPhoneSave(){
+  var input = document.getElementById("bk-phone-input");
+  if(!input) return;
+  var phone = input.value.trim();
+  if(!phone){ alert("Please enter your phone number."); return; }
+  localStorage.setItem("miru_phone", phone);
+  document.getElementById("bk-phone-banner").style.display = "none";
+  document.getElementById("bk-phone-status").textContent = "Syncing…";
+  document.getElementById("bk-phone-status").style.display = "block";
+  bkSyncWithPhone(phone, function(count){
+    if(count !== null){
+      document.getElementById("bk-phone-status").textContent = "✓ Synced — "+count+" book"+(count===1?"":"s")+" in your library";
+      _bkRenderLib();
+    } else {
+      document.getElementById("bk-phone-status").textContent = "Sync failed — library is local only";
+    }
+  });
+}
+
+function bkPhoneForget(){
+  localStorage.removeItem("miru_phone");
+  document.getElementById("bk-phone-banner").style.display = "block";
+  document.getElementById("bk-phone-status").style.display = "none";
+  _bkRenderLib();
+}
+
 function bookTab(tab, btn){
   document.querySelectorAll(".btab").forEach(function(b){ b.classList.remove("btab-on"); });
   if(btn) btn.classList.add("btab-on");
   document.getElementById("books-search-panel").style.display  = tab==="search"  ? "block" : "none";
   document.getElementById("books-library-panel").style.display = tab==="library" ? "block" : "none";
   document.getElementById("book-detail").style.display = "none";
-  if(tab==="library") _bkRenderLib();
+  if(tab==="library"){
+    var phone = _bkPhone();
+    var banner = document.getElementById("bk-phone-banner");
+    var status = document.getElementById("bk-phone-status");
+    if(phone){
+      if(banner) banner.style.display = "none";
+      if(status){ status.style.display="block"; status.textContent="Synced as "+phone+' · <a href="#" onclick="bkPhoneForget();return false" style="color:var(--accent)">Change</a>'; }
+      bkSyncWithPhone(phone, function(count){
+        if(count!==null && status) status.innerHTML="✓ "+count+" book"+(count===1?"":"s")+" · "+phone+' · <a href="#" onclick="bkPhoneForget();return false" style="color:var(--accent);font-size:12px">Change</a>';
+        _bkRenderLib();
+      });
+    } else {
+      if(banner) banner.style.display = "block";
+      if(status) status.style.display = "none";
+      _bkRenderLib();
+    }
+  }
 }
 
 function bookSearch(){
@@ -4856,12 +4933,22 @@ window.bookLoadSummary = async function() {
 
 function bookSave(){
   if(!_bookCurrentDetail) return;
-  var bk=_bookCurrentDetail, lib=_bkGetLib().filter(function(b){ return b.isbn!==bk.isbn; });
-  lib.unshift({ isbn:bk.isbn||("noisbn_"+Date.now()), title:bk.title||"", author:bk.author||"",
+  var bk=_bookCurrentDetail;
+  var entry = { isbn:bk.isbn||("noisbn_"+Date.now()), title:bk.title||"", author:bk.author||"",
     cover:bk.cover||"", description:bk.description||"", year:bk.year||"",
     rating:_bookDetailRating, status:_bookDetailStatus,
-    notes:document.getElementById("bd-notes").value.trim(), added:new Date().toISOString().slice(0,10) });
+    notes:document.getElementById("bd-notes").value.trim(), added:new Date().toISOString().slice(0,10) };
+  var lib=_bkGetLib().filter(function(b){ return b.isbn!==entry.isbn; });
+  lib.unshift(entry);
   _bkSetLib(lib); _bkBadge();
+  // Persist to Supabase if phone is set
+  var phone = _bkPhone();
+  if(phone){
+    fetch("/api/books/save", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({phone: phone, book: entry})
+    }).catch(function(){});
+  }
   document.getElementById("bd-saved-msg").style.display = "block";
   setTimeout(function(){ document.getElementById("bd-saved-msg").style.display="none"; }, 2500);
 }
