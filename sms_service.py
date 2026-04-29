@@ -2081,8 +2081,9 @@ _GOOGLE_PLACES_KEY = os.environ.get("GOOGLE_PLACES_KEY", "")
 
 
 def _lookup_venue(name: str) -> dict:
-    """Look up phone, website, address, maps link for a venue by name via Google Places."""
-    out = {"phone": "", "website": "", "address": "", "maps_url": ""}
+    """Look up phone, website, address, hours, rating for a venue via Google Places."""
+    out = {"phone": "", "website": "", "address": "", "maps_url": "",
+           "hours_today": "", "open_now": None, "rating": None, "rating_count": 0, "name": name}
     maps_q = name.replace(" ", "+")
     out["maps_url"] = f"https://maps.google.com/?q={maps_q}"
     if not _GOOGLE_PLACES_KEY:
@@ -2098,6 +2099,8 @@ def _lookup_venue(name: str) -> dict:
             return out
         place_id = results[0]["place_id"]
         out["address"] = results[0].get("formatted_address", "")
+        out["rating"]  = results[0].get("rating")
+        out["rating_count"] = results[0].get("user_ratings_total", 0)
         loc = results[0].get("geometry", {}).get("location", {})
         if loc:
             out["maps_url"] = f"https://maps.google.com/?q={loc['lat']},{loc['lng']}"
@@ -2106,16 +2109,32 @@ def _lookup_venue(name: str) -> dict:
             "https://maps.googleapis.com/maps/api/place/details/json",
             params={
                 "place_id": place_id,
-                "fields":   "formatted_phone_number,website,formatted_address",
+                "fields":   "name,formatted_phone_number,website,formatted_address,opening_hours,rating,user_ratings_total",
                 "key":      _GOOGLE_PLACES_KEY,
             },
             timeout=6,
         )
         p = det.json().get("result", {})
+        out["name"]    = p.get("name", name)
         out["phone"]   = p.get("formatted_phone_number", "")
         out["website"] = p.get("website", "")
         if p.get("formatted_address"):
             out["address"] = p["formatted_address"]
+        if p.get("rating"):
+            out["rating"] = p["rating"]
+            out["rating_count"] = p.get("user_ratings_total", 0)
+        oh = p.get("opening_hours", {})
+        out["open_now"] = oh.get("open_now")
+        # Today's hours
+        weekday_text = oh.get("weekday_text", [])
+        if weekday_text:
+            today_idx = __import__("datetime").datetime.now().weekday()
+            # Google weekday_text starts Monday=0 in Python but Sunday=0 in Google
+            google_idx = (today_idx + 1) % 7
+            if google_idx < len(weekday_text):
+                # Strip the day name prefix e.g. "Monday: 9:00 AM – 10:00 PM"
+                parts = weekday_text[google_idx].split(": ", 1)
+                out["hours_today"] = parts[1] if len(parts) > 1 else weekday_text[google_idx]
     except Exception as exc:
         print(f"[venue lookup] {exc}")
     return out
@@ -3224,14 +3243,15 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "llama-3.2-11b-vision-preview",
         ]
         prompt_text = (
-            "Identify what this image is (pick one: event/ticket, billboard/ad, "
-            "receipt/bill, menu, sign, document, photo). "
-            "Then give 3 bullet points starting with • covering the key info. "
-            "If event/ticket: include event name, date, time. "
-            "If ad/billboard: what product or brand is being promoted. "
-            "If receipt: total and main items. "
+            "Identify what this image is. Pick ONE type from: "
+            "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, sign, document, photo.\n"
+            "Then give 3 bullet points starting with • covering the key info.\n"
+            "If store/restaurant: describe what kind of place it is and any visible details (cuisine, specialty, vibe).\n"
+            "If event/ticket: include event name, date, time.\n"
+            "If ad/billboard: what product or brand is being promoted.\n"
+            "If receipt: total and main items.\n"
             "Start your reply with: TYPE: [your choice]\n"
-            "If event/ticket or ad/billboard, add a line: VENUE: [venue or place name only, no address]"
+            "If type is event/ticket, store/restaurant, or ad/billboard — add: VENUE: [business or place name only, no address]"
         )
         analysis = ""
         for model in _vision_models:
@@ -3267,7 +3287,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         img_type = "photo"
         if analysis:
             first = analysis.split("\n")[0].lower()
-            if "event" in first or "ticket" in first:
+            if "store" in first or "restaurant" in first or "cafe" in first or "coffee" in first:
+                title = "🏪 Place"; img_type = "store"
+            elif "event" in first or "ticket" in first:
                 title = "🎫 Event/Ticket"; img_type = "event"
             elif "billboard" in first or "ad" in first:
                 title = "📢 Billboard/Ad"; img_type = "ad"
@@ -3341,10 +3363,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
 
         search_url = direct_url or (f"https://www.google.com/search?q={search_terms}" if search_terms else "")
 
-        # Look up venue contact details for events/ads with a known venue
+        # Look up venue/place details
         venue_info = {}
-        if img_type in ("event", "ad", "menu") and venue_raw:
-            venue_info = _lookup_venue(venue_raw)
+        lookup_name = venue_raw or (name_raw if bullet_lines else "")
+        if lookup_name and img_type in ("store", "event", "ad", "menu"):
+            venue_info = _lookup_venue(lookup_name)
+            if venue_info.get("name") and venue_info["name"] != lookup_name:
+                title = f"🏪 {venue_info['name']}" if img_type == "store" else title
+
+        # Store URL as venue maps link for stores
+        if img_type == "store" and venue_info.get("maps_url"):
+            search_url = venue_info["maps_url"]
 
         if sid:
             try:
@@ -3356,22 +3385,46 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 pass
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
-        if bullets:
-            msg = f"{title}\n\n{bullets}"
-            if search_url:
-                link_label = "🎟️ Book/search" if img_type == "event" else "🔍 Search"
-                msg += f"\n\n{link_label}: {search_url}"
-            # Venue details block
-            if venue_info:
-                venue_block = []
+        if bullets or venue_info:
+            msg = f"{title}\n"
+            if bullets:
+                msg += f"\n{bullets}"
+
+            # Build details block
+            details = []
+            if img_type == "store" and venue_info:
+                # Full place card — address, hours, open status, phone, website, directions
+                if venue_info.get("address"):
+                    details.append(f"📍 {venue_info['address'].split(',')[0]}")  # street only
+                if venue_info.get("open_now") is not None:
+                    status = "🟢 Open now" if venue_info["open_now"] else "🔴 Closed now"
+                    hours = f" · {venue_info['hours_today']}" if venue_info.get("hours_today") else ""
+                    details.append(f"{status}{hours}")
+                elif venue_info.get("hours_today"):
+                    details.append(f"🕐 Today: {venue_info['hours_today']}")
+                if venue_info.get("rating"):
+                    stars = int(round(venue_info["rating"]))
+                    details.append(f"{'⭐'*stars} {venue_info['rating']} ({venue_info['rating_count']:,} reviews)")
                 if venue_info.get("phone"):
-                    venue_block.append(f"📞 {venue_info['phone']}")
+                    details.append(f"📞 {venue_info['phone']}")
                 if venue_info.get("website"):
-                    venue_block.append(f"🌐 {venue_info['website']}")
+                    details.append(f"🌐 {venue_info['website']}")
                 if venue_info.get("maps_url"):
-                    venue_block.append(f"📍 Directions: {venue_info['maps_url']}")
-                if venue_block:
-                    msg += "\n\n" + "\n".join(venue_block)
+                    details.append(f"🗺️ Directions: {venue_info['maps_url']}")
+            else:
+                # Event/ad — phone, website, directions
+                if venue_info.get("phone"):
+                    details.append(f"📞 {venue_info['phone']}")
+                if venue_info.get("website"):
+                    details.append(f"🌐 {venue_info['website']}")
+                if search_url:
+                    link_label = "🎟️ Book/search" if img_type == "event" else "🔍 Search"
+                    details.append(f"{link_label}: {search_url}")
+                if venue_info.get("maps_url"):
+                    details.append(f"📍 Directions: {venue_info['maps_url']}")
+
+            if details:
+                msg += "\n\n" + "\n".join(details)
         else:
             msg = f"{title}\n(couldn't read — saved anyway)"
         msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves"
