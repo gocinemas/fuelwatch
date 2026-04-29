@@ -3146,6 +3146,98 @@ def _fetch_url_text(url: str) -> dict:
         return {"title": url, "text": "", "ok": False, "error": str(e)}
 
 
+def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
+    """Download a WhatsApp photo, analyse with Groq vision, save to wa_saves."""
+    import base64, threading
+
+    twilio_sid   = os.environ.get("TWILIO_ACCOUNT_SID", "")
+    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    try:
+        r = requests.get(media_url, auth=(twilio_sid, twilio_token), timeout=12)
+        if r.status_code != 200:
+            return "⚠️ Couldn't download the image. Please try again."
+        img_b64 = base64.b64encode(r.content).decode()
+        mime = media_type or "image/jpeg"
+    except Exception as e:
+        return f"⚠️ Image download failed. Please try again."
+
+    # Save bare record immediately so it's never lost
+    save_id = None
+    try:
+        row = lib._sb().table("wa_saves").insert({
+            "from_number": from_number,
+            "url":         media_url,
+            "title":       "📷 Photo",
+            "summary":     "",
+            "status":      "pending",
+        }).execute()
+        if row.data:
+            save_id = row.data[0].get("id")
+    except Exception:
+        pass
+
+    def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime):
+        try:
+            body = {
+                "model": "llama-3.2-11b-vision-preview",
+                "max_tokens": 250,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
+                        {"type": "text", "text": (
+                            "Identify what this image is (pick one: event/ticket, billboard/ad, "
+                            "receipt/bill, menu, sign, document, photo). "
+                            "Then give 3 bullet points starting with • covering the key info. "
+                            "If event/ticket: include name, date, time, venue. "
+                            "If ad/billboard: what's being promoted. "
+                            "If receipt: total and main items. "
+                            "Start your reply with: TYPE: [your choice]"
+                        )}
+                    ]
+                }],
+            }
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
+                         "Content-Type": "application/json"},
+                json=body, timeout=20,
+            )
+            resp.raise_for_status()
+            analysis = resp.json()["choices"][0]["message"]["content"].strip()
+        except Exception:
+            analysis = ""
+
+        # Derive title from type
+        title = "📷 Photo"
+        if analysis:
+            first = analysis.split("\n")[0].lower()
+            if "event" in first or "ticket" in first: title = "🎫 Event/Ticket"
+            elif "billboard" in first or "ad" in first: title = "📢 Billboard/Ad"
+            elif "receipt" in first or "bill" in first: title = "🧾 Receipt"
+            elif "menu" in first: title = "🍽️ Menu"
+            elif "sign" in first: title = "🪧 Sign"
+            elif "document" in first: title = "📄 Document"
+
+        # Strip the TYPE: line for the summary stored
+        summary = "\n".join(l for l in analysis.split("\n") if not l.startswith("TYPE:")).strip()
+
+        if sid:
+            try:
+                lib._sb().table("wa_saves").update({"title": title, "summary": summary}).eq("id", sid).execute()
+            except Exception:
+                pass
+
+        bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
+        msg = f"{title}\n\n{bullets}" if bullets else f"{title}\n(couldn't read — saved anyway)"
+        token = _wa_user_token(fn)
+        msg += f"\n\nYour saves: miru.humanagency.co/?wa={token}"
+        _wa_send_proactive(fn, msg)
+
+    threading.Thread(target=_bg, daemon=True).start()
+    return "📷 Got it — reading your photo now…"
+
+
 def _wa_send_proactive(to: str, body: str) -> None:
     """Send an outbound WhatsApp message via Twilio (fire-and-forget)."""
     try:
@@ -3621,6 +3713,16 @@ def whatsapp_reply():
     if not body or body_lower in _GREETING_WORDS or body_lower.startswith("join "):
         resp.message(_HELP_MSG)
         return str(resp)
+
+    # ── Image/photo capture ───────────────────────────────────────────────────
+    num_media = int(request.form.get("NumMedia", "0") or 0)
+    if num_media > 0:
+        media_url  = request.form.get("MediaUrl0", "")
+        media_type = request.form.get("MediaContentType0", "image/jpeg")
+        if media_url and "image" in media_type:
+            reply = _wa_process_image(from_number, media_url, media_type)
+            resp.message(reply)
+            return str(resp)
 
     # ── URL save ──────────────────────────────────────────────────────────────
     url_m = re.search(r'https?://\S+', body)
