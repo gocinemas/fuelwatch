@@ -48,20 +48,22 @@ def postcode_to_latlon(postcode: str) -> Optional[tuple]:
     postcode = postcode.strip().replace(" ", "").upper()
     if postcode in _postcode_cache:
         return _postcode_cache[postcode]
-    try:
-        resp = requests.get(
-            f"https://api.postcodes.io/postcodes/{postcode}",
-            timeout=5, headers=HEADERS
-        )
-        data = resp.json()
-        if data.get("status") == 200:
-            r = data["result"]
-            result = (r["latitude"], r["longitude"])
-            _postcode_cache[postcode] = result
-            return result
-        print(f"Postcode not found: {postcode}")
-    except Exception as e:
-        print(f"Geocoding failed: {e}")
+    for attempt in range(2):
+        try:
+            resp = requests.get(
+                f"https://api.postcodes.io/postcodes/{postcode}",
+                timeout=8, headers=HEADERS
+            )
+            data = resp.json()
+            if data.get("status") == 200:
+                r = data["result"]
+                result = (r["latitude"], r["longitude"])
+                _postcode_cache[postcode] = result
+                return result
+            print(f"Postcode not found: {postcode}")
+            return None
+        except Exception as e:
+            print(f"Geocoding attempt {attempt+1} failed: {e}")
     return None
 
 

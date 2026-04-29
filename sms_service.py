@@ -18,6 +18,8 @@ Setup:
   6. Set Twilio webhook to: https://YOUR-NGROK-URL/sms
 """
 
+import hashlib
+import hmac
 import io
 import json
 import os
@@ -3087,6 +3089,12 @@ _PENDING_TRIAGE: dict = {}   # from_number -> {id, title, url, expires}
 _PENDING_DIGEST: dict  = {}  # from_number -> [{id, title, url}, ...]  (last digest sent)
 
 
+def _wa_user_token(from_number: str) -> str:
+    """Stable per-user token derived from phone number + server secret."""
+    secret = os.environ.get("DIGEST_TOKEN", "miru-secret")
+    return hmac.new(secret.encode(), from_number.encode(), hashlib.sha256).hexdigest()[:20]
+
+
 def _fetch_url_text(url: str) -> dict:
     """Fetch a URL and extract title + body text using stdlib html.parser only."""
     import html.parser as _hp
@@ -3222,7 +3230,8 @@ def _wa_save_url(from_number: str, url: str) -> str:
         _wa_send_proactive(fn, msg)
 
     threading.Thread(target=_bg, daemon=True).start()
-    return "📌 Saved — summary on its way ✨\nView all saves: miru.humanagency.co"
+    token = _wa_user_token(from_number)
+    return f"📌 Saved — summary on its way ✨\nYour saves: miru.humanagency.co/?wa={token}"
 
 
 def _wa_triage_respond(from_number: str, cmd: str) -> str:
@@ -3259,7 +3268,7 @@ def _wa_triage_respond(from_number: str, cmd: str) -> str:
     return reply
 
 
-_FUEL_WORDS = {"petrol", "diesel", "unleaded", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
+_FUEL_WORDS = {"petrol", "diesel", "unleaded", "fuel", "gas", "price", "prices", "cheapest", "nearest", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
 _ELECTION_WORDS = {"vote", "voting", "election", "elections", "candidate", "candidates",
                    "polling", "ballot", "stand", "standing", "mp", "councillor"}
 _PLACES_WORDS = {"places", "services", "local", "near", "nearby", "around",
@@ -4039,8 +4048,9 @@ def wa_digest():
                 lines.append(f"   {url}")
         if len(saves) > 9:
             lines.append(f"\n+{len(saves) - 9} more in My Saves.")
+        user_token = _wa_user_token(from_number)
         lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday*")
-        lines.append("🔗 miru.humanagency.co")
+        lines.append(f"🔗 miru.humanagency.co/?wa={user_token}")
 
         # Split into chunks ≤4000 chars (WhatsApp limit)
         body_text = "\n".join(lines)
