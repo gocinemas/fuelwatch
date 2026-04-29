@@ -4760,8 +4760,12 @@ def api_train_departures():
             headers={"Authorization": f"Bearer {rtt_token}"},
             timeout=10,
         )
-        tr.raise_for_status()
-        access = tr.json()["token"]
+        if not tr.text.strip():
+            return jsonify({"error": f"Token exchange failed: empty response (HTTP {tr.status_code})"}), 500
+        tr_data = tr.json()
+        if "token" not in tr_data:
+            return jsonify({"error": f"Token exchange failed: {tr_data}"}), 500
+        access = tr_data["token"]
 
         r = requests.get(
             "https://data.rtt.io/rtt/location",
@@ -4769,7 +4773,8 @@ def api_train_departures():
             params={"code": f"gb-nr:{crs}"},
             timeout=12,
         )
-        r.raise_for_status()
+        if not r.text.strip():
+            return jsonify({"error": f"RTT location API returned empty response (HTTP {r.status_code})"}), 500
         data = r.json()
         services = data.get("services") or []
         trains = []
