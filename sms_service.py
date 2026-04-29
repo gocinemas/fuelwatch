@@ -335,7 +335,8 @@ def whatsapp_search_and_format(postcode: str, fuel: str, radius_miles: float, re
 
     lines += ["", f"Avg: {avg:.1f}p | Save vs avg: {avg - cheapest['price']:.1f}p/L",
               f"Full tank saving: £{tank_saving:.2f}",
-              "", "Reply with postcode [diesel] [radius]"]
+              "", "Reply with postcode [diesel] [radius]",
+              "🔗 miru.humanagency.co"]
     return "\n".join(lines)
 
 
@@ -3221,7 +3222,7 @@ def _wa_save_url(from_number: str, url: str) -> str:
         _wa_send_proactive(fn, msg)
 
     threading.Thread(target=_bg, daemon=True).start()
-    return "📌 Saved — summary on its way ✨"
+    return "📌 Saved — summary on its way ✨\nView all saves: miru.humanagency.co"
 
 
 def _wa_triage_respond(from_number: str, cmd: str) -> str:
@@ -3338,7 +3339,7 @@ def whatsapp_places_format(q: str, service_filter: str = "") -> str:
                 lines.append(line)
                 count += 1
 
-        lines.append(f"\n📍 Within 900m · miru.app")
+        lines.append(f"\n📍 Within 900m · miru.humanagency.co")
         return "\n\n".join(lines)
     except Exception:
         return "Sorry, couldn't load local services. Try miru.app instead."
@@ -3408,6 +3409,7 @@ def whatsapp_elections_format(postcode: str) -> str:
             f"{council}{ps_line}\n\n"
             f"Candidates:\n" + "\n".join(cand_lines) +
             "\n\nVoting hours: 7am–10pm"
+            "\n🔗 miru.humanagency.co/elections"
         )
     except Exception as e:
         return f"Sorry, couldn't load election info. Try miru.app instead."
@@ -3564,6 +3566,7 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
 
     lines.append("\nReply with a product name to compare prices")
     lines.append("Or a postcode for fuel prices")
+    lines.append("🔗 miru.humanagency.co")
     return "\n".join(lines)
 
 
@@ -4037,6 +4040,7 @@ def wa_digest():
         if len(saves) > 9:
             lines.append(f"\n+{len(saves) - 9} more in My Saves.")
         lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday*")
+        lines.append("🔗 miru.humanagency.co")
 
         # Split into chunks ≤4000 chars (WhatsApp limit)
         body_text = "\n".join(lines)
