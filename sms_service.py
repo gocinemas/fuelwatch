@@ -3251,7 +3251,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "If ad/billboard: what product or brand is being promoted.\n"
             "If receipt: total and main items.\n"
             "Start your reply with: TYPE: [your choice]\n"
-            "If type is event/ticket, store/restaurant, or ad/billboard — add: VENUE: [business or place name only, no address]"
+            "If type is event/ticket, store/restaurant, or ad/billboard — add: VENUE: [business or place name only, no address]\n"
+            "If you can identify a city, area, or neighbourhood from signage, language, or surroundings — add: LOCATION: [city or area name]"
         )
         analysis = ""
         for model in _vision_models:
@@ -3302,18 +3303,21 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             elif "document" in first:
                 title = "📄 Document"; img_type = "document"
 
-        # Extract VENUE: tag before stripping metadata lines
+        # Extract VENUE: and LOCATION: tags before stripping metadata lines
         venue_tag = ""
+        location_tag = ""
         for _line in analysis.split("\n"):
-            if _line.strip().upper().startswith("VENUE:"):
+            _up = _line.strip().upper()
+            if _up.startswith("VENUE:"):
                 venue_tag = _line.split(":", 1)[1].strip()
-                break
-        print(f"[vision] venue_tag={venue_tag!r} img_type={img_type}")
+            elif _up.startswith("LOCATION:"):
+                location_tag = _line.split(":", 1)[1].strip()
+        print(f"[vision] venue_tag={venue_tag!r} location_tag={location_tag!r} img_type={img_type}")
 
-        # Strip TYPE: and VENUE: metadata lines from summary
+        # Strip TYPE:/VENUE:/LOCATION: metadata lines from summary
         summary = "\n".join(
             l for l in analysis.split("\n")
-            if not l.strip().upper().startswith("TYPE:") and not l.strip().upper().startswith("VENUE:")
+            if not any(l.strip().upper().startswith(p) for p in ("TYPE:", "VENUE:", "LOCATION:"))
         ).strip()
 
         # Build a meaningful search URL — strip filler, keep key object + venue
@@ -3375,9 +3379,16 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if img_type == "store" and venue_info.get("maps_url"):
             search_url = venue_info["maps_url"]
 
+        # Build meta line: when + where
+        import datetime as _dt
+        now_str = _dt.datetime.now().strftime("%-d %b %Y, %-I:%M %p")
+        where_str = location_tag or (venue_info.get("address", "").split(",")[0] if venue_info else "") or venue_tag
+        meta_line = f"META:📅 {now_str}" + (f" · 📍 {where_str}" if where_str else "")
+        summary_with_meta = meta_line + "\n" + summary if summary else meta_line
+
         if sid:
             try:
-                update_data = {"title": title, "summary": summary}
+                update_data = {"title": title, "summary": summary_with_meta}
                 if search_url:
                     update_data["url"] = search_url
                 lib._sb().table("wa_saves").update(update_data).eq("id", sid).execute()
@@ -4405,6 +4416,45 @@ def api_wa_saves_update():
     try:
         lib._sb().table("wa_saves").update({"status": status}).eq("id", save_id).execute()
         return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/wa-saves/enrich", methods=["POST"])
+def api_wa_saves_enrich():
+    """Look up place details for a photo/place save and update its summary."""
+    err = _check_library_pin()
+    if err:
+        return err
+    data = request.json or {}
+    save_id   = data.get("id", "")
+    venue_name = data.get("venue", "").strip()
+    if not save_id or not venue_name:
+        return jsonify({"error": "id and venue required"}), 400
+    try:
+        info = _lookup_venue(venue_name)
+        parts = []
+        if info.get("open_now") is not None:
+            status = "🟢 Open now" if info["open_now"] else "🔴 Closed now"
+            parts.append(f"{status}{' · ' + info['hours_today'] if info.get('hours_today') else ''}")
+        elif info.get("hours_today"):
+            parts.append(f"🕐 Today: {info['hours_today']}")
+        if info.get("address"):
+            parts.append(f"📍 {info['address'].split(',')[0]}")
+        if info.get("rating"):
+            parts.append(f"{'⭐'*int(round(info['rating']))} {info['rating']} ({info['rating_count']:,} reviews)")
+        if info.get("phone"):
+            parts.append(f"📞 {info['phone']}")
+        if info.get("website"):
+            parts.append(f"🌐 {info['website']}")
+        new_summary = "\n".join(parts)
+        update = {"summary": new_summary}
+        if info.get("maps_url"):
+            update["url"] = info["maps_url"]
+        if info.get("name") and info["name"] != venue_name:
+            update["title"] = f"🏪 {info['name']}"
+        lib._sb().table("wa_saves").update(update).eq("id", save_id).execute()
+        return jsonify({"ok": True, "summary": new_summary, "title": update.get("title", ""), "url": update.get("url", "")})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
