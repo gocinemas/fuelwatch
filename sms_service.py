@@ -4749,15 +4749,24 @@ def api_train_departures():
     if not crs:
         return jsonify({"error": "crs required"}), 400
 
-    rtt_user = os.environ.get("RTT_USER", "")
-    rtt_pass = os.environ.get("RTT_PASS", "")
-    if not rtt_user or not rtt_pass:
-        return jsonify({"error": "Train API not configured — set RTT_USER and RTT_PASS environment variables (free at api.rtt.io)"}), 503
+    rtt_token = os.environ.get("RTT_TOKEN", "")
+    if not rtt_token:
+        return jsonify({"error": "Train API not configured — set RTT_TOKEN environment variable (free at api-portal.rtt.io)"}), 503
 
     try:
+        # Exchange refresh token for short-lived access token
+        tr = requests.get(
+            "https://data.rtt.io/api/get_access_token",
+            headers={"Authorization": f"Bearer {rtt_token}"},
+            timeout=10,
+        )
+        tr.raise_for_status()
+        access = tr.json()["token"]
+
         r = requests.get(
-            f"https://api.rtt.io/api/v1/json/search/{crs}",
-            auth=(rtt_user, rtt_pass),
+            "https://data.rtt.io/rtt/location",
+            headers={"Authorization": f"Bearer {access}"},
+            params={"code": f"gb-nr:{crs}"},
             timeout=12,
         )
         r.raise_for_status()
@@ -4765,20 +4774,28 @@ def api_train_departures():
         services = data.get("services") or []
         trains = []
         for s in services:
-            loc = s.get("locationDetail", {})
+            td = s.get("temporalData", {})
+            dep = td.get("departure", {})
             dest_list = s.get("destination") or [{}]
             dest = dest_list[0].get("description", "") if dest_list else ""
-            gbtt = loc.get("gbttBookedDeparture", "")
-            real = loc.get("realtimeDeparture", "")
-            cancelled = loc.get("cancelReasonCode") or s.get("isCancelled") or False
-            platform = loc.get("platform") or "—"
-            # Format times HHmm → HH:mm
-            def fmt(t): return t[:2]+":"+t[2:] if t and len(t)==4 else t
-            sched = fmt(gbtt)
-            exp   = fmt(real) if real and real != gbtt else "On time"
+            sched_dt = dep.get("scheduleAdvertised", "")
+            real_dt  = dep.get("realtimeActual", "") or dep.get("realtimePredicted", "")
+            cancelled = dep.get("isCancelled", False) or td.get("isCancelled", False)
+            platform  = (s.get("locationMetadata") or {}).get("platform") or "—"
+            # Extract HH:MM from ISO datetime
+            def fmt_dt(dt): return dt[11:16] if dt and len(dt) >= 16 else ""
+            sched = fmt_dt(sched_dt)
+            exp_t = fmt_dt(real_dt)
+            lateness = dep.get("realtimeAdvertisedLateness", 0) or 0
+            if cancelled:
+                status = "Cancelled"
+            elif lateness == 0:
+                status = "On time"
+            else:
+                status = f"+{lateness}m" if lateness > 0 else "On time"
             trains.append({
                 "scheduled":   sched,
-                "expected":    "Cancelled" if cancelled else exp,
+                "expected":    status,
                 "platform":    platform,
                 "destination": dest,
                 "cancelled":   bool(cancelled),
