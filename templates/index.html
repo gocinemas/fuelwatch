@@ -156,11 +156,14 @@
     #app-header .logo-text {
       font-size: 24px; font-weight: 900; letter-spacing: -1px; color: var(--text);
     }
-    #app-header .home-btn {
-      font-size: 16px; font-weight: 700; color: var(--text);
+    #app-header .back-btn {
+      display: none; align-items: center; gap: 4px;
+      font-size: 15px; font-weight: 600; color: var(--accent);
       border: none; background: transparent; cursor: pointer;
-      padding: 6px 12px 6px 0;
+      padding: 6px 8px 6px 0; white-space: nowrap;
     }
+    #app-header .back-btn.visible { display: flex; }
+    #app-header .logo { cursor: pointer; }
 
     /* Bottom nav */
     #bottom-nav {
@@ -222,9 +225,9 @@
   <!-- Header -->
   <header id="app-header">
     <div class="inner">
-      <div style="display:flex;align-items:center;gap:8px">
-        <button class="home-btn" onclick="showHome()">Home</button>
-        <div class="logo">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="back-btn" id="back-btn" onclick="showHome()">← Back</button>
+        <div class="logo" onclick="showHome()">
           <div class="logo-dot">👁</div>
           <span class="logo-text">Miru</span>
         </div>
@@ -1375,11 +1378,15 @@
     window.scrollTo({top:0, behavior:"smooth"});
     setFooter("home");
     history.replaceState(null, "", "/");
+    const bb = document.getElementById("back-btn");
+    if (bb) bb.classList.remove("visible");
   }
   function showScreen(name) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     document.getElementById("screen-" + name).classList.add("active");
     window.scrollTo({top:0, behavior:"smooth"});
+    const bb = document.getElementById("back-btn");
+    if (bb) bb.classList.add("visible");
     if (name === "fuel")    { document.getElementById("fuel-postcode").focus();   _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()"); }
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); }
     if (name === "company") { document.getElementById("company-input").focus();   _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()"); }
