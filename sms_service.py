@@ -3879,6 +3879,51 @@ def wa_digest():
     return jsonify({"sent": sent, "total_users": len(by_user)})
 
 
+@app.route("/api/wa-saves")
+def api_wa_saves():
+    """List all saved URLs. PIN-protected via X-Library-PIN header."""
+    err = _check_library_pin()
+    if err:
+        return err
+    try:
+        rows = lib._sb().table("wa_saves").select("*").order("created_at", desc=True).limit(100).execute().data
+        return jsonify({"saves": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/wa-saves/update", methods=["POST"])
+def api_wa_saves_update():
+    """Update triage status of a saved URL."""
+    err = _check_library_pin()
+    if err:
+        return err
+    data = request.json or {}
+    save_id = data.get("id")
+    status = data.get("status")
+    if not save_id or status not in ("read", "skip", "remind", "pending"):
+        return jsonify({"error": "Invalid id or status"}), 400
+    try:
+        lib._sb().table("wa_saves").update({"status": status}).eq("id", save_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/wa-saves/add", methods=["POST"])
+def api_wa_saves_add():
+    """Manually save a URL from the web UI."""
+    err = _check_library_pin()
+    if err:
+        return err
+    data = request.json or {}
+    url = (data.get("url") or "").strip()
+    if not url or not url.startswith("http"):
+        return jsonify({"error": "Valid URL required"}), 400
+    result = _wa_save_url("web", url)
+    return jsonify({"ok": True, "message": result})
+
+
 def _normalize_gbook(item):
     vi = item.get("volumeInfo", {})
     isbns = [x["identifier"] for x in vi.get("industryIdentifiers", []) if x.get("type") in ("ISBN_13", "ISBN_10")]
