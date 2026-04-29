@@ -3266,8 +3266,26 @@ _PLACES_WORDS = {"places", "services", "local", "near", "nearby", "around",
                  "gym", "pool", "community", "postoffice", "council", "park"}
 
 
-def whatsapp_places_format(q: str) -> str:
-    """Format local places info for WhatsApp reply."""
+_SERVICE_SYNONYMS = {
+    "gp":         ["doctor", "gp", "surgery", "medical centre", "health centre"],
+    "doctor":     ["doctor", "gp", "surgery", "medical"],
+    "pharmacy":   ["pharmacy", "chemist"],
+    "dentist":    ["dentist", "dental"],
+    "hospital":   ["hospital"],
+    "library":    ["library"],
+    "gym":        ["gym", "fitness", "leisure"],
+    "park":       ["park", "garden", "recreation"],
+    "pub":        ["pub", "bar", "inn"],
+    "cafe":       ["cafe", "coffee", "tea room"],
+    "restaurant": ["restaurant", "food", "dining"],
+    "school":     ["school", "academy", "college"],
+    "post":       ["post office"],
+    "police":     ["police"],
+}
+
+
+def whatsapp_places_format(q: str, service_filter: str = "") -> str:
+    """Format local places info for WhatsApp reply, optionally filtered by service type."""
     try:
         geo = _geocode_place(q)
         if not geo or geo[0] is None:
@@ -3277,9 +3295,31 @@ def whatsapp_places_format(q: str) -> str:
         if not places:
             return f"No local services found near {display}. Try a different postcode or area."
 
-        # Group by category, pick top 1-2 per category, cap total at 12 entries
+        # Apply service filter if provided
+        sf = service_filter.lower().strip()
+        if sf:
+            # Find synonyms for the filter keyword
+            filter_words = None
+            for key, synonyms in _SERVICE_SYNONYMS.items():
+                if key in sf:
+                    filter_words = synonyms
+                    break
+            if filter_words is None:
+                filter_words = [w for w in sf.split() if len(w) > 2]
+
+            if filter_words:
+                filtered = [
+                    p for p in places
+                    if any(fw in p.get("name", "").lower() or fw in p.get("category", "").lower()
+                           for fw in filter_words)
+                ]
+                if filtered:
+                    places = filtered
+                # else fall through to show everything
+
         from itertools import groupby
-        lines = [f"🏛️ Local services near {display}\n"]
+        header = f"🏛️ {sf.title() if sf else 'Local services'} near {display}\n" if sf else f"🏛️ Local services near {display}\n"
+        lines = [header]
         count = 0
         for cat, group in groupby(places, key=lambda p: p["category"]):
             items = list(group)[:2]
@@ -3290,7 +3330,6 @@ def whatsapp_places_format(q: str) -> str:
                 phone = p["phone"] or ""
                 line = f"{p['emoji']} {p['name']}"
                 if hours:
-                    # Simplify OSM hours for SMS
                     import re as _re
                     hours_short = _re.sub(r'[A-Z][a-z]-[A-Z][a-z]', lambda m: m.group(), hours)
                     line += f"\n  🕐 {hours_short}"
@@ -3642,21 +3681,28 @@ def whatsapp_reply():
 
     # ── Places query ──────────────────────────────────────────────────────────
     if body_words & _PLACES_WORDS:
-        # Extract postcode or strip trigger word to get place name
         pc_m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
         if pc_m:
             places_q = pc_m.group(1).strip()
+            # Keep anything that isn't the postcode or a stop word as a service filter
+            service_filter = re.sub(
+                r'[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', '', body, flags=re.I
+            )
+            service_filter = re.sub(
+                r'\b(?:places|services|local|near|nearby|around)\b', '', service_filter, flags=re.I
+            ).strip()
         else:
             places_q = re.sub(
                 r'\b(?:places|services|local|near|nearby|around)\b', '', body, flags=re.I
             ).strip()
+            service_filter = ""
         if places_q:
-            cache_key = f"places_wa:{places_q.lower()}"
+            cache_key = f"places_wa:{places_q.lower()}:{service_filter.lower()}"
             cached = _WA_CACHE.get(cache_key)
             if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
                 resp.message(cached[1])
                 return str(resp)
-            reply = whatsapp_places_format(places_q)
+            reply = whatsapp_places_format(places_q, service_filter=service_filter)
             _WA_CACHE[cache_key] = (time.time(), reply)
             resp.message(reply)
             return str(resp)
