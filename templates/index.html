@@ -4749,7 +4749,9 @@ window.bookLoadSummary = async function() {
   } catch(e) {
     btn.textContent = "✨ Get Summary & Reader Reviews";
     btn.disabled = false;
-    alert("Couldn't load summary. Please try again.");
+    btn.style.background = "#fff1f2"; btn.style.color = "#dc2626"; btn.style.borderColor = "#fca5a5";
+    btn.textContent = "⚠️ " + (e.message || "Couldn't load — tap to retry");
+    setTimeout(function(){ btn.style.background=""; btn.style.color=""; btn.style.borderColor=""; btn.textContent="✨ Get Summary & Reader Reviews"; }, 4000);
   }
 };
 

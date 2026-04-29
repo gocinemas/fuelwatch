@@ -4517,18 +4517,23 @@ Reply with only valid JSON, no markdown."""
             json={
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 500,
+                "max_tokens": 600,
                 "temperature": 0.4,
             },
-            timeout=15,
+            timeout=20,
         )
+        resp.raise_for_status()
         raw = resp.json()["choices"][0]["message"]["content"].strip()
-        # Strip markdown code fences if present
+        print(f"[book/summary] raw={raw[:200]}")
+        # Extract JSON object robustly — find first { ... }
         import re as _re
-        raw = _re.sub(r"^```[a-z]*\n?", "", raw).rstrip("` \n")
-        data = json.loads(raw)
+        m = _re.search(r'\{[\s\S]*\}', raw)
+        if not m:
+            raise ValueError(f"No JSON found in response: {raw[:300]}")
+        data = json.loads(m.group(0))
         return jsonify(data)
     except Exception as e:
+        print(f"[book/summary] error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
