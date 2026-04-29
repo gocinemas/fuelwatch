@@ -4632,6 +4632,33 @@ Reply with a JSON object with these keys:
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/static/miru-preview.png")
+def miru_preview_image():
+    """Return an SVG open-graph preview image for Miru."""
+    svg = """<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e1b4b"/>
+      <stop offset="100%" style="stop-color:#4c1d95"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <text x="600" y="220" font-family="system-ui,sans-serif" font-size="120" font-weight="900"
+        fill="white" text-anchor="middle" letter-spacing="-4">Miru</text>
+  <text x="600" y="310" font-family="system-ui,sans-serif" font-size="36" font-weight="500"
+        fill="#c4b5fd" text-anchor="middle">Your everyday UK companion</text>
+  <text x="600" y="390" font-family="system-ui,sans-serif" font-size="26" fill="#a78bfa" text-anchor="middle">
+    ⛽ Fuel · 🏠 Area · 🔍 Local Services · 📌 Saves · 📚 Books
+  </text>
+  <text x="600" y="460" font-family="system-ui,sans-serif" font-size="22" fill="#7c3aed" text-anchor="middle">
+    Also on WhatsApp · miru.humanagency.co
+  </text>
+</svg>"""
+    from flask import Response
+    return Response(svg, mimetype="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.route("/ping")
 def ping():
     return "OK", 200
