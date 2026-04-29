@@ -4499,16 +4499,14 @@ def api_book_summary():
         rating_line = f"Community rating: {rating}/5 from {rating_count} readers.\n"
 
     prompt = f"""Book: "{title}" by {author or "Unknown"}.
-{rating_line}Genre/subjects: {subjects or "not specified"}.
-Publisher description: {description[:800] if description else "not available"}.
+{rating_line}Subjects: {subjects or "not specified"}.
+Description: {description[:500] if description else "not available"}.
 
-Write a JSON response with exactly these keys:
-- "summary": 3-4 plain sentences anyone can understand. What the book is about, why it matters. No jargon.
-- "audience": One sentence — who would love this book (be specific, e.g. "Perfect for anyone curious about...", "Great if you enjoy...").
-- "reviews": Array of exactly 3 short review snippets (1-2 sentences each) representing different types of readers — one enthusiastic fan, one balanced/thoughtful reader, one more critical view. Make them feel like real reader quotes, varied in tone. Do NOT invent reviewer names.
-- "verdict": One punchy sentence — the overall reader consensus.
-
-Reply with only valid JSON, no markdown."""
+Reply with a JSON object with these keys:
+"summary": 2 short plain sentences — what the book is about. Simple language, no jargon.
+"audience": 10 words max — who this is for. Start with "For...".
+"verdict": 1 sentence — overall reader consensus.
+"reviews": array of 3 strings, each max 20 words. One enthusiastic, one balanced, one critical. No names."""
 
     try:
         resp = requests.post(
@@ -4517,21 +4515,15 @@ Reply with only valid JSON, no markdown."""
             json={
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 600,
-                "temperature": 0.4,
+                "max_tokens": 400,
+                "temperature": 0.3,
+                "response_format": {"type": "json_object"},
             },
             timeout=20,
         )
         resp.raise_for_status()
-        raw = resp.json()["choices"][0]["message"]["content"].strip()
-        print(f"[book/summary] raw={raw[:200]}")
-        # Extract JSON object robustly — find first { ... }
-        import re as _re
-        m = _re.search(r'\{[\s\S]*\}', raw)
-        if not m:
-            raise ValueError(f"No JSON found in response: {raw[:300]}")
-        data = json.loads(m.group(0))
-        return jsonify(data)
+        data = resp.json()["choices"][0]["message"]["content"]
+        return jsonify(json.loads(data))
     except Exception as e:
         print(f"[book/summary] error: {e}")
         return jsonify({"error": str(e)}), 500
