@@ -129,7 +129,7 @@
     #nav-sheet { transition: transform 0.25s ease; transform: translateY(100%); }
     #nav-sheet.open { transform: translateY(0); }
 
-    .main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+    .main-content { padding-bottom: env(safe-area-inset-bottom, 16px); }
 
     input, select, textarea { font-size: 16px !important; font-family: inherit; }
 
@@ -5697,23 +5697,7 @@ _bkBadge();
 </div>
 
 <!-- Bottom Navigation -->
-<nav id="bottom-nav">
-  <button class="bnav-btn" id="bnav-fuel" onclick="showScreen('fuel')">
-    <span class="bnav-icon">⛽</span>Fuel
-  </button>
-  <button class="bnav-btn" id="bnav-report" onclick="showScreen('report')">
-    <span class="bnav-icon">🏠</span>Area
-  </button>
-  <button class="bnav-btn" id="bnav-finder" onclick="showScreen('finder')">
-    <span class="bnav-icon">🔍</span>Finder
-  </button>
-  <button class="bnav-btn" id="bnav-company" onclick="showScreen('company')">
-    <span class="bnav-icon">🏢</span>Company
-  </button>
-  <button class="bnav-btn" id="bnav-library" onclick="showScreen('library')">
-    <span class="bnav-icon">📚</span>Library
-  </button>
-</nav>
+<nav id="bottom-nav" style="display:none"></nav>
 
 <!-- Featured media modal -->
 <div id="co-featured-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px">
