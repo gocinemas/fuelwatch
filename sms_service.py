@@ -4722,6 +4722,20 @@ def api_books_save():
     return jsonify({"ok": True})
 
 
+@app.route("/api/train/test")
+def api_train_test():
+    """Quick test — bypasses GPS, fetches WAT (Waterloo) directly."""
+    rtt_token = os.environ.get("RTT_TOKEN", "")
+    if not rtt_token:
+        return jsonify({"error": "RTT_TOKEN not set"}), 503
+    try:
+        tr = requests.get("https://data.rtt.io/api/get_access_token",
+            headers={"Authorization": f"Bearer {rtt_token}"}, timeout=10)
+        return jsonify({"token_status": tr.status_code, "token_body": tr.text[:300]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/train/nearest")
 def api_train_nearest():
     lat = request.args.get("lat", "").strip()
@@ -4731,7 +4745,12 @@ def api_train_nearest():
     try:
         q = f'[out:json][timeout:10];node["railway"="station"](around:3000,{lat},{lng});out 3 qt;'
         r = requests.post("https://overpass-api.de/api/interpreter", data={"data": q}, timeout=12)
-        elements = r.json().get("elements", [])
+        if not r.text.strip():
+            return jsonify({"error": f"Overpass returned empty response (HTTP {r.status_code})"}), 500
+        try:
+            elements = r.json().get("elements", [])
+        except Exception:
+            return jsonify({"error": f"Overpass bad response: {r.text[:200]}"}), 500
         if not elements:
             return jsonify({"error": "No station found within 3km"}), 404
         el = elements[0]
@@ -4740,7 +4759,7 @@ def api_train_nearest():
         crs  = tags.get("ref", "").upper()
         return jsonify({"name": name, "crs": crs, "lat": el["lat"], "lng": el["lon"]})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"nearest: {str(e)}"}), 500
 
 
 @app.route("/api/train/departures")
