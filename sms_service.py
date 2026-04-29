@@ -3528,6 +3528,35 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
     return "\n".join(lines)
 
 
+_HELP_MSG = (
+    "Miru 🇬🇧 — your UK assistant\n"
+    "\n"
+    "⛽ *Fuel prices*\n"
+    "  KT1 2BA\n"
+    "  petrol KT1 2BA\n"
+    "\n"
+    "🛒 *Grocery prices*\n"
+    "  Heinz Beans\n"
+    "  semi skimmed milk\n"
+    "\n"
+    "🗳️ *Elections & voting*\n"
+    "  vote KT1 2BA\n"
+    "\n"
+    "🏛️ *Local services*\n"
+    "  places KT1 2BA\n"
+    "  GP near KT1 2BA\n"
+    "\n"
+    "🔖 *Save for later*\n"
+    "  Send any article URL\n"
+    "  LIST — see your saves\n"
+    "  1 READ · 2 SKIP · 3 REMIND Monday\n"
+    "\n"
+    "Reply *HELP* anytime for this menu"
+)
+
+_GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru"}
+
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     body        = request.form.get("Body", "").strip()
@@ -3536,16 +3565,8 @@ def whatsapp_reply():
 
     resp = MessagingResponse()
 
-    if not body:
-        resp.message(
-            "Miru 🇬🇧\n"
-            "⛽ Fuel prices: SW1A 1AA\n"
-            "🛒 Grocery prices: Heinz Beans\n"
-            "🗳️ Elections: vote SW1A 1AA\n"
-            "🏛️ Local services: places SW1A 1AA\n"
-            "🔖 Save an article: send a URL\n"
-            "📋 See your saves: LIST"
-        )
+    if not body or body.strip().lower() in _GREETING_WORDS:
+        resp.message(_HELP_MSG)
         return str(resp)
 
     # ── URL save ──────────────────────────────────────────────────────────────
