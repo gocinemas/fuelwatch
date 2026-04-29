@@ -4744,7 +4744,12 @@ def api_train_nearest():
         return jsonify({"error": "lat/lng required"}), 400
     try:
         q = f'[out:json][timeout:10];node["railway"="station"](around:3000,{lat},{lng});out 3 qt;'
-        r = requests.get("https://overpass-api.de/api/interpreter", params={"data": q}, timeout=12)
+        r = requests.get(
+            "https://overpass-api.de/api/interpreter",
+            params={"data": q},
+            headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
+            timeout=12,
+        )
         if not r.text.strip():
             return jsonify({"error": f"Overpass returned empty response (HTTP {r.status_code})"}), 500
         try:
