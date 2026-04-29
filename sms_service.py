@@ -3220,30 +3220,60 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             except Exception as exc:
                 print(f"[vision] model={model} exception: {exc}")
 
-        # Derive title from type
+        # Derive title and search intent from type
         title = "📷 Photo"
+        img_type = "photo"
         if analysis:
             first = analysis.split("\n")[0].lower()
-            if "event" in first or "ticket" in first: title = "🎫 Event/Ticket"
-            elif "billboard" in first or "ad" in first: title = "📢 Billboard/Ad"
-            elif "receipt" in first or "bill" in first: title = "🧾 Receipt"
-            elif "menu" in first: title = "🍽️ Menu"
-            elif "sign" in first: title = "🪧 Sign"
-            elif "document" in first: title = "📄 Document"
+            if "event" in first or "ticket" in first:
+                title = "🎫 Event/Ticket"; img_type = "event"
+            elif "billboard" in first or "ad" in first:
+                title = "📢 Billboard/Ad"; img_type = "ad"
+            elif "receipt" in first or "bill" in first:
+                title = "🧾 Receipt"; img_type = "receipt"
+            elif "menu" in first:
+                title = "🍽️ Menu"; img_type = "menu"
+            elif "sign" in first:
+                title = "🪧 Sign"; img_type = "sign"
+            elif "document" in first:
+                title = "📄 Document"; img_type = "document"
 
         # Strip the TYPE: line for the summary stored
         summary = "\n".join(l for l in analysis.split("\n") if not l.startswith("TYPE:")).strip()
 
+        # Build a meaningful search URL from the first bullet point text
+        search_terms = ""
+        bullet_lines = [b.strip() for b in summary.split("•") if b.strip()]
+        if bullet_lines:
+            import urllib.parse
+            raw = bullet_lines[0][:80]
+            if img_type == "event":
+                search_terms = urllib.parse.quote_plus(raw + " tickets")
+            elif img_type in ("ad", "menu"):
+                search_terms = urllib.parse.quote_plus(raw)
+            else:
+                search_terms = urllib.parse.quote_plus(raw)
+        search_url = f"https://www.google.com/search?q={search_terms}" if search_terms else ""
+
         if sid:
             try:
-                lib._sb().table("wa_saves").update({"title": title, "summary": summary}).eq("id", sid).execute()
+                update_data = {"title": title, "summary": summary}
+                if search_url:
+                    update_data["url"] = search_url
+                lib._sb().table("wa_saves").update(update_data).eq("id", sid).execute()
             except Exception:
                 pass
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
-        msg = f"{title}\n\n{bullets}" if bullets else f"{title}\n(couldn't read — saved anyway)"
         token = _wa_user_token(fn)
-        msg += f"\n\nYour saves: miru.humanagency.co/?wa={token}"
+        if bullets:
+            msg = f"{title}\n\n{bullets}"
+            if search_url:
+                link_label = "🎟️ Book/search" if img_type == "event" else "🔍 Search"
+                msg += f"\n\n{link_label}: {search_url}"
+        else:
+            msg = f"{title}\n(couldn't read — saved anyway)"
+        msg += f"\n\n📂 Saved on Miru: miru.humanagency.co/?wa={token}"
         _wa_send_proactive(fn, msg)
 
     threading.Thread(target=_bg, daemon=True).start()
