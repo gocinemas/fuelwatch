@@ -4748,29 +4748,46 @@ def api_train_departures():
     crs = request.args.get("crs", "").strip().upper()[:3]
     if not crs:
         return jsonify({"error": "crs required"}), 400
-    token = "DA1C7740-9DA0-11E4-80E6-A920340000B5"
+
+    rtt_user = os.environ.get("RTT_USER", "")
+    rtt_pass = os.environ.get("RTT_PASS", "")
+    if not rtt_user or not rtt_pass:
+        return jsonify({"error": "Train API not configured — set RTT_USER and RTT_PASS environment variables (free at api.rtt.io)"}), 503
+
     try:
         r = requests.get(
-            f"https://huxley2.azurewebsites.net/departures/{crs}/15",
-            params={"expand": "true", "accessToken": token},
+            f"https://api.rtt.io/api/v1/json/search/{crs}",
+            auth=(rtt_user, rtt_pass),
             timeout=12,
         )
         r.raise_for_status()
         data = r.json()
-        services = data.get("trainServices") or []
+        services = data.get("services") or []
         trains = []
         for s in services:
-            dest = ((s.get("destination") or [{}])[0]).get("locationName", "")
+            loc = s.get("locationDetail", {})
+            dest_list = s.get("destination") or [{}]
+            dest = dest_list[0].get("description", "") if dest_list else ""
+            gbtt = loc.get("gbttBookedDeparture", "")
+            real = loc.get("realtimeDeparture", "")
+            cancelled = loc.get("cancelReasonCode") or s.get("isCancelled") or False
+            platform = loc.get("platform") or "—"
+            # Format times HHmm → HH:mm
+            def fmt(t): return t[:2]+":"+t[2:] if t and len(t)==4 else t
+            sched = fmt(gbtt)
+            exp   = fmt(real) if real and real != gbtt else "On time"
             trains.append({
-                "scheduled":   s.get("std", ""),
-                "expected":    s.get("etd", "On time"),
-                "platform":    s.get("platform") or "—",
+                "scheduled":   sched,
+                "expected":    "Cancelled" if cancelled else exp,
+                "platform":    platform,
                 "destination": dest,
-                "cancelled":   s.get("isCancelled", False),
+                "cancelled":   bool(cancelled),
             })
-        return jsonify({"station": data.get("locationName", crs), "trains": trains})
+        station_name = (data.get("location") or {}).get("name", crs)
+        return jsonify({"station": station_name, "trains": trains})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[train/departures] error: {e}")
+        return jsonify({"error": "Could not load departures — try again shortly"}), 500
 
 
 @app.route("/static/miru-preview.png")
