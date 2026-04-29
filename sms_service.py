@@ -3227,10 +3227,11 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "Identify what this image is (pick one: event/ticket, billboard/ad, "
             "receipt/bill, menu, sign, document, photo). "
             "Then give 3 bullet points starting with • covering the key info. "
-            "If event/ticket: include name, date, time, venue. "
-            "If ad/billboard: what's being promoted. "
+            "If event/ticket: include event name, date, time. "
+            "If ad/billboard: what product or brand is being promoted. "
             "If receipt: total and main items. "
-            "Start your reply with: TYPE: [your choice]"
+            "Start your reply with: TYPE: [your choice]\n"
+            "If event/ticket or ad/billboard, add a line: VENUE: [venue or place name only, no address]"
         )
         analysis = ""
         for model in _vision_models:
@@ -3279,8 +3280,19 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             elif "document" in first:
                 title = "📄 Document"; img_type = "document"
 
-        # Strip the TYPE: line for the summary stored
-        summary = "\n".join(l for l in analysis.split("\n") if not l.startswith("TYPE:")).strip()
+        # Extract VENUE: tag before stripping metadata lines
+        venue_tag = ""
+        for _line in analysis.split("\n"):
+            if _line.strip().upper().startswith("VENUE:"):
+                venue_tag = _line.split(":", 1)[1].strip()
+                break
+        print(f"[vision] venue_tag={venue_tag!r} img_type={img_type}")
+
+        # Strip TYPE: and VENUE: metadata lines from summary
+        summary = "\n".join(
+            l for l in analysis.split("\n")
+            if not l.strip().upper().startswith("TYPE:") and not l.strip().upper().startswith("VENUE:")
+        ).strip()
 
         # Build a meaningful search URL — strip filler, keep key object + venue
         import urllib.parse, re as _re
@@ -3297,16 +3309,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         )
         bullet_lines = [b.strip() for b in summary.split("•") if b.strip()]
         search_terms = ""
-        venue_raw = ""
+        venue_raw = venue_tag  # use explicit VENUE: tag from model
         if bullet_lines:
             name_raw = _FILLER.sub("", bullet_lines[0]).strip().strip('"\'').strip()[:80]
             if img_type == "event":
-                # Add venue from bullet 2 if it looks like a venue line
-                if len(bullet_lines) > 1:
-                    b2 = _FILLER.sub("", bullet_lines[1]).strip()
-                    b2_clean = _VENUE_PREFIX.sub("", b2).strip().split(",")[0].strip()[:40]
-                    if b2_clean and not any(w in b2_clean.lower() for w in ["date","time","door","ticket","price","£","admission"]):
-                        venue_raw = b2_clean
                 q = f"{name_raw} {venue_raw}".strip() + " tickets"
                 search_terms = urllib.parse.quote_plus(q)
             else:
