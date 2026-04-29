@@ -3594,7 +3594,7 @@ _HELP_MSG = (
     "Reply *HELP* anytime for this menu"
 )
 
-_GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru"}
+_GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru", "join"}
 
 
 @app.route("/whatsapp", methods=["POST"])
@@ -3605,7 +3605,8 @@ def whatsapp_reply():
 
     resp = MessagingResponse()
 
-    if not body or body.strip().lower() in _GREETING_WORDS:
+    body_lower = body.strip().lower()
+    if not body or body_lower in _GREETING_WORDS or body_lower.startswith("join "):
         resp.message(_HELP_MSG)
         return str(resp)
 
