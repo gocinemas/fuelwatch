@@ -4897,41 +4897,20 @@ def api_train_nearest():
     except ValueError:
         return jsonify({"error": "invalid lat/lng"}), 400
 
-    # Use in-memory cache if ready — no Overpass call needed
-    if _STATION_CACHE_READY.is_set() and _STATION_CACHE:
-        best, best_dist = None, float("inf")
-        for s in _STATION_CACHE.values():
-            if s.get("lat") and s.get("lon"):
-                d = (s["lat"] - user_lat) ** 2 + (s["lon"] - user_lon) ** 2
-                if d < best_dist:
-                    best_dist, best = d, s
-        if best:
-            return jsonify({"name": best["name"], "crs": best["crs"], "lat": best["lat"], "lng": best["lon"]})
+    # Wait for cache if still loading (first ~30s after startup)
+    _STATION_CACHE_READY.wait(timeout=40)
+    if not _STATION_CACHE:
+        return jsonify({"error": "Station data failed to load — please try again in a moment"}), 503
 
-    # Fallback to Overpass if cache not ready
-    try:
-        q = f'[out:json][timeout:10];node["railway"="station"]["ref:crs"](around:2000,{user_lat},{user_lon});out 1 qt;'
-        r = requests.get(
-            "https://overpass-api.de/api/interpreter",
-            params={"data": q},
-            headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
-            timeout=12,
-        )
-        if not r.text.strip():
-            return jsonify({"error": f"Overpass returned empty response (HTTP {r.status_code})"}), 500
-        try:
-            elements = r.json().get("elements", [])
-        except Exception:
-            return jsonify({"error": f"Overpass bad response: {r.text[:200]}"}), 500
-        if not elements:
-            return jsonify({"error": "No station found within 3km"}), 404
-        el = elements[0]
-        tags = el.get("tags", {})
-        name = tags.get("name", "Unknown Station")
-        crs  = (tags.get("ref:crs") or tags.get("ref") or "").upper()
-        return jsonify({"name": name, "crs": crs, "lat": el["lat"], "lng": el["lon"]})
-    except Exception as e:
-        return jsonify({"error": f"nearest: {str(e)}"}), 500
+    best, best_dist = None, float("inf")
+    for s in _STATION_CACHE.values():
+        if s.get("lat") and s.get("lon"):
+            d = (s["lat"] - user_lat) ** 2 + (s["lon"] - user_lon) ** 2
+            if d < best_dist:
+                best_dist, best = d, s
+    if best:
+        return jsonify({"name": best["name"], "crs": best["crs"], "lat": best["lat"], "lng": best["lon"]})
+    return jsonify({"error": "No station found"}), 404
 
 
 @app.route("/api/train/search")
@@ -4940,6 +4919,7 @@ def api_train_search():
     if not q:
         return jsonify({"error": "q required"}), 400
 
+    _STATION_CACHE_READY.wait(timeout=40)
     if _STATION_CACHE_READY.is_set() and _STATION_CACHE:
         q_lower = q.lower()
         # Prefix match first, then contains
