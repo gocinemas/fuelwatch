@@ -975,6 +975,8 @@ _COUNTY_TO_COUNCIL_SLUG = {
     "E10000020": "norfolk",
     "E10000029": "suffolk",
     "E10000013": "gloucestershire",
+    "E10000032": "west-sussex",
+    "E10000011": "east-sussex",
 }
 # Unitary authority GSS → council slug
 _UA_TO_COUNCIL_SLUG = {
@@ -1132,6 +1134,8 @@ def api_elections():
         codes        = result.get("codes", {})
         ward_gss     = codes.get("admin_ward", "")
         ward_name    = result.get("admin_ward", "")
+        ced_gss      = codes.get("ced", "")
+        ced_name     = result.get("ced", "")
         district     = result.get("admin_district", "")
         district_code = codes.get("admin_district", "")
         county_code  = codes.get("admin_county", "")
@@ -1142,7 +1146,13 @@ def api_elections():
         ward_data = elections["by_gss"].get(ward_gss, {})
         council_slug = None
 
-        # Fallback: reorganised/merged council lookup by ward name token matching
+        # Fallback 1: county electoral division (e.g. West Sussex CC ward)
+        if not ward_data and ced_gss:
+            ward_data = elections["by_gss"].get(ced_gss, {})
+            if ward_data:
+                ward_name = ced_name or ward_name
+
+        # Fallback 2: reorganised/merged council lookup by ward name token matching
         if not ward_data:
             council_slug = (
                 _DISTRICT_TO_COUNCIL_SLUG.get(district_code) or
