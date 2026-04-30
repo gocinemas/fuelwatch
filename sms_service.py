@@ -4875,7 +4875,7 @@ def _build_station_cache():
             crs  = (tags.get("ref:crs") or "").upper()
             name = tags.get("name", "")
             if crs and name:
-                cache[name.lower()] = {"name": name, "crs": crs}
+                cache[name.lower()] = {"name": name, "crs": crs, "lat": el.get("lat"), "lon": el.get("lon")}
         _STATION_CACHE.update(cache)
         print(f"[train] station cache ready: {len(cache)} stations")
     except Exception as e:
@@ -4893,7 +4893,24 @@ def api_train_nearest():
     if not lat or not lng:
         return jsonify({"error": "lat/lng required"}), 400
     try:
-        q = f'[out:json][timeout:10];node["railway"="station"]["ref:crs"](around:2000,{lat},{lng});out 1 qt;'
+        user_lat, user_lon = float(lat), float(lng)
+    except ValueError:
+        return jsonify({"error": "invalid lat/lng"}), 400
+
+    # Use in-memory cache if ready — no Overpass call needed
+    if _STATION_CACHE_READY.is_set() and _STATION_CACHE:
+        best, best_dist = None, float("inf")
+        for s in _STATION_CACHE.values():
+            if s.get("lat") and s.get("lon"):
+                d = (s["lat"] - user_lat) ** 2 + (s["lon"] - user_lon) ** 2
+                if d < best_dist:
+                    best_dist, best = d, s
+        if best:
+            return jsonify({"name": best["name"], "crs": best["crs"], "lat": best["lat"], "lng": best["lon"]})
+
+    # Fallback to Overpass if cache not ready
+    try:
+        q = f'[out:json][timeout:10];node["railway"="station"]["ref:crs"](around:2000,{user_lat},{user_lon});out 1 qt;'
         r = requests.get(
             "https://overpass-api.de/api/interpreter",
             params={"data": q},
