@@ -6621,7 +6621,6 @@ _bkBadge();
       return;
     }
     navigator.geolocation.getCurrentPosition(function(pos) {
-      btn.textContent = "Loading station data…";
       fetch("/api/train/nearest?lat="+pos.coords.latitude+"&lng="+pos.coords.longitude)
         .then(function(r){ return r.json(); })
         .then(function(d){

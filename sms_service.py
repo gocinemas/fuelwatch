@@ -4855,36 +4855,10 @@ def api_train_test():
         return jsonify({"error": str(e)}), 500
 
 
-# ── Station cache (loaded once at startup for instant search + fuzzy matching) ──
-import difflib as _difflib, threading as _threading
-
-_STATION_CACHE: dict = {}   # name.lower() -> {"name": ..., "crs": ...}
-_STATION_CACHE_READY = _threading.Event()
-
-def _build_station_cache():
-    try:
-        r = requests.get(
-            "https://overpass-api.de/api/interpreter",
-            params={"data": '[out:json][timeout:30];node["ref:crs"](49.0,-8.0,61.0,2.0);out qt;'},
-            headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
-            timeout=35,
-        )
-        cache = {}
-        for el in r.json().get("elements", []):
-            tags = el.get("tags", {})
-            crs  = (tags.get("ref:crs") or "").upper()
-            name = tags.get("name", "")
-            if crs and name:
-                cache[name.lower()] = {"name": name, "crs": crs, "lat": el.get("lat"), "lon": el.get("lon")}
-        _STATION_CACHE.update(cache)
-        print(f"[train] station cache ready: {len(cache)} stations")
-    except Exception as e:
-        print(f"[train] station cache failed: {e}")
-    finally:
-        _STATION_CACHE_READY.set()
-
-_threading.Thread(target=_build_station_cache, daemon=True).start()
-# ────────────────────────────────────────────────────────────────────────────────
+# ── Station data (static — no startup delay, no external API) ──
+import difflib as _difflib
+from uk_stations import UK_STATIONS as _STATION_CACHE
+# ───────────────────────────────────────────────────────────────
 
 @app.route("/api/train/nearest")
 def api_train_nearest():
@@ -4896,11 +4870,6 @@ def api_train_nearest():
         user_lat, user_lon = float(lat), float(lng)
     except ValueError:
         return jsonify({"error": "invalid lat/lng"}), 400
-
-    # Wait for cache if still loading (first ~30s after startup)
-    _STATION_CACHE_READY.wait(timeout=40)
-    if not _STATION_CACHE:
-        return jsonify({"error": "Station data failed to load — please try again in a moment"}), 503
 
     best, best_dist = None, float("inf")
     for s in _STATION_CACHE.values():
@@ -4919,8 +4888,7 @@ def api_train_search():
     if not q:
         return jsonify({"error": "q required"}), 400
 
-    _STATION_CACHE_READY.wait(timeout=40)
-    if _STATION_CACHE_READY.is_set() and _STATION_CACHE:
+    if _STATION_CACHE:
         q_lower = q.lower()
         # Prefix match first, then contains
         matches = [s for k, s in _STATION_CACHE.items() if k.startswith(q_lower)]
