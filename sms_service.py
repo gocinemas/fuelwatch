@@ -4813,28 +4813,26 @@ def api_music_identify():
 @app.route("/api/music/charts")
 def api_music_charts():
     country = request.args.get("country", "").upper()
-    key = os.environ.get("RAPIDAPI_KEY", "")
-    if not key:
-        return jsonify({"error": "RAPIDAPI_KEY not configured"}), 503
+    feed_country = "gb" if country == "GB" else "us"
     try:
-        params = {"pageSize": "20", "startFrom": "0"}
-        if country:
-            params["countryCode"] = country
         r = requests.get(
-            "https://shazam.p.rapidapi.com/charts/track",
-            headers={"X-RapidAPI-Key": key, "X-RapidAPI-Host": "shazam.p.rapidapi.com"},
-            params=params,
-            timeout=12,
+            f"https://itunes.apple.com/{feed_country}/rss/topsongs/limit=20/json",
+            timeout=10,
         )
         r.raise_for_status()
-        tracks = r.json().get("tracks", [])
-        return jsonify({"tracks": [{
-            "position": i + 1,
-            "title":    t.get("title", ""),
-            "artist":   t.get("subtitle", ""),
-            "cover":    (t.get("images") or {}).get("coverart", ""),
-            "url":      t.get("url", ""),
-        } for i, t in enumerate(tracks[:20])]})
+        entries = r.json()["feed"]["entry"]
+        tracks = []
+        for i, e in enumerate(entries):
+            images = e.get("im:image", [])
+            cover = images[2].get("label", "") if len(images) > 2 else (images[-1].get("label", "") if images else "")
+            tracks.append({
+                "position": i + 1,
+                "title":    e.get("im:name", {}).get("label", ""),
+                "artist":   e.get("im:artist", {}).get("label", ""),
+                "cover":    cover,
+                "url":      e.get("link", {}).get("attributes", {}).get("href", ""),
+            })
+        return jsonify({"tracks": tracks})
     except Exception as e:
         print(f"[music/charts] {e}")
         return jsonify({"error": str(e)}), 500
