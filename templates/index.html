@@ -6708,7 +6708,7 @@ _bkBadge();
         +'<div style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0"></div>'
         +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:15px;font-weight:700;color:var(--text)">'+t.scheduled+' → '+t.destination+'</div>'
-        +'<div style="font-size:12px;color:var(--muted);margin-top:2px">Platform '+t.platform+'</div>'
++(t.platform ? '<div style="font-size:12px;color:var(--muted);margin-top:2px">Platform '+t.platform+'</div>' : '')
         +'</div>'
         +'<div style="font-size:12px;font-weight:700;color:'+statusCol+'">'+status+'</div>'
         +'</div>';

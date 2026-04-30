@@ -4947,11 +4947,6 @@ def api_train_departures():
             return jsonify({"error": f"RTT location API returned empty response (HTTP {r.status_code})"}), 500
         data = r.json()
         services = data.get("services") or []
-        if services:
-            import json as _json
-            print(f"[train] first service keys: {list(services[0].keys())}")
-            print(f"[train] locationMetadata: {_json.dumps(services[0].get('locationMetadata'), default=str)}")
-            print(f"[train] full: {_json.dumps(services[0], default=str)}")
         def fmt_dt(dt): return dt[11:16] if dt and len(dt) >= 16 else ""
         trains = []
         for s in services:
@@ -4964,9 +4959,9 @@ def api_train_departures():
             cancelled = dep.get("isCancelled", False)
             platform_raw = (s.get("locationMetadata") or {}).get("platform")
             if isinstance(platform_raw, dict):
-                platform = str(platform_raw.get("display") or platform_raw.get("number") or "—")
+                platform = str(platform_raw.get("display") or platform_raw.get("number") or "")
             else:
-                platform = str(platform_raw) if platform_raw else "—"
+                platform = str(platform_raw) if platform_raw else ""
             sched = fmt_dt(sched_dt)
             real  = fmt_dt(real_dt)
             if cancelled:
