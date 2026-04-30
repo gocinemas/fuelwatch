@@ -6563,7 +6563,10 @@ _bkBadge();
 
 <!-- ── TRAINS SCREEN ── -->
 <div id="screen-trains" class="screen pt-5" style="max-width:480px;margin:0 auto;padding:6px 16px 40px">
-  <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin-bottom:4px">🚆 Next Train</h2>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+    <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin:0">🚆 Next Train</h2>
+    <span style="font-size:11px;font-weight:700;color:#e05c00;background:#fff3e0;border:1px solid #ffd0a0;border-radius:6px;padding:2px 8px;letter-spacing:.3px">National Rail only</span>
+  </div>
   <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Find trains from your nearest station</p>
 
   <button id="train-locate-btn" onclick="trainLocate()"
