@@ -4437,16 +4437,28 @@ def wa_digest():
     return jsonify({"sent": sent, "total_users": len(by_user)})
 
 
+def _my_wa_number():
+    """Return the owner's WhatsApp from_number (e.g. whatsapp:+447...) if set."""
+    n = os.environ.get("MY_WHATSAPP_NUMBER", "").strip()
+    if not n:
+        return None
+    return n if n.startswith("whatsapp:") else f"whatsapp:{n}"
+
+
 @app.route("/api/wa-saves")
 def api_wa_saves():
-    """List all saved URLs. PIN-protected via X-Library-PIN header."""
+    """List saved URLs for the owner's number. PIN-protected via X-Library-PIN header."""
     err = _check_library_pin()
     if err:
         return err
     try:
-        rows = lib._sb().table("wa_saves").select(
+        q = lib._sb().table("wa_saves").select(
             "id,title,url,summary,status,remind_day,created_at"
-        ).order("created_at", desc=True).limit(60).execute().data
+        )
+        my_num = _my_wa_number()
+        if my_num:
+            q = q.eq("from_number", my_num)
+        rows = q.order("created_at", desc=True).limit(60).execute().data
         return jsonify({"saves": rows})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
