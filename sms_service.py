@@ -4743,7 +4743,7 @@ def api_train_nearest():
     if not lat or not lng:
         return jsonify({"error": "lat/lng required"}), 400
     try:
-        q = f'[out:json][timeout:10];node["railway"="station"]["ref:crs"](around:5000,{lat},{lng});out 5 qt;'
+        q = f'[out:json][timeout:10];node["railway"="station"]["ref:crs"](around:2000,{lat},{lng});out 1 qt;'
         r = requests.get(
             "https://overpass-api.de/api/interpreter",
             params={"data": q},
@@ -4801,27 +4801,27 @@ def api_train_departures():
             return jsonify({"error": f"RTT location API returned empty response (HTTP {r.status_code})"}), 500
         data = r.json()
         services = data.get("services") or []
+        def fmt_dt(dt): return dt[11:16] if dt and len(dt) >= 16 else ""
         trains = []
         for s in services:
-            td = s.get("temporalData", {})
+            td  = s.get("temporalData", {})
             dep = td.get("departure", {})
             dest_list = s.get("destination") or [{}]
-            dest = dest_list[0].get("description", "") if dest_list else ""
-            sched_dt = dep.get("scheduleAdvertised", "")
-            real_dt  = dep.get("realtimeActual", "") or dep.get("realtimePredicted", "")
-            cancelled = dep.get("isCancelled", False) or td.get("isCancelled", False)
+            dest = (dest_list[0].get("location") or {}).get("description", "") if dest_list else ""
+            sched_dt  = dep.get("scheduleAdvertised", "")
+            real_dt   = dep.get("realtimeForecast", "") or dep.get("realtimeActual", "")
+            cancelled = dep.get("isCancelled", False)
             platform  = (s.get("locationMetadata") or {}).get("platform") or "—"
-            # Extract HH:MM from ISO datetime
-            def fmt_dt(dt): return dt[11:16] if dt and len(dt) >= 16 else ""
             sched = fmt_dt(sched_dt)
-            exp_t = fmt_dt(real_dt)
-            lateness = dep.get("realtimeAdvertisedLateness", 0) or 0
+            real  = fmt_dt(real_dt)
             if cancelled:
                 status = "Cancelled"
-            elif lateness == 0:
+            elif not real or real == sched:
                 status = "On time"
             else:
-                status = f"+{lateness}m" if lateness > 0 else "On time"
+                status = f"Exp {real}"
+            if not dest or not sched:
+                continue
             trains.append({
                 "scheduled":   sched,
                 "expected":    status,
@@ -4829,7 +4829,7 @@ def api_train_departures():
                 "destination": dest,
                 "cancelled":   bool(cancelled),
             })
-        station_name = (data.get("location") or {}).get("name", crs)
+        station_name = (data.get("location") or {}).get("description", crs)
         return jsonify({"station": station_name, "trains": trains})
     except Exception as e:
         print(f"[train/departures] error: {e}")
