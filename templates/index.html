@@ -6973,6 +6973,11 @@ _bkBadge();
     _origShowScreenNews(name);
     if (name === "news") { _newsLoad(); _newsRenderChips(); if (_newsSources.length) newsRefresh(); }
   };
+
+  // Deep-link: ?screen=news — handled here because the div is late in the DOM
+  if (new URLSearchParams(location.search).get("screen") === "news") {
+    showScreen("news");
+  }
 })();
 </script>
 
