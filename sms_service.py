@@ -4886,6 +4886,32 @@ def api_train_nearest():
         return jsonify({"error": f"nearest: {str(e)}"}), 500
 
 
+@app.route("/api/train/search")
+def api_train_search():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"error": "q required"}), 400
+    try:
+        query = f'[out:json][timeout:10];node["railway"="station"]["ref:crs"]["name"~"{q}",i](51.3,-2.0,53.7,1.8);out 8 qt;'
+        r = requests.get(
+            "https://overpass-api.de/api/interpreter",
+            params={"data": query},
+            headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
+            timeout=12,
+        )
+        elements = r.json().get("elements", [])
+        results = []
+        for el in elements:
+            tags = el.get("tags", {})
+            crs  = (tags.get("ref:crs") or tags.get("ref") or "").upper()
+            name = tags.get("name", "")
+            if crs and name:
+                results.append({"name": name, "crs": crs})
+        return jsonify({"results": results})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/train/departures")
 def api_train_departures():
     crs = request.args.get("crs", "").strip().upper()[:3]

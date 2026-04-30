@@ -6567,12 +6567,30 @@ _bkBadge();
   <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Find trains from your nearest station</p>
 
   <button id="train-locate-btn" onclick="trainLocate()"
-    style="width:100%;padding:14px;border:none;background:var(--text);color:var(--bg);border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px">
+    style="width:100%;padding:14px;border:none;background:var(--text);color:var(--bg);border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px">
     📍 Use my location
   </button>
 
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <div style="flex:1;height:1px;background:var(--border)"></div>
+    <span style="font-size:12px;color:var(--muted);font-weight:600">or</span>
+    <div style="flex:1;height:1px;background:var(--border)"></div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <input id="train-search-input" type="text" placeholder="Enter station name…"
+      style="flex:1;padding:13px 16px;border:1px solid var(--border);border-radius:14px;font-size:15px;outline:none;background:var(--surface);color:var(--text)"
+      onkeydown="if(event.key==='Enter') trainSearch()">
+    <button onclick="trainSearch()"
+      style="padding:13px 18px;border:none;background:var(--text);color:var(--bg);border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap">
+      Search
+    </button>
+  </div>
+
+  <div id="train-search-results" style="display:none;margin-bottom:16px"></div>
+
   <div id="train-station-row" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:16px">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Nearest station</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Station</div>
     <div id="train-station-name" style="font-size:17px;font-weight:800;color:var(--text)"></div>
   </div>
 
@@ -6621,6 +6639,38 @@ _bkBadge();
       btn.disabled = false;
       _trainErr("Location access denied — please allow location in your browser");
     }, {timeout:10000});
+  };
+
+  window.trainSearch = function() {
+    var q = (document.getElementById("train-search-input").value || "").trim();
+    if (!q) return;
+    var sr = document.getElementById("train-search-results");
+    sr.style.display = "block";
+    sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Searching…</div>';
+    fetch("/api/train/search?q=" + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.error || !d.results || !d.results.length) {
+          sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No stations found — try a different name</div>';
+          return;
+        }
+        sr.innerHTML = d.results.map(function(s){
+          return '<button onclick="trainSelectStation(\''+s.crs+'\',\''+s.name.replace(/'/g,"\\'")+'\')"'
+            +' style="display:block;width:100%;text-align:left;padding:12px 16px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">'
+            +s.name+' <span style="font-size:12px;color:var(--muted);font-weight:400">('+s.crs+')</span></button>';
+        }).join("");
+      })
+      .catch(function(){ sr.innerHTML = '<div style="font-size:13px;color:#b91c1c;padding:8px 0">Could not search. Try again.</div>'; });
+  };
+
+  window.trainSelectStation = function(crs, name) {
+    document.getElementById("train-search-results").style.display = "none";
+    document.getElementById("train-search-input").value = "";
+    _trainCrs = crs;
+    document.getElementById("train-station-name").textContent = name + " (" + crs + ")";
+    document.getElementById("train-station-row").style.display = "block";
+    document.getElementById("train-dest-row").style.display = "block";
+    _trainLoadDepartures(crs);
   };
 
   function _trainLoadDepartures(crs) {
