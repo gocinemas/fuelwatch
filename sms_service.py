@@ -4967,6 +4967,10 @@ def api_train_departures():
             return jsonify({"error": f"RTT location API returned empty response (HTTP {r.status_code})"}), 500
         data = r.json()
         services = data.get("services") or []
+        if services:
+            import json as _json
+            print(f"[train] first service keys: {list(services[0].keys())}")
+            print(f"[train] first service sample: {_json.dumps(services[0], default=str)[:800]}")
         def fmt_dt(dt): return dt[11:16] if dt and len(dt) >= 16 else ""
         trains = []
         for s in services:
