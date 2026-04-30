@@ -4892,34 +4892,38 @@ def api_train_search():
     if not q:
         return jsonify({"error": "q required"}), 400
     try:
-        # Step 1: Nominatim name search — handles spaces and partial names well
+        # Step 1: Nominatim — get candidate locations (lat/lon) for the station name
         nom = requests.get(
             "https://nominatim.openstreetmap.org/search",
-            params={"q": q + " railway station", "format": "json", "countrycodes": "gb", "limit": "8"},
+            params={"q": q + " railway station", "format": "json", "countrycodes": "gb", "limit": "5"},
             headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
             timeout=10,
         )
         hits = nom.json()
-        node_ids = [h["osm_id"] for h in hits if h.get("osm_type") == "node" and h.get("osm_id")]
-        if not node_ids:
+        if not hits:
             return jsonify({"results": []})
 
-        # Step 2: Batch-fetch CRS codes from Overpass using the node IDs
-        ids_str = ",".join(str(i) for i in node_ids)
-        ovr = requests.get(
-            "https://overpass-api.de/api/interpreter",
-            params={"data": f"[out:json];node(id:{ids_str});out;"},
-            headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
-            timeout=12,
-        )
-        elements = ovr.json().get("elements", [])
+        # Step 2: For each Nominatim hit, search Overpass within 500m for a ref:crs node.
+        # OSM station names often differ (e.g. "Egham" vs "Egham Railway Station").
+        seen = set()
         results = []
-        for el in elements:
-            tags = el.get("tags", {})
-            crs  = (tags.get("ref:crs") or "").upper()
-            name = tags.get("name", "")
-            if crs and name and tags.get("railway") in ("station", "halt"):
-                results.append({"name": name, "crs": crs})
+        for hit in hits[:3]:
+            lat, lon = hit.get("lat"), hit.get("lon")
+            if not lat or not lon:
+                continue
+            ovr = requests.get(
+                "https://overpass-api.de/api/interpreter",
+                params={"data": f'[out:json][timeout:8];node["ref:crs"](around:500,{lat},{lon});out 1 qt;'},
+                headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
+                timeout=10,
+            )
+            for el in ovr.json().get("elements", []):
+                tags = el.get("tags", {})
+                crs  = (tags.get("ref:crs") or "").upper()
+                name = tags.get("name", "")
+                if crs and name and crs not in seen:
+                    seen.add(crs)
+                    results.append({"name": name, "crs": crs})
         return jsonify({"results": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
