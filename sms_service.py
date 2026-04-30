@@ -4825,12 +4825,15 @@ def api_music_charts():
         for i, e in enumerate(entries):
             images = e.get("im:image", [])
             cover = images[2].get("label", "") if len(images) > 2 else (images[-1].get("label", "") if images else "")
+            link = e.get("link", {})
+            if isinstance(link, list):
+                link = link[0] if link else {}
             tracks.append({
                 "position": i + 1,
                 "title":    e.get("im:name", {}).get("label", ""),
                 "artist":   e.get("im:artist", {}).get("label", ""),
                 "cover":    cover,
-                "url":      e.get("link", {}).get("attributes", {}).get("href", ""),
+                "url":      link.get("attributes", {}).get("href", ""),
             })
         return jsonify({"tracks": tracks})
     except Exception as e:
