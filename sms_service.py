@@ -3159,10 +3159,30 @@ _PENDING_TRIAGE: dict = {}   # from_number -> {id, title, url, expires}
 _PENDING_DIGEST: dict  = {}  # from_number -> [{id, title, url}, ...]  (last digest sent)
 
 
+_TOKEN_TO_NUMBER: dict = {}  # token -> from_number, populated as users interact
+
 def _wa_user_token(from_number: str) -> str:
     """Stable per-user token derived from phone number + server secret."""
     secret = os.environ.get("DIGEST_TOKEN", "miru-secret")
-    return hmac.new(secret.encode(), from_number.encode(), hashlib.sha256).hexdigest()[:20]
+    token = hmac.new(secret.encode(), from_number.encode(), hashlib.sha256).hexdigest()[:20]
+    _TOKEN_TO_NUMBER[token] = from_number
+    return token
+
+def _resolve_user_token(token: str):
+    """Return from_number for a user token, or None. Populates cache from DB on cold start."""
+    if token in _TOKEN_TO_NUMBER:
+        return _TOKEN_TO_NUMBER[token]
+    try:
+        rows = lib._sb().table("wa_saves").select("from_number").execute().data
+        seen = set()
+        for row in rows:
+            n = row.get("from_number", "")
+            if n and n not in seen:
+                seen.add(n)
+                _wa_user_token(n)  # populates _TOKEN_TO_NUMBER
+        return _TOKEN_TO_NUMBER.get(token)
+    except Exception:
+        return None
 
 
 def _fetch_url_text(url: str) -> dict:
@@ -3488,7 +3508,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 msg += "\n\n" + "\n".join(details)
         else:
             msg = f"{title}\n(couldn't read — saved anyway)"
-        msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves"
+        user_token = _wa_user_token(fn)
+        msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
         _wa_send_proactive(fn, msg)
 
     threading.Thread(target=_bg, daemon=True).start()
@@ -3580,7 +3601,7 @@ def _wa_save_url(from_number: str, url: str) -> str:
 
     threading.Thread(target=_bg, daemon=True).start()
     token = _wa_user_token(from_number)
-    return f"📌 Saved — summary on its way ✨\n📂 My Saves: miru.humanagency.co/?screen=saves"
+    return f"📌 Saved — summary on its way ✨\n📂 My Saves: miru.humanagency.co/?screen=saves&token={token}"
 
 
 def _wa_triage_respond(from_number: str, cmd: str) -> str:
@@ -4409,7 +4430,7 @@ def wa_digest():
             lines.append(f"\n+{len(saves) - 9} more in My Saves.")
         user_token = _wa_user_token(from_number)
         lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday*")
-        lines.append(f"🔗 miru.humanagency.co/?screen=saves")
+        lines.append(f"🔗 miru.humanagency.co/?screen=saves&token={user_token}")
 
         # Split into chunks ≤4000 chars (WhatsApp limit)
         body_text = "\n".join(lines)
@@ -4437,27 +4458,31 @@ def wa_digest():
     return jsonify({"sent": sent, "total_users": len(by_user)})
 
 
-def _my_wa_number():
-    """Return the owner's WhatsApp from_number (e.g. whatsapp:+447...) if set."""
-    n = os.environ.get("MY_WHATSAPP_NUMBER", "").strip()
-    if not n:
-        return None
-    return n if n.startswith("whatsapp:") else f"whatsapp:{n}"
-
-
 @app.route("/api/wa-saves")
 def api_wa_saves():
-    """List saved URLs for the owner's number. PIN-protected via X-Library-PIN header."""
-    err = _check_library_pin()
-    if err:
-        return err
+    """List saves. Admin PIN → all saves. User token → only their saves."""
+    pin = (request.headers.get("X-Library-PIN") or
+           request.headers.get("X-Admin-Password") or
+           request.args.get("pin", ""))
+    admin_pw = os.environ.get("ADMIN_PASSWORD", "")
+
+    filter_number = None
+    if admin_pw and pin == admin_pw:
+        filter_number = None  # admin sees all
+    elif pin:
+        filter_number = _resolve_user_token(pin)
+        if not filter_number:
+            return jsonify({"error": "Password required", "auth": True}), 401
+    elif admin_pw:
+        return jsonify({"error": "Password required", "auth": True}), 401
+    # no ADMIN_PASSWORD set and no pin → open (dev mode)
+
     try:
         q = lib._sb().table("wa_saves").select(
             "id,title,url,summary,status,remind_day,created_at"
         )
-        my_num = _my_wa_number()
-        if my_num:
-            q = q.eq("from_number", my_num)
+        if filter_number:
+            q = q.eq("from_number", filter_number)
         rows = q.order("created_at", desc=True).limit(60).execute().data
         return jsonify({"saves": rows})
     except Exception as e:

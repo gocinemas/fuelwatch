@@ -5859,6 +5859,18 @@ _bkBadge();
   let _savesAll = [];
   let _savesActiveFilter = "pending";
 
+  // Auto-login from ?token= in URL (sent by WhatsApp bot)
+  (function() {
+    var up = new URLSearchParams(location.search);
+    var tok = up.get("token");
+    if (tok) {
+      sessionStorage.setItem("lib_pin", tok);
+      up.delete("token");
+      var qs = up.toString();
+      history.replaceState({}, "", location.pathname + (qs ? "?" + qs : ""));
+    }
+  })();
+
   function _savesPin() { return sessionStorage.getItem("lib_pin") || ""; }
   function _savesHeaders() { return _savesPin() ? {"X-Library-PIN": _savesPin(), "Content-Type": "application/json"} : {"Content-Type": "application/json"}; }
 
