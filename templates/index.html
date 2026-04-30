@@ -6650,8 +6650,21 @@ _bkBadge();
     fetch("/api/train/search?q=" + encodeURIComponent(q))
       .then(function(r){ return r.json(); })
       .then(function(d){
-        if (d.error || !d.results || !d.results.length) {
-          sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No stations found — try a different name</div>';
+        if (d.error) {
+          sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Could not search. Try again.</div>';
+          return;
+        }
+        if (!d.results || !d.results.length) {
+          if (d.suggestions && d.suggestions.length) {
+            sr.innerHTML = '<div style="font-size:13px;color:var(--muted);margin-bottom:8px">No exact match — did you mean:</div>'
+              + d.suggestions.map(function(s){
+                return '<button onclick="trainSelectStation(\''+s.crs+'\',\''+s.name.replace(/'/g,"\\'")+'\')"'
+                  +' style="display:block;width:100%;text-align:left;padding:12px 16px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">'
+                  +s.name+' <span style="font-size:12px;color:var(--muted);font-weight:400">('+s.crs+')</span></button>';
+              }).join('');
+          } else {
+            sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No stations found — try a different name</div>';
+          }
           return;
         }
         sr.innerHTML = d.results.map(function(s){
