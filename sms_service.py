@@ -4903,27 +4903,31 @@ def api_train_search():
         if not hits:
             return jsonify({"results": []})
 
-        # Step 2: For each Nominatim hit, search Overpass within 500m for a ref:crs node.
-        # OSM station names often differ (e.g. "Egham" vs "Egham Railway Station").
-        seen = set()
-        results = []
+        # Step 2: Single Overpass call — search within 1km of each Nominatim hit's location.
+        # Build one "around" union so it's one round-trip, not N sequential calls.
+        around_parts = []
         for hit in hits[:3]:
             lat, lon = hit.get("lat"), hit.get("lon")
-            if not lat or not lon:
-                continue
-            ovr = requests.get(
-                "https://overpass-api.de/api/interpreter",
-                params={"data": f'[out:json][timeout:8];node["ref:crs"](around:500,{lat},{lon});out 1 qt;'},
-                headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
-                timeout=10,
-            )
-            for el in ovr.json().get("elements", []):
-                tags = el.get("tags", {})
-                crs  = (tags.get("ref:crs") or "").upper()
-                name = tags.get("name", "")
-                if crs and name and crs not in seen:
-                    seen.add(crs)
-                    results.append({"name": name, "crs": crs})
+            if lat and lon:
+                around_parts.append(f'node["ref:crs"](around:800,{lat},{lon});')
+        if not around_parts:
+            return jsonify({"results": []})
+
+        union_query = f'[out:json][timeout:8];({" ".join(around_parts)});out 5 qt;'
+        ovr = requests.get(
+            "https://overpass-api.de/api/interpreter",
+            params={"data": union_query},
+            headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
+            timeout=10,
+        )
+        seen, results = set(), []
+        for el in ovr.json().get("elements", []):
+            tags = el.get("tags", {})
+            crs  = (tags.get("ref:crs") or "").upper()
+            name = tags.get("name", "")
+            if crs and name and crs not in seen:
+                seen.add(crs)
+                results.append({"name": name, "crs": crs})
         return jsonify({"results": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
