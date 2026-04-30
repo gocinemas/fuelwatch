@@ -6570,6 +6570,18 @@ _bkBadge();
   </div>
   <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Find trains from your nearest station</p>
 
+  <div id="train-bookmark-row" style="display:none;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Saved station</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="train-bm-chip" onclick="trainUseBookmark()"
+        style="flex:1;text-align:left;padding:12px 16px;border:1px solid #fbbf24;border-radius:14px;background:#fffbeb;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">
+        ⭐ <span id="train-bm-chip-name"></span>
+      </button>
+      <button onclick="trainRemoveBookmark()" title="Remove saved station"
+        style="padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--muted);font-size:14px;cursor:pointer;line-height:1">✕</button>
+    </div>
+  </div>
+
   <button id="train-locate-btn" onclick="trainLocate()"
     style="width:100%;padding:14px;border:none;background:var(--text);color:var(--bg);border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px">
     📍 Use my location
@@ -6594,8 +6606,14 @@ _bkBadge();
   <div id="train-search-results" style="display:none;margin-bottom:16px"></div>
 
   <div id="train-station-row" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:16px">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Station</div>
-    <div id="train-station-name" style="font-size:17px;font-weight:800;color:var(--text)"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Station</div>
+        <div id="train-station-name" style="font-size:17px;font-weight:800;color:var(--text)"></div>
+      </div>
+      <button id="train-star-btn" onclick="trainToggleBookmark()" title="Save station"
+        style="border:none;background:none;font-size:22px;cursor:pointer;padding:4px 2px;line-height:1">☆</button>
+    </div>
   </div>
 
   <div id="train-dest-row" style="display:none;margin-bottom:16px">
@@ -6613,6 +6631,59 @@ _bkBadge();
 (function(){
   var _trainData = [];
   var _trainCrs  = "";
+  var _trainName = "";
+
+  function _trainGetBm() { try { return JSON.parse(localStorage.getItem("miru_train_bm")||"null"); } catch { return null; } }
+  function _trainSaveBm(crs, name) { localStorage.setItem("miru_train_bm", JSON.stringify({crs:crs,name:name})); }
+  function _trainClearBm() { localStorage.removeItem("miru_train_bm"); }
+
+  function _trainRenderBm() {
+    var bm = _trainGetBm();
+    var row = document.getElementById("train-bookmark-row");
+    if (bm && bm.crs) {
+      document.getElementById("train-bm-chip-name").textContent = bm.name + " (" + bm.crs + ")";
+      row.style.display = "block";
+    } else {
+      row.style.display = "none";
+    }
+  }
+
+  function _trainUpdateStar() {
+    var btn = document.getElementById("train-star-btn");
+    if (!btn) return;
+    var bm = _trainGetBm();
+    btn.textContent = (bm && bm.crs === _trainCrs) ? "⭐" : "☆";
+  }
+
+  window.trainToggleBookmark = function() {
+    var bm = _trainGetBm();
+    if (bm && bm.crs === _trainCrs) {
+      _trainClearBm();
+    } else {
+      _trainSaveBm(_trainCrs, _trainName);
+    }
+    _trainUpdateStar();
+    _trainRenderBm();
+  };
+
+  window.trainUseBookmark = function() {
+    var bm = _trainGetBm();
+    if (!bm) return;
+    _trainCrs = bm.crs;
+    _trainName = bm.name;
+    document.getElementById("train-station-name").textContent = bm.name + " (" + bm.crs + ")";
+    document.getElementById("train-station-row").style.display = "block";
+    document.getElementById("train-dest-row").style.display = "block";
+    document.getElementById("train-search-results").style.display = "none";
+    _trainUpdateStar();
+    _trainLoadDepartures(bm.crs);
+  };
+
+  window.trainRemoveBookmark = function() {
+    _trainClearBm();
+    _trainRenderBm();
+    _trainUpdateStar();
+  };
 
   window.trainLocate = function() {
     var btn = document.getElementById("train-locate-btn");
@@ -6632,9 +6703,11 @@ _bkBadge();
           btn.disabled = false;
           if (d.error) { _trainErr(d.error); return; }
           _trainCrs = d.crs;
+          _trainName = d.name;
           document.getElementById("train-station-name").textContent = d.name + (d.crs ? " ("+d.crs+")" : "");
           document.getElementById("train-station-row").style.display = "block";
           document.getElementById("train-dest-row").style.display = "block";
+          _trainUpdateStar();
           _trainLoadDepartures(d.crs);
         })
         .catch(function(){ btn.textContent="📍 Use my location"; btn.disabled=false; _trainErr("Could not find nearest station"); });
@@ -6684,9 +6757,11 @@ _bkBadge();
     document.getElementById("train-search-results").style.display = "none";
     document.getElementById("train-search-input").value = "";
     _trainCrs = crs;
+    _trainName = name;
     document.getElementById("train-station-name").textContent = name + " (" + crs + ")";
     document.getElementById("train-station-row").style.display = "block";
     document.getElementById("train-dest-row").style.display = "block";
+    _trainUpdateStar();
     _trainLoadDepartures(crs);
   };
 
@@ -6737,6 +6812,12 @@ _bkBadge();
     el.textContent = msg;
     el.style.display = "block";
   }
+
+  var _origShowScreenTrains = window.showScreen;
+  window.showScreen = function(name) {
+    _origShowScreenTrains(name);
+    if (name === "trains") _trainRenderBm();
+  };
 })();
 </script>
 
