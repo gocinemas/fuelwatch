@@ -5079,6 +5079,88 @@ def miru_preview_image():
                     headers={"Cache-Control": "public, max-age=86400"})
 
 
+@app.route("/api/news/fetch", methods=["POST"])
+def api_news_fetch():
+    import xml.etree.ElementTree as _ET
+    import re as _re
+    from urllib.parse import urljoin as _urljoin
+
+    urls = (request.json or {}).get("urls", [])
+    if not urls:
+        return jsonify({"error": "No URLs provided"}), 400
+    urls = urls[:10]
+
+    def _strip_html(s):
+        return _re.sub(r'<[^>]+>', '', s or "").strip()
+
+    def _parse_one(url):
+        hdrs = {"User-Agent": "Mozilla/5.0 (compatible; MiruBot/1.0)"}
+        r = requests.get(url, timeout=10, headers=hdrs)
+        r.raise_for_status()
+        text = r.text
+        ct = r.headers.get("Content-Type", "")
+
+        # If HTML page, discover RSS link
+        if "html" in ct.lower() and not any(tag in text[:800] for tag in ("<rss", "<feed", "<?xml")):
+            m = _re.search(
+                r'<link[^>]+type=["\']application/(?:rss|atom)\+xml["\'][^>]+href=["\']([^"\']+)["\']'
+                r'|<link[^>]+href=["\']([^"\']+)["\'][^>]+type=["\']application/(?:rss|atom)\+xml["\']',
+                text, _re.I
+            )
+            if m:
+                rss_url = m.group(1) or m.group(2)
+                rss_url = _urljoin(r.url, rss_url)
+                r2 = requests.get(rss_url, timeout=10, headers=hdrs)
+                r2.raise_for_status()
+                text = r2.text
+            else:
+                return {"url": url, "source": url, "articles": [], "error": "No RSS feed found on this page"}
+
+        root = _ET.fromstring(text.encode("utf-8"))
+        articles = []
+        source = url
+
+        # RSS 2.0
+        channel = root.find("channel")
+        if channel is not None:
+            source = (channel.findtext("title") or url).strip()
+            for item in channel.findall("item")[:12]:
+                title = _strip_html(item.findtext("title") or "")
+                desc  = _strip_html(item.findtext("description") or "")[:180]
+                link  = (item.findtext("link") or "").strip()
+                pub   = (item.findtext("pubDate") or "").strip()
+                if title:
+                    articles.append({"title": title, "description": desc, "link": link, "published": pub})
+        else:
+            # Atom
+            NS = "http://www.w3.org/2005/Atom"
+            def _at(tag): return "{%s}%s" % (NS, tag)
+            t = root.find(_at("title"))
+            source = (t.text if t is not None else url or "").strip()
+            for entry in root.findall(_at("entry"))[:12]:
+                te = entry.find(_at("title"))
+                title = _strip_html(te.text if te is not None else "")
+                se = entry.find(_at("summary")) or entry.find(_at("content"))
+                desc  = _strip_html(se.text if se is not None else "")[:180]
+                le = entry.find(_at("link"))
+                link  = (le.get("href", "") if le is not None else "")
+                pe = entry.find(_at("published")) or entry.find(_at("updated"))
+                pub = (pe.text if pe is not None else "").strip()
+                if title:
+                    articles.append({"title": title, "description": desc, "link": link, "published": pub})
+
+        return {"url": url, "source": source, "articles": articles}
+
+    feeds = []
+    for u in urls:
+        try:
+            feeds.append(_parse_one(u))
+        except Exception as exc:
+            feeds.append({"url": u, "source": u, "articles": [], "error": str(exc)})
+
+    return jsonify({"feeds": feeds})
+
+
 @app.route("/ping")
 def ping():
     return "OK", 200
