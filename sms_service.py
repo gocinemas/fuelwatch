@@ -3288,13 +3288,13 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "Identify what this image is. Pick ONE type from: "
             "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, sign, document, photo.\n"
             "Then give 3 bullet points starting with • covering the key info.\n"
-            "If store/restaurant: describe what kind of place it is and any visible details (cuisine, specialty, vibe).\n"
-            "If event/ticket: include event name, date, time.\n"
-            "If ad/billboard: what product or brand is being promoted.\n"
+            "If store/restaurant: focus ONLY on the place itself — name, type of food/business, what it specialises in, opening hours or price range if visible. Do NOT describe the photo scene (no cars, people, atmosphere, surroundings).\n"
+            "If event/ticket: include event name, date, time, venue.\n"
+            "If ad/billboard: what product or brand is being promoted and the key message.\n"
             "If receipt: total and main items.\n"
             "Start your reply with: TYPE: [your choice]\n"
             "If type is event/ticket, store/restaurant, or ad/billboard — add: VENUE: [business or place name only, no address]\n"
-            "If you can identify a city, area, or neighbourhood from signage, language, or surroundings — add: LOCATION: [city or area name]"
+            "If you can identify a city, area, or neighbourhood from signage or text — add: LOCATION: [city or area name]"
         )
         analysis = ""
         for model in _vision_models:
