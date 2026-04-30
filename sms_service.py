@@ -4785,6 +4785,9 @@ def api_music_identify():
             data=audio,
             timeout=15,
         )
+        print(f"[music/identify] status={r.status_code} body={r.text[:300]!r}")
+        if not r.text.strip():
+            return jsonify({"match": False, "error": f"Shazam returned empty response (HTTP {r.status_code})"})
         r.raise_for_status()
         data  = r.json()
         track = data.get("track", {})
