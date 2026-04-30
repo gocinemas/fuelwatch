@@ -4970,7 +4970,8 @@ def api_train_departures():
         if services:
             import json as _json
             print(f"[train] first service keys: {list(services[0].keys())}")
-            print(f"[train] first service sample: {_json.dumps(services[0], default=str)[:800]}")
+            print(f"[train] locationMetadata: {_json.dumps(services[0].get('locationMetadata'), default=str)}")
+            print(f"[train] full: {_json.dumps(services[0], default=str)}")
         def fmt_dt(dt): return dt[11:16] if dt and len(dt) >= 16 else ""
         trains = []
         for s in services:
