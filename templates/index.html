@@ -6857,6 +6857,26 @@ _bkBadge();
     <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin:0 0 4px">📰 My News</h2>
     <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Your personal news feed</p>
 
+    <!-- Find local sources -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Find local sources</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="news-area-input" type="text" placeholder="Postcode or area e.g. Surrey, Glasgow…"
+          style="flex:1;padding:11px 14px;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none;background:var(--surface);color:var(--text)"
+          onkeydown="if(event.key==='Enter') newsDiscover()">
+        <button onclick="newsDiscover()"
+          style="padding:11px 16px;border:none;background:var(--text);color:var(--bg);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">Find</button>
+      </div>
+      <div id="news-discover-results" style="display:none"></div>
+    </div>
+
+    <!-- Divider -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:11px;color:var(--muted)">or paste RSS link</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+
     <!-- Add source row -->
     <div style="display:flex;gap:8px;margin-bottom:16px">
       <input id="news-url-input" type="url" placeholder="Paste a news or RSS link…"
@@ -6954,6 +6974,45 @@ _bkBadge();
     _newsActive = url;
     _newsRenderTabs();
     _newsRenderArticles();
+  };
+
+  window.newsDiscover = function() {
+    var q = (document.getElementById("news-area-input").value || "").trim();
+    if (!q) return;
+    var el = document.getElementById("news-discover-results");
+    el.style.display = "block";
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0">Searching…</div>';
+    fetch("/api/news/discover?q=" + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.error || d.not_found || !d.feeds || !d.feeds.length) {
+          el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0">No sources found for that area — try a county name like "Surrey" or "Kent"</div>';
+          return;
+        }
+        var existingUrls = _newsSources.map(function(s){ return s.url; });
+        el.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Sources for '+_esc(d.area)+'</div>'
+          + d.feeds.map(function(f) {
+            var added = existingUrls.indexOf(f.url) !== -1;
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--surface)">'
+              + '<span style="font-size:13px;font-weight:600;color:var(--text)">'+_esc(f.name)+'</span>'
+              + (added
+                ? '<span style="font-size:11px;font-weight:700;color:#16a34a;background:#f0fdf4;padding:3px 10px;border-radius:99px">✓ Added</span>'
+                : '<button onclick="newsAddDiscovered(\''+f.url.replace(/'/g,"\\'") +'\',\''+f.name.replace(/'/g,"\\'")+'\',this)"'
+                  +' style="padding:4px 12px;border:none;background:var(--text);color:var(--bg);border-radius:99px;font-size:12px;font-weight:700;cursor:pointer">+ Add</button>')
+              + '</div>';
+          }).join("");
+      })
+      .catch(function(){ el.innerHTML = '<div style="font-size:12px;color:#b91c1c;padding:6px 0">Could not search. Try again.</div>'; });
+  };
+
+  window.newsAddDiscovered = function(url, name, btn) {
+    if (_newsSources.find(function(s){ return s.url === url; })) return;
+    _newsSources.push({url: url, name: name});
+    _newsSave();
+    btn.outerHTML = '<span style="font-size:11px;font-weight:700;color:#16a34a;background:#f0fdf4;padding:3px 10px;border-radius:99px">✓ Added</span>';
+    if (!_newsActive) _newsActive = url;
+    _newsRenderTabs();
+    _newsFetchOne(url);
   };
 
   window.newsAddSource = function() {

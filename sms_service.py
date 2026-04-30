@@ -5079,6 +5079,186 @@ def miru_preview_image():
                     headers={"Cache-Control": "public, max-age=86400"})
 
 
+# ── News area feeds lookup ────────────────────────────────────────────────────
+_NEWS_AREA_FEEDS = {
+    # England — counties
+    "surrey":             [{"name":"BBC Surrey",          "url":"https://feeds.bbci.co.uk/news/england/surrey/rss.xml"},
+                           {"name":"Get Surrey",          "url":"https://www.getsurrey.co.uk/news/?service=rss"}],
+    "kent":               [{"name":"BBC Kent",            "url":"https://feeds.bbci.co.uk/news/england/kent/rss.xml"},
+                           {"name":"Kent Online",         "url":"https://www.kentonline.co.uk/feed/"}],
+    "east sussex":        [{"name":"BBC Sussex",          "url":"https://feeds.bbci.co.uk/news/england/sussex/rss.xml"},
+                           {"name":"Sussex Live",         "url":"https://www.sussexlive.co.uk/news/?service=rss"}],
+    "west sussex":        [{"name":"BBC Sussex",          "url":"https://feeds.bbci.co.uk/news/england/sussex/rss.xml"},
+                           {"name":"Sussex Live",         "url":"https://www.sussexlive.co.uk/news/?service=rss"}],
+    "hampshire":          [{"name":"BBC Hampshire",       "url":"https://feeds.bbci.co.uk/news/england/hampshire/rss.xml"},
+                           {"name":"Hampshire Live",      "url":"https://www.hampshirelive.news/news/?service=rss"}],
+    "berkshire":          [{"name":"BBC Berkshire",       "url":"https://feeds.bbci.co.uk/news/england/berkshire/rss.xml"},
+                           {"name":"Berkshire Live",      "url":"https://www.berkshirelive.co.uk/news/?service=rss"}],
+    "oxfordshire":        [{"name":"BBC Oxford",          "url":"https://feeds.bbci.co.uk/news/england/oxford/rss.xml"},
+                           {"name":"Oxford Mail",         "url":"https://www.oxfordmail.co.uk/news/rss/"}],
+    "essex":              [{"name":"BBC Essex",           "url":"https://feeds.bbci.co.uk/news/england/essex/rss.xml"},
+                           {"name":"Essex Live",          "url":"https://www.essexlive.news/news/?service=rss"}],
+    "hertfordshire":      [{"name":"BBC Three Counties",  "url":"https://feeds.bbci.co.uk/news/england/beds_bucks_herts/rss.xml"},
+                           {"name":"Herts Live",          "url":"https://www.hertfordshiremercury.co.uk/news/rss/"}],
+    "bedfordshire":       [{"name":"BBC Three Counties",  "url":"https://feeds.bbci.co.uk/news/england/beds_bucks_herts/rss.xml"}],
+    "buckinghamshire":    [{"name":"BBC Three Counties",  "url":"https://feeds.bbci.co.uk/news/england/beds_bucks_herts/rss.xml"},
+                           {"name":"Bucks Free Press",    "url":"https://www.bucksfreepress.co.uk/news/rss/"}],
+    "cambridgeshire":     [{"name":"BBC Cambridgeshire",  "url":"https://feeds.bbci.co.uk/news/england/cambridgeshire/rss.xml"},
+                           {"name":"Cambridge News",      "url":"https://www.cambridge-news.co.uk/news/?service=rss"}],
+    "suffolk":            [{"name":"BBC Suffolk",         "url":"https://feeds.bbci.co.uk/news/england/suffolk/rss.xml"},
+                           {"name":"East Anglian Daily",  "url":"https://www.eadt.co.uk/news/rss/"}],
+    "norfolk":            [{"name":"BBC Norfolk",         "url":"https://feeds.bbci.co.uk/news/england/norfolk/rss.xml"},
+                           {"name":"Norwich Evening News","url":"https://www.eveningnews24.co.uk/news/rss/"}],
+    "gloucestershire":    [{"name":"BBC Gloucestershire", "url":"https://feeds.bbci.co.uk/news/england/gloucestershire/rss.xml"},
+                           {"name":"Gloucestershire Live","url":"https://www.gloucestershirelive.co.uk/news/?service=rss"}],
+    "wiltshire":          [{"name":"BBC Wiltshire",       "url":"https://feeds.bbci.co.uk/news/england/wiltshire/rss.xml"}],
+    "somerset":           [{"name":"BBC Somerset",        "url":"https://feeds.bbci.co.uk/news/england/somerset/rss.xml"},
+                           {"name":"Somerset Live",       "url":"https://www.somersetlive.co.uk/news/?service=rss"}],
+    "devon":              [{"name":"BBC Devon",           "url":"https://feeds.bbci.co.uk/news/england/devon/rss.xml"},
+                           {"name":"Devon Live",          "url":"https://www.devonlive.com/news/?service=rss"}],
+    "cornwall":           [{"name":"BBC Cornwall",        "url":"https://feeds.bbci.co.uk/news/england/cornwall/rss.xml"},
+                           {"name":"Cornwall Live",       "url":"https://www.cornwalllive.com/news/?service=rss"}],
+    "dorset":             [{"name":"BBC Dorset",          "url":"https://feeds.bbci.co.uk/news/england/dorset/rss.xml"},
+                           {"name":"Dorset Live",         "url":"https://www.dorsetlive.com/news/?service=rss"}],
+    "leicestershire":     [{"name":"BBC Leicester",       "url":"https://feeds.bbci.co.uk/news/england/leicester/rss.xml"},
+                           {"name":"Leicestershire Live", "url":"https://www.leicestermercury.co.uk/news/?service=rss"}],
+    "nottinghamshire":    [{"name":"BBC Nottingham",      "url":"https://feeds.bbci.co.uk/news/england/nottingham/rss.xml"},
+                           {"name":"Nottingham Post",     "url":"https://www.nottinghampost.com/news/?service=rss"}],
+    "derbyshire":         [{"name":"BBC Derby",           "url":"https://feeds.bbci.co.uk/news/england/derbyshire/rss.xml"},
+                           {"name":"Derbyshire Live",     "url":"https://www.derbytelegraph.co.uk/news/?service=rss"}],
+    "lincolnshire":       [{"name":"BBC Lincolnshire",    "url":"https://feeds.bbci.co.uk/news/england/lincolnshire/rss.xml"},
+                           {"name":"Lincolnshire Live",   "url":"https://www.lincolnshirelive.co.uk/news/?service=rss"}],
+    "northamptonshire":   [{"name":"BBC Northampton",     "url":"https://feeds.bbci.co.uk/news/england/northampton/rss.xml"},
+                           {"name":"Northants Live",      "url":"https://www.northamptonchron.co.uk/news/rss/"}],
+    "staffordshire":      [{"name":"BBC Stoke",           "url":"https://feeds.bbci.co.uk/news/england/stoke_staffordshire/rss.xml"},
+                           {"name":"Stoke-on-Trent Live", "url":"https://www.stokesentinel.co.uk/news/?service=rss"}],
+    "shropshire":         [{"name":"BBC Shropshire",      "url":"https://feeds.bbci.co.uk/news/england/shropshire/rss.xml"},
+                           {"name":"Shropshire Star",     "url":"https://www.shropshirestar.com/feed/"}],
+    "worcestershire":     [{"name":"BBC Hereford & Worcs","url":"https://feeds.bbci.co.uk/news/england/hereford_worcester/rss.xml"}],
+    "herefordshire":      [{"name":"BBC Hereford & Worcs","url":"https://feeds.bbci.co.uk/news/england/hereford_worcester/rss.xml"}],
+    "west midlands":      [{"name":"BBC Birmingham",      "url":"https://feeds.bbci.co.uk/news/england/birmingham/rss.xml"},
+                           {"name":"Birmingham Live",     "url":"https://www.birminghammail.co.uk/news/?service=rss"}],
+    "warwickshire":       [{"name":"BBC Coventry",        "url":"https://feeds.bbci.co.uk/news/england/coventry/rss.xml"},
+                           {"name":"Coventry Live",       "url":"https://www.coventrytelegraph.net/news/?service=rss"}],
+    "greater manchester": [{"name":"BBC Manchester",      "url":"https://feeds.bbci.co.uk/news/england/manchester/rss.xml"},
+                           {"name":"Manchester Evening News","url":"https://www.manchestereveningnews.co.uk/news/?service=rss"}],
+    "merseyside":         [{"name":"BBC Merseyside",      "url":"https://feeds.bbci.co.uk/news/england/merseyside/rss.xml"},
+                           {"name":"Liverpool Echo",      "url":"https://www.liverpoolecho.co.uk/news/?service=rss"}],
+    "lancashire":         [{"name":"BBC Lancashire",      "url":"https://feeds.bbci.co.uk/news/england/lancashire/rss.xml"},
+                           {"name":"Lancashire Telegraph","url":"https://www.lancashiretelegraph.co.uk/news/rss/"}],
+    "cumbria":            [{"name":"BBC Cumbria",         "url":"https://feeds.bbci.co.uk/news/england/cumbria/rss.xml"}],
+    "north yorkshire":    [{"name":"BBC North Yorkshire", "url":"https://feeds.bbci.co.uk/news/england/north_yorkshire/rss.xml"}],
+    "west yorkshire":     [{"name":"BBC Leeds",           "url":"https://feeds.bbci.co.uk/news/england/leeds/rss.xml"},
+                           {"name":"Yorkshire Evening Post","url":"https://www.yorkshireeveningpost.co.uk/news/rss/"}],
+    "south yorkshire":    [{"name":"BBC Sheffield",       "url":"https://feeds.bbci.co.uk/news/england/south_yorkshire/rss.xml"},
+                           {"name":"Sheffield Star",      "url":"https://www.thestar.co.uk/news/rss/"}],
+    "east yorkshire":     [{"name":"BBC Humberside",      "url":"https://feeds.bbci.co.uk/news/england/humber/rss.xml"},
+                           {"name":"Hull Live",           "url":"https://www.hulldailymail.co.uk/news/?service=rss"}],
+    "tyne and wear":      [{"name":"BBC Newcastle",       "url":"https://feeds.bbci.co.uk/news/england/tyne/rss.xml"},
+                           {"name":"Chronicle Live",      "url":"https://www.chroniclelive.co.uk/news/?service=rss"}],
+    "county durham":      [{"name":"BBC Tees",            "url":"https://feeds.bbci.co.uk/news/england/tees/rss.xml"},
+                           {"name":"Teesside Live",       "url":"https://www.gazettelive.co.uk/news/?service=rss"}],
+    "northumberland":     [{"name":"BBC Newcastle",       "url":"https://feeds.bbci.co.uk/news/england/tyne/rss.xml"},
+                           {"name":"Chronicle Live",      "url":"https://www.chroniclelive.co.uk/news/?service=rss"}],
+    # Scotland
+    "scotland":           [{"name":"BBC Scotland",        "url":"https://feeds.bbci.co.uk/news/scotland/rss.xml"},
+                           {"name":"The Scotsman",        "url":"https://www.scotsman.com/news/rss.xml"},
+                           {"name":"Herald Scotland",     "url":"https://www.heraldscotland.com/news/rss/"}],
+    "city of edinburgh":  [{"name":"BBC Scotland",        "url":"https://feeds.bbci.co.uk/news/scotland/rss.xml"},
+                           {"name":"Edinburgh Live",      "url":"https://www.edinburghlive.co.uk/news/?service=rss"}],
+    "glasgow city":       [{"name":"BBC Scotland",        "url":"https://feeds.bbci.co.uk/news/scotland/rss.xml"},
+                           {"name":"Glasgow Live",        "url":"https://www.glasgowlive.co.uk/news/?service=rss"}],
+    # Wales
+    "wales":              [{"name":"BBC Wales",           "url":"https://feeds.bbci.co.uk/news/wales/rss.xml"},
+                           {"name":"Wales Online",        "url":"https://www.walesonline.co.uk/news/?service=rss"}],
+    # Northern Ireland
+    "northern ireland":   [{"name":"BBC Northern Ireland","url":"https://feeds.bbci.co.uk/news/northern_ireland/rss.xml"},
+                           {"name":"Belfast Telegraph",   "url":"https://www.belfasttelegraph.co.uk/news/rss/"}],
+    # London boroughs → London feed
+    "greater london":     [{"name":"BBC London",          "url":"https://feeds.bbci.co.uk/news/england/london/rss.xml"},
+                           {"name":"My London",           "url":"https://www.mylondon.news/news/?service=rss"}],
+}
+# Alias district names to county slugs for common areas
+_NEWS_DISTRICT_MAP = {
+    "mid sussex": "west sussex", "chichester": "west sussex",
+    "worthing": "west sussex", "horsham": "west sussex",
+    "brighton and hove": "east sussex", "eastbourne": "east sussex",
+    "elmbridge": "surrey", "runnymede": "surrey", "waverley": "surrey",
+    "guildford": "surrey", "mole valley": "surrey", "tandridge": "surrey",
+    "maidstone": "kent", "sevenoaks": "kent", "tonbridge and malling": "kent",
+    "tunbridge wells": "kent", "folkestone and hythe": "kent",
+    "reading": "berkshire", "slough": "berkshire", "windsor and maidenhead": "berkshire",
+    "city of bristol": "gloucestershire", "south gloucestershire": "gloucestershire",
+    "city of edinburgh": "city of edinburgh",
+    "glasgow city": "glasgow city",
+}
+
+def _get_area_feeds(county_key: str, district_key: str = "") -> list:
+    """Return deduplicated list of {name, url} feeds for an area."""
+    key = (county_key or "").lower().strip()
+    dist = (district_key or "").lower().strip()
+    # Try district alias first
+    if dist in _NEWS_DISTRICT_MAP:
+        key = _NEWS_DISTRICT_MAP[dist]
+    elif key in _NEWS_DISTRICT_MAP:
+        key = _NEWS_DISTRICT_MAP[key]
+    feeds = _NEWS_AREA_FEEDS.get(key, [])
+    # Deduplicate by URL
+    seen, result = set(), []
+    for f in feeds:
+        if f["url"] not in seen:
+            seen.add(f["url"]); result.append(f)
+    return result
+
+
+@app.route("/api/news/discover")
+def api_news_discover():
+    """Return suggested local news feeds for a postcode or area name."""
+    import re as _re
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"error": "q required"}), 400
+
+    postcode_re = _re.compile(r'^[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}$', _re.I)
+    area_label  = q
+    county_key  = ""
+    district_key = ""
+
+    if postcode_re.match(q.replace(" ", "")):
+        pc = q.replace(" ", "").upper()
+        try:
+            r = requests.get(f"https://api.postcodes.io/postcodes/{pc}", timeout=6)
+            if r.status_code == 200:
+                res = r.json().get("result", {})
+                country  = res.get("country", "England")
+                county   = (res.get("admin_county") or "").strip()
+                district = (res.get("admin_district") or "").strip()
+                area_label = county or district or q
+                if country == "Scotland":
+                    county_key = "scotland"
+                    district_key = district.lower()
+                elif country == "Wales":
+                    county_key = "wales"
+                elif country == "Northern Ireland":
+                    county_key = "northern ireland"
+                else:
+                    county_key   = county.lower()
+                    district_key = district.lower()
+                    if not county_key:
+                        county_key = district.lower()
+        except Exception:
+            pass
+    else:
+        # Free-text area name — normalise and match
+        county_key = q.lower().strip()
+        area_label = q.title()
+
+    feeds = _get_area_feeds(county_key, district_key)
+    if not feeds:
+        return jsonify({"area": area_label, "feeds": [], "not_found": True})
+    return jsonify({"area": area_label, "feeds": feeds})
+
+
 @app.route("/api/news/fetch", methods=["POST"])
 def api_news_fetch():
     import xml.etree.ElementTree as _ET
