@@ -6450,8 +6450,29 @@ _bkBadge();
         btn.style.transform = '';
         label.textContent = 'Identifying…';
         timer.style.display = 'none';
-        var blob = new Blob(chunks, {type: _musicRecorder ? _musicRecorder.mimeType : 'audio/webm'});
-        fetch('/api/music/identify', {method:'POST', body:blob, headers:{'Content-Type':'application/octet-stream'}})
+        var blob = new Blob(chunks, {type: 'audio/webm'});
+        // Convert webm to raw PCM Int16 base64 — Shazam expects raw samples, not a container format
+        blob.arrayBuffer().then(function(ab){
+          var ctx = new AudioContext({sampleRate:44100});
+          return ctx.decodeAudioData(ab).then(function(decoded){
+            var len = decoded.length, mono = new Float32Array(len);
+            for(var ch=0;ch<decoded.numberOfChannels;ch++){
+              var cd = decoded.getChannelData(ch);
+              for(var i=0;i<len;i++) mono[i]+=cd[i];
+            }
+            for(var i=0;i<len;i++) mono[i]/=decoded.numberOfChannels;
+            var pcm = new DataView(new ArrayBuffer(len*2));
+            for(var i=0;i<len;i++){
+              var s=Math.max(-1,Math.min(1,mono[i]));
+              pcm.setInt16(i*2, s<0?s*0x8000:s*0x7fff, true);
+            }
+            ctx.close();
+            var bytes=new Uint8Array(pcm.buffer), bin='';
+            for(var i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+            return btoa(bin);
+          });
+        }).then(function(pcmB64){
+        fetch('/api/music/identify', {method:'POST', body:pcmB64, headers:{'Content-Type':'text/plain'}})
           .then(function(r){ return r.json(); })
           .then(function(d){
             label.textContent = 'Tap to identify';
@@ -6467,6 +6488,7 @@ _bkBadge();
             document.getElementById('music-result').style.display = 'block';
           })
           .catch(function(e){ label.textContent='Tap to identify'; document.getElementById('music-error').textContent='Could not connect. Try again.'; document.getElementById('music-error').style.display='block'; });
+        }).catch(function(){ label.textContent='Tap to identify'; document.getElementById('music-error').textContent='Could not process audio. Try again.'; document.getElementById('music-error').style.display='block'; });
       };
       _musicRecorder.start();
       btn.style.background = 'linear-gradient(135deg,#dc2626,#ef4444)';

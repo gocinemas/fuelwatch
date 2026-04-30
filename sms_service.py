@@ -4767,16 +4767,11 @@ def api_music_identify():
     key = os.environ.get("RAPIDAPI_KEY", "")
     if not key:
         return jsonify({"error": "RAPIDAPI_KEY not configured"}), 503
-    audio = request.data
-    if not audio:
-        f = request.files.get("audio")
-        if f:
-            audio = f.read()
-    if not audio:
+    # Frontend sends raw PCM base64 as text/plain — pass straight to Shazam
+    audio_b64 = request.get_data(as_text=True).strip()
+    if not audio_b64:
         return jsonify({"error": "no audio"}), 400
     try:
-        import base64 as _b64
-        audio_b64 = _b64.b64encode(audio).decode("ascii")
         r = requests.post(
             "https://shazam.p.rapidapi.com/songs/detect",
             headers={
