@@ -4892,20 +4892,33 @@ def api_train_search():
     if not q:
         return jsonify({"error": "q required"}), 400
     try:
-        query = f'[out:json][timeout:10];node["railway"="station"]["ref:crs"]["name"~"{q}",i](51.3,-2.0,53.7,1.8);out 8 qt;'
-        r = requests.get(
+        # Step 1: Nominatim name search — handles spaces and partial names well
+        nom = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": q + " railway station", "format": "json", "countrycodes": "gb", "limit": "8"},
+            headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
+            timeout=10,
+        )
+        hits = nom.json()
+        node_ids = [h["osm_id"] for h in hits if h.get("osm_type") == "node" and h.get("osm_id")]
+        if not node_ids:
+            return jsonify({"results": []})
+
+        # Step 2: Batch-fetch CRS codes from Overpass using the node IDs
+        ids_str = ",".join(str(i) for i in node_ids)
+        ovr = requests.get(
             "https://overpass-api.de/api/interpreter",
-            params={"data": query},
+            params={"data": f"[out:json];node(id:{ids_str});out;"},
             headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
             timeout=12,
         )
-        elements = r.json().get("elements", [])
+        elements = ovr.json().get("elements", [])
         results = []
         for el in elements:
             tags = el.get("tags", {})
-            crs  = (tags.get("ref:crs") or tags.get("ref") or "").upper()
+            crs  = (tags.get("ref:crs") or "").upper()
             name = tags.get("name", "")
-            if crs and name:
+            if crs and name and tags.get("railway") in ("station", "halt"):
                 results.append({"name": name, "crs": crs})
         return jsonify({"results": results})
     except Exception as e:
