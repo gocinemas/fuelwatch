@@ -1448,7 +1448,8 @@
       }, 50);
       return;
     }
-    const target = auto || hash;
+    const screenParam = params.get("screen") || "";
+    const target = auto || screenParam || hash;
     if (target && document.getElementById("screen-" + target)) {
       showScreen(target);
     }
