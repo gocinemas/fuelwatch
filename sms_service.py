@@ -4969,7 +4969,11 @@ def api_train_departures():
             sched_dt  = dep.get("scheduleAdvertised", "")
             real_dt   = dep.get("realtimeForecast", "") or dep.get("realtimeActual", "")
             cancelled = dep.get("isCancelled", False)
-            platform  = (s.get("locationMetadata") or {}).get("platform") or "—"
+            platform_raw = (s.get("locationMetadata") or {}).get("platform")
+            if isinstance(platform_raw, dict):
+                platform = str(platform_raw.get("display") or platform_raw.get("number") or "—")
+            else:
+                platform = str(platform_raw) if platform_raw else "—"
             sched = fmt_dt(sched_dt)
             real  = fmt_dt(real_dt)
             if cancelled:
