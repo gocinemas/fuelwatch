@@ -4892,33 +4892,13 @@ def api_train_search():
     if not q:
         return jsonify({"error": "q required"}), 400
     try:
-        # Step 1: Nominatim — get candidate locations (lat/lon) for the station name
-        nom = requests.get(
-            "https://nominatim.openstreetmap.org/search",
-            params={"q": q + " railway station", "format": "json", "countrycodes": "gb", "limit": "5"},
-            headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
-            timeout=10,
-        )
-        hits = nom.json()
-        if not hits:
-            return jsonify({"results": []})
-
-        # Step 2: Single Overpass call — search within 1km of each Nominatim hit's location.
-        # Build one "around" union so it's one round-trip, not N sequential calls.
-        around_parts = []
-        for hit in hits[:3]:
-            lat, lon = hit.get("lat"), hit.get("lon")
-            if lat and lon:
-                around_parts.append(f'node["ref:crs"](around:800,{lat},{lon});')
-        if not around_parts:
-            return jsonify({"results": []})
-
-        union_query = f'[out:json][timeout:8];({" ".join(around_parts)});out 5 qt;'
+        import re
+        safe_q = re.sub(r'[^\w\s\-]', '', q)
         ovr = requests.get(
             "https://overpass-api.de/api/interpreter",
-            params={"data": union_query},
+            params={"data": f'[out:json][timeout:15];node["ref:crs"]["name"~"^{safe_q}",i];out 8 qt;'},
             headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
-            timeout=10,
+            timeout=15,
         )
         seen, results = set(), []
         for el in ovr.json().get("elements", []):
