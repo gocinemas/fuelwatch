@@ -6463,24 +6463,38 @@ _bkBadge();
         label.textContent = 'Identifying…';
         timer.style.display = 'none';
         var blob = new Blob(chunks, {type: 'audio/webm'});
-        // Convert webm to raw PCM Int16 base64 — Shazam expects raw samples, not a container format
+        // Decode audio then resample to exactly 44100 Hz via OfflineAudioContext
         blob.arrayBuffer().then(function(ab){
-          var ctx = new AudioContext({sampleRate:44100});
-          return ctx.decodeAudioData(ab).then(function(decoded){
-            var len = decoded.length, mono = new Float32Array(len);
+          var decodeCtx = new AudioContext();
+          return decodeCtx.decodeAudioData(ab).then(function(decoded){
+            decodeCtx.close();
+            var TARGET_SR = 44100;
+            var numFrames = Math.ceil(decoded.duration * TARGET_SR);
+            var offCtx = new OfflineAudioContext(1, numFrames, TARGET_SR);
+            // Mix to mono
+            var monoBuffer = offCtx.createBuffer(1, decoded.length, decoded.sampleRate);
+            var monoData = monoBuffer.getChannelData(0);
             for(var ch=0;ch<decoded.numberOfChannels;ch++){
-              var cd = decoded.getChannelData(ch);
-              for(var i=0;i<len;i++) mono[i]+=cd[i];
+              var src=decoded.getChannelData(ch);
+              for(var i=0;i<decoded.length;i++) monoData[i]+=src[i];
             }
-            for(var i=0;i<len;i++) mono[i]/=decoded.numberOfChannels;
-            var pcm = new DataView(new ArrayBuffer(len*2));
-            for(var i=0;i<len;i++){
-              var s=Math.max(-1,Math.min(1,mono[i]));
+            for(var i=0;i<decoded.length;i++) monoData[i]/=decoded.numberOfChannels;
+            var srcNode = offCtx.createBufferSource();
+            srcNode.buffer = monoBuffer;
+            srcNode.connect(offCtx.destination);
+            srcNode.start(0);
+            return offCtx.startRendering();
+          }).then(function(resampled){
+            var data = resampled.getChannelData(0);
+            var pcm = new DataView(new ArrayBuffer(data.length*2));
+            for(var i=0;i<data.length;i++){
+              var s=Math.max(-1,Math.min(1,data[i]));
               pcm.setInt16(i*2, s<0?s*0x8000:s*0x7fff, true);
             }
-            ctx.close();
-            var bytes=new Uint8Array(pcm.buffer), bin='';
-            for(var i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+            // Chunked btoa to avoid call stack limits on large buffers
+            var bytes=new Uint8Array(pcm.buffer), bin='', CHUNK=8192;
+            for(var i=0;i<bytes.length;i+=CHUNK)
+              bin+=String.fromCharCode.apply(null, bytes.subarray(i,i+CHUNK));
             return btoa(bin);
           });
         }).then(function(pcmB64){
@@ -6506,14 +6520,14 @@ _bkBadge();
       btn.style.background = 'linear-gradient(135deg,#dc2626,#ef4444)';
       btn.style.transform  = 'scale(1.05)';
       label.textContent    = 'Listening…';
-      var secs = 5;
+      var secs = 8;
       timer.textContent = secs+'s'; timer.style.display='block';
       var iv = setInterval(function(){
         secs--;
         if(secs<=0){ clearInterval(iv); timer.style.display='none'; }
         else timer.textContent = secs+'s';
       }, 1000);
-      setTimeout(function(){ if(_musicRecorder && _musicRecorder.state==='recording') _musicRecorder.stop(); }, 5000);
+      setTimeout(function(){ if(_musicRecorder && _musicRecorder.state==='recording') _musicRecorder.stop(); }, 8000);
     }).catch(function(){
       label.textContent = 'Tap to identify';
       document.getElementById('music-error').textContent = 'Microphone access denied';
