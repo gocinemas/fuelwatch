@@ -3236,7 +3236,39 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
     except Exception:
         pass
 
-    def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime):
+    def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content):
+        # ── QR code scan ────────────────────────────────────────────────────────
+        qr_url = ""
+        qr_event_info = ""
+        try:
+            from pyzbar import pyzbar as _pyzbar
+            from PIL import Image as _PILImage
+            import io as _io
+            _img = _PILImage.open(_io.BytesIO(raw))
+            _codes = _pyzbar.decode(_img)
+            for _code in _codes:
+                _val = _code.data.decode("utf-8", errors="ignore").strip()
+                if _val.startswith("http"):
+                    qr_url = _val
+                    print(f"[vision] QR code found: {qr_url}")
+                    # Fetch page and extract title/description
+                    try:
+                        _pr = requests.get(qr_url, timeout=8,
+                            headers={"User-Agent": "Mozilla/5.0 (compatible; MiruBot/1.0)"})
+                        import re as _re2
+                        _pt = _pr.text
+                        _title_m = _re2.search(r'<title[^>]*>([^<]{3,200})</title>', _pt, _re2.I)
+                        _desc_m  = _re2.search(r'<meta[^>]+(?:og:description|name=["\']description["\'])[^>]+content=["\']([^"\']{10,300})', _pt, _re2.I)
+                        _t = _title_m.group(1).strip() if _title_m else ""
+                        _d = _desc_m.group(1).strip() if _desc_m else ""
+                        if _t:
+                            qr_event_info = f"🔗 QR links to: {_t}" + (f"\n{_d}" if _d else "")
+                    except Exception as _qe:
+                        print(f"[vision] QR URL fetch failed: {_qe}")
+                    break
+        except Exception as _qex:
+            print(f"[vision] QR scan error: {_qex}")
+
         _vision_models = [
             "meta-llama/llama-4-scout-17b-16e-instruct",
             "llama-3.2-90b-vision-preview",
@@ -3379,6 +3411,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if img_type == "store" and venue_info.get("maps_url"):
             search_url = venue_info["maps_url"]
 
+        # Append QR event info to summary if found
+        if qr_event_info:
+            summary = (summary + "\n\n" + qr_event_info).strip()
+        if qr_url and not search_url:
+            search_url = qr_url
+
         # Build meta line: when + where
         import datetime as _dt
         now_str = _dt.datetime.now().strftime("%-d %b %Y, %-I:%M %p")
@@ -3423,12 +3461,14 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 if venue_info.get("maps_url"):
                     details.append(f"🗺️ Directions: {venue_info['maps_url']}")
             else:
-                # Event/ad — phone, website, directions
+                # Event/ad — QR link, phone, website, directions
+                if qr_url:
+                    details.append(f"📲 QR link: {qr_url}")
                 if venue_info.get("phone"):
                     details.append(f"📞 {venue_info['phone']}")
                 if venue_info.get("website"):
                     details.append(f"🌐 {venue_info['website']}")
-                if search_url:
+                if search_url and search_url != qr_url:
                     link_label = "🎟️ Book/search" if img_type == "event" else "🔍 Search"
                     details.append(f"{link_label}: {search_url}")
                 if venue_info.get("maps_url"):
