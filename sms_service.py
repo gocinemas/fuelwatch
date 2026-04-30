@@ -4762,6 +4762,84 @@ def api_books_save():
     return jsonify({"ok": True})
 
 
+@app.route("/api/music/identify", methods=["POST"])
+def api_music_identify():
+    key = os.environ.get("RAPIDAPI_KEY", "")
+    if not key:
+        return jsonify({"error": "RAPIDAPI_KEY not configured"}), 503
+    audio = request.data
+    if not audio:
+        f = request.files.get("audio")
+        if f:
+            audio = f.read()
+    if not audio:
+        return jsonify({"error": "no audio"}), 400
+    try:
+        r = requests.post(
+            "https://shazam.p.rapidapi.com/songs/detect",
+            headers={
+                "X-RapidAPI-Key":  key,
+                "X-RapidAPI-Host": "shazam.p.rapidapi.com",
+                "Content-Type":    "text/plain",
+            },
+            data=audio,
+            timeout=15,
+        )
+        r.raise_for_status()
+        data  = r.json()
+        track = data.get("track", {})
+        if not track:
+            return jsonify({"match": False})
+        images = track.get("images", {})
+        spotify_uri = ""
+        for p in (track.get("hub") or {}).get("providers", []):
+            if "spotify" in p.get("caption", "").lower():
+                for a in p.get("actions", []):
+                    if a.get("uri", "").startswith("spotify:"):
+                        spotify_uri = a["uri"]; break
+        return jsonify({
+            "match":   True,
+            "title":   track.get("title", ""),
+            "artist":  track.get("subtitle", ""),
+            "cover":   images.get("coverarthq") or images.get("coverart", ""),
+            "spotify": spotify_uri,
+            "url":     track.get("url", ""),
+        })
+    except Exception as e:
+        print(f"[music/identify] {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/music/charts")
+def api_music_charts():
+    country = request.args.get("country", "").upper()
+    key = os.environ.get("RAPIDAPI_KEY", "")
+    if not key:
+        return jsonify({"error": "RAPIDAPI_KEY not configured"}), 503
+    try:
+        params = {"pageSize": "20", "startFrom": "0"}
+        if country:
+            params["countryCode"] = country
+        r = requests.get(
+            "https://shazam.p.rapidapi.com/charts/track",
+            headers={"X-RapidAPI-Key": key, "X-RapidAPI-Host": "shazam.p.rapidapi.com"},
+            params=params,
+            timeout=12,
+        )
+        r.raise_for_status()
+        tracks = r.json().get("tracks", [])
+        return jsonify({"tracks": [{
+            "position": i + 1,
+            "title":    t.get("title", ""),
+            "artist":   t.get("subtitle", ""),
+            "cover":    (t.get("images") or {}).get("coverart", ""),
+            "url":      t.get("url", ""),
+        } for i, t in enumerate(tracks[:20])]})
+    except Exception as e:
+        print(f"[music/charts] {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/train/test")
 def api_train_test():
     """Quick test — bypasses GPS, fetches WAT (Waterloo) directly."""

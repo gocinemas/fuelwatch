@@ -368,6 +368,12 @@
           <div class="tc-desc">Find trains from your nearest station right now</div>
         </button>
 
+        <button class="tool-card" onclick="showScreen('music')">
+          <div class="tc-icon" style="background:#fdf4ff">🎵</div>
+          <div class="tc-name">Music</div>
+          <div class="tc-desc">Identify songs, UK &amp; Global Top 20 charts</div>
+        </button>
+
       </div>
 
       <!-- WhatsApp shortcuts strip -->
@@ -6315,6 +6321,221 @@ _bkBadge();
     }, 50);
   };
 
+})();
+</script>
+
+<!-- ── MUSIC SCREEN ── -->
+<div id="screen-music" class="screen pt-5" style="max-width:480px;margin:0 auto;padding:6px 16px 40px">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin-bottom:16px">🎵 Music</h2>
+
+  <!-- Tabs -->
+  <div style="display:flex;background:var(--border);border-radius:12px;padding:3px;margin-bottom:20px;gap:2px">
+    <button id="mtab-identify" onclick="musicTab('identify',this)"
+      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text)">🎤 Identify</button>
+    <button id="mtab-uk" onclick="musicTab('uk',this)"
+      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🇬🇧 UK Top 20</button>
+    <button id="mtab-global" onclick="musicTab('global',this)"
+      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🌍 Global</button>
+  </div>
+
+  <!-- Identify panel -->
+  <div id="music-identify-panel">
+    <div style="text-align:center;padding:8px 0 24px">
+      <button id="music-listen-btn" onclick="musicListen()"
+        style="width:120px;height:120px;border-radius:50%;border:none;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:40px;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,237,.4);transition:transform .1s">🎤</button>
+      <div id="music-listen-label" style="margin-top:14px;font-size:14px;font-weight:600;color:var(--muted)">Tap to identify</div>
+      <div id="music-listen-timer" style="display:none;font-size:28px;font-weight:800;color:#7c3aed;margin-top:8px"></div>
+    </div>
+    <div id="music-result" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:16px;text-align:center">
+      <img id="music-cover" src="" alt="" style="width:100px;height:100px;border-radius:12px;object-fit:cover;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.15)">
+      <div id="music-title"  style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:4px"></div>
+      <div id="music-artist" style="font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button id="music-spotify-btn" onclick="musicOpenSpotify()"
+          style="padding:10px 20px;border:none;background:#1db954;color:#fff;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer">▶ Open in Spotify</button>
+        <button onclick="musicSave()"
+          style="padding:10px 20px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:99px;font-size:13px;font-weight:700;cursor:pointer">💾 Save</button>
+      </div>
+      <div id="music-saved-msg" style="display:none;font-size:12px;color:#7c3aed;margin-top:10px;font-weight:600">✓ Saved to your library</div>
+    </div>
+    <div id="music-no-match" style="display:none;text-align:center;padding:24px;color:var(--muted);font-size:14px">
+      Couldn't identify the song. Try again in a quieter spot.
+    </div>
+    <div id="music-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;font-size:13px;color:#b91c1c;margin-top:12px;text-align:center"></div>
+
+    <!-- Saved songs -->
+    <div id="music-saved-section" style="margin-top:24px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">💾 Saved Songs</div>
+      <div id="music-saved-list"></div>
+    </div>
+  </div>
+
+  <!-- UK / Global charts panel -->
+  <div id="music-charts-panel" style="display:none">
+    <div id="music-charts-loading" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Loading…</div>
+    <div id="music-charts-list"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var _musicResult = null;
+  var _musicRecorder = null;
+  var _musicCurrentTab = 'identify';
+  var _chartsCache = {};
+
+  function _musicGetSaved(){ try{ return JSON.parse(localStorage.getItem('miru_music')||'[]'); }catch(e){ return []; } }
+  function _musicSetSaved(a){ localStorage.setItem('miru_music', JSON.stringify(a)); }
+
+  window.musicTab = function(tab, btn) {
+    _musicCurrentTab = tab;
+    ['identify','uk','global'].forEach(function(t){
+      var b = document.getElementById('mtab-'+t);
+      b.style.background = t===tab ? 'var(--surface)' : 'transparent';
+      b.style.color = t===tab ? 'var(--text)' : 'var(--muted)';
+    });
+    document.getElementById('music-identify-panel').style.display = tab==='identify' ? 'block' : 'none';
+    document.getElementById('music-charts-panel').style.display   = tab!=='identify' ? 'block' : 'none';
+    if(tab !== 'identify') _musicLoadCharts(tab);
+    if(tab === 'identify') _musicRenderSaved();
+  };
+
+  function _musicLoadCharts(tab) {
+    if(_chartsCache[tab]){ _musicRenderCharts(_chartsCache[tab]); return; }
+    document.getElementById('music-charts-loading').style.display = 'block';
+    document.getElementById('music-charts-list').innerHTML = '';
+    var country = tab==='uk' ? 'GB' : '';
+    fetch('/api/music/charts?country='+country)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        document.getElementById('music-charts-loading').style.display = 'none';
+        if(d.error){ document.getElementById('music-charts-list').innerHTML='<div style="color:#b91c1c;font-size:13px">'+d.error+'</div>'; return; }
+        _chartsCache[tab] = d.tracks || [];
+        _musicRenderCharts(_chartsCache[tab]);
+      })
+      .catch(function(){ document.getElementById('music-charts-loading').style.display='none'; });
+  }
+
+  function _musicRenderCharts(tracks) {
+    document.getElementById('music-charts-list').innerHTML = tracks.map(function(t){
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--muted);width:24px;text-align:center">'+t.position+'</div>'
+        +(t.cover ? '<img src="'+t.cover+'" style="width:44px;height:44px;border-radius:8px;object-fit:cover">' : '<div style="width:44px;height:44px;border-radius:8px;background:var(--border)"></div>')
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.title+'</div>'
+        +'<div style="font-size:12px;color:var(--muted)">'+t.artist+'</div>'
+        +'</div>'
+        +(t.url ? '<a href="'+t.url+'" target="_blank" rel="noopener" style="font-size:18px;text-decoration:none">▶</a>' : '')
+        +'</div>';
+    }).join('');
+  }
+
+  window.musicListen = function() {
+    if(_musicRecorder) return;
+    var btn   = document.getElementById('music-listen-btn');
+    var label = document.getElementById('music-listen-label');
+    var timer = document.getElementById('music-listen-timer');
+    document.getElementById('music-result').style.display   = 'none';
+    document.getElementById('music-no-match').style.display = 'none';
+    document.getElementById('music-error').style.display    = 'none';
+
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+      var chunks = [];
+      _musicRecorder = new MediaRecorder(stream);
+      _musicRecorder.ondataavailable = function(e){ if(e.data.size>0) chunks.push(e.data); };
+      _musicRecorder.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        _musicRecorder = null;
+        btn.style.background = 'linear-gradient(135deg,#7c3aed,#a855f7)';
+        btn.style.transform = '';
+        label.textContent = 'Identifying…';
+        timer.style.display = 'none';
+        var blob = new Blob(chunks, {type: _musicRecorder ? _musicRecorder.mimeType : 'audio/webm'});
+        fetch('/api/music/identify', {method:'POST', body:blob, headers:{'Content-Type':'application/octet-stream'}})
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            label.textContent = 'Tap to identify';
+            if(d.error){ document.getElementById('music-error').textContent=d.error; document.getElementById('music-error').style.display='block'; return; }
+            if(!d.match){ document.getElementById('music-no-match').style.display='block'; return; }
+            _musicResult = d;
+            document.getElementById('music-cover').src  = d.cover||'';
+            document.getElementById('music-cover').style.display = d.cover ? 'block' : 'none';
+            document.getElementById('music-title').textContent  = d.title;
+            document.getElementById('music-artist').textContent = d.artist;
+            document.getElementById('music-spotify-btn').style.display = d.spotify||d.url ? 'inline-block' : 'none';
+            document.getElementById('music-saved-msg').style.display = 'none';
+            document.getElementById('music-result').style.display = 'block';
+          })
+          .catch(function(e){ label.textContent='Tap to identify'; document.getElementById('music-error').textContent='Could not connect. Try again.'; document.getElementById('music-error').style.display='block'; });
+      };
+      _musicRecorder.start();
+      btn.style.background = 'linear-gradient(135deg,#dc2626,#ef4444)';
+      btn.style.transform  = 'scale(1.05)';
+      label.textContent    = 'Listening…';
+      var secs = 5;
+      timer.textContent = secs+'s'; timer.style.display='block';
+      var iv = setInterval(function(){
+        secs--;
+        if(secs<=0){ clearInterval(iv); timer.style.display='none'; }
+        else timer.textContent = secs+'s';
+      }, 1000);
+      setTimeout(function(){ if(_musicRecorder && _musicRecorder.state==='recording') _musicRecorder.stop(); }, 5000);
+    }).catch(function(){
+      label.textContent = 'Tap to identify';
+      document.getElementById('music-error').textContent = 'Microphone access denied';
+      document.getElementById('music-error').style.display = 'block';
+    });
+  };
+
+  window.musicOpenSpotify = function() {
+    if(!_musicResult) return;
+    if(_musicResult.spotify) {
+      window.open(_musicResult.spotify, '_blank');
+    } else if(_musicResult.url) {
+      window.open(_musicResult.url, '_blank');
+    } else {
+      window.open('https://open.spotify.com/search/'+encodeURIComponent((_musicResult.title||'')+' '+(_musicResult.artist||'')), '_blank');
+    }
+  };
+
+  window.musicSave = function() {
+    if(!_musicResult) return;
+    var saved = _musicGetSaved();
+    if(!saved.find(function(s){ return s.title===_musicResult.title && s.artist===_musicResult.artist; })){
+      saved.unshift({title:_musicResult.title, artist:_musicResult.artist, cover:_musicResult.cover, spotify:_musicResult.spotify, url:_musicResult.url, saved:new Date().toISOString().slice(0,10)});
+      _musicSetSaved(saved);
+    }
+    document.getElementById('music-saved-msg').style.display='block';
+    _musicRenderSaved();
+  };
+
+  function _musicRenderSaved(){
+    var saved = _musicGetSaved();
+    var el = document.getElementById('music-saved-list');
+    if(!saved.length){ el.innerHTML='<div style="font-size:13px;color:var(--muted)">No saved songs yet</div>'; return; }
+    el.innerHTML = saved.map(function(s,i){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +(s.cover?'<img src="'+s.cover+'" style="width:40px;height:40px;border-radius:8px;object-fit:cover">':'<div style="width:40px;height:40px;border-radius:8px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:18px">🎵</div>')
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.title+'</div>'
+        +'<div style="font-size:12px;color:var(--muted)">'+s.artist+'</div>'
+        +'</div>'
+        +(s.spotify||s.url?'<a href="'+(s.spotify||s.url)+'" target="_blank" style="font-size:18px;text-decoration:none">▶</a>':'')
+        +'<button onclick="musicDeleteSaved('+i+')" style="border:none;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px">✕</button>'
+        +'</div>';
+    }).join('');
+  }
+
+  window.musicDeleteSaved = function(i){
+    var saved = _musicGetSaved(); saved.splice(i,1); _musicSetSaved(saved); _musicRenderSaved();
+  };
+
+  // Init saved list when screen opens
+  var _origShowScreenMusic = window.showScreen;
+  window.showScreen = function(name){
+    _origShowScreenMusic(name);
+    if(name==='music') _musicRenderSaved();
+  };
 })();
 </script>
 
