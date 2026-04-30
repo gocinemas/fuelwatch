@@ -6887,6 +6887,9 @@ _bkBadge();
     </div>
   </div>
 
+  <!-- Area pills (shown when 2+ distinct areas) -->
+  <div id="news-area-pills" style="display:none;padding:0 16px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch"></div>
+
   <!-- Two-column layout: vertical tabs + articles -->
   <div style="display:flex;gap:0;min-height:300px">
 
@@ -6906,12 +6909,15 @@ _bkBadge();
 
 <script>
 (function(){
-  var _newsSources = [];   // [{url, name}]
-  var _newsData    = {};   // url -> feed object
-  var _newsActive  = null; // currently selected url
+  var _newsSources    = [];   // [{url, name, area}] — area=null means manually added ("Custom")
+  var _newsData       = {};   // url -> feed object
+  var _newsActive     = null; // currently selected url
+  var _newsActiveArea = null; // active area pill filter (null = show all)
 
   function _newsLoad() {
     try { _newsSources = JSON.parse(localStorage.getItem("miru_news_sources2") || "[]"); } catch { _newsSources = []; }
+    // back-compat: old entries have no area field → treat as null (Custom)
+    _newsSources.forEach(function(s){ if (!("area" in s)) s.area = null; });
   }
   function _newsSave() { localStorage.setItem("miru_news_sources2", JSON.stringify(_newsSources)); }
   function _esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -6925,15 +6931,67 @@ _bkBadge();
     } catch { return ""; }
   }
 
+  // Returns unique sorted area names; null-area sources count as "Custom"
+  function _newsGetAreas() {
+    var areas = [], hasCustom = false;
+    _newsSources.forEach(function(s) {
+      if (!s.area) { hasCustom = true; }
+      else if (areas.indexOf(s.area) === -1) areas.push(s.area);
+    });
+    areas.sort();
+    if (hasCustom) areas.push("Custom");
+    return areas;
+  }
+
+  // Sources visible under current area filter
+  function _newsFilteredSources() {
+    if (!_newsActiveArea) return _newsSources;
+    return _newsSources.filter(function(s) {
+      return (_newsActiveArea === "Custom") ? !s.area : s.area === _newsActiveArea;
+    });
+  }
+
+  function _newsRenderAreaPills() {
+    var el = document.getElementById("news-area-pills");
+    var areas = _newsGetAreas();
+    if (areas.length <= 1) { el.style.display = "none"; return; }
+    el.style.display = "block";
+    el.innerHTML = '<div style="display:flex;gap:6px">'
+      + ["All"].concat(areas).map(function(a) {
+        var isAll = (a === "All");
+        var active = isAll ? (_newsActiveArea === null) : (_newsActiveArea === a);
+        return '<button onclick="newsSelectArea(\'' + a.replace(/\\/g,"\\\\").replace(/'/g,"\\'") + '\')"'
+          + ' style="padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;'
+          + (active
+              ? 'background:var(--text);color:var(--bg);border:none'
+              : 'background:var(--surface);color:var(--text);border:1px solid var(--border)')
+          + '">' + _esc(a) + '</button>';
+      }).join("")
+      + '</div>';
+  }
+
+  window.newsSelectArea = function(a) {
+    _newsActiveArea = (a === "All") ? null : a;
+    var filtered = _newsFilteredSources();
+    if (!filtered.find(function(s){ return s.url === _newsActive; })) {
+      _newsActive = filtered.length ? filtered[0].url : null;
+    }
+    _newsRenderAreaPills();
+    _newsRenderTabs();
+    _newsRenderArticles();
+  };
+
   function _newsRenderTabs() {
     var el = document.getElementById("news-tabs");
-    if (!_newsSources.length) {
+    var filtered = _newsFilteredSources();
+    if (!filtered.length) {
       el.innerHTML = '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:0 8px 8px">Sources</div>'
         + '<div style="font-size:11px;color:var(--muted);padding:4px 8px;line-height:1.4">Add a link above to get started</div>';
       return;
     }
     el.innerHTML = '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:0 8px 8px">Sources</div>'
-      + _newsSources.map(function(s, i) {
+      + filtered.map(function(s) {
+        var actualIdx = _newsSources.indexOf(s);
         var active = s.url === _newsActive;
         var feed = _newsData[s.url];
         var count = feed && feed.articles ? feed.articles.length : null;
@@ -6948,7 +7006,7 @@ _bkBadge();
           + (err ? '<span style="font-size:10px;color:#ef4444">⚠️ error</span>'
               : count !== null ? '<span style="font-size:10px;color:'+(active?'rgba(255,255,255,.6)':'var(--muted)')+'">'+count+' articles</span>'
               : '<span style="font-size:10px;color:'+(active?'rgba(255,255,255,.6)':'var(--muted)')+'">…</span>')
-          + '<button onclick="event.stopPropagation();newsRemoveSource('+i+')" style="border:none;background:none;color:'+(active?'rgba(255,255,255,.5)':'var(--muted)')+';cursor:pointer;font-size:13px;line-height:1;padding:0 2px">×</button>'
+          + '<button onclick="event.stopPropagation();newsRemoveSource('+actualIdx+')" style="border:none;background:none;color:'+(active?'rgba(255,255,255,.5)':'var(--muted)')+';cursor:pointer;font-size:13px;line-height:1;padding:0 2px">×</button>'
           + '</div>'
           + '</div>';
       }).join("");
@@ -6957,7 +7015,7 @@ _bkBadge();
   function _newsRenderArticles() {
     var feed   = _newsData[_newsActive];
     var feedEl = document.getElementById("news-feed");
-    if (!feed) { feedEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">Loading…</div>'; return; }
+    if (!_newsActive || !feed) { feedEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">Loading…</div>'; return; }
     if (feed.error) { feedEl.innerHTML = '<div style="color:#b91c1c;font-size:13px;padding:8px 0">⚠️ '+_esc(feed.error)+'</div>'; return; }
     if (!feed.articles || !feed.articles.length) { feedEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">No articles found</div>'; return; }
     feedEl.innerHTML = feed.articles.map(function(a) {
@@ -6989,15 +7047,18 @@ _bkBadge();
           el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 0">No sources found for that area — try a county name like "Surrey" or "Kent"</div>';
           return;
         }
+        var areaEsc = (d.area || "").replace(/\\/g,"\\\\").replace(/'/g,"\\'");
         var existingUrls = _newsSources.map(function(s){ return s.url; });
         el.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Sources for '+_esc(d.area)+'</div>'
           + d.feeds.map(function(f) {
             var added = existingUrls.indexOf(f.url) !== -1;
+            var urlEsc  = f.url.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+            var nameEsc = f.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'");
             return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--surface)">'
               + '<span style="font-size:13px;font-weight:600;color:var(--text)">'+_esc(f.name)+'</span>'
               + (added
                 ? '<span style="font-size:11px;font-weight:700;color:#16a34a;background:#f0fdf4;padding:3px 10px;border-radius:99px">✓ Added</span>'
-                : '<button onclick="newsAddDiscovered(\''+f.url.replace(/'/g,"\\'") +'\',\''+f.name.replace(/'/g,"\\'")+'\',this)"'
+                : '<button onclick="newsAddDiscovered(\''+urlEsc+'\',\''+nameEsc+'\',\''+areaEsc+'\',this)"'
                   +' style="padding:4px 12px;border:none;background:var(--text);color:var(--bg);border-radius:99px;font-size:12px;font-weight:700;cursor:pointer">+ Add</button>')
               + '</div>';
           }).join("");
@@ -7005,12 +7066,14 @@ _bkBadge();
       .catch(function(){ el.innerHTML = '<div style="font-size:12px;color:#b91c1c;padding:6px 0">Could not search. Try again.</div>'; });
   };
 
-  window.newsAddDiscovered = function(url, name, btn) {
+  window.newsAddDiscovered = function(url, name, area, btn) {
     if (_newsSources.find(function(s){ return s.url === url; })) return;
-    _newsSources.push({url: url, name: name});
+    _newsSources.push({url: url, name: name, area: area || null});
     _newsSave();
     btn.outerHTML = '<span style="font-size:11px;font-weight:700;color:#16a34a;background:#f0fdf4;padding:3px 10px;border-radius:99px">✓ Added</span>';
     if (!_newsActive) _newsActive = url;
+    _newsActiveArea = area || null; // jump to the newly added area
+    _newsRenderAreaPills();
     _newsRenderTabs();
     _newsFetchOne(url);
   };
@@ -7022,10 +7085,11 @@ _bkBadge();
     if (!url.startsWith("http")) url = "https://" + url;
     if (_newsSources.find(function(s){ return s.url === url; })) { input.value = ""; return; }
     var name = url.replace(/^https?:\/\/(www\.)?/,"").split("/")[0];
-    _newsSources.push({url: url, name: name});
+    _newsSources.push({url: url, name: name, area: null}); // manual = Custom
     _newsSave();
     input.value = "";
     if (!_newsActive) _newsActive = url;
+    _newsRenderAreaPills();
     _newsRenderTabs();
     _newsFetchOne(url);
   };
@@ -7035,8 +7099,15 @@ _bkBadge();
     delete _newsData[removed.url];
     _newsSave();
     if (_newsActive === removed.url) {
+      var filtered = _newsFilteredSources();
+      _newsActive = filtered.length ? filtered[0].url : (_newsSources.length ? _newsSources[0].url : null);
+    }
+    // Reset area filter if the active area now has no sources
+    if (_newsActiveArea && !_newsFilteredSources().length) {
+      _newsActiveArea = null;
       _newsActive = _newsSources.length ? _newsSources[0].url : null;
     }
+    _newsRenderAreaPills();
     _newsRenderTabs();
     _newsRenderArticles();
   };
@@ -7047,10 +7118,10 @@ _bkBadge();
       .then(function(d){
         var feed = (d.feeds || [])[0] || {url:url, source:url, articles:[], error:"No data"};
         _newsData[url] = feed;
-        // Update stored name from feed title
         var src = _newsSources.find(function(s){ return s.url===url; });
         if (src && feed.source && feed.source !== url) src.name = feed.source;
         _newsSave();
+        _newsRenderAreaPills();
         _newsRenderTabs();
         if (_newsActive === url) _newsRenderArticles();
       })
@@ -7063,6 +7134,7 @@ _bkBadge();
 
   window.newsRefresh = function() {
     _newsData = {};
+    _newsRenderAreaPills();
     _newsRenderTabs();
     _newsSources.forEach(function(s){ _newsFetchOne(s.url); });
   };
@@ -7072,7 +7144,9 @@ _bkBadge();
     _origShowScreenNews(name);
     if (name === "news") {
       _newsLoad();
-      if (!_newsActive && _newsSources.length) _newsActive = _newsSources[0].url;
+      var filtered = _newsFilteredSources();
+      if (!_newsActive && filtered.length) _newsActive = filtered[0].url;
+      _newsRenderAreaPills();
       _newsRenderTabs();
       if (_newsSources.length && !Object.keys(_newsData).length) newsRefresh();
       else _newsRenderArticles();
