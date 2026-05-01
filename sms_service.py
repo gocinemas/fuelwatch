@@ -3239,6 +3239,41 @@ def _fetch_url_text(url: str) -> dict:
         return {"title": url, "text": "", "ok": False, "error": str(e)}
 
 
+def _quick_brand_intel(brand_name: str) -> dict:
+    """Fast Groq call: parent company, country of origin, founding year, one-line fact."""
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key or not brand_name:
+        return {}
+    try:
+        import json as _json
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [{"role": "user", "content":
+                    f'Brand: "{brand_name}"\n'
+                    'Return ONLY valid JSON:\n'
+                    '{{"parent":"parent company name, or empty if independent brand",'
+                    '"country":"country of origin, 1-3 words",'
+                    '"founded":"founding year or empty",'
+                    '"fact":"one punchy fact in under 12 words, or empty if unknown"}}\n'
+                    'If brand is unrecognised return all empty strings.'}],
+                "max_tokens": 120, "temperature": 0.1,
+            },
+            timeout=8,
+        )
+        text = r.json()["choices"][0]["message"]["content"].strip()
+        # Strip markdown code fences if present
+        text = text.strip("`").strip()
+        if text.startswith("json"):
+            text = text[4:].strip()
+        return _json.loads(text)
+    except Exception as e:
+        print(f"[brand_intel] {e}")
+        return {}
+
+
 def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
     """Download a WhatsApp photo, analyse with Groq vision, save to wa_saves."""
     import base64, threading
@@ -3335,18 +3370,19 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
         prompt_text = (
             "Identify what this image is. Pick ONE type from: "
-            "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, sign, document, photo.\n"
+            "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, sign, document, product, photo.\n"
             "Then give 3 bullet points starting with • covering the key info.\n"
-            "If store/restaurant: focus ONLY on the place itself — name, type of food/business, what it specialises in, opening hours or price range if visible. Do NOT describe the photo scene (no cars, people, atmosphere, surroundings).\n"
+            "If store/restaurant: focus ONLY on the place itself — name, type of food/business, what it specialises in, opening hours or price range if visible. Do NOT describe the photo scene.\n"
             "If event/ticket: include event name, date, time, venue.\n"
             "If ad/billboard: state the brand or retailer name, the exact product or deal name, and the price/offer. "
-            "If this looks like an in-store promotion (supermarket shelf, in-store poster, meal deal display), "
-            "try to identify the retailer from any visible store branding, colours, shelf design, or uniform — e.g. Waitrose, Tesco, Sainsbury's, M&S, Asda.\n"
+            "If this looks like an in-store promotion, try to identify the retailer from any visible branding, colours, shelf design — e.g. Waitrose, Tesco, Sainsbury's, M&S, Asda.\n"
+            "If product: this is a photo of a physical product (food, drink, cosmetic, gadget, clothing etc). "
+            "Identify the brand name, product name, variant/flavour, and category. Include size/weight and price if visible.\n"
             "If receipt: total and main items.\n"
             "Start your reply with: TYPE: [your choice]\n"
-            "If type is event/ticket, store/restaurant, or ad/billboard — add: VENUE: [business or place name only, no address]\n"
+            "If type is event/ticket, store/restaurant, ad/billboard, or product — add: VENUE: [brand or business name only]\n"
             "If you can identify a city, area, or neighbourhood from signage or text — add: LOCATION: [city or area name]\n"
-            "Always add: SEARCH: [2-5 word search term someone would type to find this deal, product, or place online]"
+            "Always add: SEARCH: [2-5 word search term to find this product, deal, or place online]"
             + _loc_hint
         )
         analysis = ""
@@ -3389,6 +3425,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 title = "🎫 Event/Ticket"; img_type = "event"
             elif "billboard" in first or "ad" in first:
                 title = "📢 Billboard/Ad"; img_type = "ad"
+            elif "product" in first:
+                title = "🏷️ Brand"; img_type = "product"
             elif "receipt" in first or "bill" in first:
                 title = "🧾 Receipt"; img_type = "receipt"
             elif "menu" in first:
@@ -3486,6 +3524,15 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if img_type == "store" and venue_info.get("maps_url"):
             search_url = venue_info["maps_url"]
 
+        # Brand intel lookup for product photos
+        brand_intel = {}
+        if img_type == "product":
+            brand_name = venue_raw or (search_tag.split()[0] if search_tag else "") or (name_raw.split()[0] if name_raw else "")
+            if brand_name:
+                brand_intel = _quick_brand_intel(brand_name)
+                print(f"[vision] brand_intel for {brand_name!r}: {brand_intel}")
+                title = f"🏷️ {brand_name}"
+
         # Append QR event info to summary if found
         if qr_event_info:
             summary = (summary + "\n\n" + qr_event_info).strip()
@@ -3509,17 +3556,31 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 pass
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
-        if bullets or venue_info:
+        if bullets or venue_info or brand_intel:
             msg = f"{title}\n"
             if bullets:
                 msg += f"\n{bullets}"
 
             # Build details block
             details = []
-            if img_type == "store" and venue_info:
+            if img_type == "product" and brand_intel:
+                # Brand intel card
+                if brand_intel.get("parent"):
+                    details.append(f"🏢 Owned by: {brand_intel['parent']}")
+                if brand_intel.get("country"):
+                    details.append(f"🌍 Origin: {brand_intel['country']}")
+                if brand_intel.get("founded"):
+                    details.append(f"📅 Founded: {brand_intel['founded']}")
+                if brand_intel.get("fact"):
+                    details.append(f"💡 {brand_intel['fact']}")
+                if _loc_context:
+                    details.append(f"📍 Spotted at: {_loc_context.split(',')[0]}")
+                if search_url:
+                    details.append(f"🔍 Search: {search_url}")
+            elif img_type == "store" and venue_info:
                 # Full place card — address, hours, open status, phone, website, directions
                 if venue_info.get("address"):
-                    details.append(f"📍 {venue_info['address'].split(',')[0]}")  # street only
+                    details.append(f"📍 {venue_info['address'].split(',')[0]}")
                 if venue_info.get("open_now") is not None:
                     status = "🟢 Open now" if venue_info["open_now"] else "🔴 Closed now"
                     hours = f" · {venue_info['hours_today']}" if venue_info.get("hours_today") else ""
@@ -3536,7 +3597,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 if venue_info.get("maps_url"):
                     details.append(f"🗺️ Directions: {venue_info['maps_url']}")
             else:
-                # Event/ad — QR link, phone, website, directions
+                # Event/ad/other — QR link, phone, website, search
                 if qr_url:
                     details.append(f"📲 QR link: {qr_url}")
                 if venue_info.get("phone"):

@@ -5674,6 +5674,10 @@ _bkBadge();
         style="padding:6px 14px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:12px;font-weight:600;cursor:pointer">
         All
       </button>
+      <button class="saves-filter-btn" data-status="brand" onclick="savesFilter('brand',this)"
+        style="padding:6px 14px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:12px;font-weight:600;cursor:pointer">
+        🏷️ Brands
+      </button>
     </div>
 
     <div id="saves-list"></div>
@@ -5818,7 +5822,9 @@ _bkBadge();
 
   function savesRender() {
     const list = document.getElementById("saves-list");
-    const items = _savesActiveFilter === "all" ? _savesAll : _savesAll.filter(s => s.status === _savesActiveFilter);
+    const items = _savesActiveFilter === "all"   ? _savesAll
+                : _savesActiveFilter === "brand" ? _savesAll.filter(s => (s.title || "").startsWith("🏷️"))
+                : _savesAll.filter(s => s.status === _savesActiveFilter);
     if (!items.length) {
       list.innerHTML = `<p style="color:#9ca3af;font-size:13px;padding:16px 0;text-align:center">No ${_savesActiveFilter === "all" ? "" : _savesActiveFilter + " "}saves yet.</p>`;
       return;
