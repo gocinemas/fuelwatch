@@ -2613,6 +2613,7 @@
   const _placeReviewsLoaded = new Set();
   let _nearbySearchLat = 0, _nearbySearchLon = 0;
   const _nearbyFoodGroups = {};   // groupId → {items, sort}
+  const _svcGroups = {};          // groupId → {items, sort, cat}
   const _nearbyMore = {};         // moreId  → html string
 
   const _FOOD_CATS = new Set(["Café","Restaurant","Fast Food","Pub","Bar"]);
@@ -2695,16 +2696,27 @@
     fetch(`/api/places/google?name=${encodeURIComponent(p.name)}${latlon}`)
       .then(r => r.json())
       .then(d => {
-        p._rating = d.rating || 0;
+        p._rating        = d.rating || 0;
         p._total_ratings = d.total_ratings || 0;
-        p._reviews_data = d.reviews || [];
+        p._reviews_data  = d.reviews || [];
+        p._price_level   = d.price_level;   // 0-4 or null
+        p._website       = d.website || "";
         const el = document.getElementById(p._ratingId);
         if (!el) return;
+        const priceTag = d.price_level != null
+          ? `<span style="margin-left:6px;font-size:10px;font-weight:700;color:#065f46;background:#d1fae5;border-radius:4px;padding:1px 5px">${"£".repeat(d.price_level||1)}</span>`
+          : "";
         if (d.found && d.rating) {
           const stars = Math.round(d.rating);
-          el.innerHTML = `<span style="color:#f59e0b">${"★".repeat(stars)}${"☆".repeat(5-stars)}</span> <span style="font-weight:600;color:var(--text);font-size:12px">${d.rating}</span> <span style="color:var(--subtle);font-size:10px">(${(d.total_ratings||0).toLocaleString()})</span>`;
+          el.innerHTML = `<span style="color:#f59e0b">${"★".repeat(stars)}${"☆".repeat(5-stars)}</span> <span style="font-weight:600;color:var(--text);font-size:12px">${d.rating}</span> <span style="color:var(--subtle);font-size:10px">(${(d.total_ratings||0).toLocaleString()})</span>${priceTag}`;
         } else {
-          el.innerHTML = `<span style="color:var(--subtle);font-size:10px">No rating found</span>`;
+          el.innerHTML = `<span style="color:var(--subtle);font-size:10px">No rating</span>${priceTag}`;
+        }
+        // Reveal price button if website available
+        const priceBtn = document.getElementById(p._priceBtnId);
+        if (priceBtn && d.website) {
+          priceBtn.dataset.url = d.website;
+          priceBtn.style.display = "inline-block";
         }
       })
       .catch(() => {
@@ -2712,6 +2724,20 @@
         if (el) el.innerHTML = '';
       });
   }
+
+  window.loadPlacePrice = function(btn, name, category) {
+    const url = btn.dataset.url;
+    if (!url) return;
+    const priceEl = document.getElementById(btn.dataset.priceId);
+    btn.textContent = "Loading…"; btn.disabled = true;
+    fetch(`/api/places/price?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}&category=${encodeURIComponent(category)}`)
+      .then(r => r.json())
+      .then(d => {
+        btn.style.display = "none";
+        if (priceEl) priceEl.innerHTML = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 10px;font-size:12px;color:#065f46;margin-top:4px;white-space:pre-line">💰 ${d.price_text||d.error||"No prices found"}</div>`;
+      })
+      .catch(() => { btn.textContent = "💰 Prices"; btn.disabled = false; });
+  };
 
   function _renderFoodGroupList(groupId) {
     const g = _nearbyFoodGroups[groupId];
@@ -2728,6 +2754,82 @@
     const listEl = document.getElementById(`${groupId}-list`);
     if (listEl) { listEl.innerHTML = shown.map(p => _foodPlaceCard(p)).join("") + moreBtn; }
     shown.forEach(p => _fetchInlineRating(p));
+  }
+
+  function _serviceCard(p, cat) {
+    const id = `pl-${++_placesIdCounter}`;
+    const rId = `plr-${_placesIdCounter}`;
+    const ratingId = `prat-${_placesIdCounter}`;
+    const priceBtnId = `ppb-${_placesIdCounter}`;
+    const priceId = `ppr-${_placesIdCounter}`;
+    p._ratingId = ratingId; p._reviewsId = rId; p._panelId = id;
+    p._priceBtnId = priceBtnId; p._priceId = priceId;
+    const hours = _fmtHours(p.hours);
+    const _sDirUrl = p.lat && p.lon ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : null;
+    const links = [];
+    if (p.phone)   links.push(`<a href="tel:${p.phone}" style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;text-decoration:none">📞 Call</a>`);
+    if (p.website) links.push(`<a href="${p.website}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;background:#f5f3ff;color:#6d28d9;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;text-decoration:none">🌐 Website</a>`);
+    if (_sDirUrl)  links.push(`<a href="${_sDirUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;color:#15803d;font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;text-decoration:none">🗺️ Directions</a>`);
+    const dist = _nearbySearchLat && p.lat && p.lon ? ` · <span style="color:var(--subtle);font-size:10px">${_distLabel(_distKmNearby(p))}</span>` : "";
+    return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="font-weight:600;font-size:13px;color:var(--text)">${p.name}${dist}</div>
+      <div id="${ratingId}" style="font-size:12px;margin-top:2px;min-height:16px"><span style="color:var(--subtle);font-size:10px">⌛ loading…</span></div>
+      ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px">${p.address}</div>` : ""}
+      ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:3px">🕐 ${hours}</div>` : ""}
+      ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${links.join("")}</div>` : ""}
+      <button id="${priceBtnId}" data-url="" data-price-id="${priceId}"
+        onclick="loadPlacePrice(this,'${(p.name||'').replace(/'/g,"\\'")}','${(cat||'').replace(/'/g,"\\'")}') "
+        style="display:none;margin-top:6px;padding:4px 10px;border-radius:8px;border:1px solid #bbf7d0;background:#f0fdf4;font-size:11px;font-weight:600;color:#065f46;cursor:pointer">💰 Get prices</button>
+      <div id="${priceId}"></div>
+    </div>`;
+  }
+
+  function _renderServiceGroupList(groupId) {
+    const g = _svcGroups[groupId];
+    if (!g) return;
+    let sorted = [...g.items];
+    if (g.sort === 'rating') sorted.sort((a,b) => (b._rating||0) - (a._rating||0));
+    else if (g.sort === 'price') sorted.sort((a,b) => ((a._price_level!=null?a._price_level:99)) - ((b._price_level!=null?b._price_level:99)));
+    else sorted.sort((a,b) => _distKmNearby(a) - _distKmNearby(b));
+    const cap = 6, shown = sorted.slice(0, cap), more = sorted.length - cap;
+    const moreId = `${groupId}-more`;
+    if (more > 0) _nearbyMore[moreId] = sorted.slice(cap).map(p => _serviceCard(p, g.cat)).join("");
+    const moreBtn = more > 0
+      ? `<button id="${moreId}" onclick="document.getElementById('${moreId}').outerHTML=_nearbyMore['${moreId}']||''" style="margin-top:8px;width:100%;text-align:center;font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:4px 0">Show ${more} more ›</button>`
+      : "";
+    const listEl = document.getElementById(`${groupId}-list`);
+    if (listEl) { listEl.innerHTML = shown.map(p => _serviceCard(p, g.cat)).join("") + moreBtn; }
+    shown.forEach(p => _fetchInlineRating(p));
+  }
+
+  async function setSvcSort(groupId, sort, btn) {
+    const g = _svcGroups[groupId];
+    if (!g) return;
+    g.sort = sort;
+    document.querySelectorAll(`[data-gid="${groupId}"]`).forEach(b => {
+      b.style.background = b.dataset.sort === sort ? "var(--text)" : "var(--surface)";
+      b.style.color      = b.dataset.sort === sort ? "var(--bg)"   : "var(--subtle)";
+      b.style.border     = b.dataset.sort === sort ? "none"        : "1px solid var(--border)";
+    });
+    if (sort === 'rating' || sort === 'price') {
+      const unrated = g.items.filter(p => p._rating === undefined);
+      if (unrated.length) {
+        btn.textContent = "⏳ Loading…"; btn.disabled = true;
+        await Promise.all(unrated.map(async p => {
+          try {
+            const ll = p.lat && p.lon ? `&lat=${p.lat}&lon=${p.lon}` : "";
+            const d = await fetch(`/api/places/google?name=${encodeURIComponent(p.name)}${ll}`).then(r=>r.json());
+            p._rating      = d.found ? (d.rating || 0) : 0;
+            p._total_ratings = d.total_ratings || 0;
+            p._price_level = d.price_level != null ? d.price_level : null;
+            p._website     = d.website || "";
+          } catch(e) { p._rating = 0; }
+        }));
+        btn.textContent = sort === 'price' ? "💰 Price" : "⭐ Rating";
+        btn.disabled = false;
+      }
+    }
+    _renderServiceGroupList(groupId);
   }
 
   async function setFoodSort(groupId, sort, btn) {
@@ -3311,18 +3413,34 @@
       const cafeRestEntries  = sortedFoodEntries.filter(([cat]) => CAFE_REST_CATS.has(cat));
       const otherFoodEntries = sortedFoodEntries.filter(([cat]) => !CAFE_REST_CATS.has(cat));
 
-      function _groupCard([cat, g]) {
-        const items = g.items.map(p => _renderPlaceCard(p, false)).join("");
+      // Service-specific card: inline rating + price level + sort + price extraction
+      for (const k of Object.keys(_svcGroups)) delete _svcGroups[k];
+
+      function _buildServiceGroupCard(cat, g) {
+        const groupId = `svc-${cat.replace(/\W/g,'_')}`;
+        _svcGroups[groupId] = {items: g.items, sort: "distance", cat};
         return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${g.emoji} ${cat}
-            <span style="font-size:11px;font-weight:400;color:var(--subtle)">${g.items.length > 1 ? g.items.length + " nearby" : ""}</span>
-          </div>${items}</div>`;
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${g.emoji} ${cat}
+              <span style="font-size:11px;font-weight:400;color:var(--subtle)">${g.items.length > 1 ? g.items.length + " nearby" : ""}</span>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button data-gid="${groupId}" data-sort="distance" onclick="setSvcSort('${groupId}','distance',this)"
+                style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;border:none;cursor:pointer;background:var(--text);color:var(--bg)">📍 Near</button>
+              <button data-gid="${groupId}" data-sort="rating" onclick="setSvcSort('${groupId}','rating',this)"
+                style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--surface);color:var(--subtle)">⭐ Rating</button>
+              <button data-gid="${groupId}" data-sort="price" onclick="setSvcSort('${groupId}','price',this)"
+                style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--surface);color:var(--subtle)">💰 Price</button>
+            </div>
+          </div>
+          <div id="${groupId}-list"></div>
+        </div>`;
       }
 
       const kidsHtml      = Object.entries(kidsGroups).map(([cat,g]) => _buildFoodGroupCard(cat, g)).join("");
       const cafeRestHtml  = cafeRestEntries.map(([cat,g]) => _buildFoodGroupCard(cat, g)).join("");
       const otherFoodHtml = otherFoodEntries.map(([cat,g]) => _buildFoodGroupCard(cat, g)).join("");
-      const servicesHtml  = Object.entries(serviceGroups).map(_groupCard).join("");
+      const servicesHtml  = Object.entries(serviceGroups).map(([cat,g]) => _buildServiceGroupCard(cat, g)).join("");
 
       // Category tabs — only render when there are multiple sections
       const _secs = [kidsHtml, cafeRestHtml, otherFoodHtml, servicesHtml].filter(Boolean);
@@ -3345,6 +3463,8 @@
       document.getElementById("places-result").classList.remove("hidden");
       // Trigger food group renders (fills lists + kicks off rating fetches)
       for (const groupId of Object.keys(_nearbyFoodGroups)) _renderFoodGroupList(groupId);
+      // Trigger service group renders (fills lists + kicks off rating fetches)
+      for (const groupId of Object.keys(_svcGroups)) _renderServiceGroupList(groupId);
       // Load kids activities in background (non-blocking)
       _loadKidsActivities(lat, lon);
     } catch(e) {
