@@ -5541,7 +5541,7 @@ def ping():
 _NHS_API_KEY  = os.environ.get("NHS_API_KEY", "")
 _NHS_SEARCH   = os.environ.get(
     "NHS_SEARCH_URL",
-    "https://int.api.service.nhs.uk/service-search/search"   # swap to prod URL after onboarding
+    "https://int.api.service.nhs.uk/service-search-api/search"   # swap to prod URL after onboarding
 )
 
 
@@ -5608,22 +5608,21 @@ def api_nhs_debug():
         return jsonify({"error": "NHS_API_KEY not set", "key_info": key_info}), 503
     try:
         lat, lon = _nhs_postcode_to_latlon(postcode)
-        body = {
-            "search":  "*",
-            "filter":  f"OrganisationTypeId eq '{org_type}'",
-            "orderby": f"geo.distance(Geocode, geography'POINT({lon} {lat})')",
-            "top":     5,
-        }
-        r = requests.post(
-            _NHS_SEARCH,
-            headers={"apikey": _NHS_API_KEY, "Content-Type": "application/json"},
-            json=body, timeout=12,
-        )
-        try:
-            resp_data = r.json()
-        except Exception:
-            resp_data = r.text[:2000]
-        return jsonify({"status": r.status_code, "key_info": key_info, "url": _NHS_SEARCH, "body_sent": body, "lat": lat, "lon": lon, "response": resp_data})
+        results = {}
+        for label, body in {
+            "minimal":  {"search": "*", "top": 2},
+            "filtered": {"search": "*", "filter": f"OrganisationTypeId eq '{org_type}'", "top": 2},
+            "geo":      {"search": "*", "filter": f"OrganisationTypeId eq '{org_type}'",
+                         "orderby": f"geo.distance(Geocode, geography'POINT({lon} {lat})')", "top": 2},
+        }.items():
+            r = requests.post(_NHS_SEARCH,
+                headers={"apikey": _NHS_API_KEY, "Content-Type": "application/json"},
+                json=body, timeout=12)
+            try:
+                results[label] = {"status": r.status_code, "body": body, "response": r.json()}
+            except Exception:
+                results[label] = {"status": r.status_code, "body": body, "response": r.text[:500]}
+        return jsonify({"key_info": key_info, "url": _NHS_SEARCH, "lat": lat, "lon": lon, "results": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
