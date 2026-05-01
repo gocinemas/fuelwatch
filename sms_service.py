@@ -5683,6 +5683,53 @@ _COUNCIL_SERVICES_LABELS = [
 ]
 
 
+@app.route("/api/council/bins")
+def api_council_bins():
+    """Try to scrape + AI-extract bin collection day for a postcode."""
+    postcode   = request.args.get("postcode", "").strip().upper()
+    bins_url   = request.args.get("bins_url", "").strip()
+    council    = request.args.get("council", "").strip()
+    groq_key   = os.environ.get("GROQ_API_KEY", "")
+    if not bins_url or not groq_key:
+        return jsonify({"error": "unavailable"}), 400
+    try:
+        # Try appending postcode to URL (many councils accept ?postcode=)
+        sep = "&" if "?" in bins_url else "?"
+        url = f"{bins_url}{sep}postcode={postcode.replace(' ','+')}".rstrip("?&")
+        r = requests.get(url, timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; MiruBot/1.0)",
+            "Accept": "text/html",
+        }, allow_redirects=True)
+        import re as _re
+        text = _re.sub(r'<script[^>]*>.*?</script>', ' ', r.text, flags=_re.DOTALL)
+        text = _re.sub(r'<style[^>]*>.*?</style>',  ' ', text, flags=_re.DOTALL)
+        text = _re.sub(r'<[^>]+>', ' ', text)
+        text = _re.sub(r'\s+', ' ', text).strip()[:6000]
+        gr = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [{"role": "user", "content":
+                    f"Council: {council}. Postcode: {postcode}.\n"
+                    f"Page text:\n{text}\n\n"
+                    "Extract bin collection day and type information from this text. "
+                    "Format as: 'Refuse (black bin): every [X] weeks on [day]\\nRecycling (blue bin): every [X] weeks on [day]' etc. "
+                    "Include next collection date if visible. "
+                    "If this page requires an address selection (not enough info yet), reply only: NEEDS_ADDRESS. "
+                    "If no bin info found, reply only: NOT_FOUND."}],
+                "max_tokens": 200, "temperature": 0.1,
+            },
+            timeout=12,
+        )
+        result = gr.json()["choices"][0]["message"]["content"].strip()
+        if result in ("NEEDS_ADDRESS", "NOT_FOUND") or not result:
+            return jsonify({"bin_info": None})
+        return jsonify({"bin_info": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/council")
 def api_council():
     """Postcode → council name + service links."""

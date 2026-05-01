@@ -5754,9 +5754,9 @@ _bkBadge();
 
 <!-- ── COUNCIL SERVICES SCREEN ── -->
 <div id="screen-council" class="screen pt-5">
-  <div style="margin-bottom:20px">
+  <div style="margin-bottom:16px">
     <div style="display:flex;gap:8px;align-items:center">
-      <input id="council-postcode-input" type="text" placeholder="Enter your postcode…" maxlength="8"
+      <input id="council-postcode-input" type="text" placeholder="Enter your postcode…" maxlength="9"
         style="flex:1;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:15px;outline:none;background:var(--surface);color:var(--text);text-transform:uppercase;letter-spacing:.5px"
         onkeydown="if(event.key==='Enter')councilLookup()"
         oninput="this.value=this.value.toUpperCase()" />
@@ -5765,54 +5765,136 @@ _bkBadge();
         Find
       </button>
     </div>
+    <button onclick="councilUseLocation()"
+      style="margin-top:8px;background:none;border:none;cursor:pointer;font-size:12px;color:var(--accent);font-weight:600;padding:0;display:flex;align-items:center;gap:4px">
+      📍 Use my current location
+    </button>
   </div>
 
-  <div id="council-loading" style="display:none;color:var(--subtle);font-size:13px;padding:8px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div> Looking up your council…</div>
+  <div id="council-loading" style="display:none;color:var(--subtle);font-size:13px;padding:8px 0;align-items:center;gap:8px"><div class="spinner"></div> <span id="council-loading-msg">Looking up your council…</span></div>
   <div id="council-error" style="display:none;color:#ef4444;font-size:13px;padding:8px 0"></div>
 
   <div id="council-result" style="display:none">
-    <div id="council-header" style="margin-bottom:16px">
-      <div id="council-name" style="font-size:16px;font-weight:800;color:var(--text)"></div>
-      <a id="council-website" href="#" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent);text-decoration:none"></a>
-      <div id="council-note" style="display:none;margin-top:6px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:5px 10px"></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div id="council-name" style="font-size:15px;font-weight:800;color:var(--text)"></div>
+        <a id="council-website" href="#" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none"></a>
+      </div>
+      <button onclick="councilClear()" style="font-size:11px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:0">Change</button>
     </div>
-    <div id="council-services-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+
+    <div id="council-bins-card" style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">🗑️ Bin Collections</div>
+        <a id="council-bins-link" href="#" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:600">Check online →</a>
+      </div>
+      <div id="council-bins-content">
+        <div style="color:var(--subtle);font-size:12px;display:flex;align-items:center;gap:6px"><div class="spinner"></div> Fetching bin schedule…</div>
+      </div>
+    </div>
+
+    <div id="council-note" style="display:none;margin-bottom:12px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 10px"></div>
+
+    <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Other services</div>
+    <div id="council-services-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
   </div>
 </div>
 
 <script>
-  window.councilLookup = async function() {
-    const pc = document.getElementById("council-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase();
-    if (!pc) return;
-    document.getElementById("council-loading").style.display = "flex";
-    document.getElementById("council-error").style.display = "none";
-    document.getElementById("council-result").style.display = "none";
-    try {
-      const d = await fetch(`/api/council?postcode=${encodeURIComponent(pc)}`).then(r=>r.json());
+  (function() {
+    function _councilLoading(msg) {
+      document.getElementById("council-loading").style.display = "flex";
+      document.getElementById("council-loading-msg").textContent = msg || "Looking up your council…";
+      document.getElementById("council-error").style.display = "none";
+      document.getElementById("council-result").style.display = "none";
+    }
+    function _councilError(msg) {
       document.getElementById("council-loading").style.display = "none";
-      if (d.error) { document.getElementById("council-error").textContent = d.error; document.getElementById("council-error").style.display = "block"; return; }
-      document.getElementById("council-name").textContent = d.full;
-      const wa = document.getElementById("council-website");
-      wa.href = d.website; wa.textContent = d.website.replace("https://","");
-      const note = document.getElementById("council-note");
-      if (d.note) { note.textContent = "ℹ️ " + d.note; note.style.display = "block"; } else { note.style.display = "none"; }
-      const grid = document.getElementById("council-services-grid");
-      grid.innerHTML = (d.services || []).map(s => `
-        <a href="${s.url}" target="_blank" rel="noopener" style="display:block;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 12px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="font-size:24px;margin-bottom:6px">${s.icon}</div>
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${s.label}</div>
-          <div style="font-size:11px;color:var(--subtle);line-height:1.4">${s.desc}</div>
-        </a>
-      `).join("");
-      document.getElementById("council-result").style.display = "block";
-    } catch(e) {
-      document.getElementById("council-loading").style.display = "none";
-      document.getElementById("council-error").textContent = "Something went wrong. Try again.";
+      document.getElementById("council-error").textContent = msg;
       document.getElementById("council-error").style.display = "block";
     }
-  };
-</script>
 
+    window.councilLookup = async function(pc) {
+      pc = (pc || document.getElementById("council-postcode-input").value).trim().replace(/\s+/g,"").toUpperCase();
+      if (!pc) return;
+      _councilLoading("Looking up your council…");
+      try {
+        const d = await fetch(`/api/council?postcode=${encodeURIComponent(pc)}`).then(r=>r.json());
+        document.getElementById("council-loading").style.display = "none";
+        if (d.error) { _councilError(d.error); return; }
+        localStorage.setItem("council_postcode", pc);
+        const fmt = pc.length > 4 ? pc.slice(0,-3)+" "+pc.slice(-3) : pc;
+        document.getElementById("council-postcode-input").value = fmt;
+        document.getElementById("council-name").textContent = d.full;
+        const wa = document.getElementById("council-website");
+        wa.href = d.website; wa.textContent = d.website.replace("https://","");
+        const note = document.getElementById("council-note");
+        if (d.note) { note.textContent = "ℹ️ " + d.note; note.style.display = "block"; } else { note.style.display = "none"; }
+        const binsService = (d.services||[]).find(s=>s.key==="bins");
+        if (binsService) document.getElementById("council-bins-link").href = binsService.url;
+        const grid = document.getElementById("council-services-grid");
+        grid.innerHTML = (d.services||[]).filter(s=>s.key!=="bins").map(s=>`
+          <a href="${s.url}" target="_blank" rel="noopener" style="display:block;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 10px">
+            <div style="font-size:22px;margin-bottom:4px">${s.icon}</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px">${s.label}</div>
+            <div style="font-size:10px;color:var(--subtle);line-height:1.3">${s.desc}</div>
+          </a>`).join("");
+        document.getElementById("council-result").style.display = "block";
+        _fetchBinDay(pc, d.council, binsService ? binsService.url : d.website);
+      } catch(e) {
+        _councilError("Something went wrong. Try again.");
+      }
+    };
+
+    async function _fetchBinDay(postcode, councilName, binsUrl) {
+      const el = document.getElementById("council-bins-content");
+      try {
+        const d = await fetch(`/api/council/bins?postcode=${encodeURIComponent(postcode)}&council=${encodeURIComponent(councilName)}&bins_url=${encodeURIComponent(binsUrl)}`).then(r=>r.json());
+        if (d.bin_info) {
+          el.innerHTML = `<div style="font-size:13px;color:var(--text);white-space:pre-line;line-height:1.7">${d.bin_info}</div>`;
+        } else {
+          el.innerHTML = `<div style="font-size:12px;color:var(--subtle)">Couldn't auto-fetch — tap <b>Check online →</b> above and enter your address for exact dates.</div>`;
+        }
+      } catch(e) {
+        el.innerHTML = `<div style="font-size:12px;color:var(--subtle)">Tap <b>Check online →</b> to check your bin schedule.</div>`;
+      }
+    }
+
+    window.councilUseLocation = function() {
+      if (!navigator.geolocation) { _councilError("Location not supported on this device."); return; }
+      _councilLoading("Getting your location…");
+      navigator.geolocation.getCurrentPosition(async pos => {
+        try {
+          document.getElementById("council-loading-msg").textContent = "Finding your postcode…";
+          const r = await fetch(`https://api.postcodes.io/postcodes?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}&limit=1`).then(r=>r.json());
+          const pc = r.result && r.result[0] && r.result[0].postcode;
+          if (!pc) { _councilError("Couldn't find a postcode for your location."); return; }
+          document.getElementById("council-postcode-input").value = pc;
+          councilLookup(pc.replace(/\s/g,""));
+        } catch(e) { _councilError("Location lookup failed. Enter your postcode manually."); }
+      }, () => _councilError("Location access denied. Enter your postcode manually."));
+    };
+
+    window.councilClear = function() {
+      localStorage.removeItem("council_postcode");
+      document.getElementById("council-postcode-input").value = "";
+      document.getElementById("council-result").style.display = "none";
+      document.getElementById("council-error").style.display = "none";
+    };
+
+    // Auto-load saved postcode when screen is shown
+    const _csOrig = window.showScreen;
+    window.showScreen = function(name) {
+      if (_csOrig) _csOrig(name);
+      if (name === "council") {
+        const saved = localStorage.getItem("council_postcode");
+        if (saved && document.getElementById("council-result").style.display !== "block") {
+          councilLookup(saved);
+        }
+      }
+    };
+  })();
+</script>
 <!-- ── COMPARE SCREEN ── -->
 <div id="screen-compare" class="screen pt-5">
   <div class="bg-white rounded-2xl shadow p-5 mb-4">
