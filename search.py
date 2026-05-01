@@ -889,9 +889,38 @@ def fetch_brand_data(brand: str) -> dict:
     original = brand.strip()
     canonical = original
 
-    # Canonicalise via Groq before cache lookup (handles misspellings like "Nkie" → "Nike")
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+
+    # Step 1: disambiguation — if brand name maps to multiple well-known companies, return options immediately
     try:
-        groq_key = os.environ.get("GROQ_API_KEY", "")
+        if groq_key:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={"model": "llama-3.1-8b-instant",
+                      "messages": [{"role": "user", "content":
+                          f'Brand search query: "{original}"\n'
+                          'Is this ambiguous — does it match multiple distinct well-known brands or companies?\n'
+                          'Examples of ambiguous: "Virgin" (Virgin Atlantic, Virgin Money, Virgin Media, Virgin Group), '
+                          '"Apple" (only one major brand — NOT ambiguous), '
+                          '"Next" (Next retail, Next plc — ambiguous), '
+                          '"O2" (O2 UK, Telefónica O2 — same company, NOT ambiguous).\n'
+                          'If ambiguous, reply ONLY with a JSON array of up to 5 full brand names, e.g. ["Virgin Atlantic","Virgin Money","Virgin Media","Virgin Group"].\n'
+                          'If NOT ambiguous (single clear brand), reply with exactly: NO'}],
+                      "max_tokens": 80, "temperature": 0.0},
+                timeout=6,
+            )
+            reply = r.json()["choices"][0]["message"]["content"].strip()
+            if reply != "NO" and reply.startswith("["):
+                import json as _json
+                options = _json.loads(reply)
+                if isinstance(options, list) and len(options) > 1:
+                    return {"disambiguate": options, "name": original}
+    except Exception:
+        pass
+
+    # Step 2: canonicalise (fix typos / expand abbreviations)
+    try:
         if groq_key:
             r = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
@@ -909,7 +938,6 @@ def fetch_brand_data(brand: str) -> dict:
                 timeout=6,
             )
             resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
-            # Reject if canonicalization shares no words with original (hallucinated brand swap)
             orig_words = set(original.lower().split())
             res_words  = set(resolved.lower().split())
             if _is_valid_canonical(resolved) and (orig_words & res_words or len(orig_words) <= 1):
