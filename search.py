@@ -899,21 +899,20 @@ def fetch_brand_data(brand: str) -> dict:
                 json={"model": "llama-3.1-8b-instant",
                       "messages": [{"role": "user", "content":
                           f'The user searched for brand/company: "{original}".\n'
-                          'Return ONLY the canonical well-known brand or company name. Rules:\n'
-                          '1. Fix spelling errors (e.g. "Nkie" → "Nike").\n'
-                          '2. Expand abbreviations.\n'
-                          '3. If the input looks like a partial or incomplete company name '
-                          '(e.g. just one word of a multi-word company name), complete it to '
-                          'the single most well-known company with that name '
-                          '(e.g. "Frog" → "Frog Design", "McKinsey" → "McKinsey & Company", '
-                          '"Bain" → "Bain & Company").\n'
-                          '4. If already a complete well-known name, return it unchanged.\n'
+                          'Return ONLY the canonical brand or company name. Rules:\n'
+                          '1. Fix clear spelling errors only (e.g. "Nkie" → "Nike", "Amazn" → "Amazon").\n'
+                          '2. Expand obvious abbreviations (e.g. "P&G" → "Procter & Gamble").\n'
+                          '3. If you do not recognise the brand, return the original UNCHANGED.\n'
+                          '4. NEVER substitute a different brand — if unsure, return the input as-is.\n'
                           'Return ONLY the name, nothing else.'}],
-                      "max_tokens": 40, "temperature": 0.1},
+                      "max_tokens": 40, "temperature": 0.0},
                 timeout=6,
             )
             resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
-            if _is_valid_canonical(resolved):
+            # Reject if canonicalization shares no words with original (hallucinated brand swap)
+            orig_words = set(original.lower().split())
+            res_words  = set(resolved.lower().split())
+            if _is_valid_canonical(resolved) and (orig_words & res_words or len(orig_words) <= 1):
                 canonical = resolved
     except Exception:
         pass
