@@ -1165,10 +1165,10 @@ def _fetch_wikipedia(company: str) -> dict:
             query_words = set(company.lower().split()) - {"the", "a", "an", "of", "and", "&"}
             for hit in hits:
                 title_words = set(hit["title"].lower().split())
-                # Skip articles that don't share any words with the query —
-                # e.g. Wikipedia returning "Virgin Group" for "Pip & Nut" because
-                # that page mentions Pip & Nut as a startup pitch winner.
-                if query_words and not (query_words & title_words):
+                # Require ALL significant query words appear in the article title.
+                # Partial overlap causes false positives (e.g. "The CooCoo Nut Grove"
+                # matching "Pip & Nut" on "nut" alone).
+                if query_words and not query_words.issubset(title_words):
                     continue
                 result = _summary(hit["title"])
                 if result:
