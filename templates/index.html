@@ -375,6 +375,12 @@
           <div class="tc-desc">Identify songs, UK &amp; Global Top 20 charts</div>
         </button>
 
+        <button class="tool-card" onclick="showScreen('council')">
+          <div class="tc-icon" style="background:#f0f9ff">🏛️</div>
+          <div class="tc-name">Council Services</div>
+          <div class="tc-desc">Bin day, potholes, tip & more from your council</div>
+        </button>
+
         <!-- My News: hidden from home — access via ?screen=news -->
 
       </div>
@@ -5745,6 +5751,67 @@ _bkBadge();
     <div id="saves-list"></div>
   </div>
 </div>
+
+<!-- ── COUNCIL SERVICES SCREEN ── -->
+<div id="screen-council" class="screen pt-5">
+  <div style="margin-bottom:20px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="council-postcode-input" type="text" placeholder="Enter your postcode…" maxlength="8"
+        style="flex:1;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:15px;outline:none;background:var(--surface);color:var(--text);text-transform:uppercase;letter-spacing:.5px"
+        onkeydown="if(event.key==='Enter')councilLookup()"
+        oninput="this.value=this.value.toUpperCase()" />
+      <button onclick="councilLookup()"
+        style="background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">
+        Find
+      </button>
+    </div>
+  </div>
+
+  <div id="council-loading" style="display:none;color:var(--subtle);font-size:13px;padding:8px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div> Looking up your council…</div>
+  <div id="council-error" style="display:none;color:#ef4444;font-size:13px;padding:8px 0"></div>
+
+  <div id="council-result" style="display:none">
+    <div id="council-header" style="margin-bottom:16px">
+      <div id="council-name" style="font-size:16px;font-weight:800;color:var(--text)"></div>
+      <a id="council-website" href="#" target="_blank" rel="noopener" style="font-size:12px;color:var(--accent);text-decoration:none"></a>
+      <div id="council-note" style="display:none;margin-top:6px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:5px 10px"></div>
+    </div>
+    <div id="council-services-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+  </div>
+</div>
+
+<script>
+  window.councilLookup = async function() {
+    const pc = document.getElementById("council-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase();
+    if (!pc) return;
+    document.getElementById("council-loading").style.display = "flex";
+    document.getElementById("council-error").style.display = "none";
+    document.getElementById("council-result").style.display = "none";
+    try {
+      const d = await fetch(`/api/council?postcode=${encodeURIComponent(pc)}`).then(r=>r.json());
+      document.getElementById("council-loading").style.display = "none";
+      if (d.error) { document.getElementById("council-error").textContent = d.error; document.getElementById("council-error").style.display = "block"; return; }
+      document.getElementById("council-name").textContent = d.full;
+      const wa = document.getElementById("council-website");
+      wa.href = d.website; wa.textContent = d.website.replace("https://","");
+      const note = document.getElementById("council-note");
+      if (d.note) { note.textContent = "ℹ️ " + d.note; note.style.display = "block"; } else { note.style.display = "none"; }
+      const grid = document.getElementById("council-services-grid");
+      grid.innerHTML = (d.services || []).map(s => `
+        <a href="${s.url}" target="_blank" rel="noopener" style="display:block;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 12px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:24px;margin-bottom:6px">${s.icon}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${s.label}</div>
+          <div style="font-size:11px;color:var(--subtle);line-height:1.4">${s.desc}</div>
+        </a>
+      `).join("");
+      document.getElementById("council-result").style.display = "block";
+    } catch(e) {
+      document.getElementById("council-loading").style.display = "none";
+      document.getElementById("council-error").textContent = "Something went wrong. Try again.";
+      document.getElementById("council-error").style.display = "block";
+    }
+  };
+</script>
 
 <!-- ── COMPARE SCREEN ── -->
 <div id="screen-compare" class="screen pt-5">
