@@ -2094,8 +2094,10 @@ def _lookup_venue(name: str) -> dict:
     """Look up phone, website, address, hours, rating for a venue via Google Places."""
     out = {"phone": "", "website": "", "address": "", "maps_url": "",
            "hours_today": "", "open_now": None, "rating": None, "rating_count": 0, "name": name}
-    maps_q = name.replace(" ", "+")
-    out["maps_url"] = f"https://maps.google.com/?q={maps_q}"
+    # Only set a fallback maps URL for short names that are plausibly real place names
+    if len(name) <= 60:
+        maps_q = name.replace(" ", "+")
+        out["maps_url"] = f"https://maps.google.com/?q={maps_q}"
     if not _GOOGLE_PLACES_KEY:
         return out
     try:
@@ -3157,6 +3159,7 @@ def api_product():
 
 _PENDING_TRIAGE: dict = {}   # from_number -> {id, title, url, expires}
 _PENDING_DIGEST: dict  = {}  # from_number -> [{id, title, url}, ...]  (last digest sent)
+_USER_LAST_LOCATION: dict = {}  # from_number -> {lat, lon, ts}  (from WhatsApp location share)
 
 
 _TOKEN_TO_NUMBER: dict = {}  # token -> from_number, populated as users interact
@@ -3266,7 +3269,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
     except Exception:
         pass
 
-    def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content):
+    def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content,
+            _loc=_USER_LAST_LOCATION.get(from_number)):
         # ── QR code scan ────────────────────────────────────────────────────────
         qr_url = ""
         qr_event_info = ""
@@ -3299,22 +3303,51 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         except Exception as _qex:
             print(f"[vision] QR scan error: {_qex}")
 
+        # ── Reverse-geocode stored location for context ──────────────────────────
+        _loc_context = ""
+        if _loc and (time.time() - _loc.get("ts", 0)) < 7200:
+            try:
+                _gm_key = os.environ.get("GOOGLE_PLACES_KEY", "") or os.environ.get("GOOGLE_MAPS_KEY", "")
+                if _gm_key:
+                    _nr = requests.get(
+                        "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                        params={
+                            "location": f"{_loc['lat']},{_loc['lon']}",
+                            "rankby": "distance",
+                            "type": "establishment",
+                            "key": _gm_key,
+                        },
+                        timeout=5,
+                    )
+                    _nr_results = _nr.json().get("results", [])
+                    if _nr_results:
+                        _place = _nr_results[0]
+                        _loc_context = f"{_place['name']}, {_place.get('vicinity', '')}"
+                        print(f"[vision] location context: {_loc_context!r}")
+            except Exception as _le:
+                print(f"[vision] location lookup error: {_le}")
+
         _vision_models = [
             "meta-llama/llama-4-scout-17b-16e-instruct",
             "llama-3.2-90b-vision-preview",
             "llama-3.2-11b-vision-preview",
         ]
+        _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
         prompt_text = (
             "Identify what this image is. Pick ONE type from: "
             "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, sign, document, photo.\n"
             "Then give 3 bullet points starting with • covering the key info.\n"
             "If store/restaurant: focus ONLY on the place itself — name, type of food/business, what it specialises in, opening hours or price range if visible. Do NOT describe the photo scene (no cars, people, atmosphere, surroundings).\n"
             "If event/ticket: include event name, date, time, venue.\n"
-            "If ad/billboard: what product or brand is being promoted and the key message.\n"
+            "If ad/billboard: state the brand or retailer name, the exact product or deal name, and the price/offer. "
+            "If this looks like an in-store promotion (supermarket shelf, in-store poster, meal deal display), "
+            "try to identify the retailer from any visible store branding, colours, shelf design, or uniform — e.g. Waitrose, Tesco, Sainsbury's, M&S, Asda.\n"
             "If receipt: total and main items.\n"
             "Start your reply with: TYPE: [your choice]\n"
             "If type is event/ticket, store/restaurant, or ad/billboard — add: VENUE: [business or place name only, no address]\n"
-            "If you can identify a city, area, or neighbourhood from signage or text — add: LOCATION: [city or area name]"
+            "If you can identify a city, area, or neighbourhood from signage or text — add: LOCATION: [city or area name]\n"
+            "Always add: SEARCH: [2-5 word search term someone would type to find this deal, product, or place online]"
+            + _loc_hint
         )
         analysis = ""
         for model in _vision_models:
@@ -3365,21 +3398,24 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             elif "document" in first:
                 title = "📄 Document"; img_type = "document"
 
-        # Extract VENUE: and LOCATION: tags before stripping metadata lines
+        # Extract VENUE: / LOCATION: / SEARCH: tags before stripping metadata lines
         venue_tag = ""
         location_tag = ""
+        search_tag = ""
         for _line in analysis.split("\n"):
             _up = _line.strip().upper()
             if _up.startswith("VENUE:"):
                 venue_tag = _line.split(":", 1)[1].strip()
             elif _up.startswith("LOCATION:"):
                 location_tag = _line.split(":", 1)[1].strip()
-        print(f"[vision] venue_tag={venue_tag!r} location_tag={location_tag!r} img_type={img_type}")
+            elif _up.startswith("SEARCH:"):
+                search_tag = _line.split(":", 1)[1].strip()
+        print(f"[vision] venue_tag={venue_tag!r} location_tag={location_tag!r} search_tag={search_tag!r} img_type={img_type}")
 
-        # Strip TYPE:/VENUE:/LOCATION: metadata lines from summary
+        # Strip TYPE:/VENUE:/LOCATION:/SEARCH: metadata lines from summary
         summary = "\n".join(
             l for l in analysis.split("\n")
-            if not any(l.strip().upper().startswith(p) for p in ("TYPE:", "VENUE:", "LOCATION:"))
+            if not any(l.strip().upper().startswith(p) for p in ("TYPE:", "VENUE:", "LOCATION:", "SEARCH:"))
         ).strip()
 
         # Build a meaningful search URL — strip filler, keep key object + venue
@@ -3398,8 +3434,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         bullet_lines = [b.strip() for b in summary.split("•") if b.strip()]
         search_terms = ""
         venue_raw = venue_tag  # use explicit VENUE: tag from model
+        name_raw = ""
         if bullet_lines:
             name_raw = _FILLER.sub("", bullet_lines[0]).strip().strip('"\'').strip()[:80]
+        # Prefer the model's SEARCH: tag; fall back to extracted name
+        if search_tag:
+            if img_type == "event":
+                q = f"{search_tag} {venue_raw}".strip() + " tickets"
+                search_terms = urllib.parse.quote_plus(q)
+            else:
+                search_terms = urllib.parse.quote_plus(search_tag[:80])
+        elif name_raw:
             if img_type == "event":
                 q = f"{name_raw} {venue_raw}".strip() + " tickets"
                 search_terms = urllib.parse.quote_plus(q)
@@ -3986,6 +4031,19 @@ def whatsapp_reply():
     print(f"WhatsApp from {from_number}: {body}")
 
     resp = MessagingResponse()
+
+    # ── Location share (Twilio sends Latitude+Longitude for WhatsApp location messages) ──
+    _lat = request.form.get("Latitude", "")
+    _lon = request.form.get("Longitude", "")
+    if _lat and _lon:
+        try:
+            _USER_LAST_LOCATION[from_number] = {
+                "lat": float(_lat), "lon": float(_lon), "ts": time.time()
+            }
+            resp.message("📍 Got your location — I'll use it to add context when you send me a photo. It expires in 2 hours.")
+            return str(resp)
+        except Exception:
+            pass
 
     # ── Image/photo capture (before body checks — body is empty when photo sent) ─
     num_media = int(request.form.get("NumMedia", "0") or 0)
