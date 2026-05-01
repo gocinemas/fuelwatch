@@ -1590,6 +1590,20 @@ _PLACE_CATEGORY = {
     "pub":              {"label": "Pub",               "emoji": "🍺"},
     "bar":              {"label": "Bar",               "emoji": "🍹"},
     "fuel":             {"label": "Petrol Station",    "emoji": "⛽"},
+    # Commercial services (shop=*)
+    "hairdresser":      {"label": "Hairdresser",       "emoji": "✂️"},
+    "beauty":           {"label": "Beauty Salon",      "emoji": "💅"},
+    "car_repair":       {"label": "Garage / Mechanic", "emoji": "🔧"},
+    "optician":         {"label": "Optician",          "emoji": "👓"},
+    "dry_cleaning":     {"label": "Dry Cleaning",      "emoji": "👔"},
+    "laundry":          {"label": "Laundry",           "emoji": "🧺"},
+    "massage":          {"label": "Massage",           "emoji": "💆"},
+    "tattoo":           {"label": "Tattoo & Piercing", "emoji": "🖊️"},
+    "travel_agency":    {"label": "Travel Agent",      "emoji": "✈️"},
+    "estate_agent":     {"label": "Estate Agent",      "emoji": "🏠"},
+    "pet_grooming":     {"label": "Pet Grooming",      "emoji": "🐾"},
+    "veterinary":       {"label": "Vet",               "emoji": "🐾"},
+    "bank":             {"label": "Bank",              "emoji": "🏦"},
 }
 
 _PLACE_ACTIVITIES = {
@@ -1960,11 +1974,18 @@ def _overpass_places(lat: float, lon: float, radius: int = 1500):
         "library", "community_centre", "arts_centre", "hospital",
         "dentist", "pharmacy", "post_office", "townhall", "social_facility",
         "food_bank", "police", "fire_station", "leisure_centre",
+        "veterinary", "bank",
     ])
     # Pubs/food at 5km — rural areas (e.g. Longcross) have pubs spread 3-5km out
     food_types = "cafe|restaurant|fast_food|pub|bar|fuel"
     food_radius = 5000
     leisure_types = "sports_centre|swimming_pool|fitness_centre|park|playground|attraction"
+    # Commercial services: hairdressers, mechanics, beauty, opticians etc.
+    shop_types = "|".join([
+        "hairdresser", "beauty", "car_repair", "optician",
+        "dry_cleaning", "laundry", "massage", "tattoo",
+        "travel_agency", "estate_agent", "pet_grooming",
+    ])
     query = f"""[out:json][timeout:25];
 (
   node["amenity"~"^({services_types})$"](around:{radius},{lat},{lon});
@@ -1973,6 +1994,8 @@ def _overpass_places(lat: float, lon: float, radius: int = 1500):
   way["amenity"~"^({food_types})$"](around:{food_radius},{lat},{lon});
   node["leisure"~"^({leisure_types})$"](around:{radius},{lat},{lon});
   way["leisure"~"^({leisure_types})$"](around:{radius},{lat},{lon});
+  node["shop"~"^({shop_types})$"](around:{radius},{lat},{lon});
+  way["shop"~"^({shop_types})$"](around:{radius},{lat},{lon});
 );
 out center tags;"""
     elements = _overpass_query(query)
@@ -1992,7 +2015,7 @@ out center tags;"""
             continue
         seen.add(key)
 
-        kind = tags.get("amenity") or tags.get("leisure", "")
+        kind = tags.get("amenity") or tags.get("leisure") or tags.get("shop", "")
         cat  = _PLACE_CATEGORY.get(kind, {"label": kind.replace("_", " ").title(), "emoji": "📍"})
 
         # Address
@@ -2182,7 +2205,7 @@ def api_places_google():
             "https://maps.googleapis.com/maps/api/place/details/json",
             params={
                 "place_id": place_id,
-                "fields":   "name,rating,user_ratings_total,reviews,url",
+                "fields":   "name,rating,user_ratings_total,reviews,url,price_level,website",
                 "key":      _GOOGLE_PLACES_KEY,
             },
             timeout=8,
@@ -2202,8 +2225,51 @@ def api_places_google():
             "rating":        p.get("rating"),
             "total_ratings": p.get("user_ratings_total"),
             "google_url":    p.get("url"),
+            "price_level":   p.get("price_level"),   # 0-4, None if unknown
+            "website":       p.get("website", ""),
             "reviews":       reviews,
         })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/places/price")
+def api_places_price():
+    """Extract price information from a business website using AI."""
+    url      = request.args.get("url", "").strip()
+    name     = request.args.get("name", "").strip()
+    category = request.args.get("category", "").strip()
+    if not url:
+        return jsonify({"error": "url required"}), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "AI not configured"}), 503
+    try:
+        # Fetch website text
+        page = requests.get(url, timeout=8, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; MiruBot/1.0; +https://miru.humanagency.co)"
+        })
+        import re as _re2
+        text = _re2.sub(r'<[^>]+>', ' ', page.text)
+        text = _re2.sub(r'\s+', ' ', text).strip()[:6000]
+        # Ask Groq to extract prices
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [{"role": "user", "content":
+                    f'Business: "{name}" ({category})\n'
+                    f'Website text:\n{text}\n\n'
+                    'Extract service prices from this text. List specific prices (e.g. "Haircut from £25", "MOT £54.85", "Consultation £60").\n'
+                    'If no prices are listed, say "Prices not listed on website".\n'
+                    'Return ONLY a short plain-text price summary, max 3 lines, no markdown.'}],
+                "max_tokens": 150, "temperature": 0.1,
+            },
+            timeout=12,
+        )
+        price_text = r.json()["choices"][0]["message"]["content"].strip()
+        return jsonify({"price_text": price_text})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
