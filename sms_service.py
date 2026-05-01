@@ -5562,7 +5562,7 @@ def _nhs_search(lat: float, lon: float, org_type: str, top: int = 10) -> list:
     }
     r = requests.post(
         _NHS_SEARCH,
-        headers={"subscription-key": _NHS_API_KEY, "Content-Type": "application/json"},
+        headers={"apikey": _NHS_API_KEY, "Content-Type": "application/json"},
         json=body,
         timeout=12,
     )
@@ -5615,7 +5615,7 @@ def api_nhs_debug():
         }
         r = requests.post(
             _NHS_SEARCH,
-            headers={"subscription-key": _NHS_API_KEY, "Content-Type": "application/json"},
+            headers={"apikey": _NHS_API_KEY, "Content-Type": "application/json"},
             json=body, timeout=12,
         )
         try:
