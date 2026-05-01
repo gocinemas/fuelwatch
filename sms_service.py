@@ -5603,8 +5603,9 @@ def api_nhs_debug():
     """Raw NHS API response for a single org type — for debugging only."""
     postcode  = request.args.get("postcode", "KT16 0DA").strip().upper()
     org_type  = request.args.get("type", "GPB")
+    key_info = {"set": bool(_NHS_API_KEY), "length": len(_NHS_API_KEY), "prefix": _NHS_API_KEY[:6] + "…" if _NHS_API_KEY else ""}
     if not _NHS_API_KEY:
-        return jsonify({"error": "NHS_API_KEY not set"}), 503
+        return jsonify({"error": "NHS_API_KEY not set", "key_info": key_info}), 503
     try:
         lat, lon = _nhs_postcode_to_latlon(postcode)
         body = {
@@ -5622,7 +5623,7 @@ def api_nhs_debug():
             resp_data = r.json()
         except Exception:
             resp_data = r.text[:2000]
-        return jsonify({"status": r.status_code, "body_sent": body, "lat": lat, "lon": lon, "response": resp_data})
+        return jsonify({"status": r.status_code, "key_info": key_info, "url": _NHS_SEARCH, "body_sent": body, "lat": lat, "lon": lon, "response": resp_data})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
