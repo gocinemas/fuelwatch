@@ -1587,12 +1587,12 @@ def fetch_company_info(company: str) -> dict:
             "slug":           slug,
         }
         _COMPANY_CACHE[key] = {"ts": time.time(), "data": result}
-        # Only persist to Supabase when jobs were found — empty jobs may be a transient
-        # fetch failure, so let the next request retry rather than caching the miss for 24h
-        if jobs:
+        # Cache to Supabase when we have meaningful data (news or wiki), regardless of jobs.
+        # Jobs are blocked by ATS sites on Railway's shared IP — don't let that suppress all other data.
+        if result.get("news") or result.get("wiki") or result.get("share"):
             _sb_cache_set("company:" + key, result)
         else:
-            print(f"[company] {company}: no jobs found — skipping Supabase cache so next request retries")
+            print(f"[company] {company}: no news/wiki/share — skipping Supabase cache so next request retries")
         return result
     finally:
         with _COMPANY_LOCK:
