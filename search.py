@@ -1162,7 +1162,14 @@ def _fetch_wikipedia(company: str) -> dict:
                 timeout=6, headers=ua,
             )
             hits = sr.json().get("query", {}).get("search", [])
+            query_words = set(company.lower().split()) - {"the", "a", "an", "of", "and", "&"}
             for hit in hits:
+                title_words = set(hit["title"].lower().split())
+                # Skip articles that don't share any words with the query —
+                # e.g. Wikipedia returning "Virgin Group" for "Pip & Nut" because
+                # that page mentions Pip & Nut as a startup pitch winner.
+                if query_words and not (query_words & title_words):
+                    continue
                 result = _summary(hit["title"])
                 if result:
                     break
