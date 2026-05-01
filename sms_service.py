@@ -875,6 +875,62 @@ def api_kagi_news():
     return resp
 
 
+@app.route("/api/brand/debug")
+def api_brand_debug():
+    """Step-by-step trace of brand lookup — for debugging only."""
+    import os, requests as _req
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    trace = {"input": name}
+    # Step 1: Groq canonicalization
+    try:
+        r = _req.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant",
+                  "messages": [{"role": "user", "content":
+                      f'The user searched for brand/company: "{name}".\n'
+                      'Return ONLY the canonical brand or company name. Rules:\n'
+                      '1. Fix clear spelling errors only.\n'
+                      '2. Expand obvious abbreviations.\n'
+                      '3. If you do not recognise the brand, return the original UNCHANGED.\n'
+                      '4. NEVER substitute a different brand — if unsure, return the input as-is.\n'
+                      'Return ONLY the name, nothing else.'}],
+                  "max_tokens": 40, "temperature": 0.0},
+            timeout=6)
+        resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+        orig_words = set(name.lower().split())
+        res_words  = set(resolved.lower().split())
+        overlap    = bool(orig_words & res_words)
+        trace["groq_resolved"] = resolved
+        trace["groq_word_overlap"] = overlap
+        trace["groq_accepted"] = overlap or len(orig_words) <= 1
+    except Exception as e:
+        trace["groq_error"] = str(e)
+    # Step 2: Wikipedia direct
+    try:
+        slug = _req.utils.quote(name.replace(" ", "_"))
+        wr = _req.get(f"https://en.wikipedia.org/api/rest_v1/page/summary/{slug}", timeout=8)
+        trace["wiki_direct_status"] = wr.status_code
+        if wr.status_code == 200:
+            wd = wr.json()
+            trace["wiki_direct_title"] = wd.get("title")
+            trace["wiki_direct_extract"] = (wd.get("extract") or "")[:200]
+    except Exception as e:
+        trace["wiki_direct_error"] = str(e)
+    # Step 3: Wikipedia search fallback
+    try:
+        sr = _req.get("https://en.wikipedia.org/w/api.php",
+            params={"action":"query","list":"search","srsearch":name,"srlimit":3,"format":"json"}, timeout=6)
+        hits = sr.json().get("query", {}).get("search", [])
+        trace["wiki_search_hits"] = [h["title"] for h in hits]
+    except Exception as e:
+        trace["wiki_search_error"] = str(e)
+    return jsonify(trace)
+
+
 @app.route("/api/brand")
 def api_brand():
     name = request.args.get("name", "").strip()
