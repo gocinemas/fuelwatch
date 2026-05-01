@@ -5609,19 +5609,23 @@ def api_nhs_debug():
     try:
         lat, lon = _nhs_postcode_to_latlon(postcode)
         results = {}
-        for label, body in {
-            "minimal":  {"search": "*", "top": 2},
-            "filtered": {"search": "*", "filter": f"OrganisationTypeId eq '{org_type}'", "top": 2},
-            "geo":      {"search": "*", "filter": f"OrganisationTypeId eq '{org_type}'",
-                         "orderby": f"geo.distance(Geocode, geography'POINT({lon} {lat})')", "top": 2},
-        }.items():
-            r = requests.post(_NHS_SEARCH,
-                headers={"apikey": _NHS_API_KEY, "Content-Type": "application/json"},
-                json=body, timeout=12)
+        sandbox_url = "https://sandbox.api.service.nhs.uk/service-search-api/search"
+        # Try sandbox (open access — no key needed) to verify correct request format
+        for label, url, hdrs, body in [
+            ("sandbox_minimal",  sandbox_url, {"Content-Type": "application/json"},
+             {"search": "*", "top": 2}),
+            ("sandbox_filtered", sandbox_url, {"Content-Type": "application/json"},
+             {"search": "*", "filter": f"OrganisationTypeId eq '{org_type}'", "top": 2}),
+            ("int_minimal",      _NHS_SEARCH, {"apikey": _NHS_API_KEY, "Content-Type": "application/json"},
+             {"search": "*", "top": 2}),
+            ("int_filtered",     _NHS_SEARCH, {"apikey": _NHS_API_KEY, "Content-Type": "application/json"},
+             {"search": "*", "filter": f"OrganisationTypeId eq '{org_type}'", "top": 2}),
+        ]:
+            r = requests.post(url, headers=hdrs, json=body, timeout=12)
             try:
-                results[label] = {"status": r.status_code, "body": body, "response": r.json()}
+                results[label] = {"status": r.status_code, "response": r.json()}
             except Exception:
-                results[label] = {"status": r.status_code, "body": body, "response": r.text[:500]}
+                results[label] = {"status": r.status_code, "response": r.text[:300]}
         return jsonify({"key_info": key_info, "url": _NHS_SEARCH, "lat": lat, "lon": lon, "results": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
