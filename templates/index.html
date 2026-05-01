@@ -2656,10 +2656,7 @@
     const id = `pl-${++_placesIdCounter}`;
     const rId = `plr-${_placesIdCounter}`;
     const ratingId = `prat-${_placesIdCounter}`;
-    const priceBtnId = `ppb-${_placesIdCounter}`;
-    const priceId = `ppr-${_placesIdCounter}`;
     p._ratingId = ratingId; p._reviewsId = rId; p._panelId = id;
-    p._priceBtnId = priceBtnId; p._priceId = priceId;
     const dist = _nearbySearchLat && p.lat && p.lon ? ` · <span style="color:var(--subtle);font-size:10px">${_distLabel(_distKmNearby(p))}</span>` : "";
     const latlon = p.lat && p.lon ? `&lat=${p.lat}&lon=${p.lon}` : "";
     const hours = _fmtHours(p.hours);
@@ -2677,11 +2674,6 @@
           ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.address}</div>` : ""}
           ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:3px">🕐 ${hours}</div>` : ""}
           ${contactLinks.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${contactLinks.join("")}</div>` : ""}
-          <button id="${priceBtnId}" data-url="" data-price-id="${priceId}"
-            data-pname="${(p.name||'').replace(/"/g,'&quot;')}" data-lat="${p.lat||''}" data-lon="${p.lon||''}"
-            onclick="loadPlacePrice(this,'${(p.name||'').replace(/'/g,"\\'")}','${(p.category||'').replace(/'/g,"\\'")}') "
-            style="margin-top:6px;padding:4px 10px;border-radius:8px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;color:#92400e;cursor:pointer">🍽️ Menu prices</button>
-          <div id="${priceId}"></div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
           <button data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-latlon="${latlon}"
@@ -2720,11 +2712,6 @@
         } else {
           el.innerHTML = `<span style="color:var(--subtle);font-size:10px">No rating</span>${priceTag}`;
         }
-        // Store website on price button when available (avoids an extra lookup on click)
-        if (d.website) {
-          const priceBtn = document.getElementById(p._priceBtnId);
-          if (priceBtn) priceBtn.dataset.url = d.website;
-        }
       })
       .catch(() => {
         const el = document.getElementById(p._ratingId);
@@ -2732,33 +2719,6 @@
       });
   }
 
-  window.loadPlacePrice = async function(btn, name, category) {
-    const priceEl = document.getElementById(btn.dataset.priceId);
-    btn.textContent = "⏳ Looking up…"; btn.disabled = true;
-    try {
-      let url = btn.dataset.url;
-      if (!url) {
-        // Website not yet fetched — look it up from Google Places now
-        const pname = btn.dataset.pname || name;
-        const lat = btn.dataset.lat, lon = btn.dataset.lon;
-        const ll = lat && lon ? `&lat=${lat}&lon=${lon}` : "";
-        const gd = await fetch(`/api/places/google?name=${encodeURIComponent(pname)}${ll}`).then(r=>r.json());
-        url = gd.website || "";
-        if (url) btn.dataset.url = url;
-      }
-      if (!url) {
-        btn.style.display = "none";
-        if (priceEl) priceEl.innerHTML = `<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:6px 10px;font-size:12px;color:#92400e;margin-top:4px">No website found — prices unavailable online</div>`;
-        return;
-      }
-      btn.textContent = "⏳ Fetching prices…";
-      const d = await fetch(`/api/places/price?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}&category=${encodeURIComponent(category)}`).then(r=>r.json());
-      btn.style.display = "none";
-      if (priceEl) priceEl.innerHTML = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 10px;font-size:12px;color:#065f46;margin-top:4px;white-space:pre-line">💰 ${d.price_text||d.error||"No prices found"}</div>`;
-    } catch(e) {
-      btn.textContent = "💰 Get prices"; btn.disabled = false;
-    }
-  };
 
   function _renderFoodGroupList(groupId) {
     const g = _nearbyFoodGroups[groupId];
@@ -3427,7 +3387,6 @@
       const cafeRestEntries  = sortedFoodEntries.filter(([cat]) => CAFE_REST_CATS.has(cat));
       const otherFoodEntries = sortedFoodEntries.filter(([cat]) => !CAFE_REST_CATS.has(cat));
 
-      // Service-specific card: inline rating + price level + sort + price extraction
       for (const k of Object.keys(_svcGroups)) delete _svcGroups[k];
 
       function _buildServiceGroupCard(cat, g) {
@@ -3443,8 +3402,6 @@
                 style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;border:none;cursor:pointer;background:var(--text);color:var(--bg)">📍 Near</button>
               <button data-gid="${groupId}" data-sort="rating" onclick="setSvcSort('${groupId}','rating',this)"
                 style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--surface);color:var(--subtle)">⭐ Rating</button>
-              <button data-gid="${groupId}" data-sort="price" onclick="setSvcSort('${groupId}','price',this)"
-                style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:99px;border:1px solid var(--border);cursor:pointer;background:var(--surface);color:var(--subtle)">💰 Price</button>
             </div>
           </div>
           <div id="${groupId}-list"></div>
