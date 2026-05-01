@@ -1060,7 +1060,7 @@ def fetch_brand_data(brand: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v15"
+_COMPANY_VER = "v16"
 _COMPANY_INFLIGHT: dict = {}
 _COMPANY_LOCK = _threading.Lock()
 
@@ -1418,37 +1418,9 @@ def _fetch_youtube(company: str) -> list:
 
 def fetch_company_info(company: str) -> dict:
     original = company.strip()
+    suggested = ""
 
-    # Step 1: canonicalise via Groq BEFORE cache lookup so we always use the right key
-    canonical = original
-    try:
-        groq_key = os.environ.get("GROQ_API_KEY", "")
-        if groq_key:
-            r = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [{"role": "user", "content":
-                        f'Fix any typos or abbreviations in this company name: "{original}". '
-                        f'Reply with ONLY the corrected name. Use the SHORT well-known brand name, NOT the full legal entity name. '
-                        f'Examples: "Tesco" not "Tesco Stores Limited", "Barclays" not "Barclays Bank PLC". '
-                        f'If already correct, repeat it unchanged.'}],
-                    "temperature": 0.1,
-                    "max_tokens": 30,
-                },
-                timeout=6,
-            )
-            resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
-            if _is_valid_canonical(resolved):
-                canonical = resolved
-    except Exception:
-        pass
-
-    suggested = canonical if canonical.lower() != original.lower() else ""
-    company = canonical
-
-    key = company.strip().lower() + "|" + _COMPANY_VER
+    key = original.lower() + "|" + _COMPANY_VER
 
     # L1: in-memory (under canonical key)
     cached = _COMPANY_CACHE.get(key)
@@ -1489,8 +1461,8 @@ def fetch_company_info(company: str) -> dict:
             data["suggested_name"] = suggested
             return data
 
-        slugs = _co_slugs(company)
-        enc = requests.utils.quote(company)
+        slugs = _co_slugs(original)
+        enc = requests.utils.quote(original)
         slug = slugs[0] if slugs else ""
         links = {
             "linkedin":       f"https://www.linkedin.com/company/{slug}",
@@ -1501,15 +1473,14 @@ def fetch_company_info(company: str) -> dict:
             "totaljobs":      f"https://www.totaljobs.com/jobs/{enc}",
         }
 
-        search_name = original  # use original query for news/share (not legal name like "Tesco Stores Limited")
         with _cf.ThreadPoolExecutor(max_workers=10) as pool:
-            wiki_f     = pool.submit(_fetch_wikipedia, company)
-            news_f     = pool.submit(_fetch_news, search_name, "", 6)
-            ai_news_f  = pool.submit(_fetch_news, search_name, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
-            strat_f    = pool.submit(_fetch_news, search_name, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
-            results_f  = pool.submit(_fetch_news, search_name, 'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"', 3)
-            youtube_f  = pool.submit(_fetch_youtube, search_name)
-            share_f    = pool.submit(_fetch_share_price, search_name)
+            wiki_f     = pool.submit(_fetch_wikipedia, original)
+            news_f     = pool.submit(_fetch_news, original, "", 6)
+            ai_news_f  = pool.submit(_fetch_news, original, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
+            strat_f    = pool.submit(_fetch_news, original, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
+            results_f  = pool.submit(_fetch_news, original, 'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"', 3)
+            youtube_f  = pool.submit(_fetch_youtube, original)
+            share_f    = pool.submit(_fetch_share_price, original)
             gh_f       = pool.submit(_fetch_greenhouse, slugs)
             lv_f       = pool.submit(_fetch_lever, slugs)
             sr_f       = pool.submit(_fetch_smartrecruiters, slugs)
@@ -1569,8 +1540,7 @@ def fetch_company_info(company: str) -> dict:
                     pass
 
         result = {
-            "name":           company,
-            "search_name":    search_name,
+            "name":           original,
             "suggested_name": suggested,
             "wiki":           wiki,
             "news":           news,
