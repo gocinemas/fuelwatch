@@ -5656,29 +5656,8 @@ _bkBadge();
       </div>
     </div>
 
-    <!-- Filter tabs -->
-    <div style="display:flex;gap:6px;margin-bottom:12px">
-      <button class="saves-filter-btn saves-filter-on" data-status="pending" onclick="savesFilter('pending',this)"
-        style="padding:6px 14px;border-radius:99px;border:1px solid #1f2937;background:#1f2937;color:#fff;font-size:12px;font-weight:600;cursor:pointer">
-        Pending
-      </button>
-      <button class="saves-filter-btn" data-status="remind" onclick="savesFilter('remind',this)"
-        style="padding:6px 14px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:12px;font-weight:600;cursor:pointer">
-        Reminders
-      </button>
-      <button class="saves-filter-btn" data-status="read" onclick="savesFilter('read',this)"
-        style="padding:6px 14px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:12px;font-weight:600;cursor:pointer">
-        Read
-      </button>
-      <button class="saves-filter-btn" data-status="all" onclick="savesFilter('all',this)"
-        style="padding:6px 14px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:12px;font-weight:600;cursor:pointer">
-        All
-      </button>
-      <button class="saves-filter-btn" data-status="brand" onclick="savesFilter('brand',this)"
-        style="padding:6px 14px;border-radius:99px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;font-size:12px;font-weight:600;cursor:pointer">
-        🏷️ Brands
-      </button>
-    </div>
+    <!-- Category pills — populated dynamically -->
+    <div id="saves-cat-pills" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none"></div>
 
     <div id="saves-list"></div>
   </div>
@@ -5752,7 +5731,7 @@ _bkBadge();
 // ── My Saves ─────────────────────────────────────────────────────────────────
 (function() {
   let _savesAll = [];
-  let _savesActiveFilter = "pending";
+  let _savesActiveFilter = "all";
 
   // Auto-login from ?token= in URL (sent by WhatsApp bot)
   (function() {
@@ -5803,30 +5782,71 @@ _bkBadge();
       if (r.status === 401) { sessionStorage.removeItem("wa_saves_token"); _savesShowLock(); return; }
       const d = await r.json();
       _savesAll = d.saves || [];
+      savesRenderCategoryPills();
       savesRender();
     } catch(e) {
       document.getElementById("saves-list").innerHTML = '<p style="color:#ef4444;font-size:13px">Failed to load saves.</p>';
     }
   };
 
-  window.savesFilter = function(status, btn) {
-    _savesActiveFilter = status;
-    document.querySelectorAll(".saves-filter-btn").forEach(b => {
-      const on = b === btn;
-      b.style.background = on ? "#1f2937" : "#fff";
-      b.style.color = on ? "#fff" : "#6b7280";
-      b.style.borderColor = on ? "#1f2937" : "#e5e7eb";
+  // ── Category system ─────────────────────────────────────────────────────────
+  var _SAVE_CATS = [
+    {key:"all",      label:"All"},
+    {key:"article",  label:"🔗 Articles"},
+    {key:"brand",    label:"🏷️ Brands"},
+    {key:"place",    label:"🏪 Restaurants"},
+    {key:"ad",       label:"📢 Ads"},
+    {key:"event",    label:"🎫 Events"},
+    {key:"receipt",  label:"🧾 Receipts"},
+    {key:"doc",      label:"📄 Docs"},
+    {key:"photo",    label:"📷 Photos"},
+  ];
+
+  function _saveCat(s) {
+    const t = s.title || "";
+    if (t.startsWith("🏷️")) return "brand";
+    if (t.startsWith("🏪")) return "place";
+    if (t.startsWith("📢")) return "ad";
+    if (t.startsWith("🎫")) return "event";
+    if (t.startsWith("🧾")) return "receipt";
+    if (t.startsWith("🍽️")) return "place";
+    if (t.startsWith("📄")) return "doc";
+    if (t.startsWith("📷") || t.startsWith("🪧")) return "photo";
+    return "article";
+  }
+
+  function savesRenderCategoryPills() {
+    var counts = {all: _savesAll.length};
+    _savesAll.forEach(function(s) {
+      var c = _saveCat(s);
+      counts[c] = (counts[c] || 0) + 1;
     });
+    var el = document.getElementById("saves-cat-pills");
+    el.innerHTML = _SAVE_CATS.filter(function(c) {
+      return c.key === "all" || counts[c.key] > 0;
+    }).map(function(c) {
+      var active = _savesActiveFilter === c.key;
+      var n = counts[c.key] || 0;
+      return '<button onclick="savesFilter(\'' + c.key + '\',this)" style="flex-shrink:0;padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;border:none;white-space:nowrap;'
+        + (active ? 'background:#1f2937;color:#fff' : 'background:#f3f4f6;color:#6b7280')
+        + '">' + c.label + (n && !active ? ' <span style="font-size:10px;opacity:.6">' + n + '</span>' : '') + '</button>';
+    }).join("");
+  }
+
+  window.savesFilter = function(cat) {
+    _savesActiveFilter = cat;
+    savesRenderCategoryPills();
     savesRender();
   };
 
   function savesRender() {
     const list = document.getElementById("saves-list");
-    const items = _savesActiveFilter === "all"   ? _savesAll
-                : _savesActiveFilter === "brand" ? _savesAll.filter(s => (s.title || "").startsWith("🏷️"))
-                : _savesAll.filter(s => s.status === _savesActiveFilter);
+    const items = _savesActiveFilter === "all"
+      ? _savesAll
+      : _savesAll.filter(function(s){ return _saveCat(s) === _savesActiveFilter; });
     if (!items.length) {
-      list.innerHTML = `<p style="color:#9ca3af;font-size:13px;padding:16px 0;text-align:center">No ${_savesActiveFilter === "all" ? "" : _savesActiveFilter + " "}saves yet.</p>`;
+      var catLabel = (_SAVE_CATS.find(function(c){return c.key===_savesActiveFilter;})||{label:""}).label;
+      list.innerHTML = `<p style="color:#9ca3af;font-size:13px;padding:16px 0;text-align:center">No ${catLabel ? catLabel + " " : ""}saves yet.</p>`;
       return;
     }
     const statusBadge = s => s === "read"
