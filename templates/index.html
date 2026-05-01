@@ -6212,10 +6212,9 @@ _bkBadge();
     if (name === "saves") savesCheckPin();
   };
 
-  // Deep-link: ?screen=saves (from WhatsApp) — run after full DOM ready
-  if (new URLSearchParams(location.search).get("screen") === "saves") {
-    window.showScreen("saves");
-  }
+  // Deep-link: ?screen=X — run after full DOM ready
+  const _deepScreen = new URLSearchParams(location.search).get("screen");
+  if (_deepScreen) window.showScreen(_deepScreen);
 })();
 </script>
 
