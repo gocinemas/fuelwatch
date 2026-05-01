@@ -5684,26 +5684,46 @@ _COUNCIL_SERVICES_LABELS = [
 
 
 # ── NHS Services ──────────────────────────────────────────────────────────────
+# Uses Directory of Healthcare Services API v3
+# Integration:  https://int.api.service.nhs.uk/service-search-api/search  (POST)
+# Production:   https://api.service.nhs.uk/service-search-api/search       (POST)
+# V3 requires lat/lon — we resolve postcode via postcodes.io first.
 
-_NHS_API_KEY = os.environ.get("NHS_API_KEY", "")
-_NHS_BASE    = "https://api.nhs.uk/service-search/search-postcode-or-place"
+_NHS_API_KEY  = os.environ.get("NHS_API_KEY", "")
+_NHS_SEARCH   = os.environ.get(
+    "NHS_SEARCH_URL",
+    "https://int.api.service.nhs.uk/service-search-api/search"   # swap to prod URL after onboarding
+)
 
-def _nhs_search(postcode: str, org_type: str, top: int = 10) -> list:
-    """Query NHS Service Search API for a given org type near a postcode."""
-    params = {
-        "api-version": "1",
-        "search":      postcode,
-        "filter":      f"OrganisationTypeId eq '{org_type}'",
-        "top":         top,
+
+def _nhs_postcode_to_latlon(postcode: str):
+    """Return (lat, lon) for a UK postcode via postcodes.io."""
+    r = requests.get(f"https://api.postcodes.io/postcodes/{postcode.replace(' ','')}", timeout=6)
+    data = r.json().get("result", {})
+    return data.get("latitude"), data.get("longitude")
+
+
+def _nhs_search(lat: float, lon: float, org_type: str, top: int = 10) -> list:
+    """POST to NHS Service Search v3 with lat/lon and org type filter."""
+    body = {
+        "search":  "*",
+        "filter":  f"OrganisationTypeId eq '{org_type}'",
+        "orderby": f"geo.distance(Geocode, geography'POINT({lon} {lat})')",
+        "top":     top,
     }
-    r = requests.get(_NHS_BASE, headers={"subscription-key": _NHS_API_KEY},
-                     params=params, timeout=10)
+    r = requests.post(
+        _NHS_SEARCH,
+        headers={"subscription-key": _NHS_API_KEY, "Content-Type": "application/json"},
+        json=body,
+        timeout=12,
+    )
     r.raise_for_status()
-    return r.json().get("value", [])
+    data = r.json()
+    print(f"[nhs] {org_type} status={r.status_code} count={len(data.get('value', []))} raw_keys={list(data.keys())[:8]}")
+    return data.get("value", [])
 
 
 def _nhs_fmt_hours(opening_times: list) -> str:
-    """Format NHS opening times into a short readable string."""
     days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
     today = days[__import__("datetime").datetime.now().weekday()]
     for slot in (opening_times or []):
@@ -5714,14 +5734,12 @@ def _nhs_fmt_hours(opening_times: list) -> str:
     return ""
 
 
-def _nhs_accepting(org: dict, org_type: str) -> str | None:
-    """Return accepting-patients badge text, or None if unknown."""
+def _nhs_accepting(org: dict, org_type: str):
     if org_type == "GPB":
         val = org.get("AcceptingPatients")
         if val is True:  return "accepting"
         if val is False: return "not accepting"
     if org_type == "DEN":
-        # Dentists: check services for NHS flag
         services = org.get("Services") or []
         nhs = any("NHS" in (s.get("ServiceName","") or "") for s in services)
         accepting = org.get("AcceptingPatients")
@@ -5729,6 +5747,31 @@ def _nhs_accepting(org: dict, org_type: str) -> str | None:
         if nhs and accepting is False: return "nhs · not accepting"
         if nhs:                        return "nhs"
     return None
+
+
+@app.route("/api/nhs/debug")
+def api_nhs_debug():
+    """Raw NHS API response for a single org type — for debugging only."""
+    postcode  = request.args.get("postcode", "KT16 0DA").strip().upper()
+    org_type  = request.args.get("type", "GPB")
+    if not _NHS_API_KEY:
+        return jsonify({"error": "NHS_API_KEY not set"}), 503
+    try:
+        lat, lon = _nhs_postcode_to_latlon(postcode)
+        body = {
+            "search":  "*",
+            "filter":  f"OrganisationTypeId eq '{org_type}'",
+            "orderby": f"geo.distance(Geocode, geography'POINT({lon} {lat})')",
+            "top":     5,
+        }
+        r = requests.post(
+            _NHS_SEARCH,
+            headers={"subscription-key": _NHS_API_KEY, "Content-Type": "application/json"},
+            json=body, timeout=12,
+        )
+        return jsonify({"status": r.status_code, "body_sent": body, "lat": lat, "lon": lon, "response": r.json()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/nhs")
@@ -5740,22 +5783,26 @@ def api_nhs():
         return jsonify({"error": "Postcode required"}), 400
     if not _NHS_API_KEY:
         return jsonify({"error": "NHS API not configured"}), 503
+    try:
+        lat, lon = _nhs_postcode_to_latlon(postcode)
+        if not lat or not lon:
+            return jsonify({"error": "Could not resolve postcode to coordinates"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Postcode lookup failed: {e}"}), 400
     out = {}
-    for org_type in types:
-        org_type = org_type.strip()
+    for org_type in [t.strip() for t in types]:
         try:
-            results = _nhs_search(postcode, org_type)
+            results = _nhs_search(lat, lon, org_type)
             places = []
             for org in results:
                 addr_parts = [org.get("Address1"), org.get("City"), org.get("Postcode")]
-                accepting  = _nhs_accepting(org, org_type)
                 places.append({
-                    "name":      org.get("OrganisationName",""),
+                    "name":      org.get("OrganisationName", ""),
                     "address":   ", ".join(p for p in addr_parts if p),
-                    "phone":     org.get("Phone",""),
-                    "url":       org.get("URL","") or org.get("Website",""),
-                    "hours":     _nhs_fmt_hours(org.get("OpeningTimes",[])),
-                    "accepting": accepting,
+                    "phone":     org.get("Phone", ""),
+                    "url":       org.get("URL", "") or org.get("Website", ""),
+                    "hours":     _nhs_fmt_hours(org.get("OpeningTimes", [])),
+                    "accepting": _nhs_accepting(org, org_type),
                     "lat":       org.get("Latitude"),
                     "lon":       org.get("Longitude"),
                 })
