@@ -5541,7 +5541,7 @@ def ping():
 _NHS_API_KEY  = os.environ.get("NHS_API_KEY", "")
 _NHS_SEARCH   = os.environ.get(
     "NHS_SEARCH_URL",
-    "https://int.api.service.nhs.uk/service-search-api/search"   # swap to prod URL after onboarding
+    "https://int.api.service.nhs.uk/service-search/search"   # swap to prod URL after onboarding
 )
 
 
