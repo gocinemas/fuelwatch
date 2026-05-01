@@ -5766,13 +5766,18 @@ _bkBadge();
 
 <!-- ── NHS SERVICES SCREEN (hidden — access via ?screen=nhs) ── -->
 <div id="screen-nhs" class="screen pt-5">
-  <div style="margin-bottom:16px">
+  <div style="margin-bottom:4px">
+    <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px">NHS Services</div>
+    <div style="font-size:12px;color:var(--subtle)">Find local GPs, dentists and pharmacies on the NHS website</div>
+  </div>
+
+  <div style="margin:16px 0">
     <div style="display:flex;gap:8px;align-items:center">
       <input id="nhs-postcode-input" type="text" placeholder="Enter your postcode…" maxlength="9"
         style="flex:1;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:15px;outline:none;background:var(--surface);color:var(--text);text-transform:uppercase;letter-spacing:.5px"
-        onkeydown="if(event.key==='Enter')nhsLookup()"
+        onkeydown="if(event.key==='Enter')nhsOpen()"
         oninput="this.value=this.value.toUpperCase()" />
-      <button onclick="nhsLookup()"
+      <button onclick="nhsOpen()"
         style="background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer">
         Find
       </button>
@@ -5781,138 +5786,81 @@ _bkBadge();
       style="margin-top:8px;background:none;border:none;cursor:pointer;font-size:12px;color:var(--accent);font-weight:600;padding:0;display:flex;align-items:center;gap:4px">
       📍 Use my current location
     </button>
+    <div id="nhs-error" style="display:none;color:#ef4444;font-size:13px;margin-top:6px"></div>
   </div>
 
-  <div id="nhs-loading" style="display:none;color:var(--subtle);font-size:13px;padding:8px 0;align-items:center;gap:8px">
-    <div class="spinner"></div> Finding NHS services near you…
+  <div id="nhs-links" style="display:none;display:grid;gap:10px">
+    <a id="nhs-gp-link" href="#" target="_blank" rel="noopener"
+      style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:16px;text-decoration:none">
+      <div style="font-size:28px">🩺</div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--text)">Find a GP</div>
+        <div style="font-size:12px;color:var(--subtle);margin-top:2px">Search surgeries near you · see if they're accepting patients</div>
+      </div>
+      <div style="margin-left:auto;font-size:18px;color:var(--subtle)">›</div>
+    </a>
+    <a id="nhs-den-link" href="#" target="_blank" rel="noopener"
+      style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:16px;text-decoration:none">
+      <div style="font-size:28px">🦷</div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--text)">Find a Dentist</div>
+        <div style="font-size:12px;color:var(--subtle);margin-top:2px">NHS dentists near you · NHS and accepting new patients</div>
+      </div>
+      <div style="margin-left:auto;font-size:18px;color:var(--subtle)">›</div>
+    </a>
+    <a id="nhs-pha-link" href="#" target="_blank" rel="noopener"
+      style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:16px;text-decoration:none">
+      <div style="font-size:28px">💊</div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--text)">Find a Pharmacy</div>
+        <div style="font-size:12px;color:var(--subtle);margin-top:2px">Local pharmacies · opening hours and services</div>
+      </div>
+      <div style="margin-left:auto;font-size:18px;color:var(--subtle)">›</div>
+    </a>
   </div>
-  <div id="nhs-error" style="display:none;color:#ef4444;font-size:13px;padding:8px 0"></div>
-
-  <!-- Tab strip -->
-  <div id="nhs-tabs" style="display:none;flex;gap:6px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none">
-    <button class="nhs-tab" data-type="GPB" onclick="nhsShowTab('GPB',this)"
-      style="flex-shrink:0;padding:6px 14px;border-radius:99px;border:1.5px solid var(--text);background:var(--text);color:var(--bg);font-size:12px;font-weight:700;cursor:pointer">
-      🩺 GPs
-    </button>
-    <button class="nhs-tab" data-type="DEN" onclick="nhsShowTab('DEN',this)"
-      style="flex-shrink:0;padding:6px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--subtle);font-size:12px;font-weight:700;cursor:pointer">
-      🦷 Dentists
-    </button>
-    <button class="nhs-tab" data-type="PHA" onclick="nhsShowTab('PHA',this)"
-      style="flex-shrink:0;padding:6px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--subtle);font-size:12px;font-weight:700;cursor:pointer">
-      💊 Pharmacies
-    </button>
-  </div>
-
-  <div id="nhs-results"></div>
 </div>
 
 <script>
 (function(){
-  let _nhsData = {};
-  let _nhsActiveTab = "GPB";
-
-  function _nhsLoading(show) {
-    document.getElementById("nhs-loading").style.display = show ? "flex" : "none";
-    document.getElementById("nhs-error").style.display = "none";
-    document.getElementById("nhs-tabs").style.display = "none";
-    document.getElementById("nhs-results").innerHTML = "";
-  }
-  function _nhsError(msg) {
-    document.getElementById("nhs-loading").style.display = "none";
-    document.getElementById("nhs-error").textContent = msg;
-    document.getElementById("nhs-error").style.display = "block";
+  function _nhsSetLinks(pc) {
+    const safe = encodeURIComponent(pc);
+    document.getElementById("nhs-gp-link").href  = "https://www.nhs.uk/service-search/find-a-gp/results/" + safe;
+    document.getElementById("nhs-den-link").href = "https://www.nhs.uk/service-search/find-a-dentist/results/" + safe;
+    document.getElementById("nhs-pha-link").href = "https://www.nhs.uk/service-search/find-a-pharmacy/results/" + safe;
+    document.getElementById("nhs-links").style.display = "grid";
   }
 
-  function _acceptingBadge(status) {
-    if (!status) return "";
-    const green = status.includes("accepting") && !status.includes("not");
-    const bg  = green ? "#d1fae5" : "#fee2e2";
-    const col = green ? "#065f46" : "#991b1b";
-    return `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${bg};color:${col};margin-left:6px">${status.toUpperCase()}</span>`;
-  }
-
-  function _nhsCard(p) {
-    const dirUrl = p.lat && p.lon ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : null;
-    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="font-size:13px;font-weight:700;color:var(--text)">${p.name}${_acceptingBadge(p.accepting)}</div>
-      ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:2px">${p.address}</div>` : ""}
-      ${p.hours   ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px">🕐 ${p.hours}</div>` : ""}
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-        ${p.phone   ? `<a href="tel:${p.phone}" style="display:inline-flex;align-items:center;gap:3px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;text-decoration:none">📞 Call</a>` : ""}
-        ${dirUrl    ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;background:#f0fdf4;color:#15803d;font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;text-decoration:none">🗺️ Directions</a>` : ""}
-        ${p.url     ? `<a href="${p.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;background:#f5f3ff;color:#6d28d9;font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;text-decoration:none">🌐 Website</a>` : ""}
-      </div>
-    </div>`;
-  }
-
-  function _nhsRender(type) {
-    const list = _nhsData[type];
-    const el = document.getElementById("nhs-results");
-    if (!list || list.error) { el.innerHTML = `<div style="font-size:13px;color:var(--subtle);padding:12px 0">No results found.</div>`; return; }
-    // Accepting first, then rest
-    const accepting = list.filter(p => p.accepting && !p.accepting.includes("not"));
-    const rest      = list.filter(p => !p.accepting || p.accepting.includes("not"));
-    const sorted    = [...accepting, ...rest];
-    if (!sorted.length) { el.innerHTML = `<div style="font-size:13px;color:var(--subtle);padding:12px 0">None found nearby.</div>`; return; }
-    const label = {"GPB":"🩺 GP surgeries","DEN":"🦷 Dental practices","PHA":"💊 Pharmacies"}[type] || "";
-    const note  = type === "DEN" ? `<div style="font-size:11px;color:var(--subtle);margin-bottom:10px;padding:6px 10px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">⚠️ Accepting status reflects NHS data — always call to confirm availability.</div>` : "";
-    el.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${label} near you</div>${note}` + sorted.map(_nhsCard).join("");
-  }
-
-  window.nhsShowTab = function(type, btn) {
-    _nhsActiveTab = type;
-    document.querySelectorAll(".nhs-tab").forEach(b => {
-      const active = b.dataset.type === type;
-      b.style.background = active ? "var(--text)" : "var(--surface)";
-      b.style.color      = active ? "var(--bg)"   : "var(--subtle)";
-      b.style.borderColor = active ? "var(--text)" : "var(--border)";
-    });
-    _nhsRender(type);
-  };
-
-  window.nhsLookup = async function(pc) {
-    pc = (pc || document.getElementById("nhs-postcode-input").value).trim().replace(/\s+/g,"").toUpperCase();
+  window.nhsOpen = function(pc) {
+    pc = (pc || document.getElementById("nhs-postcode-input").value).trim().toUpperCase().replace(/\s+/g,"");
     if (!pc) return;
-    _nhsLoading(true);
-    try {
-      const d = await fetch(`/api/nhs?postcode=${encodeURIComponent(pc)}`).then(r=>r.json());
-      if (d.error) { _nhsError(d.error); return; }
-      _nhsData = d;
-      localStorage.setItem("nhs_postcode", pc);
-      const fmt = pc.length > 4 ? pc.slice(0,-3)+" "+pc.slice(-3) : pc;
-      document.getElementById("nhs-postcode-input").value = fmt;
-      document.getElementById("nhs-loading").style.display = "none";
-      document.getElementById("nhs-tabs").style.display = "flex";
-      nhsShowTab(_nhsActiveTab, document.querySelector(`.nhs-tab[data-type="${_nhsActiveTab}"]`));
-    } catch(e) {
-      _nhsError("Something went wrong. Try again.");
-    }
+    document.getElementById("nhs-error").style.display = "none";
+    localStorage.setItem("nhs_postcode", pc);
+    const fmt = pc.length > 4 ? pc.slice(0,-3)+" "+pc.slice(-3) : pc;
+    document.getElementById("nhs-postcode-input").value = fmt;
+    _nhsSetLinks(pc);
   };
 
   window.nhsUseLocation = function() {
-    if (!navigator.geolocation) { _nhsError("Location not supported."); return; }
-    _nhsLoading(true);
+    const err = document.getElementById("nhs-error");
+    if (!navigator.geolocation) { err.textContent = "Location not supported."; err.style.display="block"; return; }
     navigator.geolocation.getCurrentPosition(async pos => {
       try {
-        const r = await fetch(`https://api.postcodes.io/postcodes?lon=${pos.coords.longitude}&lat=${pos.coords.latitude}&limit=1`).then(r=>r.json());
+        const r = await fetch("https://api.postcodes.io/postcodes?lon="+pos.coords.longitude+"&lat="+pos.coords.latitude+"&limit=1").then(r=>r.json());
         const pc = r.result && r.result[0] && r.result[0].postcode;
-        if (!pc) { _nhsError("Couldn\'t find postcode for your location."); return; }
+        if (!pc) { err.textContent="Couldn't find postcode for your location."; err.style.display="block"; return; }
         document.getElementById("nhs-postcode-input").value = pc;
-        nhsLookup(pc.replace(/\s/g,""));
-      } catch(e) { _nhsError("Location lookup failed."); }
-    }, () => _nhsError("Location access denied. Enter postcode manually."));
+        nhsOpen(pc.replace(/\s/g,""));
+      } catch(e) { err.textContent="Location lookup failed."; err.style.display="block"; }
+    }, () => { err.textContent="Location access denied. Enter postcode manually."; err.style.display="block"; });
   };
 
-  // Auto-load on screen open
+  // Auto-load saved postcode when screen opens
   const _nhsOrig = window.showScreen;
   window.showScreen = function(name) {
     if (_nhsOrig) _nhsOrig(name);
     if (name === "nhs") {
       const saved = localStorage.getItem("nhs_postcode");
-      if (saved && document.getElementById("nhs-tabs").style.display !== "flex") {
-        nhsLookup(saved);
-      }
+      if (saved) nhsOpen(saved);
     }
   };
 })();
