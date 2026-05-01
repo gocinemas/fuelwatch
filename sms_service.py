@@ -5683,6 +5683,88 @@ _COUNCIL_SERVICES_LABELS = [
 ]
 
 
+# ── NHS Services ──────────────────────────────────────────────────────────────
+
+_NHS_API_KEY = os.environ.get("NHS_API_KEY", "")
+_NHS_BASE    = "https://api.nhs.uk/service-search/search-postcode-or-place"
+
+def _nhs_search(postcode: str, org_type: str, top: int = 10) -> list:
+    """Query NHS Service Search API for a given org type near a postcode."""
+    params = {
+        "api-version": "1",
+        "search":      postcode,
+        "filter":      f"OrganisationTypeId eq '{org_type}'",
+        "top":         top,
+    }
+    r = requests.get(_NHS_BASE, headers={"subscription-key": _NHS_API_KEY},
+                     params=params, timeout=10)
+    r.raise_for_status()
+    return r.json().get("value", [])
+
+
+def _nhs_fmt_hours(opening_times: list) -> str:
+    """Format NHS opening times into a short readable string."""
+    days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+    today = days[__import__("datetime").datetime.now().weekday()]
+    for slot in (opening_times or []):
+        if slot.get("Weekday") == today and slot.get("OpeningTimeType") == "General":
+            o, c = slot.get("OpeningTime",""), slot.get("ClosingTime","")
+            if o and c:
+                return f"Today {o}–{c}"
+    return ""
+
+
+def _nhs_accepting(org: dict, org_type: str) -> str | None:
+    """Return accepting-patients badge text, or None if unknown."""
+    if org_type == "GPB":
+        val = org.get("AcceptingPatients")
+        if val is True:  return "accepting"
+        if val is False: return "not accepting"
+    if org_type == "DEN":
+        # Dentists: check services for NHS flag
+        services = org.get("Services") or []
+        nhs = any("NHS" in (s.get("ServiceName","") or "") for s in services)
+        accepting = org.get("AcceptingPatients")
+        if nhs and accepting is True:  return "nhs · accepting"
+        if nhs and accepting is False: return "nhs · not accepting"
+        if nhs:                        return "nhs"
+    return None
+
+
+@app.route("/api/nhs")
+def api_nhs():
+    """Postcode → nearby GPs, dentists, pharmacies with accepting-patients status."""
+    postcode = request.args.get("postcode", "").strip().upper()
+    types    = request.args.get("types", "GPB,DEN,PHA").split(",")
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+    if not _NHS_API_KEY:
+        return jsonify({"error": "NHS API not configured"}), 503
+    out = {}
+    for org_type in types:
+        org_type = org_type.strip()
+        try:
+            results = _nhs_search(postcode, org_type)
+            places = []
+            for org in results:
+                addr_parts = [org.get("Address1"), org.get("City"), org.get("Postcode")]
+                accepting  = _nhs_accepting(org, org_type)
+                places.append({
+                    "name":      org.get("OrganisationName",""),
+                    "address":   ", ".join(p for p in addr_parts if p),
+                    "phone":     org.get("Phone",""),
+                    "url":       org.get("URL","") or org.get("Website",""),
+                    "hours":     _nhs_fmt_hours(org.get("OpeningTimes",[])),
+                    "accepting": accepting,
+                    "lat":       org.get("Latitude"),
+                    "lon":       org.get("Longitude"),
+                })
+            out[org_type] = places
+        except Exception as e:
+            out[org_type] = {"error": str(e)}
+    return jsonify(out)
+
+
 @app.route("/api/council/bins")
 def api_council_bins():
     """Try to scrape + AI-extract bin collection day for a postcode."""
