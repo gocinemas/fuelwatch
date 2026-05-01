@@ -1060,7 +1060,7 @@ def fetch_brand_data(brand: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v14"
+_COMPANY_VER = "v15"
 _COMPANY_INFLIGHT: dict = {}
 _COMPANY_LOCK = _threading.Lock()
 
@@ -1430,9 +1430,10 @@ def fetch_company_info(company: str) -> dict:
                 json={
                     "model": "llama-3.1-8b-instant",
                     "messages": [{"role": "user", "content":
-                        f'What is the correct full legal or well-known name of the company "{original}"? '
-                        f'Reply with ONLY the company name, nothing else. '
-                        f'If it is already correct, repeat it unchanged.'}],
+                        f'Fix any typos or abbreviations in this company name: "{original}". '
+                        f'Reply with ONLY the corrected name. Use the SHORT well-known brand name, NOT the full legal entity name. '
+                        f'Examples: "Tesco" not "Tesco Stores Limited", "Barclays" not "Barclays Bank PLC". '
+                        f'If already correct, repeat it unchanged.'}],
                     "temperature": 0.1,
                     "max_tokens": 30,
                 },
@@ -1500,14 +1501,15 @@ def fetch_company_info(company: str) -> dict:
             "totaljobs":      f"https://www.totaljobs.com/jobs/{enc}",
         }
 
+        search_name = original  # use original query for news/share (not legal name like "Tesco Stores Limited")
         with _cf.ThreadPoolExecutor(max_workers=10) as pool:
             wiki_f     = pool.submit(_fetch_wikipedia, company)
-            news_f     = pool.submit(_fetch_news, company, "", 6)
-            ai_news_f  = pool.submit(_fetch_news, company, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
-            strat_f    = pool.submit(_fetch_news, company, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
-            results_f  = pool.submit(_fetch_news, company, 'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"', 3)
-            youtube_f  = pool.submit(_fetch_youtube, company)
-            share_f    = pool.submit(_fetch_share_price, company)
+            news_f     = pool.submit(_fetch_news, search_name, "", 6)
+            ai_news_f  = pool.submit(_fetch_news, search_name, "AI OR \"artificial intelligence\" OR \"machine learning\"", 5)
+            strat_f    = pool.submit(_fetch_news, search_name, "strategy OR acquisition OR partnership OR expansion OR growth plan", 5)
+            results_f  = pool.submit(_fetch_news, search_name, 'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"', 3)
+            youtube_f  = pool.submit(_fetch_youtube, search_name)
+            share_f    = pool.submit(_fetch_share_price, search_name)
             gh_f       = pool.submit(_fetch_greenhouse, slugs)
             lv_f       = pool.submit(_fetch_lever, slugs)
             sr_f       = pool.submit(_fetch_smartrecruiters, slugs)
@@ -1568,6 +1570,7 @@ def fetch_company_info(company: str) -> dict:
 
         result = {
             "name":           company,
+            "search_name":    search_name,
             "suggested_name": suggested,
             "wiki":           wiki,
             "news":           news,

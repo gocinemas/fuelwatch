@@ -1372,13 +1372,14 @@ def _groq_chat(system, messages, max_tokens=600, json_mode=False, model="llama-3
 def api_company_results():
     data = request.json or {}
     company = data.get("company", "").strip()
+    search_name = data.get("search_name", "").strip() or company
     if not company:
         return jsonify({"error": "Company name required"}), 400
 
     try:
         from search import _fetch_news
         results_news = _fetch_news(
-            company,
+            search_name,
             'results OR earnings OR "annual results" OR "quarterly results" OR "full year results" OR "half year results"',
             5
         )

@@ -2077,7 +2077,7 @@
 
     // Last Results — load async via Claude summary
     document.getElementById("co-results").classList.remove("hidden");
-    loadResultsSummary(d.name || query);
+    loadResultsSummary(d.name || query, d.search_name || "");
 
     // Strategy & Direction
     const stratNews = d.strategy_news || [];
@@ -2211,7 +2211,7 @@
   let _resultsChatContext = "";
   let _resultsChatHistory = [];
 
-  async function loadResultsSummary(company) {
+  async function loadResultsSummary(company, searchName) {
     _resultsCompany = company;
     _resultsChatContext = "";
     _resultsChatHistory = [];
@@ -2226,7 +2226,7 @@
       const r = await fetch("/api/company/results", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({company}),
+        body: JSON.stringify({company, search_name: searchName || company}),
         signal: ctrl.signal,
       });
       clearTimeout(tid);
