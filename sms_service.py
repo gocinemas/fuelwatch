@@ -2261,7 +2261,7 @@ def api_places_price():
                 "messages": [{"role": "user", "content":
                     f'Business: "{name}" ({category})\n'
                     f'Website text:\n{text}\n\n'
-                    'Extract service prices from this text. List specific prices (e.g. "Haircut from £25", "MOT £54.85", "Consultation £60").\n'
+                    'Extract menu or price information. Examples: "Coffee from £3.20", "Lunch £12–£18", "Set menu £25pp", "Average main £15".\n'
                     'If no prices are listed, say "Prices not listed on website".\n'
                     'Return ONLY a short plain-text price summary, max 3 lines, no markdown.'}],
                 "max_tokens": 150, "temperature": 0.1,

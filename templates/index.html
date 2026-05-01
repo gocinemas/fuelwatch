@@ -2656,7 +2656,10 @@
     const id = `pl-${++_placesIdCounter}`;
     const rId = `plr-${_placesIdCounter}`;
     const ratingId = `prat-${_placesIdCounter}`;
+    const priceBtnId = `ppb-${_placesIdCounter}`;
+    const priceId = `ppr-${_placesIdCounter}`;
     p._ratingId = ratingId; p._reviewsId = rId; p._panelId = id;
+    p._priceBtnId = priceBtnId; p._priceId = priceId;
     const dist = _nearbySearchLat && p.lat && p.lon ? ` · <span style="color:var(--subtle);font-size:10px">${_distLabel(_distKmNearby(p))}</span>` : "";
     const latlon = p.lat && p.lon ? `&lat=${p.lat}&lon=${p.lon}` : "";
     const hours = _fmtHours(p.hours);
@@ -2674,6 +2677,11 @@
           ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.address}</div>` : ""}
           ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:3px">🕐 ${hours}</div>` : ""}
           ${contactLinks.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${contactLinks.join("")}</div>` : ""}
+          <button id="${priceBtnId}" data-url="" data-price-id="${priceId}"
+            data-pname="${(p.name||'').replace(/"/g,'&quot;')}" data-lat="${p.lat||''}" data-lon="${p.lon||''}"
+            onclick="loadPlacePrice(this,'${(p.name||'').replace(/'/g,"\\'")}','${(p.category||'').replace(/'/g,"\\'")}') "
+            style="margin-top:6px;padding:4px 10px;border-radius:8px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;color:#92400e;cursor:pointer">🍽️ Menu prices</button>
+          <div id="${priceId}"></div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
           <button data-name="${(p.name||'').replace(/"/g,'&quot;')}" data-latlon="${latlon}"
@@ -2773,10 +2781,7 @@
     const id = `pl-${++_placesIdCounter}`;
     const rId = `plr-${_placesIdCounter}`;
     const ratingId = `prat-${_placesIdCounter}`;
-    const priceBtnId = `ppb-${_placesIdCounter}`;
-    const priceId = `ppr-${_placesIdCounter}`;
     p._ratingId = ratingId; p._reviewsId = rId; p._panelId = id;
-    p._priceBtnId = priceBtnId; p._priceId = priceId;
     const hours = _fmtHours(p.hours);
     const _sDirUrl = p.lat && p.lon ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : null;
     const links = [];
@@ -2790,11 +2795,6 @@
       ${p.address ? `<div style="font-size:11px;color:var(--subtle);margin-top:1px">${p.address}</div>` : ""}
       ${hours ? `<div style="font-size:11px;color:var(--subtle);margin-top:3px">🕐 ${hours}</div>` : ""}
       ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${links.join("")}</div>` : ""}
-      <button id="${priceBtnId}" data-url="" data-price-id="${priceId}"
-        data-pname="${(p.name||'').replace(/"/g,'&quot;')}" data-lat="${p.lat||''}" data-lon="${p.lon||''}"
-        onclick="loadPlacePrice(this,'${(p.name||'').replace(/'/g,"\\'")}','${(cat||'').replace(/'/g,"\\'")}') "
-        style="margin-top:6px;padding:4px 10px;border-radius:8px;border:1px solid #bbf7d0;background:#f0fdf4;font-size:11px;font-weight:600;color:#065f46;cursor:pointer">💰 Get prices</button>
-      <div id="${priceId}"></div>
     </div>`;
   }
 
