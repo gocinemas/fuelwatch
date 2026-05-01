@@ -5867,14 +5867,14 @@ _bkBadge();
     var up = new URLSearchParams(location.search);
     var tok = up.get("token");
     if (tok) {
-      sessionStorage.setItem("lib_pin", tok);
+      sessionStorage.setItem("wa_saves_token", tok);
       up.delete("token");
       var qs = up.toString();
       history.replaceState({}, "", location.pathname + (qs ? "?" + qs : ""));
     }
   })();
 
-  function _savesPin() { return sessionStorage.getItem("lib_pin") || ""; }
+  function _savesPin() { return sessionStorage.getItem("wa_saves_token") || ""; }
   function _savesHeaders() { return _savesPin() ? {"X-Library-PIN": _savesPin(), "Content-Type": "application/json"} : {"Content-Type": "application/json"}; }
 
   function _savesShowLock() {
@@ -5899,7 +5899,7 @@ _bkBadge();
     if (!pin) return;
     const r = await fetch("/api/wa-saves", {headers: {"X-Library-PIN": pin}});
     if (r.status === 401) { document.getElementById("saves-pin-error").style.display = "block"; return; }
-    sessionStorage.setItem("lib_pin", pin);
+    sessionStorage.setItem("wa_saves_token", pin);
     document.getElementById("saves-pin-error").style.display = "none";
     _savesShowMain();
   };
@@ -5908,7 +5908,7 @@ _bkBadge();
     document.getElementById("saves-list").innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div>Loading…</div>';
     try {
       const r = await fetch("/api/wa-saves", {headers: _savesHeaders()});
-      if (r.status === 401) { sessionStorage.removeItem("lib_pin"); _savesShowLock(); return; }
+      if (r.status === 401) { sessionStorage.removeItem("wa_saves_token"); _savesShowLock(); return; }
       const d = await r.json();
       _savesAll = d.saves || [];
       savesRender();
