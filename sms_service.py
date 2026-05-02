@@ -3662,12 +3662,62 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if qr_url and not search_url:
             search_url = qr_url
 
+        # ── Menu: structured extraction ──────────────────────────────────────────
+        menu_text = ""
+        if img_type == "menu":
+            try:
+                _menu_prompt = (
+                    "Look at this menu image. Extract the menu items grouped by section "
+                    "(e.g. Starters, Mains, Desserts, Drinks, Sides). "
+                    "For each section list items with their prices. "
+                    "Format exactly like this:\n"
+                    "*Starters*\n• Soup of the day — £6.50\n• Bruschetta — £7.00\n"
+                    "*Mains*\n• Fish & Chips — £14.50\n"
+                    "Only include what is clearly visible. Skip sections with no readable items."
+                )
+                _menu_resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
+                             "Content-Type": "application/json"},
+                    json={
+                        "model": _vision_models[0],
+                        "max_tokens": 600,
+                        "messages": [{"role": "user", "content": [
+                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
+                            {"type": "text", "text": _menu_prompt},
+                        ]}],
+                    },
+                    timeout=20,
+                )
+                if _menu_resp.status_code == 200:
+                    menu_text = _menu_resp.json()["choices"][0]["message"]["content"].strip()
+            except Exception as _me:
+                print(f"[vision] menu extraction failed: {_me}")
+
+        # ── Reverse-geocode stored GPS to UK postcode ────────────────────────────
+        gps_location = ""
+        if _loc and (time.time() - _loc.get("ts", 0)) < 7200:
+            try:
+                _rg = requests.get(
+                    "https://api.postcodes.io/postcodes",
+                    params={"lon": _loc["lon"], "lat": _loc["lat"], "limit": 1},
+                    timeout=5,
+                )
+                _rg_data = _rg.json().get("result") or []
+                if _rg_data:
+                    _pc = _rg_data[0]
+                    gps_location = f"{_pc.get('admin_ward','')}, {_pc.get('postcode','')}, {_pc.get('admin_district','')}".strip(", ")
+            except Exception:
+                pass
+
         # Build meta line: when + where
         import datetime as _dt
         now_str = _dt.datetime.now().strftime("%-d %b %Y, %-I:%M %p")
-        where_str = location_tag or (venue_info.get("address", "").split(",")[0] if venue_info else "") or venue_tag
+        # Prefer real GPS postcode over vision model's guess (which can be wrong/US coords)
+        where_str = gps_location or (venue_info.get("address", "").split(",")[0] if venue_info else "") or location_tag or venue_tag
         meta_line = f"META:📅 {now_str}" + (f" · 📍 {where_str}" if where_str else "")
-        summary_with_meta = meta_line + "\n" + summary if summary else meta_line
+        full_summary = (summary + "\n\n" + menu_text).strip() if menu_text else summary
+        summary_with_meta = meta_line + "\n" + full_summary if full_summary else meta_line
 
         if sid:
             try:
@@ -3679,9 +3729,11 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 pass
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
-        if bullets or venue_info or brand_intel:
+        if bullets or venue_info or brand_intel or menu_text:
             msg = f"{title}\n"
-            if bullets:
+            if menu_text:
+                msg += f"\n{menu_text}"
+            elif bullets:
                 msg += f"\n{bullets}"
 
             # Build details block
@@ -3702,7 +3754,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     details.append(f"🔍 Search: {search_url}")
             elif img_type == "store" and venue_info:
                 # Full place card — address, hours, open status, phone, website, directions
-                if venue_info.get("address"):
+                if gps_location:
+                    details.append(f"📍 {gps_location}")
+                elif venue_info.get("address"):
                     details.append(f"📍 {venue_info['address'].split(',')[0]}")
                 if venue_info.get("open_now") is not None:
                     status = "🟢 Open now" if venue_info["open_now"] else "🔴 Closed now"
