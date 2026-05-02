@@ -3313,7 +3313,8 @@ def _resolve_user_token(token: str):
 
 @app.route("/api/user/location", methods=["POST"])
 def api_user_location():
-    """Web app posts browser geolocation here; stored against the user's phone number."""
+    """Web app posts browser geolocation here; stored against the user's phone number.
+    Also retroactively patches recent saves that were missing a location."""
     data = request.json or {}
     token = data.get("token", "").strip()
     lat   = data.get("lat")
@@ -3323,7 +3324,53 @@ def api_user_location():
     from_number = _resolve_user_token(token)
     if not from_number:
         return jsonify({"ok": False}), 404
-    _USER_LAST_LOCATION[from_number] = {"lat": float(lat), "lon": float(lon), "ts": time.time()}
+    lat, lon = float(lat), float(lon)
+    _USER_LAST_LOCATION[from_number] = {"lat": lat, "lon": lon, "ts": time.time()}
+
+    # Reverse-geocode to a readable location string
+    def _patch_recent():
+        try:
+            rg = requests.get(
+                "https://api.postcodes.io/postcodes",
+                params={"lon": lon, "lat": lat, "limit": 1},
+                timeout=5,
+            )
+            rg_data = rg.json().get("result") or []
+            if not rg_data:
+                return
+            pc = rg_data[0]
+            location_str = f"{pc.get('admin_ward','')}, {pc.get('postcode','')}, {pc.get('admin_district','')}".strip(", ")
+            if not location_str:
+                return
+
+            # Find saves from the last 30 minutes for this user that have no 📍
+            cutoff = (time.time() - 1800)
+            import datetime as _dt
+            cutoff_iso = _dt.datetime.utcfromtimestamp(cutoff).isoformat()
+            rows = lib._sb().table("wa_saves") \
+                .select("id,summary") \
+                .eq("from_number", from_number) \
+                .gte("created_at", cutoff_iso) \
+                .execute().data or []
+
+            for row in rows:
+                summary = row.get("summary", "") or ""
+                if "📍" in summary:
+                    continue  # already has location
+                # Inject location into META line
+                updated = _re.sub(
+                    r"(META:📅[^\n]*)",
+                    lambda m: m.group(1) + f" · 📍 {location_str}",
+                    summary,
+                )
+                if updated != summary:
+                    lib._sb().table("wa_saves").update({"summary": updated}).eq("id", row["id"]).execute()
+                    print(f"[location] patched save {row['id']} with {location_str}")
+        except Exception as e:
+            print(f"[location] patch_recent error: {e}")
+
+    import threading as _th
+    _th.Thread(target=_patch_recent, daemon=True).start()
     return jsonify({"ok": True})
 
 
