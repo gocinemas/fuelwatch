@@ -3683,13 +3683,19 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if img_type == "menu":
             try:
                 _menu_prompt = (
-                    "Look at this menu image. Extract the menu items grouped by section "
+                    "Look at this menu image carefully.\n\n"
+                    "First, extract any restaurant details visible on the menu — output these lines if present:\n"
+                    "NAME: [restaurant name]\n"
+                    "PHONE: [phone number]\n"
+                    "ADDRESS: [address or location]\n"
+                    "HOURS: [opening times]\n\n"
+                    "Then extract the menu items grouped by section "
                     "(e.g. Starters, Mains, Desserts, Drinks, Sides). "
-                    "For each section list items with their prices. "
+                    "For each section list items with their prices.\n"
                     "Format exactly like this:\n"
                     "*Starters*\n• Soup of the day — £6.50\n• Bruschetta — £7.00\n"
-                    "*Mains*\n• Fish & Chips — £14.50\n"
-                    "Only include what is clearly visible. Skip sections with no readable items."
+                    "*Mains*\n• Fish & Chips — £14.50\n\n"
+                    "Only include what is clearly visible. Skip sections or details with no readable content."
                 )
                 _menu_resp = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
@@ -3697,7 +3703,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                              "Content-Type": "application/json"},
                     json={
                         "model": _vision_models[0],
-                        "max_tokens": 600,
+                        "max_tokens": 800,
                         "messages": [{"role": "user", "content": [
                             {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
                             {"type": "text", "text": _menu_prompt},
@@ -3706,7 +3712,37 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     timeout=20,
                 )
                 if _menu_resp.status_code == 200:
-                    menu_text = _menu_resp.json()["choices"][0]["message"]["content"].strip()
+                    _raw_menu = _menu_resp.json()["choices"][0]["message"]["content"].strip()
+                    # Parse out restaurant detail lines; remainder is the menu
+                    _menu_meta = {}
+                    _menu_lines = []
+                    for _ml in _raw_menu.split("\n"):
+                        _mu = _ml.strip().upper()
+                        if _mu.startswith("NAME:"):
+                            _menu_meta["name"] = _ml.split(":", 1)[1].strip()
+                        elif _mu.startswith("PHONE:"):
+                            _menu_meta["phone"] = _ml.split(":", 1)[1].strip()
+                        elif _mu.startswith("ADDRESS:"):
+                            _menu_meta["address"] = _ml.split(":", 1)[1].strip()
+                        elif _mu.startswith("HOURS:"):
+                            _menu_meta["hours"] = _ml.split(":", 1)[1].strip()
+                        else:
+                            _menu_lines.append(_ml)
+                    menu_text = "\n".join(_menu_lines).strip()
+                    # Use restaurant details from menu if not already found
+                    if _menu_meta.get("name") and not venue_tag:
+                        venue_tag = _menu_meta["name"]
+                        title = f"🍽️ {venue_tag}"
+                    if _menu_meta.get("name") and not location_tag:
+                        location_tag = _menu_meta.get("address", "")
+                    # Prepend restaurant info block to menu text
+                    _info_lines = []
+                    if _menu_meta.get("name"):    _info_lines.append(f"🍽️ {_menu_meta['name']}")
+                    if _menu_meta.get("address"): _info_lines.append(f"📍 {_menu_meta['address']}")
+                    if _menu_meta.get("phone"):   _info_lines.append(f"📞 {_menu_meta['phone']}")
+                    if _menu_meta.get("hours"):   _info_lines.append(f"🕐 {_menu_meta['hours']}")
+                    if _info_lines:
+                        menu_text = "\n".join(_info_lines) + "\n\n" + menu_text
             except Exception as _me:
                 print(f"[vision] menu extraction failed: {_me}")
 
