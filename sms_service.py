@@ -2170,20 +2170,23 @@ _PLACES_CACHE_TTL = 3600  # 1 hour
 _GOOGLE_PLACES_KEY = os.environ.get("GOOGLE_PLACES_KEY", "")
 
 
-def _lookup_venue(name: str) -> dict:
+def _lookup_venue(name: str, lat: float = None, lon: float = None) -> dict:
     """Look up phone, website, address, hours, rating for a venue via Google Places."""
     out = {"phone": "", "website": "", "address": "", "maps_url": "",
            "hours_today": "", "open_now": None, "rating": None, "rating_count": 0, "name": name}
-    # Only set a fallback maps URL for short names that are plausibly real place names
     if len(name) <= 60:
         maps_q = name.replace(" ", "+")
         out["maps_url"] = f"https://maps.google.com/?q={maps_q}"
     if not _GOOGLE_PLACES_KEY:
         return out
     try:
+        params = {"query": name, "key": _GOOGLE_PLACES_KEY, "region": "uk"}
+        if lat is not None and lon is not None:
+            params["location"] = f"{lat},{lon}"
+            params["radius"] = 5000  # 5km — strong local bias
         ts = requests.get(
             "https://maps.googleapis.com/maps/api/place/textsearch/json",
-            params={"query": name, "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+            params=params,
             timeout=6,
         )
         results = ts.json().get("results", [])
@@ -4931,12 +4934,21 @@ def api_wa_saves_enrich():
     if err:
         return err
     data = request.json or {}
-    save_id   = data.get("id", "")
+    save_id    = data.get("id", "")
     venue_name = data.get("venue", "").strip()
+    lat        = data.get("lat")
+    lon        = data.get("lon")
     if not save_id or not venue_name:
         return jsonify({"error": "id and venue required"}), 400
+    # Fall back to stored GPS if frontend didn't send coordinates
+    if lat is None or lon is None:
+        pin = request.headers.get("X-Library-PIN", "")
+        fn  = _resolve_user_token(pin)
+        loc = fn and _USER_LAST_LOCATION.get(fn)
+        if loc and (time.time() - loc.get("ts", 0)) < 7200:
+            lat, lon = loc["lat"], loc["lon"]
     try:
-        info = _lookup_venue(venue_name)
+        info = _lookup_venue(venue_name, lat=lat, lon=lon)
         parts = []
         if info.get("open_now") is not None:
             status = "🟢 Open now" if info["open_now"] else "🔴 Closed now"

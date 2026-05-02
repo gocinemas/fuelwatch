@@ -6097,10 +6097,16 @@ _bkBadge();
   window.savesEnrich = async function(id, venue, btn) {
     btn.textContent = "✨ Looking up…"; btn.disabled = true;
     try {
+      let lat = null, lon = null;
+      try {
+        const pos = await new Promise((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, {maximumAge: 300000, timeout: 5000}));
+        lat = pos.coords.latitude; lon = pos.coords.longitude;
+      } catch(_) {}
       const r = await fetch("/api/wa-saves/enrich", {
         method: "POST",
         headers: {..._savesHeaders(), "Content-Type": "application/json"},
-        body: JSON.stringify({id, venue}),
+        body: JSON.stringify({id, venue, lat, lon}),
       });
       const d = await r.json();
       if(d.ok) await savesLoad();
