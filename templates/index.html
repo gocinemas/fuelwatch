@@ -5868,6 +5868,16 @@ _bkBadge();
       up.delete("token");
       var qs = up.toString();
       history.replaceState({}, "", location.pathname + (qs ? "?" + qs : ""));
+      // Silently push browser location so WhatsApp photo saves get the right postcode
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+          fetch("/api/user/location", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({token: tok, lat: pos.coords.latitude, lon: pos.coords.longitude}),
+          }).catch(function(){});
+        }, function(){}, {maximumAge: 300000, timeout: 8000});
+      }
     }
   })();
 

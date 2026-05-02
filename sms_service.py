@@ -3311,6 +3311,22 @@ def _resolve_user_token(token: str):
         return None
 
 
+@app.route("/api/user/location", methods=["POST"])
+def api_user_location():
+    """Web app posts browser geolocation here; stored against the user's phone number."""
+    data = request.json or {}
+    token = data.get("token", "").strip()
+    lat   = data.get("lat")
+    lon   = data.get("lon")
+    if not token or lat is None or lon is None:
+        return jsonify({"ok": False}), 400
+    from_number = _resolve_user_token(token)
+    if not from_number:
+        return jsonify({"ok": False}), 404
+    _USER_LAST_LOCATION[from_number] = {"lat": float(lat), "lon": float(lon), "ts": time.time()}
+    return jsonify({"ok": True})
+
+
 def _fetch_url_text(url: str) -> dict:
     """Fetch a URL and extract title + body text using stdlib html.parser only."""
     import html.parser as _hp
