@@ -6055,9 +6055,11 @@ _bkBadge();
         }
         <div style="font-size:11px;color:#9ca3af;margin-bottom:10px">${date}${s.remind_day ? " · Remind " + s.remind_day : ""}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${!isPhoto ? `
           <button onclick="savesUpdate('${s.id}','read',this)" style="flex:1;padding:7px;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:600;cursor:pointer;color:#16a34a">✓ Read</button>
           <button onclick="savesUpdate('${s.id}','skip',this)" style="flex:1;padding:7px;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:600;cursor:pointer;color:#6b7280">× Skip</button>
           <button onclick="savesUpdate('${s.id}','pending',this)" style="flex:1;padding:7px;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:600;cursor:pointer;color:#2563eb">↺ Reset</button>
+          ` : ""}
           ${enrichBtn}
           ${brandBtn}
           <button onclick="savesDelete('${s.id}',this)" style="padding:7px 10px;border-radius:8px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;font-weight:600;cursor:pointer;color:#dc2626">🗑</button>
