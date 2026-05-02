@@ -4902,6 +4902,28 @@ def api_wa_saves_update():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/wa-saves/delete", methods=["POST"])
+def api_wa_saves_delete():
+    """Delete a save. Users can only delete their own saves."""
+    err = _check_library_pin()
+    if err:
+        return err
+    data = request.json or {}
+    save_id = data.get("id")
+    if not save_id:
+        return jsonify({"error": "id required"}), 400
+    pin = request.headers.get("X-Library-PIN", "")
+    from_number = _resolve_user_token(pin)
+    try:
+        q = lib._sb().table("wa_saves").delete().eq("id", save_id)
+        if from_number:
+            q = q.eq("from_number", from_number)  # users can only delete their own
+        q.execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/wa-saves/enrich", methods=["POST"])
 def api_wa_saves_enrich():
     """Look up place details for a photo/place save and update its summary."""

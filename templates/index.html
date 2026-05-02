@@ -6060,6 +6060,7 @@ _bkBadge();
           <button onclick="savesUpdate('${s.id}','pending',this)" style="flex:1;padding:7px;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:600;cursor:pointer;color:#2563eb">↺ Reset</button>
           ${enrichBtn}
           ${brandBtn}
+          <button onclick="savesDelete('${s.id}',this)" style="padding:7px 10px;border-radius:8px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;font-weight:600;cursor:pointer;color:#dc2626">🗑</button>
         </div>
       </div>`;
     }).join("");
@@ -6077,6 +6078,16 @@ _bkBadge();
       method: "POST",
       headers: _savesHeaders(),
       body: JSON.stringify({id, status}),
+    });
+    await savesLoad();
+  };
+
+  window.savesDelete = async function(id, btn) {
+    btn.textContent = "…";
+    await fetch("/api/wa-saves/delete", {
+      method: "POST",
+      headers: _savesHeaders(),
+      body: JSON.stringify({id}),
     });
     await savesLoad();
   };
