@@ -6003,8 +6003,13 @@ _bkBadge();
         bodyText = nl > 0 ? rawSummary.slice(nl+1).trim() : "";
       }
 
-      const bullets = bodyText.split("•").filter(b => b.trim()).map(b =>
-        `<div style="font-size:12px;color:#6b7280;padding:1px 0">• ${b.trim()}</div>`
+      // Render body: bullet-split for photo summaries, line-split for enriched place data
+      const hasBullets = bodyText.includes("•");
+      const bodyLines = hasBullets
+        ? bodyText.split("•").filter(b => b.trim()).map(b => `• ${b.trim()}`)
+        : bodyText.split("\n").filter(b => b.trim());
+      const bullets = bodyLines.map(line =>
+        `<div style="font-size:12px;color:#374151;padding:2px 0;line-height:1.4">${line}</div>`
       ).join("");
 
       const date = s.created_at ? new Date(s.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "";
