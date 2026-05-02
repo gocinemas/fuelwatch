@@ -4970,6 +4970,17 @@ def api_wa_saves_enrich():
         if info.get("name") and info["name"] != venue_name:
             update["title"] = f"🏪 {info['name']}"
         lib._sb().table("wa_saves").update(update).eq("id", save_id).execute()
+
+        # Notify on WhatsApp
+        pin = request.headers.get("X-Library-PIN", "")
+        fn  = _resolve_user_token(pin)
+        if fn:
+            display_name = update.get("title") or f"🏪 {venue_name}"
+            msg = f"✅ Updated: {display_name}\n"
+            if new_summary:
+                msg += "\n" + new_summary
+            _wa_send_proactive(fn, msg)
+
         return jsonify({"ok": True, "summary": new_summary, "title": update.get("title", ""), "url": update.get("url", "")})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
