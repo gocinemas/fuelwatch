@@ -36,6 +36,7 @@ from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_company_info, fetch_brand_data)
 import analytics
 import library as lib
+import school_service
 
 app = Flask(__name__)
 
@@ -4564,6 +4565,13 @@ def whatsapp_reply():
             resp.message("\n".join(lines))
         return str(resp)
 
+    # ── School comms ──────────────────────────────────────────────────────────
+    if body_lower.startswith("school") or from_number in school_service._SETUP_STATE:
+        reply = school_service.handle_wa_school(from_number, body)
+        if reply:
+            resp.message(reply)
+            return str(resp)
+
     postcode, fuel, radius, retailer = parse_sms(body)
     body_words = set(body.lower().split())
 
@@ -4951,6 +4959,30 @@ def wa_digest():
             pass
 
     return jsonify({"sent": sent, "total_users": len(by_user)})
+
+
+@app.route("/api/school/poll")
+def school_poll():
+    """Poll Gmail for new school emails and store events.
+    Call every 6h via cron-job.org: GET /api/school/poll?token=YOUR_DIGEST_TOKEN
+    """
+    token = request.args.get("token", "")
+    if not token or token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+    result = school_service.poll_all_profiles(days_back=7)
+    return jsonify(result)
+
+
+@app.route("/api/school/digest")
+def school_digest():
+    """Send weekly school digest to all parents.
+    Call Sunday ~18:00 via cron-job.org: GET /api/school/digest?token=YOUR_DIGEST_TOKEN
+    """
+    token = request.args.get("token", "")
+    if not token or token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+    result = school_service.send_weekly_digest_all()
+    return jsonify(result)
 
 
 @app.route("/api/wa-saves")
