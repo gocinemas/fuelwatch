@@ -163,12 +163,21 @@ def _groq_parse_events(subject: str, body: str, school_name: str, year_group: st
     Ask Groq to extract events/reminders from an email.
     Returns list of: {event_title, event_type, event_date, description, action_needed, deadline}
     """
-    today_str = date.today().isoformat()
+    today     = date.today()
+    today_str = today.isoformat()
+    weekday   = today.strftime("%A")   # e.g. "Sunday"
+    # Map "this Friday", "next Monday" etc. to real dates
+    days_map  = {d: (today + timedelta(days=(i - today.weekday()) % 7 or 7)).isoformat()
+                 for i, d in enumerate(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"])}
+    days_hint = "  ".join(f"this {d} = {v}" for d, v in days_map.items())
+
     system = (
         "You are a school communication parser. Extract all events, deadlines, reminders, "
         "and important dates from school emails. Return ONLY valid JSON, no markdown fences."
     )
-    prompt = f"""School: {school_name}  Year group: {year_group}  Today: {today_str}
+    prompt = f"""School: {school_name}  Year group: {year_group}
+Today: {today_str} ({weekday})
+Relative dates this week: {days_hint}
 
 Email subject: {subject}
 Email body:

@@ -5755,12 +5755,12 @@ _bkBadge();
 
   <!-- Main view -->
   <div id="school-main" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="font-weight:800;font-size:18px">🏫 School</div>
-        <div id="school-subtitle" style="font-size:12px;color:#9ca3af;margin-top:2px"></div>
+        <button onclick="schoolLoad()" style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:4px 8px">↻ Refresh</button>
       </div>
-      <button onclick="schoolLoad()" style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:4px 8px">↻ Refresh</button>
+      <div id="school-profile-card" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-top:10px;font-size:12px;color:#374151"></div>
     </div>
 
     <div id="school-loading" style="text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">Loading…</div>
@@ -5983,15 +5983,16 @@ _bkBadge();
       document.getElementById("school-loading").style.display = "none";
       if (profiles.length) {
         const p = profiles[0];
-        const detail = [p.class_name, p.teacher_name].filter(Boolean).join(" · ");
-        const sub = [p.child_name, p.school_name, detail].filter(Boolean).join(" — ");
-        document.getElementById("school-subtitle").textContent = sub;
-        if (p.address || p.phone) {
-          const meta = document.createElement("div");
-          meta.style.cssText = "font-size:11px;color:#9ca3af;margin-top:2px";
-          meta.textContent = [p.address, p.phone].filter(Boolean).join("  ·  ");
-          document.getElementById("school-subtitle").after(meta);
-        }
+        const card = document.getElementById("school-profile-card");
+        card.style.display = "block";
+        const phoneLink = p.phone ? `<a href="tel:${p.phone}" style="color:#2563eb;text-decoration:none">${p.phone}</a>` : "";
+        card.innerHTML = `
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px">${p.child_name || ""}${p.child_name && p.school_name ? " — " : ""}${p.school_name || ""}</div>
+          ${[p.year_group, p.class_name].filter(Boolean).map(v=>`<span style="background:#e0f2fe;color:#0369a1;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600;margin-right:4px">${v}</span>`).join("")}
+          ${p.teacher_name ? `<span style="background:#fce7f3;color:#9d174d;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600">${p.teacher_name}</span>` : ""}
+          ${p.address ? `<div style="margin-top:6px;color:#6b7280">📍 ${p.address}</div>` : ""}
+          ${phoneLink ? `<div style="margin-top:2px">📞 ${phoneLink}</div>` : ""}
+        `;
       }
       // Deduplicate: prefer the version WITH a date; dedupe by normalised title
       const byTitle = {};
@@ -6025,7 +6026,11 @@ _bkBadge();
           const item = document.createElement("div");
           item.style.cssText = "padding:8px 0;border-top:1px solid rgba(0,0,0,.06)";
           const dateStr = ev.event_date ? new Date(ev.event_date + "T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
-          let html = `<div style="font-weight:600;font-size:13px">${ev.event_title}${dateStr ? `<span style="font-weight:400;color:#6b7280;margin-left:6px;font-size:12px">${dateStr}</span>` : ""}</div>`;
+          const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
+          const titleEl = ev.event_type === "newsletter" && gmailUrl
+            ? `<a href="${gmailUrl}" target="_blank" rel="noopener" style="color:#7c3aed;text-decoration:none;font-weight:600;font-size:13px">${ev.event_title} ↗</a>`
+            : `<span style="font-weight:600;font-size:13px">${ev.event_title}</span>`;
+          let html = `<div>${titleEl}${dateStr ? `<span style="font-weight:400;color:#6b7280;margin-left:6px;font-size:12px">${dateStr}</span>` : ""}</div>`;
           if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:3px">${ev.description}</div>`;
           if (ev.action_needed) {
             const dl = ev.deadline ? ` <span style="color:#ef4444">(by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})})</span>` : "";
