@@ -183,7 +183,7 @@ Extract every item a parent should know about. Return a JSON array of objects, e
                   "dinner"     — school dinner menus, meal choices
                   "newsletter" — a newsletter or bulletin summary entry
                   "info"       — general info, policy updates, term dates, no action needed
-  event_date    : ISO date (YYYY-MM-DD) or null if no specific date
+  event_date    : ISO date (YYYY-MM-DD) or null — look hard for dates; convert "Thursday 8th May" → "2026-05-08"
   description   : 1-2 sentence plain summary
   action_needed : what the parent must do, or empty string
   deadline      : ISO date by which action is needed, or null

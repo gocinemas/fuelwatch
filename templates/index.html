@@ -5993,13 +5993,14 @@ _bkBadge();
           document.getElementById("school-subtitle").after(meta);
         }
       }
-      // Deduplicate by title+date (same event mentioned in multiple emails)
-      const seen = new Set();
-      const uniq = events.filter(e => {
-        const key = (e.event_title || "").toLowerCase().trim() + "|" + (e.event_date || "");
-        if (seen.has(key)) return false;
-        seen.add(key); return true;
-      });
+      // Deduplicate: prefer the version WITH a date; dedupe by normalised title
+      const byTitle = {};
+      for (const e of events) {
+        const key = (e.event_title || "").toLowerCase().replace(/[^a-z0-9]/g,"").trim();
+        if (!byTitle[key]) { byTitle[key] = e; }
+        else if (!byTitle[key].event_date && e.event_date) { byTitle[key] = e; } // upgrade to dated version
+      }
+      const uniq = Object.values(byTitle);
       if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
       const container = document.getElementById("school-sections");
       const todayStr = new Date().toISOString().slice(0,10);
