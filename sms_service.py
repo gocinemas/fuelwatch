@@ -3569,18 +3569,18 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "If event/ticket: include event name, date, time, venue.\n"
             "If ad/billboard: state the brand or retailer name, the exact product or deal name, and the price/offer. "
             "If this looks like an in-store promotion, try to identify the retailer from any visible branding, colours, shelf design — e.g. Waitrose, Tesco, Sainsbury's, M&S, Asda.\n"
-            "If product: this is a photo of a physical product (food, drink, cosmetic, gadget, clothing etc). "
-            "Identify the brand, full product name, variant/flavour, size/weight, and category. "
-            "Look carefully at any price tags, shelf-edge labels, or receipts — include the price if visible. "
+            "If product: list EVERY product visible in the photo — there may be one or many. "
+            "Look carefully at all price tags, shelf-edge labels, and packaging. "
             "Try to identify the retailer from shelf labels, store colours, own-brand packaging, or visible signage "
             "(e.g. Tesco, Waitrose, Sainsbury's, Boots, M&S, Asda, Lidl, Aldi).\n"
             "If receipt: total and main items.\n"
             "Start your reply with: TYPE: [your choice]\n"
             "If type is event/ticket, store/restaurant, ad/billboard, or product — add: VENUE: [brand or business name only]\n"
-            "If type is product — also add these three lines:\n"
-            "  PRODUCT: [full product name including brand, variant, size — e.g. 'Heinz Baked Beans 415g']\n"
-            "  PRICE: [price from label or shelf — e.g. '£1.20' — or 'not visible']\n"
-            "  SHOP: [retailer name if identifiable — e.g. 'Tesco' — or 'unknown']\n"
+            "If type is product — list every product on a separate PRODUCT: line in this exact format:\n"
+            "  PRODUCT: [full product name incl. variant & size] | [brand] | [price or n/a]\n"
+            "  e.g. PRODUCT: Heinz Baked Beans 415g | Heinz | £0.89\n"
+            "  e.g. PRODUCT: Simple Kind to Skin Moisturiser 125ml | Simple | n/a\n"
+            "Also add: SHOP: [retailer name if identifiable — e.g. 'Tesco' — or leave blank]\n"
             "If you can identify a city, area, or neighbourhood from signage or text — add: LOCATION: [city or area name]\n"
             "Always add: SEARCH: [2-5 word search term to find this product, deal, or place online]"
             + _loc_hint
@@ -3590,7 +3590,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             try:
                 body = {
                     "model": model,
-                    "max_tokens": 350,
+                    "max_tokens": 500,
                     "messages": [{
                         "role": "user",
                         "content": [
@@ -3640,9 +3640,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         venue_tag = ""
         location_tag = ""
         search_tag = ""
-        product_tag = ""
-        price_tag = ""
+        product_items = []   # list of {name, brand, price} dicts
         shop_tag = ""
+        _BLANK = {"", "n/a", "not visible", "unknown", "none", "-"}
         for _line in analysis.split("\n"):
             _up = _line.strip().upper()
             if _up.startswith("VENUE:"):
@@ -3652,20 +3652,24 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             elif _up.startswith("SEARCH:"):
                 search_tag = _line.split(":", 1)[1].strip()
             elif _up.startswith("PRODUCT:"):
-                product_tag = _line.split(":", 1)[1].strip()
-            elif _up.startswith("PRICE:"):
-                price_tag = _line.split(":", 1)[1].strip()
-                if price_tag.lower() in ("not visible", "n/a", "unknown", "none", ""):
-                    price_tag = ""
+                _raw = _line.split(":", 1)[1].strip()
+                _parts = [p.strip() for p in _raw.split("|")]
+                _pname  = _parts[0] if len(_parts) > 0 else ""
+                _pbrand = _parts[1] if len(_parts) > 1 else ""
+                _pprice = _parts[2] if len(_parts) > 2 else ""
+                if _pprice.lower() in _BLANK:
+                    _pprice = ""
+                if _pname:
+                    product_items.append({"name": _pname, "brand": _pbrand, "price": _pprice})
             elif _up.startswith("SHOP:"):
                 shop_tag = _line.split(":", 1)[1].strip()
-                if shop_tag.lower() in ("unknown", "n/a", "none", ""):
+                if shop_tag.lower() in _BLANK:
                     shop_tag = ""
         print(f"[vision] venue_tag={venue_tag!r} location_tag={location_tag!r} search_tag={search_tag!r} img_type={img_type}")
-        print(f"[vision] product_tag={product_tag!r} price_tag={price_tag!r} shop_tag={shop_tag!r}")
+        print(f"[vision] products={product_items} shop_tag={shop_tag!r}")
 
-        # Strip TYPE:/VENUE:/LOCATION:/SEARCH:/PRODUCT:/PRICE:/SHOP: metadata lines from summary
-        _meta_prefixes = ("TYPE:", "VENUE:", "LOCATION:", "SEARCH:", "PRODUCT:", "PRICE:", "SHOP:")
+        # Strip metadata lines from summary
+        _meta_prefixes = ("TYPE:", "VENUE:", "LOCATION:", "SEARCH:", "PRODUCT:", "SHOP:")
         summary = "\n".join(
             l for l in analysis.split("\n")
             if not any(l.strip().upper().startswith(p) for p in _meta_prefixes)
@@ -3739,16 +3743,21 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if img_type == "store" and venue_info.get("maps_url"):
             search_url = venue_info["maps_url"]
 
-        # Brand intel lookup for product photos
+        # Brand intel lookup for product photos (use first product's brand)
         brand_intel = {}
         if img_type == "product":
-            brand_name = venue_raw or (search_tag.split()[0] if search_tag else "") or (name_raw.split()[0] if name_raw else "")
+            brand_name = (product_items[0]["brand"] if product_items else "") or venue_raw or (search_tag.split()[0] if search_tag else "")
             if brand_name:
                 brand_intel = _quick_brand_intel(brand_name)
                 print(f"[vision] brand_intel for {brand_name!r}: {brand_intel}")
-            # Title: prefer full product name, fall back to brand
-            product_display = product_tag or (f"{venue_raw} {name_raw}".strip()) or brand_name
-            title = f"🏷️ {product_display[:50]}" if product_display else "🏷️ Product"
+            # Title: single product → use its name; multiple → count
+            if product_items:
+                if len(product_items) == 1:
+                    title = f"🏷️ {product_items[0]['name'][:50]}"
+                else:
+                    title = f"🏷️ {len(product_items)} Products"
+            else:
+                title = f"🏷️ {(venue_raw or name_raw or 'Product')[:50]}"
 
         # Append QR event info to summary if found
         if qr_event_info:
@@ -3866,14 +3875,19 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         # Prefer real GPS postcode over vision model's guess (which can be wrong/US coords)
         where_str = gps_location or (venue_info.get("address", "").split(",")[0] if venue_info else "") or location_tag or venue_tag
         meta_line = f"META:📅 {now_str}" + (f" · 📍 {where_str}" if where_str else "")
-        # For product photos, prepend structured fields before the bullet summary
-        if img_type == "product":
+        # For product photos, build a structured product list as the summary
+        if img_type == "product" and product_items:
             _prod_lines = []
-            if product_tag: _prod_lines.append(f"🏷️ {product_tag}")
-            if price_tag:   _prod_lines.append(f"💰 {price_tag}")
-            if shop_tag:    _prod_lines.append(f"🏪 {shop_tag}")
-            if _prod_lines:
-                summary = "\n".join(_prod_lines) + ("\n\n" + summary if summary else "")
+            if shop_tag:
+                _prod_lines.append(f"🏪 {shop_tag}")
+            for _pi in product_items:
+                _line = f"• {_pi['name']}"
+                if _pi["brand"] and _pi["brand"].lower() not in _pi["name"].lower():
+                    _line += f" · {_pi['brand']}"
+                if _pi["price"]:
+                    _line += f" · {_pi['price']}"
+                _prod_lines.append(_line)
+            summary = "\n".join(_prod_lines)
         full_summary = (summary + "\n\n" + menu_text).strip() if menu_text else summary
         summary_with_meta = meta_line + "\n" + full_summary if full_summary else meta_line
 
@@ -3891,9 +3905,19 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             _MENU_SESSION[fn] = {"save_id": sid, "expires": time.time() + 1800, "page_count": 1}
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
-        if bullets or venue_info or brand_intel or menu_text:
+        if product_items or bullets or venue_info or brand_intel or menu_text:
             msg = f"{title}\n"
-            if menu_text:
+            if img_type == "product" and product_items:
+                # Structured product list
+                _plines = []
+                for _pi in product_items:
+                    _plines.append(f"• *{_pi['name']}*")
+                    if _pi["brand"]:
+                        _plines.append(f"  Brand: {_pi['brand']}")
+                    if _pi["price"]:
+                        _plines.append(f"  Price: {_pi['price']}")
+                msg += "\n" + "\n".join(_plines)
+            elif menu_text:
                 msg += f"\n{menu_text}"
             elif bullets:
                 msg += f"\n{bullets}"
@@ -3901,17 +3925,13 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             # Build details block
             details = []
             if img_type == "product":
-                # Product card — name, price, shop, location first
-                if product_tag:
-                    details.append(f"🏷️ {product_tag}")
-                if price_tag:
-                    details.append(f"💰 Price: {price_tag}")
+                # Location / shop context
                 _spotted = (shop_tag or "") + (" · " + (_loc_context.split(",")[0] if _loc_context else location_tag) if (_loc_context or location_tag) else "")
                 if _spotted.strip(" ·"):
                     details.append(f"🏪 Spotted at: {_spotted.strip(' ·')}")
                 elif gps_location:
                     details.append(f"📍 {gps_location}")
-                # Brand intel extras
+                # Brand intel (first brand only)
                 if brand_intel.get("parent"):
                     details.append(f"🏢 Made by: {brand_intel['parent']}")
                 if brand_intel.get("country"):
