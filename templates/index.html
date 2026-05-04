@@ -6002,8 +6002,17 @@ _bkBadge();
       });
       if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
       const container = document.getElementById("school-sections");
+      const todayStr = new Date().toISOString().slice(0,10);
+      const DATE_SENSITIVE = new Set(["activity","event","trip","reminder","deadline","dinner","club"]);
       for (const sec of _SCHOOL_SECTIONS) {
-        const bucket = uniq.filter(e => sec.types.includes(e.event_type || "other"));
+        const bucket = uniq.filter(e => {
+          if (!sec.types.includes(e.event_type || "other")) return false;
+          // Hide past-dated events from time-sensitive sections
+          if (e.event_date && DATE_SENSITIVE.has(e.event_type)) {
+            return e.event_date >= todayStr;
+          }
+          return true;
+        });
         if (!bucket.length) continue;
         const wrap = document.createElement("div");
         wrap.style.cssText = `background:${sec.color};border:1px solid ${sec.border};border-radius:14px;padding:14px 16px;margin-bottom:12px`;
