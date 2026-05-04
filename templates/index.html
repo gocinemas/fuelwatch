@@ -5739,7 +5739,7 @@ _bkBadge();
 <!-- ═══════════════════════════════════════════════════════ SCHOOL SCREEN -->
 <div id="screen-school" class="screen pt-5">
   <!-- PIN lock -->
-  <div id="school-pin-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
+  <div id="school-pin-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
     <div style="font-size:40px;margin-bottom:16px">🔒</div>
     <div style="font-weight:700;font-size:17px;margin-bottom:6px">School Comms</div>
     <div style="color:#9ca3af;font-size:13px;margin-bottom:20px">Enter your password to continue</div>
@@ -5948,7 +5948,7 @@ _bkBadge();
   function _schoolHeaders() { const p = _schoolPin(); return p ? {"X-Library-PIN": p} : {}; }
 
   function _schoolShowLock() {
-    document.getElementById("school-pin-screen").style.cssText = "display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center";
+    document.getElementById("school-pin-screen").style.display = "flex";
     document.getElementById("school-main").style.display = "none";
     setTimeout(() => document.getElementById("school-pin-input").focus(), 100);
   }
