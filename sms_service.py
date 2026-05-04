@@ -3291,7 +3291,8 @@ _PENDING_DIGEST: dict  = {}  # from_number -> [{id, title, url}, ...]  (last dig
 _USER_LAST_LOCATION: dict = {}  # from_number -> {lat, lon, ts}  (from WhatsApp location share)
 
 
-_TOKEN_TO_NUMBER: dict = {}  # token -> from_number, populated as users interact
+_TOKEN_TO_NUMBER: dict  = {}  # token -> from_number, populated as users interact
+_MENU_SESSION:   dict  = {}  # from_number -> {save_id, expires, page_count} for multi-photo menus
 
 def _wa_user_token(from_number: str) -> str:
     """Stable per-user token derived from phone number + server secret."""
@@ -3799,6 +3800,26 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             except Exception as _me:
                 print(f"[vision] menu extraction failed: {_me}")
 
+        # ── Multi-photo menu: append pages to the existing session save ──────────
+        if img_type == "menu" and menu_text:
+            session = _MENU_SESSION.get(fn)
+            if session and time.time() < session.get("expires", 0):
+                page_num = session["page_count"] + 1
+                _MENU_SESSION[fn]["page_count"] = page_num
+                _MENU_SESSION[fn]["expires"] = time.time() + 1800
+                try:
+                    existing = lib._sb().table("wa_saves").select("summary").eq("id", session["save_id"]).execute().data
+                    existing_summary = (existing[0]["summary"] if existing else "") or ""
+                    appended = existing_summary + f"\n\n---\n*Page {page_num}*\n" + menu_text
+                    lib._sb().table("wa_saves").update({"summary": appended}).eq("id", session["save_id"]).execute()
+                    if sid:
+                        lib._sb().table("wa_saves").delete().eq("id", sid).execute()
+                except Exception as _me2:
+                    print(f"[menu-session] append failed: {_me2}")
+                user_token = _wa_user_token(fn)
+                _wa_send_proactive(fn, f"🍽️ Added page {page_num} to your menu. Send more pages or just keep chatting!\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}")
+                return
+
         # ── Reverse-geocode stored GPS to UK postcode ────────────────────────────
         gps_location = ""
         if _loc and (time.time() - _loc.get("ts", 0)) < 7200:
@@ -3832,6 +3853,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 lib._sb().table("wa_saves").update(update_data).eq("id", sid).execute()
             except Exception:
                 pass
+
+        # Start a menu session so subsequent menu photos get appended
+        if img_type == "menu" and sid:
+            _MENU_SESSION[fn] = {"save_id": sid, "expires": time.time() + 1800, "page_count": 1}
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
         if bullets or venue_info or brand_intel or menu_text:
@@ -3897,7 +3922,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         else:
             msg = f"{title}\n(couldn't read — saved anyway)"
         user_token = _wa_user_token(fn)
-        msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
+        if img_type == "menu":
+            msg += f"\n\n📸 *Got page 1!* Send more menu photos and I'll stitch them together into one save.\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
+        else:
+            msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
         _wa_send_proactive(fn, msg)
 
     threading.Thread(target=_bg, daemon=True).start()
@@ -5019,7 +5047,7 @@ def api_wa_saves_rename():
 
 @app.route("/api/wa-saves/search")
 def api_wa_saves_search():
-    """Search saves via Algolia."""
+    """Search saves: Algolia first, Supabase fallback."""
     err = _check_library_pin()
     if err:
         return err
@@ -5028,20 +5056,34 @@ def api_wa_saves_search():
         return jsonify({"hits": []})
     pin = request.headers.get("X-Library-PIN", "")
     from_number = _resolve_user_token(pin) or ""
+
+    # Try Algolia
     try:
         hits = lib.saves_search(q, from_number=from_number)
         results = [
-            {
-                "id":         h["objectID"],
-                "title":      h.get("title", ""),
-                "url":        h.get("url", ""),
-                "summary":    h.get("summary", ""),
-                "status":     h.get("status", "pending"),
-                "created_at": h.get("created_at", ""),
-                "_snippetResult": h.get("_snippetResult"),
-            }
+            {"id": h["objectID"], "title": h.get("title",""), "url": h.get("url",""),
+             "summary": h.get("summary",""), "status": h.get("status","pending"),
+             "created_at": h.get("created_at","")}
             for h in hits
         ]
+        return jsonify({"hits": results})
+    except Exception:
+        pass
+
+    # Supabase fallback: search title + summary
+    try:
+        sb = lib._sb()
+        def _q(field):
+            base = sb.table("wa_saves").select("id,title,url,summary,status,created_at,remind_day")
+            if from_number:
+                base = base.eq("from_number", from_number)
+            return base.ilike(field, f"%{q}%").order("created_at", desc=True).limit(20).execute().data
+
+        seen, results = set(), []
+        for row in _q("title") + _q("summary"):
+            if row["id"] not in seen:
+                seen.add(row["id"])
+                results.append(row)
         return jsonify({"hits": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

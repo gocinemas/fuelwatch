@@ -6110,26 +6110,54 @@ _bkBadge();
   };
 
   window.savesSearchQuery = async function(q) {
+    const ql = q.toLowerCase();
+    const words = ql.split(/\s+/).filter(Boolean);
+
+    // Score a save by how many query words appear in title+summary
+    function score(s) {
+      const hay = ((s.title || "") + " " + (s.summary || "")).toLowerCase();
+      return words.filter(w => hay.includes(w)).length;
+    }
+
+    // Instant client-side results from already-loaded saves
+    const local = _savesAll
+      .map(s => ({s, sc: score(s)}))
+      .filter(x => x.sc > 0)
+      .sort((a,b) => b.sc - a.sc)
+      .map(x => x.s);
+
     const list = document.getElementById("saves-list");
-    list.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div>Searching…</div>';
+    if (!local.length) {
+      list.innerHTML = `<p style="color:#9ca3af;font-size:13px;padding:16px 0;text-align:center">No results for "${q}".</p>`;
+    } else {
+      const prev = _savesAll;
+      _savesAll = local;
+      savesRender();
+      _savesAll = prev;
+    }
+
+    // Also fetch from backend (covers saves older than current 60-item page)
     try {
       const r = await fetch("/api/wa-saves/search?" + new URLSearchParams({q}), {headers: _savesHeaders()});
       const d = await r.json();
       const hits = d.hits || [];
-      if (!hits.length) {
-        list.innerHTML = `<p style="color:#9ca3af;font-size:13px;padding:16px 0;text-align:center">No results for "${q}".</p>`;
-        return;
-      }
-      // Merge search hits with any local data we already have for full rendering
+      if (!hits.length) return;
+      const localIds = new Set(_savesAll.map(s => s.id));
       const localMap = Object.fromEntries(_savesAll.map(s => [s.id, s]));
+      // Merge: local-enriched hits first, then any extras from backend not in local
       const merged = hits.map(h => ({...(localMap[h.id] || {}), ...h}));
-      const prevAll = _savesAll;
-      _savesAll = merged;
-      savesRender();
-      _savesAll = prevAll;
-    } catch(e) {
-      list.innerHTML = '<p style="color:#ef4444;font-size:13px">Search failed.</p>';
-    }
+      const extras = merged.filter(h => !localIds.has(h.id));
+      const combined = [...local.filter(s => merged.find(h => h.id === s.id)), ...merged.filter(h => !local.find(s => s.id === h.id)), ...extras];
+      // Deduplicate
+      const seen2 = new Set(); const final = [];
+      for (const s of combined) { if (!seen2.has(s.id)) { seen2.add(s.id); final.push(s); } }
+      if (final.length > local.length) {
+        const prev2 = _savesAll;
+        _savesAll = final;
+        savesRender();
+        _savesAll = prev2;
+      }
+    } catch(_) {}
   };
 
   window.saveOpenBrandIntel = function(brandName) {
