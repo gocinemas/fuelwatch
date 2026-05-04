@@ -4981,7 +4981,7 @@ def api_school_events():
     if err:
         return err
     days_ahead = int(request.args.get("days", 30))
-    days_back  = int(request.args.get("back", 14))
+    days_back  = int(request.args.get("back", 30))
     from datetime import date, timedelta
     past    = (date.today() - timedelta(days=days_back)).isoformat()
     horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
