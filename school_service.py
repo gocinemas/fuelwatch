@@ -134,15 +134,20 @@ def _extract_email_text(msg: dict) -> tuple[str, str]:
     if plain_parts:
         body = "\n".join(plain_parts)
     elif html_parts:
-        # Strip HTML tags, collapse whitespace
+        # Strip HTML — remove boilerplate blocks then tags
         html = "\n".join(html_parts)
-        body = re.sub(r"<style[^>]*>.*?</style>", " ", html, flags=re.S | re.I)
-        body = re.sub(r"<script[^>]*>.*?</script>", " ", body, flags=re.S | re.I)
-        body = re.sub(r"<[^>]+>", " ", body)
-        body = re.sub(r"&nbsp;", " ", body)
-        body = re.sub(r"&amp;", "&", body)
-        body = re.sub(r"&lt;", "<", body)
-        body = re.sub(r"&gt;", ">", body)
+        body = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.S | re.I)
+        body = re.sub(r"<script[^>]*>.*?</script>", "", body, flags=re.S | re.I)
+        body = re.sub(r"<head[^>]*>.*?</head>", "", body, flags=re.S | re.I)
+        # Preserve line breaks from block elements
+        body = re.sub(r"<(?:br|p|div|tr|li|h[1-6])[^>]*>", "\n", body, flags=re.I)
+        body = re.sub(r"<[^>]+>", "", body)
+        # Decode common entities
+        for ent, ch in [("&nbsp;", " "), ("&amp;", "&"), ("&lt;", "<"),
+                        ("&gt;", ">"), ("&quot;", '"'), ("&#39;", "'"),
+                        ("&ldquo;", '"'), ("&rdquo;", '"'), ("&ndash;", "-"),
+                        ("&mdash;", "-"), ("&lsquo;", "'"), ("&rsquo;", "'")]:
+            body = body.replace(ent, ch)
         body = re.sub(r"[ \t]{2,}", " ", body)
     else:
         body = ""
@@ -236,11 +241,12 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str):
         if not ev.get("event_title"):
             continue
         try:
+            raw_type = ev.get("event_type", "other") or "other"
             lib._sb().table("school_events").insert({
                 "profile_id":    profile["id"],
                 "from_number":   profile["from_number"],
                 "event_title":   ev.get("event_title", "")[:200],
-                "event_type":    ev.get("event_type", "other"),
+                "event_type":    raw_type.lower().strip(),
                 "event_date":    ev.get("event_date") or None,
                 "description":   ev.get("description", "")[:500],
                 "action_needed": ev.get("action_needed", "")[:300],
