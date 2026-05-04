@@ -6016,12 +6016,17 @@ _bkBadge();
       const isPhoto = !s.url || s.url.includes("twilio") || s.url.includes("media.sid");
       const isSearch = s.url && s.url.includes("google.com/search");
       const isMaps   = s.url && s.url.includes("maps.google.com");
-      const isPlace  = s.title && /^(🏪|🎫|📢|🧾|🍽️|🪧|📄|📷)/.test(s.title);
+      const isPlace  = s.title && /^(🏪|🍽️)/.test(s.title);
 
       const displayUrl = isPhoto ? "" : (s.url || "").replace(/^https?:\/\/(www\.)?/,"").replace(/\/$/,"").slice(0,55) + ((s.url||"").length > 65 ? "…" : "");
-      const titleEl = s.url && !isPhoto
-        ? `<a href="${s.url}" target="_blank" style="font-size:14px;font-weight:700;color:#111827;text-decoration:none;line-height:1.3;flex:1">${s.title || displayUrl}</a>`
-        : `<span style="font-size:14px;font-weight:700;color:#111827;line-height:1.3;flex:1">${s.title || "📷 Photo"}</span>`;
+      const rawTitle = s.title || (isPhoto ? "📷 Photo" : displayUrl);
+      const editableTitle = rawTitle.replace(/^(🏪|🍽️|🎫|📢|🧾|🪧|📄|📷|🏷️)\s*/u, "").trim() || rawTitle;
+      const titleInner = s.url && !isPhoto
+        ? `<a href="${s.url}" target="_blank" style="font-size:14px;font-weight:700;color:#111827;text-decoration:none;line-height:1.3">${rawTitle}</a>`
+        : `<span style="font-size:14px;font-weight:700;color:#111827;line-height:1.3">${rawTitle}</span>`;
+      const titleEl = `<div id="save-title-${s.id}" style="flex:1;min-width:0">${titleInner}</div>`;
+      const editBtn = `<button onclick="savesEditTitle('${s.id}','${editableTitle.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}',${isPlace})" style="flex-shrink:0;background:none;border:none;cursor:pointer;font-size:13px;color:#d1d5db;padding:0 2px;line-height:1;margin-top:1px" title="Edit name">✏️</button>`;
+
       const urlRow = isMaps
         ? `<a href="${s.url}" target="_blank" style="font-size:12px;color:#2563eb;font-weight:600;text-decoration:none;display:block;margin-bottom:8px">🗺️ Open in Maps →</a>`
         : isSearch
@@ -6036,7 +6041,7 @@ _bkBadge();
         : "";
 
       // Enrich button for place saves without full details
-      const venueGuess = (s.title||"").replace(/^(🏪|🎫|📢|🍽️)\s*/,"").trim();
+      const venueGuess = editableTitle;
       const enrichBtn = isPlace && venueGuess
         ? `<button onclick="savesEnrich('${s.id}','${venueGuess.replace(/'/g,"\\'")}',this)" style="padding:7px 10px;border-radius:8px;border:1px solid #e0e7ff;background:#f5f3ff;font-size:11px;font-weight:600;cursor:pointer;color:#4f46e5">✨ Update details</button>`
         : "";
@@ -6048,8 +6053,9 @@ _bkBadge();
         : "";
 
       return `<div style="background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:14px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;gap:6px">
           ${titleEl}
+          ${editBtn}
           ${statusBadge(s.status)}
         </div>
         ${urlRow}
@@ -6100,7 +6106,7 @@ _bkBadge();
   };
 
   window.savesEnrich = async function(id, venue, btn) {
-    btn.textContent = "✨ Looking up…"; btn.disabled = true;
+    if(btn) { btn.textContent = "✨ Looking up…"; btn.disabled = true; }
     try {
       let lat = null, lon = null;
       try {
@@ -6115,10 +6121,48 @@ _bkBadge();
       });
       const d = await r.json();
       if(d.ok) await savesLoad();
-      else { btn.textContent = "⚠️ Not found"; btn.disabled = false; }
+      else if(btn) { btn.textContent = "⚠️ Not found"; btn.disabled = false; }
     } catch(e) {
-      btn.textContent = "✨ Update details"; btn.disabled = false;
+      if(btn) { btn.textContent = "✨ Update details"; btn.disabled = false; }
     }
+  };
+
+  window.savesEditTitle = function(id, currentTitle, isPlace) {
+    const el = document.getElementById("save-title-" + id);
+    if (!el) return;
+    const escaped = currentTitle.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    el.innerHTML =
+      `<input id="save-title-input-${id}" type="text" value="${escaped}"
+         style="font-size:13px;font-weight:600;border:1.5px solid #c7d2fe;border-radius:8px;padding:5px 8px;width:100%;outline:none;color:#111827;box-sizing:border-box"
+         onkeydown="if(event.key==='Enter')savesTitleSave('${id}',${isPlace});if(event.key==='Escape')savesLoad()" />
+       <div style="display:flex;gap:6px;margin-top:6px">
+         <button onclick="savesTitleSave('${id}',${isPlace})"
+           style="padding:4px 12px;border-radius:6px;border:none;background:#4f46e5;color:#fff;font-size:12px;font-weight:600;cursor:pointer">${isPlace ? "Save & Re-search" : "Save"}</button>
+         <button onclick="savesLoad()"
+           style="padding:4px 10px;border-radius:6px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:600;cursor:pointer;color:#6b7280">Cancel</button>
+       </div>`;
+    const inp = document.getElementById("save-title-input-" + id);
+    inp.focus(); inp.select();
+  };
+
+  window.savesTitleSave = async function(id, isPlace) {
+    const inp = document.getElementById("save-title-input-" + id);
+    if (!inp) return;
+    const newTitle = inp.value.trim();
+    if (!newTitle) return;
+    inp.disabled = true;
+    try {
+      await fetch("/api/wa-saves/rename", {
+        method: "POST",
+        headers: _savesHeaders(),
+        body: JSON.stringify({id, title: newTitle}),
+      });
+      if (isPlace) {
+        await savesEnrich(id, newTitle, null);
+      } else {
+        await savesLoad();
+      }
+    } catch(e) { savesLoad(); }
   };
 
   window.savesToggleWaHint = function() {

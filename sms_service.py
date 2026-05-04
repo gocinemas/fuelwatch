@@ -4986,6 +4986,24 @@ def api_wa_saves_enrich():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/wa-saves/rename", methods=["POST"])
+def api_wa_saves_rename():
+    """Update the title of a saved item."""
+    err = _check_library_pin()
+    if err:
+        return err
+    data = request.json or {}
+    save_id = data.get("id")
+    title = (data.get("title") or "").strip()
+    if not save_id or not title:
+        return jsonify({"error": "id and title required"}), 400
+    try:
+        lib._sb().table("wa_saves").update({"title": title}).eq("id", save_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/wa-saves/add", methods=["POST"])
 def api_wa_saves_add():
     """Manually save a URL from the web UI."""
