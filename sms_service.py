@@ -4979,25 +4979,25 @@ def api_school_events():
     err = _check_library_pin()
     if err:
         return err
-    days = int(request.args.get("days", 30))
+    days_ahead = int(request.args.get("days", 30))
+    days_back  = int(request.args.get("back", 14))
     from datetime import date, timedelta
-    today     = date.today().isoformat()
-    horizon   = (date.today() + timedelta(days=days)).isoformat()
-    week_ago  = (date.today() - timedelta(days=7)).isoformat()
+    past    = (date.today() - timedelta(days=days_back)).isoformat()
+    horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
     try:
         dated = (lib._sb().table("school_events")
                  .select("*")
-                 .gte("event_date", today)
+                 .gte("event_date", past)
                  .lte("event_date", horizon)
                  .order("event_date")
                  .execute().data or [])
         undated = (lib._sb().table("school_events")
                    .select("*")
                    .is_("event_date", "null")
-                   .gte("created_at", week_ago)
+                   .gte("created_at", past)
                    .order("created_at", desc=True)
                    .execute().data or [])
-        profiles = lib._sb().table("school_profiles").select("id,school_name,child_name,year_group").eq("active", True).execute().data or []
+        profiles = lib._sb().table("school_profiles").select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone").eq("active", True).execute().data or []
         return jsonify({"events": dated + undated, "profiles": profiles})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

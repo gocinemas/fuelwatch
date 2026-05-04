@@ -5982,8 +5982,16 @@ _bkBadge();
       const profiles = data.profiles || [];
       document.getElementById("school-loading").style.display = "none";
       if (profiles.length) {
-        const names = profiles.map(p => p.child_name || p.school_name).filter(Boolean).join(", ");
-        document.getElementById("school-subtitle").textContent = names;
+        const p = profiles[0];
+        const detail = [p.class_name, p.teacher_name].filter(Boolean).join(" · ");
+        const sub = [p.child_name, p.school_name, detail].filter(Boolean).join(" — ");
+        document.getElementById("school-subtitle").textContent = sub;
+        if (p.address || p.phone) {
+          const meta = document.createElement("div");
+          meta.style.cssText = "font-size:11px;color:#9ca3af;margin-top:2px";
+          meta.textContent = [p.address, p.phone].filter(Boolean).join("  ·  ");
+          document.getElementById("school-subtitle").after(meta);
+        }
       }
       if (!events.length) { document.getElementById("school-empty").style.display = "block"; return; }
       const container = document.getElementById("school-sections");

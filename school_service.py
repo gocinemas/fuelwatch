@@ -226,57 +226,40 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str):
                 print(f"[school] insert error: {e}")
 
 
-def _get_upcoming_events(from_number: str, days: int = 14) -> list[dict]:
-    today     = date.today().isoformat()
-    horizon   = (date.today() + timedelta(days=days)).isoformat()
-    # Events with a date in range
+def _get_events(from_number: str, days_ahead: int = 30, days_back: int = 14) -> list[dict]:
+    """Fetch dated events within window + all undated items from last days_back days."""
+    past    = (date.today() - timedelta(days=days_back)).isoformat()
+    horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
     dated = (
         lib._sb().table("school_events")
         .select("*")
         .eq("from_number", from_number)
-        .gte("event_date", today)
+        .gte("event_date", past)
         .lte("event_date", horizon)
         .execute()
         .data or []
     )
-    # Newsletters / info with no date — last 7 days
-    week_ago = (date.today() - timedelta(days=7)).isoformat()
     undated = (
         lib._sb().table("school_events")
         .select("*")
         .eq("from_number", from_number)
         .is_("event_date", "null")
-        .gte("created_at", week_ago)
+        .gte("created_at", past)
         .execute()
         .data or []
     )
     return dated + undated
+
+
+def _get_upcoming_events(from_number: str, days: int = 14) -> list[dict]:
+    return _get_events(from_number, days_ahead=days, days_back=14)
 
 
 def _get_this_week_events(from_number: str) -> list[dict]:
     today = date.today()
-    start = today - timedelta(days=today.weekday())  # Monday
-    end   = start + timedelta(days=6)                # Sunday
-    dated = (
-        lib._sb().table("school_events")
-        .select("*")
-        .eq("from_number", from_number)
-        .gte("event_date", start.isoformat())
-        .lte("event_date", end.isoformat())
-        .execute()
-        .data or []
-    )
-    # Also include undated items from this week
-    undated = (
-        lib._sb().table("school_events")
-        .select("*")
-        .eq("from_number", from_number)
-        .is_("event_date", "null")
-        .gte("created_at", start.isoformat())
-        .execute()
-        .data or []
-    )
-    return dated + undated
+    start = today - timedelta(days=today.weekday())  # Monday this week
+    # Include from last Monday (14 days) to end of next week
+    return _get_events(from_number, days_ahead=7, days_back=14)
 
 
 # ── Email polling ──────────────────────────────────────────────────────────────
@@ -466,16 +449,56 @@ def send_weekly_digest_all() -> dict:
     return {"total_parents": len(parents), "sent": sent}
 
 
+# ── Google Places school lookup ────────────────────────────────────────────────
+
+def _lookup_school(name: str) -> dict:
+    """Search Google Places for a UK school. Returns {address, phone, place_name} or {}."""
+    api_key = os.environ.get("GOOGLE_API_KEY", "")
+    if not api_key:
+        return {}
+    try:
+        # Text search
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            params={"query": f"{name} school UK", "key": api_key, "type": "school"},
+            timeout=8,
+        )
+        results = r.json().get("results", [])
+        if not results:
+            return {}
+        place = results[0]
+        place_id = place.get("place_id", "")
+        address  = place.get("formatted_address", "")
+        found_name = place.get("name", name)
+
+        # Place Details for phone number
+        phone = ""
+        if place_id:
+            d = requests.get(
+                "https://maps.googleapis.com/maps/api/place/details/json",
+                params={"place_id": place_id, "fields": "formatted_phone_number", "key": api_key},
+                timeout=8,
+            )
+            phone = d.json().get("result", {}).get("formatted_phone_number", "")
+
+        return {"place_name": found_name, "address": address, "phone": phone}
+    except Exception as e:
+        print(f"[school] places lookup error: {e}")
+        return {}
+
+
 # ── WhatsApp conversation handler ──────────────────────────────────────────────
 
 # Multi-step setup state: from_number → {step, data}
 _SETUP_STATE: dict = {}
 
-_SETUP_STEPS = ["child_name", "school_name", "year_group", "sender_emails"]
+_SETUP_STEPS = ["child_name", "school_name", "class_name", "teacher_name", "year_group", "sender_emails"]
 _SETUP_PROMPTS = {
     "child_name":    "What's your child's name?",
     "school_name":   "What's the school name? (e.g. *Greenway Academy*)",
-    "year_group":    "Which year group? (e.g. *Year 4*)",
+    "class_name":    "Which class are they in? (e.g. *5B* or *Year 5 Maple*)",
+    "teacher_name":  "Who is the class teacher? (e.g. *Miss Smith*) — or reply *skip*",
+    "year_group":    "Which year group? (e.g. *Year 5*)",
     "sender_emails": (
         "What email address does the school send from?\n"
         "e.g. admin@greenway.sch.uk\n\n"
@@ -512,6 +535,16 @@ def handle_wa_school(from_number: str, text: str) -> str:
             if not emails:
                 return "Please enter a valid email address (e.g. admin@yourschool.sch.uk)."
             state["data"]["sender_emails"] = emails
+        elif step == "teacher_name" and cmd in ("skip", "no", "-", "n/a"):
+            state["data"]["teacher_name"] = ""
+        elif step == "school_name":
+            state["data"]["school_name"] = text.strip()
+            # Auto-lookup address and phone in background
+            info = _lookup_school(text.strip())
+            if info:
+                state["data"]["address"]    = info.get("address", "")
+                state["data"]["phone"]      = info.get("phone", "")
+                state["data"]["place_name"] = info.get("place_name", text.strip())
         else:
             state["data"][step] = text.strip()
 
@@ -519,7 +552,12 @@ def handle_wa_school(from_number: str, text: str) -> str:
         idx = _SETUP_STEPS.index(step)
         if idx + 1 < len(_SETUP_STEPS):
             state["step"] = _SETUP_STEPS[idx + 1]
-            return _next_setup_prompt(state)
+            prompt = _next_setup_prompt(state)
+            # After school name — show what was found
+            if step == "school_name" and state["data"].get("address"):
+                addr = state["data"]["address"]
+                prompt = f"📍 Found: *{state['data'].get('place_name','')}*\n{addr}\n\n" + prompt
+            return prompt
         else:
             # All steps done — save profile
             data = state["data"]
@@ -529,21 +567,29 @@ def handle_wa_school(from_number: str, text: str) -> str:
                     "from_number":   from_number,
                     "child_name":    data.get("child_name", ""),
                     "school_name":   data.get("school_name", ""),
+                    "class_name":    data.get("class_name", ""),
+                    "teacher_name":  data.get("teacher_name", ""),
                     "year_group":    data.get("year_group", ""),
+                    "address":       data.get("address", ""),
+                    "phone":         data.get("phone", ""),
                     "sender_emails": data.get("sender_emails", []),
                 }).execute()
             except Exception as e:
                 return f"Sorry, couldn't save your school profile: {e}"
 
-            school = data.get("school_name", "your school")
-            child  = data.get("child_name", "")
+            school  = data.get("school_name", "your school")
+            child   = data.get("child_name", "")
+            cls     = data.get("class_name", "")
+            teacher = data.get("teacher_name", "")
+            detail  = ", ".join(filter(None, [cls, teacher]))
             return (
-                f"✅ Done! I'll watch for emails from *{school}*"
+                f"✅ Done! Watching *{school}*"
                 + (f" for *{child}*" if child else "")
+                + (f" ({detail})" if detail else "")
                 + ".\n\n"
                 "I'll send you a digest every Sunday evening. You can also ask anytime:\n"
-                "• *school week* — this week's events\n"
-                "• *school upcoming* — next 2 weeks\n"
+                "• *school week* — this week + last week\n"
+                "• *school upcoming* — next 30 days\n"
                 "• *school setup* — add another school"
             )
 
