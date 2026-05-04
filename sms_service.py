@@ -1008,20 +1008,23 @@ def _fetch_polling_station(postcode: str) -> dict | None:
 
 # Old district GSS → new merged council slug
 _DISTRICT_TO_COUNCIL_SLUG = {
-    "E07000212": "west-surrey",  # Runnymede
+    # West Surrey (Guildford, Runnymede, Spelthorne, Surrey Heath, Waverley, Woking)
     "E07000209": "west-surrey",  # Guildford
-    "E07000214": "west-surrey",  # Waverley
-    "E07000215": "west-surrey",  # Woking
+    "E07000212": "west-surrey",  # Runnymede
+    "E07000213": "west-surrey",  # Spelthorne
+    "E07000214": "west-surrey",  # Surrey Heath
+    "E07000216": "west-surrey",  # Waverley
+    "E07000217": "west-surrey",  # Woking
+    # East Surrey (Elmbridge, Epsom & Ewell, Mole Valley, Reigate & Banstead, Tandridge)
+    "E07000207": "east-surrey",  # Elmbridge
+    "E07000208": "east-surrey",  # Epsom and Ewell
     "E07000210": "east-surrey",  # Mole Valley
     "E07000211": "east-surrey",  # Reigate and Banstead
-    "E07000213": "east-surrey",  # Tandridge
-    "E07000216": "east-surrey",  # Elmbridge
-    "E07000217": "east-surrey",  # Surrey Heath
-    "E07000207": "east-surrey",  # Epsom and Ewell
+    "E07000215": "east-surrey",  # Tandridge
 }
 # New council slug → human-readable predecessor area list (for "no past results" message)
 _COUNCIL_PREDECESSORS = {
-    "west-surrey": ["Runnymede", "Guildford", "Waverley", "Woking"],
+    "west-surrey": ["Runnymede", "Guildford", "Spelthorne", "Surrey Heath", "Waverley", "Woking"],
     "east-surrey": ["Mole Valley", "Reigate & Banstead", "Tandridge", "Elmbridge", "Epsom & Ewell"],
 }
 # Old county GSS → county-level council slug
