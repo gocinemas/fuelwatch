@@ -5936,12 +5936,13 @@ _bkBadge();
 
   /* ── School comms ─────────────────────────────────────────────────────────── */
   const _SCHOOL_SECTIONS = [
-    { types: ["reminder"],              header: "⏰ Reminders & Actions",  color: "#fef3c7", border: "#fbbf24" },
-    { types: ["activity","event","trip"],header: "📅 Upcoming Activities", color: "#eff6ff", border: "#93c5fd" },
-    { types: ["club"],                  header: "⚽ Clubs",                color: "#f0fdf4", border: "#86efac" },
-    { types: ["dinner"],                header: "🍽️ School Dinners",       color: "#fff7ed", border: "#fdba74" },
-    { types: ["newsletter"],            header: "📰 Newsletter",            color: "#faf5ff", border: "#c4b5fd" },
-    { types: ["info","meeting","deadline","other"], header: "ℹ️ General Info", color: "#f8fafc", border: "#cbd5e1" },
+    { types: ["reminder"],              header: "⏰ Reminders & Actions",  color: "#fef3c7", border: "#fbbf24", pastOk: false },
+    { types: ["activity","event","trip"],header: "📅 Upcoming Activities", color: "#eff6ff", border: "#93c5fd", pastOk: false },
+    { types: ["club"],                  header: "⚽ Clubs",                color: "#f0fdf4", border: "#86efac", pastOk: false },
+    { types: ["dinner"],                header: "🍽️ School Dinners",       color: "#fff7ed", border: "#fdba74", pastOk: false },
+    { types: ["newsletter"],            header: "📰 Newsletter",            color: "#faf5ff", border: "#c4b5fd", pastOk: true  },
+    { types: ["info","meeting","deadline","other"], header: "ℹ️ General Info", color: "#f8fafc", border: "#cbd5e1", pastOk: true },
+    { types: ["_recent_activity"],      header: "📋 Recent",               color: "#f1f5f9", border: "#94a3b8", pastOk: true  },
   ];
 
   function _schoolPin() { return sessionStorage.getItem("lib_pin") || ""; }
@@ -5982,17 +5983,21 @@ _bkBadge();
       const profiles = data.profiles || [];
       document.getElementById("school-loading").style.display = "none";
       if (profiles.length) {
-        const p = profiles[0];
         const card = document.getElementById("school-profile-card");
         card.style.display = "block";
-        const phoneLink = p.phone ? `<a href="tel:${p.phone}" style="color:#2563eb;text-decoration:none">${p.phone}</a>` : "";
-        card.innerHTML = `
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px">${p.child_name || ""}${p.child_name && p.school_name ? " — " : ""}${p.school_name || ""}</div>
-          ${[p.year_group, p.class_name].filter(Boolean).map(v=>`<span style="background:#e0f2fe;color:#0369a1;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600;margin-right:4px">${v}</span>`).join("")}
-          ${p.teacher_name ? `<span style="background:#fce7f3;color:#9d174d;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600">${p.teacher_name}</span>` : ""}
-          ${p.address ? `<div style="margin-top:6px;color:#6b7280">📍 ${p.address}</div>` : ""}
-          ${phoneLink ? `<div style="margin-top:2px">📞 ${phoneLink}</div>` : ""}
-        `;
+        card.innerHTML = profiles.map(p => {
+          const phoneLink = p.phone ? `<a href="tel:${p.phone}" style="color:#2563eb;text-decoration:none">${p.phone}</a>` : "";
+          return `
+            <div style="margin-bottom:${profiles.length>1?'12px':'0'}">
+              <div style="font-weight:700;font-size:14px;margin-bottom:4px">${p.child_name||""}${p.child_name&&p.school_name?" — ":""}${p.school_name||""}</div>
+              <div style="margin-bottom:4px">
+                ${[p.year_group,p.class_name].filter(Boolean).map(v=>`<span style="background:#e0f2fe;color:#0369a1;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600;margin-right:4px">${v}</span>`).join("")}
+                ${p.teacher_name?`<span style="background:#fce7f3;color:#9d174d;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600">${p.teacher_name}</span>`:""}
+              </div>
+              ${p.address?`<div style="color:#6b7280;font-size:12px">📍 ${p.address}</div>`:""}
+              ${phoneLink?`<div style="font-size:12px;margin-top:2px">📞 ${phoneLink}</div>`:""}
+            </div>`;
+        }).join('<hr style="border:none;border-top:1px solid #e2e8f0;margin:8px 0">');
       }
       // Deduplicate: prefer the version WITH a date; dedupe by normalised title
       const byTitle = {};
@@ -6005,16 +6010,16 @@ _bkBadge();
       if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
       const container = document.getElementById("school-sections");
       const todayStr = new Date().toISOString().slice(0,10);
-      const DATE_SENSITIVE = new Set(["activity","event","trip","reminder","deadline","dinner","club"]);
+      const PAST_TYPES = new Set(["activity","event","trip","reminder","deadline","dinner","club"]);
+      // Tag past activities as _recent_activity so they appear in Recent section
+      const tagged = uniq.map(e => {
+        if (e.event_date && e.event_date < todayStr && PAST_TYPES.has(e.event_type || "other")) {
+          return {...e, event_type: "_recent_activity"};
+        }
+        return e;
+      });
       for (const sec of _SCHOOL_SECTIONS) {
-        const bucket = uniq.filter(e => {
-          if (!sec.types.includes(e.event_type || "other")) return false;
-          // Hide past-dated events from time-sensitive sections
-          if (e.event_date && DATE_SENSITIVE.has(e.event_type)) {
-            return e.event_date >= todayStr;
-          }
-          return true;
-        });
+        const bucket = tagged.filter(e => sec.types.includes(e.event_type || "other"));
         if (!bucket.length) continue;
         const wrap = document.createElement("div");
         wrap.style.cssText = `background:${sec.color};border:1px solid ${sec.border};border-radius:14px;padding:14px 16px;margin-bottom:12px`;
