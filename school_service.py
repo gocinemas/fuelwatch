@@ -94,13 +94,23 @@ def _build_gmail_query(sender_emails: list[str], days_back: int = 7) -> str:
     return f"({froms}) after:{after}"
 
 
-def _extract_email_text(msg: dict) -> tuple[str, str]:
-    """Return (subject, body_text) from a Gmail message resource.
+def _extract_email_text(msg: dict) -> tuple[str, str, str]:
+    """Return (subject, body_text, sent_date_iso) from a Gmail message resource.
     Prefers text/plain; falls back to stripped HTML."""
     import base64
+    from email.utils import parsedate_to_datetime
 
     headers = {h["name"].lower(): h["value"] for h in msg.get("payload", {}).get("headers", [])}
     subject = headers.get("subject", "")
+
+    # Extract send date from email headers
+    sent_date = ""
+    raw_date = headers.get("date", "")
+    if raw_date:
+        try:
+            sent_date = parsedate_to_datetime(raw_date).date().isoformat()
+        except Exception:
+            sent_date = date.today().isoformat()
 
     plain_parts, html_parts = [], []
 
@@ -153,22 +163,30 @@ def _extract_email_text(msg: dict) -> tuple[str, str]:
         body = ""
 
     body = re.sub(r"\n{3,}", "\n\n", body.strip())
-    return subject, body[:5000]
+    return subject, body[:5000], sent_date
 
 
 # ── Groq event parsing ─────────────────────────────────────────────────────────
 
-def _groq_parse_events(subject: str, body: str, school_name: str, year_group: str) -> list[dict]:
+def _groq_parse_events(subject: str, body: str, school_name: str, year_group: str,
+                       sent_date: str = "") -> list[dict]:
     """
     Ask Groq to extract events/reminders from an email.
     Returns list of: {event_title, event_type, event_date, description, action_needed, deadline}
     """
-    today     = date.today()
-    today_str = today.isoformat()
-    weekday   = today.strftime("%A")   # e.g. "Sunday"
-    # Map "this Friday", "next Monday" etc. to real dates
-    days_map  = {d: (today + timedelta(days=(i - today.weekday()) % 7 or 7)).isoformat()
-                 for i, d in enumerate(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"])}
+    # Use the email's actual send date for relative date resolution
+    try:
+        ref = date.fromisoformat(sent_date) if sent_date else date.today()
+    except ValueError:
+        ref = date.today()
+
+    ref_str = ref.isoformat()
+    weekday = ref.strftime("%A")
+    # Map "this Monday/Friday/..." relative to the email send date
+    days_map = {}
+    for i, d in enumerate(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]):
+        delta = (i - ref.weekday()) % 7
+        days_map[d] = (ref + timedelta(days=delta if delta else 7)).isoformat()
     days_hint = "  ".join(f"this {d} = {v}" for d, v in days_map.items())
 
     system = (
@@ -176,8 +194,8 @@ def _groq_parse_events(subject: str, body: str, school_name: str, year_group: st
         "and important dates from school emails. Return ONLY valid JSON, no markdown fences."
     )
     prompt = f"""School: {school_name}  Year group: {year_group}
-Today: {today_str} ({weekday})
-Relative dates this week: {days_hint}
+Email sent: {ref_str} ({weekday})
+Relative dates from send date: {days_hint}
 
 Email subject: {subject}
 Email body:
@@ -249,15 +267,28 @@ def _get_profiles(from_number: str = None) -> list[dict]:
 
 
 def _store_events(profile: dict, events: list[dict], gmail_msg_id: str):
+    # Check which (gmail_msg_id, event_title) pairs already exist
+    try:
+        existing = lib._sb().table("school_events") \
+            .select("event_title") \
+            .eq("gmail_msg_id", gmail_msg_id) \
+            .execute().data or []
+        existing_titles = {r["event_title"].lower().strip() for r in existing}
+    except Exception:
+        existing_titles = set()
+
     for ev in events:
-        if not ev.get("event_title"):
+        title = (ev.get("event_title") or "").strip()
+        if not title:
             continue
+        if title.lower() in existing_titles:
+            continue  # already stored this event from this email
         try:
             raw_type = ev.get("event_type", "other") or "other"
             lib._sb().table("school_events").insert({
                 "profile_id":    profile["id"],
                 "from_number":   profile["from_number"],
-                "event_title":   ev.get("event_title", "")[:200],
+                "event_title":   title[:200],
                 "event_type":    raw_type.lower().strip(),
                 "event_date":    ev.get("event_date") or None,
                 "description":   ev.get("description", "")[:500],
@@ -265,8 +296,8 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str):
                 "deadline":      ev.get("deadline") or None,
                 "gmail_msg_id":  gmail_msg_id,
             }).execute()
+            existing_titles.add(title.lower())
         except Exception as e:
-            # Unique constraint on gmail_msg_id — already processed
             if "unique" not in str(e).lower():
                 print(f"[school] insert error: {e}")
 
@@ -372,14 +403,16 @@ def poll_all_profiles(days_back: int = 7) -> dict:
             if not matched_profile:
                 matched_profile = parent_profiles[0]  # fallback
 
-            subject, body = _extract_email_text(msg)
+            subject, body, sent_date = _extract_email_text(msg)
             if not body.strip():
+                print(f"[school] empty body for msg {msg_id} subject={subject!r}")
                 continue
 
             events = _groq_parse_events(
                 subject, body,
                 matched_profile["school_name"],
                 matched_profile.get("year_group", ""),
+                sent_date=sent_date,
             )
             if events:
                 _store_events(matched_profile, events, gmail_msg_id=msg_id)
