@@ -12,7 +12,8 @@ _SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 _SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 _ALGOLIA_APP  = os.environ.get("ALGOLIA_APP_ID", "")
 _ALGOLIA_KEY  = os.environ.get("ALGOLIA_API_KEY", "")
-_INDEX_NAME   = "library_chunks"
+_INDEX_NAME        = "library_chunks"
+_SAVES_INDEX_NAME  = "wa_saves"
 
 
 _sb_client = None
@@ -31,6 +32,48 @@ def _idx():
         raise RuntimeError("Algolia credentials not set")
     client = SearchClient.create(_ALGOLIA_APP, _ALGOLIA_KEY)
     return client.init_index(_INDEX_NAME)
+
+
+def _saves_idx():
+    if not _ALGOLIA_OK:
+        raise RuntimeError("algoliasearch not installed")
+    if not _ALGOLIA_APP or not _ALGOLIA_KEY:
+        raise RuntimeError("Algolia credentials not set")
+    client = SearchClient.create(_ALGOLIA_APP, _ALGOLIA_KEY)
+    return client.init_index(_SAVES_INDEX_NAME)
+
+
+def saves_sync(save: dict) -> None:
+    """Upsert a wa_saves record into Algolia. Fails silently."""
+    try:
+        _saves_idx().save_object({
+            "objectID":    save["id"],
+            "from_number": save.get("from_number", ""),
+            "title":       save.get("title", ""),
+            "summary":     save.get("summary", ""),
+            "url":         save.get("url", ""),
+            "status":      save.get("status", "pending"),
+            "created_at":  save.get("created_at", ""),
+        })
+    except Exception:
+        pass
+
+
+def saves_unsync(save_id: str) -> None:
+    """Delete a save from the Algolia index. Fails silently."""
+    try:
+        _saves_idx().delete_object(save_id)
+    except Exception:
+        pass
+
+
+def saves_search(query: str, from_number: str = "", hits_per_page: int = 20) -> list:
+    """Search wa_saves in Algolia, filtered to a single user when from_number given."""
+    params = {"hitsPerPage": hits_per_page}
+    if from_number:
+        params["filters"] = f'from_number:"{from_number}"'
+    res = _saves_idx().search(query, params)
+    return res.get("hits", [])
 
 
 def chunk_text(text: str, chunk_size: int = 350, overlap: int = 50) -> list:

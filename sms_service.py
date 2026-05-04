@@ -3967,6 +3967,9 @@ def _wa_save_url(from_number: str, url: str) -> str:
             update["summary"] = summary
         try:
             lib._sb().table("wa_saves").update(update).eq("id", sid).execute()
+            rows = lib._sb().table("wa_saves").select("*").eq("id", sid).execute().data
+            if rows:
+                lib.saves_sync(rows[0])
         except Exception:
             pass
 
@@ -4922,6 +4925,7 @@ def api_wa_saves_delete():
         if from_number:
             q = q.eq("from_number", from_number)  # users can only delete their own
         q.execute()
+        lib.saves_unsync(save_id)
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -4970,6 +4974,9 @@ def api_wa_saves_enrich():
         if info.get("name") and info["name"] != venue_name:
             update["title"] = f"🏪 {info['name']}"
         lib._sb().table("wa_saves").update(update).eq("id", save_id).execute()
+        rows = lib._sb().table("wa_saves").select("*").eq("id", save_id).execute().data
+        if rows:
+            lib.saves_sync(rows[0])
 
         # Notify on WhatsApp
         pin = request.headers.get("X-Library-PIN", "")
@@ -4999,7 +5006,56 @@ def api_wa_saves_rename():
         return jsonify({"error": "id and title required"}), 400
     try:
         lib._sb().table("wa_saves").update({"title": title}).eq("id", save_id).execute()
+        rows = lib._sb().table("wa_saves").select("*").eq("id", save_id).execute().data
+        if rows:
+            lib.saves_sync(rows[0])
         return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/wa-saves/search")
+def api_wa_saves_search():
+    """Search saves via Algolia."""
+    err = _check_library_pin()
+    if err:
+        return err
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"hits": []})
+    pin = request.headers.get("X-Library-PIN", "")
+    from_number = _resolve_user_token(pin) or ""
+    try:
+        hits = lib.saves_search(q, from_number=from_number)
+        results = [
+            {
+                "id":         h["objectID"],
+                "title":      h.get("title", ""),
+                "url":        h.get("url", ""),
+                "summary":    h.get("summary", ""),
+                "status":     h.get("status", "pending"),
+                "created_at": h.get("created_at", ""),
+                "_snippetResult": h.get("_snippetResult"),
+            }
+            for h in hits
+        ]
+        return jsonify({"hits": results})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/wa-saves/reindex", methods=["POST"])
+def api_wa_saves_reindex():
+    """Bulk-index all existing saves into Algolia (admin only)."""
+    admin_pw = os.environ.get("ADMIN_PASSWORD", "")
+    pin = request.headers.get("X-Admin-Password", "")
+    if admin_pw and pin != admin_pw:
+        return jsonify({"error": "Forbidden"}), 403
+    try:
+        rows = lib._sb().table("wa_saves").select("*").execute().data
+        for row in rows:
+            lib.saves_sync(row)
+        return jsonify({"ok": True, "count": len(rows)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
