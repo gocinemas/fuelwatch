@@ -3564,25 +3564,26 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         prompt_text = (
             "Identify what this image is. Pick ONE type from: "
             "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, sign, document, product, photo.\n"
+            "IMPORTANT type rules:\n"
+            "- Use 'product' for ANY photo showing physical products, items on shelves, products with price tags, "
+            "or a basket/trolley of items — even if taken inside a store or supermarket.\n"
+            "- Use 'billboard/ad' ONLY for printed posters, banners, or ads that are NOT showing products on shelves.\n"
+            "- Use 'store/restaurant' ONLY for the exterior or entrance of a shop/restaurant, NOT for shelf or product photos.\n"
             "Then give 3 bullet points starting with • covering the key info.\n"
-            "If store/restaurant: focus ONLY on the place itself — name, type of food/business, what it specialises in, opening hours or price range if visible. Do NOT describe the photo scene.\n"
+            "If store/restaurant: focus ONLY on the place itself — name, type of food/business, opening hours or price range if visible.\n"
             "If event/ticket: include event name, date, time, venue.\n"
-            "If ad/billboard: state the brand or retailer name, the exact product or deal name, and the price/offer. "
-            "If this looks like an in-store promotion, try to identify the retailer from any visible branding, colours, shelf design — e.g. Waitrose, Tesco, Sainsbury's, M&S, Asda.\n"
-            "If product: list EVERY product visible in the photo — there may be one or many. "
-            "Look carefully at all price tags, shelf-edge labels, and packaging. "
-            "Try to identify the retailer from shelf labels, store colours, own-brand packaging, or visible signage "
-            "(e.g. Tesco, Waitrose, Sainsbury's, Boots, M&S, Asda, Lidl, Aldi).\n"
+            "If ad/billboard: state the brand, product name, and price/offer.\n"
+            "If product: list EVERY product visible. Look at all price tags, shelf-edge labels, and packaging.\n"
             "If receipt: total and main items.\n"
             "Start your reply with: TYPE: [your choice]\n"
             "If type is event/ticket, store/restaurant, ad/billboard, or product — add: VENUE: [brand or business name only]\n"
-            "If type is product — list every product on a separate PRODUCT: line in this exact format:\n"
+            "If type is product OR ad/billboard — list every product on a separate PRODUCT: line:\n"
             "  PRODUCT: [full product name incl. variant & size] | [brand] | [price or n/a]\n"
             "  e.g. PRODUCT: Heinz Baked Beans 415g | Heinz | £0.89\n"
-            "  e.g. PRODUCT: Simple Kind to Skin Moisturiser 125ml | Simple | n/a\n"
+            "  e.g. PRODUCT: Simple Moisturiser 125ml | Simple | n/a\n"
             "Also add: SHOP: [retailer name if identifiable — e.g. 'Tesco' — or leave blank]\n"
-            "If you can identify a city, area, or neighbourhood from signage or text — add: LOCATION: [city or area name]\n"
-            "Always add: SEARCH: [2-5 word search term to find this product, deal, or place online]"
+            "If you can identify a city or area from signage — add: LOCATION: [city or area name]\n"
+            "Always add: SEARCH: [2-5 word search term]"
             + _loc_hint
         )
         analysis = ""
@@ -3665,6 +3666,11 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 shop_tag = _line.split(":", 1)[1].strip()
                 if shop_tag.lower() in _BLANK:
                     shop_tag = ""
+        # Upgrade to product type if model returned PRODUCT: lines regardless of classified type
+        if product_items and img_type not in ("product",):
+            print(f"[vision] upgrading img_type from {img_type!r} to 'product' — {len(product_items)} product(s) found")
+            img_type = "product"
+
         print(f"[vision] venue_tag={venue_tag!r} location_tag={location_tag!r} search_tag={search_tag!r} img_type={img_type}")
         print(f"[vision] products={product_items} shop_tag={shop_tag!r}")
 
