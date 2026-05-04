@@ -95,33 +95,60 @@ def _build_gmail_query(sender_emails: list[str], days_back: int = 7) -> str:
 
 
 def _extract_email_text(msg: dict) -> tuple[str, str]:
-    """Return (subject, plain_text_body) from a Gmail message resource."""
+    """Return (subject, body_text) from a Gmail message resource.
+    Prefers text/plain; falls back to stripped HTML."""
+    import base64
+
     headers = {h["name"].lower(): h["value"] for h in msg.get("payload", {}).get("headers", [])}
     subject = headers.get("subject", "")
 
-    def _parts_text(parts):
-        text = ""
+    plain_parts, html_parts = [], []
+
+    def _walk(parts):
         for part in parts:
             if part.get("parts"):
-                text += _parts_text(part["parts"])
-            elif part.get("mimeType") == "text/plain":
-                data = part.get("body", {}).get("data", "")
-                if data:
-                    import base64
-                    text += base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="ignore")
-        return text
+                _walk(part["parts"])
+            mime = part.get("mimeType", "")
+            data = part.get("body", {}).get("data", "")
+            if not data:
+                continue
+            decoded = base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="ignore")
+            if mime == "text/plain":
+                plain_parts.append(decoded)
+            elif mime == "text/html":
+                html_parts.append(decoded)
 
     payload = msg.get("payload", {})
     if payload.get("parts"):
-        body = _parts_text(payload["parts"])
+        _walk(payload["parts"])
     else:
-        import base64
         data = payload.get("body", {}).get("data", "")
-        body = base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="ignore") if data else ""
+        if data:
+            decoded = base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="ignore")
+            mime = payload.get("mimeType", "")
+            if mime == "text/html":
+                html_parts.append(decoded)
+            else:
+                plain_parts.append(decoded)
 
-    # Strip excessive whitespace
+    if plain_parts:
+        body = "\n".join(plain_parts)
+    elif html_parts:
+        # Strip HTML tags, collapse whitespace
+        html = "\n".join(html_parts)
+        body = re.sub(r"<style[^>]*>.*?</style>", " ", html, flags=re.S | re.I)
+        body = re.sub(r"<script[^>]*>.*?</script>", " ", body, flags=re.S | re.I)
+        body = re.sub(r"<[^>]+>", " ", body)
+        body = re.sub(r"&nbsp;", " ", body)
+        body = re.sub(r"&amp;", "&", body)
+        body = re.sub(r"&lt;", "<", body)
+        body = re.sub(r"&gt;", ">", body)
+        body = re.sub(r"[ \t]{2,}", " ", body)
+    else:
+        body = ""
+
     body = re.sub(r"\n{3,}", "\n\n", body.strip())
-    return subject, body[:4000]  # cap at 4k chars for Groq
+    return subject, body[:5000]
 
 
 # ── Groq event parsing ─────────────────────────────────────────────────────────
@@ -178,7 +205,7 @@ JSON array:"""
                     {"role": "system", "content": system},
                     {"role": "user",   "content": prompt},
                 ],
-                "max_tokens": 800,
+                "max_tokens": 1200,
                 "temperature": 0.1,
             },
             timeout=20,
