@@ -5993,10 +5993,17 @@ _bkBadge();
           document.getElementById("school-subtitle").after(meta);
         }
       }
-      if (!events.length) { document.getElementById("school-empty").style.display = "block"; return; }
+      // Deduplicate by title+date (same event mentioned in multiple emails)
+      const seen = new Set();
+      const uniq = events.filter(e => {
+        const key = (e.event_title || "").toLowerCase().trim() + "|" + (e.event_date || "");
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+      if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
       const container = document.getElementById("school-sections");
       for (const sec of _SCHOOL_SECTIONS) {
-        const bucket = events.filter(e => sec.types.includes(e.event_type || "other"));
+        const bucket = uniq.filter(e => sec.types.includes(e.event_type || "other"));
         if (!bucket.length) continue;
         const wrap = document.createElement("div");
         wrap.style.cssText = `background:${sec.color};border:1px solid ${sec.border};border-radius:14px;padding:14px 16px;margin-bottom:12px`;

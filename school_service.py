@@ -181,7 +181,7 @@ Extract every item a parent should know about. Return a JSON array of objects, e
                   "reminder"   — deadlines, payments, consent forms, things parent must do
                   "club"       — after-school or lunchtime clubs
                   "dinner"     — school dinner menus, meal choices
-                  "newsletter" — general school news, head teacher updates, no specific action
+                  "newsletter" — a newsletter or bulletin summary entry
                   "info"       — general info, policy updates, term dates, no action needed
   event_date    : ISO date (YYYY-MM-DD) or null if no specific date
   description   : 1-2 sentence plain summary
@@ -189,9 +189,12 @@ Extract every item a parent should know about. Return a JSON array of objects, e
   deadline      : ISO date by which action is needed, or null
 
 Rules:
-- If the email is a newsletter summary, create ONE item of type "newsletter" summarising the highlights
-- If the email has multiple distinct items, create one object per item
-- Do NOT merge unrelated items into one
+- If the email subject contains "bulletin", "newsletter", "weekly update" or similar:
+    * FIRST create one item of type "newsletter" with event_title = the subject line,
+      and description = a 2-sentence summary of the whole bulletin
+    * THEN also create separate items for any specific activities or reminders inside it
+- For all other emails: create one item per distinct event/reminder/action
+- Do NOT create duplicate items for the same event
 
 If nothing relevant, return [].
 JSON array:"""
