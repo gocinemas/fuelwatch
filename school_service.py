@@ -142,15 +142,26 @@ Email subject: {subject}
 Email body:
 {body}
 
-Extract all events/reminders. Return a JSON array of objects, each with:
+Extract every item a parent should know about. Return a JSON array of objects, each with:
   event_title   : short title (max 10 words)
-  event_type    : one of: event | trip | dinner | club | deadline | meeting | newsletter | other
+  event_type    : classify as exactly one of:
+                  "activity"   — trips, sports days, shows, school events with a date
+                  "reminder"   — deadlines, payments, consent forms, things parent must do
+                  "club"       — after-school or lunchtime clubs
+                  "dinner"     — school dinner menus, meal choices
+                  "newsletter" — general school news, head teacher updates, no specific action
+                  "info"       — general info, policy updates, term dates, no action needed
   event_date    : ISO date (YYYY-MM-DD) or null if no specific date
-  description   : 1-2 sentence summary
+  description   : 1-2 sentence plain summary
   action_needed : what the parent must do, or empty string
   deadline      : ISO date by which action is needed, or null
 
-If nothing actionable, return [].
+Rules:
+- If the email is a newsletter summary, create ONE item of type "newsletter" summarising the highlights
+- If the email has multiple distinct items, create one object per item
+- Do NOT merge unrelated items into one
+
+If nothing relevant, return [].
 JSON array:"""
 
     groq_key = os.environ.get("GROQ_API_KEY", "")
@@ -216,35 +227,56 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str):
 
 
 def _get_upcoming_events(from_number: str, days: int = 14) -> list[dict]:
-    today = date.today().isoformat()
-    horizon = (date.today() + timedelta(days=days)).isoformat()
-    return (
+    today     = date.today().isoformat()
+    horizon   = (date.today() + timedelta(days=days)).isoformat()
+    # Events with a date in range
+    dated = (
         lib._sb().table("school_events")
         .select("*")
         .eq("from_number", from_number)
         .gte("event_date", today)
         .lte("event_date", horizon)
-        .order("event_date")
         .execute()
         .data or []
     )
+    # Newsletters / info with no date — last 7 days
+    week_ago = (date.today() - timedelta(days=7)).isoformat()
+    undated = (
+        lib._sb().table("school_events")
+        .select("*")
+        .eq("from_number", from_number)
+        .is_("event_date", "null")
+        .gte("created_at", week_ago)
+        .execute()
+        .data or []
+    )
+    return dated + undated
 
 
 def _get_this_week_events(from_number: str) -> list[dict]:
     today = date.today()
-    # Mon–Sun of current week
-    start = today - timedelta(days=today.weekday())
-    end   = start + timedelta(days=6)
-    return (
+    start = today - timedelta(days=today.weekday())  # Monday
+    end   = start + timedelta(days=6)                # Sunday
+    dated = (
         lib._sb().table("school_events")
         .select("*")
         .eq("from_number", from_number)
         .gte("event_date", start.isoformat())
         .lte("event_date", end.isoformat())
-        .order("event_date")
         .execute()
         .data or []
     )
+    # Also include undated items from this week
+    undated = (
+        lib._sb().table("school_events")
+        .select("*")
+        .eq("from_number", from_number)
+        .is_("event_date", "null")
+        .gte("created_at", start.isoformat())
+        .execute()
+        .data or []
+    )
+    return dated + undated
 
 
 # ── Email polling ──────────────────────────────────────────────────────────────
@@ -330,45 +362,60 @@ def poll_all_profiles(days_back: int = 7) -> dict:
 
 # ── Digest formatting ──────────────────────────────────────────────────────────
 
-_TYPE_EMOJI = {
-    "event":      "📅",
-    "trip":       "🚌",
-    "dinner":     "🍽️",
-    "club":       "⚽",
-    "deadline":   "⏰",
-    "meeting":    "👥",
-    "newsletter": "📰",
-    "other":      "📌",
-}
+# Section definitions: (event_types, header, emoji)
+_SECTIONS = [
+    ({"reminder"},              "⏰ Reminders & Actions"),
+    ({"activity"},              "📅 Upcoming Activities"),
+    ({"club"},                  "⚽ Clubs"),
+    ({"dinner"},                "🍽️ School Dinners"),
+    ({"newsletter"},            "📰 Newsletter"),
+    ({"info", "other", "meeting", "event", "trip", "deadline"}, "ℹ️ General Info"),
+]
 
 def _format_date(d: str | None) -> str:
     if not d:
         return ""
     try:
-        return datetime.fromisoformat(d).strftime("%-d %b")  # e.g. "7 May"
+        return datetime.fromisoformat(d).strftime("%-d %b")
     except Exception:
         return d
 
 
-def format_digest(events: list[dict], title: str = "Upcoming school events") -> str:
+def format_digest(events: list[dict], title: str = "School update") -> str:
     if not events:
-        return f"✅ *{title}*\n\nNothing on the school calendar right now."
+        return f"🏫 *{title}*\n\nNothing new from school right now."
 
-    lines = [f"🏫 *{title}*\n"]
-    current_date = None
-    for ev in events:
-        d = _format_date(ev.get("event_date"))
-        if d and d != current_date:
-            lines.append(f"\n*{d}*")
-            current_date = d
-        emoji = _TYPE_EMOJI.get(ev.get("event_type", "other"), "📌")
-        lines.append(f"{emoji} {ev['event_title']}")
-        if ev.get("description"):
-            lines.append(f"   _{ev['description']}_")
-        if ev.get("action_needed"):
-            lines.append(f"   ✏️ Action: {ev['action_needed']}")
-            if ev.get("deadline"):
-                lines.append(f"   ⏰ By: {_format_date(ev['deadline'])}")
+    # Sort by date (nulls last), then title
+    def _sort_key(e):
+        return (e.get("event_date") or "9999-12-31", e.get("event_title", ""))
+    sorted_events = sorted(events, key=_sort_key)
+
+    # Group into sections
+    used = set()
+    section_map: dict[str, list] = {h: [] for _, h in _SECTIONS}
+    for ev in sorted_events:
+        etype = ev.get("event_type", "other")
+        for types, header in _SECTIONS:
+            if etype in types:
+                section_map[header].append(ev)
+                break
+        used.add(ev.get("id"))
+
+    lines = [f"🏫 *{title}*"]
+    for types, header in _SECTIONS:
+        bucket = section_map[header]
+        if not bucket:
+            continue
+        lines.append(f"\n*{header}*")
+        for ev in bucket:
+            d = _format_date(ev.get("event_date"))
+            date_str = f" — {d}" if d else ""
+            lines.append(f"• {ev['event_title']}{date_str}")
+            if ev.get("description"):
+                lines.append(f"  _{ev['description']}_")
+            if ev.get("action_needed"):
+                dl = f" (by {_format_date(ev['deadline'])})" if ev.get("deadline") else ""
+                lines.append(f"  ✏️ {ev['action_needed']}{dl}")
 
     return "\n".join(lines)
 
