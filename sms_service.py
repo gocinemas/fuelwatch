@@ -3875,19 +3875,18 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         # Prefer real GPS postcode over vision model's guess (which can be wrong/US coords)
         where_str = gps_location or (venue_info.get("address", "").split(",")[0] if venue_info else "") or location_tag or venue_tag
         meta_line = f"META:📅 {now_str}" + (f" · 📍 {where_str}" if where_str else "")
-        # For product photos, build a structured product list as the summary
+        # For product photos, store structured JSON + readable bullets
         if img_type == "product" and product_items:
-            _prod_lines = []
-            if shop_tag:
-                _prod_lines.append(f"🏪 {shop_tag}")
-            for _pi in product_items:
-                _line = f"• {_pi['name']}"
-                if _pi["brand"] and _pi["brand"].lower() not in _pi["name"].lower():
-                    _line += f" · {_pi['brand']}"
-                if _pi["price"]:
-                    _line += f" · {_pi['price']}"
-                _prod_lines.append(_line)
-            summary = "\n".join(_prod_lines)
+            import json as _json
+            _prod_json = _json.dumps(product_items, ensure_ascii=False)
+            _shop_line = f"\nSHOP:{shop_tag}" if shop_tag else ""
+            _bullets = "\n".join(
+                "• " + _pi["name"]
+                + (f" · {_pi['brand']}" if _pi["brand"] and _pi["brand"].lower() not in _pi["name"].lower() else "")
+                + (f" · {_pi['price']}" if _pi["price"] else "")
+                for _pi in product_items
+            )
+            summary = f"PRODUCTS:{_prod_json}{_shop_line}\n{_bullets}"
         full_summary = (summary + "\n\n" + menu_text).strip() if menu_text else summary
         summary_with_meta = meta_line + "\n" + full_summary if full_summary else meta_line
 
