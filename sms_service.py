@@ -4982,23 +4982,24 @@ def api_school_events():
         return err
     days_ahead = int(request.args.get("days", 30))
     days_back  = int(request.args.get("back", 30))
+    profile_id = request.args.get("profile_id", "")
     from datetime import date, timedelta
     past    = (date.today() - timedelta(days=days_back)).isoformat()
     horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
     try:
-        dated = (lib._sb().table("school_events")
-                 .select("*")
-                 .gte("event_date", past)
-                 .lte("event_date", horizon)
-                 .order("event_date")
-                 .execute().data or [])
-        undated = (lib._sb().table("school_events")
-                   .select("*")
-                   .is_("event_date", "null")
-                   .gte("created_at", past)
-                   .order("created_at", desc=True)
-                   .execute().data or [])
-        profiles = lib._sb().table("school_profiles").select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone").eq("active", True).execute().data or []
+        def _add_profile_filter(q):
+            return q.eq("profile_id", profile_id) if profile_id else q
+        dated = (_add_profile_filter(
+                    lib._sb().table("school_events").select("*")
+                    .gte("event_date", past).lte("event_date", horizon))
+                 .order("event_date").execute().data or [])
+        undated = (_add_profile_filter(
+                    lib._sb().table("school_events").select("*")
+                    .is_("event_date", "null").gte("created_at", past))
+                   .order("created_at", desc=True).execute().data or [])
+        profiles = (lib._sb().table("school_profiles")
+                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone")
+                    .eq("active", True).execute().data or [])
         return jsonify({"events": dated + undated, "profiles": profiles})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -5755,6 +5755,9 @@ _bkBadge();
 
   <!-- Main view -->
   <div id="school-main" style="display:none">
+    <!-- Child tabs (hidden when only one child) -->
+    <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:12px;overflow-x:auto;white-space:nowrap"></div>
+
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
       <div id="school-profile-card" style="flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;font-size:12px;color:#374151;min-height:40px"></div>
       <button onclick="schoolLoad()" style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:4px 8px;flex-shrink:0;margin-left:8px;margin-top:8px">↻</button>
@@ -5954,6 +5957,7 @@ _bkBadge();
     document.getElementById("school-pin-screen").style.display = "none";
     document.getElementById("school-main").style.display = "block";
     document.getElementById("school-home-card").style.display = "";
+    _schoolActiveProfileId = "";
     schoolLoad();
   }
   function schoolCheckPin() {
@@ -5968,92 +5972,143 @@ _bkBadge();
     _schoolShowMain();
   };
 
+  let _schoolProfiles = [];
+  let _schoolActiveProfileId = "";
+
+  function _schoolRenderProfile(p) {
+    const badges = [p.year_group, p.class_name].filter(Boolean)
+      .map(v => `<span style="background:#e0f2fe;color:#0369a1;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600;margin-right:4px">${v}</span>`).join("");
+    const teacherBadge = p.teacher_name
+      ? `<span style="background:#fce7f3;color:#9d174d;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600">${p.teacher_name}</span>` : "";
+    const phoneLink = p.phone
+      ? `<a href="tel:${p.phone}" style="color:#2563eb;text-decoration:none">${p.phone}</a>` : "";
+    return `<div>
+      <div style="font-weight:700;font-size:15px">${p.child_name||"Student"}</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:5px">${p.school_name||""}</div>
+      <div>${badges}${teacherBadge}</div>
+      ${p.address ? `<div style="color:#9ca3af;font-size:11px;margin-top:5px">📍 ${p.address}</div>` : ""}
+      ${phoneLink ? `<div style="color:#9ca3af;font-size:11px;margin-top:2px">📞 ${phoneLink}</div>` : ""}
+    </div>`;
+  }
+
+  function _schoolRenderTabs() {
+    const tabsEl = document.getElementById("school-child-tabs");
+    if (_schoolProfiles.length <= 1) { tabsEl.style.display = "none"; return; }
+    tabsEl.style.display = "flex";
+    tabsEl.innerHTML = _schoolProfiles.map(p => {
+      const active = p.id === _schoolActiveProfileId;
+      return `<button onclick="schoolSelectProfile('${p.id}')"
+        style="flex-shrink:0;padding:7px 16px;border-radius:20px;border:2px solid ${active?"#1f2937":"#e2e8f0"};
+               background:${active?"#1f2937":"#fff"};color:${active?"#fff":"#374151"};
+               font-size:13px;font-weight:${active?"700":"500"};cursor:pointer">${p.child_name}</button>`;
+    }).join("");
+  }
+
+  window.schoolSelectProfile = function(id) {
+    _schoolActiveProfileId = id;
+    _schoolRenderTabs();
+    const p = _schoolProfiles.find(x => x.id === id);
+    if (p) document.getElementById("school-profile-card").innerHTML = _schoolRenderProfile(p);
+    _schoolFetchAndRender(id);
+  };
+
   window.schoolLoad = async function() {
     document.getElementById("school-loading").style.display = "block";
     document.getElementById("school-empty").style.display   = "none";
     document.getElementById("school-sections").innerHTML    = "";
     try {
+      // First load: fetch all profiles, then load events for active/first profile
       const r = await fetch("/api/school/events?days=30", { headers: _schoolHeaders() });
       if (r.status === 401) { _schoolShowLock(); return; }
       const data = await r.json();
-      const events   = data.events   || [];
-      const profiles = data.profiles || [];
+      _schoolProfiles = data.profiles || [];
       document.getElementById("school-loading").style.display = "none";
-      if (profiles.length) {
-        const card = document.getElementById("school-profile-card");
-        card.innerHTML = ""; // clear before repopulating
-        card.innerHTML = profiles.map(p => {
-          const badges = [p.year_group, p.class_name].filter(Boolean)
-            .map(v => `<span style="background:#e0f2fe;color:#0369a1;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600;margin-right:4px">${v}</span>`).join("");
-          const teacherBadge = p.teacher_name
-            ? `<span style="background:#fce7f3;color:#9d174d;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600">${p.teacher_name}</span>` : "";
-          const phoneLink = p.phone
-            ? `<a href="tel:${p.phone}" style="color:#2563eb;text-decoration:none">${p.phone}</a>` : "";
-          return `
-            <div>
-              <div style="font-weight:700;font-size:15px">${p.child_name||"Student"}</div>
-              <div style="font-size:12px;color:#6b7280;margin-bottom:5px">${p.school_name||""}</div>
-              <div>${badges}${teacherBadge}</div>
-              ${p.address ? `<div style="color:#9ca3af;font-size:11px;margin-top:5px">📍 ${p.address}</div>` : ""}
-              ${phoneLink ? `<div style="color:#9ca3af;font-size:11px;margin-top:2px">📞 ${phoneLink}</div>` : ""}
-            </div>`;
-        }).join('<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0">');
-      }
-      // Deduplicate: prefer the version WITH a date; dedupe by normalised title
-      const byTitle = {};
-      for (const e of events) {
-        const key = (e.event_title || "").toLowerCase().replace(/[^a-z0-9]/g,"").trim();
-        if (!byTitle[key]) { byTitle[key] = e; }
-        else if (!byTitle[key].event_date && e.event_date) { byTitle[key] = e; } // upgrade to dated version
-      }
-      const uniq = Object.values(byTitle);
-      if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
-      const container = document.getElementById("school-sections");
-      const todayStr = new Date().toISOString().slice(0,10);
-      const PAST_TYPES = new Set(["activity","event","trip","reminder","deadline","dinner","club"]);
-      // Tag past activities as _recent_activity so they appear in Recent section
-      const tagged = uniq.map(e => {
-        if (e.event_date && e.event_date < todayStr && PAST_TYPES.has(e.event_type || "other")) {
-          return {...e, event_type: "_recent_activity"};
-        }
-        return e;
-      });
-      for (const sec of _SCHOOL_SECTIONS) {
-        let bucket = tagged.filter(e => sec.types.includes(e.event_type || "other"));
-        if (!bucket.length) continue;
-        // Newsletters: show 2 most recent only, sorted newest first
-        if (sec.types.includes("newsletter")) {
-          bucket = bucket.sort((a,b) => (b.created_at||"").localeCompare(a.created_at||"")).slice(0,2);
-        }
-        const wrap = document.createElement("div");
-        wrap.style.cssText = `background:${sec.color};border:1px solid ${sec.border};border-radius:14px;padding:14px 16px;margin-bottom:12px`;
-        const hdr = document.createElement("div");
-        hdr.style.cssText = "font-weight:700;font-size:13px;margin-bottom:10px";
-        hdr.textContent = sec.header;
-        wrap.appendChild(hdr);
-        for (const ev of bucket) {
-          const item = document.createElement("div");
-          item.style.cssText = "padding:8px 0;border-top:1px solid rgba(0,0,0,.06)";
-          const dateStr = ev.event_date ? new Date(ev.event_date + "T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
-          const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
-          const titleEl = ev.event_type === "newsletter" && gmailUrl
-            ? `<a href="${gmailUrl}" target="_blank" rel="noopener" style="color:#7c3aed;text-decoration:none;font-weight:600;font-size:13px">${ev.event_title} ↗</a>`
-            : `<span style="font-weight:600;font-size:13px">${ev.event_title}</span>`;
-          let html = `<div>${titleEl}${dateStr ? `<span style="font-weight:400;color:#6b7280;margin-left:6px;font-size:12px">${dateStr}</span>` : ""}</div>`;
-          if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:3px">${ev.description}</div>`;
-          if (ev.action_needed) {
-            const dl = ev.deadline ? ` <span style="color:#ef4444">(by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})})</span>` : "";
-            html += `<div style="font-size:12px;color:#d97706;margin-top:4px;font-weight:600">✏️ ${ev.action_needed}${dl}</div>`;
-          }
-          item.innerHTML = html;
-          wrap.appendChild(item);
-        }
-        container.appendChild(wrap);
-      }
+
+      if (!_schoolActiveProfileId && _schoolProfiles.length)
+        _schoolActiveProfileId = _schoolProfiles[0].id;
+
+      _schoolRenderTabs();
+
+      const activeProfile = _schoolProfiles.find(p => p.id === _schoolActiveProfileId);
+      if (activeProfile)
+        document.getElementById("school-profile-card").innerHTML = _schoolRenderProfile(activeProfile);
+
+      const events = _schoolActiveProfileId && _schoolProfiles.length > 1
+        ? (data.events || []).filter(e => e.profile_id === _schoolActiveProfileId)
+        : (data.events || []);
+      _schoolRenderEvents(events);
     } catch(e) {
       document.getElementById("school-loading").textContent = "Error loading events.";
     }
   };
+
+  async function _schoolFetchAndRender(profileId) {
+    document.getElementById("school-loading").style.display = "block";
+    document.getElementById("school-empty").style.display   = "none";
+    document.getElementById("school-sections").innerHTML    = "";
+    try {
+      const url = "/api/school/events?days=30" + (profileId ? "&profile_id=" + profileId : "");
+      const r = await fetch(url, { headers: _schoolHeaders() });
+      if (r.status === 401) { _schoolShowLock(); return; }
+      const data = await r.json();
+      document.getElementById("school-loading").style.display = "none";
+      _schoolRenderEvents(data.events || []);
+    } catch(e) {
+      document.getElementById("school-loading").textContent = "Error loading events.";
+    }
+  }
+
+  function _schoolRenderEvents(events) {
+    document.getElementById("school-loading").style.display = "none";
+    // Deduplicate: prefer the version WITH a date; dedupe by normalised title
+    const byTitle = {};
+    for (const e of events) {
+      const key = (e.event_title || "").toLowerCase().replace(/[^a-z0-9]/g,"").trim();
+      if (!byTitle[key]) { byTitle[key] = e; }
+      else if (!byTitle[key].event_date && e.event_date) { byTitle[key] = e; }
+    }
+    const uniq = Object.values(byTitle);
+    if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
+    const container = document.getElementById("school-sections");
+    container.innerHTML = "";
+    const todayStr = new Date().toISOString().slice(0,10);
+    const PAST_TYPES = new Set(["activity","event","trip","reminder","deadline","dinner","club"]);
+    const tagged = uniq.map(e => {
+      if (e.event_date && e.event_date < todayStr && PAST_TYPES.has(e.event_type || "other"))
+        return {...e, event_type: "_recent_activity"};
+      return e;
+    });
+    for (const sec of _SCHOOL_SECTIONS) {
+      let bucket = tagged.filter(e => sec.types.includes(e.event_type || "other"));
+      if (!bucket.length) continue;
+      if (sec.types.includes("newsletter"))
+        bucket = bucket.sort((a,b) => (b.created_at||"").localeCompare(a.created_at||"")).slice(0,2);
+      const wrap = document.createElement("div");
+      wrap.style.cssText = `background:${sec.color};border:1px solid ${sec.border};border-radius:14px;padding:14px 16px;margin-bottom:12px`;
+      const hdr = document.createElement("div");
+      hdr.style.cssText = "font-weight:700;font-size:13px;margin-bottom:10px";
+      hdr.textContent = sec.header;
+      wrap.appendChild(hdr);
+      for (const ev of bucket) {
+        const item = document.createElement("div");
+        item.style.cssText = "padding:8px 0;border-top:1px solid rgba(0,0,0,.06)";
+        const dateStr = ev.event_date ? new Date(ev.event_date + "T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
+        const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
+        const titleEl = ev.event_type === "newsletter" && gmailUrl
+          ? `<a href="${gmailUrl}" target="_blank" rel="noopener" style="color:#7c3aed;text-decoration:none;font-weight:600;font-size:13px">${ev.event_title} ↗</a>`
+          : `<span style="font-weight:600;font-size:13px">${ev.event_title}</span>`;
+        let html = `<div>${titleEl}${dateStr ? `<span style="font-weight:400;color:#6b7280;margin-left:6px;font-size:12px">${dateStr}</span>` : ""}</div>`;
+        if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:3px">${ev.description}</div>`;
+        if (ev.action_needed) {
+          const dl = ev.deadline ? ` <span style="color:#ef4444">(by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})})</span>` : "";
+          html += `<div style="font-size:12px;color:#d97706;margin-top:4px;font-weight:600">✏️ ${ev.action_needed}${dl}</div>`;
+        }
+        item.innerHTML = html;
+        wrap.appendChild(item);
+      }
+      container.appendChild(wrap);
+    }
+  }
 
   /* ── End school comms ──────────────────────────────────────────────────────── */
 
