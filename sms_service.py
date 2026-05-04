@@ -4973,6 +4973,36 @@ def school_poll():
     return jsonify(result)
 
 
+@app.route("/api/school/events")
+def api_school_events():
+    """Return school events for the web dashboard. PIN protected."""
+    err = _check_library_pin()
+    if err:
+        return err
+    days = int(request.args.get("days", 30))
+    from datetime import date, timedelta
+    today     = date.today().isoformat()
+    horizon   = (date.today() + timedelta(days=days)).isoformat()
+    week_ago  = (date.today() - timedelta(days=7)).isoformat()
+    try:
+        dated = (lib._sb().table("school_events")
+                 .select("*")
+                 .gte("event_date", today)
+                 .lte("event_date", horizon)
+                 .order("event_date")
+                 .execute().data or [])
+        undated = (lib._sb().table("school_events")
+                   .select("*")
+                   .is_("event_date", "null")
+                   .gte("created_at", week_ago)
+                   .order("created_at", desc=True)
+                   .execute().data or [])
+        profiles = lib._sb().table("school_profiles").select("id,school_name,child_name,year_group").eq("active", True).execute().data or []
+        return jsonify({"events": dated + undated, "profiles": profiles})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/digest")
 def school_digest():
     """Send weekly school digest to all parents.

@@ -375,6 +375,13 @@
           <div class="tc-desc">Identify songs, UK &amp; Global Top 20 charts</div>
         </button>
 
+        <!-- School Comms: hidden from home — access via ?screen=school or PIN unlock -->
+        <button class="tool-card" onclick="showScreen('school')" id="school-home-card" style="display:none">
+          <div class="tc-icon" style="background:#f0f9ff">🏫</div>
+          <div class="tc-name">School</div>
+          <div class="tc-desc">Events, reminders and newsletters from school</div>
+        </button>
+
         <!-- Council Services: hidden — access via ?screen=council -->
 
         <!-- My News: hidden from home — access via ?screen=news -->
@@ -1390,6 +1397,7 @@
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); }
     if (name === "company") { document.getElementById("company-input").focus();   _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()"); }
     if (name === "library") { libCheckPin(); }
+    if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")     { document.getElementById("brand-input").focus(); _renderRecent("miru_brand", "brand-recent", "brand-input", "searchBrand()"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); }
     setFooter(name);
@@ -5728,6 +5736,42 @@ _bkBadge();
 </script>
 
 <!-- ── MY SAVES SCREEN ── -->
+<!-- ═══════════════════════════════════════════════════════ SCHOOL SCREEN -->
+<div id="screen-school" class="screen pt-5">
+  <!-- PIN lock -->
+  <div id="school-pin-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
+    <div style="font-size:40px;margin-bottom:16px">🔒</div>
+    <div style="font-weight:700;font-size:17px;margin-bottom:6px">School Comms</div>
+    <div style="color:#9ca3af;font-size:13px;margin-bottom:20px">Enter your password to continue</div>
+    <input id="school-pin-input" type="password" placeholder="Password"
+      style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 16px;font-size:15px;width:200px;text-align:center;outline:none;margin-bottom:10px"
+      onkeydown="if(event.key==='Enter')schoolSubmitPin()" />
+    <div id="school-pin-error" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">Wrong password</div>
+    <button onclick="schoolSubmitPin()"
+      style="background:#1f2937;color:#fff;border:none;border-radius:12px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer">
+      Unlock
+    </button>
+  </div>
+
+  <!-- Main view -->
+  <div id="school-main" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-weight:800;font-size:18px">🏫 School</div>
+        <div id="school-subtitle" style="font-size:12px;color:#9ca3af;margin-top:2px"></div>
+      </div>
+      <button onclick="schoolLoad()" style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:4px 8px">↻ Refresh</button>
+    </div>
+
+    <div id="school-loading" style="text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">Loading…</div>
+    <div id="school-empty"   style="display:none;text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">
+      Nothing from school right now.<br>
+      <span style="font-size:12px">WhatsApp <em>school upcoming</em> to Miru to check.</span>
+    </div>
+    <div id="school-sections"></div>
+  </div>
+</div>
+
 <div id="screen-saves" class="screen pt-5">
   <!-- PIN lock -->
   <div id="saves-pin-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
@@ -5889,6 +5933,90 @@ _bkBadge();
       }
     }
   })();
+
+  /* ── School comms ─────────────────────────────────────────────────────────── */
+  const _SCHOOL_SECTIONS = [
+    { types: ["reminder"],              header: "⏰ Reminders & Actions",  color: "#fef3c7", border: "#fbbf24" },
+    { types: ["activity","event","trip"],header: "📅 Upcoming Activities", color: "#eff6ff", border: "#93c5fd" },
+    { types: ["club"],                  header: "⚽ Clubs",                color: "#f0fdf4", border: "#86efac" },
+    { types: ["dinner"],                header: "🍽️ School Dinners",       color: "#fff7ed", border: "#fdba74" },
+    { types: ["newsletter"],            header: "📰 Newsletter",            color: "#faf5ff", border: "#c4b5fd" },
+    { types: ["info","meeting","deadline","other"], header: "ℹ️ General Info", color: "#f8fafc", border: "#cbd5e1" },
+  ];
+
+  function _schoolPin() { return sessionStorage.getItem("lib_pin") || ""; }
+  function _schoolHeaders() { const p = _schoolPin(); return p ? {"X-Library-PIN": p} : {}; }
+
+  function _schoolShowLock() {
+    document.getElementById("school-pin-screen").style.cssText = "display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center";
+    document.getElementById("school-main").style.display = "none";
+    setTimeout(() => document.getElementById("school-pin-input").focus(), 100);
+  }
+  function _schoolShowMain() {
+    document.getElementById("school-pin-screen").style.display = "none";
+    document.getElementById("school-main").style.display = "block";
+    document.getElementById("school-home-card").style.display = "";
+    schoolLoad();
+  }
+  function schoolCheckPin() {
+    if (_schoolPin()) _schoolShowMain();
+    else _schoolShowLock();
+  }
+  window.schoolSubmitPin = function() {
+    const pin = document.getElementById("school-pin-input").value.trim();
+    if (!pin) return;
+    sessionStorage.setItem("lib_pin", pin);
+    document.getElementById("school-pin-error").style.display = "none";
+    _schoolShowMain();
+  };
+
+  window.schoolLoad = async function() {
+    document.getElementById("school-loading").style.display = "block";
+    document.getElementById("school-empty").style.display   = "none";
+    document.getElementById("school-sections").innerHTML    = "";
+    try {
+      const r = await fetch("/api/school/events?days=30", { headers: _schoolHeaders() });
+      if (r.status === 401) { _schoolShowLock(); return; }
+      const data = await r.json();
+      const events   = data.events   || [];
+      const profiles = data.profiles || [];
+      document.getElementById("school-loading").style.display = "none";
+      if (profiles.length) {
+        const names = profiles.map(p => p.child_name || p.school_name).filter(Boolean).join(", ");
+        document.getElementById("school-subtitle").textContent = names;
+      }
+      if (!events.length) { document.getElementById("school-empty").style.display = "block"; return; }
+      const container = document.getElementById("school-sections");
+      for (const sec of _SCHOOL_SECTIONS) {
+        const bucket = events.filter(e => sec.types.includes(e.event_type || "other"));
+        if (!bucket.length) continue;
+        const wrap = document.createElement("div");
+        wrap.style.cssText = `background:${sec.color};border:1px solid ${sec.border};border-radius:14px;padding:14px 16px;margin-bottom:12px`;
+        const hdr = document.createElement("div");
+        hdr.style.cssText = "font-weight:700;font-size:13px;margin-bottom:10px";
+        hdr.textContent = sec.header;
+        wrap.appendChild(hdr);
+        for (const ev of bucket) {
+          const item = document.createElement("div");
+          item.style.cssText = "padding:8px 0;border-top:1px solid rgba(0,0,0,.06)";
+          const dateStr = ev.event_date ? new Date(ev.event_date + "T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
+          let html = `<div style="font-weight:600;font-size:13px">${ev.event_title}${dateStr ? `<span style="font-weight:400;color:#6b7280;margin-left:6px;font-size:12px">${dateStr}</span>` : ""}</div>`;
+          if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:3px">${ev.description}</div>`;
+          if (ev.action_needed) {
+            const dl = ev.deadline ? ` <span style="color:#ef4444">(by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})})</span>` : "";
+            html += `<div style="font-size:12px;color:#d97706;margin-top:4px;font-weight:600">✏️ ${ev.action_needed}${dl}</div>`;
+          }
+          item.innerHTML = html;
+          wrap.appendChild(item);
+        }
+        container.appendChild(wrap);
+      }
+    } catch(e) {
+      document.getElementById("school-loading").textContent = "Error loading events.";
+    }
+  };
+
+  /* ── End school comms ──────────────────────────────────────────────────────── */
 
   function _savesPin() { return sessionStorage.getItem("wa_saves_token") || ""; }
   function _savesHeaders() { return _savesPin() ? {"X-Library-PIN": _savesPin(), "Content-Type": "application/json"} : {"Content-Type": "application/json"}; }
