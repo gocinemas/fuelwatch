@@ -414,6 +414,7 @@ def poll_all_profiles(days_back: int = 7) -> dict:
                 matched_profile.get("year_group", ""),
                 sent_date=sent_date,
             )
+            print(f"[school] {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
             if events:
                 _store_events(matched_profile, events, gmail_msg_id=msg_id)
                 total_events += len(events)
@@ -655,6 +656,10 @@ def handle_wa_school(from_number: str, text: str) -> str:
             except Exception as e:
                 return f"Sorry, couldn't save your school profile: {e}"
 
+            # Kick off a background poll so events appear immediately
+            import threading
+            threading.Thread(target=poll_all_profiles, kwargs={"days_back": 30}, daemon=True).start()
+
             school  = data.get("school_name", "your school")
             child   = data.get("child_name", "")
             cls     = data.get("class_name", "")
@@ -665,7 +670,8 @@ def handle_wa_school(from_number: str, text: str) -> str:
                 + (f" for *{child}*" if child else "")
                 + (f" ({detail})" if detail else "")
                 + ".\n\n"
-                "I'll send you a digest every Sunday evening. You can also ask anytime:\n"
+                "Fetching the last 30 days of emails now — check the web in a minute.\n\n"
+                "You can also ask anytime:\n"
                 "• *school week* — this week + last week\n"
                 "• *school upcoming* — next 30 days\n"
                 "• *school setup* — add another school"
