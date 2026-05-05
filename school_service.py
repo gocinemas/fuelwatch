@@ -64,14 +64,23 @@ _GMAIL_API_BASE  = "https://gmail.googleapis.com/gmail/v1/users/me"
 
 def _gmail_access_token() -> str:
     """Exchange refresh token for a short-lived access token."""
+    cid  = os.environ.get("GMAIL_CLIENT_ID", "")
+    csec = os.environ.get("GMAIL_CLIENT_SECRET", "")
+    rtok = os.environ.get("GMAIL_REFRESH_TOKEN", "")
+    if not all([cid, csec, rtok]):
+        missing = [k for k, v in [("GMAIL_CLIENT_ID", cid), ("GMAIL_CLIENT_SECRET", csec), ("GMAIL_REFRESH_TOKEN", rtok)] if not v]
+        raise RuntimeError(f"Missing Gmail env vars: {', '.join(missing)}")
     r = requests.post(_GMAIL_TOKEN_URL, data={
-        "client_id":     os.environ["GMAIL_CLIENT_ID"],
-        "client_secret": os.environ["GMAIL_CLIENT_SECRET"],
-        "refresh_token": os.environ["GMAIL_REFRESH_TOKEN"],
+        "client_id":     cid,
+        "client_secret": csec,
+        "refresh_token": rtok,
         "grant_type":    "refresh_token",
     }, timeout=10)
     r.raise_for_status()
-    return r.json()["access_token"]
+    rj = r.json()
+    if "access_token" not in rj:
+        raise RuntimeError(f"Gmail token exchange failed: {rj}")
+    return rj["access_token"]
 
 
 def _gmail_get(path: str, params: dict = None) -> dict:
