@@ -802,13 +802,23 @@ def handle_wa_school(from_number: str, text: str) -> str:
             + _SETUP_PROMPTS["child_name"]
         )
 
+    if cmd == "school debug":
+        profiles = _get_profiles(from_number)
+        events_all = _get_events(from_number, days_ahead=60, days_back=30)
+        return (
+            f"from_number: {from_number}\n"
+            f"profiles found: {len(profiles)}\n"
+            f"events found: {len(events_all)}\n"
+            + (f"first profile from_number: {profiles[0].get('from_number','?')}" if profiles else "no profiles")
+        )
+
     if cmd == "school week":
         events = _get_this_week_events(from_number)
         return format_digest(events, title="This week at school")
 
     if cmd in ("school upcoming", "school next"):
-        events = _get_upcoming_events(from_number, days=14)
-        return format_digest(events, title="Upcoming — next 14 days")
+        events = _get_upcoming_events(from_number, days=30)
+        return format_digest(events, title="Upcoming — next 30 days")
 
     if cmd == "school list":
         profiles = _get_profiles(from_number)
