@@ -6025,7 +6025,7 @@ _bkBadge();
   window.schoolLoad = async function() {
     document.getElementById("school-loading").style.display = "block";
     document.getElementById("school-empty").style.display   = "none";
-    document.getElementById("school-sections").innerHTML    = "";
+    document.getElementById("school-tab-layout").style.display = "none";
     try {
       // First load: fetch all profiles, then load events for active/first profile
       const r = await fetch("/api/school/events?days=30", { headers: _schoolHeaders() });
@@ -6055,7 +6055,7 @@ _bkBadge();
   async function _schoolFetchAndRender(profileId) {
     document.getElementById("school-loading").style.display = "block";
     document.getElementById("school-empty").style.display   = "none";
-    document.getElementById("school-sections").innerHTML    = "";
+    document.getElementById("school-tab-layout").style.display = "none";
     try {
       const url = "/api/school/events?days=30" + (profileId ? "&profile_id=" + profileId : "");
       const r = await fetch(url, { headers: _schoolHeaders() });
