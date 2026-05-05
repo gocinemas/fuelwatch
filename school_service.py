@@ -213,11 +213,11 @@ Email body:
 Extract every item a parent should know about. Return a JSON array of objects, each with:
   event_title   : short title (max 10 words)
   event_type    : classify as exactly one of:
-                  "activity"   — trips, sports days, shows, school events with a date
+                  "activity"   — trips, sports days, shows, assemblies, specific school events with a date
                   "reminder"   — deadlines, payments, consent forms, things parent must do
                   "club"       — after-school or lunchtime clubs
                   "dinner"     — school dinner menus, meal choices
-                  "newsletter" — a newsletter or bulletin summary entry
+                  "newsletter" — ONLY use this for the top-level summary item of a newsletter/bulletin email; never for individual events
                   "info"       — general info, policy updates, term dates, no action needed
   event_date    : ISO date (YYYY-MM-DD) or null — look hard for dates; convert "Thursday 8th May" → "2026-05-08"
   description   : 1-2 sentence plain summary
