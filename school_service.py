@@ -548,42 +548,49 @@ def _format_date(d: str | None) -> str:
 
 
 def format_digest(events: list[dict], title: str = "School update") -> str:
+    """Compact WhatsApp digest — title + date only, max 20 events, stays under 4096 chars."""
     if not events:
-        return f"🏫 *{title}*\n\nNothing new from school right now."
+        return f"🏫 *{title}*\n\nNothing coming up from school right now."
 
-    # Sort by date (nulls last), then title
+    # Sort: dated events first (by date), then undated
     def _sort_key(e):
-        return (e.get("event_date") or "9999-12-31", e.get("event_title", ""))
+        return (e.get("event_date") or "9999-12-31", e.get("event_title") or "")
     sorted_events = sorted(events, key=_sort_key)
 
-    # Group into sections
-    used = set()
-    section_map: dict[str, list] = {h: [] for _, h in _SECTIONS}
+    # Deduplicate by title
+    seen, deduped = set(), []
     for ev in sorted_events:
-        etype = ev.get("event_type", "other")
-        for types, header in _SECTIONS:
-            if etype in types:
-                section_map[header].append(ev)
-                break
-        used.add(ev.get("id"))
+        k = (ev.get("event_title") or "").lower().strip()
+        if k and k not in seen:
+            seen.add(k)
+            deduped.append(ev)
 
-    lines = [f"🏫 *{title}*"]
-    for types, header in _SECTIONS:
-        bucket = section_map[header]
-        if not bucket:
-            continue
-        lines.append(f"\n*{header}*")
-        for ev in bucket:
-            d = _format_date(ev.get("event_date"))
-            date_str = f" — {d}" if d else ""
-            lines.append(f"• {ev['event_title']}{date_str}")
-            if ev.get("description"):
-                lines.append(f"  _{ev['description']}_")
-            if ev.get("action_needed"):
-                dl = f" (by {_format_date(ev['deadline'])})" if ev.get("deadline") else ""
-                lines.append(f"  ✏️ {ev['action_needed']}{dl}")
+    lines = [f"🏫 *{title}*\n"]
+    shown = 0
+    for ev in deduped:
+        if shown >= 20:
+            remaining = len(deduped) - shown
+            lines.append(f"\n_…and {remaining} more — see miru.humanagency.co/?screen=school_")
+            break
+        title_text = (ev.get("event_title") or "Untitled")[:80]
+        d = _format_date(ev.get("event_date"))
+        action = ev.get("action_needed", "")
+        dl = ev.get("deadline", "")
 
-    return "\n".join(lines)
+        line = f"• {title_text}"
+        if d:
+            line += f" — {d}"
+        if action:
+            deadline_str = f" by {_format_date(dl)}" if dl else ""
+            line += f"\n  ✏️ {action[:60]}{deadline_str}"
+        lines.append(line)
+        shown += 1
+
+    msg = "\n".join(lines)
+    # Hard safety truncation for WhatsApp 4096-char limit
+    if len(msg) > 3900:
+        msg = msg[:3897] + "…"
+    return msg
 
 
 # ── WhatsApp digest send ───────────────────────────────────────────────────────
