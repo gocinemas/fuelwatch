@@ -6157,7 +6157,7 @@ _bkBadge();
       btn.style.cssText = `width:100%;text-align:left;padding:9px 11px;border-radius:10px;border:1.5px solid #e2e8f0;
         background:#f8fafc;color:#374151;font-size:12px;font-weight:500;cursor:pointer;
         display:flex;align-items:center;justify-content:space-between;gap:4px`;
-      const label = sec.header.replace(/[^\w\s⏰📅⚽🍽️📰ℹ️📋]/gu,"").trim();
+      const label = sec.header;
       btn.innerHTML = `<span>${label}</span><span style="background:#e2e8f0;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700">${bucket.length}</span>`;
       btn.onclick = () => _renderSection(i);
       vtabs.appendChild(btn);
