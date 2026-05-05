@@ -5961,7 +5961,7 @@ _bkBadge();
   function _schoolShowMain() {
     document.getElementById("school-pin-screen").style.display = "none";
     document.getElementById("school-main").style.display = "block";
-    document.getElementById("school-home-card").style.display = "";
+    // school-home-card stays hidden — access only via ?screen=school
     _schoolActiveProfileId = "";
     schoolLoad();
   }
