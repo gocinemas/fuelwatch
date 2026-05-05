@@ -223,6 +223,7 @@ Extract every item a parent should know about. Return a JSON array of objects, e
   description   : 1-2 sentence plain summary
   action_needed : what the parent must do, or empty string
   deadline      : ISO date by which action is needed, or null
+  link_url      : the most relevant URL from the email for this item (form link, booking page, sign-up), or null
 
 Rules:
 - ALWAYS extract every specific event, trip, deadline, reminder, club, or dinner mentioned.
@@ -322,13 +323,17 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str):
             except ValueError:
                 pass
         try:
+            desc = ev.get("description", "") or ""
+            link = ev.get("link_url") or ""
+            if link.startswith("http"):
+                desc = (desc + "\n" + link).strip()
             lib._sb().table("school_events").insert({
                 "profile_id":    profile["id"],
                 "from_number":   profile["from_number"],
                 "event_title":   title[:200],
                 "event_type":    raw_type.lower().strip(),
                 "event_date":    ev.get("event_date") or None,
-                "description":   ev.get("description", "")[:500],
+                "description":   desc[:500],
                 "action_needed": ev.get("action_needed", "")[:300],
                 "deadline":      ev.get("deadline") or None,
                 "gmail_msg_id":  gmail_msg_id,

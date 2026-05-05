@@ -6097,11 +6097,12 @@ _bkBadge();
         const titleEl = ev.event_type === "newsletter" && gmailUrl
           ? `<a href="${gmailUrl}" target="_blank" rel="noopener" style="color:#7c3aed;text-decoration:none;font-weight:600;font-size:13px">${ev.event_title} ↗</a>`
           : `<span style="font-weight:600;font-size:13px">${ev.event_title}</span>`;
+        const _lk = t => t.replace(/(https?:\/\/[^\s<"]+)/g,'<a href="$1" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:underline;word-break:break-all">🔗 Open ↗</a>');
         let html = `<div>${titleEl}${dateStr ? `<span style="font-weight:400;color:#6b7280;margin-left:6px;font-size:12px">${dateStr}</span>` : ""}</div>`;
-        if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:3px">${ev.description}</div>`;
+        if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:3px">${_lk(ev.description)}</div>`;
         if (ev.action_needed) {
           const dl = ev.deadline ? ` <span style="color:#ef4444">(by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})})</span>` : "";
-          html += `<div style="font-size:12px;color:#d97706;margin-top:4px;font-weight:600">✏️ ${ev.action_needed}${dl}</div>`;
+          html += `<div style="font-size:12px;color:#d97706;margin-top:4px;font-weight:600">✏️ ${_lk(ev.action_needed)}${dl}</div>`;
         }
         item.innerHTML = html;
         wrap.appendChild(item);
