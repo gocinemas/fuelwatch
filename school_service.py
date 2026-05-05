@@ -303,14 +303,23 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str):
     except Exception:
         existing_titles = set()
 
+    _stale_types = {"reminder", "activity", "club", "dinner"}
     for ev in events:
         title = (ev.get("event_title") or "").strip()
         if not title:
             continue
         if title.lower() in existing_titles:
-            continue  # already stored this event from this email
+            continue
+        # Skip time-sensitive past events — no point showing March reminders in May
+        raw_type = (ev.get("event_type", "other") or "other").lower().strip()
+        ev_date  = ev.get("event_date")
+        if ev_date and raw_type in _stale_types:
+            try:
+                if date.fromisoformat(ev_date) < date.today() - timedelta(days=7):
+                    continue
+            except ValueError:
+                pass
         try:
-            raw_type = ev.get("event_type", "other") or "other"
             lib._sb().table("school_events").insert({
                 "profile_id":    profile["id"],
                 "from_number":   profile["from_number"],
@@ -380,6 +389,21 @@ def poll_all_profiles(days_back: int = 7, force: bool = False) -> dict:
     profiles = _get_profiles()
     if not profiles:
         return {"profiles": 0, "emails": 0, "events": 0}
+
+    if force:
+        # Remove events older than 14 days that are no longer relevant
+        cutoff = (date.today() - timedelta(days=14)).isoformat()
+        stale_types = ["reminder", "activity", "club", "dinner"]
+        for p in profiles:
+            for et in stale_types:
+                try:
+                    lib._sb().table("school_events").delete() \
+                        .eq("profile_id", p["id"]) \
+                        .eq("event_type", et) \
+                        .lt("event_date", cutoff) \
+                        .execute()
+                except Exception as e:
+                    print(f"[school] cleanup error {et}: {e}")
 
     # Group profiles by from_number so we only fetch Gmail once per parent
     by_parent: dict[str, list] = {}
