@@ -333,7 +333,7 @@ def _get_profiles(from_number: str = None) -> list[dict]:
     return q.execute().data or []
 
 
-def _store_events(profile: dict, events: list[dict], gmail_msg_id: str):
+def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_date: str = ""):
     # Check which (gmail_msg_id, event_title) pairs already exist
     try:
         existing = lib._sb().table("school_events") \
@@ -365,12 +365,16 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str):
             link = ev.get("link_url") or ""
             if link.startswith("http"):
                 desc = (desc + "\n" + link).strip()
+            # For newsletters without a specific event date, use the email's sent date
+            ev_date = ev.get("event_date") or None
+            if not ev_date and raw_type == "newsletter" and sent_date:
+                ev_date = sent_date
             lib._sb().table("school_events").insert({
                 "profile_id":    profile["id"],
                 "from_number":   profile["from_number"],
                 "event_title":   title[:200],
                 "event_type":    raw_type.lower().strip(),
-                "event_date":    ev.get("event_date") or None,
+                "event_date":    ev_date,
                 "description":   desc[:500],
                 "action_needed": ev.get("action_needed", "")[:300],
                 "deadline":      ev.get("deadline") or None,
@@ -516,7 +520,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False) -> dict:
             )
             print(f"[school] {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
             if events:
-                _store_events(matched_profile, events, gmail_msg_id=msg_id)
+                _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
                 total_events += len(events)
 
     return {"profiles": len(profiles), "emails": total_emails, "events": total_events}
