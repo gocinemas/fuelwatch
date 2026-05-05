@@ -936,7 +936,8 @@ def handle_wa_school(from_number: str, text: str) -> str:
         )
 
     # ── school note [text] / school note for [child]: [text] ─────────────────
-    # Triggered by the "→ Miru" forward button on each event card, or typed
+    # User forwards a class WhatsApp group message to Miru.
+    # Groq parses dates/type so it lands in the right dashboard section.
     if cmd.startswith("school note"):
         raw = text[len("school note"):].lstrip(": ").strip()
         # Optional child routing: "school note for Riaan: play rehearsal Thu"
@@ -952,25 +953,66 @@ def handle_wa_school(from_number: str, text: str) -> str:
                 target_pid  = match["id"]
                 target_name = match["child_name"]
         if not raw:
-            return "Please include the note, e.g.:\n*school note: Play rehearsal Thu 15th*\nor\n*school note for Riaan: Bake sale Friday*"
+            return (
+                "Forward any class WhatsApp message to me with:\n"
+                "*school note: [paste message here]*\n"
+                "or for a specific child:\n"
+                "*school note for Riaan: [paste message]*"
+            )
         profiles_all = _get_profiles(from_number)
         if not profiles_all:
             return "No school set up yet. Reply *school setup* first."
         profile = next((p for p in profiles_all if p["id"] == target_pid), profiles_all[0])
-        try:
-            lib._sb().table("school_events").insert({
-                "profile_id":    profile["id"],
-                "from_number":   from_number,
-                "event_title":   raw[:200],
-                "event_type":    "info",
-                "description":   raw[:500],
-                "action_needed": "",
-            }).execute()
-        except Exception as e:
-            return f"Couldn't save note: {e}"
+
+        # Use Groq to parse the forwarded message — same pipeline as email
+        parsed = _groq_parse_events(
+            subject=raw[:120],
+            body=raw,
+            school_name=profile.get("school_name", ""),
+            year_group=profile.get("year_group", ""),
+            sent_date=date.today().isoformat(),
+        )
+
+        if parsed:
+            # Store each parsed event directly (skip gmail_msg_id since this is WhatsApp)
+            saved = 0
+            for ev in parsed:
+                title = (ev.get("event_title") or "").strip()
+                if not title:
+                    continue
+                try:
+                    lib._sb().table("school_events").insert({
+                        "profile_id":    profile["id"],
+                        "from_number":   from_number,
+                        "event_title":   title[:200],
+                        "event_type":    (ev.get("event_type") or "info").lower(),
+                        "event_date":    ev.get("event_date") or None,
+                        "description":   (ev.get("description") or raw)[:500],
+                        "action_needed": (ev.get("action_needed") or "")[:300],
+                        "deadline":      ev.get("deadline") or None,
+                    }).execute()
+                    saved += 1
+                except Exception as e:
+                    if "unique" not in str(e).lower():
+                        print(f"[school note] insert error: {e}")
+        else:
+            # Groq found nothing — save raw text as info so nothing is lost
+            try:
+                lib._sb().table("school_events").insert({
+                    "profile_id":    profile["id"],
+                    "from_number":   from_number,
+                    "event_title":   raw[:200],
+                    "event_type":    "info",
+                    "description":   raw[:500],
+                    "action_needed": "",
+                }).execute()
+                saved = 1
+            except Exception as e:
+                return f"Couldn't save: {e}"
+
         child_label = target_name or profile.get("child_name", "")
         label = f" for *{child_label}*" if child_label else ""
-        return f"✅ Saved{label} — visible on your school dashboard."
+        return f"✅ Saved{label} — check your school dashboard."
 
     # ── school wa group [group_name] [for child] ──────────────────────────────
     # Saves the class WhatsApp group name against a child's profile
