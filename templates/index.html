@@ -6084,9 +6084,9 @@ _bkBadge();
     const todayStr = new Date().toISOString().slice(0,10);
     const cutoff14 = new Date(Date.now() - 14*24*60*60*1000).toISOString().slice(0,10);
 
-    // Newsletters: always ALL children combined, newest first
+    // Newsletters: filtered to active child (same as other events)
     const _seenNL = {};
-    const newsletters = (_schoolAllEvents.length ? _schoolAllEvents : events)
+    const newsletters = events
       .filter(e => e.event_type === "newsletter")
       .filter(e => { const k=(e.event_title||"").toLowerCase().replace(/[^a-z0-9]/g,""); return k && !_seenNL[k] && (_seenNL[k]=true); })
       .sort((a,b) => (b.event_date||b.created_at||"").localeCompare(a.event_date||a.created_at||""));
