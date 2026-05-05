@@ -6074,7 +6074,8 @@ _bkBadge();
     const todayStr = new Date().toISOString().slice(0,10);
     const PAST_TYPES = new Set(["activity","event","trip","reminder","deadline","dinner","club"]);
     const tagged = uniq.map(e => {
-      if (e.event_date && e.event_date < todayStr && PAST_TYPES.has(e.event_type || "other"))
+      const checkDate = e.event_date || e.deadline;
+      if (checkDate && checkDate < todayStr && PAST_TYPES.has(e.event_type || "other"))
         return {...e, event_type: "_recent_activity"};
       return e;
     });
