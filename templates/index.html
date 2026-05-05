@@ -5757,7 +5757,7 @@ _bkBadge();
   <div id="school-main" style="display:none">
 
     <!-- Child selector -->
-    <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:16px;flex-wrap:wrap"></div>
+    <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:18px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
 
     <!-- School name + refresh -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -5989,9 +5989,9 @@ _bkBadge();
     tabsEl.innerHTML = _schoolProfiles.map(p => {
       const active = p.id === _schoolActiveProfileId;
       return `<button onclick="schoolSelectProfile('${p.id}')"
-        style="flex-shrink:0;padding:7px 16px;border-radius:20px;border:2px solid ${active?"#1f2937":"#e2e8f0"};
+        style="flex-shrink:0;padding:10px 22px;border-radius:24px;border:2px solid ${active?"#1f2937":"#e2e8f0"};
                background:${active?"#1f2937":"#fff"};color:${active?"#fff":"#374151"};
-               font-size:13px;font-weight:${active?"700":"500"};cursor:pointer">${p.child_name}</button>`;
+               font-size:15px;font-weight:700;cursor:pointer;transition:all .15s">${p.child_name}</button>`;
     }).join("");
   }
 
@@ -6059,7 +6059,7 @@ _bkBadge();
     const list = document.getElementById("school-list");
     list.innerHTML = "";
 
-    // Deduplicate by title
+    // Deduplicate by normalised title
     const seen = {};
     const uniq = [];
     for (const e of events) {
@@ -6068,43 +6068,70 @@ _bkBadge();
     }
     if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
 
-    const todayStr = new Date().toISOString().slice(0,10);
+    const todayStr  = new Date().toISOString().slice(0,10);
+    const cutoff14  = new Date(Date.now() - 14*24*60*60*1000).toISOString().slice(0,10);
     const _lk = t => (t||"").replace(/(https?:\/\/[^\s<"]+)/g,
       '<a href="$1" target="_blank" rel="noopener" style="color:#2563eb">🔗 Open</a>');
 
-    // Sort: upcoming first, then undated (cap 10, max 14 days old), then past (cap 3)
-    const cutoff14 = new Date(Date.now() - 14*24*60*60*1000).toISOString().slice(0,10);
-    const upcoming = uniq.filter(e => e.event_date && e.event_date >= todayStr).sort((a,b)=>a.event_date.localeCompare(b.event_date));
-    const undated  = uniq.filter(e => !e.event_date && (!e.created_at || e.created_at.slice(0,10) >= cutoff14)).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||"")).slice(0,10);
-    const past     = uniq.filter(e => e.event_date && e.event_date < todayStr).sort((a,b)=>b.event_date.localeCompare(a.event_date)).slice(0,3);
+    // Split newsletters out first
+    const newsletters = uniq
+      .filter(e => e.event_type === "newsletter")
+      .sort((a,b) => (b.created_at||"").localeCompare(a.created_at||""));
+
+    const nonNews = uniq.filter(e => e.event_type !== "newsletter");
+
+    const upcoming = nonNews
+      .filter(e => e.event_date && e.event_date >= todayStr)
+      .sort((a,b) => a.event_date.localeCompare(b.event_date));
+
+    const undated = nonNews
+      .filter(e => !e.event_date && (!e.created_at || e.created_at.slice(0,10) >= cutoff14))
+      .sort((a,b) => (b.created_at||"").localeCompare(a.created_at||""))
+      .slice(0, 10);
+
+    const past = nonNews
+      .filter(e => e.event_date && e.event_date < todayStr)
+      .sort((a,b) => b.event_date.localeCompare(a.event_date))
+      .slice(0, 3);
 
     const groups = [
-      {label:"Coming up",  items: upcoming},
-      {label:"General",    items: undated},
-      {label:"Recent",     items: past},
+      {label:"Newsletters",  items: newsletters, isNews: true},
+      {label:"Coming up",    items: upcoming},
+      {label:"General",      items: undated},
+      {label:"Recent",       items: past},
     ].filter(g => g.items.length);
 
     for (const grp of groups) {
       const hdr = document.createElement("div");
-      hdr.style.cssText = "font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;margin:18px 0 8px";
+      hdr.style.cssText = "font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;margin:22px 0 8px";
       hdr.textContent = grp.label;
       list.appendChild(hdr);
 
       for (const ev of grp.items) {
+        const isNewsletter = ev.event_type === "newsletter";
         const card = document.createElement("div");
-        card.style.cssText = "background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px 14px;margin-bottom:8px";
+        card.style.cssText = isNewsletter
+          ? "background:#faf5ff;border:1px solid #e9d5ff;border-radius:12px;padding:12px 14px;margin-bottom:8px"
+          : "background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px 14px;margin-bottom:8px";
+
         const icon    = _TYPE_ICON[ev.event_type] || "📌";
-        const dateStr = ev.event_date ? new Date(ev.event_date+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}) : "";
+        const dateStr = ev.event_date
+          ? new Date(ev.event_date+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})
+          : ev.created_at ? new Date(ev.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
         const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
-        const titleEl = (ev.event_type === "newsletter" && gmailUrl)
-          ? `<a href="${gmailUrl}" target="_blank" rel="noopener" style="color:#7c3aed;font-weight:600;font-size:14px;text-decoration:none">${ev.event_title}</a>`
+
+        const titleEl = gmailUrl
+          ? `<a href="${gmailUrl}" target="_blank" rel="noopener"
+               style="color:${isNewsletter?"#7c3aed":"#1d4ed8"};font-weight:600;font-size:14px;text-decoration:none">
+               ${ev.event_title}${isNewsletter?" ↗":""}
+             </a>`
           : `<span style="font-weight:600;font-size:14px;color:#111">${ev.event_title}</span>`;
 
         let html = `<div style="display:flex;align-items:flex-start;gap:8px">
           <span style="font-size:16px;flex-shrink:0;margin-top:1px">${icon}</span>
           <div style="flex:1;min-width:0">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
-              <div>${titleEl}</div>
+              <div style="flex:1">${titleEl}</div>
               ${dateStr ? `<div style="font-size:11px;color:#9ca3af;white-space:nowrap;margin-top:3px;flex-shrink:0">${dateStr}</div>` : ""}
             </div>`;
         if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:4px;line-height:1.5">${_lk(ev.description)}</div>`;
