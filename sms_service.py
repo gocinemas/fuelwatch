@@ -4567,7 +4567,12 @@ def whatsapp_reply():
 
     # ── School comms ──────────────────────────────────────────────────────────
     if body_lower.startswith("school") or from_number in school_service._SETUP_STATE:
-        reply = school_service.handle_wa_school(from_number, body)
+        try:
+            reply = school_service.handle_wa_school(from_number, body)
+        except Exception as _e:
+            print(f"[school] handle_wa_school error: {_e}")
+            import traceback; traceback.print_exc()
+            reply = f"Sorry, something went wrong with school comms: {_e}"
         if reply:
             resp.message(reply)
             return str(resp)
