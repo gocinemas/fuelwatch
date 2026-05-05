@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Comms Setup — Miru</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f8fafc;
+    color: #1a1a2e;
+    min-height: 100vh;
+  }
+  .header {
+    background: #fff;
+    border-bottom: 1px solid #e8eaed;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-logo { font-size: 22px; font-weight: 900; color: #1a1a2e; text-decoration: none; }
+  .header-logo span { color: #f59e0b; }
+  .header-sub { font-size: 13px; color: #888; margin-left: auto; }
+
+  .container { max-width: 520px; margin: 0 auto; padding: 32px 20px 60px; }
+
+  .hero { margin-bottom: 28px; }
+  .hero h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .hero p { font-size: 15px; color: #555; line-height: 1.6; }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e8eaed;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .section-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #9ca3af;
+    margin: 24px 0 14px;
+  }
+  .section-title:first-of-type { margin-top: 0; }
+
+  .field { margin-bottom: 16px; }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  label .opt { font-weight: 400; color: #9ca3af; }
+  input[type=text], input[type=tel], input[type=email], textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 15px;
+    color: #111;
+    background: #fff;
+    outline: none;
+    transition: border-color .15s;
+    font-family: inherit;
+  }
+  input:focus, textarea:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.1); }
+  input::placeholder, textarea::placeholder { color: #bbb; }
+  textarea { resize: vertical; min-height: 72px; }
+
+  .school-lookup-wrap { position: relative; }
+  .lookup-status {
+    font-size: 12px;
+    margin-top: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: none;
+  }
+  .lookup-status.found { background: #d1fae5; color: #065f46; display: block; }
+  .lookup-status.notfound { background: #fef3c7; color: #92400e; display: block; }
+
+  .wa-hint {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 5px;
+  }
+
+  .emails-hint {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  .submit-btn {
+    width: 100%;
+    margin-top: 24px;
+    padding: 15px;
+    background: #1a1a2e;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+    letter-spacing: -0.2px;
+  }
+  .submit-btn:hover { background: #2d2d44; }
+  .submit-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  .success-screen {
+    display: none;
+    text-align: center;
+    padding: 48px 24px;
+  }
+  .success-icon { font-size: 56px; margin-bottom: 16px; }
+  .success-screen h2 { font-size: 24px; font-weight: 900; margin-bottom: 10px; }
+  .success-screen p { font-size: 15px; color: #555; margin-bottom: 24px; line-height: 1.6; }
+  .success-link {
+    display: inline-block;
+    padding: 13px 28px;
+    background: #f59e0b;
+    color: #fff;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+  }
+
+  .error-msg {
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .multi-child-toggle {
+    font-size: 13px;
+    color: #f59e0b;
+    cursor: pointer;
+    font-weight: 600;
+    border: none;
+    background: none;
+    padding: 0;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="/" class="header-logo">Mi<span>ru</span></a>
+  <span class="header-sub">School Comms</span>
+</div>
+
+<div class="container">
+  <!-- Form -->
+  <div id="form-view">
+    <div class="hero">
+      <h1>Set up school emails 🏫</h1>
+      <p>Connect your child's school and get all their letters, events and newsletters in one place.</p>
+    </div>
+
+    <div class="card">
+      <p class="section-title">Your WhatsApp</p>
+
+      <div class="field">
+        <label>WhatsApp number</label>
+        <input type="tel" id="wa_number" placeholder="+447700900000" value="{{ prefill_wa or '' }}">
+        <div class="wa-hint">Include country code — e.g. +44 for UK</div>
+      </div>
+
+      <p class="section-title">About your child</p>
+
+      <div class="field">
+        <label>Child's first name</label>
+        <input type="text" id="child_name" placeholder="e.g. Olivia">
+      </div>
+
+      <div class="field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label>Year group <span class="opt">(optional)</span></label>
+          <input type="text" id="year_group" placeholder="Year 4">
+        </div>
+        <div>
+          <label>Class <span class="opt">(optional)</span></label>
+          <input type="text" id="class_name" placeholder="4A">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Class teacher <span class="opt">(optional)</span></label>
+        <input type="text" id="teacher_name" placeholder="Mr Akhurst">
+      </div>
+
+      <p class="section-title">About the school</p>
+
+      <div class="field school-lookup-wrap">
+        <label>School name</label>
+        <input type="text" id="school_name" placeholder="e.g. Greenway Academy" autocomplete="off">
+        <div class="lookup-status" id="lookup-status"></div>
+      </div>
+
+      <div class="field">
+        <label>School email address(es)</label>
+        <textarea id="sender_emails" placeholder="admin@greenway.sch.uk&#10;newsletter@greenway.sch.uk"></textarea>
+        <div class="emails-hint">
+          One per line (or comma-separated). Check a school email for the sender address — it's in the "From" field.
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitForm()">Set up school comms →</button>
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div id="success-view" class="success-screen">
+    <div class="success-icon">🎉</div>
+    <h2>You're all set!</h2>
+    <p id="success-msg">We're fetching the last 30 days of emails from <strong id="success-school"></strong> now.<br>Check back in a minute.</p>
+    <a href="/?screen=school" class="success-link">View school dashboard →</a>
+    <p style="margin-top:20px;font-size:13px;color:#9ca3af">You can also ask Miru on WhatsApp:<br><em>school upcoming</em> or <em>school week</em></p>
+  </div>
+</div>
+
+<script>
+let _lookupTimer = null;
+let _lookupData  = {};
+
+document.getElementById("school_name").addEventListener("input", function() {
+  clearTimeout(_lookupTimer);
+  const val = this.value.trim();
+  const status = document.getElementById("lookup-status");
+  if (val.length < 4) { status.className = "lookup-status"; return; }
+  status.className = "lookup-status";
+  status.textContent = "Looking up…";
+  status.style.display = "block";
+  _lookupTimer = setTimeout(() => lookupSchool(val), 700);
+});
+
+async function lookupSchool(name) {
+  const status = document.getElementById("lookup-status");
+  try {
+    const r = await fetch("/api/school/lookup?name=" + encodeURIComponent(name));
+    const d = await r.json();
+    if (d.address) {
+      _lookupData = d;
+      status.className = "lookup-status found";
+      status.textContent = "📍 " + d.place_name + " · " + d.address + (d.phone ? " · " + d.phone : "");
+    } else {
+      _lookupData = {};
+      status.className = "lookup-status notfound";
+      status.textContent = "School not found in our directory — that's fine, we'll still set it up.";
+    }
+  } catch(e) {
+    status.className = "lookup-status";
+    status.style.display = "none";
+  }
+}
+
+async function submitForm() {
+  const btn   = document.getElementById("submit-btn");
+  const errEl = document.getElementById("error-msg");
+  errEl.style.display = "none";
+
+  const wa    = document.getElementById("wa_number").value.trim();
+  const child = document.getElementById("child_name").value.trim();
+  const school = document.getElementById("school_name").value.trim();
+  const rawEmails = document.getElementById("sender_emails").value;
+
+  if (!wa)     { showError("Please enter your WhatsApp number."); return; }
+  if (!child)  { showError("Please enter your child's name."); return; }
+  if (!school) { showError("Please enter the school name."); return; }
+
+  const emails = rawEmails
+    .split(/[\n,]+/)
+    .map(e => e.trim().toLowerCase())
+    .filter(e => e.includes("@"));
+  if (!emails.length) { showError("Please enter at least one school email address."); return; }
+
+  btn.disabled = true;
+  btn.textContent = "Setting up…";
+
+  const payload = {
+    wa_number:     wa,
+    child_name:    child,
+    school_name:   _lookupData.place_name || school,
+    class_name:    document.getElementById("class_name").value.trim(),
+    teacher_name:  document.getElementById("teacher_name").value.trim(),
+    year_group:    document.getElementById("year_group").value.trim(),
+    sender_emails: emails,
+    address:       _lookupData.address  || "",
+    phone:         _lookupData.phone    || "",
+  };
+
+  try {
+    const r = await fetch("/api/school/signup", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) { showError(d.error || "Something went wrong. Please try again."); return; }
+
+    document.getElementById("success-school").textContent = payload.school_name;
+    document.getElementById("form-view").style.display    = "none";
+    document.getElementById("success-view").style.display = "block";
+    window.scrollTo(0, 0);
+  } catch(e) {
+    showError("Network error. Please try again.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Set up school comms →";
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById("error-msg");
+  el.textContent = msg;
+  el.style.display = "block";
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+</script>
+</body>
+</html>

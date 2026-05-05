@@ -816,6 +816,17 @@ def handle_wa_school(from_number: str, text: str) -> str:
         )
 
     if cmd == "school setup":
+        # Encode the WhatsApp number so the web form can pre-fill it
+        import urllib.parse
+        wa_param = urllib.parse.quote(from_number.replace("whatsapp:", ""))
+        signup_url = f"https://miru.humanagency.co/school/signup?wa={wa_param}"
+        return (
+            "🏫 *Add a school*\n\n"
+            f"Easiest via the web form — takes 30 seconds:\n👉 {signup_url}\n\n"
+            "Or reply *school chat* to set up here on WhatsApp instead."
+        )
+
+    if cmd == "school chat":
         _SETUP_STATE[from_number] = {"step": "child_name", "data": {}}
         return (
             "🏫 *Add a school* (reply *cancel* at any time)\n\n"

@@ -4966,6 +4966,79 @@ def wa_digest():
     return jsonify({"sent": sent, "total_users": len(by_user)})
 
 
+# ── School web signup ──────────────────────────────────────────────────────────
+
+@app.route("/school/signup")
+def school_signup_page():
+    prefill_wa = request.args.get("wa", "")
+    return render_template("school_signup.html", prefill_wa=prefill_wa)
+
+
+@app.route("/api/school/lookup")
+def school_lookup():
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({})
+    info = school_service._lookup_school(name)
+    return jsonify(info)
+
+
+@app.route("/api/school/signup", methods=["POST"])
+def school_signup_api():
+    import threading, re
+    data = request.get_json(force=True) or {}
+
+    wa_raw = data.get("wa_number", "").strip()
+    child  = data.get("child_name", "").strip()
+    school = data.get("school_name", "").strip()
+    emails = data.get("sender_emails", [])
+
+    if not wa_raw:
+        return jsonify({"error": "WhatsApp number is required"}), 400
+    if not child:
+        return jsonify({"error": "Child name is required"}), 400
+    if not school:
+        return jsonify({"error": "School name is required"}), 400
+    if not emails:
+        return jsonify({"error": "At least one school email is required"}), 400
+
+    # Normalise WhatsApp number to whatsapp:+44... format
+    digits = re.sub(r"[^\d+]", "", wa_raw)
+    if not digits.startswith("+"):
+        if digits.startswith("07"):
+            digits = "+44" + digits[1:]
+        elif not digits.startswith("44"):
+            digits = "+" + digits
+        else:
+            digits = "+" + digits
+    from_number = "whatsapp:" + digits
+
+    try:
+        lib._sb().table("school_profiles").insert({
+            "from_number":   from_number,
+            "child_name":    child,
+            "school_name":   school,
+            "class_name":    data.get("class_name", ""),
+            "teacher_name":  data.get("teacher_name", ""),
+            "year_group":    data.get("year_group", ""),
+            "address":       data.get("address", ""),
+            "phone":         data.get("phone", ""),
+            "sender_emails": emails,
+        }).execute()
+    except Exception as e:
+        print(f"[school signup] db error: {e}")
+        return jsonify({"error": f"Could not save profile: {e}"}), 500
+
+    # Kick off background poll (picks up the newly inserted profile)
+    threading.Thread(
+        target=school_service.poll_all_profiles,
+        kwargs={"days_back": 30},
+        daemon=True,
+    ).start()
+
+    return jsonify({"ok": True})
+
+
 @app.route("/api/school/poll")
 def school_poll():
     """Poll Gmail for new school emails and store events.
