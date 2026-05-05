@@ -163,7 +163,7 @@ def _extract_email_text(msg: dict) -> tuple[str, str, str]:
         body = ""
 
     body = re.sub(r"\n{3,}", "\n\n", body.strip())
-    return subject, body[:5000], sent_date
+    return subject, body[:12000], sent_date
 
 
 # ── Groq event parsing ─────────────────────────────────────────────────────────
@@ -231,7 +231,7 @@ JSON array:"""
         return []
 
     # Truncate body to avoid hitting context limits
-    body_truncated = body[:6000] if len(body) > 6000 else body
+    body_truncated = body[:12000] if len(body) > 12000 else body
     prompt = prompt.replace(body, body_truncated)
 
     for attempt in range(3):
@@ -357,10 +357,12 @@ def _get_this_week_events(from_number: str) -> list[dict]:
 
 # ── Email polling ──────────────────────────────────────────────────────────────
 
-def poll_all_profiles(days_back: int = 7) -> dict:
+def poll_all_profiles(days_back: int = 7, force: bool = False) -> dict:
     """
     For every active school profile, fetch emails from school senders,
     parse events, and store. Call this on a schedule (e.g. every 6h).
+    force=True deletes existing events for each email before re-parsing,
+    so previously rate-limited or truncated emails are fully reprocessed.
     Returns summary dict.
     """
     if not os.environ.get("GMAIL_REFRESH_TOKEN"):
@@ -419,6 +421,13 @@ def poll_all_profiles(days_back: int = 7) -> dict:
                     break
             if not matched_profile:
                 matched_profile = parent_profiles[0]  # fallback
+
+            if force:
+                # Wipe existing events for this email so we reparse fresh
+                try:
+                    lib._sb().table("school_events").delete().eq("gmail_msg_id", msg_id).execute()
+                except Exception as e:
+                    print(f"[school] force-delete error {msg_id}: {e}")
 
             subject, body, sent_date = _extract_email_text(msg)
             if not body.strip():

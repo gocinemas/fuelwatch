@@ -4970,7 +4970,8 @@ def school_poll():
     if not token or token != os.environ.get("DIGEST_TOKEN", ""):
         return jsonify({"error": "Unauthorized"}), 401
     days_back = int(request.args.get("days_back", 14))
-    result = school_service.poll_all_profiles(days_back=days_back)
+    force     = request.args.get("force", "").lower() in ("1", "true", "yes")
+    result = school_service.poll_all_profiles(days_back=days_back, force=force)
     return jsonify(result)
 
 
