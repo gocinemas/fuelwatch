@@ -103,9 +103,28 @@ def _build_gmail_query(sender_emails: list[str], days_back: int = 7) -> str:
     return f"({froms}) after:{after}"
 
 
-def _extract_email_text(msg: dict) -> tuple[str, str, str]:
+def _extract_pdf_text(msg_id: str, att_id: str, filename: str) -> str:
+    """Fetch a Gmail attachment and extract text via PyMuPDF. Returns up to 4000 chars."""
+    try:
+        import base64, fitz  # fitz = PyMuPDF
+        data = _gmail_get(f"messages/{msg_id}/attachments/{att_id}").get("data", "")
+        if not data:
+            return ""
+        pdf_bytes = base64.urlsafe_b64decode(data + "==")
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        text = "\n".join(page.get_text() for page in doc)
+        doc.close()
+        text = re.sub(r"\n{3,}", "\n\n", text.strip())
+        print(f"[school] attachment {filename}: {len(text)} chars extracted")
+        return text[:4000]
+    except Exception as e:
+        print(f"[school] attachment extract error {filename}: {e}")
+        return ""
+
+
+def _extract_email_text(msg: dict, msg_id: str = "") -> tuple[str, str, str]:
     """Return (subject, body_text, sent_date_iso) from a Gmail message resource.
-    Prefers text/plain; falls back to stripped HTML."""
+    Reads text/plain, falls back to stripped HTML, then appends any PDF attachments."""
     import base64
     from email.utils import parsedate_to_datetime
 
@@ -172,6 +191,25 @@ def _extract_email_text(msg: dict) -> tuple[str, str, str]:
         body = ""
 
     body = re.sub(r"\n{3,}", "\n\n", body.strip())
+
+    # Append text from PDF attachments (newsletters often arrive as attached PDFs)
+    if msg_id:
+        att_texts = []
+        def _find_atts(parts):
+            for part in parts:
+                if part.get("parts"):
+                    _find_atts(part["parts"])
+                mime = part.get("mimeType", "")
+                fname = part.get("filename", "")
+                att_id = part.get("body", {}).get("attachmentId", "")
+                if att_id and (mime == "application/pdf" or fname.lower().endswith(".pdf")):
+                    txt = _extract_pdf_text(msg_id, att_id, fname)
+                    if txt:
+                        att_texts.append(f"[Attachment: {fname}]\n{txt}")
+        _find_atts(payload.get("parts", []))
+        if att_texts:
+            body = (body + "\n\n" + "\n\n".join(att_texts)).strip()
+
     return subject, body[:12000], sent_date
 
 
@@ -464,7 +502,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False) -> dict:
                 except Exception as e:
                     print(f"[school] force-delete error {msg_id}: {e}")
 
-            subject, body, sent_date = _extract_email_text(msg)
+            subject, body, sent_date = _extract_email_text(msg, msg_id=msg_id)
             if not body.strip():
                 print(f"[school] empty body for msg {msg_id} subject={subject!r}")
                 continue
