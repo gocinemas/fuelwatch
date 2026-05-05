@@ -833,14 +833,18 @@ def handle_wa_school(from_number: str, text: str) -> str:
         return None, ""
 
     def _events_for(profile_id, days_ahead=30, days_back=3):
-        today = date.today().isoformat()
         horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
-        past = (date.today() - timedelta(days=days_back)).isoformat()
-        q = lib._sb().table("school_events").select("*").eq("from_number", from_number)
+        past_dated = (date.today() - timedelta(days=days_back)).isoformat()
+        past_undated = (date.today() - timedelta(days=14)).isoformat()
+        q_base = lib._sb().table("school_events").select("*").eq("from_number", from_number)
         if profile_id:
-            q = q.eq("profile_id", profile_id)
-        dated = q.gte("event_date", past).lte("event_date", horizon).execute().data or []
-        return sorted(dated, key=lambda e: e.get("event_date") or "")
+            q_base = q_base.eq("profile_id", profile_id)
+        dated = (q_base.gte("event_date", past_dated)
+                 .lte("event_date", horizon).execute().data or [])
+        undated = (q_base.is_("event_date", "null")
+                   .gte("created_at", past_undated).execute().data or [])
+        all_events = dated + undated
+        return sorted(all_events, key=lambda e: (e.get("event_date") or "9999", e.get("event_title") or ""))
 
     if cmd.startswith("school week"):
         extra = cmd[len("school week"):].split()
