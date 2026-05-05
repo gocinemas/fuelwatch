@@ -391,19 +391,14 @@ def poll_all_profiles(days_back: int = 7, force: bool = False) -> dict:
         return {"profiles": 0, "emails": 0, "events": 0}
 
     if force:
-        # Remove events older than 14 days that are no longer relevant
-        cutoff = (date.today() - timedelta(days=14)).isoformat()
-        stale_types = ["reminder", "activity", "club", "dinner"]
+        # Wipe all events and rebuild clean from the Gmail window
         for p in profiles:
-            for et in stale_types:
-                try:
-                    lib._sb().table("school_events").delete() \
-                        .eq("profile_id", p["id"]) \
-                        .eq("event_type", et) \
-                        .lt("event_date", cutoff) \
-                        .execute()
-                except Exception as e:
-                    print(f"[school] cleanup error {et}: {e}")
+            try:
+                lib._sb().table("school_events").delete() \
+                    .eq("profile_id", p["id"]).execute()
+                print(f"[school] cleared events for profile {p['id']} ({p.get('child_name','')})")
+            except Exception as e:
+                print(f"[school] clear error: {e}")
 
     # Group profiles by from_number so we only fetch Gmail once per parent
     by_parent: dict[str, list] = {}
