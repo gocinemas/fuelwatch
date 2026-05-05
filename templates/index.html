@@ -6006,6 +6006,8 @@ _bkBadge();
     _schoolFetchAndRender(id);
   };
 
+  let _schoolAllEvents = [];  // all events across all children — used for newsletters
+
   window.schoolLoad = async function() {
     _schoolActiveSec = 0;
     document.getElementById("school-loading").style.display = "block";
@@ -6013,26 +6015,26 @@ _bkBadge();
     document.getElementById("school-section-tabs").style.display = "none";
     document.getElementById("school-list").innerHTML = "";
     try {
-      // First load: fetch all profiles, then load events for active/first profile
-      const r = await fetch("/api/school/events?days=30", { headers: _schoolHeaders() });
+      const r = await fetch("/api/school/events?days=30&back=30", { headers: _schoolHeaders() });
       if (r.status === 401) { _schoolShowLock(); return; }
       const data = await r.json();
-      _schoolProfiles = data.profiles || [];
+      _schoolProfiles  = data.profiles || [];
+      _schoolAllEvents = data.events   || [];
       document.getElementById("school-loading").style.display = "none";
 
       if (!_schoolActiveProfileId && _schoolProfiles.length)
         _schoolActiveProfileId = _schoolProfiles[0].id;
 
       _schoolRenderTabs();
-
       const activeProfile = _schoolProfiles.find(p => p.id === _schoolActiveProfileId);
       if (activeProfile)
         document.getElementById("school-profile-card").innerHTML = _schoolRenderProfile(activeProfile);
 
-      const events = _schoolActiveProfileId && _schoolProfiles.length > 1
-        ? (data.events || []).filter(e => e.profile_id === _schoolActiveProfileId)
-        : (data.events || []);
-      _schoolRenderEvents(events);
+      // Pass only active child's events — newsletters section uses _schoolAllEvents separately
+      const filtered = _schoolActiveProfileId && _schoolProfiles.length > 1
+        ? _schoolAllEvents.filter(e => e.profile_id === _schoolActiveProfileId)
+        : _schoolAllEvents;
+      _schoolRenderEvents(filtered);
     } catch(e) {
       document.getElementById("school-loading").textContent = "Error loading events.";
     }
@@ -6045,12 +6047,12 @@ _bkBadge();
     document.getElementById("school-section-tabs").style.display = "none";
     document.getElementById("school-list").innerHTML = "";
     try {
-      const url = "/api/school/events?days=30" + (profileId ? "&profile_id=" + profileId : "");
-      const r = await fetch(url, { headers: _schoolHeaders() });
-      if (r.status === 401) { _schoolShowLock(); return; }
-      const data = await r.json();
       document.getElementById("school-loading").style.display = "none";
-      _schoolRenderEvents(data.events || []);
+      // Re-use already-loaded events, just re-filter for this child
+      const filtered = profileId
+        ? _schoolAllEvents.filter(e => e.profile_id === profileId)
+        : _schoolAllEvents;
+      _schoolRenderEvents(filtered);
     } catch(e) {
       document.getElementById("school-loading").textContent = "Error loading events.";
     }
@@ -6080,13 +6082,13 @@ _bkBadge();
     const todayStr = new Date().toISOString().slice(0,10);
     const cutoff14 = new Date(Date.now() - 14*24*60*60*1000).toISOString().slice(0,10);
 
-    const newsletters = uniq
+    // Newsletters: always ALL children combined, newest first
+    const _seenNL = {};
+    const newsletters = (_schoolAllEvents.length ? _schoolAllEvents : events)
       .filter(e => e.event_type === "newsletter")
-      .sort((a,b) => {
-        const da = a.event_date || a.created_at || "";
-        const db = b.event_date || b.created_at || "";
-        return db.localeCompare(da);
-      });
+      .filter(e => { const k=(e.event_title||"").toLowerCase().replace(/[^a-z0-9]/g,""); return k && !_seenNL[k] && (_seenNL[k]=true); })
+      .sort((a,b) => (b.event_date||b.created_at||"").localeCompare(a.event_date||a.created_at||""));
+
     const nonNews = uniq.filter(e => e.event_type !== "newsletter");
     const upcoming = nonNews
       .filter(e => e.event_date && e.event_date >= todayStr)
