@@ -819,13 +819,43 @@ def handle_wa_school(from_number: str, text: str) -> str:
             + (f"first profile from_number: {profiles[0].get('from_number','?')}" if profiles else "no profiles")
         )
 
-    if cmd == "school week":
-        events = _get_this_week_events(from_number)
-        return format_digest(events, title="This week at school")
+    def _resolve_child(words):
+        """Return (profile_id_or_None, child_label) from extra words in the command."""
+        profiles = _get_profiles(from_number)
+        if not profiles:
+            return None, ""
+        hint = " ".join(words).strip().lower()
+        if not hint:
+            return None, ""
+        match = next((p for p in profiles if hint in p.get("child_name", "").lower()), None)
+        if match:
+            return match["id"], match["child_name"]
+        return None, ""
 
-    if cmd in ("school upcoming", "school next"):
-        events = _get_upcoming_events(from_number, days=30)
-        return format_digest(events, title="Upcoming — next 30 days")
+    def _events_for(profile_id, days_ahead=30, days_back=3):
+        today = date.today().isoformat()
+        horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
+        past = (date.today() - timedelta(days=days_back)).isoformat()
+        q = lib._sb().table("school_events").select("*").eq("from_number", from_number)
+        if profile_id:
+            q = q.eq("profile_id", profile_id)
+        dated = q.gte("event_date", past).lte("event_date", horizon).execute().data or []
+        return sorted(dated, key=lambda e: e.get("event_date") or "")
+
+    if cmd.startswith("school week"):
+        extra = cmd[len("school week"):].split()
+        pid, child = _resolve_child(extra)
+        label = f"{child}'s week" if child else "This week"
+        events = _events_for(pid, days_ahead=7, days_back=7)
+        return format_digest(events, title=label)
+
+    if cmd.startswith("school upcoming") or cmd.startswith("school next"):
+        prefix = "school upcoming" if cmd.startswith("school upcoming") else "school next"
+        extra = cmd[len(prefix):].split()
+        pid, child = _resolve_child(extra)
+        label = f"{child} — coming up" if child else "Coming up"
+        events = _events_for(pid, days_ahead=30, days_back=0)
+        return format_digest(events, title=label)
 
     if cmd == "school list":
         profiles = _get_profiles(from_number)
