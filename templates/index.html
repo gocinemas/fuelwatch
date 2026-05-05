@@ -5755,20 +5755,30 @@ _bkBadge();
 
   <!-- Main view -->
   <div id="school-main" style="display:none">
-    <!-- Child tabs (hidden when only one child) -->
-    <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:12px;overflow-x:auto;white-space:nowrap"></div>
 
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
-      <div id="school-profile-card" style="flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;font-size:12px;color:#374151;min-height:40px"></div>
-      <button onclick="schoolLoad()" style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:4px 8px;flex-shrink:0;margin-left:8px;margin-top:8px">↻</button>
+    <!-- Child selector row -->
+    <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:14px;overflow-x:auto;white-space:nowrap"></div>
+
+    <!-- Profile card + refresh -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+      <div id="school-profile-card" style="flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;font-size:12px;color:#374151"></div>
+      <button onclick="schoolLoad()" style="font-size:13px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:4px 8px;flex-shrink:0;margin-left:8px;margin-top:6px">↻</button>
     </div>
 
     <div id="school-loading" style="text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">Loading…</div>
-    <div id="school-empty"   style="display:none;text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">
+    <div id="school-empty" style="display:none;text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">
       Nothing from school right now.<br>
       <span style="font-size:12px">WhatsApp <em>school upcoming</em> to Miru to check.</span>
     </div>
-    <div id="school-sections"></div>
+
+    <!-- Vertical tab layout -->
+    <div id="school-tab-layout" style="display:none;gap:10px">
+      <!-- Left: category tabs -->
+      <div id="school-vtabs" style="display:flex;flex-direction:column;gap:4px;min-width:110px;flex-shrink:0"></div>
+      <!-- Right: section content -->
+      <div id="school-tab-content" style="flex:1;min-width:0"></div>
+    </div>
+
   </div>
 </div>
 
@@ -6058,9 +6068,10 @@ _bkBadge();
     }
   }
 
+  let _schoolActiveSec = 0;
+
   function _schoolRenderEvents(events) {
     document.getElementById("school-loading").style.display = "none";
-    // Deduplicate: prefer the version WITH a date; dedupe by normalised title
     const byTitle = {};
     for (const e of events) {
       const key = (e.event_title || "").toLowerCase().replace(/[^a-z0-9]/g,"").trim();
@@ -6069,8 +6080,7 @@ _bkBadge();
     }
     const uniq = Object.values(byTitle);
     if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
-    const container = document.getElementById("school-sections");
-    container.innerHTML = "";
+
     const todayStr = new Date().toISOString().slice(0,10);
     const PAST_TYPES = new Set(["activity","event","trip","reminder","deadline","dinner","club"]);
     const tagged = uniq.map(e => {
@@ -6079,37 +6089,81 @@ _bkBadge();
         return {...e, event_type: "_recent_activity"};
       return e;
     });
+
+    // Build buckets
+    const buckets = [];
     for (const sec of _SCHOOL_SECTIONS) {
       let bucket = tagged.filter(e => sec.types.includes(e.event_type || "other"));
       if (!bucket.length) continue;
       if (sec.types.includes("newsletter"))
-        bucket = bucket.sort((a,b) => (b.created_at||"").localeCompare(a.created_at||"")).slice(0,2);
+        bucket = bucket.sort((a,b) => (b.created_at||"").localeCompare(a.created_at||"")).slice(0,3);
+      buckets.push({sec, bucket});
+    }
+    if (!buckets.length) { document.getElementById("school-empty").style.display = "block"; return; }
+
+    // Reset active tab if out of range
+    if (_schoolActiveSec >= buckets.length) _schoolActiveSec = 0;
+
+    const layout   = document.getElementById("school-tab-layout");
+    const vtabs    = document.getElementById("school-vtabs");
+    const content  = document.getElementById("school-tab-content");
+    layout.style.display = "flex";
+    vtabs.innerHTML = "";
+    content.innerHTML = "";
+
+    const _lk = t => (t||"").replace(/(https?:\/\/[^\s<"]+)/g,
+      '<a href="$1" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:underline;word-break:break-all">🔗 Open ↗</a>');
+
+    function _renderSection(idx) {
+      _schoolActiveSec = idx;
+      // Highlight active tab
+      vtabs.querySelectorAll("button").forEach((b,i) => {
+        const active = i === idx;
+        b.style.background  = active ? "#1f2937" : "#f8fafc";
+        b.style.color       = active ? "#fff"     : "#374151";
+        b.style.borderColor = active ? "#1f2937"  : "#e2e8f0";
+        b.style.fontWeight  = active ? "700"      : "500";
+      });
+      const {sec, bucket} = buckets[idx];
+      content.innerHTML = "";
       const wrap = document.createElement("div");
-      wrap.style.cssText = `background:${sec.color};border:1px solid ${sec.border};border-radius:14px;padding:14px 16px;margin-bottom:12px`;
-      const hdr = document.createElement("div");
-      hdr.style.cssText = "font-weight:700;font-size:13px;margin-bottom:10px";
-      hdr.textContent = sec.header;
-      wrap.appendChild(hdr);
+      wrap.style.cssText = `background:${sec.color};border:1px solid ${sec.border};border-radius:14px;padding:14px 16px`;
       for (const ev of bucket) {
         const item = document.createElement("div");
-        item.style.cssText = "padding:8px 0;border-top:1px solid rgba(0,0,0,.06)";
-        const dateStr = ev.event_date ? new Date(ev.event_date + "T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
+        item.style.cssText = "padding:10px 0;border-top:1px solid rgba(0,0,0,.06)";
+        const dateStr  = ev.event_date ? new Date(ev.event_date+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}) : "";
         const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
-        const titleEl = ev.event_type === "newsletter" && gmailUrl
-          ? `<a href="${gmailUrl}" target="_blank" rel="noopener" style="color:#7c3aed;text-decoration:none;font-weight:600;font-size:13px">${ev.event_title} ↗</a>`
-          : `<span style="font-weight:600;font-size:13px">${ev.event_title}</span>`;
-        const _lk = t => t.replace(/(https?:\/\/[^\s<"]+)/g,'<a href="$1" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:underline;word-break:break-all">🔗 Open ↗</a>');
-        let html = `<div>${titleEl}${dateStr ? `<span style="font-weight:400;color:#6b7280;margin-left:6px;font-size:12px">${dateStr}</span>` : ""}</div>`;
-        if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:3px">${_lk(ev.description)}</div>`;
+        const titleEl  = ev.event_type === "newsletter" && gmailUrl
+          ? `<a href="${gmailUrl}" target="_blank" rel="noopener" style="color:#7c3aed;font-weight:700;font-size:13px;text-decoration:none">${ev.event_title} ↗</a>`
+          : `<span style="font-weight:700;font-size:13px">${ev.event_title}</span>`;
+        let html = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+          <div style="flex:1">${titleEl}</div>
+          ${dateStr ? `<div style="font-size:11px;color:#6b7280;white-space:nowrap;margin-top:2px">${dateStr}</div>` : ""}
+        </div>`;
+        if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:4px">${_lk(ev.description)}</div>`;
         if (ev.action_needed) {
           const dl = ev.deadline ? ` <span style="color:#ef4444">(by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})})</span>` : "";
-          html += `<div style="font-size:12px;color:#d97706;margin-top:4px;font-weight:600">✏️ ${_lk(ev.action_needed)}${dl}</div>`;
+          html += `<div style="font-size:12px;color:#d97706;margin-top:5px;font-weight:600">✏️ ${_lk(ev.action_needed)}${dl}</div>`;
         }
         item.innerHTML = html;
         wrap.appendChild(item);
       }
-      container.appendChild(wrap);
+      content.appendChild(wrap);
     }
+
+    // Build vertical tab buttons
+    buckets.forEach(({sec, bucket}, i) => {
+      const btn = document.createElement("button");
+      btn.style.cssText = `width:100%;text-align:left;padding:9px 11px;border-radius:10px;border:1.5px solid #e2e8f0;
+        background:#f8fafc;color:#374151;font-size:12px;font-weight:500;cursor:pointer;
+        display:flex;align-items:center;justify-content:space-between;gap:4px`;
+      const label = sec.header.replace(/[^\w\s⏰📅⚽🍽️📰ℹ️📋]/gu,"").trim();
+      btn.innerHTML = `<span>${label}</span><span style="background:#e2e8f0;border-radius:20px;padding:1px 6px;font-size:10px;font-weight:700">${bucket.length}</span>`;
+      btn.onclick = () => _renderSection(i);
+      vtabs.appendChild(btn);
+    });
+
+    _renderSection(_schoolActiveSec);
   }
 
   /* ── End school comms ──────────────────────────────────────────────────────── */
