@@ -5760,10 +5760,13 @@ _bkBadge();
     <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:18px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
 
     <!-- School name + refresh -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div id="school-profile-card" style="font-size:13px;color:#6b7280"></div>
       <button onclick="schoolLoad()" style="font-size:16px;color:#9ca3af;background:none;border:none;cursor:pointer;padding:4px">↻</button>
     </div>
+
+    <!-- Section icon tabs -->
+    <div id="school-section-tabs" style="display:none;gap:8px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
 
     <div id="school-loading" style="text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">Loading…</div>
     <div id="school-empty" style="display:none;text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">
@@ -6004,8 +6007,10 @@ _bkBadge();
   };
 
   window.schoolLoad = async function() {
+    _schoolActiveSec = 0;
     document.getElementById("school-loading").style.display = "block";
     document.getElementById("school-empty").style.display   = "none";
+    document.getElementById("school-section-tabs").style.display = "none";
     document.getElementById("school-list").innerHTML = "";
     try {
       // First load: fetch all profiles, then load events for active/first profile
@@ -6034,8 +6039,10 @@ _bkBadge();
   };
 
   async function _schoolFetchAndRender(profileId) {
+    _schoolActiveSec = 0;
     document.getElementById("school-loading").style.display = "block";
     document.getElementById("school-empty").style.display   = "none";
+    document.getElementById("school-section-tabs").style.display = "none";
     document.getElementById("school-list").innerHTML = "";
     try {
       const url = "/api/school/events?days=30" + (profileId ? "&profile_id=" + profileId : "");
@@ -6054,95 +6061,119 @@ _bkBadge();
     newsletter:"📰", info:"ℹ️", event:"📅", trip:"📅", deadline:"⏰", other:"📌", _recent_activity:"📋"
   };
 
+  let _schoolGroups  = [];
+  let _schoolActiveSec = 0;
+
   function _schoolRenderEvents(events) {
     document.getElementById("school-loading").style.display = "none";
-    const list = document.getElementById("school-list");
-    list.innerHTML = "";
+    document.getElementById("school-list").innerHTML = "";
+    document.getElementById("school-section-tabs").style.display = "none";
 
     // Deduplicate by normalised title
-    const seen = {};
-    const uniq = [];
+    const seen = {}, uniq = [];
     for (const e of events) {
       const k = (e.event_title||"").toLowerCase().replace(/[^a-z0-9]/g,"");
       if (!seen[k]) { seen[k] = true; uniq.push(e); }
     }
     if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
 
-    const todayStr  = new Date().toISOString().slice(0,10);
-    const cutoff14  = new Date(Date.now() - 14*24*60*60*1000).toISOString().slice(0,10);
-    const _lk = t => (t||"").replace(/(https?:\/\/[^\s<"]+)/g,
-      '<a href="$1" target="_blank" rel="noopener" style="color:#2563eb">🔗 Open</a>');
+    const todayStr = new Date().toISOString().slice(0,10);
+    const cutoff14 = new Date(Date.now() - 14*24*60*60*1000).toISOString().slice(0,10);
 
-    // Split newsletters out first
     const newsletters = uniq
       .filter(e => e.event_type === "newsletter")
       .sort((a,b) => (b.created_at||"").localeCompare(a.created_at||""));
-
     const nonNews = uniq.filter(e => e.event_type !== "newsletter");
-
     const upcoming = nonNews
       .filter(e => e.event_date && e.event_date >= todayStr)
       .sort((a,b) => a.event_date.localeCompare(b.event_date));
-
     const undated = nonNews
       .filter(e => !e.event_date && (!e.created_at || e.created_at.slice(0,10) >= cutoff14))
       .sort((a,b) => (b.created_at||"").localeCompare(a.created_at||""))
       .slice(0, 10);
-
     const past = nonNews
       .filter(e => e.event_date && e.event_date < todayStr)
       .sort((a,b) => b.event_date.localeCompare(a.event_date))
       .slice(0, 3);
 
-    const groups = [
-      {label:"Newsletters",  items: newsletters, isNews: true},
-      {label:"Coming up",    items: upcoming},
-      {label:"General",      items: undated},
-      {label:"Recent",       items: past},
+    _schoolGroups = [
+      {icon:"📰", label:"Newsletters", items: newsletters},
+      {icon:"📅", label:"Coming Up",   items: upcoming},
+      {icon:"ℹ️",  label:"General",    items: undated},
+      {icon:"📋", label:"Recent",      items: past},
     ].filter(g => g.items.length);
 
-    for (const grp of groups) {
-      const hdr = document.createElement("div");
-      hdr.style.cssText = "font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:.06em;text-transform:uppercase;margin:22px 0 8px";
-      hdr.textContent = grp.label;
-      list.appendChild(hdr);
+    if (!_schoolGroups.length) { document.getElementById("school-empty").style.display = "block"; return; }
 
-      for (const ev of grp.items) {
-        const isNewsletter = ev.event_type === "newsletter";
-        const card = document.createElement("div");
-        card.style.cssText = isNewsletter
-          ? "background:#faf5ff;border:1px solid #e9d5ff;border-radius:12px;padding:12px 14px;margin-bottom:8px"
-          : "background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px 14px;margin-bottom:8px";
+    // Default to first tab when loading fresh; keep active tab if it still exists
+    if (_schoolActiveSec >= _schoolGroups.length) _schoolActiveSec = 0;
 
-        const icon    = _TYPE_ICON[ev.event_type] || "📌";
-        const dateStr = ev.event_date
-          ? new Date(ev.event_date+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})
-          : ev.created_at ? new Date(ev.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
-        const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
+    _schoolRenderSecTabs();
+    _schoolRenderCards(_schoolActiveSec);
+  }
 
-        const titleEl = gmailUrl
-          ? `<a href="${gmailUrl}" target="_blank" rel="noopener"
-               style="color:${isNewsletter?"#7c3aed":"#1d4ed8"};font-weight:600;font-size:14px;text-decoration:none">
-               ${ev.event_title}${isNewsletter?" ↗":""}
-             </a>`
-          : `<span style="font-weight:600;font-size:14px;color:#111">${ev.event_title}</span>`;
+  function _schoolRenderSecTabs() {
+    const bar = document.getElementById("school-section-tabs");
+    bar.style.display = "flex";
+    bar.innerHTML = _schoolGroups.map((g, i) => {
+      const active = i === _schoolActiveSec;
+      return `<button onclick="_schoolSwitchSec(${i})" title="${g.label}"
+        style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;
+               padding:8px 14px;border-radius:20px;border:2px solid ${active?"#1f2937":"#e2e8f0"};
+               background:${active?"#1f2937":"#fff"};cursor:pointer;transition:all .15s">
+        <span style="font-size:20px;line-height:1">${g.icon}</span>
+        <span style="font-size:10px;font-weight:700;color:${active?"#fff":"#6b7280"};letter-spacing:.03em">${g.label}</span>
+      </button>`;
+    }).join("");
+  }
 
-        let html = `<div style="display:flex;align-items:flex-start;gap:8px">
-          <span style="font-size:16px;flex-shrink:0;margin-top:1px">${icon}</span>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
-              <div style="flex:1">${titleEl}</div>
-              ${dateStr ? `<div style="font-size:11px;color:#9ca3af;white-space:nowrap;margin-top:3px;flex-shrink:0">${dateStr}</div>` : ""}
-            </div>`;
-        if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:4px;line-height:1.5">${_lk(ev.description)}</div>`;
-        if (ev.action_needed) {
-          const dl = ev.deadline ? ` · <span style="color:#ef4444">by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>` : "";
-          html += `<div style="font-size:12px;color:#d97706;margin-top:6px;font-weight:600">✏️ ${_lk(ev.action_needed)}${dl}</div>`;
-        }
-        html += `</div></div>`;
-        card.innerHTML = html;
-        list.appendChild(card);
+  window._schoolSwitchSec = function(i) {
+    _schoolActiveSec = i;
+    _schoolRenderSecTabs();
+    _schoolRenderCards(i);
+  };
+
+  function _schoolRenderCards(secIdx) {
+    const list = document.getElementById("school-list");
+    list.innerHTML = "";
+    const grp = _schoolGroups[secIdx];
+    if (!grp) return;
+    const _lk = t => (t||"").replace(/(https?:\/\/[^\s<"]+)/g,
+      '<a href="$1" target="_blank" rel="noopener" style="color:#2563eb">🔗 Open</a>');
+
+    for (const ev of grp.items) {
+      const isNewsletter = ev.event_type === "newsletter";
+      const card = document.createElement("div");
+      card.style.cssText = isNewsletter
+        ? "background:#faf5ff;border:1px solid #e9d5ff;border-radius:12px;padding:12px 14px;margin-bottom:8px"
+        : "background:#fff;border:1px solid #f1f5f9;border-radius:12px;padding:12px 14px;margin-bottom:8px";
+
+      const dateStr = ev.event_date
+        ? new Date(ev.event_date+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})
+        : isNewsletter && ev.created_at ? new Date(ev.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
+      const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
+
+      const titleEl = gmailUrl
+        ? `<a href="${gmailUrl}" target="_blank" rel="noopener"
+             style="color:${isNewsletter?"#7c3aed":"#1d4ed8"};font-weight:600;font-size:14px;text-decoration:none">
+             ${ev.event_title}${isNewsletter?" ↗":""}
+           </a>`
+        : `<span style="font-weight:600;font-size:14px;color:#111">${ev.event_title}</span>`;
+
+      let html = `<div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+            <div style="flex:1">${titleEl}</div>
+            ${dateStr ? `<div style="font-size:11px;color:#9ca3af;white-space:nowrap;margin-top:3px;flex-shrink:0">${dateStr}</div>` : ""}
+          </div>`;
+      if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:4px;line-height:1.5">${_lk(ev.description)}</div>`;
+      if (ev.action_needed) {
+        const dl = ev.deadline ? ` · <span style="color:#ef4444">by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>` : "";
+        html += `<div style="font-size:12px;color:#d97706;margin-top:6px;font-weight:600">✏️ ${_lk(ev.action_needed)}${dl}</div>`;
       }
+      html += `</div></div>`;
+      card.innerHTML = html;
+      list.appendChild(card);
     }
   }
 
