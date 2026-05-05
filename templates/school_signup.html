@@ -202,6 +202,12 @@
         <input type="text" id="teacher_name" placeholder="Mr Akhurst">
       </div>
 
+      <div class="field">
+        <label>Class WhatsApp group name <span class="opt">(optional)</span></label>
+        <input type="text" id="class_wa_group" placeholder="e.g. Year 4 Parents">
+        <div class="wa-hint">So you can forward class messages to Miru and it knows which child they're for</div>
+      </div>
+
       <p class="section-title">About the school</p>
 
       <div class="field school-lookup-wrap">
@@ -313,15 +319,16 @@ async function submitForm() {
   btn.textContent = "Setting up…";
 
   const payload = {
-    wa_number:     wa,
-    child_name:    child,
-    school_name:   school,
-    class_name:    document.getElementById("class_name").value.trim(),
-    teacher_name:  document.getElementById("teacher_name").value.trim(),
-    year_group:    document.getElementById("year_group").value.trim(),
-    sender_emails: emails,
-    address:       document.getElementById("school_address").value.trim(),
-    phone:         document.getElementById("school_phone").value.trim(),
+    wa_number:      wa,
+    child_name:     child,
+    school_name:    school,
+    class_name:     document.getElementById("class_name").value.trim(),
+    teacher_name:   document.getElementById("teacher_name").value.trim(),
+    year_group:     document.getElementById("year_group").value.trim(),
+    class_wa_group: document.getElementById("class_wa_group").value.trim(),
+    sender_emails:  emails,
+    address:        document.getElementById("school_address").value.trim(),
+    phone:          document.getElementById("school_phone").value.trim(),
   };
 
   try {

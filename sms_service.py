@@ -5015,15 +5015,16 @@ def school_signup_api():
 
     try:
         lib._sb().table("school_profiles").insert({
-            "from_number":   from_number,
-            "child_name":    child,
-            "school_name":   school,
-            "class_name":    data.get("class_name", ""),
-            "teacher_name":  data.get("teacher_name", ""),
-            "year_group":    data.get("year_group", ""),
-            "address":       data.get("address", ""),
-            "phone":         data.get("phone", ""),
-            "sender_emails": emails,
+            "from_number":    from_number,
+            "child_name":     child,
+            "school_name":    school,
+            "class_name":     data.get("class_name", ""),
+            "teacher_name":   data.get("teacher_name", ""),
+            "year_group":     data.get("year_group", ""),
+            "address":        data.get("address", ""),
+            "phone":          data.get("phone", ""),
+            "class_wa_group": data.get("class_wa_group", ""),
+            "sender_emails":  emails,
         }).execute()
     except Exception as e:
         print(f"[school signup] db error: {e}")
@@ -5082,7 +5083,7 @@ def api_school_events():
                     .is_("event_date", "null").gte("created_at", past))
                    .order("created_at", desc=True).execute().data or [])
         profiles = (lib._sb().table("school_profiles")
-                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone")
+                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group")
                     .eq("active", True).execute().data or [])
         return jsonify({"events": dated + undated, "profiles": profiles})
     except Exception as e:

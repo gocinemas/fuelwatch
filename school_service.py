@@ -7,15 +7,21 @@ and delivers a weekly WhatsApp digest.
 Supabase tables (run once):
 ─────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS school_profiles (
-  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  from_number   text NOT NULL,
-  child_name    text NOT NULL DEFAULT '',
-  school_name   text NOT NULL,
-  year_group    text NOT NULL DEFAULT '',
-  sender_emails jsonb NOT NULL DEFAULT '[]',
-  active        boolean NOT NULL DEFAULT true,
-  created_at    timestamptz NOT NULL DEFAULT now()
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  from_number     text NOT NULL,
+  child_name      text NOT NULL DEFAULT '',
+  school_name     text NOT NULL,
+  year_group      text NOT NULL DEFAULT '',
+  class_name      text NOT NULL DEFAULT '',
+  teacher_name    text NOT NULL DEFAULT '',
+  address         text NOT NULL DEFAULT '',
+  phone           text NOT NULL DEFAULT '',
+  class_wa_group  text NOT NULL DEFAULT '',
+  sender_emails   jsonb NOT NULL DEFAULT '[]',
+  active          boolean NOT NULL DEFAULT true,
+  created_at      timestamptz NOT NULL DEFAULT now()
 );
+-- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS class_wa_group text NOT NULL DEFAULT '';
 CREATE INDEX ON school_profiles(from_number);
 
 CREATE TABLE IF NOT EXISTS school_events (
@@ -929,9 +935,84 @@ def handle_wa_school(from_number: str, text: str) -> str:
             "Fetching emails now — check the web in a minute."
         )
 
+    # ── school note [text] / school note for [child]: [text] ─────────────────
+    # Triggered by the "→ Miru" forward button on each event card, or typed
+    if cmd.startswith("school note"):
+        raw = text[len("school note"):].lstrip(": ").strip()
+        # Optional child routing: "school note for Riaan: play rehearsal Thu"
+        target_pid = None
+        target_name = ""
+        if raw.lower().startswith("for ") and ":" in raw:
+            child_hint, raw = raw[4:].split(":", 1)
+            child_hint = child_hint.strip().lower()
+            raw = raw.strip()
+            profiles_all = _get_profiles(from_number)
+            match = next((p for p in profiles_all if child_hint in p.get("child_name","").lower()), None)
+            if match:
+                target_pid  = match["id"]
+                target_name = match["child_name"]
+        if not raw:
+            return "Please include the note, e.g.:\n*school note: Play rehearsal Thu 15th*\nor\n*school note for Riaan: Bake sale Friday*"
+        profiles_all = _get_profiles(from_number)
+        if not profiles_all:
+            return "No school set up yet. Reply *school setup* first."
+        profile = next((p for p in profiles_all if p["id"] == target_pid), profiles_all[0])
+        try:
+            lib._sb().table("school_events").insert({
+                "profile_id":    profile["id"],
+                "from_number":   from_number,
+                "event_title":   raw[:200],
+                "event_type":    "info",
+                "description":   raw[:500],
+                "action_needed": "",
+            }).execute()
+        except Exception as e:
+            return f"Couldn't save note: {e}"
+        child_label = target_name or profile.get("child_name", "")
+        label = f" for *{child_label}*" if child_label else ""
+        return f"✅ Saved{label} — visible on your school dashboard."
+
+    # ── school wa group [group_name] [for child] ──────────────────────────────
+    # Saves the class WhatsApp group name against a child's profile
+    if cmd.startswith("school wa group"):
+        rest = text[len("school wa group"):].strip()
+        child_hint = ""
+        group_name = rest
+        if " for " in rest.lower():
+            parts = rest.lower().split(" for ", 1)
+            group_name = rest[:rest.lower().index(" for ")].strip()
+            child_hint = parts[1].strip()
+        if not group_name:
+            return (
+                "Tell me the WhatsApp group name:\n"
+                "*school wa group Year 4 Parents*\n"
+                "or for a specific child:\n"
+                "*school wa group Year 4 Parents for Riaan*"
+            )
+        profiles_all = _get_profiles(from_number)
+        if not profiles_all:
+            return "No school set up yet. Reply *school setup* first."
+        profile = next(
+            (p for p in profiles_all if child_hint and child_hint in p.get("child_name","").lower()),
+            profiles_all[0],
+        )
+        try:
+            lib._sb().table("school_profiles").update({"class_wa_group": group_name}).eq("id", profile["id"]).execute()
+        except Exception as e:
+            return f"Couldn't save: {e}"
+        child_label = profile.get("child_name", "")
+        label = f" for *{child_label}*" if child_label else ""
+        return (
+            f"✅ Class WhatsApp group saved{label}: *{group_name}*\n\n"
+            "Now when you forward messages from that group, send them here with:\n"
+            f"*school note for {child_label}: [paste the message]*"
+        )
+
     # Unknown sub-command
     return (
         "🏫 *School Comms*\n"
         "Commands: *school week* | *school upcoming* | *school setup* | *school list*\n"
-        "• *school add email office@school.sch.uk for Riaan* — add a sender"
+        "• *school add email office@school.sch.uk for Riaan* — add a sender\n"
+        "• *school note: Play rehearsal Thu* — save a note from class WhatsApp\n"
+        "• *school wa group Year 4 Parents for Riaan* — link class WA group"
     )
