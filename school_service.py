@@ -780,8 +780,41 @@ def handle_wa_school(from_number: str, text: str) -> str:
             lines.append(f"  Watching: {emails}")
         return "\n".join(lines)
 
+    # school add email <address> [for <child>]
+    # e.g. "school add email stannsheathjuniors-surrey@scopay.com for Riaan"
+    if cmd.startswith("school add email"):
+        parts = text.strip().split()
+        # find the email address (contains @)
+        new_email = next((p.lower() for p in parts if "@" in p), "")
+        if not new_email:
+            return "Please include the email address, e.g.:\n*school add email office@school.sch.uk*\nor\n*school add email office@school.sch.uk for Riaan*"
+        # optional child name after "for"
+        child_hint = ""
+        if " for " in text.lower():
+            child_hint = text.lower().split(" for ", 1)[1].strip()
+        profiles = _get_profiles(from_number)
+        if not profiles:
+            return "No schools set up yet. Reply *school setup* first."
+        # pick profile matching child hint, or the first one
+        target = next((p for p in profiles if child_hint and child_hint in p.get("child_name","").lower()), profiles[0])
+        current = target.get("sender_emails") or []
+        if new_email in [e.lower() for e in current]:
+            return f"That email is already being watched for *{target.get('child_name','your child')}*."
+        updated = current + [new_email]
+        try:
+            lib._sb().table("school_profiles").update({"sender_emails": updated}).eq("id", target["id"]).execute()
+        except Exception as e:
+            return f"Couldn't update: {e}"
+        import threading
+        threading.Thread(target=poll_all_profiles, kwargs={"days_back": 30}, daemon=True).start()
+        return (
+            f"✅ Added *{new_email}* to *{target.get('child_name','your child')}*'s school.\n"
+            "Fetching emails now — check the web in a minute."
+        )
+
     # Unknown sub-command
     return (
         "🏫 *School Comms*\n"
-        "Commands: *school week* | *school upcoming* | *school setup* | *school list*"
+        "Commands: *school week* | *school upcoming* | *school setup* | *school list*\n"
+        "• *school add email office@school.sch.uk for Riaan* — add a sender"
     )
