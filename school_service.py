@@ -192,6 +192,19 @@ def _extract_email_text(msg: dict, msg_id: str = "") -> tuple[str, str, str]:
 
     body = re.sub(r"\n{3,}", "\n\n", body.strip())
 
+    # Follow Google Docs links — newsletters often link to a public Google Doc
+    gdoc_ids = re.findall(r'docs\.google\.com/document/d/([A-Za-z0-9_-]{20,})', body)
+    for doc_id in gdoc_ids[:2]:  # cap at 2 docs per email
+        try:
+            export_url = f"https://docs.google.com/document/d/{doc_id}/export?format=txt"
+            r = requests.get(export_url, timeout=15, allow_redirects=True)
+            if r.status_code == 200 and r.text.strip():
+                doc_text = re.sub(r"\n{3,}", "\n\n", r.text.strip())[:5000]
+                body = (body + f"\n\n[Google Doc content]\n{doc_text}").strip()
+                print(f"[school] fetched gdoc {doc_id}: {len(doc_text)} chars")
+        except Exception as e:
+            print(f"[school] gdoc fetch error {doc_id}: {e}")
+
     # Append text from PDF attachments (newsletters often arrive as attached PDFs)
     if msg_id:
         att_texts = []
