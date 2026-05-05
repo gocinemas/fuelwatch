@@ -230,30 +230,47 @@ JSON array:"""
     if not groq_key:
         return []
 
-    try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-            json={
-                "model": "llama-3.1-8b-instant",
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user",   "content": prompt},
-                ],
-                "max_tokens": 1200,
-                "temperature": 0.1,
-            },
-            timeout=20,
-        )
-        raw = r.json()["choices"][0]["message"]["content"].strip()
-        # Strip markdown fences if model ignores instructions
-        raw = re.sub(r"^```[a-z]*\n?", "", raw)
-        raw = re.sub(r"\n?```$", "", raw)
-        events = json.loads(raw)
-        if isinstance(events, list):
-            return events
-    except Exception as e:
-        print(f"[school] groq parse error: {e}")
+    # Truncate body to avoid hitting context limits
+    body_truncated = body[:6000] if len(body) > 6000 else body
+    prompt = prompt.replace(body, body_truncated)
+
+    for attempt in range(3):
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user",   "content": prompt},
+                    ],
+                    "max_tokens": 1200,
+                    "temperature": 0.1,
+                },
+                timeout=30,
+            )
+            rj = r.json()
+            if "choices" not in rj:
+                err_msg = rj.get("error", {}).get("message", str(rj))
+                print(f"[school] groq no choices (attempt {attempt+1}): {err_msg}")
+                if "rate" in err_msg.lower() and attempt < 2:
+                    import time as _time
+                    _time.sleep(10 * (attempt + 1))
+                    continue
+                return []
+            raw = rj["choices"][0]["message"]["content"].strip()
+            raw = re.sub(r"^```[a-z]*\n?", "", raw)
+            raw = re.sub(r"\n?```$", "", raw)
+            events = json.loads(raw)
+            if isinstance(events, list):
+                return events
+            return []
+        except Exception as e:
+            print(f"[school] groq parse error (attempt {attempt+1}): {e}")
+            if attempt < 2:
+                import time as _time
+                _time.sleep(5)
     return []
 
 
@@ -408,6 +425,7 @@ def poll_all_profiles(days_back: int = 7) -> dict:
                 print(f"[school] empty body for msg {msg_id} subject={subject!r}")
                 continue
 
+            import time as _time; _time.sleep(2)  # stay well under 30 req/min Groq limit
             events = _groq_parse_events(
                 subject, body,
                 matched_profile["school_name"],
