@@ -210,6 +210,17 @@
         <div class="lookup-status" id="lookup-status"></div>
       </div>
 
+      <div id="school-details" style="display:none">
+        <div class="field">
+          <label>Address <span class="opt">(editable)</span></label>
+          <input type="text" id="school_address" placeholder="School address">
+        </div>
+        <div class="field">
+          <label>Phone <span class="opt">(editable)</span></label>
+          <input type="tel" id="school_phone" placeholder="School phone number">
+        </div>
+      </div>
+
       <div class="field">
         <label>School email address(es)</label>
         <textarea id="sender_emails" placeholder="admin@greenway.sch.uk&#10;newsletter@greenway.sch.uk"></textarea>
@@ -249,18 +260,28 @@ document.getElementById("school_name").addEventListener("input", function() {
 });
 
 async function lookupSchool(name) {
-  const status = document.getElementById("lookup-status");
+  const status  = document.getElementById("lookup-status");
+  const details = document.getElementById("school-details");
   try {
     const r = await fetch("/api/school/lookup?name=" + encodeURIComponent(name));
     const d = await r.json();
     if (d.address) {
       _lookupData = d;
+      // Update school name to matched name
+      document.getElementById("school_name").value = d.place_name || name;
+      // Populate address & phone fields
+      document.getElementById("school_address").value = d.address || "";
+      document.getElementById("school_phone").value   = d.phone   || "";
+      details.style.display = "block";
       status.className = "lookup-status found";
-      status.textContent = "📍 " + d.place_name + " · " + d.address + (d.phone ? " · " + d.phone : "");
+      status.textContent = "✓ School found — address and phone filled in below";
     } else {
       _lookupData = {};
+      document.getElementById("school_address").value = "";
+      document.getElementById("school_phone").value   = "";
+      details.style.display = "block";
       status.className = "lookup-status notfound";
-      status.textContent = "School not found in our directory — that's fine, we'll still set it up.";
+      status.textContent = "School not found automatically — you can enter the address manually below.";
     }
   } catch(e) {
     status.className = "lookup-status";
@@ -294,13 +315,13 @@ async function submitForm() {
   const payload = {
     wa_number:     wa,
     child_name:    child,
-    school_name:   _lookupData.place_name || school,
+    school_name:   school,
     class_name:    document.getElementById("class_name").value.trim(),
     teacher_name:  document.getElementById("teacher_name").value.trim(),
     year_group:    document.getElementById("year_group").value.trim(),
     sender_emails: emails,
-    address:       _lookupData.address  || "",
-    phone:         _lookupData.phone    || "",
+    address:       document.getElementById("school_address").value.trim(),
+    phone:         document.getElementById("school_phone").value.trim(),
   };
 
   try {
