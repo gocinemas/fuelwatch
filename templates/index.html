@@ -6072,9 +6072,10 @@ _bkBadge();
     const _lk = t => (t||"").replace(/(https?:\/\/[^\s<"]+)/g,
       '<a href="$1" target="_blank" rel="noopener" style="color:#2563eb">🔗 Open</a>');
 
-    // Sort: upcoming first (by event_date), then undated, then past
+    // Sort: upcoming first, then undated (cap 10, max 14 days old), then past (cap 3)
+    const cutoff14 = new Date(Date.now() - 14*24*60*60*1000).toISOString().slice(0,10);
     const upcoming = uniq.filter(e => e.event_date && e.event_date >= todayStr).sort((a,b)=>a.event_date.localeCompare(b.event_date));
-    const undated  = uniq.filter(e => !e.event_date);
+    const undated  = uniq.filter(e => !e.event_date && (!e.created_at || e.created_at.slice(0,10) >= cutoff14)).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||"")).slice(0,10);
     const past     = uniq.filter(e => e.event_date && e.event_date < todayStr).sort((a,b)=>b.event_date.localeCompare(a.event_date)).slice(0,3);
 
     const groups = [

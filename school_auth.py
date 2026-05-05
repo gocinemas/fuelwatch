@@ -11,6 +11,7 @@ See: https://console.cloud.google.com/apis/credentials
 import json
 import os
 import urllib.parse
+import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -54,8 +55,10 @@ def main():
             "prompt":        "consent",
         })
     )
-    print(f"Opening browser for Gmail authorisation…\n{url}\n")
-    webbrowser.open(url)
+    print("\n👉 Open this URL in your browser:\n")
+    print(url)
+    print("\nWaiting for authorisation (server running on localhost:8765)…\n")
+    webbrowser.open(url)  # works on Mac, silently ignored if not
 
     server = HTTPServer(("localhost", 8765), _Handler)
     server.handle_request()  # blocks until one request comes in
@@ -64,7 +67,6 @@ def main():
         print("No auth code received.")
         return
 
-    import urllib.request
     data = urllib.parse.urlencode({
         "code":          auth_code,
         "client_id":     CLIENT_ID,
