@@ -225,12 +225,14 @@ Extract every item a parent should know about. Return a JSON array of objects, e
   deadline      : ISO date by which action is needed, or null
 
 Rules:
-- If the email subject contains "bulletin", "newsletter", "weekly update" or similar:
-    * FIRST create one item of type "newsletter" with event_title = the subject line,
-      and description = a 2-sentence summary of the whole bulletin
-    * THEN also create separate items for any specific activities or reminders inside it
-- For all other emails: create one item per distinct event/reminder/action
+- ALWAYS extract every specific event, trip, deadline, reminder, club, or dinner mentioned.
+- If the email is a newsletter/bulletin:
+    * Create ONE item of type "newsletter": event_title = subject, description = 2-sentence overall summary
+    * Then create SEPARATE items for EVERY specific event, reminder, deadline, or action inside it
+    * Even if dates are not given, create items for clubs, trips, or recurring reminders
+- For non-newsletters: one item per distinct event/reminder/action
 - Do NOT create duplicate items for the same event
+- Prefer to over-extract than under-extract — a parent would rather see too much than miss something
 
 If nothing relevant, return [].
 JSON array:"""
@@ -254,7 +256,7 @@ JSON array:"""
                         {"role": "system", "content": system},
                         {"role": "user",   "content": prompt},
                     ],
-                    "max_tokens": 1200,
+                    "max_tokens": 2000,
                     "temperature": 0.1,
                 },
                 timeout=30,
