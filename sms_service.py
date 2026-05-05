@@ -4971,13 +4971,13 @@ def school_poll():
         return jsonify({"error": "Unauthorized"}), 401
     days_back = int(request.args.get("days_back", 14))
     force     = request.args.get("force", "").lower() in ("1", "true", "yes")
-    try:
-        result = school_service.poll_all_profiles(days_back=days_back, force=force)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-    return jsonify(result)
+    import threading
+    threading.Thread(
+        target=school_service.poll_all_profiles,
+        kwargs={"days_back": days_back, "force": force},
+        daemon=True,
+    ).start()
+    return jsonify({"status": "started", "days_back": days_back, "force": force})
 
 
 @app.route("/api/school/events")
