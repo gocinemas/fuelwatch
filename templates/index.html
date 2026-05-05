@@ -6082,7 +6082,11 @@ _bkBadge();
 
     const newsletters = uniq
       .filter(e => e.event_type === "newsletter")
-      .sort((a,b) => (b.created_at||"").localeCompare(a.created_at||""));
+      .sort((a,b) => {
+        const da = a.event_date || a.created_at || "";
+        const db = b.event_date || b.created_at || "";
+        return db.localeCompare(da);
+      });
     const nonNews = uniq.filter(e => e.event_type !== "newsletter");
     const upcoming = nonNews
       .filter(e => e.event_date && e.event_date >= todayStr)
