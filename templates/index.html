@@ -6078,13 +6078,38 @@ _bkBadge();
     document.getElementById("school-list").innerHTML = "";
     document.getElementById("school-section-tabs").style.display = "none";
 
-    // Deduplicate by normalised title
+    // Pass 1: exact-title dedup
     const seen = {}, uniq = [];
     for (const e of events) {
       const k = (e.event_title||"").toLowerCase().replace(/[^a-z0-9]/g,"");
       if (!seen[k]) { seen[k] = true; uniq.push(e); }
     }
-    if (!uniq.length) { document.getElementById("school-empty").style.display = "block"; return; }
+
+    // Pass 2: fuzzy same-date dedup — cluster events on the same date with overlapping title words
+    const _stops = new Set(['a','an','the','and','or','for','to','of','in','on','at','is','with','about','from','your','session','drop','first','parent','support']);
+    function _titleWords(t) { return (t||'').toLowerCase().split(/\W+/).filter(w => w.length > 2 && !_stops.has(w)); }
+    function _overlap(a, b) {
+      const wa = new Set(_titleWords(a)), wbArr = _titleWords(b);
+      if (!wa.size && !wbArr.length) return 0;
+      const common = wbArr.filter(w => wa.has(w)).length;
+      return common / Math.max(wa.size, wbArr.length, 1);
+    }
+    function _richness(e) { return (e.action_needed ? 200 : 0) + (e.description||'').length + (e.action_needed||'').length; }
+    const deduped = [], usedIdx = new Set();
+    for (let i = 0; i < uniq.length; i++) {
+      if (usedIdx.has(i)) continue;
+      const cluster = [uniq[i]];
+      for (let j = i+1; j < uniq.length; j++) {
+        if (usedIdx.has(j)) continue;
+        if (uniq[i].event_date && uniq[i].event_date === uniq[j].event_date && _overlap(uniq[i].event_title, uniq[j].event_title) >= 0.35) {
+          cluster.push(uniq[j]); usedIdx.add(j);
+        }
+      }
+      cluster.sort((a,b) => _richness(b) - _richness(a));
+      deduped.push(cluster[0]);
+      usedIdx.add(i);
+    }
+    if (!deduped.length) { document.getElementById("school-empty").style.display = "block"; return; }
 
     const todayStr = new Date().toISOString().slice(0,10);
     const cutoff14 = new Date(Date.now() - 14*24*60*60*1000).toISOString().slice(0,10);
@@ -6096,7 +6121,7 @@ _bkBadge();
       .filter(e => { const k=(e.event_title||"").toLowerCase().replace(/[^a-z0-9]/g,""); return k && !_seenNL[k] && (_seenNL[k]=true); })
       .sort((a,b) => (b.event_date||b.created_at||"").localeCompare(a.event_date||a.created_at||""));
 
-    const nonNews = uniq.filter(e => e.event_type !== "newsletter");
+    const nonNews = deduped.filter(e => e.event_type !== "newsletter");
     const upcoming = nonNews
       .filter(e => e.event_date && e.event_date >= todayStr)
       .sort((a,b) => a.event_date.localeCompare(b.event_date));

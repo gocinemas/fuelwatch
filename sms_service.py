@@ -376,6 +376,14 @@ def sms_reply():
 def index():
     return render_template("index.html", prefill_company=None, prefill_doc=None)
 
+@app.route("/elections")
+def elections_page():
+    resp = app.make_response(
+        render_template("index.html", prefill_company=None, prefill_doc=None, autoscreen="elections")
+    )
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
 @app.route("/test-places")
 def test_places():
     resp = app.make_response(
