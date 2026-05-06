@@ -376,6 +376,10 @@ def sms_reply():
 def index():
     return render_template("index.html", prefill_company=None, prefill_doc=None)
 
+@app.route("/privacy")
+def privacy_page():
+    return render_template("privacy.html")
+
 @app.route("/elections")
 def elections_page():
     resp = app.make_response(

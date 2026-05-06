@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — Miru</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f8fafc;
+    color: #1a1a2e;
+    min-height: 100vh;
+  }
+  .header {
+    background: #fff;
+    border-bottom: 1px solid #e8eaed;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+  }
+  .header-logo { font-size: 22px; font-weight: 900; color: #1a1a2e; text-decoration: none; }
+  .header-logo span { color: #f59e0b; }
+  .container { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 28px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .updated { font-size: 13px; color: #9ca3af; margin-bottom: 36px; }
+  h2 { font-size: 16px; font-weight: 700; color: #1a1a2e; margin: 32px 0 10px; }
+  p { font-size: 15px; color: #4b5563; line-height: 1.7; margin-bottom: 12px; }
+  ul { padding-left: 20px; margin-bottom: 12px; }
+  li { font-size: 15px; color: #4b5563; line-height: 1.7; margin-bottom: 4px; }
+  a { color: #f59e0b; }
+  .card {
+    background: #fff;
+    border: 1px solid #e8eaed;
+    border-radius: 16px;
+    padding: 28px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .contact {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 32px;
+    font-size: 14px;
+    color: #065f46;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="/" class="header-logo">Mi<span>ru</span></a>
+</div>
+
+<div class="container">
+  <div class="card">
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: 6 May 2026</p>
+
+    <p>Miru is a personal assistant tool that helps parents stay on top of school communications, local information, and everyday tasks. This policy explains what data we collect, why, and how it is protected.</p>
+
+    <h2>1. Who we are</h2>
+    <p>Miru is operated by Human Agency. You can contact us at <a href="mailto:hello@humanagency.co">hello@humanagency.co</a>.</p>
+
+    <h2>2. What data we collect</h2>
+    <ul>
+      <li><strong>WhatsApp number</strong> — used to identify your account and deliver messages via the Miru WhatsApp assistant.</li>
+      <li><strong>School information</strong> — school name, your child's first name, year group, class, and teacher, provided by you during setup.</li>
+      <li><strong>School email senders</strong> — the email addresses your school uses to send communications (e.g. <em>admin@school.sch.uk</em>), provided by you.</li>
+      <li><strong>Gmail access (read-only)</strong> — with your explicit consent, Miru reads emails from the school sender addresses you specified. We only read emails matching those senders. We do not read, store, or process any other emails in your inbox.</li>
+      <li><strong>Parsed school events</strong> — dates, titles, and descriptions extracted from school emails are stored so they can be displayed in your dashboard and sent to you via WhatsApp.</li>
+    </ul>
+
+    <h2>3. How we use your data</h2>
+    <ul>
+      <li>To display your children's upcoming school events, newsletters, and reminders in the Miru dashboard.</li>
+      <li>To send you relevant school updates via WhatsApp when requested.</li>
+      <li>To identify which school emails belong to which child when you have more than one child registered.</li>
+    </ul>
+    <p>We do not use your data for advertising, profiling, or any purpose beyond delivering the Miru service to you.</p>
+
+    <h2>4. Gmail data</h2>
+    <p>Miru's use of Gmail data is limited to:</p>
+    <ul>
+      <li>Reading emails from the specific school sender addresses you provide during signup.</li>
+      <li>Extracting event titles, dates, and descriptions from those emails.</li>
+      <li>Storing those extracted events in your Miru account.</li>
+    </ul>
+    <p>We do not store the full text of your emails. We do not access attachments beyond PDF school letters. We do not share Gmail data with any third party. Our use of Gmail data complies with the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+
+    <h2>5. Data storage and security</h2>
+    <p>Your data is stored in Supabase (a secure cloud database hosted in the EU). Access is restricted and your school data is scoped to your WhatsApp number — other users cannot see your children's information.</p>
+    <p>Gmail refresh tokens (which allow Miru to read your school emails) are stored encrypted and used solely to fetch emails on your behalf.</p>
+
+    <h2>6. Data sharing</h2>
+    <p>We do not sell, rent, or share your personal data with third parties. The only external services we use are:</p>
+    <ul>
+      <li><strong>Google Gmail API</strong> — to read school emails from your inbox.</li>
+      <li><strong>Supabase</strong> — to store your account data and school events.</li>
+      <li><strong>Twilio / WhatsApp</strong> — to send you messages via the Miru WhatsApp assistant.</li>
+      <li><strong>Groq</strong> — to parse school email content into structured events (text only, no personal identifiers).</li>
+    </ul>
+
+    <h2>7. Your rights</h2>
+    <p>You can at any time:</p>
+    <ul>
+      <li><strong>Revoke Gmail access</strong> — go to <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a> and remove Miru.</li>
+      <li><strong>Request deletion</strong> — email <a href="mailto:hello@humanagency.co">hello@humanagency.co</a> and we will delete all data associated with your account within 7 days.</li>
+      <li><strong>Request a copy</strong> — email us and we will provide a copy of all data we hold for you.</li>
+    </ul>
+
+    <h2>8. Children's data</h2>
+    <p>Miru stores first names and school details for children at the request of their parent or guardian. We do not collect any data directly from children, and children's data is only used to organise school communications for their parent.</p>
+
+    <h2>9. Changes to this policy</h2>
+    <p>If we make material changes to this policy, we will notify you via WhatsApp. The latest version is always available at <a href="https://miru.humanagency.co/privacy">miru.humanagency.co/privacy</a>.</p>
+
+    <div class="contact">
+      Questions? Email us at <a href="mailto:hello@humanagency.co">hello@humanagency.co</a>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
