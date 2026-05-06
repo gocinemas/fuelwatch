@@ -244,7 +244,7 @@
   <div id="success-view" class="success-screen">
     <div class="success-icon">🎉</div>
     <h2>You're all set!</h2>
-    <p id="success-msg">We're fetching the last 30 days of emails from <strong id="success-school"></strong> now.<br>Check back in a minute.</p>
+    <p id="success-msg">Gmail connected. We're fetching the last 30 days of emails from <strong id="success-school"></strong> now.<br>Check back in a minute.</p>
     <a href="/?screen=school" class="success-link">View school dashboard →</a>
     <p style="margin-top:20px;font-size:13px;color:#9ca3af">You can also ask Miru on WhatsApp:<br><em>school upcoming</em> or <em>school week</em></p>
   </div>
@@ -340,10 +340,17 @@ async function submitForm() {
     const d = await r.json();
     if (!r.ok) { showError(d.error || "Something went wrong. Please try again."); return; }
 
-    document.getElementById("success-school").textContent = payload.school_name;
-    document.getElementById("form-view").style.display    = "none";
-    document.getElementById("success-view").style.display = "block";
-    window.scrollTo(0, 0);
+    // Redirect to Google OAuth to grant Gmail read access
+    if (d.oauth_url) {
+      btn.textContent = "Connecting Gmail…";
+      window.location.href = d.oauth_url;
+    } else {
+      // Fallback if no OAuth URL returned
+      document.getElementById("success-school").textContent = payload.school_name;
+      document.getElementById("form-view").style.display    = "none";
+      document.getElementById("success-view").style.display = "block";
+      window.scrollTo(0, 0);
+    }
   } catch(e) {
     showError("Network error. Please try again.");
   } finally {

@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS school_profiles (
   created_at      timestamptz NOT NULL DEFAULT now()
 );
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS class_wa_group text NOT NULL DEFAULT '';
+-- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS gmail_refresh_token text;
 CREATE INDEX ON school_profiles(from_number);
 
 CREATE TABLE IF NOT EXISTS school_events (
@@ -68,14 +69,15 @@ import library as lib
 _GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token"
 _GMAIL_API_BASE  = "https://gmail.googleapis.com/gmail/v1/users/me"
 
-def _gmail_access_token() -> str:
-    """Exchange refresh token for a short-lived access token."""
+def _gmail_access_token(refresh_token: str = None) -> str:
+    """Exchange refresh token for a short-lived access token.
+    Uses provided refresh_token, falling back to GMAIL_REFRESH_TOKEN env var."""
     cid  = os.environ.get("GMAIL_CLIENT_ID", "")
     csec = os.environ.get("GMAIL_CLIENT_SECRET", "")
-    rtok = os.environ.get("GMAIL_REFRESH_TOKEN", "")
+    rtok = refresh_token or os.environ.get("GMAIL_REFRESH_TOKEN", "")
     if not all([cid, csec, rtok]):
-        missing = [k for k, v in [("GMAIL_CLIENT_ID", cid), ("GMAIL_CLIENT_SECRET", csec), ("GMAIL_REFRESH_TOKEN", rtok)] if not v]
-        raise RuntimeError(f"Missing Gmail env vars: {', '.join(missing)}")
+        missing = [k for k, v in [("GMAIL_CLIENT_ID", cid), ("GMAIL_CLIENT_SECRET", csec), ("refresh_token", rtok)] if not v]
+        raise RuntimeError(f"Missing Gmail credentials: {', '.join(missing)}")
     r = requests.post(_GMAIL_TOKEN_URL, data={
         "client_id":     cid,
         "client_secret": csec,
@@ -89,8 +91,8 @@ def _gmail_access_token() -> str:
     return rj["access_token"]
 
 
-def _gmail_get(path: str, params: dict = None) -> dict:
-    token = _gmail_access_token()
+def _gmail_get(path: str, params: dict = None, refresh_token: str = None) -> dict:
+    token = _gmail_access_token(refresh_token)
     r = requests.get(
         f"{_GMAIL_API_BASE}/{path}",
         headers={"Authorization": f"Bearer {token}"},
@@ -446,13 +448,10 @@ def _get_this_week_events(from_number: str) -> list[dict]:
 def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list = None) -> dict:
     """
     For every active school profile (optionally filtered to profile_ids),
-    fetch emails from school senders, parse events, and store.
-    force=True deletes existing events for each email before re-parsing.
+    fetch emails from school senders using each parent's own Gmail token.
+    force=True deletes existing events before re-parsing.
     Returns summary dict.
     """
-    if not os.environ.get("GMAIL_REFRESH_TOKEN"):
-        return {"error": "GMAIL_REFRESH_TOKEN not set"}
-
     profiles = _get_profiles()
     if profile_ids:
         profiles = [p for p in profiles if p["id"] in set(profile_ids)]
@@ -460,7 +459,6 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
         return {"profiles": 0, "emails": 0, "events": 0}
 
     if force:
-        # Wipe all events and rebuild clean from the Gmail window
         for p in profiles:
             try:
                 lib._sb().table("school_events").delete() \
@@ -469,7 +467,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
             except Exception as e:
                 print(f"[school] clear error: {e}")
 
-    # Group profiles by from_number so we only fetch Gmail once per parent
+    # Group profiles by from_number — same parent = same Gmail account
     by_parent: dict[str, list] = {}
     for p in profiles:
         by_parent.setdefault(p["from_number"], []).append(p)
@@ -477,6 +475,15 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
     total_emails = total_events = 0
 
     for from_number, parent_profiles in by_parent.items():
+        # Use this parent's stored Gmail refresh token; fall back to env var for legacy
+        gmail_token = next(
+            (p.get("gmail_refresh_token") for p in parent_profiles if p.get("gmail_refresh_token")),
+            os.environ.get("GMAIL_REFRESH_TOKEN", "")
+        )
+        if not gmail_token:
+            print(f"[school] No Gmail token for {from_number}, skipping — needs OAuth")
+            continue
+
         # Collect all sender emails across this parent's schools
         all_senders: list[str] = []
         for p in parent_profiles:
@@ -487,7 +494,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
 
         query = _build_gmail_query(all_senders, days_back=days_back)
         try:
-            res = _gmail_get("messages", {"q": query, "maxResults": 50})
+            res = _gmail_get("messages", {"q": query, "maxResults": 50}, refresh_token=gmail_token)
         except Exception as e:
             print(f"[school] Gmail list error for {from_number}: {e}")
             continue
@@ -498,7 +505,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
         for stub in msg_stubs:
             msg_id = stub["id"]
             try:
-                msg = _gmail_get(f"messages/{msg_id}", {"format": "full"})
+                msg = _gmail_get(f"messages/{msg_id}", {"format": "full"}, refresh_token=gmail_token)
             except Exception as e:
                 print(f"[school] Gmail fetch error {msg_id}: {e}")
                 continue

@@ -4982,6 +4982,63 @@ def school_signup_page():
     return render_template("school_signup.html", prefill_wa=prefill_wa)
 
 
+_SCHOOL_OAUTH_REDIRECT = "https://miru.humanagency.co/school/oauth/callback"
+_SCHOOL_OAUTH_SCOPES   = "https://www.googleapis.com/auth/gmail.readonly"
+
+def _school_oauth_url(profile_id: str) -> str:
+    import urllib.parse
+    params = {
+        "client_id":     os.environ.get("GMAIL_CLIENT_ID", ""),
+        "redirect_uri":  _SCHOOL_OAUTH_REDIRECT,
+        "response_type": "code",
+        "scope":         _SCHOOL_OAUTH_SCOPES,
+        "access_type":   "offline",
+        "prompt":        "consent",
+        "state":         profile_id,
+    }
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+
+
+@app.route("/school/oauth/callback")
+def school_oauth_callback():
+    code       = request.args.get("code", "")
+    profile_id = request.args.get("state", "")
+    error      = request.args.get("error", "")
+
+    if error or not code or not profile_id:
+        return redirect("/school?oauth_error=1")
+
+    r = requests.post("https://oauth2.googleapis.com/token", data={
+        "code":          code,
+        "client_id":     os.environ.get("GMAIL_CLIENT_ID", ""),
+        "client_secret": os.environ.get("GMAIL_CLIENT_SECRET", ""),
+        "redirect_uri":  _SCHOOL_OAUTH_REDIRECT,
+        "grant_type":    "authorization_code",
+    }, timeout=10)
+    tokens = r.json()
+    refresh_token = tokens.get("refresh_token", "")
+
+    if not refresh_token:
+        return redirect("/school?oauth_error=2")
+
+    try:
+        lib._sb().table("school_profiles").update(
+            {"gmail_refresh_token": refresh_token}
+        ).eq("id", profile_id).execute()
+    except Exception as e:
+        print(f"[school oauth] db error: {e}")
+        return redirect("/school?oauth_error=3")
+
+    import threading
+    threading.Thread(
+        target=school_service.poll_all_profiles,
+        kwargs={"days_back": 30, "force": False, "profile_ids": [profile_id]},
+        daemon=True,
+    ).start()
+
+    return redirect("/?screen=school&oauth=success")
+
+
 @app.route("/api/school/lookup")
 def school_lookup():
     name = request.args.get("name", "").strip()
@@ -5022,7 +5079,7 @@ def school_signup_api():
     from_number = "whatsapp:" + digits
 
     try:
-        lib._sb().table("school_profiles").insert({
+        result = lib._sb().table("school_profiles").insert({
             "from_number":    from_number,
             "child_name":     child,
             "school_name":    school,
@@ -5034,18 +5091,12 @@ def school_signup_api():
             "class_wa_group": data.get("class_wa_group", ""),
             "sender_emails":  emails,
         }).execute()
+        profile_id = (result.data or [{}])[0].get("id", "")
     except Exception as e:
         print(f"[school signup] db error: {e}")
         return jsonify({"error": f"Could not save profile: {e}"}), 500
 
-    # Kick off background poll (picks up the newly inserted profile)
-    threading.Thread(
-        target=school_service.poll_all_profiles,
-        kwargs={"days_back": 30},
-        daemon=True,
-    ).start()
-
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "profile_id": profile_id, "oauth_url": _school_oauth_url(profile_id)})
 
 
 @app.route("/api/school/poll")
