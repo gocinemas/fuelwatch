@@ -5067,10 +5067,27 @@ def school_poll():
     return jsonify({"status": "started", "days_back": days_back, "force": force})
 
 
+def _get_school_wa():
+    """Return (wa_number, err_response). Reads X-School-WA header; validates it
+    exists in school_profiles so random numbers are rejected."""
+    wa = (request.headers.get("X-School-WA") or "").strip()
+    if not wa:
+        return None, (jsonify({"error": "WA number required", "auth": True}), 401)
+    try:
+        rows = (lib._sb().table("school_profiles")
+                .select("id").eq("wa_number", wa).eq("active", True)
+                .limit(1).execute().data or [])
+    except Exception:
+        rows = []
+    if not rows:
+        return None, (jsonify({"error": "No account found for this number", "auth": True}), 401)
+    return wa, None
+
+
 @app.route("/api/school/events")
 def api_school_events():
-    """Return school events for the web dashboard. PIN protected."""
-    err = _check_library_pin()
+    """Return school events for the requesting parent (scoped by WA number)."""
+    wa, err = _get_school_wa()
     if err:
         return err
     days_ahead = int(request.args.get("days", 30))
@@ -5080,8 +5097,19 @@ def api_school_events():
     past    = (date.today() - timedelta(days=days_back)).isoformat()
     horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
     try:
+        profiles = (lib._sb().table("school_profiles")
+                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group")
+                    .eq("wa_number", wa).eq("active", True).execute().data or [])
+        allowed_ids = {p["id"] for p in profiles}
+        if not allowed_ids:
+            return jsonify({"events": [], "profiles": []})
+
         def _add_profile_filter(q):
-            return q.eq("profile_id", profile_id) if profile_id else q
+            if profile_id and profile_id in allowed_ids:
+                return q.eq("profile_id", profile_id)
+            # Filter to only this parent's profiles
+            return q.in_("profile_id", list(allowed_ids))
+
         dated = (_add_profile_filter(
                     lib._sb().table("school_events").select("*")
                     .gte("event_date", past).lte("event_date", horizon))
@@ -5090,9 +5118,6 @@ def api_school_events():
                     lib._sb().table("school_events").select("*")
                     .is_("event_date", "null").gte("created_at", past))
                    .order("created_at", desc=True).execute().data or [])
-        profiles = (lib._sb().table("school_profiles")
-                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group")
-                    .eq("active", True).execute().data or [])
         return jsonify({"events": dated + undated, "profiles": profiles})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -5100,9 +5125,8 @@ def api_school_events():
 
 @app.route("/api/school/dedup", methods=["POST"])
 def api_school_dedup():
-    """Remove fuzzy duplicate school events (same date + overlapping title words).
-    PIN protected. Returns count of deleted records."""
-    err = _check_library_pin()
+    """Remove fuzzy duplicate school events scoped to requesting parent's WA number."""
+    wa, err = _get_school_wa()
     if err:
         return err
     import re as _re
@@ -5115,17 +5139,23 @@ def api_school_dedup():
                 if len(w) > 2 and w not in _stops]
 
     def _overlap(a, b):
-        wa, wbArr = set(_words(a)), _words(b)
-        if not wa and not wbArr:
+        wa2, wbArr = set(_words(a)), _words(b)
+        if not wa2 and not wbArr:
             return 0
-        common = sum(1 for w in wbArr if w in wa)
-        return common / max(len(wa), len(wbArr), 1)
+        common = sum(1 for w in wbArr if w in wa2)
+        return common / max(len(wa2), len(wbArr), 1)
 
     def _richness(e):
         return (200 if e.get("action_needed") else 0) + len(e.get("description") or "") + len(e.get("action_needed") or "")
 
     try:
-        all_events = (lib._sb().table("school_events").select("*").execute().data or [])
+        profiles = (lib._sb().table("school_profiles")
+                    .select("id").eq("wa_number", wa).eq("active", True).execute().data or [])
+        allowed_ids = [p["id"] for p in profiles]
+        if not allowed_ids:
+            return jsonify({"deleted": 0, "ids": []})
+        all_events = (lib._sb().table("school_events").select("*")
+                      .in_("profile_id", allowed_ids).execute().data or [])
         to_delete = []
 
         # Group by profile_id + event_date, then fuzzy-dedup within each group
@@ -5160,6 +5190,28 @@ def api_school_dedup():
                 lib._sb().table("school_events").delete().eq("id", _id).execute()
 
         return jsonify({"deleted": len(to_delete), "ids": to_delete})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/school/fetch-now", methods=["POST"])
+def api_school_fetch_now():
+    """Manually trigger email fetch for the requesting parent's profiles."""
+    wa, err = _get_school_wa()
+    if err:
+        return err
+    try:
+        profiles = (lib._sb().table("school_profiles")
+                    .select("*").eq("wa_number", wa).eq("active", True).execute().data or [])
+        if not profiles:
+            return jsonify({"error": "No profiles found"}), 404
+        import threading
+        threading.Thread(
+            target=school_service.poll_all_profiles,
+            kwargs={"days_back": 30, "force": True, "profile_ids": [p["id"] for p in profiles]},
+            daemon=True,
+        ).start()
+        return jsonify({"status": "started", "profiles": len(profiles)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

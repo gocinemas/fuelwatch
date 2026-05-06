@@ -443,18 +443,19 @@ def _get_this_week_events(from_number: str) -> list[dict]:
 
 # ── Email polling ──────────────────────────────────────────────────────────────
 
-def poll_all_profiles(days_back: int = 7, force: bool = False) -> dict:
+def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list = None) -> dict:
     """
-    For every active school profile, fetch emails from school senders,
-    parse events, and store. Call this on a schedule (e.g. every 6h).
-    force=True deletes existing events for each email before re-parsing,
-    so previously rate-limited or truncated emails are fully reprocessed.
+    For every active school profile (optionally filtered to profile_ids),
+    fetch emails from school senders, parse events, and store.
+    force=True deletes existing events for each email before re-parsing.
     Returns summary dict.
     """
     if not os.environ.get("GMAIL_REFRESH_TOKEN"):
         return {"error": "GMAIL_REFRESH_TOKEN not set"}
 
     profiles = _get_profiles()
+    if profile_ids:
+        profiles = [p for p in profiles if p["id"] in set(profile_ids)]
     if not profiles:
         return {"profiles": 0, "emails": 0, "events": 0}
 

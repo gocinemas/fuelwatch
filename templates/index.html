@@ -5738,19 +5738,20 @@ _bkBadge();
 <!-- ── MY SAVES SCREEN ── -->
 <!-- ═══════════════════════════════════════════════════════ SCHOOL SCREEN -->
 <div id="screen-school" class="screen pt-5">
-  <!-- PIN lock -->
+  <!-- WA number login -->
   <div id="school-pin-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
-    <div style="font-size:40px;margin-bottom:16px">🔒</div>
+    <div style="font-size:40px;margin-bottom:16px">🏫</div>
     <div style="font-weight:700;font-size:17px;margin-bottom:6px">School Comms</div>
-    <div style="color:#9ca3af;font-size:13px;margin-bottom:20px">Enter your password to continue</div>
-    <input id="school-pin-input" type="password" placeholder="Password"
-      style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 16px;font-size:15px;width:200px;text-align:center;outline:none;margin-bottom:10px"
+    <div style="color:#9ca3af;font-size:13px;margin-bottom:20px">Enter your WhatsApp number to view your children's school updates</div>
+    <input id="school-pin-input" type="tel" placeholder="+447700900000"
+      style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 16px;font-size:15px;width:220px;text-align:center;outline:none;margin-bottom:10px"
       onkeydown="if(event.key==='Enter')schoolSubmitPin()" />
-    <div id="school-pin-error" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">Wrong password</div>
+    <div id="school-pin-error" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">No account found for that number</div>
     <button onclick="schoolSubmitPin()"
       style="background:#1f2937;color:#fff;border:none;border-radius:12px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer">
-      Unlock
+      Continue →
     </button>
+    <div style="margin-top:14px;font-size:12px;color:#9ca3af">Don't have an account? <a href="/school" style="color:#f59e0b;font-weight:600">Set up school comms</a></div>
   </div>
 
   <!-- Main view -->
@@ -5763,6 +5764,7 @@ _bkBadge();
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div id="school-profile-card" style="font-size:13px;color:#6b7280"></div>
       <div style="display:flex;gap:8px;align-items:center">
+        <button id="school-fetch-btn" onclick="schoolFetchNow()" title="Pull latest emails from school" style="font-size:12px;color:#059669;background:none;border:1px solid #bbf7d0;border-radius:8px;cursor:pointer;padding:3px 8px">fetch emails</button>
         <button id="school-dedup-btn" onclick="schoolDedup()" title="Remove duplicate events" style="font-size:12px;color:#9ca3af;background:none;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;padding:3px 8px">dedup</button>
         <button onclick="schoolLoad()" style="font-size:16px;color:#9ca3af;background:none;border:none;cursor:pointer;padding:4px">↻</button>
       </div>
@@ -5953,8 +5955,8 @@ _bkBadge();
     { types: ["_recent_activity"],      header: "📋 Recent",               color: "#f1f5f9", border: "#94a3b8", pastOk: true  },
   ];
 
-  function _schoolPin() { return sessionStorage.getItem("lib_pin") || ""; }
-  function _schoolHeaders() { const p = _schoolPin(); return p ? {"X-Library-PIN": p} : {}; }
+  function _schoolWA() { return sessionStorage.getItem("school_wa") || ""; }
+  function _schoolHeaders() { const wa = _schoolWA(); return wa ? {"X-School-WA": wa} : {}; }
 
   function _schoolShowLock() {
     document.getElementById("school-pin-screen").style.display = "flex";
@@ -5964,18 +5966,25 @@ _bkBadge();
   function _schoolShowMain() {
     document.getElementById("school-pin-screen").style.display = "none";
     document.getElementById("school-main").style.display = "block";
-    // school-home-card stays hidden — access only via ?screen=school
     _schoolActiveProfileId = "";
     schoolLoad();
   }
   function schoolCheckPin() {
-    if (_schoolPin()) _schoolShowMain();
+    if (_schoolWA()) _schoolShowMain();
     else _schoolShowLock();
   }
-  window.schoolSubmitPin = function() {
-    const pin = document.getElementById("school-pin-input").value.trim();
-    if (!pin) return;
-    sessionStorage.setItem("lib_pin", pin);
+  window.schoolSubmitPin = async function() {
+    const wa = document.getElementById("school-pin-input").value.trim();
+    if (!wa) return;
+    // Validate: try to load events — 401 means number not found
+    try {
+      const r = await fetch("/api/school/events?days=1&back=1", { headers: {"X-School-WA": wa} });
+      if (r.status === 401) {
+        document.getElementById("school-pin-error").style.display = "block";
+        return;
+      }
+    } catch(e) { /* network error — let it through */ }
+    sessionStorage.setItem("school_wa", wa);
     document.getElementById("school-pin-error").style.display = "none";
     _schoolShowMain();
   };
@@ -6047,6 +6056,25 @@ _bkBadge();
       _schoolRenderEvents(filtered);
     } catch(e) {
       document.getElementById("school-loading").textContent = "Error loading events.";
+    }
+  };
+
+  window.schoolFetchNow = async function() {
+    const btn = document.getElementById("school-fetch-btn");
+    btn.textContent = "fetching…";
+    btn.disabled = true;
+    try {
+      const r = await fetch("/api/school/fetch-now", { method: "POST", headers: _schoolHeaders() });
+      if (r.status === 401) { _schoolShowLock(); return; }
+      const d = await r.json();
+      if (d.error) { btn.textContent = "error"; return; }
+      btn.textContent = `✓ started`;
+      // Auto-reload after 8s to pick up new events
+      setTimeout(() => schoolLoad(), 8000);
+    } catch(e) {
+      btn.textContent = "error";
+    } finally {
+      setTimeout(() => { btn.textContent = "fetch emails"; btn.disabled = false; }, 12000);
     }
   };
 
