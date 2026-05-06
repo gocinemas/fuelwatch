@@ -5085,35 +5085,34 @@ def school_lookup():
 
 @app.route("/api/school/signup", methods=["POST"])
 def school_signup_api():
-    import threading, re
-    data = request.get_json(force=True) or {}
-
-    wa_raw = data.get("wa_number", "").strip()
-    child  = data.get("child_name", "").strip()
-    school = data.get("school_name", "").strip()
-    emails = data.get("sender_emails", [])
-
-    if not wa_raw:
-        return jsonify({"error": "WhatsApp number is required"}), 400
-    if not child:
-        return jsonify({"error": "Child name is required"}), 400
-    if not school:
-        return jsonify({"error": "School name is required"}), 400
-    if not emails:
-        return jsonify({"error": "At least one school email is required"}), 400
-
-    # Normalise WhatsApp number to whatsapp:+44... format
-    digits = re.sub(r"[^\d+]", "", wa_raw)
-    if not digits.startswith("+"):
-        if digits.startswith("07"):
-            digits = "+44" + digits[1:]
-        elif not digits.startswith("44"):
-            digits = "+" + digits
-        else:
-            digits = "+" + digits
-    from_number = "whatsapp:" + digits
-
+    import re as _re2
     try:
+        data = request.get_json(force=True, silent=True) or {}
+
+        wa_raw = data.get("wa_number", "").strip()
+        child  = data.get("child_name", "").strip()
+        school = data.get("school_name", "").strip()
+        emails = data.get("sender_emails", [])
+
+        if not wa_raw:
+            return jsonify({"error": "WhatsApp number is required"}), 400
+        if not child:
+            return jsonify({"error": "Child name is required"}), 400
+        if not school:
+            return jsonify({"error": "School name is required"}), 400
+        if not emails:
+            return jsonify({"error": "At least one school email is required"}), 400
+
+        digits = _re2.sub(r"[^\d+]", "", wa_raw)
+        if not digits.startswith("+"):
+            if digits.startswith("07"):
+                digits = "+44" + digits[1:]
+            elif not digits.startswith("44"):
+                digits = "+" + digits
+            else:
+                digits = "+" + digits
+        from_number = "whatsapp:" + digits
+
         result = lib._sb().table("school_profiles").insert({
             "from_number":    from_number,
             "child_name":     child,
@@ -5127,11 +5126,15 @@ def school_signup_api():
             "sender_emails":  emails,
         }).execute()
         profile_id = (result.data or [{}])[0].get("id", "")
-    except Exception as e:
-        print(f"[school signup] db error: {e}")
-        return jsonify({"error": f"Could not save profile: {e}"}), 500
+        print(f"[school signup] created profile {profile_id} for {from_number}")
 
-    return jsonify({"ok": True, "profile_id": profile_id, "oauth_url": _school_oauth_url(profile_id)})
+        oauth_url = _school_oauth_url(profile_id)
+        return jsonify({"ok": True, "profile_id": profile_id, "oauth_url": oauth_url})
+
+    except Exception as e:
+        print(f"[school signup] unhandled error: {e}")
+        import traceback; traceback.print_exc()
+        return jsonify({"error": f"Signup failed: {e}"}), 500
 
 
 @app.route("/api/school/poll")
