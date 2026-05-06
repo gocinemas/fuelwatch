@@ -5098,6 +5098,72 @@ def api_school_events():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/school/dedup", methods=["POST"])
+def api_school_dedup():
+    """Remove fuzzy duplicate school events (same date + overlapping title words).
+    PIN protected. Returns count of deleted records."""
+    err = _check_library_pin()
+    if err:
+        return err
+    import re as _re
+
+    _stops = {"a","an","the","and","or","for","to","of","in","on","at","is","with",
+              "about","from","your","session","drop","first","parent","support"}
+
+    def _words(t):
+        return [w for w in _re.sub(r"[^a-z0-9]", " ", (t or "").lower()).split()
+                if len(w) > 2 and w not in _stops]
+
+    def _overlap(a, b):
+        wa, wbArr = set(_words(a)), _words(b)
+        if not wa and not wbArr:
+            return 0
+        common = sum(1 for w in wbArr if w in wa)
+        return common / max(len(wa), len(wbArr), 1)
+
+    def _richness(e):
+        return (200 if e.get("action_needed") else 0) + len(e.get("description") or "") + len(e.get("action_needed") or "")
+
+    try:
+        all_events = (lib._sb().table("school_events").select("*").execute().data or [])
+        to_delete = []
+
+        # Group by profile_id + event_date, then fuzzy-dedup within each group
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for e in all_events:
+            key = (e.get("profile_id", ""), e.get("event_date") or "__undated__")
+            groups[key].append(e)
+
+        for (pid, dt), evts in groups.items():
+            if dt == "__undated__" or len(evts) < 2:
+                continue
+            used = set()
+            for i in range(len(evts)):
+                if i in used:
+                    continue
+                cluster = [evts[i]]
+                for j in range(i + 1, len(evts)):
+                    if j in used:
+                        continue
+                    if _overlap(evts[i]["event_title"], evts[j]["event_title"]) >= 0.35:
+                        cluster.append(evts[j])
+                        used.add(j)
+                if len(cluster) > 1:
+                    cluster.sort(key=_richness, reverse=True)
+                    for dup in cluster[1:]:
+                        to_delete.append(dup["id"])
+                used.add(i)
+
+        if to_delete:
+            for _id in to_delete:
+                lib._sb().table("school_events").delete().eq("id", _id).execute()
+
+        return jsonify({"deleted": len(to_delete), "ids": to_delete})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/digest")
 def school_digest():
     """Send weekly school digest to all parents.
