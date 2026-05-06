@@ -1009,6 +1009,12 @@
     <!-- ── BRAND INTEL SCREEN ── -->
     <div id="screen-brand" class="screen pt-5">
 
+      <div style="display:flex;gap:6px;margin-bottom:16px">
+        <button id="blookup-tab-company-b" onclick="blookupTab('company')"
+          style="padding:8px 16px;border-radius:10px;border:1.5px solid var(--border,#e5e7eb);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text,#1a1a2e)">🏢 Company</button>
+        <button id="blookup-tab-brand-b" onclick="blookupTab('brand')"
+          style="padding:8px 16px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--text,#1a1a2e);color:var(--bg,#fff)">🏷️ Brand</button>
+      </div>
       <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Brand Intel</div>
       <div style="font-size:13px;color:var(--subtle);margin-bottom:18px">Timeline, rivals, campaigns & more</div>
 
@@ -5108,6 +5114,13 @@ _bkBadge();
 <!-- ===================== FINDER SCREEN ===================== -->
 <div id="screen-finder" class="screen" style="padding:6px 16px 32px;max-width:860px;margin:0 auto">
 
+  <div style="display:flex;gap:6px;margin-bottom:14px">
+    <button id="loctab-places-f" onclick="locTab('places')"
+      style="padding:8px 16px;border-radius:10px;border:1.5px solid var(--border,#e5e7eb);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text,#1a1a2e)">📍 Discover</button>
+    <button id="loctab-finder-f" onclick="locTab('finder')"
+      style="padding:8px 16px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--text,#1a1a2e);color:var(--bg,#fff)">🔍 Find a service</button>
+  </div>
+
   <!-- Title -->
   <div style="margin-bottom:10px">
     <div style="font-size:20px;font-weight:800;color:#111827;letter-spacing:-.5px">Local Finder</div>
@@ -6725,22 +6738,24 @@ _bkBadge();
   window.blookupTab = function(tab) {
     const active = {background:'var(--text,#1a1a2e)',color:'var(--bg,#fff)',border:'none'};
     const inactive = {background:'transparent',color:'var(--text,#1a1a2e)',border:'1.5px solid var(--border,#e5e7eb)'};
-    const co = document.getElementById('blookup-tab-company');
-    const br = document.getElementById('blookup-tab-brand');
-    if (!co || !br) { showScreen(tab === 'brand' ? 'brand' : 'company'); return; }
-    Object.assign(co.style, tab === 'company' ? active : inactive);
-    Object.assign(br.style, tab === 'brand' ? active : inactive);
+    ['blookup-tab-company','blookup-tab-company-b'].forEach(id => {
+      const el = document.getElementById(id); if (el) Object.assign(el.style, tab==='company' ? active : inactive);
+    });
+    ['blookup-tab-brand','blookup-tab-brand-b'].forEach(id => {
+      const el = document.getElementById(id); if (el) Object.assign(el.style, tab==='brand' ? active : inactive);
+    });
     showScreen(tab === 'brand' ? 'brand' : 'company');
   };
 
   window.locTab = function(tab) {
     const active = {background:'var(--text,#1a1a2e)',color:'var(--bg,#fff)',border:'none'};
     const inactive = {background:'transparent',color:'var(--text,#1a1a2e)',border:'1.5px solid var(--border,#e5e7eb)'};
-    const pl = document.getElementById('loctab-places');
-    const fi = document.getElementById('loctab-finder');
-    if (!pl || !fi) { showScreen(tab === 'finder' ? 'finder' : 'places'); return; }
-    Object.assign(pl.style, tab === 'places' ? active : inactive);
-    Object.assign(fi.style, tab === 'finder' ? active : inactive);
+    ['loctab-places','loctab-places-f'].forEach(id => {
+      const el = document.getElementById(id); if (el) Object.assign(el.style, tab==='places' ? active : inactive);
+    });
+    ['loctab-finder','loctab-finder-f'].forEach(id => {
+      const el = document.getElementById(id); if (el) Object.assign(el.style, tab==='finder' ? active : inactive);
+    });
     showScreen(tab === 'finder' ? 'finder' : 'places');
   };
 })();
