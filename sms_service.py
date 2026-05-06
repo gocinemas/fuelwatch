@@ -5067,15 +5067,32 @@ def school_poll():
     return jsonify({"status": "started", "days_back": days_back, "force": force})
 
 
+def _normalise_from_number(raw: str) -> str:
+    """Convert user-entered number (+447...) to whatsapp:+447... stored format."""
+    import re as _re
+    digits = _re.sub(r"[^\d+]", "", raw.strip())
+    if not digits.startswith("+"):
+        if digits.startswith("07"):
+            digits = "+44" + digits[1:]
+        elif digits.startswith("44"):
+            digits = "+" + digits
+        else:
+            digits = "+" + digits
+    if digits.startswith("whatsapp:"):
+        return digits
+    return "whatsapp:" + digits
+
+
 def _get_school_wa():
-    """Return (wa_number, err_response). Reads X-School-WA header; validates it
-    exists in school_profiles so random numbers are rejected."""
-    wa = (request.headers.get("X-School-WA") or "").strip()
-    if not wa:
+    """Return (from_number, err_response). Reads X-School-WA header, normalises
+    to whatsapp:+... format, validates it exists in school_profiles."""
+    raw = (request.headers.get("X-School-WA") or "").strip()
+    if not raw:
         return None, (jsonify({"error": "WA number required", "auth": True}), 401)
+    wa = _normalise_from_number(raw)
     try:
         rows = (lib._sb().table("school_profiles")
-                .select("id").eq("wa_number", wa).eq("active", True)
+                .select("id").eq("from_number", wa).eq("active", True)
                 .limit(1).execute().data or [])
     except Exception:
         rows = []
@@ -5099,7 +5116,7 @@ def api_school_events():
     try:
         profiles = (lib._sb().table("school_profiles")
                     .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group")
-                    .eq("wa_number", wa).eq("active", True).execute().data or [])
+                    .eq("from_number", wa).eq("active", True).execute().data or [])
         allowed_ids = {p["id"] for p in profiles}
         if not allowed_ids:
             return jsonify({"events": [], "profiles": []})
@@ -5150,7 +5167,7 @@ def api_school_dedup():
 
     try:
         profiles = (lib._sb().table("school_profiles")
-                    .select("id").eq("wa_number", wa).eq("active", True).execute().data or [])
+                    .select("id").eq("from_number", wa).eq("active", True).execute().data or [])
         allowed_ids = [p["id"] for p in profiles]
         if not allowed_ids:
             return jsonify({"deleted": 0, "ids": []})
@@ -5202,7 +5219,7 @@ def api_school_fetch_now():
         return err
     try:
         profiles = (lib._sb().table("school_profiles")
-                    .select("*").eq("wa_number", wa).eq("active", True).execute().data or [])
+                    .select("*").eq("from_number", wa).eq("active", True).execute().data or [])
         if not profiles:
             return jsonify({"error": "No profiles found"}), 404
         import threading
