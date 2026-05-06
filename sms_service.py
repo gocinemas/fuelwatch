@@ -40,6 +40,15 @@ import school_service
 
 app = Flask(__name__)
 
+@app.errorhandler(500)
+def handle_500(e):
+    import traceback
+    tb = traceback.format_exc()
+    print(f"[500] {tb}")
+    if request.path.startswith("/api/"):
+        return jsonify({"error": str(e), "detail": tb[-500:]}), 500
+    return f"<pre>500 Error:\n{tb}</pre>", 500
+
 # Initialise analytics DB on startup
 analytics.init_db()
 
