@@ -463,15 +463,13 @@ def api_yt_info():
     ))
     keywords = " ".join(words[:12])
 
-        return jsonify({
-            "title":    title,
-            "channel":  channel,
-            "desc":     desc[:1000],
-            "duration": duration_str,
-            "keywords": keywords,
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "title":    title,
+        "channel":  channel,
+        "desc":     desc[:1000],
+        "duration": duration_str,
+        "keywords": keywords,
+    })
 
 @app.route("/api/ai/summarize", methods=["POST", "OPTIONS"])
 def api_ai_summarize():
