@@ -5286,7 +5286,7 @@ def api_school_fetch_now():
         import threading
         threading.Thread(
             target=school_service.poll_all_profiles,
-            kwargs={"days_back": 30, "force": True, "profile_ids": [p["id"] for p in profiles]},
+            kwargs={"days_back": 30, "force": False, "profile_ids": [p["id"] for p in profiles]},
             daemon=True,
         ).start()
         return jsonify({"status": "started", "profiles": len(profiles)})
