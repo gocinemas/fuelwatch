@@ -40,6 +40,15 @@ import school_service
 
 app = Flask(__name__)
 
+@app.after_request
+def _cors(response):
+    origin = request.headers.get("Origin", "")
+    if origin in ("https://ai.humanagency.co", "http://localhost:8080"):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    return response
+
 @app.errorhandler(500)
 def handle_500(e):
     import traceback
@@ -388,6 +397,39 @@ def index():
 @app.route("/privacy")
 def privacy_page():
     return render_template("privacy.html")
+
+
+@app.route("/api/ai/summarize", methods=["POST", "OPTIONS"])
+def api_ai_summarize():
+    if request.method == "OPTIONS":
+        return "", 204
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()[:4000]
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "Groq not configured"}), 500
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [
+                    {"role": "system", "content": "You write concise, clear 2-sentence summaries of video/podcast descriptions for a resource library. Plain text only, no markdown, no fluff."},
+                    {"role": "user", "content": f"Summarise this in 2 sentences:\n\n{text}"}
+                ],
+                "max_tokens": 120,
+                "temperature": 0.3,
+            },
+            timeout=15,
+        )
+        result = r.json()
+        summary = result["choices"][0]["message"]["content"].strip()
+        return jsonify({"summary": summary})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/newsletter/subscribe", methods=["POST"])
