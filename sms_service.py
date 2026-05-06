@@ -399,6 +399,72 @@ def privacy_page():
     return render_template("privacy.html")
 
 
+@app.route("/api/yt/info")
+def api_yt_info():
+    """Fetch YouTube video metadata server-side to avoid CORS issues."""
+    vid = request.args.get("id", "").strip()
+    if not vid or len(vid) > 20:
+        return jsonify({"error": "Invalid video ID"}), 400
+    try:
+        import re as _re
+        # oEmbed for title + channel (always works, no key needed)
+        oe = requests.get(
+            f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={vid}&format=json",
+            timeout=8
+        )
+        oe.raise_for_status()
+        oe_data = oe.json()
+        title   = oe_data.get("title", "")
+        channel = oe_data.get("author_name", "")
+
+        # Fetch YouTube page for description + duration
+        page = requests.get(
+            f"https://www.youtube.com/watch?v={vid}",
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1)"},
+            timeout=10
+        )
+        html = page.text
+
+        # Description from og:description meta tag
+        desc = ""
+        m = (_re.search(r'property="og:description"\s+content="([^"]+)"', html) or
+             _re.search(r'content="([^"]+)"\s+property="og:description"', html) or
+             _re.search(r'<meta name="description" content="([^"]+)"', html, _re.I))
+        if m:
+            desc = m.group(1)
+            for ent, ch in [("&#39;","'"),("&amp;","&"),("&quot;",'"'),("&#34;",'"'),("\\n","\n")]:
+                desc = desc.replace(ent, ch)
+
+        # Duration from lengthSeconds in ytInitialData
+        duration_str = ""
+        dm = _re.search(r'"lengthSeconds":"(\d+)"', html)
+        if dm:
+            secs = int(dm.group(1))
+            if secs > 0:
+                h, rem = divmod(secs, 3600)
+                m2, s2 = divmod(rem, 60)
+                if h:
+                    duration_str = f"{h}h {m2}min"
+                else:
+                    duration_str = f"{m2} min" if m2 else f"{s2}s"
+
+        # Auto keywords: title words + channel, lowercased, deduped
+        words = list(dict.fromkeys(
+            w.lower() for w in _re.sub(r"[^a-zA-Z0-9 ]", " ", title + " " + channel).split()
+            if len(w) > 2
+        ))
+        keywords = " ".join(words[:12])
+
+        return jsonify({
+            "title":    title,
+            "channel":  channel,
+            "desc":     desc[:1000],
+            "duration": duration_str,
+            "keywords": keywords,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/ai/summarize", methods=["POST", "OPTIONS"])
 def api_ai_summarize():
     if request.method == "OPTIONS":
