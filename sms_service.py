@@ -4985,10 +4985,16 @@ def school_signup_page():
 _SCHOOL_OAUTH_REDIRECT = "https://miru.humanagency.co/school/oauth/callback"
 _SCHOOL_OAUTH_SCOPES   = "https://www.googleapis.com/auth/gmail.readonly"
 
+def _web_client_id():
+    return os.environ.get("GMAIL_WEB_CLIENT_ID") or os.environ.get("GMAIL_CLIENT_ID", "")
+
+def _web_client_secret():
+    return os.environ.get("GMAIL_WEB_CLIENT_SECRET") or os.environ.get("GMAIL_CLIENT_SECRET", "")
+
 def _school_oauth_url(profile_id: str) -> str:
     import urllib.parse
     params = {
-        "client_id":     os.environ.get("GMAIL_CLIENT_ID", ""),
+        "client_id":     _web_client_id(),
         "redirect_uri":  _SCHOOL_OAUTH_REDIRECT,
         "response_type": "code",
         "scope":         _SCHOOL_OAUTH_SCOPES,
@@ -5010,8 +5016,8 @@ def school_oauth_callback():
 
     r = requests.post("https://oauth2.googleapis.com/token", data={
         "code":          code,
-        "client_id":     os.environ.get("GMAIL_CLIENT_ID", ""),
-        "client_secret": os.environ.get("GMAIL_CLIENT_SECRET", ""),
+        "client_id":     _web_client_id(),
+        "client_secret": _web_client_secret(),
         "redirect_uri":  _SCHOOL_OAUTH_REDIRECT,
         "grant_type":    "authorization_code",
     }, timeout=10)

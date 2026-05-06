@@ -71,12 +71,18 @@ _GMAIL_API_BASE  = "https://gmail.googleapis.com/gmail/v1/users/me"
 
 def _gmail_access_token(refresh_token: str = None) -> str:
     """Exchange refresh token for a short-lived access token.
-    Uses provided refresh_token, falling back to GMAIL_REFRESH_TOKEN env var."""
-    cid  = os.environ.get("GMAIL_CLIENT_ID", "")
-    csec = os.environ.get("GMAIL_CLIENT_SECRET", "")
+    Per-user tokens (from OAuth signup) use GMAIL_WEB_CLIENT_ID/SECRET.
+    The legacy env-var token uses GMAIL_CLIENT_ID/SECRET (desktop app)."""
     rtok = refresh_token or os.environ.get("GMAIL_REFRESH_TOKEN", "")
+    # Per-user tokens were issued by the web client; legacy token by desktop client
+    if refresh_token:
+        cid  = os.environ.get("GMAIL_WEB_CLIENT_ID")  or os.environ.get("GMAIL_CLIENT_ID", "")
+        csec = os.environ.get("GMAIL_WEB_CLIENT_SECRET") or os.environ.get("GMAIL_CLIENT_SECRET", "")
+    else:
+        cid  = os.environ.get("GMAIL_CLIENT_ID", "")
+        csec = os.environ.get("GMAIL_CLIENT_SECRET", "")
     if not all([cid, csec, rtok]):
-        missing = [k for k, v in [("GMAIL_CLIENT_ID", cid), ("GMAIL_CLIENT_SECRET", csec), ("refresh_token", rtok)] if not v]
+        missing = [k for k, v in [("client_id", cid), ("client_secret", csec), ("refresh_token", rtok)] if not v]
         raise RuntimeError(f"Missing Gmail credentials: {', '.join(missing)}")
     r = requests.post(_GMAIL_TOKEN_URL, data={
         "client_id":     cid,
