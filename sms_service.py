@@ -5036,20 +5036,25 @@ def school_oauth_callback():
     error      = request.args.get("error", "")
 
     if error or not code or not profile_id:
-        return redirect("/school?oauth_error=1")
+        return redirect("/?screen=school&oauth_error=1")
 
-    r = requests.post("https://oauth2.googleapis.com/token", data={
-        "code":          code,
-        "client_id":     _web_client_id(),
-        "client_secret": _web_client_secret(),
-        "redirect_uri":  _SCHOOL_OAUTH_REDIRECT,
-        "grant_type":    "authorization_code",
-    }, timeout=10)
-    tokens = r.json()
+    try:
+        r = requests.post("https://oauth2.googleapis.com/token", data={
+            "code":          code,
+            "client_id":     _web_client_id(),
+            "client_secret": _web_client_secret(),
+            "redirect_uri":  _SCHOOL_OAUTH_REDIRECT,
+            "grant_type":    "authorization_code",
+        }, timeout=15)
+        tokens = r.json()
+    except Exception as e:
+        print(f"[school oauth] token exchange error: {e}")
+        return redirect("/?screen=school&oauth_error=2")
+
     refresh_token = tokens.get("refresh_token", "")
-
     if not refresh_token:
-        return redirect("/school?oauth_error=2")
+        print(f"[school oauth] no refresh_token in response: {tokens}")
+        return redirect("/?screen=school&oauth_error=2")
 
     try:
         lib._sb().table("school_profiles").update(
@@ -5057,7 +5062,7 @@ def school_oauth_callback():
         ).eq("id", profile_id).execute()
     except Exception as e:
         print(f"[school oauth] db error: {e}")
-        return redirect("/school?oauth_error=3")
+        return redirect("/?screen=school&oauth_error=3")
 
     import threading
     threading.Thread(
