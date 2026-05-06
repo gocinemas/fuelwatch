@@ -40,14 +40,20 @@ import school_service
 
 app = Flask(__name__)
 
-@app.after_request
-def _cors(response):
+_CORS_ORIGINS = {"https://ai.humanagency.co", "http://ai.humanagency.co", "http://localhost:8080"}
+
+def _cors_headers(response):
     origin = request.headers.get("Origin", "")
-    if origin in ("https://ai.humanagency.co", "http://localhost:8080"):
-        response.headers["Access-Control-Allow-Origin"] = origin
+    if origin in _CORS_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"]  = origin
         response.headers["Access-Control-Allow-Headers"] = "Content-Type"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Max-Age"]       = "600"
     return response
+
+@app.after_request
+def _cors(response):
+    return _cors_headers(response)
 
 @app.errorhandler(500)
 def handle_500(e):
@@ -474,7 +480,8 @@ def api_yt_info():
 @app.route("/api/ai/summarize", methods=["POST", "OPTIONS"])
 def api_ai_summarize():
     if request.method == "OPTIONS":
-        return "", 204
+        resp = app.make_response(("", 204))
+        return _cors_headers(resp)
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()[:4000]
     if not text:
