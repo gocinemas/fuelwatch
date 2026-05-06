@@ -865,7 +865,7 @@
         </div>
 
         <!-- Polling station always visible -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+        <div id="elections-ps-section" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
             <div style="flex:1;min-width:0">
               <div style="font-size:11px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📍 Polling Station</div>
@@ -2483,35 +2483,36 @@
         document.getElementById("elections-error").classList.remove("hidden");
         return;
       }
-      if (!d.found || !d.candidates.length) {
-        document.getElementById("elections-none").classList.remove("hidden");
-        return;
-      }
+      const noElection = !d.found || !d.candidates.length;
       const dateStr = d.election_date ? new Date(d.election_date).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "7 May 2026";
-      document.getElementById("elections-ward").textContent = d.ward;
-      document.getElementById("elections-council").textContent = `${d.council} · ${dateStr}`;
+      document.getElementById("elections-ward").textContent = d.ward || d.postcode;
+      document.getElementById("elections-council").textContent = `${d.council || d.postcode}${noElection ? "" : " · " + dateStr}`;
       document.getElementById("elections-county").textContent = d.county ? `County: ${d.county}` : "";
 
-      // Polling station
-      const ps = d.polling_station;
-      const psLink = document.getElementById("elections-polling-link");
-      if (ps && !ps.not_available) {
-        document.getElementById("elections-ps-name").textContent = ps.name;
-        document.getElementById("elections-ps-addr").textContent = ps.address;
-        psLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ps.name + ', ' + ps.address)}`;
-        psLink.textContent = "Directions ↗";
-      } else if (ps && ps.not_available) {
-        document.getElementById("elections-ps-name").textContent = "Not yet uploaded by council";
-        const phoneNote = ps.phone ? ` · Call ${ps.phone}` : "";
-        document.getElementById("elections-ps-addr").textContent =
-          "Check your poll card when it arrives" + phoneNote;
-        psLink.href = d.polling_station_url;
-        psLink.textContent = "Check ↗";
-      } else {
-        document.getElementById("elections-ps-name").textContent = "Data not yet available";
-        document.getElementById("elections-ps-addr").textContent = "Check your poll card or wheredoivote.co.uk";
-        psLink.href = `https://wheredoivote.co.uk/postcode/${postcode.replace(/ /g,'')}/`;
-        psLink.textContent = "Check ↗";
+      // Polling station — hide when no local election
+      const psSect = document.getElementById("elections-ps-section");
+      psSect.style.display = noElection ? "none" : "";
+      if (!noElection) {
+        const ps = d.polling_station;
+        const psLink = document.getElementById("elections-polling-link");
+        if (ps && !ps.not_available) {
+          document.getElementById("elections-ps-name").textContent = ps.name;
+          document.getElementById("elections-ps-addr").textContent = ps.address;
+          psLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ps.name + ', ' + ps.address)}`;
+          psLink.textContent = "Directions ↗";
+        } else if (ps && ps.not_available) {
+          document.getElementById("elections-ps-name").textContent = "Not yet uploaded by council";
+          const phoneNote = ps.phone ? ` · Call ${ps.phone}` : "";
+          document.getElementById("elections-ps-addr").textContent =
+            "Check your poll card when it arrives" + phoneNote;
+          psLink.href = d.polling_station_url;
+          psLink.textContent = "Check ↗";
+        } else {
+          document.getElementById("elections-ps-name").textContent = "Data not yet available";
+          document.getElementById("elections-ps-addr").textContent = "Check your poll card or wheredoivote.co.uk";
+          psLink.href = `https://wheredoivote.co.uk/postcode/${postcode.replace(/ /g,'')}/`;
+          psLink.textContent = "Check ↗";
+        }
       }
 
       // Results section (2022 past + 2026 live)
@@ -2570,7 +2571,12 @@
       }
 
       // Candidates
-      document.getElementById("elections-candidates").innerHTML = d.candidates.map(c => {
+      document.getElementById("elections-candidates").innerHTML = noElection
+        ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 16px;text-align:center;color:var(--subtle);font-size:13px">
+            No election candidates on record for this area.<br>
+            <span style="font-size:12px;display:block;margin-top:6px">${d.county ? `<strong>${d.county}</strong> · ` : ""}${d.council || ""} may not have local elections on ${dateStr}.</span>
+          </div>`
+        : d.candidates.map(c => {
         const col = _partyStyle(c.party);
         const links = [];
         if (c.homepage) links.push(`<a href="${c.homepage}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500">Website ↗</a>`);
@@ -2595,27 +2601,32 @@
       }).join("");
 
       // Party manifestos — one card per unique party present
-      const partiesSeen = new Set();
-      const manifestoCards = [];
-      for (const c of d.candidates) {
-        if (partiesSeen.has(c.party)) continue;
-        partiesSeen.add(c.party);
-        const col = _partyStyle(c.party);
-        const info = _partyInfo(c.party);
-        if (!info) continue;
-        manifestoCards.push(`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px">
-          <div style="width:4px;min-height:36px;border-radius:4px;background:${col.bg};flex-shrink:0;margin-top:2px"></div>
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:4px">
-              ${c.party}
-              ${info.url ? `<a href="${info.url}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500;margin-left:8px">Website ↗</a>` : ""}
+      if (noElection) {
+        document.getElementById("elections-manifestos").innerHTML =
+          `<div style="font-size:13px;color:var(--subtle);text-align:center;padding:20px">No parties on record for this area.</div>`;
+      } else {
+        const partiesSeen = new Set();
+        const manifestoCards = [];
+        for (const c of d.candidates) {
+          if (partiesSeen.has(c.party)) continue;
+          partiesSeen.add(c.party);
+          const col = _partyStyle(c.party);
+          const info = _partyInfo(c.party);
+          if (!info) continue;
+          manifestoCards.push(`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px">
+            <div style="width:4px;min-height:36px;border-radius:4px;background:${col.bg};flex-shrink:0;margin-top:2px"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:4px">
+                ${c.party}
+                ${info.url ? `<a href="${info.url}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500;margin-left:8px">Website ↗</a>` : ""}
+              </div>
+              <div style="font-size:12px;color:var(--subtle);line-height:1.55">${info.summary}</div>
             </div>
-            <div style="font-size:12px;color:var(--subtle);line-height:1.55">${info.summary}</div>
-          </div>
-        </div>`);
+          </div>`);
+        }
+        document.getElementById("elections-manifestos").innerHTML = manifestoCards.join("") ||
+          `<div style="font-size:12px;color:var(--subtle)">No manifesto info available.</div>`;
       }
-      document.getElementById("elections-manifestos").innerHTML = manifestoCards.join("") ||
-        `<div style="font-size:12px;color:var(--subtle)">No manifesto info available.</div>`;
 
       // Default to Results tab if past/live results available, otherwise Candidates
       eTab((d.past_results?.length || d.live_results?.length) ? "more" : "candidates");
