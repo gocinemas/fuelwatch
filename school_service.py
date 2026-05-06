@@ -117,11 +117,11 @@ def _build_gmail_query(sender_emails: list[str], days_back: int = 7) -> str:
     return f"({froms}) after:{after}"
 
 
-def _extract_pdf_text(msg_id: str, att_id: str, filename: str) -> str:
+def _extract_pdf_text(msg_id: str, att_id: str, filename: str, refresh_token: str = None) -> str:
     """Fetch a Gmail attachment and extract text via PyMuPDF. Returns up to 4000 chars."""
     try:
         import base64, fitz  # fitz = PyMuPDF
-        data = _gmail_get(f"messages/{msg_id}/attachments/{att_id}").get("data", "")
+        data = _gmail_get(f"messages/{msg_id}/attachments/{att_id}", refresh_token=refresh_token).get("data", "")
         if not data:
             return ""
         pdf_bytes = base64.urlsafe_b64decode(data + "==")
@@ -136,7 +136,7 @@ def _extract_pdf_text(msg_id: str, att_id: str, filename: str) -> str:
         return ""
 
 
-def _extract_email_text(msg: dict, msg_id: str = "") -> tuple[str, str, str]:
+def _extract_email_text(msg: dict, msg_id: str = "", refresh_token: str = None) -> tuple[str, str, str]:
     """Return (subject, body_text, sent_date_iso) from a Gmail message resource.
     Reads text/plain, falls back to stripped HTML, then appends any PDF attachments."""
     import base64
@@ -230,7 +230,7 @@ def _extract_email_text(msg: dict, msg_id: str = "") -> tuple[str, str, str]:
                 fname = part.get("filename", "")
                 att_id = part.get("body", {}).get("attachmentId", "")
                 if att_id and (mime == "application/pdf" or fname.lower().endswith(".pdf")):
-                    txt = _extract_pdf_text(msg_id, att_id, fname)
+                    txt = _extract_pdf_text(msg_id, att_id, fname, refresh_token=refresh_token)
                     if txt:
                         att_texts.append(f"[Attachment: {fname}]\n{txt}")
         _find_atts(payload.get("parts", []))
@@ -481,12 +481,16 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
     total_emails = total_events = 0
 
     for from_number, parent_profiles in by_parent.items():
-        # Use this parent's stored Gmail refresh token; fall back to env var for legacy
+        # Per-profile token (issued by web client OAuth) takes priority.
+        # For legacy profiles (Vikram's), per-profile token is None — pass None so
+        # _gmail_access_token uses the desktop client creds + GMAIL_REFRESH_TOKEN env var.
+        # IMPORTANT: do NOT pass the env var token as refresh_token — web client
+        # creds cannot exchange a desktop-client-issued refresh token.
         gmail_token = next(
             (p.get("gmail_refresh_token") for p in parent_profiles if p.get("gmail_refresh_token")),
-            os.environ.get("GMAIL_REFRESH_TOKEN", "")
+            None
         )
-        if not gmail_token:
+        if gmail_token is None and not os.environ.get("GMAIL_REFRESH_TOKEN"):
             print(f"[school] No Gmail token for {from_number}, skipping — needs OAuth")
             continue
 
@@ -539,7 +543,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
                 except Exception as e:
                     print(f"[school] force-delete error {msg_id}: {e}")
 
-            subject, body, sent_date = _extract_email_text(msg, msg_id=msg_id)
+            subject, body, sent_date = _extract_email_text(msg, msg_id=msg_id, refresh_token=gmail_token)
             if not body.strip():
                 print(f"[school] empty body for msg {msg_id} subject={subject!r}")
                 continue
