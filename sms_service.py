@@ -380,6 +380,26 @@ def index():
 def privacy_page():
     return render_template("privacy.html")
 
+
+@app.route("/api/newsletter/subscribe", methods=["POST"])
+def api_newsletter_subscribe():
+    """Capture mekalav.com newsletter signups into Supabase."""
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return jsonify({"error": "Valid email required"}), 400
+    source = (data.get("source") or "mekalav").strip()[:50]
+    try:
+        existing = (lib._sb().table("newsletter_signups")
+                    .select("id").eq("email", email).limit(1).execute().data or [])
+        if not existing:
+            lib._sb().table("newsletter_signups").insert({
+                "email": email, "source": source
+            }).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/elections")
 def elections_page():
     resp = app.make_response(
@@ -5196,7 +5216,11 @@ def api_school_events():
                     lib._sb().table("school_events").select("*")
                     .is_("event_date", "null").gte("created_at", past))
                    .order("created_at", desc=True).execute().data or [])
-        return jsonify({"events": dated + undated, "profiles": profiles})
+        all_events = dated + undated
+        last_synced = None
+        if all_events:
+            last_synced = max((e.get("created_at") or "") for e in all_events) or None
+        return jsonify({"events": all_events, "profiles": profiles, "last_synced": last_synced})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

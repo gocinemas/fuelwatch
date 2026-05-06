@@ -328,9 +328,9 @@
         </button>
 
         <button class="tool-card" onclick="showScreen('company')">
-          <div class="tc-icon" style="background:#eff6ff">🏢</div>
-          <div class="tc-name">Company Intel</div>
-          <div class="tc-desc">Look up any company — what they do & who runs it</div>
+          <div class="tc-icon" style="background:#eff6ff">🔎</div>
+          <div class="tc-name">Business Lookup</div>
+          <div class="tc-desc">Research any company or brand — what they do, rivals & strategy</div>
         </button>
 
         <button class="tool-card" onclick="showScreen('library')">
@@ -345,22 +345,10 @@
           <div class="tc-desc">Scan a book's barcode and chat with it instantly</div>
         </button>
 
-        <button class="tool-card" onclick="showScreen('brand')">
-          <div class="tc-icon" style="background:#fff1f2">🏷️</div>
-          <div class="tc-name">Brand Intel</div>
-          <div class="tc-desc">Deep dive on any brand — history, rivals & strategy</div>
-        </button>
-
         <button class="tool-card" onclick="showScreen('places')">
           <div class="tc-icon" style="background:#eff6ff">📍</div>
-          <div class="tc-name">Nearby Places</div>
-          <div class="tc-desc">Discover cafes, pubs, parks and things to do near you</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('finder')">
-          <div class="tc-icon" style="background:#ecfdf5">🔍</div>
-          <div class="tc-name">Local Finder</div>
-          <div class="tc-desc">Find a plumber, GP, dentist or any local service</div>
+          <div class="tc-name">Local</div>
+          <div class="tc-desc">Discover places nearby or find a specific local service</div>
         </button>
 
         <button class="tool-card" onclick="showScreen('trains')">
@@ -610,6 +598,13 @@
 
     <!-- ── COMPANY SCREEN ── -->
     <div id="screen-company" class="screen pt-5">
+      <!-- Business Lookup tab strip -->
+      <div style="display:flex;gap:6px;margin-bottom:16px">
+        <button id="blookup-tab-company" onclick="blookupTab('company')"
+          style="padding:8px 16px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--text,#1a1a2e);color:var(--bg,#fff)">🏢 Company</button>
+        <button id="blookup-tab-brand" onclick="blookupTab('brand')"
+          style="padding:8px 16px;border-radius:10px;border:1.5px solid var(--border,#e5e7eb);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text,#1a1a2e)">🏷️ Brand</button>
+      </div>
       <div class="bg-white rounded-2xl shadow p-5 mb-4">
         <h2 class="font-bold text-gray-800 mb-3">🏢 Company Intel</h2>
         <div class="flex gap-2 mb-4">
@@ -931,6 +926,14 @@
 
     <!-- ── LOCAL PLACES SCREEN ── -->
     <div id="screen-places" class="screen pt-5">
+
+      <!-- Local tab strip -->
+      <div style="display:flex;gap:6px;margin:0 18px 14px">
+        <button id="loctab-places" onclick="locTab('places')"
+          style="padding:8px 16px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--text,#1a1a2e);color:var(--bg,#fff)">📍 Discover</button>
+        <button id="loctab-finder" onclick="locTab('finder')"
+          style="padding:8px 16px;border-radius:10px;border:1.5px solid var(--border,#e5e7eb);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text,#1a1a2e)">🔍 Find a service</button>
+      </div>
 
       <!-- ── Single search bar ── -->
       <div style="display:flex;gap:8px;padding:0 18px 14px;align-items:center">
@@ -5767,6 +5770,7 @@ _bkBadge();
         <button id="school-fetch-btn" onclick="schoolFetchNow()" title="Pull latest emails from school" style="font-size:12px;color:#059669;background:none;border:1px solid #bbf7d0;border-radius:8px;cursor:pointer;padding:3px 8px">fetch emails</button>
         <button id="school-dedup-btn" onclick="schoolDedup()" title="Remove duplicate events" style="font-size:12px;color:#9ca3af;background:none;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;padding:3px 8px">dedup</button>
         <button onclick="schoolLoad()" style="font-size:16px;color:#9ca3af;background:none;border:none;cursor:pointer;padding:4px">↻</button>
+        <span id="school-synced-label" style="font-size:11px;color:#9ca3af;margin-left:4px"></span>
       </div>
     </div>
 
@@ -5774,8 +5778,11 @@ _bkBadge();
     <div id="school-section-tabs" style="display:none;gap:8px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
 
     <div id="school-loading" style="text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">Loading…</div>
-    <div id="school-empty" style="display:none;text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">
-      Nothing coming up from school.
+    <div id="school-empty" style="display:none;text-align:center;padding:40px 16px;color:#9ca3af;font-size:14px">
+      <div style="font-size:32px;margin-bottom:10px">📭</div>
+      <div style="font-weight:600;color:#6b7280;margin-bottom:6px">No upcoming school events</div>
+      <div style="font-size:13px;margin-bottom:16px">Pull the latest emails from your school inbox to populate this.</div>
+      <button onclick="schoolFetchNow()" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer">Fetch emails now</button>
     </div>
     <div id="school-list"></div>
 
@@ -6039,6 +6046,12 @@ _bkBadge();
       const data = await r.json();
       _schoolProfiles  = data.profiles || [];
       _schoolAllEvents = data.events   || [];
+      const ls = data.last_synced;
+      const lsEl = document.getElementById("school-synced-label");
+      if (lsEl && ls) {
+        const mins = Math.round((Date.now() - new Date(ls).getTime()) / 60000);
+        lsEl.textContent = mins < 2 ? "synced just now" : mins < 60 ? `synced ${mins}m ago` : `synced ${Math.round(mins/60)}h ago`;
+      } else if (lsEl) { lsEl.textContent = ""; }
       document.getElementById("school-loading").style.display = "none";
 
       if (!_schoolActiveProfileId && _schoolProfiles.length)
@@ -6707,6 +6720,29 @@ _bkBadge();
   // Deep-link: ?screen=X — run after full DOM ready
   const _deepScreen = new URLSearchParams(location.search).get("screen");
   if (_deepScreen) window.showScreen(_deepScreen);
+
+  // Tab helpers for merged cards
+  window.blookupTab = function(tab) {
+    const active = {background:'var(--text,#1a1a2e)',color:'var(--bg,#fff)',border:'none'};
+    const inactive = {background:'transparent',color:'var(--text,#1a1a2e)',border:'1.5px solid var(--border,#e5e7eb)'};
+    const co = document.getElementById('blookup-tab-company');
+    const br = document.getElementById('blookup-tab-brand');
+    if (!co || !br) { showScreen(tab === 'brand' ? 'brand' : 'company'); return; }
+    Object.assign(co.style, tab === 'company' ? active : inactive);
+    Object.assign(br.style, tab === 'brand' ? active : inactive);
+    showScreen(tab === 'brand' ? 'brand' : 'company');
+  };
+
+  window.locTab = function(tab) {
+    const active = {background:'var(--text,#1a1a2e)',color:'var(--bg,#fff)',border:'none'};
+    const inactive = {background:'transparent',color:'var(--text,#1a1a2e)',border:'1.5px solid var(--border,#e5e7eb)'};
+    const pl = document.getElementById('loctab-places');
+    const fi = document.getElementById('loctab-finder');
+    if (!pl || !fi) { showScreen(tab === 'finder' ? 'finder' : 'places'); return; }
+    Object.assign(pl.style, tab === 'places' ? active : inactive);
+    Object.assign(fi.style, tab === 'finder' ? active : inactive);
+    showScreen(tab === 'finder' ? 'finder' : 'places');
+  };
 })();
 </script>
 
