@@ -1402,7 +1402,7 @@ def api_elections():
         # Fetch polling station + past/live results in parallel
         effective_council = (council_slug or district).lower().replace(" ", "-")
         effective_ward    = ward_data.get("ward") or ward_name
-        election_date_str = ward_data.get("election_date", "2026-05-01")
+        election_date_str = ward_data.get("election_date", "2026-05-07")
         import datetime as _dt
         election_happened = _dt.date.today() >= _dt.date.fromisoformat(election_date_str)
 

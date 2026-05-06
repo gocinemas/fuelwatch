@@ -2573,8 +2573,8 @@
       // Candidates
       document.getElementById("elections-candidates").innerHTML = noElection
         ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 16px;text-align:center;color:var(--subtle);font-size:13px">
-            No election candidates on record for this area.<br>
-            <span style="font-size:12px;display:block;margin-top:6px">${d.county ? `<strong>${d.county}</strong> · ` : ""}${d.council || ""} may not have local elections on ${dateStr}.</span>
+            No election data found for this postcode.<br>
+            <span style="font-size:12px;display:block;margin-top:6px">${d.county ? `<strong>${d.county}</strong> · ` : ""}${d.council || ""} does not appear to have elections on 7 May 2026.</span>
           </div>`
         : d.candidates.map(c => {
         const col = _partyStyle(c.party);
