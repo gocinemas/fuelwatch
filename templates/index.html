@@ -7513,34 +7513,26 @@ _bkBadge();
   window.trainLocate = function() {
     var btn = document.getElementById("train-locate-btn");
     var hint = document.getElementById("train-locate-hint");
-    btn.textContent = "⏳";
-    btn.disabled = true;
     hint.style.display = "none";
-    if (!navigator.geolocation) {
-      btn.textContent = "📍";
-      btn.disabled = false;
-      hint.style.display = "block";
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(function(pos) {
-      fetch("/api/train/nearest?lat="+pos.coords.latitude+"&lng="+pos.coords.longitude)
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          btn.textContent = "📍";
-          btn.disabled = false;
-          if (d.error) { hint.textContent = d.error; hint.style.display = "block"; return; }
-          _trainCrs = d.crs;
-          _trainName = d.name;
-          _trainShowStation(d.name, d.crs);
-          _trainLoadDepartures(d.crs);
-        })
-        .catch(function(){ btn.textContent="📍"; btn.disabled=false; _trainErr("Could not find nearest station"); });
-    }, function(){
-      btn.textContent = "📍";
-      btn.disabled = false;
-      hint.style.display = "block";
-      document.getElementById("train-search-input").focus();
-    }, {timeout:10000});
+    MiruLocation.request(btn,
+      function(loc) {
+        fetch("/api/train/nearest?lat="+loc.lat+"&lng="+loc.lon)
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            if (d.error) { hint.textContent = d.error; hint.style.display = "block"; return; }
+            _trainCrs = d.crs;
+            _trainName = d.name;
+            _trainShowStation(d.name, d.crs);
+            _trainLoadDepartures(d.crs);
+          })
+          .catch(function(){ _trainErr("Could not find nearest station"); });
+      },
+      function(msg) {
+        hint.textContent = "Couldn't detect location — type your station name above.";
+        hint.style.display = "block";
+        document.getElementById("train-search-input").focus();
+      }
+    );
   };
 
   function _trainShowStation(name, crs) {
