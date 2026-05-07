@@ -1664,16 +1664,31 @@ def _latlon_for_postcode(postcode):
 @app.route("/api/services")
 def api_services():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    debug    = request.args.get("debug") == "1"
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
     try:
         cache_key = f"services:{postcode}"
         hit = _services_cache.get(cache_key)
-        if hit and time.time() - hit["ts"] < _SERVICES_TTL:
+        if hit and time.time() - hit["ts"] < _SERVICES_TTL and not debug:
             return jsonify(hit["data"])
         lat, lon = _latlon_for_postcode(postcode)
         if lat is None:
             return jsonify({"error": "Postcode not found"}), 404
+        if debug:
+            # Raw Overpass test — bypass everything
+            q = (f"[out:json][timeout:18];"
+                 f"(node[amenity=hospital](around:15000,{lat},{lon});"
+                 f"way[amenity=hospital](around:15000,{lat},{lon}););"
+                 f"out tags center 30;")
+            debug_results = {}
+            for url in _OVERPASS_URLS:
+                try:
+                    r = requests.post(url, data={"data": q}, timeout=18)
+                    debug_results[url] = {"status": r.status_code, "elements": len(r.json().get("elements", [])) if r.status_code == 200 else 0}
+                except Exception as e:
+                    debug_results[url] = {"error": str(e)}
+            return jsonify({"lat": lat, "lon": lon, "overpass": debug_results})
         with ThreadPoolExecutor(max_workers=2) as ex:
             f_h = ex.submit(_fetch_hospitals, lat, lon)
             f_p = ex.submit(_fetch_police_contact, lat, lon)
