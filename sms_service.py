@@ -1530,7 +1530,7 @@ def _fetch_supermarkets(lat, lon):
         q = (f"[out:json][timeout:10];"
              f"(node[shop=supermarket](around:10000,{lat},{lon});"
              f"way[shop=supermarket](around:10000,{lat},{lon}););"
-             f"out tags center 12;")
+             f"out tags center 15;")
         els = _overpass_mirrors(q)
         items = []
         for el in els:
@@ -1546,7 +1546,7 @@ def _fetch_supermarkets(lat, lon):
                 "distance_km": dist,
             })
         items.sort(key=lambda x: x["distance_km"])
-        return items[:8]
+        return items[:10]
     except Exception as e:
         print(f"[supermarkets] {e}")
         return []
