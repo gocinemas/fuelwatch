@@ -2632,7 +2632,7 @@
           `<div style="font-size:12px;color:var(--subtle)">No manifesto info available.</div>`;
       }
 
-      eTab(d.live_results?.length ? "more" : "candidates");
+      eTab("candidates");
       document.getElementById("elections-result").classList.remove("hidden");
     } catch(e) {
       document.getElementById("elections-loading").classList.add("hidden");
