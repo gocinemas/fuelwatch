@@ -1515,7 +1515,7 @@ def _fetch_hospitals(lat, lon):
                 "distance_km": dist,
             })
         items.sort(key=lambda x: x["distance_km"])
-        return items[:5]
+        return items[:4]
     except Exception as e:
         print(f"[hospitals] {e}")
         return []
@@ -1523,8 +1523,8 @@ def _fetch_hospitals(lat, lon):
 def _fetch_supermarkets(lat, lon):
     try:
         q = (f"[out:json][timeout:10];"
-             f"(node[shop=supermarket](around:5000,{lat},{lon});"
-             f"way[shop=supermarket](around:5000,{lat},{lon}););"
+             f"(node[shop=supermarket](around:8000,{lat},{lon});"
+             f"way[shop=supermarket](around:8000,{lat},{lon}););"
              f"out tags center 8;")
         els = _overpass_query(q)
         items = []

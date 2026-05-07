@@ -1932,12 +1932,17 @@
     // Hospitals
     html += `<div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:10px">🏥 Nearest Hospitals</div>`;
     if (d.hospitals && d.hospitals.length) {
-      html += d.hospitals.map(h => `
-        <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-          <div style="font-weight:600;font-size:13px;color:var(--text)">${h.name}${h.distance_km && h.distance_km < 900 ? `<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px">${(h.distance_km*0.621371).toFixed(1)} mi</span>` : ""}</div>
+      html += d.hospitals.map(h => {
+        const dist = h.distance_km && h.distance_km < 900 ? `<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px">${(h.distance_km*0.621371).toFixed(1)} mi</span>` : "";
+        const phone = h.phone
+          ? `<a href="tel:${h.phone}" style="font-size:12px;color:#2563eb;font-weight:700;margin-top:4px;display:inline-block">📞 ${h.phone}</a>`
+          : `<a href="tel:111" style="font-size:12px;color:#2563eb;font-weight:700;margin-top:4px;display:inline-block">📞 111 (NHS non-emergency)</a>`;
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="font-weight:600;font-size:13px;color:var(--text)">${h.name}${dist}</div>
           ${h.address ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${h.address}</div>` : ""}
-          ${h.phone ? `<a href="tel:${h.phone}" style="font-size:12px;color:#2563eb;font-weight:700;margin-top:4px;display:inline-block">📞 ${h.phone}</a>` : ""}
-        </div>`).join("");
+          ${phone}
+        </div>`;
+      }).join("");
     } else {
       html += `<div style="font-size:12px;color:var(--muted);padding:8px 0">No hospitals found within 15km.</div>`;
     }
@@ -1976,7 +1981,7 @@
           ${s.distance_km ? `<div style="font-size:11px;color:var(--subtle);margin-top:2px">${(s.distance_km*0.621371).toFixed(1)} miles away</div>` : ""}
         </div>`).join("");
     } else {
-      html += `<div style="font-size:12px;color:var(--muted);padding:8px 0">No supermarkets found within 5km.</div>`;
+      html += `<div style="font-size:12px;color:var(--muted);padding:8px 0">No supermarkets found within 8km.</div>`;
     }
     el.innerHTML = html;
     const count = d.supermarkets?.length || 0;
