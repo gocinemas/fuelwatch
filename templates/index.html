@@ -220,10 +220,8 @@
     .prompt-chip:hover { border-color: var(--muted); background: var(--surface2); }
     .prompt-chip:active { transform: scale(0.97); }
     .prompt-row {
-      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
-      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+      display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 4px;
     }
-    .prompt-row::-webkit-scrollbar { display: none; }
     /* Compact tool pills (secondary) */
     .mini-tool {
       display: flex; flex-direction: column; align-items: center; gap: 5px;
