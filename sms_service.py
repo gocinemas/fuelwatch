@@ -1445,9 +1445,9 @@ def _fetch_hospitals(lat, lon):
     try:
         query = (
             f"[out:json][timeout:10];"
-            f"(node[amenity=hospital](around:5000,{lat},{lon});"
-            f"way[amenity=hospital](around:5000,{lat},{lon});"
-            f"relation[amenity=hospital](around:5000,{lat},{lon}););"
+            f"(node[amenity=hospital](around:10000,{lat},{lon});"
+            f"way[amenity=hospital](around:10000,{lat},{lon});"
+            f"relation[amenity=hospital](around:10000,{lat},{lon}););"
             f"out center 5;"
         )
         r = requests.post("https://overpass-api.de/api/interpreter", data=query, timeout=14)
