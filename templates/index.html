@@ -931,9 +931,24 @@
           <div id="elections-manifestos" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
 
-        <!-- Tab: More (past results) -->
+        <!-- Tab: Results (2022 + 2026 sub-tabs) -->
         <div id="epanel-more" class="hidden">
-          <div id="elections-past" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
+          <div style="display:flex;gap:6px;margin-bottom:12px">
+            <button id="ertab-2026" onclick="erTab('2026')"
+              style="flex:1;padding:7px 4px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:background .15s;background:var(--text);color:var(--bg)">
+              2026 Results
+            </button>
+            <button id="ertab-2022" onclick="erTab('2022')"
+              style="flex:1;padding:7px 4px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:background .15s;background:var(--surface2);color:var(--subtle)">
+              Last Elections (2022)
+            </button>
+          </div>
+          <div id="erpanel-2026">
+            <div id="elections-live" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
+          </div>
+          <div id="erpanel-2022" style="display:none">
+            <div id="elections-past" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
+          </div>
         </div>
 
         <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">
@@ -2599,6 +2614,16 @@
     });
   }
 
+  function erTab(name) {
+    ["2026","2022"].forEach(t => {
+      const active = t === name;
+      document.getElementById("erpanel-" + t).style.display = active ? "" : "none";
+      const btn = document.getElementById("ertab-" + t);
+      btn.style.background = active ? "var(--text)"   : "var(--surface2)";
+      btn.style.color      = active ? "var(--bg)"     : "var(--subtle)";
+    });
+  }
+
   let _elecIdCounter = 0;
   async function electionsUseLocation() {
     const btn   = document.getElementById("elections-loc-btn");
@@ -2694,24 +2719,27 @@
           }).join('');
       }
 
-      const pastEl = document.getElementById("elections-past");
-      pastEl.style.display = "";
+      // 2026 live results panel
+      const liveEl = document.getElementById("elections-live");
       if (d.live_results && d.live_results.length) {
-        pastEl.innerHTML = _renderResultsTable(d.live_results, "7 May 2026 Results");
-      } else if (d.past_results && d.past_results.length) {
-        let html = _renderResultsTable(d.past_results, "2022 Local Election Results");
-        html += `<div style="margin-top:12px;font-size:11px;color:var(--subtle);text-align:center;padding-top:8px;border-top:1px solid var(--border)">Results coming in tonight — refresh to update</div>`;
-        pastEl.innerHTML = html;
+        liveEl.innerHTML = _renderResultsTable(d.live_results, "7 May 2026 Results");
       } else if (d.is_new_council && d.predecessor_areas && d.predecessor_areas.length) {
-        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:4px">📊 Results</div>
-          <div style="color:var(--subtle);font-size:12px;line-height:1.5"><strong>${d.council}</strong> is a newly created council (first election 7 May 2026), formed by merging ${d.predecessor_areas.join(", ")}.</div>
-          <div style="margin-top:8px;font-size:11px;color:var(--subtle);text-align:center">Results coming in tonight — refresh to update</div>`;
-      } else if (d.dc_results_url) {
-        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:6px">📊 Results</div>
-          <div style="font-size:12px;color:var(--subtle)">2022 results: <a href="${d.dc_results_url}" target="_blank" rel="noopener" style="color:#4f46e5">View on Democracy Club ↗</a></div>
+        liveEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:4px">📊 2026 Results</div>
+          <div style="color:var(--subtle);font-size:12px;line-height:1.5"><strong>${d.council}</strong> is a newly created council — first election 7 May 2026.</div>
           <div style="margin-top:8px;font-size:11px;color:var(--subtle);text-align:center">Results coming in tonight — refresh to update</div>`;
       } else {
-        pastEl.style.display = "none";
+        liveEl.innerHTML = `<div style="text-align:center;padding:16px 0;color:var(--subtle);font-size:13px">Results coming in tonight — refresh to update</div>`;
+      }
+
+      // 2022 past results panel
+      const pastEl = document.getElementById("elections-past");
+      if (d.past_results && d.past_results.length) {
+        pastEl.innerHTML = _renderResultsTable(d.past_results, "2022 Local Election Results");
+      } else if (d.dc_results_url) {
+        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:6px">📊 2022 Results</div>
+          <div style="font-size:12px;color:var(--subtle)"><a href="${d.dc_results_url}" target="_blank" rel="noopener" style="color:#4f46e5">View on Democracy Club ↗</a></div>`;
+      } else {
+        pastEl.innerHTML = `<div style="text-align:center;padding:16px 0;color:var(--subtle);font-size:13px">No 2022 results on record for this ward.</div>`;
       }
 
       // Candidates
