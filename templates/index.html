@@ -207,6 +207,50 @@
     .tool-card .tc-desc {
       font-size: 11px; color: var(--subtle); margin-top: 3px; line-height: 1.4;
     }
+    /* Prompt chips */
+    .prompt-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 99px; padding: 9px 15px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+      cursor: pointer; white-space: nowrap;
+      transition: border-color .15s, background .15s, transform .1s;
+      font-family: inherit; text-align: left;
+    }
+    .prompt-chip:hover { border-color: var(--muted); background: var(--surface2); }
+    .prompt-chip:active { transform: scale(0.97); }
+    .prompt-row {
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .prompt-row::-webkit-scrollbar { display: none; }
+    /* Compact tool pills (secondary) */
+    .mini-tool {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 8px; cursor: pointer;
+      transition: border-color .15s, transform .1s; font-family: inherit;
+      min-width: 68px; flex: 1;
+    }
+    .mini-tool:hover { border-color: var(--muted); }
+    .mini-tool:active { transform: scale(0.96); }
+    .mini-tool-icon { font-size: 22px; line-height: 1; }
+    .mini-tool-name { font-size: 10px; font-weight: 700; color: var(--subtle); text-align: center; line-height: 1.2; }
+    /* Home tool cards (2-col grid) */
+    .home-tool-card {
+      display:flex; align-items:center; gap:12px;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:16px; padding:13px 14px;
+      cursor:pointer; text-align:left; font-family:inherit;
+      transition:border-color .15s, transform .1s;
+      width:100%;
+    }
+    .home-tool-card:hover { border-color:var(--muted); }
+    .home-tool-card:active { transform:scale(0.97); }
+    .home-tool-icon { font-size:20px; flex-shrink:0; width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:var(--bg); }
+    .home-tool-body { flex:1; min-width:0; }
+    .home-tool-name { font-size:13px; font-weight:700; color:var(--text); line-height:1.2; }
+    .home-tool-desc { font-size:11px; color:var(--subtle); margin-top:2px; line-height:1.3; }
   /* Scanner centering */
   #book-scan-reader { background:#000; }
   #book-scan-reader video { display:block!important; width:100%!important; }
@@ -251,145 +295,117 @@
     <!-- ── HOME SCREEN ── -->
     <div id="screen-home" class="screen active">
 
-      <!-- Intro card — hidden after first dismiss -->
-      <div id="miru-intro" style="background:linear-gradient(135deg,#f0f9ff 0%,#faf5ff 100%);border:1px solid #e0e7ff;border-radius:20px;padding:18px 16px 14px;margin-bottom:18px;position:relative">
-        <button onclick="miruIntroDismiss()" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:18px;color:#9ca3af;cursor:pointer;line-height:1">×</button>
-        <div style="font-size:20px;font-weight:800;color:#1e1b4b;letter-spacing:-0.5px;margin-bottom:4px">👋 Welcome to Miru</div>
-        <div style="font-size:13px;color:#4b5563;line-height:1.6;margin-bottom:12px">
-          Your everyday UK companion. Check fuel prices, explore your area, find local services, save articles to read later — all in one place.<br>
-          <span style="color:#7c3aed;font-weight:600">Even works on WhatsApp</span> — just send a message.
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;font-weight:600">
-          <span style="background:#fff7ed;color:#c2410c;padding:4px 10px;border-radius:99px">⛽ Cheap fuel near me</span>
-          <span style="background:#f0fdf4;color:#166534;padding:4px 10px;border-radius:99px">🏠 What's my area like?</span>
-          <span style="background:#eff6ff;color:#1d4ed8;padding:4px 10px;border-radius:99px">🔍 Find a plumber or GP</span>
-          <span style="background:#fefce8;color:#854d0e;padding:4px 10px;border-radius:99px">📌 Save articles to read later</span>
-          <span style="background:#fdf4ff;color:#7e22ce;padding:4px 10px;border-radius:99px">📷 Snap a photo → get info</span>
-        </div>
-      </div>
-      <script>
-        (function(){
-          if(localStorage.getItem("miru_intro_seen")) {
-            var el = document.getElementById("miru-intro");
-            if(el) el.style.display = "none";
-          }
-        })();
-        window.miruIntroDismiss = function() {
-          localStorage.setItem("miru_intro_seen","1");
-          var el = document.getElementById("miru-intro");
-          if(el){ el.style.transition="opacity .3s"; el.style.opacity="0"; setTimeout(()=>el.style.display="none",300); }
-        };
-      </script>
-
       <!-- Greeting -->
-      <div style="padding:22px 0 18px">
-        <div id="home-greeting" style="font-size:22px;font-weight:800;letter-spacing:-0.6px;color:var(--text)">Good morning.</div>
-        <div style="margin-top:4px;font-size:13px;color:var(--subtle);line-height:1.6">
+      <div style="padding:24px 0 18px">
+        <div id="home-greeting" style="font-size:28px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Good morning.</div>
+        <div style="margin-top:5px;font-size:13px;color:var(--subtle);line-height:1.6">
           <span id="home-date"></span><span id="home-time"> · </span><span hidden id="home-weather"><span id="home-weather-val"></span></span><span id="home-weather-tip" hidden> · <span id="home-weather-tip-text"></span></span>
         </div>
-        <!-- Daily quote -->
-        <div id="home-quote" style="margin-top:10px;font-size:13px;color:var(--muted);font-style:italic;line-height:1.5;max-width:340px"></div>
-
-        <!-- Spotify player -->
+        <div id="home-quote" style="margin-top:8px;font-size:13px;color:var(--muted);font-style:italic;line-height:1.5;max-width:340px"></div>
         <div id="music-player" style="display:none;margin-top:12px">
           <iframe src="https://open.spotify.com/embed/playlist/5OmW3j1Kb79RkBvMjOo4vX?utm_source=generator"
-            width="100%" height="152" frameborder="0"
-            style="border-radius:12px"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"></iframe>
+            width="100%" height="152" frameborder="0" style="border-radius:12px"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
         </div>
       </div>
 
-      <!-- Tool grid -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px">
-
-        <button class="tool-card" id="elections-tool-card" onclick="showScreen('elections')">
-          <div class="tc-icon" style="background:#f0fdf4">🗳️</div>
-          <div class="tc-name">Elections</div>
-          <div class="tc-desc" id="elections-tool-desc">See your local candidates and find your polling station</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('fuel')">
-          <div class="tc-icon" style="background:#fff7ed">⛽</div>
-          <div class="tc-name">Fuel Prices</div>
-          <div class="tc-desc">Find the cheapest petrol near you right now</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('report')">
-          <div class="tc-icon" style="background:#f0fdf4">🏠</div>
-          <div class="tc-name">Area Report</div>
-          <div class="tc-desc">Schools, crime, house prices & more for any postcode</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('saves')">
-          <div class="tc-icon" style="background:#fefce8">📌</div>
-          <div class="tc-name">My Saves</div>
-          <div class="tc-desc">Send any link on WhatsApp — read it here later</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('company')">
-          <div class="tc-icon" style="background:#eff6ff">🔎</div>
-          <div class="tc-name">Company / Brand Intel</div>
-          <div class="tc-desc">Research any company or brand — what they do, rivals &amp; strategy</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('library')">
-          <div class="tc-icon" style="background:#faf5ff">📚</div>
-          <div class="tc-name">My Library</div>
-          <div class="tc-desc">Upload a document or PDF and ask it questions</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('scan')">
-          <div class="tc-icon" style="background:#f0fdf4">📖</div>
-          <div class="tc-name">My Books</div>
-          <div class="tc-desc">Scan a book's barcode and chat with it instantly</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('places')">
-          <div class="tc-icon" style="background:#eff6ff">📍</div>
-          <div class="tc-name">Local</div>
-          <div class="tc-desc">Discover places nearby or find a specific local service</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('trains')">
-          <div class="tc-icon" style="background:#f0f9ff">🚆</div>
-          <div class="tc-name">Next Train</div>
-          <div class="tc-desc">Find trains from your nearest station right now</div>
-        </button>
-
-        <button class="tool-card" onclick="showScreen('music')">
-          <div class="tc-icon" style="background:#fdf4ff">🎵</div>
-          <div class="tc-name">Music</div>
-          <div class="tc-desc">Identify songs, UK &amp; Global Top 20 charts</div>
-        </button>
-
-        <!-- School Comms: hidden from home — access via ?screen=school or PIN unlock -->
-        <button class="tool-card" onclick="showScreen('school')" id="school-home-card" style="display:none">
-          <div class="tc-icon" style="background:#f0f9ff">🏫</div>
-          <div class="tc-name">School</div>
-          <div class="tc-desc">Events, reminders and newsletters from school</div>
-        </button>
-
-        <!-- Council Services: hidden — access via ?screen=council -->
-
-        <!-- My News: hidden from home — access via ?screen=news -->
-
+      <!-- Search bar -->
+      <div style="position:relative;margin-bottom:24px">
+        <div id="home-search-wrap" style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:13px 16px;transition:border-color .2s">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="home-search-input" type="search" autocomplete="off" spellcheck="false"
+            placeholder="What are you looking for?"
+            style="flex:1;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;font-family:inherit"
+            oninput="homeSearchInput()" onkeydown="homeSearchKey(event)" onfocus="homeSearchFocus()" onblur="setTimeout(homeSearchBlur,200)" />
+          <button id="home-search-clear" onclick="homeSearchClear()" style="display:none;background:none;border:none;cursor:pointer;font-size:16px;color:var(--subtle);padding:0;line-height:1">✕</button>
+        </div>
+        <div id="home-search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:200;overflow:hidden;max-height:340px;overflow-y:auto"></div>
       </div>
 
-      <!-- WhatsApp shortcuts strip -->
-      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;padding:14px 16px;margin-bottom:24px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          <span style="font-size:13px;font-weight:700;color:#166534">Also on WhatsApp</span>
-          <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
-            style="margin-left:auto;font-size:11px;font-weight:700;color:#25d366;text-decoration:none;background:#fff;border:1px solid #bbf7d0;padding:4px 10px;border-radius:99px">Join →</a>
+      <!-- Conversational prompts -->
+      <div style="margin-bottom:28px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);margin-bottom:12px">Try asking…</div>
+
+        <div class="prompt-row" style="margin-bottom:8px">
+          <button class="prompt-chip" onclick="showScreen('fuel')">⛽ Where's cheap fuel near me?</button>
+          <button class="prompt-chip" onclick="showScreen('trains')">🚆 What's the next train?</button>
+          <button class="prompt-chip" onclick="showScreen('report')">🏠 What's my area like?</button>
         </div>
-        <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#166534">
-          <div><span style="font-weight:700">⛽ Fuel prices</span> — send your postcode, e.g. <code style="background:#dcfce7;padding:1px 5px;border-radius:4px">KT1 2BA</code></div>
-          <div><span style="font-weight:700">🗳️ Elections</span> — send <code style="background:#dcfce7;padding:1px 5px;border-radius:4px">vote KT1 2BA</code></div>
-          <div><span style="font-weight:700">🏛️ Local services</span> — send <code style="background:#dcfce7;padding:1px 5px;border-radius:4px">places KT1 2BA</code></div>
-          <div><span style="font-weight:700">🔖 Save for later</span> — send any article URL · reply <code style="background:#dcfce7;padding:1px 5px;border-radius:4px">LIST</code> to review</div>
+        <div class="prompt-row" style="margin-bottom:8px">
+          <button class="prompt-chip" onclick="showScreen('places')">☕ Where's a good café nearby?</button>
+          <button class="prompt-chip" onclick="showScreen('places')">🔧 Can I get a plumber today?</button>
+          <button class="prompt-chip" onclick="showScreen('places')">🏥 Where's the nearest hospital?</button>
         </div>
+        <div class="prompt-row" style="margin-bottom:8px">
+          <button class="prompt-chip" onclick="showScreen('report')">🔒 What's crime like around here?</button>
+          <button class="prompt-chip" onclick="showScreen('company')">🔎 Tell me about this company</button>
+          <button class="prompt-chip" onclick="showScreen('report')">🏡 What are house prices like?</button>
+        </div>
+        <div class="prompt-row">
+          <button class="prompt-chip" onclick="showScreen('library')">📄 Let me ask my documents</button>
+          <button class="prompt-chip" onclick="showScreen('scan')">📚 Chat with a book</button>
+          <button class="prompt-chip" onclick="showScreen('saves')">📌 Find something I saved</button>
+          <button class="prompt-chip" onclick="showScreen('school')" id="school-home-card" style="display:none">🏫 What's on at school?</button>
+          <button class="prompt-chip" id="elections-tool-card" onclick="showScreen('elections')">🗳️ <span id="elections-tool-desc">Local elections</span></button>
+        </div>
+      </div>
+
+      <!-- All tools grid -->
+      <div style="margin-bottom:28px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);margin-bottom:12px">All tools</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button class="home-tool-card" onclick="showScreen('fuel')">
+            <span class="home-tool-icon">⛽</span>
+            <div class="home-tool-body"><div class="home-tool-name">Fuel prices</div><div class="home-tool-desc">Cheapest petrol & diesel near you</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('trains')">
+            <span class="home-tool-icon">🚆</span>
+            <div class="home-tool-body"><div class="home-tool-name">Train times</div><div class="home-tool-desc">Live departures & delays</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('report')">
+            <span class="home-tool-icon">🏠</span>
+            <div class="home-tool-body"><div class="home-tool-name">Area report</div><div class="home-tool-desc">Crime, house prices & schools</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('places')">
+            <span class="home-tool-icon">📍</span>
+            <div class="home-tool-body"><div class="home-tool-name">Local search</div><div class="home-tool-desc">Cafés, tradespeople & shops</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('report');reportTabSwitch('services',document.querySelector('[data-tab=services]'))">
+            <span class="home-tool-icon">🚨</span>
+            <div class="home-tool-body"><div class="home-tool-name">Emergency</div><div class="home-tool-desc">Hospitals & police stations</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('saves')">
+            <span class="home-tool-icon">📌</span>
+            <div class="home-tool-body"><div class="home-tool-name">My saves</div><div class="home-tool-desc">Articles & links you've saved</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('company')">
+            <span class="home-tool-icon">🔎</span>
+            <div class="home-tool-body"><div class="home-tool-name">Company lookup</div><div class="home-tool-desc">UK Companies House + news</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('library')">
+            <span class="home-tool-icon">📄</span>
+            <div class="home-tool-body"><div class="home-tool-name">My documents</div><div class="home-tool-desc">Upload & chat with your files</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('scan')">
+            <span class="home-tool-icon">📚</span>
+            <div class="home-tool-body"><div class="home-tool-name">Book scanner</div><div class="home-tool-desc">Scan & chat with any book</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('music')">
+            <span class="home-tool-icon">🎵</span>
+            <div class="home-tool-body"><div class="home-tool-name">Music ID</div><div class="home-tool-desc">Identify any song instantly</div></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- WhatsApp strip — slim -->
+      <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin-bottom:24px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#25d366" flex-shrink="0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Everything works on WhatsApp too</div>
+          <div style="font-size:12px;color:var(--subtle);margin-top:1px">Send a postcode, ask a question, save a link</div>
+        </div>
+        <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
+          style="flex-shrink:0;font-size:12px;font-weight:700;color:#fff;text-decoration:none;background:#25d366;padding:7px 14px;border-radius:99px;white-space:nowrap">Join →</a>
       </div>
 
       <!-- News Feed (Kagi) -->
@@ -4677,6 +4693,105 @@
         }).catch(() => {});
     }
     MiruLocation.get().then(loc => { if (loc) _showWeather(loc.lat, loc.lon); }).catch(() => {});
+  })();
+
+  // ── Home Search (tool finder + Algolia saves) ─────────────────────────────
+  (function() {
+    const _TOOLS = [
+      { name:"Fuel prices",    desc:"Cheapest petrol & diesel near you",  icon:"⛽", screen:"fuel",      kw:"fuel petrol diesel gas station cheap" },
+      { name:"Train times",    desc:"Live departures & delays",            icon:"🚆", screen:"trains",    kw:"train trains rail station departure delay tfl" },
+      { name:"Area report",    desc:"Crime, house prices & schools",       icon:"🏠", screen:"report",    kw:"area crime house prices school safety report local neighbourhood" },
+      { name:"Local search",   desc:"Cafés, tradespeople & shops",         icon:"📍", screen:"places",    kw:"cafe coffee plumber shop restaurant pub local places nearby find electrician builder" },
+      { name:"Emergency",      desc:"Hospitals & police stations",         icon:"🚨", screen:"report",    kw:"hospital emergency police ambulance a&e urgent nhs nearest help" },
+      { name:"My saves",       desc:"Articles & links you've saved",       icon:"📌", screen:"saves",     kw:"saves saved article link bookmark read reading" },
+      { name:"Company lookup", desc:"UK Companies House + news",           icon:"🔎", screen:"company",   kw:"company business companies house director ltd limited research" },
+      { name:"My documents",   desc:"Upload & chat with your files",       icon:"📄", screen:"library",   kw:"document pdf file upload library ask query" },
+      { name:"Book scanner",   desc:"Scan & chat with any book",           icon:"📚", screen:"scan",      kw:"book scan barcode isbn read library chat" },
+      { name:"Music ID",       desc:"Identify any song instantly",         icon:"🎵", screen:"music",     kw:"music song identify shazam name artist track" },
+      { name:"House prices",   desc:"Property values in your area",        icon:"🏡", screen:"report",    kw:"house price property valuation sold market" },
+      { name:"School updates", desc:"Events & notices from school",        icon:"🏫", screen:"school",    kw:"school parent newsletter event term homework teacher" },
+    ];
+
+    let _debounce = null;
+
+    window.homeSearchInput = function() {
+      const q = document.getElementById("home-search-input").value.trim();
+      document.getElementById("home-search-clear").style.display = q ? "block" : "none";
+      if (!q) { _hideResults(); return; }
+
+      const ql = q.toLowerCase();
+      const toolHits = _TOOLS.filter(t =>
+        ql.split(/\s+/).every(w => (t.name + " " + t.desc + " " + t.kw).toLowerCase().includes(w))
+      );
+      _render(toolHits, [], q, true);
+
+      clearTimeout(_debounce);
+      _debounce = setTimeout(() => _fetchSaves(q, toolHits), 380);
+    };
+
+    async function _fetchSaves(q, toolHits) {
+      const pin = sessionStorage.getItem("wa_saves_token") || "";
+      const hdrs = {"Content-Type":"application/json"};
+      if (pin) hdrs["X-Library-PIN"] = pin;
+      try {
+        const r = await fetch("/api/wa-saves/search?q=" + encodeURIComponent(q), {headers: hdrs});
+        if (!r.ok) throw 0;
+        const d = await r.json();
+        _render(toolHits, d.hits || [], q, false);
+      } catch { _render(toolHits, [], q, false); }
+    }
+
+    function _render(toolHits, saveHits, q, loading) {
+      const box = document.getElementById("home-search-results");
+      box.style.display = "block";
+      let h = "";
+
+      if (toolHits.length) {
+        h += `<div style="padding:9px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle)">Tools</div>`;
+        toolHits.forEach(t => {
+          h += `<button onclick="showScreen('${t.screen}');homeSearchClear()" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 16px;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;font-family:inherit">
+            <span style="font-size:19px;width:28px;text-align:center;flex-shrink:0">${t.icon}</span>
+            <span><span style="display:block;font-size:13px;font-weight:700;color:var(--text)">${t.name}</span><span style="display:block;font-size:11px;color:var(--subtle)">${t.desc}</span></span>
+          </button>`;
+        });
+      }
+
+      if (saveHits.length) {
+        h += `<div style="padding:9px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle)">Saved articles</div>`;
+        saveHits.slice(0, 5).forEach(s => {
+          const title = (s.title || s.url || "Untitled").slice(0, 65);
+          const sub = (s.summary || "").slice(0, 70);
+          h += `<button onclick="showScreen('saves');homeSearchClear()" style="display:flex;align-items:flex-start;gap:12px;width:100%;padding:10px 16px;background:none;border:none;border-bottom:1px solid var(--border);cursor:pointer;text-align:left;font-family:inherit">
+            <span style="font-size:19px;width:28px;text-align:center;flex-shrink:0;margin-top:1px">📌</span>
+            <span><span style="display:block;font-size:13px;font-weight:700;color:var(--text)">${title}</span>${sub ? `<span style="display:block;font-size:11px;color:var(--subtle)">${sub}…</span>` : ""}</span>
+          </button>`;
+        });
+      }
+
+      if (!toolHits.length && !saveHits.length) {
+        h = loading
+          ? `<div style="padding:16px;text-align:center;font-size:13px;color:var(--subtle)">Searching…</div>`
+          : `<div style="padding:16px;text-align:center;font-size:13px;color:var(--subtle)">No results for "${q.slice(0,40)}"</div>`;
+      }
+      box.innerHTML = h;
+    }
+
+    function _hideResults() {
+      document.getElementById("home-search-results").style.display = "none";
+    }
+
+    window.homeSearchClear = function() {
+      document.getElementById("home-search-input").value = "";
+      document.getElementById("home-search-clear").style.display = "none";
+      _hideResults();
+    };
+    window.homeSearchFocus = function() {
+      if (document.getElementById("home-search-input").value.trim()) homeSearchInput();
+    };
+    window.homeSearchBlur = function() { _hideResults(); };
+    window.homeSearchKey = function(e) {
+      if (e.key === "Escape") homeSearchClear();
+    };
   })();
 </script>
 
