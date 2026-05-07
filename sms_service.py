@@ -1503,7 +1503,7 @@ def _fetch_hospitals(lat, lon):
              f"(node[amenity=hospital](around:15000,{lat},{lon});"
              f"way[amenity=hospital](around:15000,{lat},{lon});"
              f"relation[amenity=hospital](around:15000,{lat},{lon}););"
-             f"out tags center 8;")
+             f"out tags center 30;")
         els = _overpass_mirrors(q)
         items = []
         for el in els:
@@ -1530,7 +1530,7 @@ def _fetch_supermarkets(lat, lon):
         q = (f"[out:json][timeout:10];"
              f"(node[shop=supermarket](around:10000,{lat},{lon});"
              f"way[shop=supermarket](around:10000,{lat},{lon}););"
-             f"out tags center 15;")
+             f"out tags center 30;")
         els = _overpass_mirrors(q)
         items = []
         for el in els:
