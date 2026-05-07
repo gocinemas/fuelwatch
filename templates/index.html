@@ -7455,6 +7455,8 @@ _bkBadge();
       </div>
       <button id="train-star-btn" onclick="trainToggleBookmark()" title="Save station"
         style="border:none;background:none;font-size:22px;cursor:pointer;padding:2px;line-height:1">☆</button>
+      <button id="train-relocate-btn" onclick="trainRelocate()" title="Use my location"
+        style="border:1.5px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;padding:6px 10px;border-radius:10px;line-height:1">📍</button>
       <button onclick="trainChangeStation()"
         style="border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;padding:6px 12px;border-radius:10px">Change</button>
     </div>
@@ -7533,6 +7535,22 @@ _bkBadge();
   };
 
   window.trainChangeStation = _showIdle;
+
+  window.trainRelocate = function() {
+    var btn = document.getElementById("train-relocate-btn");
+    MiruLocation.request(btn,
+      function(loc) {
+        fetch("/api/train/nearest?lat=" + loc.lat + "&lng=" + loc.lon)
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            if (d.error) return;
+            _showActive(d.name, d.crs);
+            _loadDeps(d.crs);
+          });
+      },
+      function() {}
+    );
+  };
 
   window.trainLocate = function() {
     var btn = document.getElementById("train-locate-btn");
