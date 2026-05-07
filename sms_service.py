@@ -1507,8 +1507,9 @@ def api_elections():
 
 
 _OVERPASS_URLS = [
-    "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass-api.de/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ]
 
 # Simple 30-minute in-memory cache for Overpass results keyed by postcode
@@ -1519,9 +1520,13 @@ def _overpass_mirrors(query):
     """POST to Overpass with mirror fallback. Use for hospitals/supermarkets."""
     for url in _OVERPASS_URLS:
         try:
-            r = requests.post(url, data={"data": query}, timeout=14)
+            r = requests.post(url, data={"data": query}, timeout=18)
             if r.status_code == 200:
-                return r.json().get("elements", [])
+                els = r.json().get("elements", [])
+                if els:
+                    print(f"[overpass] {url} returned {len(els)} elements")
+                    return els
+                print(f"[overpass] {url} returned 0 elements, trying next")
         except Exception as e:
             print(f"[overpass] {url} failed: {e}")
     return []
@@ -1675,7 +1680,8 @@ def api_services():
             hospitals = f_h.result()
             police    = f_p.result()
         result = {"hospitals": hospitals, "police": police}
-        _services_cache[cache_key] = {"data": result, "ts": time.time()}
+        if hospitals:  # only cache if we got results
+            _services_cache[cache_key] = {"data": result, "ts": time.time()}
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1696,7 +1702,8 @@ def api_shops():
             return jsonify({"error": "Postcode not found"}), 404
         supermarkets = _fetch_supermarkets(lat, lon)
         result = {"supermarkets": supermarkets}
-        _services_cache[cache_key] = {"data": result, "ts": time.time()}
+        if supermarkets:  # only cache if we got results
+            _services_cache[cache_key] = {"data": result, "ts": time.time()}
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
