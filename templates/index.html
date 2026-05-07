@@ -567,11 +567,13 @@
               <span style="font-size:22px">🛒</span>
               <span class="rptab-lbl">Shops</span>
               <span id="rptab-badge-shops" class="rptab-badge" style="display:none"></span>
+              <span id="rptab-loading-shops" style="display:none;width:7px;height:7px;border-radius:50%;border:2px solid #aaa;border-top-color:var(--accent);animation:spin .7s linear infinite"></span>
             </button>
             <button class="rptab" data-tab="services" onclick="reportTabSwitch('services',this)">
               <span style="font-size:22px">🏥</span>
               <span class="rptab-lbl">Help</span>
               <span id="rptab-badge-services" class="rptab-badge" style="display:none"></span>
+              <span id="rptab-loading-services" style="display:none;width:7px;height:7px;border-radius:50%;border:2px solid #aaa;border-top-color:var(--accent);animation:spin .7s linear infinite"></span>
             </button>
           </div>
 
@@ -1688,6 +1690,8 @@
     ["schools","pubs","cafes","crime","services","shops"].forEach(t => {
       const b = document.getElementById("rptab-badge-"+t);
       if (b) { b.textContent=""; b.style.display="none"; }
+      const l = document.getElementById("rptab-loading-"+t);
+      if (l) l.style.display = "none";
     });
 
     // Show results container with skeleton loaders in each panel
@@ -1702,6 +1706,8 @@
     document.getElementById("report-crime-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading crime data…</div>';
     document.getElementById("report-services-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading hospitals & police…</div>';
     document.getElementById("report-shops-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading supermarkets…</div>';
+    document.getElementById("rptab-loading-services").style.display = "inline-block";
+    document.getElementById("rptab-loading-shops").style.display = "inline-block";
     document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
 
     const slowTimer = setTimeout(() => {
@@ -1756,7 +1762,8 @@
           `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
       });
 
-    const servicesP = fetchWithTimeout(`/api/services?postcode=${postcode}`, 20000)
+    // Services and shops load in the background — don't block the main allSettled
+    fetchWithTimeout(`/api/services?postcode=${postcode}`, 35000)
       .then(async r => {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "Services lookup failed");
@@ -1765,9 +1772,12 @@
       .catch(err => {
         document.getElementById("report-services-list").innerHTML =
           `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+      })
+      .finally(() => {
+        document.getElementById("rptab-loading-services").style.display = "none";
       });
 
-    const shopsP = fetchWithTimeout(`/api/shops?postcode=${postcode}`, 20000)
+    fetchWithTimeout(`/api/shops?postcode=${postcode}`, 35000)
       .then(async r => {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "Shops lookup failed");
@@ -1776,9 +1786,12 @@
       .catch(err => {
         document.getElementById("report-shops-list").innerHTML =
           `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+      })
+      .finally(() => {
+        document.getElementById("rptab-loading-shops").style.display = "none";
       });
 
-    await Promise.allSettled([houseP, localP, crimeP, servicesP, shopsP]);
+    await Promise.allSettled([houseP, localP, crimeP]);
     clearTimeout(slowTimer);
   }
 
@@ -1933,14 +1946,18 @@
     html += `<div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:10px">🏥 Nearest Hospitals</div>`;
     if (d.hospitals && d.hospitals.length) {
       html += d.hospitals.map(h => {
-        const dist = h.distance_km && h.distance_km < 900 ? `<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px">${(h.distance_km*0.621371).toFixed(1)} mi</span>` : "";
+        const dist = h.distance_km && h.distance_km < 900 ? ` · ${(h.distance_km*0.621371).toFixed(1)} mi` : "";
+        const mapsQ = encodeURIComponent((h.address || h.name) + " hospital");
+        const addrLine = h.address
+          ? `<a href="https://maps.google.com/?q=${mapsQ}" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;margin-top:3px;display:inline-block">📍 ${h.address}</a>`
+          : `<a href="https://maps.google.com/?q=${encodeURIComponent(h.name+' hospital')}" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;margin-top:3px;display:inline-block">📍 Get directions</a>`;
         const phone = h.phone
-          ? `<a href="tel:${h.phone}" style="font-size:12px;color:#2563eb;font-weight:700;margin-top:4px;display:inline-block">📞 ${h.phone}</a>`
-          : `<a href="tel:111" style="font-size:12px;color:#2563eb;font-weight:700;margin-top:4px;display:inline-block">📞 111 (NHS non-emergency)</a>`;
+          ? `<a href="tel:${h.phone}" style="font-size:12px;color:#16a34a;font-weight:700;margin-top:2px;display:inline-block">📞 ${h.phone}</a>`
+          : `<a href="tel:111" style="font-size:12px;color:var(--muted);margin-top:2px;display:inline-block">📞 111 (no direct number)</a>`;
         return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-          <div style="font-weight:600;font-size:13px;color:var(--text)">${h.name}${dist}</div>
-          ${h.address ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${h.address}</div>` : ""}
-          ${phone}
+          <div style="font-weight:600;font-size:13px;color:var(--text)">${h.name}<span style="font-size:11px;color:var(--muted);font-weight:400">${dist}</span></div>
+          ${addrLine}
+          <br>${phone}
         </div>`;
       }).join("");
     } else {
