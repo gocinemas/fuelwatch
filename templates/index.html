@@ -1943,7 +1943,10 @@
     let html = "";
 
     // Hospitals
-    html += `<div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:10px">🏥 Nearest Hospitals</div>`;
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-weight:700;font-size:13px;color:var(--text)">🏥 Nearest Hospitals</span>
+      <a href="tel:111" style="font-size:12px;font-weight:700;color:#2563eb;text-decoration:none">📞 Call 111</a>
+    </div>`;
     if (d.hospitals && d.hospitals.length) {
       html += d.hospitals.map(h => {
         const dist = h.distance_km && h.distance_km < 900 ? ` · ${(h.distance_km*0.621371).toFixed(1)} mi` : "";
