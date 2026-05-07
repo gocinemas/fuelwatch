@@ -40,7 +40,8 @@ import school_service
 
 app = Flask(__name__)
 
-_CORS_ORIGINS = {"https://ai.humanagency.co", "http://ai.humanagency.co", "http://localhost:8080"}
+_CORS_ORIGINS = {"https://ai.humanagency.co", "http://ai.humanagency.co", "http://localhost:8080",
+                 "https://mekalav.com", "https://www.mekalav.com"}
 
 def _cors_headers(response):
     origin = request.headers.get("Origin", "")
@@ -507,6 +508,70 @@ def api_ai_summarize():
         result = r.json()
         summary = result["choices"][0]["message"]["content"].strip()
         return jsonify({"summary": summary})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/mekalav/chat", methods=["POST", "OPTIONS"])
+def mekalav_chat():
+    """AI chat proxy for mekalav.com — answers questions about Vikram using Groq."""
+    if request.method == "OPTIONS":
+        return "", 204
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "Not configured"}), 500
+    data = request.get_json(force=True, silent=True) or {}
+    message = (data.get("message") or "").strip()
+    history = data.get("history") or []
+    if not message:
+        return jsonify({"error": "No message"}), 400
+
+    SYSTEM = """You are an AI assistant on Vikram Mekala's personal website (mekalav.com). \
+Answer questions about Vikram accurately, warmly and concisely. You represent his portfolio.
+
+About Vikram:
+- 25 years in technology and transformation, based in London
+- Started as a software engineer in India, lived in Italy, moved to London in 2005
+- Career: Unilever (longest employer, multiple senior roles), Mars, Shell, BP, Leaseplan
+- Founder of Human Agency — building practical AI tools for non-technical people
+- Available for: AI strategy, digital transformation programmes, M&A technology workstreams
+
+Career highlights:
+- 2025: Unilever – Transformation Consultant, Magnum Ice Cream M&A separation (technology workstream)
+- 2024–now: Human Agency – Founder
+- 2020–2024: Unilever – Global Media Analytics Platform (£5M budget, 50-person team, 3 continents, 98% on-time delivery)
+- 2018–2020: Unilever – Net Revenue Management analytics (pricing, portfolio, promotional strategy, eCommerce)
+- 2013–2018: Shell (B2B eCommerce), Unilever (brand platform across 160 markets), Leaseplan (digital transformation)
+- 2000–2013: Mars, Unilever, BP — engineer to analyst to programme manager
+
+What he builds now:
+- Miru: WhatsApp-first AI assistant. School comms, fuel prices, train times, area reports. miru.humanagency.co
+- Human Agency: Free AI literacy site in plain language for non-technical people. ai.humanagency.co
+- He builds by writing the problem clearly and directing AI — product thinking, not code authorship
+
+Contact:
+- Email: mekala@gmail.com
+- WhatsApp: +44 759 507 5735
+- Twitter/X: @mekalav, LinkedIn: linkedin.com/in/mekalavikram
+
+Keep answers to 2-4 sentences unless more detail is asked. Be honest — if something isn't known, say so. \
+Suggest contacting Vikram directly for specific opportunities."""
+
+    messages = [{"role": "system", "content": SYSTEM}]
+    for h in (history or [])[-6:]:
+        if h.get("role") in ("user", "assistant"):
+            messages.append({"role": h["role"], "content": h["content"]})
+    messages.append({"role": "user", "content": message})
+
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={"model": "llama-3.3-70b-versatile", "messages": messages, "max_tokens": 300, "temperature": 0.6},
+            timeout=20,
+        )
+        reply = r.json()["choices"][0]["message"]["content"].strip()
+        return jsonify({"reply": reply})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
