@@ -1475,15 +1475,47 @@ def _parse_osm_elements(elements, limit, extra_fields=None):
             break
     return results
 
+def _el_coords(el):
+    return (
+        el.get("lat") or (el.get("center") or {}).get("lat"),
+        el.get("lon") or (el.get("center") or {}).get("lon"),
+    )
+
+def _el_phone(tags):
+    return (tags.get("phone") or tags.get("telephone") or
+            tags.get("contact:phone") or tags.get("contact:telephone") or "").strip()
+
+def _el_address(tags):
+    parts = [
+        tags.get("addr:housenumber", ""), tags.get("addr:street", ""),
+        tags.get("addr:city", ""),        tags.get("addr:postcode", ""),
+    ]
+    return ", ".join(filter(None, parts)) or tags.get("addr:full", "")
+
 def _fetch_hospitals(lat, lon):
     try:
-        q = (f"[out:json][timeout:10];"
-             f"(node[amenity=hospital](around:10000,{lat},{lon});"
-             f"way[amenity=hospital](around:10000,{lat},{lon});"
-             f"relation[amenity=hospital](around:10000,{lat},{lon}););"
-             f"out center 5;")
+        q = (f"[out:json][timeout:12];"
+             f"(node[amenity=hospital](around:15000,{lat},{lon});"
+             f"way[amenity=hospital](around:15000,{lat},{lon});"
+             f"relation[amenity=hospital](around:15000,{lat},{lon}););"
+             f"out tags center 8;")
         els = _overpass_query(q)
-        return _parse_osm_elements(els, 3, extra_fields=["phone", "telephone"])
+        items = []
+        for el in els:
+            tags = el.get("tags", {})
+            name = tags.get("name", "")
+            if not name:
+                continue
+            elat, elon = _el_coords(el)
+            dist = round(haversine_km(lat, lon, elat, elon), 2) if elat and elon else 999
+            items.append({
+                "name":        name,
+                "address":     _el_address(tags),
+                "phone":       _el_phone(tags),
+                "distance_km": dist,
+            })
+        items.sort(key=lambda x: x["distance_km"])
+        return items[:5]
     except Exception as e:
         print(f"[hospitals] {e}")
         return []
@@ -1491,19 +1523,25 @@ def _fetch_hospitals(lat, lon):
 def _fetch_supermarkets(lat, lon):
     try:
         q = (f"[out:json][timeout:10];"
-             f"(node[shop=supermarket](around:2000,{lat},{lon});"
-             f"way[shop=supermarket](around:2000,{lat},{lon}););"
-             f"out center 5;")
+             f"(node[shop=supermarket](around:5000,{lat},{lon});"
+             f"way[shop=supermarket](around:5000,{lat},{lon}););"
+             f"out tags center 8;")
         els = _overpass_query(q)
-        items = _parse_osm_elements(els, 5)
-        # attach distance using element centre coords
-        for item, el in zip(items, [e for e in els if e.get("tags", {}).get("name")]):
-            elat = el.get("lat") or (el.get("center") or {}).get("lat")
-            elon = el.get("lon") or (el.get("center") or {}).get("lon")
-            if elat and elon:
-                item["distance_km"] = round(haversine_km(lat, lon, elat, elon), 2)
-        items.sort(key=lambda x: x.get("distance_km", 999))
-        return items
+        items = []
+        for el in els:
+            tags = el.get("tags", {})
+            name = tags.get("name", "")
+            if not name:
+                continue
+            elat, elon = _el_coords(el)
+            dist = round(haversine_km(lat, lon, elat, elon), 2) if elat and elon else 999
+            items.append({
+                "name":        name,
+                "address":     _el_address(tags),
+                "distance_km": dist,
+            })
+        items.sort(key=lambda x: x["distance_km"])
+        return items[:6]
     except Exception as e:
         print(f"[supermarkets] {e}")
         return []

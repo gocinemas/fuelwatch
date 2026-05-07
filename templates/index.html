@@ -1934,12 +1934,12 @@
     if (d.hospitals && d.hospitals.length) {
       html += d.hospitals.map(h => `
         <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-          <div style="font-weight:600;font-size:13px;color:var(--text)">${h.name}</div>
+          <div style="font-weight:600;font-size:13px;color:var(--text)">${h.name}${h.distance_km && h.distance_km < 900 ? `<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:6px">${(h.distance_km*0.621371).toFixed(1)} mi</span>` : ""}</div>
           ${h.address ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${h.address}</div>` : ""}
           ${h.phone ? `<a href="tel:${h.phone}" style="font-size:12px;color:#2563eb;font-weight:700;margin-top:4px;display:inline-block">📞 ${h.phone}</a>` : ""}
         </div>`).join("");
     } else {
-      html += `<div style="font-size:12px;color:var(--muted);padding:8px 0">No hospitals found within 10km.</div>`;
+      html += `<div style="font-size:12px;color:var(--muted);padding:8px 0">No hospitals found within 15km.</div>`;
     }
 
     // Police
@@ -1976,7 +1976,7 @@
           ${s.distance_km ? `<div style="font-size:11px;color:var(--subtle);margin-top:2px">${(s.distance_km*0.621371).toFixed(1)} miles away</div>` : ""}
         </div>`).join("");
     } else {
-      html += `<div style="font-size:12px;color:var(--muted);padding:8px 0">No supermarkets found within 2km.</div>`;
+      html += `<div style="font-size:12px;color:var(--muted);padding:8px 0">No supermarkets found within 5km.</div>`;
     }
     el.innerHTML = html;
     const count = d.supermarkets?.length || 0;
@@ -7393,57 +7393,56 @@ _bkBadge();
     <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin:0">🚆 Next Train</h2>
     <span style="font-size:11px;font-weight:700;color:#e05c00;background:#fff3e0;border:1px solid #ffd0a0;border-radius:6px;padding:2px 8px;letter-spacing:.3px">National Rail only</span>
   </div>
-  <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Find trains from your nearest station</p>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Find trains from your nearest station</p>
 
-  <div id="train-bookmark-row" style="display:none;margin-bottom:14px">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Saved station</div>
+  <!-- Saved station chip — shown above search when a bookmark exists -->
+  <div id="train-bookmark-row" style="display:none;margin-bottom:12px">
     <div style="display:flex;align-items:center;gap:8px">
       <button id="train-bm-chip" onclick="trainUseBookmark()"
-        style="flex:1;text-align:left;padding:12px 16px;border:1px solid #fbbf24;border-radius:14px;background:#fffbeb;color:var(--text);font-size:14px;font-weight:700;cursor:pointer">
-        ⭐ <span id="train-bm-chip-name"></span>
+        style="flex:1;text-align:left;padding:11px 14px;border:1.5px solid #fbbf24;border-radius:12px;background:#fffbeb;color:var(--text);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">⭐</span>
+        <span id="train-bm-chip-name" style="flex:1"></span>
+        <span style="font-size:11px;color:#92400e;font-weight:600">Tap to load</span>
       </button>
       <button onclick="trainRemoveBookmark()" title="Remove saved station"
-        style="padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--muted);font-size:14px;cursor:pointer;line-height:1">✕</button>
+        style="padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--muted);font-size:13px;cursor:pointer;line-height:1;flex-shrink:0">✕</button>
     </div>
   </div>
 
-  <button id="train-locate-btn" onclick="trainLocate()"
-    style="width:100%;padding:14px;border:none;background:var(--text);color:var(--bg);border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px">
-    📍 Use my location
-  </button>
-
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-    <div style="flex:1;height:1px;background:var(--border)"></div>
-    <span style="font-size:12px;color:var(--muted);font-weight:600">or</span>
-    <div style="flex:1;height:1px;background:var(--border)"></div>
-  </div>
-
-  <div style="display:flex;gap:8px;margin-bottom:16px">
-    <input id="train-search-input" type="text" placeholder="Enter station name…"
-      style="flex:1;padding:13px 16px;border:1px solid var(--border);border-radius:14px;font-size:15px;outline:none;background:var(--surface);color:var(--text)"
+  <!-- Search row: 📍 button + station name input -->
+  <div id="train-input-row" style="display:flex;gap:8px;margin-bottom:10px">
+    <button id="train-locate-btn" onclick="trainLocate()" title="Use my location"
+      style="padding:13px 14px;border:1.5px solid var(--border);border-radius:14px;background:var(--surface);font-size:19px;cursor:pointer;flex-shrink:0;line-height:1">📍</button>
+    <input id="train-search-input" type="text" placeholder="Station name, e.g. Chertsey"
+      style="flex:1;padding:13px 16px;border:1.5px solid var(--border);border-radius:14px;font-size:15px;outline:none;background:var(--surface);color:var(--text)"
       onkeydown="if(event.key==='Enter') trainSearch()">
     <button onclick="trainSearch()"
-      style="padding:13px 18px;border:none;background:var(--text);color:var(--bg);border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap">
-      Search
-    </button>
+      style="padding:13px 16px;border:none;background:var(--text);color:var(--bg);border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap">Go</button>
+  </div>
+  <div id="train-locate-hint" style="display:none;font-size:12px;color:var(--muted);margin-bottom:10px;padding:0 4px">
+    Couldn't detect location — type your station name above.
   </div>
 
   <div id="train-search-results" style="display:none;margin-bottom:16px"></div>
 
-  <div id="train-station-row" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:16px">
+  <!-- Selected station header -->
+  <div id="train-station-row" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:12px 16px;margin-bottom:14px">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Station</div>
-        <div id="train-station-name" style="font-size:17px;font-weight:800;color:var(--text)"></div>
+      <div style="flex:1;min-width:0">
+        <div id="train-station-name" style="font-size:16px;font-weight:800;color:var(--text)"></div>
       </div>
-      <button id="train-star-btn" onclick="trainToggleBookmark()" title="Save station"
-        style="border:none;background:none;font-size:22px;cursor:pointer;padding:4px 2px;line-height:1">☆</button>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <button id="train-star-btn" onclick="trainToggleBookmark()" title="Save station"
+          style="border:none;background:none;font-size:20px;cursor:pointer;padding:4px;line-height:1">☆</button>
+        <button onclick="trainChangeStation()"
+          style="border:1px solid var(--border);background:var(--surface);color:#2563eb;font-size:12px;font-weight:700;padding:5px 10px;border-radius:8px;cursor:pointer">Change</button>
+      </div>
     </div>
   </div>
 
-  <div id="train-dest-row" style="display:none;margin-bottom:16px">
+  <div id="train-dest-row" style="display:none;margin-bottom:14px">
     <input id="train-dest-input" type="text" placeholder="Filter by destination, e.g. Waterloo"
-      style="width:100%;box-sizing:border-box;padding:12px 16px;border:1px solid var(--border);border-radius:14px;font-size:15px;outline:none;background:var(--surface)"
+      style="width:100%;box-sizing:border-box;padding:11px 16px;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none;background:var(--surface);color:var(--text)"
       oninput="trainFilterResults()">
   </div>
 
@@ -7496,11 +7495,7 @@ _bkBadge();
     if (!bm) return;
     _trainCrs = bm.crs;
     _trainName = bm.name;
-    document.getElementById("train-station-name").textContent = bm.name + " (" + bm.crs + ")";
-    document.getElementById("train-station-row").style.display = "block";
-    document.getElementById("train-dest-row").style.display = "block";
-    document.getElementById("train-search-results").style.display = "none";
-    _trainUpdateStar();
+    _trainShowStation(bm.name, bm.crs);
     _trainLoadDepartures(bm.crs);
   };
 
@@ -7512,35 +7507,57 @@ _bkBadge();
 
   window.trainLocate = function() {
     var btn = document.getElementById("train-locate-btn");
-    btn.textContent = "Locating…";
+    var hint = document.getElementById("train-locate-hint");
+    btn.textContent = "⏳";
     btn.disabled = true;
+    hint.style.display = "none";
     if (!navigator.geolocation) {
-      btn.textContent = "📍 Use my location";
+      btn.textContent = "📍";
       btn.disabled = false;
-      _trainErr("Geolocation not supported by your browser");
+      hint.style.display = "block";
       return;
     }
     navigator.geolocation.getCurrentPosition(function(pos) {
       fetch("/api/train/nearest?lat="+pos.coords.latitude+"&lng="+pos.coords.longitude)
         .then(function(r){ return r.json(); })
         .then(function(d){
-          btn.textContent = "📍 Use my location";
+          btn.textContent = "📍";
           btn.disabled = false;
-          if (d.error) { _trainErr(d.error); return; }
+          if (d.error) { hint.textContent = d.error; hint.style.display = "block"; return; }
           _trainCrs = d.crs;
           _trainName = d.name;
-          document.getElementById("train-station-name").textContent = d.name + (d.crs ? " ("+d.crs+")" : "");
-          document.getElementById("train-station-row").style.display = "block";
-          document.getElementById("train-dest-row").style.display = "block";
-          _trainUpdateStar();
+          _trainShowStation(d.name, d.crs);
           _trainLoadDepartures(d.crs);
         })
-        .catch(function(){ btn.textContent="📍 Use my location"; btn.disabled=false; _trainErr("Could not find nearest station"); });
+        .catch(function(){ btn.textContent="📍"; btn.disabled=false; _trainErr("Could not find nearest station"); });
     }, function(){
-      btn.textContent = "📍 Use my location";
+      btn.textContent = "📍";
       btn.disabled = false;
-      _trainErr("Location access denied — please allow location in your browser");
+      hint.style.display = "block";
+      document.getElementById("train-search-input").focus();
     }, {timeout:10000});
+  };
+
+  function _trainShowStation(name, crs) {
+    document.getElementById("train-station-name").textContent = name + (crs ? " ("+crs+")" : "");
+    document.getElementById("train-station-row").style.display = "block";
+    document.getElementById("train-dest-row").style.display = "block";
+    document.getElementById("train-search-results").style.display = "none";
+    document.getElementById("train-locate-hint").style.display = "none";
+    _trainUpdateStar();
+  }
+
+  window.trainChangeStation = function() {
+    document.getElementById("train-station-row").style.display = "none";
+    document.getElementById("train-dest-row").style.display = "none";
+    document.getElementById("train-results").innerHTML = "";
+    document.getElementById("train-loading").style.display = "none";
+    document.getElementById("train-error").style.display = "none";
+    document.getElementById("train-dest-input").value = "";
+    document.getElementById("train-search-input").value = "";
+    document.getElementById("train-search-input").focus();
+    _trainCrs = "";
+    _trainName = "";
   };
 
   window.trainSearch = function() {
@@ -7579,14 +7596,10 @@ _bkBadge();
   };
 
   window.trainSelectStation = function(crs, name) {
-    document.getElementById("train-search-results").style.display = "none";
     document.getElementById("train-search-input").value = "";
     _trainCrs = crs;
     _trainName = name;
-    document.getElementById("train-station-name").textContent = name + " (" + crs + ")";
-    document.getElementById("train-station-row").style.display = "block";
-    document.getElementById("train-dest-row").style.display = "block";
-    _trainUpdateStar();
+    _trainShowStation(name, crs);
     _trainLoadDepartures(crs);
   };
 
@@ -7641,7 +7654,17 @@ _bkBadge();
   var _origShowScreenTrains = window.showScreen;
   window.showScreen = function(name) {
     _origShowScreenTrains(name);
-    if (name === "trains") _trainRenderBm();
+    if (name === "trains") {
+      _trainRenderBm();
+      // Auto-load saved station when opening the screen
+      var bm = _trainGetBm();
+      if (bm && bm.crs && !_trainCrs) {
+        _trainCrs = bm.crs;
+        _trainName = bm.name;
+        _trainShowStation(bm.name, bm.crs);
+        _trainLoadDepartures(bm.crs);
+      }
+    }
   };
 })();
 </script>
