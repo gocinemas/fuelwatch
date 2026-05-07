@@ -4682,15 +4682,14 @@
       return m ? m[0].replace(/\s/g,"").toUpperCase() : null;
     }
 
-    // Brand Intel signals → which tab to open after search
+    // Brand Intel signals → marketing/identity queries
     const _BRAND_KW = {
       rivals:   ["competitor","competitors","rival","rivals","vs","versus"],
-      ads:      ["ad","ads","advert","advertisement","campaign","slogan","marketing"],
-      timeline: ["timeline","history","founded","started","origin","when","evolution","story"],
-      overview: ["turnover","revenue","sales","employees","staff","headcount","hq","headquarters","founded","industry"],
+      ads:      ["ad","ads","advert","advertisement","campaign","slogan","marketing","brand identity","logo","design"],
+      timeline: ["timeline","history","started","origin","evolution","story"],
     };
-    // Company Intel signals
-    const _COMPANY_KW = ["strategy","strategic","ai","artificial intelligence","tech","technology","results","financials","earnings","profit","loss","annual report","news"];
+    // Company Intel signals → financial/corporate queries
+    const _COMPANY_KW = ["turnover","revenue","sales","profit","loss","earnings","financials","annual report","results","employees","staff","headcount","hq","headquarters","industry","strategy","strategic","ai","artificial intelligence","tech","technology","news","founded","director","shareholders","ownership"];
 
     function _detectBrandOrCompany(q) {
       const ql = q.toLowerCase();
