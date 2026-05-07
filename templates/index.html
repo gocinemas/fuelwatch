@@ -563,6 +563,11 @@
               <span class="rptab-lbl">Cafes</span>
               <span id="rptab-badge-cafes" class="rptab-badge" style="display:none"></span>
             </button>
+            <button class="rptab" data-tab="services" onclick="reportTabSwitch('services',this)">
+              <span style="font-size:22px">🏥</span>
+              <span class="rptab-lbl">Help</span>
+              <span id="rptab-badge-services" class="rptab-badge" style="display:none"></span>
+            </button>
           </div>
 
           <!-- Content panels -->
@@ -588,6 +593,9 @@
             </div>
             <div id="rp-panel-crime" style="display:none">
               <div id="report-crime-list" class="text-sm"></div>
+            </div>
+            <div id="rp-panel-services" style="display:none">
+              <div id="report-services-list" class="text-sm"></div>
             </div>
           </div>
         </div>
@@ -1669,7 +1677,7 @@
     document.getElementById("report-rightmove").classList.add("hidden");
     document.getElementById("report-empty").classList.add("hidden");
     document.getElementById("report-error").classList.add("hidden");
-    ["schools","pubs","cafes","crime"].forEach(t => {
+    ["schools","pubs","cafes","crime","services"].forEach(t => {
       const b = document.getElementById("rptab-badge-"+t);
       if (b) { b.textContent=""; b.style.display="none"; }
     });
@@ -1684,6 +1692,7 @@
     document.getElementById("report-pubs-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading pubs…</div>';
     document.getElementById("report-cafes-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading cafes…</div>';
     document.getElementById("report-crime-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading crime data…</div>';
+    document.getElementById("report-services-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading hospitals & police…</div>';
     document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
 
     const slowTimer = setTimeout(() => {
@@ -1738,7 +1747,18 @@
           `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
       });
 
-    await Promise.allSettled([houseP, localP, crimeP]);
+    const servicesP = fetchWithTimeout(`/api/services?postcode=${postcode}`, 20000)
+      .then(async r => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "Services lookup failed");
+        renderServicesData(d);
+      })
+      .catch(err => {
+        document.getElementById("report-services-list").innerHTML =
+          `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+      });
+
+    await Promise.allSettled([houseP, localP, crimeP, servicesP]);
     clearTimeout(slowTimer);
   }
 
@@ -1883,6 +1903,46 @@
 
     const cb = document.getElementById("rptab-badge-crime");
     if (cb) { cb.textContent = (d.per_month||0) + "/mo"; cb.style.display = "inline-block"; }
+  }
+
+  function renderServicesData(d) {
+    const el = document.getElementById("report-services-list");
+    let html = "";
+
+    // Hospitals
+    html += `<div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:10px">🏥 Nearest Hospitals</div>`;
+    if (d.hospitals && d.hospitals.length) {
+      html += d.hospitals.map(h => `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="font-weight:600;font-size:13px;color:var(--text)">${h.name}</div>
+          ${h.address ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${h.address}</div>` : ""}
+          ${h.phone ? `<a href="tel:${h.phone}" style="font-size:12px;color:#2563eb;font-weight:700;margin-top:4px;display:inline-block">📞 ${h.phone}</a>` : ""}
+        </div>`).join("");
+    } else {
+      html += `<div style="font-size:12px;color:var(--muted);padding:8px 0">No hospitals found within 5km.</div>`;
+    }
+
+    // Police
+    const p = d.police || {};
+    html += `<div style="font-weight:700;font-size:13px;color:var(--text);margin:16px 0 10px">🚔 Police Contact</div>`;
+    if (p.force_name) {
+      html += `<div style="background:var(--surface2,#f3f1ee);border-radius:12px;padding:12px 14px">
+        <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:2px">${p.force_name}</div>
+        ${p.neighbourhood ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${p.neighbourhood}</div>` : ""}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a href="tel:${p.telephone}" style="display:inline-flex;align-items:center;gap:4px;background:#2563eb;color:white;font-size:12px;font-weight:700;padding:7px 13px;border-radius:8px;text-decoration:none">📞 ${p.telephone} Non-emergency</a>
+          <a href="tel:999" style="display:inline-flex;align-items:center;gap:4px;background:#dc2626;color:white;font-size:12px;font-weight:700;padding:7px 13px;border-radius:8px;text-decoration:none">🚨 999 Emergency</a>
+        </div>
+        ${p.force_url ? `<a href="${p.force_url}" target="_blank" rel="noopener" style="font-size:11px;color:#2563eb;margin-top:8px;display:inline-block">Police website ↗</a>` : ""}
+      </div>`;
+    } else {
+      html += `<div style="font-size:12px;color:var(--muted)">Police contact not available for this area.</div>`;
+    }
+
+    el.innerHTML = html;
+    const total = (d.hospitals?.length || 0) + (p.force_name ? 1 : 0);
+    const badge = document.getElementById("rptab-badge-services");
+    if (badge && total > 0) { badge.textContent = total; badge.style.display = "flex"; }
   }
 
   // ── Navigation sheet ─────────────────────────────────────────────────────────

@@ -1441,6 +1441,85 @@ def api_elections():
         return jsonify({"error": str(e)}), 500
 
 
+def _fetch_hospitals(lat, lon):
+    try:
+        query = (
+            f"[out:json][timeout:10];"
+            f"(node[amenity=hospital](around:5000,{lat},{lon});"
+            f"way[amenity=hospital](around:5000,{lat},{lon});"
+            f"relation[amenity=hospital](around:5000,{lat},{lon}););"
+            f"out center 5;"
+        )
+        r = requests.post("https://overpass-api.de/api/interpreter", data=query, timeout=14)
+        if r.status_code != 200:
+            return []
+        results = []
+        for el in r.json().get("elements", []):
+            tags = el.get("tags", {})
+            name = tags.get("name", "")
+            if not name:
+                continue
+            phone = tags.get("phone") or tags.get("contact:phone") or tags.get("telephone") or ""
+            addr = ", ".join(filter(None, [
+                tags.get("addr:housenumber", ""), tags.get("addr:street", ""),
+                tags.get("addr:city", ""),        tags.get("addr:postcode", ""),
+            ])) or tags.get("addr:full", "")
+            results.append({"name": name, "phone": phone.strip(), "address": addr.strip()})
+            if len(results) == 3:
+                break
+        return results
+    except Exception as e:
+        print(f"[hospitals] {e}")
+        return []
+
+
+def _fetch_police_contact(lat, lon):
+    try:
+        r = requests.get("https://data.police.uk/api/locate-neighbourhood",
+                         params={"q": f"{lat},{lon}"}, timeout=8)
+        if r.status_code != 200:
+            return {}
+        loc = r.json()
+        force_id = loc.get("force", "")
+        nb_id    = loc.get("neighbourhood", "")
+        r_nb  = requests.get(f"https://data.police.uk/api/{force_id}/{nb_id}", timeout=8)
+        r_f   = requests.get(f"https://data.police.uk/api/forces/{force_id}", timeout=8)
+        nb    = r_nb.json() if r_nb.status_code == 200 else {}
+        force = r_f.json()  if r_f.status_code  == 200 else {}
+        contact = nb.get("contact_details", {})
+        return {
+            "force_name":    force.get("name", ""),
+            "force_url":     force.get("url", ""),
+            "telephone":     contact.get("telephone") or "101",
+            "email":         contact.get("email", ""),
+            "neighbourhood": nb.get("name", ""),
+        }
+    except Exception as e:
+        print(f"[police_contact] {e}")
+        return {}
+
+
+@app.route("/api/services")
+def api_services():
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+    try:
+        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
+        if r.status_code != 200:
+            return jsonify({"error": "Postcode not found"}), 404
+        res = r.json().get("result", {})
+        lat, lon = res.get("latitude"), res.get("longitude")
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            f_h = ex.submit(_fetch_hospitals, lat, lon)
+            f_p = ex.submit(_fetch_police_contact, lat, lon)
+            hospitals = f_h.result()
+            police    = f_p.result()
+        return jsonify({"hospitals": hospitals, "police": police})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/health")
 def api_health():
     """Full diagnostic: env vars, Groq API call, JSON parse."""
