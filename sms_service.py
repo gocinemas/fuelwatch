@@ -1473,6 +1473,36 @@ def _fetch_hospitals(lat, lon):
         return []
 
 
+def _fetch_supermarkets(lat, lon):
+    try:
+        query = (
+            f"[out:json][timeout:10];"
+            f"(node[shop=supermarket](around:2000,{lat},{lon});"
+            f"way[shop=supermarket](around:2000,{lat},{lon}););"
+            f"out center 5;"
+        )
+        r = requests.post("https://overpass-api.de/api/interpreter", data=query, timeout=14)
+        if r.status_code != 200:
+            return []
+        results = []
+        for el in r.json().get("elements", []):
+            tags = el.get("tags", {})
+            name = tags.get("name", "")
+            if not name:
+                continue
+            addr = ", ".join(filter(None, [
+                tags.get("addr:housenumber", ""), tags.get("addr:street", ""),
+                tags.get("addr:city", ""),        tags.get("addr:postcode", ""),
+            ])) or tags.get("addr:full", "")
+            results.append({"name": name, "address": addr.strip()})
+            if len(results) == 5:
+                break
+        return results
+    except Exception as e:
+        print(f"[supermarkets] {e}")
+        return []
+
+
 def _fetch_police_contact(lat, lon):
     try:
         r = requests.get("https://data.police.uk/api/locate-neighbourhood",
@@ -1510,12 +1540,14 @@ def api_services():
             return jsonify({"error": "Postcode not found"}), 404
         res = r.json().get("result", {})
         lat, lon = res.get("latitude"), res.get("longitude")
-        with ThreadPoolExecutor(max_workers=2) as ex:
+        with ThreadPoolExecutor(max_workers=3) as ex:
             f_h = ex.submit(_fetch_hospitals, lat, lon)
             f_p = ex.submit(_fetch_police_contact, lat, lon)
-            hospitals = f_h.result()
-            police    = f_p.result()
-        return jsonify({"hospitals": hospitals, "police": police})
+            f_s = ex.submit(_fetch_supermarkets, lat, lon)
+            hospitals    = f_h.result()
+            police       = f_p.result()
+            supermarkets = f_s.result()
+        return jsonify({"hospitals": hospitals, "police": police, "supermarkets": supermarkets})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
