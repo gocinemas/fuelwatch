@@ -320,37 +320,12 @@
         <div id="home-search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:200;overflow:hidden;max-height:340px;overflow-y:auto"></div>
       </div>
 
-      <!-- Conversational prompts -->
-      <div style="margin-bottom:28px">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);margin-bottom:12px">Try asking…</div>
-
-        <div class="prompt-row" style="margin-bottom:8px">
-          <button class="prompt-chip" onclick="showScreen('fuel')">⛽ Where's cheap fuel near me?</button>
-          <button class="prompt-chip" onclick="showScreen('trains')">🚆 What's the next train?</button>
-          <button class="prompt-chip" onclick="showScreen('report')">🏠 What's my area like?</button>
-        </div>
-        <div class="prompt-row" style="margin-bottom:8px">
-          <button class="prompt-chip" onclick="showScreen('places')">☕ Where's a good café nearby?</button>
-          <button class="prompt-chip" onclick="showScreen('places')">🔧 Can I get a plumber today?</button>
-          <button class="prompt-chip" onclick="showScreen('places')">🏥 Where's the nearest hospital?</button>
-        </div>
-        <div class="prompt-row" style="margin-bottom:8px">
-          <button class="prompt-chip" onclick="showScreen('report')">🔒 What's crime like around here?</button>
-          <button class="prompt-chip" onclick="showScreen('company')">🔎 Tell me about this company</button>
-          <button class="prompt-chip" onclick="showScreen('report')">🏡 What are house prices like?</button>
-        </div>
-        <div class="prompt-row">
-          <button class="prompt-chip" onclick="showScreen('library')">📄 Let me ask my documents</button>
-          <button class="prompt-chip" onclick="showScreen('scan')">📚 Chat with a book</button>
-          <button class="prompt-chip" onclick="showScreen('saves')">📌 Find something I saved</button>
-          <button class="prompt-chip" onclick="showScreen('school')" id="school-home-card" style="display:none">🏫 What's on at school?</button>
-          <button class="prompt-chip" id="elections-tool-card" onclick="showScreen('elections')">🗳️ <span id="elections-tool-desc">Local elections</span></button>
-        </div>
-      </div>
+      <!-- Hidden chips kept for school/elections JS refs -->
+      <span id="school-home-card" style="display:none"></span>
+      <span id="elections-tool-card" style="display:none"><span id="elections-tool-desc"></span></span>
 
       <!-- All tools grid -->
       <div style="margin-bottom:28px">
-        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--subtle);margin-bottom:12px">All tools</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <button class="home-tool-card" onclick="showScreen('fuel')">
             <span class="home-tool-icon">⛽</span>
