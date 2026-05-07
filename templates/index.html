@@ -296,7 +296,6 @@
       <!-- Greeting -->
       <div style="padding:24px 0 20px">
         <div id="home-greeting" style="font-size:28px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Good morning.</div>
-        <div id="home-weather-tip" hidden style="margin-top:5px;font-size:13px;color:var(--subtle)"><span id="home-weather-tip-text"></span></div>
         <div id="home-miru-tip" style="margin-top:8px;font-size:13px;color:var(--muted);line-height:1.5"></div>
         <div id="music-player" style="display:none;margin-top:12px">
           <iframe src="https://open.spotify.com/embed/playlist/5OmW3j1Kb79RkBvMjOo4vX?utm_source=generator"
@@ -305,10 +304,10 @@
         </div>
       </div>
 
-      <!-- Tagline for new users -->
-      <div style="margin-bottom:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px">
-        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Your everyday UK companion.</div>
-        <div style="font-size:13px;color:var(--muted);line-height:1.6">Find cheap fuel, check train times, look up local services, research a company, save articles and more — all in one place. Everything also works on WhatsApp.</div>
+      <!-- Intro for new users -->
+      <div style="margin-bottom:20px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">What is Miru?</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.75">Miru is a simple tool built for everyday life in the UK. Whether you want to find the cheapest petrol nearby, see when the next train is leaving, understand what your area is really like, or just need a plumber, Miru helps you get there quickly. You can also save articles, ask questions about documents, research companies and more. And if you prefer, just send a WhatsApp message and it works exactly the same way.</div>
       </div>
 
       <!-- Search bar -->
@@ -4638,12 +4637,9 @@
           if (!cur) return;
           const temp = Math.round(cur.temperature_2m ?? cur.temperature ?? 0);
           const code = cur.weather_code ?? cur.weathercode ?? 0;
-          const tip = _wTip(code, temp);
-          const tipWrap = document.getElementById("home-weather-tip");
-          if (tip) {
-            document.getElementById("home-weather-tip-text").textContent = tip;
-            tipWrap.removeAttribute("hidden");
-          }
+          const h = new Date().getHours();
+          const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+          document.getElementById("home-greeting").textContent = `${greet} · ${_wCode(code)} ${temp}°C`;
         }).catch(() => {});
     }
     MiruLocation.get().then(loc => { if (loc) _showWeather(loc.lat, loc.lon); }).catch(() => {});
@@ -4668,14 +4664,56 @@
 
     let _debounce = null;
 
+    // Extract a UK postcode from a query string
+    function _extractPostcode(q) {
+      const m = q.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}|\b[A-Z]{1,2}\d{1,2}[A-Z]?\b)/i);
+      return m ? m[0].replace(/\s/g,"").toUpperCase() : null;
+    }
+
+    // Map keywords to a screen + pre-fill action
+    const _INTENTS = [
+      { kw: ["petrol","diesel","fuel","unleaded","e10","e5"], screen:"fuel",   fill: pc => { document.getElementById("fuel-postcode").value = pc; showScreen("fuel"); searchFuel(); } },
+      { kw: ["train","trains","rail","station","departure"],  screen:"trains", fill: pc => { document.getElementById("train-search-input").value = pc; showScreen("trains"); trainSearch(); } },
+      { kw: ["area","crime","house price","property","school rating"], screen:"report", fill: pc => { document.getElementById("report-postcode") && (document.getElementById("report-postcode").value = pc); showScreen("report"); } },
+    ];
+
+    function _detectIntent(q) {
+      const ql = q.toLowerCase();
+      for (const intent of _INTENTS) {
+        if (intent.kw.some(k => ql.includes(k))) return intent;
+      }
+      return null;
+    }
+
     window.homeSearchInput = function() {
       const q = document.getElementById("home-search-input").value.trim();
       document.getElementById("home-search-clear").style.display = q ? "block" : "none";
       if (!q) { _hideResults(); return; }
 
+      // Smart: postcode + keyword detected — offer a direct action
+      const pc = _extractPostcode(q);
+      const intent = pc ? _detectIntent(q) : null;
+      if (pc && intent) {
+        const box = document.getElementById("home-search-results");
+        box.style.display = "block";
+        const label = intent.screen === "fuel" ? `Find ${intent.kw[0]} near ${pc}` :
+                      intent.screen === "trains" ? `Trains from ${pc}` :
+                      `Area report for ${pc}`;
+        const icon  = intent.screen === "fuel" ? "⛽" : intent.screen === "trains" ? "🚆" : "🏠";
+        box.innerHTML = `<button onclick="homeSearchClear();(${intent.fill.toString()})('${pc}')" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit">
+          <span style="font-size:22px;width:30px;text-align:center;flex-shrink:0">${icon}</span>
+          <span>
+            <span style="display:block;font-size:14px;font-weight:700;color:var(--text)">${label}</span>
+            <span style="display:block;font-size:11px;color:var(--subtle)">Tap to search</span>
+          </span>
+          <span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--accent)">Go →</span>
+        </button>`;
+        return;
+      }
+
       const ql = q.toLowerCase();
       const toolHits = _TOOLS.filter(t =>
-        ql.split(/\s+/).every(w => (t.name + " " + t.desc + " " + t.kw).toLowerCase().includes(w))
+        ql.split(/\s+/).some(w => w.length > 2 && (t.name + " " + t.desc + " " + t.kw).toLowerCase().includes(w))
       );
       _render(toolHits, [], q, true);
 
