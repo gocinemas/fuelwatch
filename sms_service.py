@@ -1441,63 +1441,69 @@ def api_elections():
         return jsonify({"error": str(e)}), 500
 
 
+_OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
+
+def _overpass_query(query):
+    for url in _OVERPASS_URLS:
+        try:
+            r = requests.post(url, data={"data": query}, timeout=14)
+            if r.status_code == 200:
+                return r.json().get("elements", [])
+        except Exception as e:
+            print(f"[overpass] {url} failed: {e}")
+    return []
+
+def _parse_osm_elements(elements, limit, extra_fields=None):
+    results = []
+    for el in elements:
+        tags = el.get("tags", {})
+        name = tags.get("name", "")
+        if not name:
+            continue
+        addr = ", ".join(filter(None, [
+            tags.get("addr:housenumber", ""), tags.get("addr:street", ""),
+            tags.get("addr:city", ""),        tags.get("addr:postcode", ""),
+        ])) or tags.get("addr:full", "")
+        item = {"name": name, "address": addr.strip()}
+        for f in (extra_fields or []):
+            item[f] = (tags.get(f) or tags.get(f"contact:{f}") or "").strip()
+        results.append(item)
+        if len(results) == limit:
+            break
+    return results
+
 def _fetch_hospitals(lat, lon):
     try:
-        query = (
-            f"[out:json][timeout:10];"
-            f"(node[amenity=hospital](around:10000,{lat},{lon});"
-            f"way[amenity=hospital](around:10000,{lat},{lon});"
-            f"relation[amenity=hospital](around:10000,{lat},{lon}););"
-            f"out center 5;"
-        )
-        r = requests.post("https://overpass-api.de/api/interpreter", data=query, timeout=14)
-        if r.status_code != 200:
-            return []
-        results = []
-        for el in r.json().get("elements", []):
-            tags = el.get("tags", {})
-            name = tags.get("name", "")
-            if not name:
-                continue
-            phone = tags.get("phone") or tags.get("contact:phone") or tags.get("telephone") or ""
-            addr = ", ".join(filter(None, [
-                tags.get("addr:housenumber", ""), tags.get("addr:street", ""),
-                tags.get("addr:city", ""),        tags.get("addr:postcode", ""),
-            ])) or tags.get("addr:full", "")
-            results.append({"name": name, "phone": phone.strip(), "address": addr.strip()})
-            if len(results) == 3:
-                break
-        return results
+        q = (f"[out:json][timeout:10];"
+             f"(node[amenity=hospital](around:10000,{lat},{lon});"
+             f"way[amenity=hospital](around:10000,{lat},{lon});"
+             f"relation[amenity=hospital](around:10000,{lat},{lon}););"
+             f"out center 5;")
+        els = _overpass_query(q)
+        return _parse_osm_elements(els, 3, extra_fields=["phone", "telephone"])
     except Exception as e:
         print(f"[hospitals] {e}")
         return []
 
-
 def _fetch_supermarkets(lat, lon):
     try:
-        query = (
-            f"[out:json][timeout:10];"
-            f"(node[shop=supermarket](around:2000,{lat},{lon});"
-            f"way[shop=supermarket](around:2000,{lat},{lon}););"
-            f"out center 5;"
-        )
-        r = requests.post("https://overpass-api.de/api/interpreter", data=query, timeout=14)
-        if r.status_code != 200:
-            return []
-        results = []
-        for el in r.json().get("elements", []):
-            tags = el.get("tags", {})
-            name = tags.get("name", "")
-            if not name:
-                continue
-            addr = ", ".join(filter(None, [
-                tags.get("addr:housenumber", ""), tags.get("addr:street", ""),
-                tags.get("addr:city", ""),        tags.get("addr:postcode", ""),
-            ])) or tags.get("addr:full", "")
-            results.append({"name": name, "address": addr.strip()})
-            if len(results) == 5:
-                break
-        return results
+        q = (f"[out:json][timeout:10];"
+             f"(node[shop=supermarket](around:2000,{lat},{lon});"
+             f"way[shop=supermarket](around:2000,{lat},{lon}););"
+             f"out center 5;")
+        els = _overpass_query(q)
+        items = _parse_osm_elements(els, 5)
+        # attach distance using element centre coords
+        for item, el in zip(items, [e for e in els if e.get("tags", {}).get("name")]):
+            elat = el.get("lat") or (el.get("center") or {}).get("lat")
+            elon = el.get("lon") or (el.get("center") or {}).get("lon")
+            if elat and elon:
+                item["distance_km"] = round(haversine_km(lat, lon, elat, elon), 2)
+        items.sort(key=lambda x: x.get("distance_km", 999))
+        return items
     except Exception as e:
         print(f"[supermarkets] {e}")
         return []
@@ -1540,14 +1546,29 @@ def api_services():
             return jsonify({"error": "Postcode not found"}), 404
         res = r.json().get("result", {})
         lat, lon = res.get("latitude"), res.get("longitude")
-        with ThreadPoolExecutor(max_workers=3) as ex:
+        with ThreadPoolExecutor(max_workers=2) as ex:
             f_h = ex.submit(_fetch_hospitals, lat, lon)
             f_p = ex.submit(_fetch_police_contact, lat, lon)
-            f_s = ex.submit(_fetch_supermarkets, lat, lon)
-            hospitals    = f_h.result()
-            police       = f_p.result()
-            supermarkets = f_s.result()
-        return jsonify({"hospitals": hospitals, "police": police, "supermarkets": supermarkets})
+            hospitals = f_h.result()
+            police    = f_p.result()
+        return jsonify({"hospitals": hospitals, "police": police})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/shops")
+def api_shops():
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+    try:
+        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
+        if r.status_code != 200:
+            return jsonify({"error": "Postcode not found"}), 404
+        res = r.json().get("result", {})
+        lat, lon = res.get("latitude"), res.get("longitude")
+        supermarkets = _fetch_supermarkets(lat, lon)
+        return jsonify({"supermarkets": supermarkets})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
