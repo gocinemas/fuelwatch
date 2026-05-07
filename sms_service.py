@@ -1567,59 +1567,49 @@ def _el_address(tags):
     ]
     return ", ".join(filter(None, parts)) or tags.get("addr:full", "")
 
-def _fetch_hospitals(lat, lon):
+def _places_nearby(lat, lon, place_type, radius_m, max_results):
+    """Fetch nearby places via Google Places Nearby Search."""
+    key = os.environ.get("GOOGLE_PLACES_KEY", "")
+    if not key:
+        return []
     try:
-        q = (f"[out:json][timeout:12];"
-             f"(node[amenity=hospital](around:15000,{lat},{lon});"
-             f"way[amenity=hospital](around:15000,{lat},{lon});"
-             f"relation[amenity=hospital](around:15000,{lat},{lon}););"
-             f"out tags center 30;")
-        els = _overpass_mirrors(q)
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params={"location": f"{lat},{lon}", "radius": radius_m,
+                    "type": place_type, "key": key},
+            timeout=10,
+        )
+        results = r.json().get("results", [])
         items = []
-        for el in els:
-            tags = el.get("tags", {})
-            name = tags.get("name", "")
-            if not name:
-                continue
-            elat, elon = _el_coords(el)
-            dist = round(haversine_km(lat, lon, elat, elon), 2) if elat and elon else 999
+        for p in results:
+            loc = p.get("geometry", {}).get("location", {})
+            plat, plon = loc.get("lat"), loc.get("lng")
+            dist = round(haversine_km(lat, lon, plat, plon), 2) if plat and plon else 999
             items.append({
-                "name":        name,
-                "address":     _el_address(tags),
-                "phone":       _el_phone(tags),
+                "name":        p.get("name", ""),
+                "address":     p.get("vicinity", ""),
                 "distance_km": dist,
+                "place_id":    p.get("place_id", ""),
             })
         items.sort(key=lambda x: x["distance_km"])
-        return items[:4]
+        return items[:max_results]
     except Exception as e:
-        print(f"[hospitals] {e}")
+        print(f"[places_nearby {place_type}] {e}")
         return []
 
+def _fetch_hospitals(lat, lon):
+    items = _places_nearby(lat, lon, "hospital", 15000, 4)
+    # strip place_id from output
+    for h in items:
+        h.pop("place_id", None)
+        h["phone"] = ""
+    return items
+
 def _fetch_supermarkets(lat, lon):
-    try:
-        q = (f"[out:json][timeout:10];"
-             f"(node[shop=supermarket](around:10000,{lat},{lon});"
-             f"way[shop=supermarket](around:10000,{lat},{lon}););"
-             f"out tags center 30;")
-        els = _overpass_mirrors(q)
-        items = []
-        for el in els:
-            tags = el.get("tags", {})
-            name = tags.get("name", "")
-            if not name:
-                continue
-            elat, elon = _el_coords(el)
-            dist = round(haversine_km(lat, lon, elat, elon), 2) if elat and elon else 999
-            items.append({
-                "name":        name,
-                "address":     _el_address(tags),
-                "distance_km": dist,
-            })
-        items.sort(key=lambda x: x["distance_km"])
-        return items[:10]
-    except Exception as e:
-        print(f"[supermarkets] {e}")
-        return []
+    items = _places_nearby(lat, lon, "supermarket", 10000, 10)
+    for s in items:
+        s.pop("place_id", None)
+    return items
 
 
 def _fetch_police_contact(lat, lon):
