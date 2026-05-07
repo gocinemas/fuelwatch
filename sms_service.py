@@ -405,6 +405,10 @@ def index():
 def privacy_page():
     return render_template("privacy.html")
 
+@app.route("/terms")
+def terms_page():
+    return render_template("terms.html")
+
 
 @app.route("/api/yt/info")
 def api_yt_info():
