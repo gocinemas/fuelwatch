@@ -5595,9 +5595,16 @@ def api_school_events():
     past    = (date.today() - timedelta(days=days_back)).isoformat()
     horizon = (date.today() + timedelta(days=days_ahead)).isoformat()
     try:
-        profiles = (lib._sb().table("school_profiles")
-                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group")
+        profiles_raw = (lib._sb().table("school_profiles")
+                    .select("id,school_name,child_name,class_name,teacher_name,year_group,address,phone,class_wa_group,gmail_refresh_token,sender_emails")
                     .eq("from_number", wa).eq("active", True).execute().data or [])
+        profiles = []
+        for p in profiles_raw:
+            gmail_connected = bool(p.pop("gmail_refresh_token", None))
+            oauth_url = _school_oauth_url(p["id"]) if not gmail_connected else None
+            p["gmail_connected"] = gmail_connected
+            p["oauth_url"] = oauth_url
+            profiles.append(p)
         allowed_ids = {p["id"] for p in profiles}
         if not allowed_ids:
             return jsonify({"events": [], "profiles": []})

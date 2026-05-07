@@ -5972,6 +5972,17 @@ _bkBadge();
     <!-- Section icon tabs -->
     <div id="school-section-tabs" style="display:none;gap:8px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
 
+    <!-- Gmail not connected banner -->
+    <div id="school-oauth-banner" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:14px;padding:16px;margin-bottom:16px;text-align:center">
+      <div style="font-size:20px;margin-bottom:6px">📧</div>
+      <div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:4px">Gmail not connected</div>
+      <div style="font-size:13px;color:#78350f;margin-bottom:12px">Connect your Gmail so Miru can read school emails from your inbox.</div>
+      <a id="school-oauth-link" href="#" target="_blank" rel="noopener"
+        style="display:inline-block;background:#059669;color:#fff;border-radius:10px;padding:10px 22px;font-size:13px;font-weight:700;text-decoration:none">
+        Connect Gmail →
+      </a>
+    </div>
+
     <div id="school-loading" style="text-align:center;padding:40px 0;color:#9ca3af;font-size:14px">Loading…</div>
     <div id="school-empty" style="display:none;text-align:center;padding:40px 16px;color:#9ca3af;font-size:14px">
       <div style="font-size:32px;margin-bottom:10px">📭</div>
@@ -6251,6 +6262,17 @@ _bkBadge();
 
       if (!_schoolActiveProfileId && _schoolProfiles.length)
         _schoolActiveProfileId = _schoolProfiles[0].id;
+
+      // Show Gmail connect banner if any profile is missing OAuth
+      const banner = document.getElementById("school-oauth-banner");
+      const oauthLink = document.getElementById("school-oauth-link");
+      const needsOauth = _schoolProfiles.find(p => !p.gmail_connected);
+      if (needsOauth && banner) {
+        banner.style.display = "block";
+        if (oauthLink && needsOauth.oauth_url) oauthLink.href = needsOauth.oauth_url;
+      } else if (banner) {
+        banner.style.display = "none";
+      }
 
       _schoolRenderTabs();
       const activeProfile = _schoolProfiles.find(p => p.id === _schoolActiveProfileId);
