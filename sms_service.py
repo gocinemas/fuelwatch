@@ -1404,7 +1404,7 @@ def api_elections():
         effective_ward    = ward_data.get("ward") or ward_name
         election_date_str = ward_data.get("election_date", "2026-05-07")
         import datetime as _dt
-        election_happened = _dt.date.today() >= _dt.date.fromisoformat(election_date_str)
+        election_happened = False  # show 2022 results until 2026 results are confirmed accurate
 
         with ThreadPoolExecutor(max_workers=3) as ex:
             f_ps   = ex.submit(_fetch_polling_station, postcode)
