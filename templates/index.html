@@ -1951,13 +1951,9 @@
         const addrLine = h.address
           ? `<a href="https://maps.google.com/?q=${mapsQ}" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;margin-top:3px;display:inline-block">📍 ${h.address}</a>`
           : `<a href="https://maps.google.com/?q=${encodeURIComponent(h.name+' hospital')}" target="_blank" rel="noopener" style="font-size:12px;color:#2563eb;margin-top:3px;display:inline-block">📍 Get directions</a>`;
-        const phone = h.phone
-          ? `<a href="tel:${h.phone}" style="font-size:12px;color:#16a34a;font-weight:700;margin-top:2px;display:inline-block">📞 ${h.phone}</a>`
-          : `<a href="tel:111" style="font-size:12px;color:var(--muted);margin-top:2px;display:inline-block">📞 111 (no direct number)</a>`;
         return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
           <div style="font-weight:600;font-size:13px;color:var(--text)">${h.name}<span style="font-size:11px;color:var(--muted);font-weight:400">${dist}</span></div>
           ${addrLine}
-          <br>${phone}
         </div>`;
       }).join("");
     } else {
