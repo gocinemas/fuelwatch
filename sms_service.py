@@ -1446,7 +1446,8 @@ _OVERPASS_URLS = [
     "https://overpass.kumi.systems/api/interpreter",
 ]
 
-def _overpass_query(query):
+def _overpass_mirrors(query):
+    """POST to Overpass with mirror fallback. Use for hospitals/supermarkets."""
     for url in _OVERPASS_URLS:
         try:
             r = requests.post(url, data={"data": query}, timeout=14)
@@ -1499,7 +1500,7 @@ def _fetch_hospitals(lat, lon):
              f"way[amenity=hospital](around:15000,{lat},{lon});"
              f"relation[amenity=hospital](around:15000,{lat},{lon}););"
              f"out tags center 8;")
-        els = _overpass_query(q)
+        els = _overpass_mirrors(q)
         items = []
         for el in els:
             tags = el.get("tags", {})
@@ -1526,7 +1527,7 @@ def _fetch_supermarkets(lat, lon):
              f"(node[shop=supermarket](around:8000,{lat},{lon});"
              f"way[shop=supermarket](around:8000,{lat},{lon}););"
              f"out tags center 8;")
-        els = _overpass_query(q)
+        els = _overpass_mirrors(q)
         items = []
         for el in els:
             tags = el.get("tags", {})
