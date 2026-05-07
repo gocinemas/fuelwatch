@@ -114,7 +114,7 @@ def _gmail_get(path: str, params: dict = None, refresh_token: str = None) -> dic
 def _build_gmail_query(sender_emails: list[str], days_back: int = 7) -> str:
     after = (date.today() - timedelta(days=days_back)).strftime("%Y/%m/%d")
     froms = " OR ".join(f"from:{e}" for e in sender_emails)
-    return f"({froms}) after:{after}"
+    return f"in:inbox ({froms}) after:{after}"
 
 
 def _extract_pdf_text(msg_id: str, att_id: str, filename: str, refresh_token: str = None) -> str:
@@ -534,7 +534,8 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
                 if matched_profile:
                     break
             if not matched_profile:
-                matched_profile = parent_profiles[0]  # fallback
+                print(f"[school] skipping msg {msg_id} — sender {sender!r} not in any registered sender_emails")
+                continue
 
             if force:
                 # Wipe existing events for this email so we reparse fresh
