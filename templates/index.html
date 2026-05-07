@@ -294,17 +294,21 @@
     <div id="screen-home" class="screen active">
 
       <!-- Greeting -->
-      <div style="padding:24px 0 18px">
+      <div style="padding:24px 0 20px">
         <div id="home-greeting" style="font-size:28px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Good morning.</div>
-        <div style="margin-top:5px;font-size:13px;color:var(--subtle);line-height:1.6">
-          <span id="home-date"></span><span id="home-time"> · </span><span hidden id="home-weather"><span id="home-weather-val"></span></span><span id="home-weather-tip" hidden> · <span id="home-weather-tip-text"></span></span>
-        </div>
-        <div id="home-quote" style="margin-top:8px;font-size:13px;color:var(--muted);font-style:italic;line-height:1.5;max-width:340px"></div>
+        <div id="home-weather-tip" hidden style="margin-top:5px;font-size:13px;color:var(--subtle)"><span id="home-weather-tip-text"></span></div>
+        <div id="home-miru-tip" style="margin-top:8px;font-size:13px;color:var(--muted);line-height:1.5"></div>
         <div id="music-player" style="display:none;margin-top:12px">
           <iframe src="https://open.spotify.com/embed/playlist/5OmW3j1Kb79RkBvMjOo4vX?utm_source=generator"
             width="100%" height="152" frameborder="0" style="border-radius:12px"
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
         </div>
+      </div>
+
+      <!-- Tagline for new users -->
+      <div style="margin-bottom:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Your everyday UK companion.</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">Find cheap fuel, check train times, look up local services, research a company, save articles and more — all in one place. Everything also works on WhatsApp.</div>
       </div>
 
       <!-- Search bar -->
@@ -4570,55 +4574,36 @@
 
   // ── Home greeting + weather ──────────────────────────────────────────────
   (function() {
-    function _updateClock() {
-      const now = new Date();
-      const h = now.getHours();
-      const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
-      document.getElementById("home-greeting").textContent = greet;
-      const time = now.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
-      const date = now.toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"long" });
-      document.getElementById("home-date").textContent = date;
-      document.getElementById("home-time").textContent = ` · ${time}`;
-    }
-    _updateClock();
-    setInterval(_updateClock, 60000);
+    // Greeting — time of day only, no clock
+    const h = new Date().getHours();
+    document.getElementById("home-greeting").textContent =
+      h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
 
-    // Daily quote — seeded by date so it changes each day, not each refresh
-    const _quotes = [
-      "The best time to start was yesterday. The next best time is now.",
-      "Small steps every day lead to big changes over time.",
-      "Your only limit is your mind.",
-      "Do one thing today that your future self will thank you for.",
-      "Progress, not perfection.",
-      "Energy flows where attention goes.",
-      "Clarity comes from action, not thought.",
-      "Be stubborn about your goals and flexible about your methods.",
-      "The secret of getting ahead is getting started.",
-      "You don't have to be great to start, but you have to start to be great.",
-      "Focus on what you can control. Let go of the rest.",
-      "Every expert was once a beginner.",
-      "Make it simple, but significant.",
-      "Discipline is choosing between what you want now and what you want most.",
-      "The harder you work, the luckier you get.",
-      "Don't watch the clock; do what it does — keep going.",
-      "It always seems impossible until it's done.",
-      "Dream big. Start small. Act now.",
-      "Success is the sum of small efforts repeated daily.",
-      "What you do today can improve all your tomorrows.",
+    // Miru tips — rotate every 8 seconds, fade between them
+    const _tips = [
+      "💡 Try: search 'cheap fuel near KT16' to find the lowest prices nearby.",
+      "🚆 Ask about train times — type your station and Miru finds the next departure.",
+      "☕ Looking for a café, plumber or GP? Local search works for almost anything.",
+      "📌 Save any article or link from WhatsApp — it'll appear in your Saves here.",
+      "🏠 Enter your postcode to see crime stats, house prices and school ratings for your area.",
+      "🔎 Research any UK company — directors, financials, recent news.",
+      "📚 Scan a book barcode to get a summary and start a conversation about it.",
+      "📄 Upload a PDF and ask it questions — useful for contracts, reports, manuals.",
+      "🎵 Heard a song you can't name? Use Music ID to identify it instantly.",
+      "💬 Everything on Miru also works on WhatsApp — just send a message.",
     ];
-    let _qIdx = Math.floor(Math.random() * _quotes.length);
-    const _qEl = document.getElementById("home-quote");
-    function _showQuote() {
-      _qEl.style.opacity = "0";
+    let _tIdx = Math.floor(Math.random() * _tips.length);
+    const _tEl = document.getElementById("home-miru-tip");
+    _tEl.style.transition = "opacity 0.4s";
+    _tEl.textContent = _tips[_tIdx];
+    setInterval(() => {
+      _tEl.style.opacity = "0";
       setTimeout(() => {
-        _qIdx = (_qIdx + 1) % _quotes.length;
-        _qEl.textContent = `"${_quotes[_qIdx]}"`;
-        _qEl.style.opacity = "1";
+        _tIdx = (_tIdx + 1) % _tips.length;
+        _tEl.textContent = _tips[_tIdx];
+        _tEl.style.opacity = "1";
       }, 400);
-    }
-    _qEl.style.transition = "opacity 0.4s";
-    _qEl.textContent = `"${_quotes[_qIdx]}"`;
-    setInterval(_showQuote, 60000);
+    }, 8000);
 
     // Weather via Open-Meteo (free, no key)
     function _wCode(code) {
@@ -4653,15 +4638,11 @@
           if (!cur) return;
           const temp = Math.round(cur.temperature_2m ?? cur.temperature ?? 0);
           const code = cur.weather_code ?? cur.weathercode ?? 0;
-          document.getElementById("home-weather-val").textContent = ` · ${_wCode(code)} ${temp}°C`;
-          document.getElementById("home-weather").removeAttribute("hidden");
           const tip = _wTip(code, temp);
           const tipWrap = document.getElementById("home-weather-tip");
           if (tip) {
             document.getElementById("home-weather-tip-text").textContent = tip;
             tipWrap.removeAttribute("hidden");
-          } else {
-            tipWrap.setAttribute("hidden", "");
           }
         }).catch(() => {});
     }
