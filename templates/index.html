@@ -2628,8 +2628,7 @@
           `<div style="font-size:12px;color:var(--subtle)">No manifesto info available.</div>`;
       }
 
-      // Default to Results tab if past/live results available, otherwise Candidates
-      eTab((d.past_results?.length || d.live_results?.length) ? "more" : "candidates");
+      eTab(d.live_results?.length ? "more" : "candidates");
       document.getElementById("elections-result").classList.remove("hidden");
     } catch(e) {
       document.getElementById("elections-loading").classList.add("hidden");
