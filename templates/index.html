@@ -3836,8 +3836,11 @@
     return `https://logo.clearbit.com/${slug}.com`;
   }
 
+  let _pendingBrandTab = null;
+
   function _renderBrand(d) {
-    brandTab("overview");
+    brandTab(_pendingBrandTab || "overview");
+    _pendingBrandTab = null;
 
     // Logo (Clearbit, fallback to Wikipedia thumbnail, then hidden)
     const logoUrl = _brandLogoUrl(d);
@@ -4586,7 +4589,10 @@
       "☕ Looking for a café, plumber or GP? Local search works for almost anything.",
       "📌 Save any article or link from WhatsApp — it'll appear in your Saves here.",
       "🏠 Enter your postcode to see crime stats, house prices and school ratings for your area.",
-      "🔎 Research any UK company — directors, financials, recent news.",
+      "🏢 Try: type 'Tesco strategy' — Miru opens Company Intel and shows their strategic direction.",
+      "🏷️ Try: type 'Nike turnover' — Miru pulls up Brand Intel with revenue, history and competitors.",
+      "🤖 Company Intel covers AI & tech focus, strategy, latest financial results and news.",
+      "⚔️ Brand Intel shows turnover, founding story, evolution timeline, iconic ads and rivals.",
       "📚 Scan a book barcode to get a summary and start a conversation about it.",
       "📄 Upload a PDF and ask it questions — useful for contracts, reports, manuals.",
       "🎵 Heard a song you can't name? Use Music ID to identify it instantly.",
@@ -4671,7 +4677,43 @@
       return m ? m[0].replace(/\s/g,"").toUpperCase() : null;
     }
 
-    // Map keywords to a screen + pre-fill action
+    // Brand Intel signals → which tab to open after search
+    const _BRAND_KW = {
+      rivals:   ["competitor","competitors","rival","rivals","vs","versus"],
+      ads:      ["ad","ads","advert","advertisement","campaign","slogan","marketing"],
+      timeline: ["timeline","history","founded","started","origin","when","evolution","story"],
+      overview: ["turnover","revenue","sales","employees","staff","headcount","hq","headquarters","founded","industry"],
+    };
+    // Company Intel signals
+    const _COMPANY_KW = ["strategy","strategic","ai","artificial intelligence","tech","technology","results","financials","earnings","profit","loss","annual report","news"];
+
+    function _detectBrandOrCompany(q) {
+      const ql = q.toLowerCase();
+      // Check brand signals first
+      for (const [tab, words] of Object.entries(_BRAND_KW)) {
+        if (words.some(w => ql.includes(w))) {
+          // Strip the matched keyword(s) to get the name
+          let name = ql;
+          words.forEach(w => { name = name.replace(w, ""); });
+          name = name.trim().replace(/\s+/g," ");
+          if (name.length > 1) return { mode:"brand", tab, name: _titleCase(name) };
+        }
+      }
+      // Check company signals
+      if (_COMPANY_KW.some(w => ql.includes(w))) {
+        let name = ql;
+        _COMPANY_KW.forEach(w => { name = name.replace(w, ""); });
+        name = name.trim().replace(/\s+/g," ");
+        if (name.length > 1) return { mode:"company", name: _titleCase(name) };
+      }
+      return null;
+    }
+
+    function _titleCase(s) {
+      return s.replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    // Map postcode keywords to a screen + pre-fill action
     const _INTENTS = [
       { kw: ["petrol","diesel","fuel","unleaded","e10","e5"], screen:"fuel",   fill: pc => { document.getElementById("fuel-postcode").value = pc; showScreen("fuel"); searchFuel(); } },
       { kw: ["train","trains","rail","station","departure"],  screen:"trains", fill: pc => { document.getElementById("train-search-input").value = pc; showScreen("trains"); trainSearch(); } },
@@ -4690,6 +4732,31 @@
       const q = document.getElementById("home-search-input").value.trim();
       document.getElementById("home-search-clear").style.display = q ? "block" : "none";
       if (!q) { _hideResults(); return; }
+
+      // Smart: brand/company intent detected (e.g. "Tesco turnover", "Nike strategy")
+      const bco = _detectBrandOrCompany(q);
+      if (bco) {
+        const box = document.getElementById("home-search-results");
+        box.style.display = "block";
+        const icon  = bco.mode === "brand" ? "🏷️" : "🏢";
+        const label = bco.mode === "brand"
+          ? `${bco.name} — Brand Intel`
+          : `${bco.name} — Company Intel`;
+        const subMap = { rivals:"Competitors & turnover", ads:"Ads & campaigns", timeline:"Brand timeline", overview:"Overview" };
+        const sub   = bco.mode === "brand" ? (subMap[bco.tab] || "Brand overview") : "AI, strategy & financials";
+        const action = bco.mode === "brand"
+          ? `blookupTab('brand');document.getElementById('brand-input').value='${bco.name.replace(/'/g,"\\'")}';_pendingBrandTab='${bco.tab}';searchBrand();homeSearchClear()`
+          : `blookupTab('company');document.getElementById('company-input').value='${bco.name.replace(/'/g,"\\'")}';searchCompany();homeSearchClear()`;
+        box.innerHTML = `<button onclick="showScreen('company');${action}" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit">
+          <span style="font-size:22px;width:30px;text-align:center;flex-shrink:0">${icon}</span>
+          <span>
+            <span style="display:block;font-size:14px;font-weight:700;color:var(--text)">${label}</span>
+            <span style="display:block;font-size:11px;color:var(--subtle)">${sub}</span>
+          </span>
+          <span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--accent)">Go →</span>
+        </button>`;
+        return;
+      }
 
       // Smart: postcode + keyword detected — offer a direct action
       const pc = _extractPostcode(q);
