@@ -1446,6 +1446,10 @@ _OVERPASS_URLS = [
     "https://overpass.kumi.systems/api/interpreter",
 ]
 
+# Simple 30-minute in-memory cache for Overpass results keyed by postcode
+_services_cache: dict = {}
+_SERVICES_TTL = 1800  # seconds
+
 def _overpass_mirrors(query):
     """POST to Overpass with mirror fallback. Use for hospitals/supermarkets."""
     for url in _OVERPASS_URLS:
@@ -1574,23 +1578,40 @@ def _fetch_police_contact(lat, lon):
         return {}
 
 
+def _latlon_for_postcode(postcode):
+    cached = _services_cache.get(f"ll:{postcode}")
+    if cached and time.time() - cached["ts"] < _SERVICES_TTL:
+        return cached["lat"], cached["lon"]
+    r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
+    if r.status_code != 200:
+        return None, None
+    res = r.json().get("result", {})
+    lat, lon = res.get("latitude"), res.get("longitude")
+    _services_cache[f"ll:{postcode}"] = {"lat": lat, "lon": lon, "ts": time.time()}
+    return lat, lon
+
+
 @app.route("/api/services")
 def api_services():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
     try:
-        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
-        if r.status_code != 200:
+        cache_key = f"services:{postcode}"
+        hit = _services_cache.get(cache_key)
+        if hit and time.time() - hit["ts"] < _SERVICES_TTL:
+            return jsonify(hit["data"])
+        lat, lon = _latlon_for_postcode(postcode)
+        if lat is None:
             return jsonify({"error": "Postcode not found"}), 404
-        res = r.json().get("result", {})
-        lat, lon = res.get("latitude"), res.get("longitude")
         with ThreadPoolExecutor(max_workers=2) as ex:
             f_h = ex.submit(_fetch_hospitals, lat, lon)
             f_p = ex.submit(_fetch_police_contact, lat, lon)
             hospitals = f_h.result()
             police    = f_p.result()
-        return jsonify({"hospitals": hospitals, "police": police})
+        result = {"hospitals": hospitals, "police": police}
+        _services_cache[cache_key] = {"data": result, "ts": time.time()}
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1601,13 +1622,17 @@ def api_shops():
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
     try:
-        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
-        if r.status_code != 200:
+        cache_key = f"shops:{postcode}"
+        hit = _services_cache.get(cache_key)
+        if hit and time.time() - hit["ts"] < _SERVICES_TTL:
+            return jsonify(hit["data"])
+        lat, lon = _latlon_for_postcode(postcode)
+        if lat is None:
             return jsonify({"error": "Postcode not found"}), 404
-        res = r.json().get("result", {})
-        lat, lon = res.get("latitude"), res.get("longitude")
         supermarkets = _fetch_supermarkets(lat, lon)
-        return jsonify({"supermarkets": supermarkets})
+        result = {"supermarkets": supermarkets}
+        _services_cache[cache_key] = {"data": result, "ts": time.time()}
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -6320,30 +6345,56 @@ def api_train_departures():
         if not r.text.strip():
             return jsonify({"error": f"RTT location API returned empty response (HTTP {r.status_code})"}), 500
         data = r.json()
+        if request.args.get("debug"):
+            svc = (data.get("services") or [{}])[0]
+            return jsonify({"raw_service": svc, "location": data.get("location")})
         services = data.get("services") or []
-        def fmt_dt(dt): return dt[11:16] if dt and len(dt) >= 16 else ""
+
+        def fmt_time(dt):
+            """Parse HH:MM from ISO datetime, HH:MM, or HHMM."""
+            if not dt:
+                return ""
+            s = str(dt).strip()
+            if len(s) >= 16:          # ISO: 2026-05-07T14:05:00
+                return s[11:16]
+            if len(s) == 5 and s[2] == ":":  # already HH:MM
+                return s
+            if len(s) == 4 and s.isdigit():  # HHMM
+                return s[:2] + ":" + s[2:]
+            return s[:5] if len(s) >= 5 else s
+
+        def mins_late(s, r):
+            try:
+                sh, sm = int(s[:2]), int(s[3:])
+                rh, rm = int(r[:2]), int(r[3:])
+                return (rh * 60 + rm) - (sh * 60 + sm)
+            except Exception:
+                return 0
+
         trains = []
         for s in services:
             td  = s.get("temporalData", {})
             dep = td.get("departure", {})
             dest_list = s.get("destination") or [{}]
             dest = (dest_list[0].get("location") or {}).get("description", "") if dest_list else ""
-            sched_dt  = dep.get("scheduleAdvertised", "")
-            real_dt   = dep.get("realtimeForecast", "") or dep.get("realtimeActual", "")
-            cancelled = dep.get("isCancelled", False)
+            sched_dt  = dep.get("scheduleAdvertised") or dep.get("scheduled") or ""
+            real_dt   = (dep.get("realtimeForecast") or dep.get("forecast") or
+                         dep.get("realtimeActual") or dep.get("actual") or "")
+            cancelled = dep.get("isCancelled", False) or dep.get("cancelled", False)
             platform_raw = (s.get("locationMetadata") or {}).get("platform")
             if isinstance(platform_raw, dict):
                 platform = str(platform_raw.get("display") or platform_raw.get("number") or "")
             else:
                 platform = str(platform_raw) if platform_raw else ""
-            sched = fmt_dt(sched_dt)
-            real  = fmt_dt(real_dt)
+            sched = fmt_time(sched_dt)
+            real  = fmt_time(real_dt)
             if cancelled:
                 status = "Cancelled"
-            elif not real or real == sched:
-                status = "On time"
+            elif real and real != sched:
+                late = mins_late(sched, real)
+                status = f"Exp {real}" + (f" (+{late} min)" if late > 0 else "")
             else:
-                status = f"Exp {real}"
+                status = "On time"
             if not dest or not sched:
                 continue
             trains.append({
