@@ -2045,6 +2045,27 @@ def api_admin_stats():
     return jsonify(s)
 
 
+@app.route("/api/admin/fix-school-profile", methods=["POST"])
+def api_fix_school_profile():
+    pw = os.environ.get("ADMIN_PASSWORD", "miru2024")
+    if request.args.get("pw") != pw:
+        return jsonify({"error": "unauthorized"}), 401
+    data = request.get_json(force=True, silent=True) or {}
+    profile_id  = data.get("profile_id", "").strip()
+    delete_id   = data.get("delete_id", "").strip()
+    sender_emails = data.get("sender_emails", [])
+    results = {}
+    sb = lib._sb()
+    if delete_id:
+        sb.table("school_profiles").delete().eq("id", delete_id).execute()
+        results["deleted"] = delete_id
+    if profile_id and sender_emails:
+        sb.table("school_profiles").update({"sender_emails": sender_emails}).eq("id", profile_id).execute()
+        results["updated"] = profile_id
+        results["sender_emails"] = sender_emails
+    return jsonify(results)
+
+
 # ── Local Places ──────────────────────────────────────────────────────────────
 
 _PLACE_CATEGORY = {
