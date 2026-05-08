@@ -262,35 +262,34 @@
   .places-tab { flex:1; padding:10px 8px; border-radius:12px; border:1.5px solid var(--border); background:var(--surface); color:var(--subtle); font-weight:600; font-size:13px; cursor:pointer; transition:all .15s; }
   .places-tab.active { background:var(--text); color:var(--bg); border-color:var(--text); }
 
-    /* Featured tool cards */
+    /* Featured cards — dark gradient hero cards */
     .feat-card {
-      display:flex; flex-direction:column;
-      background:var(--surface); border:1px solid var(--border);
-      border-radius:22px; padding:20px 18px;
+      flex:1; display:flex; flex-direction:column;
+      border-radius:24px; padding:18px 16px 20px;
       cursor:pointer; text-align:left; font-family:inherit;
-      transition:transform .15s,box-shadow .15s; flex:1;
+      transition:transform .15s; border:none;
+      min-height:156px; position:relative; overflow:hidden;
     }
-    .feat-card:active { transform:scale(0.97); }
-    .feat-icon { width:52px; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:26px; margin-bottom:14px; }
-    .feat-name { font-size:15px; font-weight:800; color:var(--text); letter-spacing:-0.3px; margin-bottom:5px; line-height:1.2; }
-    .feat-desc { font-size:12px; color:var(--subtle); line-height:1.5; }
+    .feat-card:active { transform:scale(0.96); }
+    .feat-card-fuel  { background:linear-gradient(145deg,#1c1c1e 0%,#3b0d0d 100%); }
+    .feat-card-train { background:linear-gradient(145deg,#0d1117 0%,#0f2240 100%); }
 
-    /* Tool grid items */
-    .tool-item {
-      display:flex; align-items:center; gap:12px;
+    /* Tool icon grid (3-col compact) */
+    .tool-icon-btn {
+      display:flex; flex-direction:column; align-items:center; gap:7px;
       background:var(--surface); border:1px solid var(--border);
-      border-radius:16px; padding:13px 14px;
-      cursor:pointer; text-align:left; font-family:inherit;
-      transition:border-color .15s,transform .1s; width:100%;
+      border-radius:18px; padding:16px 6px 14px;
+      cursor:pointer; font-family:inherit;
+      transition:transform .1s,border-color .15s; width:100%;
     }
-    .tool-item:active { transform:scale(0.97); }
-    .tool-item-icon { width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0; }
-    .tool-item-name { font-size:13px; font-weight:700; color:var(--text); line-height:1.2; }
-    .tool-item-desc { font-size:11px; color:var(--subtle); margin-top:2px; line-height:1.3; }
+    .tool-icon-btn:active { transform:scale(0.94); }
+    .tool-icon-emoji { font-size:26px; line-height:1; }
+    .tool-icon-label { font-size:10.5px; font-weight:700; color:var(--text); text-align:center; line-height:1.3; letter-spacing:-0.1px; }
 
-    /* Live badge pulse */
-    @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    /* Live dot */
+    @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.35} }
     .live-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#dc2626; animation:livepulse 2s infinite; }
+    .live-dot-green { display:inline-block; width:5px; height:5px; border-radius:50%; background:#4ade80; animation:livepulse 2s infinite; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -320,21 +319,17 @@
     <div id="screen-home" class="screen active">
 
       <!-- Greeting -->
-      <div style="padding:28px 0 22px">
-        <div style="display:inline-flex;align-items:center;gap:6px;background:#fef2f2;border:1px solid #fecaca;border-radius:99px;padding:4px 12px;margin-bottom:16px">
-          <span class="live-dot"></span>
-          <span style="font-size:11px;font-weight:700;color:#dc2626;letter-spacing:0.06em;text-transform:uppercase">Live · UK Data</span>
-        </div>
-        <div id="home-greeting" style="font-size:34px;font-weight:900;letter-spacing:-1.2px;color:var(--text);line-height:1.08;margin-bottom:8px">Good morning.</div>
-        <div id="home-miru-tip" style="font-size:14px;color:var(--muted);line-height:1.6">What do you need today?</div>
+      <div style="padding:28px 0 20px">
+        <div id="home-greeting" style="font-size:36px;font-weight:900;letter-spacing:-1.4px;color:var(--text);line-height:1.05;margin-bottom:6px">Good morning.</div>
+        <div id="home-miru-tip" style="font-size:14px;color:var(--muted);line-height:1.6"></div>
       </div>
 
       <!-- Search bar -->
-      <div style="position:relative;margin-bottom:28px">
-        <div id="home-search-wrap" style="display:flex;align-items:center;gap:10px;background:var(--surface);border:2px solid var(--border);border-radius:18px;padding:14px 18px;transition:border-color .2s,box-shadow .2s">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <div style="position:relative;margin-bottom:24px">
+        <div id="home-search-wrap" style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:13px 16px;transition:border-color .2s,box-shadow .2s">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--subtle)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input id="home-search-input" type="search" autocomplete="off" spellcheck="false"
-            placeholder="Search — fuel, trains, area report…"
+            placeholder="Search Miru…"
             style="flex:1;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;font-family:inherit"
             oninput="homeSearchInput()" onkeydown="homeSearchKey(event)" onfocus="homeSearchFocus()" onblur="setTimeout(homeSearchBlur,200)" />
           <button id="home-search-clear" onclick="homeSearchClear()" style="display:none;background:none;border:none;cursor:pointer;font-size:16px;color:var(--subtle);padding:0;line-height:1">✕</button>
@@ -346,71 +341,79 @@
       <span id="school-home-card" style="display:none"></span>
       <span id="elections-tool-card" style="display:none"><span id="elections-tool-desc"></span></span>
 
-      <!-- Featured tools -->
+      <!-- Featured tools — dark hero cards -->
       <div style="display:flex;gap:10px;margin-bottom:10px">
-        <button class="feat-card" onclick="showScreen('fuel')">
-          <div class="feat-icon" style="background:#fef2f2">⛽</div>
-          <div class="feat-name">Fuel Prices</div>
-          <div class="feat-desc">Cheapest petrol & diesel near you, live</div>
+        <button class="feat-card feat-card-fuel" onclick="showScreen('fuel')">
+          <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px;margin-bottom:16px;width:fit-content">
+            <span class="live-dot-green"></span>
+            <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">LIVE</span>
+          </div>
+          <div style="font-size:30px;line-height:1;margin-bottom:12px">⛽</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Fuel Prices</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Cheapest near you</div>
         </button>
-        <button class="feat-card" onclick="showScreen('trains')">
-          <div class="feat-icon" style="background:#eff6ff">🚆</div>
-          <div class="feat-name">Train Times</div>
-          <div class="feat-desc">Live departures, delays & platform info</div>
-        </button>
-      </div>
-
-      <!-- Tools grid -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px">
-        <button class="tool-item" onclick="showScreen('report')">
-          <div class="tool-item-icon" style="background:#f0fdf4">🏠</div>
-          <div><div class="tool-item-name">Area Report</div><div class="tool-item-desc">Crime, prices & schools</div></div>
-        </button>
-        <button class="tool-item" onclick="showScreen('places')">
-          <div class="tool-item-icon" style="background:#faf5ff">📍</div>
-          <div><div class="tool-item-name">Local Search</div><div class="tool-item-desc">Cafés, shops & trades</div></div>
-        </button>
-        <button class="tool-item" onclick="showScreen('company')">
-          <div class="tool-item-icon" style="background:#fff7ed">🔍</div>
-          <div><div class="tool-item-name">Company Intel</div><div class="tool-item-desc">Financials & rivals</div></div>
-        </button>
-        <button class="tool-item" onclick="showScreen('library')">
-          <div class="tool-item-icon" style="background:#f0f9ff">📄</div>
-          <div><div class="tool-item-name">My Documents</div><div class="tool-item-desc">Upload & chat with files</div></div>
-        </button>
-        <button class="tool-item" onclick="showScreen('report');reportTabSwitch('services',document.querySelector('[data-tab=services]'))">
-          <div class="tool-item-icon" style="background:#fff1f2">🚨</div>
-          <div><div class="tool-item-name">Emergency</div><div class="tool-item-desc">Hospitals & police</div></div>
-        </button>
-        <button class="tool-item" onclick="showScreen('saves')">
-          <div class="tool-item-icon" style="background:#fafaf9">📌</div>
-          <div><div class="tool-item-name">My Saves</div><div class="tool-item-desc">Articles & links</div></div>
-        </button>
-        <button class="tool-item" onclick="showScreen('scan')">
-          <div class="tool-item-icon" style="background:#f5f3ff">📚</div>
-          <div><div class="tool-item-name">Book Scanner</div><div class="tool-item-desc">Scan & chat with books</div></div>
-        </button>
-        <button class="tool-item" onclick="showScreen('music')">
-          <div class="tool-item-icon" style="background:#fdf4ff">🎵</div>
-          <div><div class="tool-item-name">Music ID</div><div class="tool-item-desc">Identify any song</div></div>
-        </button>
-        <button class="tool-item" id="elections-home-card" onclick="showScreen('elections')">
-          <div class="tool-item-icon" style="background:#f0fdf4">🗳️</div>
-          <div><div class="tool-item-name">Election Results</div><div id="elections-home-desc" class="tool-item-desc">Candidates & results</div></div>
+        <button class="feat-card feat-card-train" onclick="showScreen('trains')">
+          <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px;margin-bottom:16px;width:fit-content">
+            <span class="live-dot-green"></span>
+            <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">LIVE</span>
+          </div>
+          <div style="font-size:30px;line-height:1;margin-bottom:12px">🚆</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Train Times</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Departures & delays</div>
         </button>
       </div>
 
-      <!-- WhatsApp strip -->
-      <div style="display:flex;align-items:center;gap:14px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:18px;padding:16px 18px;margin-bottom:28px">
-        <div style="width:44px;height:44px;background:#25d366;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      <!-- Tools — 3-column icon grid -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px">
+        <button class="tool-icon-btn" onclick="showScreen('report')">
+          <span class="tool-icon-emoji">🏠</span>
+          <span class="tool-icon-label">Area Report</span>
+        </button>
+        <button class="tool-icon-btn" onclick="showScreen('places')">
+          <span class="tool-icon-emoji">📍</span>
+          <span class="tool-icon-label">Local Search</span>
+        </button>
+        <button class="tool-icon-btn" onclick="showScreen('company')">
+          <span class="tool-icon-emoji">🔍</span>
+          <span class="tool-icon-label">Company Intel</span>
+        </button>
+        <button class="tool-icon-btn" onclick="showScreen('library')">
+          <span class="tool-icon-emoji">📄</span>
+          <span class="tool-icon-label">My Documents</span>
+        </button>
+        <button class="tool-icon-btn" onclick="showScreen('report');reportTabSwitch('services',document.querySelector('[data-tab=services]'))">
+          <span class="tool-icon-emoji">🚨</span>
+          <span class="tool-icon-label">Emergency</span>
+        </button>
+        <button class="tool-icon-btn" onclick="showScreen('saves')">
+          <span class="tool-icon-emoji">📌</span>
+          <span class="tool-icon-label">My Saves</span>
+        </button>
+        <button class="tool-icon-btn" onclick="showScreen('scan')">
+          <span class="tool-icon-emoji">📚</span>
+          <span class="tool-icon-label">Book Scanner</span>
+        </button>
+        <button class="tool-icon-btn" onclick="showScreen('music')">
+          <span class="tool-icon-emoji">🎵</span>
+          <span class="tool-icon-label">Music ID</span>
+        </button>
+        <button class="tool-icon-btn" id="elections-home-card" onclick="showScreen('elections')">
+          <span class="tool-icon-emoji">🗳️</span>
+          <span id="elections-home-desc" class="tool-icon-label">Elections</span>
+        </button>
+      </div>
+
+      <!-- WhatsApp strip — minimal -->
+      <div style="display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:28px">
+        <div style="width:38px;height:38px;background:#25d366;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:800;color:#15803d;letter-spacing:-0.2px">Everything works on WhatsApp</div>
-          <div style="font-size:12px;color:#16a34a;margin-top:2px">Send a postcode · ask a question · save a link</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Works on WhatsApp too</div>
+          <div style="font-size:11px;color:var(--subtle);margin-top:1px">Send a postcode or question</div>
         </div>
         <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
-          style="flex-shrink:0;font-size:13px;font-weight:700;color:#fff;text-decoration:none;background:#15803d;padding:9px 16px;border-radius:12px;white-space:nowrap">Join →</a>
+          style="flex-shrink:0;font-size:12px;font-weight:700;color:#25d366;text-decoration:none;white-space:nowrap">Join →</a>
       </div>
 
       <!-- News Feed (Kagi) -->
