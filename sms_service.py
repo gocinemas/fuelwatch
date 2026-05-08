@@ -1547,6 +1547,32 @@ def school_settings_profile():
         return _cors(jsonify({"error": str(e)})), 500
 
 
+@app.route("/api/school/fetch-now", methods=["POST", "OPTIONS"])
+def school_fetch_now():
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        wa   = data.get("wa", "").strip()
+        if not wa:
+            return _cors(jsonify({"error": "wa required"})), 400
+        # Resolve profiles for this WA number
+        candidates = [wa, f"whatsapp:{wa}"] if not wa.startswith("whatsapp:") else [wa]
+        profiles = []
+        for cand in candidates:
+            profiles = school_service._get_profiles(from_number=cand)
+            if profiles:
+                break
+        if not profiles:
+            return _cors(jsonify({"error": "no profiles found"})), 404
+        profile_ids = [p["id"] for p in profiles]
+        result = school_service.poll_all_profiles(days_back=3, force=True, profile_ids=profile_ids)
+        total = sum(result.get(pid, {}).get("new", 0) for pid in profile_ids if pid in result)
+        return _cors(jsonify({"ok": True, "new_events": total}))
+    except Exception as e:
+        return _cors(jsonify({"error": str(e)})), 500
+
+
 _NATIONAL_CACHE_PATH = os.path.join(os.path.dirname(__file__), "elections_national_cache.json")
 _NATIONAL_CACHE_TTL  = 900  # 15 minutes
 
