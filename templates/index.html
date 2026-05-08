@@ -788,10 +788,11 @@
 
     <!-- ── ELECTIONS SCREEN ── -->
     <div id="screen-elections" class="screen pt-5">
-      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:12px">🗳️ Election Results</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:16px">🗳️ Election Results</div>
 
-      <!-- National snapshot card -->
-      <div id="national-snapshot" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px">
+      <!-- Section: National -->
+      <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--subtle);margin-bottom:8px">🇬🇧 National picture</div>
+      <div id="national-snapshot" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
         <div id="national-snapshot-loading" style="text-align:center;padding:12px 0;font-size:13px;color:var(--subtle)">Loading national picture…</div>
         <div id="national-snapshot-body" style="display:none">
           <!-- Header -->
@@ -810,6 +811,9 @@
           <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:10px;color:var(--subtle)" id="national-updated"></div>
         </div>
       </div>
+
+      <!-- Section: Local -->
+      <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--subtle);margin-bottom:8px">📍 Your local area</div>
 
       <button id="elections-loc-btn" onclick="electionsUseLocation()"
         style="width:100%;margin-bottom:8px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">
