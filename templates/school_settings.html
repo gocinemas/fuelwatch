@@ -502,10 +502,8 @@ async function fetchNow() {
     });
     const d = await r.json();
     if (r.ok) {
-      res.style.color = d.new_events > 0 ? "#065f46" : "#374151";
-      res.textContent = d.new_events > 0
-        ? `✅ Found ${d.new_events} new event${d.new_events !== 1 ? "s" : ""} — check WhatsApp!`
-        : "✓ All caught up — no new events found.";
+      res.style.color = "#065f46";
+      res.textContent = "✅ Checking your inbox — any new events will arrive on WhatsApp shortly.";
     } else {
       res.style.color = "#991b1b";
       res.textContent = "Something went wrong — please try again.";

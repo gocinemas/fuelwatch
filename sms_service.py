@@ -1566,9 +1566,13 @@ def school_fetch_now():
         if not profiles:
             return _cors(jsonify({"error": "no profiles found"})), 404
         profile_ids = [p["id"] for p in profiles]
-        result = school_service.poll_all_profiles(days_back=3, force=True, profile_ids=profile_ids)
-        total = sum(result.get(pid, {}).get("new", 0) for pid in profile_ids if pid in result)
-        return _cors(jsonify({"ok": True, "new_events": total}))
+        import threading
+        threading.Thread(
+            target=school_service.poll_all_profiles,
+            kwargs={"days_back": 3, "force": True, "profile_ids": profile_ids},
+            daemon=True,
+        ).start()
+        return _cors(jsonify({"ok": True, "started": True}))
     except Exception as e:
         return _cors(jsonify({"error": str(e)})), 500
 
