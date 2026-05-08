@@ -1573,39 +1573,141 @@ def school_fetch_now():
         return _cors(jsonify({"error": str(e)})), 500
 
 
-_NATIONAL_CACHE_PATH = os.path.join(os.path.dirname(__file__), "elections_national_cache.json")
-_NATIONAL_CACHE_TTL  = 900  # 15 minutes
+# ── National results: live pull from Democracy Club, 6-hour cache ────────────
+_NAT_CACHE: dict = {"data": None, "ts": 0.0}
+_NAT_TTL = 6 * 3600  # 6 hours
 
-_PARTY_META = {
-    "labour":             {"short": "LAB", "colour": "#e11d48", "text": "#fff"},
-    "conservative":       {"short": "CON", "colour": "#1d4ed8", "text": "#fff"},
-    "reform uk":          {"short": "REF", "colour": "#06b6d4", "text": "#fff"},
-    "liberal democrat":   {"short": "LIB", "colour": "#f59e0b", "text": "#000"},
-    "lib dem":            {"short": "LIB", "colour": "#f59e0b", "text": "#000"},
-    "green party":        {"short": "GRN", "colour": "#16a34a", "text": "#fff"},
-    "green":              {"short": "GRN", "colour": "#16a34a", "text": "#fff"},
+# Canonical 2022 baseline for net-change calculation (seats contested in 2026)
+_NAT_BASELINE_2022 = {
+    "reform uk": 2, "liberal democrat": 326, "conservative": 589,
+    "labour": 697,  "green": 54, "independent": 49,
 }
 
-# 2026 UK local election final results — sourced from BBC News (8 May 2026)
-# Elections are complete; these figures are final and will not change.
-_NATIONAL_RESULTS_2026 = {
-    "updated": "8 May 2026 · Final results",
-    "source":  "BBC News",
-    "source_url": "https://www.bbc.co.uk/news/politics",
-    "headline": "Reform surge, heavy Labour losses — 2026 local elections",
-    "parties": [
-        {"name": "Reform UK",    "short": "REF", "colour": "#06b6d4", "text": "#fff", "councils": 10, "net": "+10", "councillors": 585, "net_c": "+583"},
-        {"name": "Lib Dems",     "short": "LIB", "colour": "#f59e0b", "text": "#000", "councils": 8,  "net": "+8",  "councillors": 355, "net_c": "+29"},
-        {"name": "Conservative", "short": "CON", "colour": "#1d4ed8", "text": "#fff", "councils": 0,  "net": "-5",  "councillors": 322, "net_c": "-267"},
-        {"name": "Labour",       "short": "LAB", "colour": "#e11d48", "text": "#fff", "councils": 0,  "net": "-15", "councillors": 303, "net_c": "-394"},
-        {"name": "Green",        "short": "GRN", "colour": "#16a34a", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 120, "net_c": "+66"},
-        {"name": "Independent",  "short": "IND", "colour": "#6b7280", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 49,  "net_c": ""},
-    ]
+# Council control after 2026 (harder to derive automatically; updated once final)
+_NAT_COUNCILS_2026 = {
+    "reform uk": 10, "liberal democrat": 8, "conservative": 0,
+    "labour": 0, "green": 0, "independent": 0,
 }
+_NAT_COUNCILS_NET = {
+    "reform uk": "+10", "liberal democrat": "+8", "conservative": "-5",
+    "labour": "-15", "green": "0", "independent": "0",
+}
+
+_NAT_PARTY_META = {
+    "reform uk":               {"name": "Reform UK",    "short": "REF", "colour": "#06b6d4", "text": "#fff"},
+    "liberal democrat":        {"name": "Lib Dems",     "short": "LIB", "colour": "#f59e0b", "text": "#000"},
+    "conservative":            {"name": "Conservative", "short": "CON", "colour": "#1d4ed8", "text": "#fff"},
+    "labour":                  {"name": "Labour",       "short": "LAB", "colour": "#e11d48", "text": "#fff"},
+    "labour and co-operative": {"name": "Labour",       "short": "LAB", "colour": "#e11d48", "text": "#fff"},
+    "green party":             {"name": "Green",        "short": "GRN", "colour": "#16a34a", "text": "#fff"},
+    "green":                   {"name": "Green",        "short": "GRN", "colour": "#16a34a", "text": "#fff"},
+    "independent":             {"name": "Independent",  "short": "IND", "colour": "#6b7280", "text": "#fff"},
+    "ind":                     {"name": "Independent",  "short": "IND", "colour": "#6b7280", "text": "#fff"},
+}
+
+_NAT_ORDER = ["reform uk", "liberal democrat", "conservative", "labour", "green", "independent"]
+
+def _nat_normalise_party(raw: str) -> str:
+    r = raw.lower().strip()
+    if "reform" in r:            return "reform uk"
+    if "liberal" in r or "lib dem" in r: return "liberal democrat"
+    if "conserv" in r:           return "conservative"
+    if "labour" in r or "co-operative" in r: return "labour"
+    if "green" in r:             return "green"
+    if "independent" in r or r == "ind": return "independent"
+    return r
+
+def _fetch_national_dc() -> dict | None:
+    """Aggregate 2026 local election results from Democracy Club candidates API.
+    Returns None if DC is unreachable so caller can fall back to hardcoded data."""
+    import time
+    from collections import defaultdict
+    from datetime import datetime, timezone
+
+    now = time.time()
+    if _NAT_CACHE["data"] and now - _NAT_CACHE["ts"] < _NAT_TTL:
+        return _NAT_CACHE["data"]
+
+    counts: dict[str, int] = defaultdict(int)
+    url = "https://candidates.democracyclub.org.uk/api/next/candidates/"
+    params: dict | None = {
+        "election_date": "2026-05-07",
+        "elected": "True",
+        "page_size": 200,
+        "format": "json",
+    }
+    pages = 0
+    try:
+        while url and pages < 40:
+            r = requests.get(
+                url, params=params, timeout=12,
+                headers={"User-Agent": "Miru/1.0"},
+            )
+            params = None  # only on first request
+            if r.status_code != 200:
+                break
+            d = r.json()
+            for c in d.get("results", []):
+                if c.get("elected"):
+                    key = _nat_normalise_party(c.get("party_name") or "other")
+                    counts[key] += 1
+            url = d.get("next")
+            pages += 1
+    except Exception as e:
+        print(f"[national] DC fetch error: {e}")
+
+    if not counts:
+        return None
+
+    parties = []
+    for key in _NAT_ORDER:
+        cnt = counts.get(key, 0)
+        prev = _NAT_BASELINE_2022.get(key, 0)
+        net = cnt - prev
+        net_str = (f"+{net}" if net > 0 else str(net)) if net != 0 else "0"
+        meta = _NAT_PARTY_META.get(key, {"name": key.title(), "short": "OTH", "colour": "#9ca3af", "text": "#fff"})
+        parties.append({
+            "name":        meta["name"],
+            "short":       meta["short"],
+            "colour":      meta["colour"],
+            "text":        meta["text"],
+            "councils":    _NAT_COUNCILS_2026.get(key, 0),
+            "net":         _NAT_COUNCILS_NET.get(key, "0"),
+            "councillors": cnt,
+            "net_c":       net_str,
+        })
+
+    result = {
+        "updated":    datetime.now(timezone.utc).strftime("%-d %b %Y · %-H:%M UTC"),
+        "source":     "Democracy Club",
+        "source_url": "https://candidates.democracyclub.org.uk",
+        "headline":   "2026 UK local election results",
+        "parties":    parties,
+    }
+    _NAT_CACHE["data"] = result
+    _NAT_CACHE["ts"] = now
+    return result
 
 @app.route("/api/elections/national")
 def api_elections_national():
-    return jsonify(_NATIONAL_RESULTS_2026)
+    data = _fetch_national_dc()
+    if data:
+        return jsonify(data)
+    # Fallback: hardcoded BBC-sourced snapshot if DC is unreachable
+    return jsonify({
+        "updated": "8 May 2026 · Final (cached)",
+        "source":  "BBC News",
+        "source_url": "https://www.bbc.co.uk/news/politics",
+        "headline": "Reform surge, heavy Labour losses — 2026 local elections",
+        "parties": [
+            {"name": "Reform UK",    "short": "REF", "colour": "#06b6d4", "text": "#fff", "councils": 10, "net": "+10", "councillors": 585, "net_c": "+583"},
+            {"name": "Lib Dems",     "short": "LIB", "colour": "#f59e0b", "text": "#000", "councils": 8,  "net": "+8",  "councillors": 355, "net_c": "+29"},
+            {"name": "Conservative", "short": "CON", "colour": "#1d4ed8", "text": "#fff", "councils": 0,  "net": "-5",  "councillors": 322, "net_c": "-267"},
+            {"name": "Labour",       "short": "LAB", "colour": "#e11d48", "text": "#fff", "councils": 0,  "net": "-15", "councillors": 303, "net_c": "-394"},
+            {"name": "Green",        "short": "GRN", "colour": "#16a34a", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 120, "net_c": "+66"},
+            {"name": "Independent",  "short": "IND", "colour": "#6b7280", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 49,  "net_c": ""},
+        ]
+    })
 
 
 _ELEC_ALERTS_PATH = os.path.join(os.path.dirname(__file__), "elections_alerts.json")
