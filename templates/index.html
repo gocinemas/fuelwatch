@@ -346,8 +346,12 @@
             <div class="home-tool-body"><div class="home-tool-name">My saves</div><div class="home-tool-desc">Articles & links you've saved</div></div>
           </button>
           <button class="home-tool-card" onclick="showScreen('company')">
-            <span class="home-tool-icon">🔎</span>
-            <div class="home-tool-body"><div class="home-tool-name">Company & Brand Intel</div><div class="home-tool-desc">Companies House, financials, brand research</div></div>
+            <span class="home-tool-icon">🏢</span>
+            <div class="home-tool-body"><div class="home-tool-name">Company Intel</div><div class="home-tool-desc">Revenue, profit &amp; financials · AI &amp; tech strategy · news</div></div>
+          </button>
+          <button class="home-tool-card" onclick="showScreen('brand')">
+            <span class="home-tool-icon">🏷️</span>
+            <div class="home-tool-body"><div class="home-tool-name">Brand Intel</div><div class="home-tool-desc">Brand identity · founding story · ads &amp; rivals</div></div>
           </button>
           <button class="home-tool-card" onclick="showScreen('library')">
             <span class="home-tool-icon">📄</span>
@@ -611,10 +615,9 @@
           style="padding:8px 16px;border-radius:10px;border:1.5px solid var(--border,#e5e7eb);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text,#1a1a2e)">🏷️ Brand</button>
       </div>
       <div class="bg-white rounded-2xl shadow p-5 mb-4">
-        <h2 class="font-bold text-gray-800 mb-1">🏢 Company & Brand Intel</h2>
+        <h2 class="font-bold text-gray-800 mb-3">🏢 Company Intel</h2>
         <p style="font-size:12px;color:#9ca3af;margin-bottom:14px;line-height:1.6">
-          <strong style="color:#6b7280">🏢 Company Intel</strong> — revenue, profit &amp; financials · AI &amp; tech strategy · competitive direction · news &amp; video<br>
-          <strong style="color:#6b7280">🏷️ Brand Intel</strong> — brand identity &amp; global presence · founding story &amp; evolution timeline · iconic ad campaigns &amp; slogans · competitor brands &amp; market rivals
+          Revenue, profit &amp; financials · AI &amp; tech strategy · competitive direction · news &amp; video
         </p>
         <div class="flex gap-2 mb-4">
           <input id="company-input" type="text" placeholder="e.g. Tesco, HSBC, Monzo"
@@ -1075,8 +1078,8 @@
         <button id="blookup-tab-brand-b" onclick="blookupTab('brand')"
           style="padding:8px 16px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--text,#1a1a2e);color:var(--bg,#fff)">🏷️ Brand</button>
       </div>
-      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Brand Intel</div>
-      <div style="font-size:12px;color:var(--subtle);margin-bottom:18px;line-height:1.6">Brand identity &amp; global presence &nbsp;·&nbsp; founding story &amp; evolution timeline &nbsp;·&nbsp; iconic ad campaigns &amp; slogans &nbsp;·&nbsp; competitor brands &amp; market rivals</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🏷️ Brand Intel</div>
+      <div style="font-size:12px;color:var(--subtle);margin-bottom:18px;line-height:1.6">Brand identity &amp; global presence · founding story &amp; evolution timeline · iconic ad campaigns &amp; slogans · competitor brands &amp; market rivals</div>
 
       <!-- Search bar -->
       <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -4770,7 +4773,8 @@
       { name:"Local search",   desc:"Cafés, tradespeople & shops",         icon:"📍", screen:"places",    kw:"cafe coffee plumber shop restaurant pub local places nearby find electrician builder" },
       { name:"Emergency",      desc:"Hospitals & police stations",         icon:"🚨", screen:"report",    kw:"hospital emergency police ambulance a&e urgent nhs nearest help" },
       { name:"My saves",       desc:"Articles & links you've saved",       icon:"📌", screen:"saves",     kw:"saves saved article link bookmark read reading" },
-      { name:"Company & Brand Intel", desc:"Companies House, financials, brand research", icon:"🔎", screen:"company", kw:"company brand business companies house director ltd limited research intel" },
+      { name:"Company Intel", desc:"Revenue, profit & financials · AI & tech strategy · news", icon:"🏢", screen:"company", kw:"company business financials revenue profit strategy news intel turnover" },
+      { name:"Brand Intel",   desc:"Brand identity · founding story · ads & rivals",           icon:"🏷️", screen:"brand",   kw:"brand identity ads campaigns rivals marketing history logo slogan" },
       { name:"My documents",   desc:"Upload & chat with your files",       icon:"📄", screen:"library",   kw:"document pdf file upload library ask query" },
       { name:"Book scanner",   desc:"Scan & chat with any book",           icon:"📚", screen:"scan",      kw:"book scan barcode isbn read library chat" },
       { name:"Music ID",       desc:"Identify any song instantly",         icon:"🎵", screen:"music",     kw:"music song identify shazam name artist track" },
