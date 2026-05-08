@@ -5137,17 +5137,18 @@ def whatsapp_results_format(postcode: str) -> str:
         council = ward_data.get("council") or district
         date    = ward_data.get("election_date", "2026-05-07")
 
-        # Try DC results API
+        # Try DC results API — returns a list of candidate dicts
         dc_results = _fetch_dc_results(council_slug or council, ward, date)
-        if dc_results and dc_results.get("candidates"):
-            cands = sorted(dc_results["candidates"], key=lambda c: -c.get("votes", 0))
-            elected = [c for c in cands if c.get("elected")]
+        has_real = dc_results and any(c.get("votes") is not None or c.get("elected") for c in dc_results)
+        if has_real:
+            cands = sorted(dc_results, key=lambda c: -(c.get("votes") or 0))
             lines = []
             for c in cands:
                 tick = "✅ " if c.get("elected") else "   "
-                votes = f"  {c.get('votes',''):,}" if c.get("votes") else ""
-                lines.append(f"{tick}{c['name']} ({c.get('party_name','')[:12]}){votes}")
-            declared = dc_results.get("result_known", True)
+                votes = f"  {c['votes']:,}" if c.get("votes") is not None else ""
+                party = (c.get("party") or c.get("party_name") or "")[:14]
+                lines.append(f"{tick}{c['name']} ({party}){votes}")
+            declared = any(c.get("elected") for c in cands)
             header = "🗳️ Result declared" if declared else "🗳️ Counting in progress"
             return (
                 f"{header}\n"
@@ -5532,22 +5533,22 @@ def whatsapp_reply():
             resp.message("Please include your postcode, e.g.:\nVoting Results SW1A 1AA")
             return str(resp)
 
-    # ── Elections query ────────────────────────────────────────────────────────
+    # ── Elections query — election day passed, so always return results ────────
     if body_words & _ELECTION_WORDS:
         pc_m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
         elec_postcode = pc_m.group(1).replace(" ", "") if pc_m else None
         if elec_postcode:
-            cache_key = f"elections:{elec_postcode}"
+            cache_key = f"results:{elec_postcode}"
             cached = _WA_CACHE.get(cache_key)
-            if cached and (time.time() - cached[0]) < _WA_CACHE_TTL:
+            if cached and (time.time() - cached[0]) < 300:
                 resp.message(cached[1])
                 return str(resp)
-            reply = whatsapp_elections_format(elec_postcode)
+            reply = whatsapp_results_format(elec_postcode)
             _WA_CACHE[cache_key] = (time.time(), reply)
             resp.message(reply)
             return str(resp)
         else:
-            resp.message("Please include your postcode, e.g.:\nvote KT16 0DA")
+            resp.message("Please include your postcode to get election results, e.g.:\nelection KT16 0DA")
             return str(resp)
 
     # Decide: fuel query or product query
