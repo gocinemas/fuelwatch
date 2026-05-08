@@ -266,7 +266,7 @@ async function lookupProfile() {
     _emails    = d.profile.sender_emails || [];
     renderProfile(d.profile);
     document.getElementById("screen-lookup").style.display  = "none";
-    document.getElementById("screen-profile").style.display = "";
+    document.getElementById("screen-profile").style.display = "block";
   } catch(e) {
     document.getElementById("lookup-error").style.display = "block";
     document.getElementById("lookup-error").textContent = "Network error — please try again.";
