@@ -507,6 +507,43 @@
         <div>For a specific fuel type: <code style="background:#dcfce7;padding:1px 6px;border-radius:4px;font-size:12px">petrol KT1 2BA</code></div>
       </div>
 
+      <!-- Price drop alert registration -->
+      <div id="fuel-alert-card" style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:18px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:38px;height:38px;border-radius:12px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🔔</div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.2px">Alert me when prices drop</div>
+            <div style="font-size:12px;color:var(--subtle);margin-top:1px">WhatsApp notification — no app needed</div>
+          </div>
+        </div>
+        <div id="fuel-alert-form">
+          <input id="fuel-alert-wa" type="tel" placeholder="WhatsApp number e.g. +44 7700 123456"
+            style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;margin-bottom:10px;box-sizing:border-box"
+            onfocus="this.style.borderColor='#dc2626'" onblur="this.style.borderColor='var(--border)'" />
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <select id="fuel-alert-type" style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none">
+              <option value="petrol">Petrol</option>
+              <option value="diesel">Diesel</option>
+            </select>
+            <select id="fuel-alert-threshold" style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none">
+              <option value="1">Drop ≥ 1p/litre</option>
+              <option value="2">Drop ≥ 2p/litre</option>
+              <option value="3">Drop ≥ 3p/litre</option>
+            </select>
+          </div>
+          <button onclick="registerFuelAlert()"
+            style="width:100%;background:#dc2626;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+            Set Price Alert
+          </button>
+          <div id="fuel-alert-err" style="display:none;margin-top:8px;font-size:12px;color:#dc2626;text-align:center"></div>
+        </div>
+        <div id="fuel-alert-done" style="display:none;text-align:center;padding:8px 0">
+          <div style="font-size:22px;margin-bottom:6px">✅</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">Alert set!</div>
+          <div id="fuel-alert-done-msg" style="font-size:12px;color:var(--subtle);margin-top:3px;line-height:1.5"></div>
+        </div>
+      </div>
+
       <div id="fuel-loading" class="hidden text-center py-6 text-gray-400 text-sm">
         <div class="spinner text-red-500 mx-auto mb-2"></div>Fetching live prices…
       </div>
@@ -1662,12 +1699,52 @@
   }
 
   // ── Fuel Search ─────────────────────────────────────────────────────────────
+  async function registerFuelAlert() {
+    const wa        = document.getElementById("fuel-alert-wa").value.trim();
+    const postcode  = document.getElementById("fuel-postcode").value.trim().replace(/\s+/g,"");
+    const fuel      = document.getElementById("fuel-alert-type").value;
+    const threshold = document.getElementById("fuel-alert-threshold").value;
+    const errEl     = document.getElementById("fuel-alert-err");
+    errEl.style.display = "none";
+    if (!wa) { errEl.textContent = "Please enter your WhatsApp number"; errEl.style.display = "block"; return; }
+    if (!postcode) { errEl.textContent = "Search for a postcode first above"; errEl.style.display = "block"; return; }
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = "Setting alert…";
+    try {
+      const r = await fetch("/api/fuel/alert", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({wa_number: wa, postcode, fuel_type: fuel, threshold_drop: parseFloat(threshold)})
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Failed");
+      document.getElementById("fuel-alert-form").style.display = "none";
+      document.getElementById("fuel-alert-done").style.display = "block";
+      const fuelLabel = fuel === "petrol" ? "Petrol" : "Diesel";
+      document.getElementById("fuel-alert-done-msg").textContent =
+        `${fuelLabel} · ${postcode.toUpperCase()} · alert when drops ≥${threshold}p/litre` +
+        (d.baseline_price ? `\nCurrent cheapest: ${d.baseline_price.toFixed(1)}p` : "");
+      localStorage.setItem("miru_fuel_alert_wa", wa);
+    } catch(e) {
+      errEl.textContent = e.message || "Something went wrong. Try again.";
+      errEl.style.display = "block";
+      btn.disabled = false; btn.textContent = "Set Price Alert";
+    }
+  }
+
   async function searchFuel() {
     const postcode = document.getElementById("fuel-postcode").value.trim().replace(/\s+/g,"");
     const fuel     = document.getElementById("fuel-type").value;
     const radius   = document.getElementById("fuel-radius").value;
     if (!postcode) return;
     _saveRecent("miru_fuel", postcode);
+    // Pre-fill alert postcode and fuel type to match search
+    const alertType = document.getElementById("fuel-alert-type");
+    if (alertType) alertType.value = fuel;
+    // Restore saved WA number if any
+    const savedWa = localStorage.getItem("miru_fuel_alert_wa");
+    const alertWa = document.getElementById("fuel-alert-wa");
+    if (savedWa && alertWa && !alertWa.value) alertWa.value = savedWa;
 
     setLoading("fuel", true);
     try {
