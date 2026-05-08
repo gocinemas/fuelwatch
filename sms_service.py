@@ -1553,16 +1553,11 @@ def school_fetch_now():
         return _cors(Response("", 204))
     try:
         data = request.get_json(force=True, silent=True) or {}
-        wa   = data.get("wa", "").strip()
+        wa   = data.get("wa", "").strip() or request.headers.get("X-School-WA", "").strip()
         if not wa:
             return _cors(jsonify({"error": "wa required"})), 400
-        # Resolve profiles for this WA number
-        candidates = [wa, f"whatsapp:{wa}"] if not wa.startswith("whatsapp:") else [wa]
-        profiles = []
-        for cand in candidates:
-            profiles = school_service._get_profiles(from_number=cand)
-            if profiles:
-                break
+        wa = _normalise_from_number(wa)
+        profiles = school_service._get_profiles(from_number=wa)
         if not profiles:
             return _cors(jsonify({"error": "no profiles found"})), 404
         profile_ids = [p["id"] for p in profiles]
