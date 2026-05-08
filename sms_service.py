@@ -1586,8 +1586,12 @@ _PARTY_META = {
     "green":              {"short": "GRN", "colour": "#16a34a", "text": "#fff"},
 }
 
-_NATIONAL_FALLBACK = {
-    "updated": "8 May 2026 · Final results (BBC)",
+# 2026 UK local election final results — sourced from BBC News (8 May 2026)
+# Elections are complete; these figures are final and will not change.
+_NATIONAL_RESULTS_2026 = {
+    "updated": "8 May 2026 · Final results",
+    "source":  "BBC News",
+    "source_url": "https://www.bbc.co.uk/news/politics/local-elections-2026/results",
     "headline": "Reform surge, heavy Labour losses — 2026 local elections",
     "parties": [
         {"name": "Reform UK",    "short": "REF", "colour": "#06b6d4", "text": "#fff", "councils": 10, "net": "+10", "councillors": 585, "net_c": "+583"},
@@ -1599,92 +1603,9 @@ _NATIONAL_FALLBACK = {
     ]
 }
 
-def _fetch_national_results():
-    """Scrape Wikipedia live 2026 UK local election results table."""
-    try:
-        import pandas as pd
-        from datetime import datetime
-        resp = requests.get(
-            "https://en.wikipedia.org/wiki/2026_United_Kingdom_local_elections",
-            headers={"User-Agent": "Miru/1.0 elections display"},
-            timeout=10
-        )
-        if resp.status_code != 200:
-            return None
-        tables = pd.read_html(resp.text)
-        result_table = None
-        for df in tables:
-            col_str = " ".join(str(c).lower() for c in df.columns)
-            if "council" in col_str and ("councillor" in col_str or "seat" in col_str):
-                first_col = df.iloc[:, 0].astype(str).str.lower().tolist()
-                if any(p in " ".join(first_col) for p in ["labour", "reform", "conservative"]):
-                    result_table = df
-                    break
-        if result_table is None:
-            return None
-
-        def _int(v):
-            try:
-                return int(str(v).replace("+","").replace("−","-").replace("–","-").replace(",","").strip())
-            except:
-                return 0
-
-        def _net(v):
-            s = str(v).replace("−","-").replace("–","-").strip()
-            try:
-                n = int(s.replace("+","").replace(",",""))
-                return f"+{n}" if n > 0 else str(n)
-            except:
-                return s
-
-        parties = []
-        for _, row in result_table.iterrows():
-            vals = [str(v) for v in row.values]
-            name_raw = vals[0].strip()
-            meta = next((m for k, m in _PARTY_META.items() if k in name_raw.lower()), None)
-            if not meta:
-                continue
-            parties.append({
-                "name": name_raw,
-                **meta,
-                "councils":     _int(vals[1]) if len(vals) > 1 else 0,
-                "net":          _net(vals[2]) if len(vals) > 2 else "0",
-                "councillors":  _int(vals[3]) if len(vals) > 3 else 0,
-                "net_c":        _net(vals[4]) if len(vals) > 4 else "0",
-            })
-        if not parties:
-            return None
-        parties.sort(key=lambda p: p["councillors"], reverse=True)
-        top = parties[0]["name"]
-        return {
-            "updated": datetime.utcnow().strftime("%-d %b %Y · %H:%M UTC · auto-refreshing"),
-            "headline": f"{top} leads 2026 UK local elections",
-            "parties": parties,
-        }
-    except Exception as e:
-        app.logger.error(f"_fetch_national_results: {e}")
-        return None
-
-
 @app.route("/api/elections/national")
 def api_elections_national():
-    try:
-        if os.path.exists(_NATIONAL_CACHE_PATH):
-            with open(_NATIONAL_CACHE_PATH) as f:
-                cached = json.load(f)
-            if time.time() - cached.get("_ts", 0) < _NATIONAL_CACHE_TTL:
-                return jsonify({k: v for k, v in cached.items() if k != "_ts"})
-    except Exception:
-        pass
-    data = _fetch_national_results()
-    if data:
-        try:
-            with open(_NATIONAL_CACHE_PATH, "w") as f:
-                json.dump({**data, "_ts": time.time()}, f)
-        except Exception:
-            pass
-        return jsonify(data)
-    return jsonify(_NATIONAL_FALLBACK)
+    return jsonify(_NATIONAL_RESULTS_2026)
 
 
 _ELEC_ALERTS_PATH = os.path.join(os.path.dirname(__file__), "elections_alerts.json")

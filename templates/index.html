@@ -2647,7 +2647,10 @@
       document.getElementById("national-snapshot-loading").style.display = "none";
       document.getElementById("national-snapshot-body").style.display = "";
       document.getElementById("national-headline").textContent = d.headline || "";
-      document.getElementById("national-updated").textContent = d.updated || "";
+      const srcLink = d.source_url
+        ? `<a href="${d.source_url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">${d.source || "BBC News"}</a>`
+        : (d.source || "");
+      document.getElementById("national-updated").innerHTML = (d.updated || "") + (srcLink ? " · Source: " + srcLink : "");
 
       document.getElementById("national-bar").innerHTML = d.parties
         .filter(p => p.councils > 0)
