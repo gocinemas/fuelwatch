@@ -4756,6 +4756,7 @@ def _wa_triage_respond(from_number: str, cmd: str) -> str:
 _FUEL_WORDS = {"petrol", "diesel", "unleaded", "fuel", "gas", "price", "prices", "cheapest", "nearest", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
 _ELECTION_WORDS = {"vote", "voting", "election", "elections", "candidate", "candidates",
                    "polling", "ballot", "stand", "standing", "mp", "councillor"}
+_RESULTS_WORDS  = {"results", "result", "winner", "won", "elected", "who won"}
 _PLACES_WORDS = {"places", "services", "local", "near", "nearby", "around",
                  "library", "gp", "doctor", "pharmacy", "dentist", "leisure",
                  "gym", "pool", "community", "postoffice", "council", "park"}
@@ -4907,6 +4908,83 @@ def whatsapp_elections_format(postcode: str) -> str:
         )
     except Exception as e:
         return f"Sorry, couldn't load election info. Try miru.app instead."
+
+def whatsapp_results_format(postcode: str) -> str:
+    """Return declared election results for a postcode via WhatsApp."""
+    try:
+        pc = postcode.replace(" ", "").upper()
+        r = requests.get(f"https://api.postcodes.io/postcodes/{pc}", timeout=6)
+        if r.status_code != 200:
+            return f"Couldn't find postcode {postcode}. Please check and try again."
+        result       = r.json().get("result", {})
+        codes        = result.get("codes", {})
+        ward_gss     = codes.get("admin_ward", "")
+        ward_name    = result.get("admin_ward", "")
+        district     = result.get("admin_district", "")
+        district_code = codes.get("admin_district", "")
+        ua_code      = district_code
+        county_code  = codes.get("admin_county", "")
+
+        elections  = _get_elections()
+        ward_data  = elections["by_gss"].get(ward_gss, {})
+        council_slug = None
+        if not ward_data:
+            council_slug = (
+                _DISTRICT_TO_COUNCIL_SLUG.get(district_code) or
+                _UA_TO_COUNCIL_SLUG.get(ua_code) or
+                _COUNTY_TO_COUNCIL_SLUG.get(county_code)
+            )
+            if council_slug:
+                slug_wards = elections["by_slug"].get(council_slug, {})
+                best = _best_ward_match(ward_name, slug_wards)
+                if best:
+                    ward_data = slug_wards[best]
+
+        if not ward_data:
+            return (f"No elections found for {pc} this year.\n"
+                    "Your area may not be holding local elections in 2026.")
+
+        ward    = ward_data.get("ward") or ward_name
+        council = ward_data.get("council") or district
+        date    = ward_data.get("election_date", "2026-05-07")
+
+        # Try DC results API
+        dc_results = _fetch_dc_results(council_slug or council, ward, date)
+        if dc_results and dc_results.get("candidates"):
+            cands = sorted(dc_results["candidates"], key=lambda c: -c.get("votes", 0))
+            elected = [c for c in cands if c.get("elected")]
+            lines = []
+            for c in cands:
+                tick = "✅ " if c.get("elected") else "   "
+                votes = f"  {c.get('votes',''):,}" if c.get("votes") else ""
+                lines.append(f"{tick}{c['name']} ({c.get('party_name','')[:12]}){votes}")
+            declared = dc_results.get("result_known", True)
+            header = "🗳️ Result declared" if declared else "🗳️ Counting in progress"
+            return (
+                f"{header}\n"
+                f"Ward: {ward}\n"
+                f"{council}\n\n"
+                + "\n".join(lines) +
+                "\n\n🔗 miru.humanagency.co"
+            )
+
+        # No results yet — fall back to candidates
+        candidates = sorted(ward_data.get("candidates", []), key=lambda c: c["party"])
+        if not candidates:
+            return f"Results not yet declared for {ward}, {council}. Check back later."
+
+        cand_lines = [f"• {c['name']} ({c['party']})" for c in candidates]
+        return (
+            f"⏳ Results not yet declared\n"
+            f"Ward: {ward}\n"
+            f"{council}\n\n"
+            f"Candidates standing:\n" + "\n".join(cand_lines) +
+            "\n\nCheck back later for the result.\n🔗 miru.humanagency.co"
+        )
+    except Exception as e:
+        app.logger.error(f"whatsapp_results_format: {e}")
+        return "Sorry, couldn't load results. Try again shortly."
+
 
 def _split_product_postcode(body: str):
     """Return (product_name, postcode_or_None) from a freeform message."""
@@ -5241,6 +5319,24 @@ def whatsapp_reply():
             return str(resp)
         else:
             resp.message("Please include a postcode or place name, e.g.:\nplaces KT1 2BA")
+            return str(resp)
+
+    # ── Election results query ─────────────────────────────────────────────────
+    if body_words & _RESULTS_WORDS:
+        pc_m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
+        res_postcode = pc_m.group(1).replace(" ", "") if pc_m else None
+        if res_postcode:
+            cache_key = f"results:{res_postcode}"
+            cached = _WA_CACHE.get(cache_key)
+            if cached and (time.time() - cached[0]) < 300:  # 5-min cache for results
+                resp.message(cached[1])
+                return str(resp)
+            reply = whatsapp_results_format(res_postcode)
+            _WA_CACHE[cache_key] = (time.time(), reply)
+            resp.message(reply)
+            return str(resp)
+        else:
+            resp.message("Please include your postcode, e.g.:\nVoting Results SW1A 1AA")
             return str(resp)
 
     # ── Elections query ────────────────────────────────────────────────────────
