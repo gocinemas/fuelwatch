@@ -1441,6 +1441,61 @@ def aiha_content_post():
         return _cors(jsonify({"error": str(e)})), 500
 
 
+# ── School settings web UI ───────────────────────────────────────────────────
+
+@app.route("/school/settings")
+def school_settings_page():
+    return render_template("school_settings.html")
+
+
+@app.route("/api/school/settings")
+def school_settings_get():
+    wa = request.args.get("wa", "").strip()
+    if not wa:
+        return _cors(jsonify({"error": "wa required"})), 400
+    try:
+        profiles = school_service._get_profiles(from_number=wa)
+        if not profiles:
+            return _cors(jsonify({"error": "not found"})), 404
+        p = profiles[0]
+        return _cors(jsonify({"profile": {
+            "id":            p["id"],
+            "child_name":    p.get("child_name", ""),
+            "school_name":   p.get("school_name", ""),
+            "class_name":    p.get("class_name", ""),
+            "teacher_name":  p.get("teacher_name", ""),
+            "sender_emails": p.get("sender_emails") or [],
+        }}))
+    except Exception as e:
+        return _cors(jsonify({"error": str(e)})), 500
+
+
+@app.route("/api/school/settings/emails", methods=["POST", "OPTIONS"])
+def school_settings_emails():
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+    try:
+        data       = request.get_json(force=True, silent=True) or {}
+        profile_id = data.get("profile_id", "").strip()
+        wa         = data.get("wa", "").strip()
+        emails     = data.get("emails", [])
+        if not profile_id or not wa:
+            return _cors(jsonify({"error": "profile_id and wa required"})), 400
+        if not isinstance(emails, list):
+            return _cors(jsonify({"error": "emails must be a list"})), 400
+        # Verify the profile belongs to this WA number before updating
+        verify = lib._sb().table("school_profiles") \
+            .select("id").eq("id", profile_id).eq("from_number", wa).execute()
+        if not (verify.data):
+            return _cors(jsonify({"error": "profile not found or wa mismatch"})), 403
+        lib._sb().table("school_profiles") \
+            .update({"sender_emails": emails}) \
+            .eq("id", profile_id).execute()
+        return _cors(jsonify({"ok": True}))
+    except Exception as e:
+        return _cors(jsonify({"error": str(e)})), 500
+
+
 _NATIONAL_CACHE_PATH = os.path.join(os.path.dirname(__file__), "elections_national_cache.json")
 _NATIONAL_CACHE_TTL  = 900  # 15 minutes
 
