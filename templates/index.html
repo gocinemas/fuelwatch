@@ -372,7 +372,7 @@
           </button>
           <button class="home-tool-card" id="elections-home-card" onclick="showScreen('elections')">
             <span class="home-tool-icon">🗳️</span>
-            <div class="home-tool-body"><div class="home-tool-name">Elections</div><div id="elections-home-desc" class="home-tool-desc">Find your polling station &amp; candidates</div></div>
+            <div class="home-tool-body"><div class="home-tool-name">Election Results</div><div id="elections-home-desc" class="home-tool-desc">Candidates &amp; results by ward</div></div>
           </button>
         </div>
       </div>
@@ -789,8 +789,7 @@
 
     <!-- ── ELECTIONS SCREEN ── -->
     <div id="screen-elections" class="screen pt-5">
-      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🗳️ Elections</div>
-      <div style="font-size:13px;color:var(--subtle);margin-bottom:12px">Local elections · 7 May 2026 · Enter your postcode</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:12px">🗳️ Election Results</div>
       <button id="elections-loc-btn" onclick="electionsUseLocation()"
         style="width:100%;margin-bottom:8px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">
         📍 Use my current location
@@ -876,25 +875,6 @@
           <div id="elections-ward" style="font-size:14px;font-weight:700;color:var(--text)"></div>
           <div id="elections-council" style="font-size:11px;color:var(--subtle);margin-top:1px"></div>
           <div id="elections-county" style="font-size:11px;color:var(--subtle);opacity:.65;margin-top:1px"></div>
-        </div>
-
-        <!-- Polling station always visible -->
-        <div id="elections-ps-section" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:11px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📍 Polling Station</div>
-              <div id="elections-ps-name" style="font-weight:700;font-size:15px;color:var(--text);line-height:1.3"></div>
-              <div id="elections-ps-addr" style="font-size:12px;color:var(--subtle);margin-top:3px;line-height:1.4"></div>
-              <div style="margin-top:8px;display:flex;align-items:center;gap:6px">
-                <span style="font-size:13px;font-weight:700;color:var(--text)">7am – 10pm</span>
-                <span style="font-size:12px;color:var(--subtle)">· Thu 7 May 2026</span>
-              </div>
-            </div>
-            <a id="elections-polling-link" href="#" target="_blank" rel="noopener"
-              style="display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:12px;font-weight:600;padding:8px 13px;border-radius:10px;text-decoration:none;flex-shrink:0;white-space:nowrap;margin-top:2px">
-              Directions ↗
-            </a>
-          </div>
         </div>
 
         <!-- Tab bar -->
@@ -4664,7 +4644,7 @@
       { name:"My documents",   desc:"Upload & chat with your files",       icon:"📄", screen:"library",   kw:"document pdf file upload library ask query" },
       { name:"Book scanner",   desc:"Scan & chat with any book",           icon:"📚", screen:"scan",      kw:"book scan barcode isbn read library chat" },
       { name:"Music ID",       desc:"Identify any song instantly",         icon:"🎵", screen:"music",     kw:"music song identify shazam name artist track" },
-      { name:"Elections",      desc:"Find your polling station & candidates", icon:"🗳️", screen:"elections", kw:"election elections vote voting polling station candidates ward council local" },
+      { name:"Election Results", desc:"Candidates & results by ward",           icon:"🗳️", screen:"elections", kw:"election elections results vote voting candidates ward council local" },
       { name:"House prices",   desc:"Property values in your area",        icon:"🏡", screen:"report",    kw:"house price property valuation sold market" },
       { name:"School updates", desc:"Events & notices from school",        icon:"🏫", screen:"school",    kw:"school parent newsletter event term homework teacher" },
     ];

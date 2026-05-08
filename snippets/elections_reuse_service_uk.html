@@ -1,0 +1,481 @@
+<!--
+  ELECTIONS REUSE SERVICE UK
+  Saved: 2026-05-08
+  Source: fuelwatch / templates/index.html (screen-elections)
+  Context: UK local elections 7 May 2026 — postcode lookup via Democracy Club API
+  API endpoint: /api/elections?postcode=<postcode>
+  Features: ward/council lookup, polling station, candidates, party manifestos, live + 2022 results
+  To reuse: drop HTML block into a screen div, include CSS vars (--text, --bg, --surface, --border,
+            --subtle, --surface2, --accent), include JS block, wire up API backend.
+-->
+
+<!-- ═══════════════════════════════════════════════════════════════ HTML ═══ -->
+
+    <!-- ── ELECTIONS SCREEN ── -->
+    <div id="screen-elections" class="screen pt-5">
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🗳️ Elections</div>
+      <div style="font-size:13px;color:var(--subtle);margin-bottom:12px">Local elections · 7 May 2026 · Enter your postcode</div>
+
+      <!-- Photo ID reminder (remove if polls are closed) -->
+      <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px;flex-shrink:0">🪪</span>
+        <span style="font-size:13px;font-weight:600;color:#92400e">Don't forget to take your Photo ID</span>
+      </div>
+
+      <button id="elections-loc-btn" onclick="electionsUseLocation()"
+        style="width:100%;margin-bottom:8px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">
+        📍 Use my current location
+      </button>
+      <div id="elections-loc-err" style="display:none;font-size:13px;color:#ef4444;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input id="elections-input" type="text" placeholder="or enter postcode, e.g. TW3 3SF"
+          style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+          onkeydown="if(event.key==='Enter') searchElections()"
+          onfocus="this.style.boxShadow='0 0 0 3px rgba(34,197,94,.15)'"
+          onblur="this.style.boxShadow=''">
+        <button onclick="searchElections()"
+          style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer">Search</button>
+      </div>
+
+      <!-- WhatsApp join card — collapsible -->
+      <button onclick="waElectionsToggle()"
+        style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:4px;width:100%;text-align:left;cursor:pointer">
+        <div style="width:36px;height:36px;background:#e9faf0;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="color:var(--text);font-weight:600;font-size:13px;line-height:1.3">Get election info on WhatsApp</div>
+          <div style="color:var(--subtle);font-size:12px;margin-top:2px">Candidates · polling station · no app needed</div>
+        </div>
+        <span id="wa-el-chevron" style="font-size:11px;color:var(--subtle);flex-shrink:0">▼</span>
+      </button>
+
+      <!-- Expandable panel -->
+      <div id="wa-el-panel" style="display:none;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 16px 16px;padding:14px 16px;margin-bottom:16px">
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:12.5px;color:var(--subtle)">
+
+          <!-- Step 1: Join (hidden once joined) -->
+          <div id="wa-el-step1" style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <span style="color:#25d366;font-weight:700;flex-shrink:0">1.</span>
+              <span>Tap <strong>Join WhatsApp →</strong> below and send the pre-filled message to activate the bot</span>
+            </div>
+            <a id="wa-el-join-btn" href="https://wa.me/14155238886?text=join%20hearing-never"
+              target="_blank" rel="noopener" onclick="waMarkJoined()"
+              style="display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#25d366;color:#fff;font-size:13px;font-weight:700;padding:10px 18px;border-radius:12px;text-decoration:none;margin-top:2px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              Join WhatsApp →
+            </a>
+          </div>
+
+          <!-- Already joined badge (shown once joined) -->
+          <div id="wa-el-joined-badge" style="display:none;font-size:12px;color:#166534;background:#dcfce7;border-radius:8px;padding:6px 10px;font-weight:600">✅ You've already joined — skip to step 2</div>
+
+          <!-- Step 2 -->
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <span style="color:#25d366;font-weight:700;flex-shrink:0">2.</span>
+            <div>
+              <span id="wa-el-step2-label">Once joined, text <strong>vote</strong> followed by your postcode</span>
+              <div id="wa-el-send-btn-wrap" style="display:none;margin-top:6px">
+                <a id="wa-el-send-btn" href="#" target="_blank" rel="noopener"
+                  style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:13px;font-weight:700;padding:10px 18px;border-radius:12px;text-decoration:none">
+                  💬 Send my vote query →
+                </a>
+              </div>
+              <div id="wa-el-example" style="margin-top:4px;font-family:monospace;font-size:12px;background:#f3f4f6;border-radius:6px;padding:4px 8px;display:inline-block">vote TW3 3SF</div>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <span style="color:#25d366;font-weight:700;flex-shrink:0">3.</span>
+            <span>Get your candidates, party info &amp; polling station address instantly</span>
+          </div>
+
+        </div>
+      </div>
+
+      <div id="elections-loading" class="hidden" style="text-align:center;padding:40px 0">
+        <div class="spinner mx-auto mb-3" style="border-top-color:#16a34a;width:26px;height:26px"></div>
+        <div style="font-size:13px;color:var(--subtle)">Looking up your ward…</div>
+      </div>
+      <div id="elections-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin-bottom:12px"></div>
+
+      <div id="elections-result" class="hidden">
+        <!-- Ward header -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:12px">
+          <div id="elections-ward" style="font-size:14px;font-weight:700;color:var(--text)"></div>
+          <div id="elections-council" style="font-size:11px;color:var(--subtle);margin-top:1px"></div>
+          <div id="elections-county" style="font-size:11px;color:var(--subtle);opacity:.65;margin-top:1px"></div>
+        </div>
+
+        <!-- Polling station always visible -->
+        <div id="elections-ps-section" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;font-weight:600;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📍 Polling Station</div>
+              <div id="elections-ps-name" style="font-weight:700;font-size:15px;color:var(--text);line-height:1.3"></div>
+              <div id="elections-ps-addr" style="font-size:12px;color:var(--subtle);margin-top:3px;line-height:1.4"></div>
+              <div style="margin-top:8px;display:flex;align-items:center;gap:6px">
+                <span style="font-size:13px;font-weight:700;color:var(--text)">7am – 10pm</span>
+                <span style="font-size:12px;color:var(--subtle)">· Thu 7 May 2026</span>
+              </div>
+            </div>
+            <a id="elections-polling-link" href="#" target="_blank" rel="noopener"
+              style="display:inline-flex;align-items:center;gap:5px;background:#16a34a;color:#fff;font-size:12px;font-weight:600;padding:8px 13px;border-radius:10px;text-decoration:none;flex-shrink:0;white-space:nowrap;margin-top:2px">
+              Directions ↗
+            </a>
+          </div>
+        </div>
+
+        <!-- Tab bar: Results → Candidates → Parties -->
+        <div style="display:flex;gap:6px;margin-bottom:14px">
+          <button id="etab-more" onclick="eTab('more')"
+            style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
+            📊 Results
+          </button>
+          <button id="etab-candidates" onclick="eTab('candidates')"
+            style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
+            🗳️ Candidates
+          </button>
+          <button id="etab-parties" onclick="eTab('parties')"
+            style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
+            📋 Parties
+          </button>
+        </div>
+
+        <!-- Tab: Candidates -->
+        <div id="epanel-candidates">
+          <div id="elections-candidates" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+
+        <!-- Tab: Parties -->
+        <div id="epanel-parties" class="hidden">
+          <div id="elections-manifestos" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+
+        <!-- Tab: Results (2022 + 2026 sub-tabs) -->
+        <div id="epanel-more" class="hidden">
+          <div style="display:flex;gap:6px;margin-bottom:12px">
+            <button id="ertab-2026" onclick="erTab('2026')"
+              style="flex:1;padding:7px 4px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:background .15s;background:var(--text);color:var(--bg)">
+              2026 Results
+            </button>
+            <button id="ertab-2022" onclick="erTab('2022')"
+              style="flex:1;padding:7px 4px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:background .15s;background:var(--surface2);color:var(--subtle)">
+              Last Elections (2022)
+            </button>
+          </div>
+          <div id="erpanel-2026">
+            <div id="elections-live" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
+          </div>
+          <div id="erpanel-2022" style="display:none">
+            <div id="elections-past" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">
+          Data: Democracy Club · Local elections 7 May 2026
+        </div>
+      </div>
+
+      <div id="elections-none" class="hidden" style="text-align:center;padding:40px 16px;color:var(--subtle);font-size:14px">
+        No candidates found for this postcode.<br>Your area may not have elections on 7 May 2026.
+      </div>
+    </div>
+
+
+<!-- ════════════════════════════════════════════════════════════════ JS ════ -->
+<script>
+  // ── Party colours & manifesto data ──────────────────────────────────────────
+  const _partyColour = {
+    "Labour Party":                      {bg:"#e11d48",text:"#fff"},
+    "Conservative and Unionist Party":   {bg:"#1d4ed8",text:"#fff"},
+    "Liberal Democrats":                 {bg:"#f59e0b",text:"#000"},
+    "Reform UK":                         {bg:"#06b6d4",text:"#fff"},
+    "Green Party":                       {bg:"#16a34a",text:"#fff"},
+    "Scottish National Party (SNP)":     {bg:"#fbbf24",text:"#000"},
+    "Plaid Cymru":                       {bg:"#16a34a",text:"#fff"},
+    "Independent":                       {bg:"#6b7280",text:"#fff"},
+  };
+  const _partyManifesto = {
+    "Labour Party": {
+      url: "https://labour.org.uk/",
+      summary: "Focusing on building more homes, protecting local services, and tackling the cost of living. Backing clean energy, better buses, and public investment in communities."
+    },
+    "Conservative and Unionist Party": {
+      url: "https://www.conservatives.com/",
+      summary: "Prioritising lower council tax, supporting local businesses, improving roads and infrastructure. Backing tough action on crime and planning reform."
+    },
+    "Liberal Democrats": {
+      url: "https://www.libdems.org.uk/",
+      summary: "Campaigning for better local NHS services, greener transport, protecting the greenbelt, and fixing potholes. Strong record in local government across the South East."
+    },
+    "Reform UK": {
+      url: "https://www.reformparty.uk/",
+      summary: "Pledging to cut council spending, scrap net-zero policies, oppose new housing developments, and stop what they call 'woke' spending by councils."
+    },
+    "Green Party": {
+      url: "https://www.greenparty.org.uk/",
+      summary: "Pushing for zero-carbon councils, better cycling and walking infrastructure, protecting green spaces, and a transition away from fossil fuels in local services."
+    },
+    "Independent": {
+      url: null,
+      summary: "Candidates not affiliated with a major party. Often focus on specific local issues, community campaigning, or represent dissatisfaction with mainstream parties."
+    },
+  };
+  function _partyStyle(party) {
+    for (const [k,v] of Object.entries(_partyColour)) {
+      if (party.toLowerCase().includes(k.toLowerCase().split(" ")[0].toLowerCase())) return v;
+    }
+    return {bg:"#6b7280", text:"#fff"};
+  }
+  function _partyInfo(party) {
+    for (const [k,v] of Object.entries(_partyManifesto)) {
+      if (party.toLowerCase().includes(k.toLowerCase().split(" ")[0].toLowerCase())) return v;
+    }
+    return null;
+  }
+
+  // ── WhatsApp card ────────────────────────────────────────────────────────────
+  function waElectionsToggle() {
+    const panel   = document.getElementById("wa-el-panel");
+    const chevron = document.getElementById("wa-el-chevron");
+    const opening = panel.style.display === "none";
+    panel.style.display = opening ? "" : "none";
+    chevron.textContent = opening ? "▲" : "▼";
+    if (opening) waElectionsUpdate();
+  }
+  function waMarkJoined() {
+    localStorage.setItem("miru_wa_joined", "1");
+    setTimeout(waElectionsUpdate, 400);
+  }
+  function waElectionsUpdate() {
+    const pc     = (document.getElementById("elections-input")?.value || "").trim().toUpperCase();
+    const joined = !!localStorage.getItem("miru_wa_joined");
+    document.getElementById("wa-el-step1").style.display        = joined ? "none" : "";
+    document.getElementById("wa-el-joined-badge").style.display = joined ? ""     : "none";
+    const example = document.getElementById("wa-el-example");
+    if (example) example.textContent = pc ? `vote ${pc}` : "vote TW3 3SF";
+    const sendWrap = document.getElementById("wa-el-send-btn-wrap");
+    const sendBtn  = document.getElementById("wa-el-send-btn");
+    const step2lbl = document.getElementById("wa-el-step2-label");
+    if (joined && pc) {
+      sendBtn.href = `https://wa.me/14155238886?text=${encodeURIComponent("vote " + pc)}`;
+      sendWrap.style.display = "";
+      step2lbl.innerHTML = `Tap below to send your query for <strong>${pc}</strong>:`;
+    } else {
+      sendWrap.style.display = "none";
+      step2lbl.innerHTML = joined
+        ? `Text <strong>vote</strong> followed by your postcode — enter it above first`
+        : `Once joined, text <strong>vote</strong> followed by your postcode`;
+    }
+  }
+
+  // ── Tab switching ────────────────────────────────────────────────────────────
+  function eTab(name) {
+    ["candidates","parties","more"].forEach(t => {
+      const active = t === name;
+      document.getElementById("epanel-" + t).classList.toggle("hidden", !active);
+      const btn = document.getElementById("etab-" + t);
+      btn.style.background = active ? "var(--text)" : "var(--surface)";
+      btn.style.color      = active ? "var(--bg)"   : "var(--subtle)";
+      btn.style.border     = active ? "none"         : "1px solid var(--border)";
+    });
+  }
+  function erTab(name) {
+    ["2026","2022"].forEach(t => {
+      const active = t === name;
+      document.getElementById("erpanel-" + t).style.display = active ? "" : "none";
+      const btn = document.getElementById("ertab-" + t);
+      btn.style.background = active ? "var(--text)"   : "var(--surface2)";
+      btn.style.color      = active ? "var(--bg)"     : "var(--subtle)";
+    });
+  }
+
+  // ── Location helper ──────────────────────────────────────────────────────────
+  async function electionsUseLocation() {
+    const btn   = document.getElementById("elections-loc-btn");
+    const errEl = document.getElementById("elections-loc-err");
+    errEl.style.display = "none";
+    MiruLocation.request(btn, loc => {
+      if (!loc.postcode) { errEl.textContent = "Couldn't find a UK postcode — please enter one manually."; errEl.style.display = "block"; return; }
+      document.getElementById("elections-input").value = loc.postcode;
+      errEl.style.display = "none";
+      searchElections();
+    }, msg => { errEl.textContent = msg; errEl.style.display = "block"; });
+  }
+
+  // ── Main search ──────────────────────────────────────────────────────────────
+  let _elecIdCounter = 0;
+  async function searchElections() {
+    const input = document.getElementById("elections-input");
+    const postcode = input.value.trim();
+    if (!postcode) return;
+    ["elections-result","elections-error","elections-none"].forEach(id => document.getElementById(id).classList.add("hidden"));
+    document.getElementById("elections-loading").classList.remove("hidden");
+    try {
+      const r = await fetch(`/api/elections?postcode=${encodeURIComponent(postcode)}`);
+      const d = await r.json();
+      document.getElementById("elections-loading").classList.add("hidden");
+      if (d.error) {
+        document.getElementById("elections-error").textContent = d.error;
+        document.getElementById("elections-error").classList.remove("hidden");
+        return;
+      }
+      const noElection = !d.found || !d.candidates.length;
+      const dateStr = d.election_date ? new Date(d.election_date).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "7 May 2026";
+      document.getElementById("elections-ward").textContent = d.ward || d.postcode;
+      document.getElementById("elections-council").textContent = `${d.council || d.postcode}${noElection ? "" : " · " + dateStr}`;
+      document.getElementById("elections-county").textContent = d.county ? `County: ${d.county}` : "";
+
+      // Polling station
+      const psSect = document.getElementById("elections-ps-section");
+      psSect.style.display = noElection ? "none" : "";
+      if (!noElection) {
+        const ps = d.polling_station;
+        const psLink = document.getElementById("elections-polling-link");
+        if (ps && !ps.not_available) {
+          document.getElementById("elections-ps-name").textContent = ps.name;
+          document.getElementById("elections-ps-addr").textContent = ps.address;
+          psLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ps.name + ', ' + ps.address)}`;
+          psLink.textContent = "Directions ↗";
+        } else if (ps && ps.not_available) {
+          document.getElementById("elections-ps-name").textContent = "Not yet uploaded by council";
+          const phoneNote = ps.phone ? ` · Call ${ps.phone}` : "";
+          document.getElementById("elections-ps-addr").textContent = "Check your poll card when it arrives" + phoneNote;
+          psLink.href = d.polling_station_url;
+          psLink.textContent = "Check ↗";
+        } else {
+          document.getElementById("elections-ps-name").textContent = "Data not yet available";
+          document.getElementById("elections-ps-addr").textContent = "Check your poll card or wheredoivote.co.uk";
+          psLink.href = `https://wheredoivote.co.uk/postcode/${postcode.replace(/ /g,'')}/`;
+          psLink.textContent = "Check ↗";
+        }
+      }
+
+      // Results rendering helper
+      function _renderResultsTable(results, title) {
+        const maxV = Math.max(...results.map(r => r.votes || 0), 1);
+        const totV = results.reduce((s, r) => s + (r.votes || 0), 0);
+        const winners = results.filter(r => r.elected);
+        const winnerSummary = winners.length
+          ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+               <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">✅ Who won</div>
+               ${winners.map(r => {
+                 const col = _partyStyle(r.party);
+                 return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                   <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col.bg};flex-shrink:0"></span>
+                   <span style="font-size:13px;font-weight:600;color:var(--text)">${r.name}</span>
+                   <span style="font-size:11px;padding:1px 6px;border-radius:99px;background:${col.bg};color:${col.text}">${r.party}</span>
+                   ${r.votes!=null?`<span style="font-size:11px;color:var(--subtle);margin-left:auto">${r.votes.toLocaleString()} votes</span>`:''}
+                 </div>`;
+               }).join('')}
+             </div>` : '';
+        return `<div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:10px">📊 ${title}</div>` +
+          winnerSummary +
+          results.map(r => {
+            const col = _partyStyle(r.party);
+            const pct = totV > 0 && r.votes != null ? Math.round(r.votes * 100 / totV) : null;
+            const bar = r.votes != null ? Math.round(r.votes * 100 / maxV) : 0;
+            return `<div style="margin-bottom:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px">
+                <div style="font-size:13px;font-weight:600;color:var(--text);flex:1;min-width:0">${r.elected?'✅ ':''}${r.name}</div>
+                ${r.votes!=null?`<div style="font-size:12px;color:var(--subtle);flex-shrink:0">${r.votes.toLocaleString()}${pct!=null?` · ${pct}%`:''}</div>`:''}
+              </div>
+              <div style="font-size:11px;margin-bottom:4px"><span style="padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text};font-weight:600">${r.party}</span></div>
+              ${bar>0?`<div style="background:var(--border);border-radius:4px;height:5px"><div style="background:${col.bg};width:${bar}%;height:5px;border-radius:4px"></div></div>`:''}
+            </div>`;
+          }).join('');
+      }
+
+      // 2026 live results
+      const liveEl = document.getElementById("elections-live");
+      if (d.live_results && d.live_results.length) {
+        liveEl.innerHTML = _renderResultsTable(d.live_results, "7 May 2026 Results");
+      } else if (d.is_new_council && d.predecessor_areas && d.predecessor_areas.length) {
+        liveEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:4px">📊 2026 Results</div>
+          <div style="color:var(--subtle);font-size:12px;line-height:1.5"><strong>${d.council}</strong> is a newly created council — first election 7 May 2026.</div>
+          <div style="margin-top:8px;font-size:11px;color:var(--subtle);text-align:center">Results coming in tonight — refresh to update</div>`;
+      } else {
+        liveEl.innerHTML = `<div style="text-align:center;padding:16px 0;color:var(--subtle);font-size:13px">Results coming in tonight — refresh to update</div>`;
+      }
+
+      // 2022 past results
+      const pastEl = document.getElementById("elections-past");
+      if (d.past_results && d.past_results.length) {
+        pastEl.innerHTML = _renderResultsTable(d.past_results, "2022 Local Election Results");
+      } else if (d.dc_results_url) {
+        pastEl.innerHTML = `<div style="font-weight:600;color:var(--text);margin-bottom:6px">📊 2022 Results</div>
+          <div style="font-size:12px;color:var(--subtle)"><a href="${d.dc_results_url}" target="_blank" rel="noopener" style="color:#4f46e5">View on Democracy Club ↗</a></div>`;
+      } else {
+        pastEl.innerHTML = `<div style="text-align:center;padding:16px 0;color:var(--subtle);font-size:13px">No 2022 results on record for this ward.</div>`;
+      }
+
+      // Candidates tab
+      document.getElementById("elections-candidates").innerHTML = noElection
+        ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 16px;text-align:center;color:var(--subtle);font-size:13px">
+            No election data found for this postcode.<br>
+            <span style="font-size:12px;display:block;margin-top:6px">${d.county ? `<strong>${d.county}</strong> · ` : ""}${d.council || ""} does not appear to have elections on 7 May 2026.</span>
+          </div>`
+        : d.candidates.map(c => {
+          const col = _partyStyle(c.party);
+          const links = [];
+          if (c.homepage) links.push(`<a href="${c.homepage}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500">Website ↗</a>`);
+          if (c.twitter)  links.push(`<a href="https://x.com/${c.twitter}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500">@${c.twitter}</a>`);
+          if (c.email)    links.push(`<a href="mailto:${c.email}" style="font-size:11px;color:#4f46e5;font-weight:500">Email</a>`);
+          const stmtId = `stmt-${++_elecIdCounter}`;
+          const stmtHtml = c.statement ? `
+            <div style="margin-top:7px">
+              <button onclick="const el=document.getElementById('${stmtId}');const show=el.style.display==='none';el.style.display=show?'block':'none';this.textContent=show?'Hide statement ▲':'Candidate statement ▼'"
+                style="font-size:11px;color:#4f46e5;font-weight:500;background:none;border:none;cursor:pointer;padding:0">Candidate statement ▼</button>
+              <div id="${stmtId}" style="display:none;font-size:12px;color:var(--subtle);line-height:1.55;margin-top:6px;padding:8px 10px;background:var(--bg);border-radius:8px;border-left:3px solid ${col.bg}">${c.statement}</div>
+            </div>` : "";
+          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px">
+            <div style="width:4px;min-height:36px;border-radius:4px;background:${col.bg};flex-shrink:0;margin-top:2px"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:14px;color:var(--text)">${c.name}</div>
+              <div style="margin-top:3px"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text}">${c.party}</span></div>
+              ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">${links.join("")}</div>` : ""}
+              ${stmtHtml}
+            </div>
+          </div>`;
+        }).join("");
+
+      // Parties tab
+      if (noElection) {
+        document.getElementById("elections-manifestos").innerHTML =
+          `<div style="font-size:13px;color:var(--subtle);text-align:center;padding:20px">No parties on record for this area.</div>`;
+      } else {
+        const partiesSeen = new Set();
+        const manifestoCards = [];
+        for (const c of d.candidates) {
+          if (partiesSeen.has(c.party)) continue;
+          partiesSeen.add(c.party);
+          const col = _partyStyle(c.party);
+          const info = _partyInfo(c.party);
+          if (!info) continue;
+          manifestoCards.push(`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px">
+            <div style="width:4px;min-height:36px;border-radius:4px;background:${col.bg};flex-shrink:0;margin-top:2px"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:4px">
+                ${c.party}
+                ${info.url ? `<a href="${info.url}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500;margin-left:8px">Website ↗</a>` : ""}
+              </div>
+              <div style="font-size:12px;color:var(--subtle);line-height:1.55">${info.summary}</div>
+            </div>
+          </div>`);
+        }
+        document.getElementById("elections-manifestos").innerHTML = manifestoCards.join("") ||
+          `<div style="font-size:12px;color:var(--subtle)">No manifesto info available.</div>`;
+      }
+
+      eTab("more");
+      document.getElementById("elections-result").classList.remove("hidden");
+    } catch(e) {
+      document.getElementById("elections-loading").classList.add("hidden");
+      document.getElementById("elections-error").textContent = "Could not load election data. Try again.";
+      document.getElementById("elections-error").classList.remove("hidden");
+    }
+  }
+</script>
