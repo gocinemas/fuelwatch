@@ -2944,43 +2944,20 @@
       // 2026 live results panel
       const liveEl = document.getElementById("elections-live");
       const hasRealResults = d.live_results && d.live_results.some(r => r.votes != null || r.elected);
-      const bbcUrl = "https://www.bbc.co.uk/news/politics";
-      const bbcLink = `<a href="${bbcUrl}" target="_blank" rel="noopener"
-        style="display:inline-flex;align-items:center;gap:5px;margin-top:12px;padding:8px 14px;
-               background:#bb1919;color:#fff;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none">
-        📺 Live results on BBC News ↗
-      </a>`;
       if (hasRealResults) {
         liveEl.innerHTML = _renderResultsTable(d.live_results, "7 May 2026 Results");
       } else if (d.is_new_council && d.predecessor_areas && d.predecessor_areas.length) {
         liveEl.innerHTML = `
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-            <span style="font-size:13px;font-weight:700;color:var(--text)">7 May 2026 · ${d.ward || ''}</span>
-          </div>
-          <div style="font-size:12px;color:var(--subtle);line-height:1.6;background:var(--surface2);border-radius:10px;padding:10px 12px">
-            <strong>${d.council}</strong> is a newly formed council holding its first elections today.
-            Results are declared as counting completes — pull down to refresh.
-          </div>
-          <div style="text-align:center;margin-top:4px">${bbcLink}</div>`;
-      } else {
-        const pendingRows = (d.live_results || []).map(r => {
-          const col = _partyStyle(r.party);
-          return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
-            <div style="width:10px;height:10px;border-radius:50%;background:${col.bg};flex-shrink:0"></div>
-            <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${r.name}</div>
-            <div style="font-size:11px;color:var(--subtle);flex-shrink:0">${r.party}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">7 May 2026 · ${d.ward || ''}</div>
+          <div style="font-size:12px;color:var(--subtle);line-height:1.6;background:var(--bg);border-radius:10px;padding:10px 12px">
+            <strong>${d.council}</strong> is a newly formed council holding its first elections.
+            Results will appear here once declared.
           </div>`;
-        }).join("");
-        liveEl.innerHTML = `
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-            <span style="font-size:15px">⏳</span>
-            <span style="font-size:13px;font-weight:700;color:var(--text)">Counting underway — ${d.ward || 'your ward'}</span>
-          </div>
-          ${pendingRows ? `<div style="margin-bottom:12px">${pendingRows}</div>` : ""}
-          <div style="font-size:12px;color:var(--subtle);margin-bottom:8px">
-            Votes are being counted. Pull down to refresh or check BBC News for the latest.
-          </div>
-          ${bbcLink}`;
+      } else {
+        // No results yet — show 2022 results directly, skip the counting message
+        liveEl.innerHTML = `<div style="font-size:12px;color:var(--subtle);text-align:center;padding:8px 0">2026 results not yet published</div>`;
+        // Auto-switch to 2022 tab
+        erTab('2022');
       }
 
       // 2022 past results — tab panel + inline (no-election view)
