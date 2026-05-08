@@ -1591,7 +1591,7 @@ _PARTY_META = {
 _NATIONAL_RESULTS_2026 = {
     "updated": "8 May 2026 · Final results",
     "source":  "BBC News",
-    "source_url": "https://www.bbc.co.uk/news/politics/local-elections-2026/results",
+    "source_url": "https://www.bbc.co.uk/news/politics",
     "headline": "Reform surge, heavy Labour losses — 2026 local elections",
     "parties": [
         {"name": "Reform UK",    "short": "REF", "colour": "#06b6d4", "text": "#fff", "councils": 10, "net": "+10", "councillors": 585, "net_c": "+583"},
@@ -6093,27 +6093,6 @@ def api_school_dedup():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/api/school/fetch-now", methods=["POST"])
-def api_school_fetch_now():
-    """Manually trigger email fetch for the requesting parent's profiles."""
-    wa, err = _get_school_wa()
-    if err:
-        return err
-    try:
-        profiles = (lib._sb().table("school_profiles")
-                    .select("*").eq("from_number", wa).eq("active", True).execute().data or [])
-        if not profiles:
-            return jsonify({"error": "No profiles found"}), 404
-        import threading
-        threading.Thread(
-            target=school_service.poll_all_profiles,
-            kwargs={"days_back": 30, "force": False, "profile_ids": [p["id"] for p in profiles]},
-            daemon=True,
-        ).start()
-        return jsonify({"status": "started", "profiles": len(profiles)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/school/digest")
