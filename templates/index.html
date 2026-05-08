@@ -790,6 +790,22 @@
     <!-- ── ELECTIONS SCREEN ── -->
     <div id="screen-elections" class="screen pt-5">
       <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:12px">🗳️ Election Results</div>
+
+      <!-- National snapshot card -->
+      <div id="national-snapshot" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px">
+        <div id="national-snapshot-loading" style="text-align:center;padding:12px 0;font-size:13px;color:var(--subtle)">Loading national picture…</div>
+        <div id="national-snapshot-body" style="display:none">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:700;color:var(--text)" id="national-headline"></div>
+            <div style="font-size:10px;color:var(--subtle)" id="national-updated"></div>
+          </div>
+          <!-- Proportional seat bar -->
+          <div id="national-bar" style="display:flex;border-radius:6px;overflow:hidden;height:10px;margin-bottom:14px"></div>
+          <!-- Party rows -->
+          <div id="national-rows" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+
       <button id="elections-loc-btn" onclick="electionsUseLocation()"
         style="width:100%;margin-bottom:8px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">
         📍 Use my current location
@@ -1417,7 +1433,7 @@
     if (name === "library") { libCheckPin(); }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")     { document.getElementById("brand-input").focus(); _renderRecent("miru_brand", "brand-recent", "brand-input", "searchBrand()"); }
-    if (name === "elections") { document.getElementById("elections-input").focus(); }
+    if (name === "elections") { document.getElementById("elections-input").focus(); _loadNationalSnapshot(); }
     setFooter(name);
   }
 
@@ -2531,6 +2547,44 @@
       if (party.toLowerCase().includes(k.toLowerCase().split(" ")[0].toLowerCase())) return v;
     }
     return null;
+  }
+
+  // ── National snapshot ────────────────────────────────────────────────────────
+  let _nationalLoaded = false;
+  async function _loadNationalSnapshot() {
+    if (_nationalLoaded) return;
+    try {
+      const r = await fetch("/api/elections/national");
+      const d = await r.json();
+      _nationalLoaded = true;
+      document.getElementById("national-snapshot-loading").style.display = "none";
+      document.getElementById("national-snapshot-body").style.display = "";
+      document.getElementById("national-headline").textContent = d.headline || "";
+      document.getElementById("national-updated").textContent = d.updated || "";
+
+      const total = d.parties.reduce((s, p) => s + (p.councils || 0), 1);
+      document.getElementById("national-bar").innerHTML = d.parties
+        .filter(p => p.councils > 0)
+        .map(p => `<div style="flex:${p.councils};background:${p.colour};min-width:3px" title="${p.name}: ${p.councils} councils"></div>`)
+        .join("");
+
+      document.getElementById("national-rows").innerHTML = d.parties.map(p => {
+        const netC  = p.net_c || "";
+        const netCl = p.net    || "";
+        const netCColour  = netC.startsWith("+")  ? "#16a34a" : netC.startsWith("-")  ? "#dc2626" : "var(--subtle)";
+        const netClColour = netCl.startsWith("+") ? "#16a34a" : netCl.startsWith("-") ? "#dc2626" : "var(--subtle)";
+        return `<div style="display:flex;align-items:center;gap:8px">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.colour};flex-shrink:0"></span>
+          <span style="font-size:12px;font-weight:700;color:var(--text);min-width:76px">${p.name}</span>
+          <span style="font-size:11px;color:var(--subtle);flex:1">${p.councils} councils</span>
+          <span style="font-size:11px;font-weight:700;color:${netClColour};min-width:36px;text-align:right">${netCl}</span>
+          <span style="font-size:10px;color:var(--subtle);min-width:60px;text-align:right">${p.councillors?.toLocaleString() || ""} cllrs</span>
+          <span style="font-size:11px;font-weight:700;color:${netCColour};min-width:40px;text-align:right">${netC}</span>
+        </div>`;
+      }).join("");
+    } catch(e) {
+      document.getElementById("national-snapshot-loading").textContent = "National results unavailable";
+    }
   }
 
   // ── WhatsApp elections card ──────────────────────────────────────────────────

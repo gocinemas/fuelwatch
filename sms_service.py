@@ -1412,6 +1412,23 @@ def _get_elections():
     return _ELECTIONS_DATA
 
 
+@app.route("/api/elections/national")
+def api_elections_national():
+    # 2026 UK local elections national picture — update as results come in
+    return jsonify({
+        "updated": "8 May 2026 · Results night",
+        "headline": "Reform UK surges in local elections",
+        "parties": [
+            {"name": "Reform UK",       "short": "REF",  "colour": "#06b6d4", "text": "#fff", "councils": 10, "net": "+10", "councillors": 677,  "net_c": "+677"},
+            {"name": "Labour",          "short": "LAB",  "colour": "#e11d48", "text": "#fff", "councils": 84, "net": "-49", "councillors": 2320, "net_c": "-186"},
+            {"name": "Conservative",    "short": "CON",  "colour": "#1d4ed8", "text": "#fff", "councils": 34, "net": "-43", "councillors": 1157, "net_c": "-676"},
+            {"name": "Lib Dems",        "short": "LIB",  "colour": "#f59e0b", "text": "#000", "councils": 30, "net": "+16", "councillors": 1009, "net_c": "+239"},
+            {"name": "Green",           "short": "GRN",  "colour": "#16a34a", "text": "#fff", "councils": 1,  "net": "0",   "councillors": 187,  "net_c": "+74"},
+            {"name": "Independent",     "short": "IND",  "colour": "#6b7280", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 312,  "net_c": "+62"},
+        ]
+    })
+
+
 @app.route("/api/elections")
 def api_elections():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
