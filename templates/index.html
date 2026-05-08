@@ -271,8 +271,9 @@
       min-height:156px; position:relative; overflow:hidden;
     }
     .feat-card:active { transform:scale(0.96); }
-    .feat-card-fuel  { background:linear-gradient(145deg,#1c1c1e 0%,#3b0d0d 100%); }
-    .feat-card-train { background:linear-gradient(145deg,#0d1117 0%,#0f2240 100%); }
+    .feat-card-fuel     { background:linear-gradient(145deg,#1c1c1e 0%,#3b0d0d 100%); }
+    .feat-card-train    { background:linear-gradient(145deg,#0d1117 0%,#0f2240 100%); }
+    .feat-card-election { background:linear-gradient(135deg,#0e1a0e 0%,#1a3320 100%); }
 
     /* Tool icon grid (3-col compact) */
     .tool-icon-btn {
@@ -366,6 +367,20 @@
         </button>
       </div>
 
+      <!-- Elections — full-width live card -->
+      <button class="feat-card feat-card-election" id="elections-home-card" onclick="showScreen('elections')"
+        style="flex-direction:row;align-items:center;gap:16px;width:100%;margin-bottom:10px;min-height:auto;padding:16px 18px">
+        <div style="font-size:34px;line-height:1;flex-shrink:0">🗳️</div>
+        <div style="flex:1;text-align:left">
+          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Election Results</div>
+          <div id="elections-home-desc" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">Candidates & results by ward</div>
+        </div>
+        <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:4px 10px;flex-shrink:0">
+          <span class="live-dot-green"></span>
+          <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">LIVE</span>
+        </div>
+      </button>
+
       <!-- Tools — 3-column icon grid -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px">
         <button class="tool-icon-btn" onclick="showScreen('report')">
@@ -399,13 +414,6 @@
         <button class="tool-icon-btn" onclick="showScreen('music')">
           <span class="tool-icon-emoji">🎵</span>
           <span class="tool-icon-label">Music ID</span>
-        </button>
-        <button class="tool-icon-btn" id="elections-home-card" onclick="showScreen('elections')" style="position:relative">
-          <span style="position:relative;display:inline-block;line-height:1">
-            <span class="tool-icon-emoji">🗳️</span>
-            <span style="position:absolute;top:-2px;right:-4px;width:8px;height:8px;background:#4ade80;border-radius:50%;border:2px solid var(--surface)"></span>
-          </span>
-          <span id="elections-home-desc" class="tool-icon-label">Elections</span>
         </button>
       </div>
 
