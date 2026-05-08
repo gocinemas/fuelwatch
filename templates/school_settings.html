@@ -168,6 +168,44 @@
 
   .wa-hint { font-size: 12px; color: #9ca3af; margin-top: 5px; }
 
+  .edit-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .edit-field { display: flex; flex-direction: column; gap: 4px; }
+  .edit-field label { font-size: 12px; font-weight: 600; color: #6b7280; }
+  .edit-field input {
+    padding: 9px 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #111;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .edit-field input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.1); }
+  .edit-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .btn-save {
+    flex: 1; padding: 10px; background: #1a1a2e; color: #fff;
+    border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  .btn-save:hover { background: #2d2d44; }
+  .btn-cancel {
+    padding: 10px 16px; background: #f3f4f6; color: #6b7280;
+    border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .profile-edit-btn {
+    margin-left: auto; border: none; background: #f3f4f6; color: #374151;
+    font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px;
+    cursor: pointer; font-family: inherit;
+  }
+  .profile-edit-btn:hover { background: #e5e7eb; }
+
   /* Screens */
   #screen-lookup  { }
   #screen-profile { display: none; }
@@ -257,17 +295,7 @@ function renderAllProfiles() {
 }
 
 function _profileCard(p, pi) {
-  const info = [
-    ["Child",   p.child_name   || "—"],
-    ["School",  p.school_name  || "—"],
-    ["Class",   p.class_name   || "—"],
-    ["Teacher", p.teacher_name || "—"],
-  ].map(([label, val]) =>
-    `<div class="profile-row">
-      <span class="profile-label">${label}</span>
-      <span class="profile-value">${val}</span>
-    </div>`
-  ).join("");
+  const label = _profiles.length > 1 ? (p.child_name || "Child " + (pi + 1)) : "";
 
   const emails = p.sender_emails && p.sender_emails.length
     ? p.sender_emails.map((e, ei) =>
@@ -279,12 +307,32 @@ function _profileCard(p, pi) {
     : `<p style="font-size:13px;color:#9ca3af;padding:8px 0">No email addresses added yet.</p>`;
 
   return `
-    <div class="card">
-      <div class="section-title">Child ${_profiles.length > 1 ? pi + 1 : ""}</div>
-      ${info}
+    <div class="card" id="profile-card-${pi}">
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <div class="section-title" style="margin:0">Child${_profiles.length > 1 ? " " + (pi+1) : ""}</div>
+        <button class="profile-edit-btn" onclick="startEdit(${pi})">✏️ Edit</button>
+      </div>
+      <div id="profile-view-${pi}">
+        ${[["Child", p.child_name], ["School", p.school_name], ["Class", p.class_name], ["Teacher", p.teacher_name]].map(([l,v]) =>
+          `<div class="profile-row"><span class="profile-label">${l}</span><span class="profile-value">${v || "—"}</span></div>`
+        ).join("")}
+      </div>
+      <div id="profile-edit-${pi}" style="display:none">
+        <div class="edit-row">
+          <div class="edit-field"><label>Child's name</label><input id="edit-child-${pi}" type="text" value="${_esc(p.child_name)}" /></div>
+          <div class="edit-field"><label>Class / year group</label><input id="edit-class-${pi}" type="text" value="${_esc(p.class_name)}" /></div>
+          <div class="edit-field"><label>Class teacher</label><input id="edit-teacher-${pi}" type="text" value="${_esc(p.teacher_name)}" /></div>
+        </div>
+        <div class="edit-actions">
+          <button class="btn-cancel" onclick="cancelEdit(${pi})">Cancel</button>
+          <button class="btn-save"   onclick="saveProfile(${pi})">Save changes</button>
+        </div>
+        <div id="profile-save-error-${pi}" class="error-msg"></div>
+        <div id="profile-save-ok-${pi}"    class="success-msg"></div>
+      </div>
     </div>
     <div class="card">
-      <div class="section-title">Monitored emails${_profiles.length > 1 ? " — " + (p.child_name || "Child " + (pi+1)) : ""}</div>
+      <div class="section-title">Monitored emails${label ? " — " + label : ""}</div>
       <p style="font-size:13px;color:#6b7280;margin-bottom:12px;line-height:1.5">
         Miru scans emails from these addresses and WhatsApps you when there's something important.
       </p>
@@ -296,6 +344,52 @@ function _profileCard(p, pi) {
       <div id="email-error-${pi}"   class="error-msg"></div>
       <div id="email-success-${pi}" class="success-msg"></div>
     </div>`;
+}
+
+function _esc(s) { return (s || "").replace(/"/g, "&quot;"); }
+
+function startEdit(pi) {
+  document.getElementById("profile-view-" + pi).style.display = "none";
+  document.getElementById("profile-edit-" + pi).style.display = "";
+  document.getElementById("profile-save-error-" + pi).style.display = "none";
+  document.getElementById("profile-save-ok-"    + pi).style.display = "none";
+}
+
+function cancelEdit(pi) {
+  document.getElementById("profile-view-" + pi).style.display = "";
+  document.getElementById("profile-edit-" + pi).style.display = "none";
+}
+
+async function saveProfile(pi) {
+  const p          = _profiles[pi];
+  const child_name   = document.getElementById("edit-child-"   + pi).value.trim();
+  const class_name   = document.getElementById("edit-class-"   + pi).value.trim();
+  const teacher_name = document.getElementById("edit-teacher-" + pi).value.trim();
+  const errEl = document.getElementById("profile-save-error-" + pi);
+  const okEl  = document.getElementById("profile-save-ok-"    + pi);
+  errEl.style.display = "none";
+  okEl.style.display  = "none";
+
+  try {
+    const r = await fetch("/api/school/settings/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: p.id, wa: _waNumber, child_name, class_name, teacher_name })
+    });
+    if (!r.ok) throw new Error();
+    _profiles[pi].child_name   = child_name;
+    _profiles[pi].class_name   = class_name;
+    _profiles[pi].teacher_name = teacher_name;
+    cancelEdit(pi);
+    // Refresh the view rows
+    document.getElementById("profile-view-" + pi).innerHTML =
+      [["Child", child_name], ["School", p.school_name], ["Class", class_name], ["Teacher", teacher_name]].map(([l,v]) =>
+        `<div class="profile-row"><span class="profile-label">${l}</span><span class="profile-value">${v || "—"}</span></div>`
+      ).join("");
+  } catch {
+    errEl.textContent = "Couldn't save — please try again.";
+    errEl.style.display = "block";
+  }
 }
 
 function _reRenderEmailList(pi) {

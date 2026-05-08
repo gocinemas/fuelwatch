@@ -1510,6 +1510,37 @@ def school_settings_emails():
         return _cors(jsonify({"error": str(e)})), 500
 
 
+@app.route("/api/school/settings/profile", methods=["POST", "OPTIONS"])
+def school_settings_profile():
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+    try:
+        data       = request.get_json(force=True, silent=True) or {}
+        profile_id = data.get("profile_id", "").strip()
+        wa         = data.get("wa", "").strip()
+        if not profile_id or not wa:
+            return _cors(jsonify({"error": "profile_id and wa required"})), 400
+        # Verify ownership
+        candidates = [wa, f"whatsapp:{wa}"] if not wa.startswith("whatsapp:") else [wa]
+        verified = False
+        for cand in candidates:
+            r = lib._sb().table("school_profiles") \
+                .select("id").eq("id", profile_id).eq("from_number", cand).execute()
+            if r.data:
+                verified = True
+                break
+        if not verified:
+            return _cors(jsonify({"error": "profile not found or wa mismatch"})), 403
+        allowed = {"child_name", "class_name", "teacher_name"}
+        updates = {k: v.strip() for k, v in data.items() if k in allowed and isinstance(v, str)}
+        if not updates:
+            return _cors(jsonify({"error": "nothing to update"})), 400
+        lib._sb().table("school_profiles").update(updates).eq("id", profile_id).execute()
+        return _cors(jsonify({"ok": True}))
+    except Exception as e:
+        return _cors(jsonify({"error": str(e)})), 500
+
+
 _NATIONAL_CACHE_PATH = os.path.join(os.path.dirname(__file__), "elections_national_cache.json")
 _NATIONAL_CACHE_TTL  = 900  # 15 minutes
 
