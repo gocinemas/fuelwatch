@@ -1454,7 +1454,13 @@ def school_settings_get():
     if not wa:
         return _cors(jsonify({"error": "wa required"})), 400
     try:
-        profiles = school_service._get_profiles(from_number=wa)
+        # Twilio stores numbers as "whatsapp:+44..." — try both formats
+        candidates = [wa, f"whatsapp:{wa}"] if not wa.startswith("whatsapp:") else [wa]
+        profiles = []
+        for cand in candidates:
+            profiles = school_service._get_profiles(from_number=cand)
+            if profiles:
+                break
         if not profiles:
             return _cors(jsonify({"error": "not found"})), 404
         p = profiles[0]
@@ -1483,10 +1489,16 @@ def school_settings_emails():
             return _cors(jsonify({"error": "profile_id and wa required"})), 400
         if not isinstance(emails, list):
             return _cors(jsonify({"error": "emails must be a list"})), 400
-        # Verify the profile belongs to this WA number before updating
-        verify = lib._sb().table("school_profiles") \
-            .select("id").eq("id", profile_id).eq("from_number", wa).execute()
-        if not (verify.data):
+        # Verify the profile belongs to this WA number before updating (try both Twilio formats)
+        candidates = [wa, f"whatsapp:{wa}"] if not wa.startswith("whatsapp:") else [wa]
+        verify_data = []
+        for cand in candidates:
+            r = lib._sb().table("school_profiles") \
+                .select("id").eq("id", profile_id).eq("from_number", cand).execute()
+            if r.data:
+                verify_data = r.data
+                break
+        if not verify_data:
             return _cors(jsonify({"error": "profile not found or wa mismatch"})), 403
         lib._sb().table("school_profiles") \
             .update({"sender_emails": emails}) \
