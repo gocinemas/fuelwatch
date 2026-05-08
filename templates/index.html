@@ -397,8 +397,11 @@
           <span class="tool-icon-emoji">🎵</span>
           <span class="tool-icon-label">Music ID</span>
         </button>
-        <button class="tool-icon-btn" id="elections-home-card" onclick="showScreen('elections')">
-          <span class="tool-icon-emoji">🗳️</span>
+        <button class="tool-icon-btn" id="elections-home-card" onclick="showScreen('elections')" style="position:relative">
+          <span style="position:relative;display:inline-block;line-height:1">
+            <span class="tool-icon-emoji">🗳️</span>
+            <span style="position:absolute;top:-2px;right:-4px;width:8px;height:8px;background:#4ade80;border-radius:50%;border:2px solid var(--surface)"></span>
+          </span>
           <span id="elections-home-desc" class="tool-icon-label">Elections</span>
         </button>
       </div>
