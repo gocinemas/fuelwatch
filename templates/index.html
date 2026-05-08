@@ -314,16 +314,6 @@
         <div id="home-search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:200;overflow:hidden;max-height:340px;overflow-y:auto"></div>
       </div>
 
-      <!-- National election results snapshot -->
-      <div id="home-election-card" onclick="showScreen('elections')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:20px;display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">🗳️ 2026 Election Results</div>
-          <div style="font-size:11px;font-weight:600;color:var(--subtle)">BBC News · Final</div>
-        </div>
-        <div id="home-election-bar" style="display:flex;border-radius:5px;overflow:hidden;height:7px;margin-bottom:10px;gap:1px"></div>
-        <div id="home-election-rows" style="display:flex;flex-direction:column;gap:5px"></div>
-        <div style="font-size:11px;color:var(--subtle);margin-top:10px;text-align:right">Tap to see local results →</div>
-      </div>
 
       <!-- Hidden chips kept for school/elections JS refs -->
       <span id="school-home-card" style="display:none"></span>
@@ -2682,23 +2672,6 @@
           </div>
         </div>`).join("");
 
-      // Populate home screen snapshot card
-      const homeCard = document.getElementById("home-election-card");
-      if (homeCard) {
-        document.getElementById("home-election-bar").innerHTML = d.parties
-          .filter(p => p.councils > 0)
-          .map(p => `<div style="flex:${p.councils};background:${p.colour};min-width:4px" title="${p.name}: ${p.councils} councils"></div>`)
-          .join("");
-        document.getElementById("home-election-rows").innerHTML = d.parties.slice(0, 4).map(p =>
-          `<div style="display:flex;align-items:center;gap:8px">
-            <div style="width:3px;height:22px;border-radius:2px;background:${p.colour};flex-shrink:0"></div>
-            <div style="font-size:12px;font-weight:600;color:var(--text);flex:1">${p.name}</div>
-            <div style="font-size:12px;font-weight:700;color:var(--text)">${(p.councillors||0).toLocaleString()} <span style="font-size:10px;font-weight:400;color:var(--subtle)">cllrs</span></div>
-            <div style="font-size:10px;width:36px;text-align:right">${p.net_c ? `<span style="color:${p.net_c.startsWith("+") ? "#16a34a" : "#dc2626"}">${p.net_c}</span>` : ""}</div>
-          </div>`
-        ).join("");
-        homeCard.style.display = "block";
-      }
     } catch(e) {
       document.getElementById("national-snapshot-loading").textContent = "National results unavailable";
     }
@@ -4688,8 +4661,6 @@
   _kagiCats.filter(c => c !== "business").forEach((c, i) =>
     setTimeout(() => _kagiFetch(c), 800 + i * 200)
   );
-  // Populate home election snapshot card on load
-  _loadNationalSnapshot();
 
   // ── Music toggle ─────────────────────────────────────────────────────────
   function toggleMusic() {
