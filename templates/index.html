@@ -2836,16 +2836,24 @@
           </div>
           <div style="text-align:center;margin-top:4px">${bbcLink}</div>`;
       } else {
-        liveEl.innerHTML = `
-          <div style="text-align:center;padding:16px 0">
-            <div style="font-size:24px;margin-bottom:8px">⏳</div>
-            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Counting is underway</div>
-            <div style="font-size:12px;color:var(--subtle);line-height:1.6">
-              Results for <strong>${d.ward || 'your ward'}</strong> haven't been declared yet.<br>
-              Check BBC News for the latest or pull down to refresh.
-            </div>
-            ${bbcLink}
+        const pendingRows = (d.live_results || []).map(r => {
+          const col = _partyStyle(r.party);
+          return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+            <div style="width:10px;height:10px;border-radius:50%;background:${col.bg};flex-shrink:0"></div>
+            <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${r.name}</div>
+            <div style="font-size:11px;color:var(--subtle);flex-shrink:0">${r.party}</div>
           </div>`;
+        }).join("");
+        liveEl.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <span style="font-size:15px">⏳</span>
+            <span style="font-size:13px;font-weight:700;color:var(--text)">Counting underway — ${d.ward || 'your ward'}</span>
+          </div>
+          ${pendingRows ? `<div style="margin-bottom:12px">${pendingRows}</div>` : ""}
+          <div style="font-size:12px;color:var(--subtle);margin-bottom:8px">
+            Votes are being counted. Pull down to refresh or check BBC News for the latest.
+          </div>
+          ${bbcLink}`;
       }
 
       // 2022 past results — tab panel + inline (no-election view)
