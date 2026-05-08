@@ -2679,36 +2679,9 @@
         return;
       }
       const noElection = !d.found || !d.candidates.length;
-      const dateStr = d.election_date ? new Date(d.election_date).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "7 May 2026";
       document.getElementById("elections-ward").textContent = d.ward || d.postcode;
-      document.getElementById("elections-council").textContent = `${d.council || d.postcode}${noElection ? "" : " · " + dateStr}`;
+      document.getElementById("elections-council").textContent = d.council || d.postcode;
       document.getElementById("elections-county").textContent = d.county ? `County: ${d.county}` : "";
-
-      // Polling station — hide when no local election
-      const psSect = document.getElementById("elections-ps-section");
-      psSect.style.display = noElection ? "none" : "";
-      if (!noElection) {
-        const ps = d.polling_station;
-        const psLink = document.getElementById("elections-polling-link");
-        if (ps && !ps.not_available) {
-          document.getElementById("elections-ps-name").textContent = ps.name;
-          document.getElementById("elections-ps-addr").textContent = ps.address;
-          psLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ps.name + ', ' + ps.address)}`;
-          psLink.textContent = "Directions ↗";
-        } else if (ps && ps.not_available) {
-          document.getElementById("elections-ps-name").textContent = "Not yet uploaded by council";
-          const phoneNote = ps.phone ? ` · Call ${ps.phone}` : "";
-          document.getElementById("elections-ps-addr").textContent =
-            "Check your poll card when it arrives" + phoneNote;
-          psLink.href = d.polling_station_url;
-          psLink.textContent = "Check ↗";
-        } else {
-          document.getElementById("elections-ps-name").textContent = "Data not yet available";
-          document.getElementById("elections-ps-addr").textContent = "Check your poll card or wheredoivote.co.uk";
-          psLink.href = `https://wheredoivote.co.uk/postcode/${postcode.replace(/ /g,'')}/`;
-          psLink.textContent = "Check ↗";
-        }
-      }
 
       // Results section (2022 past + 2026 live)
       function _renderResultsTable(results, title) {
