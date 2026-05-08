@@ -1277,7 +1277,9 @@ _UA_TO_COUNCIL_SLUG = {
 }
 
 
-_DC_RESULTS_CACHE: dict = {}
+_DC_RESULTS_CACHE: dict = {}   # {key: (results, ts, has_real)}
+_DC_RESULTS_TTL_FINAL  = 3600  # 1h once real votes are in
+_DC_RESULTS_TTL_PENDING = 300  # 5 min while still null — so fresh DC data shows quickly
 
 def _ward_to_slug(name: str) -> str:
     import re
@@ -1288,9 +1290,13 @@ def _ward_to_slug(name: str) -> str:
 
 def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> list:
     """Fetch results for a ward from Democracy Club API. Returns [] if not available."""
+    import time as _time
     cache_key = f"dcr:{council_slug}:{ward_name}:{election_date}"
     if cache_key in _DC_RESULTS_CACHE:
-        return _DC_RESULTS_CACHE[cache_key]
+        cached, ts, has_real = _DC_RESULTS_CACHE[cache_key]
+        ttl = _DC_RESULTS_TTL_FINAL if has_real else _DC_RESULTS_TTL_PENDING
+        if _time.time() - ts < ttl:
+            return cached
     try:
         from difflib import SequenceMatcher
         slug = council_slug.lower().replace(" ", "-")
@@ -1333,8 +1339,9 @@ def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> 
                 "votes":   res.get("num_ballots"),
             })
         results.sort(key=lambda x: -(x["votes"] or 0))
+        has_real = any(r["votes"] is not None or r["elected"] for r in results)
         if results:
-            _DC_RESULTS_CACHE[cache_key] = results
+            _DC_RESULTS_CACHE[cache_key] = (results, _time.time(), has_real)
         return results
     except Exception as e:
         print(f"[dc_results] {e}")
