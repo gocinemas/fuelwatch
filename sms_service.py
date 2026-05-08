@@ -1804,8 +1804,9 @@ def api_elections():
                     ward_data = slug_wards[best]
 
         # Fallback 3: ask DC directly which 2026 ballot covers this postcode
-        # Handles ward boundary changes where postcodes.io returns old ward names
-        if not ward_data:
+        # Only for boundary-changed councils where postcodes.io has old ward names
+        # Safety: only trust DC result if count ≤ 5 (confirms for_postcode filter worked)
+        if not ward_data and council_slug:
             try:
                 dc_r = requests.get(
                     "https://candidates.democracyclub.org.uk/api/next/ballots/",
@@ -1813,23 +1814,26 @@ def api_elections():
                     timeout=6, headers={"User-Agent": "Miru/1.0"},
                 )
                 if dc_r.status_code == 200:
-                    dc_ballots = dc_r.json().get("results", [])
-                    for b in dc_ballots:
-                        bp = b.get("ballot_paper_id", "")
-                        parts = bp.split(".")
-                        if len(parts) >= 4 and parts[0] == "local":
-                            c_slug, w_slug = parts[1], parts[2]
-                            slug_wards = elections["by_slug"].get(c_slug, {})
-                            if w_slug in slug_wards:
-                                council_slug = c_slug
-                                ward_data = slug_wards[w_slug]
-                                break
-                            # Ward in DC but not in CSV — create minimal entry
-                            if c_slug:
-                                council_slug = c_slug
-                                ward_data = {"ward": b.get("post", {}).get("label", w_slug.replace("-"," ").title()),
-                                             "council": district, "election_date": "2026-05-07", "candidates": []}
-                                break
+                    dc_json = dc_r.json()
+                    dc_count = dc_json.get("count", 999)
+                    dc_ballots = dc_json.get("results", [])
+                    if dc_count <= 5:  # filter worked; skip if DC returned unfiltered full list
+                        for b in dc_ballots:
+                            bp = b.get("ballot_paper_id", "")
+                            parts = bp.split(".")
+                            if len(parts) >= 4 and parts[0] == "local":
+                                c_slug, w_slug = parts[1], parts[2]
+                                slug_wards = elections["by_slug"].get(c_slug, {})
+                                if w_slug in slug_wards:
+                                    council_slug = c_slug
+                                    ward_data = slug_wards[w_slug]
+                                    break
+                                if c_slug:
+                                    council_slug = c_slug
+                                    label = w_slug.replace("-", " ").title()
+                                    ward_data = {"ward": label, "council": district,
+                                                 "election_date": "2026-05-07", "candidates": []}
+                                    break
             except Exception as e:
                 print(f"[elections] DC ballot fallback error: {e}")
 
