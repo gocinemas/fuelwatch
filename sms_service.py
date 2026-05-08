@@ -1429,6 +1429,85 @@ def api_elections_national():
     })
 
 
+_ELEC_ALERTS_PATH = os.path.join(os.path.dirname(__file__), "elections_alerts.json")
+
+def _load_elec_alerts():
+    try:
+        with open(_ELEC_ALERTS_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+def _save_elec_alerts(alerts):
+    with open(_ELEC_ALERTS_PATH, "w") as f:
+        json.dump(alerts, f)
+
+
+@app.route("/api/elections/alert", methods=["POST"])
+def api_elections_alert_register():
+    data     = request.get_json(force=True) or {}
+    postcode = data.get("postcode", "").strip().replace(" ", "").upper()
+    wa       = data.get("wa_number", "").strip()
+    if not postcode or not wa:
+        return jsonify({"error": "postcode and wa_number required"}), 400
+    alerts = _load_elec_alerts()
+    # De-duplicate by postcode + wa
+    existing = next((a for a in alerts if a["postcode"] == postcode and a["wa"] == wa), None)
+    if not existing:
+        alerts.append({"postcode": postcode, "wa": wa, "sent": False, "registered": datetime.utcnow().isoformat()})
+        _save_elec_alerts(alerts)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/elections/check-alerts")
+def api_elections_check_alerts():
+    """Call every 15 min via cron-job.org after polls close on election night."""
+    token = request.args.get("token", "")
+    if token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "forbidden"}), 403
+
+    alerts  = _load_elec_alerts()
+    pending = [a for a in alerts if not a.get("sent")]
+    if not pending:
+        return jsonify({"checked": 0, "sent": 0})
+
+    sent_count = 0
+    for alert in pending:
+        try:
+            pc = alert["postcode"]
+            r  = requests.get(f"https://api.postcodes.io/postcodes/{pc}", timeout=6)
+            if r.status_code != 200:
+                continue
+            result       = r.json().get("result", {})
+            district     = result.get("admin_district", "")
+            ward_name    = result.get("admin_ward", "")
+            election_date = "2026-05-07"
+            effective_council = district.lower().replace(" ", "-")
+            live = _fetch_dc_results(effective_council, ward_name, election_date)
+            declared = live and any(c.get("votes") is not None for c in live)
+            if not declared:
+                continue
+            # Build result summary
+            winner = next((c for c in live if c.get("elected")), None)
+            lines  = [f"🗳️ *{ward_name} result declared*"]
+            if winner:
+                lines.append(f"✅ *{winner['name']}* ({winner['party']}) elected")
+            for c in sorted(live, key=lambda x: -(x.get("votes") or 0)):
+                votes = f"{c['votes']:,}" if c.get("votes") else "—"
+                lines.append(f"  {c['name']} ({c['party']}): {votes} votes")
+            lines.append(f"\nView full results: https://miru.humanagency.co/elections")
+            body = "\n".join(lines)
+            wa_to = alert["wa"] if alert["wa"].startswith("+") else "+" + alert["wa"]
+            _wa_send_proactive(f"whatsapp:{wa_to}", body)
+            alert["sent"] = True
+            sent_count += 1
+        except Exception:
+            continue
+
+    _save_elec_alerts(alerts)
+    return jsonify({"checked": len(pending), "sent": sent_count})
+
+
 @app.route("/api/elections")
 def api_elections():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
