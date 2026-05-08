@@ -1416,15 +1416,15 @@ def _get_elections():
 def api_elections_national():
     # 2026 UK local elections national picture — update as results come in
     return jsonify({
-        "updated": "8 May 2026 · Results night",
-        "headline": "Reform UK surges in local elections",
+        "updated": "8 May 2026 · Live results",
+        "headline": "Reform surge, heavy Labour losses — 2026 local elections",
         "parties": [
-            {"name": "Reform UK",       "short": "REF",  "colour": "#06b6d4", "text": "#fff", "councils": 10, "net": "+10", "councillors": 677,  "net_c": "+677"},
-            {"name": "Labour",          "short": "LAB",  "colour": "#e11d48", "text": "#fff", "councils": 84, "net": "-49", "councillors": 2320, "net_c": "-186"},
-            {"name": "Conservative",    "short": "CON",  "colour": "#1d4ed8", "text": "#fff", "councils": 34, "net": "-43", "councillors": 1157, "net_c": "-676"},
-            {"name": "Lib Dems",        "short": "LIB",  "colour": "#f59e0b", "text": "#000", "councils": 30, "net": "+16", "councillors": 1009, "net_c": "+239"},
-            {"name": "Green",           "short": "GRN",  "colour": "#16a34a", "text": "#fff", "councils": 1,  "net": "0",   "councillors": 187,  "net_c": "+74"},
-            {"name": "Independent",     "short": "IND",  "colour": "#6b7280", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 312,  "net_c": "+62"},
+            {"name": "Reform UK",       "short": "REF",  "colour": "#06b6d4", "text": "#fff", "councils": 10, "net": "+10", "councillors": 369,  "net_c": "+367"},
+            {"name": "Labour",          "short": "LAB",  "colour": "#e11d48", "text": "#fff", "councils": 76, "net": "-8",  "councillors": 1450, "net_c": "-254"},
+            {"name": "Conservative",    "short": "CON",  "colour": "#1d4ed8", "text": "#fff", "councils": 33, "net": "-1",  "councillors": 980,  "net_c": "-146"},
+            {"name": "Lib Dems",        "short": "LIB",  "colour": "#f59e0b", "text": "#000", "councils": 18, "net": "+1",  "councillors": 720,  "net_c": "+35"},
+            {"name": "Green",           "short": "GRN",  "colour": "#16a34a", "text": "#fff", "councils": 1,  "net": "0",   "councillors": 140,  "net_c": "+27"},
+            {"name": "Independent",     "short": "IND",  "colour": "#6b7280", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 210,  "net_c": "0"},
         ]
     })
 
