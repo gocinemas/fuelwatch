@@ -1413,20 +1413,27 @@ def _get_elections():
 
 
 # ── ai.humanagency.co content API ───────────────────────────────────────────
-_AIHA_CONTENT_PATH = os.path.join(os.path.dirname(__file__), "aiha_content.json")
-_AIHA_EDIT_TOKEN   = "aiha-2026-edit"
+# Stored in Supabase site_config table so it survives Railway redeploys.
+# SQL: CREATE TABLE IF NOT EXISTS site_config (key text PRIMARY KEY, value jsonb NOT NULL DEFAULT '{}');
+_AIHA_EDIT_TOKEN = "aiha-2026-edit"
+
+def _aiha_read():
+    try:
+        row = lib._sb().table("site_config").select("value").eq("key", "aiha_content").execute()
+        if row.data:
+            return row.data[0]["value"] or {}
+    except Exception:
+        pass
+    return {}
+
+def _aiha_write(data: dict):
+    lib._sb().table("site_config").upsert({"key": "aiha_content", "value": data}).execute()
 
 @app.route("/api/aiha/content", methods=["GET", "OPTIONS"])
 def aiha_content_get():
     if request.method == "OPTIONS":
         return _cors(Response("", 204))
-    try:
-        if os.path.exists(_AIHA_CONTENT_PATH):
-            with open(_AIHA_CONTENT_PATH) as f:
-                return _cors(jsonify(json.load(f)))
-    except Exception:
-        pass
-    return _cors(jsonify({}))
+    return _cors(jsonify(_aiha_read()))
 
 @app.route("/api/aiha/content", methods=["POST"])
 def aiha_content_post():
@@ -1434,8 +1441,7 @@ def aiha_content_post():
         return _cors(jsonify({"error": "Unauthorized"})), 401
     try:
         data = request.get_json(force=True, silent=True) or {}
-        with open(_AIHA_CONTENT_PATH, "w") as f:
-            json.dump(data, f)
+        _aiha_write(data)
         return _cors(jsonify({"ok": True}))
     except Exception as e:
         return _cors(jsonify({"error": str(e)})), 500
