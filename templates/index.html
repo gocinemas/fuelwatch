@@ -2814,7 +2814,14 @@
 
       // 2026 live results panel
       const liveEl = document.getElementById("elections-live");
-      if (d.live_results && d.live_results.length) {
+      const hasRealResults = d.live_results && d.live_results.some(r => r.votes != null || r.elected);
+      const bbcUrl = "https://www.bbc.co.uk/news/politics/local-elections-2026/results";
+      const bbcLink = `<a href="${bbcUrl}" target="_blank" rel="noopener"
+        style="display:inline-flex;align-items:center;gap:5px;margin-top:12px;padding:8px 14px;
+               background:#bb1919;color:#fff;border-radius:10px;font-size:12px;font-weight:700;text-decoration:none">
+        📺 Live results on BBC News ↗
+      </a>`;
+      if (hasRealResults) {
         liveEl.innerHTML = _renderResultsTable(d.live_results, "7 May 2026 Results");
       } else if (d.is_new_council && d.predecessor_areas && d.predecessor_areas.length) {
         liveEl.innerHTML = `
@@ -2824,13 +2831,18 @@
           <div style="font-size:12px;color:var(--subtle);line-height:1.6;background:var(--surface2);border-radius:10px;padding:10px 12px">
             <strong>${d.council}</strong> is a newly formed council holding its first elections today.
             Results are declared as counting completes — pull down to refresh.
-          </div>`;
+          </div>
+          <div style="text-align:center;margin-top:4px">${bbcLink}</div>`;
       } else {
         liveEl.innerHTML = `
-          <div style="text-align:center;padding:20px 0">
+          <div style="text-align:center;padding:16px 0">
             <div style="font-size:24px;margin-bottom:8px">⏳</div>
             <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Counting is underway</div>
-            <div style="font-size:12px;color:var(--subtle);line-height:1.6">Results for your ward are declared as votes are counted.<br>Pull down to refresh or check back later tonight.</div>
+            <div style="font-size:12px;color:var(--subtle);line-height:1.6">
+              Results for <strong>${d.ward || 'your ward'}</strong> haven't been declared yet.<br>
+              Check BBC News for the latest or pull down to refresh.
+            </div>
+            ${bbcLink}
           </div>`;
       }
 
