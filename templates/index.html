@@ -6425,59 +6425,35 @@ _bkBadge();
   <!-- Main view -->
   <div id="saves-main" style="display:none">
 
-    <!-- Intel bookmarks (localStorage) -->
-    <div id="intel-saves-section" style="margin-bottom:20px;display:none">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🔍 Company &amp; Brand Intel</div>
-      <div id="intel-saves-list" style="display:flex;flex-direction:column;gap:8px"></div>
-    </div>
-
-    <div style="margin-bottom:16px">
-      <div style="display:flex;gap:8px;align-items:center">
-        <input id="saves-url-input" type="url" placeholder="Enter a link or attach a picture…"
-          style="flex:1;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;outline:none;background:var(--surface);color:var(--text)"
-          onkeydown="if(event.key==='Enter')savesSaveUrl()" />
-        <button onclick="savesSaveUrl()"
-          style="background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
-          Save
-        </button>
+    <!-- Header -->
+    <div style="display:flex;align-items:flex-start;margin-bottom:16px;gap:10px">
+      <div style="flex:1">
+        <div style="font-size:24px;font-weight:900;color:var(--text);letter-spacing:-0.6px;line-height:1">My Saves</div>
+        <div id="saves-count-label" style="font-size:12px;color:var(--muted);margin-top:4px">Your personal intelligence feed</div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:0 2px">
-        <button onclick="savesToggleWaHint()" style="display:inline-flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;font-size:12px;color:#25D366;font-weight:600;padding:0">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          Use or Join WhatsApp
-        </button>
-        <button onclick="savesLoad()" style="font-size:12px;color:var(--subtle);background:none;border:none;cursor:pointer;padding:0">↻ Refresh</button>
-      </div>
-
-      <!-- WhatsApp explainer — shown on click -->
-      <div id="saves-wa-hint" style="display:none;margin-top:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:12px 14px">
-        <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:8px">📱 Miru on WhatsApp — save things when you're out</div>
-        <div style="font-size:12px;color:#15803d;line-height:1.7">
-          📸 <strong>Snap a photo</strong> of a billboard, restaurant menu, or café you want to remember<br>
-          🔗 <strong>Paste any link</strong> — it gets saved and summarised for you automatically<br>
-          💬 Works just like a chat — no extra app needed
-        </div>
-        <a id="saves-wa-link" href="#" target="_blank" rel="noopener"
-          style="display:inline-flex;align-items:center;gap:7px;margin-top:12px;background:#25D366;color:#fff;font-size:13px;font-weight:700;padding:9px 16px;border-radius:12px;text-decoration:none">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          Open WhatsApp
-        </a>
-      </div>
-
-      <div id="saves-add-status" style="font-size:12px;color:#6b7280;margin-top:6px;display:none"></div>
+      <button onclick="savesFabOpen()" title="Add save"
+        style="background:var(--text);color:var(--bg);border:none;border-radius:14px;padding:9px 16px;font-size:20px;font-weight:300;cursor:pointer;line-height:1;flex-shrink:0">
+        +
+      </button>
     </div>
 
     <!-- Search -->
-    <div style="position:relative;margin-bottom:12px">
+    <div style="position:relative;margin-bottom:16px">
       <input id="saves-search-input" type="search" placeholder="Search saves…"
-        style="width:100%;border:1px solid var(--border);border-radius:12px;padding:9px 36px 9px 36px;font-size:13px;outline:none;background:var(--surface);color:var(--text)"
+        style="width:100%;border:1px solid var(--border);border-radius:14px;padding:11px 36px 11px 40px;font-size:14px;outline:none;background:var(--surface);color:var(--text)"
         oninput="savesSearchInput()" />
-      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔍</span>
-      <button id="saves-search-clear" onclick="savesSearchClear()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#9ca3af;line-height:1;padding:0">✕</button>
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔍</span>
+      <button id="saves-search-clear" onclick="savesSearchClear()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#9ca3af;line-height:1;padding:0">✕</button>
     </div>
 
-    <!-- Category pills — populated dynamically; hidden during search -->
-    <div id="saves-cat-pills" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none"></div>
+    <!-- Intel bookmarks (localStorage) -->
+    <div id="intel-saves-section" style="margin-bottom:16px;display:none">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">🏢 Company &amp; Brand Intel</div>
+      <div id="intel-saves-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- Category pills (hidden — kept for search filter compat) -->
+    <div id="saves-cat-pills" style="display:none"></div>
 
     <div id="saves-list"></div>
   </div>
@@ -7065,134 +7041,169 @@ _bkBadge();
     const items = _savesActiveFilter === "all"
       ? _savesAll
       : _savesAll.filter(function(s){ return _saveCat(s) === _savesActiveFilter; });
+
+    const countLabel = document.getElementById("saves-count-label");
+    if (countLabel) {
+      countLabel.textContent = _savesAll.length
+        ? `${_savesAll.length} save${_savesAll.length === 1 ? "" : "s"} · personal intelligence feed`
+        : "Your personal intelligence feed";
+    }
+
     if (!items.length) {
-      var catLabel = (_SAVE_CATS.find(function(c){return c.key===_savesActiveFilter;})||{label:""}).label;
-      list.innerHTML = `<p style="color:#9ca3af;font-size:13px;padding:16px 0;text-align:center">No ${catLabel ? catLabel + " " : ""}saves yet.</p>`;
+      list.innerHTML = `<div style="text-align:center;padding:48px 16px 32px">
+        <div style="font-size:52px;margin-bottom:14px">📭</div>
+        <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:6px;letter-spacing:-0.3px">Nothing saved yet</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6">Save links, photos, and ideas from WhatsApp<br>or tap the + button above</div>
+        <button onclick="savesFabOpen()" style="background:#25D366;color:#fff;border:none;border-radius:14px;padding:12px 22px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Save via WhatsApp
+        </button>
+      </div>`;
       return;
     }
-    const statusBadge = s => s === "read"
-      ? `<span style="font-size:10px;font-weight:700;color:#16a34a;background:#f0fdf4;padding:2px 8px;border-radius:99px">✓ Read</span>`
-      : s === "skip"
-      ? `<span style="font-size:10px;font-weight:700;color:#6b7280;background:#f3f4f6;padding:2px 8px;border-radius:99px">Skipped</span>`
-      : s === "remind"
-      ? `<span style="font-size:10px;font-weight:700;color:#d97706;background:#fffbeb;padding:2px 8px;border-radius:99px">🔔 Remind</span>`
-      : `<span style="font-size:10px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:99px">Pending</span>`;
 
-    list.innerHTML = items.map(s => {
-      // Parse META: line from summary (stored by photo capture)
-      const rawSummary = s.summary || "";
-      let metaLine = "", bodyText = rawSummary;
-      if(rawSummary.startsWith("META:")) {
-        const nl = rawSummary.indexOf("\n");
-        metaLine = rawSummary.slice(5, nl > 0 ? nl : undefined).trim();
-        bodyText = nl > 0 ? rawSummary.slice(nl+1).trim() : "";
-      }
+    const SECTION_LABELS = {
+      article: "🔗 Articles & Links",
+      brand:   "🏷️ Brands",
+      place:   "🏪 Places & Restaurants",
+      ad:      "📢 Ads & Campaigns",
+      event:   "🎫 Events",
+      receipt: "🧾 Receipts",
+      doc:     "📄 Documents",
+      photo:   "📷 Photos & Captures",
+    };
+    const ORDER = ["article","brand","place","event","ad","photo","receipt","doc"];
 
-      // Parse structured product data (PRODUCTS: JSON line + optional SHOP: line)
-      let productItems = null, shopName = "";
-      const bodyLines2 = bodyText.split("\n");
-      const prodLine = bodyLines2.find(l => l.startsWith("PRODUCTS:"));
-      if (prodLine) {
-        try { productItems = JSON.parse(prodLine.slice(9)); } catch(e) {}
-        const shopLine = bodyLines2.find(l => l.startsWith("SHOP:"));
-        if (shopLine) shopName = shopLine.slice(5).trim();
-        bodyText = bodyLines2.filter(l => !l.startsWith("PRODUCTS:") && !l.startsWith("SHOP:")).join("\n").trim();
-      }
+    const groups = {};
+    items.forEach(function(s) {
+      var cat = _saveCat(s);
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(s);
+    });
 
-      // Render body: bullet-split for photo summaries, line-split for enriched place data
-      const hasBullets = bodyText.includes("•");
-      const bodyLines = hasBullets
-        ? bodyText.split("•").filter(b => b.trim()).map(b => `• ${b.trim()}`)
-        : bodyText.split("\n").filter(b => b.trim());
-      const bullets = bodyLines.map(line =>
-        `<div style="font-size:12px;color:#374151;padding:2px 0;line-height:1.4">${line}</div>`
-      ).join("");
+    var html = "";
+    ORDER.forEach(function(cat) {
+      if (!groups[cat] || !groups[cat].length) return;
+      html += `<div style="font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin:20px 0 8px;padding-left:2px">${SECTION_LABELS[cat]}</div>`;
+      html += groups[cat].map(function(s) { return savesCardHtml(s); }).join("");
+    });
+    list.innerHTML = html;
+  }
 
-      // Product table (structured card for product photos)
-      const productsHtml = productItems ? (() => {
-        const shopRow = shopName
-          ? `<div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:8px">🏪 ${shopName}</div>`
-          : "";
-        const rows = productItems.map(p => `
-          <div style="display:grid;grid-template-columns:1fr auto auto;gap:0 10px;align-items:baseline;padding:5px 0;border-top:1px solid #f3f4f6">
-            <div style="font-size:12px;font-weight:600;color:#111827;word-break:break-word">${p.name || "—"}</div>
-            <div style="font-size:11px;color:#6b7280;white-space:nowrap">${p.brand || "—"}</div>
-            <div style="font-size:12px;font-weight:700;color:#059669;white-space:nowrap">${p.price || "—"}</div>
-          </div>`).join("");
-        const header = `<div style="display:grid;grid-template-columns:1fr auto auto;gap:0 10px;padding-bottom:4px">
-          <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Product</div>
-          <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Brand</div>
-          <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">Price</div>
-        </div>`;
-        return `<div style="background:#f9fafb;border-radius:10px;padding:10px 12px;margin-bottom:10px">${shopRow}${header}${rows}</div>`;
-      })() : "";
+  function savesCardHtml(s) {
+    const rawSummary = s.summary || "";
+    let metaLine = "", bodyText = rawSummary;
+    if (rawSummary.startsWith("META:")) {
+      const nl = rawSummary.indexOf("\n");
+      metaLine = rawSummary.slice(5, nl > 0 ? nl : undefined).trim();
+      bodyText = nl > 0 ? rawSummary.slice(nl+1).trim() : "";
+    }
 
-      const date = s.created_at ? new Date(s.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "";
-      const isPhoto = !s.url || s.url.includes("twilio") || s.url.includes("media.sid");
-      const isSearch = s.url && s.url.includes("google.com/search");
-      const isMaps   = s.url && s.url.includes("maps.google.com");
-      const isPlace  = s.title && /^(🏪|🍽️)/.test(s.title);
+    let productItems = null, shopName = "";
+    const bodyLines2 = bodyText.split("\n");
+    const prodLine = bodyLines2.find(l => l.startsWith("PRODUCTS:"));
+    if (prodLine) {
+      try { productItems = JSON.parse(prodLine.slice(9)); } catch(e) {}
+      const shopLine = bodyLines2.find(l => l.startsWith("SHOP:"));
+      if (shopLine) shopName = shopLine.slice(5).trim();
+      bodyText = bodyLines2.filter(l => !l.startsWith("PRODUCTS:") && !l.startsWith("SHOP:")).join("\n").trim();
+    }
 
-      const displayUrl = isPhoto ? "" : (s.url || "").replace(/^https?:\/\/(www\.)?/,"").replace(/\/$/,"").slice(0,55) + ((s.url||"").length > 65 ? "…" : "");
-      const rawTitle = s.title || (isPhoto ? "📷 Photo" : displayUrl);
-      const editableTitle = rawTitle.replace(/^(🏪|🍽️|🎫|📢|🧾|🪧|📄|📷|🏷️)\s*/u, "").trim() || rawTitle;
-      const titleInner = s.url && !isPhoto
-        ? `<a href="${s.url}" target="_blank" style="font-size:14px;font-weight:700;color:#111827;text-decoration:none;line-height:1.3">${rawTitle}</a>`
-        : `<span style="font-size:14px;font-weight:700;color:#111827;line-height:1.3">${rawTitle}</span>`;
-      const titleEl = `<div id="save-title-${s.id}" style="flex:1;min-width:0">${titleInner}</div>`;
-      const editBtn = `<button onclick="savesEditTitle('${s.id}',this.dataset.t)" data-t="${editableTitle.replace(/"/g,'&quot;')}" style="flex-shrink:0;background:none;border:none;cursor:pointer;font-size:15px;opacity:0.45;padding:0 3px;line-height:1;margin-top:1px" title="Edit name">✏️</button>`;
-
-      const urlRow = isMaps
-        ? `<a href="${s.url}" target="_blank" style="font-size:12px;color:#2563eb;font-weight:600;text-decoration:none;display:block;margin-bottom:8px">🗺️ Open in Maps →</a>`
-        : isSearch
-        ? `<a href="${s.url}" target="_blank" style="font-size:12px;color:#2563eb;font-weight:600;text-decoration:none;display:block;margin-bottom:8px">🔍 Search / Book →</a>`
-        : s.url && !isPhoto
-        ? `<a href="${s.url}" target="_blank" style="font-size:11px;color:#2563eb;text-decoration:none;word-break:break-all;display:block;margin-bottom:8px;opacity:0.7">${displayUrl}</a>`
-        : "";
-
-      // Meta tags row (when/where from photo)
-      const metaRow = metaLine
-        ? `<div style="font-size:11px;color:#7c3aed;background:#faf5ff;border-radius:8px;padding:4px 10px;margin-bottom:8px;display:inline-block">${metaLine}</div>`
-        : "";
-
-      // Enrich button for place saves without full details
-      const venueGuess = editableTitle;
-      const enrichBtn = isPlace && venueGuess
-        ? `<button onclick="savesEnrich('${s.id}','${venueGuess.replace(/'/g,"\\'")}',this)" style="padding:7px 10px;border-radius:8px;border:1px solid #e0e7ff;background:#f5f3ff;font-size:11px;font-weight:600;cursor:pointer;color:#4f46e5">✨ Update details</button>`
-        : "";
-
-      // Brand Intel button for brand saves
-      const brandGuess = (s.title||"").replace(/^🏷️\s*/,"").trim();
-      const brandBtn = _saveCat(s) === "brand" && brandGuess
-        ? `<button onclick="saveOpenBrandIntel('${brandGuess.replace(/'/g,"\\'")}')\" style=\"padding:7px 10px;border-radius:8px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;cursor:pointer;color:#92400e\">🔍 Brand Intel →</button>`
-        : "";
-
-      return `<div style="background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:14px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;gap:6px">
-          ${titleEl}
-          ${editBtn}
-          ${statusBadge(s.status)}
-        </div>
-        ${urlRow}
-        ${metaRow}
-        ${productsHtml}
-        ${!productsHtml ? (bullets
-          ? `<div style="margin-bottom:10px">${bullets}</div>`
-          : `<div style="font-size:12px;color:#9ca3af;margin-bottom:10px;font-style:italic">Analysing…</div>`
-        ) : ""}
-        <div style="font-size:11px;color:#9ca3af;margin-bottom:10px">${date}${s.remind_day ? " · Remind " + s.remind_day : ""}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          ${!isPhoto ? `
-          <button onclick="savesUpdate('${s.id}','read',this)" style="flex:1;padding:7px;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:600;cursor:pointer;color:#16a34a">✓ Read</button>
-          <button onclick="savesUpdate('${s.id}','skip',this)" style="flex:1;padding:7px;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:600;cursor:pointer;color:#6b7280">× Skip</button>
-          <button onclick="savesUpdate('${s.id}','pending',this)" style="flex:1;padding:7px;border-radius:8px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:600;cursor:pointer;color:#2563eb">↺ Reset</button>
-          ` : ""}
-          ${enrichBtn}
-          ${brandBtn}
-          <button onclick="savesDelete('${s.id}',this)" style="padding:7px 10px;border-radius:8px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;font-weight:600;cursor:pointer;color:#dc2626">🗑</button>
-        </div>
+    const productsHtml = productItems ? (() => {
+      const shopRow = shopName ? `<div style="font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:8px">🏪 ${shopName}</div>` : "";
+      const rows = productItems.map(p =>
+        `<div style="display:grid;grid-template-columns:1fr auto auto;gap:0 10px;align-items:baseline;padding:5px 0;border-top:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:600;color:var(--text);word-break:break-word">${p.name || "—"}</div>
+          <div style="font-size:11px;color:var(--muted);white-space:nowrap">${p.brand || "—"}</div>
+          <div style="font-size:12px;font-weight:700;color:#059669;white-space:nowrap">${p.price || "—"}</div>
+        </div>`).join("");
+      const header = `<div style="display:grid;grid-template-columns:1fr auto auto;gap:0 10px;padding-bottom:4px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Product</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Brand</div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Price</div>
       </div>`;
-    }).join("");
+      return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px">${shopRow}${header}${rows}</div>`;
+    })() : "";
+
+    const cleanSummary = bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
+    const summaryHtml = cleanSummary
+      ? `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${cleanSummary}</div>`
+      : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>`;
+
+    const date = s.created_at ? new Date(s.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
+    const isPhoto = !s.url || s.url.includes("twilio") || s.url.includes("media.sid");
+    const isSearch = s.url && s.url.includes("google.com/search");
+    const isMaps   = s.url && s.url.includes("maps.google.com");
+    const isPlace  = s.title && /^(🏪|🍽️)/.test(s.title);
+
+    let sourceDomain = "";
+    if (s.url && !isPhoto) {
+      try { sourceDomain = new URL(s.url).hostname.replace(/^www\./,""); } catch(e) {}
+    }
+    const sourceRow = sourceDomain
+      ? `<div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:500">${sourceDomain}</div>`
+      : isPhoto ? `<div style="font-size:11px;color:var(--muted);margin-bottom:5px">📷 WhatsApp capture</div>` : "";
+
+    const rawTitle = s.title || (isPhoto ? "📷 Photo" : sourceDomain || "Save");
+    const editableTitle = rawTitle.replace(/^(🏪|🍽️|🎫|📢|🧾|🪧|📄|📷|🏷️)\s*/u,"").trim() || rawTitle;
+    const titleHtml = s.url && !isPhoto
+      ? `<a href="${s.url}" target="_blank" style="font-size:15px;font-weight:700;color:var(--text);text-decoration:none;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${rawTitle}</a>`
+      : `<span style="font-size:15px;font-weight:700;color:var(--text);line-height:1.35">${rawTitle}</span>`;
+
+    const statusBadge = (s.status === "read")
+      ? `<span style="font-size:10px;font-weight:700;color:#16a34a;background:#f0fdf4;padding:2px 8px;border-radius:99px;white-space:nowrap">✓ Read</span>`
+      : (s.status === "skip")
+      ? `<span style="font-size:10px;font-weight:700;color:#9ca3af;background:#f3f4f6;padding:2px 8px;border-radius:99px;white-space:nowrap">Skip</span>`
+      : (s.status === "remind")
+      ? `<span style="font-size:10px;font-weight:700;color:#d97706;background:#fffbeb;padding:2px 8px;border-radius:99px;white-space:nowrap">🔔</span>`
+      : `<span style="font-size:10px;font-weight:700;color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:99px;white-space:nowrap">New</span>`;
+
+    const urlRow = isMaps
+      ? `<div style="margin-bottom:8px"><a href="${s.url}" target="_blank" style="font-size:12px;color:#2563eb;font-weight:600;text-decoration:none">🗺️ Open in Maps →</a></div>`
+      : isSearch
+      ? `<div style="margin-bottom:8px"><a href="${s.url}" target="_blank" style="font-size:12px;color:#2563eb;font-weight:600;text-decoration:none">🔍 Search / Book →</a></div>`
+      : "";
+
+    const metaRow = metaLine
+      ? `<div style="font-size:11px;color:#7c3aed;background:#faf5ff;border-radius:8px;padding:4px 10px;margin-bottom:8px;display:inline-block">${metaLine}</div>`
+      : "";
+
+    const enrichBtn = isPlace && editableTitle
+      ? `<button onclick="savesEnrich('${s.id}','${editableTitle.replace(/'/g,"\\'")}',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #e0e7ff;background:#f5f3ff;font-size:11px;font-weight:600;cursor:pointer;color:#4f46e5">✨ Details</button>`
+      : "";
+    const brandGuess = (s.title||"").replace(/^🏷️\s*/,"").trim();
+    const brandBtn = _saveCat(s) === "brand" && brandGuess
+      ? `<button onclick="saveOpenBrandIntel('${brandGuess.replace(/'/g,"\\'")}')\" style=\"flex:1;padding:8px 6px;border-radius:10px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;cursor:pointer;color:#92400e\">🔍 Intel →</button>`
+      : "";
+
+    const actionBtns = !isPhoto ? `
+      <button onclick="savesUpdate('${s.id}','read',this)" style="flex:1;padding:8px 4px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#16a34a">✓ Read</button>
+      <button onclick="savesUpdate('${s.id}','skip',this)" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:13px;cursor:pointer;color:var(--muted)">×</button>
+      <button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>
+    ` : `
+      <button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>
+    `;
+
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px 15px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;gap:8px">
+        <div id="save-title-${s.id}" style="flex:1;min-width:0">${titleHtml}</div>
+        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+          ${statusBadge}
+          <button onclick="savesEditTitle('${s.id}',this.dataset.t)" data-t="${editableTitle.replace(/"/g,'&quot;')}" style="background:none;border:none;cursor:pointer;font-size:13px;opacity:0.35;padding:0;line-height:1" title="Edit">✏️</button>
+        </div>
+      </div>
+      ${sourceRow}
+      ${urlRow}
+      ${metaRow}
+      ${productsHtml}
+      ${!productsHtml ? summaryHtml : ""}
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${date}${s.remind_day ? " · 🔔 " + s.remind_day : ""}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        ${actionBtns}
+        ${enrichBtn}
+        ${brandBtn}
+      </div>
+    </div>`;
   }
 
   let _savesSearchTimer = null;
@@ -7355,18 +7366,27 @@ _bkBadge();
     } catch(e) { savesLoad(); }
   };
 
-  window.savesToggleWaHint = function() {
-    const hint = document.getElementById("saves-wa-hint");
-    const waNumber = "14155238886";
-    const url = document.getElementById("saves-url-input").value.trim();
-    document.getElementById("saves-wa-link").href =
-      `https://wa.me/${waNumber}${url ? "?text=" + encodeURIComponent(url) : ""}`;
-    hint.style.display = hint.style.display === "none" ? "block" : "none";
+  window.savesFabOpen = function() {
+    document.getElementById("saves-add-backdrop").style.display = "block";
+    const sheet = document.getElementById("saves-add-sheet");
+    sheet.style.display = "block";
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() { sheet.style.transform = "translateY(0)"; });
+    });
+    setTimeout(function() { document.getElementById("saves-url-input").focus(); }, 350);
   };
 
-  window.savesSendWhatsApp = function() {
-    savesToggleWaHint();
+  window.savesFabClose = function() {
+    const sheet = document.getElementById("saves-add-sheet");
+    sheet.style.transform = "translateY(100%)";
+    setTimeout(function() {
+      sheet.style.display = "none";
+      document.getElementById("saves-add-backdrop").style.display = "none";
+    }, 300);
   };
+
+  window.savesToggleWaHint = function() { savesFabOpen(); };
+  window.savesSendWhatsApp = function() { savesFabOpen(); };
 
   window.savesSaveUrl = async function() {
     const url = document.getElementById("saves-url-input").value.trim();
@@ -7382,7 +7402,7 @@ _bkBadge();
       document.getElementById("saves-url-input").value = "";
       status.textContent = "✓ Saved and summarised";
       status.style.color = "#16a34a";
-      setTimeout(() => { status.style.display = "none"; savesLoad(); }, 1500);
+      setTimeout(() => { status.style.display = "none"; savesFabClose(); savesLoad(); }, 1500);
     } else {
       status.textContent = "Failed — check the URL";
       status.style.color = "#ef4444";
@@ -8605,6 +8625,38 @@ _bkBadge();
     setTimeout(openMiruStory, 1200);
   }
 </script>
+
+<!-- ── My Saves: Add bottom sheet ── -->
+<div id="saves-add-backdrop" onclick="savesFabClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:170"></div>
+<div id="saves-add-sheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:171;background:var(--surface);border-radius:24px 24px 0 0;padding:20px 16px 36px;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,0,.67,0);max-width:520px;margin:0 auto">
+  <div style="width:36px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 20px"></div>
+  <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:14px;letter-spacing:-0.4px">Save something</div>
+
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <input id="saves-url-input" type="url" placeholder="Paste a link…"
+      style="flex:1;border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:14px;outline:none;background:var(--bg);color:var(--text);-webkit-appearance:none"
+      onkeydown="if(event.key==='Enter')savesSaveUrl()" />
+    <button onclick="savesSaveUrl()"
+      style="background:var(--text);color:var(--bg);border:none;border-radius:14px;padding:12px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">
+      Save
+    </button>
+  </div>
+  <div id="saves-add-status" style="font-size:12px;color:#6b7280;margin-bottom:12px;display:none"></div>
+
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:14px 15px">
+    <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:8px">📱 Save on the go via WhatsApp</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:12px">
+      📸 Snap a photo of a menu, sign, or ad<br>
+      🔗 Paste any link — Miru summarises it<br>
+      💬 Just describe it — Miru saves it
+    </div>
+    <a href="https://wa.me/14155238886" target="_blank" rel="noopener"
+      style="display:inline-flex;align-items:center;gap:7px;background:#25D366;color:#fff;font-size:13px;font-weight:700;padding:9px 16px;border-radius:12px;text-decoration:none">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Open WhatsApp
+    </a>
+  </div>
+</div>
 
 </body>
 </html>
