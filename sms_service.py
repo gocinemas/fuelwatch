@@ -1786,6 +1786,133 @@ def api_elections_send_results():
         return jsonify({"error": str(e)}), 500
 
 
+# ── Fuel price drop alerts ──────────────────────────────────────────────────
+
+def _get_cheapest_fuel(postcode: str, fuel: str, radius_miles: float = 5):
+    """Return (price, station_dict) for the cheapest station near postcode, or (None, None)."""
+    latlon = postcode_to_latlon(postcode)
+    if not latlon:
+        return None, None
+    lat, lon = latlon
+    radius_km = radius_miles * 1.60934
+    stations = get_stations()
+    nearby = []
+    for s in stations:
+        price = s.get(fuel)
+        if not price or price <= 0:
+            continue
+        dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
+        if dist_km <= radius_km:
+            nearby.append({**s, "dist_mi": dist_km / 1.60934, "price": price})
+    if not nearby:
+        return None, None
+    nearby.sort(key=lambda x: x["price"])
+    return nearby[0]["price"], nearby[0]
+
+
+@app.route("/api/fuel/alert", methods=["POST"])
+def api_fuel_alert_register():
+    """Register for fuel price drop alerts. Body: {wa_number, postcode, fuel_type?, threshold_drop?}"""
+    data      = request.get_json(force=True) or {}
+    wa        = data.get("wa_number", "").strip()
+    postcode  = data.get("postcode", "").strip().replace(" ", "").upper()
+    fuel      = data.get("fuel_type", "petrol").lower()
+    threshold = float(data.get("threshold_drop", 1.0))  # pence/litre
+    if not wa or not postcode:
+        return jsonify({"error": "wa_number and postcode required"}), 400
+    try:
+        # Snapshot current cheapest as baseline
+        price, station = _get_cheapest_fuel(postcode, fuel)
+        existing = lib._sb().table("fuel_alerts").select("id") \
+            .eq("wa", wa).eq("postcode", postcode).eq("fuel_type", fuel).execute().data
+        if existing:
+            lib._sb().table("fuel_alerts").update({
+                "threshold_drop": threshold,
+                "last_price": price,
+            }).eq("wa", wa).eq("postcode", postcode).eq("fuel_type", fuel).execute()
+        else:
+            lib._sb().table("fuel_alerts").insert({
+                "wa": wa,
+                "postcode": postcode,
+                "fuel_type": fuel,
+                "last_price": price,
+                "threshold_drop": threshold,
+            }).execute()
+        fuel_label = "Petrol" if fuel == "petrol" else "Diesel"
+        station_name = station.get("brand", "") if station else ""
+        msg = (
+            f"⛽ Fuel alert set!\n"
+            f"{fuel_label} · {postcode} · alert when drops ≥{threshold:.0f}p/litre\n"
+            f"Current cheapest: {price:.1f}p at {station_name}\n\n"
+            f"You'll get a WhatsApp when prices dip. No action needed."
+        )
+        wa_to = wa if wa.startswith("+") else "+" + wa
+        _wa_send_proactive(f"whatsapp:{wa_to}", msg)
+        return jsonify({"ok": True, "baseline_price": price})
+    except Exception as e:
+        app.logger.error(f"fuel alert register: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/fuel/check-drops")
+def api_fuel_check_drops():
+    """Cron endpoint — check all fuel alerts and send WhatsApp if price dropped."""
+    token = request.args.get("token", "")
+    if token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "forbidden"}), 403
+    try:
+        alerts = lib._sb().table("fuel_alerts").select("*").execute().data or []
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    checked, sent = 0, 0
+    for alert in alerts:
+        try:
+            pc        = alert["postcode"]
+            fuel      = alert.get("fuel_type", "petrol")
+            wa        = alert["wa"]
+            last      = alert.get("last_price")
+            threshold = float(alert.get("threshold_drop") or 1.0)
+
+            price, station = _get_cheapest_fuel(pc, fuel)
+            if price is None:
+                continue
+            checked += 1
+
+            dropped = last is not None and price <= (float(last) - threshold)
+
+            # Always update last_price
+            lib._sb().table("fuel_alerts").update({"last_price": price}) \
+                .eq("id", alert["id"]).execute()
+
+            if not dropped:
+                continue
+
+            fuel_label = "Petrol" if fuel == "petrol" else "Diesel"
+            brand = station.get("brand", "")
+            addr  = station.get("address", "")[:30] if station.get("address") else ""
+            dist  = station.get("dist_mi", 0)
+            saving = (float(last) - price) * 55 / 100  # pence saving on ~55L tank
+            msg = (
+                f"⛽ Fuel price drop!\n"
+                f"{fuel_label} in {pc} is now {price:.1f}p/litre\n"
+                f"(was {last:.1f}p — down {float(last)-price:.1f}p)\n\n"
+                f"Cheapest: {brand} · {addr} · {dist:.1f}mi away\n"
+                f"Save ~{saving:.0f}p on a full tank\n\n"
+                f"🔗 miru.humanagency.co"
+            )
+            wa_to = wa if wa.startswith("+") else "+" + wa
+            _wa_send_proactive(f"whatsapp:{wa_to}", msg)
+            lib._sb().table("fuel_alerts").update({"last_alerted_at": datetime.utcnow().isoformat()}) \
+                .eq("id", alert["id"]).execute()
+            sent += 1
+        except Exception as ex:
+            app.logger.error(f"fuel check-drops row: {ex}")
+            continue
+
+    return jsonify({"checked": checked, "sent": sent})
+
+
 @app.route("/api/elections")
 def api_elections():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
