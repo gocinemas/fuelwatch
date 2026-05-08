@@ -1803,6 +1803,36 @@ def api_elections():
                 if best:
                     ward_data = slug_wards[best]
 
+        # Fallback 3: ask DC directly which 2026 ballot covers this postcode
+        # Handles ward boundary changes where postcodes.io returns old ward names
+        if not ward_data:
+            try:
+                dc_r = requests.get(
+                    "https://candidates.democracyclub.org.uk/api/next/ballots/",
+                    params={"election_date": "2026-05-07", "for_postcode": postcode, "format": "json"},
+                    timeout=6, headers={"User-Agent": "Miru/1.0"},
+                )
+                if dc_r.status_code == 200:
+                    dc_ballots = dc_r.json().get("results", [])
+                    for b in dc_ballots:
+                        bp = b.get("ballot_paper_id", "")
+                        parts = bp.split(".")
+                        if len(parts) >= 4 and parts[0] == "local":
+                            c_slug, w_slug = parts[1], parts[2]
+                            slug_wards = elections["by_slug"].get(c_slug, {})
+                            if w_slug in slug_wards:
+                                council_slug = c_slug
+                                ward_data = slug_wards[w_slug]
+                                break
+                            # Ward in DC but not in CSV — create minimal entry
+                            if c_slug:
+                                council_slug = c_slug
+                                ward_data = {"ward": b.get("post", {}).get("label", w_slug.replace("-"," ").title()),
+                                             "council": district, "election_date": "2026-05-07", "candidates": []}
+                                break
+            except Exception as e:
+                print(f"[elections] DC ballot fallback error: {e}")
+
         candidates = sorted(
             ward_data.get("candidates", []),
             key=lambda c: (c["party"], c["name"])
