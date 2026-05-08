@@ -1412,21 +1412,117 @@ def _get_elections():
     return _ELECTIONS_DATA
 
 
+_NATIONAL_CACHE_PATH = os.path.join(os.path.dirname(__file__), "elections_national_cache.json")
+_NATIONAL_CACHE_TTL  = 900  # 15 minutes
+
+_PARTY_META = {
+    "labour":             {"short": "LAB", "colour": "#e11d48", "text": "#fff"},
+    "conservative":       {"short": "CON", "colour": "#1d4ed8", "text": "#fff"},
+    "reform uk":          {"short": "REF", "colour": "#06b6d4", "text": "#fff"},
+    "liberal democrat":   {"short": "LIB", "colour": "#f59e0b", "text": "#000"},
+    "lib dem":            {"short": "LIB", "colour": "#f59e0b", "text": "#000"},
+    "green party":        {"short": "GRN", "colour": "#16a34a", "text": "#fff"},
+    "green":              {"short": "GRN", "colour": "#16a34a", "text": "#fff"},
+}
+
+_NATIONAL_FALLBACK = {
+    "updated": "8 May 2026 · Live results",
+    "headline": "Reform surge, heavy Labour losses — 2026 local elections",
+    "parties": [
+        {"name": "Reform UK",    "short": "REF", "colour": "#06b6d4", "text": "#fff", "councils": 2,  "net": "+2",  "councillors": 398, "net_c": "+396"},
+        {"name": "Labour",       "short": "LAB", "colour": "#e11d48", "text": "#fff", "councils": 10, "net": "-8",  "councillors": 253, "net_c": "-259"},
+        {"name": "Conservative", "short": "CON", "colour": "#1d4ed8", "text": "#fff", "councils": 6,  "net": "-1",  "councillors": 256, "net_c": "-171"},
+        {"name": "Lib Dems",     "short": "LIB", "colour": "#f59e0b", "text": "#000", "councils": 5,  "net": "+1",  "councillors": 249, "net_c": "+37"},
+        {"name": "Green",        "short": "GRN", "colour": "#16a34a", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 51,  "net_c": "+27"},
+    ]
+}
+
+def _fetch_national_results():
+    """Scrape Wikipedia live 2026 UK local election results table."""
+    try:
+        import pandas as pd
+        from datetime import datetime
+        resp = requests.get(
+            "https://en.wikipedia.org/wiki/2026_United_Kingdom_local_elections",
+            headers={"User-Agent": "Miru/1.0 elections display"},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            return None
+        tables = pd.read_html(resp.text)
+        result_table = None
+        for df in tables:
+            col_str = " ".join(str(c).lower() for c in df.columns)
+            if "council" in col_str and ("councillor" in col_str or "seat" in col_str):
+                first_col = df.iloc[:, 0].astype(str).str.lower().tolist()
+                if any(p in " ".join(first_col) for p in ["labour", "reform", "conservative"]):
+                    result_table = df
+                    break
+        if result_table is None:
+            return None
+
+        def _int(v):
+            try:
+                return int(str(v).replace("+","").replace("−","-").replace("–","-").replace(",","").strip())
+            except:
+                return 0
+
+        def _net(v):
+            s = str(v).replace("−","-").replace("–","-").strip()
+            try:
+                n = int(s.replace("+","").replace(",",""))
+                return f"+{n}" if n > 0 else str(n)
+            except:
+                return s
+
+        parties = []
+        for _, row in result_table.iterrows():
+            vals = [str(v) for v in row.values]
+            name_raw = vals[0].strip()
+            meta = next((m for k, m in _PARTY_META.items() if k in name_raw.lower()), None)
+            if not meta:
+                continue
+            parties.append({
+                "name": name_raw,
+                **meta,
+                "councils":     _int(vals[1]) if len(vals) > 1 else 0,
+                "net":          _net(vals[2]) if len(vals) > 2 else "0",
+                "councillors":  _int(vals[3]) if len(vals) > 3 else 0,
+                "net_c":        _net(vals[4]) if len(vals) > 4 else "0",
+            })
+        if not parties:
+            return None
+        parties.sort(key=lambda p: p["councillors"], reverse=True)
+        top = parties[0]["name"]
+        return {
+            "updated": datetime.utcnow().strftime("%-d %b %Y · %H:%M UTC · auto-refreshing"),
+            "headline": f"{top} leads 2026 UK local elections",
+            "parties": parties,
+        }
+    except Exception as e:
+        app.logger.error(f"_fetch_national_results: {e}")
+        return None
+
+
 @app.route("/api/elections/national")
 def api_elections_national():
-    # 2026 UK local elections national picture — update as results come in
-    return jsonify({
-        "updated": "8 May 2026 · Live results",
-        "headline": "Reform surge, heavy Labour losses — 2026 local elections",
-        "parties": [
-            {"name": "Reform UK",       "short": "REF",  "colour": "#06b6d4", "text": "#fff", "councils": 10, "net": "+10", "councillors": 369,  "net_c": "+367"},
-            {"name": "Labour",          "short": "LAB",  "colour": "#e11d48", "text": "#fff", "councils": 76, "net": "-8",  "councillors": 1450, "net_c": "-254"},
-            {"name": "Conservative",    "short": "CON",  "colour": "#1d4ed8", "text": "#fff", "councils": 33, "net": "-1",  "councillors": 980,  "net_c": "-146"},
-            {"name": "Lib Dems",        "short": "LIB",  "colour": "#f59e0b", "text": "#000", "councils": 18, "net": "+1",  "councillors": 720,  "net_c": "+35"},
-            {"name": "Green",           "short": "GRN",  "colour": "#16a34a", "text": "#fff", "councils": 1,  "net": "0",   "councillors": 140,  "net_c": "+27"},
-            {"name": "Independent",     "short": "IND",  "colour": "#6b7280", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 210,  "net_c": "0"},
-        ]
-    })
+    try:
+        if os.path.exists(_NATIONAL_CACHE_PATH):
+            with open(_NATIONAL_CACHE_PATH) as f:
+                cached = json.load(f)
+            if time.time() - cached.get("_ts", 0) < _NATIONAL_CACHE_TTL:
+                return jsonify({k: v for k, v in cached.items() if k != "_ts"})
+    except Exception:
+        pass
+    data = _fetch_national_results()
+    if data:
+        try:
+            with open(_NATIONAL_CACHE_PATH, "w") as f:
+                json.dump({**data, "_ts": time.time()}, f)
+        except Exception:
+            pass
+        return jsonify(data)
+    return jsonify(_NATIONAL_FALLBACK)
 
 
 _ELEC_ALERTS_PATH = os.path.join(os.path.dirname(__file__), "elections_alerts.json")
