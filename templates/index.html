@@ -6955,7 +6955,7 @@ _bkBadge();
   window.intelSavesView = function(type, name, idx) {
     if (type === "company") {
       blookupTab("company");
-      document.getElementById("co-search-input").value = name;
+      document.getElementById("company-input").value = name;
       setTimeout(() => searchCompany(), 100);
     } else {
       blookupTab("brand");
