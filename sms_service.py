@@ -4983,7 +4983,11 @@ def whatsapp_results_format(postcode: str) -> str:
         )
     except Exception as e:
         app.logger.error(f"whatsapp_results_format: {e}")
-        return "Sorry, couldn't load results. Try again shortly."
+        return (
+            f"⏳ Result not yet declared for {postcode.upper()}\n\n"
+            "Counting is still underway. Try again in a few minutes or check:\n"
+            "🔗 miru.humanagency.co"
+        )
 
 
 def _split_product_postcode(body: str):
