@@ -1587,14 +1587,15 @@ _PARTY_META = {
 }
 
 _NATIONAL_FALLBACK = {
-    "updated": "8 May 2026 · Live results",
+    "updated": "8 May 2026 · Final results (BBC)",
     "headline": "Reform surge, heavy Labour losses — 2026 local elections",
     "parties": [
-        {"name": "Reform UK",    "short": "REF", "colour": "#06b6d4", "text": "#fff", "councils": 2,  "net": "+2",  "councillors": 398, "net_c": "+396"},
-        {"name": "Labour",       "short": "LAB", "colour": "#e11d48", "text": "#fff", "councils": 10, "net": "-8",  "councillors": 253, "net_c": "-259"},
-        {"name": "Conservative", "short": "CON", "colour": "#1d4ed8", "text": "#fff", "councils": 6,  "net": "-1",  "councillors": 256, "net_c": "-171"},
-        {"name": "Lib Dems",     "short": "LIB", "colour": "#f59e0b", "text": "#000", "councils": 5,  "net": "+1",  "councillors": 249, "net_c": "+37"},
-        {"name": "Green",        "short": "GRN", "colour": "#16a34a", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 51,  "net_c": "+27"},
+        {"name": "Reform UK",    "short": "REF", "colour": "#06b6d4", "text": "#fff", "councils": 10, "net": "+10", "councillors": 585, "net_c": "+583"},
+        {"name": "Lib Dems",     "short": "LIB", "colour": "#f59e0b", "text": "#000", "councils": 8,  "net": "+8",  "councillors": 355, "net_c": "+29"},
+        {"name": "Conservative", "short": "CON", "colour": "#1d4ed8", "text": "#fff", "councils": 0,  "net": "-5",  "councillors": 322, "net_c": "-267"},
+        {"name": "Labour",       "short": "LAB", "colour": "#e11d48", "text": "#fff", "councils": 0,  "net": "-15", "councillors": 303, "net_c": "-394"},
+        {"name": "Green",        "short": "GRN", "colour": "#16a34a", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 120, "net_c": "+66"},
+        {"name": "Independent",  "short": "IND", "colour": "#6b7280", "text": "#fff", "councils": 0,  "net": "0",   "councillors": 49,  "net_c": ""},
     ]
 }
 
