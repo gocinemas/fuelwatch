@@ -6291,6 +6291,13 @@ _bkBadge();
 
   <!-- Main view -->
   <div id="saves-main" style="display:none">
+
+    <!-- Intel bookmarks (localStorage) -->
+    <div id="intel-saves-section" style="margin-bottom:20px;display:none">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🔍 Company &amp; Brand Intel</div>
+      <div id="intel-saves-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
     <div style="margin-bottom:16px">
       <div style="display:flex;gap:8px;align-items:center">
         <input id="saves-url-input" type="url" placeholder="Enter a link or attach a picture…"
@@ -6812,7 +6819,51 @@ _bkBadge();
     _savesShowMain();
   };
 
+  function _renderIntelSaves() {
+    const items = JSON.parse(localStorage.getItem("miru_intel_bookmarks") || "[]");
+    const section = document.getElementById("intel-saves-section");
+    const list    = document.getElementById("intel-saves-list");
+    if (!items.length) { section.style.display = "none"; return; }
+    section.style.display = "";
+    list.innerHTML = items.map((b, i) => {
+      const icon   = b.type === "company" ? "🏢" : "🏷️";
+      const label  = b.type === "company" ? "Company Intel" : "Brand Intel";
+      const screen = b.type === "company" ? "company" : "brand";
+      const date   = new Date(b.saved).toLocaleDateString("en-GB", {day:"numeric", month:"short"});
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
+        <div style="min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${icon} ${b.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${label} · saved ${date}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button onclick="intelSavesView('${b.type}','${b.name.replace(/'/g,"\\'")}',${i})" style="font-size:12px;font-weight:700;color:#2563eb;background:#eff6ff;border:none;border-radius:10px;padding:6px 12px;cursor:pointer">View</button>
+          <button onclick="intelSavesRemove(${i})" style="font-size:12px;color:#9ca3af;background:var(--surface2);border:none;border-radius:10px;padding:6px 10px;cursor:pointer">✕</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  window.intelSavesView = function(type, name, idx) {
+    if (type === "company") {
+      showScreen("company");
+      document.getElementById("co-search-input").value = name;
+      setTimeout(() => searchCompany(), 100);
+    } else {
+      showScreen("brand");
+      document.getElementById("brand-search-input").value = name;
+      setTimeout(() => searchBrand(), 100);
+    }
+  };
+
+  window.intelSavesRemove = function(idx) {
+    const items = JSON.parse(localStorage.getItem("miru_intel_bookmarks") || "[]");
+    items.splice(idx, 1);
+    localStorage.setItem("miru_intel_bookmarks", JSON.stringify(items));
+    _renderIntelSaves();
+  };
+
   window.savesLoad = async function() {
+    _renderIntelSaves();
     document.getElementById("saves-list").innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div>Loading…</div>';
     try {
       const r = await fetch("/api/wa-saves", {headers: _savesHeaders()});
