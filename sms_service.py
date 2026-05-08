@@ -1463,15 +1463,17 @@ def school_settings_get():
                 break
         if not profiles:
             return _cors(jsonify({"error": "not found"})), 404
-        p = profiles[0]
-        return _cors(jsonify({"profile": {
-            "id":            p["id"],
-            "child_name":    p.get("child_name", ""),
-            "school_name":   p.get("school_name", ""),
-            "class_name":    p.get("class_name", ""),
-            "teacher_name":  p.get("teacher_name", ""),
-            "sender_emails": p.get("sender_emails") or [],
-        }}))
+        return _cors(jsonify({"profiles": [
+            {
+                "id":            p["id"],
+                "child_name":    p.get("child_name", ""),
+                "school_name":   p.get("school_name", ""),
+                "class_name":    p.get("class_name", ""),
+                "teacher_name":  p.get("teacher_name", ""),
+                "sender_emails": p.get("sender_emails") or [],
+            }
+            for p in profiles
+        ]}))
     except Exception as e:
         return _cors(jsonify({"error": str(e)})), 500
 

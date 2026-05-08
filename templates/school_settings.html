@@ -201,37 +201,14 @@
 
   <!-- Step 2: profile + email management -->
   <div id="screen-profile">
-
-    <!-- Profile summary -->
-    <div class="card">
-      <div class="section-title">Your account</div>
-      <div id="profile-rows"></div>
-    </div>
-
-    <!-- Monitored emails -->
-    <div class="card">
-      <div class="section-title">Monitored email addresses</div>
-      <p style="font-size:13px;color:#6b7280;margin-bottom:12px;line-height:1.5">
-        Miru scans emails from these addresses and WhatsApps you when there's something important.
-      </p>
-      <div id="email-list"></div>
-
-      <div class="add-email-row">
-        <input type="email" id="new-email-input" placeholder="e.g. admin@school.org.uk" />
-        <button class="btn-amber" onclick="addEmail()">Add</button>
-      </div>
-      <div id="email-error"   class="error-msg"></div>
-      <div id="email-success" class="success-msg"></div>
-    </div>
-
+    <div id="profile-list"></div>
   </div>
 
 </div>
 
 <script>
-let _profileId  = null;
-let _waNumber   = null;
-let _emails     = [];
+let _profiles = [];   // [{id, child_name, school_name, class_name, teacher_name, sender_emails}, ...]
+let _waNumber = null;
 
 function _normaliseWa(raw) {
   let d = raw.replace(/[^\d+]/g, "");
@@ -255,16 +232,15 @@ async function lookupProfile() {
   try {
     const r = await fetch("/api/school/settings?wa=" + encodeURIComponent(wa));
     const d = await r.json();
-    if (!r.ok || !d.profile) {
+    if (!r.ok || !d.profiles || !d.profiles.length) {
       document.getElementById("lookup-error").style.display = "block";
       btn.disabled = false;
       btn.textContent = "Find my account";
       return;
     }
-    _profileId = d.profile.id;
     _waNumber  = wa;
-    _emails    = d.profile.sender_emails || [];
-    renderProfile(d.profile);
+    _profiles  = d.profiles;
+    renderAllProfiles();
     document.getElementById("screen-lookup").style.display  = "none";
     document.getElementById("screen-profile").style.display = "block";
   } catch(e) {
@@ -275,41 +251,71 @@ async function lookupProfile() {
   }
 }
 
-function renderProfile(p) {
-  const rows = [
-    ["Child",   p.child_name  || "—"],
-    ["School",  p.school_name || "—"],
-    ["Class",   p.class_name  || "—"],
-    ["Teacher", p.teacher_name|| "—"],
-  ];
-  document.getElementById("profile-rows").innerHTML = rows.map(([label, val]) =>
+function renderAllProfiles() {
+  document.getElementById("profile-list").innerHTML =
+    _profiles.map((p, pi) => _profileCard(p, pi)).join("");
+}
+
+function _profileCard(p, pi) {
+  const info = [
+    ["Child",   p.child_name   || "—"],
+    ["School",  p.school_name  || "—"],
+    ["Class",   p.class_name   || "—"],
+    ["Teacher", p.teacher_name || "—"],
+  ].map(([label, val]) =>
     `<div class="profile-row">
       <span class="profile-label">${label}</span>
       <span class="profile-value">${val}</span>
     </div>`
   ).join("");
-  renderEmails();
+
+  const emails = p.sender_emails && p.sender_emails.length
+    ? p.sender_emails.map((e, ei) =>
+        `<div class="email-item">
+          <span class="email-item-addr">📧 ${e}</span>
+          <button class="btn-remove" onclick="removeEmail(${pi},${ei})">Remove</button>
+        </div>`
+      ).join("")
+    : `<p style="font-size:13px;color:#9ca3af;padding:8px 0">No email addresses added yet.</p>`;
+
+  return `
+    <div class="card">
+      <div class="section-title">Child ${_profiles.length > 1 ? pi + 1 : ""}</div>
+      ${info}
+    </div>
+    <div class="card">
+      <div class="section-title">Monitored emails${_profiles.length > 1 ? " — " + (p.child_name || "Child " + (pi+1)) : ""}</div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:12px;line-height:1.5">
+        Miru scans emails from these addresses and WhatsApps you when there's something important.
+      </p>
+      <div id="email-list-${pi}">${emails}</div>
+      <div class="add-email-row">
+        <input type="email" id="new-email-input-${pi}" placeholder="e.g. admin@school.org.uk" />
+        <button class="btn-amber" onclick="addEmail(${pi})">Add</button>
+      </div>
+      <div id="email-error-${pi}"   class="error-msg"></div>
+      <div id="email-success-${pi}" class="success-msg"></div>
+    </div>`;
 }
 
-function renderEmails() {
-  const el = document.getElementById("email-list");
-  if (!_emails.length) {
-    el.innerHTML = `<p style="font-size:13px;color:#9ca3af;padding:8px 0">No email addresses added yet.</p>`;
-    return;
-  }
-  el.innerHTML = _emails.map((e, i) =>
-    `<div class="email-item">
-      <span class="email-item-addr">📧 ${e}</span>
-      <button class="btn-remove" onclick="removeEmail(${i})">Remove</button>
-    </div>`
-  ).join("");
+function _reRenderEmailList(pi) {
+  const p = _profiles[pi];
+  const emails = p.sender_emails && p.sender_emails.length
+    ? p.sender_emails.map((e, ei) =>
+        `<div class="email-item">
+          <span class="email-item-addr">📧 ${e}</span>
+          <button class="btn-remove" onclick="removeEmail(${pi},${ei})">Remove</button>
+        </div>`
+      ).join("")
+    : `<p style="font-size:13px;color:#9ca3af;padding:8px 0">No email addresses added yet.</p>`;
+  document.getElementById("email-list-" + pi).innerHTML = emails;
 }
 
-async function addEmail() {
-  const input = document.getElementById("new-email-input");
-  const email = input.value.trim().toLowerCase();
-  const errEl = document.getElementById("email-error");
-  const okEl  = document.getElementById("email-success");
+async function addEmail(pi) {
+  const input  = document.getElementById("new-email-input-" + pi);
+  const email  = input.value.trim().toLowerCase();
+  const errEl  = document.getElementById("email-error-" + pi);
+  const okEl   = document.getElementById("email-success-" + pi);
   errEl.style.display = "none";
   okEl.style.display  = "none";
 
@@ -318,18 +324,19 @@ async function addEmail() {
     errEl.style.display = "block";
     return;
   }
-  if (_emails.includes(email)) {
+  const current = _profiles[pi].sender_emails || [];
+  if (current.includes(email)) {
     errEl.textContent = "That email is already being monitored.";
     errEl.style.display = "block";
     return;
   }
 
-  const updated = [..._emails, email];
-  const ok = await _saveEmails(updated);
+  const updated = [...current, email];
+  const ok = await _saveEmails(pi, updated);
   if (ok) {
-    _emails = updated;
+    _profiles[pi].sender_emails = updated;
     input.value = "";
-    renderEmails();
+    _reRenderEmailList(pi);
     okEl.textContent = `✅ ${email} added — Miru will now monitor it.`;
     okEl.style.display = "block";
     setTimeout(() => okEl.style.display = "none", 4000);
@@ -339,18 +346,19 @@ async function addEmail() {
   }
 }
 
-async function removeEmail(idx) {
-  const email   = _emails[idx];
-  const updated = _emails.filter((_, i) => i !== idx);
-  const errEl   = document.getElementById("email-error");
-  const okEl    = document.getElementById("email-success");
+async function removeEmail(pi, ei) {
+  const current = _profiles[pi].sender_emails || [];
+  const email   = current[ei];
+  const updated = current.filter((_, i) => i !== ei);
+  const errEl   = document.getElementById("email-error-" + pi);
+  const okEl    = document.getElementById("email-success-" + pi);
   errEl.style.display = "none";
   okEl.style.display  = "none";
 
-  const ok = await _saveEmails(updated);
+  const ok = await _saveEmails(pi, updated);
   if (ok) {
-    _emails = updated;
-    renderEmails();
+    _profiles[pi].sender_emails = updated;
+    _reRenderEmailList(pi);
     okEl.textContent = `Removed ${email}.`;
     okEl.style.display = "block";
     setTimeout(() => okEl.style.display = "none", 3000);
@@ -360,12 +368,12 @@ async function removeEmail(idx) {
   }
 }
 
-async function _saveEmails(emails) {
+async function _saveEmails(pi, emails) {
   try {
     const r = await fetch("/api/school/settings/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile_id: _profileId, wa: _waNumber, emails })
+      body: JSON.stringify({ profile_id: _profiles[pi].id, wa: _waNumber, emails })
     });
     return r.ok;
   } catch(e) {
