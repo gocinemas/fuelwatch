@@ -1573,8 +1573,8 @@ def school_fetch_now():
 
 
 # ── National results: live pull from Democracy Club, 6-hour cache ────────────
-_NAT_CACHE: dict = {"data": None, "ts": 0.0}
-_NAT_TTL = 6 * 3600  # 6 hours
+_NAT_CACHE: dict = {"data": None, "ts": 0.0}  # reset to force fresh fetch on deploy
+_NAT_TTL = 3600  # 1 hour — results still trickling in
 
 # Canonical 2022 baseline for net-change calculation (seats contested in 2026)
 _NAT_BASELINE_2022 = {
@@ -1628,28 +1628,30 @@ def _fetch_national_dc() -> dict | None:
         return _NAT_CACHE["data"]
 
     counts: dict[str, int] = defaultdict(int)
-    url = "https://candidates.democracyclub.org.uk/api/next/candidates/"
+    total_elected = 0
+    url = "https://candidates.democracyclub.org.uk/api/next/candidates_elected/"
     params: dict | None = {
         "election_date": "2026-05-07",
-        "elected": "True",
         "page_size": 200,
         "format": "json",
     }
     pages = 0
     try:
-        while url and pages < 40:
+        while url and pages < 20:
             r = requests.get(
                 url, params=params, timeout=12,
                 headers={"User-Agent": "Miru/1.0"},
             )
             params = None  # only on first request
             if r.status_code != 200:
+                print(f"[national] DC HTTP {r.status_code}")
                 break
             d = r.json()
+            if pages == 0:
+                total_elected = d.get("count", 0)
             for c in d.get("results", []):
-                if c.get("elected"):
-                    key = _nat_normalise_party(c.get("party_name") or "other")
-                    counts[key] += 1
+                key = _nat_normalise_party(c.get("party_name") or "other")
+                counts[key] += 1
             url = d.get("next")
             pages += 1
     except Exception as e:
@@ -1677,7 +1679,7 @@ def _fetch_national_dc() -> dict | None:
         })
 
     result = {
-        "updated":    datetime.now(timezone.utc).strftime("%-d %b %Y · %-H:%M UTC"),
+        "updated":    datetime.now(timezone.utc).strftime("%-d %b %Y · %-H:%M UTC") + f" · {total_elected} elected",
         "source":     "Democracy Club",
         "source_url": "https://candidates.democracyclub.org.uk",
         "headline":   "2026 UK local election results",
