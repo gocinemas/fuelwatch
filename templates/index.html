@@ -2954,10 +2954,7 @@
             Results will appear here once declared.
           </div>`;
       } else {
-        // No results yet — show 2022 results directly, skip the counting message
-        liveEl.innerHTML = `<div style="font-size:12px;color:var(--subtle);text-align:center;padding:8px 0">2026 results not yet published</div>`;
-        // Auto-switch to 2022 tab
-        erTab('2022');
+        liveEl.innerHTML = `<div style="font-size:12px;color:var(--subtle);text-align:center;padding:8px 0">2026 results not yet published for this ward</div>`;
       }
 
       // 2022 past results — tab panel + inline (no-election view)
