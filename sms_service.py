@@ -1680,18 +1680,20 @@ def api_elections_national():
     })
 
 
-_ELEC_ALERTS_PATH = os.path.join(os.path.dirname(__file__), "elections_alerts.json")
-
 def _load_elec_alerts():
     try:
-        with open(_ELEC_ALERTS_PATH) as f:
-            return json.load(f)
+        rows = lib._sb().table("election_alerts").select("*").execute().data or []
+        return rows
     except Exception:
         return []
 
-def _save_elec_alerts(alerts):
-    with open(_ELEC_ALERTS_PATH, "w") as f:
-        json.dump(alerts, f)
+def _save_elec_alert_sent(wa: str, postcode: str):
+    """Mark a specific alert as sent in Supabase."""
+    try:
+        lib._sb().table("election_alerts").update({"sent": True}) \
+            .eq("wa", wa).eq("postcode", postcode).execute()
+    except Exception:
+        pass
 
 
 @app.route("/api/elections/alert", methods=["POST"])
@@ -1701,12 +1703,18 @@ def api_elections_alert_register():
     wa       = data.get("wa_number", "").strip()
     if not postcode or not wa:
         return jsonify({"error": "postcode and wa_number required"}), 400
-    alerts = _load_elec_alerts()
-    # De-duplicate by postcode + wa
-    existing = next((a for a in alerts if a["postcode"] == postcode and a["wa"] == wa), None)
-    if not existing:
-        alerts.append({"postcode": postcode, "wa": wa, "sent": False, "registered": datetime.utcnow().isoformat()})
-        _save_elec_alerts(alerts)
+    try:
+        existing = lib._sb().table("election_alerts").select("id") \
+            .eq("postcode", postcode).eq("wa", wa).execute().data
+        if not existing:
+            lib._sb().table("election_alerts").insert({
+                "postcode": postcode,
+                "wa": wa,
+                "sent": False,
+                "registered": datetime.utcnow().isoformat(),
+            }).execute()
+    except Exception as e:
+        app.logger.error(f"election alert register: {e}")
     return jsonify({"ok": True})
 
 
@@ -1750,13 +1758,32 @@ def api_elections_check_alerts():
             body = "\n".join(lines)
             wa_to = alert["wa"] if alert["wa"].startswith("+") else "+" + alert["wa"]
             _wa_send_proactive(f"whatsapp:{wa_to}", body)
-            alert["sent"] = True
+            _save_elec_alert_sent(alert["wa"], alert["postcode"])
             sent_count += 1
         except Exception:
             continue
 
-    _save_elec_alerts(alerts)
     return jsonify({"checked": len(pending), "sent": sent_count})
+
+
+@app.route("/api/elections/send-results", methods=["POST"])
+def api_elections_send_results():
+    """Admin: immediately send election results to a specific WhatsApp number + postcode."""
+    token = request.args.get("token", "")
+    if token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "forbidden"}), 403
+    data     = request.get_json(force=True) or {}
+    wa       = data.get("wa_number", "").strip()
+    postcode = data.get("postcode", "").strip().replace(" ", "").upper()
+    if not wa or not postcode:
+        return jsonify({"error": "wa_number and postcode required"}), 400
+    try:
+        msg = whatsapp_results_format(postcode)
+        wa_to = wa if wa.startswith("+") else "+" + wa
+        _wa_send_proactive(f"whatsapp:{wa_to}", msg)
+        return jsonify({"ok": True, "sent_to": wa_to})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/elections")
