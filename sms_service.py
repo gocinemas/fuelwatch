@@ -1412,6 +1412,35 @@ def _get_elections():
     return _ELECTIONS_DATA
 
 
+# ── ai.humanagency.co content API ───────────────────────────────────────────
+_AIHA_CONTENT_PATH = os.path.join(os.path.dirname(__file__), "aiha_content.json")
+_AIHA_EDIT_TOKEN   = "aiha-2026-edit"
+
+@app.route("/api/aiha/content", methods=["GET", "OPTIONS"])
+def aiha_content_get():
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+    try:
+        if os.path.exists(_AIHA_CONTENT_PATH):
+            with open(_AIHA_CONTENT_PATH) as f:
+                return _cors(jsonify(json.load(f)))
+    except Exception:
+        pass
+    return _cors(jsonify({}))
+
+@app.route("/api/aiha/content", methods=["POST"])
+def aiha_content_post():
+    if request.headers.get("X-Edit-Token", "") != _AIHA_EDIT_TOKEN:
+        return _cors(jsonify({"error": "Unauthorized"})), 401
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        with open(_AIHA_CONTENT_PATH, "w") as f:
+            json.dump(data, f)
+        return _cors(jsonify({"ok": True}))
+    except Exception as e:
+        return _cors(jsonify({"error": str(e)})), 500
+
+
 _NATIONAL_CACHE_PATH = os.path.join(os.path.dirname(__file__), "elections_national_cache.json")
 _NATIONAL_CACHE_TTL  = 900  # 15 minutes
 
