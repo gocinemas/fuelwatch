@@ -8291,6 +8291,13 @@ _bkBadge();
     var d=await r.json();
     _sp.token=d.access_token; _sp.expires=Date.now()+(d.expires_in-60)*1000;
     _sp.refreshToken=d.refresh_token; _save();
+    // Log granted scopes so we can diagnose missing playlist permissions
+    var granted = (d.scope||'').split(' ');
+    var needsWrite = granted.includes('playlist-modify-private') || granted.includes('playlist-modify-public');
+    if(!needsWrite){
+      console.warn('Spotify granted scopes:', d.scope);
+      alert('Spotify connected but playlist access was not granted.\nGranted scopes: '+(d.scope||'(none)')+'\n\nIn the Spotify developer dashboard, make sure this app has playlist scopes enabled, then reconnect.');
+    }
   }
 
   async function _getToken(){
