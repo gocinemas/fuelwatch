@@ -640,6 +640,27 @@ def _check_library_pin():
     return None
 
 
+def _check_saves_pin():
+    """Auth for wa-saves mutations. Accepts admin PW (all saves) OR user token (own saves only).
+    Returns (from_number_or_None, error_response_or_None).
+    from_number=None means admin (unrestricted). error!=None means reject request."""
+    admin_pw = os.environ.get("ADMIN_PASSWORD", "")
+    supplied = (request.headers.get("X-Library-PIN")
+                or request.headers.get("X-Admin-Password")
+                or request.args.get("pin", ""))
+    if not admin_pw:
+        # Dev mode — open access, try to resolve user token anyway
+        from_number = _resolve_user_token(supplied) if supplied else None
+        return from_number, None
+    if supplied == admin_pw:
+        return None, None  # admin, unrestricted
+    if supplied:
+        from_number = _resolve_user_token(supplied)
+        if from_number:
+            return from_number, None  # valid user token
+    return None, (jsonify({"error": "Password required", "auth": True}), 401)
+
+
 @app.route("/api/library/documents")
 def api_library_list():
     err = _check_library_pin()
@@ -6757,7 +6778,7 @@ def api_wa_saves():
 @app.route("/api/wa-saves/update", methods=["POST"])
 def api_wa_saves_update():
     """Update triage status of a saved URL."""
-    err = _check_library_pin()
+    from_number, err = _check_saves_pin()
     if err:
         return err
     data = request.json or {}
@@ -6766,7 +6787,10 @@ def api_wa_saves_update():
     if not save_id or status not in ("read", "skip", "remind", "pending"):
         return jsonify({"error": "Invalid id or status"}), 400
     try:
-        lib._sb().table("wa_saves").update({"status": status}).eq("id", save_id).execute()
+        q = lib._sb().table("wa_saves").update({"status": status}).eq("id", save_id)
+        if from_number:
+            q = q.eq("from_number", from_number)  # users can only update their own
+        q.execute()
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -6775,15 +6799,13 @@ def api_wa_saves_update():
 @app.route("/api/wa-saves/delete", methods=["POST"])
 def api_wa_saves_delete():
     """Delete a save. Users can only delete their own saves."""
-    err = _check_library_pin()
+    from_number, err = _check_saves_pin()
     if err:
         return err
     data = request.json or {}
     save_id = data.get("id")
     if not save_id:
         return jsonify({"error": "id required"}), 400
-    pin = request.headers.get("X-Library-PIN", "")
-    from_number = _resolve_user_token(pin)
     try:
         q = lib._sb().table("wa_saves").delete().eq("id", save_id)
         if from_number:
@@ -6798,7 +6820,7 @@ def api_wa_saves_delete():
 @app.route("/api/wa-saves/enrich", methods=["POST"])
 def api_wa_saves_enrich():
     """Look up place details for a photo/place save and update its summary."""
-    err = _check_library_pin()
+    from_number, err = _check_saves_pin()
     if err:
         return err
     data = request.json or {}
@@ -6808,10 +6830,12 @@ def api_wa_saves_enrich():
     lon        = data.get("lon")
     if not save_id or not venue_name:
         return jsonify({"error": "id and venue required"}), 400
+    fn = from_number
     # Fall back to stored GPS if frontend didn't send coordinates
     if lat is None or lon is None:
-        pin = request.headers.get("X-Library-PIN", "")
-        fn  = _resolve_user_token(pin)
+        if not fn:
+            pin = request.headers.get("X-Library-PIN", "")
+            fn = _resolve_user_token(pin)
         loc = fn and _USER_LAST_LOCATION.get(fn)
         if loc and (time.time() - loc.get("ts", 0)) < 7200:
             lat, lon = loc["lat"], loc["lon"]
@@ -6843,8 +6867,6 @@ def api_wa_saves_enrich():
             lib.saves_sync(rows[0])
 
         # Notify on WhatsApp
-        pin = request.headers.get("X-Library-PIN", "")
-        fn  = _resolve_user_token(pin)
         if fn:
             display_name = update.get("title") or f"🏪 {venue_name}"
             msg = f"✅ Updated: {display_name}\n"
@@ -6860,7 +6882,7 @@ def api_wa_saves_enrich():
 @app.route("/api/wa-saves/rename", methods=["POST"])
 def api_wa_saves_rename():
     """Update the title of a saved item."""
-    err = _check_library_pin()
+    from_number, err = _check_saves_pin()
     if err:
         return err
     data = request.json or {}
@@ -6869,7 +6891,10 @@ def api_wa_saves_rename():
     if not save_id or not title:
         return jsonify({"error": "id and title required"}), 400
     try:
-        lib._sb().table("wa_saves").update({"title": title}).eq("id", save_id).execute()
+        q = lib._sb().table("wa_saves").update({"title": title}).eq("id", save_id)
+        if from_number:
+            q = q.eq("from_number", from_number)
+        q.execute()
         rows = lib._sb().table("wa_saves").select("*").eq("id", save_id).execute().data
         if rows:
             lib.saves_sync(rows[0])
@@ -6881,14 +6906,13 @@ def api_wa_saves_rename():
 @app.route("/api/wa-saves/search")
 def api_wa_saves_search():
     """Search saves: Algolia first, Supabase fallback."""
-    err = _check_library_pin()
+    from_number_raw, err = _check_saves_pin()
     if err:
         return err
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify({"hits": []})
-    pin = request.headers.get("X-Library-PIN", "")
-    from_number = _resolve_user_token(pin) or ""
+    from_number = from_number_raw or ""
 
     # Try Algolia
     try:
@@ -6941,14 +6965,16 @@ def api_wa_saves_reindex():
 @app.route("/api/wa-saves/add", methods=["POST"])
 def api_wa_saves_add():
     """Manually save a URL from the web UI."""
-    err = _check_library_pin()
+    from_number, err = _check_saves_pin()
     if err:
         return err
     data = request.json or {}
     url = (data.get("url") or "").strip()
     if not url or not url.startswith("http"):
         return jsonify({"error": "Valid URL required"}), 400
-    result = _wa_save_url("web", url)
+    # Use user's from_number if known, otherwise tag as "web"
+    save_as = from_number or "web"
+    result = _wa_save_url(save_as, url)
     return jsonify({"ok": True, "message": result})
 
 
