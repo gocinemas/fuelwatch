@@ -1432,6 +1432,7 @@ _UA_TO_COUNCIL_SLUG = {
 
 
 _DC_RESULTS_CACHE: dict = {}   # {key: (results, ts, has_real)}
+_DC_BALLOT_LIST_CACHE: dict = {}  # {council_slug: (ballots, ts)}
 _DC_RESULTS_TTL_FINAL  = 3600  # 1h once real votes are in
 _DC_RESULTS_TTL_PENDING = 300  # 5 min while still null — so fresh DC data shows quickly
 
@@ -1892,40 +1893,48 @@ def api_elections_council_view():
         break
     election_date = "2026-05-07"
 
-    # Step 1: fetch all ballot IDs for the council in one call
-    try:
-        r = requests.get(
-            f"https://candidates.democracyclub.org.uk/api/next/elections/local.{council_slug}.{election_date}/",
-            params={"format": "json"}, timeout=12,
-            headers={"User-Agent": "Miru/1.0"},
-        )
-        if r.status_code != 200:
-            return jsonify({"error": f"DC API returned {r.status_code} for council '{council_slug}'"}), 502
-        ballots = r.json().get("ballots", [])
-    except Exception as e:
-        return jsonify({"error": str(e)}), 502
+    # Step 1: fetch all ballot IDs for the council (cached 30 min)
+    cache_list_key = f"dcel:{council_slug}:{election_date}"
+    ballots = None
+    if cache_list_key in _DC_BALLOT_LIST_CACHE:
+        cached_ballots, cached_ts = _DC_BALLOT_LIST_CACHE[cache_list_key]
+        if _time.time() - cached_ts < 1800:
+            ballots = cached_ballots
+    if ballots is None:
+        try:
+            r = requests.get(
+                f"https://candidates.democracyclub.org.uk/api/next/elections/local.{council_slug}.{election_date}/",
+                params={"format": "json"}, timeout=12,
+                headers={"User-Agent": "Miru/1.0"},
+            )
+            if r.status_code != 200:
+                return jsonify({"error": f"DC API returned {r.status_code} for '{council_slug}'. The council may not have elections on {election_date}."}), 502
+            ballots = r.json().get("ballots", [])
+            _DC_BALLOT_LIST_CACHE[cache_list_key] = (ballots, _time.time())
+        except Exception as e:
+            return jsonify({"error": str(e)}), 502
 
     if not ballots:
         return jsonify({"error": f"No ballots found for '{council_slug}' on {election_date}"}), 404
 
     total_wards = len(ballots)
 
-    # Step 2: fetch each ballot's results in parallel (up to 12 workers)
+    # Step 2: fetch each ballot's results in parallel
+    # Use the URL from the ballot list directly to avoid constructing stale IDs.
+    ballot_url_map = {b["ballot_paper_id"]: b.get("url", "").replace("http://", "https://").split("?")[0] for b in ballots}
+
     def fetch_ballot(ballot_paper_id):
         cache_key = f"dcb:{ballot_paper_id}"
         if cache_key in _DC_RESULTS_CACHE:
             cached, ts, _ = _DC_RESULTS_CACHE[cache_key]
             if _time.time() - ts < 3600:
                 return ballot_paper_id, cached
+        url = ballot_url_map.get(ballot_paper_id) or f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/"
         for attempt in range(3):
             try:
-                r2 = requests.get(
-                    f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/",
-                    params={"format": "json"}, timeout=10,
-                    headers={"User-Agent": "Miru/1.0"},
-                )
+                r2 = requests.get(url, params={"format": "json"}, timeout=6, headers={"User-Agent": "Miru/1.0"})
                 if r2.status_code == 429:
-                    _time.sleep(2 ** attempt)
+                    _time.sleep(0.4 * (attempt + 1))
                     continue
                 if r2.status_code != 200:
                     return ballot_paper_id, None
@@ -1950,7 +1959,7 @@ def api_elections_council_view():
                 return ballot_paper_id, None
         return ballot_paper_id, None
 
-    # Build a label map from the ballot list (post label is often present)
+    # Build a label map from the ballot list
     ballot_label: dict = {}
     for b in ballots:
         bpid = b["ballot_paper_id"]

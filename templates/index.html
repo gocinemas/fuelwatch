@@ -487,6 +487,16 @@
           class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition text-sm">
           Search Fuel Prices
         </button>
+        <!-- New-user hint: shown until first search, then collapses to ℹ️ link -->
+        <div id="fuel-hint-new" style="display:none;margin-top:14px;padding:12px 14px;background:#fef9f0;border:1px solid #fde68a;border-radius:12px;font-size:13px;color:#92400e;line-height:1.5">
+          Enter your postcode to find the cheapest petrol or diesel near you — ranked by price, with distance shown. Tap 📍 to use your current location.
+        </div>
+        <div id="fuel-hint-link" style="display:none;margin-top:10px;text-align:right">
+          <button onclick="fuelHintToggle()" style="background:none;border:none;font-size:12px;color:var(--subtle);cursor:pointer;padding:0">ℹ️ How it works</button>
+        </div>
+        <div id="fuel-hint-returning" style="display:none;margin-top:8px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:12px;color:var(--subtle);line-height:1.5">
+          Enter postcode → pick fuel type → see stations ranked by price. Tap 📍 to use your location. Tap 🔔 below to set a price-drop alert.
+        </div>
       </div>
 
       <!-- Price drop alert — collapsed by default -->
@@ -1554,6 +1564,22 @@
     }, _showErr);
   }
 
+  // ── Fuel hint (new vs returning users) ──────────────────────────────────────
+  (function(){
+    var used = localStorage.getItem('miru_fuel_used');
+    if(!used){
+      document.getElementById('fuel-hint-new').style.display = 'block';
+    } else {
+      document.getElementById('fuel-hint-link').style.display = 'block';
+    }
+  })();
+
+  function fuelHintToggle(){
+    var el = document.getElementById('fuel-hint-returning');
+    var open = el.style.display === 'none' || el.style.display === '';
+    el.style.display = open ? 'block' : 'none';
+  }
+
   // ── Fuel Search ─────────────────────────────────────────────────────────────
   function fuelAlertToggle() {
     const panel   = document.getElementById("fuel-alert-panel");
@@ -1615,6 +1641,11 @@
       const res  = await fetch(`/api/search?postcode=${postcode}&fuel=${fuel}&radius=${radius}&mode=fuel`);
       const data = await res.json();
       if (!res.ok) { setError("fuel", data.error || "Not found"); return; }
+      if(!localStorage.getItem('miru_fuel_used')){
+        localStorage.setItem('miru_fuel_used','1');
+        document.getElementById('fuel-hint-new').style.display='none';
+        document.getElementById('fuel-hint-link').style.display='block';
+      }
       renderFuel(data);
     } catch { setError("fuel", "Network error — try again."); }
     finally { setLoading("fuel", false); }
@@ -8275,13 +8306,24 @@ _bkBadge();
 
   async function _getPlaylist(token){
     if(_sp.playlistId) return _sp.playlistId;
-    var me=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+token}}).then(function(r){return r.json();});
-    var lists=await fetch('https://api.spotify.com/v1/me/playlists?limit=50',{headers:{Authorization:'Bearer '+token}}).then(function(r){return r.json();});
+    var meR=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+token}});
+    if(!meR.ok) throw new Error('Spotify account fetch failed ('+meR.status+') — try reconnecting');
+    var me=await meR.json();
+    if(!me.id) throw new Error('Could not read Spotify user ID');
+    var listsR=await fetch('https://api.spotify.com/v1/me/playlists?limit=50',{headers:{Authorization:'Bearer '+token}});
+    if(!listsR.ok) throw new Error('Spotify playlists fetch failed ('+listsR.status+')');
+    var lists=await listsR.json();
     var found=(lists.items||[]).find(function(p){return p.name==='Miru Picks';});
     if(found){ _sp.playlistId=found.id; _save(); return _sp.playlistId; }
-    var created=await fetch('https://api.spotify.com/v1/users/'+me.id+'/playlists',{method:'POST',
+    var createR=await fetch('https://api.spotify.com/v1/users/'+me.id+'/playlists',{method:'POST',
       headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({name:'Miru Picks',description:'Songs added via Miru',public:false})}).then(function(r){return r.json();});
+      body:JSON.stringify({name:'Miru Picks',description:'Songs added via Miru',public:false})});
+    if(!createR.ok){
+      var errText=await createR.text();
+      throw new Error('Could not create playlist ('+createR.status+'): '+errText);
+    }
+    var created=await createR.json();
+    if(!created.id) throw new Error('Playlist created but no ID returned');
     _sp.playlistId=created.id; _save(); return _sp.playlistId;
   }
 
