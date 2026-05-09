@@ -6769,7 +6769,7 @@ def api_wa_saves():
         )
         if filter_number:
             q = q.eq("from_number", filter_number)
-        rows = q.order("created_at", desc=True).limit(60).execute().data
+        rows = q.order("created_at", desc=True).execute().data
         return jsonify({"saves": rows})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
