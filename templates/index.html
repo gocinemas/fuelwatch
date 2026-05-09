@@ -7238,32 +7238,7 @@ _bkBadge();
       return;
     }
 
-    const SECTION_LABELS = {
-      article: "🔗 Articles & Links",
-      brand:   "🏷️ Brands",
-      place:   "🏪 Places & Restaurants",
-      ad:      "📢 Ads & Campaigns",
-      event:   "🎫 Events",
-      receipt: "🧾 Receipts",
-      doc:     "📄 Documents",
-      photo:   "📷 Photos & Captures",
-    };
-    const ORDER = ["article","brand","place","event","ad","photo","receipt","doc"];
-
-    const groups = {};
-    items.forEach(function(s) {
-      var cat = _saveCat(s);
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(s);
-    });
-
-    var html = "";
-    ORDER.forEach(function(cat) {
-      if (!groups[cat] || !groups[cat].length) return;
-      html += `<div style="font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin:20px 0 8px;padding-left:2px">${SECTION_LABELS[cat]}</div>`;
-      html += groups[cat].map(function(s) { return savesCardHtml(s); }).join("");
-    });
-    list.innerHTML = html;
+    list.innerHTML = items.map(function(s) { return savesCardHtml(s); }).join("");
   }
 
   function savesCardHtml(s) {
