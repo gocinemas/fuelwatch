@@ -8291,10 +8291,19 @@ _bkBadge();
         headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
         body:JSON.stringify({ids:[trackId]})});
       if(pr.status===403){
-        // Dev-mode app restriction — open track in Spotify so user can ♥ it there
+        // Fetch the user's Spotify email to show which account needs whitelisting
+        var email='';
+        try{
+          var me=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+token}});
+          if(me.ok){ var md=await me.json(); email=md.email||''; }
+        }catch(e2){}
         if(trackUrl) window.open(trackUrl,'_blank');
-        btn.textContent='↗'; btn.title='Opened in Spotify — tap ♥ there to save';
-        setTimeout(function(){btn.textContent=orig;btn.disabled=false;btn.title='';},3000);
+        var msg=email
+          ? 'Spotify dev-mode: account "'+email+'" isn\'t whitelisted.\n\nGo to developer.spotify.com/dashboard → your app → Settings → User Management → add "'+email+'".\n\nOpened track in Spotify — tap ♥ there to save for now.'
+          : 'Spotify dev-mode restriction — opened track in Spotify so you can ♥ it there.';
+        alert(msg);
+        btn.textContent='↗';
+        setTimeout(function(){btn.textContent=orig;btn.disabled=false;},3000);
         return;
       }
       if(!pr.ok) throw new Error('Save failed ('+pr.status+'): '+await pr.text());
