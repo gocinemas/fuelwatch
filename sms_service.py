@@ -1901,15 +1901,61 @@ def _resolve_councillors(postcode: str) -> dict:
     if r.status_code != 200:
         raise ValueError("Postcode not found")
     result = r.json().get("result", {})
-    codes = result.get("codes", {})
-    ward_gss  = codes.get("admin_ward", "")
-    ward_name = result.get("admin_ward", "")
-    council   = result.get("admin_district", "")
+    codes         = result.get("codes", {})
+    ward_gss      = codes.get("admin_ward", "")
+    ward_name     = result.get("admin_ward", "")
+    council       = result.get("admin_district", "")
+    district_code = codes.get("admin_district", "")
+    ced_gss       = codes.get("ced", "")
+    county_code   = codes.get("admin_county", "")
     if not ward_gss:
         return {"councillors": [], "ward": ward_name, "council": council}
 
-    elections = _get_elections()
-    ward_data = elections["by_gss"].get(ward_gss, {})
+    elections    = _get_elections()
+    ward_data    = elections["by_gss"].get(ward_gss, {})
+    council_slug = None
+
+    # Fallback 1: county electoral division
+    if not ward_data and ced_gss:
+        ward_data = elections["by_gss"].get(ced_gss, {})
+
+    # Fallback 2: reorganised/merged council — same logic as elections API
+    if not ward_data:
+        council_slug = (
+            _DISTRICT_TO_COUNCIL_SLUG.get(district_code) or
+            _UA_TO_COUNCIL_SLUG.get(district_code) or
+            _COUNTY_TO_COUNCIL_SLUG.get(county_code)
+        )
+        if council_slug:
+            slug_wards = elections["by_slug"].get(council_slug, {})
+            best = _best_ward_match(ward_name, slug_wards)
+            if best:
+                ward_data = slug_wards[best]
+
+    # Fallback 3: DC ballot-for-postcode API
+    if not ward_data and council_slug:
+        try:
+            dc_r = requests.get(
+                "https://candidates.democracyclub.org.uk/api/next/ballots/",
+                params={"election_date": "2026-05-07", "for_postcode": postcode, "format": "json"},
+                timeout=6, headers={"User-Agent": "Miru/1.0"},
+            )
+            if dc_r.status_code == 200:
+                dc_json = dc_r.json()
+                if dc_json.get("count", 999) <= 5:
+                    for b in dc_json.get("results", []):
+                        bp = b.get("ballot_paper_id", "")
+                        parts = bp.split(".")
+                        if len(parts) >= 4 and parts[0] == "local":
+                            c_slug, w_slug = parts[1], parts[2]
+                            slug_wards = elections["by_slug"].get(c_slug, {})
+                            if w_slug in slug_wards:
+                                council_slug = c_slug
+                                ward_data = slug_wards[w_slug]
+                                break
+        except Exception as e:
+            app.logger.warning(f"[councillor] DC ballot fallback: {e}")
+
     if ward_data:
         ward_name = ward_data.get("ward") or ward_name
         council   = ward_data.get("council") or council
@@ -1919,7 +1965,7 @@ def _resolve_councillors(postcode: str) -> dict:
         return {"councillors": rows, "ward": ward_name, "council": council}
 
     election_date = ward_data.get("date", "2026-05-07")
-    council_slug = _org_name_to_dc_slug(council)
+    council_slug  = council_slug or _org_name_to_dc_slug(council)
     dc_members = _fetch_dc_elected(council_slug, ward_name, election_date)
     if dc_members:
         new_rows = [_councillor_row(
