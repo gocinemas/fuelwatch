@@ -701,9 +701,11 @@ function render(d){
   // Ward breakdown
   let wd='<div class="wd-section"><h3>Ward breakdown</h3><table><thead><tr><th>Ward</th><th>Status</th><th>Winner(s)</th></tr></thead><tbody>';
   for(const w of d.wards){
-    const st=w.declared?'<span class="declared">&#10003; Declared</span>':'<span class="pending">Pending</span>';
+    const st=w.failed
+      ?'<span style="color:#9ca3af;font-size:.78rem">⚠ Load failed</span>'
+      :w.declared?'<span class="declared">&#10003; Declared</span>':'<span class="pending">Pending</span>';
     const wins=w.winners.map(x=>{const[bg]=partyColor(x.party);return`<span class="dot" style="background:${bg}"></span>${x.name}`;}).join(", ");
-    wd+=`<tr><td>${w.ward}</td><td>${st}</td><td>${wins||"&mdash;"}</td></tr>`;
+    wd+=`<tr${w.failed?' style="opacity:.55"':''}><td>${w.ward}</td><td>${st}</td><td>${wins||"&mdash;"}</td></tr>`;
   }
   wd+="</tbody></table></div>";
   document.getElementById("results").innerHTML=bar+tbl+wd;
@@ -1948,19 +1950,33 @@ def api_elections_council_view():
                 return ballot_paper_id, None
         return ballot_paper_id, None
 
+    # Build a label map from the ballot list (post label is often present)
+    ballot_label: dict = {}
+    for b in ballots:
+        bpid = b["ballot_paper_id"]
+        label = b.get("post", {}).get("label", "") if isinstance(b, dict) else ""
+        if not label:
+            parts = bpid.split(".")
+            label = parts[2].replace("-", " ").title() if len(parts) >= 3 else bpid
+        ballot_label[bpid] = label
+
     ballot_ids = [b["ballot_paper_id"] for b in ballots]
     ward_results: dict = {}
     with _cf.ThreadPoolExecutor(max_workers=5) as ex:
         for bpid, payload in ex.map(fetch_ballot, ballot_ids):
-            if payload is not None:
-                ward_results[bpid] = payload
+            ward_results[bpid] = payload  # None means fetch failed
 
-    # Step 3: tally seats by party
+    # Step 3: tally seats by party; include ALL wards (failed ones shown as "Unable to load")
     party_seats: dict = {}
     declared_wards = 0
     ward_summary = []
-    for bpid, payload in ward_results.items():
-        ward = payload.get("ward") or bpid.split(".")[2] if "." in bpid else bpid
+    for bpid in ballot_ids:
+        payload = ward_results.get(bpid)
+        fallback_label = ballot_label.get(bpid, bpid.split(".")[2].replace("-", " ").title() if "." in bpid else bpid)
+        if payload is None:
+            ward_summary.append({"ward": fallback_label, "declared": False, "winners": [], "failed": True})
+            continue
+        ward = payload.get("ward") or fallback_label
         declared = payload.get("declared", False)
         if declared:
             declared_wards += 1
@@ -1972,6 +1988,7 @@ def api_elections_council_view():
             "ward":     ward,
             "declared": declared,
             "winners":  [{"name": w["name"], "party": w["party"]} for w in winners],
+            "failed":   False,
         })
 
     seats_list = []
@@ -1985,7 +2002,7 @@ def api_elections_council_view():
         "total_wards":    total_wards,
         "declared_wards": declared_wards,
         "seats":          seats_list,
-        "wards":          sorted(ward_summary, key=lambda x: (not x["declared"], x["ward"])),
+        "wards":          sorted(ward_summary, key=lambda x: (x.get("failed", False), not x["declared"], x["ward"])),
     })
 
 
