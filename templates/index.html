@@ -8246,7 +8246,8 @@ _bkBadge();
     _load();
     var code=localStorage.getItem('_sp_code');
     var verifier=localStorage.getItem('_sp_verifier');
-    if(code && verifier){
+    var justConnected = !!(code && verifier);
+    if(justConnected){
       localStorage.removeItem('_sp_code'); localStorage.removeItem('_sp_verifier');
       await _loadConfig();
       if(_sp.clientId){
@@ -8255,10 +8256,17 @@ _bkBadge();
       history.replaceState({},'',location.pathname);
     }
     _updateUI();
-    // Re-render charts so + buttons appear now that the user is connected
-    var _ct = window._musicCurrentTab;
-    if(_ct && window._chartsCache && window._chartsCache[_ct] && window._musicRenderCharts){
-      window._musicRenderCharts(window._chartsCache[_ct]);
+    // If we just came back from OAuth, navigate to music screen so user sees connected state
+    if(justConnected && window.showScreen){
+      window.showScreen('music');
+      // Auto-load UK charts so + buttons appear immediately
+      if(window.musicTab) window.musicTab('uk', document.getElementById('mtab-uk'));
+    } else {
+      // Re-render current chart tab to show/hide + buttons
+      var _ct = window._musicCurrentTab;
+      if(_ct && window._chartsCache && window._chartsCache[_ct] && window._musicRenderCharts){
+        window._musicRenderCharts(window._chartsCache[_ct]);
+      }
     }
   };
 
@@ -8269,7 +8277,8 @@ _bkBadge();
     localStorage.setItem('_sp_verifier',v);
     var p=new URLSearchParams({client_id:_sp.clientId,response_type:'code',redirect_uri:_sp.redirectUri,
       scope:'playlist-modify-public playlist-modify-private playlist-read-private',
-      code_challenge_method:'S256',code_challenge:ch});
+      code_challenge_method:'S256',code_challenge:ch,
+      show_dialog:'true'});
     window.location='https://accounts.spotify.com/authorize?'+p;
   };
 
