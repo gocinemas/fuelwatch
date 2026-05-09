@@ -5067,8 +5067,13 @@
     // Company Intel signals → financial/corporate queries
     const _COMPANY_KW = ["turnover","revenue","sales","profit","loss","earnings","financials","annual report","results","employees","staff","headcount","hq","headquarters","industry","strategy","strategic","ai","artificial intelligence","tech","technology","news","founded","director","shareholders","ownership","company","companies","corp","inc","plc","ltd","info","information","about","details","profile","overview","search","look up","who is","what is"];
 
+    // Local service words — never treat as brand/company
+    const _LOCAL_SERVICE_KW = ["plumber","electrician","builder","locksmith","handyman","roofer","tiler","plasterer","decorator","painter","carpenter","joiner","cleaner","gardener","landscaper","glazier","drainage","boiler","gas engineer","physio","dentist","optician","pharmacy","chemist","gp","doctor","solicitor","accountant","vet","cafe","coffee","restaurant","pub","takeaway","near me","nearby","local","near","find me"];
+
     function _detectBrandOrCompany(q) {
       const ql = q.toLowerCase().trim();
+      // Never treat local service queries as brand/company
+      if (_LOCAL_SERVICE_KW.some(w => ql.includes(w))) return null;
       // Check brand signals first
       for (const [tab, words] of Object.entries(_BRAND_KW)) {
         if (words.some(w => ql.includes(w))) {
@@ -5101,12 +5106,25 @@
     window._fillFuel   = pc => { document.getElementById('fuel-postcode').value = pc; showScreen('fuel'); document.getElementById('fuel-postcode').focus(); };
     window._fillTrains = pc => { document.getElementById('train-search-input').value = pc; showScreen('trains'); trainSearch(); };
     window._fillReport = pc => { const el = document.getElementById('report-postcode'); if (el) el.value = pc; showScreen('report'); };
+    window._fillFinder = (pc, q) => {
+      showScreen('places');
+      locTab('finder');
+      if (pc) document.getElementById('finder-postcode').value = pc;
+      if (q)  document.getElementById('finder-q').value = q;
+      if (pc || q) setTimeout(() => finderSearch(), 100);
+    };
 
     // Map postcode keywords to a screen + pre-fill action
     const _INTENTS = [
       { kw: ["petrol","diesel","fuel","unleaded","e10","e5","cheap fuel","cheapest fuel","nearest fuel","nearby fuel"], screen:"fuel",   fillName:"_fillFuel",   fill: window._fillFuel },
       { kw: ["train","trains","rail","station","departure"],                                                           screen:"trains", fillName:"_fillTrains", fill: window._fillTrains },
       { kw: ["area","crime","house price","property","school rating"],                                                 screen:"report", fillName:"_fillReport", fill: window._fillReport },
+      { kw: ["plumber","electrician","builder","locksmith","handyman","roofer","tiler","plasterer","decorator","painter","boiler","gas engineer","dentist","gp","doctor","optician","pharmacy","physio","cafe","coffee","restaurant","pub","takeaway","shop","service","near me","nearby"], screen:"places", fillName:"_fillFinder",
+        fill: (pc, fullQ) => {
+          const serviceMatch = fullQ.toLowerCase().replace(/\b(kt\w+|[a-z]{1,2}\d[\w ]+)\b/gi,"").replace(/\b(near me|nearby|in|at|around)\b/gi,"").trim();
+          window._fillFinder(pc, serviceMatch || fullQ);
+        }
+      },
     ];
 
     function _detectIntent(q) {
@@ -5155,17 +5173,41 @@
         return;
       }
 
+      // Smart: local service without postcode → go straight to finder
+      const qlc = q.toLowerCase();
+      const isLocalService = _LOCAL_SERVICE_KW.some(w => qlc.includes(w));
+      if (isLocalService && !_extractPostcode(q)) {
+        const serviceLabel = q.replace(/\b(near me|nearby|local|find me?|find a?)\b/gi,"").trim() || q;
+        const box = document.getElementById("home-search-results");
+        box.style.display = "block";
+        box.innerHTML = `<button onclick="homeSearchClear();window._fillFinder('',${JSON.stringify(serviceLabel)})" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background='none'" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;transition:background 0.15s">
+          <span style="font-size:22px;width:30px;text-align:center;flex-shrink:0">📍</span>
+          <span>
+            <span style="display:block;font-size:14px;font-weight:700;color:var(--text)">Find ${serviceLabel} near me</span>
+            <span style="display:block;font-size:11px;color:var(--subtle)">Uses your location or enter a postcode</span>
+          </span>
+          <span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--accent)">Go →</span>
+        </button>`;
+        return;
+      }
+
       // Smart: postcode + keyword detected — offer a direct action
       const pc = _extractPostcode(q);
       const intent = pc ? _detectIntent(q) : null;
       if (pc && intent) {
         const box = document.getElementById("home-search-results");
         box.style.display = "block";
+        const isService = intent.screen === "places";
         const label = intent.screen === "fuel" ? (q.toLowerCase().includes("cheap") ? `Cheapest fuel near ${pc}` : `Find ${intent.kw[0]} near ${pc}`) :
                       intent.screen === "trains" ? `Trains from ${pc}` :
+                      isService ? `Find ${q.replace(/[A-Z]{1,2}\d[\w ]*/gi,"").replace(/near me|nearby/gi,"").trim() || "services"} near ${pc}` :
                       `Area report for ${pc}`;
-        const icon  = intent.screen === "fuel" ? "⛽" : intent.screen === "trains" ? "🚆" : "🏠";
-        box.innerHTML = `<button onclick="homeSearchClear();${intent.fillName}('${pc}')" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background='none'" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;transition:background 0.15s">
+        const icon  = intent.screen === "fuel" ? "⛽" : intent.screen === "trains" ? "🚆" : isService ? "📍" : "🏠";
+        const safeQ = JSON.stringify(q);
+        const action = isService
+          ? `homeSearchClear();intent&&intent.fill('${pc}',${safeQ})`
+          : `homeSearchClear();${intent.fillName}('${pc}')`;
+        box.innerHTML = `<button onclick="${action}" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background='none'" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;transition:background 0.15s">
           <span style="font-size:22px;width:30px;text-align:center;flex-shrink:0">${icon}</span>
           <span>
             <span style="display:block;font-size:14px;font-weight:700;color:var(--text)">${label}</span>
@@ -5255,7 +5297,14 @@
         const intent = pc ? _detectIntent(q) : null;
         if (pc && intent) {
           homeSearchClear();
-          intent.fill(pc);
+          intent.fill(pc, q);
+          return;
+        }
+        // Local service without postcode → finder
+        if (_LOCAL_SERVICE_KW.some(w => q.toLowerCase().includes(w))) {
+          homeSearchClear();
+          const svc = q.replace(/\b(near me|nearby|local|find me?|find a?)\b/gi,"").trim();
+          window._fillFinder("", svc || q);
           return;
         }
         // Fire the first visible result button
