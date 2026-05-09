@@ -7684,7 +7684,11 @@ def api_spotify_config():
     client_id = os.environ.get("SPOTIFY_CLIENT_ID", "")
     if not client_id:
         return jsonify({"available": False})
-    redirect_uri = request.url_root.rstrip("/") + "/spotify/callback"
+    # Use env var if set; otherwise derive from host header, forcing https for Railway
+    redirect_uri = os.environ.get("SPOTIFY_REDIRECT_URI", "")
+    if not redirect_uri:
+        host = request.host  # e.g. miru.humanagency.co
+        redirect_uri = f"https://{host}/spotify/callback"
     return jsonify({"available": True, "client_id": client_id, "redirect_uri": redirect_uri})
 
 
