@@ -7928,7 +7928,7 @@ _bkBadge();
       </button>
     </div>
     <div id="sp-connected" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:9px 14px;align-items:center;justify-content:space-between">
-      <span style="font-size:13px;font-weight:600;color:#166534">✓ Spotify · Miru Picks</span>
+      <span style="font-size:13px;font-weight:600;color:#166534">✓ Spotify connected</span>
       <button onclick="spotifyDisconnect()" style="border:none;background:none;color:#6b7280;font-size:12px;cursor:pointer;padding:0">Disconnect</button>
     </div>
   </div>
@@ -8040,7 +8040,7 @@ _bkBadge();
     var connected = window.spConnected && window.spConnected();
     document.getElementById('music-charts-list').innerHTML = tracks.map(function(t){
       var addBtn = connected
-        ? '<button data-title="'+_heq(t.title)+'" data-artist="'+_heq(t.artist)+'" onclick="spotifyAdd(this.dataset.title,this.dataset.artist,this)" style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Add to Miru Picks">＋</button>'
+        ? '<button data-title="'+_heq(t.title)+'" data-artist="'+_heq(t.artist)+'" onclick="spotifyAdd(this.dataset.title,this.dataset.artist,this)" style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Save to Liked Songs">♥</button>'
         : '';
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
         +'<div style="font-size:13px;font-weight:700;color:var(--muted);width:24px;text-align:center;flex-shrink:0">'+t.position+'</div>'
@@ -8276,9 +8276,8 @@ _bkBadge();
     var v=_verifier(); var ch=await _challenge(v);
     localStorage.setItem('_sp_verifier',v);
     var p=new URLSearchParams({client_id:_sp.clientId,response_type:'code',redirect_uri:_sp.redirectUri,
-      scope:'playlist-modify-public playlist-modify-private playlist-read-private',
-      code_challenge_method:'S256',code_challenge:ch,
-      show_dialog:'true'});
+      scope:'user-library-modify user-library-read',
+      code_challenge_method:'S256',code_challenge:ch,show_dialog:'true'});
     window.location='https://accounts.spotify.com/authorize?'+p;
   };
 
@@ -8287,17 +8286,10 @@ _bkBadge();
       headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:new URLSearchParams({grant_type:'authorization_code',code:code,
         redirect_uri:_sp.redirectUri,client_id:_sp.clientId,code_verifier:verifier})});
-    if(!r.ok) throw new Error('exchange failed');
+    if(!r.ok) throw new Error('Token exchange failed ('+r.status+')');
     var d=await r.json();
     _sp.token=d.access_token; _sp.expires=Date.now()+(d.expires_in-60)*1000;
     _sp.refreshToken=d.refresh_token; _save();
-    // Log granted scopes so we can diagnose missing playlist permissions
-    var granted = (d.scope||'').split(' ');
-    var needsWrite = granted.includes('playlist-modify-private') || granted.includes('playlist-modify-public');
-    if(!needsWrite){
-      console.warn('Spotify granted scopes:', d.scope);
-      alert('Spotify connected but playlist access was not granted.\nGranted scopes: '+(d.scope||'(none)')+'\n\nIn the Spotify developer dashboard, make sure this app has playlist scopes enabled, then reconnect.');
-    }
   }
 
   async function _getToken(){
@@ -8315,68 +8307,32 @@ _bkBadge();
   }
 
   window.spotifyDisconnect = function(){
-    _sp.token=null; _sp.expires=0; _sp.refreshToken=null; _sp.playlistId=null; _save(); _updateUI();
+    _sp.token=null; _sp.expires=0; _sp.refreshToken=null; _save(); _updateUI();
   };
-
-  async function _getPlaylist(token){
-    if(_sp.playlistId) return _sp.playlistId;
-    var meR=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+token}});
-    if(!meR.ok){
-      if(meR.status===403||meR.status===401){ _sp.refreshToken=null; _sp.token=null; _save(); }
-      throw new Error('Spotify login expired — please reconnect');
-    }
-    var me=await meR.json();
-    var listsR=await fetch('https://api.spotify.com/v1/me/playlists?limit=50',{headers:{Authorization:'Bearer '+token}});
-    if(!listsR.ok) throw new Error('Spotify playlists fetch failed ('+listsR.status+')');
-    var lists=await listsR.json();
-    // Only match playlists the user owns (not followed ones from other users)
-    var found=(lists.items||[]).find(function(p){return p.name==='Miru Picks' && p.owner&&p.owner.id===me.id;});
-    if(found){ _sp.playlistId=found.id; _save(); return _sp.playlistId; }
-    var createR=await fetch('https://api.spotify.com/v1/me/playlists',{method:'POST',
-      headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-      body:JSON.stringify({name:'Miru Picks',description:'Songs added via Miru',public:false})});
-    if(!createR.ok){
-      if(createR.status===403){ _sp.refreshToken=null; _sp.token=null; _save(); }
-      var errText=await createR.text();
-      throw new Error('Could not create playlist — please reconnect Spotify ('+createR.status+')');
-    }
-    var created=await createR.json();
-    if(!created.id) throw new Error('Playlist created but no ID returned');
-    _sp.playlistId=created.id; _save(); return _sp.playlistId;
-  }
 
   window.spotifyAdd = async function(title, artist, btn){
     var token=await _getToken();
-    if(!token){
-      alert('Spotify session expired — please reconnect.');
-      spotifyConnect(); return;
-    }
+    if(!token){ alert('Spotify session expired — tap Connect Spotify to reconnect.'); spotifyConnect(); return; }
     var orig=btn.textContent; btn.textContent='…'; btn.disabled=true;
     try{
       var q=encodeURIComponent('track:'+title+' artist:'+artist);
       var sr=await fetch('https://api.spotify.com/v1/search?q='+q+'&type=track&limit=1',{headers:{Authorization:'Bearer '+token}});
-      if(!sr.ok) throw new Error('Search '+sr.status+': '+await sr.text());
-      var search=await sr.json();
-      var items=(search.tracks||{}).items||[];
+      if(!sr.ok) throw new Error('Search failed ('+sr.status+')');
+      var items=((await sr.json()).tracks||{}).items||[];
       if(!items.length){
         btn.textContent='?'; btn.title='Not found on Spotify';
         setTimeout(function(){btn.textContent=orig;btn.disabled=false;btn.title='';},2500); return;
       }
-      var playlistId=await _getPlaylist(token);
-      if(!playlistId) throw new Error('Could not get playlist');
-      var pr=await fetch('https://api.spotify.com/v1/playlists/'+playlistId+'/tracks',{method:'POST',
+      var pr=await fetch('https://api.spotify.com/v1/me/tracks',{method:'PUT',
         headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-        body:JSON.stringify({uris:[items[0].uri]})});
-      if(!pr.ok){
-        if(pr.status===403){ _sp.refreshToken=null; _sp.token=null; _sp.playlistId=null; _save(); _updateUI(); }
-        throw new Error(pr.status===403 ? 'Permission denied — tap Disconnect then reconnect Spotify to grant playlist access' : 'Add '+pr.status+': '+await pr.text());
-      }
-      btn.textContent='✓'; btn.style.color='#1db954';
-      setTimeout(function(){btn.textContent='＋';btn.style.color='';btn.disabled=false;},2500);
+        body:JSON.stringify({ids:[items[0].id]})});
+      if(!pr.ok) throw new Error('Save failed ('+pr.status+'): '+await pr.text());
+      btn.textContent='♥'; btn.style.color='#1db954';
+      setTimeout(function(){btn.textContent=orig;btn.style.color='';btn.disabled=false;},2500);
     }catch(e){
       console.error('spotifyAdd:',e);
       btn.textContent='!';
-      alert('Spotify error: ' + e.message);
+      alert('Spotify error: '+e.message);
       setTimeout(function(){btn.textContent=orig;btn.disabled=false;},2000);
     }
   };
