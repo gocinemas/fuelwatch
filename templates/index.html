@@ -2250,9 +2250,10 @@
     });
 
     let coData = null, brData = null, coErr = false, brErr = false;
+    let coSettled = false, brSettled = false;
 
     const finish = function() {
-      if (coData === null && brData === null) return; // still waiting
+      if (!coSettled || !brSettled) return; // wait for both APIs to resolve or fail
       document.getElementById("intel-loading").classList.add("hidden");
       if (coErr && brErr) {
         document.getElementById("intel-error").textContent = "Could not load data — try again.";
@@ -2261,11 +2262,11 @@
       }
       document.getElementById("intel-result").style.display = "";
       if (coData && !coErr) {
-        renderCompany(coData);
+        try { renderCompany(coData); } catch(e) { console.warn("renderCompany error", e); }
         if (_pendingCoTab) { switchCoTab(_pendingCoTab); _pendingCoTab = null; }
       }
       if (brData && !brErr) {
-        _renderBrand(brData);
+        try { _renderBrand(brData); } catch(e) { console.warn("_renderBrand error", e); }
         const logoUrl = brData.domain ? `https://logo.clearbit.com/${brData.domain}` : `https://logo.clearbit.com/${(brData.name||"").toLowerCase().replace(/[^a-z0-9]/g,"")}.com`;
         logoEl.src = logoUrl;
         logoEl.style.display = "";
@@ -2282,7 +2283,8 @@
 
       // About: hide stats grid if brand returned no useful fields
       const hasStats = br.founded || br.hq || br.revenue || br.industry;
-      document.querySelector('#intel-tab-about > div[style*="grid"]').style.display = hasStats ? "" : "none";
+      const statsGrid = document.querySelector('#intel-tab-about > div[style*="grid"]');
+      if (statsGrid) statsGrid.style.display = hasStats ? "" : "none";
 
       // Finance tab: hide if no share price and no brand financials
       const hasFinance = (co.share && co.share.current) ||
@@ -2302,7 +2304,8 @@
       const rivalBox = document.getElementById("brand-competitors-el");
       if (rivalBox) {
         const hasRivals = br.competitors && br.competitors.length > 0;
-        rivalBox.closest('div[style*="border-radius:20px"]').style.display = hasRivals ? "" : "none";
+        const rivalWrap = rivalBox.closest('div[style*="border-radius:20px"]');
+        if (rivalWrap) rivalWrap.style.display = hasRivals ? "" : "none";
       }
 
       // Auto-select first visible tab
@@ -2320,16 +2323,16 @@
       if (panel && !visible) panel.style.display = "none";
     }
 
-    // Fire both APIs in parallel
+    // Fire both APIs in parallel; use settled flags so finish() only runs when both done
     _fetchWithTimeout(`/api/company?name=${encodeURIComponent(raw)}`, 30000)
       .then(r => r.json())
-      .then(d => { coData = d.error ? null : d; coErr = !!d.error; finish(); })
-      .catch(() => { coErr = true; finish(); });
+      .then(d => { coData = d.error ? null : d; coErr = !!d.error; coSettled = true; finish(); })
+      .catch(() => { coErr = true; coSettled = true; finish(); });
 
     _fetchWithTimeout(`/api/brand?name=${encodeURIComponent(raw)}`, 30000)
       .then(r => r.json())
-      .then(d => { brData = d.error ? null : d; brErr = !!d.error; finish(); })
-      .catch(() => { brErr = true; finish(); });
+      .then(d => { brData = d.error ? null : d; brErr = !!d.error; brSettled = true; finish(); })
+      .catch(() => { brErr = true; brSettled = true; finish(); });
   };
 
   async function searchCompany() {
@@ -8348,6 +8351,10 @@ _bkBadge();
       history.replaceState({},'',location.pathname);
     }
     _updateUI();
+    // Re-render charts so + buttons appear now that the user is connected
+    if(window._chartsCache && window._chartsCache.length && window._musicRenderCharts){
+      window._musicRenderCharts(window._musicCurrentTab || 'uk');
+    }
   };
 
   window.spotifyConnect = async function(){
