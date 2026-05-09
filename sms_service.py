@@ -1781,41 +1781,76 @@ def api_elections_check_alerts():
 
 # ── Councillor helpers ─────────────────────────────────────────────────────────
 
-def _fetch_dc_elected(ward_gss: str) -> list:
-    """Fetch elected councillors for a ward from Democracy Club API."""
+def _fetch_dc_elected(council_slug: str, ward_name: str, election_date: str) -> list:
+    """Fetch elected councillors for a ward from Democracy Club API.
+    Returns list of dicts: {name, party, email, photo_url, council_profile_url}
+    """
+    from difflib import SequenceMatcher
     try:
-        url = "https://candidates.democracyclub.org.uk/api/next/memberships/"
-        params = {
-            "ballot__post__slug": f"local.{ward_gss}",
-            "elected": "True",
-            "format": "json",
-            "page_size": 10,
-        }
-        r = requests.get(url, params=params, timeout=8)
+        slug = council_slug.lower().replace(" ", "-")
+        r = requests.get(
+            f"https://candidates.democracyclub.org.uk/api/next/elections/local.{slug}.{election_date}/",
+            params={"format": "json"}, timeout=8,
+            headers={"User-Agent": "Miru/1.0"},
+        )
         if r.status_code != 200:
             return []
-        return r.json().get("results", [])
-    except Exception:
+        ballots = r.json().get("ballots", [])
+        ward_slug = _ward_to_slug(ward_name)
+        best, best_score = None, 0
+        for b in ballots:
+            parts = b["ballot_paper_id"].split(".")
+            if len(parts) < 3:
+                continue
+            bslug = parts[2]
+            score = SequenceMatcher(None, ward_slug, bslug).ratio()
+            if score > best_score:
+                best_score, best = score, b["ballot_paper_id"]
+        if not best or best_score < 0.4:
+            return []
+
+        r2 = requests.get(
+            f"https://candidates.democracyclub.org.uk/api/next/ballots/{best}/",
+            params={"format": "json"}, timeout=8,
+            headers={"User-Agent": "Miru/1.0"},
+        )
+        if r2.status_code != 200:
+            return []
+        candidacies = r2.json().get("candidacies", [])
+        elected = [c for c in candidacies if c.get("elected")]
+        results = []
+        for c in elected:
+            person_id = (c.get("person") or {}).get("id")
+            name      = (c.get("person") or {}).get("name", "")
+            party     = c.get("party_name", "")
+            email = ""; photo_url = ""
+            profile_url = f"https://candidates.democracyclub.org.uk/person/{person_id}/" if person_id else ""
+            if person_id:
+                try:
+                    pr = requests.get(
+                        f"https://candidates.democracyclub.org.uk/api/next/people/{person_id}/",
+                        params={"format": "json"}, timeout=6,
+                        headers={"User-Agent": "Miru/1.0"},
+                    )
+                    if pr.status_code == 200:
+                        pd = pr.json()
+                        email = pd.get("email", "") or ""
+                        for ident in (pd.get("identifiers") or []):
+                            if ident.get("value_type") == "email" and not email:
+                                email = ident.get("value", "")
+                        photo_url = ((pd.get("image") or {}).get("image_url") or "")
+                except Exception:
+                    pass
+            results.append({"name": name, "party": party, "email": email,
+                            "photo_url": photo_url, "council_profile_url": profile_url})
+        return results
+    except Exception as e:
+        app.logger.warning(f"[dc-elected] {e}")
         return []
 
 
-def _councillor_from_dc_person(person: dict, ward_gss: str, ward: str, council: str, election_date: str) -> dict:
-    """Map a DC membership record to our councillors schema."""
-    p = person.get("person", {}) or person
-    name = p.get("name", "")
-    party = ""
-    try:
-        party_obj = person.get("party", {}) or {}
-        party = party_obj.get("name", "") or ""
-    except Exception:
-        pass
-    email = ""
-    for ct in (p.get("contact_details") or []):
-        if ct.get("contact_type") == "email":
-            email = ct.get("value", "")
-            break
-    photo_url = (p.get("image") or {}).get("image_url", "")
-    profile_url = f"https://candidates.democracyclub.org.uk/person/{p.get('id', '')}/"
+def _councillor_row(name: str, party: str, email: str, photo_url: str, profile_url: str,
+                    ward_gss: str, ward: str, council: str, election_date: str) -> dict:
     return {
         "ward_gss":          ward_gss,
         "ward":              ward,
@@ -1881,9 +1916,13 @@ def api_councillor():
         elections = _get_elections()
         ward_data = elections["by_gss"].get(ward_gss, {})
         election_date = ward_data.get("date", "2026-05-07")
-        dc_members = _fetch_dc_elected(ward_gss)
+        council_slug = _org_name_to_dc_slug(council)
+        dc_members = _fetch_dc_elected(council_slug, ward_name, election_date)
         if dc_members:
-            new_rows = [_councillor_from_dc_person(m, ward_gss, ward_name, council, election_date) for m in dc_members]
+            new_rows = [_councillor_row(
+                m["name"], m["party"], m["email"], m["photo_url"], m["council_profile_url"],
+                ward_gss, ward_name, council, election_date
+            ) for m in dc_members]
             _upsert_councillors(new_rows)
             return jsonify({"councillors": new_rows, "ward": ward_name, "council": council})
 
@@ -1906,9 +1945,13 @@ def api_sync_councillors():
             ward_name  = ward_data.get("ward", "")
             council    = ward_data.get("council", "")
             elec_date  = ward_data.get("date", "2026-05-07")
-            dc_members = _fetch_dc_elected(ward_gss)
+            council_slug = _org_name_to_dc_slug(council)
+            dc_members = _fetch_dc_elected(council_slug, ward_name, elec_date)
             if dc_members:
-                rows = [_councillor_from_dc_person(m, ward_gss, ward_name, council, elec_date) for m in dc_members]
+                rows = [_councillor_row(
+                    m["name"], m["party"], m["email"], m["photo_url"], m["council_profile_url"],
+                    ward_gss, ward_name, council, elec_date
+                ) for m in dc_members]
                 total_saved += _upsert_councillors(rows)
         except Exception as e:
             errors.append(f"{ward_gss}: {e}")
