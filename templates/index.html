@@ -1104,15 +1104,19 @@
             style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
             📊 Results
           </button>
+          <button id="etab-candidates" onclick="eTab('candidates')"
+            style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
+            🗳️ Candidates
+          </button>
           <button id="etab-parties" onclick="eTab('parties')"
             style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
             📋 Parties
           </button>
         </div><!-- /elections-tab-bar -->
 
-        <!-- Candidates hidden (stored in DB, not shown) -->
+        <!-- Candidates panel (shown only when 2026 results not yet declared) -->
         <div id="epanel-candidates" class="hidden">
-          <div id="elections-candidates"></div>
+          <div id="elections-candidates" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
 
         <!-- Tab: Parties -->
@@ -2929,10 +2933,12 @@
   }
 
   function eTab(name) {
-    ["parties","more"].forEach(t => {
-      const active = t === name;
-      document.getElementById("epanel-" + t).classList.toggle("hidden", !active);
+    ["candidates","parties","more"].forEach(t => {
       const btn = document.getElementById("etab-" + t);
+      const panel = document.getElementById("epanel-" + t);
+      if (!btn || !panel) return;
+      const active = t === name;
+      panel.classList.toggle("hidden", !active);
       btn.style.background = active ? "var(--text)" : "var(--surface)";
       btn.style.color      = active ? "var(--bg)"   : "var(--subtle)";
       btn.style.border     = active ? "none"         : "1px solid var(--border)";
@@ -2985,7 +2991,7 @@
       // Show/hide tab bar vs no-election view
       document.getElementById("elections-tab-bar").style.display = noElection ? "none" : "";
       document.getElementById("elections-no-elec").style.display  = noElection ? ""     : "none";
-      ["epanel-parties","epanel-more"].forEach(id =>
+      ["epanel-candidates","epanel-parties","epanel-more"].forEach(id =>
         document.getElementById(id).classList.toggle("hidden", noElection));
 
       // Results section (2022 past + 2026 live)
@@ -3062,7 +3068,32 @@
         document.getElementById("elections-past-inline").innerHTML = past2022Html;
       }
 
-      // Candidates stored in DB — not rendered here
+      // Candidates tab: show when 2026 results not yet declared
+      const candidatesTabBtn = document.getElementById("etab-candidates");
+      if (hasRealResults) {
+        // Results are in — hide candidates tab
+        if (candidatesTabBtn) candidatesTabBtn.style.display = "none";
+        document.getElementById("epanel-candidates").classList.add("hidden");
+        document.getElementById("elections-candidates").innerHTML = "";
+      } else {
+        // Results pending — show candidates
+        if (candidatesTabBtn) candidatesTabBtn.style.display = "";
+        document.getElementById("elections-candidates").innerHTML = noElection ? "" : (d.candidates || []).map(c => {
+          const col = _partyStyle(c.party);
+          const links = [];
+          if (c.homepage) links.push(`<a href="${c.homepage}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500">Website ↗</a>`);
+          if (c.twitter)  links.push(`<a href="https://x.com/${c.twitter}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500">@${c.twitter}</a>`);
+          if (c.email)    links.push(`<a href="mailto:${c.email}" style="font-size:11px;color:#4f46e5;font-weight:500">Email</a>`);
+          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px">
+            <div style="width:4px;min-height:36px;border-radius:4px;background:${col.bg};flex-shrink:0;margin-top:2px"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:14px;color:var(--text)">${c.name}</div>
+              <div style="margin-top:3px"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text}">${c.party}</span></div>
+              ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">${links.join("")}</div>` : ""}
+            </div>
+          </div>`;
+        }).join("");
+      }
 
       // Party manifestos — one card per unique party present
       if (noElection) {
@@ -3091,7 +3122,7 @@
           `<div style="font-size:12px;color:var(--subtle)">No manifesto info available.</div>`;
       }
 
-      eTab("more");
+      eTab(hasRealResults ? "more" : "candidates");
       document.getElementById("elections-result").classList.remove("hidden");
     } catch(e) {
       document.getElementById("elections-loading").classList.add("hidden");
