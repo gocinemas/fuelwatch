@@ -7870,18 +7870,6 @@ _bkBadge();
   </div>
 
   <!-- Spotify connect bar -->
-  <div id="spotify-bar" style="margin-bottom:16px">
-    <div id="sp-disconnected" style="display:flex;align-items:center;justify-content:center">
-      <button onclick="spotifyConnect()" style="padding:8px 20px;border:none;border-radius:99px;background:#1db954;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-        Connect Spotify
-      </button>
-    </div>
-    <div id="sp-connected" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:9px 14px;align-items:center;justify-content:space-between">
-      <span style="font-size:13px;font-weight:600;color:#166534">✓ Spotify connected</span>
-      <button onclick="spotifyDisconnect()" style="border:none;background:none;color:#6b7280;font-size:12px;cursor:pointer;padding:0">Disconnect</button>
-    </div>
-  </div>
 
   <!-- Identify panel -->
   <div id="music-identify-panel">
@@ -7987,14 +7975,11 @@ _bkBadge();
 
   function _heq(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
   function _musicRenderCharts(tracks) {
-    var connected = window.spConnected && window.spConnected();
     document.getElementById('music-charts-list').innerHTML = tracks.map(function(t){
-      var addBtn = connected
-        ? '<button data-title="'+_heq(t.title)+'" data-artist="'+_heq(t.artist)+'"'
-          +(t.track_id ? ' data-track-id="'+_heq(t.track_id)+'"' : '')
-          +(t.spotify_url ? ' data-spotify-url="'+_heq(t.spotify_url)+'"' : '')
-          +' onclick="spotifyAdd(this.dataset.title,this.dataset.artist,this,this.dataset.trackId,this.dataset.spotifyUrl)"'
-          +' style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Save to Liked Songs">♥</button>'
+      var addBtn = (t.track_id || t.spotify_url || t.url)
+        ? '<button data-track-id="'+_heq(t.track_id||'')+'" data-spotify-url="'+_heq(t.spotify_url||t.url||'')+'"'
+          +' onclick="spotifyOpen(this.dataset.trackId,this.dataset.spotifyUrl)"'
+          +' style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Open in Spotify">♥</button>'
         : '';
       var playUrl = t.spotify_url || t.url;
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
@@ -8265,57 +8250,27 @@ _bkBadge();
     _sp.token=null; _sp.expires=0; _sp.refreshToken=null; _save(); _updateUI();
   };
 
-  window.spotifyAdd = async function(title, artist, btn, knownTrackId, knownSpotifyUrl){
-    var token=await _getToken();
-    if(!token){ alert('Spotify session expired — tap Connect Spotify to reconnect.'); spotifyConnect(); return; }
-    var orig=btn.textContent; btn.textContent='…'; btn.disabled=true;
-    try{
-      var trackId=knownTrackId||'';
-      var trackUrl=knownSpotifyUrl||'';
-
-      // Skip search if we already have the track ID from Spotify charts
-      if(!trackId){
-        var q=encodeURIComponent('track:'+title+' artist:'+artist);
-        var sr=await fetch('https://api.spotify.com/v1/search?q='+q+'&type=track&limit=1',{headers:{Authorization:'Bearer '+token}});
-        if(!sr.ok) throw new Error('Search failed ('+sr.status+')');
-        var items=((await sr.json()).tracks||{}).items||[];
-        if(!items.length){
-          btn.textContent='?'; btn.title='Not found on Spotify';
-          setTimeout(function(){btn.textContent=orig;btn.disabled=false;btn.title='';},2500); return;
-        }
-        trackId=items[0].id;
-        trackUrl=((items[0].external_urls||{}).spotify)||('https://open.spotify.com/track/'+trackId);
-      }
-
-      var pr=await fetch('https://api.spotify.com/v1/me/tracks',{method:'PUT',
-        headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-        body:JSON.stringify({ids:[trackId]})});
-      if(pr.status===403){
-        // Fetch the user's Spotify email to show which account needs whitelisting
-        var email='';
-        try{
-          var me=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+token}});
-          if(me.ok){ var md=await me.json(); email=md.email||''; }
-        }catch(e2){}
-        if(trackUrl) window.open(trackUrl,'_blank');
-        var msg=email
-          ? 'Spotify dev-mode: account "'+email+'" isn\'t whitelisted.\n\nGo to developer.spotify.com/dashboard → your app → Settings → User Management → add "'+email+'".\n\nOpened track in Spotify — tap ♥ there to save for now.'
-          : 'Spotify dev-mode restriction — opened track in Spotify so you can ♥ it there.';
-        alert(msg);
-        btn.textContent='↗';
-        setTimeout(function(){btn.textContent=orig;btn.disabled=false;},3000);
-        return;
-      }
-      if(!pr.ok) throw new Error('Save failed ('+pr.status+'): '+await pr.text());
-      btn.textContent='♥'; btn.style.color='#1db954';
-      setTimeout(function(){btn.textContent=orig;btn.style.color='';btn.disabled=false;},2500);
-    }catch(e){
-      console.error('spotifyAdd:',e);
-      btn.textContent='!';
-      alert('Spotify error: '+e.message);
-      setTimeout(function(){btn.textContent=orig;btn.disabled=false;},2000);
+  // Open a Spotify track in the native app via deep link, web URL as fallback
+  window.spotifyOpen = function(trackId, spotifyUrl){
+    if(trackId){
+      // Try native app deep link first; if it fails (desktop without app) fall back to web
+      var appUri = 'spotify:track:' + trackId;
+      var webUrl = spotifyUrl || ('https://open.spotify.com/track/' + trackId);
+      var iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      iframe.src = appUri;
+      setTimeout(function(){
+        document.body.removeChild(iframe);
+        // If page is still visible, the app didn't open — fall back to web
+        if(!document.hidden) window.open(webUrl, '_blank');
+      }, 800);
+    } else if(spotifyUrl){
+      window.open(spotifyUrl, '_blank');
     }
   };
+
+  window.spotifyAdd = window.spotifyOpen; // alias for any remaining callers
 
   // Handle OAuth callback on page load if coming back from Spotify
   window.addEventListener('DOMContentLoaded', function(){
