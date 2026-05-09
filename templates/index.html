@@ -392,8 +392,8 @@
           <span class="tool-icon-label">Local Search</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('company')">
-          <span class="tool-icon-emoji">🔍</span>
-          <span class="tool-icon-label">Company Intel</span>
+          <span class="tool-icon-emoji">🏷️</span>
+          <span class="tool-icon-label">Brand Intel</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('library')">
           <span class="tool-icon-emoji">📄</span>
@@ -691,74 +691,106 @@
 
     <!-- ── COMPANY SCREEN ── -->
     <div id="screen-company" class="screen pt-5">
-      <!-- Business Lookup tab strip -->
-      <div style="display:flex;gap:6px;margin-bottom:16px">
-        <button id="blookup-tab-company" onclick="blookupTab('company')"
-          style="padding:8px 16px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--text,#1a1a2e);color:var(--bg,#fff)">🏢 Company</button>
-        <button id="blookup-tab-brand" onclick="blookupTab('brand')"
-          style="padding:8px 16px;border-radius:10px;border:1.5px solid var(--border,#e5e7eb);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text,#1a1a2e)">🏷️ Brand</button>
-      </div>
-      <div id="blookup-company-panel">
-      <div class="bg-white rounded-2xl shadow p-5 mb-4">
-        <h2 class="font-bold text-gray-800 mb-3">🏢 Company Intel</h2>
-        <p style="font-size:12px;color:#9ca3af;margin-bottom:14px;line-height:1.6">
-          Revenue, profit &amp; financials · AI &amp; tech strategy · competitive direction · news &amp; video
-        </p>
-        <div class="flex gap-2 mb-4">
-          <input id="company-input" type="text" placeholder="e.g. Tesco, HSBC, Monzo"
-            class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            autocomplete="off" />
-        </div>
-        <div id="company-recent" class="hidden mb-3"></div>
-        <button onclick="searchCompany()"
-          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-sm">
-          Search Company
-        </button>
+
+      <!-- ── Unified Brand Intel header ── -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:24px;font-weight:900;letter-spacing:-0.5px;color:var(--text)">Brand Intel</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Company · financials · history · rivals · campaigns</div>
       </div>
 
-      <div id="company-loading" class="hidden text-center py-6 text-gray-400 text-sm">
-        <div class="spinner text-indigo-600 mx-auto mb-2"></div>Looking up company…
+      <!-- Single search input -->
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="intel-input" type="text" placeholder="Search any brand or company…"
+          style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+          onkeydown="if(event.key==='Enter') searchIntel()"
+          onfocus="this.style.boxShadow='0 0 0 3px rgba(79,70,229,.15)'"
+          onblur="this.style.boxShadow=''"
+          autocomplete="off">
+        <button onclick="searchIntel()"
+          style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 20px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
       </div>
-      <div id="company-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
+      <div id="intel-recent" style="margin-bottom:8px"></div>
+
+      <!-- Loading / Error (unified) -->
+      <div id="intel-loading" class="hidden text-center py-10">
+        <div class="spinner mx-auto mb-3" style="border-top-color:#4f46e5;width:28px;height:28px"></div>
+        <div style="font-size:13px;color:var(--muted)">Looking up brand…</div>
+      </div>
+      <div id="intel-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:14px;padding:14px 16px;font-size:13px;margin-bottom:12px"></div>
+
+      <!-- Did-you-mean (kept for renderCompany / _renderBrand compat, hidden visually) -->
       <div id="co-did-you-mean" class="hidden mb-3 px-4 py-3 rounded-2xl text-sm font-medium" style="background:#fef9c3;border:1px solid #fde047;color:#713f12"></div>
-      <div id="company-results" class="hidden">
+      <div id="brand-did-you-mean" class="hidden mb-3 px-4 py-3 rounded-2xl text-sm font-medium" style="background:#fef9c3;border:1px solid #fde047;color:#713f12"></div>
 
-        <style>
-          .co-card { background:var(--surface); border-radius:1.25rem; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:1rem; padding:1.35rem; border:1px solid var(--border); }
-          .co-card-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:1rem; padding-bottom:.65rem; border-bottom:1.5px solid var(--border); display:flex; align-items:center; gap:.4rem; }
-          .co-tab-bar { display:flex; gap:5px; background:var(--border); padding:5px; border-radius:1rem; margin-bottom:1.25rem; }
-          .co-tab-btn { flex:1; font-size:13px; font-weight:600; padding:10px 4px; border-radius:.75rem; border:none; cursor:pointer; transition:all .2s; background:transparent; color:var(--muted); line-height:1.3; }
-          .co-tab-btn.active { background:var(--surface); color:#4f46e5; box-shadow:0 2px 6px rgba(0,0,0,.1); }
-          .co-news-item { padding:.75rem 0; border-bottom:1px solid var(--border); }
-          .co-news-item:last-child { border-bottom:none; padding-bottom:0; }
-          .co-news-item a { font-size:14px; font-weight:500; color:var(--text); line-height:1.5; display:block; }
-          .co-news-item a:hover { color:#4f46e5; }
-          .co-news-meta { font-size:12px; color:var(--subtle); margin-top:3px; }
-        </style>
+      <!-- Invisible compat containers (populated by existing render fns, never shown) -->
+      <input id="company-input" type="hidden">
+      <input id="brand-input" type="hidden">
+      <div id="company-loading" style="display:none"></div>
+      <div id="company-error" style="display:none"></div>
+      <div id="brand-loading" style="display:none"></div>
+      <div id="brand-error" style="display:none"></div>
+      <div id="company-recent" style="display:none"></div>
+      <div id="brand-recent" style="display:none"></div>
 
-        <!-- Share row -->
-        <div class="flex items-center justify-between mb-3 px-0.5">
-          <div id="co-share-name" class="text-sm font-semibold text-gray-700 truncate"></div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <button id="co-bookmark-btn" onclick="bookmarkIntel('company')" class="flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-full transition-colors">
-              <span id="co-bookmark-icon">🔖</span> Save
-            </button>
-            <button id="co-share-btn" onclick="shareCompany()" class="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-              Share
-            </button>
+      <!-- ── Unified result panel ── -->
+      <div id="intel-result" style="display:none">
+
+        <!-- Header card: logo · name · save · share -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:12px">
+          <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:8px">
+            <img id="brand-logo-el" src="" alt="" style="width:52px;height:52px;border-radius:14px;object-fit:contain;border:1px solid var(--border);background:#fafafa;padding:6px;flex-shrink:0;display:none" onerror="this.style.display='none'">
+            <div style="flex:1;min-width:0">
+              <div id="brand-name-el" style="font-size:22px;font-weight:900;letter-spacing:-0.8px;color:var(--text)"></div>
+              <div id="brand-desc-el" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+              <button id="brand-bookmark-btn" onclick="bookmarkIntel('brand')" style="font-size:12px;font-weight:600;color:#d97706;background:#fef3c7;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">🔖 Save</button>
+              <button id="co-share-btn" onclick="shareCompany()" style="font-size:12px;font-weight:600;color:#4f46e5;background:#eef2ff;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">Share</button>
+            </div>
           </div>
+          <div id="brand-extract-el" style="font-size:13px;color:var(--text-secondary,#6b7280);line-height:1.6"></div>
         </div>
 
-        <!-- Tab bar -->
-        <div class="co-tab-bar">
-          <button class="co-tab-btn active" onclick="switchCoTab('overview')"   id="co-tab-btn-overview">🏢 Overview</button>
-          <button class="co-tab-btn"        onclick="switchCoTab('financials')" id="co-tab-btn-financials">📈 Finance</button>
-          <button class="co-tab-btn"        onclick="switchCoTab('intel')"      id="co-tab-btn-intel">🧠 Intel</button>
+        <!-- Hidden compat elements renderCompany needs -->
+        <div id="co-share-name" style="display:none"></div>
+        <div id="co-bookmark-btn" style="display:none"></div>
+
+        <!-- Unified 5-tab bar -->
+        <div id="intel-tab-bar" style="display:flex;gap:4px;background:var(--border);padding:4px;border-radius:14px;margin-bottom:14px;overflow-x:auto">
+          <button id="itab-btn-about"     onclick="switchIntelTab('about')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:#4f46e5;color:#fff">About</button>
+          <button id="itab-btn-finance"   onclick="switchIntelTab('finance')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Finance</button>
+          <button id="itab-btn-history"   onclick="switchIntelTab('history')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">History</button>
+          <button id="itab-btn-campaigns" onclick="switchIntelTab('campaigns')" class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Campaigns</button>
+          <button id="itab-btn-intel"     onclick="switchIntelTab('intel')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Intel</button>
         </div>
 
-        <!-- ── Overview ── -->
-        <div id="co-tab-overview">
+        <!-- ── About tab ── -->
+        <div id="intel-tab-about">
+          <!-- Stats grid from brand API -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Founded</div>
+              <div id="brand-founded-el" style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">—</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Headquarters</div>
+              <div id="brand-hq-el" style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">—</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Revenue</div>
+              <div id="brand-revenue-el" style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">—</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Industry</div>
+              <div id="brand-industry-el" style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">—</div>
+            </div>
+          </div>
+          <!-- Brand financial snapshot -->
+          <div id="brand-fin-section" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:12px">
+            <div id="brand-fin-header" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">📊 Financial Snapshot</div>
+            <div id="brand-fin-el" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+          </div>
+          <!-- Company overview (from company API) -->
           <div id="co-overview" class="co-card hidden">
             <div class="co-card-title">About</div>
             <div id="co-overview-body" class="text-sm text-gray-600 leading-relaxed"></div>
@@ -773,14 +805,22 @@
               </div>
             </div>
           </div>
-          <div id="co-youtube" class="co-card hidden">
-            <div class="co-card-title">📺 Watch & Listen</div>
-            <div id="co-youtube-list" class="flex flex-col gap-3"></div>
+          <!-- Brand news -->
+          <div id="brand-news-section" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">📰 Latest News</div>
+            <div id="brand-news-el"></div>
           </div>
+          <!-- Company news -->
           <div id="co-news" class="co-card hidden">
             <div class="co-card-title">📰 Latest News</div>
             <div id="co-news-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
+          <!-- YouTube videos -->
+          <div id="co-youtube" class="co-card hidden">
+            <div class="co-card-title">📺 Watch & Listen</div>
+            <div id="co-youtube-list" class="flex flex-col gap-3"></div>
+          </div>
+          <!-- External links -->
           <div id="co-ext-links" class="hidden co-card">
             <div id="co-ext-links-body" class="flex flex-wrap gap-2"></div>
           </div>
@@ -789,8 +829,20 @@
           </div>
         </div>
 
-        <!-- ── Financials ── -->
-        <div id="co-tab-financials" class="hidden">
+        <!-- ── Finance tab ── -->
+        <div id="intel-tab-finance" style="display:none">
+          <style>
+            .co-card { background:var(--surface); border-radius:1.25rem; box-shadow:0 1px 4px rgba(0,0,0,.07); margin-bottom:1rem; padding:1.35rem; border:1px solid var(--border); }
+            .co-card-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:1rem; padding-bottom:.65rem; border-bottom:1.5px solid var(--border); display:flex; align-items:center; gap:.4rem; }
+            .co-tab-bar { display:flex; gap:5px; background:var(--border); padding:5px; border-radius:1rem; margin-bottom:1.25rem; }
+            .co-tab-btn { flex:1; font-size:13px; font-weight:600; padding:10px 4px; border-radius:.75rem; border:none; cursor:pointer; transition:all .2s; background:transparent; color:var(--muted); line-height:1.3; }
+            .co-tab-btn.active { background:var(--surface); color:#4f46e5; box-shadow:0 2px 6px rgba(0,0,0,.1); }
+            .co-news-item { padding:.75rem 0; border-bottom:1px solid var(--border); }
+            .co-news-item:last-child { border-bottom:none; padding-bottom:0; }
+            .co-news-item a { font-size:14px; font-weight:500; color:var(--text); line-height:1.5; display:block; }
+            .co-news-item a:hover { color:#4f46e5; }
+            .co-news-meta { font-size:12px; color:var(--subtle); margin-top:3px; }
+          </style>
           <div id="co-share" class="co-card hidden">
             <div class="flex items-center justify-between mb-3">
               <div class="co-card-title mb-0">Share Price</div>
@@ -814,7 +866,6 @@
             </svg>
             <div id="co-share-dates" class="flex justify-between text-xs text-gray-300 mt-1"></div>
           </div>
-
           <div id="co-results" class="co-card hidden">
             <div class="co-card-title">Last Results</div>
             <div id="co-results-loading" class="text-center py-4 text-sm text-gray-400">
@@ -840,10 +891,35 @@
           </div>
         </div>
 
-        <!-- ── Intel ── -->
-        <div id="co-tab-intel" class="hidden">
+        <!-- ── History tab ── -->
+        <div id="intel-tab-history" style="display:none">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+              <img id="brand-tl-logo" src="" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:contain;border:1px solid var(--border);background:#fafafa;padding:5px;flex-shrink:0" onerror="this.style.opacity='.15'">
+              <div>
+                <div id="brand-tl-name" style="font-size:15px;font-weight:900;color:var(--text);letter-spacing:-0.3px"></div>
+                <div style="font-size:11px;color:var(--muted);margin-top:1px">Brand History</div>
+              </div>
+            </div>
+            <div id="brand-timeline-el"></div>
+          </div>
+        </div>
 
-          <!-- Featured watch/listen -->
+        <!-- ── Campaigns tab ── -->
+        <div id="intel-tab-campaigns" style="display:none">
+          <div id="brand-campaigns-section" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">🎯 Iconic Campaigns & Slogans</div>
+            <div id="brand-campaigns-el"></div>
+          </div>
+          <div id="brand-ads-section" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
+            <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">📺 Watch Ads</div>
+            <div id="brand-ads-el" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+        </div>
+
+        <!-- ── Intel tab ── -->
+        <div id="intel-tab-intel" style="display:none">
+          <!-- Featured watch/listen (company admin) -->
           <div id="co-featured-wrap" class="hidden co-card" style="padding:14px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
               <div class="co-card-title" style="margin-bottom:0;border:none;padding:0">🎧 Watch / Listen</div>
@@ -852,13 +928,10 @@
             <div id="co-featured-note" style="font-size:12px;color:var(--muted);margin-bottom:8px;display:none"></div>
             <div id="co-featured-embed"></div>
           </div>
-
-          <!-- Add recommendation button (admin only) -->
           <button id="co-featured-add-btn" onclick="coFeaturedEdit()" class="hidden"
             style="width:100%;padding:11px;border-radius:12px;border:1px dashed var(--border);background:none;color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:12px">
             + Add watch / listen recommendation
           </button>
-
           <div id="co-ai" class="co-card hidden">
             <div class="co-card-title">🤖 AI & Tech Focus</div>
             <div id="co-ai-job-bar" class="hidden mb-4"></div>
@@ -868,133 +941,19 @@
             <div class="co-card-title">🧭 Strategy & Direction</div>
             <div id="co-strategy-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
-        </div>
-
-
-      </div>
-      </div><!-- /blookup-company-panel -->
-
-      <!-- ── BRAND PANEL (shown when Brand tab active) ── -->
-      <div id="blookup-brand-panel" style="display:none">
-      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🏷️ Brand Intel</div>
-      <div style="font-size:12px;color:var(--subtle);margin-bottom:18px;line-height:1.6">Brand identity &amp; global presence · founding story &amp; evolution timeline · iconic ad campaigns &amp; slogans · competitor brands &amp; market rivals</div>
-
-      <!-- Search bar -->
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input id="brand-input" type="text" placeholder="e.g. Nike, Coca-Cola, Apple…"
-          style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
-          onkeydown="if(event.key==='Enter') searchBrand()"
-          onfocus="this.style.boxShadow='0 0 0 3px rgba(124,58,237,.15)'"
-          onblur="this.style.boxShadow=''">
-        <button onclick="searchBrand()"
-          style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
-      </div>
-      <div id="brand-recent" class="mb-3"></div>
-      <div id="brand-did-you-mean" class="hidden mb-3 px-4 py-3 rounded-2xl text-sm font-medium" style="background:#fef9c3;border:1px solid #fde047;color:#713f12"></div>
-
-      <!-- Loading -->
-      <div id="brand-loading" class="hidden text-center py-16">
-        <div class="spinner mx-auto mb-3" style="border-top-color:#7c3aed;width:28px;height:28px"></div>
-        <div style="font-size:13px;color:#9ca3af">Researching brand…</div>
-      </div>
-
-      <!-- Error -->
-      <div id="brand-error" class="hidden text-center py-12" style="font-size:14px;color:#9ca3af"></div>
-
-      <!-- Result -->
-      <div id="brand-result" class="hidden">
-
-        <!-- Header card — always visible -->
-        <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-          <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:10px">
-            <img id="brand-logo-el" src="" alt="" style="width:54px;height:54px;border-radius:14px;object-fit:contain;border:1px solid #f0f0f0;background:#fafafa;padding:6px;flex-shrink:0;display:none" onerror="this.style.display='none'">
-            <div style="flex:1;min-width:0">
-              <div id="brand-name-el" style="font-size:22px;font-weight:900;letter-spacing:-0.8px;color:#111"></div>
-              <div id="brand-desc-el" style="font-size:12px;color:#9ca3af;margin-top:2px"></div>
-            </div>
-            <button id="brand-bookmark-btn" onclick="bookmarkIntel('brand')" style="flex-shrink:0;font-size:12px;font-weight:600;color:#d97706;background:#fef3c7;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">
-              🔖 Save
-            </button>
-          </div>
-          <div id="brand-extract-el" style="font-size:14px;color:#374151;line-height:1.65"></div>
-        </div>
-
-        <!-- Tab bar -->
-        <div style="display:flex;gap:4px;background:#f3f4f6;border-radius:14px;padding:4px;margin-bottom:12px">
-          <button id="btab-overview"  onclick="brandTab('overview')"  style="flex:1;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:#7c3aed;color:#fff">Overview</button>
-          <button id="btab-timeline"  onclick="brandTab('timeline')"  style="flex:1;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:#6b7280">Timeline</button>
-          <button id="btab-ads"       onclick="brandTab('ads')"       style="flex:1;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:#6b7280">Ads</button>
-          <button id="btab-rivals"    onclick="brandTab('rivals')"    style="flex:1;padding:8px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;background:transparent;color:#6b7280">Rivals</button>
-        </div>
-
-        <!-- TAB: Overview -->
-        <div id="brand-tab-overview">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-            <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
-              <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Founded</div>
-              <div id="brand-founded-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
-            </div>
-            <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
-              <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Headquarters</div>
-              <div id="brand-hq-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
-            </div>
-            <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
-              <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Revenue</div>
-              <div id="brand-revenue-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
-            </div>
-            <div style="background:#fff;border:1px solid #f0f0f0;border-radius:16px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.03)">
-              <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Industry</div>
-              <div id="brand-industry-el" style="font-size:15px;font-weight:800;color:#111;margin-top:3px">—</div>
-            </div>
-          </div>
-          <div id="brand-fin-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-            <div id="brand-fin-header" style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">📊 Financial Snapshot</div>
-            <div id="brand-fin-el" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
-          </div>
-          <div id="brand-news-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-            <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">📰 Latest News</div>
-            <div id="brand-news-el"></div>
+          <!-- Rivals from brand API -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-top:12px">
+            <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">⚔️ Closest Competitors</div>
+            <div id="brand-competitors-el"><div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">Loading competitors…</div></div>
           </div>
         </div>
 
-        <!-- TAB: Timeline -->
-        <div id="brand-tab-timeline" style="display:none">
-          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #f3f4f6">
-              <img id="brand-tl-logo" src="" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:contain;border:1px solid #f0f0f0;background:#fafafa;padding:5px;flex-shrink:0" onerror="this.style.opacity='.15'">
-              <div>
-                <div id="brand-tl-name" style="font-size:15px;font-weight:900;color:#111;letter-spacing:-0.3px"></div>
-                <div style="font-size:11px;color:#9ca3af;margin-top:1px">Brand History</div>
-              </div>
-            </div>
-            <div id="brand-timeline-el"></div>
-          </div>
-        </div>
+      </div><!-- /intel-result -->
 
-        <!-- TAB: Ads -->
-        <div id="brand-tab-ads" style="display:none">
-          <div id="brand-campaigns-section" style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-bottom:12px">
-            <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">🎯 Iconic Campaigns & Slogans</div>
-            <div id="brand-campaigns-el"></div>
-          </div>
-          <div id="brand-ads-section" style="display:none;background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-            <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">📺 Watch Ads</div>
-            <div id="brand-ads-el" style="display:flex;flex-direction:column;gap:10px"></div>
-          </div>
-        </div>
+      <!-- Invisible compat wrappers (renderCompany / _renderBrand show/hide these) -->
+      <div id="company-results" style="display:none;position:absolute;width:0;height:0;overflow:hidden"></div>
+      <div id="brand-result" style="display:none;position:absolute;width:0;height:0;overflow:hidden"></div>
 
-        <!-- TAB: Rivals -->
-        <div id="brand-tab-rivals" style="display:none">
-          <div style="background:#fff;border:1px solid #f0f0f0;border-radius:20px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04)">
-            <div style="font-size:13px;font-weight:800;color:#374151;margin-bottom:12px;letter-spacing:-0.2px">⚔️ Closest Competitors</div>
-            <div id="brand-competitors-el"><div style="font-size:13px;color:#9ca3af;text-align:center;padding:20px 0">Loading competitors…</div></div>
-          </div>
-        </div>
-
-      </div>
-      </div><!-- /blookup-brand-panel -->
-
-    </div>
 
     <!-- ── ELECTIONS SCREEN ── -->
     <div id="screen-elections" class="screen pt-5">
@@ -1550,17 +1509,17 @@
     if (bb) bb.classList.add("visible");
     if (name === "fuel")    { document.getElementById("fuel-postcode").focus();   _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()"); }
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); }
-    if (name === "company") { document.getElementById("company-input").focus();   _renderRecent("miru_company", "company-recent", "company-input",   "searchCompany()"); }
+    if (name === "company") { document.getElementById("intel-input").focus(); _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()"); }
     if (name === "library") { libCheckPin(); }
     if (name === "school")  { schoolCheckPin(); }
-    if (name === "brand")     { document.getElementById("brand-input").focus(); _renderRecent("miru_brand", "brand-recent", "brand-input", "searchBrand()"); }
+    if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _loadNationalSnapshot(); }
     setFooter(name);
   }
 
   document.getElementById("fuel-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchFuel(); });
   document.getElementById("report-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchReport(); });
-  document.getElementById("company-input").addEventListener("keydown", e => { if (e.key==="Enter") searchCompany(); });
+  // company-input is now a hidden compat field; intel-input handles keydown via onkeydown attr
 
   // Hash-based deep links — e.g. /#places opens Local Places directly
   (function() {
@@ -2186,6 +2145,91 @@
   }
 
   // ── Company search ───────────────────────────────────────────────────────────
+  // ── Unified Brand Intel search ───────────────────────────────────────────────
+  const _INTEL_TABS = ["about","finance","history","campaigns","intel"];
+
+  window.switchIntelTab = function(tab) {
+    _INTEL_TABS.forEach(t => {
+      const panel = document.getElementById("intel-tab-" + t);
+      const btn   = document.getElementById("itab-btn-" + t);
+      if (panel) panel.style.display = t === tab ? "" : "none";
+      if (btn) {
+        btn.style.background = t === tab ? "#4f46e5" : "transparent";
+        btn.style.color      = t === tab ? "#fff"    : "var(--muted)";
+      }
+    });
+  };
+
+  window.searchIntel = async function() {
+    const raw = document.getElementById("intel-input").value.trim();
+    if (!raw) return;
+    _saveRecent("miru_intel", raw);
+    _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()");
+
+    // sync to compat hidden inputs so renderCompany / _renderBrand still work
+    document.getElementById("company-input").value = raw;
+    document.getElementById("brand-input").value   = raw;
+
+    // reset UI
+    document.getElementById("intel-loading").classList.remove("hidden");
+    document.getElementById("intel-error").classList.add("hidden");
+    document.getElementById("intel-result").style.display = "none";
+    document.getElementById("co-did-you-mean").classList.add("hidden");
+    document.getElementById("brand-did-you-mean").classList.add("hidden");
+    switchIntelTab("about");
+
+    // reset brand header
+    const logoEl = document.getElementById("brand-logo-el");
+    logoEl.style.display = "none";
+    document.getElementById("brand-name-el").textContent = raw;
+    document.getElementById("brand-desc-el").textContent = "";
+    document.getElementById("brand-extract-el").textContent = "";
+    ["brand-founded-el","brand-hq-el","brand-revenue-el","brand-industry-el"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = "—";
+    });
+
+    let coData = null, brData = null, coErr = false, brErr = false;
+
+    const finish = function() {
+      if (coData === null && brData === null) return; // still waiting
+      document.getElementById("intel-loading").classList.add("hidden");
+      if (coErr && brErr) {
+        document.getElementById("intel-error").textContent = "Could not load data — try again.";
+        document.getElementById("intel-error").classList.remove("hidden");
+        return;
+      }
+      document.getElementById("intel-result").style.display = "";
+      if (coData && !coErr) {
+        renderCompany(coData);
+        if (_pendingCoTab) { switchCoTab(_pendingCoTab); _pendingCoTab = null; }
+      }
+      if (brData && !brErr) {
+        _renderBrand(brData);
+        // update header from brand data (richer logo/name)
+        const logoUrl = brData.domain ? `https://logo.clearbit.com/${brData.domain}` : `https://logo.clearbit.com/${(brData.name||"").toLowerCase().replace(/[^a-z0-9]/g,"")}.com`;
+        logoEl.src = logoUrl;
+        logoEl.style.display = "";
+        logoEl.onerror = function() { this.style.display = "none"; };
+        if (brData.name) document.getElementById("brand-name-el").textContent = brData.name;
+        if (brData.description) document.getElementById("brand-desc-el").textContent = brData.description;
+        if (brData.extract) document.getElementById("brand-extract-el").textContent = brData.extract;
+      } else if (coData && coData.name) {
+        document.getElementById("brand-name-el").textContent = coData.name;
+      }
+    };
+
+    // Fire both APIs in parallel
+    _fetchWithTimeout(`/api/company?name=${encodeURIComponent(raw)}`, 30000)
+      .then(r => r.json())
+      .then(d => { coData = d.error ? null : d; coErr = !!d.error; finish(); })
+      .catch(() => { coErr = true; finish(); });
+
+    _fetchWithTimeout(`/api/brand?name=${encodeURIComponent(raw)}`, 30000)
+      .then(r => r.json())
+      .then(d => { brData = d.error ? null : d; brErr = !!d.error; finish(); })
+      .catch(() => { brErr = true; finish(); });
+  };
+
   async function searchCompany() {
     const name = document.getElementById("company-input").value.trim();
     if (!name) return;
@@ -2635,8 +2679,8 @@
     const _urlTab = new URLSearchParams(location.search).get("tab");
     if (_urlTab && CO_TABS.includes(_urlTab)) _pendingCoTab = _urlTab;
     showScreen("company");
-    document.getElementById("company-input").value = "{{ prefill_company }}";
-    searchCompany();
+    document.getElementById("intel-input").value = "{{ prefill_company }}";
+    searchIntel();
   });
   {% endif %}
 
@@ -4975,9 +5019,7 @@
           : `${bco.name} — Company Intel`;
         const subMap = { rivals:"Competitors & turnover", ads:"Ads & campaigns", timeline:"Brand timeline", overview:"Overview" };
         const sub   = bco.mode === "brand" ? (subMap[bco.tab] || "Brand overview") : "AI, strategy & financials";
-        const action = bco.mode === "brand"
-          ? `blookupTab('brand');document.getElementById('brand-input').value='${bco.name.replace(/'/g,"\\'")}';_pendingBrandTab='${bco.tab}';searchBrand();homeSearchClear()`
-          : `blookupTab('company');document.getElementById('company-input').value='${bco.name.replace(/'/g,"\\'")}';searchCompany();homeSearchClear()`;
+        const action = `document.getElementById('intel-input').value='${bco.name.replace(/'/g,"\\'")}';searchIntel();homeSearchClear()`;
         box.innerHTML = `<button onclick="${action}" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit">
           <span style="font-size:22px;width:30px;text-align:center;flex-shrink:0">${icon}</span>
           <span>
@@ -6950,15 +6992,9 @@ _bkBadge();
   }
 
   window.intelSavesView = function(type, name, idx) {
-    if (type === "company") {
-      blookupTab("company");
-      document.getElementById("company-input").value = name;
-      setTimeout(() => searchCompany(), 100);
-    } else {
-      blookupTab("brand");
-      document.getElementById("brand-input").value = name;
-      setTimeout(() => searchBrand(), 100);
-    }
+    document.getElementById("intel-input").value = name;
+    showScreen("company");
+    setTimeout(() => searchIntel(), 100);
   };
 
   window.intelSavesRemove = function(idx) {
@@ -7419,16 +7455,7 @@ _bkBadge();
 
   // Tab helpers for merged cards
   window.blookupTab = function(tab) {
-    const active = {background:'var(--text,#1a1a2e)',color:'var(--bg,#fff)',border:'none'};
-    const inactive = {background:'transparent',color:'var(--text,#1a1a2e)',border:'1.5px solid var(--border,#e5e7eb)'};
-    const cEl = document.getElementById('blookup-tab-company');
-    const bEl = document.getElementById('blookup-tab-brand');
-    if (cEl) Object.assign(cEl.style, tab === 'company' ? active : inactive);
-    if (bEl) Object.assign(bEl.style, tab === 'brand'   ? active : inactive);
-    const cp = document.getElementById('blookup-company-panel');
-    const bp = document.getElementById('blookup-brand-panel');
-    if (cp) cp.style.display = tab === 'company' ? '' : 'none';
-    if (bp) bp.style.display = tab === 'brand'   ? '' : 'none';
+    // panels merged — just navigate to the unified screen
     showScreen('company');
   };
 
