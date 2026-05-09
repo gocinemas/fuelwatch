@@ -8352,8 +8352,9 @@ _bkBadge();
     }
     _updateUI();
     // Re-render charts so + buttons appear now that the user is connected
-    if(window._chartsCache && window._chartsCache.length && window._musicRenderCharts){
-      window._musicRenderCharts(window._musicCurrentTab || 'uk');
+    var _ct = window._musicCurrentTab;
+    if(_ct && window._chartsCache && window._chartsCache[_ct] && window._musicRenderCharts){
+      window._musicRenderCharts(window._chartsCache[_ct]);
     }
   };
 
