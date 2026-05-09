@@ -8132,11 +8132,12 @@ _bkBadge();
       .catch(function(){ document.getElementById('music-charts-loading').style.display='none'; });
   }
 
+  function _heq(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
   function _musicRenderCharts(tracks) {
     var connected = window.spConnected && window.spConnected();
     document.getElementById('music-charts-list').innerHTML = tracks.map(function(t){
       var addBtn = connected
-        ? '<button onclick="spotifyAdd('+JSON.stringify(t.title)+','+JSON.stringify(t.artist)+',this)" style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Add to Miru Picks">＋</button>'
+        ? '<button data-title="'+_heq(t.title)+'" data-artist="'+_heq(t.artist)+'" onclick="spotifyAdd(this.dataset.title,this.dataset.artist,this)" style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Add to Miru Picks">＋</button>'
         : '';
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
         +'<div style="font-size:13px;font-weight:700;color:var(--muted);width:24px;text-align:center;flex-shrink:0">'+t.position+'</div>'
