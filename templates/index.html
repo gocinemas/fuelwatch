@@ -2985,7 +2985,7 @@
       // Show/hide tab bar vs no-election view
       document.getElementById("elections-tab-bar").style.display = noElection ? "none" : "";
       document.getElementById("elections-no-elec").style.display  = noElection ? ""     : "none";
-      ["epanel-candidates","epanel-parties","epanel-more"].forEach(id =>
+      ["epanel-parties","epanel-more"].forEach(id =>
         document.getElementById(id).classList.toggle("hidden", noElection));
 
       // Results section (2022 past + 2026 live)
@@ -3062,30 +3062,7 @@
         document.getElementById("elections-past-inline").innerHTML = past2022Html;
       }
 
-      // Candidates (only render when there are elections)
-      document.getElementById("elections-candidates").innerHTML = noElection ? "" : d.candidates.map(c => {
-        const col = _partyStyle(c.party);
-        const links = [];
-        if (c.homepage) links.push(`<a href="${c.homepage}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500">Website ↗</a>`);
-        if (c.twitter)  links.push(`<a href="https://x.com/${c.twitter}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:500">@${c.twitter}</a>`);
-        if (c.email)    links.push(`<a href="mailto:${c.email}" style="font-size:11px;color:#4f46e5;font-weight:500">Email</a>`);
-        const stmtId = `stmt-${++_elecIdCounter}`;
-        const stmtHtml = c.statement ? `
-          <div style="margin-top:7px">
-            <button onclick="const el=document.getElementById('${stmtId}');const show=el.style.display==='none';el.style.display=show?'block':'none';this.textContent=show?'Hide statement ▲':'Candidate statement ▼'"
-              style="font-size:11px;color:#4f46e5;font-weight:500;background:none;border:none;cursor:pointer;padding:0">Candidate statement ▼</button>
-            <div id="${stmtId}" style="display:none;font-size:12px;color:var(--subtle);line-height:1.55;margin-top:6px;padding:8px 10px;background:var(--bg);border-radius:8px;border-left:3px solid ${col.bg}">${c.statement}</div>
-          </div>` : "";
-        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px">
-          <div style="width:4px;min-height:36px;border-radius:4px;background:${col.bg};flex-shrink:0;margin-top:2px"></div>
-          <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:14px;color:var(--text)">${c.name}</div>
-            <div style="margin-top:3px"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text}">${c.party}</span></div>
-            ${links.length ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">${links.join("")}</div>` : ""}
-            ${stmtHtml}
-          </div>
-        </div>`;
-      }).join("");
+      // Candidates stored in DB — not rendered here
 
       // Party manifestos — one card per unique party present
       if (noElection) {
@@ -3093,7 +3070,7 @@
       } else {
         const partiesSeen = new Set();
         const manifestoCards = [];
-        for (const c of d.candidates) {
+        for (const c of (d.candidates || [])) {
           if (partiesSeen.has(c.party)) continue;
           partiesSeen.add(c.party);
           const col = _partyStyle(c.party);
@@ -5037,7 +5014,7 @@
 
     // Map postcode keywords to a screen + pre-fill action
     const _INTENTS = [
-      { kw: ["petrol","diesel","fuel","unleaded","e10","e5","cheap fuel","cheapest fuel","nearest fuel","nearby fuel"], screen:"fuel", fill: pc => { document.getElementById("fuel-postcode").value = pc; showScreen("fuel"); searchFuel(); } },
+      { kw: ["petrol","diesel","fuel","unleaded","e10","e5","cheap fuel","cheapest fuel","nearest fuel","nearby fuel"], screen:"fuel", fill: pc => { document.getElementById("fuel-postcode").value = pc; showScreen("fuel"); document.getElementById("fuel-postcode").focus(); } },
       { kw: ["train","trains","rail","station","departure"],  screen:"trains", fill: pc => { document.getElementById("train-search-input").value = pc; showScreen("trains"); trainSearch(); } },
       { kw: ["area","crime","house price","property","school rating"], screen:"report", fill: pc => { document.getElementById("report-postcode") && (document.getElementById("report-postcode").value = pc); showScreen("report"); } },
     ];
@@ -7221,16 +7198,29 @@ _bkBadge();
       return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px">${shopRow}${header}${rows}</div>`;
     })() : "";
 
-    const cleanSummary = bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
-    const summaryHtml = cleanSummary
-      ? `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${cleanSummary}</div>`
-      : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>`;
-
     const date = s.created_at ? new Date(s.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
     const isPhoto = !s.url || s.url.includes("twilio") || s.url.includes("media.sid");
     const isSearch = s.url && s.url.includes("google.com/search");
     const isMaps   = s.url && s.url.includes("maps.google.com");
     const isPlace  = s.title && /^(🏪|🍽️)/.test(s.title);
+    const isMenu   = s.title && s.title.startsWith("🍽️");
+
+    // Menu: render with preserved formatting + expandable toggle
+    const menuExpandId = `menu-body-${s.id}`;
+    function _fmtMenu(t) {
+      return t.replace(/\*([^*\n]+)\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>").trim();
+    }
+    const menuHtml = isMenu && bodyText ? `
+      <div style="margin-bottom:10px">
+        <div id="${menuExpandId}" style="display:none;font-size:12px;color:var(--text);line-height:1.7;background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border);margin-bottom:8px">${_fmtMenu(bodyText)}</div>
+        <button onclick="(function(btn){var el=document.getElementById('${menuExpandId}');var show=el.style.display==='none';el.style.display=show?'block':'none';btn.textContent=show?'▲ Hide menu':'▼ View menu';})(this)" style="font-size:12px;color:#4f46e5;font-weight:600;background:none;border:none;cursor:pointer;padding:0;margin-bottom:6px">▼ View menu</button>
+      </div>` : "";
+
+    const cleanSummary = bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
+    const summaryHtml = isMenu ? menuHtml
+      : cleanSummary
+      ? `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${cleanSummary}</div>`
+      : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>`;
 
     let sourceDomain = "";
     if (s.url && !isPhoto) {

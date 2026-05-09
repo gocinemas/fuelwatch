@@ -4480,18 +4480,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
     """Download a WhatsApp photo, analyse with Groq vision, save to wa_saves."""
     import base64, threading
 
-    twilio_sid   = os.environ.get("TWILIO_ACCOUNT_SID", "")
-    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
-    try:
-        r = requests.get(media_url, auth=(twilio_sid, twilio_token), timeout=12)
-        if r.status_code != 200:
-            return "⚠️ Couldn't download the image. Please try again."
-        img_b64 = base64.b64encode(r.content).decode()
-        mime = media_type or "image/jpeg"
-    except Exception as e:
-        return f"⚠️ Image download failed. Please try again."
-
-    # Save bare record immediately so it's never lost
+    # Save bare record immediately — even before download — so it's never lost
     save_id = None
     try:
         row = lib._sb().table("wa_saves").insert({
@@ -4503,8 +4492,27 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         }).execute()
         if row.data:
             save_id = row.data[0].get("id")
-    except Exception:
-        pass
+    except Exception as _se:
+        app.logger.warning(f"[vision] bare save failed: {_se}")
+
+    twilio_sid   = os.environ.get("TWILIO_ACCOUNT_SID", "")
+    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    try:
+        r = requests.get(media_url, auth=(twilio_sid, twilio_token), timeout=12)
+        if r.status_code != 200:
+            app.logger.warning(f"[vision] image download failed status={r.status_code}")
+            user_token = _wa_user_token(from_number)
+            _wa_send_proactive(from_number,
+                f"⚠️ Couldn't read your photo — saved anyway.\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}")
+            return "⚠️ Had trouble reading the image — saved it anyway. Try resending for a better result."
+        img_b64 = base64.b64encode(r.content).decode()
+        mime = media_type or "image/jpeg"
+    except Exception as e:
+        app.logger.warning(f"[vision] image download exception: {e}")
+        user_token = _wa_user_token(from_number)
+        _wa_send_proactive(from_number,
+            f"⚠️ Couldn't download your photo — saved anyway.\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}")
+        return "⚠️ Had trouble downloading — saved it anyway."
 
     def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content,
             _loc=_USER_LAST_LOCATION.get(from_number)):
@@ -5000,7 +5008,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
         _wa_send_proactive(fn, msg)
 
-    threading.Thread(target=_bg, daemon=True).start()
+    def _bg_safe():
+        try:
+            _bg()
+        except Exception as _bge:
+            app.logger.error(f"[vision] background thread crashed: {_bge}", exc_info=True)
+    threading.Thread(target=_bg_safe, daemon=True).start()
     return "📷 Got it — reading your photo now…"
 
 
