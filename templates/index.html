@@ -2206,7 +2206,6 @@
       }
       if (brData && !brErr) {
         _renderBrand(brData);
-        // update header from brand data (richer logo/name)
         const logoUrl = brData.domain ? `https://logo.clearbit.com/${brData.domain}` : `https://logo.clearbit.com/${(brData.name||"").toLowerCase().replace(/[^a-z0-9]/g,"")}.com`;
         logoEl.src = logoUrl;
         logoEl.style.display = "";
@@ -2217,7 +2216,49 @@
       } else if (coData && coData.name) {
         document.getElementById("brand-name-el").textContent = coData.name;
       }
+
+      // ── Hide tabs + sections that have no data ──
+      const co = coData || {}, br = brData || {};
+
+      // About: hide stats grid if brand returned no useful fields
+      const hasStats = br.founded || br.hq || br.revenue || br.industry;
+      document.querySelector('#intel-tab-about > div[style*="grid"]').style.display = hasStats ? "" : "none";
+
+      // Finance tab: hide if no share price and no brand financials
+      const hasFinance = (co.share && co.share.current) ||
+                         (br.financials && Object.values(br.financials).some(v => v));
+      _setIntelTab("finance", hasFinance);
+
+      // History tab: hide if no timeline entries
+      const hasHistory = br.timeline && br.timeline.length > 0;
+      _setIntelTab("history", hasHistory);
+
+      // Campaigns tab: hide if no campaigns and no ad videos
+      const hasCampaigns = (br.campaigns && br.campaigns.length > 0) ||
+                           (br.ads && br.ads.length > 0);
+      _setIntelTab("campaigns", hasCampaigns);
+
+      // Intel tab: hide rivals section if no competitors
+      const rivalBox = document.getElementById("brand-competitors-el");
+      if (rivalBox) {
+        const hasRivals = br.competitors && br.competitors.length > 0;
+        rivalBox.closest('div[style*="border-radius:20px"]').style.display = hasRivals ? "" : "none";
+      }
+
+      // Auto-select first visible tab
+      const firstVisible = _INTEL_TABS.find(t => {
+        const btn = document.getElementById("itab-btn-" + t);
+        return btn && btn.style.display !== "none";
+      });
+      if (firstVisible) switchIntelTab(firstVisible);
     };
+
+    function _setIntelTab(name, visible) {
+      const btn = document.getElementById("itab-btn-" + name);
+      if (btn) btn.style.display = visible ? "" : "none";
+      const panel = document.getElementById("intel-tab-" + name);
+      if (panel && !visible) panel.style.display = "none";
+    }
 
     // Fire both APIs in parallel
     _fetchWithTimeout(`/api/company?name=${encodeURIComponent(raw)}`, 30000)
