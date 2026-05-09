@@ -1406,7 +1406,10 @@ def _load_elections_csv():
                 "homepage":  row.get("homepage_url", "").strip().strip('"'),
                 "statement": row.get("statement_to_voters", "").strip().strip('"'),
             }
-            if gss:
+            # Real GSS codes start with E/W/S/N followed by digits.
+            # Pseudo-GSS like "WSY:bagshot-windlesham-chobham" must go to by_slug.
+            real_gss = gss and bool(re.match(r"^[EWSN]\d", gss))
+            if real_gss:
                 if gss not in by_gss:
                     by_gss[gss] = {
                         "ward": row.get("post_label", "").strip(),
@@ -1416,7 +1419,7 @@ def _load_elections_csv():
                     }
                 by_gss[gss]["candidates"].append(candidate)
             else:
-                # Reorganised councils: parse council/ward slug from ballot_paper_id
+                # Reorganised councils (or pseudo-GSS): parse council/ward slug from ballot_paper_id
                 # e.g. local.west-surrey.chertsey.2026-05-07
                 bp = row.get("ballot_paper_id", "")
                 parts = bp.split(".")
