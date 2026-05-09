@@ -1113,30 +1113,20 @@ def api_search():
     radius_km = radius * 1.60934
     stations  = get_stations()
 
-    # Kick off weather fetch in parallel so it doesn't block station filtering
-    with _cf.ThreadPoolExecutor(max_workers=1) as ex:
-        weather_fut = ex.submit(get_weather, lat, lon)
-
-        nearby = []
-        for s in stations:
-            price = s.get(fuel)
-            if not price or price <= 0: continue
-            dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
-            if dist_km <= radius_km:
-                nearby.append({**s, "dist_mi": round(dist_km / 1.60934, 2), "price": price})
-        nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
-        avg = round(sum(s["price"] for s in nearby) / len(nearby), 1) if nearby else 0
-
-        try:
-            weather = weather_fut.result(timeout=1.5)
-        except Exception:
-            weather = ""
+    nearby = []
+    for s in stations:
+        price = s.get(fuel)
+        if not price or price <= 0: continue
+        dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
+        if dist_km <= radius_km:
+            nearby.append({**s, "dist_mi": round(dist_km / 1.60934, 2), "price": price})
+    nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
+    avg = round(sum(s["price"] for s in nearby) / len(nearby), 1) if nearby else 0
 
     rightmove_url = f"https://www.rightmove.co.uk/house-prices/{pc_fmt.lower().replace(' ', '-')}.html"
     payload = {
         "postcode": postcode, "pc_fmt": pc_fmt,
         "fuel": fuel, "radius": radius,
-        "weather": weather,
         "stations": nearby[:10], "avg_price": avg,
         "rightmove_url": rightmove_url,
         "timestamp": datetime.now().isoformat(),
