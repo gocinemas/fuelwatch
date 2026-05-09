@@ -8354,21 +8354,33 @@ _bkBadge();
 
   window.spotifyAdd = async function(title, artist, btn){
     var token=await _getToken();
-    if(!token){ spotifyConnect(); return; }
+    if(!token){
+      alert('Spotify session expired — please reconnect.');
+      spotifyConnect(); return;
+    }
     var orig=btn.textContent; btn.textContent='…'; btn.disabled=true;
     try{
       var q=encodeURIComponent('track:'+title+' artist:'+artist);
-      var search=await fetch('https://api.spotify.com/v1/search?q='+q+'&type=track&limit=1',{headers:{Authorization:'Bearer '+token}}).then(function(r){return r.json();});
+      var sr=await fetch('https://api.spotify.com/v1/search?q='+q+'&type=track&limit=1',{headers:{Authorization:'Bearer '+token}});
+      if(!sr.ok) throw new Error('Search '+sr.status+': '+await sr.text());
+      var search=await sr.json();
       var items=(search.tracks||{}).items||[];
-      if(!items.length){ btn.textContent='?'; setTimeout(function(){btn.textContent=orig;btn.disabled=false;},2000); return; }
+      if(!items.length){
+        btn.textContent='?'; btn.title='Not found on Spotify';
+        setTimeout(function(){btn.textContent=orig;btn.disabled=false;btn.title='';},2500); return;
+      }
       var playlistId=await _getPlaylist(token);
-      await fetch('https://api.spotify.com/v1/playlists/'+playlistId+'/tracks',{method:'POST',
+      if(!playlistId) throw new Error('Could not get playlist');
+      var pr=await fetch('https://api.spotify.com/v1/playlists/'+playlistId+'/tracks',{method:'POST',
         headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
         body:JSON.stringify({uris:[items[0].uri]})});
+      if(!pr.ok) throw new Error('Add '+pr.status+': '+await pr.text());
       btn.textContent='✓'; btn.style.color='#1db954';
       setTimeout(function(){btn.textContent='＋';btn.style.color='';btn.disabled=false;},2500);
     }catch(e){
-      btn.textContent='!'; setTimeout(function(){btn.textContent=orig;btn.disabled=false;},2000);
+      console.error('spotifyAdd:',e);
+      btn.textContent='!'; btn.title=e.message;
+      setTimeout(function(){btn.textContent=orig;btn.disabled=false;btn.title='';},4000);
     }
   };
 
