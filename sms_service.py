@@ -1439,17 +1439,23 @@ def _load_elections_csv():
 
 
 def _best_ward_match(ward_name: str, wards: dict) -> str | None:
-    """Token-overlap match; weighted by token length so specific place names win ties."""
+    """Token-overlap match; weighted by token length.
+    Tiebreaker: prefer ward whose total token weight is closest to the matched weight
+    (i.e. prefer exact/short names over compound ones that share a token)."""
     tokens = set(re.sub(r"[^a-z0-9 ]", "", ward_name.lower()).split()) - {"and", "the", ""}
-    best_slug, best_score = None, 0
+    best_slug, best_score, best_frac = None, 0, 0.0
     for slug, data in wards.items():
         wt = set(re.sub(r"[^a-z0-9 ]", "", data["ward"].lower()).split()) - {"and", "the", ""}
         st = set(slug.replace("-", " ").split())
-        matched = tokens & (wt | st)
+        all_ward_tokens = wt | st
+        matched = tokens & all_ward_tokens
         score = sum(len(t) for t in matched)
-        if score > best_score:
-            best_score = score
-            best_slug = slug
+        if score == 0:
+            continue
+        total = sum(len(t) for t in all_ward_tokens)
+        frac = score / total if total else 0.0
+        if score > best_score or (score == best_score and frac > best_frac):
+            best_score, best_frac, best_slug = score, frac, slug
     return best_slug if best_score > 0 else None
 
 
