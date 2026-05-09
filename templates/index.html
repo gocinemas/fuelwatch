@@ -7948,6 +7948,10 @@ _bkBadge();
   <!-- UK / Global charts panel -->
   <div id="music-charts-panel" style="display:none">
     <div id="music-charts-loading" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Loading…</div>
+    <div id="music-charts-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px 16px;text-align:center">
+      <div id="music-charts-error-msg" style="font-size:13px;color:#b91c1c;margin-bottom:10px"></div>
+      <button onclick="musicTabRetry()" style="padding:7px 18px;border:none;border-radius:99px;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Try again</button>
+    </div>
     <div id="music-charts-list"></div>
   </div>
 </div>
@@ -7981,18 +7985,35 @@ _bkBadge();
   function _musicLoadCharts(tab) {
     if(_chartsCache[tab]){ _musicRenderCharts(_chartsCache[tab]); return; }
     document.getElementById('music-charts-loading').style.display = 'block';
+    document.getElementById('music-charts-error').style.display = 'none';
     document.getElementById('music-charts-list').innerHTML = '';
     var country = tab==='uk' ? 'GB' : '';
     fetch('/api/music/charts?country='+country)
-      .then(function(r){ return r.json(); })
+      .then(function(r){
+        if(!r.ok) throw new Error('Server error ' + r.status);
+        return r.json();
+      })
       .then(function(d){
         document.getElementById('music-charts-loading').style.display = 'none';
-        if(d.error){ document.getElementById('music-charts-list').innerHTML='<div style="color:#b91c1c;font-size:13px">'+d.error+'</div>'; return; }
+        if(d.error){
+          document.getElementById('music-charts-error-msg').textContent = d.error;
+          document.getElementById('music-charts-error').style.display = 'block';
+          return;
+        }
         _chartsCache[tab] = d.tracks || [];
         _musicRenderCharts(_chartsCache[tab]);
       })
-      .catch(function(){ document.getElementById('music-charts-loading').style.display='none'; });
+      .catch(function(e){
+        document.getElementById('music-charts-loading').style.display='none';
+        document.getElementById('music-charts-error-msg').textContent = e.message || 'Could not load charts — tap to retry';
+        document.getElementById('music-charts-error').style.display = 'block';
+      });
   }
+
+  window.musicTabRetry = function(){
+    var tab = _musicCurrentTab;
+    if(tab !== 'identify'){ delete _chartsCache[tab]; _musicLoadCharts(tab); }
+  };
 
   function _heq(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
   function _musicRenderCharts(tracks) {
