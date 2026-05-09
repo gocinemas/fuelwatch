@@ -1254,6 +1254,19 @@ _DISTRICT_TO_COUNCIL_SLUG = {
     "E07000211": "east-surrey",  # Reigate and Banstead
     "E07000215": "east-surrey",  # Tandridge
 }
+def _org_name_to_dc_slug(name: str) -> str:
+    """Strip civic prefixes from a council org name and return a DC-compatible slug."""
+    import re
+    n = name.strip()
+    for prefix in [
+        "London Borough of ", "Royal Borough of ",
+        "Metropolitan Borough of ", "Borough of ", "City of ",
+    ]:
+        if n.startswith(prefix):
+            n = n[len(prefix):]
+            break
+    return re.sub(r'\s+', '-', n.strip().lower())
+
 # New council slug → human-readable predecessor area list (for "no past results" message)
 _COUNCIL_PREDECESSORS = {
     "west-surrey": ["Runnymede", "Guildford", "Spelthorne", "Surrey Heath", "Waverley", "Woking"],
@@ -5292,7 +5305,7 @@ def whatsapp_results_format(postcode: str) -> str:
         date    = ward_data.get("election_date", "2026-05-07")
 
         # Try DC results API — returns a list of candidate dicts
-        dc_results = _fetch_dc_results(council_slug or council, ward, date)
+        dc_results = _fetch_dc_results(council_slug or _org_name_to_dc_slug(council), ward, date)
         has_real = dc_results and any(c.get("votes") is not None or c.get("elected") for c in dc_results)
         if has_real:
             cands = sorted(dc_results, key=lambda c: -(c.get("votes") or 0))
