@@ -8306,16 +8306,12 @@ _bkBadge();
 
   async function _getPlaylist(token){
     if(_sp.playlistId) return _sp.playlistId;
-    var meR=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+token}});
-    if(!meR.ok) throw new Error('Spotify account fetch failed ('+meR.status+') — try reconnecting');
-    var me=await meR.json();
-    if(!me.id) throw new Error('Could not read Spotify user ID');
     var listsR=await fetch('https://api.spotify.com/v1/me/playlists?limit=50',{headers:{Authorization:'Bearer '+token}});
-    if(!listsR.ok) throw new Error('Spotify playlists fetch failed ('+listsR.status+')');
+    if(!listsR.ok) throw new Error('Spotify playlists fetch failed ('+listsR.status+') — try reconnecting');
     var lists=await listsR.json();
     var found=(lists.items||[]).find(function(p){return p.name==='Miru Picks';});
     if(found){ _sp.playlistId=found.id; _save(); return _sp.playlistId; }
-    var createR=await fetch('https://api.spotify.com/v1/users/'+me.id+'/playlists',{method:'POST',
+    var createR=await fetch('https://api.spotify.com/v1/me/playlists',{method:'POST',
       headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
       body:JSON.stringify({name:'Miru Picks',description:'Songs added via Miru',public:false})});
     if(!createR.ok){
