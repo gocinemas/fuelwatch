@@ -2954,12 +2954,7 @@
             Results will appear here once declared.
           </div>`;
       } else {
-        const prev = (d.past_results && d.past_results.length)
-          ? _renderResultsTable(d.past_results, "2022 Results (for reference)")
-          : `<div style="font-size:12px;color:var(--subtle);text-align:center;padding:8px 0">No 2022 results on record.</div>`;
-        liveEl.innerHTML = `
-          <div style="font-size:12px;color:var(--subtle);text-align:center;padding:6px 0 12px">2026 results not yet published for this ward</div>
-          ${prev}`;
+        liveEl.innerHTML = `<div style="font-size:12px;color:var(--subtle);text-align:center;padding:8px 0">2026 results not yet published for this ward</div>`;
       }
 
       // 2022 past results — tab panel + inline (no-election view)
