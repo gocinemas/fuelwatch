@@ -7916,7 +7916,7 @@ _bkBadge();
     <button id="mtab-uk" onclick="musicTab('uk',this)"
       style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🇬🇧 UK Top 20</button>
     <button id="mtab-global" onclick="musicTab('global',this)"
-      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🌍 Global</button>
+      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🌍 Top 20</button>
   </div>
 
   <!-- Spotify connect bar -->
@@ -8040,8 +8040,13 @@ _bkBadge();
     var connected = window.spConnected && window.spConnected();
     document.getElementById('music-charts-list').innerHTML = tracks.map(function(t){
       var addBtn = connected
-        ? '<button data-title="'+_heq(t.title)+'" data-artist="'+_heq(t.artist)+'" onclick="spotifyAdd(this.dataset.title,this.dataset.artist,this)" style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Save to Liked Songs">♥</button>'
+        ? '<button data-title="'+_heq(t.title)+'" data-artist="'+_heq(t.artist)+'"'
+          +(t.track_id ? ' data-track-id="'+_heq(t.track_id)+'"' : '')
+          +(t.spotify_url ? ' data-spotify-url="'+_heq(t.spotify_url)+'"' : '')
+          +' onclick="spotifyAdd(this.dataset.title,this.dataset.artist,this,this.dataset.trackId,this.dataset.spotifyUrl)"'
+          +' style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Save to Liked Songs">♥</button>'
         : '';
+      var playUrl = t.spotify_url || t.url;
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
         +'<div style="font-size:13px;font-weight:700;color:var(--muted);width:24px;text-align:center;flex-shrink:0">'+t.position+'</div>'
         +(t.cover ? '<img src="'+t.cover+'" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0">' : '<div style="width:44px;height:44px;border-radius:8px;background:var(--border);flex-shrink:0"></div>')
@@ -8049,7 +8054,7 @@ _bkBadge();
         +'<div style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.title+'</div>'
         +'<div style="font-size:12px;color:var(--muted)">'+t.artist+'</div>'
         +'</div>'
-        +(t.url ? '<a href="'+t.url+'" target="_blank" rel="noopener" style="font-size:18px;text-decoration:none;flex-shrink:0">▶</a>' : '')
+        +(playUrl ? '<a href="'+playUrl+'" target="_blank" rel="noopener" style="font-size:18px;text-decoration:none;flex-shrink:0">▶</a>' : '')
         +addBtn
         +'</div>';
     }).join('');
@@ -8310,22 +8315,38 @@ _bkBadge();
     _sp.token=null; _sp.expires=0; _sp.refreshToken=null; _save(); _updateUI();
   };
 
-  window.spotifyAdd = async function(title, artist, btn){
+  window.spotifyAdd = async function(title, artist, btn, knownTrackId, knownSpotifyUrl){
     var token=await _getToken();
     if(!token){ alert('Spotify session expired — tap Connect Spotify to reconnect.'); spotifyConnect(); return; }
     var orig=btn.textContent; btn.textContent='…'; btn.disabled=true;
     try{
-      var q=encodeURIComponent('track:'+title+' artist:'+artist);
-      var sr=await fetch('https://api.spotify.com/v1/search?q='+q+'&type=track&limit=1',{headers:{Authorization:'Bearer '+token}});
-      if(!sr.ok) throw new Error('Search failed ('+sr.status+')');
-      var items=((await sr.json()).tracks||{}).items||[];
-      if(!items.length){
-        btn.textContent='?'; btn.title='Not found on Spotify';
-        setTimeout(function(){btn.textContent=orig;btn.disabled=false;btn.title='';},2500); return;
+      var trackId=knownTrackId||'';
+      var trackUrl=knownSpotifyUrl||'';
+
+      // Skip search if we already have the track ID from Spotify charts
+      if(!trackId){
+        var q=encodeURIComponent('track:'+title+' artist:'+artist);
+        var sr=await fetch('https://api.spotify.com/v1/search?q='+q+'&type=track&limit=1',{headers:{Authorization:'Bearer '+token}});
+        if(!sr.ok) throw new Error('Search failed ('+sr.status+')');
+        var items=((await sr.json()).tracks||{}).items||[];
+        if(!items.length){
+          btn.textContent='?'; btn.title='Not found on Spotify';
+          setTimeout(function(){btn.textContent=orig;btn.disabled=false;btn.title='';},2500); return;
+        }
+        trackId=items[0].id;
+        trackUrl=((items[0].external_urls||{}).spotify)||('https://open.spotify.com/track/'+trackId);
       }
+
       var pr=await fetch('https://api.spotify.com/v1/me/tracks',{method:'PUT',
         headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-        body:JSON.stringify({ids:[items[0].id]})});
+        body:JSON.stringify({ids:[trackId]})});
+      if(pr.status===403){
+        // Dev-mode app restriction — open track in Spotify so user can ♥ it there
+        if(trackUrl) window.open(trackUrl,'_blank');
+        btn.textContent='↗'; btn.title='Opened in Spotify — tap ♥ there to save';
+        setTimeout(function(){btn.textContent=orig;btn.disabled=false;btn.title='';},3000);
+        return;
+      }
       if(!pr.ok) throw new Error('Save failed ('+pr.status+'): '+await pr.text());
       btn.textContent='♥'; btn.style.color='#1db954';
       setTimeout(function(){btn.textContent=orig;btn.style.color='';btn.disabled=false;},2500);

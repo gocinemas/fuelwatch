@@ -4963,8 +4963,8 @@ def api_user_location():
             if not location_str:
                 return
 
-            # Find saves from the last 30 minutes for this user that have no 📍
-            cutoff = (time.time() - 1800)
+            # Find saves from the last 15 minutes for this user that have no 📍
+            cutoff = (time.time() - 900)
             import datetime as _dt
             cutoff_iso = _dt.datetime.utcfromtimestamp(cutoff).isoformat()
             rows = lib._sb().table("wa_saves") \
@@ -5466,7 +5466,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             if session and time.time() < session.get("expires", 0):
                 page_num = session["page_count"] + 1
                 _MENU_SESSION[fn]["page_count"] = page_num
-                _MENU_SESSION[fn]["expires"] = time.time() + 1800
+                _MENU_SESSION[fn]["expires"] = time.time() + 900
                 try:
                     existing = lib._sb().table("wa_saves").select("summary").eq("id", session["save_id"]).execute().data
                     existing_summary = (existing[0]["summary"] if existing else "") or ""
@@ -5528,7 +5528,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
 
         # Start a menu session so subsequent menu photos get appended
         if img_type == "menu" and sid:
-            _MENU_SESSION[fn] = {"save_id": sid, "expires": time.time() + 1800, "page_count": 1}
+            _MENU_SESSION[fn] = {"save_id": sid, "expires": time.time() + 900, "page_count": 1}
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
         if product_items or bullets or venue_info or brand_intel or menu_text:
@@ -6299,6 +6299,12 @@ def whatsapp_reply():
     if cmd_up in ("READ", "SKIP") or cmd_up.startswith("REMIND"):
         reply = _wa_triage_respond(from_number, cmd_up)
         resp.message(reply)
+        return str(resp)
+
+    # ── NEW command: clear menu session so next photo starts a fresh save ───────
+    if body_lower in ("new", "new save", "new session"):
+        _MENU_SESSION.pop(from_number, None)
+        resp.message("✅ Started fresh — send your next photo to begin a new save.")
         return str(resp)
 
     # ── LIST command: on-demand saves summary ─────────────────────────────────
@@ -7338,21 +7344,27 @@ def api_wa_saves_search():
     except Exception:
         pass
 
-    # Supabase fallback: search title + summary
+    # Supabase fallback: full-text search on fts generated column, then ilike
     try:
         sb = lib._sb()
-        def _q(field):
-            base = sb.table("wa_saves").select("id,title,url,summary,status,created_at,remind_day")
-            if from_number:
-                base = base.eq("from_number", from_number)
-            return base.ilike(field, f"%{q}%").order("created_at", desc=True).limit(20).execute().data
-
-        seen, results = set(), []
-        for row in _q("title") + _q("summary"):
-            if row["id"] not in seen:
-                seen.add(row["id"])
-                results.append(row)
-        return jsonify({"hits": results})
+        base = sb.table("wa_saves").select("id,title,url,summary,status,created_at,remind_day")
+        if from_number:
+            base = base.eq("from_number", from_number)
+        try:
+            rows = base.text_search("fts", q, config="english").order("created_at", desc=True).limit(20).execute().data
+        except Exception:
+            # fts column not yet created — fall back to ilike on both fields
+            def _qi(field):
+                b = sb.table("wa_saves").select("id,title,url,summary,status,created_at,remind_day")
+                if from_number:
+                    b = b.eq("from_number", from_number)
+                return b.ilike(field, f"%{q}%").order("created_at", desc=True).limit(20).execute().data
+            seen, rows = set(), []
+            for row in _qi("title") + _qi("summary"):
+                if row["id"] not in seen:
+                    seen.add(row["id"])
+                    rows.append(row)
+        return jsonify({"hits": rows})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -7686,9 +7698,77 @@ def api_music_identify():
         return jsonify({"error": str(e)}), 500
 
 
+_spotify_app_token: str = ""
+_spotify_app_token_expires: float = 0.0
+
+_SPOTIFY_PLAYLISTS = {
+    "GB": "37i9dQZEVXbLnolsZ8PSNw",   # Spotify UK Top 50
+    "":   "37i9dQZEVXbMDoHDwVN2tF",   # Spotify Global Top 50
+}
+
+def _get_spotify_app_token() -> str:
+    global _spotify_app_token, _spotify_app_token_expires
+    if _spotify_app_token and time.time() < _spotify_app_token_expires:
+        return _spotify_app_token
+    cid = os.environ.get("SPOTIFY_CLIENT_ID", "")
+    secret = os.environ.get("SPOTIFY_CLIENT_SECRET", "")
+    if not cid or not secret:
+        return ""
+    import base64 as _b64
+    creds = _b64.b64encode(f"{cid}:{secret}".encode()).decode()
+    r = requests.post(
+        "https://accounts.spotify.com/api/token",
+        headers={"Authorization": f"Basic {creds}", "Content-Type": "application/x-www-form-urlencoded"},
+        data={"grant_type": "client_credentials"},
+        timeout=10,
+    )
+    r.raise_for_status()
+    d = r.json()
+    _spotify_app_token = d["access_token"]
+    _spotify_app_token_expires = time.time() + d.get("expires_in", 3600) - 60
+    return _spotify_app_token
+
+
 @app.route("/api/music/charts")
 def api_music_charts():
     country = request.args.get("country", "").upper()
+
+    # ── Spotify Top 50 (preferred) ────────────────────────────────────────────
+    try:
+        app_token = _get_spotify_app_token()
+        if app_token:
+            playlist_id = _SPOTIFY_PLAYLISTS.get(country, _SPOTIFY_PLAYLISTS[""])
+            r = requests.get(
+                f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
+                headers={"Authorization": f"Bearer {app_token}"},
+                params={"limit": 20, "fields": "items(track(id,name,artists(name),album(images),external_urls))"},
+                timeout=10,
+            )
+            r.raise_for_status()
+            tracks = []
+            for i, item in enumerate(r.json().get("items", [])):
+                t = item.get("track") or {}
+                if not t or not t.get("id"):
+                    continue
+                images = t.get("album", {}).get("images", [])
+                cover = images[0]["url"] if images else ""
+                artists = ", ".join(a["name"] for a in t.get("artists", []))
+                spotify_url = t.get("external_urls", {}).get("spotify", "")
+                tracks.append({
+                    "position":    i + 1,
+                    "title":       t.get("name", ""),
+                    "artist":      artists,
+                    "cover":       cover,
+                    "url":         spotify_url,
+                    "track_id":    t.get("id", ""),
+                    "spotify_url": spotify_url,
+                })
+            if tracks:
+                return jsonify({"tracks": tracks, "source": "spotify"})
+    except Exception as e:
+        print(f"[music/charts/spotify] {e}")
+
+    # ── Apple iTunes fallback ─────────────────────────────────────────────────
     feed_country = "gb" if country == "GB" else "us"
     try:
         r = requests.get(
@@ -7711,7 +7791,7 @@ def api_music_charts():
                 "cover":    cover,
                 "url":      link.get("attributes", {}).get("href", ""),
             })
-        return jsonify({"tracks": tracks})
+        return jsonify({"tracks": tracks, "source": "itunes"})
     except Exception as e:
         print(f"[music/charts] {e}")
         return jsonify({"error": str(e)}), 500
