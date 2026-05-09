@@ -6817,6 +6817,31 @@ def api_wa_saves_delete():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/wa-saves/bulk-delete", methods=["POST"])
+def api_wa_saves_bulk_delete():
+    """Delete multiple saves by ID in one request."""
+    from_number, err = _check_saves_pin()
+    if err:
+        return err
+    data = request.json or {}
+    ids = data.get("ids")
+    if not ids or not isinstance(ids, list):
+        return jsonify({"error": "ids array required"}), 400
+    deleted = []
+    errors = []
+    for save_id in ids:
+        try:
+            q = lib._sb().table("wa_saves").delete().eq("id", save_id)
+            if from_number:
+                q = q.eq("from_number", from_number)
+            q.execute()
+            lib.saves_unsync(save_id)
+            deleted.append(save_id)
+        except Exception as e:
+            errors.append({"id": save_id, "error": str(e)})
+    return jsonify({"deleted": deleted, "errors": errors})
+
+
 @app.route("/api/wa-saves/enrich", methods=["POST"])
 def api_wa_saves_enrich():
     """Look up place details for a photo/place save and update its summary."""
@@ -6875,6 +6900,49 @@ def api_wa_saves_enrich():
             _wa_send_proactive(fn, msg)
 
         return jsonify({"ok": True, "summary": new_summary, "title": update.get("title", ""), "url": update.get("url", "")})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/wa-saves/update-location", methods=["POST"])
+def api_wa_saves_update_location():
+    """Edit the location (📍) embedded in a save's summary."""
+    from_number, err = _check_saves_pin()
+    if err:
+        return err
+    data = request.json or {}
+    save_id  = data.get("id")
+    location = data.get("location", "").strip()
+    if not save_id:
+        return jsonify({"error": "id required"}), 400
+    try:
+        q = lib._sb().table("wa_saves").select("summary,from_number").eq("id", save_id)
+        rows = q.execute().data
+        if not rows:
+            return jsonify({"error": "save not found"}), 404
+        row = rows[0]
+        if from_number and row.get("from_number") != from_number:
+            return jsonify({"error": "not your save"}), 403
+        summary = row.get("summary") or ""
+        import re
+        if location:
+            # Replace existing 📍 … on the META line, or append if missing
+            if re.search(r"📍[^\n]*", summary):
+                summary = re.sub(r"📍[^\n]*", f"📍 {location}", summary, count=1)
+            elif summary.startswith("META:"):
+                first_newline = summary.find("\n")
+                if first_newline == -1:
+                    summary += f" · 📍 {location}"
+                else:
+                    summary = summary[:first_newline] + f" · 📍 {location}" + summary[first_newline:]
+            else:
+                summary = f"📍 {location}\n" + summary
+        else:
+            # Blank location = remove it
+            summary = re.sub(r"\s*·?\s*📍[^\n]*", "", summary)
+        lib._sb().table("wa_saves").update({"summary": summary}).eq("id", save_id).execute()
+        lib.saves_sync({**row, "id": save_id, "summary": summary})
+        return jsonify({"ok": True, "summary": summary})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
