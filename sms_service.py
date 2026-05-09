@@ -1779,6 +1779,142 @@ def api_elections_check_alerts():
     return jsonify({"checked": len(pending), "sent": sent_count})
 
 
+# ── Councillor helpers ─────────────────────────────────────────────────────────
+
+def _fetch_dc_elected(ward_gss: str) -> list:
+    """Fetch elected councillors for a ward from Democracy Club API."""
+    try:
+        url = "https://candidates.democracyclub.org.uk/api/next/memberships/"
+        params = {
+            "ballot__post__slug": f"local.{ward_gss}",
+            "elected": "True",
+            "format": "json",
+            "page_size": 10,
+        }
+        r = requests.get(url, params=params, timeout=8)
+        if r.status_code != 200:
+            return []
+        return r.json().get("results", [])
+    except Exception:
+        return []
+
+
+def _councillor_from_dc_person(person: dict, ward_gss: str, ward: str, council: str, election_date: str) -> dict:
+    """Map a DC membership record to our councillors schema."""
+    p = person.get("person", {}) or person
+    name = p.get("name", "")
+    party = ""
+    try:
+        party_obj = person.get("party", {}) or {}
+        party = party_obj.get("name", "") or ""
+    except Exception:
+        pass
+    email = ""
+    for ct in (p.get("contact_details") or []):
+        if ct.get("contact_type") == "email":
+            email = ct.get("value", "")
+            break
+    photo_url = (p.get("image") or {}).get("image_url", "")
+    profile_url = f"https://candidates.democracyclub.org.uk/person/{p.get('id', '')}/"
+    return {
+        "ward_gss":          ward_gss,
+        "ward":              ward,
+        "council":           council,
+        "name":              name,
+        "party":             party,
+        "email":             email,
+        "photo_url":         photo_url,
+        "council_profile_url": profile_url,
+        "elected_date":      election_date,
+    }
+
+
+def _upsert_councillors(rows: list) -> int:
+    """Upsert councillor rows to Supabase. Returns count saved."""
+    if not rows:
+        return 0
+    try:
+        lib._sb().table("councillors").upsert(
+            rows, on_conflict="ward_gss,name"
+        ).execute()
+        return len(rows)
+    except Exception as e:
+        app.logger.warning(f"[councillors] upsert failed: {e}")
+        return 0
+
+
+def _get_councillors_for_ward(ward_gss: str) -> list:
+    """Fetch councillors for a ward — DB first, DC API fallback."""
+    try:
+        rows = lib._sb().table("councillors").select("*").eq("ward_gss", ward_gss).execute().data
+        if rows:
+            return rows
+    except Exception:
+        pass
+    return []
+
+
+@app.route("/api/councillor")
+def api_councillor():
+    """Return councillor(s) for a postcode. Checks DB first, then DC API."""
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+    try:
+        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
+        if r.status_code != 200:
+            return jsonify({"error": "Postcode not found"}), 404
+        result = r.json().get("result", {})
+        codes = result.get("codes", {})
+        ward_gss  = codes.get("admin_ward", "")
+        ward_name = result.get("admin_ward", "")
+        council   = result.get("admin_district", "")
+        if not ward_gss:
+            return jsonify({"councillors": [], "ward": ward_name, "council": council})
+
+        # Try DB
+        rows = _get_councillors_for_ward(ward_gss)
+        if rows:
+            return jsonify({"councillors": rows, "ward": ward_name, "council": council})
+
+        # Try DC API for elected members
+        elections = _get_elections()
+        ward_data = elections["by_gss"].get(ward_gss, {})
+        election_date = ward_data.get("date", "2026-05-07")
+        dc_members = _fetch_dc_elected(ward_gss)
+        if dc_members:
+            new_rows = [_councillor_from_dc_person(m, ward_gss, ward_name, council, election_date) for m in dc_members]
+            _upsert_councillors(new_rows)
+            return jsonify({"councillors": new_rows, "ward": ward_name, "council": council})
+
+        return jsonify({"councillors": [], "ward": ward_name, "council": council})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/elections/sync-councillors", methods=["POST"])
+def api_sync_councillors():
+    """Admin: pull all elected councillors from DC API and upsert to DB."""
+    token = request.args.get("token", "")
+    if token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "forbidden"}), 403
+    elections = _get_elections()
+    total_saved = 0
+    errors = []
+    for ward_gss, ward_data in elections.get("by_gss", {}).items():
+        try:
+            ward_name  = ward_data.get("ward", "")
+            council    = ward_data.get("council", "")
+            elec_date  = ward_data.get("date", "2026-05-07")
+            dc_members = _fetch_dc_elected(ward_gss)
+            if dc_members:
+                rows = [_councillor_from_dc_person(m, ward_gss, ward_name, council, elec_date) for m in dc_members]
+                total_saved += _upsert_councillors(rows)
+        except Exception as e:
+            errors.append(f"{ward_gss}: {e}")
+    return jsonify({"saved": total_saved, "errors": errors[:10]})
+
+
 @app.route("/api/elections/send-results", methods=["POST"])
 def api_elections_send_results():
     """Admin: immediately send election results to a specific WhatsApp number + postcode."""
@@ -5144,7 +5280,8 @@ def _wa_triage_respond(from_number: str, cmd: str) -> str:
 
 _FUEL_WORDS = {"petrol", "diesel", "unleaded", "fuel", "gas", "price", "prices", "cheapest", "nearest", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
 _ELECTION_WORDS = {"vote", "voting", "election", "elections", "candidate", "candidates",
-                   "polling", "ballot", "stand", "standing", "mp", "councillor"}
+                   "polling", "ballot", "stand", "standing", "mp"}
+_COUNCILLOR_WORDS = {"councillor", "councilor", "council rep", "my councillor", "contact councillor"}
 _RESULTS_WORDS  = {"results", "result", "winner", "won", "elected", "who won"}
 _PLACES_WORDS = {"places", "services", "local", "near", "nearby", "around",
                  "library", "gp", "doctor", "pharmacy", "dentist", "leisure",
@@ -5297,6 +5434,62 @@ def whatsapp_elections_format(postcode: str) -> str:
         )
     except Exception as e:
         return f"Sorry, couldn't load election info. Try miru.app instead."
+
+def _wa_councillor_lookup(postcode: str) -> str:
+    """Return councillor contact info for a postcode via WhatsApp."""
+    try:
+        r = requests.get(
+            f"https://miru.humanagency.co/api/councillor",
+            params={"postcode": postcode},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return f"⚠️ Couldn't look up {postcode}. Try again shortly."
+        d = r.json()
+        councillors = d.get("councillors", [])
+        ward   = d.get("ward", "")
+        council = d.get("council", "")
+
+        if not councillors:
+            return (
+                f"🏛️ *{ward}* — {council}\n\n"
+                f"No elected councillor data yet for this ward.\n"
+                f"Results may still be being counted.\n\n"
+                f"Check back soon or visit your council's website."
+            )
+
+        lines = [f"🏛️ *Your Councillor{'s' if len(councillors)>1 else ''}*\n{ward} · {council}\n"]
+        for c in councillors:
+            col = _partyColourEmoji(c.get("party",""))
+            lines.append(f"{col} *{c['name']}* — {c.get('party','')}")
+            if c.get("email"):
+                lines.append(f"📧 {c['email']}")
+            if c.get("phone"):
+                lines.append(f"📞 {c['phone']}")
+            if c.get("surgery_info"):
+                lines.append(f"📅 Surgery: {c['surgery_info']}")
+            if c.get("council_profile_url"):
+                lines.append(f"🔗 {c['council_profile_url']}")
+            lines.append("")
+
+        lines.append(f"📱 miru.humanagency.co/?screen=elections&postcode={postcode}")
+        return "\n".join(lines).strip()
+    except Exception as e:
+        app.logger.warning(f"[councillor-wa] {e}")
+        return "⚠️ Couldn't load councillor info. Try again shortly."
+
+
+def _partyColourEmoji(party: str) -> str:
+    party_l = party.lower()
+    if "labour" in party_l:      return "🔴"
+    if "conservative" in party_l: return "🔵"
+    if "lib dem" in party_l:     return "🟡"
+    if "green" in party_l:       return "🟢"
+    if "reform" in party_l:      return "🩵"
+    if "snp" in party_l:         return "🟡"
+    if "plaid" in party_l:       return "🟢"
+    return "⚫"
+
 
 def whatsapp_results_format(postcode: str) -> str:
     """Return declared election results for a postcode via WhatsApp."""
@@ -5713,6 +5906,24 @@ def whatsapp_reply():
             return str(resp)
         else:
             resp.message("Please include a postcode or place name, e.g.:\nplaces KT1 2BA")
+            return str(resp)
+
+    # ── Councillor contact query ───────────────────────────────────────────────
+    if body_words & _COUNCILLOR_WORDS or body.lower().startswith("councillor"):
+        pc_m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
+        cllr_postcode = pc_m.group(1).replace(" ", "") if pc_m else postcode
+        if cllr_postcode:
+            cache_key = f"councillor:{cllr_postcode}"
+            cached = _WA_CACHE.get(cache_key)
+            if cached and (time.time() - cached[0]) < 3600:
+                resp.message(cached[1])
+                return str(resp)
+            reply = _wa_councillor_lookup(cllr_postcode)
+            _WA_CACHE[cache_key] = (time.time(), reply)
+            resp.message(reply)
+            return str(resp)
+        else:
+            resp.message("Include your postcode to find your councillor, e.g.:\ncouncillor KT16 0DA")
             return str(resp)
 
     # ── Election results query ─────────────────────────────────────────────────

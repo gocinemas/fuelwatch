@@ -1138,6 +1138,12 @@
           </div>
           <div id="erpanel-2026">
             <div id="elections-live" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
+            <!-- Elected councillor contact card — shown after results declared -->
+            <div id="councillor-card" style="display:none;margin-top:12px;background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1.5px solid #86efac;border-radius:14px;padding:14px 15px">
+              <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏛️ Your Elected Councillor</div>
+              <div id="councillor-list" style="display:flex;flex-direction:column;gap:10px"></div>
+              <div id="councillor-loading" style="font-size:12px;color:var(--subtle);font-style:italic">Loading councillor details…</div>
+            </div>
           </div>
           <div id="erpanel-2022" style="display:none">
             <div id="elections-past" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
@@ -2973,6 +2979,7 @@
     const postcode = input.value.trim();
     if (!postcode) return;
     ["elections-result","elections-error","elections-none"].forEach(id => document.getElementById(id).classList.add("hidden"));
+    const _cc = document.getElementById("councillor-card"); if (_cc) _cc.style.display = "none";
     document.getElementById("elections-loading").classList.remove("hidden");
     try {
       const r = await fetch(`/api/elections?postcode=${encodeURIComponent(postcode)}`);
@@ -3034,6 +3041,8 @@
       const hasRealResults = d.live_results && d.live_results.some(r => r.votes != null || r.elected);
       if (hasRealResults) {
         liveEl.innerHTML = _renderResultsTable(d.live_results, "7 May 2026 Results");
+        // Load councillor card asynchronously
+        _loadCouncillorCard(d.ward_gss, postcode);
       } else if (d.is_new_council && d.predecessor_areas && d.predecessor_areas.length) {
         liveEl.innerHTML = `
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">7 May 2026 · ${d.ward || ''}</div>
@@ -3128,6 +3137,47 @@
       document.getElementById("elections-loading").classList.add("hidden");
       document.getElementById("elections-error").textContent = "Could not load election data. Try again.";
       document.getElementById("elections-error").classList.remove("hidden");
+    }
+  }
+
+  // ── Councillor card ─────────────────────────────────────────────────────────
+  async function _loadCouncillorCard(wardGss, postcode) {
+    const card    = document.getElementById("councillor-card");
+    const list    = document.getElementById("councillor-list");
+    const loading = document.getElementById("councillor-loading");
+    if (!card) return;
+    card.style.display = "block";
+    if (loading) loading.style.display = "block";
+    if (list)   list.innerHTML = "";
+    try {
+      const r = await fetch(`/api/councillor?postcode=${encodeURIComponent(postcode)}`);
+      const d = await r.json();
+      if (loading) loading.style.display = "none";
+      const councillors = d.councillors || [];
+      if (!councillors.length) {
+        if (list) list.innerHTML = `<div style="font-size:12px;color:var(--subtle);font-style:italic">No councillor contact data yet — check back after results are confirmed.</div>`;
+        return;
+      }
+      if (list) list.innerHTML = councillors.map(c => {
+        const col = _partyStyle(c.party || "");
+        const emailRow = c.email ? `<a href="mailto:${c.email}" style="font-size:12px;color:#166534;font-weight:600;display:flex;align-items:center;gap:5px;text-decoration:none">📧 ${c.email}</a>` : "";
+        const phoneRow = c.phone ? `<a href="tel:${c.phone}" style="font-size:12px;color:#166534;font-weight:600;display:flex;align-items:center;gap:5px;text-decoration:none">📞 ${c.phone}</a>` : "";
+        const surgeryRow = c.surgery_info ? `<div style="font-size:12px;color:var(--subtle)">📅 Surgery: ${c.surgery_info}</div>` : "";
+        const profileRow = c.council_profile_url ? `<a href="${c.council_profile_url}" target="_blank" rel="noopener" style="font-size:11px;color:#4f46e5;font-weight:600">Council profile ↗</a>` : "";
+        const photoEl = c.photo_url ? `<img src="${c.photo_url}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #bbf7d0" onerror="this.style.display='none'">` : `<div style="width:44px;height:44px;border-radius:50%;background:${col.bg};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:${col.text};flex-shrink:0">${(c.name||"?")[0]}</div>`;
+        return `<div style="display:flex;align-items:flex-start;gap:12px">
+          ${photoEl}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700;color:var(--text)">${c.name}</div>
+            <div style="margin:2px 0 6px"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text}">${c.party}</span></div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              ${emailRow}${phoneRow}${surgeryRow}${profileRow}
+            </div>
+          </div>
+        </div>`;
+      }).join('<div style="border-top:1px solid #bbf7d0;margin:6px 0"></div>');
+    } catch(e) {
+      if (loading) loading.textContent = "Couldn't load councillor details.";
     }
   }
 
