@@ -133,6 +133,10 @@ def log_postcode_snapshot(postcode, fuel, nearby):
 _station_cache = {"data": [], "loaded_at": 0}
 CACHE_TTL = 1800  # 30 minutes
 
+# ── Fuel search result cache (5 min TTL, keyed by postcode+fuel+radius) ────────
+_fuel_search_cache: dict = {}  # key → (result_dict, ts)
+_FUEL_SEARCH_TTL = 300
+
 def get_stations():
     now = time.time()
     if not _station_cache["data"] or (now - _station_cache["loaded_at"]) > CACHE_TTL:
@@ -1087,6 +1091,7 @@ def _resolve_postcode(postcode):
 
 @app.route("/api/search")
 def api_search():
+    import concurrent.futures as _cf
     result = _resolve_postcode(request.args.get("postcode", ""))
     if not result:
         return jsonify({"error": "Postcode not found. Please check and try again."}), 404
@@ -1097,30 +1102,47 @@ def api_search():
     radius = float(request.args.get("radius", 5))
     if fuel not in ("petrol", "diesel"): fuel = "petrol"
     radius = min(max(radius, 1), 20)
+
+    cache_key = f"{postcode}:{fuel}:{radius}"
+    cached = _fuel_search_cache.get(cache_key)
+    if cached:
+        payload, ts = cached
+        if time.time() - ts < _FUEL_SEARCH_TTL:
+            return jsonify(payload)
+
     radius_km = radius * 1.60934
-    stations = get_stations()
+    stations  = get_stations()
 
-    nearby = []
-    for s in stations:
-        price = s.get(fuel)
-        if not price or price <= 0: continue
-        dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
-        if dist_km <= radius_km:
-            nearby.append({**s, "dist_mi": round(dist_km / 1.60934, 2), "price": price})
-    nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
-    avg = round(sum(s["price"] for s in nearby) / len(nearby), 1) if nearby else 0
+    # Kick off weather fetch in parallel so it doesn't block station filtering
+    with _cf.ThreadPoolExecutor(max_workers=1) as ex:
+        weather_fut = ex.submit(get_weather, lat, lon)
 
-    weather = get_weather(lat, lon)
+        nearby = []
+        for s in stations:
+            price = s.get(fuel)
+            if not price or price <= 0: continue
+            dist_km = haversine_km(lat, lon, s["lat"], s["lon"])
+            if dist_km <= radius_km:
+                nearby.append({**s, "dist_mi": round(dist_km / 1.60934, 2), "price": price})
+        nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
+        avg = round(sum(s["price"] for s in nearby) / len(nearby), 1) if nearby else 0
+
+        try:
+            weather = weather_fut.result(timeout=1.5)
+        except Exception:
+            weather = ""
+
     rightmove_url = f"https://www.rightmove.co.uk/house-prices/{pc_fmt.lower().replace(' ', '-')}.html"
-
-    return jsonify({
+    payload = {
         "postcode": postcode, "pc_fmt": pc_fmt,
         "fuel": fuel, "radius": radius,
         "weather": weather,
         "stations": nearby[:10], "avg_price": avg,
         "rightmove_url": rightmove_url,
         "timestamp": datetime.now().isoformat(),
-    })
+    }
+    _fuel_search_cache[cache_key] = (payload, time.time())
+    return jsonify(payload)
 
 
 @app.route("/api/house")

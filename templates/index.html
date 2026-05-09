@@ -8306,17 +8306,25 @@ _bkBadge();
 
   async function _getPlaylist(token){
     if(_sp.playlistId) return _sp.playlistId;
+    var meR=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+token}});
+    if(!meR.ok){
+      if(meR.status===403||meR.status===401){ _sp.refreshToken=null; _sp.token=null; _save(); }
+      throw new Error('Spotify login expired — please reconnect');
+    }
+    var me=await meR.json();
     var listsR=await fetch('https://api.spotify.com/v1/me/playlists?limit=50',{headers:{Authorization:'Bearer '+token}});
-    if(!listsR.ok) throw new Error('Spotify playlists fetch failed ('+listsR.status+') — try reconnecting');
+    if(!listsR.ok) throw new Error('Spotify playlists fetch failed ('+listsR.status+')');
     var lists=await listsR.json();
-    var found=(lists.items||[]).find(function(p){return p.name==='Miru Picks';});
+    // Only match playlists the user owns (not followed ones from other users)
+    var found=(lists.items||[]).find(function(p){return p.name==='Miru Picks' && p.owner&&p.owner.id===me.id;});
     if(found){ _sp.playlistId=found.id; _save(); return _sp.playlistId; }
     var createR=await fetch('https://api.spotify.com/v1/me/playlists',{method:'POST',
       headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
       body:JSON.stringify({name:'Miru Picks',description:'Songs added via Miru',public:false})});
     if(!createR.ok){
+      if(createR.status===403){ _sp.refreshToken=null; _sp.token=null; _save(); }
       var errText=await createR.text();
-      throw new Error('Could not create playlist ('+createR.status+'): '+errText);
+      throw new Error('Could not create playlist — please reconnect Spotify ('+createR.status+')');
     }
     var created=await createR.json();
     if(!created.id) throw new Error('Playlist created but no ID returned');
@@ -8345,7 +8353,10 @@ _bkBadge();
       var pr=await fetch('https://api.spotify.com/v1/playlists/'+playlistId+'/tracks',{method:'POST',
         headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
         body:JSON.stringify({uris:[items[0].uri]})});
-      if(!pr.ok) throw new Error('Add '+pr.status+': '+await pr.text());
+      if(!pr.ok){
+        if(pr.status===403){ _sp.refreshToken=null; _sp.token=null; _sp.playlistId=null; _save(); _updateUI(); }
+        throw new Error(pr.status===403 ? 'Permission denied — tap Disconnect then reconnect Spotify to grant playlist access' : 'Add '+pr.status+': '+await pr.text());
+      }
       btn.textContent='✓'; btn.style.color='#1db954';
       setTimeout(function(){btn.textContent='＋';btn.style.color='';btn.disabled=false;},2500);
     }catch(e){

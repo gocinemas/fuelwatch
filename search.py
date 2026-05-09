@@ -143,17 +143,20 @@ def fetch_retailer(name: str, url: str) -> list:
 
 
 def fetch_all_stations() -> list:
-    """Fetch from all CMA retailer feeds. Returns combined station list."""
+    """Fetch from all CMA retailer feeds in parallel. Returns combined station list."""
+    import concurrent.futures as _cf
+    print("Fetching live prices from CMA retailer feeds (parallel)...")
     all_stations = []
-    print("Fetching live prices from CMA retailer feeds...")
-    for name, url in RETAILER_FEEDS.items():
-        stations = fetch_retailer(name, url)
-        if stations:
-            all_stations.extend(stations)
-            print(f"  {name}: {len(stations)} stations loaded")
-        else:
-            print(f"  {name}: unavailable")
-
+    with _cf.ThreadPoolExecutor(max_workers=len(RETAILER_FEEDS)) as ex:
+        futures = {ex.submit(fetch_retailer, name, url): name for name, url in RETAILER_FEEDS.items()}
+        for fut in _cf.as_completed(futures):
+            name = futures[fut]
+            stations = fut.result()
+            if stations:
+                all_stations.extend(stations)
+                print(f"  {name}: {len(stations)} stations loaded")
+            else:
+                print(f"  {name}: unavailable")
     print(f"\n  Total: {len(all_stations)} stations\n")
     return all_stations
 
