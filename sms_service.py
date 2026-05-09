@@ -1895,6 +1895,43 @@ def _get_councillors_for_ward(ward_gss: str) -> list:
     return []
 
 
+def _resolve_councillors(postcode: str) -> dict:
+    """Core councillor lookup: DB first, DC API fallback. Returns dict with councillors/ward/council."""
+    r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
+    if r.status_code != 200:
+        raise ValueError("Postcode not found")
+    result = r.json().get("result", {})
+    codes = result.get("codes", {})
+    ward_gss  = codes.get("admin_ward", "")
+    ward_name = result.get("admin_ward", "")
+    council   = result.get("admin_district", "")
+    if not ward_gss:
+        return {"councillors": [], "ward": ward_name, "council": council}
+
+    elections = _get_elections()
+    ward_data = elections["by_gss"].get(ward_gss, {})
+    if ward_data:
+        ward_name = ward_data.get("ward") or ward_name
+        council   = ward_data.get("council") or council
+
+    rows = _get_councillors_for_ward(ward_gss)
+    if rows:
+        return {"councillors": rows, "ward": ward_name, "council": council}
+
+    election_date = ward_data.get("date", "2026-05-07")
+    council_slug = _org_name_to_dc_slug(council)
+    dc_members = _fetch_dc_elected(council_slug, ward_name, election_date)
+    if dc_members:
+        new_rows = [_councillor_row(
+            m["name"], m["party"], m["email"], m["photo_url"], m["council_profile_url"],
+            ward_gss, ward_name, council, election_date
+        ) for m in dc_members]
+        _upsert_councillors(new_rows)
+        return {"councillors": new_rows, "ward": ward_name, "council": council}
+
+    return {"councillors": [], "ward": ward_name, "council": council}
+
+
 @app.route("/api/councillor")
 def api_councillor():
     """Return councillor(s) for a postcode. Checks DB first, then DC API."""
@@ -1902,42 +1939,9 @@ def api_councillor():
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
     try:
-        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
-        if r.status_code != 200:
-            return jsonify({"error": "Postcode not found"}), 404
-        result = r.json().get("result", {})
-        codes = result.get("codes", {})
-        ward_gss  = codes.get("admin_ward", "")
-        ward_name = result.get("admin_ward", "")
-        council   = result.get("admin_district", "")
-        if not ward_gss:
-            return jsonify({"councillors": [], "ward": ward_name, "council": council})
-
-        # Use elections by_gss for accurate ward/council names (postcodes.io may have old names)
-        elections = _get_elections()
-        ward_data = elections["by_gss"].get(ward_gss, {})
-        if ward_data:
-            ward_name = ward_data.get("ward") or ward_name
-            council   = ward_data.get("council") or council
-
-        # Try DB
-        rows = _get_councillors_for_ward(ward_gss)
-        if rows:
-            return jsonify({"councillors": rows, "ward": ward_name, "council": council})
-
-        # Try DC API for elected members
-        election_date = ward_data.get("date", "2026-05-07")
-        council_slug = _org_name_to_dc_slug(council)
-        dc_members = _fetch_dc_elected(council_slug, ward_name, election_date)
-        if dc_members:
-            new_rows = [_councillor_row(
-                m["name"], m["party"], m["email"], m["photo_url"], m["council_profile_url"],
-                ward_gss, ward_name, council, election_date
-            ) for m in dc_members]
-            _upsert_councillors(new_rows)
-            return jsonify({"councillors": new_rows, "ward": ward_name, "council": council})
-
-        return jsonify({"councillors": [], "ward": ward_name, "council": council})
+        return jsonify(_resolve_councillors(postcode))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -5492,14 +5496,8 @@ def whatsapp_elections_format(postcode: str) -> str:
 def _wa_councillor_lookup(postcode: str) -> str:
     """Return councillor contact info for a postcode via WhatsApp."""
     try:
-        r = requests.get(
-            f"https://miru.humanagency.co/api/councillor",
-            params={"postcode": postcode},
-            timeout=10,
-        )
-        if r.status_code != 200:
-            return f"⚠️ Couldn't look up {postcode}. Try again shortly."
-        d = r.json()
+        pc = postcode.replace(" ", "").upper()
+        d = _resolve_councillors(pc)
         councillors = d.get("councillors", [])
         ward   = d.get("ward", "")
         council = d.get("council", "")
