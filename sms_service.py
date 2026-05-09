@@ -7784,6 +7784,26 @@ def api_books_save():
     return jsonify({"ok": True})
 
 
+@app.route("/api/music/spotify-status")
+def api_music_spotify_status():
+    """Debug: check Spotify client credentials config and token fetch."""
+    cid    = os.environ.get("SPOTIFY_CLIENT_ID", "")
+    secret = os.environ.get("SPOTIFY_CLIENT_SECRET", "")
+    result = {
+        "client_id_set":     bool(cid),
+        "client_secret_set": bool(secret),
+        "client_id_preview": cid[:8] + "…" if cid else "",
+    }
+    if cid and secret:
+        try:
+            token = _get_spotify_app_token()
+            result["token_ok"] = bool(token)
+            result["token_preview"] = token[:12] + "…" if token else ""
+        except Exception as e:
+            result["token_error"] = str(e)
+    return jsonify(result)
+
+
 @app.route("/api/music/identify", methods=["POST"])
 def api_music_identify():
     key = os.environ.get("RAPIDAPI_KEY", "")
