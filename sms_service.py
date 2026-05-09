@@ -607,6 +607,112 @@ def elections_page():
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
+@app.route("/elections/council-test")
+def elections_council_test():
+    """Standalone test page — seats by party for any council."""
+    return ("""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Council Results · Test</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 16px;background:#f8fafc;color:#0f172a}
+h1{font-size:1.4rem;margin-bottom:4px}
+.sub{color:#64748b;font-size:.9rem;margin-bottom:20px}
+.banner{background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:8px 12px;font-size:.85rem;margin-bottom:18px}
+.row{display:flex;gap:8px;margin-bottom:20px}
+input{flex:1;padding:10px 14px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:1rem}
+button{padding:10px 20px;background:#1e293b;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+#status{margin-bottom:14px;font-size:.9rem;color:#475569}
+.bar-wrap{display:flex;height:30px;border-radius:8px;overflow:hidden;margin-bottom:18px;border:1px solid #e2e8f0}
+.bar-seg{display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;overflow:hidden;white-space:nowrap;transition:width .4s}
+table{width:100%;border-collapse:collapse;margin-bottom:24px}
+th{text-align:left;font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:2px solid #e2e8f0}
+td{padding:8px;border-bottom:1px solid #f1f5f9;font-size:.9rem}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.declared{color:#16a34a;font-size:.78rem;font-weight:700}
+.pending{color:#f59e0b;font-size:.78rem}
+.wd-section{margin-top:20px}
+.wd-section h3{font-size:.95rem;color:#475569;margin-bottom:8px}
+.seats-big{font-size:1.4rem;font-weight:800}
+</style>
+</head>
+<body>
+<h1>Council Seat Results</h1>
+<div class="banner">⚠ Test build — not part of main Miru site</div>
+<p class="sub">Enter a council name to see seats by party (live from Democracy Club).</p>
+<div class="row">
+  <input id="q" type="text" placeholder="e.g. West Surrey, Adur, Norfolk…" autocomplete="off" />
+  <button id="btn" onclick="load()">Search</button>
+</div>
+<div id="status"></div>
+<div id="results"></div>
+<script>
+function partyColor(name){
+  const n=(name||"").toLowerCase();
+  if(n.includes("conservative"))return["#0087dc","#fff"];
+  if(n.includes("labour"))return["#e4003b","#fff"];
+  if(n.includes("liberal")||n.includes("lib dem"))return["#faa61a","#000"];
+  if(n.includes("green"))return["#02a95b","#fff"];
+  if(n.includes("reform"))return["#12b6cf","#fff"];
+  if(n.includes("snp")||n.includes("scottish national"))return["#fdf38e","#000"];
+  if(n.includes("plaid"))return["#3f8428","#fff"];
+  if(n.includes("independent"))return["#6b7280","#fff"];
+  return["#9ca3af","#000"];
+}
+async function load(){
+  const q=document.getElementById("q").value.trim();
+  if(!q)return;
+  const btn=document.getElementById("btn");
+  btn.disabled=true;
+  document.getElementById("status").textContent="Fetching from Democracy Club — may take a few seconds for large councils…";
+  document.getElementById("results").innerHTML="";
+  try{
+    const res=await fetch("/api/elections/council-view?q="+encodeURIComponent(q));
+    const data=await res.json();
+    if(data.error){document.getElementById("status").innerHTML="<span style='color:#dc2626'>"+data.error+"</span>";return;}
+    render(data);
+  }catch(e){document.getElementById("status").textContent="Network error: "+e.message;}
+  finally{btn.disabled=false;}
+}
+function render(d){
+  const dec=d.declared_wards,tot=d.total_wards;
+  const pct=tot?Math.round(dec/tot*100):0;
+  document.getElementById("status").innerHTML="<strong>"+d.council+"</strong> &mdash; "+dec+"/"+tot+" wards declared ("+pct+"%)";
+  const totalSeats=d.seats.reduce((s,p)=>s+p.seats,0);
+  // Bar
+  let bar='<div class="bar-wrap">';
+  for(const p of d.seats){
+    const w=totalSeats?(p.seats/totalSeats*100).toFixed(1):0;
+    const[bg,fg]=partyColor(p.party);
+    bar+=`<div class="bar-seg" style="width:${w}%;background:${bg};color:${fg}" title="${p.party}: ${p.seats}">${p.seats>2?p.seats:""}</div>`;
+  }
+  bar+="</div>";
+  // Party table
+  let tbl='<table><thead><tr><th>Party</th><th style="text-align:right">Seats</th></tr></thead><tbody>';
+  for(const p of d.seats){
+    const[bg]=partyColor(p.party);
+    tbl+=`<tr><td><span class="dot" style="background:${bg}"></span>${p.party}</td><td style="text-align:right"><span class="seats-big">${p.seats}</span></td></tr>`;
+  }
+  tbl+="</tbody></table>";
+  // Ward breakdown
+  let wd='<div class="wd-section"><h3>Ward breakdown</h3><table><thead><tr><th>Ward</th><th>Status</th><th>Winner(s)</th></tr></thead><tbody>';
+  for(const w of d.wards){
+    const st=w.declared?'<span class="declared">&#10003; Declared</span>':'<span class="pending">Pending</span>';
+    const wins=w.winners.map(x=>{const[bg]=partyColor(x.party);return`<span class="dot" style="background:${bg}"></span>${x.name}`;}).join(", ");
+    wd+=`<tr><td>${w.ward}</td><td>${st}</td><td>${wins||"&mdash;"}</td></tr>`;
+  }
+  wd+="</tbody></table></div>";
+  document.getElementById("results").innerHTML=bar+tbl+wd;
+}
+document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")load();});
+</script>
+</body>
+</html>""", 200, {"Content-Type": "text/html; charset=utf-8"})
+
+
 @app.route("/test-places")
 def test_places():
     resp = app.make_response(
@@ -1708,6 +1814,169 @@ def _fetch_national_wikipedia() -> dict | None:
     _NAT_CACHE["data"] = result
     _NAT_CACHE["ts"] = now
     return result
+
+def _party_color_bg(party_name: str) -> tuple:
+    """Return (bg_hex, fg_hex) for a UK political party name."""
+    n = (party_name or "").lower()
+    if "conservative" in n: return ("#0087dc", "#fff")
+    if "labour" in n:       return ("#e4003b", "#fff")
+    if "liberal" in n or "lib dem" in n: return ("#faa61a", "#000")
+    if "green" in n:        return ("#02a95b", "#fff")
+    if "reform" in n:       return ("#12b6cf", "#fff")
+    if "snp" in n or "scottish national" in n: return ("#fdf38e", "#000")
+    if "plaid" in n:        return ("#3f8428", "#fff")
+    if "independent" in n:  return ("#6b7280", "#fff")
+    return ("#9ca3af", "#000")
+
+
+@app.route("/api/elections/council-view")
+def api_elections_council_view():
+    """Aggregate live seat results for a council from Democracy Club.
+    GET ?q=west-surrey  (slug or natural name, fuzzy matched)
+    """
+    import concurrent.futures as _cf
+    import time as _time
+
+    q = request.args.get("q", "").strip().lower()
+    if not q:
+        return jsonify({"error": "Missing ?q= council name"}), 400
+
+    elections = _get_elections()
+    by_slug = elections.get("by_slug", {})
+
+    # Build org_name → slug from first ward of each council entry
+    org_slug_map: dict = {}
+    for slug, wards in by_slug.items():
+        for ward_data in wards.values():
+            org = ward_data.get("council", "").strip().lower()
+            if org:
+                org_slug_map[org] = slug
+            break
+
+    # Resolve: direct slug → org name match → token overlap
+    q_slug = re.sub(r"\s+", "-", q)
+    council_slug = None
+    if q_slug in by_slug:
+        council_slug = q_slug
+    else:
+        for org, slug in org_slug_map.items():
+            if q in org or org in q:
+                council_slug = slug
+                break
+    if not council_slug:
+        q_tokens = set(q.split())
+        best_slug, best_score = None, 0
+        for org, slug in org_slug_map.items():
+            o_tokens = set(re.sub(r"[-]", " ", org).split())
+            matched = len(q_tokens & o_tokens)
+            if matched > best_score:
+                best_score, best_slug = matched, slug
+        if best_slug and best_score > 0:
+            council_slug = best_slug
+
+    if not council_slug:
+        return jsonify({"error": f"No council found matching '{q}'. Try a slug like 'west-surrey' or name like 'West Surrey'."}), 404
+
+    wards_dict = by_slug.get(council_slug, {})
+    council_name = council_slug.replace("-", " ").title()
+    for w in wards_dict.values():
+        council_name = w.get("council", council_name)
+        break
+    election_date = "2026-05-07"
+
+    # Step 1: fetch all ballot IDs for the council in one call
+    try:
+        r = requests.get(
+            f"https://candidates.democracyclub.org.uk/api/next/elections/local.{council_slug}.{election_date}/",
+            params={"format": "json"}, timeout=12,
+            headers={"User-Agent": "Miru/1.0"},
+        )
+        if r.status_code != 200:
+            return jsonify({"error": f"DC API returned {r.status_code} for council '{council_slug}'"}), 502
+        ballots = r.json().get("ballots", [])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+    if not ballots:
+        return jsonify({"error": f"No ballots found for '{council_slug}' on {election_date}"}), 404
+
+    total_wards = len(ballots)
+
+    # Step 2: fetch each ballot's results in parallel (up to 12 workers)
+    def fetch_ballot(ballot_paper_id):
+        cache_key = f"dcb:{ballot_paper_id}"
+        if cache_key in _DC_RESULTS_CACHE:
+            cached, ts, _ = _DC_RESULTS_CACHE[cache_key]
+            if _time.time() - ts < 3600:
+                return ballot_paper_id, cached
+        try:
+            r2 = requests.get(
+                f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/",
+                params={"format": "json"}, timeout=10,
+                headers={"User-Agent": "Miru/1.0"},
+            )
+            if r2.status_code != 200:
+                return ballot_paper_id, None
+            jdata = r2.json()
+            candidacies = jdata.get("candidacies", [])
+            ward_label = jdata.get("post", {}).get("label", "")
+            results = []
+            for c in candidacies:
+                res = c.get("result") or {}
+                results.append({
+                    "name":    c.get("person", {}).get("name", ""),
+                    "party":   c.get("party_name", ""),
+                    "elected": bool(c.get("elected") or res.get("elected")),
+                    "votes":   res.get("num_ballots"),
+                })
+            has_real = any(rc["votes"] is not None or rc["elected"] for rc in results)
+            payload = {"results": results, "ward": ward_label, "declared": has_real}
+            if results:
+                _DC_RESULTS_CACHE[cache_key] = (payload, _time.time(), has_real)
+            return ballot_paper_id, payload
+        except Exception:
+            return ballot_paper_id, None
+
+    ballot_ids = [b["ballot_paper_id"] for b in ballots]
+    ward_results: dict = {}
+    with _cf.ThreadPoolExecutor(max_workers=12) as ex:
+        for bpid, payload in ex.map(fetch_ballot, ballot_ids):
+            if payload is not None:
+                ward_results[bpid] = payload
+
+    # Step 3: tally seats by party
+    party_seats: dict = {}
+    declared_wards = 0
+    ward_summary = []
+    for bpid, payload in ward_results.items():
+        ward = payload.get("ward") or bpid.split(".")[2] if "." in bpid else bpid
+        declared = payload.get("declared", False)
+        if declared:
+            declared_wards += 1
+        winners = [c for c in payload.get("results", []) if c.get("elected")]
+        for w in winners:
+            p = w["party"]
+            party_seats[p] = party_seats.get(p, 0) + 1
+        ward_summary.append({
+            "ward":     ward,
+            "declared": declared,
+            "winners":  [{"name": w["name"], "party": w["party"]} for w in winners],
+        })
+
+    seats_list = []
+    for party, seats in sorted(party_seats.items(), key=lambda x: -x[1]):
+        bg, fg = _party_color_bg(party)
+        seats_list.append({"party": party, "seats": seats, "color": bg, "text": fg})
+
+    return jsonify({
+        "council":        council_name,
+        "slug":           council_slug,
+        "total_wards":    total_wards,
+        "declared_wards": declared_wards,
+        "seats":          seats_list,
+        "wards":          sorted(ward_summary, key=lambda x: (not x["declared"], x["ward"])),
+    })
+
 
 @app.route("/api/elections/national")
 def api_elections_national():
