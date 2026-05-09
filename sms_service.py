@@ -5080,6 +5080,43 @@ def _quick_brand_intel(brand_name: str) -> dict:
         return {}
 
 
+def _vivino_lookup(wine_name: str) -> dict:
+    """Search Vivino for a wine. Returns {rating, rating_count, url, name, winery}."""
+    try:
+        r = requests.get(
+            "https://www.vivino.com/api/explore",
+            params={"q": wine_name, "country_code": "GB", "currency_code": "GBP", "page": 1},
+            headers={
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
+                "Accept": "application/json",
+                "Accept-Language": "en-GB,en;q=0.9",
+            },
+            timeout=8,
+        )
+        if r.status_code == 200:
+            matches = r.json().get("explore_vintage", {}).get("matches", [])
+            if matches:
+                v = matches[0].get("vintage", {})
+                stats = v.get("statistics", {})
+                wine = v.get("wine", {})
+                seo = wine.get("seo_name", "")
+                year = v.get("year", "")
+                url = f"https://www.vivino.com/wines/{seo}/{year}" if seo and year else (f"https://www.vivino.com/wines/{seo}" if seo else "")
+                return {
+                    "rating": stats.get("ratings_average"),
+                    "rating_count": stats.get("ratings_count"),
+                    "url": url,
+                    "name": wine.get("name", ""),
+                    "winery": (wine.get("winery") or {}).get("name", ""),
+                }
+    except Exception as e:
+        print(f"[vivino] {e}")
+    return {}
+
+
+_WINE_RATING_STATE: dict = {}  # from_number → {save_id, wine_name, expires}
+
+
 def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
     """Download a WhatsApp photo, analyse with Groq vision, save to wa_saves."""
     import base64, threading
@@ -5184,8 +5221,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
         prompt_text = (
             "Identify what this image is. Pick ONE type from: "
-            "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, sign, document, product, photo.\n"
+            "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, wine, sign, document, product, photo.\n"
             "IMPORTANT type rules:\n"
+            "- Use 'wine' for any photo of a wine bottle or wine label — even if on a table or shelf.\n"
             "- Use 'product' for ANY photo showing physical products, items on shelves, products with price tags, "
             "or a basket/trolley of items — even if taken inside a store or supermarket.\n"
             "- Use 'billboard/ad' ONLY for printed posters, banners, or ads that are NOT showing products on shelves.\n"
@@ -5253,6 +5291,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 title = "🧾 Receipt"; img_type = "receipt"
             elif "menu" in first:
                 title = "🍽️ Menu"; img_type = "menu"
+            elif "wine" in first:
+                title = "🍷 Wine"; img_type = "wine"
             elif "sign" in first:
                 title = "🪧 Sign"; img_type = "sign"
             elif "document" in first:
@@ -5443,10 +5483,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                         else:
                             _menu_lines.append(_ml)
                     menu_text = "\n".join(_menu_lines).strip()
-                    # Use restaurant details from menu if not already found
-                    if _menu_meta.get("name") and not venue_tag:
+                    # Always prefer the restaurant name extracted from the menu itself
+                    if _menu_meta.get("name"):
                         venue_tag = _menu_meta["name"]
-                        title = f"🍽️ {venue_tag}"
+                        title = f"🍽️ {venue_tag} Menu"
                     if _menu_meta.get("name") and not location_tag:
                         location_tag = _menu_meta.get("address", "")
                     # Prepend restaurant info block to menu text
@@ -5479,6 +5519,62 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 user_token = _wa_user_token(fn)
                 _wa_send_proactive(fn, f"🍽️ Added page {page_num} to your menu. Send more pages or just keep chatting!\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}")
                 return
+
+        # ── Wine: label extraction + Vivino rating ───────────────────────────────
+        wine_info = {}
+        if img_type == "wine":
+            try:
+                _wine_prompt = (
+                    "This is a wine bottle or label. Extract what is clearly visible:\n"
+                    "WINE_NAME: [full wine name]\n"
+                    "WINERY: [producer/winery name]\n"
+                    "VINTAGE: [year, or NV if non-vintage]\n"
+                    "REGION: [region and/or country]\n"
+                    "GRAPE: [grape variety or blend]\n"
+                    "Only output lines where the information is clearly visible on the label."
+                )
+                _wine_resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
+                             "Content-Type": "application/json"},
+                    json={
+                        "model": _vision_models[0],
+                        "max_tokens": 200,
+                        "messages": [{"role": "user", "content": [
+                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
+                            {"type": "text", "text": _wine_prompt},
+                        ]}],
+                    },
+                    timeout=15,
+                )
+                if _wine_resp.status_code == 200:
+                    _raw_wine = _wine_resp.json()["choices"][0]["message"]["content"].strip()
+                    for _wl in _raw_wine.split("\n"):
+                        _wu = _wl.strip().upper()
+                        if _wu.startswith("WINE_NAME:"):
+                            wine_info["name"] = _wl.split(":", 1)[1].strip()
+                        elif _wu.startswith("WINERY:"):
+                            wine_info["winery"] = _wl.split(":", 1)[1].strip()
+                        elif _wu.startswith("VINTAGE:"):
+                            wine_info["vintage"] = _wl.split(":", 1)[1].strip()
+                        elif _wu.startswith("REGION:"):
+                            wine_info["region"] = _wl.split(":", 1)[1].strip()
+                        elif _wu.startswith("GRAPE:"):
+                            wine_info["grape"] = _wl.split(":", 1)[1].strip()
+                    if wine_info.get("name"):
+                        _wt = wine_info["name"]
+                        if wine_info.get("vintage") and wine_info["vintage"].upper() != "NV":
+                            _wt += f" {wine_info['vintage']}"
+                        title = f"🍷 {_wt[:60]}"
+                    _vivino_q = " ".join(filter(None, [wine_info.get("name", ""), wine_info.get("vintage", "")]))
+                    if _vivino_q:
+                        _viv = _vivino_lookup(_vivino_q)
+                        wine_info["vivino_rating"] = _viv.get("rating")
+                        wine_info["vivino_count"] = _viv.get("rating_count")
+                        wine_info["vivino_url"] = _viv.get("url", "")
+                        print(f"[vivino] {_vivino_q!r} → {_viv}")
+            except Exception as _we:
+                print(f"[vision] wine extraction failed: {_we}")
 
         # ── Reverse-geocode stored GPS to UK postcode ────────────────────────────
         gps_location = ""
@@ -5566,6 +5662,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     details.append(f"💡 {brand_intel['fact']}")
                 if search_url:
                     details.append(f"🔍 Search: {search_url}")
+            elif img_type == "wine":
+                if wine_info.get("winery"):  details.append(f"🏚️ {wine_info['winery']}")
+                if wine_info.get("region"):  details.append(f"🌍 {wine_info['region']}")
+                if wine_info.get("grape"):   details.append(f"🍇 {wine_info['grape']}")
+                if wine_info.get("vivino_rating"):
+                    _vr = wine_info["vivino_rating"]
+                    _vc = wine_info.get("vivino_count") or 0
+                    _vc_str = f" ({_vc:,} ratings)" if _vc else ""
+                    details.append(f"⭐ Vivino: {_vr:.1f}/5{_vc_str}")
+                if wine_info.get("vivino_url"):
+                    details.append(f"🔗 {wine_info['vivino_url']}")
             elif img_type == "store" and venue_info:
                 # Full place card — address, hours, open status, phone, website, directions
                 if gps_location:
@@ -5608,6 +5715,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         user_token = _wa_user_token(fn)
         if img_type == "menu":
             msg += f"\n\n📸 *Got page 1!* Send more menu photos and I'll stitch them together into one save.\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
+        elif img_type == "wine":
+            _WINE_RATING_STATE[fn] = {"save_id": sid, "wine_name": title.replace("🍷 ", ""), "expires": time.time() + 3600}
+            msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
+            msg += f"\n\n⭐ *Rate it?* Reply with score + notes, e.g.\n*4 Great with pasta, slightly dry*"
         else:
             msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
         _wa_send_proactive(fn, msg)
@@ -6300,6 +6411,29 @@ def whatsapp_reply():
         reply = _wa_triage_respond(from_number, cmd_up)
         resp.message(reply)
         return str(resp)
+
+    # ── Wine rating reply: "4 Great with pasta" or "3.5 too tannic" ─────────────
+    _wine_state = _WINE_RATING_STATE.get(from_number)
+    if _wine_state and time.time() < _wine_state.get("expires", 0):
+        import re as _wre
+        _wm = _wre.match(r'^([1-5](?:[.,]\d)?)\s*(.*)', body.strip(), _wre.DOTALL)
+        if _wm:
+            _score = _wm.group(1).replace(",", ".")
+            _notes = _wm.group(2).strip()
+            _WINE_RATING_STATE.pop(from_number, None)
+            try:
+                _wsid = _wine_state["save_id"]
+                _existing = lib._sb().table("wa_saves").select("summary").eq("id", _wsid).execute().data
+                _esummary = (_existing[0]["summary"] if _existing else "") or ""
+                _rating_line = f"\n\n⭐ My rating: {_score}/5"
+                if _notes:
+                    _rating_line += f"\n📝 {_notes[:200]}"
+                lib._sb().table("wa_saves").update({"summary": _esummary + _rating_line}).eq("id", _wsid).execute()
+                lib.saves_sync({"id": _wsid, **(_existing[0] if _existing else {}), "summary": _esummary + _rating_line})
+                resp.message(f"✅ Rated *{_wine_state['wine_name']}* {_score}/5!")
+            except Exception:
+                resp.message("✅ Rating saved!")
+            return str(resp)
 
     # ── NEW command: clear menu session so next photo starts a fresh save ───────
     if body_lower in ("new", "new save", "new session"):
