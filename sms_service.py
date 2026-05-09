@@ -1255,7 +1255,7 @@ _DISTRICT_TO_COUNCIL_SLUG = {
     "E07000215": "east-surrey",  # Tandridge
 }
 def _org_name_to_dc_slug(name: str) -> str:
-    """Strip civic prefixes from a council org name and return a DC-compatible slug."""
+    """Strip civic prefixes/suffixes from a council org name and return a DC-compatible slug."""
     import re
     n = name.strip()
     for prefix in [
@@ -1264,6 +1264,12 @@ def _org_name_to_dc_slug(name: str) -> str:
     ]:
         if n.startswith(prefix):
             n = n[len(prefix):]
+            break
+    # Strip trailing suffixes like " Council", " District Council", " Borough Council"
+    for suffix in [" District Council", " Borough Council", " County Council",
+                   " City Council", " Council"]:
+        if n.endswith(suffix):
+            n = n[:-len(suffix)]
             break
     return re.sub(r'\s+', '-', n.strip().lower())
 
@@ -1907,14 +1913,19 @@ def api_councillor():
         if not ward_gss:
             return jsonify({"councillors": [], "ward": ward_name, "council": council})
 
+        # Use elections by_gss for accurate ward/council names (postcodes.io may have old names)
+        elections = _get_elections()
+        ward_data = elections["by_gss"].get(ward_gss, {})
+        if ward_data:
+            ward_name = ward_data.get("ward") or ward_name
+            council   = ward_data.get("council") or council
+
         # Try DB
         rows = _get_councillors_for_ward(ward_gss)
         if rows:
             return jsonify({"councillors": rows, "ward": ward_name, "council": council})
 
         # Try DC API for elected members
-        elections = _get_elections()
-        ward_data = elections["by_gss"].get(ward_gss, {})
         election_date = ward_data.get("date", "2026-05-07")
         council_slug = _org_name_to_dc_slug(council)
         dc_members = _fetch_dc_elected(council_slug, ward_name, election_date)
