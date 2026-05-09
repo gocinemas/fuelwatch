@@ -5065,16 +5065,15 @@
       timeline: ["timeline","history","started","origin","evolution","story"],
     };
     // Company Intel signals → financial/corporate queries
-    const _COMPANY_KW = ["turnover","revenue","sales","profit","loss","earnings","financials","annual report","results","employees","staff","headcount","hq","headquarters","industry","strategy","strategic","ai","artificial intelligence","tech","technology","news","founded","director","shareholders","ownership"];
+    const _COMPANY_KW = ["turnover","revenue","sales","profit","loss","earnings","financials","annual report","results","employees","staff","headcount","hq","headquarters","industry","strategy","strategic","ai","artificial intelligence","tech","technology","news","founded","director","shareholders","ownership","company","companies","corp","inc","plc","ltd","info","information","about","details","profile","overview","search","look up","who is","what is"];
 
     function _detectBrandOrCompany(q) {
-      const ql = q.toLowerCase();
+      const ql = q.toLowerCase().trim();
       // Check brand signals first
       for (const [tab, words] of Object.entries(_BRAND_KW)) {
         if (words.some(w => ql.includes(w))) {
-          // Strip the matched keyword(s) to get the name
           let name = ql;
-          words.forEach(w => { name = name.replace(w, ""); });
+          words.forEach(w => { name = name.replace(new RegExp("\\b" + w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + "\\b","g"), ""); });
           name = name.trim().replace(/\s+/g," ");
           if (name.length > 1) return { mode:"brand", tab, name: _titleCase(name) };
         }
@@ -5082,9 +5081,14 @@
       // Check company signals
       if (_COMPANY_KW.some(w => ql.includes(w))) {
         let name = ql;
-        _COMPANY_KW.forEach(w => { name = name.replace(w, ""); });
+        _COMPANY_KW.forEach(w => { name = name.replace(new RegExp("\\b" + w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + "\\b","g"), ""); });
         name = name.trim().replace(/\s+/g," ");
         if (name.length > 1) return { mode:"company", name: _titleCase(name) };
+      }
+      // Bare-name fallback: 1–4 word query with no postcode signals → treat as brand/company lookup
+      const words = ql.split(/\s+/).filter(Boolean);
+      if (words.length >= 1 && words.length <= 4 && !ql.match(/\b[A-Z]{1,2}\d/i)) {
+        return { mode:"both", name: _titleCase(ql) };
       }
       return null;
     }
@@ -5118,21 +5122,31 @@
       if (bco) {
         const box = document.getElementById("home-search-results");
         box.style.display = "block";
-        const icon  = bco.mode === "brand" ? "🏷️" : "🏢";
-        const label = bco.mode === "brand"
-          ? `${bco.name} — Brand Intel`
-          : `${bco.name} — Company Intel`;
+        const safeN = bco.name.replace(/'/g,"\\'");
         const subMap = { rivals:"Competitors & turnover", ads:"Ads & campaigns", timeline:"Brand timeline", overview:"Overview" };
-        const sub   = bco.mode === "brand" ? (subMap[bco.tab] || "Brand overview") : "AI, strategy & financials";
-        const action = `document.getElementById('intel-input').value='${bco.name.replace(/'/g,"\\'")}';searchIntel();homeSearchClear()`;
-        box.innerHTML = `<button onclick="${action}" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit">
-          <span style="font-size:22px;width:30px;text-align:center;flex-shrink:0">${icon}</span>
-          <span>
-            <span style="display:block;font-size:14px;font-weight:700;color:var(--text)">${label}</span>
-            <span style="display:block;font-size:11px;color:var(--subtle)">${sub}</span>
-          </span>
-          <span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--accent)">Go →</span>
-        </button>`;
+        const btnStyle = "display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;transition:background 0.15s";
+        function _btn(icon, label, sub, action) {
+          return `<button onclick="${action}" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background='none'" style="${btnStyle}">
+            <span style="font-size:22px;width:30px;text-align:center;flex-shrink:0">${icon}</span>
+            <span>
+              <span style="display:block;font-size:14px;font-weight:700;color:var(--text)">${label}</span>
+              <span style="display:block;font-size:11px;color:var(--subtle)">${sub}</span>
+            </span>
+            <span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--accent)">Go →</span>
+          </button>`;
+        }
+        const intelAction = `document.getElementById('intel-input').value='${safeN}';searchIntel();homeSearchClear()`;
+        if (bco.mode === "both") {
+          box.innerHTML =
+            _btn("🏢", `${bco.name} — Company Intel`, "AI strategy, financials & overview", intelAction) +
+            `<div style="height:1px;background:var(--border);margin:0 16px"></div>` +
+            _btn("🏷️", `${bco.name} — Brand Intel`, "Ads, rivals & brand timeline", intelAction);
+        } else if (bco.mode === "brand") {
+          const sub = subMap[bco.tab] || "Brand overview";
+          box.innerHTML = _btn("🏷️", `${bco.name} — Brand Intel`, sub, intelAction);
+        } else {
+          box.innerHTML = _btn("🏢", `${bco.name} — Company Intel`, "AI strategy, financials & overview", intelAction);
+        }
         return;
       }
 
@@ -5146,7 +5160,7 @@
                       intent.screen === "trains" ? `Trains from ${pc}` :
                       `Area report for ${pc}`;
         const icon  = intent.screen === "fuel" ? "⛽" : intent.screen === "trains" ? "🚆" : "🏠";
-        box.innerHTML = `<button onclick="homeSearchClear();(${intent.fill.toString()})('${pc}')" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit">
+        box.innerHTML = `<button onclick="homeSearchClear();(${intent.fill.toString()})('${pc}')" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background='none'" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;transition:background 0.15s">
           <span style="font-size:22px;width:30px;text-align:center;flex-shrink:0">${icon}</span>
           <span>
             <span style="display:block;font-size:14px;font-weight:700;color:var(--text)">${label}</span>
@@ -5239,6 +5253,9 @@
           intent.fill(pc);
           return;
         }
+        // Fire the first visible result button
+        const firstBtn = document.querySelector("#home-search-results button");
+        if (firstBtn) { firstBtn.click(); return; }
         const bco = _detectBrandOrCompany(q);
         if (bco) {
           document.getElementById("intel-input").value = bco.name;
