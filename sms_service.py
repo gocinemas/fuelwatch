@@ -2009,6 +2009,26 @@ def api_elections():
             key=lambda c: (c["party"], c["name"])
         )
 
+        # Persist candidates to Supabase (fire-and-forget)
+        if candidates and ward_gss:
+            try:
+                rows = [{
+                    "ward_gss":      ward_gss,
+                    "ward":          ward_data.get("ward") or ward_name,
+                    "council":       ward_data.get("council") or district,
+                    "election_date": ward_data.get("election_date", "2026-05-07"),
+                    "name":          c.get("name", ""),
+                    "party":         c.get("party", ""),
+                    "twitter":       c.get("twitter") or None,
+                    "homepage":      c.get("homepage") or None,
+                    "photo":         c.get("photo") or None,
+                } for c in candidates]
+                lib._sb().table("election_candidates").upsert(
+                    rows, on_conflict="ward_gss,name,election_date"
+                ).execute()
+            except Exception as _ce:
+                app.logger.warning(f"[elections] candidate save: {_ce}")
+
         is_new_council = bool(council_slug and council_slug in _COUNCIL_PREDECESSORS)
         predecessors   = _COUNCIL_PREDECESSORS.get(council_slug or "", [])
         dc_results_url = (

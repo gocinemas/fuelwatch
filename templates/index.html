@@ -1104,19 +1104,15 @@
             style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
             📊 Results
           </button>
-          <button id="etab-candidates" onclick="eTab('candidates')"
-            style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
-            🗳️ Candidates
-          </button>
           <button id="etab-parties" onclick="eTab('parties')"
             style="flex:1;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .15s">
             📋 Parties
           </button>
         </div><!-- /elections-tab-bar -->
 
-        <!-- Tab: Candidates -->
-        <div id="epanel-candidates">
-          <div id="elections-candidates" style="display:flex;flex-direction:column;gap:8px"></div>
+        <!-- Candidates hidden (stored in DB, not shown) -->
+        <div id="epanel-candidates" class="hidden">
+          <div id="elections-candidates"></div>
         </div>
 
         <!-- Tab: Parties -->
@@ -2933,7 +2929,7 @@
   }
 
   function eTab(name) {
-    ["candidates","parties","more"].forEach(t => {
+    ["parties","more"].forEach(t => {
       const active = t === name;
       document.getElementById("epanel-" + t).classList.toggle("hidden", !active);
       const btn = document.getElementById("etab-" + t);
@@ -3043,19 +3039,28 @@
         liveEl.innerHTML = `<div style="font-size:12px;color:var(--subtle);text-align:center;padding:8px 0">2026 results not yet published for this ward</div>`;
       }
 
-      // 2022 past results — tab panel + inline (no-election view)
-      function _render2022() {
-        if (d.past_results && d.past_results.length) {
-          return _renderResultsTable(d.past_results, "2022 Local Election Results");
-        } else if (d.dc_results_url) {
-          return `<div style="font-weight:600;color:var(--text);margin-bottom:6px">📊 2022 Results</div>
-            <div style="font-size:12px;color:var(--subtle)"><a href="${d.dc_results_url}" target="_blank" rel="noopener" style="color:#4f46e5">View on Democracy Club ↗</a></div>`;
+      // 2022 tab — hide entirely if 2026 results are declared
+      const tab2022Btn = document.getElementById("ertab-2022");
+      const panel2022  = document.getElementById("erpanel-2022");
+      if (hasRealResults) {
+        if (tab2022Btn) tab2022Btn.style.display = "none";
+        if (panel2022)  panel2022.style.display  = "none";
+      } else {
+        if (tab2022Btn) tab2022Btn.style.display = "";
+        // 2022 past results — tab panel + inline (no-election view)
+        function _render2022() {
+          if (d.past_results && d.past_results.length) {
+            return _renderResultsTable(d.past_results, "2022 Local Election Results");
+          } else if (d.dc_results_url) {
+            return `<div style="font-weight:600;color:var(--text);margin-bottom:6px">📊 2022 Results</div>
+              <div style="font-size:12px;color:var(--subtle)"><a href="${d.dc_results_url}" target="_blank" rel="noopener" style="color:#4f46e5">View on Democracy Club ↗</a></div>`;
+          }
+          return `<div style="text-align:center;padding:16px 0;color:var(--subtle);font-size:13px">No 2022 results on record for this ward.</div>`;
         }
-        return `<div style="text-align:center;padding:16px 0;color:var(--subtle);font-size:13px">No 2022 results on record for this ward.</div>`;
+        const past2022Html = _render2022();
+        document.getElementById("elections-past").innerHTML        = past2022Html;
+        document.getElementById("elections-past-inline").innerHTML = past2022Html;
       }
-      const past2022Html = _render2022();
-      document.getElementById("elections-past").innerHTML        = past2022Html;
-      document.getElementById("elections-past-inline").innerHTML = past2022Html;
 
       // Candidates (only render when there are elections)
       document.getElementById("elections-candidates").innerHTML = noElection ? "" : d.candidates.map(c => {
