@@ -5097,11 +5097,16 @@
       return s.replace(/\b\w/g, c => c.toUpperCase());
     }
 
+    // Named fill handlers (avoids double-quote collision in onclick attributes)
+    window._fillFuel   = pc => { document.getElementById('fuel-postcode').value = pc; showScreen('fuel'); document.getElementById('fuel-postcode').focus(); };
+    window._fillTrains = pc => { document.getElementById('train-search-input').value = pc; showScreen('trains'); trainSearch(); };
+    window._fillReport = pc => { const el = document.getElementById('report-postcode'); if (el) el.value = pc; showScreen('report'); };
+
     // Map postcode keywords to a screen + pre-fill action
     const _INTENTS = [
-      { kw: ["petrol","diesel","fuel","unleaded","e10","e5","cheap fuel","cheapest fuel","nearest fuel","nearby fuel"], screen:"fuel", fill: pc => { document.getElementById("fuel-postcode").value = pc; showScreen("fuel"); document.getElementById("fuel-postcode").focus(); } },
-      { kw: ["train","trains","rail","station","departure"],  screen:"trains", fill: pc => { document.getElementById("train-search-input").value = pc; showScreen("trains"); trainSearch(); } },
-      { kw: ["area","crime","house price","property","school rating"], screen:"report", fill: pc => { document.getElementById("report-postcode") && (document.getElementById("report-postcode").value = pc); showScreen("report"); } },
+      { kw: ["petrol","diesel","fuel","unleaded","e10","e5","cheap fuel","cheapest fuel","nearest fuel","nearby fuel"], screen:"fuel",   fillName:"_fillFuel",   fill: window._fillFuel },
+      { kw: ["train","trains","rail","station","departure"],                                                           screen:"trains", fillName:"_fillTrains", fill: window._fillTrains },
+      { kw: ["area","crime","house price","property","school rating"],                                                 screen:"report", fillName:"_fillReport", fill: window._fillReport },
     ];
 
     function _detectIntent(q) {
@@ -5160,7 +5165,7 @@
                       intent.screen === "trains" ? `Trains from ${pc}` :
                       `Area report for ${pc}`;
         const icon  = intent.screen === "fuel" ? "⛽" : intent.screen === "trains" ? "🚆" : "🏠";
-        box.innerHTML = `<button onclick="homeSearchClear();(${intent.fill.toString()})('${pc}')" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background='none'" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;transition:background 0.15s">
+        box.innerHTML = `<button onclick="homeSearchClear();${intent.fillName}('${pc}')" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background='none'" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;transition:background 0.15s">
           <span style="font-size:22px;width:30px;text-align:center;flex-shrink:0">${icon}</span>
           <span>
             <span style="display:block;font-size:14px;font-weight:700;color:var(--text)">${label}</span>
