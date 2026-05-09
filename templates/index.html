@@ -5037,7 +5037,7 @@
 
     // Map postcode keywords to a screen + pre-fill action
     const _INTENTS = [
-      { kw: ["petrol","diesel","fuel","unleaded","e10","e5"], screen:"fuel",   fill: pc => { document.getElementById("fuel-postcode").value = pc; showScreen("fuel"); searchFuel(); } },
+      { kw: ["petrol","diesel","fuel","unleaded","e10","e5","cheap fuel","cheapest fuel","nearest fuel","nearby fuel"], screen:"fuel", fill: pc => { document.getElementById("fuel-postcode").value = pc; showScreen("fuel"); searchFuel(); } },
       { kw: ["train","trains","rail","station","departure"],  screen:"trains", fill: pc => { document.getElementById("train-search-input").value = pc; showScreen("trains"); trainSearch(); } },
       { kw: ["area","crime","house price","property","school rating"], screen:"report", fill: pc => { document.getElementById("report-postcode") && (document.getElementById("report-postcode").value = pc); showScreen("report"); } },
     ];
@@ -5084,7 +5084,7 @@
       if (pc && intent) {
         const box = document.getElementById("home-search-results");
         box.style.display = "block";
-        const label = intent.screen === "fuel" ? `Find ${intent.kw[0]} near ${pc}` :
+        const label = intent.screen === "fuel" ? (q.toLowerCase().includes("cheap") ? `Cheapest fuel near ${pc}` : `Find ${intent.kw[0]} near ${pc}`) :
                       intent.screen === "trains" ? `Trains from ${pc}` :
                       `Area report for ${pc}`;
         const icon  = intent.screen === "fuel" ? "⛽" : intent.screen === "trains" ? "🚆" : "🏠";
@@ -5171,7 +5171,23 @@
     };
     window.homeSearchBlur = function() { _hideResults(); };
     window.homeSearchKey = function(e) {
-      if (e.key === "Escape") homeSearchClear();
+      if (e.key === "Escape") { homeSearchClear(); return; }
+      if (e.key === "Enter") {
+        const q  = document.getElementById("home-search-input").value.trim();
+        const pc = _extractPostcode(q);
+        const intent = pc ? _detectIntent(q) : null;
+        if (pc && intent) {
+          homeSearchClear();
+          intent.fill(pc);
+          return;
+        }
+        const bco = _detectBrandOrCompany(q);
+        if (bco) {
+          document.getElementById("intel-input").value = bco.name;
+          searchIntel();
+          homeSearchClear();
+        }
+      }
     };
   })();
 </script>
