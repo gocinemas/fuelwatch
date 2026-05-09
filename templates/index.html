@@ -7931,6 +7931,20 @@ _bkBadge();
       style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🌍 Global</button>
   </div>
 
+  <!-- Spotify connect bar -->
+  <div id="spotify-bar" style="margin-bottom:16px">
+    <div id="sp-disconnected" style="display:flex;align-items:center;justify-content:center">
+      <button onclick="spotifyConnect()" style="padding:8px 20px;border:none;border-radius:99px;background:#1db954;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        Connect Spotify
+      </button>
+    </div>
+    <div id="sp-connected" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:9px 14px;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;font-weight:600;color:#166534">✓ Spotify · Miru Picks</span>
+      <button onclick="spotifyDisconnect()" style="border:none;background:none;color:#6b7280;font-size:12px;cursor:pointer;padding:0">Disconnect</button>
+    </div>
+  </div>
+
   <!-- Identify panel -->
   <div id="music-identify-panel">
     <div style="text-align:center;padding:8px 0 24px">
@@ -7976,6 +7990,9 @@ _bkBadge();
   var _musicRecorder = null;
   var _musicCurrentTab = 'identify';
   var _chartsCache = {};
+  window._chartsCache = _chartsCache;
+  Object.defineProperty(window, '_musicCurrentTab', { get: function(){ return _musicCurrentTab; } });
+  window._musicRenderCharts = function(t){ _musicRenderCharts(t); };
 
   function _musicGetSaved(){ try{ return JSON.parse(localStorage.getItem('miru_music')||'[]'); }catch(e){ return []; } }
   function _musicSetSaved(a){ localStorage.setItem('miru_music', JSON.stringify(a)); }
@@ -8010,15 +8027,20 @@ _bkBadge();
   }
 
   function _musicRenderCharts(tracks) {
+    var connected = window.spConnected && window.spConnected();
     document.getElementById('music-charts-list').innerHTML = tracks.map(function(t){
+      var addBtn = connected
+        ? '<button onclick="spotifyAdd('+JSON.stringify(t.title)+','+JSON.stringify(t.artist)+',this)" style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Add to Miru Picks">＋</button>'
+        : '';
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
-        +'<div style="font-size:13px;font-weight:700;color:var(--muted);width:24px;text-align:center">'+t.position+'</div>'
-        +(t.cover ? '<img src="'+t.cover+'" style="width:44px;height:44px;border-radius:8px;object-fit:cover">' : '<div style="width:44px;height:44px;border-radius:8px;background:var(--border)"></div>')
+        +'<div style="font-size:13px;font-weight:700;color:var(--muted);width:24px;text-align:center;flex-shrink:0">'+t.position+'</div>'
+        +(t.cover ? '<img src="'+t.cover+'" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0">' : '<div style="width:44px;height:44px;border-radius:8px;background:var(--border);flex-shrink:0"></div>')
         +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.title+'</div>'
         +'<div style="font-size:12px;color:var(--muted)">'+t.artist+'</div>'
         +'</div>'
-        +(t.url ? '<a href="'+t.url+'" target="_blank" rel="noopener" style="font-size:18px;text-decoration:none">▶</a>' : '')
+        +(t.url ? '<a href="'+t.url+'" target="_blank" rel="noopener" style="font-size:18px;text-decoration:none;flex-shrink:0">▶</a>' : '')
+        +addBtn
         +'</div>';
     }).join('');
   }
@@ -8159,12 +8181,150 @@ _bkBadge();
     var saved = _musicGetSaved(); saved.splice(i,1); _musicSetSaved(saved); _musicRenderSaved();
   };
 
-  // Init saved list when screen opens
+  // Init saved list + Spotify when screen opens
   var _origShowScreenMusic = window.showScreen;
   window.showScreen = function(name){
     _origShowScreenMusic(name);
-    if(name==='music') _musicRenderSaved();
+    if(name==='music'){ _musicRenderSaved(); if(window.spotifyInit) spotifyInit(); }
   };
+})();
+</script>
+
+<script>
+// ── Spotify integration ────────────────────────────────────────────────────
+(function(){
+  var _sp = { clientId:null, redirectUri:null, token:null, expires:0, refreshToken:null, playlistId:null };
+
+  function _load(){
+    try{ var d=JSON.parse(localStorage.getItem('_sp_sess')||'{}'); _sp.token=d.t||null; _sp.expires=d.e||0; _sp.refreshToken=d.r||null; _sp.playlistId=d.p||null; }catch(e){}
+  }
+  function _save(){
+    localStorage.setItem('_sp_sess',JSON.stringify({t:_sp.token,e:_sp.expires,r:_sp.refreshToken,p:_sp.playlistId}));
+  }
+
+  window.spConnected = function(){ return !!_sp.refreshToken; };
+
+  function _updateUI(){
+    var disc = document.getElementById('sp-disconnected');
+    var conn = document.getElementById('sp-connected');
+    if(disc) disc.style.display = _sp.refreshToken ? 'none' : 'flex';
+    if(conn) conn.style.display = _sp.refreshToken ? 'flex' : 'none';
+    // Re-render current chart tab to show/hide + buttons
+    if(window._chartsCache && window._musicCurrentTab && window._chartsCache[window._musicCurrentTab])
+      window._musicRenderCharts && window._musicRenderCharts(window._chartsCache[window._musicCurrentTab]);
+  }
+
+  async function _loadConfig(){
+    if(_sp.clientId) return;
+    try{
+      var d = await fetch('/api/spotify/config').then(function(r){return r.json();});
+      if(d.available){ _sp.clientId=d.client_id; _sp.redirectUri=d.redirect_uri; }
+    }catch(e){}
+  }
+
+  function _verifier(){
+    var a=new Uint8Array(32); crypto.getRandomValues(a);
+    return btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  }
+  async function _challenge(v){
+    var buf=new TextEncoder().encode(v);
+    var dig=await crypto.subtle.digest('SHA-256',buf);
+    return btoa(String.fromCharCode.apply(null,new Uint8Array(dig))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  }
+
+  window.spotifyInit = async function(){
+    _load();
+    var code=localStorage.getItem('_sp_code');
+    var verifier=localStorage.getItem('_sp_verifier');
+    if(code && verifier){
+      localStorage.removeItem('_sp_code'); localStorage.removeItem('_sp_verifier');
+      await _loadConfig();
+      if(_sp.clientId){
+        try{ await _exchange(code,verifier); }catch(e){ console.warn('Spotify auth failed',e); }
+      }
+      history.replaceState({},'',location.pathname);
+    }
+    _updateUI();
+  };
+
+  window.spotifyConnect = async function(){
+    await _loadConfig();
+    if(!_sp.clientId){ alert('Spotify not configured on this server.'); return; }
+    var v=_verifier(); var ch=await _challenge(v);
+    localStorage.setItem('_sp_verifier',v);
+    var p=new URLSearchParams({client_id:_sp.clientId,response_type:'code',redirect_uri:_sp.redirectUri,
+      scope:'playlist-modify-public playlist-modify-private playlist-read-private',
+      code_challenge_method:'S256',code_challenge:ch});
+    window.location='https://accounts.spotify.com/authorize?'+p;
+  };
+
+  async function _exchange(code,verifier){
+    var r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({grant_type:'authorization_code',code:code,
+        redirect_uri:_sp.redirectUri,client_id:_sp.clientId,code_verifier:verifier})});
+    if(!r.ok) throw new Error('exchange failed');
+    var d=await r.json();
+    _sp.token=d.access_token; _sp.expires=Date.now()+(d.expires_in-60)*1000;
+    _sp.refreshToken=d.refresh_token; _save();
+  }
+
+  async function _getToken(){
+    if(_sp.token && Date.now()<_sp.expires) return _sp.token;
+    if(!_sp.refreshToken) return null;
+    await _loadConfig();
+    var r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({grant_type:'refresh_token',refresh_token:_sp.refreshToken,client_id:_sp.clientId})});
+    if(!r.ok){ _sp.refreshToken=null; _save(); return null; }
+    var d=await r.json();
+    _sp.token=d.access_token; _sp.expires=Date.now()+(d.expires_in-60)*1000;
+    if(d.refresh_token) _sp.refreshToken=d.refresh_token;
+    _save(); return _sp.token;
+  }
+
+  window.spotifyDisconnect = function(){
+    _sp.token=null; _sp.expires=0; _sp.refreshToken=null; _sp.playlistId=null; _save(); _updateUI();
+  };
+
+  async function _getPlaylist(token){
+    if(_sp.playlistId) return _sp.playlistId;
+    var me=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+token}}).then(function(r){return r.json();});
+    var lists=await fetch('https://api.spotify.com/v1/me/playlists?limit=50',{headers:{Authorization:'Bearer '+token}}).then(function(r){return r.json();});
+    var found=(lists.items||[]).find(function(p){return p.name==='Miru Picks';});
+    if(found){ _sp.playlistId=found.id; _save(); return _sp.playlistId; }
+    var created=await fetch('https://api.spotify.com/v1/users/'+me.id+'/playlists',{method:'POST',
+      headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({name:'Miru Picks',description:'Songs added via Miru',public:false})}).then(function(r){return r.json();});
+    _sp.playlistId=created.id; _save(); return _sp.playlistId;
+  }
+
+  window.spotifyAdd = async function(title, artist, btn){
+    var token=await _getToken();
+    if(!token){ spotifyConnect(); return; }
+    var orig=btn.textContent; btn.textContent='…'; btn.disabled=true;
+    try{
+      var q=encodeURIComponent('track:'+title+' artist:'+artist);
+      var search=await fetch('https://api.spotify.com/v1/search?q='+q+'&type=track&limit=1',{headers:{Authorization:'Bearer '+token}}).then(function(r){return r.json();});
+      var items=(search.tracks||{}).items||[];
+      if(!items.length){ btn.textContent='?'; setTimeout(function(){btn.textContent=orig;btn.disabled=false;},2000); return; }
+      var playlistId=await _getPlaylist(token);
+      await fetch('https://api.spotify.com/v1/playlists/'+playlistId+'/tracks',{method:'POST',
+        headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({uris:[items[0].uri]})});
+      btn.textContent='✓'; btn.style.color='#1db954';
+      setTimeout(function(){btn.textContent='＋';btn.style.color='';btn.disabled=false;},2500);
+    }catch(e){
+      btn.textContent='!'; setTimeout(function(){btn.textContent=orig;btn.disabled=false;},2000);
+    }
+  };
+
+  // Handle OAuth callback on page load if coming back from Spotify
+  window.addEventListener('DOMContentLoaded', function(){
+    _load();
+    var code=localStorage.getItem('_sp_code');
+    if(code) window.spotifyInit();
+  });
 })();
 </script>
 

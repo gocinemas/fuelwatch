@@ -7383,6 +7383,36 @@ def api_music_charts():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/spotify/config")
+def api_spotify_config():
+    client_id = os.environ.get("SPOTIFY_CLIENT_ID", "")
+    if not client_id:
+        return jsonify({"available": False})
+    redirect_uri = request.url_root.rstrip("/") + "/spotify/callback"
+    return jsonify({"available": True, "client_id": client_id, "redirect_uri": redirect_uri})
+
+
+@app.route("/spotify/callback")
+def spotify_callback():
+    import json as _json
+    code  = request.args.get("code", "")
+    error = request.args.get("error", "")
+    if error or not code:
+        return (
+            "<!doctype html><html><body><script>"
+            "localStorage.removeItem('_sp_verifier');"
+            "window.location='/?screen=music&sp_error=1';"
+            "</script></body></html>"
+        )
+    safe_code = _json.dumps(code)
+    return (
+        f"<!doctype html><html><body><script>"
+        f"localStorage.setItem('_sp_code',{safe_code});"
+        f"window.location='/?screen=music&sp_connected=1';"
+        f"</script></body></html>"
+    )
+
+
 @app.route("/api/train/test")
 def api_train_test():
     """Quick test — bypasses GPS, fetches WAT (Waterloo) directly."""
