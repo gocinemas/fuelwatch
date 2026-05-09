@@ -644,7 +644,8 @@ td{padding:8px;border-bottom:1px solid #f1f5f9;font-size:.9rem}
 <div class="banner">⚠ Test build — not part of main Miru site</div>
 <p class="sub">Enter a council name to see seats by party (live from Democracy Club).</p>
 <div class="row">
-  <input id="q" type="text" placeholder="e.g. West Surrey, Adur, Norfolk…" autocomplete="off" />
+  <input id="q" type="text" placeholder="e.g. West Surrey, Adur, Norfolk…" list="clist" autocomplete="off" />
+  <datalist id="clist"></datalist>
   <button id="btn" onclick="load()">Search</button>
 </div>
 <div id="status"></div>
@@ -708,6 +709,11 @@ function render(d){
   document.getElementById("results").innerHTML=bar+tbl+wd;
 }
 document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")load();});
+// Populate autocomplete from server
+fetch("/api/elections/council-list").then(r=>r.json()).then(list=>{
+  const dl=document.getElementById("clist");
+  list.forEach(c=>{const o=document.createElement("option");o.value=c.name;dl.appendChild(o);});
+});
 </script>
 </body>
 </html>""", 200, {"Content-Type": "text/html; charset=utf-8"})
@@ -1909,37 +1915,42 @@ def api_elections_council_view():
             cached, ts, _ = _DC_RESULTS_CACHE[cache_key]
             if _time.time() - ts < 3600:
                 return ballot_paper_id, cached
-        try:
-            r2 = requests.get(
-                f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/",
-                params={"format": "json"}, timeout=10,
-                headers={"User-Agent": "Miru/1.0"},
-            )
-            if r2.status_code != 200:
+        for attempt in range(3):
+            try:
+                r2 = requests.get(
+                    f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/",
+                    params={"format": "json"}, timeout=10,
+                    headers={"User-Agent": "Miru/1.0"},
+                )
+                if r2.status_code == 429:
+                    _time.sleep(2 ** attempt)
+                    continue
+                if r2.status_code != 200:
+                    return ballot_paper_id, None
+                jdata = r2.json()
+                candidacies = jdata.get("candidacies", [])
+                ward_label = jdata.get("post", {}).get("label", "")
+                results = []
+                for c in candidacies:
+                    res = c.get("result") or {}
+                    results.append({
+                        "name":    c.get("person", {}).get("name", ""),
+                        "party":   c.get("party_name", ""),
+                        "elected": bool(c.get("elected") or res.get("elected")),
+                        "votes":   res.get("num_ballots"),
+                    })
+                has_real = any(rc["votes"] is not None or rc["elected"] for rc in results)
+                payload = {"results": results, "ward": ward_label, "declared": has_real}
+                if results:
+                    _DC_RESULTS_CACHE[cache_key] = (payload, _time.time(), has_real)
+                return ballot_paper_id, payload
+            except Exception:
                 return ballot_paper_id, None
-            jdata = r2.json()
-            candidacies = jdata.get("candidacies", [])
-            ward_label = jdata.get("post", {}).get("label", "")
-            results = []
-            for c in candidacies:
-                res = c.get("result") or {}
-                results.append({
-                    "name":    c.get("person", {}).get("name", ""),
-                    "party":   c.get("party_name", ""),
-                    "elected": bool(c.get("elected") or res.get("elected")),
-                    "votes":   res.get("num_ballots"),
-                })
-            has_real = any(rc["votes"] is not None or rc["elected"] for rc in results)
-            payload = {"results": results, "ward": ward_label, "declared": has_real}
-            if results:
-                _DC_RESULTS_CACHE[cache_key] = (payload, _time.time(), has_real)
-            return ballot_paper_id, payload
-        except Exception:
-            return ballot_paper_id, None
+        return ballot_paper_id, None
 
     ballot_ids = [b["ballot_paper_id"] for b in ballots]
     ward_results: dict = {}
-    with _cf.ThreadPoolExecutor(max_workers=12) as ex:
+    with _cf.ThreadPoolExecutor(max_workers=5) as ex:
         for bpid, payload in ex.map(fetch_ballot, ballot_ids):
             if payload is not None:
                 ward_results[bpid] = payload
@@ -1976,6 +1987,22 @@ def api_elections_council_view():
         "seats":          seats_list,
         "wards":          sorted(ward_summary, key=lambda x: (not x["declared"], x["ward"])),
     })
+
+
+@app.route("/api/elections/council-list")
+def api_elections_council_list():
+    """Return all known council slugs + names for autocomplete."""
+    elections = _get_elections()
+    by_slug = elections.get("by_slug", {})
+    councils = []
+    for slug, wards in by_slug.items():
+        name = slug.replace("-", " ").title()
+        for w in wards.values():
+            name = w.get("council", name)
+            break
+        councils.append({"slug": slug, "name": name})
+    councils.sort(key=lambda x: x["name"])
+    return jsonify(councils)
 
 
 @app.route("/api/elections/national")

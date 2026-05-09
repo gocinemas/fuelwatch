@@ -392,8 +392,8 @@
           <span class="tool-icon-label">Local Search</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('company')">
-          <span class="tool-icon-emoji">🏷️</span>
-          <span class="tool-icon-label">Brand Intel</span>
+          <span class="tool-icon-emoji">🔍</span>
+          <span class="tool-icon-label">Intel</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('library')">
           <span class="tool-icon-emoji">📄</span>
@@ -692,15 +692,23 @@
     <!-- ── COMPANY SCREEN ── -->
     <div id="screen-company" class="screen pt-5">
 
-      <!-- ── Unified Brand Intel header ── -->
+      <!-- ── Intel header ── -->
       <div style="margin-bottom:14px">
-        <div style="font-size:24px;font-weight:900;letter-spacing:-0.5px;color:var(--text)">Brand Intel</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">Company · financials · history · rivals · campaigns</div>
+        <div style="font-size:24px;font-weight:900;letter-spacing:-0.5px;color:var(--text)">Intel</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Brand &amp; Company intelligence</div>
+      </div>
+
+      <!-- Mode toggle -->
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <button id="imode-brand" onclick="switchIntelMode('brand')"
+          style="flex:1;padding:9px 0;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:#4f46e5;color:#fff;transition:all .15s">🏷️ Brand</button>
+        <button id="imode-company" onclick="switchIntelMode('company')"
+          style="flex:1;padding:9px 0;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:var(--border);color:var(--muted);transition:all .15s">📊 Company</button>
       </div>
 
       <!-- Single search input -->
       <div style="display:flex;gap:8px;margin-bottom:10px">
-        <input id="intel-input" type="text" placeholder="Search any brand or company…"
+        <input id="intel-input" type="text" placeholder="Search brand — Nike, Walkers…"
           style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
           onkeydown="if(event.key==='Enter') searchIntel()"
           onfocus="this.style.boxShadow='0 0 0 3px rgba(79,70,229,.15)'"
@@ -714,7 +722,7 @@
       <!-- Loading / Error (unified) -->
       <div id="intel-loading" class="hidden text-center py-10">
         <div class="spinner mx-auto mb-3" style="border-top-color:#4f46e5;width:28px;height:28px"></div>
-        <div style="font-size:13px;color:var(--muted)">Looking up brand…</div>
+        <div id="intel-loading-text" style="font-size:13px;color:var(--muted)">Looking up…</div>
       </div>
       <div id="intel-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:14px;padding:14px 16px;font-size:13px;margin-bottom:12px"></div>
 
@@ -2152,15 +2160,58 @@
   }
 
   // ── Company search ───────────────────────────────────────────────────────────
-  // ── Unified Brand Intel search ───────────────────────────────────────────────
+  // ── Intel mode toggle ────────────────────────────────────────────────────────
   const _INTEL_TABS = ["about","finance","history","campaigns","intel"];
+  const _MODE_TABS = {
+    brand:   ["about","campaigns","history"],
+    company: ["about","finance","intel","history"],
+  };
+  window._intelMode = "brand";
+
+  window.switchIntelMode = function(mode) {
+    window._intelMode = mode;
+    const allowed = _MODE_TABS[mode] || _INTEL_TABS;
+    // Show/hide tab buttons in the tab bar
+    _INTEL_TABS.forEach(t => {
+      const btn = document.getElementById("itab-btn-" + t);
+      if (btn) btn.style.display = allowed.includes(t) ? "" : "none";
+    });
+    // Mode pill styling
+    const brandBtn   = document.getElementById("imode-brand");
+    const companyBtn = document.getElementById("imode-company");
+    if (brandBtn) {
+      brandBtn.style.background = mode === "brand" ? "#4f46e5" : "var(--border)";
+      brandBtn.style.color      = mode === "brand" ? "#fff"    : "var(--muted)";
+    }
+    if (companyBtn) {
+      companyBtn.style.background = mode === "company" ? "#4f46e5" : "var(--border)";
+      companyBtn.style.color      = mode === "company" ? "#fff"    : "var(--muted)";
+    }
+    // Update placeholder
+    const inp = document.getElementById("intel-input");
+    if (inp) inp.placeholder = mode === "brand"
+      ? "Search brand — Nike, Walkers, Monzo…"
+      : "Search company — Apple, Rolls-Royce, Tesco…";
+    // Switch to first allowed tab if current is hidden
+    const currentActive = _INTEL_TABS.find(t => {
+      const p = document.getElementById("intel-tab-" + t);
+      return p && p.style.display !== "none";
+    });
+    if (!currentActive || !allowed.includes(currentActive)) {
+      switchIntelTab(allowed[0]);
+    }
+  };
 
   window.switchIntelTab = function(tab) {
+    const mode = window._intelMode || "brand";
+    const allowed = _MODE_TABS[mode] || _INTEL_TABS;
     _INTEL_TABS.forEach(t => {
       const panel = document.getElementById("intel-tab-" + t);
       const btn   = document.getElementById("itab-btn-" + t);
       if (panel) panel.style.display = t === tab ? "" : "none";
       if (btn) {
+        if (!allowed.includes(t)) { btn.style.display = "none"; return; }
+        btn.style.display    = "";
         btn.style.background = t === tab ? "#4f46e5" : "transparent";
         btn.style.color      = t === tab ? "#fff"    : "var(--muted)";
       }
@@ -2179,10 +2230,13 @@
 
     // reset UI
     document.getElementById("intel-loading").classList.remove("hidden");
+    const ltEl = document.getElementById("intel-loading-text");
+    if (ltEl) ltEl.textContent = window._intelMode === "company" ? "Looking up company…" : "Looking up brand…";
     document.getElementById("intel-error").classList.add("hidden");
     document.getElementById("intel-result").style.display = "none";
     document.getElementById("co-did-you-mean").classList.add("hidden");
     document.getElementById("brand-did-you-mean").classList.add("hidden");
+    switchIntelMode(window._intelMode || "brand");
     switchIntelTab("about");
 
     // reset brand header
