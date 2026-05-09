@@ -1648,15 +1648,15 @@ def _fetch_national_wikipedia() -> dict | None:
         if not meta:
             continue
         try:
-            cllrs = int(re.sub(r"[,\s]", "", _field("3data", i)))
-            cncls = int(re.sub(r"[,\s]", "", _field("4data", i)) or "0")
+            cllrs = int(re.sub(r"[,\s]", "", _field("2data", i)))
+            cncls = int(re.sub(r"[,\s]", "", _field("3data", i)) or "0")
         except ValueError:
             continue
         parties.append({
             "name": meta["name"], "short": meta["short"],
             "colour": meta["colour"], "text": meta["text"],
-            "councils": cncls, "net": _parse_change(_field("6data", i)),
-            "councillors": cllrs, "net_c": _parse_change(_field("5data", i)),
+            "councils": cncls, "net": _parse_change(_field("5data", i)),
+            "councillors": cllrs, "net_c": _parse_change(_field("4data", i)),
         })
 
     if not parties:
