@@ -7698,6 +7698,81 @@ def api_wa_saves_bulk_delete():
     return jsonify({"deleted": deleted, "errors": errors})
 
 
+@app.route("/api/admin/retitle-saves", methods=["POST"])
+def api_admin_retitle_saves():
+    """One-shot: re-derive specific titles for saves that still have generic titles."""
+    key = request.headers.get("X-Admin-Key", "") or request.args.get("key", "")
+    if not key or key != os.environ.get("ADMIN_KEY", "miru-admin-2026"):
+        return jsonify({"error": "unauthorized"}), 401
+
+    GENERIC = {"📷 Photo", "🍽️ Menu", "📢 Billboard/Ad", "🏪 Place",
+               "🍷 Wine", "🪧 Sign", "📄 Document", "🎫 Event/Ticket", "🏷️ Brand"}
+    EMOJI = {
+        "📢 Billboard/Ad": "📢", "🏪 Place": "🏪", "🍷 Wine": "🍷",
+        "📷 Photo": "📷", "🪧 Sign": "🪧", "📄 Document": "📄",
+        "🎫 Event/Ticket": "🎫", "🏷️ Brand": "🏷️", "🍽️ Menu": "🍽️",
+    }
+
+    rows = lib._sb().table("wa_saves").select("id,title,summary,url").execute().data or []
+    to_fix = [r for r in rows if (r.get("title") or "").strip() in GENERIC and (r.get("summary") or "").strip()]
+
+    updated, skipped, failed = [], [], []
+    for row in to_fix:
+        try:
+            old_title = (row.get("title") or "").strip()
+            summary   = (row.get("summary") or "")[:600]
+            emoji     = EMOJI.get(old_title, "")
+
+            # Menus: restaurant name often appears as "🍽️ Name" in the summary body
+            if old_title == "🍽️ Menu":
+                for ln in summary.split("\n"):
+                    ln = ln.strip()
+                    if ln.startswith("🍽️ ") and len(ln) > 5:
+                        name = ln[2:].strip()
+                        if name and name.lower() not in ("menu", "restaurant"):
+                            new_title = f"🍽️ {name} Menu"
+                            lib._sb().table("wa_saves").update({"title": new_title}).eq("id", row["id"]).execute()
+                            updated.append({"id": row["id"], "old": old_title, "new": new_title})
+                        break
+                else:
+                    skipped.append(row["id"])
+                continue
+
+            # All others: ask Groq to name the specific thing
+            prompt = (
+                f"A saved item has this description:\n---\n{summary}\n---\n"
+                f"Give me a short specific title (2-5 words) naming the actual brand, place, wine, "
+                f"event, or product visible. No generic words like 'advertisement' or 'photo'. "
+                f"Output ONLY the title text, nothing else."
+            )
+            result = _groq_chat(
+                "You extract concise, specific titles from image descriptions.",
+                [{"role": "user", "content": prompt}],
+                max_tokens=25,
+            )
+            if result:
+                result = result.strip().strip('"\'').strip()
+            if not result or len(result) > 80 or result.lower() in ("unknown", "n/a", ""):
+                skipped.append(row["id"])
+                continue
+            new_title = f"{emoji} {result}" if emoji else result
+            if new_title == old_title:
+                skipped.append(row["id"])
+                continue
+            lib._sb().table("wa_saves").update({"title": new_title}).eq("id", row["id"]).execute()
+            updated.append({"id": row["id"], "old": old_title, "new": new_title})
+        except Exception as e:
+            failed.append({"id": row["id"], "error": str(e)})
+
+    return jsonify({
+        "scanned": len(to_fix),
+        "updated": len(updated),
+        "skipped": len(skipped),
+        "failed":  len(failed),
+        "items":   updated,
+    })
+
+
 @app.route("/api/wa-saves/enrich", methods=["POST"])
 def api_wa_saves_enrich():
     """Look up place details for a photo/place save and update its summary."""
