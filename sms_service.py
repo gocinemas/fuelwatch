@@ -3263,6 +3263,32 @@ def _fetch_supermarkets(lat, lon):
     return _fetch_supermarkets_overpass(lat, lon, radius_m=16000)  # ~10 miles
 
 
+def _fetch_off_licences_overpass(lat, lon, radius_m=3000):
+    query = f"""[out:json][timeout:20];
+(node["shop"="alcohol"](around:{radius_m},{lat},{lon});
+ way["shop"="alcohol"](around:{radius_m},{lat},{lon}););
+out center tags;"""
+    try:
+        els = _overpass_mirrors(query)
+        items = []
+        for e in els:
+            tags = e.get("tags", {})
+            name = tags.get("name") or tags.get("brand") or ""
+            if not name:
+                continue
+            elat, elon = _el_coords(e)
+            if not elat:
+                continue
+            dist = round(haversine_km(lat, lon, elat, elon), 2)
+            items.append({"name": name, "address": _el_address(tags),
+                          "phone": _el_phone(tags), "distance_km": dist})
+        items.sort(key=lambda x: x["distance_km"])
+        return items[:5]
+    except Exception as e:
+        print(f"[overpass off-licences] {e}")
+        return []
+
+
 def _fetch_police_contact(lat, lon):
     try:
         r = requests.get("https://data.police.uk/api/locate-neighbourhood",
@@ -3354,10 +3380,12 @@ def _postcode_area(postcode: str) -> str:
     m = _re.match(r'^([A-Z]{1,2})', postcode.upper().replace(" ", ""))
     return m.group(1) if m else ""
 
-def _fetch_gps_overpass(lat, lon, radius_m=1500):
-    query = f"""[out:json][timeout:12];
+def _fetch_gps_overpass(lat, lon, radius_m=3000):
+    query = f"""[out:json][timeout:15];
 (node["amenity"="doctors"](around:{radius_m},{lat},{lon});
- way["amenity"="doctors"](around:{radius_m},{lat},{lon}););
+ way["amenity"="doctors"](around:{radius_m},{lat},{lon});
+ node["amenity"="clinic"](around:{radius_m},{lat},{lon});
+ way["amenity"="clinic"](around:{radius_m},{lat},{lon}););
 out center tags;"""
     try:
         els = _overpass_mirrors(query)
@@ -3534,9 +3562,13 @@ relation["shop"="supermarket"](around:5000,{lat},{lon});
             dbg["google_places"] = [{"name": p["name"], "dist_m": int(p["distance_km"]*1000)} for p in gp]
             dbg["merged_final"] = [{"name": s["name"], "dist_m": int(s.get("distance_km",0)*1000)} for s in _fetch_supermarkets(lat, lon)]
             return jsonify(dbg)
-        supermarkets = _fetch_supermarkets(lat, lon)
-        result = {"supermarkets": supermarkets}
-        if supermarkets:  # only cache if we got results
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            sm_f   = ex.submit(_fetch_supermarkets, lat, lon)
+            offl_f = ex.submit(_fetch_off_licences_overpass, lat, lon)
+            supermarkets = sm_f.result(timeout=40)
+            off_licences = offl_f.result(timeout=25)
+        result = {"supermarkets": supermarkets, "off_licences": off_licences}
+        if supermarkets or off_licences:
             _services_cache[cache_key] = {"data": result, "ts": time.time()}
         return jsonify(result)
     except Exception as e:

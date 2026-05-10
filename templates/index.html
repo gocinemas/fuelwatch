@@ -397,8 +397,8 @@
       <!-- Tools — 3-column icon grid -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px">
         <button class="tool-icon-btn" onclick="showScreen('report')">
-          <span class="tool-icon-emoji">🏠</span>
-          <span class="tool-icon-label">Area Report</span>
+          <span class="tool-icon-emoji">🔎</span>
+          <span class="tool-icon-label">Local Intel</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('places')">
           <span class="tool-icon-emoji">📍</span>
@@ -590,7 +590,8 @@
     <!-- ── AREA REPORT SCREEN ── -->
     <div id="screen-report" class="screen pt-5">
       <div class="bg-white rounded-2xl shadow p-5 mb-4">
-        <h2 class="font-bold text-gray-800 mb-3">🏠 Area Report</h2>
+        <h2 class="font-bold text-gray-800 mb-1">🔎 Local Intel</h2>
+        <p class="text-xs text-gray-400 mb-3">Research an area — crime, schools, house prices &amp; services</p>
         <!-- Home postcode banner -->
         <div id="report-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
           <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="report-home-pc-label"></span></span>
@@ -609,7 +610,7 @@
         <div id="report-recent" class="hidden mb-3"></div>
         <button onclick="searchReport()"
           class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl transition text-sm">
-          Get Area Report
+          Research this area
         </button>
       </div>
 
@@ -1268,6 +1269,12 @@
       </div>
       <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
 
+      <!-- Saved Places -->
+      <div id="myarea-saved" style="display:none;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">📌 My Saved Places <span style="font-size:11px;font-weight:400;color:var(--muted)">(up to 5)</span></div>
+        <div id="myarea-saved-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
+      </div>
+
       <!-- Phase 1 loading -->
       <div id="myarea-loading" style="display:none;text-align:center;padding:36px 0">
         <div class="spinner mx-auto mb-3" style="border-top-color:#065f46;width:26px;height:26px"></div>
@@ -1280,18 +1287,22 @@
       <div id="myarea-gp"       style="display:none;margin-top:10px"></div>
       <div id="myarea-shops"    style="display:none;margin-top:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">🛒 Supermarkets</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">🛒 Shops</div>
           <div style="width:16px;height:16px;border-radius:50%;border:2px solid #aaa;border-top-color:#065f46;animation:spin .7s linear infinite" id="myarea-shops-spinner"></div>
         </div>
         <div id="myarea-shops-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
+        <div id="myarea-offlicence-wrap" style="display:none;margin-top:8px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px">🍷 Off-Licences</div>
+          <div id="myarea-offlicence-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
+        </div>
       </div>
       <div id="myarea-pubs"     style="display:none;margin-top:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">🍺 Pubs &amp; Bars</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">🍽️ Pubs &amp; Restaurants</div>
           <div style="width:16px;height:16px;border-radius:50%;border:2px solid #aaa;border-top-color:#065f46;animation:spin .7s linear infinite" id="myarea-pubs-spinner"></div>
         </div>
         <div id="myarea-pubs-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
-        <button id="myarea-bars-more" onclick="myAreaSearchBars()" style="display:none;margin-top:6px;width:100%;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer">🔍 Search more bars &amp; pubs nearby</button>
+        <button id="myarea-bars-more" onclick="myAreaSearchBars()" style="display:none;margin-top:6px;width:100%;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer">🔍 Search more nearby</button>
       </div>
 
       <!-- Personal details (localStorage) -->
@@ -2020,7 +2031,7 @@ const _ts = new Date(d.timestamp);
     const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"").toUpperCase();
     if (!postcode) return;
     const url = location.origin + "?report=" + postcode;
-    miruShare({ title: "Area Report: " + postcode, text: "Check out the area report for " + postcode + " on Miru", url, btn });
+    miruShare({ title: "Local Intel: " + postcode, text: "Check out local intel for " + postcode + " on Miru", url, btn });
   }
 
   window.reportTabSwitch = function(tab, btn) {
@@ -2053,7 +2064,7 @@ const _ts = new Date(d.timestamp);
     const _rSaveHomeRow = document.getElementById("report-save-home-row");
     _rSaveHomeRow.style.display = MiruLocation.getHome() ? "none" : "block";
     const pcFmt = postcode.replace(/^([A-Z]{1,2}\d{1,2}[A-Z]?)(\d[A-Z]{2})$/i, "$1 $2").toUpperCase();
-    document.getElementById("report-share-label").textContent = "Area report · " + pcFmt;
+    document.getElementById("report-share-label").textContent = "Local Intel · " + pcFmt;
     reportTabSwitch("house", document.querySelector('.rptab[data-tab="house"]'));
     document.getElementById("report-house-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading house prices…</div>';
     document.getElementById("report-schools-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading schools…</div>';
@@ -2067,12 +2078,12 @@ const _ts = new Date(d.timestamp);
     document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
 
     const slowTimer = setTimeout(() => {
-      ["report-schools-list","report-pubs-list","report-cafes-list","report-crime-list"].forEach(id => {
+      ["report-schools-list","report-pubs-list","report-cafes-list"].forEach(id => {
         const el = document.getElementById(id);
         if (el && el.querySelector(".spinner"))
-          el.innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Almost there…</div>';
+          el.innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Fetching from OpenStreetMap — first load for this postcode can take 15–20s…</div>';
       });
-    }, 8000);
+    }, 5000);
 
     async function fetchWithTimeout(url, ms) {
       return _fetchWithTimeout(url, ms);
@@ -2386,27 +2397,118 @@ const _ts = new Date(d.timestamp);
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${html}</div></div>`;
   }
 
-  function _maPlaceRow(x) {
-    const dist = x.distance_km ? `<span style="font-size:11px;color:var(--muted);font-weight:400"> · ${(x.distance_km*0.621371).toFixed(1)} mi</span>` : "";
-    const phone = x.phone ? `<a href="tel:${x.phone}" style="color:#2563eb;font-size:11px;display:block;margin-top:1px">${x.phone}</a>` : "";
-    const addr  = x.address ? `<div style="font-size:11px;color:var(--muted)">${x.address}</div>` : "";
-    return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
-      <div style="font-size:13px;font-weight:600;color:var(--text)">${x.name}${dist}</div>${addr}${phone}</div>`;
+  const _MA_PLACES_KEY = "miru_my_places";
+  const _MA_PLACES_MAX = 5;
+
+  function _maGetSaved() {
+    try { return JSON.parse(localStorage.getItem(_MA_PLACES_KEY) || "[]"); } catch { return []; }
+  }
+  function _maIsSaved(name, address) {
+    return _maGetSaved().some(p => p.name === name && p.address === (address||""));
+  }
+  function _maTogglePlace(name, address, phone, emoji) {
+    let places = _maGetSaved();
+    const idx = places.findIndex(p => p.name === name && p.address === (address||""));
+    if (idx >= 0) {
+      places.splice(idx, 1);
+    } else {
+      if (places.length >= _MA_PLACES_MAX) {
+        alert("You can save up to 5 places. Remove one first.");
+        return;
+      }
+      places.unshift({name, address: address||"", phone: phone||"", emoji: emoji||"📍"});
+    }
+    localStorage.setItem(_MA_PLACES_KEY, JSON.stringify(places));
+    _maRenderSavedPlaces();
+    // Refresh bookmark icons in visible rows
+    document.querySelectorAll("[data-ma-save-name]").forEach(btn => {
+      const n = btn.dataset.maSaveName, a = btn.dataset.maSaveAddr;
+      const saved = _maIsSaved(n, a);
+      btn.textContent = saved ? "⭐" : "☆";
+      btn.style.color = saved ? "#f59e0b" : "#d1d5db";
+    });
+  }
+  function _maRenderSavedPlaces() {
+    const places = _maGetSaved();
+    const wrap = document.getElementById("myarea-saved");
+    const list = document.getElementById("myarea-saved-list");
+    if (!places.length) { if(wrap) wrap.style.display = "none"; return; }
+    if(wrap) wrap.style.display = "";
+    if(!list) return;
+    list.innerHTML = places.map((p, i) => `
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${p.emoji||"📍"} ${p.name}</div>
+          ${p.address ? `<div style="font-size:11px;color:var(--muted)">${p.address}</div>` : ""}
+          ${p.phone ? `<a href="tel:${p.phone}" style="color:#2563eb;font-size:11px">${p.phone}</a>` : ""}
+        </div>
+        <button onclick="_maRemoveSaved(${i})" style="flex-shrink:0;font-size:14px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 6px">✕</button>
+      </div>`).join("");
+  }
+  function _maRemoveSaved(idx) {
+    let places = _maGetSaved();
+    places.splice(idx, 1);
+    localStorage.setItem(_MA_PLACES_KEY, JSON.stringify(places));
+    _maRenderSavedPlaces();
   }
 
-  function _maRenderReps(mp, councillor) {
+  function _maPlaceRow(x, emoji) {
+    const dist  = x.distance_km ? `<span style="font-size:11px;color:var(--muted);font-weight:400"> · ${(x.distance_km*0.621371).toFixed(1)} mi</span>` : "";
+    const phone = x.phone ? `<a href="tel:${x.phone}" style="color:#2563eb;font-size:11px;display:block;margin-top:1px">${x.phone}</a>` : "";
+    const addr  = x.address ? `<div style="font-size:11px;color:var(--muted)">${x.address}</div>` : "";
+    const saved = _maIsSaved(x.name, x.address);
+    const nameEsc = x.name.replace(/'/g,"&#39;"), addrEsc = (x.address||"").replace(/'/g,"&#39;"), phoneEsc = (x.phone||"").replace(/'/g,"&#39;");
+    const saveBtn = `<button data-ma-save-name="${nameEsc}" data-ma-save-addr="${addrEsc}"
+      onclick="_maTogglePlace('${nameEsc}','${addrEsc}','${phoneEsc}','${emoji||"📍"}')"
+      style="flex-shrink:0;font-size:16px;background:none;border:none;cursor:pointer;padding:4px 2px;color:${saved?"#f59e0b":"#d1d5db"}">
+      ${saved?"⭐":"☆"}</button>`;
+    return `<div style="display:flex;align-items:flex-start;gap:6px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${x.name}${dist}</div>${addr}${phone}
+      </div>${saveBtn}</div>`;
+  }
+
+  // Shared cache: elections screen populates, My Area reads instantly
+  const _miruRepsCache = {}; // keyed by normalised postcode
+
+  function _maRepCard(person, role, accentBg, accentText) {
+    const col  = _partyStyle ? _partyStyle(person.party || "") : {bg:"#e5e7eb",text:"#111"};
+    const photo = person.photo_url
+      ? `<img src="${person.photo_url}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${accentBg}" onerror="this.style.display='none'">`
+      : `<div style="width:44px;height:44px;border-radius:50%;background:${col.bg};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:${col.text};flex-shrink:0">${(person.name||"?")[0]}</div>`;
+    const badge = person.party ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text}">${person.party}</span>` : "";
+    const links = [
+      person.email    ? `<a href="mailto:${person.email}" style="font-size:12px;color:#1e40af;font-weight:600;display:flex;align-items:center;gap:4px">📧 ${person.email}</a>` : "",
+      person.phone    ? `<a href="tel:${person.phone}"    style="font-size:12px;color:#1e40af;font-weight:600;display:flex;align-items:center;gap:4px">📞 ${person.phone}</a>` : "",
+      person.twitter  ? `<a href="https://x.com/${person.twitter}" target="_blank" style="font-size:12px;color:#1e40af;font-weight:600">𝕏 @${person.twitter}</a>` : "",
+      person.parliament_url ? `<a href="${person.parliament_url}" target="_blank" style="font-size:11px;color:#4f46e5;font-weight:600">Parliament profile ↗</a>` : "",
+      person.council_profile_url ? `<a href="${person.council_profile_url}" target="_blank" style="font-size:11px;color:#4f46e5;font-weight:600">Council profile ↗</a>` : "",
+    ].filter(Boolean).join("");
+    const sub2 = [person.constituency, person.ward].filter(Boolean).join(" · ");
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">${role}</div>
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        ${photo}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${person.name}</div>
+          ${sub2 ? `<div style="font-size:12px;color:var(--muted);margin-bottom:3px">${sub2}</div>` : ""}
+          ${badge ? `<div style="margin-bottom:5px">${badge}</div>` : ""}
+          <div style="display:flex;flex-direction:column;gap:3px">${links}</div>
+        </div>
+      </div></div>`;
+  }
+
+  function _maRenderReps(mp, councillorResp) {
     const el = document.getElementById("myarea-reps");
     let rows = "";
     if (mp && mp.name && !mp.error) {
-      const subs = [mp.party, mp.constituency].filter(Boolean).map(s=>`<span>${s}</span>`);
-      if (mp.email) subs.push(`<a href="mailto:${mp.email}" style="color:#2563eb">${mp.email}</a>`);
-      if (mp.phone) subs.push(`<a href="tel:${mp.phone}" style="color:#2563eb">${mp.phone}</a>`);
-      rows += _maRow("🏛️","Your MP", mp.name, subs.join(" · "), mp.parliament_url||null);
+      rows += _maRepCard(mp, "🏛️ Your MP", "#bfdbfe", "#1e3a8a");
     }
-    if (councillor && councillor.name && !councillor.error) {
-      const csub = [councillor.party, councillor.ward].filter(Boolean).join(" · ");
-      rows += _maRow("🏘️","Your Councillor", councillor.name, csub||null, null);
-    }
+    // /api/councillor returns {councillors:[...], ward, council}
+    const councillors = (councillorResp && councillorResp.councillors) ? councillorResp.councillors : [];
+    councillors.slice(0, 2).forEach(c => {
+      rows += _maRepCard(c, "🏘️ Your Councillor", "#bbf7d0", "#14532d");
+    });
     if (!rows) { el.style.display = "none"; return; }
     el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🗳️ Your Representatives</div>${_maCard(rows)}`;
     el.style.display = "";
@@ -2429,10 +2531,10 @@ const _ts = new Date(d.timestamp);
     const pharms = (area.pharmacies || []).slice(0, 3);
     if (!gps.length && !pharms.length) { el.style.display = "none"; return; }
     let html = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🩺 Health</div><div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">`;
-    gps.forEach(x => { html += _maPlaceRow(x); });
+    gps.forEach(x => { html += _maPlaceRow(x, "🏥"); });
     if (pharms.length) {
       html += `</div><div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">💊 Pharmacies</div><div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">`;
-      pharms.forEach(x => { html += _maPlaceRow(x); });
+      pharms.forEach(x => { html += _maPlaceRow(x, "💊"); });
     }
     html += "</div>";
     el.innerHTML = html;
@@ -2444,9 +2546,20 @@ const _ts = new Date(d.timestamp);
     const list  = document.getElementById("myarea-shops-list");
     const spin  = document.getElementById("myarea-shops-spinner");
     if (spin) spin.style.display = "none";
-    const items = (data.supermarkets || []).slice(0, 6);
-    if (!items.length) { el.style.display = "none"; return; }
-    list.innerHTML = items.map(_maPlaceRow).join("");
+    const supers = (data.supermarkets || []).slice(0, 5);
+    const offlic = (data.off_licences || []).slice(0, 5);
+    if (!supers.length && !offlic.length) { el.style.display = "none"; return; }
+    list.innerHTML = supers.length
+      ? supers.map(x => _maPlaceRow(x, "🛒")).join("")
+      : `<div style="font-size:12px;color:var(--muted);padding:8px 0">No supermarkets found nearby.</div>`;
+    const offWrap = document.getElementById("myarea-offlicence-wrap");
+    const offList = document.getElementById("myarea-offlicence-list");
+    if (offlic.length && offWrap && offList) {
+      offList.innerHTML = offlic.map(x => _maPlaceRow(x, "🍷")).join("");
+      offWrap.style.display = "";
+    } else if (offWrap) {
+      offWrap.style.display = "none";
+    }
     el.style.display = "";
   }
 
@@ -2456,9 +2569,11 @@ const _ts = new Date(d.timestamp);
     const spin = document.getElementById("myarea-pubs-spinner");
     const more = document.getElementById("myarea-bars-more");
     if (spin) spin.style.display = "none";
-    const items = (data.pubs || []).slice(0, 6);
+    const pubs  = (data.pubs  || []).slice(0, 5);
+    const cafes = (data.cafes || []).slice(0, 3);
+    const items = pubs.concat(cafes).slice(0, 5);
     if (!items.length) { el.style.display = "none"; return; }
-    list.innerHTML = items.map(_maPlaceRow).join("");
+    list.innerHTML = items.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join("");
     if (more) more.style.display = "";
     el.style.display = "";
   }
@@ -2476,22 +2591,42 @@ const _ts = new Date(d.timestamp);
     });
     document.getElementById("myarea-loading").style.display = "block";
 
-    // Phase 1: fast data
-    Promise.all([
-      fetch(`/api/your-area?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
-      fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
-      fetch(`/api/councillor?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
-    ]).then(([area, mp, councillor]) => {
-      document.getElementById("myarea-loading").style.display = "none";
-      _maRenderReps(mp, councillor);
+    let _repsLoaded = false, _areaLoaded = false;
+    function _maCheckHideSpinner() {
+      if (_repsLoaded && _areaLoaded) document.getElementById("myarea-loading").style.display = "none";
+    }
+
+    // Use cached rep data from elections screen if available (instant render)
+    const _cached = _miruRepsCache[pc];
+    if (_cached && (_cached.mp || _cached.councillors)) {
+      _maRenderReps(_cached.mp || {}, {councillors: _cached.councillors || []});
+      _repsLoaded = true;
+      _maCheckHideSpinner();
+    }
+
+    // MP + councillor — fast path, update cache for future My Area / elections cross-use
+    if (!_cached || !_cached.mp || !_cached.councillors) {
+      Promise.all([
+        fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
+        fetch(`/api/councillor?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
+      ]).then(([mp, councillorResp]) => {
+        _miruRepsCache[pc] = {mp, councillors: (councillorResp && councillorResp.councillors) || []};
+        _repsLoaded = true;
+        _maRenderReps(mp, councillorResp);
+        _maCheckHideSpinner();
+      }).catch(() => { _repsLoaded = true; _maCheckHideSpinner(); });
+    }
+
+    // your-area (GPs, council, pharmacies via Overpass — cached 12h, slow on first hit)
+    fetch(`/api/your-area?postcode=${pc}`).then(r=>r.json()).then(area => {
+      _areaLoaded = true;
       _maRenderCouncil(area);
       _maRenderGPs(area);
       _myAreaPersonalRender();
-    }).catch(() => {
-      document.getElementById("myarea-loading").style.display = "none";
-    });
+      _maCheckHideSpinner();
+    }).catch(() => { _areaLoaded = true; _maCheckHideSpinner(); });
 
-    // Phase 2: shops + pubs (slower Overpass calls)
+    // Shops + pubs — Overpass, slowest, always load in background
     document.getElementById("myarea-shops").style.display = "";
     document.getElementById("myarea-pubs").style.display = "";
     fetch(`/api/shops?postcode=${pc}`).then(r=>r.json()).then(_maRenderShops).catch(()=>{
@@ -2525,6 +2660,7 @@ const _ts = new Date(d.timestamp);
   }
 
   function _loadMyArea() {
+    _maRenderSavedPlaces();
     const home = MiruLocation.getHome();
     if (home && document.getElementById("myarea-postcode-input").value !== home) {
       document.getElementById("myarea-postcode-input").value = home;
@@ -2847,16 +2983,9 @@ const _ts = new Date(d.timestamp);
       const finEmpty = document.getElementById("brand-fin-empty");
       if (finEmpty) finEmpty.style.display = hasFinance ? "none" : "";
 
-      // History tab: hide if no timeline entries with real content
-      const hasHistory = !!(br.timeline && br.timeline.some(t => t.year || t.title || t.event));
-      _setIntelTab("history", hasHistory);
-
-      // Campaigns tab: hide if no campaigns with real content
-      const hasCampaigns = !!(
-        (br.campaigns && br.campaigns.some(c => c.name || c.description)) ||
-        (br.ads && br.ads.length > 0)
-      );
-      _setIntelTab("campaigns", hasCampaigns);
+      // History + Campaigns: always visible (show empty-state if AI returned nothing)
+      _setIntelTab("history", true);
+      _setIntelTab("campaigns", true);
 
       // Intel tab: hide rivals section if no competitors
       const hasRivals = br.competitors && br.competitors.length > 0;
@@ -3928,6 +4057,9 @@ const _ts = new Date(d.timestamp);
       const d = await r.json();
       if (loading) loading.style.display = "none";
       const councillors = d.councillors || [];
+      // Populate shared cache so My Area can reuse without a second fetch
+      const _pc = postcode.replace(/\s+/g,"").toUpperCase();
+      _miruRepsCache[_pc] = Object.assign(_miruRepsCache[_pc]||{}, {councillors});
       if (!councillors.length) {
         if (list) list.innerHTML = `<div style="font-size:12px;color:var(--subtle);font-style:italic">No councillor contact data yet — check back after results are confirmed.</div>`;
         return;
@@ -3968,6 +4100,9 @@ const _ts = new Date(d.timestamp);
         if (body) body.innerHTML = `<div style="font-size:12px;color:var(--subtle);font-style:italic">${d.error}</div>`;
         return;
       }
+      // Populate shared cache so My Area can reuse without a second fetch
+      const _pc = postcode.replace(/\s+/g,"").toUpperCase();
+      _miruRepsCache[_pc] = Object.assign(_miruRepsCache[_pc]||{}, {mp: d});
       const col = _partyStyle(d.party || "");
       const photoEl = d.photo_url
         ? `<img src="${d.photo_url}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #93c5fd" onerror="this.style.display='none'">`
@@ -5881,7 +6016,7 @@ const _ts = new Date(d.timestamp);
     const _TOOLS = [
       { name:"Fuel prices",    desc:"Cheapest petrol & diesel near you",  icon:"⛽", screen:"fuel",      kw:"fuel petrol diesel gas station cheap" },
       { name:"Train times",    desc:"Live departures & delays",            icon:"🚆", screen:"trains",    kw:"train trains rail station departure delay tfl" },
-      { name:"Area report",    desc:"Crime, house prices & schools",       icon:"🏠", screen:"report",    kw:"area crime house prices school safety report local neighbourhood" },
+      { name:"Local Intel",    desc:"Research an area — crime, schools, prices", icon:"🔎", screen:"report", kw:"area crime house prices school safety report local neighbourhood intel research" },
       { name:"Local search",   desc:"Cafés, tradespeople & shops",         icon:"📍", screen:"places",    kw:"cafe coffee plumber shop restaurant pub local places nearby find electrician builder" },
       { name:"Emergency",      desc:"Hospitals & police stations",         icon:"🚨", screen:"report",    kw:"hospital emergency police ambulance a&e urgent nhs nearest help" },
       { name:"My saves",       desc:"Articles & links you've saved",       icon:"📌", screen:"saves",     kw:"saves saved article link bookmark read reading" },
@@ -6046,7 +6181,7 @@ const _ts = new Date(d.timestamp);
         const label = intent.screen === "fuel" ? (q.toLowerCase().includes("cheap") ? `Cheapest fuel near ${pc}` : `Find ${intent.kw[0]} near ${pc}`) :
                       intent.screen === "trains" ? `Trains from ${pc}` :
                       isService ? `Find ${q.replace(/[A-Z]{1,2}\d[\w ]*/gi,"").replace(/near me|nearby/gi,"").trim() || "services"} near ${pc}` :
-                      `Area report for ${pc}`;
+                      `Local Intel for ${pc}`;
         const icon  = intent.screen === "fuel" ? "⛽" : intent.screen === "trains" ? "🚆" : isService ? "📍" : "🏠";
         const safeQ = JSON.stringify(q);
         const action = isService
