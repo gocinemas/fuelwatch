@@ -1548,7 +1548,7 @@
         if (typeof finderSetLocation === "function") finderSetLocation(loc.lat, loc.lon, loc.postcode);
         return;
       }
-      if (!loc.postcode) { _showErr("Couldn't find a UK postcode — please enter one manually."); return; }
+      if (!loc.postcode) { _showErr("GPS found — enter your postcode manually."); if (input) { input.focus(); input.select(); } return; }
       if (input) input.value = loc.postcode;
       if (screen === "fuel") searchFuel();
       else searchReport();
@@ -2856,7 +2856,7 @@ const _ts = new Date(d.timestamp);
     const errEl = document.getElementById("elections-loc-err");
     errEl.style.display = "none";
     MiruLocation.request(btn, loc => {
-      if (!loc.postcode) { errEl.textContent = "Couldn't find a UK postcode — please enter one manually."; errEl.style.display = "block"; return; }
+      if (!loc.postcode) { errEl.textContent = "GPS found — enter your postcode manually."; errEl.style.display = "block"; var _ei = document.getElementById("elections-input"); if (_ei) { _ei.focus(); _ei.select(); } return; }
       document.getElementById("elections-input").value = loc.postcode;
       errEl.style.display = "none";
       searchElections();
@@ -7870,6 +7870,16 @@ _bkBadge();
   </div>
 
   <!-- Spotify connect bar -->
+  <div id="sp-bar" style="display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:7px 12px;margin-bottom:14px;font-size:12px">
+    <div id="sp-disconnected" style="display:flex;align-items:center;gap:8px;width:100%">
+      <span style="color:var(--muted);flex:1">Connect Spotify to save songs directly to your library</span>
+      <button onclick="spotifyConnect()" style="padding:5px 14px;border:none;background:#1db954;color:#fff;border-radius:99px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Connect</button>
+    </div>
+    <div id="sp-connected" style="display:none;align-items:center;gap:8px;width:100%">
+      <span style="color:#1db954;font-weight:700;flex:1">✓ Spotify connected — ♥ saves to your library</span>
+      <button onclick="spotifyDisconnect()" style="padding:4px 10px;border:1px solid var(--border);background:none;color:var(--muted);border-radius:99px;font-size:11px;cursor:pointer">Disconnect</button>
+    </div>
+  </div>
 
   <!-- Identify panel -->
   <div id="music-identify-panel">
@@ -7976,11 +7986,10 @@ _bkBadge();
   function _heq(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
   function _musicRenderCharts(tracks) {
     document.getElementById('music-charts-list').innerHTML = tracks.map(function(t){
-      var addBtn = '<button data-track-id="'+_heq(t.track_id||'')+'" data-spotify-url="'+_heq(t.spotify_url||t.url||'')+'"'
-          +' data-title="'+_heq(t.title||'')+'" data-artist="'+_heq(t.artist||'')+'"'
-          +' onclick="spotifyOpen(this.dataset.trackId,this.dataset.spotifyUrl,this.dataset.title,this.dataset.artist)"'
-          +' style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Open in Spotify">♥</button>';
-      var playUrl = t.spotify_url || t.url;
+      var addBtn = '<button data-track-id="'+_heq(t.track_id||'')+'" data-title="'+_heq(t.title||'')+'" data-artist="'+_heq(t.artist||'')+'"'
+          +' onclick="spotifyAddTrack(this.dataset.trackId,this.dataset.title,this.dataset.artist)"'
+          +' style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Save to Spotify">♥</button>';
+      var playUrl = t.spotify_url || ('https://open.spotify.com/search/'+encodeURIComponent((t.title||'')+' '+(t.artist||'')));
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
         +'<div style="font-size:13px;font-weight:700;color:var(--muted);width:24px;text-align:center;flex-shrink:0">'+t.position+'</div>'
         +(t.cover ? '<img src="'+t.cover+'" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0">' : '<div style="width:44px;height:44px;border-radius:8px;background:var(--border);flex-shrink:0"></div>')
@@ -8158,10 +8167,47 @@ _bkBadge();
     var conn = document.getElementById('sp-connected');
     if(disc) disc.style.display = _sp.refreshToken ? 'none' : 'flex';
     if(conn) conn.style.display = _sp.refreshToken ? 'flex' : 'none';
-    // Re-render current chart tab to show/hide + buttons
-    if(window._chartsCache && window._musicCurrentTab && window._chartsCache[window._musicCurrentTab])
-      window._musicRenderCharts && window._musicRenderCharts(window._chartsCache[window._musicCurrentTab]);
   }
+
+  function _showSpToast(msg){
+    var t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1db954;color:#fff;padding:9px 22px;border-radius:99px;font-size:13px;font-weight:700;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.18)';
+    document.body.appendChild(t);
+    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 2500);
+  }
+
+  window.spotifyAddTrack = async function(trackId, title, artist){
+    var token = await _getToken();
+    if (!token) { window.spotifyOpen(trackId||'', '', title, artist); return; }
+    try {
+      // No Spotify ID from iTunes? Search the Spotify catalogue first
+      if (!trackId && title) {
+        var sq = encodeURIComponent((title||'') + ' ' + (artist||''));
+        var sr = await fetch('https://api.spotify.com/v1/search?q='+sq+'&type=track&limit=1',
+          {headers:{'Authorization':'Bearer '+token}});
+        if (sr.ok) {
+          var sd = await sr.json();
+          var items = sd.tracks && sd.tracks.items;
+          if (items && items[0]) trackId = items[0].id;
+        }
+      }
+      if (!trackId) { window.open('https://open.spotify.com/search/'+encodeURIComponent((title||'')+' '+(artist||'')), '_blank'); return; }
+      var r = await fetch('https://api.spotify.com/v1/me/tracks', {
+        method:'PUT',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({ids:[trackId]})
+      });
+      if (r.status === 200 || r.status === 204) {
+        _showSpToast('♥ Saved to Spotify!');
+      } else if (r.status === 401) {
+        _sp.token = null; _save(); window.spotifyOpen(trackId, '', title, artist);
+      } else {
+        _showSpToast('Error '+r.status+' — tap to open Spotify');
+        window.open('https://open.spotify.com/search/'+encodeURIComponent((title||'')+' '+(artist||'')), '_blank');
+      }
+    } catch(e) { window.spotifyOpen(trackId||'', '', title, artist); }
+  };
 
   async function _loadConfig(){
     if(_sp.clientId) return;
