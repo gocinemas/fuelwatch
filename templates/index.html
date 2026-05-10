@@ -8382,7 +8382,7 @@ _bkBadge();
     var r=await fetch('https://api.spotify.com/v1/me/tracks',{method:'PUT',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({ids:[id]})});
     if(r.status===200||r.status===204){ _toast('♥ Added to Liked Songs!'); }
     else if(r.status===401){ _sp.token=null; _persist(); _toast('Session expired — reconnect Spotify',true); _updateUI(); }
-    else{ _toast('Error '+r.status+' — make sure your email is in Spotify User Management',true); }
+    else{ try{ var eb=await r.json(); _toast('Spotify '+r.status+': '+(eb.error&&eb.error.message||JSON.stringify(eb)),true); }catch(e){ _toast('Spotify error '+r.status,true); } }
   };
 
   // Alias for any callers that still use old names
