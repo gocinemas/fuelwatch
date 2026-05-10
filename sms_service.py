@@ -7411,6 +7411,46 @@ def school_signup_api():
         return jsonify({"error": f"Signup failed: {e}"}), 500
 
 
+@app.route("/api/school/diag")
+def school_diag():
+    """Admin diagnostic: show profile/token/event state without sending anything."""
+    token = request.args.get("token", "")
+    if token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        profiles = lib._sb().table("school_profiles") \
+            .select("id,from_number,child_name,school_name,sender_emails,gmail_refresh_token,active") \
+            .execute().data or []
+        # Check token validity without doing a full poll
+        out = []
+        for p in profiles:
+            rtok = p.pop("gmail_refresh_token", None)
+            token_status = "none"
+            if rtok:
+                try:
+                    import requests as _rq
+                    tr = _rq.post("https://oauth2.googleapis.com/token", data={
+                        "client_id":     os.environ.get("GMAIL_WEB_CLIENT_ID") or os.environ.get("GMAIL_CLIENT_ID",""),
+                        "client_secret": os.environ.get("GMAIL_WEB_CLIENT_SECRET") or os.environ.get("GMAIL_CLIENT_SECRET",""),
+                        "refresh_token": rtok,
+                        "grant_type":    "refresh_token",
+                    }, timeout=8)
+                    token_status = "valid" if "access_token" in tr.json() else f"error:{tr.json().get('error','?')}"
+                except Exception as _te:
+                    token_status = f"exception:{_te}"
+            elif os.environ.get("GMAIL_REFRESH_TOKEN"):
+                token_status = "env_var_fallback"
+            recent = lib._sb().table("school_events").select("id,created_at,event_title") \
+                .eq("profile_id", p["id"]).order("created_at", desc=True).limit(3).execute().data or []
+            out.append({**p, "token_status": token_status,
+                        "recent_events": [{"title": e["event_title"], "at": e["created_at"]} for e in recent]})
+        env_token = bool(os.environ.get("GMAIL_REFRESH_TOKEN"))
+        return jsonify({"profiles": out, "env_gmail_token": env_token,
+                        "web_client_id": bool(os.environ.get("GMAIL_WEB_CLIENT_ID"))})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/school/poll")
 def school_poll():
     """Poll Gmail for new school emails and store events.
