@@ -3051,9 +3051,9 @@ def api_elections_debug():
 
 
 _OVERPASS_URLS = [
-    "https://overpass-api.de/api/interpreter",        # most reliable
+    "https://overpass.kumi.systems/api/interpreter",  # confirmed working on Railway
+    "https://overpass-api.de/api/interpreter",        # returns 406 from Railway
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",  # kept as last resort
 ]
 
 # Simple 30-minute in-memory cache for Overpass results keyed by postcode
@@ -3175,13 +3175,24 @@ out center tags;"""
         return []
 
 def _fetch_hospitals(lat, lon):
-    items = _places_nearby(lat, lon, "hospital", 15000, 4)
-    for h in items:
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        gp_f  = ex.submit(_places_nearby, lat, lon, "hospital", 15000, 6)
+        osm_f = ex.submit(_fetch_hospitals_overpass, lat, lon)
+        try: gp_items  = gp_f.result(timeout=12)  or []
+        except Exception: gp_items = []
+        try: osm_items = osm_f.result(timeout=18) or []
+        except Exception: osm_items = []
+    for h in gp_items:
         h.pop("place_id", None)
         h["phone"] = ""
-    if not items:
-        items = _fetch_hospitals_overpass(lat, lon)
-    return items
+    seen = {h["name"].lower()[:12] for h in gp_items}
+    for h in osm_items:
+        if h["name"].lower()[:12] not in seen:
+            gp_items.append(h)
+            seen.add(h["name"].lower()[:12])
+    gp_items.sort(key=lambda x: x.get("distance_km", 999))
+    return gp_items[:4]
 
 def _fetch_supermarkets_overpass(lat, lon, radius_m=5000):
     query = f"""
@@ -3215,12 +3226,24 @@ out center;
         return []
 
 def _fetch_supermarkets(lat, lon):
-    items = _places_nearby(lat, lon, "supermarket", 10000, 10)
-    for s in items:
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        gp_f  = ex.submit(_places_nearby, lat, lon, "supermarket", 10000, 15)
+        osm_f = ex.submit(_fetch_supermarkets_overpass, lat, lon)
+        try: gp_items  = gp_f.result(timeout=12)  or []
+        except Exception: gp_items = []
+        try: osm_items = osm_f.result(timeout=18) or []
+        except Exception: osm_items = []
+    for s in gp_items:
         s.pop("place_id", None)
-    if not items:
-        items = _fetch_supermarkets_overpass(lat, lon)
-    return items
+    # Merge: add OSM entries not already in Google Places (match by name prefix)
+    seen = {s["name"].lower()[:10] for s in gp_items}
+    for s in osm_items:
+        if s["name"].lower()[:10] not in seen:
+            gp_items.append(s)
+            seen.add(s["name"].lower()[:10])
+    gp_items.sort(key=lambda x: x.get("distance_km", 999))
+    return gp_items[:10]
 
 
 def _fetch_police_contact(lat, lon):
