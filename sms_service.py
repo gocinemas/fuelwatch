@@ -2358,22 +2358,35 @@ def api_councillor():
 
 @app.route("/api/mp")
 def api_mp():
-    """Return current MP for a postcode using the Parliament Members API."""
+    """Return current MP for a postcode using postcodes.io → Parliament Members API."""
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
     try:
-        # Parliament Members API — no key needed, public
+        # Step 1: resolve constituency from postcodes.io (accurate 2024-boundary data)
+        pc_r = requests.get(
+            f"https://api.postcodes.io/postcodes/{postcode}",
+            timeout=8,
+        )
+        if not pc_r.ok:
+            return jsonify({"error": "Invalid postcode"}), 400
+        pc = pc_r.json().get("result") or {}
+        # Prefer 2024 boundaries (post-boundary-review constituencies)
+        constituency = pc.get("parliamentary_constituency_2024") or pc.get("parliamentary_constituency", "")
+        if not constituency:
+            return jsonify({"error": "No constituency found for this postcode"})
+
+        # Step 2: search Parliament Members API by constituency name
         r = requests.get(
             "https://members-api.parliament.uk/api/Members/Search",
-            params={"PostCode": postcode, "House": 1, "IsCurrentMember": True},
+            params={"constituency": constituency, "House": 1, "IsCurrentMember": True},
             headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
             timeout=10,
         )
         r.raise_for_status()
         items = r.json().get("items", [])
         if not items:
-            return jsonify({"error": "No MP found for this postcode"})
+            return jsonify({"error": f"No MP found for {constituency}"})
 
         m = items[0]["value"]
         mp_id = m["id"]
