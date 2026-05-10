@@ -2550,6 +2550,10 @@ def api_mp_refresh():
 def api_mp_status():
     """Debug: show how many MPs are in memory and a sample of keys."""
     mem = _get_mp_mem()
+    search = request.args.get("q", "").lower()
+    if search:
+        keys = [k for k in sorted(mem.keys()) if search in k]
+        return jsonify({"count": len(mem), "matches": keys})
     sample = sorted(mem.keys())[:10]
     return jsonify({"count": len(mem), "sample_keys": sample})
 
