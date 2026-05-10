@@ -8063,6 +8063,49 @@ def api_user_token():
     return jsonify({"token": token, "phone": phone})
 
 
+@app.route("/api/my-fuel")
+def api_my_fuel():
+    """Return live prices for up to 3 saved stations identified by (lat, lon, brand)."""
+    import json as _json
+    try:
+        saved = _json.loads(request.args.get("stations", "[]"))
+    except Exception:
+        return jsonify({"error": "invalid stations"}), 400
+
+    all_st = get_stations()
+    results = []
+    for s in saved[:3]:
+        slat = s.get("lat")
+        slon = s.get("lon")
+        sbrand = (s.get("brand") or "").lower()
+        if slat is None or slon is None:
+            results.append({**s, "found": False})
+            continue
+        best, best_dist = None, 0.3  # 300m match radius
+        for st in all_st:
+            d = haversine_km(slat, slon, st["lat"], st["lon"])
+            if d < best_dist:
+                if not sbrand or sbrand in st.get("brand", "").lower():
+                    best_dist = d
+                    best = st
+        if best:
+            results.append({
+                "brand":   best.get("brand", s.get("brand")),
+                "address": best.get("address", s.get("address", "")),
+                "postcode":best.get("postcode", s.get("postcode", "")),
+                "lat": slat, "lon": slon,
+                "petrol":  best.get("petrol"),
+                "diesel":  best.get("diesel"),
+                "found":   True,
+            })
+        else:
+            results.append({**s, "found": False})
+
+    loaded_at = _station_cache.get("loaded_at", 0)
+    updated = datetime.fromtimestamp(loaded_at).strftime("%H:%M") if loaded_at else "–"
+    return jsonify({"stations": results, "updated": updated})
+
+
 @app.route("/api/whatsapp-number")
 def api_whatsapp_number():
     """Return the WhatsApp contact number for the bot (safe to expose publicly)."""
