@@ -7804,6 +7804,33 @@ def api_music_spotify_status():
     return jsonify(result)
 
 
+@app.route("/api/music/spotify-raw")
+def api_music_spotify_raw():
+    """Debug: raw Spotify playlist response to diagnose chart failures."""
+    try:
+        token = _get_spotify_app_token()
+        if not token:
+            return jsonify({"error": "no token"})
+        playlist_id = _SPOTIFY_PLAYLISTS.get("GB", _SPOTIFY_PLAYLISTS[""])
+        r = requests.get(
+            f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"limit": 3, "market": "GB"},
+            timeout=10,
+        )
+        raw = r.json()
+        items = raw.get("items", [])
+        return jsonify({
+            "status": r.status_code,
+            "total": raw.get("total"),
+            "item_count": len(items),
+            "first_item": items[0] if items else None,
+            "error": raw.get("error"),
+        })
+    except Exception as e:
+        return jsonify({"exception": str(e)})
+
+
 @app.route("/api/music/identify", methods=["POST"])
 def api_music_identify():
     key = os.environ.get("RAPIDAPI_KEY", "")
@@ -7887,47 +7914,7 @@ def _get_spotify_app_token() -> str:
 def api_music_charts():
     country = request.args.get("country", "").upper()
 
-    # ── Spotify Top 50 (preferred) ────────────────────────────────────────────
-    try:
-        app_token = _get_spotify_app_token()
-        if app_token:
-            playlist_id = _SPOTIFY_PLAYLISTS.get(country, _SPOTIFY_PLAYLISTS[""])
-            market = "GB" if country == "GB" else "US"
-            r = requests.get(
-                f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
-                headers={"Authorization": f"Bearer {app_token}"},
-                params={"limit": 20, "market": market},
-                timeout=10,
-            )
-            print(f"[music/charts/spotify] status={r.status_code} playlist={playlist_id}")
-            if r.status_code != 200:
-                print(f"[music/charts/spotify] error body: {r.text[:300]}")
-            r.raise_for_status()
-            tracks = []
-            for i, item in enumerate(r.json().get("items", [])):
-                t = item.get("track") or {}
-                if not t or not t.get("id"):
-                    continue
-                images = t.get("album", {}).get("images", [])
-                cover = images[0]["url"] if images else ""
-                artists = ", ".join(a["name"] for a in t.get("artists", []))
-                spotify_url = t.get("external_urls", {}).get("spotify", "")
-                tracks.append({
-                    "position":    i + 1,
-                    "title":       t.get("name", ""),
-                    "artist":      artists,
-                    "cover":       cover,
-                    "url":         spotify_url,
-                    "track_id":    t.get("id", ""),
-                    "spotify_url": spotify_url,
-                })
-            print(f"[music/charts/spotify] got {len(tracks)} tracks")
-            if tracks:
-                return jsonify({"tracks": tracks, "source": "spotify"})
-    except Exception as e:
-        print(f"[music/charts/spotify] exception: {e}")
-
-    # ── Apple iTunes fallback ─────────────────────────────────────────────────
+    # ── Apple Music / iTunes charts ───────────────────────────────────────────
     feed_country = "gb" if country == "GB" else "us"
     try:
         r = requests.get(

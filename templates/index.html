@@ -7864,9 +7864,9 @@ _bkBadge();
     <button id="mtab-identify" onclick="musicTab('identify',this)"
       style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text)">🎤 Identify</button>
     <button id="mtab-uk" onclick="musicTab('uk',this)"
-      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🇬🇧 UK Top 20</button>
+      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🇬🇧 UK Charts</button>
     <button id="mtab-global" onclick="musicTab('global',this)"
-      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🌍 Top 20</button>
+      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🌍 Global</button>
   </div>
 
   <!-- Spotify connect bar -->
@@ -7976,11 +7976,10 @@ _bkBadge();
   function _heq(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
   function _musicRenderCharts(tracks) {
     document.getElementById('music-charts-list').innerHTML = tracks.map(function(t){
-      var addBtn = (t.track_id || t.spotify_url || t.url)
-        ? '<button data-track-id="'+_heq(t.track_id||'')+'" data-spotify-url="'+_heq(t.spotify_url||t.url||'')+'"'
-          +' onclick="spotifyOpen(this.dataset.trackId,this.dataset.spotifyUrl)"'
-          +' style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Open in Spotify">♥</button>'
-        : '';
+      var addBtn = '<button data-track-id="'+_heq(t.track_id||'')+'" data-spotify-url="'+_heq(t.spotify_url||t.url||'')+'"'
+          +' data-title="'+_heq(t.title||'')+'" data-artist="'+_heq(t.artist||'')+'"'
+          +' onclick="spotifyOpen(this.dataset.trackId,this.dataset.spotifyUrl,this.dataset.title,this.dataset.artist)"'
+          +' style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Open in Spotify">♥</button>';
       var playUrl = t.spotify_url || t.url;
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
         +'<div style="font-size:13px;font-weight:700;color:var(--muted);width:24px;text-align:center;flex-shrink:0">'+t.position+'</div>'
@@ -8250,23 +8249,24 @@ _bkBadge();
     _sp.token=null; _sp.expires=0; _sp.refreshToken=null; _save(); _updateUI();
   };
 
-  // Open a Spotify track in the native app via deep link, web URL as fallback
-  window.spotifyOpen = function(trackId, spotifyUrl){
+  // Open a Spotify track — native app deep link → web URL → search fallback
+  window.spotifyOpen = function(trackId, spotifyUrl, title, artist){
+    var webUrl = spotifyUrl
+      || (trackId ? 'https://open.spotify.com/track/' + trackId : '')
+      || (title   ? 'https://open.spotify.com/search/' + encodeURIComponent((title||'') + ' ' + (artist||'')) : '');
+    if(!webUrl) return;
     if(trackId){
-      // Try native app deep link first; if it fails (desktop without app) fall back to web
       var appUri = 'spotify:track:' + trackId;
-      var webUrl = spotifyUrl || ('https://open.spotify.com/track/' + trackId);
       var iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       document.body.appendChild(iframe);
       iframe.src = appUri;
       setTimeout(function(){
         document.body.removeChild(iframe);
-        // If page is still visible, the app didn't open — fall back to web
         if(!document.hidden) window.open(webUrl, '_blank');
       }, 800);
-    } else if(spotifyUrl){
-      window.open(spotifyUrl, '_blank');
+    } else {
+      window.open(webUrl, '_blank');
     }
   };
 
