@@ -372,8 +372,7 @@
         style="flex-direction:row;align-items:center;gap:16px;width:100%;margin-bottom:10px;min-height:auto;padding:16px 18px">
         <div style="font-size:34px;line-height:1;flex-shrink:0">🗳️</div>
         <div style="flex:1;text-align:left">
-          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Your Local Council</div>
-          <div id="elections-home-desc" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">Check who won in your ward & councillor details</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Your Local Council Results</div>
         </div>
         <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:4px 10px;flex-shrink:0">
           <span class="live-dot-green"></span>
@@ -1161,6 +1160,15 @@
           style="padding:8px 16px;border-radius:10px;border:1.5px solid var(--border,#e5e7eb);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text,#1a1a2e)">🔍 Find a service</button>
       </div>
 
+      <!-- Home postcode banner -->
+      <div id="places-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin:0 18px 10px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="places-home-pc-label"></span></span>
+        <div style="display:flex;gap:6px">
+          <button onclick="placesUseHome()" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
+          <button onclick="placesClearHome()" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer">Clear</button>
+        </div>
+      </div>
+
       <!-- ── Single search bar ── -->
       <div style="display:flex;gap:8px;padding:0 18px 14px;align-items:center">
         <button id="places-loc-btn" onclick="placesUseLocation()" title="Use my location"
@@ -1196,6 +1204,13 @@
         <div style="font-size:13px;color:var(--subtle);line-height:1.7">
           Tap 📍 to see what's near you, or search by name or postcode.
         </div>
+      </div>
+
+      <!-- Save home postcode nudge (shown after a successful search) -->
+      <div id="places-save-home-row" style="display:none;margin:0 18px 12px;text-align:center">
+        <button onclick="placesSaveHome()" style="font-size:12px;font-weight:600;color:#166534;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:7px 14px;cursor:pointer;width:100%">
+          📍 Save this as my home postcode
+        </button>
       </div>
 
       <!-- ── Candidate picker ── -->
@@ -1515,6 +1530,7 @@
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
     if (name === "finder")   { _finderRefreshHomeRow(); }
+    if (name === "places")   { _placesRefreshHomeRow(); }
     setFooter(name);
   }
 
@@ -3368,6 +3384,51 @@ const _ts = new Date(d.timestamp);
     _reportRefreshHomeRow();
   }
 
+  // ── Local Search home postcode helpers ───────────────────────────────────────
+  let _placesCurrentPC = "";
+
+  function _placesRefreshHomeRow() {
+    const home    = MiruLocation.getHome();
+    const homeRow = document.getElementById("places-home-row");
+    const locBtn  = document.getElementById("places-loc-btn");
+    const label   = document.getElementById("places-home-pc-label");
+    if (home) {
+      label.textContent = home;
+      homeRow.style.display = "flex";
+      locBtn.style.display  = "none";
+    } else {
+      homeRow.style.display = "none";
+      locBtn.style.display  = "";
+    }
+    document.getElementById("places-save-home-row").style.display = "none";
+  }
+
+  function placesUseHome() {
+    const home = MiruLocation.getHome();
+    if (!home) return;
+    document.getElementById("places-input").value = home;
+    placesSearch();
+  }
+
+  function placesClearHome() {
+    MiruLocation.clearHome();
+    _placesRefreshHomeRow();
+    _finderRefreshHomeRow();
+    _electionsRefreshHomeRow();
+    _reportRefreshHomeRow();
+  }
+
+  function placesSaveHome() {
+    const pc = (_placesCurrentPC || document.getElementById("places-input").value).trim().toUpperCase();
+    if (!pc) return;
+    MiruLocation.setHome(pc);
+    _placesRefreshHomeRow();
+    _finderRefreshHomeRow();
+    _electionsRefreshHomeRow();
+    _reportRefreshHomeRow();
+    document.getElementById("places-save-home-row").style.display = "none";
+  }
+
   // ── Area Report home postcode helpers ────────────────────────────────────────
   function _reportRefreshHomeRow() {
     const home = MiruLocation.getHome();
@@ -4267,6 +4328,7 @@ const _ts = new Date(d.timestamp);
     // Fast path: client-side UK postcode detection → postcodes.io
     const pcClean = q.replace(/\s+/g,"").toUpperCase();
     if (/^[A-Z]{1,2}\d{1,2}[A-Z]?\d[A-Z]{2}$/.test(pcClean)) {
+      _placesCurrentPC = pcClean;
       try {
         const pr = await fetch(`https://api.postcodes.io/postcodes/${pcClean}`);
         const pd = await pr.json();
@@ -4372,6 +4434,9 @@ const _ts = new Date(d.timestamp);
       }
       document.getElementById("places-location").textContent =
         `${d.count} ${d.count === 1 ? "result" : "results"} near ${d.location}`;
+      // Show "Save as home" if not already saved
+      const _plSaveRow = document.getElementById("places-save-home-row");
+      if (_plSaveRow) _plSaveRow.style.display = MiruLocation.getHome() ? "none" : "block";
 
       const featured = d.places.filter(p => p.is_featured);
       const nearby   = d.places.filter(p => !p.is_featured);
