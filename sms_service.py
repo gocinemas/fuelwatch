@@ -7914,7 +7914,40 @@ def _get_spotify_app_token() -> str:
 def api_music_charts():
     country = request.args.get("country", "").upper()
 
-    # ── Apple Music / iTunes charts ───────────────────────────────────────────
+    # ── Spotify Top 50 playlists (no market param — avoids 403) ──────────────
+    playlist_id = _SPOTIFY_PLAYLISTS.get(country, _SPOTIFY_PLAYLISTS[""])
+    try:
+        token = _get_spotify_app_token()
+        if token:
+            r = requests.get(
+                f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"limit": 20, "fields": "items(track(id,name,artists,album(images),external_urls,duration_ms))"},
+                timeout=10,
+            )
+            r.raise_for_status()
+            tracks = []
+            for i, item in enumerate(r.json().get("items", [])):
+                t = item.get("track") or {}
+                if not t or not t.get("name"):
+                    continue
+                images = t.get("album", {}).get("images", [])
+                cover = images[0]["url"] if images else ""
+                artists = ", ".join(a["name"] for a in t.get("artists", []))
+                tracks.append({
+                    "position":    i + 1,
+                    "title":       t["name"],
+                    "artist":      artists,
+                    "cover":       cover,
+                    "track_id":    t.get("id", ""),
+                    "spotify_url": t.get("external_urls", {}).get("spotify", ""),
+                })
+            if tracks:
+                return jsonify({"tracks": tracks, "source": "spotify"})
+    except Exception as e:
+        print(f"[music/charts/spotify] {e}")
+
+    # ── iTunes fallback ───────────────────────────────────────────────────────
     feed_country = "gb" if country == "GB" else "us"
     try:
         r = requests.get(
@@ -7927,19 +7960,15 @@ def api_music_charts():
         for i, e in enumerate(entries):
             images = e.get("im:image", [])
             cover = images[2].get("label", "") if len(images) > 2 else (images[-1].get("label", "") if images else "")
-            link = e.get("link", {})
-            if isinstance(link, list):
-                link = link[0] if link else {}
             tracks.append({
                 "position": i + 1,
                 "title":    e.get("im:name", {}).get("label", ""),
                 "artist":   e.get("im:artist", {}).get("label", ""),
                 "cover":    cover,
-                "url":      link.get("attributes", {}).get("href", ""),
             })
         return jsonify({"tracks": tracks, "source": "itunes"})
     except Exception as e:
-        print(f"[music/charts] {e}")
+        print(f"[music/charts/itunes] {e}")
         return jsonify({"error": str(e)}), 500
 
 
