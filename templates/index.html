@@ -1252,29 +1252,54 @@
     </div>
 
     <!-- ── MY AREA SCREEN ── -->
-    <div id="screen-myarea" class="screen" style="padding:16px 16px 40px;max-width:600px;margin:0 auto">
+    <div id="screen-myarea" class="screen" style="padding:16px 16px 48px;max-width:600px;margin:0 auto">
       <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px;margin-bottom:4px">🏡 My Area</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Your MP, council, utilities &amp; local services</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Your representatives, local services &amp; personal records</div>
 
       <!-- Postcode bar -->
-      <div style="display:flex;gap:8px;margin-bottom:14px">
-        <input id="myarea-postcode-input" type="text" placeholder="Enter postcode e.g. SE13 5FH"
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input id="myarea-postcode-input" type="text" placeholder="Enter postcode e.g. KT16 0DA"
           style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;text-transform:uppercase"
-          maxlength="8" autocomplete="off"
-          onkeydown="if(event.key==='Enter') myAreaSearch()">
-        <button onclick="myAreaUseLocation()"
-          style="flex-shrink:0;background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer">📍</button>
+          maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter') myAreaSearch()">
+        <button onclick="myAreaUseLocation()" title="Use my location"
+          style="flex-shrink:0;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer">📍</button>
         <button onclick="myAreaSearch()"
-          style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:11px 18px;font-size:13px;font-weight:700;cursor:pointer">Go</button>
+          style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer">Go</button>
       </div>
-      <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:8px"></div>
+      <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
 
-      <!-- Loading / error / content -->
-      <div id="myarea-loading" style="display:none;text-align:center;padding:40px 0">
+      <!-- Phase 1 loading -->
+      <div id="myarea-loading" style="display:none;text-align:center;padding:36px 0">
         <div class="spinner mx-auto mb-3" style="border-top-color:#065f46;width:26px;height:26px"></div>
         <div style="font-size:13px;color:var(--muted)">Loading your area…</div>
       </div>
-      <div id="myarea-content"></div>
+
+      <!-- Live data sections (populated by JS) -->
+      <div id="myarea-reps"     style="display:none;margin-top:14px"></div>
+      <div id="myarea-council"  style="display:none;margin-top:10px"></div>
+      <div id="myarea-gp"       style="display:none;margin-top:10px"></div>
+      <div id="myarea-shops"    style="display:none;margin-top:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">🛒 Supermarkets</div>
+          <div style="width:16px;height:16px;border-radius:50%;border:2px solid #aaa;border-top-color:#065f46;animation:spin .7s linear infinite" id="myarea-shops-spinner"></div>
+        </div>
+        <div id="myarea-shops-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
+      </div>
+      <div id="myarea-pubs"     style="display:none;margin-top:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">🍺 Pubs &amp; Bars</div>
+          <div style="width:16px;height:16px;border-radius:50%;border:2px solid #aaa;border-top-color:#065f46;animation:spin .7s linear infinite" id="myarea-pubs-spinner"></div>
+        </div>
+        <div id="myarea-pubs-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
+        <button id="myarea-bars-more" onclick="myAreaSearchBars()" style="display:none;margin-top:6px;width:100%;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer">🔍 Search more bars &amp; pubs nearby</button>
+      </div>
+
+      <!-- Personal details (localStorage) -->
+      <div style="margin-top:18px">
+        <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:10px">📋 My Details</div>
+        <div id="myarea-personal-cards"></div>
+        <button onclick="myAreaAddDetail()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add insurance / broadband / other</button>
+      </div>
     </div>
 
     <!-- ── LIBRARY SCREEN ── -->
@@ -2337,91 +2362,286 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── My Area screen ────────────────────────────────────────────────────────────
-  function _myAreaRow(icon, label, val, sub, href) {
-    const valHtml = href
-      ? `<a href="${href}" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:none">${val} ↗</a>`
-      : `<span style="font-weight:600;color:var(--text)">${val}</span>`;
+  const _MA_DETAILS_KEY = "miru_my_details";
+
+  function _maRow(icon, label, val, sub, href) {
+    const v = href ? `<a href="${href}" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:none">${val} ↗</a>`
+                   : `<span style="font-weight:600;color:var(--text)">${val}</span>`;
     return `<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px">
       <span style="font-size:20px;flex-shrink:0;margin-top:1px">${icon}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${label}</div>
-        <div style="font-size:14px">${valHtml}</div>
+        <div style="font-size:14px">${v}</div>
         ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">${sub}</div>` : ""}
       </div>
     </div>`;
   }
-  function _myAreaServiceBlock(icon, label, items, limit) {
-    if (!items || !items.length) return "";
-    const list = items.slice(0, limit).map(x => {
-      const dist = x.distance_km ? ` · ${(x.distance_km * 0.621371).toFixed(1)} mi` : "";
-      const phone = x.phone ? ` <a href="tel:${x.phone}" style="color:#2563eb;font-size:11px">${x.phone}</a>` : "";
-      return `<div style="padding:7px 0;border-bottom:1px solid var(--border)">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${x.name}<span style="font-weight:400;color:var(--muted);font-size:11px">${dist}</span>${phone}</div>
-        ${x.address ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${x.address}</div>` : ""}
-      </div>`;
-    }).join("");
-    return `<div style="font-weight:700;font-size:13px;color:var(--text);margin:16px 0 6px">${icon} ${label}</div>${list}`;
+
+  function _maCard(items) {
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${items}</div>`;
   }
 
-  function _renderMyAreaContent(area, mp) {
-    const el = document.getElementById("myarea-content");
-    let html = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:4px 14px 4px">';
+  function _maSection(title, html) {
+    return `<div style="margin-top:10px"><div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${title}</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${html}</div></div>`;
+  }
+
+  function _maPlaceRow(x) {
+    const dist = x.distance_km ? `<span style="font-size:11px;color:var(--muted);font-weight:400"> · ${(x.distance_km*0.621371).toFixed(1)} mi</span>` : "";
+    const phone = x.phone ? `<a href="tel:${x.phone}" style="color:#2563eb;font-size:11px;display:block;margin-top:1px">${x.phone}</a>` : "";
+    const addr  = x.address ? `<div style="font-size:11px;color:var(--muted)">${x.address}</div>` : "";
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:13px;font-weight:600;color:var(--text)">${x.name}${dist}</div>${addr}${phone}</div>`;
+  }
+
+  function _maRenderReps(mp, councillor) {
+    const el = document.getElementById("myarea-reps");
+    let rows = "";
     if (mp && mp.name && !mp.error) {
-      const subs = [];
-      if (mp.party) subs.push(mp.party);
-      if (mp.constituency) subs.push(mp.constituency);
-      const contacts = [];
-      if (mp.email) contacts.push(`<a href="mailto:${mp.email}" style="color:#2563eb">${mp.email}</a>`);
-      if (mp.phone) contacts.push(`<a href="tel:${mp.phone}" style="color:#2563eb">${mp.phone}</a>`);
-      const sub = [...subs.map(s=>`<span>${s}</span>`), ...contacts].join(" · ");
-      html += _myAreaRow("🏛️", "Your MP", mp.name, sub, mp.parliament_url || null);
+      const subs = [mp.party, mp.constituency].filter(Boolean).map(s=>`<span>${s}</span>`);
+      if (mp.email) subs.push(`<a href="mailto:${mp.email}" style="color:#2563eb">${mp.email}</a>`);
+      if (mp.phone) subs.push(`<a href="tel:${mp.phone}" style="color:#2563eb">${mp.phone}</a>`);
+      rows += _maRow("🏛️","Your MP", mp.name, subs.join(" · "), mp.parliament_url||null);
     }
-    if (area.council?.name) html += _myAreaRow("🏢", "Your Council", area.council.name, null, area.council.website || null);
-    if (area.water?.name) html += _myAreaRow("💧", "Water Company", area.water.name, `Emergency: <a href="tel:${area.water.emergency}" style="color:#2563eb">${area.water.emergency}</a>`, `https://${area.water.website}`);
-    if (area.gas?.name)   html += _myAreaRow("🔥", "Gas Network",   area.gas.name,   `Gas leak: <a href="tel:${area.gas.emergency}" style="color:#dc2626;font-weight:700">${area.gas.emergency}</a>`, `https://${area.gas.website}`);
-    html += '</div>';
-    html += _myAreaServiceBlock("🩺", "Nearest GP Surgeries", area.gps, 4);
-    html += _myAreaServiceBlock("💊", "Nearest Pharmacies", area.pharmacies, 3);
-    html += _myAreaServiceBlock("📮", "Post Offices", area.post_offices, 2);
-    el.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">No data found for this postcode.</div>';
+    if (councillor && councillor.name && !councillor.error) {
+      const csub = [councillor.party, councillor.ward].filter(Boolean).join(" · ");
+      rows += _maRow("🏘️","Your Councillor", councillor.name, csub||null, null);
+    }
+    if (!rows) { el.style.display = "none"; return; }
+    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🗳️ Your Representatives</div>${_maCard(rows)}`;
+    el.style.display = "";
+  }
+
+  function _maRenderCouncil(area) {
+    const el = document.getElementById("myarea-council");
+    let rows = "";
+    if (area.council?.name) rows += _maRow("🏢","Council", area.council.name, null, area.council.website||null);
+    if (area.water?.name)   rows += _maRow("💧","Water Co.", area.water.name, `Emergency: <a href="tel:${area.water.emergency}" style="color:#2563eb">${area.water.emergency}</a>`, `https://${area.water.website}`);
+    if (area.gas?.name)     rows += _maRow("🔥","Gas Network", area.gas.name, `Gas leak: <a href="tel:${area.gas.emergency}" style="color:#dc2626;font-weight:700">${area.gas.emergency}</a>`, `https://${area.gas.website}`);
+    if (!rows) { el.style.display = "none"; return; }
+    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏛️ Council &amp; Utilities</div>${_maCard(rows)}`;
+    el.style.display = "";
+  }
+
+  function _maRenderGPs(area) {
+    const el = document.getElementById("myarea-gp");
+    const gps = (area.gps || []).slice(0, 5);
+    const pharms = (area.pharmacies || []).slice(0, 3);
+    if (!gps.length && !pharms.length) { el.style.display = "none"; return; }
+    let html = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🩺 Health</div><div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">`;
+    gps.forEach(x => { html += _maPlaceRow(x); });
+    if (pharms.length) {
+      html += `</div><div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">💊 Pharmacies</div><div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">`;
+      pharms.forEach(x => { html += _maPlaceRow(x); });
+    }
+    html += "</div>";
+    el.innerHTML = html;
+    el.style.display = "";
+  }
+
+  function _maRenderShops(data) {
+    const el    = document.getElementById("myarea-shops");
+    const list  = document.getElementById("myarea-shops-list");
+    const spin  = document.getElementById("myarea-shops-spinner");
+    if (spin) spin.style.display = "none";
+    const items = (data.supermarkets || []).slice(0, 6);
+    if (!items.length) { el.style.display = "none"; return; }
+    list.innerHTML = items.map(_maPlaceRow).join("");
+    el.style.display = "";
+  }
+
+  function _maRenderPubs(data) {
+    const el   = document.getElementById("myarea-pubs");
+    const list = document.getElementById("myarea-pubs-list");
+    const spin = document.getElementById("myarea-pubs-spinner");
+    const more = document.getElementById("myarea-bars-more");
+    if (spin) spin.style.display = "none";
+    const items = (data.pubs || []).slice(0, 6);
+    if (!items.length) { el.style.display = "none"; return; }
+    list.innerHTML = items.map(_maPlaceRow).join("");
+    if (more) more.style.display = "";
+    el.style.display = "";
   }
 
   function myAreaSearch() {
     const raw = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
     if (!raw) return;
-    const pc = raw.replace(/\s+/g,"");
+    const pc = raw.replace(/\s+/g, "");
+    // Reset sections
+    ["myarea-reps","myarea-council","myarea-gp","myarea-shops","myarea-pubs"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = "none";
+    });
+    ["myarea-shops-spinner","myarea-pubs-spinner"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = "block";
+    });
     document.getElementById("myarea-loading").style.display = "block";
-    document.getElementById("myarea-content").innerHTML = "";
+
+    // Phase 1: fast data
     Promise.all([
       fetch(`/api/your-area?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
       fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
-    ]).then(([area, mp]) => {
+      fetch(`/api/councillor?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
+    ]).then(([area, mp, councillor]) => {
       document.getElementById("myarea-loading").style.display = "none";
-      _renderMyAreaContent(area, mp);
+      _maRenderReps(mp, councillor);
+      _maRenderCouncil(area);
+      _maRenderGPs(area);
+      _myAreaPersonalRender();
     }).catch(() => {
       document.getElementById("myarea-loading").style.display = "none";
-      document.getElementById("myarea-content").innerHTML = '<div style="color:#ef4444;font-size:13px">Could not load area info — try again.</div>';
+    });
+
+    // Phase 2: shops + pubs (slower Overpass calls)
+    document.getElementById("myarea-shops").style.display = "";
+    document.getElementById("myarea-pubs").style.display = "";
+    fetch(`/api/shops?postcode=${pc}`).then(r=>r.json()).then(_maRenderShops).catch(()=>{
+      const sp = document.getElementById("myarea-shops-spinner"); if(sp) sp.style.display="none";
+      document.getElementById("myarea-shops").style.display="none";
+    });
+    fetch(`/api/local?postcode=${pc}`).then(r=>r.json()).then(_maRenderPubs).catch(()=>{
+      const sp = document.getElementById("myarea-pubs-spinner"); if(sp) sp.style.display="none";
+      document.getElementById("myarea-pubs").style.display="none";
     });
   }
 
   function myAreaUseLocation() {
-    const btn = document.querySelector("#screen-myarea button[onclick=\"myAreaUseLocation()\"]");
     const errEl = document.getElementById("myarea-loc-err");
     errEl.style.display = "none";
-    MiruLocation.request(btn || document.createElement("button"), loc => {
+    const btn = document.createElement("button");
+    MiruLocation.request(btn, loc => {
       if (!loc.postcode) { errEl.textContent = "Location found — enter postcode manually."; errEl.style.display = "block"; return; }
       document.getElementById("myarea-postcode-input").value = loc.postcode;
       myAreaSearch();
     }, msg => { errEl.textContent = msg; errEl.style.display = "block"; });
   }
 
+  function myAreaSearchBars() {
+    const pc = document.getElementById("myarea-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase();
+    if (!pc) return;
+    showScreen("places");
+    const fi = document.getElementById("places-input"); if (fi) fi.value = pc;
+    document.getElementById("places-input").value = pc + " bars";
+    setTimeout(() => placesSearch(), 100);
+  }
+
   function _loadMyArea() {
     const home = MiruLocation.getHome();
-    if (home) {
+    if (home && document.getElementById("myarea-postcode-input").value !== home) {
       document.getElementById("myarea-postcode-input").value = home;
       myAreaSearch();
+    } else if (!home) {
+      _myAreaPersonalRender();
     }
   }
+
+  // ── My Area personal details (localStorage) ───────────────────────────────────
+  const _MA_DETAIL_TYPES = [
+    { key:"home_ins",  icon:"🏠", label:"Home Insurance",  fields:["Provider","Policy No","Phone","Renewal Date"] },
+    { key:"car_ins",   icon:"🚗", label:"Car Insurance",    fields:["Provider","Policy No","Phone","Renewal Date","Reg"] },
+    { key:"broadband", icon:"📡", label:"Broadband",        fields:["Provider","Account No","Phone"] },
+    { key:"health",    icon:"💳", label:"Health / BUPA",    fields:["Provider","Member No","Phone"] },
+    { key:"life_ins",  icon:"🛡️", label:"Life Insurance",   fields:["Provider","Policy No","Phone","Renewal Date"] },
+    { key:"other",     icon:"📝", label:"Other",            fields:["Label","Detail","Phone"] },
+  ];
+
+  function _myAreaGetDetails() {
+    try { return JSON.parse(localStorage.getItem(_MA_DETAILS_KEY) || "[]"); } catch { return []; }
+  }
+  function _myAreaSaveDetails(arr) { localStorage.setItem(_MA_DETAILS_KEY, JSON.stringify(arr)); }
+
+  function _myAreaPersonalRender() {
+    const el = document.getElementById("myarea-personal-cards");
+    if (!el) return;
+    const records = _myAreaGetDetails();
+    if (!records.length) { el.innerHTML = ""; return; }
+    el.innerHTML = records.map((rec, idx) => {
+      const type = _MA_DETAIL_TYPES.find(t => t.key === rec.type) || _MA_DETAIL_TYPES[5];
+      const rows = type.fields.map(f => {
+        const val = rec.data?.[f] || "";
+        return val ? `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--muted);flex-shrink:0;width:88px;padding-top:1px">${f}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text)">${f.toLowerCase().includes("phone") ? `<a href="tel:${val}" style="color:#2563eb">${val}</a>` : val}</span>
+        </div>` : "";
+      }).join("");
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${type.icon} ${rec.label || type.label}</div>
+          <div style="display:flex;gap:8px">
+            <button onclick="myAreaEditDetail(${idx})" style="font-size:12px;color:#2563eb;background:none;border:none;cursor:pointer;font-weight:600">Edit</button>
+            <button onclick="myAreaDeleteDetail(${idx})" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer">Delete</button>
+          </div>
+        </div>
+        ${rows || '<div style="font-size:12px;color:var(--muted)">No details saved yet</div>'}
+      </div>`;
+    }).join("");
+  }
+
+  function myAreaAddDetail() {
+    _myAreaOpenDetailEditor(-1, null);
+  }
+  function myAreaEditDetail(idx) {
+    const records = _myAreaGetDetails();
+    _myAreaOpenDetailEditor(idx, records[idx]);
+  }
+  function myAreaDeleteDetail(idx) {
+    const records = _myAreaGetDetails();
+    records.splice(idx, 1);
+    _myAreaSaveDetails(records);
+    _myAreaPersonalRender();
+  }
+
+  function _myAreaOpenDetailEditor(idx, existing) {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
+    const type = existing ? (_MA_DETAIL_TYPES.find(t=>t.key===existing.type)||_MA_DETAIL_TYPES[5]) : _MA_DETAIL_TYPES[0];
+    const sheet = document.createElement("div");
+    sheet.style.cssText = "background:var(--surface);border-radius:20px 20px 0 0;padding:20px 18px 36px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto";
+    const typeOpts = _MA_DETAIL_TYPES.map(t=>`<option value="${t.key}" ${existing?.type===t.key?"selected":""}>${t.icon} ${t.label}</option>`).join("");
+    sheet.innerHTML = `
+      <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:14px">${idx===-1?"Add Detail":"Edit Detail"}</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">TYPE</label>
+        <select id="maed-type" onchange="myAreaEditorTypeChange(this)" style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--surface);color:var(--text)">${typeOpts}</select>
+      </div>
+      <div id="maed-fields"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="myAreaEditorSave(${idx})" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">Save</button>
+        <button onclick="this.closest('[style*=\"position:fixed\"]').remove()" style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>
+      </div>`;
+    overlay.appendChild(sheet);
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", e => { if (e.target===overlay) overlay.remove(); });
+    window._maEditorExisting = existing;
+    myAreaEditorTypeChange(sheet.querySelector("#maed-type"));
+  }
+
+  window.myAreaEditorTypeChange = function(sel) {
+    const type = _MA_DETAIL_TYPES.find(t=>t.key===sel.value) || _MA_DETAIL_TYPES[0];
+    const existing = window._maEditorExisting;
+    const container = sel.closest("div[style]").parentElement.querySelector("#maed-fields");
+    container.innerHTML = type.fields.map(f => {
+      const val = existing?.data?.[f] || "";
+      return `<div style="margin-bottom:10px">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">${f.toUpperCase()}</label>
+        <input data-field="${f}" value="${val}" placeholder="${f}" style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--surface);color:var(--text);box-sizing:border-box">
+      </div>`;
+    }).join("");
+  };
+
+  window.myAreaEditorSave = function(idx) {
+    const overlay = document.querySelector("[style*=\"position:fixed\"][style*=\"z-index:9000\"]");
+    if (!overlay) return;
+    const typeKey = overlay.querySelector("#maed-type").value;
+    const type = _MA_DETAIL_TYPES.find(t=>t.key===typeKey) || _MA_DETAIL_TYPES[5];
+    const data = {};
+    overlay.querySelectorAll("[data-field]").forEach(inp => { data[inp.dataset.field] = inp.value.trim(); });
+    const records = _myAreaGetDetails();
+    const rec = { type: typeKey, label: type.label, data };
+    if (idx === -1) records.push(rec); else records[idx] = rec;
+    _myAreaSaveDetails(records);
+    overlay.remove();
+    _myAreaPersonalRender();
+  };
 
   // ── Navigation sheet ─────────────────────────────────────────────────────────
   function openNav(btn) {
