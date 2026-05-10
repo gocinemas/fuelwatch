@@ -2622,12 +2622,14 @@ const _ts = new Date(d.timestamp);
         co.featured;
       _setIntelTab("intel", hasIntel);
 
-      // Auto-select first visible tab
-      const firstVisible = _INTEL_TABS.find(t => {
+      // Auto-select first visible tab; hide tab bar if only 1 visible
+      const visibleTabs = _INTEL_TABS.filter(t => {
         const btn = document.getElementById("itab-btn-" + t);
         return btn && btn.style.display !== "none";
       });
-      if (firstVisible) switchIntelTab(firstVisible);
+      const _tb = document.getElementById("intel-tab-bar");
+      if (_tb) _tb.style.display = visibleTabs.length > 1 ? "" : "none";
+      if (visibleTabs[0]) switchIntelTab(visibleTabs[0]);
 
       // Book intel fallback: if no brand/company data, try book lookup
       const hasUsefulData = (br.name && (br.description || br.timeline?.length)) || (co.name && co.overview);
@@ -3306,15 +3308,12 @@ const _ts = new Date(d.timestamp);
   function _electionsRefreshHomeRow() {
     const home = MiruLocation.getHome();
     const homeRow = document.getElementById("elections-home-row");
-    const locBtn  = document.getElementById("elections-loc-btn");
     const label   = document.getElementById("elections-home-pc-label");
     if (home) {
       label.textContent = home;
       homeRow.style.display = "flex";
-      locBtn.style.display  = "none";
     } else {
       homeRow.style.display = "none";
-      locBtn.style.display  = "";
     }
   }
 
