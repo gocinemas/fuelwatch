@@ -1463,8 +1463,44 @@ def _ward_to_slug(name: str) -> str:
     s = re.sub(r"[^a-z0-9 ]", " ", s)
     return re.sub(r"\s+", "-", s.strip())
 
+def _fetch_dc_ballot(ballot_paper_id: str) -> list:
+    """Fetch results for a known ballot_paper_id directly — no fuzzy matching needed."""
+    cache_key = f"dcb:{ballot_paper_id}"
+    if cache_key in _DC_RESULTS_CACHE:
+        cached, ts, has_real = _DC_RESULTS_CACHE[cache_key]
+        ttl = _DC_RESULTS_TTL_FINAL if has_real else _DC_RESULTS_TTL_PENDING
+        if time.time() - ts < ttl:
+            return cached
+    try:
+        r = requests.get(
+            f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/",
+            params={"format": "json"}, timeout=8,
+            headers={"User-Agent": "Miru/1.0"},
+        )
+        if r.status_code != 200:
+            return []
+        candidacies = r.json().get("candidacies", [])
+        results = []
+        for c in candidacies:
+            res = c.get("result") or {}
+            results.append({
+                "name":    c.get("person", {}).get("name", ""),
+                "party":   c.get("party_name", ""),
+                "elected": c.get("elected") or res.get("elected", False),
+                "votes":   res.get("num_ballots") or res.get("votes"),
+            })
+        results.sort(key=lambda x: -(x["votes"] or 0))
+        has_real = any(r["votes"] is not None or r["elected"] for r in results)
+        if results:
+            _DC_RESULTS_CACHE[cache_key] = (results, time.time(), has_real)
+        return results
+    except Exception as e:
+        print(f"[dc_ballot] {e}")
+        return []
+
+
 def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> list:
-    """Fetch results for a ward from Democracy Club API. Returns [] if not available."""
+    """Fetch results for a ward from Democracy Club API via fuzzy ward matching."""
     import time as _time
     cache_key = f"dcr:{council_slug}:{ward_name}:{election_date}"
     if cache_key in _DC_RESULTS_CACHE:
@@ -1484,7 +1520,6 @@ def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> 
             return []
         ballots = r.json().get("ballots", [])
         ward_slug = _ward_to_slug(ward_name)
-        # Pick best matching ward ballot
         best, best_score = None, 0
         for b in ballots:
             parts = b["ballot_paper_id"].split(".")
@@ -1496,27 +1531,9 @@ def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> 
                 best_score, best = score, b["ballot_paper_id"]
         if not best or best_score < 0.4:
             return []
-        r2 = requests.get(
-            f"https://candidates.democracyclub.org.uk/api/next/ballots/{best}/",
-            params={"format": "json"}, timeout=8,
-            headers={"User-Agent": "Miru/1.0"},
-        )
-        if r2.status_code != 200:
-            return []
-        candidacies = r2.json().get("candidacies", [])
-        results = []
-        for c in candidacies:
-            res = c.get("result") or {}
-            results.append({
-                "name":    c.get("person", {}).get("name", ""),
-                "party":   c.get("party_name", ""),
-                "elected": c.get("elected") or res.get("elected", False),
-                "votes":   res.get("num_ballots"),
-            })
-        results.sort(key=lambda x: -(x["votes"] or 0))
-        has_real = any(r["votes"] is not None or r["elected"] for r in results)
+        results = _fetch_dc_ballot(best)
         if results:
-            _DC_RESULTS_CACHE[cache_key] = (results, _time.time(), has_real)
+            _DC_RESULTS_CACHE[cache_key] = (results, _time.time(), any(r["votes"] is not None or r["elected"] for r in results))
         return results
     except Exception as e:
         print(f"[dc_results] {e}")
@@ -1564,9 +1581,10 @@ def _load_elections_csv():
                     by_slug.setdefault(council_slug, {})
                     if ward_slug not in by_slug[council_slug]:
                         by_slug[council_slug][ward_slug] = {
-                            "ward": row.get("post_label", "").strip().strip('"'),
-                            "council": row.get("organisation_name", "").strip().strip('"'),
-                            "election_date": row.get("election_date", "").strip(),
+                            "ward":           row.get("post_label", "").strip().strip('"'),
+                            "council":        row.get("organisation_name", "").strip().strip('"'),
+                            "election_date":  row.get("election_date", "").strip(),
+                            "ballot_paper_id": bp,
                             "candidates": [],
                         }
                     by_slug[council_slug][ward_slug]["candidates"].append(candidate)
@@ -2760,16 +2778,28 @@ def api_fuel_check_drops():
     return jsonify({"checked": checked, "sent": sent})
 
 
+_elections_response_cache: dict = {}  # postcode → (payload, ts)
+_ELECTIONS_RESPONSE_TTL = 600  # 10 minutes — candidates/results stable post-election
+
 @app.route("/api/elections")
 def api_elections():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
+
+    cached = _elections_response_cache.get(postcode)
+    if cached and time.time() - cached[1] < _ELECTIONS_RESPONSE_TTL:
+        return jsonify(cached[0])
+
     try:
-        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
-        if r.status_code != 200:
-            return jsonify({"error": f"Could not find postcode {postcode}"}), 404
-        result = r.json().get("result", {})
+        if postcode in _pc_meta_cache:
+            result = _pc_meta_cache[postcode]
+        else:
+            r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
+            if r.status_code != 200:
+                return jsonify({"error": f"Could not find postcode {postcode}"}), 404
+            result = r.json().get("result", {})
+            _pc_meta_cache[postcode] = result
         codes        = result.get("codes", {})
         ward_gss     = codes.get("admin_ward", "")
         ward_name    = result.get("admin_ward", "")
@@ -2874,6 +2904,7 @@ def api_elections():
         effective_council = (council_slug or district).lower().replace(" ", "-")
         effective_ward    = ward_data.get("ward") or ward_name
         election_date_str = ward_data.get("election_date", "2026-05-07")
+        ballot_paper_id   = ward_data.get("ballot_paper_id")
         import datetime as _dt
         election_happened = _dt.date.today() >= _dt.date.fromisoformat(election_date_str)
 
@@ -2881,15 +2912,19 @@ def api_elections():
             f_ps   = ex.submit(_fetch_polling_station, postcode)
             f_2022 = ex.submit(_fetch_dc_results, effective_council, effective_ward, "2022-05-05") \
                      if not is_new_council else None
-            f_live = ex.submit(_fetch_dc_results, effective_council, effective_ward, election_date_str) \
-                     if election_happened else None
+            # Use direct ballot fetch if we have the ID (skips fuzzy matching + election list call)
+            if election_happened:
+                f_live = ex.submit(_fetch_dc_ballot, ballot_paper_id) if ballot_paper_id \
+                         else ex.submit(_fetch_dc_results, effective_council, effective_ward, election_date_str)
+            else:
+                f_live = None
             polling_station = f_ps.result()
             past_results    = f_2022.result() if f_2022 else []
             live_results    = f_live.result() if f_live else []
 
         county_name = result.get("admin_county") or ""
 
-        return jsonify({
+        payload = {
             "postcode":          postcode_fmt,
             "ward":              effective_ward,
             "council":           ward_data.get("council") or district,
@@ -2907,7 +2942,9 @@ def api_elections():
             "polling_station_url": (polling_station or {}).get("url") or
                                    f"https://wheredoivote.co.uk/postcode/{postcode}/",
             "found": bool(candidates),
-        })
+        }
+        _elections_response_cache[postcode] = (payload, time.time())
+        return jsonify(payload)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
