@@ -981,18 +981,23 @@
           <div id="elections-county" style="font-size:11px;color:var(--subtle);opacity:.65;margin-top:1px"></div>
         </div>
 
-        <!-- 🏛️ Elected Councillor — always shown first -->
-        <div id="councillor-card" style="display:none;margin-bottom:10px;background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1.5px solid #86efac;border-radius:14px;padding:14px 15px">
-          <div id="councillor-label-text" style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏛️ Your Elected Councillor</div>
-          <div id="councillor-list" style="display:flex;flex-direction:column;gap:10px"></div>
-          <div id="councillor-loading" style="font-size:12px;color:var(--subtle);font-style:italic">Loading councillor details…</div>
-        </div>
-
-        <!-- 🏟️ Your MP -->
-        <div id="mp-card" style="display:none;margin-bottom:12px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1.5px solid #93c5fd;border-radius:14px;padding:14px 15px">
-          <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏟️ Your MP — Westminster</div>
-          <div id="mp-body"></div>
-          <div id="mp-loading" style="font-size:12px;color:var(--subtle);font-style:italic">Loading MP details…</div>
+        <!-- Your Representatives — tabbed: Councillor / MP -->
+        <div id="rep-card" style="display:none;margin-bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+          <div style="display:flex;border-bottom:1px solid var(--border)">
+            <button id="reptab-councillor" onclick="repTab('councillor')"
+              style="flex:1;padding:10px 6px;border:none;border-bottom:2px solid #16a34a;cursor:pointer;font-size:12px;font-weight:700;background:var(--surface);color:#16a34a">🏛️ Councillor</button>
+            <button id="reptab-mp" onclick="repTab('mp')"
+              style="flex:1;padding:10px 6px;border:none;border-bottom:2px solid transparent;cursor:pointer;font-size:12px;font-weight:700;background:var(--surface);color:var(--muted)">🏟️ Your MP</button>
+          </div>
+          <div id="repanel-councillor" style="padding:14px 15px">
+            <div id="councillor-label-text" style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏛️ Your Elected Councillor</div>
+            <div id="councillor-list" style="display:flex;flex-direction:column;gap:10px"></div>
+            <div id="councillor-loading" style="font-size:12px;color:var(--subtle);font-style:italic">Loading councillor details…</div>
+          </div>
+          <div id="repanel-mp" style="display:none;padding:14px 15px">
+            <div id="mp-body"></div>
+            <div id="mp-loading" style="font-size:12px;color:var(--subtle);font-style:italic">Loading MP details…</div>
+          </div>
         </div>
 
         <!-- No-election notice + inline 2022 results (shown when noElection) -->
@@ -2876,8 +2881,7 @@ const _ts = new Date(d.timestamp);
     const postcode = input.value.trim();
     if (!postcode) return;
     ["elections-result","elections-error","elections-none"].forEach(id => document.getElementById(id).classList.add("hidden"));
-    const _cc = document.getElementById("councillor-card"); if (_cc) _cc.style.display = "none";
-    const _mc = document.getElementById("mp-card"); if (_mc) _mc.style.display = "none";
+    const _rc = document.getElementById("rep-card"); if (_rc) _rc.style.display = "none";
     document.getElementById("elections-loading").classList.remove("hidden");
     try {
       const r = await fetch(`/api/elections?postcode=${encodeURIComponent(postcode)}`);
@@ -2934,10 +2938,13 @@ const _ts = new Date(d.timestamp);
           }).join('');
       }
 
-      // Always load councillor + MP cards (top of results, before tabs)
-      const _cLabel = document.getElementById("councillor-label-text");
+      // Show rep card + load both tabs in parallel
       const hasRealResults = d.live_results && d.live_results.some(r => r.votes != null || r.elected);
+      const _cLabel = document.getElementById("councillor-label-text");
       if (_cLabel) _cLabel.textContent = hasRealResults ? "🏛️ Your Elected Councillor" : "🏛️ Your Councillor";
+      const _repCard = document.getElementById("rep-card");
+      if (_repCard) _repCard.style.display = "";
+      repTab("councillor");
       _loadCouncillorCard(d.ward_gss, postcode);
       _loadMPCard(postcode);
 
@@ -3060,12 +3067,22 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── Councillor card ─────────────────────────────────────────────────────────
+  function repTab(tab) {
+    ["councillor","mp"].forEach(function(t) {
+      const btn   = document.getElementById("reptab-" + t);
+      const panel = document.getElementById("repanel-" + t);
+      const active = t === tab;
+      if (btn) {
+        btn.style.borderBottom = active ? "2px solid " + (t === "councillor" ? "#16a34a" : "#1d4ed8") : "2px solid transparent";
+        btn.style.color = active ? (t === "councillor" ? "#16a34a" : "#1d4ed8") : "var(--muted)";
+      }
+      if (panel) panel.style.display = active ? "" : "none";
+    });
+  }
+
   async function _loadCouncillorCard(wardGss, postcode) {
-    const card    = document.getElementById("councillor-card");
     const list    = document.getElementById("councillor-list");
     const loading = document.getElementById("councillor-loading");
-    if (!card) return;
-    card.style.display = "block";
     if (loading) loading.style.display = "block";
     if (list)   list.innerHTML = "";
     try {
@@ -3101,11 +3118,8 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _loadMPCard(postcode) {
-    const card    = document.getElementById("mp-card");
     const body    = document.getElementById("mp-body");
     const loading = document.getElementById("mp-loading");
-    if (!card) return;
-    card.style.display = "block";
     if (loading) loading.style.display = "block";
     if (body) body.innerHTML = "";
     try {
@@ -3113,7 +3127,7 @@ const _ts = new Date(d.timestamp);
       const d = await r.json();
       if (loading) loading.style.display = "none";
       if (d.error) {
-        card.style.display = "none";
+        if (body) body.innerHTML = `<div style="font-size:12px;color:var(--subtle);font-style:italic">${d.error}</div>`;
         return;
       }
       const col = _partyStyle(d.party || "");

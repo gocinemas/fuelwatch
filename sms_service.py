@@ -2376,25 +2376,36 @@ def api_mp():
         if not constituency:
             return jsonify({"error": "No constituency found for this postcode"})
 
-        # Step 2: search Parliament Members API by constituency name
-        r = requests.get(
-            "https://members-api.parliament.uk/api/Members/Search",
-            params={"constituency": constituency, "House": 1, "IsCurrentMember": True},
+        # Step 2: search Parliament constituencies by name — returns current MP inline
+        cr = requests.get(
+            "https://members-api.parliament.uk/api/Location/Constituencies",
+            params={"search": constituency, "searchField": "name"},
             headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
             timeout=10,
         )
-        r.raise_for_status()
-        items = r.json().get("items", [])
-        if not items:
-            return jsonify({"error": f"No MP found for {constituency}"})
+        cr.raise_for_status()
+        const_items = cr.json().get("items", [])
+        # Find exact name match first, fall back to first result
+        const_val = None
+        for ci in const_items:
+            v = ci.get("value", {})
+            if v.get("name", "").lower() == constituency.lower():
+                const_val = v
+                break
+        if not const_val and const_items:
+            const_val = const_items[0].get("value", {})
+        if not const_val:
+            return jsonify({"error": f"Constituency not found: {constituency}"})
 
-        m = items[0]["value"]
-        mp_id = m["id"]
-        party = m.get("latestParty", {}).get("name", "")
-        constituency = ""
-        ler = m.get("latestElectionResult") or {}
-        if ler:
-            constituency = (ler.get("constituency") or {}).get("name", "")
+        # currentRepresentation gives us the MP without a second search
+        rep = const_val.get("currentRepresentation") or {}
+        m = rep.get("member") or {}
+        if not m:
+            return jsonify({"error": f"No current MP for {constituency}"})
+
+        mp_id = m.get("id")
+        party = (m.get("latestParty") or {}).get("name", "")
+        constituency = const_val.get("name", constituency)
 
         # Fetch contact details
         email = phone = website = twitter = ""
