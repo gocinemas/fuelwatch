@@ -3233,6 +3233,16 @@ def _fetch_hospitals(lat, lon):
     result = sorted(merged.values(), key=lambda x: x.get("distance_km", 999))
     return result[:4]
 
+_UK_SUPERMARKET_CHAINS = {
+    "sainsbury", "tesco", "asda", "lidl", "aldi", "waitrose", "morrisons",
+    "co-op", "co op", "cooperative", "marks & spencer", "m&s", "iceland",
+    "costco", "spar", "budgens", "ocado", "whole foods", "booths",
+}
+
+def _is_major_supermarket(name: str) -> bool:
+    n = name.lower()
+    return any(chain in n for chain in _UK_SUPERMARKET_CHAINS)
+
 def _fetch_supermarkets_overpass(lat, lon, radius_m=5000):
     query = f"""
 [out:json][timeout:25];
@@ -3240,9 +3250,6 @@ def _fetch_supermarkets_overpass(lat, lon, radius_m=5000):
   node["shop"="supermarket"](around:{radius_m},{lat},{lon});
   way["shop"="supermarket"](around:{radius_m},{lat},{lon});
   relation["shop"="supermarket"](around:{radius_m},{lat},{lon});
-  node["shop"="grocery"](around:{radius_m},{lat},{lon});
-  way["shop"="grocery"](around:{radius_m},{lat},{lon});
-  relation["shop"="grocery"](around:{radius_m},{lat},{lon});
 );
 out center tags;
 """
@@ -3252,14 +3259,13 @@ out center tags;
         for el in elements:
             tags = el.get("tags", {})
             name = tags.get("name") or tags.get("brand") or ""
-            if not name:
+            if not name or not _is_major_supermarket(name):
                 continue
             elat, elon = _el_coords(el)
             if not elat or not elon:
                 continue
             dist = round(haversine_km(lat, lon, elat, elon), 2)
-            address = _el_address(tags)
-            items.append({"name": name, "address": address, "distance_km": dist})
+            items.append({"name": name, "address": _el_address(tags), "distance_km": dist})
         items.sort(key=lambda x: x["distance_km"])
         return items[:10]
     except Exception as e:
