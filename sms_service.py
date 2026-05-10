@@ -3149,8 +3149,11 @@ def _fetch_police_contact(lat, lon):
         loc = r.json()
         force_id = loc.get("force", "")
         nb_id    = loc.get("neighbourhood", "")
-        r_nb  = requests.get(f"https://data.police.uk/api/{force_id}/{nb_id}", timeout=8)
-        r_f   = requests.get(f"https://data.police.uk/api/forces/{force_id}", timeout=8)
+        # Neighbourhood detail and force detail are independent — fetch in parallel
+        with ThreadPoolExecutor(max_workers=2) as _ex:
+            f_nb = _ex.submit(requests.get, f"https://data.police.uk/api/{force_id}/{nb_id}", timeout=8)
+            f_f  = _ex.submit(requests.get, f"https://data.police.uk/api/forces/{force_id}",  timeout=8)
+            r_nb, r_f = f_nb.result(), f_f.result()
         nb    = r_nb.json() if r_nb.status_code == 200 else {}
         force = r_f.json()  if r_f.status_code  == 200 else {}
         contact = nb.get("contact_details", {})

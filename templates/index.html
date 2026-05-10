@@ -6702,11 +6702,12 @@ _bkBadge();
 
   <div id="cmp-results" style="display:none">
     <div id="cmp-header" class="bg-white rounded-2xl shadow p-4 mb-3"></div>
+    <div id="cmp-summary" class="bg-white rounded-2xl shadow p-4 mb-3" style="display:none"></div>
     <div id="cmp-house"  class="bg-white rounded-2xl shadow p-4 mb-3"></div>
     <div id="cmp-affordability" class="bg-white rounded-2xl shadow p-4 mb-3" style="display:none"></div>
     <div id="cmp-crime"  class="bg-white rounded-2xl shadow p-4 mb-3"></div>
     <div id="cmp-schools" class="bg-white rounded-2xl shadow p-4 mb-3"></div>
-    <div id="cmp-summary" class="bg-white rounded-2xl shadow p-4 mb-3" style="display:none"></div>
+    <div id="cmp-pubs"   class="bg-white rounded-2xl shadow p-4 mb-3"></div>
   </div>
 </div>
 
@@ -7773,6 +7774,7 @@ _bkBadge();
       winTag;
 
     if (salary > 0 && (p1 || p2)) {
+
       const takeHome = _calcTakeHome(salary);
       const monthlyTH = Math.round(takeHome / 12);
       const ratio = p => p ? (p / salary).toFixed(1) : null;
@@ -7800,6 +7802,7 @@ _bkBadge();
         affWinTag +
         `<div style="font-size:10px;color:#d1d5db;margin-top:8px">≤5× affordable · 5–8× stretched · 8×+ expensive · mortgage est. assumes 5%, 25yr repayment</div>`;
     }
+    return win;
   }
 
   function _renderCmpCrime(c1, c2, pc1, pc2) {
@@ -7828,31 +7831,30 @@ _bkBadge();
 
   function _renderCmpSchools(l1, l2, pc1, pc2) {
     const sc1 = l1?.schools?.schools || [], sc2 = l2?.schools?.schools || [];
-    const count = arr => arr.length;
-    const outstanding = arr => arr.filter(s => (s.ofsted_rating||"").toLowerCase().startsWith("outstanding")).length;
-    const good = arr => arr.filter(s => (s.ofsted_rating||"").toLowerCase().startsWith("good")).length;
+    // Field is "ofsted" (not "ofsted_rating") from /api/local
+    const outstanding = arr => arr.filter(s => (s.ofsted||"").toLowerCase().startsWith("outstanding")).length;
+    const good        = arr => arr.filter(s => (s.ofsted||"").toLowerCase().startsWith("good")).length;
 
     const os1 = outstanding(sc1), os2 = outstanding(sc2);
     const g1 = good(sc1), g2 = good(sc2);
-    const n1 = count(sc1), n2 = count(sc2);
+    const n1 = sc1.length, n2 = sc2.length;
 
-    // Win logic: more outstanding > more good > more total
     const win = (!n1 && !n2) ? null
       : os1 > os2 ? "left" : os2 > os1 ? "right"
-      : g1 > g2 ? "left" : g2 > g1 ? "right"
-      : n1 > n2 ? "left" : n2 > n1 ? "right" : "tie";
+      : g1  > g2  ? "left" : g2  > g1  ? "right"
+      : n1  > n2  ? "left" : n2  > n1  ? "right" : "tie";
 
-    const winTag = win === "left" ? _winTag(`${pc1} better schools`, "left")
+    const winTag = win === "left"  ? _winTag(`${pc1} better schools`, "left")
                  : win === "right" ? _winTag(`${pc2} better schools`, "right")
-                 : win === "tie" ? `<div style="text-align:center;margin-top:8px;font-size:11px;color:#9ca3af">Similar schools</div>` : "";
+                 : win === "tie"   ? `<div style="text-align:center;margin-top:8px;font-size:11px;color:#9ca3af">Similar schools</div>` : "";
 
-    const schoolRows = (arr) => {
-      const rows = [];
+    const schoolRows = arr => {
       const o = outstanding(arr), g = good(arr), rest = arr.length - o - g;
-      if (o) rows.push(`<div style="font-size:12px;color:#16a34a">⭐ ${o} Outstanding</div>`);
-      if (g) rows.push(`<div style="font-size:12px;color:#2563eb">✓ ${g} Good</div>`);
-      if (rest > 0) rows.push(`<div style="font-size:12px;color:#9ca3af">${rest} other</div>`);
-      return rows.join("");
+      return [
+        o    ? `<div style="font-size:12px;color:#16a34a;margin-top:4px">⭐ ${o} Outstanding</div>` : "",
+        g    ? `<div style="font-size:12px;color:#2563eb;margin-top:2px">✓ ${g} Good</div>` : "",
+        rest ? `<div style="font-size:12px;color:#9ca3af;margin-top:2px">${rest} other</div>` : "",
+      ].join("");
     };
 
     const col1 = n1 ? _big(n1) + _sub("schools within 5km") + schoolRows(sc1) : _big("—") + _sub("No data");
@@ -7862,6 +7864,58 @@ _bkBadge();
       _sectionTitle("🎓", "Schools (5km radius)") +
       _grid(_col(col1, win === "left" ? "left" : null), _col(col2, win === "right" ? "right" : null)) +
       winTag;
+    return win;
+  }
+
+  function _renderCmpPubs(l1, l2, pc1, pc2) {
+    const p1 = l1?.pubs || [], p2 = l2?.pubs || [];
+    const avg = arr => arr.length ? (arr.reduce((s,p) => s + (p.google_rating||0), 0) / arr.filter(p=>p.google_rating).length || 0) : 0;
+    const a1 = avg(p1), a2 = avg(p2);
+    const n1 = p1.length, n2 = p2.length;
+
+    const win = (!n1 && !n2) ? null
+      : a1 > 0 && a2 > 0 ? (a1 > a2 ? "left" : a2 > a1 ? "right" : (n1 > n2 ? "left" : n2 > n1 ? "right" : "tie"))
+      : n1 > n2 ? "left" : n2 > n1 ? "right" : "tie";
+
+    const winTag = win === "left"  ? _winTag(`${pc1} better pub scene`, "left")
+                 : win === "right" ? _winTag(`${pc2} better pub scene`, "right")
+                 : win === "tie"   ? `<div style="text-align:center;margin-top:8px;font-size:11px;color:#9ca3af">Similar pub scene</div>` : "";
+
+    const col = (arr) => {
+      if (!arr.length) return _big("—") + _sub("No pubs found");
+      const rated = arr.filter(p => p.google_rating);
+      const avgR  = rated.length ? (rated.reduce((s,p) => s + p.google_rating, 0) / rated.length).toFixed(1) : null;
+      const top3  = arr.slice(0,3).map(p =>
+        `<div style="font-size:11px;color:#6b7280;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}${p.google_rating ? ` · ★${p.google_rating}` : ""}</div>`
+      ).join("");
+      return _big(arr.length) + _sub(avgR ? `pubs · avg ★${avgR}` : "pubs nearby") + top3;
+    };
+
+    document.getElementById("cmp-pubs").innerHTML =
+      _sectionTitle("🍺", "Pubs (5km radius)") +
+      _grid(_col(col(p1), win === "left" ? "left" : null), _col(col(p2), win === "right" ? "right" : null)) +
+      winTag;
+    return win;
+  }
+
+  function _renderCmpSummary(wins, pc1, pc2) {
+    const score = {left: 0, right: 0};
+    wins.forEach(w => { if (w === "left") score.left++; else if (w === "right") score.right++; });
+    const el = document.getElementById("cmp-summary");
+    if (!score.left && !score.right) { el.style.display = "none"; return; }
+    const overall = score.left > score.right ? "left" : score.right > score.left ? "right" : "tie";
+    const winnerLabel = overall === "left"  ? `${pc1} wins overall (${score.left}–${score.right})`
+                      : overall === "right" ? `${pc2} wins overall (${score.right}–${score.left})`
+                      : `It's a tie (${score.left}–${score.right})`;
+    const col  = overall === "left" ? "#16a34a" : overall === "right" ? "#2563eb" : "#6b7280";
+    const bg   = overall === "left" ? "#f0fdf4" : overall === "right" ? "#eff6ff"  : "#f9fafb";
+    el.style.display = "block";
+    el.innerHTML = `<div style="text-align:center;padding:4px 0">
+      <div style="font-size:13px;font-weight:800;color:${col}">${winnerLabel}</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:4px">Based on price · crime · schools · pubs</div>
+    </div>`;
+    el.style.background = bg;
+    el.style.border = `1.5px solid ${col}33`;
   }
 
   window.searchCompare = async function() {
@@ -7870,14 +7924,9 @@ _bkBadge();
     const salStr = document.getElementById("cmp-salary").value.trim();
     const salary = salStr ? (parseInt(salStr,10) || 0) : 0;
 
-    if (!pc1raw || !pc2raw) {
-      alert("Please enter both postcodes.");
-      return;
-    }
+    if (!pc1raw || !pc2raw) { alert("Please enter both postcodes."); return; }
 
     const pc1 = _fmtPc(pc1raw), pc2 = _fmtPc(pc2raw);
-
-    // Show results
     const res = document.getElementById("cmp-results");
     res.style.display = "block";
     res.scrollIntoView({behavior:"smooth"});
@@ -7900,9 +7949,9 @@ _bkBadge();
     document.getElementById("cmp-house").innerHTML   = _skel("Loading house prices…");
     document.getElementById("cmp-crime").innerHTML   = _skel("Loading crime data…");
     document.getElementById("cmp-schools").innerHTML = _skel("Loading schools…");
+    document.getElementById("cmp-pubs").innerHTML    = _skel("Loading pubs…");
 
     const safe = p => p.catch(() => null);
-
     const hP1 = safe(fetch(`/api/house?postcode=${pc1raw}`).then(r=>r.json()));
     const hP2 = safe(fetch(`/api/house?postcode=${pc2raw}`).then(r=>r.json()));
     const cP1 = safe(fetch(`/api/crime?postcode=${pc1raw}`).then(r=>r.json()));
@@ -7910,9 +7959,23 @@ _bkBadge();
     const lP1 = safe(fetch(`/api/local?postcode=${pc1raw}`).then(r=>r.json()));
     const lP2 = safe(fetch(`/api/local?postcode=${pc2raw}`).then(r=>r.json()));
 
-    Promise.all([hP1, hP2]).then(([h1,h2]) => _renderCmpHouse(h1, h2, pc1, pc2, salary));
-    Promise.all([cP1, cP2]).then(([c1,c2]) => _renderCmpCrime(c1, c2, pc1, pc2));
-    Promise.all([lP1, lP2]).then(([l1,l2]) => _renderCmpSchools(l1, l2, pc1, pc2));
+    const wins = {};
+    Promise.all([hP1, hP2]).then(([h1,h2]) => {
+      const w = _renderCmpHouse(h1, h2, pc1, pc2, salary);
+      wins.price = w; _renderCmpSummary(Object.values(wins), pc1, pc2);
+    });
+    Promise.all([cP1, cP2]).then(([c1,c2]) => {
+      // crime win is "safer" = lower per_month
+      const pm1 = c1?.per_month ?? null, pm2 = c2?.per_month ?? null;
+      wins.crime = pm1 !== null && pm2 !== null ? (pm1 < pm2 ? "left" : pm2 < pm1 ? "right" : "tie") : null;
+      _renderCmpCrime(c1, c2, pc1, pc2);
+      _renderCmpSummary(Object.values(wins), pc1, pc2);
+    });
+    Promise.all([lP1, lP2]).then(([l1,l2]) => {
+      wins.schools = _renderCmpSchools(l1, l2, pc1, pc2);
+      wins.pubs    = _renderCmpPubs(l1, l2, pc1, pc2);
+      _renderCmpSummary(Object.values(wins), pc1, pc2);
+    });
 
     await Promise.allSettled([hP1, hP2, cP1, cP2, lP1, lP2]);
   };

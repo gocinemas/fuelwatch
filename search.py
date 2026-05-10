@@ -356,7 +356,7 @@ def _overpass(query: str) -> list:
 
 # Cache for local amenities keyed by (lat_rounded, lon_rounded)
 _local_cache: dict = {}
-_LOCAL_CACHE_TTL = 3600  # 1 hour
+_LOCAL_CACHE_TTL = 21600  # 6 hours — schools/pubs/cafes don't move hour to hour
 
 # Cache for house prices keyed by normalised postcode
 _house_cache: dict = {}
