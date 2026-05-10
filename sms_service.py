@@ -3168,8 +3168,10 @@ def _fetch_hospitals_overpass(lat, lon, radius_m=10000):
 (
   node["amenity"="hospital"](around:{radius_m},{lat},{lon});
   way["amenity"="hospital"](around:{radius_m},{lat},{lon});
+  relation["amenity"="hospital"](around:{radius_m},{lat},{lon});
   node["amenity"="clinic"](around:{radius_m},{lat},{lon});
   way["amenity"="clinic"](around:{radius_m},{lat},{lon});
+  relation["amenity"="clinic"](around:{radius_m},{lat},{lon});
 );
 out center tags;"""
     try:
@@ -3222,10 +3224,12 @@ def _fetch_supermarkets_overpass(lat, lon, radius_m=5000):
 (
   node["shop"="supermarket"](around:{radius_m},{lat},{lon});
   way["shop"="supermarket"](around:{radius_m},{lat},{lon});
+  relation["shop"="supermarket"](around:{radius_m},{lat},{lon});
   node["shop"="grocery"](around:{radius_m},{lat},{lon});
   way["shop"="grocery"](around:{radius_m},{lat},{lon});
+  relation["shop"="grocery"](around:{radius_m},{lat},{lon});
 );
-out center;
+out center tags;
 """
     try:
         elements = _overpass_mirrors(query)
