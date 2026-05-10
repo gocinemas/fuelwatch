@@ -2416,16 +2416,11 @@ const _ts = new Date(d.timestamp);
   }
 
   function _loadMyArea() {
-    // Auto-load My Area screen using home postcode when available
     const home = MiruLocation.getHome();
     if (home) {
       document.getElementById("myarea-postcode-input").value = home;
       myAreaSearch();
     }
-  }
-
-
-    el.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">No data found for this postcode.</div>';
   }
 
   // ── Navigation sheet ─────────────────────────────────────────────────────────
