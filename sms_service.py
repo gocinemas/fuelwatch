@@ -5648,7 +5648,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             elif "event" in first or "ticket" in first:
                 title = "🎫 Event/Ticket"; img_type = "event"
             elif "billboard" in first or "ad" in first:
-                title = "📢 Billboard/Ad"; img_type = "ad"
+                img_type = "ad"
+                title = "📢 Billboard/Ad"  # updated below once VENUE: tag is parsed
             elif "product" in first:
                 title = "🏷️ Brand"; img_type = "product"
             elif "receipt" in first or "bill" in first:
@@ -5691,6 +5692,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 shop_tag = _line.split(":", 1)[1].strip()
                 if shop_tag.lower() in _BLANK:
                     shop_tag = ""
+        # Use VENUE: brand name in ad/billboard title now that tags are parsed
+        if img_type == "ad" and venue_tag:
+            title = f"📢 {venue_tag[:60]}"
+
         # Upgrade to product type if model returned PRODUCT: lines regardless of classified type
         if product_items and img_type not in ("product",):
             print(f"[vision] upgrading img_type from {img_type!r} to 'product' — {len(product_items)} product(s) found")
@@ -5850,7 +5855,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     # Always prefer the restaurant name extracted from the menu itself
                     if _menu_meta.get("name"):
                         venue_tag = _menu_meta["name"]
-                        title = f"🍽️ {venue_tag} Menu"
+                        _menu_loc = _menu_meta.get("address", "") or location_tag
+                        _menu_loc_short = _menu_loc.split(",")[0].strip() if _menu_loc else ""
+                        title = f"🍽️ {venue_tag} Menu" + (f", {_menu_loc_short}" if _menu_loc_short else "")
                     if _menu_meta.get("name") and not location_tag:
                         location_tag = _menu_meta.get("address", "")
                     # Prepend restaurant info block to menu text
