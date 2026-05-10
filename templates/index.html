@@ -381,7 +381,7 @@
       </button>
 
       <!-- My Area home tile -->
-      <button id="myarea-home-card" onclick="showScreen('report');reportTabSwitch('myarea',document.querySelector('[data-tab=myarea]'));_loadMyArea()"
+      <button id="myarea-home-card" onclick="showScreen('myarea')"
         style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#064e3b 0%,#065f46 60%,#047857 100%);border:none;border-radius:20px;padding:18px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px">
         <div style="font-size:32px;line-height:1;flex-shrink:0">🏡</div>
         <div style="flex:1;min-width:0">
@@ -647,11 +647,6 @@
               <span style="font-size:22px">🏠</span>
               <span class="rptab-lbl">Prices</span>
             </button>
-            <button class="rptab" data-tab="myarea" onclick="reportTabSwitch('myarea',this);_loadMyArea()">
-              <span style="font-size:22px">📍</span>
-              <span class="rptab-lbl">My Area</span>
-              <span id="rptab-loading-myarea" style="display:none;width:7px;height:7px;border-radius:50%;border:2px solid #aaa;border-top-color:var(--accent);animation:spin .7s linear infinite"></span>
-            </button>
             <button class="rptab" data-tab="schools" onclick="reportTabSwitch('schools',this)">
               <span style="font-size:22px">🎓</span>
               <span class="rptab-lbl">Schools</span>
@@ -715,9 +710,6 @@
             </div>
             <div id="rp-panel-shops" style="display:none">
               <div id="report-shops-list" class="text-sm"></div>
-            </div>
-            <div id="rp-panel-myarea" style="display:none">
-              <div id="report-myarea-list" class="text-sm"></div>
             </div>
           </div>
         </div>
@@ -1261,6 +1253,32 @@
 
     </div>
 
+    <!-- ── MY AREA SCREEN ── -->
+    <div id="screen-myarea" class="screen" style="padding:16px 16px 40px;max-width:600px;margin:0 auto">
+      <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px;margin-bottom:4px">🏡 My Area</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Your MP, council, utilities &amp; local services</div>
+
+      <!-- Postcode bar -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input id="myarea-postcode-input" type="text" placeholder="Enter postcode e.g. SE13 5FH"
+          style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;text-transform:uppercase"
+          maxlength="8" autocomplete="off"
+          onkeydown="if(event.key==='Enter') myAreaSearch()">
+        <button onclick="myAreaUseLocation()"
+          style="flex-shrink:0;background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer">📍</button>
+        <button onclick="myAreaSearch()"
+          style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:11px 18px;font-size:13px;font-weight:700;cursor:pointer">Go</button>
+      </div>
+      <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:8px"></div>
+
+      <!-- Loading / error / content -->
+      <div id="myarea-loading" style="display:none;text-align:center;padding:40px 0">
+        <div class="spinner mx-auto mb-3" style="border-top-color:#065f46;width:26px;height:26px"></div>
+        <div style="font-size:13px;color:var(--muted)">Loading your area…</div>
+      </div>
+      <div id="myarea-content"></div>
+    </div>
+
     <!-- ── LIBRARY SCREEN ── -->
     <div id="screen-library" class="screen pt-5">
 
@@ -1543,6 +1561,7 @@
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
+    if (name === "myarea")   { _loadMyArea(); }
     if (name === "finder")   { }
     if (name === "places")   { _placesRefreshHomeRow(); }
     setFooter(name);
@@ -1999,9 +2018,7 @@ const _ts = new Date(d.timestamp);
     document.getElementById("report-rightmove").classList.add("hidden");
     document.getElementById("report-empty").classList.add("hidden");
     document.getElementById("report-error").classList.add("hidden");
-    _myAreaLoaded = false;
-    document.getElementById("report-myarea-list").innerHTML = "";
-    ["schools","pubs","cafes","crime","services","shops","myarea"].forEach(t => {
+    ["schools","pubs","cafes","crime","services","shops"].forEach(t => {
       const b = document.getElementById("rptab-badge-"+t);
       if (b) { b.textContent=""; b.style.display="none"; }
       const l = document.getElementById("rptab-loading-"+t);
@@ -2321,90 +2338,94 @@ const _ts = new Date(d.timestamp);
     if (badge && count > 0) { badge.textContent = count; badge.style.display = "flex"; }
   }
 
-  let _myAreaLoaded = false;
-  function _loadMyArea() {
-    const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"").toUpperCase();
-    if (!postcode || _myAreaLoaded) return;
-    _myAreaLoaded = true;
-    const el = document.getElementById("report-myarea-list");
-    document.getElementById("rptab-loading-myarea").style.display = "inline-block";
-    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Loading your area info…</div>';
-    Promise.all([
-      fetch(`/api/your-area?postcode=${postcode}`).then(r => r.json()).catch(() => ({})),
-      fetch(`/api/mp?postcode=${postcode}`).then(r => r.json()).catch(() => ({})),
-    ])
-      .then(([area, mp]) => renderMyAreaData(area, mp))
-      .catch(() => { el.innerHTML = '<div style="color:var(--muted);font-size:13px">Could not load area info.</div>'; })
-      .finally(() => { document.getElementById("rptab-loading-myarea").style.display = "none"; });
+  // ── My Area screen ────────────────────────────────────────────────────────────
+  function _myAreaRow(icon, label, val, sub, href) {
+    const valHtml = href
+      ? `<a href="${href}" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:none">${val} ↗</a>`
+      : `<span style="font-weight:600;color:var(--text)">${val}</span>`;
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px">
+      <span style="font-size:20px;flex-shrink:0;margin-top:1px">${icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">${label}</div>
+        <div style="font-size:14px">${valHtml}</div>
+        ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">${sub}</div>` : ""}
+      </div>
+    </div>`;
+  }
+  function _myAreaServiceBlock(icon, label, items, limit) {
+    if (!items || !items.length) return "";
+    const list = items.slice(0, limit).map(x => {
+      const dist = x.distance_km ? ` · ${(x.distance_km * 0.621371).toFixed(1)} mi` : "";
+      const phone = x.phone ? ` <a href="tel:${x.phone}" style="color:#2563eb;font-size:11px">${x.phone}</a>` : "";
+      return `<div style="padding:7px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${x.name}<span style="font-weight:400;color:var(--muted);font-size:11px">${dist}</span>${phone}</div>
+        ${x.address ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${x.address}</div>` : ""}
+      </div>`;
+    }).join("");
+    return `<div style="font-weight:700;font-size:13px;color:var(--text);margin:16px 0 6px">${icon} ${label}</div>${list}`;
   }
 
-  function renderMyAreaData(d, mp) {
-    const el = document.getElementById("report-myarea-list");
-    const row = (icon, label, val, sub, href) => {
-      const valHtml = href
-        ? `<a href="${href}" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:none">${val} ↗</a>`
-        : `<span style="font-weight:600;color:var(--text)">${val}</span>`;
-      return `<div style="padding:9px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px">
-        <span style="font-size:18px;flex-shrink:0;margin-top:1px">${icon}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">${label}</div>
-          <div style="font-size:13px">${valHtml}</div>
-          ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${sub}</div>` : ""}
-        </div>
-      </div>`;
-    };
-    const serviceRow = (icon, label, items, limit) => {
-      if (!items || !items.length) return "";
-      const list = items.slice(0, limit).map(x => {
-        const dist = x.distance_km ? ` · ${(x.distance_km * 0.621371).toFixed(1)} mi` : "";
-        const phone = x.phone ? ` <a href="tel:${x.phone}" style="color:#2563eb;font-size:11px">${x.phone}</a>` : "";
-        return `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${x.name}<span style="font-weight:400;color:var(--muted);font-size:11px">${dist}</span>${phone}</div>
-          ${x.address ? `<div style="font-size:11px;color:var(--muted)">${x.address}</div>` : ""}
-        </div>`;
-      }).join("");
-      return `<div style="font-weight:700;font-size:13px;color:var(--text);margin:14px 0 6px">${icon} ${label}</div>${list}`;
-    };
-
-    let html = "";
-
-    // MP
+  function _renderMyAreaContent(area, mp) {
+    const el = document.getElementById("myarea-content");
+    let html = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:4px 14px 4px">';
     if (mp && mp.name && !mp.error) {
-      const mpSubs = [];
-      if (mp.party) mpSubs.push(mp.party);
-      if (mp.constituency) mpSubs.push(mp.constituency);
-      const mpContacts = [];
-      if (mp.email) mpContacts.push(`<a href="mailto:${mp.email}" style="color:#2563eb">${mp.email}</a>`);
-      if (mp.phone) mpContacts.push(`<a href="tel:${mp.phone}" style="color:#2563eb">${mp.phone}</a>`);
-      const sub = [...mpSubs.map(s => `<span>${s}</span>`), ...mpContacts].join(" · ");
-      html += row("🏛️", "Your MP", mp.name, sub, mp.parliament_url || null);
+      const subs = [];
+      if (mp.party) subs.push(mp.party);
+      if (mp.constituency) subs.push(mp.constituency);
+      const contacts = [];
+      if (mp.email) contacts.push(`<a href="mailto:${mp.email}" style="color:#2563eb">${mp.email}</a>`);
+      if (mp.phone) contacts.push(`<a href="tel:${mp.phone}" style="color:#2563eb">${mp.phone}</a>`);
+      const sub = [...subs.map(s=>`<span>${s}</span>`), ...contacts].join(" · ");
+      html += _myAreaRow("🏛️", "Your MP", mp.name, sub, mp.parliament_url || null);
     }
+    if (area.council?.name) html += _myAreaRow("🏢", "Your Council", area.council.name, null, area.council.website || null);
+    if (area.water?.name) html += _myAreaRow("💧", "Water Company", area.water.name, `Emergency: <a href="tel:${area.water.emergency}" style="color:#2563eb">${area.water.emergency}</a>`, `https://${area.water.website}`);
+    if (area.gas?.name)   html += _myAreaRow("🔥", "Gas Network",   area.gas.name,   `Gas leak: <a href="tel:${area.gas.emergency}" style="color:#dc2626;font-weight:700">${area.gas.emergency}</a>`, `https://${area.gas.website}`);
+    html += '</div>';
+    html += _myAreaServiceBlock("🩺", "Nearest GP Surgeries", area.gps, 4);
+    html += _myAreaServiceBlock("💊", "Nearest Pharmacies", area.pharmacies, 3);
+    html += _myAreaServiceBlock("📮", "Post Offices", area.post_offices, 2);
+    el.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">No data found for this postcode.</div>';
+  }
 
-    // Council
-    if (d.council?.name) {
-      html += row("🏢", "Your Council", d.council.name, null, d.council.website || null);
+  function myAreaSearch() {
+    const raw = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
+    if (!raw) return;
+    const pc = raw.replace(/\s+/g,"");
+    document.getElementById("myarea-loading").style.display = "block";
+    document.getElementById("myarea-content").innerHTML = "";
+    Promise.all([
+      fetch(`/api/your-area?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
+      fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
+    ]).then(([area, mp]) => {
+      document.getElementById("myarea-loading").style.display = "none";
+      _renderMyAreaContent(area, mp);
+    }).catch(() => {
+      document.getElementById("myarea-loading").style.display = "none";
+      document.getElementById("myarea-content").innerHTML = '<div style="color:#ef4444;font-size:13px">Could not load area info — try again.</div>';
+    });
+  }
+
+  function myAreaUseLocation() {
+    const btn = document.querySelector("#screen-myarea button[onclick=\"myAreaUseLocation()\"]");
+    const errEl = document.getElementById("myarea-loc-err");
+    errEl.style.display = "none";
+    MiruLocation.request(btn || document.createElement("button"), loc => {
+      if (!loc.postcode) { errEl.textContent = "Location found — enter postcode manually."; errEl.style.display = "block"; return; }
+      document.getElementById("myarea-postcode-input").value = loc.postcode;
+      myAreaSearch();
+    }, msg => { errEl.textContent = msg; errEl.style.display = "block"; });
+  }
+
+  function _loadMyArea() {
+    // Auto-load My Area screen using home postcode when available
+    const home = MiruLocation.getHome();
+    if (home) {
+      document.getElementById("myarea-postcode-input").value = home;
+      myAreaSearch();
     }
+  }
 
-    // Water
-    if (d.water?.name) {
-      const sub = `Emergency: <a href="tel:${d.water.emergency}" style="color:#2563eb">${d.water.emergency}</a>`;
-      html += row("💧", "Water Company", d.water.name, sub, `https://${d.water.website}`);
-    }
-
-    // Gas
-    if (d.gas?.name) {
-      const sub = `Gas leak: <a href="tel:${d.gas.emergency}" style="color:#dc2626;font-weight:700">${d.gas.emergency}</a>`;
-      html += row("🔥", "Gas Network", d.gas.name, sub, `https://${d.gas.website}`);
-    }
-
-    // GPs
-    html += serviceRow("🩺", "Nearest GP Surgeries", d.gps, 4);
-
-    // Pharmacies
-    html += serviceRow("💊", "Nearest Pharmacies", d.pharmacies, 3);
-
-    // Post offices
-    html += serviceRow("📮", "Post Offices", d.post_offices, 2);
 
     el.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">No data found for this postcode.</div>';
   }
