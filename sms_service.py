@@ -2223,18 +2223,21 @@ def _fetch_dc_elected(council_slug: str, ward_name: str, election_date: str) -> 
         return []
 
 
+_COUNCILLOR_TTL_DAYS = 90  # re-fetch after 90 days to catch by-elections
+
 def _councillor_row(name: str, party: str, email: str, photo_url: str, profile_url: str,
                     ward_gss: str, ward: str, council: str, election_date: str) -> dict:
     return {
-        "ward_gss":          ward_gss,
-        "ward":              ward,
-        "council":           council,
-        "name":              name,
-        "party":             party,
-        "email":             email,
-        "photo_url":         photo_url,
+        "ward_gss":            ward_gss,
+        "ward":                ward,
+        "council":             council,
+        "name":                name,
+        "party":               party,
+        "email":               email,
+        "photo_url":           photo_url,
         "council_profile_url": profile_url,
-        "elected_date":      election_date,
+        "elected_date":        election_date,
+        "fetched_at":          datetime.utcnow().isoformat(),
     }
 
 
@@ -2253,14 +2256,21 @@ def _upsert_councillors(rows: list) -> int:
 
 
 def _get_councillors_for_ward(ward_gss: str) -> list:
-    """Fetch councillors for a ward — DB first, DC API fallback."""
+    """Return DB councillors for a ward if present and fetched within TTL, else [] to trigger re-fetch."""
     try:
         rows = lib._sb().table("councillors").select("*").eq("ward_gss", ward_gss).execute().data
-        if rows:
-            return rows
+        if not rows:
+            return []
+        # Check freshness — use the oldest fetched_at in the set
+        cutoff = datetime.utcnow().isoformat()[:10]  # today as YYYY-MM-DD
+        from datetime import timedelta
+        threshold = (datetime.utcnow() - timedelta(days=_COUNCILLOR_TTL_DAYS)).isoformat()
+        oldest = min((r.get("fetched_at") or "1970-01-01" for r in rows))
+        if oldest < threshold:
+            return []  # stale — fall through to DC API re-fetch
+        return rows
     except Exception:
-        pass
-    return []
+        return []
 
 
 _pc_meta_cache: dict = {}  # postcode → postcodes.io result dict, cached indefinitely (ward boundaries stable)
