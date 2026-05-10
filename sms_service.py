@@ -3217,26 +3217,7 @@ out center tags;"""
         return []
 
 def _fetch_hospitals(lat, lon):
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=2) as ex:
-        gp_f  = ex.submit(_places_nearby, lat, lon, "hospital", 15000, 6)
-        osm_f = ex.submit(_fetch_hospitals_overpass, lat, lon)
-        try: gp_items  = gp_f.result(timeout=12)  or []
-        except Exception: gp_items = []
-        try: osm_items = osm_f.result(timeout=18) or []
-        except Exception: osm_items = []
-    for h in gp_items:
-        h.pop("place_id", None)
-        h["phone"] = ""
-    # Merge: build dict keyed by name prefix, keeping the closer result
-    merged = {h["name"].lower()[:12]: h for h in osm_items}
-    for h in gp_items:
-        key = h["name"].lower()[:12]
-        existing = merged.get(key)
-        if not existing or h.get("distance_km", 999) < existing.get("distance_km", 999):
-            merged[key] = h
-    result = sorted(merged.values(), key=lambda x: x.get("distance_km", 999))
-    return result[:4]
+    return _fetch_hospitals_overpass(lat, lon)
 
 _UK_SUPERMARKET_CHAINS = {
     "sainsbury", "tesco", "asda", "lidl", "aldi", "waitrose", "morrisons",
@@ -3279,8 +3260,7 @@ out center tags;
 
 def _fetch_supermarkets(lat, lon):
     # Overpass-only: Google Places returns incorrect UK supermarket results
-    items = _fetch_supermarkets_overpass(lat, lon)
-    return items
+    return _fetch_supermarkets_overpass(lat, lon, radius_m=16000)  # ~10 miles
 
 
 def _fetch_police_contact(lat, lon):
@@ -3318,6 +3298,157 @@ def _latlon_for_postcode(postcode):
     if result:
         return result
     return None, None
+
+
+# ── Your Area ─────────────────────────────────────────────────────────────────
+
+_WATER_MAP = [
+    # (postcode_prefixes, company, phone, website)
+    ({"SW","SE","E","EC","N","NW","W","WC","TW","KT","BR","CR","DA","IG","RM","EN","HA","UB","SL","RG","OX","HP","MK"},
+     "Thames Water", "0800 316 9800", "thameswater.co.uk"),
+    ({"ME","TN","CT","BN","RH","GU","SO","PO"},
+     "Southern Water", "0330 303 0277", "southernwater.co.uk"),
+    ({"KT","SM","CR","GU"},
+     "South East Water", "0333 000 0002", "southeastwater.co.uk"),
+    ({"IP","NR","PE","CB","CO","SS","CM","NN","LU","SG","AL"},
+     "Anglian Water", "03457 145 145", "anglianwater.co.uk"),
+    ({"B","CV","DE","LE","NG","NN","ST","WS","WV","DY","WR","GL","HR","SY"},
+     "Severn Trent", "0800 783 4444", "stwater.co.uk"),
+    ({"CA","LA","FY","PR","BB","BL","OL","SK","CW","WA","WN","L","M","CH"},
+     "United Utilities", "0345 672 3723", "unitedutilities.com"),
+    ({"BD","HD","HG","HU","HX","LS","S","DN","WF","YO","LN"},
+     "Yorkshire Water", "0345 124 2424", "yorkshirewater.com"),
+    ({"NE","SR","DH","DL","TS"},
+     "Northumbrian Water", "0345 717 1100", "nwater.com"),
+    ({"EH","FK","G","IV","KA","KW","ML","PA","PH","TD","AB","DD","KY"},
+     "Scottish Water", "0800 077 8778", "scottishwater.co.uk"),
+    ({"CF","NP","SA","LD","LL","SY","HR"},
+     "Dŵr Cymru Welsh Water", "0800 052 0145", "dwrcymru.com"),
+    ({"BA","BS","DT","EX","GL","PL","TA","TQ","TR","BH"},
+     "South West Water", "0344 346 2020", "southwestwater.co.uk"),
+]
+
+_GAS_MAP = [
+    ({"EH","FK","G","IV","KA","KW","ML","PA","PH","TD","AB","DD","KY",
+       "GU","SO","PO","BN","RH","TN","CT","ME","KT","CR","SM","DA"},
+     "SGN", "0800 111 999", "sgn.co.uk"),
+    ({"CA","LA","FY","PR","BB","BL","OL","SK","WA","WN","CH","M","L","CW"},
+     "Cadent (North West)", "0800 111 999", "cadentgas.com"),
+    ({"NE","SR","DH","DL","TS","BD","HD","HG","HX","LS","S","DN","WF","YO","LN","HU"},
+     "Northern Gas Networks", "0800 111 999", "northerngasnetworks.co.uk"),
+    ({"CF","NP","SA","LD","LL","BA","BS","DT","EX","PL","TA","TQ","TR","BH","GL","HR"},
+     "Wales & West Utilities", "0800 111 999", "wwutilities.co.uk"),
+]
+_CADENT_DEFAULT = ("Cadent", "0800 111 999", "cadentgas.com")
+
+def _lookup_utility(pc_area: str, mapping: list, default: tuple) -> dict:
+    for prefixes, name, phone, web in mapping:
+        if pc_area in prefixes:
+            return {"name": name, "emergency": phone, "website": web}
+    n, p, w = default
+    return {"name": n, "emergency": p, "website": w}
+
+def _postcode_area(postcode: str) -> str:
+    """Extract letter-only prefix e.g. 'SE' from 'SE135FH'."""
+    import re as _re
+    m = _re.match(r'^([A-Z]{1,2})', postcode.upper().replace(" ", ""))
+    return m.group(1) if m else ""
+
+def _fetch_gps_overpass(lat, lon, radius_m=1500):
+    query = f"""[out:json][timeout:12];
+(node["amenity"="doctors"](around:{radius_m},{lat},{lon});
+ way["amenity"="doctors"](around:{radius_m},{lat},{lon}););
+out center tags;"""
+    try:
+        els = _overpass_mirrors(query)
+        items = []
+        for e in els:
+            tags = e.get("tags", {}); name = tags.get("name", "")
+            if not name: continue
+            elat, elon = _el_coords(e)
+            if not elat: continue
+            dist = round(haversine_km(lat, lon, elat, elon), 2)
+            items.append({"name": name, "address": _el_address(tags),
+                          "phone": _el_phone(tags), "distance_km": dist})
+        items.sort(key=lambda x: x["distance_km"])
+        return items[:5]
+    except Exception: return []
+
+def _fetch_amenity_overpass(lat, lon, amenity, radius_m=2000, limit=3):
+    query = f"""[out:json][timeout:12];
+(node["amenity"="{amenity}"](around:{radius_m},{lat},{lon});
+ way["amenity"="{amenity}"](around:{radius_m},{lat},{lon}););
+out center tags;"""
+    try:
+        els = _overpass_mirrors(query)
+        items = []
+        for e in els:
+            tags = e.get("tags", {}); name = tags.get("name", amenity.replace("_", " ").title())
+            elat, elon = _el_coords(e)
+            if not elat: continue
+            dist = round(haversine_km(lat, lon, elat, elon), 2)
+            items.append({"name": name, "address": _el_address(tags),
+                          "phone": _el_phone(tags), "distance_km": dist})
+        items.sort(key=lambda x: x["distance_km"])
+        return items[:limit]
+    except Exception: return []
+
+_your_area_cache: dict = {}
+_YOUR_AREA_TTL = 43200  # 12 hours
+
+@app.route("/api/your-area")
+def api_your_area():
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+    cache_key = f"your-area:{postcode}"
+    hit = _your_area_cache.get(cache_key)
+    if hit and time.time() - hit["ts"] < _YOUR_AREA_TTL:
+        return jsonify(hit["data"])
+    try:
+        lat, lon = _latlon_for_postcode(postcode)
+        if lat is None:
+            return jsonify({"error": "Postcode not found"}), 404
+
+        # Postcode metadata from postcodes.io
+        pc_info = {}
+        try:
+            r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=5)
+            if r.status_code == 200:
+                pc_info = r.json().get("result", {})
+        except Exception: pass
+
+        council_name    = pc_info.get("admin_district", "")
+        council_website = ""
+        if council_name:
+            slug = council_name.lower().replace(" ", "").replace("london borough of", "").replace("city of", "").strip()
+            council_website = f"https://www.{slug}.gov.uk"
+
+        pc_area = _postcode_area(postcode)
+        water = _lookup_utility(pc_area, _WATER_MAP, ("Thames Water", "0800 316 9800", "thameswater.co.uk"))
+        gas   = _lookup_utility(pc_area, _GAS_MAP, _CADENT_DEFAULT)
+
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            gps_f      = ex.submit(_fetch_gps_overpass, lat, lon)
+            pharmacy_f = ex.submit(_fetch_amenity_overpass, lat, lon, "pharmacy", 1500, 3)
+            postoff_f  = ex.submit(_fetch_amenity_overpass, lat, lon, "post_office", 2000, 2)
+            gps        = gps_f.result(timeout=18)
+            pharmacies = pharmacy_f.result(timeout=18)
+            post_offices = postoff_f.result(timeout=18)
+
+        result = {
+            "council":      {"name": council_name, "website": council_website},
+            "water":        water,
+            "gas":          gas,
+            "gps":          gps,
+            "pharmacies":   pharmacies,
+            "post_offices": post_offices,
+        }
+        if any([gps, pharmacies, post_offices]):
+            _your_area_cache[cache_key] = {"data": result, "ts": time.time()}
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/services")
@@ -5456,10 +5587,12 @@ _TOKEN_TO_NUMBER: dict  = {}  # token -> from_number, populated as users interac
 _MENU_SESSION:   dict  = {}  # from_number -> {save_id, expires, page_count} for multi-photo menus
 
 def _wa_user_token(from_number: str) -> str:
-    """Stable per-user token derived from phone number + server secret."""
+    """Stable per-user token derived from phone number + server secret.
+    Normalises out 'whatsapp:' prefix so web-app phone login matches WhatsApp DB records."""
     secret = os.environ.get("DIGEST_TOKEN", "miru-secret")
-    token = hmac.new(secret.encode(), from_number.encode(), hashlib.sha256).hexdigest()[:20]
-    _TOKEN_TO_NUMBER[token] = from_number
+    normalized = from_number.replace("whatsapp:", "").strip()
+    token = hmac.new(secret.encode(), normalized.encode(), hashlib.sha256).hexdigest()[:20]
+    _TOKEN_TO_NUMBER[token] = from_number  # store original (incl. whatsapp:) for DB queries
     return token
 
 def _resolve_user_token(token: str):

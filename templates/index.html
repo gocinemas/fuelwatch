@@ -654,6 +654,11 @@
               <span id="rptab-badge-services" class="rptab-badge" style="display:none"></span>
               <span id="rptab-loading-services" style="display:none;width:7px;height:7px;border-radius:50%;border:2px solid #aaa;border-top-color:var(--accent);animation:spin .7s linear infinite"></span>
             </button>
+            <button class="rptab" data-tab="myarea" onclick="reportTabSwitch('myarea',this);_loadMyArea()">
+              <span style="font-size:22px">📍</span>
+              <span class="rptab-lbl">My Area</span>
+              <span id="rptab-loading-myarea" style="display:none;width:7px;height:7px;border-radius:50%;border:2px solid #aaa;border-top-color:var(--accent);animation:spin .7s linear infinite"></span>
+            </button>
           </div>
 
           <!-- Content panels -->
@@ -685,6 +690,9 @@
             </div>
             <div id="rp-panel-shops" style="display:none">
               <div id="report-shops-list" class="text-sm"></div>
+            </div>
+            <div id="rp-panel-myarea" style="display:none">
+              <div id="report-myarea-list" class="text-sm"></div>
             </div>
           </div>
         </div>
@@ -1848,7 +1856,9 @@ const _ts = new Date(d.timestamp);
     document.getElementById("report-rightmove").classList.add("hidden");
     document.getElementById("report-empty").classList.add("hidden");
     document.getElementById("report-error").classList.add("hidden");
-    ["schools","pubs","cafes","crime","services","shops"].forEach(t => {
+    _myAreaLoaded = false;
+    document.getElementById("report-myarea-list").innerHTML = "";
+    ["schools","pubs","cafes","crime","services","shops","myarea"].forEach(t => {
       const b = document.getElementById("rptab-badge-"+t);
       if (b) { b.textContent=""; b.style.display="none"; }
       const l = document.getElementById("rptab-loading-"+t);
@@ -2166,6 +2176,80 @@ const _ts = new Date(d.timestamp);
     const count = d.supermarkets?.length || 0;
     const badge = document.getElementById("rptab-badge-shops");
     if (badge && count > 0) { badge.textContent = count; badge.style.display = "flex"; }
+  }
+
+  let _myAreaLoaded = false;
+  function _loadMyArea() {
+    const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"").toUpperCase();
+    if (!postcode || _myAreaLoaded) return;
+    _myAreaLoaded = true;
+    const el = document.getElementById("report-myarea-list");
+    document.getElementById("rptab-loading-myarea").style.display = "inline-block";
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Loading your area info…</div>';
+    fetch(`/api/your-area?postcode=${postcode}`)
+      .then(r => r.json())
+      .then(d => renderMyAreaData(d))
+      .catch(() => { el.innerHTML = '<div style="color:var(--muted);font-size:13px">Could not load area info.</div>'; })
+      .finally(() => { document.getElementById("rptab-loading-myarea").style.display = "none"; });
+  }
+
+  function renderMyAreaData(d) {
+    const el = document.getElementById("report-myarea-list");
+    const row = (icon, label, val, sub, href) => {
+      const valHtml = href
+        ? `<a href="${href}" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:none">${val} ↗</a>`
+        : `<span style="font-weight:600;color:var(--text)">${val}</span>`;
+      return `<div style="padding:9px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:18px;flex-shrink:0;margin-top:1px">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px">${label}</div>
+          <div style="font-size:13px">${valHtml}</div>
+          ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${sub}</div>` : ""}
+        </div>
+      </div>`;
+    };
+    const serviceRow = (icon, label, items, limit) => {
+      if (!items || !items.length) return "";
+      const list = items.slice(0, limit).map(x => {
+        const dist = x.distance_km ? ` · ${(x.distance_km * 0.621371).toFixed(1)} mi` : "";
+        const phone = x.phone ? ` <a href="tel:${x.phone}" style="color:#2563eb;font-size:11px">${x.phone}</a>` : "";
+        return `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${x.name}<span style="font-weight:400;color:var(--muted);font-size:11px">${dist}</span>${phone}</div>
+          ${x.address ? `<div style="font-size:11px;color:var(--muted)">${x.address}</div>` : ""}
+        </div>`;
+      }).join("");
+      return `<div style="font-weight:700;font-size:13px;color:var(--text);margin:14px 0 6px">${icon} ${label}</div>${list}`;
+    };
+
+    let html = "";
+
+    // Council
+    if (d.council?.name) {
+      html += row("🏛️", "Your Council", d.council.name, null, d.council.website || null);
+    }
+
+    // Water
+    if (d.water?.name) {
+      const sub = `Emergency: <a href="tel:${d.water.emergency}" style="color:#2563eb">${d.water.emergency}</a>`;
+      html += row("💧", "Water Company", d.water.name, sub, `https://${d.water.website}`);
+    }
+
+    // Gas
+    if (d.gas?.name) {
+      const sub = `Gas leak: <a href="tel:${d.gas.emergency}" style="color:#dc2626;font-weight:700">${d.gas.emergency}</a>`;
+      html += row("🔥", "Gas Network", d.gas.name, sub, `https://${d.gas.website}`);
+    }
+
+    // GPs
+    html += serviceRow("🩺", "Nearest GP Surgeries", d.gps, 4);
+
+    // Pharmacies
+    html += serviceRow("💊", "Nearest Pharmacies", d.pharmacies, 3);
+
+    // Post offices
+    html += serviceRow("📮", "Post Offices", d.post_offices, 2);
+
+    el.innerHTML = html || '<div style="color:var(--muted);font-size:13px;padding:8px 0">No data found for this postcode.</div>';
   }
 
   // ── Navigation sheet ─────────────────────────────────────────────────────────
