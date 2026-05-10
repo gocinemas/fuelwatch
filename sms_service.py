@@ -2356,19 +2356,39 @@ def api_councillor():
         return jsonify({"error": str(e)}), 500
 
 
-# ── MP cache ──────────────────────────────────────────────────────────────────
-# Parliament API is capped at 20/page with 650 total MPs. We fetch all once,
-# build a constituency_name→mp_data dict, and cache it for 24h.
+# ── MP data — Supabase-backed ──────────────────────────────────────────────────
+# All 650 MPs stored in `mps` Supabase table (seeded once from Parliament API).
+# Contacts fetched lazily per MP and stored so subsequent lookups need no
+# external API calls. Refresh via /api/mp/refresh?token=<DIGEST_TOKEN>.
 import threading as _threading
 
-_mp_cache: dict = {}
-_mp_cache_time: float = 0.0
-_mp_cache_lock = _threading.Lock()
-_MP_CACHE_TTL = 86400  # 24 hours
+_mp_mem: dict = {}          # in-memory dict loaded from DB on startup
+_mp_mem_lock = _threading.Lock()
 
 
-def _fetch_all_mps() -> dict:
-    cache: dict = {}
+def _fetch_contacts(mp_id: int) -> dict:
+    """Fetch contact details for one MP from Parliament API."""
+    email = phone = website = twitter = ""
+    try:
+        cr = requests.get(
+            f"https://members-api.parliament.uk/api/Members/{mp_id}/Contact",
+            headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
+            timeout=8,
+        )
+        if cr.ok:
+            for c in cr.json().get("value", []):
+                if not email   and c.get("email"):                              email   = c["email"]
+                if not phone   and c.get("phone"):                              phone   = c["phone"]
+                if not website and (c.get("line1") or "").startswith("http"):   website = c["line1"]
+                if not twitter and "twitter" in (c.get("type") or "").lower():  twitter = c.get("line1", "").lstrip("@")
+    except Exception:
+        pass
+    return {"email": email, "phone": phone, "website": website, "twitter": twitter}
+
+
+def _seed_mps_to_db() -> int:
+    """Paginate Parliament Members API and bulk-insert all MPs into Supabase. Returns count."""
+    rows = []
     skip = 0
     while True:
         try:
@@ -2384,46 +2404,76 @@ def _fetch_all_mps() -> dict:
             if not items:
                 break
             for item in items:
-                v = item.get("value", {})
+                v   = item.get("value", {})
                 mem = v.get("latestHouseMembership") or {}
                 seat = mem.get("membershipFrom", "")
-                if seat:
-                    cache[seat.lower()] = {
-                        "mp_id":        v.get("id"),
-                        "name":         v.get("nameDisplayAs", ""),
-                        "party":        (v.get("latestParty") or {}).get("name", ""),
-                        "photo_url":    v.get("thumbnailUrl", ""),
-                        "constituency": seat,
-                    }
+                mp_id = v.get("id")
+                if not seat or not mp_id:
+                    continue
+                rows.append({
+                    "constituency":      seat.lower(),
+                    "mp_id":             mp_id,
+                    "name":              v.get("nameDisplayAs", ""),
+                    "party":             (v.get("latestParty") or {}).get("name", ""),
+                    "photo_url":         v.get("thumbnailUrl", ""),
+                    "parliament_url":    f"https://members.parliament.uk/member/{mp_id}/contact",
+                    "email":             "",
+                    "phone":             "",
+                    "website":           "",
+                    "twitter":           "",
+                    "contacts_fetched":  False,
+                })
             skip += len(items)
             if len(items) < 20:
                 break
         except Exception as e:
-            print(f"[mp_cache] skip={skip}: {e}")
+            print(f"[mp_seed] skip={skip}: {e}")
             break
-    print(f"[mp_cache] built {len(cache)} entries")
-    return cache
+
+    if rows:
+        # Upsert in batches of 100
+        sb = lib._sb()
+        for i in range(0, len(rows), 100):
+            sb.table("mps").upsert(rows[i:i+100]).execute()
+        print(f"[mp_seed] seeded {len(rows)} MPs to Supabase")
+    return len(rows)
 
 
-def _get_mp_cache() -> dict:
-    global _mp_cache, _mp_cache_time
-    with _mp_cache_lock:
-        if _mp_cache and time.time() - _mp_cache_time < _MP_CACHE_TTL:
-            return _mp_cache
-    cache = _fetch_all_mps()
-    with _mp_cache_lock:
-        _mp_cache = cache
-        _mp_cache_time = time.time()
-    return cache
+def _load_mp_mem() -> dict:
+    """Load all MPs from Supabase into memory dict keyed by lowercase constituency."""
+    try:
+        rows = lib._sb().table("mps").select("*").execute().data or []
+        return {r["constituency"]: r for r in rows}
+    except Exception as e:
+        print(f"[mp_mem] load error: {e}")
+        return {}
 
 
-# Pre-warm cache in background so first user request is instant
-_threading.Thread(target=_get_mp_cache, daemon=True).start()
+def _init_mp_cache():
+    """Startup: load from DB; if empty, seed from Parliament API first."""
+    global _mp_mem
+    mem = _load_mp_mem()
+    if not mem:
+        print("[mp_mem] DB empty — seeding from Parliament API...")
+        _seed_mps_to_db()
+        mem = _load_mp_mem()
+    with _mp_mem_lock:
+        _mp_mem = mem
+    print(f"[mp_mem] loaded {len(mem)} MPs into memory")
+
+
+def _get_mp_mem() -> dict:
+    with _mp_mem_lock:
+        return _mp_mem
+
+
+# Pre-warm on startup
+_threading.Thread(target=_init_mp_cache, daemon=True).start()
 
 
 @app.route("/api/mp")
 def api_mp():
-    """Return current MP for a postcode. Uses a cached index of all 650 MPs."""
+    """Return current MP for a postcode. Pure DB lookup after initial seed."""
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
@@ -2437,46 +2487,55 @@ def api_mp():
         if not constituency:
             return jsonify({"error": "No constituency found for this postcode"})
 
-        # Step 2: exact lookup in cached constituency→MP index
-        cache = _get_mp_cache()
-        mp_data = cache.get(constituency.lower())
-        if not mp_data:
+        # Step 2: memory dict lookup (loaded from Supabase)
+        mem = _get_mp_mem()
+        row = mem.get(constituency.lower())
+        if not row:
             return jsonify({"error": f"No MP found for {constituency}"})
 
-        mp_id   = mp_data["mp_id"]
-        party   = mp_data["party"]
-
-        # Step 3: fetch contact details (email, phone, twitter)
-        email = phone = website = twitter = ""
-        try:
-            cr = requests.get(
-                f"https://members-api.parliament.uk/api/Members/{mp_id}/Contact",
-                headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
-                timeout=8,
-            )
-            if cr.ok:
-                for c in cr.json().get("value", []):
-                    if not email   and c.get("email"):                              email   = c["email"]
-                    if not phone   and c.get("phone"):                              phone   = c["phone"]
-                    if not website and (c.get("line1") or "").startswith("http"):   website = c["line1"]
-                    if not twitter and "twitter" in (c.get("type") or "").lower():  twitter = c.get("line1", "").lstrip("@")
-        except Exception:
-            pass
+        # Step 3: fetch contacts lazily if not yet stored
+        if not row.get("contacts_fetched"):
+            contacts = _fetch_contacts(row["mp_id"])
+            try:
+                lib._sb().table("mps").update({**contacts, "contacts_fetched": True}) \
+                    .eq("constituency", constituency.lower()).execute()
+                row = {**row, **contacts, "contacts_fetched": True}
+                with _mp_mem_lock:
+                    _mp_mem[constituency.lower()] = row
+            except Exception:
+                pass
 
         return jsonify({
-            "name":           mp_data["name"],
-            "party":          party,
-            "constituency":   mp_data["constituency"],
-            "photo_url":      mp_data["photo_url"],
-            "email":          email,
-            "phone":          phone,
-            "website":        website,
-            "twitter":        twitter,
-            "parliament_url": f"https://members.parliament.uk/member/{mp_id}/contact",
+            "name":           row["name"],
+            "party":          row["party"],
+            "constituency":   row["constituency"],
+            "photo_url":      row["photo_url"],
+            "email":          row.get("email", ""),
+            "phone":          row.get("phone", ""),
+            "website":        row.get("website", ""),
+            "twitter":        row.get("twitter", ""),
+            "parliament_url": row["parliament_url"],
         })
     except Exception as e:
         print(f"[mp] {e}")
         return jsonify({"error": "Could not fetch MP data"}), 500
+
+
+@app.route("/api/mp/refresh")
+def api_mp_refresh():
+    """Re-seed MP table from Parliament API (use after a by-election)."""
+    token = request.args.get("token", "")
+    if token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "Forbidden"}), 403
+    def _do_refresh():
+        global _mp_mem
+        count = _seed_mps_to_db()
+        mem = _load_mp_mem()
+        with _mp_mem_lock:
+            _mp_mem = mem
+        print(f"[mp_refresh] done — {count} MPs")
+    _threading.Thread(target=_do_refresh, daemon=True).start()
+    return jsonify({"status": "refresh started"})
 
 
 @app.route("/api/elections/sync-councillors", methods=["POST"])
