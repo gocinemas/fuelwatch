@@ -934,9 +934,9 @@
             <div id="co-strategy-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
           <!-- Rivals from brand API -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-top:12px">
+          <div id="brand-rivals-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-top:12px">
             <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">⚔️ Closest Competitors</div>
-            <div id="brand-competitors-el"><div style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">Loading competitors…</div></div>
+            <div id="brand-competitors-el"></div>
           </div>
         </div>
 
@@ -2184,12 +2184,16 @@ const _ts = new Date(d.timestamp);
       _setIntelTab("campaigns", hasCampaigns);
 
       // Intel tab: hide rivals section if no competitors
-      const rivalBox = document.getElementById("brand-competitors-el");
-      if (rivalBox) {
-        const hasRivals = br.competitors && br.competitors.length > 0;
-        const rivalWrap = rivalBox.closest('div[style*="border-radius:20px"]');
-        if (rivalWrap) rivalWrap.style.display = hasRivals ? "" : "none";
-      }
+      const hasRivals = br.competitors && br.competitors.length > 0;
+      const rivalWrap = document.getElementById("brand-rivals-wrap");
+      if (rivalWrap) rivalWrap.style.display = hasRivals ? "" : "none";
+
+      // Hide Intel tab entirely if nothing in it
+      const hasIntel = hasRivals ||
+        (co.ai_news && co.ai_news.length > 0) ||
+        (co.strategy && co.strategy.length > 0) ||
+        co.featured;
+      _setIntelTab("intel", hasIntel);
 
       // Auto-select first visible tab
       const firstVisible = _INTEL_TABS.find(t => {
