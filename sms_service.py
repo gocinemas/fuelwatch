@@ -3378,20 +3378,32 @@ def api_shops():
         if lat is None:
             return jsonify({"error": "Postcode not found"}), 404
         if debug:
+            # Full query including relations — same as production
             q = f"""[out:json][timeout:25];
 (node["shop"="supermarket"](around:5000,{lat},{lon});
-way["shop"="supermarket"](around:5000,{lat},{lon}););out center;"""
+way["shop"="supermarket"](around:5000,{lat},{lon});
+relation["shop"="supermarket"](around:5000,{lat},{lon});
+);out center tags;"""
             dbg = {"lat": lat, "lon": lon, "overpass_urls": {}}
             for url in _OVERPASS_URLS:
                 try:
-                    r = requests.post(url, data={"data": q}, timeout=12)
+                    r = requests.post(url, data={"data": q}, timeout=20)
                     els = r.json().get("elements", []) if r.status_code == 200 else []
-                    names = [e.get("tags", {}).get("name", "?") for e in els[:10]]
-                    dbg["overpass_urls"][url] = {"status": r.status_code, "count": len(els), "sample": names}
+                    # sort by distance so sample shows nearest first
+                    def _d(e):
+                        c = e.get("center") or {}
+                        lt = e.get("lat") or c.get("lat") or 0
+                        ln = e.get("lon") or c.get("lon") or 0
+                        return haversine_km(lat, lon, lt, ln) if lt else 999
+                    els_sorted = sorted(els, key=_d)
+                    names = [(e.get("tags", {}).get("name", "?"), e.get("type"), round(_d(e)*1000)) for e in els_sorted[:15]]
+                    dbg["overpass_urls"][url] = {"status": r.status_code, "count": len(els), "nearest_15": names}
                 except Exception as e:
                     dbg["overpass_urls"][url] = {"error": str(e)}
-            google_key = bool(os.environ.get("GOOGLE_PLACES_KEY"))
-            dbg["google_places_key_set"] = google_key
+            # Also show what Google Places returns
+            gp = _places_nearby(lat, lon, "supermarket", 10000, 15)
+            dbg["google_places"] = [{"name": p["name"], "dist_m": int(p["distance_km"]*1000)} for p in gp]
+            dbg["merged_final"] = [{"name": s["name"], "dist_m": int(s.get("distance_km",0)*1000)} for s in _fetch_supermarkets(lat, lon)]
             return jsonify(dbg)
         supermarkets = _fetch_supermarkets(lat, lon)
         result = {"supermarkets": supermarkets}
