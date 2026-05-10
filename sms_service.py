@@ -2543,17 +2543,20 @@ def api_mp():
         if not row:
             return jsonify({"error": f"No MP found for {constituency}", "db_count": len(mem)})
 
-        # Step 3: fetch contacts lazily if not yet stored
+        # Step 3: fetch contacts in background if not yet stored (avoids blocking gunicorn worker)
         if not row.get("contacts_fetched"):
-            contacts = _fetch_contacts(row["mp_id"])
-            try:
-                lib._sb().table("mps").update({**contacts, "contacts_fetched": True}) \
-                    .eq("constituency", constituency.lower()).execute()
-                row = {**row, **contacts, "contacts_fetched": True}
-                with _mp_mem_lock:
-                    _mp_mem[constituency.lower()] = row
-            except Exception:
-                pass
+            mp_id   = row["mp_id"]
+            con_key = constituency.lower()
+            def _bg_contacts():
+                contacts = _fetch_contacts(mp_id)
+                try:
+                    lib._sb().table("mps").update({**contacts, "contacts_fetched": True}) \
+                        .eq("constituency", con_key).execute()
+                    with _mp_mem_lock:
+                        _mp_mem[con_key] = {**_mp_mem.get(con_key, row), **contacts, "contacts_fetched": True}
+                except Exception:
+                    pass
+            _threading.Thread(target=_bg_contacts, daemon=True).start()
 
         return jsonify({
             "name":           row["name"],
@@ -2947,6 +2950,84 @@ def api_elections():
         return jsonify(payload)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/elections/debug")
+def api_elections_debug():
+    """Debug: show raw DC ballot response + cache state for a postcode or ballot_id."""
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    ballot_id = request.args.get("ballot_id", "").strip()
+    clear = request.args.get("clear", "")
+
+    if clear and postcode:
+        _elections_response_cache.pop(postcode, None)
+        return jsonify({"cleared": postcode})
+
+    out = {}
+
+    if postcode:
+        try:
+            r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
+            pc = r.json().get("result", {}) if r.status_code == 200 else {}
+            codes = pc.get("codes", {})
+            ward_gss = codes.get("admin_ward", "")
+            ward_name = pc.get("admin_ward", "")
+            district = pc.get("admin_district", "")
+            district_code = codes.get("admin_district", "")
+            county_code = codes.get("admin_county", "")
+
+            elections = _get_elections()
+            ward_data = elections["by_gss"].get(ward_gss, {})
+            source = "by_gss" if ward_data else None
+            if not ward_data:
+                council_slug = (_DISTRICT_TO_COUNCIL_SLUG.get(district_code) or
+                                _UA_TO_COUNCIL_SLUG.get(district_code) or
+                                _COUNTY_TO_COUNCIL_SLUG.get(county_code))
+                if council_slug:
+                    slug_wards = elections["by_slug"].get(council_slug, {})
+                    best = _best_ward_match(ward_name, slug_wards)
+                    if best:
+                        ward_data = slug_wards[best]
+                        source = f"by_slug/{council_slug}/{best}"
+            ballot_id_found = ward_data.get("ballot_paper_id", "")
+            out["postcode"] = postcode
+            out["ward_name_from_postcodes"] = ward_name
+            out["ward_gss"] = ward_gss
+            out["district"] = district
+            out["district_code"] = district_code
+            out["ward_data_source"] = source
+            out["ballot_paper_id"] = ballot_id_found
+            out["candidates_count"] = len(ward_data.get("candidates", []))
+            out["cached_response"] = bool(_elections_response_cache.get(postcode))
+            if not ballot_id:
+                ballot_id = ballot_id_found
+        except Exception as e:
+            out["postcode_error"] = str(e)
+
+    if ballot_id:
+        try:
+            r2 = requests.get(
+                f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_id}/",
+                params={"format": "json"}, timeout=10,
+                headers={"User-Agent": "Miru/1.0"},
+            )
+            out["dc_status"] = r2.status_code
+            if r2.status_code == 200:
+                dc_json = r2.json()
+                candidacies = dc_json.get("candidacies", [])
+                out["dc_candidacies_count"] = len(candidacies)
+                out["dc_sample"] = [{
+                    "name": c.get("person", {}).get("name"),
+                    "elected": c.get("elected"),
+                    "result": c.get("result"),
+                } for c in candidacies[:5]]
+                out["dc_top_level_keys"] = list(dc_json.keys())
+            else:
+                out["dc_body"] = r2.text[:500]
+        except Exception as e:
+            out["dc_error"] = str(e)
+
+    return jsonify(out)
 
 
 _OVERPASS_URLS = [
