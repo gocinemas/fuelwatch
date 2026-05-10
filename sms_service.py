@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Patch stdlib for gevent async I/O — must be first
+from gevent import monkey as _gmonkey
+_gmonkey.patch_all(thread=True, socket=True, ssl=True)
+
 """
 FuelWatch UK — SMS Service
 ===========================
