@@ -2356,58 +2356,97 @@ def api_councillor():
         return jsonify({"error": str(e)}), 500
 
 
+# ── MP cache ──────────────────────────────────────────────────────────────────
+# Parliament API is capped at 20/page with 650 total MPs. We fetch all once,
+# build a constituency_name→mp_data dict, and cache it for 24h.
+import threading as _threading
+
+_mp_cache: dict = {}
+_mp_cache_time: float = 0.0
+_mp_cache_lock = _threading.Lock()
+_MP_CACHE_TTL = 86400  # 24 hours
+
+
+def _fetch_all_mps() -> dict:
+    cache: dict = {}
+    skip = 0
+    while True:
+        try:
+            r = requests.get(
+                "https://members-api.parliament.uk/api/Members/Search",
+                params={"House": 1, "IsCurrentMember": True, "take": 20, "skip": skip},
+                headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
+                timeout=12,
+            )
+            if not r.ok:
+                break
+            items = r.json().get("items", [])
+            if not items:
+                break
+            for item in items:
+                v = item.get("value", {})
+                mem = v.get("latestHouseMembership") or {}
+                seat = mem.get("membershipFrom", "")
+                if seat:
+                    cache[seat.lower()] = {
+                        "mp_id":        v.get("id"),
+                        "name":         v.get("nameDisplayAs", ""),
+                        "party":        (v.get("latestParty") or {}).get("name", ""),
+                        "photo_url":    v.get("thumbnailUrl", ""),
+                        "constituency": seat,
+                    }
+            skip += len(items)
+            if len(items) < 20:
+                break
+        except Exception as e:
+            print(f"[mp_cache] skip={skip}: {e}")
+            break
+    print(f"[mp_cache] built {len(cache)} entries")
+    return cache
+
+
+def _get_mp_cache() -> dict:
+    global _mp_cache, _mp_cache_time
+    with _mp_cache_lock:
+        if _mp_cache and time.time() - _mp_cache_time < _MP_CACHE_TTL:
+            return _mp_cache
+    cache = _fetch_all_mps()
+    with _mp_cache_lock:
+        _mp_cache = cache
+        _mp_cache_time = time.time()
+    return cache
+
+
+# Pre-warm cache in background so first user request is instant
+_threading.Thread(target=_get_mp_cache, daemon=True).start()
+
+
 @app.route("/api/mp")
 def api_mp():
-    """Return current MP for a postcode using postcodes.io → Parliament Members API."""
+    """Return current MP for a postcode. Uses a cached index of all 650 MPs."""
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
     try:
-        # Step 1: resolve constituency from postcodes.io (accurate 2024-boundary data)
-        pc_r = requests.get(
-            f"https://api.postcodes.io/postcodes/{postcode}",
-            timeout=8,
-        )
+        # Step 1: constituency name from postcodes.io
+        pc_r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=8)
         if not pc_r.ok:
             return jsonify({"error": "Invalid postcode"}), 400
         pc = pc_r.json().get("result") or {}
-        # Prefer 2024 boundaries (post-boundary-review constituencies)
         constituency = pc.get("parliamentary_constituency_2024") or pc.get("parliamentary_constituency", "")
         if not constituency:
             return jsonify({"error": "No constituency found for this postcode"})
 
-        # Step 2: search Parliament constituencies by name — returns current MP inline
-        cr = requests.get(
-            "https://members-api.parliament.uk/api/Location/Constituencies",
-            params={"search": constituency, "searchField": "name"},
-            headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
-            timeout=10,
-        )
-        cr.raise_for_status()
-        const_items = cr.json().get("items", [])
-        # Find exact name match first, fall back to first result
-        const_val = None
-        for ci in const_items:
-            v = ci.get("value", {})
-            if v.get("name", "").lower() == constituency.lower():
-                const_val = v
-                break
-        if not const_val and const_items:
-            const_val = const_items[0].get("value", {})
-        if not const_val:
-            return jsonify({"error": f"Constituency not found: {constituency}"})
+        # Step 2: exact lookup in cached constituency→MP index
+        cache = _get_mp_cache()
+        mp_data = cache.get(constituency.lower())
+        if not mp_data:
+            return jsonify({"error": f"No MP found for {constituency}"})
 
-        # currentRepresentation gives us the MP without a second search
-        rep = const_val.get("currentRepresentation") or {}
-        m = rep.get("member") or {}
-        if not m:
-            return jsonify({"error": f"No current MP for {constituency}"})
+        mp_id   = mp_data["mp_id"]
+        party   = mp_data["party"]
 
-        mp_id = m.get("id")
-        party = (m.get("latestParty") or {}).get("name", "")
-        constituency = const_val.get("name", constituency)
-
-        # Fetch contact details
+        # Step 3: fetch contact details (email, phone, twitter)
         email = phone = website = twitter = ""
         try:
             cr = requests.get(
@@ -2417,23 +2456,23 @@ def api_mp():
             )
             if cr.ok:
                 for c in cr.json().get("value", []):
-                    if not email   and c.get("email"):     email   = c["email"]
-                    if not phone   and c.get("phone"):     phone   = c["phone"]
-                    if not website and c.get("line1","").startswith("http"): website = c["line1"]
-                    if not twitter and "twitter" in (c.get("type","") or "").lower(): twitter = c.get("line1","").lstrip("@")
+                    if not email   and c.get("email"):                              email   = c["email"]
+                    if not phone   and c.get("phone"):                              phone   = c["phone"]
+                    if not website and (c.get("line1") or "").startswith("http"):   website = c["line1"]
+                    if not twitter and "twitter" in (c.get("type") or "").lower():  twitter = c.get("line1", "").lstrip("@")
         except Exception:
             pass
 
         return jsonify({
-            "name":            m.get("nameDisplayAs", ""),
-            "party":           party,
-            "constituency":    constituency,
-            "photo_url":       m.get("thumbnailUrl", ""),
-            "email":           email,
-            "phone":           phone,
-            "website":         website,
-            "twitter":         twitter,
-            "parliament_url":  f"https://members.parliament.uk/member/{mp_id}/contact",
+            "name":           mp_data["name"],
+            "party":          party,
+            "constituency":   mp_data["constituency"],
+            "photo_url":      mp_data["photo_url"],
+            "email":          email,
+            "phone":          phone,
+            "website":        website,
+            "twitter":        twitter,
+            "parliament_url": f"https://members.parliament.uk/member/{mp_id}/contact",
         })
     except Exception as e:
         print(f"[mp] {e}")
