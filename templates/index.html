@@ -1275,7 +1275,9 @@
         </div>
         <!-- WhatsApp tip -->
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#166534;line-height:1.5">
-          💬 <strong>Via WhatsApp:</strong> Send any PDF, receipt photo, or document image and it's saved here automatically. Tap <strong>+ Add</strong> to upload from this screen (PDF, TXT, or photo).
+          💬 <strong>Via WhatsApp:</strong> Send any PDF, receipt photo, or document image to Miru and it's saved here automatically.<br>
+          <a id="lib-wa-link" href="#" target="_blank" style="display:inline-block;margin-top:6px;font-weight:700;color:#15803d;text-decoration:none">💬 Open WhatsApp to send a document →</a><br>
+          <span style="color:#4ade80;font-size:11px">Or tap <strong style="color:#166534">+ Add</strong> above to upload a PDF, photo, or text from this screen.</span>
         </div>
 
         <!-- Search bar -->
@@ -7533,13 +7535,18 @@ _bkBadge();
   function _savesPin() { return sessionStorage.getItem("wa_saves_token") || ""; }
   function _savesHeaders() { return _savesPin() ? {"X-Library-PIN": _savesPin(), "Content-Type": "application/json"} : {"Content-Type": "application/json"}; }
 
-  // Load WhatsApp number for onboarding link (called once)
+  // Load WhatsApp number for onboarding + library links (called once)
   (function _loadWaNumber() {
     fetch("/api/whatsapp-number").then(r => r.json()).then(d => {
       if (d.number) {
         const n = d.number.replace(/^\+/, "");
-        document.getElementById("saves-wa-link").href =
-          `https://wa.me/${n}?text=my+link`;
+        const savesLink = document.getElementById("saves-wa-link");
+        if (savesLink) savesLink.href = `https://wa.me/${n}?text=my+link`;
+        const libLink = document.getElementById("lib-wa-link");
+        if (libLink) {
+          libLink.href = `https://wa.me/${n}`;
+          libLink.textContent = `💬 Message Miru on WhatsApp (${d.number}) →`;
+        }
       }
     }).catch(() => {});
   })();
