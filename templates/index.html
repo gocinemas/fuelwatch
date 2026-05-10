@@ -7955,8 +7955,34 @@ _bkBadge();
         <button onclick="(function(btn){var el=document.getElementById('${menuExpandId}');var show=el.style.display==='none';el.style.display=show?'block':'none';btn.textContent=show?'▲ Hide menu':'▼ View menu';})(this)" style="font-size:12px;color:#4f46e5;font-weight:600;background:none;border:none;cursor:pointer;padding:0;margin-bottom:6px">▼ View menu</button>
       </div>` : "";
 
+    // If bodyText is raw JSON, render it as a structured card instead of dumping the string
+    let jsonCardHtml = "";
+    const trimmedBody = bodyText.trim();
+    if (trimmedBody.startsWith("{") || trimmedBody.startsWith("[")) {
+      try {
+        const j = JSON.parse(trimmedBody);
+        const obj = Array.isArray(j) ? j[0] : j;
+        if (obj && typeof obj === "object") {
+          const parts = [];
+          if (obj.author)      parts.push(`<span style="font-weight:600">${obj.author}</span>`);
+          if (obj.year)        parts.push(`${obj.year}`);
+          if (obj.rating)      parts.push("⭐".repeat(Math.min(obj.rating,5)));
+          if (obj.description) parts.push(`<span style="opacity:.8">${obj.description.slice(0,120)}</span>`);
+          if (obj.notes)       parts.push(`<em style="opacity:.7">${obj.notes.slice(0,100)}</em>`);
+          if (obj.status)      parts.push(`<span style="font-size:11px;background:var(--border);border-radius:99px;padding:1px 8px">${obj.status}</span>`);
+          if (obj.isbn)        parts.push(`<span style="font-size:11px;color:var(--muted)">ISBN ${obj.isbn}</span>`);
+          if (parts.length) {
+            jsonCardHtml = `<div style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:10px">${parts.join(" · ")}</div>`;
+            bodyText = "";
+          }
+        }
+      } catch(e) {}
+    }
+
     const cleanSummary = bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
     const summaryHtml = isMenu ? menuHtml
+      : jsonCardHtml
+      ? jsonCardHtml
       : cleanSummary
       ? `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${cleanSummary}</div>`
       : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>`;
