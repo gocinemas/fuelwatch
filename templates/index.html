@@ -381,21 +381,6 @@
         </div>
       </button>
 
-      <!-- My Fuel saved stations card -->
-      <div id="my-fuel-card" style="display:none;background:linear-gradient(135deg,#1c1c1e 0%,#2d2d2f 100%);border-radius:20px;padding:16px 18px;margin-bottom:10px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">⛽</span>
-            <span style="font-size:14px;font-weight:800;color:#fff;letter-spacing:-0.2px">My Fuel Spots</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span id="my-fuel-updated" style="font-size:10px;color:rgba(255,255,255,.4)"></span>
-            <button onclick="_myFuelRefresh()" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);background:rgba(255,255,255,.08);border:none;border-radius:99px;padding:3px 9px;cursor:pointer">Refresh</button>
-          </div>
-        </div>
-        <div id="my-fuel-list"></div>
-      </div>
-
       <!-- Tools — 3-column icon grid -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px">
         <button class="tool-icon-btn" onclick="showScreen('report')">
@@ -512,6 +497,18 @@
         <div id="fuel-hint-returning" style="display:none;margin-top:8px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;font-size:12px;color:var(--subtle);line-height:1.5">
           Enter postcode → pick fuel type → see stations ranked by price. Tap 📍 to use your location. Tap 🔔 below to set a price-drop alert.
         </div>
+      </div>
+
+      <!-- My Fuel saved stations -->
+      <div id="my-fuel-card" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:16px 18px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:14px;font-weight:700;color:var(--text)">⭐ My Regular Stations</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span id="my-fuel-updated" style="font-size:11px;color:var(--muted)"></span>
+            <button onclick="_myFuelRefresh()" style="font-size:11px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:0">Refresh</button>
+          </div>
+        </div>
+        <div id="my-fuel-list"></div>
       </div>
 
       <!-- Price drop alert — collapsed by default -->
@@ -1510,7 +1507,7 @@
     window.scrollTo({top:0, behavior:"smooth"});
     const bb = document.getElementById("back-btn");
     if (bb) bb.classList.add("visible");
-    if (name === "fuel")    { document.getElementById("fuel-postcode").focus();   _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()"); }
+    if (name === "fuel")    { document.getElementById("fuel-postcode").focus();   _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()"); _myFuelRenderCard(); }
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); _reportRefreshHomeRow(); }
     if (name === "company") { document.getElementById("intel-input").focus(); _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()"); }
     if (name === "library") { libCheckPin(); }
@@ -1893,15 +1890,20 @@ const _ts = new Date(d.timestamp);
     if (!saved.length) { card.style.display = "none"; return; }
     card.style.display = "block";
     const list = document.getElementById("my-fuel-list");
+    const gUrl = s => `https://maps.google.com/?q=${s.lat},${s.lon}`;
     list.innerHTML = saved.map((s, i) => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;${i < saved.length-1 ? 'border-bottom:1px solid rgba(255,255,255,.07)' : ''}">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;${i < saved.length-1 ? 'border-bottom:1px solid var(--border)' : ''}">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:#fff">${s.brand}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.address||s.postcode||""}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${s.brand}</div>
+          <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.address||s.postcode||""}</div>
         </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:10px">
-          <div id="mfc-price-${i}" style="font-size:15px;font-weight:800;color:#fff">—</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:1px">Loading…</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:10px">
+          <div style="text-align:right">
+            <div id="mfc-price-${i}" style="font-size:14px;font-weight:800;color:var(--text)">—</div>
+            <div id="mfc-sub-${i}" style="font-size:10px;color:var(--muted)">Loading…</div>
+          </div>
+          <a href="${gUrl(s)}" target="_blank" style="font-size:11px;font-weight:600;color:#fff;background:#dc2626;border-radius:8px;padding:4px 9px;text-decoration:none;flex-shrink:0">Go</a>
+          <button onclick="_myFuelRemove(${i})" style="font-size:14px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0;line-height:1" title="Remove">✕</button>
         </div>
       </div>`).join("");
     _myFuelFetch();
@@ -1915,24 +1917,28 @@ const _ts = new Date(d.timestamp);
       .then(d => {
         document.getElementById("my-fuel-updated").textContent = d.updated ? "as of " + d.updated : "";
         (d.stations || []).forEach((st, i) => {
-          const el = document.getElementById("mfc-price-" + i);
+          const el  = document.getElementById("mfc-price-" + i);
+          const sub = document.getElementById("mfc-sub-" + i);
           if (!el) return;
-          if (!st.found) {
-            el.textContent = "–";
-            el.nextElementSibling.textContent = "Not in feed";
-            return;
-          }
+          if (!st.found) { el.textContent = "–"; if (sub) sub.textContent = "Not in today's feed"; return; }
           const parts = [];
-          if (st.petrol) parts.push(`P: ${st.petrol.toFixed(1)}p`);
-          if (st.diesel) parts.push(`D: ${st.diesel.toFixed(1)}p`);
-          el.textContent = parts.join("  ") || "–";
-          el.nextElementSibling.textContent = parts.length ? "live" : "No price";
+          if (st.petrol) parts.push(`P ${st.petrol.toFixed(1)}p`);
+          if (st.diesel) parts.push(`D ${st.diesel.toFixed(1)}p`);
+          el.textContent = parts.join(" · ") || "–";
+          if (sub) sub.textContent = parts.length ? "live" : "No price";
         });
       })
       .catch(() => {});
   }
 
   function _myFuelRefresh() { _myFuelFetch(); }
+
+  function _myFuelRemove(i) {
+    const saved = _myFuelLoad();
+    saved.splice(i, 1);
+    _myFuelSave(saved);
+    _myFuelRenderCard();
+  }
 
   // Init on page load
   _myFuelRenderCard();
