@@ -1295,6 +1295,10 @@
           <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px">🍷 Off-Licences</div>
           <div id="myarea-offlicence-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
         </div>
+        <div id="myarea-convenience-wrap" style="display:none;margin-top:8px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px">🏪 Convenience Stores</div>
+          <div id="myarea-convenience-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
+        </div>
       </div>
       <div id="myarea-pubs"     style="display:none;margin-top:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -2397,59 +2401,90 @@ const _ts = new Date(d.timestamp);
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${html}</div></div>`;
   }
 
-  const _MA_PLACES_KEY = "miru_my_places";
   const _MA_PLACES_MAX = 5;
 
-  function _maGetSaved() {
-    try { return JSON.parse(localStorage.getItem(_MA_PLACES_KEY) || "[]"); } catch { return []; }
+  function _maDeviceId() {
+    let id = localStorage.getItem("miru_device_id");
+    if (!id) {
+      id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem("miru_device_id", id);
+    }
+    return id;
   }
+
+  // In-memory mirror of DB saved places for instant UI (avoids repeated fetches)
+  let _maSavedPlaces = null; // null = not yet loaded
+
   function _maIsSaved(name, address) {
-    return _maGetSaved().some(p => p.name === name && p.address === (address||""));
+    return (_maSavedPlaces || []).some(p => p.name === name && p.address === (address||""));
   }
-  function _maTogglePlace(name, address, phone, emoji) {
-    let places = _maGetSaved();
-    const idx = places.findIndex(p => p.name === name && p.address === (address||""));
-    if (idx >= 0) {
-      places.splice(idx, 1);
+
+  async function _maLoadSavedPlaces() {
+    try {
+      const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`);
+      _maSavedPlaces = await r.json();
+      if (!Array.isArray(_maSavedPlaces)) _maSavedPlaces = [];
+    } catch { _maSavedPlaces = []; }
+    _maRenderSavedPlaces();
+    _maRefreshBookmarkButtons();
+  }
+
+  async function _maTogglePlace(name, address, phone, emoji) {
+    if (!_maSavedPlaces) _maSavedPlaces = [];
+    const existing = _maSavedPlaces.find(p => p.name === name && p.address === (address||""));
+    if (existing) {
+      // Remove from DB
+      await fetch(`/api/myarea/places/${existing.id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"});
+      _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== existing.id);
     } else {
-      if (places.length >= _MA_PLACES_MAX) {
+      if (_maSavedPlaces.length >= _MA_PLACES_MAX) {
         alert("You can save up to 5 places. Remove one first.");
         return;
       }
-      places.unshift({name, address: address||"", phone: phone||"", emoji: emoji||"📍"});
+      const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({name, address: address||"", phone: phone||"", emoji: emoji||"📍",
+                              postcode: document.getElementById("myarea-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase()}),
+      });
+      const saved = await r.json();
+      if (saved && saved.id) _maSavedPlaces.push(saved);
     }
-    localStorage.setItem(_MA_PLACES_KEY, JSON.stringify(places));
     _maRenderSavedPlaces();
-    // Refresh bookmark icons in visible rows
+    _maRefreshBookmarkButtons();
+  }
+
+  function _maRefreshBookmarkButtons() {
     document.querySelectorAll("[data-ma-save-name]").forEach(btn => {
-      const n = btn.dataset.maSaveName, a = btn.dataset.maSaveAddr;
-      const saved = _maIsSaved(n, a);
+      const saved = _maIsSaved(btn.dataset.maSaveName, btn.dataset.maSaveAddr);
       btn.textContent = saved ? "⭐" : "☆";
-      btn.style.color = saved ? "#f59e0b" : "#d1d5db";
+      btn.style.color  = saved ? "#f59e0b" : "#d1d5db";
     });
   }
+
   function _maRenderSavedPlaces() {
-    const places = _maGetSaved();
+    const places = _maSavedPlaces || [];
     const wrap = document.getElementById("myarea-saved");
     const list = document.getElementById("myarea-saved-list");
-    if (!places.length) { if(wrap) wrap.style.display = "none"; return; }
-    if(wrap) wrap.style.display = "";
-    if(!list) return;
-    list.innerHTML = places.map((p, i) => `
+    if (!wrap || !list) return;
+    if (!places.length) { wrap.style.display = "none"; return; }
+    wrap.style.display = "";
+    list.innerHTML = places.map(p => `
       <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--text)">${p.emoji||"📍"} ${p.name}</div>
           ${p.address ? `<div style="font-size:11px;color:var(--muted)">${p.address}</div>` : ""}
           ${p.phone ? `<a href="tel:${p.phone}" style="color:#2563eb;font-size:11px">${p.phone}</a>` : ""}
         </div>
-        <button onclick="_maRemoveSaved(${i})" style="flex-shrink:0;font-size:14px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 6px">✕</button>
+        <button onclick="_maRemoveSaved('${p.id}')" style="flex-shrink:0;font-size:14px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 6px">✕</button>
       </div>`).join("");
   }
-  function _maRemoveSaved(idx) {
-    let places = _maGetSaved();
-    places.splice(idx, 1);
-    localStorage.setItem(_MA_PLACES_KEY, JSON.stringify(places));
+
+  async function _maRemoveSaved(id) {
+    await fetch(`/api/myarea/places/${id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"});
+    if (_maSavedPlaces) _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== id);
     _maRenderSavedPlaces();
+    _maRefreshBookmarkButtons();
   }
 
   function _maPlaceRow(x, emoji) {
@@ -2546,9 +2581,10 @@ const _ts = new Date(d.timestamp);
     const list  = document.getElementById("myarea-shops-list");
     const spin  = document.getElementById("myarea-shops-spinner");
     if (spin) spin.style.display = "none";
-    const supers = (data.supermarkets || []).slice(0, 5);
-    const offlic = (data.off_licences || []).slice(0, 5);
-    if (!supers.length && !offlic.length) { el.style.display = "none"; return; }
+    const supers  = (data.supermarkets || []).slice(0, 5);
+    const offlic  = (data.off_licences || []).slice(0, 5);
+    const convs   = (data.convenience  || []).slice(0, 5);
+    if (!supers.length && !offlic.length && !convs.length) { el.style.display = "none"; return; }
     list.innerHTML = supers.length
       ? supers.map(x => _maPlaceRow(x, "🛒")).join("")
       : `<div style="font-size:12px;color:var(--muted);padding:8px 0">No supermarkets found nearby.</div>`;
@@ -2557,9 +2593,13 @@ const _ts = new Date(d.timestamp);
     if (offlic.length && offWrap && offList) {
       offList.innerHTML = offlic.map(x => _maPlaceRow(x, "🍷")).join("");
       offWrap.style.display = "";
-    } else if (offWrap) {
-      offWrap.style.display = "none";
-    }
+    } else if (offWrap) { offWrap.style.display = "none"; }
+    const convWrap = document.getElementById("myarea-convenience-wrap");
+    const convList = document.getElementById("myarea-convenience-list");
+    if (convs.length && convWrap && convList) {
+      convList.innerHTML = convs.map(x => _maPlaceRow(x, "🏪")).join("");
+      convWrap.style.display = "";
+    } else if (convWrap) { convWrap.style.display = "none"; }
     el.style.display = "";
   }
 
@@ -2660,7 +2700,7 @@ const _ts = new Date(d.timestamp);
   }
 
   function _loadMyArea() {
-    _maRenderSavedPlaces();
+    _maLoadSavedPlaces(); // fetch from DB (async, updates UI when ready)
     const home = MiruLocation.getHome();
     if (home && document.getElementById("myarea-postcode-input").value !== home) {
       document.getElementById("myarea-postcode-input").value = home;

@@ -684,12 +684,12 @@ Rules: did_you_know must be concrete and surprising, not generic. facts fill all
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.1-8b-instant",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 1200,
+                "max_tokens": 2500,
             },
-            timeout=25,
+            timeout=35,
         )
         if r.status_code != 200:
             print(f"[brand_ai] HTTP {r.status_code}: {r.text[:200]}")

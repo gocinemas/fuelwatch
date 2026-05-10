@@ -3263,6 +3263,40 @@ def _fetch_supermarkets(lat, lon):
     return _fetch_supermarkets_overpass(lat, lon, radius_m=16000)  # ~10 miles
 
 
+_UK_CONVENIENCE_CHAINS = {
+    "londis", "spar", "nisa", "one stop", "premier", "mccoll", "costcutter",
+    "family shopper", "centra", "day today", "keystore", "best-one", "bestone",
+    "mace", "lifestyle express", "budgens", "jacks",
+}
+
+def _fetch_convenience_overpass(lat, lon, radius_m=2000):
+    query = f"""[out:json][timeout:20];
+(node["shop"="convenience"](around:{radius_m},{lat},{lon});
+ way["shop"="convenience"](around:{radius_m},{lat},{lon}););
+out center tags;"""
+    try:
+        els = _overpass_mirrors(query)
+        items = []
+        for e in els:
+            tags = e.get("tags", {})
+            name = tags.get("name") or tags.get("brand") or ""
+            if not name:
+                continue
+            if not any(c in name.lower() for c in _UK_CONVENIENCE_CHAINS):
+                continue
+            elat, elon = _el_coords(e)
+            if not elat:
+                continue
+            dist = round(haversine_km(lat, lon, elat, elon), 2)
+            items.append({"name": name, "address": _el_address(tags),
+                          "phone": _el_phone(tags), "distance_km": dist})
+        items.sort(key=lambda x: x["distance_km"])
+        return items[:5]
+    except Exception as e:
+        print(f"[overpass convenience] {e}")
+        return []
+
+
 def _fetch_off_licences_overpass(lat, lon, radius_m=3000):
     query = f"""[out:json][timeout:20];
 (node["shop"="alcohol"](around:{radius_m},{lat},{lon});
@@ -3562,15 +3596,77 @@ relation["shop"="supermarket"](around:5000,{lat},{lon});
             dbg["google_places"] = [{"name": p["name"], "dist_m": int(p["distance_km"]*1000)} for p in gp]
             dbg["merged_final"] = [{"name": s["name"], "dist_m": int(s.get("distance_km",0)*1000)} for s in _fetch_supermarkets(lat, lon)]
             return jsonify(dbg)
-        with ThreadPoolExecutor(max_workers=2) as ex:
+        with ThreadPoolExecutor(max_workers=3) as ex:
             sm_f   = ex.submit(_fetch_supermarkets, lat, lon)
             offl_f = ex.submit(_fetch_off_licences_overpass, lat, lon)
-            supermarkets = sm_f.result(timeout=40)
-            off_licences = offl_f.result(timeout=25)
-        result = {"supermarkets": supermarkets, "off_licences": off_licences}
-        if supermarkets or off_licences:
+            conv_f = ex.submit(_fetch_convenience_overpass, lat, lon)
+            supermarkets  = sm_f.result(timeout=40)
+            off_licences  = offl_f.result(timeout=25)
+            convenience   = conv_f.result(timeout=25)
+        result = {"supermarkets": supermarkets, "off_licences": off_licences,
+                  "convenience": convenience}
+        if supermarkets or off_licences or convenience:
             _services_cache[cache_key] = {"data": result, "ts": time.time()}
         return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+_MA_PLACES_MAX = 5
+
+@app.route("/api/myarea/places", methods=["GET"])
+def api_myarea_places_get():
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify([])
+    try:
+        rows = lib._sb().table("my_area_places") \
+            .select("id,name,address,phone,emoji,category,postcode") \
+            .eq("device_id", device_id) \
+            .order("created_at", desc=False) \
+            .execute().data
+        return jsonify(rows or [])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/myarea/places", methods=["POST"])
+def api_myarea_places_post():
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify({"error": "device_id required"}), 400
+    body = request.get_json(force=True, silent=True) or {}
+    name = (body.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    try:
+        existing = lib._sb().table("my_area_places") \
+            .select("id").eq("device_id", device_id).execute().data or []
+        if len(existing) >= _MA_PLACES_MAX:
+            return jsonify({"error": f"Max {_MA_PLACES_MAX} saved places"}), 400
+        row = lib._sb().table("my_area_places").insert({
+            "device_id": device_id,
+            "name":      name,
+            "address":   (body.get("address") or "").strip(),
+            "phone":     (body.get("phone") or "").strip(),
+            "emoji":     (body.get("emoji") or "📍").strip(),
+            "category":  (body.get("category") or "place").strip(),
+            "postcode":  (body.get("postcode") or "").strip(),
+        }).execute().data[0]
+        return jsonify(row)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/myarea/places/<place_id>", methods=["DELETE"])
+def api_myarea_places_delete(place_id):
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify({"error": "device_id required"}), 400
+    try:
+        lib._sb().table("my_area_places") \
+            .delete().eq("id", place_id).eq("device_id", device_id).execute()
+        return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
