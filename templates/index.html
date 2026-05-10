@@ -1037,17 +1037,15 @@
         <button onclick="electionsUseHome()" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
         <button onclick="electionsClearHome()" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer;margin-left:6px">Clear</button>
       </div>
-      <button id="elections-loc-btn" onclick="electionsUseLocation()"
-        style="width:100%;margin-bottom:8px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">
-        📍 Use my current location
-      </button>
-      <div id="elections-loc-err" style="display:none;font-size:13px;color:#ef4444;margin-bottom:8px"></div>
+      <div id="elections-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input id="elections-input" type="text" placeholder="or enter postcode, e.g. TW3 3SF"
+        <input id="elections-input" type="text" placeholder="Enter postcode, e.g. TW3 3SF"
           style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
           onkeydown="if(event.key==='Enter') searchElections()"
           onfocus="this.style.boxShadow='0 0 0 3px rgba(34,197,94,.15)'"
           onblur="this.style.boxShadow=''">
+        <button id="elections-loc-btn" onclick="electionsUseLocation()" title="Use my location"
+          style="flex-shrink:0;border:1px solid var(--border);border-radius:12px;padding:11px 13px;font-size:18px;background:var(--surface);cursor:pointer">📍</button>
         <button onclick="searchElections()"
           style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer">Search</button>
       </div>
