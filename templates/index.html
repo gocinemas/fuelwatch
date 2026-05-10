@@ -1217,16 +1217,14 @@
 
       <!-- Password lock -->
       <div id="lib-pin-screen" class="hidden" style="display:none!important;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
-        <div style="font-size:36px;margin-bottom:12px">🔒</div>
-        <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px">Private Library</div>
-        <div style="font-size:13px;color:var(--subtle);margin-bottom:20px">Enter your admin password (set in Railway env vars as <code>ADMIN_PASSWORD</code>).</div>
-        <div style="display:flex;gap:8px;width:100%;max-width:280px">
-          <input id="lib-pin-input" type="password" placeholder="Password"
-            style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;text-align:center"
-            onkeydown="if(event.key==='Enter') libSubmitPin()">
-          <button onclick="libSubmitPin()" style="background:#4f46e5;color:#fff;font-size:14px;font-weight:600;padding:11px 16px;border-radius:12px;border:none;cursor:pointer">Unlock</button>
-        </div>
-        <div id="lib-pin-error" style="display:none;font-size:12px;color:#dc2626;margin-top:10px">Incorrect password — try again.</div>
+        <div style="font-size:36px;margin-bottom:12px">📱</div>
+        <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px">My Library</div>
+        <div style="font-size:13px;color:var(--subtle);margin-bottom:20px">Enter your mobile number to access your personal library.</div>
+        <input id="lib-phone-input" type="tel" placeholder="+44 7911 123456"
+          style="border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none;text-align:center;width:100%;max-width:240px;margin-bottom:10px"
+          onkeydown="if(event.key==='Enter') libSubmitPhone()">
+        <button onclick="libSubmitPhone()" style="background:#4f46e5;color:#fff;font-size:14px;font-weight:600;padding:11px 32px;border-radius:12px;border:none;cursor:pointer;width:100%;max-width:240px">Access My Library</button>
+        <div id="lib-pin-error" style="display:none;font-size:12px;color:#dc2626;margin-top:10px">Something went wrong — try again.</div>
       </div>
 
 
@@ -4723,42 +4721,40 @@ const _ts = new Date(d.timestamp);
     document.getElementById("lib-pin-screen").style.cssText = "display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center";
     document.getElementById("lib-list-view").classList.add("hidden");
     document.getElementById("lib-doc-view").classList.add("hidden");
-    setTimeout(() => document.getElementById("lib-pin-input").focus(), 100);
+    setTimeout(() => document.getElementById("lib-phone-input").focus(), 100);
   }
 
   function libCheckPin() {
-    // If we already have a cached password, go straight to list; otherwise show lock screen
     if (_libPin()) {
       document.getElementById("lib-pin-screen").style.display = "none";
       document.getElementById("lib-list-view").classList.remove("hidden");
       libLoadDocs();
     } else {
-      // Try without password first — server may have no password set
-      fetch("/api/library/documents")
-        .then(r => {
-          if (r.status === 401) { _libShowLock(); }
-          else { document.getElementById("lib-pin-screen").style.display = "none"; document.getElementById("lib-list-view").classList.remove("hidden"); libLoadDocs(); }
-        })
-        .catch(() => { document.getElementById("lib-pin-screen").style.display = "none"; document.getElementById("lib-list-view").classList.remove("hidden"); libLoadDocs(); });
+      _libShowLock();
     }
   }
 
-  async function libSubmitPin() {
-    const pin = document.getElementById("lib-pin-input").value.trim();
-    if (!pin) return;
-    const r = await fetch("/api/library/documents", {headers: {"X-Library-PIN": pin}});
-    if (r.status === 401) {
+  async function libSubmitPhone() {
+    const raw = document.getElementById("lib-phone-input").value.trim();
+    if (!raw) return;
+    let phone = raw.replace(/\s+/g, '');
+    if (/^0\d{10}$/.test(phone)) phone = '+44' + phone.slice(1);
+    try {
+      const r = await fetch(`/api/user-token?phone=${encodeURIComponent(phone)}`);
+      const d = await r.json();
+      if (!d.token) throw new Error("no token");
+      localStorage.setItem("lib_pin", d.token);
+      document.getElementById("lib-pin-error").style.display = "none";
+      document.getElementById("lib-pin-screen").style.display = "none";
+      document.getElementById("lib-list-view").classList.remove("hidden");
+      libLoadDocs();
+    } catch(e) {
       document.getElementById("lib-pin-error").style.display = "block";
-      return;
     }
-    localStorage.setItem("lib_pin", pin);
-    document.getElementById("lib-pin-error").style.display = "none";
-    document.getElementById("lib-pin-screen").style.display = "none";
-    document.getElementById("lib-list-view").classList.remove("hidden");
-    const docs = await r.json();
-    _libAllDocs = Array.isArray(docs) ? docs : [];
-    libLoadDocs();
   }
+
+  // kept for compat — no longer used
+  async function libSubmitPin() { await libSubmitPhone(); }
 
   function libGetBookmarks() {
     try { return JSON.parse(localStorage.getItem("miru_bookmarks") || "[]"); } catch { return []; }
@@ -7014,45 +7010,23 @@ _bkBadge();
 
 <div id="screen-saves" class="screen pt-5">
   <!-- Onboarding: shown when no token exists (first visit, no WhatsApp link yet) -->
-  <div id="saves-onboard-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center">
-    <div style="font-size:48px;margin-bottom:16px">💬</div>
+  <!-- Phone number sign-in (replaces both onboard + lock screens) -->
+  <div id="saves-phone-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
+    <div style="font-size:40px;margin-bottom:16px">📱</div>
     <div style="font-weight:800;font-size:20px;margin-bottom:8px;color:var(--text)">My Saves</div>
-    <div style="color:var(--subtle);font-size:14px;margin-bottom:24px;max-width:280px;line-height:1.5">Your saves are linked to your WhatsApp. Send <strong>any link or photo</strong> to Miru on WhatsApp and it gets saved here.</div>
-    <a id="saves-wa-link" href="#" target="_blank"
-      style="display:block;background:#25D366;color:#fff;border:none;border-radius:14px;padding:13px 28px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:16px">
-      💬 Open WhatsApp
-    </a>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Message <strong>my link</strong> to get your access link</div>
-    <!-- Already have a token? Enter it -->
-    <details style="width:100%;max-width:280px;text-align:left">
-      <summary style="font-size:12px;color:var(--subtle);cursor:pointer;list-style:none;text-align:center">Already have an access token? ▸</summary>
-      <div style="margin-top:12px">
-        <input id="saves-pin-input" type="password" placeholder="Paste token here"
-          style="border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;width:100%;box-sizing:border-box;outline:none;margin-bottom:8px;background:var(--surface);color:var(--text)"
-          onkeydown="if(event.key==='Enter')savesSubmitPin()" />
-        <div id="saves-pin-error" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">Invalid token — try again</div>
-        <button onclick="savesSubmitPin()"
-          style="width:100%;background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:11px;font-size:14px;font-weight:700;cursor:pointer">
-          Connect
-        </button>
-      </div>
-    </details>
-  </div>
-
-  <!-- PIN lock: shown only when a token was tried but rejected (wrong/expired) -->
-  <div id="saves-pin-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
-    <div style="font-size:40px;margin-bottom:16px">🔒</div>
-    <div style="font-weight:700;font-size:17px;margin-bottom:6px">Session expired</div>
-    <div style="color:#9ca3af;font-size:13px;margin-bottom:20px">Paste your access token to reconnect</div>
-    <input id="saves-pin-input-lock" type="password" placeholder="Access token"
-      style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 16px;font-size:15px;width:200px;text-align:center;outline:none;margin-bottom:10px"
-      onkeydown="if(event.key==='Enter')savesSubmitPinLock()" />
-    <div id="saves-pin-error-lock" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">Invalid token</div>
-    <button onclick="savesSubmitPinLock()"
-      style="background:#1f2937;color:#fff;border:none;border-radius:12px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer">
-      Reconnect
+    <div style="color:var(--subtle);font-size:14px;margin-bottom:24px;max-width:260px;line-height:1.5">Enter your mobile number to access your personal saves.</div>
+    <input id="saves-phone-input" type="tel" placeholder="+44 7911 123456"
+      style="border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-size:15px;width:100%;max-width:240px;text-align:center;outline:none;background:var(--surface);color:var(--text);margin-bottom:10px"
+      onkeydown="if(event.key==='Enter')savesSubmitPhone()" />
+    <div id="saves-phone-error" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">Something went wrong — try again.</div>
+    <button onclick="savesSubmitPhone()"
+      style="background:#1f2937;color:#fff;border:none;border-radius:12px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer;width:100%;max-width:240px">
+      Access My Saves
     </button>
   </div>
+  <!-- kept for compat (hidden, unused) -->
+  <div id="saves-onboard-screen" style="display:none"></div>
+  <div id="saves-pin-screen" style="display:none"><a id="saves-wa-link" href="#"></a></div>
 
   <!-- Main view -->
   <div id="saves-main" style="display:none">
@@ -7531,7 +7505,7 @@ _bkBadge();
 
   /* ── End school comms ──────────────────────────────────────────────────────── */
 
-  function _savesPin() { return sessionStorage.getItem("wa_saves_token") || ""; }
+  function _savesPin() { return localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || ""; }
   function _savesHeaders() { return _savesPin() ? {"X-Library-PIN": _savesPin(), "Content-Type": "application/json"} : {"Content-Type": "application/json"}; }
 
   // Load WhatsApp number for onboarding + library links (called once)
@@ -7545,55 +7519,45 @@ _bkBadge();
     }).catch(() => {});
   })();
 
-  function _savesShowOnboard() {
-    document.getElementById("saves-onboard-screen").style.cssText = "display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center";
-    document.getElementById("saves-pin-screen").style.display = "none";
+  function _savesShowPhone() {
+    document.getElementById("saves-phone-screen").style.cssText = "display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center";
     document.getElementById("saves-main").style.display = "none";
+    setTimeout(() => document.getElementById("saves-phone-input").focus(), 100);
   }
 
-  function _savesShowLock() {
-    document.getElementById("saves-onboard-screen").style.display = "none";
-    document.getElementById("saves-pin-screen").style.cssText = "display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center";
-    document.getElementById("saves-main").style.display = "none";
-    setTimeout(() => document.getElementById("saves-pin-input-lock").focus(), 100);
-  }
+  function _savesShowOnboard() { _savesShowPhone(); }
+  function _savesShowLock()    { _savesShowPhone(); }
 
   function _savesShowMain() {
-    document.getElementById("saves-onboard-screen").style.display = "none";
-    document.getElementById("saves-pin-screen").style.display = "none";
+    document.getElementById("saves-phone-screen").style.display = "none";
     document.getElementById("saves-main").style.display = "block";
     savesLoad();
   }
 
   function savesCheckPin() {
-    if (_savesPin()) {
-      _savesShowMain();
-    } else {
-      _savesShowOnboard();
-    }
+    if (_savesPin()) { _savesShowMain(); } else { _savesShowPhone(); }
   }
 
-  // Submitted from the onboarding "already have a token" section
-  window.savesSubmitPin = async function() {
-    const pin = document.getElementById("saves-pin-input").value.trim();
-    if (!pin) return;
-    const r = await fetch("/api/wa-saves", {headers: {"X-Library-PIN": pin}});
-    if (r.status === 401) { document.getElementById("saves-pin-error").style.display = "block"; return; }
-    sessionStorage.setItem("wa_saves_token", pin);
-    document.getElementById("saves-pin-error").style.display = "none";
-    _savesShowMain();
+  window.savesSubmitPhone = async function() {
+    const raw = document.getElementById("saves-phone-input").value.trim();
+    if (!raw) return;
+    let phone = raw.replace(/\s+/g, '');
+    if (/^0\d{10}$/.test(phone)) phone = '+44' + phone.slice(1);
+    try {
+      const r = await fetch(`/api/user-token?phone=${encodeURIComponent(phone)}`);
+      const d = await r.json();
+      if (!d.token) throw new Error("no token");
+      localStorage.setItem("wa_saves_token", d.token);
+      document.getElementById("saves-phone-error").style.display = "none";
+      _savesShowMain();
+    } catch(e) {
+      document.getElementById("saves-phone-error").style.display = "block";
+    }
   };
 
-  // Submitted from the expired-token lock screen
-  window.savesSubmitPinLock = async function() {
-    const pin = document.getElementById("saves-pin-input-lock").value.trim();
-    if (!pin) return;
-    const r = await fetch("/api/wa-saves", {headers: {"X-Library-PIN": pin}});
-    if (r.status === 401) { document.getElementById("saves-pin-error-lock").style.display = "block"; return; }
-    sessionStorage.setItem("wa_saves_token", pin);
-    document.getElementById("saves-pin-error-lock").style.display = "none";
-    _savesShowMain();
-  };
+  // compat stubs
+  window.savesSubmitPin     = window.savesSubmitPhone;
+  window.savesSubmitPinLock = window.savesSubmitPhone;
 
   function _renderIntelSaves() {
     const items = JSON.parse(localStorage.getItem("miru_intel_bookmarks") || "[]");
@@ -7637,7 +7601,7 @@ _bkBadge();
     document.getElementById("saves-list").innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div>Loading…</div>';
     try {
       const r = await fetch("/api/wa-saves", {headers: _savesHeaders()});
-      if (r.status === 401) { sessionStorage.removeItem("wa_saves_token"); _savesShowLock(); return; }
+      if (r.status === 401) { localStorage.removeItem("wa_saves_token"); sessionStorage.removeItem("wa_saves_token"); _savesShowPhone(); return; }
       const d = await r.json();
       _savesAll = d.saves || [];
       savesRenderCategoryPills();

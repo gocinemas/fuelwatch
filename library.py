@@ -85,9 +85,10 @@ def chunk_text(text: str, chunk_size: int = 350, overlap: int = 50) -> list:
     return chunks
 
 
-def upload_document(title: str, text: str, doc_type: str = "note", page_count: int = 0) -> dict:
+def upload_document(title: str, text: str, doc_type: str = "note", page_count: int = 0, user_token: str = None) -> dict:
     sb = _sb()
-    share_id = str(uuid.uuid4())
+    base_id   = str(uuid.uuid4())
+    share_id  = f"{user_token}_{base_id}" if user_token else base_id
     doc = sb.table("library_docs").insert({
         "title":        title,
         "doc_type":     doc_type,
@@ -125,11 +126,12 @@ def upload_document(title: str, text: str, doc_type: str = "note", page_count: i
     return doc_record
 
 
-def list_documents() -> list:
+def list_documents(user_token: str = None) -> list:
     sb = _sb()
-    return sb.table("library_docs") \
-        .select("id,share_id,title,doc_type,page_count,char_count,created_at") \
-        .order("created_at", desc=True).execute().data
+    q = sb.table("library_docs").select("id,share_id,title,doc_type,page_count,char_count,created_at")
+    if user_token:
+        q = q.ilike("share_id", f"{user_token}\\_%")
+    return q.order("created_at", desc=True).execute().data
 
 
 def get_document(share_id: str) -> dict | None:

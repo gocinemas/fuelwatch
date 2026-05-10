@@ -765,16 +765,29 @@ def company_page(company_slug):
 # ── Library API ───────────────────────────────────────────────────────────────
 
 def _check_library_pin():
-    """Return 401 if wrong password, else None. Uses ADMIN_PASSWORD env var."""
+    """Return 401 if unauthenticated, else None. Accepts ADMIN_PASSWORD or any 20-char user token."""
     pw = os.environ.get("ADMIN_PASSWORD", "")
-    if not pw:
-        return None  # no password set — open access
     supplied = (request.headers.get("X-Library-PIN")
                 or request.headers.get("X-Admin-Password")
                 or request.args.get("pin", "")
                 or request.args.get("pw", ""))
-    if supplied != pw:
-        return jsonify({"error": "Password required", "auth": True}), 401
+    if not pw:
+        return None  # dev mode — open access
+    if supplied == pw:
+        return None  # admin password correct
+    if supplied and len(supplied) == 20:
+        return None  # valid 20-char user token (HMAC from phone number)
+    return jsonify({"error": "Password required", "auth": True}), 401
+
+
+def _library_user_token():
+    """Return the per-user library token from the request, or None if admin/open."""
+    pw = os.environ.get("ADMIN_PASSWORD", "")
+    supplied = (request.headers.get("X-Library-PIN")
+                or request.headers.get("X-Admin-Password")
+                or request.args.get("pin", ""))
+    if supplied and supplied != pw and len(supplied) == 20:
+        return supplied
     return None
 
 
@@ -804,7 +817,7 @@ def api_library_list():
     err = _check_library_pin()
     if err: return err
     try:
-        docs = lib.list_documents()
+        docs = lib.list_documents(user_token=_library_user_token())
         return jsonify(docs)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -877,7 +890,7 @@ def api_library_upload():
         if not text:
             text = f"[{title}]"
 
-        doc = lib.upload_document(title, text, doc_type, page_count)
+        doc = lib.upload_document(title, text, doc_type, page_count, user_token=_library_user_token())
         return jsonify(doc)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -7890,6 +7903,21 @@ def school_digest():
         return jsonify({"error": "Unauthorized"}), 401
     result = school_service.send_weekly_digest_all()
     return jsonify(result)
+
+
+@app.route("/api/user-token")
+def api_user_token():
+    """Exchange a phone number for a stable per-user HMAC token.
+    The token is used as X-Library-PIN for My Library and My Saves."""
+    phone = request.args.get("phone", "").strip()
+    if not phone:
+        return jsonify({"error": "phone required"}), 400
+    # Normalise: 07xxx → +447xxx
+    phone = re.sub(r'\s+', '', phone)
+    if re.match(r'^0\d{10}$', phone):
+        phone = '+44' + phone[1:]
+    token = _wa_user_token(phone)
+    return jsonify({"token": token, "phone": phone})
 
 
 @app.route("/api/whatsapp-number")
