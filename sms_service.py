@@ -3133,10 +3133,43 @@ def _fetch_hospitals(lat, lon):
         h["phone"] = ""
     return items
 
+def _fetch_supermarkets_overpass(lat, lon, radius_m=5000):
+    query = f"""
+[out:json][timeout:25];
+(
+  node["shop"="supermarket"](around:{radius_m},{lat},{lon});
+  way["shop"="supermarket"](around:{radius_m},{lat},{lon});
+  node["shop"="grocery"](around:{radius_m},{lat},{lon});
+  way["shop"="grocery"](around:{radius_m},{lat},{lon});
+);
+out center;
+"""
+    try:
+        elements = _overpass_mirrors(query)
+        items = []
+        for el in elements:
+            tags = el.get("tags", {})
+            name = tags.get("name") or tags.get("brand") or ""
+            if not name:
+                continue
+            elat, elon = _el_coords(el)
+            if not elat or not elon:
+                continue
+            dist = round(haversine_km(lat, lon, elat, elon), 2)
+            address = _el_address(tags)
+            items.append({"name": name, "address": address, "distance_km": dist})
+        items.sort(key=lambda x: x["distance_km"])
+        return items[:10]
+    except Exception as e:
+        print(f"[overpass supermarkets] {e}")
+        return []
+
 def _fetch_supermarkets(lat, lon):
     items = _places_nearby(lat, lon, "supermarket", 10000, 10)
     for s in items:
         s.pop("place_id", None)
+    if not items:
+        items = _fetch_supermarkets_overpass(lat, lon)
     return items
 
 
