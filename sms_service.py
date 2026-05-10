@@ -2489,9 +2489,17 @@ def api_mp():
 
         # Step 2: memory dict lookup (loaded from Supabase)
         mem = _get_mp_mem()
-        row = mem.get(constituency.lower())
+        key = constituency.lower()
+        row = mem.get(key)
         if not row:
-            return jsonify({"error": f"No MP found for {constituency}"})
+            # Fuzzy fallback: normalise & ↔ and, smart apostrophes, extra spaces
+            key_norm = key.replace("&", "and").replace("  ", " ").strip()
+            for k, v in mem.items():
+                if k.replace("&", "and").replace("  ", " ").strip() == key_norm:
+                    row = v
+                    break
+        if not row:
+            return jsonify({"error": f"No MP found for {constituency}", "db_count": len(mem)})
 
         # Step 3: fetch contacts lazily if not yet stored
         if not row.get("contacts_fetched"):
@@ -2536,6 +2544,14 @@ def api_mp_refresh():
         print(f"[mp_refresh] done — {count} MPs")
     _threading.Thread(target=_do_refresh, daemon=True).start()
     return jsonify({"status": "refresh started"})
+
+
+@app.route("/api/mp/status")
+def api_mp_status():
+    """Debug: show how many MPs are in memory and a sample of keys."""
+    mem = _get_mp_mem()
+    sample = sorted(mem.keys())[:10]
+    return jsonify({"count": len(mem), "sample_keys": sample})
 
 
 @app.route("/api/elections/sync-councillors", methods=["POST"])
