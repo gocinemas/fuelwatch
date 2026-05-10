@@ -3346,15 +3346,12 @@ const _ts = new Date(d.timestamp);
   function _finderRefreshHomeRow() {
     const home = MiruLocation.getHome();
     const homeRow = document.getElementById("finder-home-row");
-    const locBtn  = document.getElementById("finder-loc-btn");
     const label   = document.getElementById("finder-home-pc-label");
     if (home) {
       label.textContent = home;
       homeRow.style.display = "flex";
-      locBtn.parentElement.style.display = "none"; // hide the whole location bar row
     } else {
       homeRow.style.display = "none";
-      locBtn.parentElement.style.display = "";
     }
   }
 
@@ -3389,15 +3386,12 @@ const _ts = new Date(d.timestamp);
   function _placesRefreshHomeRow() {
     const home    = MiruLocation.getHome();
     const homeRow = document.getElementById("places-home-row");
-    const locBtn  = document.getElementById("places-loc-btn");
     const label   = document.getElementById("places-home-pc-label");
     if (home) {
       label.textContent = home;
       homeRow.style.display = "flex";
-      locBtn.style.display  = "none";
     } else {
       homeRow.style.display = "none";
-      locBtn.style.display  = "";
     }
     document.getElementById("places-save-home-row").style.display = "none";
   }
@@ -3432,15 +3426,12 @@ const _ts = new Date(d.timestamp);
   function _reportRefreshHomeRow() {
     const home = MiruLocation.getHome();
     const homeRow = document.getElementById("report-home-row");
-    const locBtn  = document.getElementById("report-loc-btn");
     const label   = document.getElementById("report-home-pc-label");
     if (home) {
       label.textContent = home;
       homeRow.style.display = "flex";
-      locBtn.style.display  = "none";
     } else {
       homeRow.style.display = "none";
-      locBtn.style.display  = "";
     }
   }
 
