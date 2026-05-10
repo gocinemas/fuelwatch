@@ -832,6 +832,22 @@ def api_library_upload():
                     title = f.filename.replace(".pdf", "").replace("_", " ").replace("-", " ").title()
             except Exception as e:
                 return jsonify({"error": f"PDF extraction failed: {e}"}), 400
+        elif doc_type == "image" and "file" in request.files:
+            f = request.files["file"]
+            raw = f.read()
+            import base64
+            img_b64 = base64.b64encode(raw).decode()
+            mime = f.content_type or "image/jpeg"
+            extracted = _groq_vision(
+                img_b64, mime,
+                "Extract ALL text visible in this image exactly as shown. "
+                "If this is a receipt, include store name, items, prices, totals, date. "
+                "Return only the extracted text, no commentary."
+            )
+            text = extracted or ""
+            doc_type = "note"
+            if not title or title == "Untitled":
+                title = f.filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ").title() or "Receipt"
         else:
             text = request.form.get("text", "").strip()
             doc_type = "note"

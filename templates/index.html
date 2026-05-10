@@ -1283,12 +1283,16 @@
 
       <!-- Library list view -->
       <div id="lib-list-view">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between mb-3">
           <h2 class="font-bold text-gray-800 text-base">📚 My Library</h2>
           <button onclick="libShowUpload()" id="lib-add-btn"
             class="flex items-center gap-1.5 text-sm font-semibold bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition">
             + Add
           </button>
+        </div>
+        <!-- WhatsApp tip -->
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#166534;line-height:1.5">
+          💬 <strong>Via WhatsApp:</strong> Send any PDF, receipt photo, or document image and it's saved here automatically. Tap <strong>+ Add</strong> to upload from this screen (PDF, TXT, or photo).
         </div>
 
         <!-- Search bar -->
@@ -1341,8 +1345,8 @@
             ondragleave="document.getElementById('lib-dropzone').style.borderColor=''">
             <div class="text-3xl mb-2">📁</div>
             <div class="text-sm font-medium text-gray-600">Drop files here or tap to choose</div>
-            <div class="text-xs text-gray-400 mt-1">PDF · TXT · MD — select multiple at once</div>
-            <input type="file" accept=".pdf,.txt,.md" multiple id="lib-file-input" class="hidden" onchange="libFilesChosen(this)">
+            <div class="text-xs text-gray-400 mt-1">PDF · TXT · MD · JPG · PNG — select multiple at once</div>
+            <input type="file" accept=".pdf,.txt,.md,.jpg,.jpeg,.png,image/jpeg,image/png" multiple id="lib-file-input" class="hidden" onchange="libFilesChosen(this)">
           </div>
 
           <!-- File queue -->
@@ -3798,20 +3802,31 @@ const _ts = new Date(d.timestamp);
   };
   let _exploreAllGroups = {};
 
-  function placesUseLocation() {
+  async function placesUseLocation() {
     const btn   = document.getElementById("places-loc-btn");
     const errEl = document.getElementById("places-search-error");
     errEl.classList.add("hidden");
     MiruLocation.request(btn, async loc => {
       errEl.classList.add("hidden");
-      let areaName = "your location";
+      let lat = loc.lat, lon = loc.lon;
+      // Home postcode has no lat/lon — resolve via postcodes.io
+      if ((!lat || !lon) && loc.postcode) {
+        try {
+          const pc = loc.postcode.replace(/\s/g, "");
+          const r  = await fetch(`https://api.postcodes.io/postcodes/${pc}`);
+          const d  = await r.json();
+          if (d.result) { lat = d.result.latitude; lon = d.result.longitude; }
+        } catch(_) {}
+      }
+      if (!lat || !lon) { errEl.innerHTML = "Couldn't resolve location. Try entering a postcode."; errEl.classList.remove("hidden"); return; }
+      let areaName = loc.postcode || "your location";
       try {
-        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${loc.lat}&lon=${loc.lon}`, {headers:{"Accept-Language":"en"}});
+        const rev = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {headers:{"Accept-Language":"en"}});
         const rj  = await rev.json();
         const a   = rj.address || {};
-        areaName  = a.suburb || a.village || a.hamlet || a.town || a.city_district || a.city || a.county || "your location";
+        areaName  = a.suburb || a.village || a.hamlet || a.town || a.city_district || a.city || a.county || areaName;
       } catch(_) {}
-      placesLoadDetails(loc.lat, loc.lon, "", "", "", areaName, areaName);
+      placesLoadDetails(lat, lon, "", "", "", areaName, areaName);
     }, msg => {
       errEl.innerHTML = msg + ` <button onclick="placesUseLocation()" style="margin-left:8px;font-size:11px;font-weight:700;color:#1d4ed8;background:none;border:none;cursor:pointer;text-decoration:underline">Try again</button>`;
       errEl.classList.remove("hidden");
@@ -4968,6 +4983,9 @@ const _ts = new Date(d.timestamp);
         fd.append("title", title);
         if (/\.pdf$/i.test(item.file.name)) {
           fd.append("doc_type", "pdf");
+          fd.append("file", item.file);
+        } else if (/\.(jpg|jpeg|png)$/i.test(item.file.name) || item.file.type.startsWith("image/")) {
+          fd.append("doc_type", "image");
           fd.append("file", item.file);
         } else {
           fd.append("doc_type", "note");
@@ -6645,12 +6663,30 @@ _bkBadge();
 
   window.finderSelectCat = window.finderTabSwitch;
 
-  window.finderSetLocation = function(lat, lon, postcode) {
-    _finderLat = lat; _finderLon = lon;
+  window.finderSetLocation = async function(lat, lon, postcode) {
     _finderCurrentPC = postcode || "";
     const inp = document.getElementById("finder-postcode");
     if (inp && postcode) inp.value = postcode;
-    _showOk("📍 Location set — tap a category or type a search.");
+    if (lat && lon) {
+      _finderLat = lat; _finderLon = lon;
+      _showOk("📍 Location set — tap a category or type a search.");
+    } else if (postcode) {
+      // Home postcode has no lat/lon — resolve via postcodes.io
+      try {
+        const pc = postcode.replace(/\s/g, "");
+        const r  = await fetch(`https://api.postcodes.io/postcodes/${pc}`);
+        const d  = await r.json();
+        if (d.result) {
+          _finderLat = d.result.latitude;
+          _finderLon = d.result.longitude;
+          _showOk("📍 Location set — tap a category or type a search.");
+        } else {
+          _showErr("Couldn't resolve postcode coordinates — try typing a postcode.");
+        }
+      } catch(e) {
+        _showErr("Couldn't resolve postcode — type it manually.");
+      }
+    }
   };
 
   window.finderShare = function() {
