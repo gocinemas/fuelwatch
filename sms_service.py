@@ -9242,6 +9242,30 @@ def api_train_nearest():
     return jsonify({"error": "No station found"}), 404
 
 
+@app.route("/api/train/nearest-by-postcode")
+def api_train_nearest_by_postcode():
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+    try:
+        lat, lon = _latlon_for_postcode(postcode)
+        if lat is None:
+            return jsonify({"error": "Postcode not found"}), 404
+        best, best_dist = None, float("inf")
+        for s in _STATION_CACHE.values():
+            if s.get("lat") and s.get("lon"):
+                d = haversine_km(lat, lon, s["lat"], s["lon"])
+                if d < best_dist:
+                    best_dist, best = d, s
+        if best:
+            return jsonify({"name": best["name"], "crs": best["crs"],
+                            "lat": best["lat"], "lng": best["lon"],
+                            "distance_km": round(best_dist, 2)})
+        return jsonify({"error": "No station found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/train/search")
 def api_train_search():
     q = request.args.get("q", "").strip()

@@ -1284,7 +1284,9 @@
       <!-- Live data sections (populated by JS) -->
       <div id="myarea-reps"     style="display:none;margin-top:14px"></div>
       <div id="myarea-council"  style="display:none;margin-top:10px"></div>
+      <div id="myarea-train"    style="display:none;margin-top:10px"></div>
       <div id="myarea-gp"       style="display:none;margin-top:10px"></div>
+      <div id="myarea-schools"  style="display:none;margin-top:10px"></div>
       <div id="myarea-shops"    style="display:none;margin-top:10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:13px;font-weight:700;color:var(--text)">🛒 Shops</div>
@@ -2520,6 +2522,12 @@ const _ts = new Date(d.timestamp);
       person.council_profile_url ? `<a href="${person.council_profile_url}" target="_blank" style="font-size:11px;color:#4f46e5;font-weight:600">Council profile ↗</a>` : "",
     ].filter(Boolean).join("");
     const sub2 = [person.constituency, person.ward].filter(Boolean).join(" · ");
+    const repEmoji = role.includes("MP") ? "🏛️" : "🏘️";
+    const repSaved = _maIsSaved(person.name, person.email || "");
+    const repSaveBtn = `<button data-ma-save-name="${(person.name||"").replace(/'/g,"&#39;")}" data-ma-save-addr="${(person.email||"").replace(/'/g,"&#39;")}"
+      onclick="_maTogglePlace('${(person.name||"").replace(/'/g,"&#39;")}','${(person.email||"").replace(/'/g,"&#39;")}','${(person.phone||"").replace(/'/g,"&#39;")}','${repEmoji}')"
+      style="flex-shrink:0;font-size:18px;background:none;border:none;cursor:pointer;padding:4px;color:${repSaved?"#f59e0b":"#d1d5db"}" title="Save to My Places">
+      ${repSaved?"⭐":"☆"}</button>`;
     return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">${role}</div>
       <div style="display:flex;align-items:flex-start;gap:10px">
@@ -2530,6 +2538,7 @@ const _ts = new Date(d.timestamp);
           ${badge ? `<div style="margin-bottom:5px">${badge}</div>` : ""}
           <div style="display:flex;flex-direction:column;gap:3px">${links}</div>
         </div>
+        ${repSaveBtn}
       </div></div>`;
   }
 
@@ -2556,7 +2565,43 @@ const _ts = new Date(d.timestamp);
     if (area.water?.name)   rows += _maRow("💧","Water Co.", area.water.name, `Emergency: <a href="tel:${area.water.emergency}" style="color:#2563eb">${area.water.emergency}</a>`, `https://${area.water.website}`);
     if (area.gas?.name)     rows += _maRow("🔥","Gas Network", area.gas.name, `Gas leak: <a href="tel:${area.gas.emergency}" style="color:#dc2626;font-weight:700">${area.gas.emergency}</a>`, `https://${area.gas.website}`);
     if (!rows) { el.style.display = "none"; return; }
-    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏛️ Council &amp; Utilities</div>${_maCard(rows)}`;
+    let html = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏛️ Council &amp; Utilities</div>${_maCard(rows)}`;
+    // Post offices
+    const posts = (area.post_offices || []).slice(0, 3);
+    if (posts.length) {
+      html += `<div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">📮 Post Offices</div>
+               <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
+               ${posts.map(x => _maPlaceRow(x, "📮")).join("")}</div>`;
+    }
+    el.innerHTML = html;
+    el.style.display = "";
+  }
+
+  function _maRenderSchools(data) {
+    const el = document.getElementById("myarea-schools");
+    const schools = (data.schools?.schools || []).slice(0, 5);
+    if (!schools.length) { el.style.display = "none"; return; }
+    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏫 Nearby Schools</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
+      ${schools.map(x => _maPlaceRow(x, "🏫")).join("")}</div>`;
+    el.style.display = "";
+  }
+
+  function _maRenderTrain(data) {
+    const el = document.getElementById("myarea-train");
+    if (!data || !data.name || data.error) { el.style.display = "none"; return; }
+    const dist = data.distance_km ? `${(data.distance_km * 0.621371).toFixed(1)} mi away` : "";
+    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🚆 Nearest Station</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${data.name}</div>
+          ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
+        </div>
+        <button onclick="if(window._fillTrains){_fillTrains('${data.name.replace(/'/g,"\\'")}');}else{showScreen('trains');}"
+          style="flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">
+          Departures →
+        </button>
+      </div>`;
     el.style.display = "";
   }
 
@@ -2623,7 +2668,7 @@ const _ts = new Date(d.timestamp);
     if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
     // Reset sections
-    ["myarea-reps","myarea-council","myarea-gp","myarea-shops","myarea-pubs"].forEach(id => {
+    ["myarea-reps","myarea-council","myarea-train","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
     ["myarea-shops-spinner","myarea-pubs-spinner"].forEach(id => {
@@ -2666,14 +2711,20 @@ const _ts = new Date(d.timestamp);
       _maCheckHideSpinner();
     }).catch(() => { _areaLoaded = true; _maCheckHideSpinner(); });
 
-    // Shops + pubs — Overpass, slowest, always load in background
+    // Nearest train station (fast — uses in-memory station cache)
+    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_maRenderTrain).catch(()=>{});
+
+    // Shops + pubs + schools — Overpass, slowest, always load in background
     document.getElementById("myarea-shops").style.display = "";
     document.getElementById("myarea-pubs").style.display = "";
     fetch(`/api/shops?postcode=${pc}`).then(r=>r.json()).then(_maRenderShops).catch(()=>{
       const sp = document.getElementById("myarea-shops-spinner"); if(sp) sp.style.display="none";
       document.getElementById("myarea-shops").style.display="none";
     });
-    fetch(`/api/local?postcode=${pc}`).then(r=>r.json()).then(_maRenderPubs).catch(()=>{
+    fetch(`/api/local?postcode=${pc}`).then(r=>r.json()).then(data => {
+      _maRenderPubs(data);
+      _maRenderSchools(data);
+    }).catch(()=>{
       const sp = document.getElementById("myarea-pubs-spinner"); if(sp) sp.style.display="none";
       document.getElementById("myarea-pubs").style.display="none";
     });
