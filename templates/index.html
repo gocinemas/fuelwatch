@@ -1777,15 +1777,18 @@
     finally { setLoading("fuel", false); }
   }
 
+  let _fuelResultStations = [];
+
   function renderFuel(d) {
 const _ts = new Date(d.timestamp);
     document.getElementById("fuel-time").textContent = "Prices refreshed " + _ts.toLocaleString("en-GB", {hour:"2-digit", minute:"2-digit", day:"numeric", month:"short"});
     document.getElementById("fuel-title").textContent   = `${d.fuel==="petrol"?"Petrol":"Diesel"} near ${d.postcode}`;
     document.getElementById("fuel-meta").textContent    = `${d.stations.length} stations within ${d.radius} miles`;
 
+    _fuelResultStations = d.stations.slice(0, 8);
     const sl = document.getElementById("fuel-stations");
     sl.innerHTML = "";
-    d.stations.slice(0,8).forEach((s,i) => {
+    _fuelResultStations.forEach((s,i) => {
       const saving = (d.avg_price - s.price).toFixed(1);
       const savingHtml = saving > 0
         ? `<span class="text-green-600 text-xs">-${saving}p</span>`
@@ -1810,7 +1813,7 @@ const _ts = new Date(d.timestamp);
             <div style="font-size:12px;color:var(--subtle)">${s.dist_mi.toFixed(1)}mi</div>
             <div style="display:flex;gap:5px">
               <button id="${starId}"
-                onclick="_myFuelToggle(${JSON.stringify(s)}, '${starId}')"
+                onclick="_myFuelToggle(${i}, '${starId}')"
                 title="${isSaved ? 'Remove from My Fuel' : 'Save as regular station'}"
                 style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;opacity:${isSaved?1:0.35};transition:opacity .15s">
                 ${isSaved ? '⭐' : '☆'}
@@ -1866,7 +1869,9 @@ const _ts = new Date(d.timestamp);
     return _myFuelLoad().some(x => Math.abs(x.lat - s.lat) < 0.001 && Math.abs(x.lon - s.lon) < 0.001);
   }
 
-  function _myFuelToggle(s, starId) {
+  function _myFuelToggle(stationIdx, starId) {
+    const s = _fuelResultStations[stationIdx];
+    if (!s) return;
     let saved = _myFuelLoad();
     const idx = saved.findIndex(x => Math.abs(x.lat - s.lat) < 0.001 && Math.abs(x.lon - s.lon) < 0.001);
     const btn = document.getElementById(starId);
