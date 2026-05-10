@@ -2356,6 +2356,66 @@ def api_councillor():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/mp")
+def api_mp():
+    """Return current MP for a postcode using the Parliament Members API."""
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+    try:
+        # Parliament Members API — no key needed, public
+        r = requests.get(
+            "https://members-api.parliament.uk/api/Members/Search",
+            params={"PostCode": postcode, "House": 1, "IsCurrentMember": True},
+            headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
+            timeout=10,
+        )
+        r.raise_for_status()
+        items = r.json().get("items", [])
+        if not items:
+            return jsonify({"error": "No MP found for this postcode"})
+
+        m = items[0]["value"]
+        mp_id = m["id"]
+        party = m.get("latestParty", {}).get("name", "")
+        constituency = ""
+        ler = m.get("latestElectionResult") or {}
+        if ler:
+            constituency = (ler.get("constituency") or {}).get("name", "")
+
+        # Fetch contact details
+        email = phone = website = twitter = ""
+        try:
+            cr = requests.get(
+                f"https://members-api.parliament.uk/api/Members/{mp_id}/Contact",
+                headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
+                timeout=8,
+            )
+            if cr.ok:
+                for c in cr.json().get("value", []):
+                    if not email   and c.get("email"):     email   = c["email"]
+                    if not phone   and c.get("phone"):     phone   = c["phone"]
+                    if not website and c.get("line1","").startswith("http"): website = c["line1"]
+                    if not twitter and "twitter" in (c.get("type","") or "").lower(): twitter = c.get("line1","").lstrip("@")
+        except Exception:
+            pass
+
+        return jsonify({
+            "name":            m.get("nameDisplayAs", ""),
+            "party":           party,
+            "constituency":    constituency,
+            "photo_url":       m.get("thumbnailUrl", ""),
+            "email":           email,
+            "phone":           phone,
+            "website":         website,
+            "twitter":         twitter,
+            "parliament_url":  f"https://members.parliament.uk/member/{mp_id}/contact",
+        })
+    except Exception as e:
+        print(f"[mp] {e}")
+        return jsonify({"error": "Could not fetch MP data"}), 500
+
+
 @app.route("/api/elections/sync-councillors", methods=["POST"])
 def api_sync_councillors():
     """Admin: pull all elected councillors from DC API and upsert to DB."""
