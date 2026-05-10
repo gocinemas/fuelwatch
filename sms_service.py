@@ -7892,12 +7892,16 @@ def api_music_charts():
         app_token = _get_spotify_app_token()
         if app_token:
             playlist_id = _SPOTIFY_PLAYLISTS.get(country, _SPOTIFY_PLAYLISTS[""])
+            market = "GB" if country == "GB" else "US"
             r = requests.get(
                 f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
                 headers={"Authorization": f"Bearer {app_token}"},
-                params={"limit": 20, "fields": "items(track(id,name,artists(name),album(images),external_urls))"},
+                params={"limit": 20, "market": market},
                 timeout=10,
             )
+            print(f"[music/charts/spotify] status={r.status_code} playlist={playlist_id}")
+            if r.status_code != 200:
+                print(f"[music/charts/spotify] error body: {r.text[:300]}")
             r.raise_for_status()
             tracks = []
             for i, item in enumerate(r.json().get("items", [])):
@@ -7917,10 +7921,11 @@ def api_music_charts():
                     "track_id":    t.get("id", ""),
                     "spotify_url": spotify_url,
                 })
+            print(f"[music/charts/spotify] got {len(tracks)} tracks")
             if tracks:
                 return jsonify({"tracks": tracks, "source": "spotify"})
     except Exception as e:
-        print(f"[music/charts/spotify] {e}")
+        print(f"[music/charts/spotify] exception: {e}")
 
     # ── Apple iTunes fallback ─────────────────────────────────────────────────
     feed_country = "gb" if country == "GB" else "us"
