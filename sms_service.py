@@ -8327,29 +8327,48 @@ def api_train_search():
         return jsonify({"error": str(e)}), 500
 
 
+_rtt_access: dict = {"token": None, "exp": 0.0}
+_rtt_departures_cache: dict = {}   # crs → (payload, ts), 30-second TTL
+_RTT_DEPARTURES_TTL = 30
+
+def _get_rtt_token() -> str:
+    """Return a cached RTT access token, refreshing only when expired (4-min TTL)."""
+    if _rtt_access["token"] and time.time() < _rtt_access["exp"]:
+        return _rtt_access["token"]
+    rtt_token = os.environ.get("RTT_TOKEN", "")
+    if not rtt_token:
+        raise RuntimeError("RTT_TOKEN not set")
+    tr = requests.get(
+        "https://data.rtt.io/api/get_access_token",
+        headers={"Authorization": f"Bearer {rtt_token}"},
+        timeout=10,
+    )
+    if not tr.text.strip():
+        raise RuntimeError(f"Token exchange empty (HTTP {tr.status_code})")
+    tr_data = tr.json()
+    if "token" not in tr_data:
+        raise RuntimeError(f"Token exchange failed: {tr_data}")
+    _rtt_access["token"] = tr_data["token"]
+    _rtt_access["exp"]   = time.time() + 240  # 4 minutes
+    return _rtt_access["token"]
+
+
 @app.route("/api/train/departures")
 def api_train_departures():
     crs = request.args.get("crs", "").strip().upper()[:3]
     if not crs:
         return jsonify({"error": "crs required"}), 400
 
-    rtt_token = os.environ.get("RTT_TOKEN", "")
-    if not rtt_token:
+    if not os.environ.get("RTT_TOKEN"):
         return jsonify({"error": "Train API not configured — set RTT_TOKEN environment variable (free at api-portal.rtt.io)"}), 503
 
+    # 30-second departures cache — train data doesn't change faster than this
+    cached = _rtt_departures_cache.get(crs)
+    if cached and time.time() - cached[1] < _RTT_DEPARTURES_TTL:
+        return jsonify(cached[0])
+
     try:
-        # Exchange refresh token for short-lived access token
-        tr = requests.get(
-            "https://data.rtt.io/api/get_access_token",
-            headers={"Authorization": f"Bearer {rtt_token}"},
-            timeout=10,
-        )
-        if not tr.text.strip():
-            return jsonify({"error": f"Token exchange failed: empty response (HTTP {tr.status_code})"}), 500
-        tr_data = tr.json()
-        if "token" not in tr_data:
-            return jsonify({"error": f"Token exchange failed: {tr_data}"}), 500
-        access = tr_data["token"]
+        access = _get_rtt_token()
 
         r = requests.get(
             "https://data.rtt.io/rtt/location",
@@ -8420,9 +8439,12 @@ def api_train_departures():
                 "cancelled":   bool(cancelled),
             })
         station_name = (data.get("location") or {}).get("description", crs)
-        return jsonify({"station": station_name, "trains": trains})
+        payload = {"station": station_name, "trains": trains}
+        _rtt_departures_cache[crs] = (payload, time.time())
+        return jsonify(payload)
     except Exception as e:
         print(f"[train/departures] error: {e}")
+        _rtt_access["token"] = None  # force token refresh on next request
         return jsonify({"error": "Could not load departures — try again shortly"}), 500
 
 
