@@ -7920,7 +7920,7 @@ def api_music_charts():
         token = _get_spotify_app_token()
         if token:
             r = requests.get(
-                f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
+                f"https://api.spotify.com/v1/playlists/{playlist_id}/items",
                 headers={"Authorization": f"Bearer {token}"},
                 params={"limit": 20, "fields": "items(track(id,name,artists,album(images),external_urls,duration_ms))"},
                 timeout=10,

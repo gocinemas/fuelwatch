@@ -981,6 +981,13 @@
           <div id="elections-county" style="font-size:11px;color:var(--subtle);opacity:.65;margin-top:1px"></div>
         </div>
 
+        <!-- 🏛️ Elected Councillor — always shown first -->
+        <div id="councillor-card" style="display:none;margin-bottom:12px;background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1.5px solid #86efac;border-radius:14px;padding:14px 15px">
+          <div id="councillor-label-text" style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏛️ Your Elected Councillor</div>
+          <div id="councillor-list" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div id="councillor-loading" style="font-size:12px;color:var(--subtle);font-style:italic">Loading councillor details…</div>
+        </div>
+
         <!-- No-election notice + inline 2022 results (shown when noElection) -->
         <div id="elections-no-elec" style="display:none">
           <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#92400e">
@@ -1029,12 +1036,6 @@
           </div>
           <div id="erpanel-2026">
             <div id="elections-live" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
-            <!-- Elected councillor contact card — shown after results declared -->
-            <div id="councillor-card" style="display:none;margin-top:12px;background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1.5px solid #86efac;border-radius:14px;padding:14px 15px">
-              <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🏛️ Your Elected Councillor</div>
-              <div id="councillor-list" style="display:flex;flex-direction:column;gap:10px"></div>
-              <div id="councillor-loading" style="font-size:12px;color:var(--subtle);font-style:italic">Loading councillor details…</div>
-            </div>
           </div>
           <div id="erpanel-2022" style="display:none">
             <div id="elections-past" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px"></div>
@@ -2925,13 +2926,16 @@ const _ts = new Date(d.timestamp);
           }).join('');
       }
 
+      // Always load councillor card (top of results, before tabs)
+      const _cLabel = document.getElementById("councillor-label-text");
+      const hasRealResults = d.live_results && d.live_results.some(r => r.votes != null || r.elected);
+      if (_cLabel) _cLabel.textContent = hasRealResults ? "🏛️ Your Elected Councillor" : "🏛️ Your Councillor";
+      _loadCouncillorCard(d.ward_gss, postcode);
+
       // 2026 live results panel
       const liveEl = document.getElementById("elections-live");
-      const hasRealResults = d.live_results && d.live_results.some(r => r.votes != null || r.elected);
       if (hasRealResults) {
         liveEl.innerHTML = _renderResultsTable(d.live_results, "7 May 2026 Results");
-        // Load councillor card asynchronously
-        _loadCouncillorCard(d.ward_gss, postcode);
       } else if (d.is_new_council && d.predecessor_areas && d.predecessor_areas.length) {
         liveEl.innerHTML = `
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">7 May 2026 · ${d.ward || ''}</div>
@@ -2951,8 +2955,26 @@ const _ts = new Date(d.timestamp);
         if (panel2022)  panel2022.style.display  = "none";
       } else {
         if (tab2022Btn) tab2022Btn.style.display = "";
-        // 2022 past results — tab panel + inline (no-election view)
-        function _render2022() {
+        // 2022 tab — just show elected winners (no vote bars)
+        function _render2022Winners() {
+          if (d.past_results && d.past_results.length) {
+            const winners = d.past_results.filter(r => r.elected);
+            const rows = (winners.length ? winners : d.past_results).map(r => {
+              const col = _partyStyle(r.party);
+              return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col.bg};flex-shrink:0"></span>
+                <span style="font-size:13px;font-weight:600;color:var(--text);flex:1">${r.name}</span>
+                <span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text};font-weight:600">${r.party}</span>
+              </div>`;
+            }).join('');
+            return `<div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">2022 Elected Councillors</div>${rows}`;
+          } else if (d.dc_results_url) {
+            return `<div style="font-size:12px;color:var(--subtle)">2022 results: <a href="${d.dc_results_url}" target="_blank" rel="noopener" style="color:#4f46e5">View on Democracy Club ↗</a></div>`;
+          }
+          return `<div style="text-align:center;padding:12px 0;color:var(--subtle);font-size:13px">No 2022 data for this ward.</div>`;
+        }
+        // Inline view (no-election notice) keeps the full table for context
+        function _render2022Full() {
           if (d.past_results && d.past_results.length) {
             return _renderResultsTable(d.past_results, "2022 Local Election Results");
           } else if (d.dc_results_url) {
@@ -2961,9 +2983,8 @@ const _ts = new Date(d.timestamp);
           }
           return `<div style="text-align:center;padding:16px 0;color:var(--subtle);font-size:13px">No 2022 results on record for this ward.</div>`;
         }
-        const past2022Html = _render2022();
-        document.getElementById("elections-past").innerHTML        = past2022Html;
-        document.getElementById("elections-past-inline").innerHTML = past2022Html;
+        document.getElementById("elections-past").innerHTML        = _render2022Winners();
+        document.getElementById("elections-past-inline").innerHTML = _render2022Full();
       }
 
       // Candidates tab: show when 2026 results not yet declared
@@ -7950,11 +7971,59 @@ _bkBadge();
     if(tab === 'identify') _musicRenderSaved();
   };
 
+  var _SP_PLAYLIST_IDS = { uk: '37i9dQZEVXbLnolsZ8PSNw', global: '37i9dQZEVXbMDoHDwVN2tF' };
+
+  async function _musicLoadSpotifyDirect(tab) {
+    // Fetch Spotify charts client-side using the user's OAuth token (bypasses client-credentials restriction on editorial playlists)
+    if (!window.spotifyGetToken) return null;
+    var token = await window.spotifyGetToken();
+    if (!token) return null;
+    var pid = _SP_PLAYLIST_IDS[tab];
+    if (!pid) return null;
+    try {
+      var r = await fetch('https://api.spotify.com/v1/playlists/'+pid+'/items?limit=20', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!r.ok) return null;
+      var d = await r.json();
+      var tracks = [];
+      (d.items || []).forEach(function(item, i) {
+        var t = item && item.track;
+        if (!t || !t.name) return;
+        var images = (t.album && t.album.images) || [];
+        var artists = (t.artists || []).map(function(a){ return a.name; }).join(', ');
+        tracks.push({
+          position: i + 1,
+          title: t.name,
+          artist: artists,
+          cover: images[0] ? images[0].url : '',
+          track_id: t.id || '',
+          spotify_url: (t.external_urls && t.external_urls.spotify) || ''
+        });
+      });
+      return tracks.length ? tracks : null;
+    } catch(e) { return null; }
+  }
+
   function _musicLoadCharts(tab) {
     if(_chartsCache[tab]){ _musicRenderCharts(_chartsCache[tab]); return; }
     document.getElementById('music-charts-loading').style.display = 'block';
     document.getElementById('music-charts-error').style.display = 'none';
     document.getElementById('music-charts-list').innerHTML = '';
+    // Try client-side Spotify fetch first (uses user's OAuth token — no client-credentials restriction)
+    _musicLoadSpotifyDirect(tab).then(function(spTracks) {
+      if (spTracks) {
+        document.getElementById('music-charts-loading').style.display = 'none';
+        _chartsCache[tab] = spTracks;
+        _musicRenderCharts(spTracks);
+        return;
+      }
+      // Fall back to backend (iTunes when Spotify client credentials also fail)
+      _musicLoadChartsBackend(tab);
+    }).catch(function(){ _musicLoadChartsBackend(tab); });
+  }
+
+  function _musicLoadChartsBackend(tab) {
     var country = tab==='uk' ? 'GB' : '';
     fetch('/api/music/charts?country='+country)
       .then(function(r){
@@ -8294,6 +8363,9 @@ _bkBadge();
   window.spotifyDisconnect = function(){
     _sp.token=null; _sp.expires=0; _sp.refreshToken=null; _save(); _updateUI();
   };
+
+  // Expose token getter so chart loader can fetch Spotify playlists using user's token
+  window.spotifyGetToken = async function(){ return await _getToken(); };
 
   // Open a Spotify track — native app deep link → web URL → search fallback
   window.spotifyOpen = function(trackId, spotifyUrl, title, artist){
