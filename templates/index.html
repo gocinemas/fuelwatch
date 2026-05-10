@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="Miru">
   <meta name="theme-color" content="#dc2626">
   <title>Miru — Your everyday UK companion</title>
-  <meta name="description" content="Fuel prices, area reports, local services, book scanner, company research and more — all in one place. Also works on WhatsApp.">
+  <meta name="description" content="Fuel prices, research an area, area research, book scanner, company intel and more — all in one place. Also works on WhatsApp.">
 
   <!-- Open Graph (WhatsApp, Facebook, iMessage previews) -->
   <meta property="og:type"        content="website">
@@ -398,7 +398,7 @@
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px">
         <button class="tool-icon-btn" onclick="showScreen('report')">
           <span class="tool-icon-emoji">🔎</span>
-          <span class="tool-icon-label">Local Intel</span>
+          <span class="tool-icon-label">Research an Area</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('places')">
           <span class="tool-icon-emoji">📍</span>
@@ -590,7 +590,7 @@
     <!-- ── AREA REPORT SCREEN ── -->
     <div id="screen-report" class="screen pt-5">
       <div class="bg-white rounded-2xl shadow p-5 mb-4">
-        <h2 class="font-bold text-gray-800 mb-1">🔎 Local Intel</h2>
+        <h2 class="font-bold text-gray-800 mb-1">🔎 Research an Area</h2>
         <p class="text-xs text-gray-400 mb-3">Research an area — crime, schools, house prices &amp; services</p>
         <!-- Home postcode banner -->
         <div id="report-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
@@ -2031,7 +2031,7 @@ const _ts = new Date(d.timestamp);
     const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"").toUpperCase();
     if (!postcode) return;
     const url = location.origin + "?report=" + postcode;
-    miruShare({ title: "Local Intel: " + postcode, text: "Check out local intel for " + postcode + " on Miru", url, btn });
+    miruShare({ title: "Research an Area: " + postcode, text: "Check out the area research for " + postcode + " on Miru", url, btn });
   }
 
   window.reportTabSwitch = function(tab, btn) {
@@ -2064,7 +2064,7 @@ const _ts = new Date(d.timestamp);
     const _rSaveHomeRow = document.getElementById("report-save-home-row");
     _rSaveHomeRow.style.display = MiruLocation.getHome() ? "none" : "block";
     const pcFmt = postcode.replace(/^([A-Z]{1,2}\d{1,2}[A-Z]?)(\d[A-Z]{2})$/i, "$1 $2").toUpperCase();
-    document.getElementById("report-share-label").textContent = "Local Intel · " + pcFmt;
+    document.getElementById("report-share-label").textContent = "Research an Area · " + pcFmt;
     reportTabSwitch("house", document.querySelector('.rptab[data-tab="house"]'));
     document.getElementById("report-house-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading house prices…</div>';
     document.getElementById("report-schools-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading schools…</div>';
@@ -6016,7 +6016,7 @@ const _ts = new Date(d.timestamp);
     const _TOOLS = [
       { name:"Fuel prices",    desc:"Cheapest petrol & diesel near you",  icon:"⛽", screen:"fuel",      kw:"fuel petrol diesel gas station cheap" },
       { name:"Train times",    desc:"Live departures & delays",            icon:"🚆", screen:"trains",    kw:"train trains rail station departure delay tfl" },
-      { name:"Local Intel",    desc:"Research an area — crime, schools, prices", icon:"🔎", screen:"report", kw:"area crime house prices school safety report local neighbourhood intel research" },
+      { name:"Research an Area",    desc:"Research an area — crime, schools, prices", icon:"🔎", screen:"report", kw:"area crime house prices school safety report local neighbourhood intel research" },
       { name:"Local search",   desc:"Cafés, tradespeople & shops",         icon:"📍", screen:"places",    kw:"cafe coffee plumber shop restaurant pub local places nearby find electrician builder" },
       { name:"Emergency",      desc:"Hospitals & police stations",         icon:"🚨", screen:"report",    kw:"hospital emergency police ambulance a&e urgent nhs nearest help" },
       { name:"My saves",       desc:"Articles & links you've saved",       icon:"📌", screen:"saves",     kw:"saves saved article link bookmark read reading" },
@@ -6181,7 +6181,7 @@ const _ts = new Date(d.timestamp);
         const label = intent.screen === "fuel" ? (q.toLowerCase().includes("cheap") ? `Cheapest fuel near ${pc}` : `Find ${intent.kw[0]} near ${pc}`) :
                       intent.screen === "trains" ? `Trains from ${pc}` :
                       isService ? `Find ${q.replace(/[A-Z]{1,2}\d[\w ]*/gi,"").replace(/near me|nearby/gi,"").trim() || "services"} near ${pc}` :
-                      `Local Intel for ${pc}`;
+                      `Research an Area for ${pc}`;
         const icon  = intent.screen === "fuel" ? "⛽" : intent.screen === "trains" ? "🚆" : isService ? "📍" : "🏠";
         const safeQ = JSON.stringify(q);
         const action = isService
