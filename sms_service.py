@@ -3304,16 +3304,33 @@ def api_services():
 @app.route("/api/shops")
 def api_shops():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    debug    = request.args.get("debug") == "1"
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
     try:
         cache_key = f"shops:{postcode}"
         hit = _services_cache.get(cache_key)
-        if hit and time.time() - hit["ts"] < _SERVICES_TTL:
+        if hit and time.time() - hit["ts"] < _SERVICES_TTL and not debug:
             return jsonify(hit["data"])
         lat, lon = _latlon_for_postcode(postcode)
         if lat is None:
             return jsonify({"error": "Postcode not found"}), 404
+        if debug:
+            q = f"""[out:json][timeout:25];
+(node["shop"="supermarket"](around:5000,{lat},{lon});
+way["shop"="supermarket"](around:5000,{lat},{lon}););out center;"""
+            dbg = {"lat": lat, "lon": lon, "overpass_urls": {}}
+            for url in _OVERPASS_URLS:
+                try:
+                    r = requests.post(url, data={"data": q}, timeout=12)
+                    els = r.json().get("elements", []) if r.status_code == 200 else []
+                    names = [e.get("tags", {}).get("name", "?") for e in els[:10]]
+                    dbg["overpass_urls"][url] = {"status": r.status_code, "count": len(els), "sample": names}
+                except Exception as e:
+                    dbg["overpass_urls"][url] = {"error": str(e)}
+            google_key = bool(os.environ.get("GOOGLE_PLACES_KEY"))
+            dbg["google_places_key_set"] = google_key
+            return jsonify(dbg)
         supermarkets = _fetch_supermarkets(lat, lon)
         result = {"supermarkets": supermarkets}
         if supermarkets:  # only cache if we got results
