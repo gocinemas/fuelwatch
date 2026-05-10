@@ -2629,6 +2629,18 @@ def _get_cheapest_fuel(postcode: str, fuel: str, radius_miles: float = 5):
     return nearby[0]["price"], nearby[0]
 
 
+@app.route("/api/fuel/refresh")
+def api_fuel_refresh():
+    """Pre-warm station cache. Call every 30 min via cron-job.org."""
+    token = request.args.get("token", "")
+    if token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "Forbidden"}), 403
+    before = _station_cache.get("loaded_at", 0)
+    stations = get_stations()
+    refreshed = _station_cache.get("loaded_at", 0) != before
+    return jsonify({"stations": len(stations), "refreshed": refreshed})
+
+
 @app.route("/api/fuel/alert", methods=["POST"])
 def api_fuel_alert_register():
     """Register for fuel price drop alerts. Body: {wa_number, postcode, fuel_type?, threshold_drop?}"""
