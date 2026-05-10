@@ -5507,6 +5507,20 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
 
     def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content,
             _loc=_USER_LAST_LOCATION.get(from_number)):
+        # ── Persist image to Supabase Storage (so URL never expires) ────────────
+        _stored_image_url = ""
+        if sid and raw:
+            try:
+                _ext = (m or "image/jpeg").split("/")[-1].replace("jpeg", "jpg")
+                _path = f"{sid}.{_ext}"
+                lib._sb().storage.from_("saves-images").upload(
+                    _path, raw, {"content-type": m or "image/jpeg", "upsert": "true"}
+                )
+                _stored_image_url = lib._sb().storage.from_("saves-images").get_public_url(_path)
+                lib._sb().table("wa_saves").update({"image_url": _stored_image_url}).eq("id", sid).execute()
+            except Exception as _ue:
+                print(f"[vision] storage upload failed: {_ue}")
+
         # ── QR code scan ────────────────────────────────────────────────────────
         qr_url = ""
         qr_event_info = ""
@@ -7598,7 +7612,7 @@ def api_wa_saves():
 
     try:
         q = lib._sb().table("wa_saves").select(
-            "id,title,url,summary,status,remind_day,created_at"
+            "id,title,url,summary,status,remind_day,created_at,image_url"
         )
         if filter_number:
             q = q.eq("from_number", filter_number)
@@ -7617,6 +7631,8 @@ def api_wa_saves_update():
     data = request.json or {}
     save_id = data.get("id")
     status = data.get("status")
+    if status == "archive":
+        status = "read"  # "archive" is the new UI label for read
     if not save_id or status not in ("read", "skip", "remind", "pending"):
         return jsonify({"error": "Invalid id or status"}), 400
     try:

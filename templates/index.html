@@ -6658,6 +6658,18 @@ _bkBadge();
       <div id="intel-saves-list" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
 
+    <!-- Inbox / Archive tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <button id="saves-tab-inbox" onclick="savesSetTab('inbox')"
+        style="flex:1;padding:9px 0;border-radius:12px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:#1f2937;color:#fff">
+        Inbox <span id="saves-inbox-count" style="font-size:11px;opacity:.6"></span>
+      </button>
+      <button id="saves-tab-archive" onclick="savesSetTab('archive')"
+        style="flex:1;padding:9px 0;border-radius:12px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:#f3f4f6;color:#6b7280">
+        Archive <span id="saves-archive-count" style="font-size:11px;opacity:.6"></span>
+      </button>
+    </div>
+
     <!-- Category pills -->
     <div id="saves-cat-pills" style="display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:12px;margin-bottom:4px;scrollbar-width:none;-ms-overflow-style:none"></div>
 
@@ -7172,6 +7184,23 @@ _bkBadge();
     _renderIntelSaves();
   };
 
+  var _savesActiveTab = "inbox"; // "inbox" | "archive"
+
+  window.savesSetTab = function(tab) {
+    _savesActiveTab = tab;
+    const inboxBtn   = document.getElementById("saves-tab-inbox");
+    const archiveBtn = document.getElementById("saves-tab-archive");
+    if (inboxBtn && archiveBtn) {
+      inboxBtn.style.background   = tab === "inbox"   ? "#1f2937" : "#f3f4f6";
+      inboxBtn.style.color        = tab === "inbox"   ? "#fff"    : "#6b7280";
+      archiveBtn.style.background = tab === "archive" ? "#1f2937" : "#f3f4f6";
+      archiveBtn.style.color      = tab === "archive" ? "#fff"    : "#6b7280";
+    }
+    _savesActiveFilter = "all";
+    savesRenderCategoryPills();
+    savesRender();
+  };
+
   window.savesLoad = async function() {
     _renderIntelSaves();
     document.getElementById("saves-list").innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div>Loading…</div>';
@@ -7180,6 +7209,13 @@ _bkBadge();
       if (r.status === 401) { sessionStorage.removeItem("wa_saves_token"); _savesShowLock(); return; }
       const d = await r.json();
       _savesAll = d.saves || [];
+      // Update tab counts
+      const inbox   = _savesAll.filter(s => s.status === "pending").length;
+      const archive = _savesAll.filter(s => s.status !== "pending").length;
+      const ic = document.getElementById("saves-inbox-count");
+      const ac = document.getElementById("saves-archive-count");
+      if (ic) ic.textContent = inbox   ? `(${inbox})`   : "";
+      if (ac) ac.textContent = archive ? `(${archive})` : "";
       savesRenderCategoryPills();
       savesRender();
     } catch(e) {
@@ -7214,8 +7250,11 @@ _bkBadge();
   }
 
   function savesRenderCategoryPills() {
-    var counts = {all: _savesAll.length};
-    _savesAll.forEach(function(s) {
+    const tabItems = _savesActiveTab === "inbox"
+      ? _savesAll.filter(s => s.status === "pending" || !s.status)
+      : _savesAll.filter(s => s.status && s.status !== "pending");
+    var counts = {all: tabItems.length};
+    tabItems.forEach(function(s) {
       var c = _saveCat(s);
       counts[c] = (counts[c] || 0) + 1;
     });
@@ -7239,9 +7278,13 @@ _bkBadge();
 
   function savesRender() {
     const list = document.getElementById("saves-list");
+    // Tab filter: inbox = pending, archive = read/skip/remind
+    const tabFiltered = _savesActiveTab === "inbox"
+      ? _savesAll.filter(s => s.status === "pending" || !s.status)
+      : _savesAll.filter(s => s.status && s.status !== "pending");
     const items = _savesActiveFilter === "all"
-      ? _savesAll
-      : _savesAll.filter(function(s){ return _saveCat(s) === _savesActiveFilter; });
+      ? tabFiltered
+      : tabFiltered.filter(function(s){ return _saveCat(s) === _savesActiveFilter; });
 
     const countLabel = document.getElementById("saves-count-label");
     if (countLabel) {
@@ -7372,15 +7415,24 @@ _bkBadge();
       ? `<button onclick="saveOpenBrandIntel('${brandGuess.replace(/'/g,"\\'")}')\" style=\"flex:1;padding:8px 6px;border-radius:10px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;cursor:pointer;color:#92400e\">🔍 Intel →</button>`
       : "";
 
-    const actionBtns = !isPhoto ? `
-      <button onclick="savesUpdate('${s.id}','read',this)" style="flex:1;padding:8px 4px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#16a34a">✓ Read</button>
-      <button onclick="savesUpdate('${s.id}','skip',this)" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:13px;cursor:pointer;color:var(--muted)">×</button>
-      <button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>
-    ` : `
-      <button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>
-    `;
+    const isArchived = s.status && s.status !== "pending";
+    const imageThumb = s.image_url
+      ? `<img src="${s.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"
+           style="width:100%;border-radius:12px;margin-bottom:10px;max-height:220px;object-fit:cover;display:block">`
+      : "";
+
+    const archiveBtn = !isArchived
+      ? `<button onclick="savesUpdate('${s.id}','archive',this)" style="flex:1;padding:8px 4px;border-radius:10px;border:1px solid #d1fae5;background:#f0fdf4;font-size:12px;font-weight:600;cursor:pointer;color:#16a34a">✓ Done</button>`
+      : `<button onclick="savesUpdate('${s.id}','pending',this)" style="flex:1;padding:8px 4px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--muted)">↩ Inbox</button>`;
+
+    const openBtn = s.url && !isPhoto
+      ? `<a href="${s.url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">↗</a>`
+      : "";
+
+    const deleteBtn = `<button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>`;
 
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px 15px;margin-bottom:10px">
+      ${imageThumb}
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;gap:8px">
         <div id="save-title-${s.id}" style="flex:1;min-width:0">${titleHtml}</div>
         <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
@@ -7395,7 +7447,9 @@ _bkBadge();
       ${!productsHtml ? summaryHtml : ""}
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${date}${s.remind_day ? " · 🔔 " + s.remind_day : ""}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        ${actionBtns}
+        ${archiveBtn}
+        ${openBtn}
+        ${deleteBtn}
         ${enrichBtn}
         ${brandBtn}
       </div>
