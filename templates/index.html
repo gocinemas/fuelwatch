@@ -792,25 +792,8 @@
           <div id="brand-fin-empty" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--muted)">
             🔒 Privately held — no public financials available
           </div>
-          <!-- Stats grid from brand API -->
-          <div id="brand-stats-grid" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
-              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Founded</div>
-              <div id="brand-founded-el" style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">—</div>
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
-              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Headquarters</div>
-              <div id="brand-hq-el" style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">—</div>
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
-              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Revenue</div>
-              <div id="brand-revenue-el" style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">—</div>
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
-              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Industry</div>
-              <div id="brand-industry-el" style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">—</div>
-            </div>
-          </div>
+          <!-- Stats grid — rendered dynamically, only non-empty fields shown -->
+          <div id="brand-stats-grid" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px"></div>
           <!-- Brand financial snapshot -->
           <div id="brand-fin-section" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:12px">
             <div id="brand-fin-header" style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">📊 Financial Snapshot</div>
@@ -2331,9 +2314,6 @@ const _ts = new Date(d.timestamp);
     document.getElementById("brand-name-el").textContent = raw;
     document.getElementById("brand-desc-el").textContent = "";
     document.getElementById("brand-extract-el").textContent = "";
-    ["brand-founded-el","brand-hq-el","brand-revenue-el","brand-industry-el"].forEach(id => {
-      const el = document.getElementById(id); if (el) el.textContent = "—";
-    });
     const _sg = document.getElementById("brand-stats-grid");
     if (_sg) _sg.style.display = "none";
 
@@ -4582,10 +4562,25 @@ const _ts = new Date(d.timestamp);
     document.getElementById("brand-name-el").textContent = d.name || "";
     document.getElementById("brand-desc-el").textContent = d.description || "";
     document.getElementById("brand-extract-el").textContent = d.extract || "";
-    document.getElementById("brand-founded-el").textContent = d.founded || "—";
-    document.getElementById("brand-hq-el").textContent = d.hq || "—";
-    document.getElementById("brand-revenue-el").textContent = _fmtMoney(d.revenue) || "—";
-    document.getElementById("brand-industry-el").textContent = d.industry || "—";
+
+    // Stats grid — only render boxes that have real values
+    const _statFields = [
+      ["Founded",      d.founded],
+      ["Headquarters", d.hq],
+      ["Revenue",      _fmtMoney(d.revenue)],
+      ["Industry",     d.industry],
+      ["Employees",    d.employees],
+    ].filter(([, v]) => v && String(v).trim());
+    const _sg = document.getElementById("brand-stats-grid");
+    if (_sg) {
+      _sg.innerHTML = _statFields.map(([label, val]) =>
+        `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
+           <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${label}</div>
+           <div style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">${val}</div>
+         </div>`
+      ).join("");
+      _sg.style.display = _statFields.length ? "grid" : "none";
+    }
 
     // Timeline
     const tl = d.timeline || [];

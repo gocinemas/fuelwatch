@@ -3411,6 +3411,32 @@ def api_company():
     return jsonify(fetch_company_info(name))
 
 
+def _groq_vision(img_b64: str, mime: str, prompt: str, model: str = "llama-3.2-11b-vision-preview") -> str:
+    """Send a base64-encoded image to Groq vision model and return extracted text."""
+    body = {
+        "model": model,
+        "max_tokens": 1024,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{img_b64}"}},
+                {"type": "text", "text": prompt},
+            ],
+        }],
+    }
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+            "Content-Type": "application/json",
+        },
+        json=body,
+        timeout=30,
+    )
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
+
+
 def _groq_chat(system, messages, max_tokens=600, json_mode=False, model="llama-3.1-8b-instant"):
     """Call Groq API (OpenAI-compatible). Returns reply text."""
     body = {
