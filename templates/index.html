@@ -380,21 +380,6 @@
         </div>
       </button>
 
-      <!-- My Area home tile -->
-      <button id="myarea-home-card" onclick="showScreen('report');reportTabSwitch('myarea',document.querySelector('[data-tab=myarea]'));_loadMyArea()"
-        style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%);border:none;border-radius:20px;padding:16px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px">
-        <div style="font-size:30px;line-height:1;flex-shrink:0">🏡</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">My Area</div>
-          <div id="myarea-home-subtitle" style="font-size:11px;color:rgba(255,255,255,.55);margin-top:3px;line-height:1.4">Your MP, council, GP &amp; more</div>
-        </div>
-        <div id="myarea-home-badge" style="display:none;flex-shrink:0;background:rgba(255,255,255,.12);border-radius:10px;padding:5px 10px;text-align:right">
-          <div id="myarea-home-pc" style="font-size:12px;font-weight:700;color:#fff"></div>
-          <div id="myarea-home-detail" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:1px;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-        </div>
-        <div id="myarea-home-arrow" style="flex-shrink:0;font-size:16px;color:rgba(255,255,255,.4)">›</div>
-      </button>
-
       <!-- Tools — 3-column icon grid -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px">
         <button class="tool-icon-btn" onclick="showScreen('report')">
@@ -3144,40 +3129,6 @@ const _ts = new Date(d.timestamp);
     }
   })();
 
-  // ── My Area home card ────────────────────────────────────────────────────────
-  let _myAreaHomeLoadedPC = null;
-  function _myAreaRefreshHomeCard() {
-    const pc = MiruLocation.getHome();
-    const badge = document.getElementById("myarea-home-badge");
-    const pcEl  = document.getElementById("myarea-home-pc");
-    const sub   = document.getElementById("myarea-home-subtitle");
-    const detail= document.getElementById("myarea-home-detail");
-    if (!badge) return;
-    if (pc) {
-      badge.style.display = "block";
-      pcEl.textContent = pc;
-      sub.textContent = "Your MP, council, GP & more";
-      if (_myAreaHomeLoadedPC !== pc) {
-        _myAreaHomeLoadedPC = pc;
-        if (detail) detail.textContent = "";
-        Promise.all([
-          fetch(`/api/your-area?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).catch(()=>({})),
-          fetch(`/api/mp?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).catch(()=>({})),
-        ]).then(([area, mp]) => {
-          if (detail) {
-            if (mp && mp.name && !mp.error) detail.textContent = mp.name;
-            else if (area && area.council && area.council.name) detail.textContent = area.council.name;
-          }
-        }).catch(()=>{});
-      }
-    } else {
-      badge.style.display = "none";
-      _myAreaHomeLoadedPC = null;
-      sub.textContent = "Set home postcode to personalise";
-    }
-  }
-  document.addEventListener("DOMContentLoaded", _myAreaRefreshHomeCard);
-
   // ── Elections ────────────────────────────────────────────────────────────────
   const _partyColour = {
     "Labour Party":                      {bg:"#e11d48",text:"#fff"},
@@ -3492,7 +3443,6 @@ const _ts = new Date(d.timestamp);
       homeRow.style.display = "none";
       locBtn.style.display  = "";
     }
-    if (typeof _myAreaRefreshHomeCard === "function") _myAreaRefreshHomeCard();
   }
 
   function reportUseHome() {
