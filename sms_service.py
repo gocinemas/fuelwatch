@@ -2957,7 +2957,7 @@ _OVERPASS_URLS = [
 
 # Simple 30-minute in-memory cache for Overpass results keyed by postcode
 _services_cache: dict = {}
-_SERVICES_TTL = 1800  # seconds
+_SERVICES_TTL = 21600  # 6 hours — hospitals/supermarkets/police don't move
 
 def _overpass_mirrors(query):
     """POST to Overpass with mirror fallback. Use for hospitals/supermarkets."""
@@ -3082,16 +3082,11 @@ def _fetch_police_contact(lat, lon):
 
 
 def _latlon_for_postcode(postcode):
-    cached = _services_cache.get(f"ll:{postcode}")
-    if cached and time.time() - cached["ts"] < _SERVICES_TTL:
-        return cached["lat"], cached["lon"]
-    r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
-    if r.status_code != 200:
-        return None, None
-    res = r.json().get("result", {})
-    lat, lon = res.get("latitude"), res.get("longitude")
-    _services_cache[f"ll:{postcode}"] = {"lat": lat, "lon": lon, "ts": time.time()}
-    return lat, lon
+    """Return (lat, lon) using the shared postcode_to_latlon cache — no extra API calls."""
+    result = postcode_to_latlon(postcode)
+    if result:
+        return result
+    return None, None
 
 
 @app.route("/api/services")

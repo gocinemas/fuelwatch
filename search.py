@@ -360,7 +360,7 @@ _LOCAL_CACHE_TTL = 3600  # 1 hour
 
 # Cache for house prices keyed by normalised postcode
 _house_cache: dict = {}
-_HOUSE_CACHE_TTL = 1800  # 30 minutes
+_HOUSE_CACHE_TTL = 21600  # 6 hours — Land Registry updates weekly
 
 
 def fetch_local_amenities(lat: float, lon: float, school_km: float = 3.0, pub_km: float = 5.0) -> dict:
@@ -1769,7 +1769,7 @@ def search_near_postcode(postcode: str, fuel: str = "petrol",
 
 
 _CRIME_CACHE: dict = {}
-_CRIME_CACHE_TTL = 3600  # 1 hour
+_CRIME_CACHE_TTL = 86400  # 24 hours — police data updates monthly
 
 _CRIME_LABELS = {
     "anti-social-behaviour":  "Anti-Social Behaviour",
@@ -1815,20 +1815,25 @@ def fetch_crime_data(lat: float, lon: float) -> dict:
         d = (d - datetime.timedelta(days=1)).replace(day=1)
         months.append(d.strftime("%Y-%m"))
 
-    all_crimes = []
-    for month in months:
+    def _fetch_month(month):
         try:
             r = requests.get(
                 "https://data.police.uk/api/crimes-street/all-crime",
                 params={"lat": lat, "lng": lon, "date": month},
-                timeout=12,
+                timeout=10,
             )
             if r.status_code == 200:
                 batch = r.json()
-                if isinstance(batch, list):
-                    all_crimes.extend(batch)
+                return batch if isinstance(batch, list) else []
         except Exception:
             pass
+        return []
+
+    from concurrent.futures import ThreadPoolExecutor as _TPE
+    all_crimes = []
+    with _TPE(max_workers=3) as ex:
+        for batch in ex.map(_fetch_month, months):
+            all_crimes.extend(batch)
 
     if not all_crimes:
         return {"total": 0, "months": len(months), "breakdown": [], "months_covered": months, "level": "unknown"}
