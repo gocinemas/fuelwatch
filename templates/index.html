@@ -566,6 +566,12 @@
     <div id="screen-report" class="screen pt-5">
       <div class="bg-white rounded-2xl shadow p-5 mb-4">
         <h2 class="font-bold text-gray-800 mb-3">🏠 Area Report</h2>
+        <!-- Home postcode banner -->
+        <div id="report-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="report-home-pc-label"></span></span>
+          <button onclick="reportUseHome()" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
+          <button onclick="reportClearHome()" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer;margin-left:6px">Clear</button>
+        </div>
         <div class="flex gap-2 mb-4">
           <input id="report-postcode" type="text" placeholder="Postcode e.g. TW3 3SF"
             class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 uppercase"
@@ -586,6 +592,12 @@
         <div class="spinner text-gray-700 mx-auto mb-2"></div>Loading area data…
       </div>
       <div id="report-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm mb-4"></div>
+      <!-- Save as home nudge -->
+      <div id="report-save-home-row" style="display:none;margin-bottom:8px;text-align:center">
+        <button onclick="reportSaveHome()" style="font-size:12px;color:#16a34a;background:none;border:none;cursor:pointer;text-decoration:underline">
+          📍 Save this as my home postcode
+        </button>
+      </div>
       <div id="report-results" class="hidden">
         <!-- Share row -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -1490,7 +1502,7 @@
     const bb = document.getElementById("back-btn");
     if (bb) bb.classList.add("visible");
     if (name === "fuel")    { document.getElementById("fuel-postcode").focus();   _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()"); }
-    if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); }
+    if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); _reportRefreshHomeRow(); }
     if (name === "company") { document.getElementById("intel-input").focus(); _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()"); }
     if (name === "library") { libCheckPin(); }
     if (name === "school")  { schoolCheckPin(); }
@@ -1846,6 +1858,8 @@ const _ts = new Date(d.timestamp);
 
     // Show results container with skeleton loaders in each panel
     document.getElementById("report-results").classList.remove("hidden");
+    const _rSaveHomeRow = document.getElementById("report-save-home-row");
+    _rSaveHomeRow.style.display = MiruLocation.getHome() ? "none" : "block";
     const pcFmt = postcode.replace(/^([A-Z]{1,2}\d{1,2}[A-Z]?)(\d[A-Z]{2})$/i, "$1 $2").toUpperCase();
     document.getElementById("report-share-label").textContent = "Area report · " + pcFmt;
     reportTabSwitch("house", document.querySelector('.rptab[data-tab="house"]'));
@@ -3090,11 +3104,52 @@ const _ts = new Date(d.timestamp);
     if (!pc) return;
     MiruLocation.setHome(pc);
     _electionsRefreshHomeRow();
+    _reportRefreshHomeRow();
     document.getElementById("elections-save-home-row").style.display = "none";
   }
 
   function electionsClearHome() {
     MiruLocation.clearHome();
+    _electionsRefreshHomeRow();
+    _reportRefreshHomeRow();
+  }
+
+  // ── Area Report home postcode helpers ────────────────────────────────────────
+  function _reportRefreshHomeRow() {
+    const home = MiruLocation.getHome();
+    const homeRow = document.getElementById("report-home-row");
+    const locBtn  = document.getElementById("report-loc-btn");
+    const label   = document.getElementById("report-home-pc-label");
+    if (home) {
+      label.textContent = home;
+      homeRow.style.display = "flex";
+      locBtn.style.display  = "none";
+    } else {
+      homeRow.style.display = "none";
+      locBtn.style.display  = "";
+    }
+  }
+
+  function reportUseHome() {
+    const home = MiruLocation.getHome();
+    if (!home) return;
+    document.getElementById("report-postcode").value = home;
+    document.getElementById("report-save-home-row").style.display = "none";
+    searchReport();
+  }
+
+  function reportSaveHome() {
+    const pc = document.getElementById("report-postcode").value.trim().toUpperCase();
+    if (!pc) return;
+    MiruLocation.setHome(pc);
+    _reportRefreshHomeRow();
+    document.getElementById("report-save-home-row").style.display = "none";
+  }
+
+  function reportClearHome() {
+    MiruLocation.clearHome();
+    _reportRefreshHomeRow();
+    // also refresh elections banner if user navigates back
     _electionsRefreshHomeRow();
   }
 
