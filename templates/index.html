@@ -372,8 +372,8 @@
         style="flex-direction:row;align-items:center;gap:16px;width:100%;margin-bottom:10px;min-height:auto;padding:16px 18px">
         <div style="font-size:34px;line-height:1;flex-shrink:0">🗳️</div>
         <div style="flex:1;text-align:left">
-          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Election Results</div>
-          <div id="elections-home-desc" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">Candidates & results by ward</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Your Ward Results</div>
+          <div id="elections-home-desc" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">Check who won in your ward & councillor details</div>
         </div>
         <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:4px 10px;flex-shrink:0">
           <span class="live-dot-green"></span>
@@ -950,7 +950,8 @@
 
     <!-- ── ELECTIONS SCREEN ── -->
     <div id="screen-elections" class="screen pt-5">
-      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:16px">🗳️ Election Results</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🗳️ Your Ward Results</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Enter your postcode to see who won and councillor details</div>
 
       <button id="elections-loc-btn" onclick="electionsUseLocation()"
         style="width:100%;margin-bottom:8px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">
