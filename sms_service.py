@@ -6883,6 +6883,16 @@ def whatsapp_reply():
         resp.message("✅ Started fresh — send your next photo to begin a new save.")
         return str(resp)
 
+    # ── MY LINK command: send the user their personal access link ─────────────
+    if body_lower in ("my link", "link", "my saves link", "get link", "access", "my access"):
+        user_token = _wa_user_token(from_number)
+        resp.message(
+            f"🔗 Your personal Miru link:\n"
+            f"miru.humanagency.co/?screen=saves&token={user_token}\n\n"
+            f"Tap it to open My Saves on any browser. Your saves are private to you."
+        )
+        return str(resp)
+
     # ── LIST command: on-demand saves summary ─────────────────────────────────
     if cmd_up == "LIST":
         try:
@@ -7738,6 +7748,15 @@ def school_digest():
         return jsonify({"error": "Unauthorized"}), 401
     result = school_service.send_weekly_digest_all()
     return jsonify(result)
+
+
+@app.route("/api/whatsapp-number")
+def api_whatsapp_number():
+    """Return the WhatsApp contact number for the bot (safe to expose publicly)."""
+    raw = os.environ.get("TWILIO_WHATSAPP_FROM", "")
+    # strip whatsapp: prefix if present; keep only digits and +
+    number = re.sub(r"[^+\d]", "", raw.replace("whatsapp:", ""))
+    return jsonify({"number": number})
 
 
 @app.route("/api/wa-saves")

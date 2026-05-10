@@ -6905,18 +6905,44 @@ _bkBadge();
 </div>
 
 <div id="screen-saves" class="screen pt-5">
-  <!-- PIN lock -->
+  <!-- Onboarding: shown when no token exists (first visit, no WhatsApp link yet) -->
+  <div id="saves-onboard-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center">
+    <div style="font-size:48px;margin-bottom:16px">💬</div>
+    <div style="font-weight:800;font-size:20px;margin-bottom:8px;color:var(--text)">My Saves</div>
+    <div style="color:var(--subtle);font-size:14px;margin-bottom:24px;max-width:280px;line-height:1.5">Your saves are linked to your WhatsApp. Send <strong>any link or photo</strong> to Miru on WhatsApp and it gets saved here.</div>
+    <a id="saves-wa-link" href="#" target="_blank"
+      style="display:block;background:#25D366;color:#fff;border:none;border-radius:14px;padding:13px 28px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:16px">
+      💬 Open WhatsApp
+    </a>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Message <strong>my link</strong> to get your access link</div>
+    <!-- Already have a token? Enter it -->
+    <details style="width:100%;max-width:280px;text-align:left">
+      <summary style="font-size:12px;color:var(--subtle);cursor:pointer;list-style:none;text-align:center">Already have an access token? ▸</summary>
+      <div style="margin-top:12px">
+        <input id="saves-pin-input" type="password" placeholder="Paste token here"
+          style="border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;width:100%;box-sizing:border-box;outline:none;margin-bottom:8px;background:var(--surface);color:var(--text)"
+          onkeydown="if(event.key==='Enter')savesSubmitPin()" />
+        <div id="saves-pin-error" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">Invalid token — try again</div>
+        <button onclick="savesSubmitPin()"
+          style="width:100%;background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:11px;font-size:14px;font-weight:700;cursor:pointer">
+          Connect
+        </button>
+      </div>
+    </details>
+  </div>
+
+  <!-- PIN lock: shown only when a token was tried but rejected (wrong/expired) -->
   <div id="saves-pin-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
     <div style="font-size:40px;margin-bottom:16px">🔒</div>
-    <div style="font-weight:700;font-size:17px;margin-bottom:6px">My Saves</div>
-    <div style="color:#9ca3af;font-size:13px;margin-bottom:20px">Enter your password to continue</div>
-    <input id="saves-pin-input" type="password" placeholder="Password"
+    <div style="font-weight:700;font-size:17px;margin-bottom:6px">Session expired</div>
+    <div style="color:#9ca3af;font-size:13px;margin-bottom:20px">Paste your access token to reconnect</div>
+    <input id="saves-pin-input-lock" type="password" placeholder="Access token"
       style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 16px;font-size:15px;width:200px;text-align:center;outline:none;margin-bottom:10px"
-      onkeydown="if(event.key==='Enter')savesSubmitPin()" />
-    <div id="saves-pin-error" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">Wrong password</div>
-    <button onclick="savesSubmitPin()"
+      onkeydown="if(event.key==='Enter')savesSubmitPinLock()" />
+    <div id="saves-pin-error-lock" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">Invalid token</div>
+    <button onclick="savesSubmitPinLock()"
       style="background:#1f2937;color:#fff;border:none;border-radius:12px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer">
-      Unlock
+      Reconnect
     </button>
   </div>
 
@@ -7400,23 +7426,46 @@ _bkBadge();
   function _savesPin() { return sessionStorage.getItem("wa_saves_token") || ""; }
   function _savesHeaders() { return _savesPin() ? {"X-Library-PIN": _savesPin(), "Content-Type": "application/json"} : {"Content-Type": "application/json"}; }
 
+  // Load WhatsApp number for onboarding link (called once)
+  (function _loadWaNumber() {
+    fetch("/api/whatsapp-number").then(r => r.json()).then(d => {
+      if (d.number) {
+        const n = d.number.replace(/^\+/, "");
+        document.getElementById("saves-wa-link").href =
+          `https://wa.me/${n}?text=my+link`;
+      }
+    }).catch(() => {});
+  })();
+
+  function _savesShowOnboard() {
+    document.getElementById("saves-onboard-screen").style.cssText = "display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center";
+    document.getElementById("saves-pin-screen").style.display = "none";
+    document.getElementById("saves-main").style.display = "none";
+  }
+
   function _savesShowLock() {
+    document.getElementById("saves-onboard-screen").style.display = "none";
     document.getElementById("saves-pin-screen").style.cssText = "display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center";
     document.getElementById("saves-main").style.display = "none";
-    setTimeout(() => document.getElementById("saves-pin-input").focus(), 100);
+    setTimeout(() => document.getElementById("saves-pin-input-lock").focus(), 100);
   }
 
   function _savesShowMain() {
+    document.getElementById("saves-onboard-screen").style.display = "none";
     document.getElementById("saves-pin-screen").style.display = "none";
     document.getElementById("saves-main").style.display = "block";
     savesLoad();
   }
 
   function savesCheckPin() {
-    // Skip probe fetch — go straight to load; if 401 comes back, show lock then
-    _savesShowMain();
+    if (_savesPin()) {
+      _savesShowMain();
+    } else {
+      _savesShowOnboard();
+    }
   }
 
+  // Submitted from the onboarding "already have a token" section
   window.savesSubmitPin = async function() {
     const pin = document.getElementById("saves-pin-input").value.trim();
     if (!pin) return;
@@ -7424,6 +7473,17 @@ _bkBadge();
     if (r.status === 401) { document.getElementById("saves-pin-error").style.display = "block"; return; }
     sessionStorage.setItem("wa_saves_token", pin);
     document.getElementById("saves-pin-error").style.display = "none";
+    _savesShowMain();
+  };
+
+  // Submitted from the expired-token lock screen
+  window.savesSubmitPinLock = async function() {
+    const pin = document.getElementById("saves-pin-input-lock").value.trim();
+    if (!pin) return;
+    const r = await fetch("/api/wa-saves", {headers: {"X-Library-PIN": pin}});
+    if (r.status === 401) { document.getElementById("saves-pin-error-lock").style.display = "block"; return; }
+    sessionStorage.setItem("wa_saves_token", pin);
+    document.getElementById("saves-pin-error-lock").style.display = "none";
     _savesShowMain();
   };
 
