@@ -2263,12 +2263,18 @@ def _get_councillors_for_ward(ward_gss: str) -> list:
     return []
 
 
+_pc_meta_cache: dict = {}  # postcode → postcodes.io result dict, cached indefinitely (ward boundaries stable)
+
 def _resolve_councillors(postcode: str) -> dict:
     """Core councillor lookup: DB first, DC API fallback. Returns dict with councillors/ward/council."""
-    r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
-    if r.status_code != 200:
-        raise ValueError("Postcode not found")
-    result = r.json().get("result", {})
+    if postcode in _pc_meta_cache:
+        result = _pc_meta_cache[postcode]
+    else:
+        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=6)
+        if r.status_code != 200:
+            raise ValueError("Postcode not found")
+        result = r.json().get("result", {})
+        _pc_meta_cache[postcode] = result
     codes         = result.get("codes", {})
     ward_gss      = codes.get("admin_ward", "")
     ward_name     = result.get("admin_ward", "")
