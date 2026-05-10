@@ -7143,7 +7143,7 @@ import threading as _threading
 
 def _prewarm():
     try:
-        _get_elections_data()
+        _get_elections()
     except Exception:
         pass
 
