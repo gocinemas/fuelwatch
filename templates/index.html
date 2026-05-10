@@ -7955,22 +7955,6 @@ _bkBadge();
       style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🌍 Global</button>
   </div>
 
-  <!-- Spotify connect bar -->
-  <div id="sp-bar" style="border-radius:14px;margin-bottom:14px;overflow:hidden">
-    <div id="sp-disconnected" style="display:flex;align-items:center;gap:12px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:12px 14px">
-      <div style="font-size:24px">🎵</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:#166534">Connect Spotify</div>
-        <div style="font-size:11px;color:#4ade80;margin-top:1px">Tap ♥ on any song to add it to your Liked Songs</div>
-      </div>
-      <button onclick="spotifyConnect()" style="padding:8px 16px;border:none;background:#1db954;color:#fff;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">Connect</button>
-    </div>
-    <div id="sp-connected" style="display:none;align-items:center;gap:10px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:10px 14px">
-      <div style="font-size:18px">✓</div>
-      <div style="font-size:13px;font-weight:700;color:#166534;flex:1">Spotify connected — ♥ adds to Liked Songs</div>
-      <button onclick="spotifyDisconnect()" style="padding:4px 10px;border:1px solid #86efac;background:none;color:#4ade80;border-radius:99px;font-size:11px;cursor:pointer;white-space:nowrap">Disconnect</button>
-    </div>
-  </div>
 
   <!-- Identify panel -->
   <div id="music-identify-panel">
@@ -8041,56 +8025,12 @@ _bkBadge();
     if(tab === 'identify') _musicRenderSaved();
   };
 
-  var _SP_PLAYLIST_IDS = { uk: '37i9dQZEVXbLnolsZ8PSNw', global: '37i9dQZEVXbMDoHDwVN2tF' };
-
-  async function _musicLoadSpotifyDirect(tab) {
-    // Fetch Spotify charts client-side using the user's OAuth token (bypasses client-credentials restriction on editorial playlists)
-    if (!window.spotifyGetToken) return null;
-    var token = await window.spotifyGetToken();
-    if (!token) return null;
-    var pid = _SP_PLAYLIST_IDS[tab];
-    if (!pid) return null;
-    try {
-      var r = await fetch('https://api.spotify.com/v1/playlists/'+pid+'/items?limit=20', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-      if (!r.ok) return null;
-      var d = await r.json();
-      var tracks = [];
-      (d.items || []).forEach(function(item, i) {
-        var t = item && item.track;
-        if (!t || !t.name) return;
-        var images = (t.album && t.album.images) || [];
-        var artists = (t.artists || []).map(function(a){ return a.name; }).join(', ');
-        tracks.push({
-          position: i + 1,
-          title: t.name,
-          artist: artists,
-          cover: images[0] ? images[0].url : '',
-          track_id: t.id || '',
-          spotify_url: (t.external_urls && t.external_urls.spotify) || ''
-        });
-      });
-      return tracks.length ? tracks : null;
-    } catch(e) { return null; }
-  }
-
   function _musicLoadCharts(tab) {
     if(_chartsCache[tab]){ _musicRenderCharts(_chartsCache[tab]); return; }
     document.getElementById('music-charts-loading').style.display = 'block';
     document.getElementById('music-charts-error').style.display = 'none';
     document.getElementById('music-charts-list').innerHTML = '';
-    // Try client-side Spotify fetch first (uses user's OAuth token — no client-credentials restriction)
-    _musicLoadSpotifyDirect(tab).then(function(spTracks) {
-      if (spTracks) {
-        document.getElementById('music-charts-loading').style.display = 'none';
-        _chartsCache[tab] = spTracks;
-        _musicRenderCharts(spTracks);
-        return;
-      }
-      // Fall back to backend (iTunes when Spotify client credentials also fail)
-      _musicLoadChartsBackend(tab);
-    }).catch(function(){ _musicLoadChartsBackend(tab); });
+    _musicLoadChartsBackend(tab);
   }
 
   function _musicLoadChartsBackend(tab) {
@@ -8125,9 +8065,9 @@ _bkBadge();
   function _heq(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
   function _musicRenderCharts(tracks) {
     document.getElementById('music-charts-list').innerHTML = tracks.map(function(t){
-      var addBtn = '<button data-track-id="'+_heq(t.track_id||'')+'" data-title="'+_heq(t.title||'')+'" data-artist="'+_heq(t.artist||'')+'"'
-          +' onclick="spotifyLike(this.dataset.trackId,this.dataset.title,this.dataset.artist)"'
-          +' style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0" title="Add to Liked Songs">♥</button>';
+      var _spUrl = t.spotify_url || ('https://open.spotify.com/search/'+encodeURIComponent((t.title||'')+' '+(t.artist||'')));
+      var addBtn = '<a href="'+_heq(_spUrl)+'" target="_blank" rel="noopener"'
+          +' style="padding:5px 11px;border:1.5px solid #1db954;border-radius:99px;background:none;color:#1db954;font-size:14px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0;text-decoration:none" title="Open in Spotify">♥</a>';
       var playUrl = t.spotify_url || ('https://open.spotify.com/search/'+encodeURIComponent((t.title||'')+' '+(t.artist||'')));
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
         +'<div style="font-size:13px;font-weight:700;color:var(--muted);width:24px;text-align:center;flex-shrink:0">'+t.position+'</div>'
@@ -8282,117 +8222,20 @@ _bkBadge();
   var _origShowScreenMusic = window.showScreen;
   window.showScreen = function(name){
     _origShowScreenMusic(name);
-    if(name==='music'){ _musicRenderSaved(); if(window.spotifyInit) spotifyInit(); }
+    if(name==='music'){ _musicRenderSaved(); }
   };
 })();
 </script>
 
 <script>
-// ── Spotify ────────────────────────────────────────────────────────────────
-(function(){
-  var _sp = { cid:null, redir:null, token:null, exp:0, refresh:null };
-
-  function _persist(){ localStorage.setItem('_sp2',JSON.stringify({t:_sp.token,e:_sp.exp,r:_sp.refresh})); }
-  function _restore(){ try{ var d=JSON.parse(localStorage.getItem('_sp2')||'{}'); _sp.token=d.t||null; _sp.exp=d.e||0; _sp.refresh=d.r||null; }catch(e){} }
-
-  function _toast(msg, err){
-    var t=document.createElement('div');
-    t.textContent=msg;
-    t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:10px 22px;border-radius:99px;font-size:13px;font-weight:700;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2);background:'+(err?'#dc2626':'#1db954')+';color:#fff';
-    document.body.appendChild(t);
-    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 3000);
-  }
-
-  function _updateUI(){
-    var on=!!_sp.refresh;
-    var disc=document.getElementById('sp-disconnected'); if(disc) disc.style.display=on?'none':'flex';
-    var conn=document.getElementById('sp-connected');    if(conn) conn.style.display=on?'flex':'none';
-  }
-
-  async function _cfg(){
-    if(_sp.cid) return;
-    try{ var d=await fetch('/api/spotify/config').then(function(r){return r.json();}); if(d.available){_sp.cid=d.client_id;_sp.redir=d.redirect_uri;} }catch(e){}
-  }
-
-  function _pkceVerifier(){ var a=new Uint8Array(32); crypto.getRandomValues(a); return btoa(String.fromCharCode.apply(null,a)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
-  async function _pkceChallenge(v){ var b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)); return btoa(String.fromCharCode.apply(null,new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
-
-  async function _token(){
-    if(_sp.token && Date.now()<_sp.exp) return _sp.token;
-    if(!_sp.refresh) return null;
-    await _cfg();
-    var r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'refresh_token',refresh_token:_sp.refresh,client_id:_sp.cid})});
-    if(!r.ok){ _sp.refresh=null; _persist(); _updateUI(); return null; }
-    var d=await r.json(); _sp.token=d.access_token; _sp.exp=Date.now()+(d.expires_in-60)*1000; if(d.refresh_token) _sp.refresh=d.refresh_token; _persist(); return _sp.token;
-  }
-
-  window.spConnected     = function(){ return !!_sp.refresh; };
-  window.spotifyGetToken = async function(){ return await _token(); };
-
-  window.spotifyConnect = async function(){
-    await _cfg();
-    if(!_sp.cid){ _toast('Spotify not configured on server',true); return; }
-    var v=_pkceVerifier(); var ch=await _pkceChallenge(v);
-    localStorage.setItem('_sp_verifier',v);
-    window.location='https://accounts.spotify.com/authorize?'+new URLSearchParams({
-      client_id:_sp.cid, response_type:'code', redirect_uri:_sp.redir,
-      scope:'user-library-modify user-library-read',
-      code_challenge_method:'S256', code_challenge:ch, show_dialog:'true'
-    });
-  };
-
-  window.spotifyDisconnect = function(){ _sp.token=null; _sp.exp=0; _sp.refresh=null; _persist(); _updateUI(); };
-
-  // Called on page load — handles the OAuth callback redirect
-  window.spotifyInit = async function(){
-    _restore();
-    var code=localStorage.getItem('_sp_code'); var verifier=localStorage.getItem('_sp_verifier');
-    if(code && verifier){
-      localStorage.removeItem('_sp_code'); localStorage.removeItem('_sp_verifier');
-      await _cfg();
-      if(_sp.cid){
-        var r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'authorization_code',code:code,redirect_uri:_sp.redir,client_id:_sp.cid,code_verifier:verifier})});
-        if(r.ok){ var d=await r.json(); _sp.token=d.access_token; _sp.exp=Date.now()+(d.expires_in-60)*1000; _sp.refresh=d.refresh_token; _persist(); _toast('✓ Spotify connected'); }
-        else{ _toast('Spotify login failed ('+r.status+')',true); }
-      }
-      history.replaceState({},'',location.pathname);
-      if(window.showScreen) window.showScreen('music');
-      if(window.musicTab) window.musicTab('uk', document.getElementById('mtab-uk'));
-    }
-    _updateUI();
-  };
-
-  // Save a track to Liked Songs — searches Spotify when no track ID supplied
-  window.spotifyLike = async function(trackId, title, artist){
-    var tok=await _token();
-    if(!tok){
-      _toast('Connect Spotify first (see bar above)',true);
-      return;
-    }
-    // Resolve track ID via search if we don't have one (iTunes source has no IDs)
-    var id=trackId;
-    if(!id && title){
-      try{
-        var sq=encodeURIComponent((title+' '+(artist||'')).trim());
-        var sr=await fetch('https://api.spotify.com/v1/search?q='+sq+'&type=track&limit=1',{headers:{'Authorization':'Bearer '+tok}});
-        if(sr.ok){ var sd=await sr.json(); var si=(sd.tracks||{}).items||[]; if(si[0]) id=si[0].id; }
-      }catch(e){}
-    }
-    if(!id){ _toast('Could not find track on Spotify',true); return; }
-    var r=await fetch('https://api.spotify.com/v1/me/tracks',{method:'PUT',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({ids:[id]})});
-    if(r.status===200||r.status===204){ _toast('♥ Added to Liked Songs!'); }
-    else if(r.status===401){ _sp.token=null; _persist(); _toast('Session expired — reconnect Spotify',true); _updateUI(); }
-    else{ try{ var eb=await r.json(); _toast('Spotify '+r.status+': '+(eb.error&&eb.error.message||JSON.stringify(eb)),true); }catch(e){ _toast('Spotify error '+r.status,true); } }
-  };
-
-  // Alias for any callers that still use old names
-  window.spotifyAddTrack = window.spotifyLike;
-
-  window.addEventListener('DOMContentLoaded',function(){
-    _restore();
-    if(localStorage.getItem('_sp_code')) window.spotifyInit(); else _updateUI();
-  });
-})();
+// ── Spotify — open in app (no OAuth required) ──────────────────────────────
+window.spotifyLike = function(trackId, title, artist) {
+  var url = trackId
+    ? 'https://open.spotify.com/track/' + trackId
+    : 'https://open.spotify.com/search/' + encodeURIComponent(((title||'') + ' ' + (artist||'')).trim());
+  window.open(url, '_blank', 'noopener');
+};
+window.spotifyAddTrack = window.spotifyLike;
 </script>
 
 <!-- ── TRAINS SCREEN ── -->
