@@ -793,7 +793,7 @@
             🔒 Privately held — no public financials available
           </div>
           <!-- Stats grid from brand API -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div id="brand-stats-grid" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
               <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Founded</div>
               <div id="brand-founded-el" style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">—</div>
@@ -1618,17 +1618,29 @@
         if (!postcode) return;
         const pc = postcode.trim().toUpperCase();
         localStorage.setItem(HOME_KEY, pc);
-        _cache = { postcode: pc, lat: null, lon: null };
-        _cacheTime = Date.now();
+        _cache = null; _cacheTime = 0; // force fresh geocode next get()
       },
       clearHome() {
         localStorage.removeItem(HOME_KEY);
         _cache = null; _cacheTime = 0;
       },
       async get() {
-        const home = localStorage.getItem(HOME_KEY);
-        if (home) return { postcode: home, lat: null, lon: null };
         if (_cache && Date.now() - _cacheTime < TTL) return _cache;
+        const home = localStorage.getItem(HOME_KEY);
+        if (home) {
+          // Geocode home postcode once and cache the real coords
+          try {
+            const pc = home.replace(/\s/g, "");
+            const r  = await fetch(`https://api.postcodes.io/postcodes/${pc}`);
+            const d  = await r.json();
+            if (d.result) {
+              const result = { postcode: home, lat: d.result.latitude, lon: d.result.longitude };
+              _cache = result; _cacheTime = Date.now();
+              return result;
+            }
+          } catch(_) {}
+          return { postcode: home, lat: null, lon: null };
+        }
         return _resolve();
       },
       // Wire up a 📍 button. Calls onDone({lat,lon,postcode}) or onFail(msg).
@@ -2321,6 +2333,8 @@ const _ts = new Date(d.timestamp);
     ["brand-founded-el","brand-hq-el","brand-revenue-el","brand-industry-el"].forEach(id => {
       const el = document.getElementById(id); if (el) el.textContent = "—";
     });
+    const _sg = document.getElementById("brand-stats-grid");
+    if (_sg) _sg.style.display = "none";
 
     let coData = null, brData = null, coErr = false, brErr = false;
     let coSettled = false, brSettled = false;
@@ -2366,9 +2380,9 @@ const _ts = new Date(d.timestamp);
       }
 
       // About: hide stats grid if brand returned no useful fields
-      const hasStats = br.founded || br.hq || br.revenue || br.industry;
-      const statsGrid = document.querySelector('#intel-tab-about > div[style*="grid"]');
-      if (statsGrid) statsGrid.style.display = hasStats ? "" : "none";
+      const hasStats = !!(br.founded || br.hq || br.revenue || br.industry);
+      const statsGrid = document.getElementById("brand-stats-grid");
+      if (statsGrid) statsGrid.style.display = hasStats ? "grid" : "none";
 
       // Finance tab: hide if no share price and no brand financials
       const hasFinance = (co.share && co.share.current) ||
@@ -2378,13 +2392,15 @@ const _ts = new Date(d.timestamp);
       const finEmpty = document.getElementById("brand-fin-empty");
       if (finEmpty) finEmpty.style.display = hasFinance ? "none" : "";
 
-      // History tab: hide if no timeline entries
-      const hasHistory = br.timeline && br.timeline.length > 0;
+      // History tab: hide if no timeline entries with real content
+      const hasHistory = !!(br.timeline && br.timeline.some(t => t.year || t.title || t.event));
       _setIntelTab("history", hasHistory);
 
-      // Campaigns tab: hide if no campaigns and no ad videos
-      const hasCampaigns = (br.campaigns && br.campaigns.length > 0) ||
-                           (br.ads && br.ads.length > 0);
+      // Campaigns tab: hide if no campaigns with real content
+      const hasCampaigns = !!(
+        (br.campaigns && br.campaigns.some(c => c.name || c.description)) ||
+        (br.ads && br.ads.length > 0)
+      );
       _setIntelTab("campaigns", hasCampaigns);
 
       // Intel tab: hide rivals section if no competitors
