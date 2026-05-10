@@ -438,20 +438,22 @@ out center 200;
     pubs.sort(key=lambda x: x["dist_mi"])
     cafes.sort(key=lambda x: x["dist_mi"])
 
-    # Ofsted ratings for schools only — short timeout so slow scrapes don't block
+    # Ofsted ratings — all scrapes run in parallel; wait at most 5s total (not 3s each)
     try:
         with _cf.ThreadPoolExecutor(max_workers=8) as pool:
             ofsted_futures = {
                 i: pool.submit(fetch_ofsted_rating, s["urn"])
                 for i, s in enumerate(schools[:8]) if s.get("urn")
             }
+            done, _ = _cf.wait(ofsted_futures.values(), timeout=5)
             for i, fut in ofsted_futures.items():
-                try:
-                    grade = fut.result(timeout=3)
-                    if grade:
-                        schools[i]["ofsted"] = grade
-                except Exception:
-                    pass
+                if fut in done:
+                    try:
+                        grade = fut.result()
+                        if grade:
+                            schools[i]["ofsted"] = grade
+                    except Exception:
+                        pass
     except Exception:
         pass
 

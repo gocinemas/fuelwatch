@@ -3095,11 +3095,11 @@ _OVERPASS_URLS = [
 _services_cache: dict = {}
 _SERVICES_TTL = 21600  # 6 hours — hospitals/supermarkets/police don't move
 
-def _overpass_mirrors(query):
+def _overpass_mirrors(query, timeout=20):
     """POST to Overpass with mirror fallback. Use for hospitals/supermarkets."""
     for url in _OVERPASS_URLS:
         try:
-            r = requests.post(url, data={"data": query}, timeout=12)
+            r = requests.post(url, data={"data": query}, timeout=timeout)
             if r.status_code == 200:
                 els = r.json().get("elements", [])
                 if els:
@@ -3231,7 +3231,7 @@ def _is_major_supermarket(name: str) -> bool:
 
 def _fetch_supermarkets_overpass(lat, lon, radius_m=5000):
     query = f"""
-[out:json][timeout:25];
+[out:json][timeout:30];
 (
   node["shop"="supermarket"](around:{radius_m},{lat},{lon});
   way["shop"="supermarket"](around:{radius_m},{lat},{lon});
@@ -3240,7 +3240,7 @@ def _fetch_supermarkets_overpass(lat, lon, radius_m=5000):
 out center tags;
 """
     try:
-        elements = _overpass_mirrors(query)
+        elements = _overpass_mirrors(query, timeout=35)
         items = []
         for el in elements:
             tags = el.get("tags", {})
