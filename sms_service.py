@@ -3223,13 +3223,15 @@ def _fetch_hospitals(lat, lon):
     for h in gp_items:
         h.pop("place_id", None)
         h["phone"] = ""
-    seen = {h["name"].lower()[:12] for h in gp_items}
-    for h in osm_items:
-        if h["name"].lower()[:12] not in seen:
-            gp_items.append(h)
-            seen.add(h["name"].lower()[:12])
-    gp_items.sort(key=lambda x: x.get("distance_km", 999))
-    return gp_items[:4]
+    # Merge: build dict keyed by name prefix, keeping the closer result
+    merged = {h["name"].lower()[:12]: h for h in osm_items}
+    for h in gp_items:
+        key = h["name"].lower()[:12]
+        existing = merged.get(key)
+        if not existing or h.get("distance_km", 999) < existing.get("distance_km", 999):
+            merged[key] = h
+    result = sorted(merged.values(), key=lambda x: x.get("distance_km", 999))
+    return result[:4]
 
 def _fetch_supermarkets_overpass(lat, lon, radius_m=5000):
     query = f"""
@@ -3265,24 +3267,9 @@ out center tags;
         return []
 
 def _fetch_supermarkets(lat, lon):
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=2) as ex:
-        gp_f  = ex.submit(_places_nearby, lat, lon, "supermarket", 10000, 15)
-        osm_f = ex.submit(_fetch_supermarkets_overpass, lat, lon)
-        try: gp_items  = gp_f.result(timeout=12)  or []
-        except Exception: gp_items = []
-        try: osm_items = osm_f.result(timeout=18) or []
-        except Exception: osm_items = []
-    for s in gp_items:
-        s.pop("place_id", None)
-    # Merge: add OSM entries not already in Google Places (match by name prefix)
-    seen = {s["name"].lower()[:10] for s in gp_items}
-    for s in osm_items:
-        if s["name"].lower()[:10] not in seen:
-            gp_items.append(s)
-            seen.add(s["name"].lower()[:10])
-    gp_items.sort(key=lambda x: x.get("distance_km", 999))
-    return gp_items[:10]
+    # Overpass-only: Google Places returns incorrect UK supermarket results
+    items = _fetch_supermarkets_overpass(lat, lon)
+    return items
 
 
 def _fetch_police_contact(lat, lon):
