@@ -6118,6 +6118,44 @@ def _wa_send_proactive(to: str, body: str) -> None:
         pass
 
 
+def _wa_doc_search(from_number: str, query: str) -> str:
+    """Answer a natural-language query from the user's saves and documents."""
+    try:
+        # Search wa_saves via Algolia (per-user)
+        save_hits = lib.saves_search(query, from_number=from_number, hits_per_page=6)
+        # Search library docs
+        doc_hits = lib.search_library(query, n=3)
+
+        context_parts = []
+        for h in save_hits:
+            title   = h.get("title", "")
+            summary = (h.get("summary", "") or "")[:500]
+            date    = (h.get("created_at", "") or "")[:10]
+            if summary:
+                context_parts.append(f"[{date}] {title}: {summary}")
+        for h in doc_hits:
+            title   = h.get("title", "")
+            content = (h.get("content", "") or "")[:500]
+            if content:
+                context_parts.append(f"DOC '{title}': {content}")
+
+        if not context_parts:
+            return "🔍 Nothing found in your saves or documents for that query."
+
+        context = "\n\n".join(context_parts[:8])
+        answer = _groq_chat(
+            "You are a personal assistant. Answer the user's question using ONLY the saved content provided. "
+            "Be specific and concise. If purchase date or price is mentioned, state it clearly. "
+            "If you can't find the answer say so briefly.",
+            [{"role": "user", "content": f"Question: {query}\n\nSaved content:\n{context}"}],
+            max_tokens=220,
+        )
+        return f"🔍 {answer.strip()}" if answer else "Couldn't find a clear answer in your saves."
+    except Exception as _e:
+        print(f"[wa_doc_search] {_e}")
+        return "Sorry, couldn't search your saves right now."
+
+
 def _wa_save_url(from_number: str, url: str) -> str:
     """Save URL immediately, summarise in background, send proactive follow-up."""
     import threading
@@ -6934,6 +6972,37 @@ def whatsapp_reply():
         else:
             resp.message("Please include your postcode to get election results, e.g.:\nelection KT16 0DA")
             return str(resp)
+
+    # ── Document / receipt / warranty / book-note search ─────────────────────
+    _DOC_Q = re.compile(
+        r'\b(find|search|look up|show me)\b.{0,30}\b(save|saves|doc|docs|document|receipt|receipts|library|note|notes)\b'
+        r'|\b(when did i (buy|purchase)|did i buy|my receipt for|receipt for|how much (did i pay|was|is it)|what did i (buy|pay|spend))\b'
+        r'|\b(is .{1,40} (under )?warranty|warranty for|check (my )?warranty|when does .{1,40} warranty expire)\b'
+        r'|\bwhat (did|does|is in) (my|the) (document|doc|letter|contract|agreement|receipt|note|lease)\b',
+        re.I,
+    )
+    if _DOC_Q.search(body):
+        resp.message(_wa_doc_search(from_number, body))
+        return str(resp)
+
+    # ── Book reading note: "note for Atomic Habits: key insight text" ─────────
+    _BOOK_NOTE_RE = re.compile(r'^note\s+for\s+(.+?):\s*(.+)', re.I | re.DOTALL)
+    _bnm = _BOOK_NOTE_RE.match(body.strip())
+    if _bnm:
+        _book_title = _bnm.group(1).strip()[:100]
+        _note_text  = _bnm.group(2).strip()[:600]
+        try:
+            lib._sb().table("wa_saves").insert({
+                "from_number": from_number,
+                "title":       f"📖 {_book_title}",
+                "summary":     _note_text,
+                "url":         f"book-note:{_book_title.lower().replace(' ','-')}",
+                "status":      "pending",
+            }).execute()
+            resp.message(f"📖 Note saved for *{_book_title}*\n\n_{_note_text[:120]}{'…' if len(_note_text)>120 else ''}_")
+        except Exception as _bne:
+            resp.message(f"Sorry, couldn't save the note: {_bne}")
+        return str(resp)
 
     # Decide: fuel query or product query
     # Product query if: no postcode at all, OR postcode present but there's
@@ -8084,6 +8153,91 @@ def api_books():
     except Exception as e:
         print(f"[api/books] Open Library error: {e}")
         return jsonify({"error": str(e), "docs": []})
+
+
+@app.route("/api/book/intel")
+def api_book_intel():
+    """Fetch rich book intel: cover, author bio, key themes, similar books."""
+    title = request.args.get("title", "").strip()
+    if not title or len(title) < 2:
+        return jsonify({"error": "title required"}), 400
+
+    cache_key = f"bookintel:{title.lower()}"
+    cached = _BRAND_CACHE.get(cache_key)
+    if cached and time.time() - cached["ts"] < 86400:
+        return jsonify(cached["data"])
+
+    result = {"title": title, "found": False}
+    gbooks_key = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
+
+    # 1. Fetch from Google Books
+    try:
+        r = requests.get(
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": f'intitle:"{title}"', "maxResults": 1, "printType": "books",
+                    **({"key": gbooks_key} if gbooks_key else {})},
+            timeout=8,
+        )
+        if r.status_code == 200:
+            items = r.json().get("items", [])
+            if items:
+                info = items[0].get("volumeInfo", {})
+                result.update({
+                    "found":       True,
+                    "title":       info.get("title", title),
+                    "subtitle":    info.get("subtitle", ""),
+                    "authors":     info.get("authors", []),
+                    "publisher":   info.get("publisher", ""),
+                    "year":        (info.get("publishedDate", "") or "")[:4],
+                    "description": info.get("description", "")[:600],
+                    "categories":  info.get("categories", []),
+                    "page_count":  info.get("pageCount"),
+                    "cover":       (info.get("imageLinks", {}).get("thumbnail", "")
+                                   or info.get("imageLinks", {}).get("smallThumbnail", "")),
+                    "isbn":        next((i["identifier"] for i in info.get("industryIdentifiers", [])
+                                       if i["type"] in ("ISBN_13","ISBN_10")), ""),
+                    "google_id":   items[0].get("id", ""),
+                    "preview_url": info.get("previewLink", ""),
+                    "rating":      info.get("averageRating"),
+                    "rating_count": info.get("ratingsCount"),
+                })
+    except Exception as _e:
+        print(f"[book/intel] Google Books error: {_e}")
+
+    # 2. Groq: key ideas + similar books
+    if result.get("found") and os.environ.get("GROQ_API_KEY"):
+        try:
+            desc_ctx = result.get("description", "")[:400] or title
+            prompt = (
+                f'Book: "{result["title"]}" by {", ".join(result.get("authors",[]) or ["unknown"])}\n'
+                f'Description: {desc_ctx}\n\n'
+                'Return ONLY valid JSON (no markdown):\n'
+                '{"key_ideas":["3-5 one-sentence key takeaways from the book"],'
+                '"similar_books":[{"title":"","author":""}],'
+                '"who_for":"one sentence describing who would benefit most from this book"}'
+            )
+            gr = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.environ['GROQ_API_KEY']}", "Content-Type": "application/json"},
+                json={"model": "llama-3.1-8b-instant", "messages": [{"role": "user", "content": prompt}],
+                      "max_tokens": 400, "temperature": 0.2},
+                timeout=10,
+            )
+            if gr.status_code == 200:
+                import json as _jj, re as _rr
+                raw = gr.json()["choices"][0]["message"]["content"]
+                m = _rr.search(r'\{.*\}', raw, _rr.DOTALL)
+                if m:
+                    ai = _jj.loads(m.group(0))
+                    result["key_ideas"]    = ai.get("key_ideas", [])
+                    result["similar_books"] = ai.get("similar_books", [])[:4]
+                    result["who_for"]      = ai.get("who_for", "")
+        except Exception as _e:
+            print(f"[book/intel] groq error: {_e}")
+
+    if result.get("found"):
+        _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": result}
+    return jsonify(result)
 
 
 @app.route("/api/book/isbn/<isbn>")

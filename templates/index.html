@@ -962,6 +962,42 @@
           </div>
         </div>
 
+      <!-- ── Book result (shown when search term is a book, not a brand) ── -->
+      <div id="book-result-panel" style="display:none">
+        <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+          <img id="book-cover-el" src="" alt="" loading="lazy"
+               style="width:72px;border-radius:8px;flex-shrink:0;display:none;box-shadow:0 4px 12px rgba(0,0,0,.2)"
+               onerror="this.style.display='none'">
+          <div style="flex:1;min-width:0">
+            <div id="book-title-el" style="font-size:17px;font-weight:800;color:var(--text);letter-spacing:-0.3px;line-height:1.25"></div>
+            <div id="book-subtitle-el" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
+            <div id="book-author-el" style="font-size:12px;font-weight:600;color:#4f46e5;margin-top:4px"></div>
+            <div id="book-meta-el" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
+          </div>
+        </div>
+        <!-- Who it's for -->
+        <div id="book-who-wrap" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#166534"></div>
+        <!-- Key ideas -->
+        <div id="book-ideas-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Key Ideas</div>
+          <div id="book-ideas-el" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+        <!-- Description -->
+        <div id="book-desc-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">About the Book</div>
+          <div id="book-desc-el" style="font-size:13px;color:var(--muted);line-height:1.65"></div>
+        </div>
+        <!-- Similar books -->
+        <div id="book-similar-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Similar Books</div>
+          <div id="book-similar-el" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+        <!-- Tip -->
+        <div style="background:#fef3c7;border-radius:12px;padding:10px 14px;font-size:12px;color:#92400e">
+          💡 WhatsApp <strong>note for [book title]: your thought</strong> to save reading notes for this book
+        </div>
+      </div>
+
       </div><!-- /intel-result -->
 
       <!-- Invisible compat wrappers (renderCompany / _renderBrand show/hide these) -->
@@ -975,6 +1011,12 @@
       <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🗳️ Your Ward Results</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Enter your postcode to see who won and councillor details</div>
 
+      <!-- Home postcode banner (shown when home is saved) -->
+      <div id="elections-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="elections-home-pc-label"></span></span>
+        <button onclick="electionsUseHome()" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
+        <button onclick="electionsClearHome()" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer;margin-left:6px">Clear</button>
+      </div>
       <button id="elections-loc-btn" onclick="electionsUseLocation()"
         style="width:100%;margin-bottom:8px;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">
         📍 Use my current location
@@ -998,10 +1040,16 @@
 
       <div id="elections-result" class="hidden">
         <!-- Ward header -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:12px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
           <div id="elections-ward" style="font-size:14px;font-weight:700;color:var(--text)"></div>
           <div id="elections-council" style="font-size:11px;color:var(--subtle);margin-top:1px"></div>
           <div id="elections-county" style="font-size:11px;color:var(--subtle);opacity:.65;margin-top:1px"></div>
+        </div>
+        <!-- Save as home nudge -->
+        <div id="elections-save-home-row" style="display:none;margin-bottom:12px;text-align:center">
+          <button onclick="electionsSaveHome()" style="font-size:12px;color:#16a34a;background:none;border:none;cursor:pointer;text-decoration:underline">
+            📍 Save this as my home postcode
+          </button>
         </div>
 
         <!-- Your Representatives — tabbed: Councillor / MP -->
@@ -1447,7 +1495,7 @@
     if (name === "library") { libCheckPin(); }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
-    if (name === "elections") { document.getElementById("elections-input").focus(); }
+    if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
     setFooter(name);
   }
 
@@ -1500,6 +1548,7 @@
   // Single source of truth for GPS + IP fallback across all modules.
   // Returns { lat, lon, postcode } or null. Caches for 10 min.
   window.MiruLocation = (function () {
+    const HOME_KEY = 'miru_home_pc';
     let _cache = null, _cacheTime = 0;
     const TTL = 600000;
 
@@ -1548,16 +1597,32 @@
     }
 
     return {
+      getHome() { return localStorage.getItem(HOME_KEY) || null; },
+      setHome(postcode) {
+        if (!postcode) return;
+        const pc = postcode.trim().toUpperCase();
+        localStorage.setItem(HOME_KEY, pc);
+        _cache = { postcode: pc, lat: null, lon: null };
+        _cacheTime = Date.now();
+      },
+      clearHome() {
+        localStorage.removeItem(HOME_KEY);
+        _cache = null; _cacheTime = 0;
+      },
       async get() {
+        const home = localStorage.getItem(HOME_KEY);
+        if (home) return { postcode: home, lat: null, lon: null };
         if (_cache && Date.now() - _cacheTime < TTL) return _cache;
         return _resolve();
       },
       // Wire up a 📍 button. Calls onDone({lat,lon,postcode}) or onFail(msg).
       async request(btn, onDone, onFail) {
+        const home = localStorage.getItem(HOME_KEY);
+        if (home) { onDone({ postcode: home, lat: null, lon: null }); return; }
         const orig = btn.innerHTML;
         btn.innerHTML = "⏳"; btn.disabled = true;
         try {
-          const loc = await this.get();
+          const loc = await _resolve();
           btn.innerHTML = orig; btn.disabled = false;
           if (loc) onDone(loc);
           else onFail("Couldn't detect your location. Please enter a postcode.");
@@ -2106,6 +2171,60 @@ const _ts = new Date(d.timestamp);
     setTimeout(() => document.getElementById("nav-overlay").classList.add("hidden"), 250);
   }
 
+  function _renderBookResult(d) {
+    const panel = document.getElementById("book-result-panel");
+    if (!panel) return;
+    document.getElementById("intel-result").style.display = "";
+    // Hide brand tabs when showing book
+    document.getElementById("intel-tab-bar").style.display = "none";
+    document.getElementById("intel-tab-about").style.display = "none";
+
+    panel.style.display = "";
+    document.getElementById("book-title-el").textContent = d.title || "";
+    document.getElementById("book-subtitle-el").textContent = d.subtitle || "";
+    document.getElementById("book-author-el").textContent = d.authors && d.authors.length ? "by " + d.authors.join(", ") : "";
+    const metaParts = [];
+    if (d.year) metaParts.push(d.year);
+    if (d.publisher) metaParts.push(d.publisher);
+    if (d.page_count) metaParts.push(d.page_count + " pages");
+    if (d.rating) metaParts.push("⭐ " + d.rating + (d.rating_count ? " (" + d.rating_count.toLocaleString() + " ratings)" : ""));
+    document.getElementById("book-meta-el").textContent = metaParts.join(" · ");
+    const cover = document.getElementById("book-cover-el");
+    if (d.cover) { cover.src = d.cover; cover.style.display = ""; } else { cover.style.display = "none"; }
+    const whoWrap = document.getElementById("book-who-wrap");
+    if (d.who_for) { whoWrap.textContent = "👤 " + d.who_for; whoWrap.style.display = ""; } else { whoWrap.style.display = "none"; }
+    const ideasWrap = document.getElementById("book-ideas-wrap");
+    const ideas = d.key_ideas || [];
+    if (ideas.length) {
+      document.getElementById("book-ideas-el").innerHTML = ideas.map(idea =>
+        `<div style="display:flex;gap:10px;align-items:flex-start"><span style="color:#4f46e5;font-size:16px;line-height:1;flex-shrink:0">→</span><span style="font-size:13px;color:var(--text);line-height:1.5">${idea}</span></div>`
+      ).join("");
+      ideasWrap.style.display = "";
+    } else { ideasWrap.style.display = "none"; }
+    const descWrap = document.getElementById("book-desc-wrap");
+    if (d.description) { document.getElementById("book-desc-el").textContent = d.description; descWrap.style.display = ""; } else { descWrap.style.display = "none"; }
+    const simWrap = document.getElementById("book-similar-wrap");
+    const sims = d.similar_books || [];
+    if (sims.length) {
+      document.getElementById("book-similar-el").innerHTML = sims.map(b =>
+        `<div style="font-size:13px;color:var(--text)"><strong>${b.title}</strong><span style="color:var(--muted)"> — ${b.author}</span></div>`
+      ).join("");
+      simWrap.style.display = "";
+    } else { simWrap.style.display = "none"; }
+  }
+
+  async function _tryBookFallback(query) {
+    try {
+      const r = await fetch(`/api/book/intel?title=${encodeURIComponent(query)}`);
+      const d = await r.json();
+      if (d.found) {
+        _renderBookResult(d);
+        return true;
+      }
+    } catch(e) {}
+    return false;
+  }
+
   // ── Company search ───────────────────────────────────────────────────────────
   // ── Intel mode toggle ────────────────────────────────────────────────────────
   const _INTEL_TABS = ["about","finance","history","campaigns","intel"];
@@ -2168,6 +2287,12 @@ const _ts = new Date(d.timestamp);
     document.getElementById("co-did-you-mean").classList.add("hidden");
     document.getElementById("brand-did-you-mean").classList.add("hidden");
     switchIntelTab("about");
+    const bookPanel = document.getElementById("book-result-panel");
+    if (bookPanel) bookPanel.style.display = "none";
+    const tabBar = document.getElementById("intel-tab-bar");
+    if (tabBar) tabBar.style.display = "";
+    const tabAbout = document.getElementById("intel-tab-about");
+    if (tabAbout) tabAbout.style.display = "";
 
     // reset brand header
     const logoEl = document.getElementById("brand-logo-el");
@@ -2262,6 +2387,12 @@ const _ts = new Date(d.timestamp);
         return btn && btn.style.display !== "none";
       });
       if (firstVisible) switchIntelTab(firstVisible);
+
+      // Book intel fallback: if no brand/company data, try book lookup
+      const hasUsefulData = (br.name && (br.description || br.timeline?.length)) || (co.name && co.overview);
+      if (!hasUsefulData) {
+        _tryBookFallback(raw);
+      }
     };
 
     function _setIntelTab(name, visible) {
@@ -2930,6 +3061,43 @@ const _ts = new Date(d.timestamp);
   }
 
   let _elecIdCounter = 0;
+
+  function _electionsRefreshHomeRow() {
+    const home = MiruLocation.getHome();
+    const homeRow = document.getElementById("elections-home-row");
+    const locBtn  = document.getElementById("elections-loc-btn");
+    const label   = document.getElementById("elections-home-pc-label");
+    if (home) {
+      label.textContent = home;
+      homeRow.style.display = "flex";
+      locBtn.style.display  = "none";
+    } else {
+      homeRow.style.display = "none";
+      locBtn.style.display  = "";
+    }
+  }
+
+  function electionsUseHome() {
+    const home = MiruLocation.getHome();
+    if (!home) return;
+    document.getElementById("elections-input").value = home;
+    document.getElementById("elections-save-home-row").style.display = "none";
+    searchElections();
+  }
+
+  function electionsSaveHome() {
+    const pc = document.getElementById("elections-input").value.trim().toUpperCase();
+    if (!pc) return;
+    MiruLocation.setHome(pc);
+    _electionsRefreshHomeRow();
+    document.getElementById("elections-save-home-row").style.display = "none";
+  }
+
+  function electionsClearHome() {
+    MiruLocation.clearHome();
+    _electionsRefreshHomeRow();
+  }
+
   async function electionsUseLocation() {
     const btn   = document.getElementById("elections-loc-btn");
     const errEl = document.getElementById("elections-loc-err");
@@ -3125,6 +3293,9 @@ const _ts = new Date(d.timestamp);
 
       eTab("more");
       document.getElementById("elections-result").classList.remove("hidden");
+      // Show "save as home" nudge only when home is not already set
+      const _saveHomeRow = document.getElementById("elections-save-home-row");
+      _saveHomeRow.style.display = MiruLocation.getHome() ? "none" : "block";
     } catch(e) {
       document.getElementById("elections-loading").classList.add("hidden");
       document.getElementById("elections-error").textContent = "Could not load election data. Try again.";
