@@ -836,24 +836,46 @@ def api_library_upload():
             f = request.files["file"]
             raw = f.read()
             import base64
-            img_b64 = base64.b64encode(raw).decode()
-            mime = f.content_type or "image/jpeg"
-            extracted = _groq_vision(
-                img_b64, mime,
-                "Extract ALL text visible in this image exactly as shown. "
-                "If this is a receipt, include store name, items, prices, totals, date. "
-                "Return only the extracted text, no commentary."
-            )
-            text = extracted or ""
-            doc_type = "note"
             if not title or title == "Untitled":
-                title = f.filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ").title() or "Receipt"
+                title = f.filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ").title() or "Photo"
+            mime = (f.content_type or "").lower()
+            # HEIC/HEIF not supported by vision APIs — convert via Pillow or reject
+            if "heic" in mime or "heif" in mime or f.filename.lower().endswith((".heic", ".heif")):
+                try:
+                    from PIL import Image as _PILImg
+                    import io as _io
+                    _img = _PILImg.open(_io.BytesIO(raw))
+                    _buf = _io.BytesIO()
+                    _img.convert("RGB").save(_buf, format="JPEG")
+                    raw = _buf.getvalue()
+                    mime = "image/jpeg"
+                except Exception:
+                    return jsonify({"error": "HEIC photos aren't supported. Export as JPG from Photos first."}), 400
+            if not mime or mime == "application/octet-stream":
+                mime = "image/jpeg"
+            if not os.environ.get("GROQ_API_KEY"):
+                return jsonify({"error": "Image OCR not configured (no Groq key). Upload a PDF or paste text instead."}), 500
+            img_b64 = base64.b64encode(raw).decode()
+            try:
+                extracted = _groq_vision(
+                    img_b64, mime,
+                    "Extract ALL text visible in this image exactly as shown. "
+                    "If this is a receipt, include store name, items, prices, totals, date. "
+                    "Return only the extracted text, no commentary."
+                )
+                text = extracted or ""
+            except Exception as vision_err:
+                app.logger.warning(f"[library upload] vision OCR failed: {vision_err}")
+                text = f"[Photo: {title}]\n(Text extraction failed — try uploading a clearer image or paste the text manually.)"
+            doc_type = "note"
         else:
             text = request.form.get("text", "").strip()
             doc_type = "note"
 
-        if not text:
+        if not text and doc_type != "note":
             return jsonify({"error": "No content found"}), 400
+        if not text:
+            text = f"[{title}]"
 
         doc = lib.upload_document(title, text, doc_type, page_count)
         return jsonify(doc)
