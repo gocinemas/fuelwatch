@@ -372,7 +372,7 @@
         style="flex-direction:row;align-items:center;gap:16px;width:100%;margin-bottom:10px;min-height:auto;padding:16px 18px">
         <div style="font-size:34px;line-height:1;flex-shrink:0">🗳️</div>
         <div style="flex:1;text-align:left">
-          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Your Local Council Results</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Your Local Council</div>
           <div id="elections-home-desc" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">Check who won in your ward & councillor details</div>
         </div>
         <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:4px 10px;flex-shrink:0">
@@ -1026,7 +1026,7 @@
 
     <!-- ── ELECTIONS SCREEN ── -->
     <div id="screen-elections" class="screen pt-5">
-      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🗳️ Your Local Council Results</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🗳️ Your Local Council</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Enter your postcode to see who won and councillor details</div>
 
       <!-- Home postcode banner (shown when home is saved) -->
@@ -1351,7 +1351,7 @@
             <div class="text-3xl mb-2">📁</div>
             <div class="text-sm font-medium text-gray-600">Drop files here or tap to choose</div>
             <div class="text-xs text-gray-400 mt-1">PDF · TXT · MD · JPG · PNG — select multiple at once</div>
-            <input type="file" accept=".pdf,.txt,.md,.jpg,.jpeg,.png,image/jpeg,image/png" multiple id="lib-file-input" class="hidden" onchange="libFilesChosen(this)">
+            <input type="file" accept="image/*,.pdf,.txt,.md" multiple id="lib-file-input" class="hidden" onchange="libFilesChosen(this)">
           </div>
 
           <!-- File queue -->
@@ -5191,7 +5191,7 @@ const _ts = new Date(d.timestamp);
     e.preventDefault();
     document.getElementById("lib-dropzone").style.borderColor = "";
     const files = Array.from(e.dataTransfer.files).filter(f =>
-      /\.(pdf|txt|md)$/i.test(f.name));
+      /\.(pdf|txt|md|jpg|jpeg|png|heic|heif|webp)$/i.test(f.name) || f.type.startsWith("image/"));
     if (files.length) libQueueFiles(files);
   }
 
@@ -5210,7 +5210,7 @@ const _ts = new Date(d.timestamp);
     if (!_libFileQueue.length) { el.classList.add("hidden"); return; }
     el.classList.remove("hidden");
     el.innerHTML = _libFileQueue.map(item => {
-      const icon = /\.pdf$/i.test(item.file.name) ? "📄" : "📝";
+      const icon = /\.pdf$/i.test(item.file.name) ? "📄" : item.file.type.startsWith("image/") || /\.(jpg|jpeg|png|heic|heif|webp)$/i.test(item.file.name) ? "🖼️" : "📝";
       const name = item.file.name.replace(/\.[^.]+$/, "");
       const s = item.status;
       const statusEl = s === "done"      ? `<span style="color:#059669">✓</span>`
@@ -5257,7 +5257,8 @@ const _ts = new Date(d.timestamp);
       libRenderQueue();
     }
     _libUploading = false;
-    setTimeout(() => { libCancelUpload(); libLoadDocs(); }, 1000);
+    const _hasError = _libFileQueue.some(x => x.status === "error");
+    setTimeout(() => { libCancelUpload(); libLoadDocs(); }, _hasError ? 4000 : 1200);
   }
 
   async function libSubmitPaste() {

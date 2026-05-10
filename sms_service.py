@@ -3614,30 +3614,47 @@ def api_company():
     return jsonify(fetch_company_info(name))
 
 
-def _groq_vision(img_b64: str, mime: str, prompt: str, model: str = "llama-3.2-11b-vision-preview") -> str:
-    """Send a base64-encoded image to Groq vision model and return extracted text."""
-    body = {
-        "model": model,
-        "max_tokens": 1024,
-        "messages": [{
-            "role": "user",
-            "content": [
-                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{img_b64}"}},
-                {"type": "text", "text": prompt},
-            ],
-        }],
-    }
-    r = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
-            "Content-Type": "application/json",
-        },
-        json=body,
-        timeout=30,
-    )
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"]
+_GROQ_VISION_MODELS = [
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+    "llama-3.2-11b-vision-preview",
+    "llama-3.2-90b-vision-preview",
+]
+
+def _groq_vision(img_b64: str, mime: str, prompt: str, model: str = None) -> str:
+    """Send a base64-encoded image to Groq vision model and return extracted text.
+    Tries multiple models in order until one succeeds."""
+    models = [model] if model else _GROQ_VISION_MODELS
+    last_err = None
+    for m in models:
+        body = {
+            "model": m,
+            "max_tokens": 1024,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{img_b64}"}},
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        }
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                    "Content-Type": "application/json",
+                },
+                json=body,
+                timeout=30,
+            )
+            if r.status_code == 200:
+                return r.json()["choices"][0]["message"]["content"]
+            last_err = f"HTTP {r.status_code}: {r.text[:200]}"
+            print(f"[groq_vision] {m} → {last_err}")
+        except Exception as e:
+            last_err = str(e)
+            print(f"[groq_vision] {m} → {last_err}")
+    raise RuntimeError(f"All Groq vision models failed. Last error: {last_err}")
 
 
 def _groq_chat(system, messages, max_tokens=600, json_mode=False, model="llama-3.1-8b-instant"):
