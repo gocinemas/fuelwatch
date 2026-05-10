@@ -702,6 +702,19 @@
           style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 20px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
       </div>
       <div id="intel-recent" style="margin-bottom:8px"></div>
+      <!-- Local-service redirect nudge (shown when query looks like a local service) -->
+      <div id="intel-local-nudge" style="display:none;background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#92400e">
+        Looks like you're searching for a local service.
+        <button onclick="_intelRedirectToFinder()" style="background:#d97706;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px">Find nearby →</button>
+      </div>
+      <!-- Save → Intel tip (shown when no search has been made yet) -->
+      <div id="intel-tip-card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:center">
+        <div style="font-size:28px;flex-shrink:0">📸</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:3px">WhatsApp a brand photo to save it</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.5">Photo an ad, billboard, or product label → Miru saves it → tap <strong style="color:#a5b4fc">🔍 Intel</strong> on the card to research the brand here</div>
+        </div>
+      </div>
 
       <!-- Loading / Error (unified) -->
       <div id="intel-loading" class="hidden text-center py-10">
@@ -758,6 +771,15 @@
 
         <!-- ── About tab ── -->
         <div id="intel-tab-about">
+          <!-- Did you know hook -->
+          <div id="brand-dyk-wrap" style="display:none;background:linear-gradient(135deg,#0f172a,#1e1b4b);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+            <div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:rgba(165,180,252,.7);margin-bottom:6px">Did you know?</div>
+            <div id="brand-dyk-el" style="font-size:14px;font-weight:600;color:#fff;line-height:1.5"></div>
+          </div>
+          <!-- Finance empty state (shown when Finance tab is hidden) -->
+          <div id="brand-fin-empty" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--muted)">
+            🔒 Privately held — no public financials available
+          </div>
           <!-- Stats grid from brand API -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px">
@@ -2102,9 +2124,34 @@ const _ts = new Date(d.timestamp);
     });
   };
 
+  // ── Non-brand local-service detection ────────────────────────────────────────
+  const _LOCAL_SVC = /\b(plumber|builder|electrician|electricians|dentist|dentists|hairdresser|barber|mechanic|locksmith|cleaner|painter|decorator|carpenter|roofer|tiler|gardener|handyman|solicitor|accountant|physio|therapist|optician|vet|gp|pharmacist|pharmacy|restaurant|cafe|coffee shop|pub|bar|hotel|gym|salon|spa|nursery|supermarket|takeaway|pizza|curry|chinese|indian|thai|italian|sushi|kebab|fish and chips)\b/i;
+  const _LOCAL_PFX = /^(local |nearest |near me|find a |find me |best |where (is|are|can i find)|looking for |i need a )/i;
+
+  window._intelRedirectToFinder = function() {
+    const q = document.getElementById("intel-input").value.trim();
+    document.getElementById("intel-local-nudge").style.display = "none";
+    showScreen("local");
+    const fi = document.getElementById("finder-input");
+    if (fi) { fi.value = q; finderSearch(q); }
+  };
+
   window.searchIntel = async function() {
     const raw = document.getElementById("intel-input").value.trim();
     if (!raw) return;
+
+    // Detect local-service searches and nudge toward Finder
+    const nudge = document.getElementById("intel-local-nudge");
+    if (_LOCAL_SVC.test(raw) || _LOCAL_PFX.test(raw)) {
+      nudge.style.display = "";
+      return;
+    }
+    nudge.style.display = "none";
+
+    // Hide tip card once a real search is made
+    const tipCard = document.getElementById("intel-tip-card");
+    if (tipCard) tipCard.style.display = "none";
+
     _saveRecent("miru_intel", raw);
     _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()");
 
@@ -2164,6 +2211,17 @@ const _ts = new Date(d.timestamp);
       // ── Hide tabs + sections that have no data ──
       const co = coData || {}, br = brData || {};
 
+      // Did you know hook
+      const dyk = (br.did_you_know || "").trim();
+      const dykWrap = document.getElementById("brand-dyk-wrap");
+      const dykEl   = document.getElementById("brand-dyk-el");
+      if (dyk && dykWrap && dykEl) {
+        dykEl.textContent = dyk;
+        dykWrap.style.display = "";
+      } else if (dykWrap) {
+        dykWrap.style.display = "none";
+      }
+
       // About: hide stats grid if brand returned no useful fields
       const hasStats = br.founded || br.hq || br.revenue || br.industry;
       const statsGrid = document.querySelector('#intel-tab-about > div[style*="grid"]');
@@ -2173,6 +2231,9 @@ const _ts = new Date(d.timestamp);
       const hasFinance = (co.share && co.share.current) ||
                          (br.financials && Object.values(br.financials).some(v => v));
       _setIntelTab("finance", hasFinance);
+      // Show "privately held" note in About when Finance tab is absent
+      const finEmpty = document.getElementById("brand-fin-empty");
+      if (finEmpty) finEmpty.style.display = hasFinance ? "none" : "";
 
       // History tab: hide if no timeline entries
       const hasHistory = br.timeline && br.timeline.length > 0;

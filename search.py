@@ -702,8 +702,8 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
     if not groq_key:
         return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
     prompt = f"""Return ONLY valid JSON for brand "{brand}". No markdown, no explanation.
-{{"facts":{{"founded":"","hq":"","industry":"","employees":"","revenue":""}},"competitors":[{{"name":"","revenue":"","description":""}}],"campaigns":[{{"name":"","year":"","description":""}}],"timeline":[{{"year":"","title":"","description":""}}]}}
-Rules: facts fill all 5 fields. competitors: 4 items each with revenue. campaigns: 4 items. timeline: 8-10 milestones oldest to newest each with title+description."""
+{{"did_you_know":"one striking memorable stat or fact about {brand} — a surprising number, scale, or behaviour (1 sentence, start with the brand name or a specific number)","facts":{{"founded":"","hq":"","industry":"","employees":"","revenue":""}},"competitors":[{{"name":"","revenue":"","description":""}}],"campaigns":[{{"name":"","year":"","description":""}}],"timeline":[{{"year":"","title":"","description":""}}]}}
+Rules: did_you_know must be concrete and surprising, not generic. facts fill all 5 fields. competitors: 4 items each with revenue. campaigns: 4 items. timeline: 8-10 milestones oldest to newest each with title+description."""
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -1026,24 +1026,25 @@ def fetch_brand_data(brand: str) -> dict:
             return v if v else ai_facts.get(wiki_key, "")
 
         result = {
-            "name":        brand,
+            "name":         brand,
             "suggested_name": suggested,
-            "description": wiki.get("description", ""),
-            "extract":     wiki.get("extract", ""),
-            "founded":     _val("founded"),
-            "hq":          _val("hq"),
-            "revenue":     _val("revenue"),
-            "employees":   _val("employees"),
-            "industry":    _val("industry"),
-            "wiki_url":    wiki.get("wiki_url", ""),
-            "domain":      wiki.get("domain", ""),
-            "thumbnail":   wiki.get("thumbnail", ""),
-            "timeline":    ai.get("timeline", []),
-            "campaigns":   ai.get("campaigns", []),
-            "competitors": ai.get("competitors", []),
-            "ads":         ads,
-            "financials":  financials,
-            "news":        news,
+            "description":  wiki.get("description", ""),
+            "extract":      wiki.get("extract", ""),
+            "founded":      _val("founded"),
+            "hq":           _val("hq"),
+            "revenue":      _val("revenue"),
+            "employees":    _val("employees"),
+            "industry":     _val("industry"),
+            "wiki_url":     wiki.get("wiki_url", ""),
+            "domain":       wiki.get("domain", ""),
+            "thumbnail":    wiki.get("thumbnail", ""),
+            "did_you_know": ai.get("did_you_know", ""),
+            "timeline":     ai.get("timeline", []),
+            "campaigns":    ai.get("campaigns", []),
+            "competitors":  ai.get("competitors", []),
+            "ads":          ads,
+            "financials":   financials,
+            "news":         news,
         }
         # Only cache if AI data came back — never lock in empty timeline/rivals
         ai_ok = bool(result["timeline"] or result["competitors"])
