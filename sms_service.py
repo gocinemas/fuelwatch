@@ -3051,9 +3051,9 @@ def api_elections_debug():
 
 
 _OVERPASS_URLS = [
-    "https://overpass.kumi.systems/api/interpreter",
-    "https://overpass-api.de/api/interpreter",
+    "https://overpass-api.de/api/interpreter",        # most reliable
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",  # kept as last resort
 ]
 
 # Simple 30-minute in-memory cache for Overpass results keyed by postcode
@@ -3064,7 +3064,7 @@ def _overpass_mirrors(query):
     """POST to Overpass with mirror fallback. Use for hospitals/supermarkets."""
     for url in _OVERPASS_URLS:
         try:
-            r = requests.post(url, data={"data": query}, timeout=18)
+            r = requests.post(url, data={"data": query}, timeout=12)
             if r.status_code == 200:
                 els = r.json().get("elements", [])
                 if els:
@@ -3141,12 +3141,46 @@ def _places_nearby(lat, lon, place_type, radius_m, max_results):
         print(f"[places_nearby {place_type}] {e}")
         return []
 
+def _fetch_hospitals_overpass(lat, lon, radius_m=10000):
+    query = f"""[out:json][timeout:25];
+(
+  node["amenity"="hospital"](around:{radius_m},{lat},{lon});
+  way["amenity"="hospital"](around:{radius_m},{lat},{lon});
+  node["amenity"="clinic"](around:{radius_m},{lat},{lon});
+  way["amenity"="clinic"](around:{radius_m},{lat},{lon});
+);
+out center tags;"""
+    try:
+        elements = _overpass_mirrors(query)
+        items = []
+        for el in elements:
+            tags = el.get("tags", {})
+            name = tags.get("name", "")
+            if not name:
+                continue
+            elat, elon = _el_coords(el)
+            if not elat or not elon:
+                continue
+            dist = round(haversine_km(lat, lon, elat, elon), 2)
+            items.append({
+                "name": name,
+                "address": _el_address(tags),
+                "distance_km": dist,
+                "phone": _el_phone(tags),
+            })
+        items.sort(key=lambda x: x["distance_km"])
+        return items[:4]
+    except Exception as e:
+        print(f"[overpass hospitals] {e}")
+        return []
+
 def _fetch_hospitals(lat, lon):
     items = _places_nearby(lat, lon, "hospital", 15000, 4)
-    # strip place_id from output
     for h in items:
         h.pop("place_id", None)
         h["phone"] = ""
+    if not items:
+        items = _fetch_hospitals_overpass(lat, lon)
     return items
 
 def _fetch_supermarkets_overpass(lat, lon, radius_m=5000):
