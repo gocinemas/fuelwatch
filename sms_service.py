@@ -3182,11 +3182,13 @@ def _fetch_hospitals_overpass(lat, lon, radius_m=10000):
   node["amenity"="hospital"](around:{radius_m},{lat},{lon});
   way["amenity"="hospital"](around:{radius_m},{lat},{lon});
   relation["amenity"="hospital"](around:{radius_m},{lat},{lon});
-  node["amenity"="clinic"](around:{radius_m},{lat},{lon});
-  way["amenity"="clinic"](around:{radius_m},{lat},{lon});
-  relation["amenity"="clinic"](around:{radius_m},{lat},{lon});
 );
 out center tags;"""
+    _SKIP_HOSPITAL_WORDS = {
+        "gp", "surgery", "medical centre", "health centre", "dental",
+        "dentist", "optician", "pharmacy", "veterinary", "vet ", "beauty",
+        "cosmetic", "aesthetic", "therapy", "therapist",
+    }
     try:
         elements = _overpass_mirrors(query)
         items = []
@@ -3194,6 +3196,9 @@ out center tags;"""
             tags = el.get("tags", {})
             name = tags.get("name", "")
             if not name:
+                continue
+            nl = name.lower()
+            if any(w in nl for w in _SKIP_HOSPITAL_WORDS):
                 continue
             elat, elon = _el_coords(el)
             if not elat or not elon:

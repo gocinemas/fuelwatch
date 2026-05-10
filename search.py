@@ -318,7 +318,7 @@ def fetch_ofsted_rating(urn: str) -> str:
     try:
         r = requests.get(
             f"https://reports.ofsted.gov.uk/provider/ELS/{urn}",
-            timeout=8,
+            timeout=4,
             headers={"User-Agent": _BROWSER_UA, "Accept": "text/html"},
         )
         if r.status_code == 200:
@@ -331,16 +331,16 @@ def fetch_ofsted_rating(urn: str) -> str:
     return ""
 
 OVERPASS_URLS = [
-    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",   # confirmed working on Railway
     "https://overpass.private.coffee/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass-api.de/api/interpreter",         # returns 406 from Railway
 ]
 
 def _overpass(query: str) -> list:
     """POST an Overpass query, trying multiple mirrors."""
     for url in OVERPASS_URLS:
         try:
-            r = requests.post(url, data={"data": query}, timeout=30,
+            r = requests.post(url, data={"data": query}, timeout=15,
                               headers={"User-Agent": "FuelWatchUK/1.0"})
             if r.status_code == 200:
                 data = r.json()
@@ -438,49 +438,22 @@ out center 200;
     pubs.sort(key=lambda x: x["dist_mi"])
     cafes.sort(key=lambda x: x["dist_mi"])
 
-    # Parallel: Ofsted for schools + Google ratings for pubs/cafes
+    # Ofsted ratings for schools only — short timeout so slow scrapes don't block
     try:
-        with _cf.ThreadPoolExecutor(max_workers=12) as pool:
+        with _cf.ThreadPoolExecutor(max_workers=8) as pool:
             ofsted_futures = {
                 i: pool.submit(fetch_ofsted_rating, s["urn"])
-                for i, s in enumerate(schools[:10]) if s.get("urn")
-            }
-            pub_rating_futures = {
-                i: pool.submit(_google_rating, p["name"], p["lat"], p["lon"])
-                for i, p in enumerate(pubs[:15])
-            }
-            cafe_rating_futures = {
-                i: pool.submit(_google_rating, c["name"], c["lat"], c["lon"])
-                for i, c in enumerate(cafes[:10])
+                for i, s in enumerate(schools[:8]) if s.get("urn")
             }
             for i, fut in ofsted_futures.items():
                 try:
-                    grade = fut.result(timeout=6)
+                    grade = fut.result(timeout=3)
                     if grade:
                         schools[i]["ofsted"] = grade
                 except Exception:
                     pass
-            for i, fut in pub_rating_futures.items():
-                try:
-                    rating, total = fut.result(timeout=5)
-                    if rating:
-                        pubs[i]["google_rating"] = rating
-                        pubs[i]["google_count"]  = total or 0
-                except Exception:
-                    pass
-            for i, fut in cafe_rating_futures.items():
-                try:
-                    rating, total = fut.result(timeout=5)
-                    if rating:
-                        cafes[i]["google_rating"] = rating
-                        cafes[i]["google_count"]  = total or 0
-                except Exception:
-                    pass
     except Exception:
         pass
-
-    pubs.sort(key=lambda x: -(x.get("google_rating") or 0))
-    cafes.sort(key=lambda x: -(x.get("google_rating") or 0))
 
     for p in pubs:
         p.pop("fhrs_id", None)
