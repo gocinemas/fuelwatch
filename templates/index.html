@@ -1543,7 +1543,7 @@
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
-    if (name === "finder")   { _finderRefreshHomeRow(); }
+    if (name === "finder")   { }
     if (name === "places")   { _placesRefreshHomeRow(); }
     setFooter(name);
   }
@@ -3379,51 +3379,11 @@ const _ts = new Date(d.timestamp);
     MiruLocation.setHome(pc);
     _electionsRefreshHomeRow();
     _reportRefreshHomeRow();
-    if (typeof _finderRefreshHomeRow === "function") _finderRefreshHomeRow();
     document.getElementById("elections-save-home-row").style.display = "none";
   }
 
   function electionsClearHome() {
     MiruLocation.clearHome();
-    _electionsRefreshHomeRow();
-    _reportRefreshHomeRow();
-    if (typeof _finderRefreshHomeRow === "function") _finderRefreshHomeRow();
-  }
-
-  // ── Finder home postcode helpers ─────────────────────────────────────────────
-  function _finderRefreshHomeRow() {
-    const home = MiruLocation.getHome();
-    const homeRow = document.getElementById("finder-home-row");
-    const label   = document.getElementById("finder-home-pc-label");
-    if (home) {
-      label.textContent = home;
-      homeRow.style.display = "flex";
-    } else {
-      homeRow.style.display = "none";
-    }
-  }
-
-  function finderUseHome() {
-    const home = MiruLocation.getHome();
-    if (!home) return;
-    document.getElementById("finder-postcode").value = home;
-    document.getElementById("finder-save-home-row").style.display = "none";
-    finderSearch();
-  }
-
-  function finderSaveHome() {
-    const pc = (_finderCurrentPC || document.getElementById("finder-postcode").value).trim().toUpperCase();
-    if (!pc) return;
-    MiruLocation.setHome(pc);
-    _finderRefreshHomeRow();
-    _electionsRefreshHomeRow();
-    _reportRefreshHomeRow();
-    document.getElementById("finder-save-home-row").style.display = "none";
-  }
-
-  function finderClearHome() {
-    MiruLocation.clearHome();
-    _finderRefreshHomeRow();
     _electionsRefreshHomeRow();
     _reportRefreshHomeRow();
   }
@@ -3454,7 +3414,6 @@ const _ts = new Date(d.timestamp);
   function placesClearHome() {
     MiruLocation.clearHome();
     _placesRefreshHomeRow();
-    _finderRefreshHomeRow();
     _electionsRefreshHomeRow();
     _reportRefreshHomeRow();
   }
@@ -3464,7 +3423,6 @@ const _ts = new Date(d.timestamp);
     if (!pc) return;
     MiruLocation.setHome(pc);
     _placesRefreshHomeRow();
-    _finderRefreshHomeRow();
     _electionsRefreshHomeRow();
     _reportRefreshHomeRow();
     document.getElementById("places-save-home-row").style.display = "none";
@@ -6603,13 +6561,6 @@ _bkBadge();
     <div style="font-size:12px;color:#6b7280;margin-top:2px">Find trades, health &amp; local services near you</div>
   </div>
 
-  <!-- Home postcode banner for finder -->
-  <div id="finder-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
-    <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="finder-home-pc-label"></span></span>
-    <button onclick="finderUseHome()" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
-    <button onclick="finderClearHome()" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer;margin-left:6px">Clear</button>
-  </div>
-
   <!-- Location bar — inline GPS button + postcode input -->
   <div style="display:flex;align-items:center;gap:0;background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:8px">
     <button id="finder-loc-btn" onclick="useLocation('finder')"
@@ -6739,12 +6690,6 @@ _bkBadge();
 
       <div id="finder-loading" class="hidden text-center py-6 text-gray-400 text-sm">
         <div class="spinner text-blue-600 mx-auto mb-2"></div>Searching nearby…
-      </div>
-      <!-- Save as home nudge -->
-      <div id="finder-save-home-row" style="display:none;margin-top:8px;text-align:center">
-        <button onclick="finderSaveHome()" style="font-size:12px;color:#16a34a;background:none;border:none;cursor:pointer;text-decoration:underline">
-          📍 Save this as my home postcode
-        </button>
       </div>
       <div id="finder-results" style="display:none;margin-top:12px">
         <div id="finder-results-hdr" style="margin-bottom:10px"></div>
@@ -6944,9 +6889,6 @@ _bkBadge();
       list.innerHTML = items.map(_finderCard).join("");
     }
     document.getElementById("finder-results").style.display = "block";
-    // Show "save as home" nudge if home not yet set
-    const _fSaveRow = document.getElementById("finder-save-home-row");
-    if (_fSaveRow) _fSaveRow.style.display = MiruLocation.getHome() ? "none" : "block";
   }
 
   window.finderToggleOpenNow = function(){
