@@ -2288,14 +2288,16 @@ const _ts = new Date(d.timestamp);
     const el = document.getElementById("report-myarea-list");
     document.getElementById("rptab-loading-myarea").style.display = "inline-block";
     el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Loading your area info…</div>';
-    fetch(`/api/your-area?postcode=${postcode}`)
-      .then(r => r.json())
-      .then(d => renderMyAreaData(d))
+    Promise.all([
+      fetch(`/api/your-area?postcode=${postcode}`).then(r => r.json()).catch(() => ({})),
+      fetch(`/api/mp?postcode=${postcode}`).then(r => r.json()).catch(() => ({})),
+    ])
+      .then(([area, mp]) => renderMyAreaData(area, mp))
       .catch(() => { el.innerHTML = '<div style="color:var(--muted);font-size:13px">Could not load area info.</div>'; })
       .finally(() => { document.getElementById("rptab-loading-myarea").style.display = "none"; });
   }
 
-  function renderMyAreaData(d) {
+  function renderMyAreaData(d, mp) {
     const el = document.getElementById("report-myarea-list");
     const row = (icon, label, val, sub, href) => {
       const valHtml = href
@@ -2325,9 +2327,21 @@ const _ts = new Date(d.timestamp);
 
     let html = "";
 
+    // MP
+    if (mp && mp.name && !mp.error) {
+      const mpSubs = [];
+      if (mp.party) mpSubs.push(mp.party);
+      if (mp.constituency) mpSubs.push(mp.constituency);
+      const mpContacts = [];
+      if (mp.email) mpContacts.push(`<a href="mailto:${mp.email}" style="color:#2563eb">${mp.email}</a>`);
+      if (mp.phone) mpContacts.push(`<a href="tel:${mp.phone}" style="color:#2563eb">${mp.phone}</a>`);
+      const sub = [...mpSubs.map(s => `<span>${s}</span>`), ...mpContacts].join(" · ");
+      html += row("🏛️", "Your MP", mp.name, sub, mp.parliament_url || null);
+    }
+
     // Council
     if (d.council?.name) {
-      html += row("🏛️", "Your Council", d.council.name, null, d.council.website || null);
+      html += row("🏢", "Your Council", d.council.name, null, d.council.website || null);
     }
 
     // Water
