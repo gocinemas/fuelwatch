@@ -85,7 +85,7 @@ def fetch_retailer(name: str, url: str) -> list:
     CMA standard format: {stations: [{location: {latitude, longitude}, prices: {E10, B7}}]}
     """
     try:
-        resp = requests.get(url, timeout=10, headers=HEADERS)
+        resp = requests.get(url, timeout=5, headers=HEADERS)
         if resp.status_code != 200:
             return []
         data = resp.json()

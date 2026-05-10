@@ -152,6 +152,10 @@ def get_stations():
     return _station_cache["data"]
 
 
+# Pre-warm station cache on startup so first user request after a deploy is instant
+import threading as _threading_early
+_threading_early.Thread(target=get_stations, daemon=True).start()
+
 _DEG_PER_KM = 1 / 111.0  # 1° lat ≈ 111 km
 
 def _nearby_stations(lat: float, lon: float, fuel: str, radius_km: float, retailer: str = None) -> list:
