@@ -1530,7 +1530,7 @@ def _fetch_dc_ballot(ballot_paper_id: str) -> list:
         r = requests.get(
             f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/",
             params={"format": "json"}, timeout=8,
-            headers={"User-Agent": "Miru/1.0"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
         )
         if r.status_code != 200:
             return []
@@ -1569,7 +1569,7 @@ def _fetch_dc_results(council_slug: str, ward_name: str, election_date: str) -> 
         r = requests.get(
             f"https://candidates.democracyclub.org.uk/api/next/elections/local.{slug}.{election_date}/",
             params={"format": "json"}, timeout=8,
-            headers={"User-Agent": "Miru/1.0"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
         )
         if r.status_code != 200:
             return []
@@ -1865,7 +1865,7 @@ def _fetch_national_wikipedia() -> dict | None:
             "https://en.wikipedia.org/w/api.php",
             params={"action": "parse", "page": "2026_United_Kingdom_local_elections",
                     "format": "json", "prop": "wikitext", "section": "0"},
-            timeout=10, headers={"User-Agent": "Miru/1.0"},
+            timeout=10, headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
         )
         if r.status_code != 200:
             return None
@@ -2000,7 +2000,7 @@ def api_elections_council_view():
             r = requests.get(
                 f"https://candidates.democracyclub.org.uk/api/next/elections/local.{council_slug}.{election_date}/",
                 params={"format": "json"}, timeout=12,
-                headers={"User-Agent": "Miru/1.0"},
+                headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
             )
             if r.status_code != 200:
                 return jsonify({"error": f"DC API returned {r.status_code} for '{council_slug}'. The council may not have elections on {election_date}."}), 502
@@ -2027,7 +2027,7 @@ def api_elections_council_view():
         url = ballot_url_map.get(ballot_paper_id) or f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_paper_id}/"
         for attempt in range(3):
             try:
-                r2 = requests.get(url, params={"format": "json"}, timeout=6, headers={"User-Agent": "Miru/1.0"})
+                r2 = requests.get(url, params={"format": "json"}, timeout=6, headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"})
                 if r2.status_code == 429:
                     _time.sleep(0.4 * (attempt + 1))
                     continue
@@ -2244,7 +2244,7 @@ def _fetch_dc_elected(council_slug: str, ward_name: str, election_date: str) -> 
         r = requests.get(
             f"https://candidates.democracyclub.org.uk/api/next/elections/local.{slug}.{election_date}/",
             params={"format": "json"}, timeout=8,
-            headers={"User-Agent": "Miru/1.0"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
         )
         if r.status_code != 200:
             return []
@@ -2265,7 +2265,7 @@ def _fetch_dc_elected(council_slug: str, ward_name: str, election_date: str) -> 
         r2 = requests.get(
             f"https://candidates.democracyclub.org.uk/api/next/ballots/{best}/",
             params={"format": "json"}, timeout=8,
-            headers={"User-Agent": "Miru/1.0"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
         )
         if r2.status_code != 200:
             return []
@@ -2283,7 +2283,7 @@ def _fetch_dc_elected(council_slug: str, ward_name: str, election_date: str) -> 
                     pr = requests.get(
                         f"https://candidates.democracyclub.org.uk/api/next/people/{person_id}/",
                         params={"format": "json"}, timeout=6,
-                        headers={"User-Agent": "Miru/1.0"},
+                        headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
                     )
                     if pr.status_code == 200:
                         pd = pr.json()
@@ -2401,7 +2401,7 @@ def _resolve_councillors(postcode: str) -> dict:
             dc_r = requests.get(
                 "https://candidates.democracyclub.org.uk/api/next/ballots/",
                 params={"election_date": "2026-05-07", "for_postcode": postcode, "format": "json"},
-                timeout=6, headers={"User-Agent": "Miru/1.0"},
+                timeout=6, headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
             )
             if dc_r.status_code == 200:
                 dc_json = dc_r.json()
@@ -2471,7 +2471,7 @@ def _fetch_contacts(mp_id: int) -> dict:
     try:
         cr = requests.get(
             f"https://members-api.parliament.uk/api/Members/{mp_id}/Contact",
-            headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
+            headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
             timeout=8,
         )
         if cr.ok:
@@ -2494,7 +2494,7 @@ def _seed_mps_to_db() -> int:
             r = requests.get(
                 "https://members-api.parliament.uk/api/Members/Search",
                 params={"House": 1, "IsCurrentMember": True, "take": 20, "skip": skip},
-                headers={"Accept": "application/json", "User-Agent": "Miru/1.0"},
+                headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
                 timeout=12,
             )
             if not r.ok:
@@ -2902,7 +2902,7 @@ def api_elections():
                 dc_r = requests.get(
                     "https://candidates.democracyclub.org.uk/api/next/ballots/",
                     params={"election_date": "2026-05-07", "for_postcode": postcode, "format": "json"},
-                    timeout=6, headers={"User-Agent": "Miru/1.0"},
+                    timeout=6, headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
                 )
                 if dc_r.status_code == 200:
                     dc_json = dc_r.json()
@@ -3066,7 +3066,7 @@ def api_elections_debug():
             r2 = requests.get(
                 f"https://candidates.democracyclub.org.uk/api/next/ballots/{ballot_id}/",
                 params={"format": "json"}, timeout=10,
-                headers={"User-Agent": "Miru/1.0"},
+                headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
             )
             out["dc_status"] = r2.status_code
             if r2.status_code == 200:
@@ -4761,7 +4761,7 @@ def _overpass_query(query: str, timeout: int = 30) -> list:
             "https://overpass-api.de/api/interpreter",
             data={"data": query},
             timeout=timeout,
-            headers={"User-Agent": "Miru/1.0"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
         )
         if r.status_code == 200:
             return r.json().get("elements", [])
