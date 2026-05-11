@@ -1418,12 +1418,12 @@
               Connect
             </a>
           </div>
-          <!-- Scanning state -->
+          <!-- Scanning state (inline, shown after overlay fades) -->
           <div id="ma-gmail-state-scanning" style="display:none;align-items:center;gap:10px">
             <span style="width:16px;height:16px;border:2px solid #d1d5db;border-top-color:#4285f4;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></span>
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--text)">Scanning your inbox…</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">Looking for accounts — this takes a few seconds</div>
+              <div id="ma-gmail-scan-subtext" style="font-size:11px;color:var(--muted);margin-top:2px">Looking for accounts — this takes a few seconds</div>
             </div>
           </div>
           <!-- Connected / done state -->
@@ -3698,14 +3698,17 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _maGmailConnect() {
-    const did = _maDeviceId();
+    const did   = _maDeviceId();
+    const phone = _miruPhone();
     // If already connected, rescan instead of re-doing OAuth
     try {
       const r = await fetch(`/api/myarea/gmail/status?device_id=${encodeURIComponent(did)}`);
       const d = await r.json();
       if (d.connected) { _maGmailRescan(); return; }
     } catch {}
-    window.location.href = "/api/myarea/gmail/connect?device_id=" + encodeURIComponent(did || "unknown");
+    const params = new URLSearchParams({ device_id: did || "unknown" });
+    if (phone) params.set("from_number", phone);
+    window.location.href = "/api/myarea/gmail/connect?" + params.toString();
   }
 
   function _maGmailScanOverlay(show) {
@@ -3714,7 +3717,7 @@ const _ts = new Date(d.timestamp);
     if (document.getElementById(id)) return;
     const el = document.createElement("div");
     el.id = id;
-    el.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px";
+    el.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .5s";
     el.innerHTML = `
       <div style="width:52px;height:52px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin 0.9s linear infinite"></div>
       <div style="text-align:center">
@@ -3722,6 +3725,20 @@ const _ts = new Date(d.timestamp);
         <div style="font-size:13px;color:rgba(255,255,255,.7)">Looking for energy, broadband, insurance &amp; more</div>
       </div>`;
     document.body.appendChild(el);
+    // After 8s — if still scanning, fade overlay out and show background card state
+    setTimeout(() => {
+      const still = document.getElementById(id);
+      if (!still) return;
+      still.style.opacity = "0";
+      setTimeout(() => still.remove(), 500);
+      // Show inline scanning card with WhatsApp promise
+      const hasPhone = !!_miruPhone();
+      const sub = document.getElementById("ma-gmail-scan-subtext");
+      if (sub) sub.textContent = hasPhone
+        ? "Running in background — we'll WhatsApp you when done"
+        : "Running in background — check back in a moment";
+      _maGmailSetState("scanning");
+    }, 8000);
   }
 
   async function _maGmailCheckStatus() {
@@ -3807,9 +3824,12 @@ const _ts = new Date(d.timestamp);
 
   async function _maGmailRescan() {
     _maGmailSetState("scanning");
+    _maGmailScanOverlay(true);
     try {
-      await fetch(`/api/myarea/gmail/rescan?device_id=${encodeURIComponent(_maDeviceId())}`, { method: "POST" });
-      _maGmailScanOverlay(true);
+      const params = new URLSearchParams({ device_id: _maDeviceId() });
+      const phone = _miruPhone();
+      if (phone) params.set("from_number", phone);
+      await fetch(`/api/myarea/gmail/rescan?${params.toString()}`, { method: "POST" });
       setTimeout(_maGmailCheckStatus, 3000);
     } catch {}
   }

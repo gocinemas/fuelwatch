@@ -8420,14 +8420,25 @@ _SCHOOL_OAUTH_SCOPES    = "https://www.googleapis.com/auth/gmail.readonly"
 
 # ── My Details Gmail import ────────────────────────────────────────────────────
 
+def _ma_gmail_wa_number(device_id: str) -> str:
+    """Return whatsapp:+XXX if device_id looks like a phone number, else empty string."""
+    clean = device_id.replace("whatsapp:", "").strip()
+    if clean.startswith("+") and len(clean) >= 8 and clean[1:].replace(" ", "").replace("-", "").isdigit():
+        return f"whatsapp:{clean}"
+    return ""
+
+
 @app.route("/api/myarea/gmail/connect")
 def ma_gmail_connect():
     import urllib.parse
-    device_id = request.args.get("device_id", "").strip()
+    device_id   = request.args.get("device_id", "").strip()
+    from_number = request.args.get("from_number", "").strip()
     if not device_id:
         return "Missing device_id", 400
     if not _web_client_id():
         return "Gmail OAuth not configured", 503
+    # Encode both device_id and from_number in state so callback can recover them
+    state = f"{device_id}|||{from_number}" if from_number else device_id
     params = {
         "client_id":     _web_client_id(),
         "redirect_uri":  _MA_GMAIL_REDIRECT,
@@ -8435,18 +8446,26 @@ def ma_gmail_connect():
         "scope":         _SCHOOL_OAUTH_SCOPES,
         "access_type":   "offline",
         "prompt":        "consent",
-        "state":         device_id,
+        "state":         state,
     }
     return redirect("https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params))
 
 
 @app.route("/api/myarea/gmail/callback")
 def ma_gmail_callback():
-    code      = request.args.get("code", "")
-    device_id = request.args.get("state", "")
-    error     = request.args.get("error", "")
-    if error or not code or not device_id:
+    code  = request.args.get("code", "")
+    state = request.args.get("state", "")
+    error = request.args.get("error", "")
+    if error or not code or not state:
         return redirect("/?gmail_error=cancelled#myarea")
+    # Decode state: may contain from_number after "|||"
+    if "|||" in state:
+        device_id, from_number = state.split("|||", 1)
+    else:
+        device_id, from_number = state, ""
+    # Fallback: if device_id itself is a phone number, use it for notifications
+    if not from_number:
+        from_number = device_id if _ma_gmail_wa_number(device_id) else ""
     try:
         r = requests.post("https://oauth2.googleapis.com/token", data={
             "code":          code,
@@ -8463,7 +8482,6 @@ def ma_gmail_callback():
     access_token  = tokens.get("access_token", "")
     if not (refresh_token or access_token):
         return redirect("/?gmail_error=auth#myarea")
-    # Store token and kick off scan
     try:
         lib._sb().table("ma_gmail_tokens").upsert({
             "device_id":     device_id,
@@ -8477,7 +8495,7 @@ def ma_gmail_callback():
     import threading
     threading.Thread(
         target=_ma_gmail_scan_bg,
-        args=(device_id, access_token, refresh_token),
+        args=(device_id, access_token, refresh_token, from_number),
         daemon=True,
     ).start()
     return redirect("/?gmail_scan=1#myarea")
@@ -8648,7 +8666,7 @@ def _ma_gmail_clean_account(value: str) -> str:
     return v
 
 
-def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str):
+def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, from_number: str = ""):
     """Background: scan Gmail for household accounts, extract, store as pending records."""
     token_row = {"device_id": device_id, "access_token": access_token, "refresh_token": refresh_token}
     at = _ma_gmail_get_token(token_row)
@@ -8725,7 +8743,6 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str):
         pass
 
     try:
-        import json as _json
         lib._sb().table("ma_gmail_tokens").update({
             "scan_status": "done",
             "pending":     pending,
@@ -8734,6 +8751,21 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str):
         }).eq("device_id", device_id).execute()
     except Exception as e:
         print(f"[ma gmail scan] db update error: {e}")
+
+    # WhatsApp notification when scan finds something
+    if pending:
+        wa_to = _ma_gmail_wa_number(from_number or device_id)
+        if wa_to:
+            lines = []
+            for r in pending[:6]:
+                p = r.get("data", {}).get("Provider") or r.get("data", {}).get("Council") or ""
+                lines.append(f"• {r['label']}" + (f" — {p}" if p else ""))
+            msg = (
+                f"📧 Found {len(pending)} account{'s' if len(pending) != 1 else ''} in your Gmail:\n\n"
+                + "\n".join(lines)
+                + "\n\nOpen Miru → My Area → My Details to review and import them."
+            )
+            _wa_send_proactive(wa_to, msg)
 
 
 @app.route("/api/myarea/gmail/status")
@@ -8785,10 +8817,11 @@ def ma_gmail_rescan():
         lib._sb().table("ma_gmail_tokens").update({"scan_status": "scanning"}) \
             .eq("device_id", device_id).execute()
         at = _ma_gmail_get_token(row)
+        from_number = request.args.get("from_number", "").strip()
         import threading
         threading.Thread(
             target=_ma_gmail_scan_bg,
-            args=(device_id, at, row.get("refresh_token", "")),
+            args=(device_id, at, row.get("refresh_token", ""), from_number),
             daemon=True,
         ).start()
         return jsonify({"ok": True})
