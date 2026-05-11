@@ -2710,41 +2710,67 @@ const _ts = new Date(d.timestamp);
     return (_maSavedPlaces || []).some(p => p.name === name && p.address === (address||""));
   }
 
+  const _MA_PLACES_LS_KEY = "miru_saved_places_v1";
+
+  function _maPlacesFromLS() {
+    try { return JSON.parse(localStorage.getItem(_MA_PLACES_LS_KEY) || "[]"); } catch { return []; }
+  }
+  function _maPlacesToLS(places) {
+    localStorage.setItem(_MA_PLACES_LS_KEY, JSON.stringify(places));
+  }
+
   async function _maLoadSavedPlaces() {
-    try {
-      const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`);
-      _maSavedPlaces = await r.json();
-      if (!Array.isArray(_maSavedPlaces)) _maSavedPlaces = [];
-    } catch { _maSavedPlaces = []; }
+    // 1. Load from localStorage immediately so UI is instant
+    _maSavedPlaces = _maPlacesFromLS();
     _maRenderSavedPlaces();
     _maRefreshBookmarkButtons();
     _maReRenderSections();
+    // 2. Try to merge from server (Supabase) in background
+    try {
+      const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`);
+      const remote = await r.json();
+      if (Array.isArray(remote) && remote.length) {
+        // Merge: server records win for any name+address match, otherwise keep local
+        const merged = [...remote];
+        (_maSavedPlaces || []).forEach(local => {
+          if (!merged.some(r => r.name === local.name && r.address === local.address))
+            merged.push(local);
+        });
+        _maSavedPlaces = merged;
+        _maPlacesToLS(_maSavedPlaces);
+        _maRenderSavedPlaces();
+        _maRefreshBookmarkButtons();
+        _maReRenderSections();
+      }
+    } catch {}
   }
 
   async function _maTogglePlace(name, address, phone, emoji) {
-    if (!_maSavedPlaces) _maSavedPlaces = [];
+    if (!_maSavedPlaces) _maSavedPlaces = _maPlacesFromLS();
     const existing = _maSavedPlaces.find(p => p.name === name && p.address === (address||""));
 
     if (existing) {
-      // Optimistic: remove immediately, then sync to DB
       _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== existing.id);
+      _maPlacesToLS(_maSavedPlaces);
       _maRenderSavedPlaces();
       _maRefreshBookmarkButtons();
       _maReRenderSections();
-      fetch(`/api/myarea/places/${existing.id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"}).catch(()=>{});
+      // Sync delete to server in background
+      if (!String(existing.id).startsWith("tmp_"))
+        fetch(`/api/myarea/places/${existing.id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"}).catch(()=>{});
     } else {
-      // Optimistic: add with temp id immediately, then replace with real record from DB
       const opening_hours = _maPlaceHoursMap[(name||"") + "|" + (address||"")] || "";
       const tempId = "tmp_" + Date.now();
       const temp = {id: tempId, name, address: address||"", phone: phone||"", emoji: emoji||"📍", opening_hours};
       _maSavedPlaces.push(temp);
+      _maPlacesToLS(_maSavedPlaces);
       _maRenderSavedPlaces();
       _maRefreshBookmarkButtons();
       _maReRenderSections();
+      // Sync to server in background; replace temp id with real one if it succeeds
       try {
         const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`, {
-          method: "POST",
-          headers: {"Content-Type":"application/json"},
+          method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify({name, address: address||"", phone: phone||"", emoji: emoji||"📍",
                                 opening_hours,
                                 postcode: document.getElementById("myarea-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase()}),
@@ -2752,8 +2778,9 @@ const _ts = new Date(d.timestamp);
         const saved = await r.json();
         if (saved && saved.id) {
           _maSavedPlaces = _maSavedPlaces.map(p => p.id === tempId ? saved : p);
+          _maPlacesToLS(_maSavedPlaces);
         }
-      } catch(e) {}
+      } catch {}
     }
   }
 
@@ -2819,11 +2846,14 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _maRemoveSaved(id) {
-    await fetch(`/api/myarea/places/${id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"});
-    if (_maSavedPlaces) _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== id);
-    _maRenderSavedPlaces();
-    _maRefreshBookmarkButtons();
-    _maReRenderSections();
+    if (_maSavedPlaces) {
+      _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== id);
+      _maPlacesToLS(_maSavedPlaces);
+      _maRenderSavedPlaces();
+      _maRefreshBookmarkButtons();
+      _maReRenderSections();
+    }
+    fetch(`/api/myarea/places/${id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"}).catch(()=>{});
   }
 
   function _maPlaceRow(x, emoji) {
