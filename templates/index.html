@@ -2771,6 +2771,14 @@ const _ts = new Date(d.timestamp);
     return (_maSavedPlaces || []).some(p => p.name === name && p.address === (address||""));
   }
 
+  // Only inject bookmarks into a section when viewing the home postcode.
+  // When the user searches a different area, show live results only.
+  function _maSavedForSection(emojis) {
+    const home = (MiruLocation.getHome() || "").replace(/\s+/g, "").toUpperCase();
+    if (!home || _maCurrentPostcode !== home) return [];
+    return (_maSavedPlaces || []).filter(p => emojis.includes(p.emoji));
+  }
+
   // ── My Area API response cache (localStorage, survives Railway restarts) ────
   function _maCacheGet(key) {
     try {
@@ -3027,7 +3035,7 @@ const _ts = new Date(d.timestamp);
     const el = document.getElementById("myarea-schools");
     const schools = (data.schools?.schools || []).slice(0, 5);
     if (!schools.length) { el.style.display = "none"; return; }
-    const saved = (_maSavedPlaces || []).filter(p => p.emoji === "🏫");
+    const saved = _maSavedForSection(["🏫"]);
     const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
     let title, bodyHtml;
     if (saved.length) {
@@ -3127,7 +3135,7 @@ const _ts = new Date(d.timestamp);
     if (!_maGetPrefs().gp) { el.style.display = "none"; return; }
     const gps    = (area.gps || []).slice(0, 5);
     const pharms = (area.pharmacies || []).slice(0, 3);
-    const saved  = (_maSavedPlaces || []).filter(p => ["🏥","💊"].includes(p.emoji));
+    const saved  = _maSavedForSection(["🏥","💊"]);
     if (!gps.length && !pharms.length && !saved.length) { el.style.display = "none"; return; }
 
     let title, bodyHtml;
@@ -3167,7 +3175,7 @@ const _ts = new Date(d.timestamp);
     const supers = (data.supermarkets || []).slice(0, 5);
     const offlic = (data.off_licences || []).slice(0, 5);
     const convs  = (data.convenience  || []).slice(0, 5);
-    const saved  = (_maSavedPlaces || []).filter(p => ["🛒","🍷","🏪"].includes(p.emoji));
+    const saved  = _maSavedForSection(["🛒","🍷","🏪"]);
     if (!supers.length && !offlic.length && !convs.length && !saved.length) { el.style.display = "none"; return; }
 
     const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
@@ -3209,7 +3217,7 @@ const _ts = new Date(d.timestamp);
     const pubs  = (data.pubs  || []).slice(0, 5);
     const cafes = (data.cafes || []).slice(0, 3);
     const items = pubs.concat(cafes).slice(0, 5);
-    const saved = (_maSavedPlaces || []).filter(p => ["🍺","☕","🍽️"].includes(p.emoji));
+    const saved = _maSavedForSection(["🍺","☕","🍽️"]);
     if (!items.length && !saved.length) { el.style.display = "none"; return; }
     const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
     let title, bodyHtml;
