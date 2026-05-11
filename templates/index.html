@@ -1288,6 +1288,12 @@
       </div>
       <div id="myarea-linked-phone" style="display:none;font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 2px"></div>
 
+      <!-- Home postcode banner -->
+      <div id="myarea-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="myarea-home-pc-label"></span></span>
+        <button onclick="myAreaUseHome()" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
+      </div>
+
       <!-- Postcode bar (collapses when saved places exist) -->
       <div id="myarea-search-bar" style="margin-bottom:6px">
         <div style="display:flex;gap:8px;margin-bottom:6px">
@@ -3251,8 +3257,28 @@ const _ts = new Date(d.timestamp);
   function _myAreaRefreshHomeRow() {
     const pc   = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
     const home = MiruLocation.getHome();
-    const row  = document.getElementById("myarea-save-home-row");
-    if (row) row.style.display = (pc && pc !== home) ? "" : "none";
+    // "Save as Home" row — shown when searching a postcode that isn't already home
+    const saveRow = document.getElementById("myarea-save-home-row");
+    if (saveRow) saveRow.style.display = (pc && pc !== home) ? "" : "none";
+    // "Home: KT16 0DA · Use" banner — shown when home is set
+    const homeRow = document.getElementById("myarea-home-row");
+    const label   = document.getElementById("myarea-home-pc-label");
+    if (homeRow && label) {
+      if (home) {
+        label.textContent = home;
+        homeRow.style.display = "flex";
+      } else {
+        homeRow.style.display = "none";
+      }
+    }
+  }
+
+  function myAreaUseHome() {
+    const home = MiruLocation.getHome();
+    if (!home) return;
+    document.getElementById("myarea-postcode-input").value = home;
+    document.getElementById("myarea-save-home-row").style.display = "none";
+    myAreaSearch();
   }
 
   function myAreaSaveHome() {
@@ -3419,6 +3445,7 @@ const _ts = new Date(d.timestamp);
     }
     _maLoadSavedPlaces();
     _maLoadVehicles();
+    _myAreaRefreshHomeRow();
     const home = MiruLocation.getHome();
     if (home && document.getElementById("myarea-postcode-input").value !== home) {
       document.getElementById("myarea-postcode-input").value = home;
@@ -6655,21 +6682,21 @@ const _ts = new Date(d.timestamp);
   const _kagiCache = {};
   const _kagiCats = ["business","world","uk","technology","ai","science","finance","sports"];
 
-  async function _kagiFetch(cat) {
-    if (_kagiCache[cat]) return _kagiCache[cat];
+  async function _kagiFetch(cat, force) {
+    if (!force && _kagiCache[cat]) return _kagiCache[cat];
     const r = await fetch(`/api/kagi-news?category=${cat}`);
     const d = await r.json();
-    _kagiCache[cat] = d;
+    if (d.stories && d.stories.length) _kagiCache[cat] = d;
     return d;
   }
 
-  async function kagiSelect(cat, btn) {
+  async function kagiSelect(cat, btn, force) {
     document.querySelectorAll(".kpill").forEach(b => b.classList.remove("active"));
     if (btn) btn.classList.add("active");
     const el = document.getElementById("kagi-news-list");
     el.innerHTML = `<div style="font-size:13px;color:#d1d5db;text-align:center;padding:16px 0">Loading…</div>`;
     try {
-      const d = await _kagiFetch(cat);
+      const d = await _kagiFetch(cat, force);
       if (!d.stories || !d.stories.length) { el.innerHTML = `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">No stories available.</div>`; return; }
       const stories = d.stories;
       const hero = stories[0];
@@ -6720,7 +6747,11 @@ const _ts = new Date(d.timestamp);
 
       el.innerHTML = heroHtml + gridHtml + restHtml;
     } catch(e) {
-      el.innerHTML = `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:16px 0">Could not load news.</div>`;
+      el.innerHTML = `<div style="text-align:center;padding:16px 0">
+        <div style="font-size:13px;color:#9ca3af;margin-bottom:10px">Could not load news.</div>
+        <button onclick="kagiSelect('${cat}',document.querySelector('.kpill.active'),true)"
+          style="font-size:12px;font-weight:700;color:#6366f1;background:none;border:1px solid #6366f1;border-radius:8px;padding:6px 16px;cursor:pointer">↻ Retry</button>
+      </div>`;
     }
   }
   // Load business immediately, then silently pre-fetch all others in background
@@ -8467,10 +8498,24 @@ _bkBadge();
 <div id="screen-saves" class="screen pt-5">
   <!-- Onboarding: shown when no token exists (first visit, no WhatsApp link yet) -->
   <!-- Phone number sign-in (replaces both onboard + lock screens) -->
-  <div id="saves-phone-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
-    <div style="font-size:40px;margin-bottom:16px">📱</div>
-    <div style="font-weight:800;font-size:20px;margin-bottom:8px;color:var(--text)">My Saves</div>
-    <div style="color:var(--subtle);font-size:14px;margin-bottom:24px;max-width:260px;line-height:1.5">Enter your mobile number to access your personal saves.</div>
+  <div id="saves-phone-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center">
+    <div style="font-size:40px;margin-bottom:12px">💾</div>
+    <div style="font-weight:800;font-size:20px;margin-bottom:6px;color:var(--text)">My Saves</div>
+    <div style="color:var(--subtle);font-size:13px;margin-bottom:16px;max-width:280px;line-height:1.5">
+      Save anything from WhatsApp — menus, places, wine labels, receipts, ads, or links — and find them here instantly.
+    </div>
+    <!-- Example chips -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:20px;max-width:280px">
+      <span style="font-size:12px;font-weight:600;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🍽️ Restaurant menus</span>
+      <span style="font-size:12px;font-weight:600;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">📍 Places</span>
+      <span style="font-size:12px;font-weight:600;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🍷 Wine labels</span>
+      <span style="font-size:12px;font-weight:600;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🧾 Receipts</span>
+      <span style="font-size:12px;font-weight:600;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🔗 Links &amp; ads</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:10px 14px;margin-bottom:20px;max-width:280px;text-align:left">
+      <div style="font-size:20px">💬</div>
+      <div style="font-size:12px;color:#065f46;line-height:1.4">Send a photo or link to <strong>Miru on WhatsApp</strong>, then view and search everything here.</div>
+    </div>
     <input id="saves-phone-input" type="tel" placeholder="+44 7911 123456"
       style="border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-size:15px;width:100%;max-width:240px;text-align:center;outline:none;background:var(--surface);color:var(--text);margin-bottom:10px"
       onkeydown="if(event.key==='Enter')savesSubmitPhone()" />
@@ -8491,7 +8536,7 @@ _bkBadge();
     <div style="display:flex;align-items:flex-start;margin-bottom:16px;gap:10px">
       <div style="flex:1">
         <div style="font-size:24px;font-weight:900;color:var(--text);letter-spacing:-0.6px;line-height:1">My Saves</div>
-        <div id="saves-count-label" style="font-size:12px;color:var(--muted);margin-top:4px">Your personal intelligence feed</div>
+        <div id="saves-count-label" style="font-size:12px;color:var(--muted);margin-top:4px">Menus · places · wine · receipts · links — all from WhatsApp</div>
       </div>
       <button onclick="savesFabOpen()" title="Add save"
         style="background:var(--text);color:var(--bg);border:none;border-radius:14px;padding:9px 16px;font-size:20px;font-weight:300;cursor:pointer;line-height:1;flex-shrink:0">

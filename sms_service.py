@@ -1274,12 +1274,21 @@ def _kagi_resolve_id(slug: str) -> str:
             r = _req.get("https://kite.kagi.com/api/batches/latest/categories",
                          params={"lang": "en"}, timeout=8, allow_redirects=True)
             cats = r.json().get("categories", [])
-            _KAGI_CAT_IDS = {c["categoryId"]: c["id"] for c in cats}
-            _KAGI_CAT_IDS_TS = _time.time()
-            print(f"[kagi] refreshed {len(_KAGI_CAT_IDS)} category IDs")
+            # Support both {categoryId, id} and flat {id, slug} response shapes
+            new_ids = {}
+            for c in cats:
+                cid = c.get("categoryId") or c.get("slug") or ""
+                uid = c.get("id") or cid
+                if cid:
+                    new_ids[cid] = uid
+            if new_ids:
+                _KAGI_CAT_IDS = new_ids
+                _KAGI_CAT_IDS_TS = _time.time()
+                print(f"[kagi] refreshed {len(_KAGI_CAT_IDS)} category IDs")
         except Exception as e:
             print(f"[kagi] category lookup failed: {e}")
-    return _KAGI_CAT_IDS.get(slug, "")
+    # Fall back to using the slug directly as the ID if lookup missed
+    return _KAGI_CAT_IDS.get(slug, slug)
 
 @app.route("/api/kagi-news")
 def api_kagi_news():
@@ -1295,8 +1304,6 @@ def api_kagi_news():
     try:
         import requests as _req
         cat_id = _kagi_resolve_id(slug)
-        if not cat_id:
-            raise ValueError(f"No category ID found for slug '{slug}'")
         r = _req.get(
             f"https://kite.kagi.com/api/batches/latest/categories/{cat_id}/stories",
             params={"limit": 9, "lang": "en"},
@@ -10059,26 +10066,27 @@ def api_news_fetch():
         hdrs = {"User-Agent": "Mozilla/5.0 (compatible; MiruBot/1.0)"}
         r = requests.get(url, timeout=10, headers=hdrs)
         r.raise_for_status()
-        text = r.text
+        raw = r.content
         ct = r.headers.get("Content-Type", "")
 
         # If HTML page, discover RSS link
-        if "html" in ct.lower() and not any(tag in text[:800] for tag in ("<rss", "<feed", "<?xml")):
+        text_peek = raw[:800].decode("utf-8", errors="replace")
+        if "html" in ct.lower() and not any(tag in text_peek for tag in ("<rss", "<feed", "<?xml")):
             m = _re.search(
                 r'<link[^>]+type=["\']application/(?:rss|atom)\+xml["\'][^>]+href=["\']([^"\']+)["\']'
                 r'|<link[^>]+href=["\']([^"\']+)["\'][^>]+type=["\']application/(?:rss|atom)\+xml["\']',
-                text, _re.I
+                raw.decode("utf-8", errors="replace"), _re.I
             )
             if m:
                 rss_url = m.group(1) or m.group(2)
                 rss_url = _urljoin(r.url, rss_url)
                 r2 = requests.get(rss_url, timeout=10, headers=hdrs)
                 r2.raise_for_status()
-                text = r2.text
+                raw = r2.content
             else:
                 return {"url": url, "source": url, "articles": [], "error": "No RSS feed found on this page"}
 
-        root = _ET.fromstring(text.encode("utf-8"))
+        root = _ET.fromstring(raw)
         articles = []
         source = url
 
