@@ -2592,6 +2592,14 @@ const _ts = new Date(d.timestamp);
     if (_maLocalData) { _maRenderPubs(_maLocalData); _maRenderSchools(_maLocalData); }
   }
 
+  // One-time reset: clear old section-collapse keys written when default was collapsed
+  if (!localStorage.getItem("miru_mac_v3")) {
+    ["gp","shops","pubs","schools","reps","council","crime","weather","petrol","train"].forEach(id => {
+      localStorage.removeItem(`miru_mac_${id}`);
+    });
+    localStorage.setItem("miru_mac_v3", "1");
+  }
+
   function _maShowTab(tab) {
     ["places","services","civic"].forEach(t => {
       document.getElementById(`matab-${t}`).style.display = t === tab ? "" : "none";

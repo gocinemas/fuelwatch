@@ -3726,13 +3726,14 @@ def api_myarea_local_info():
 
     def _get_crime():
         try:
-            month = (_dt_li.date.today().replace(day=1) - _dt_li.timedelta(days=1)).strftime("%Y-%m")
-            r = requests.get("https://data.police.uk/api/crimes-street/all-crime",
-                             params={"lat": lat, "lng": lon, "date": month}, timeout=12)
-            crimes = r.json() if r.status_code == 200 else []
-            counts = _Ctr(c["category"] for c in crimes)
-            top3 = [{"category": k.replace("-", " ").title(), "count": v} for k, v in counts.most_common(3)]
-            return {"total": len(crimes), "top": top3, "month": month}
+            from search import fetch_crime_data
+            data = fetch_crime_data(lat, lon)
+            if not data or not data.get("total"):
+                return None
+            top3 = [{"category": b["category"], "count": b["count"]} for b in data["breakdown"][:3]]
+            months = data.get("months_covered", [])
+            month_label = f"{months[0]} to {months[-1]}" if len(months) > 1 else (months[0] if months else "")
+            return {"total": data["total"], "top": top3, "month": month_label}
         except Exception as e:
             print(f"[crime] {e}"); return None
 
