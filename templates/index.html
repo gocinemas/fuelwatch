@@ -2122,7 +2122,19 @@ const _ts = new Date(d.timestamp);
     const _rSaveHomeRow = document.getElementById("report-save-home-row");
     _rSaveHomeRow.style.display = MiruLocation.getHome() ? "none" : "block";
     const pcFmt = postcode.replace(/^([A-Z]{1,2}\d{1,2}[A-Z]?)(\d[A-Z]{2})$/i, "$1 $2").toUpperCase();
-    document.getElementById("report-share-label").textContent = "Research an Area · " + pcFmt;
+    const _rLabel = document.getElementById("report-share-label");
+    _rLabel.textContent = "Research an Area · " + pcFmt;
+    // Async: append ward/area name from postcodes.io once it resolves
+    fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.result) {
+          const area = d.result.admin_ward || d.result.admin_district || "";
+          if (area && area.toLowerCase() !== "unparished area") {
+            _rLabel.textContent = "Research an Area · " + pcFmt + " · " + area;
+          }
+        }
+      }).catch(() => {});
     reportTabSwitch("house", document.querySelector('.rptab[data-tab="house"]'));
     document.getElementById("report-house-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading house prices…</div>';
     document.getElementById("report-schools-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading schools…</div>';
