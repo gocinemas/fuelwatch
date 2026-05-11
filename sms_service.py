@@ -10312,6 +10312,22 @@ def api_books_save():
     return jsonify({"ok": True})
 
 
+@app.route("/api/books/delete", methods=["POST"])
+def api_books_delete():
+    """Delete a book from a phone's library by ISBN."""
+    data  = request.get_json(force=True, silent=True) or {}
+    phone = (data.get("phone") or "").strip()
+    isbn  = (data.get("isbn") or "").strip()
+    if not phone or not isbn:
+        return jsonify({"error": "phone and isbn required"}), 400
+    lib._sb().table("wa_saves") \
+        .delete() \
+        .eq("from_number", phone) \
+        .eq("url", f"book:{isbn}") \
+        .execute()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/music/spotify-status")
 def api_music_spotify_status():
     """Debug: check Spotify client credentials config and token fetch."""

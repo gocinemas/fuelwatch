@@ -8298,9 +8298,11 @@ function bookTab(tab, btn){
     var status = document.getElementById("bk-phone-status");
     if(phone){
       if(banner) banner.style.display = "none";
-      if(status){ status.style.display="block"; status.textContent="Synced as "+phone+' · <a href="#" onclick="bkPhoneForget();return false" style="color:var(--accent)">Change</a>'; }
+      if(status){ status.style.display="block"; status.innerHTML="🔄 Loading from your library…"; }
       bkSyncWithPhone(phone, function(count){
-        if(count!==null && status) status.innerHTML="✓ "+count+" book"+(count===1?"":"s")+" · "+phone+' · <a href="#" onclick="bkPhoneForget();return false" style="color:var(--accent);font-size:12px">Change</a>';
+        if(status) status.innerHTML = count !== null
+          ? "✓ "+count+" book"+(count===1?"":"s")+" saved"
+          : "📱 Showing local library";
         _bkRenderLib();
       });
     } else {
@@ -8550,10 +8552,10 @@ function bookSave(){
     cover:bk.cover||"", description:bk.description||"", year:bk.year||"",
     rating:_bookDetailRating, status:_bookDetailStatus,
     notes:document.getElementById("bd-notes").value.trim(), added:new Date().toISOString().slice(0,10) };
-  var lib=_bkGetLib().filter(function(b){ return b.isbn!==entry.isbn; });
-  lib.unshift(entry);
-  _bkSetLib(lib); _bkBadge();
-  // Persist to Supabase if phone is set
+  // Update localStorage cache
+  var cached=_bkGetLib().filter(function(b){ return b.isbn!==entry.isbn; });
+  cached.unshift(entry); _bkSetLib(cached); _bkBadge();
+  // DB is primary — always write if phone known
   var phone = _bkPhone();
   if(phone){
     fetch("/api/books/save", {
@@ -8563,6 +8565,7 @@ function bookSave(){
   }
   document.getElementById("bd-saved-msg").style.display = "block";
   setTimeout(function(){ document.getElementById("bd-saved-msg").style.display="none"; }, 2500);
+  _bkUpdateQuickSaveRow();
 }
 
 function _bkRenderLib(){
@@ -8588,7 +8591,17 @@ function _bkRenderLib(){
 }
 
 function bookOpenFromLib(bk){ _bkShowDetail(bk); }
-function bookDeleteLib(isbn){ _bkSetLib(_bkGetLib().filter(function(b){ return b.isbn!==isbn; })); _bkRenderLib(); }
+function bookDeleteLib(isbn){
+  _bkSetLib(_bkGetLib().filter(function(b){ return b.isbn!==isbn; }));
+  var phone = _bkPhone();
+  if(phone){
+    fetch("/api/books/delete", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({phone: phone, isbn: isbn})
+    }).catch(function(){});
+  }
+  _bkRenderLib();
+}
 
 function bkSetSort(sort, btn){
   _bkSort = sort;
