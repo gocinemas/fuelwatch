@@ -3118,7 +3118,7 @@ const _ts = new Date(d.timestamp);
           data-ma-save-phone="" data-ma-save-emoji="🚆"
           onclick="_maTogglePlace(this.dataset.maSaveName,this.dataset.maSaveAddr,this.dataset.maSavePhone,this.dataset.maSaveEmoji)"
           style="flex-shrink:0;font-size:18px;background:none;border:none;cursor:pointer;padding:4px 2px;color:${saved?"#f59e0b":"#d1d5db"}">${saved?"⭐":"☆"}</button>
-        <button onclick="if(window._fillTrains){_fillTrains('${st.name.replace(/'/g,"\\'")}');}else{showScreen('trains');}"
+        <button onclick="showScreen('trains');if(window.trainSelectStation){trainSelectStation('${st.crs}','${st.name.replace(/'/g,"\\'")}');}"
           style="flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">
           Departures →
         </button>
