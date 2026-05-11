@@ -954,7 +954,7 @@ def fetch_brand_data(brand: str) -> dict:
         except Exception:
             pass
 
-    cache_key = brand.strip().lower() + "|brandv22"
+    cache_key = brand.strip().lower() + "|brandv23"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -1207,6 +1207,13 @@ def _fetch_wikipedia(company: str) -> dict:
 
     # Step 1: try direct title match
     result = _summary(company)
+
+    # Step 1b: for product-qualified queries like "Lynx deodorant", try "Lynx (brand)"
+    # so we find the brand article instead of the animal/person article
+    if not result:
+        parts = company.split()
+        if len(parts) >= 2:
+            result = _summary(parts[0] + " (brand)")
 
     # Step 2: if that fails, search Wikipedia for the best matching article
     if not result:
