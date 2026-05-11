@@ -3093,6 +3093,8 @@ const _ts = new Date(d.timestamp);
     if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
     _maCurrentPostcode = pc;
+    // Always persist locally so next visit loads instantly without async server call
+    MiruLocation.setHome(raw);
     // Persist home postcode server-side if logged in
     const _maTok = _savesPin() || new URLSearchParams(window.location.search).get("token");
     if (_maTok) {
