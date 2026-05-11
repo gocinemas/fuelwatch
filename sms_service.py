@@ -8511,13 +8511,13 @@ def _ma_gmail_get_token(token_row: dict) -> str:
 
 
 _MA_GMAIL_QUERIES = [
-    ("energy",      "from:(octopus.energy OR britishgas.co.uk OR edf.co.uk OR eonenergy.com OR eon-next.co.uk OR scottishpower.co.uk) subject:(bill OR account OR statement OR tariff OR welcome)"),
-    ("broadband",   "from:(info.ee.co.uk OR eemail.ee.co.uk OR bt.com OR sky.com OR virginmedia.com OR talktalk.co.uk OR plusnet.com) subject:(order OR account OR bill OR welcome OR broadband)"),
-    ("car_ins",     "from:(admiral.com OR directline.com OR aviva.com OR axa.co.uk OR lv.com OR hastingsdirect.com OR confused.com) subject:(policy OR renewal OR insurance OR certificate)"),
-    ("home_ins",    "from:(admiral.com OR directline.com OR aviva.com OR axa.co.uk OR lv.com) subject:(home OR building OR contents OR renewal)"),
-    ("life_ins",    "subject:(life insurance OR life cover) (policy OR renewal OR certificate)"),
-    ("other",       "from:(tvlicensing.co.uk) subject:(licence OR renewal OR renew)"),
-    ("council_tax", "subject:(council tax) (account OR bill OR payment OR instalment)"),
+    ("energy",      "{from:octopus.energy from:britishgas.co.uk from:edf.co.uk from:eonenergy.com from:eon-next.co.uk from:scottishpower.co.uk}"),
+    ("broadband",   "{from:info.ee.co.uk from:eemail.ee.co.uk from:bt.com from:sky.com from:virginmedia.com from:talktalk.co.uk from:plusnet.com}"),
+    ("car_ins",     "{from:admiral.com from:directline.com from:aviva.com from:axa.co.uk from:lv.com from:hastingsdirect.com} {subject:policy subject:renewal subject:insurance subject:certificate}"),
+    ("home_ins",    "{from:admiral.com from:directline.com from:aviva.com from:axa.co.uk from:lv.com} {subject:home subject:building subject:contents}"),
+    ("life_ins",    "{subject:\"life insurance\" subject:\"life cover\"} {subject:policy subject:renewal}"),
+    ("other",       "from:tvlicensing.co.uk"),
+    ("council_tax", "subject:\"council tax\" {subject:account subject:bill subject:payment}"),
 ]
 
 _MA_EXTRACT_SYSTEM = """You are a data extraction assistant. Extract household account details from UK utility/insurance emails.

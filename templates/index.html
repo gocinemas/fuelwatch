@@ -7130,7 +7130,11 @@ const _ts = new Date(d.timestamp);
   {% endif %}
 
   // ── Gmail My Details init ────────────────────────────────────────────────────
-  window.addEventListener("DOMContentLoaded", _maGmailInit);
+  if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", _maGmailInit);
+  } else {
+    setTimeout(_maGmailInit, 200);
+  }
 
   // ── Bottom nav active state ──────────────────────────────────────────────────
   const _origShowScreen = showScreen;
