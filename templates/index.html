@@ -3043,50 +3043,55 @@ const _ts = new Date(d.timestamp);
     if (!_maVehicles || !_maVehicles.length) { wrap.innerHTML = ""; return; }
     wrap.innerHTML = _maVehicles.map(v => `
       <div id="mv-${v.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
+          <div style="min-width:0">
+            <div id="mv-make-${v.id}" style="font-size:11px;color:var(--muted);margin-bottom:2px;min-height:14px"></div>
             <span style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:.05em">${v.registration}</span>
             ${v.nickname ? `<span style="font-size:12px;color:var(--muted);margin-left:8px">${v.nickname}</span>` : ""}
           </div>
-          <button onclick="_maRemoveVehicle('${v.id}')" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px">✕</button>
+          <button onclick="_maRemoveVehicle('${v.id}')" style="flex-shrink:0;font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px">✕</button>
         </div>
-        <div id="mv-mot-${v.id}" style="font-size:12px;color:var(--muted)">Loading MOT…</div>
+        <div id="mv-mot-${v.id}" style="font-size:12px;color:var(--muted)">Loading…</div>
       </div>`).join("");
     // Fetch MOT for each
     _maVehicles.forEach(v => _maFetchMOT(v));
   }
 
   async function _maFetchMOT(v) {
-    const el = document.getElementById(`mv-mot-${v.id}`);
+    const el     = document.getElementById(`mv-mot-${v.id}`);
+    const makeEl = document.getElementById(`mv-make-${v.id}`);
     if (!el) return;
     try {
       const r = await fetch(`/api/mot?reg=${encodeURIComponent(v.registration)}`);
       const d = await r.json();
       if (d.error) { el.innerHTML = `<span style="color:#ef4444">${d.error}</span>`; return; }
+
+      // Vehicle identity line (make / year / colour / fuel)
+      const fuelEmoji = {petrol:"⛽",diesel:"🛢️",electric:"⚡",hybrid:"🔋"}[(d.fuel||"").toLowerCase()] || "🔧";
+      const identParts = [d.make, d.year, d.colour, d.fuel ? `${fuelEmoji} ${d.fuel}` : ""].filter(Boolean);
+      if (makeEl && identParts.length) makeEl.textContent = identParts.join(" · ");
+
+      // MOT badge
       const days = d.days_left;
-      const colour = days == null ? "#6b7280"
-                   : days < 0   ? "#dc2626"
-                   : days < 30  ? "#dc2626"
-                   : days < 60  ? "#d97706"
-                   : "#16a34a";
-      const status = days == null ? "No MOT data"
-                   : days < 0   ? `Expired ${Math.abs(days)} days ago`
-                   : days === 0 ? "Expires today!"
-                   : `${days} days left`;
-      const badge = `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${colour}22;color:${colour}">${status}</span>`;
-      const make  = [d.make, d.model, d.colour].filter(Boolean).join(" · ");
-      // Tax status
+      const motColour = days == null ? "#6b7280" : days < 0 ? "#dc2626" : days < 30 ? "#dc2626" : days < 60 ? "#d97706" : "#16a34a";
+      const motStatus = days == null ? "No MOT data"
+                      : days < 0    ? `MOT expired ${Math.abs(days)}d ago`
+                      : days === 0  ? "MOT expires today!"
+                      : `${days}d MOT left`;
+      const motBadge = `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${motColour}22;color:${motColour}">🔧 ${motStatus}</span>`;
+
+      // Tax badge
       const taxDays   = d.tax_days_left;
       const taxColour = taxDays == null ? "#6b7280" : taxDays < 0 ? "#dc2626" : taxDays < 30 ? "#d97706" : "#16a34a";
-      const taxBadge  = d.tax_status ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${taxColour}22;color:${taxColour}">🅿️ Tax: ${d.tax_status}${d.tax_due ? " · "+d.tax_due : ""}</span>` : "";
-      el.innerHTML = `
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-          ${badge}
-          ${d.mot_expiry ? `<span style="font-size:12px;color:var(--muted)">Expires ${d.mot_expiry}</span>` : ""}
-        </div>
-        ${taxBadge ? `<div style="margin-bottom:6px">${taxBadge}</div>` : ""}
-        ${make ? `<div style="font-size:12px;color:var(--muted)">${make}${d.year ? " · "+d.year : ""}</div>` : ""}`;
-    } catch { el.innerHTML = `<span style="color:#ef4444">Could not load MOT data</span>`; }
+      const taxBadge  = d.tax_status
+        ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${taxColour}22;color:${taxColour}">🅿️ ${d.tax_status}${d.tax_due ? " · "+d.tax_due : ""}</span>`
+        : "";
+
+      el.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${motBadge}${d.mot_expiry ? `<span style="font-size:11px;color:var(--muted);padding-top:3px">until ${d.mot_expiry}</span>` : ""}
+        ${taxBadge}
+      </div>`;
+    } catch { el.innerHTML = `<span style="color:#ef4444">Could not load data</span>`; }
   }
 
   function _maAddVehicle() {
