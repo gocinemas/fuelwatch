@@ -1407,6 +1407,7 @@
         <div id="myarea-personal-cards"></div>
         <div style="display:flex;gap:6px;margin-top:8px">
           <button onclick="myAreaAddDetail()" style="flex:1;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add insurance, energy, broadband &amp; more</button>
+          <button onclick="_maImportJson()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer" title="Import from JSON">📋</button>
           <button id="ma-test-data-btn" onclick="_maLoadTestData()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer" title="Load sample data for testing">🧪</button>
         </div>
       </div>
@@ -3582,6 +3583,51 @@ const _ts = new Date(d.timestamp);
       ${rows}
     </div>`;
     el.style.display = "";
+  }
+
+  function _maImportJson() {
+    const overlay = document.createElement("div");
+    overlay.id = "ma-import-overlay";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border-radius:20px 20px 0 0;padding:20px 18px 36px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto">
+        <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px">📋 Import Detail</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Paste the JSON record from Claude — one record at a time, or an array.</div>
+        <textarea id="ma-import-json-input" placeholder='{"type":"home_ins","label":"Home Insurance","data":{"Provider":"Admiral","Policy No":"P75635793","Phone":"0333 220 2016","Renewal Date":"2026-01-13"}}'
+          style="width:100%;height:160px;border:1.5px solid var(--border);border-radius:10px;padding:10px;font-size:12px;font-family:monospace;background:var(--bg);color:var(--text);box-sizing:border-box;resize:vertical"></textarea>
+        <div id="ma-import-err" style="display:none;font-size:12px;color:#dc2626;margin-top:6px"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button onclick="_maImportJsonSave()" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">Import</button>
+          <button onclick="document.getElementById('ma-import-overlay').remove()" style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>
+        </div>
+      </div>`;
+    overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+    document.getElementById("ma-import-json-input").focus();
+  }
+
+  function _maImportJsonSave() {
+    const raw = (document.getElementById("ma-import-json-input").value || "").trim();
+    const errEl = document.getElementById("ma-import-err");
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch(e) {
+      errEl.textContent = "Invalid JSON — " + e.message; errEl.style.display = ""; return;
+    }
+    const incoming = Array.isArray(parsed) ? parsed : [parsed];
+    const valid = incoming.filter(r => r.type && r.data);
+    if (!valid.length) {
+      errEl.textContent = 'No valid records found. Each record needs "type" and "data" fields.';
+      errEl.style.display = ""; return;
+    }
+    const records = _myAreaGetDetails();
+    valid.forEach(r => {
+      const type = _MA_DETAIL_TYPES.find(t => t.key === r.type);
+      records.push({ type: r.type, label: r.label || type?.label || r.type, data: r.data });
+    });
+    _myAreaSaveDetails(records);
+    document.getElementById("ma-import-overlay").remove();
+    _myAreaPersonalRender();
+    _maRenderRenewals();
   }
 
   function _maLoadTestData() {
