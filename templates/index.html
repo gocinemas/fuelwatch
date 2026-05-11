@@ -2587,15 +2587,16 @@ const _ts = new Date(d.timestamp);
     try {
       const r = await fetch(`/api/myarea/home-postcode?token=${encodeURIComponent(token)}`);
       const d = await r.json();
-      const input = document.getElementById("myarea-postcode-input");
-      const pc = d.postcode || MiruLocation.getHome();
-      if (pc) { if (input) input.value = pc; myAreaSearch(); }
-      else _myAreaPersonalRender();
+      const pc = d.postcode;
+      if (pc) {
+        const input = document.getElementById("myarea-postcode-input");
+        if (input) input.value = pc;
+        MiruLocation.setHome(pc);
+        myAreaSearch();
+      }
+      // No postcode on server — leave search bar empty for user to type
     } catch {
-      const home = MiruLocation.getHome();
-      const input = document.getElementById("myarea-postcode-input");
-      if (home) { if (input) input.value = home; myAreaSearch(); }
-      else _myAreaPersonalRender();
+      // Network error — leave search bar empty
     }
   }
 
@@ -2762,22 +2763,12 @@ const _ts = new Date(d.timestamp);
     const wrap = document.getElementById("myarea-saved");
     const list = document.getElementById("myarea-saved-list");
     const count = document.getElementById("myarea-saved-count");
-    const searchBar = document.getElementById("myarea-search-bar");
-    const searchMore = document.getElementById("myarea-search-more-link");
     if (!wrap || !list) return;
     if (!places.length) {
       wrap.style.display = "none";
-      if (searchBar) searchBar.style.display = "";
-      if (searchMore) searchMore.style.display = "none";
       return;
     }
-    // Has saved places — collapse search bar, show postcode + "change area" link
-    if (searchBar && searchBar.style.display !== "none") {
-      searchBar.style.display = "none";
-      if (searchMore) { searchMore.style.display = "flex"; }
-      const pcEl = document.getElementById("myarea-current-pc");
-      if (pcEl && _maCurrentPostcode) pcEl.textContent = "📍 " + _maCurrentPostcode;
-    }
+    // Search bar always stays visible — never hide it
     if (count) count.textContent = `(${places.length})`;
     wrap.style.display = "";
     // Collapse list by default; only expand if user has explicitly opened it
@@ -3110,7 +3101,7 @@ const _ts = new Date(d.timestamp);
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
     document.getElementById("myarea-tab-bar").style.display = "";
-    _maShowTab(localStorage.getItem("miru_ma_tab") || "places");
+    _maShowTab("civic");
     document.getElementById("myarea-loading").style.display = "block";
 
     function _maHideSpinner() {
@@ -3309,21 +3300,21 @@ const _ts = new Date(d.timestamp);
     _maApplyPrefs();
     _maLoadSavedPlaces();
     _maLoadVehicles();
+    _myAreaPersonalRender();
     const hasToken = !!(_savesPin() || new URLSearchParams(window.location.search).get("token"));
     const banner = document.getElementById("myarea-link-banner");
     if (banner) banner.style.display = hasToken ? "none" : "";
-    // Always try local first (synchronous, instant)
+    // Try local postcode first (instant, synchronous)
     const home = MiruLocation.getHome();
-    const input = document.getElementById("myarea-postcode-input");
     if (home) {
+      const input = document.getElementById("myarea-postcode-input");
       if (input) input.value = home;
       myAreaSearch();
     } else if (hasToken) {
-      // No local postcode — try server (user may have set it on another device)
+      // No local postcode — check server (cross-device sync)
       _maLoadHomePostcode();
-    } else {
-      _myAreaPersonalRender();
     }
+    // If nothing found anywhere, search bar stays empty — user types their postcode
   }
 
   // ── My Area personal details (localStorage) ───────────────────────────────────
