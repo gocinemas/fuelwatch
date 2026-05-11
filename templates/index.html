@@ -742,12 +742,38 @@
       <!-- ── Intel header ── -->
       <div style="margin-bottom:14px">
         <div style="font-size:24px;font-weight:900;letter-spacing:-0.5px;color:var(--text)">Intel</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">Brand &amp; Company intelligence</div>
+        <div id="intel-screen-subtitle" style="font-size:12px;color:var(--muted);margin-top:2px">Brand &amp; Company intelligence</div>
       </div>
+
+      {% if intel_mode %}
+      <!-- Landing: choose Brand or Company (hidden once mode is set) -->
+      <div id="intel-landing" style="margin-bottom:16px">
+        <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">What would you like to research?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button onclick="setIntelMode('brand')" style="text-align:left;padding:18px 14px;border:1.5px solid var(--border);border-radius:16px;background:var(--surface);cursor:pointer;width:100%">
+            <div style="font-size:26px;margin-bottom:8px">🏷️</div>
+            <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px">Brand Intel</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.5">History · campaigns · identity · competitors</div>
+          </button>
+          <button onclick="setIntelMode('company')" style="text-align:left;padding:18px 14px;border:1.5px solid var(--border);border-radius:16px;background:var(--surface);cursor:pointer;width:100%">
+            <div style="font-size:26px;margin-bottom:8px">🏢</div>
+            <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px">Company Intel</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.5">Financials · strategy · AI focus · news</div>
+          </button>
+        </div>
+      </div>
+      <!-- Mode pill bar (shown after landing is dismissed) -->
+      <div id="intel-mode-bar" style="display:none;background:var(--border);padding:4px;border-radius:12px;margin-bottom:10px">
+        <div style="display:flex;gap:4px">
+          <button id="intel-mode-btn-brand"   onclick="setIntelMode('brand')"   style="flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s">🏷️ Brand</button>
+          <button id="intel-mode-btn-company" onclick="setIntelMode('company')" style="flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s">🏢 Company</button>
+        </div>
+      </div>
+      {% endif %}
 
       <!-- Single search input -->
       <div style="display:flex;gap:8px;margin-bottom:10px">
-        <input id="intel-input" type="text" placeholder="Nike, PepsiCo, Walkers, Tesco…"
+        <input id="intel-input" type="text" placeholder="{% if intel_mode %}Choose Brand or Company above{% else %}Nike, PepsiCo, Walkers, Tesco…{% endif %}"
           style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
           onkeydown="if(event.key==='Enter') searchIntel()"
           onfocus="this.style.boxShadow='0 0 0 3px rgba(79,70,229,.15)'"
@@ -4467,6 +4493,29 @@ const _ts = new Date(d.timestamp);
 
   window.switchIntelMode = function() {}; // no-op kept for any lingering callers
 
+  var _intelSearchMode = {% if intel_mode %}"brand"{% else %}null{% endif %};
+
+  window.setIntelMode = function(mode) {
+    _intelSearchMode = mode;
+    var landing = document.getElementById("intel-landing");
+    if (landing) landing.style.display = "none";
+    var bar = document.getElementById("intel-mode-bar");
+    if (bar) bar.style.display = "block";
+    ["brand","company"].forEach(function(m) {
+      var btn = document.getElementById("intel-mode-btn-" + m);
+      if (!btn) return;
+      btn.style.background = m === mode ? "#4f46e5" : "transparent";
+      btn.style.color = m === mode ? "#fff" : "var(--muted)";
+    });
+    var inp = document.getElementById("intel-input");
+    if (inp) {
+      inp.placeholder = mode === "brand" ? "Nike, Walkers, Coca-Cola, Sky…" : "Tesco, BP, HSBC, BT Group…";
+      inp.focus();
+    }
+    var sub = document.getElementById("intel-screen-subtitle");
+    if (sub) sub.textContent = mode === "brand" ? "Brand intelligence" : "Company intelligence";
+  };
+
   window.switchIntelTab = function(tab) {
     _INTEL_TABS.forEach(t => {
       const panel = document.getElementById("intel-tab-" + t);
@@ -4586,17 +4635,18 @@ const _ts = new Date(d.timestamp);
       const statsGrid = document.getElementById("brand-stats-grid");
       if (statsGrid) statsGrid.style.display = hasStats ? "grid" : "none";
 
-      // Finance tab: hide if no share price and no brand financials
-      const hasFinance = (co.share && co.share.current) ||
-                         (br.financials && Object.values(br.financials).some(v => v));
+      // Finance tab: company-mode only, and only if data exists
+      const hasFinance = _intelSearchMode !== "brand" &&
+        ((co.share && co.share.current) ||
+         (br.financials && Object.values(br.financials).some(v => v)));
       _setIntelTab("finance", hasFinance);
       // Show "privately held" note in About when Finance tab is absent
       const finEmpty = document.getElementById("brand-fin-empty");
       if (finEmpty) finEmpty.style.display = hasFinance ? "none" : "";
 
-      // History + Campaigns: always visible (show empty-state if AI returned nothing)
-      _setIntelTab("history", true);
-      _setIntelTab("campaigns", true);
+      // History + Campaigns: brand-mode only
+      _setIntelTab("history",   _intelSearchMode !== "company");
+      _setIntelTab("campaigns", _intelSearchMode !== "company");
 
       // Intel tab: hide rivals section if no competitors
       const hasRivals = br.competitors && br.competitors.length > 0;
@@ -4633,16 +4683,26 @@ const _ts = new Date(d.timestamp);
       if (panel && !visible) panel.style.display = "none";
     }
 
-    // Fire both APIs in parallel; use settled flags so finish() only runs when both done
-    _fetchWithTimeout(`/api/company?name=${encodeURIComponent(raw)}`, 30000)
-      .then(r => r.json())
-      .then(d => { coData = d.error ? null : d; coErr = !!d.error; coSettled = true; finish(); })
-      .catch(() => { coErr = true; coSettled = true; finish(); });
+    // Fire APIs — skip the one not needed when a mode is set
+    if (_intelSearchMode !== "brand") {
+      _fetchWithTimeout(`/api/company?name=${encodeURIComponent(raw)}`, 30000)
+        .then(r => r.json())
+        .then(d => { coData = d.error ? null : d; coErr = !!d.error; coSettled = true; finish(); })
+        .catch(() => { coErr = true; coSettled = true; finish(); });
+    } else {
+      coSettled = true; coErr = true;
+    }
 
-    _fetchWithTimeout(`/api/brand?name=${encodeURIComponent(raw)}`, 30000)
-      .then(r => r.json())
-      .then(d => { brData = d.error ? null : d; brErr = !!d.error; brSettled = true; finish(); })
-      .catch(() => { brErr = true; brSettled = true; finish(); });
+    if (_intelSearchMode !== "company") {
+      _fetchWithTimeout(`/api/brand?name=${encodeURIComponent(raw)}`, 30000)
+        .then(r => r.json())
+        .then(d => { brData = d.error ? null : d; brErr = !!d.error; brSettled = true; finish(); })
+        .catch(() => { brErr = true; brSettled = true; finish(); });
+    } else {
+      brSettled = true; brErr = true;
+    }
+
+    if (_intelSearchMode === "brand" || _intelSearchMode === "company") finish();
   };
 
   async function searchCompany() {
