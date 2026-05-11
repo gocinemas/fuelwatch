@@ -1618,10 +1618,12 @@ def _load_elections_csv():
             real_gss = gss and bool(re.match(r"^[EWSN]\d", gss))
             if real_gss:
                 if gss not in by_gss:
+                    bp = row.get("ballot_paper_id", "")
                     by_gss[gss] = {
                         "ward": row.get("post_label", "").strip(),
                         "council": row.get("organisation_name", "").strip().strip('"'),
                         "election_date": row.get("election_date", "").strip(),
+                        "ballot_paper_id": bp,
                         "candidates": [],
                     }
                 by_gss[gss]["candidates"].append(candidate)
