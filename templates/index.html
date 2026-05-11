@@ -3728,30 +3728,21 @@ const _ts = new Date(d.timestamp);
     } catch {}
   }
 
-  // On load: check if returning from OAuth or if already connected
-  (function() {
+  function _maGmailInit() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("gmail_scan") === "1") {
-      // Coming back from OAuth — start polling
-      history.replaceState({}, "", window.location.pathname + "#myarea");
+      history.replaceState({}, "", window.location.pathname);
       showScreen("myarea");
-      setTimeout(() => {
-        const lbl = document.getElementById("ma-gmail-btn-label");
-        if (lbl) lbl.textContent = "Scanning inbox…";
-        _maGmailCheckStatus();
-      }, 500);
+      const lbl = document.getElementById("ma-gmail-btn-label");
+      if (lbl) lbl.textContent = "Scanning inbox…";
+      setTimeout(_maGmailCheckStatus, 2000);
     } else if (params.get("gmail_error")) {
-      history.replaceState({}, "", window.location.pathname + "#myarea");
+      history.replaceState({}, "", window.location.pathname);
       showScreen("myarea");
-      setTimeout(() => {
-        const lbl = document.getElementById("ma-gmail-btn-label");
-        if (lbl) lbl.textContent = "Connection failed — try again";
-      }, 500);
     } else {
-      // Check silently if already connected
-      setTimeout(_maGmailCheckStatus, 1500);
+      setTimeout(_maGmailCheckStatus, 2000);
     }
-  })();
+  }
 
   async function _maClearAllDetails() {
     if (!confirm("Delete all saved details?")) return;
@@ -7141,6 +7132,9 @@ const _ts = new Date(d.timestamp);
     libOpenDoc("{{ prefill_doc }}");
   });
   {% endif %}
+
+  // ── Gmail My Details init ────────────────────────────────────────────────────
+  window.addEventListener("DOMContentLoaded", _maGmailInit);
 
   // ── Bottom nav active state ──────────────────────────────────────────────────
   const _origShowScreen = showScreen;
