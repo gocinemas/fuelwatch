@@ -23,9 +23,10 @@ _MA_DETAIL_TYPES_MAP = {
     "home_ins":    "Home Insurance",
     "energy":      "Energy",
     "broadband":   "Broadband",
+    "mobile":      "Mobile",
     "council_tax": "Council Tax",
     "car_ins":     "Car Insurance",
-    "health":      "Health / BUPA",
+    "health":      "Health",
     "life_ins":    "Life Insurance",
     "other":       "Other",
 }

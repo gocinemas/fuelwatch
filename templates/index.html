@@ -1394,31 +1394,21 @@
         <div id="myarea-crime"   style="display:none;margin-bottom:10px"></div>
       </div>
 
-      <!-- My Vehicles (MOT) -->
+      <!-- ── MY DETAILS ── -->
       <div style="margin-top:18px">
-        <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:10px">🚗 My Vehicles</div>
-        <div id="myarea-vehicles-list"></div>
-        <button onclick="_maAddVehicle()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add vehicle by registration</button>
-      </div>
 
-      <!-- Personal details -->
-      <div style="margin-top:18px">
-        <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:10px">📋 My Details</div>
-
-        <!-- Gmail import card — state managed by _maGmailRenderBtn() -->
-        <div id="ma-gmail-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:12px">
-          <!-- Not connected (default) -->
+        <!-- Gmail import card -->
+        <div id="ma-gmail-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:16px">
           <div id="ma-gmail-state-connect" style="display:flex;align-items:center;justify-content:space-between">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--text)">📧 Import from Gmail</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">Auto-detect energy, broadband, insurance &amp; more</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Auto-detect energy, mobile, insurance &amp; more</div>
             </div>
             <a href="#" onclick="_maGmailConnect();return false;" style="display:flex;align-items:center;gap:5px;padding:8px 13px;border-radius:20px;border:1.5px solid #4285f4;background:#fff;font-size:12px;font-weight:700;color:#4285f4;cursor:pointer;text-decoration:none;flex-shrink:0">
               <svg width="13" height="13" viewBox="0 0 24 24"><path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
               Connect
             </a>
           </div>
-          <!-- Scanning state (inline, shown after overlay fades) -->
           <div id="ma-gmail-state-scanning" style="display:none;align-items:center;gap:10px">
             <span style="width:16px;height:16px;border:2px solid #d1d5db;border-top-color:#4285f4;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></span>
             <div>
@@ -1426,7 +1416,6 @@
               <div id="ma-gmail-scan-subtext" style="font-size:11px;color:var(--muted);margin-top:2px">Looking for accounts — this takes a few seconds</div>
             </div>
           </div>
-          <!-- Connected / done state -->
           <div id="ma-gmail-state-done" style="display:none">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div style="display:flex;align-items:center;gap:7px">
@@ -1439,7 +1428,6 @@
               <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
             </div>
           </div>
-          <!-- Pending items found -->
           <div id="ma-gmail-state-pending" style="display:none">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div style="display:flex;align-items:center;gap:7px">
@@ -1454,8 +1442,36 @@
           </div>
         </div>
 
-        <div id="myarea-personal-cards"></div>
-        <div style="display:flex;gap:6px;margin-top:8px">
+        <!-- 🚗 Motoring — vehicles + car insurance -->
+        <div style="margin-bottom:18px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🚗 Motoring</div>
+          <div id="myarea-vehicles-list"></div>
+          <button onclick="_maAddVehicle()" style="width:100%;margin-top:4px;margin-bottom:4px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add vehicle by registration</button>
+          <div id="ma-cards-motoring"></div>
+        </div>
+
+        <!-- 🏠 Home & Bills — energy, broadband, water, TV, council tax, home ins -->
+        <div id="ma-section-home" style="display:none;margin-bottom:18px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🏠 Home &amp; Bills</div>
+          <div id="ma-cards-home"></div>
+        </div>
+
+        <!-- 📱 Mobile -->
+        <div id="ma-section-mobile" style="display:none;margin-bottom:18px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📱 Mobile</div>
+          <div id="ma-cards-mobile"></div>
+        </div>
+
+        <!-- 🛡️ Insurance & Health -->
+        <div id="ma-section-insurance" style="display:none;margin-bottom:18px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🛡️ Insurance &amp; Health</div>
+          <div id="ma-cards-insurance"></div>
+        </div>
+
+        <!-- hidden compat target used by _myAreaPersonalRender fallback -->
+        <div id="myarea-personal-cards" style="display:none"></div>
+
+        <div style="display:flex;gap:6px;margin-top:4px">
           <button onclick="myAreaAddDetail()" style="flex:1;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add manually</button>
           <button onclick="_maClearAllDetails()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:#dc2626;cursor:pointer" title="Delete all details">🗑️</button>
           <button id="ma-test-data-btn" onclick="_maLoadTestData()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer" title="Load sample data for testing">🧪</button>
@@ -3969,14 +3985,15 @@ const _ts = new Date(d.timestamp);
 
   // ── My Area personal details (Supabase) ───────────────────────────────────────
   const _MA_DETAIL_TYPES = [
-    { key:"home_ins",    icon:"🏠", label:"Home Insurance",     group:"Home & Utilities",    fields:["Provider","Policy No","Phone","Renewal Date"] },
-    { key:"energy",      icon:"⚡", label:"Energy",             group:"Home & Utilities",    fields:["Provider","Account No","Emergency Phone","Price","Renewal Date"] },
-    { key:"broadband",   icon:"📡", label:"Broadband",          group:"Home & Utilities",    fields:["Provider","Account No","Phone","Price","Renewal Date"] },
-    { key:"council_tax", icon:"🏛️", label:"Council Tax",        group:"Home & Utilities",    fields:["Council","Account No","Phone"] },
-    { key:"car_ins",     icon:"🚗", label:"Car Insurance",      group:"Vehicle & Personal",  fields:["Provider","Policy No","Phone","Renewal Date","Reg"] },
-    { key:"health",      icon:"💳", label:"Health / BUPA",      group:"Vehicle & Personal",  fields:["Provider","Member No","Phone","Renewal Date"] },
-    { key:"life_ins",    icon:"🛡️", label:"Life Insurance",     group:"Vehicle & Personal",  fields:["Provider","Policy No","Phone","Renewal Date"] },
-    { key:"other",       icon:"📝", label:"Other",              group:"Other",               fields:["Label","Detail","Phone"] },
+    { key:"energy",      icon:"⚡", label:"Energy",          group:"home",      fields:["Provider","Account No","Emergency Phone","Price","Renewal Date"] },
+    { key:"broadband",   icon:"📡", label:"Broadband",       group:"home",      fields:["Provider","Account No","Phone","Price","Renewal Date"] },
+    { key:"mobile",      icon:"📱", label:"Mobile",          group:"mobile",    fields:["Provider","Account No","Phone","Price","Renewal Date"] },
+    { key:"council_tax", icon:"🏛️", label:"Council Tax",     group:"home",      fields:["Council","Account No","Phone"] },
+    { key:"home_ins",    icon:"🏠", label:"Home Insurance",  group:"home",      fields:["Provider","Policy No","Phone","Renewal Date"] },
+    { key:"other",       icon:"📝", label:"Other",           group:"home",      fields:["Label","Detail","Phone","Account No","Renewal Date"] },
+    { key:"car_ins",     icon:"🚗", label:"Car Insurance",   group:"motoring",  fields:["Provider","Policy No","Phone","Renewal Date","Reg"] },
+    { key:"health",      icon:"💊", label:"Health",          group:"insurance", fields:["Provider","Member No","Phone","Renewal Date"] },
+    { key:"life_ins",    icon:"🛡️", label:"Life Insurance",  group:"insurance", fields:["Provider","Policy No","Phone","Renewal Date"] },
   ];
 
   let _maDetailsCache = null;
@@ -4027,33 +4044,57 @@ const _ts = new Date(d.timestamp);
     await fetch(`/api/myarea/details?${_maDetailsApiParam()}`, { method: "DELETE" });
   }
 
-  async function _myAreaPersonalRender() {
-    const el = document.getElementById("myarea-personal-cards");
-    if (!el) return;
-    if (!_maDetailsCache) await _maDetailsFetch();
-    const records = _maDetailsCache || [];
-    if (!records.length) { el.innerHTML = ""; _maRenderRenewals(); return; }
-    el.innerHTML = records.map(rec => {
-      const type = _MA_DETAIL_TYPES.find(t => t.key === rec.type) || _MA_DETAIL_TYPES.find(t=>t.key==="other");
-      const rows = type.fields.map(f => {
-        const val = rec.data?.[f] || "";
-        return val ? `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
-          <span style="font-size:11px;color:var(--muted);flex-shrink:0;width:88px;padding-top:1px">${f}</span>
-          <span style="font-size:13px;font-weight:600;color:var(--text)">${f.toLowerCase().includes("phone") ? `<a href="tel:${val}" style="color:#2563eb">${val}</a>` : val}</span>
-        </div>` : "";
-      }).join("");
-      const id = rec.id || "";
-      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${type.icon} ${rec.label || type.label}</div>
-          <div style="display:flex;gap:8px">
-            <button onclick="myAreaEditDetail('${id}')" style="font-size:12px;color:#2563eb;background:none;border:none;cursor:pointer;font-weight:600">Edit</button>
-            <button onclick="myAreaDeleteDetail('${id}')" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer">Delete</button>
-          </div>
-        </div>
-        ${rows || '<div style="font-size:12px;color:var(--muted)">No details saved yet</div>'}
+  function _maRenderCard(rec) {
+    const type = _MA_DETAIL_TYPES.find(t => t.key === rec.type) || _MA_DETAIL_TYPES.find(t => t.key === "other");
+    // Collect all fields: defined fields first, then any extra keys in data
+    const definedFields = type.fields;
+    const extraFields = Object.keys(rec.data || {}).filter(k => !definedFields.includes(k));
+    const allFields = [...definedFields, ...extraFields];
+    const rows = allFields.map(f => {
+      const val = rec.data?.[f] || "";
+      if (!val || val === "Not found") return "";
+      const isPhone = f.toLowerCase().includes("phone");
+      return `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0;width:90px;padding-top:1px">${f}</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">${isPhone ? `<a href="tel:${val}" style="color:#2563eb">${val}</a>` : val}</span>
       </div>`;
     }).join("");
+    const id = rec.id || "";
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${type.icon} ${rec.label || type.label}</div>
+        <div style="display:flex;gap:8px">
+          <button onclick="myAreaEditDetail('${id}')" style="font-size:12px;color:#2563eb;background:none;border:none;cursor:pointer;font-weight:600">Edit</button>
+          <button onclick="myAreaDeleteDetail('${id}')" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer">Delete</button>
+        </div>
+      </div>
+      ${rows || '<div style="font-size:12px;color:var(--muted)">No details saved yet</div>'}
+    </div>`;
+  }
+
+  async function _myAreaPersonalRender() {
+    if (!_maDetailsCache) await _maDetailsFetch();
+    const records = _maDetailsCache || [];
+
+    const groups = {
+      motoring:  records.filter(r => r.type === "car_ins"),
+      home:      records.filter(r => ["energy","broadband","council_tax","home_ins","other"].includes(r.type)),
+      mobile:    records.filter(r => r.type === "mobile"),
+      insurance: records.filter(r => ["health","life_ins"].includes(r.type)),
+    };
+
+    const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    const show = (id, visible) => { const el = document.getElementById(id); if (el) el.style.display = visible ? "" : "none"; };
+
+    set("ma-cards-motoring",  groups.motoring.map(_maRenderCard).join(""));
+    set("ma-cards-home",      groups.home.map(_maRenderCard).join(""));
+    set("ma-cards-mobile",    groups.mobile.map(_maRenderCard).join(""));
+    set("ma-cards-insurance", groups.insurance.map(_maRenderCard).join(""));
+
+    show("ma-section-home",      groups.home.length > 0);
+    show("ma-section-mobile",    groups.mobile.length > 0);
+    show("ma-section-insurance", groups.insurance.length > 0);
+
     _maRenderRenewals();
   }
 

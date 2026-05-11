@@ -8531,10 +8531,12 @@ def _ma_gmail_get_token(token_row: dict) -> str:
 _MA_GMAIL_QUERIES = [
     # Energy — domain only (subject fallbacks attract comparison-site spam)
     ("energy",      'from:octopus.energy OR from:ovoenergy.com OR from:britishgas.co.uk OR from:edf.co.uk OR from:eonenergy.com OR from:eon-next.co.uk OR from:scottishpower.co.uk OR from:sse.co.uk OR from:utilita.co.uk OR from:bulb.co.uk newer_than:3y'),
-    # EE — all ee.co.uk subdomains (mobile + broadband)
-    ("broadband",   'from:ee.co.uk OR from:eemail.ee.co.uk OR from:account.ee.co.uk OR from:my.ee.co.uk OR from:billing.ee.co.uk newer_than:3y'),
-    # Other broadband/mobile operators — domain only
-    ("broadband",   'from:bt.com OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com OR from:vodafone.co.uk OR from:three.co.uk OR from:o2.co.uk newer_than:3y'),
+    # EE — all ee.co.uk subdomains (Groq will classify as broadband or mobile based on email)
+    ("mobile",      'from:ee.co.uk OR from:eemail.ee.co.uk OR from:account.ee.co.uk OR from:my.ee.co.uk OR from:billing.ee.co.uk newer_than:3y'),
+    # Mobile operators — Three, O2, Vodafone
+    ("mobile",      'from:three.co.uk OR from:o2.co.uk OR from:vodafone.co.uk newer_than:3y'),
+    # Home broadband operators
+    ("broadband",   'from:bt.com OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com newer_than:3y'),
     # TV Licensing — specific subject is safe here (not a generic term)
     ("other",       'from:tvlicensing.co.uk OR subject:"TV Licence" OR subject:"TV License" newer_than:3y'),
     # Water — domain only
@@ -8566,7 +8568,7 @@ Only extract if the email is clearly about an EXISTING account the recipient hol
 
 If extracting, return ONLY this JSON (omit fields you can't find):
 {
-  "type": "energy|broadband|car_ins|home_ins|life_ins|council_tax|other",
+  "type": "energy|broadband|mobile|car_ins|home_ins|life_ins|council_tax|other",
   "provider": "company name e.g. EE, Three, Octopus Energy, Thames Water, TV Licensing",
   "account_no": "their account or policy number — short alphanumeric only (e.g. A-201E4423, GB50302570, 2941997383). Omit if not clearly present.",
   "phone": "customer service number for their account",
@@ -8575,9 +8577,15 @@ If extracting, return ONLY this JSON (omit fields you can't find):
   "label": "short label e.g. Mobile, Broadband, TV Licence, Water, Energy, Home Insurance"
 }
 
-Type rules: energy=gas/electricity, broadband=internet/broadband/mobile/SIM (EE/Three/O2/Vodafone),
-car_ins=car insurance, home_ins=home/buildings/contents, life_ins=life cover,
-council_tax=council tax, other=water/TV Licence/health/anything else."""
+Type rules:
+- energy = gas or electricity supply
+- broadband = home internet / home broadband / fibre
+- mobile = mobile phone contract or SIM — use this for EE mobile, Three, O2, Vodafone, iD Mobile
+- car_ins = car or motor insurance
+- home_ins = home / buildings / contents insurance
+- life_ins = life insurance or life cover
+- council_tax = council tax
+- other = water bill, TV Licence, health insurance, dental, pet, or anything else"""
 
 
 def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
@@ -8736,7 +8744,7 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
                 # Build ma_details-compatible record
                 rec_type = d.get("type") or det_type
                 rec_type_map = {
-                    "energy": "energy", "broadband": "broadband",
+                    "energy": "energy", "broadband": "broadband", "mobile": "mobile",
                     "car_ins": "car_ins", "home_ins": "home_ins",
                     "life_ins": "life_ins", "council_tax": "council_tax", "other": "other",
                 }
