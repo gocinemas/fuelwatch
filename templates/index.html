@@ -11040,10 +11040,16 @@ window.spotifyAddTrack = window.spotifyLike;
       <div style="flex:1;min-width:0">
         <div id="train-station-name" style="font-size:17px;font-weight:800;color:var(--text);line-height:1.2"></div>
       </div>
-      <button id="train-save-home-btn" onclick="trainSaveSlot('home')" title="Save as Home"
-        style="border:none;background:none;font-size:19px;cursor:pointer;padding:4px;line-height:1;opacity:.7">⭐</button>
-      <button id="train-save-work-btn" onclick="trainSaveSlot('work')" title="Save as Work"
-        style="border:none;background:none;font-size:19px;cursor:pointer;padding:4px;line-height:1;opacity:.7">🏢</button>
+      <button id="train-save-home-btn" onclick="trainSaveSlot('home')"
+        style="display:flex;flex-direction:column;align-items:center;border:1.5px solid var(--border);background:var(--surface);border-radius:10px;padding:4px 8px;cursor:pointer;gap:1px;opacity:.7">
+        <span style="font-size:16px;line-height:1">⭐</span>
+        <span style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.02em">HOME</span>
+      </button>
+      <button id="train-save-work-btn" onclick="trainSaveSlot('work')"
+        style="display:flex;flex-direction:column;align-items:center;border:1.5px solid var(--border);background:var(--surface);border-radius:10px;padding:4px 8px;cursor:pointer;gap:1px;opacity:.7">
+        <span style="font-size:16px;line-height:1">🏢</span>
+        <span style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.02em">WORK</span>
+      </button>
       <button id="train-relocate-btn" onclick="trainRelocate()" title="Nearest station"
         style="border:1.5px solid var(--border);background:var(--surface);font-size:15px;cursor:pointer;padding:5px 9px;border-radius:10px;line-height:1">📍</button>
       <button onclick="trainChangeStation()"
@@ -11100,8 +11106,10 @@ window.spotifyAddTrack = window.spotifyLike;
     var bh = _getBm("home"), bw = _getBm("work");
     var hb = document.getElementById("train-save-home-btn");
     var wb = document.getElementById("train-save-work-btn");
-    if (hb) hb.style.opacity = (bh && bh.crs === _trainCrs) ? "1" : ".45";
-    if (wb) wb.style.opacity = (bw && bw.crs === _trainCrs) ? "1" : ".45";
+    var homeActive = bh && bh.crs === _trainCrs;
+    var workActive = bw && bw.crs === _trainCrs;
+    if (hb) { hb.style.opacity = homeActive ? "1" : ".5"; hb.style.borderColor = homeActive ? "#fbbf24" : "var(--border)"; hb.style.background = homeActive ? "#fffbeb" : "var(--surface)"; }
+    if (wb) { wb.style.opacity = workActive ? "1" : ".5"; wb.style.borderColor = workActive ? "#93c5fd" : "var(--border)"; wb.style.background = workActive ? "#eff6ff" : "var(--surface)"; }
   }
 
   // ── "In X mins" ───────────────────────────────────────────────────────────
