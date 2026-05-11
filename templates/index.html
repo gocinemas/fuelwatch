@@ -1277,8 +1277,9 @@
         <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
       </div>
       <!-- Shown instead of search bar when saved places exist -->
-      <div id="myarea-search-more-link" style="display:none;text-align:right;margin-bottom:10px">
-        <button onclick="_maShowSearch()" style="background:none;border:none;color:#065f46;font-size:12px;font-weight:600;cursor:pointer;padding:4px 0">🔍 Search to add more +</button>
+      <div id="myarea-search-more-link" style="display:none;margin-bottom:10px;display:none;align-items:center;justify-content:space-between">
+        <span id="myarea-current-pc" style="font-size:13px;font-weight:700;color:var(--text)"></span>
+        <button onclick="_maShowSearch()" style="background:none;border:none;color:#065f46;font-size:12px;font-weight:600;cursor:pointer;padding:4px 0">✏️ Change area / add more</button>
       </div>
 
       <!-- Saved Places -->
@@ -1305,29 +1306,8 @@
       <div id="myarea-crime"    style="display:none;margin-top:10px"></div>
       <div id="myarea-gp"       style="display:none;margin-top:10px"></div>
       <div id="myarea-schools"  style="display:none;margin-top:10px"></div>
-      <div id="myarea-shops"    style="display:none;margin-top:10px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">🛒 Shops</div>
-          <div style="width:16px;height:16px;border-radius:50%;border:2px solid #aaa;border-top-color:#065f46;animation:spin .7s linear infinite" id="myarea-shops-spinner"></div>
-        </div>
-        <div id="myarea-shops-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
-        <div id="myarea-offlicence-wrap" style="display:none;margin-top:8px">
-          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px">🍷 Off-Licences</div>
-          <div id="myarea-offlicence-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
-        </div>
-        <div id="myarea-convenience-wrap" style="display:none;margin-top:8px">
-          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px">🏪 Convenience Stores</div>
-          <div id="myarea-convenience-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
-        </div>
-      </div>
-      <div id="myarea-pubs"     style="display:none;margin-top:10px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">🍽️ Pubs &amp; Restaurants</div>
-          <div style="width:16px;height:16px;border-radius:50%;border:2px solid #aaa;border-top-color:#065f46;animation:spin .7s linear infinite" id="myarea-pubs-spinner"></div>
-        </div>
-        <div id="myarea-pubs-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
-        <button id="myarea-bars-more" onclick="myAreaSearchBars()" style="display:none;margin-top:6px;width:100%;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer">🔍 Search more nearby</button>
-      </div>
+      <div id="myarea-shops"    style="display:none;margin-top:10px"></div>
+      <div id="myarea-pubs"     style="display:none;margin-top:10px"></div>
 
       <!-- My Vehicles (MOT) -->
       <div style="margin-top:18px">
@@ -2535,6 +2515,37 @@ const _ts = new Date(d.timestamp);
   let _maSavedPlaces = null; // null = not yet loaded
   // Temporary map: "name|address" → opening_hours (populated as results render, used when saving)
   const _maPlaceHoursMap = {};
+  // Cached API data for re-render when bookmark state changes
+  let _maCurrentPostcode = "";
+  let _maAreaData = null, _maShopsData = null, _maLocalData = null;
+
+  function _maBookmarkRow(p) {
+    const addr  = p.address ? `<div style="font-size:11px;color:var(--muted)">${p.address}</div>` : "";
+    const phone = p.phone   ? `<a href="tel:${p.phone}" style="color:#2563eb;font-size:11px">${p.phone}</a>` : "";
+    const hours = p.opening_hours ? `<div style="font-size:10px;color:#065f46;margin-top:1px">🕐 ${p.opening_hours}</div>` : "";
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">⭐ ${p.name}</div>
+        ${addr}${phone}${hours}
+      </div>
+      <button onclick="_maRemoveSaved('${p.id}')" style="flex-shrink:0;font-size:14px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 6px" title="Remove">✕</button>
+    </div>`;
+  }
+
+  function _maToggleNearby(section) {
+    const el  = document.getElementById(`myarea-${section}-nearby`);
+    const btn = document.getElementById(`myarea-${section}-nearby-btn`);
+    if (!el) return;
+    const open = el.style.display !== "none";
+    el.style.display = open ? "none" : "";
+    if (btn) btn.innerHTML = open ? "▾ See all nearby" : "▴ Hide nearby";
+  }
+
+  function _maReRenderSections() {
+    if (_maAreaData)  _maRenderGPs(_maAreaData);
+    if (_maShopsData) _maRenderShops(_maShopsData);
+    if (_maLocalData) { _maRenderPubs(_maLocalData); _maRenderSchools(_maLocalData); }
+  }
 
   function _maIsSaved(name, address) {
     return (_maSavedPlaces || []).some(p => p.name === name && p.address === (address||""));
@@ -2548,6 +2559,7 @@ const _ts = new Date(d.timestamp);
     } catch { _maSavedPlaces = []; }
     _maRenderSavedPlaces();
     _maRefreshBookmarkButtons();
+    _maReRenderSections();
   }
 
   async function _maTogglePlace(name, address, phone, emoji) {
@@ -2571,6 +2583,7 @@ const _ts = new Date(d.timestamp);
     }
     _maRenderSavedPlaces();
     _maRefreshBookmarkButtons();
+    _maReRenderSections();
   }
 
   function _maRefreshBookmarkButtons() {
@@ -2609,10 +2622,12 @@ const _ts = new Date(d.timestamp);
       if (searchMore) searchMore.style.display = "none";
       return;
     }
-    // Has saved places — collapse search bar, show "add more" link
+    // Has saved places — collapse search bar, show postcode + "change area" link
     if (searchBar && searchBar.style.display !== "none") {
       searchBar.style.display = "none";
-      if (searchMore) searchMore.style.display = "";
+      if (searchMore) { searchMore.style.display = "flex"; }
+      const pcEl = document.getElementById("myarea-current-pc");
+      if (pcEl && _maCurrentPostcode) pcEl.textContent = "📍 " + _maCurrentPostcode;
     }
     if (count) count.textContent = `(${places.length})`;
     wrap.style.display = "";
@@ -2633,6 +2648,7 @@ const _ts = new Date(d.timestamp);
     if (_maSavedPlaces) _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== id);
     _maRenderSavedPlaces();
     _maRefreshBookmarkButtons();
+    _maReRenderSections();
   }
 
   function _maPlaceRow(x, emoji) {
@@ -2729,9 +2745,20 @@ const _ts = new Date(d.timestamp);
     const el = document.getElementById("myarea-schools");
     const schools = (data.schools?.schools || []).slice(0, 5);
     if (!schools.length) { el.style.display = "none"; return; }
-    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏫 Nearby Schools</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
-      ${schools.map(x => _maPlaceRow(x, "🏫")).join("")}</div>`;
+    const saved = (_maSavedPlaces || []).filter(p => p.emoji === "🏫");
+    const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
+    if (saved.length) {
+      const nearbyHtml = schools.length ? `
+        <button id="myarea-schools-nearby-btn" onclick="_maToggleNearby('schools')"
+          style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
+          ▾ See all nearby</button>
+        <div id="myarea-schools-nearby" style="display:none;margin-top:6px">${_card(schools.map(x=>_maPlaceRow(x,"🏫")).join(""))}</div>` : "";
+      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏫 My Schools</div>
+        ${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
+    } else {
+      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏫 Nearby Schools</div>
+        ${_card(schools.map(x => _maPlaceRow(x, "🏫")).join(""))}`;
+    }
     if (_maGetPrefs().schools) el.style.display = "";
   }
 
@@ -2798,72 +2825,110 @@ const _ts = new Date(d.timestamp);
 
   function _maRenderGPs(area) {
     const el = document.getElementById("myarea-gp");
-    const gps = (area.gps || []).slice(0, 5);
+    if (!_maGetPrefs().gp) { el.style.display = "none"; return; }
+    const gps    = (area.gps || []).slice(0, 5);
     const pharms = (area.pharmacies || []).slice(0, 3);
-    if (!gps.length && !pharms.length) { el.style.display = "none"; return; }
-    let html = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🩺 Health</div><div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">`;
-    gps.forEach(x => { html += _maPlaceRow(x, "🏥"); });
-    if (pharms.length) {
-      html += `</div><div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">💊 Pharmacies</div><div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">`;
-      pharms.forEach(x => { html += _maPlaceRow(x, "💊"); });
+    const saved  = (_maSavedPlaces || []).filter(p => ["🏥","💊"].includes(p.emoji));
+    if (!gps.length && !pharms.length && !saved.length) { el.style.display = "none"; return; }
+
+    if (saved.length) {
+      const nearbyHtml = (gps.length || pharms.length) ? `
+        <button id="myarea-gp-nearby-btn" onclick="_maToggleNearby('gp')"
+          style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
+          ▾ See all nearby</button>
+        <div id="myarea-gp-nearby" style="display:none;margin-top:6px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
+            ${gps.map(x => _maPlaceRow(x, "🏥")).join("")}
+            ${pharms.map(x => _maPlaceRow(x, "💊")).join("")}
+          </div></div>` : "";
+      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🩺 My Health</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
+          ${saved.map(_maBookmarkRow).join("")}</div>${nearbyHtml}`;
+    } else {
+      let html = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🩺 Health</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
+        ${gps.map(x => _maPlaceRow(x, "🏥")).join("")}</div>`;
+      if (pharms.length) html += `
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">💊 Pharmacies</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
+        ${pharms.map(x => _maPlaceRow(x, "💊")).join("")}</div>`;
+      el.innerHTML = html;
     }
-    html += "</div>";
-    el.innerHTML = html;
-    if (_maGetPrefs().gp) el.style.display = "";
+    el.style.display = "";
   }
 
   function _maRenderShops(data) {
-    const el    = document.getElementById("myarea-shops");
-    const list  = document.getElementById("myarea-shops-list");
-    const spin  = document.getElementById("myarea-shops-spinner");
-    if (spin) spin.style.display = "none";
-    const supers  = (data.supermarkets || []).slice(0, 5);
-    const offlic  = (data.off_licences || []).slice(0, 5);
-    const convs   = (data.convenience  || []).slice(0, 5);
-    if (!supers.length && !offlic.length && !convs.length) { el.style.display = "none"; return; }
-    list.innerHTML = supers.length
-      ? supers.map(x => _maPlaceRow(x, "🛒")).join("")
-      : `<div style="font-size:12px;color:var(--muted);padding:8px 0">No supermarkets found nearby.</div>`;
-    const offWrap = document.getElementById("myarea-offlicence-wrap");
-    const offList = document.getElementById("myarea-offlicence-list");
-    if (offlic.length && offWrap && offList) {
-      offList.innerHTML = offlic.map(x => _maPlaceRow(x, "🍷")).join("");
-      offWrap.style.display = "";
-    } else if (offWrap) { offWrap.style.display = "none"; }
-    const convWrap = document.getElementById("myarea-convenience-wrap");
-    const convList = document.getElementById("myarea-convenience-list");
-    if (convs.length && convWrap && convList) {
-      convList.innerHTML = convs.map(x => _maPlaceRow(x, "🏪")).join("");
-      convWrap.style.display = "";
-    } else if (convWrap) { convWrap.style.display = "none"; }
-    if (_maGetPrefs().shops) el.style.display = "";
+    const el = document.getElementById("myarea-shops");
+    if (!_maGetPrefs().shops) { el.style.display = "none"; return; }
+    const supers = (data.supermarkets || []).slice(0, 5);
+    const offlic = (data.off_licences || []).slice(0, 5);
+    const convs  = (data.convenience  || []).slice(0, 5);
+    const saved  = (_maSavedPlaces || []).filter(p => ["🛒","🍷","🏪"].includes(p.emoji));
+    if (!supers.length && !offlic.length && !convs.length && !saved.length) { el.style.display = "none"; return; }
+
+    const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
+    const _sub  = (label, rows) => `<div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">${label}</div>${_card(rows)}`;
+
+    if (saved.length) {
+      const nearbyRows = [
+        supers.length ? _card(supers.map(x => _maPlaceRow(x, "🛒")).join("")) : "",
+        offlic.length ? _sub("🍷 Off-Licences", offlic.map(x => _maPlaceRow(x, "🍷")).join("")) : "",
+        convs.length  ? _sub("🏪 Convenience",  convs.map(x => _maPlaceRow(x, "🏪")).join(""))  : "",
+      ].filter(Boolean).join("");
+      const nearbyHtml = nearbyRows ? `
+        <button id="myarea-shops-nearby-btn" onclick="_maToggleNearby('shops')"
+          style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
+          ▾ See all nearby</button>
+        <div id="myarea-shops-nearby" style="display:none;margin-top:6px">${nearbyRows}</div>` : "";
+      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🛒 My Shops</div>
+        ${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
+    } else {
+      const rows = [
+        supers.length ? _card(supers.map(x => _maPlaceRow(x, "🛒")).join("")) : `<div style="font-size:12px;color:var(--muted);padding:8px 0">No supermarkets nearby</div>`,
+        offlic.length ? _sub("🍷 Off-Licences", offlic.map(x => _maPlaceRow(x, "🍷")).join("")) : "",
+        convs.length  ? _sub("🏪 Convenience",  convs.map(x => _maPlaceRow(x, "🏪")).join(""))  : "",
+      ].filter(Boolean).join("");
+      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🛒 Shops</div>${rows}`;
+    }
+    el.style.display = "";
   }
 
   function _maRenderPubs(data) {
-    const el   = document.getElementById("myarea-pubs");
-    const list = document.getElementById("myarea-pubs-list");
-    const spin = document.getElementById("myarea-pubs-spinner");
-    const more = document.getElementById("myarea-bars-more");
-    if (spin) spin.style.display = "none";
+    const el = document.getElementById("myarea-pubs");
+    if (!_maGetPrefs().pubs) { el.style.display = "none"; return; }
     const pubs  = (data.pubs  || []).slice(0, 5);
     const cafes = (data.cafes || []).slice(0, 3);
     const items = pubs.concat(cafes).slice(0, 5);
-    if (!items.length) { el.style.display = "none"; return; }
-    list.innerHTML = items.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join("");
-    if (more) more.style.display = "";
-    if (_maGetPrefs().pubs) el.style.display = "";
+    const saved = (_maSavedPlaces || []).filter(p => ["🍺","☕","🍽️"].includes(p.emoji));
+    if (!items.length && !saved.length) { el.style.display = "none"; return; }
+    const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
+    if (saved.length) {
+      const nearbyRows = items.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join("");
+      const nearbyHtml = nearbyRows ? `
+        <button id="myarea-pubs-nearby-btn" onclick="_maToggleNearby('pubs')"
+          style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
+          ▾ See all nearby</button>
+        <div id="myarea-pubs-nearby" style="display:none;margin-top:6px">${_card(nearbyRows)}</div>` : "";
+      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🍽️ My Pubs & Restaurants</div>
+        ${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
+    } else {
+      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🍽️ Pubs & Restaurants</div>
+        ${_card(items.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join(""))}
+        <button onclick="myAreaSearchBars()" style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">🔍 Search more nearby</button>`;
+    }
+    el.style.display = "";
   }
 
   function myAreaSearch() {
     const raw = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
     if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
+    _maCurrentPostcode = pc;
+    // Clear cached data for new search
+    _maAreaData = null; _maShopsData = null; _maLocalData = null;
     // Reset sections
     ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-petrol","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
-    });
-    ["myarea-shops-spinner","myarea-pubs-spinner"].forEach(id => {
-      const el = document.getElementById(id); if (el) el.style.display = "block";
     });
     document.getElementById("myarea-loading").style.display = "block";
 
@@ -2895,6 +2960,7 @@ const _ts = new Date(d.timestamp);
 
     // your-area (GPs, council, pharmacies via Overpass — cached 12h, slow on first hit)
     fetch(`/api/your-area?postcode=${pc}`).then(r=>r.json()).then(area => {
+      _maAreaData = area;
       _areaLoaded = true;
       _maRenderCouncil(area);
       _maRenderGPs(area);
@@ -2906,19 +2972,12 @@ const _ts = new Date(d.timestamp);
     fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_maRenderTrain).catch(()=>{});
 
     // Shops + pubs + schools — Overpass, slowest, always load in background
-    document.getElementById("myarea-shops").style.display = "";
-    document.getElementById("myarea-pubs").style.display = "";
-    fetch(`/api/shops?postcode=${pc}`).then(r=>r.json()).then(_maRenderShops).catch(()=>{
-      const sp = document.getElementById("myarea-shops-spinner"); if(sp) sp.style.display="none";
-      document.getElementById("myarea-shops").style.display="none";
-    });
+    fetch(`/api/shops?postcode=${pc}`).then(r=>r.json()).then(data => {
+      _maShopsData = data; _maRenderShops(data);
+    }).catch(()=>{});
     fetch(`/api/local?postcode=${pc}`).then(r=>r.json()).then(data => {
-      _maRenderPubs(data);
-      _maRenderSchools(data);
-    }).catch(()=>{
-      const sp = document.getElementById("myarea-pubs-spinner"); if(sp) sp.style.display="none";
-      document.getElementById("myarea-pubs").style.display="none";
-    });
+      _maLocalData = data; _maRenderPubs(data); _maRenderSchools(data);
+    }).catch(()=>{});
 
     // Weather + crime + petrol (parallel, 30-min cache)
     fetch(`/api/myarea/local-info?postcode=${pc}`).then(r=>r.json()).then(d => {
