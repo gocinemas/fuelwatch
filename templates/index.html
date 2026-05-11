@@ -1268,6 +1268,18 @@
       <!-- Customise panel -->
       <div id="myarea-customise" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px"></div>
 
+      <!-- Account link banner (hidden when logged in) -->
+      <div id="myarea-link-banner" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:10px 14px;margin-bottom:10px">
+        <div style="font-size:12px;color:#065f46;font-weight:600;margin-bottom:6px">🔗 Link your phone to sync My Area across devices</div>
+        <div style="display:flex;gap:8px">
+          <input id="myarea-phone-input" type="tel" placeholder="+44 7911 123456"
+            style="flex:1;border:1px solid #bbf7d0;border-radius:8px;padding:7px 10px;font-size:13px;background:#fff;color:var(--text);outline:none"
+            onkeydown="if(event.key==='Enter') _maLinkPhone()">
+          <button onclick="_maLinkPhone()" style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Link</button>
+        </div>
+        <div id="myarea-link-err" style="display:none;font-size:11px;color:#ef4444;margin-top:4px"></div>
+      </div>
+
       <!-- Postcode bar (collapses when saved places exist) -->
       <div id="myarea-search-bar" style="margin-bottom:6px">
         <div style="display:flex;gap:8px;margin-bottom:6px">
@@ -2538,22 +2550,62 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maDeviceId() {
-    // If opened via WhatsApp link (?token=xxx), adopt that token as device_id
-    // so web bookmarks and WhatsApp 'my places' command share the same data
+    // Priority: URL token → saves login token → stored random id
     const urlToken = new URLSearchParams(window.location.search).get("token");
     if (urlToken) {
-      const stored = localStorage.getItem("miru_device_id");
-      if (stored !== urlToken) {
+      if (localStorage.getItem("miru_device_id") !== urlToken)
         localStorage.setItem("miru_device_id", urlToken);
-      }
       return urlToken;
     }
+    // If user has logged in via phone (Saves screen or My Area banner), use that token
+    const savesToken = _savesPin();
+    if (savesToken) return savesToken;
     let id = localStorage.getItem("miru_device_id");
     if (!id) {
       id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
       localStorage.setItem("miru_device_id", id);
     }
     return id;
+  }
+
+  async function _maLoadHomePostcode() {
+    const token = _maDeviceId();
+    const isRandom = !_savesPin() && !new URLSearchParams(window.location.search).get("token");
+    if (isRandom) return; // not linked — nothing on server
+    try {
+      const r = await fetch(`/api/myarea/home-postcode?token=${encodeURIComponent(token)}`);
+      const d = await r.json();
+      const input = document.getElementById("myarea-postcode-input");
+      const pc = d.postcode || MiruLocation.getHome();
+      if (pc && input && !input.value) { input.value = pc; myAreaSearch(); }
+      else if (!pc) _myAreaPersonalRender();
+    } catch {
+      const home = MiruLocation.getHome();
+      const input = document.getElementById("myarea-postcode-input");
+      if (home && input && !input.value) { input.value = home; myAreaSearch(); }
+      else _myAreaPersonalRender();
+    }
+  }
+
+  async function _maLinkPhone() {
+    const raw = document.getElementById("myarea-phone-input").value.trim();
+    if (!raw) return;
+    let phone = raw.replace(/\s+/g, '');
+    if (/^0\d{10}$/.test(phone)) phone = '+44' + phone.slice(1);
+    const errEl = document.getElementById("myarea-link-err");
+    errEl.style.display = "none";
+    try {
+      const r = await fetch(`/api/user-token?phone=${encodeURIComponent(phone)}`);
+      const d = await r.json();
+      if (!d.token) throw new Error("not found");
+      localStorage.setItem("wa_saves_token", d.token);
+      document.getElementById("myarea-link-banner").style.display = "none";
+      _maLoadSavedPlaces();
+      _maLoadHomePostcode();
+    } catch {
+      errEl.textContent = "Phone not found — text 'my link' to your Miru number first.";
+      errEl.style.display = "block";
+    }
   }
 
   // In-memory mirror of DB saved places for instant UI (avoids repeated fetches)
@@ -3029,6 +3081,14 @@ const _ts = new Date(d.timestamp);
     if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
     _maCurrentPostcode = pc;
+    // Persist home postcode server-side if logged in
+    const _maTok = _savesPin() || new URLSearchParams(window.location.search).get("token");
+    if (_maTok) {
+      fetch("/api/myarea/home-postcode", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({token: _maTok, postcode: pc})
+      }).catch(() => {});
+    }
     // Clear cached data for new search
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
     // Reset sections
@@ -3232,15 +3292,20 @@ const _ts = new Date(d.timestamp);
   }
 
   function _loadMyArea() {
-    _maApplyPrefs();      // hide off sections before any data loads
-    _maLoadSavedPlaces(); // fetch from DB (async, updates UI when ready)
-    _maLoadVehicles();    // fetch saved registrations + MOT status
-    const home = MiruLocation.getHome();
-    if (home && document.getElementById("myarea-postcode-input").value !== home) {
-      document.getElementById("myarea-postcode-input").value = home;
-      myAreaSearch();
-    } else if (!home) {
-      _myAreaPersonalRender();
+    _maApplyPrefs();
+    _maLoadSavedPlaces();
+    _maLoadVehicles();
+    const hasToken = !!(_savesPin() || new URLSearchParams(window.location.search).get("token"));
+    const banner = document.getElementById("myarea-link-banner");
+    if (banner) banner.style.display = hasToken ? "none" : "";
+    if (hasToken) {
+      // Logged in: load postcode from server (falls back to MiruLocation if none saved)
+      _maLoadHomePostcode();
+    } else {
+      const home = MiruLocation.getHome();
+      const input = document.getElementById("myarea-postcode-input");
+      if (home && input && input.value !== home) { input.value = home; myAreaSearch(); }
+      else if (!home) _myAreaPersonalRender();
     }
   }
 

@@ -3627,6 +3627,7 @@ def api_myarea_places_get():
         rows = lib._sb().table("my_area_places") \
             .select("id,name,address,phone,emoji,category,postcode") \
             .eq("device_id", device_id) \
+            .neq("category", "_home") \
             .order("created_at", desc=False) \
             .execute().data
         return jsonify(rows or [])
@@ -3670,6 +3671,45 @@ def api_myarea_places_delete(place_id):
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/myarea/home-postcode", methods=["GET"])
+def api_myarea_home_postcode_get():
+    token = request.args.get("token", "").strip()
+    if not token:
+        return jsonify({"postcode": None})
+    try:
+        rows = lib._sb().table("my_area_places") \
+            .select("postcode") \
+            .eq("device_id", token) \
+            .eq("category", "_home") \
+            .limit(1).execute().data
+        return jsonify({"postcode": rows[0]["postcode"] if rows else None})
+    except Exception:
+        return jsonify({"postcode": None})
+
+
+@app.route("/api/myarea/home-postcode", methods=["POST"])
+def api_myarea_home_postcode_post():
+    body = request.get_json(force=True, silent=True) or {}
+    token = body.get("token", "").strip()
+    postcode = (body.get("postcode") or "").strip().upper()
+    if not token or not postcode:
+        return jsonify({"ok": False}), 400
+    try:
+        sb = lib._sb()
+        sb.table("my_area_places").delete() \
+            .eq("device_id", token).eq("category", "_home").execute()
+        sb.table("my_area_places").insert({
+            "device_id": token,
+            "name":      "__home__",
+            "category":  "_home",
+            "postcode":  postcode,
+            "emoji":     "📍",
+        }).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 _WMO_EMOJI = {
