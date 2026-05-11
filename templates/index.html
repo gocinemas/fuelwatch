@@ -2605,7 +2605,7 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maSectionHtml(id, title, bodyHtml) {
-    const collapsed = localStorage.getItem(`miru_mac_${id}`) !== "0";
+    const collapsed = localStorage.getItem(`miru_mac_${id}`) === "1";
     return `<div onclick="_maSectionToggle('${id}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0;margin-bottom:6px;user-select:none">
       <div style="font-size:13px;font-weight:700;color:var(--text)">${title}</div>
       <span id="ma-toggle-${id}" style="font-size:14px;color:var(--muted);flex-shrink:0;padding-left:8px">${collapsed ? "▸" : "▾"}</span>

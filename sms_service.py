@@ -5934,6 +5934,12 @@ def _wa_user_token(from_number: str) -> str:
     _TOKEN_TO_NUMBER[token] = from_number  # store original (incl. whatsapp:) for DB queries
     return token
 
+def _wa_number_variants(from_number: str) -> list:
+    """Return both DB forms of a phone number: with and without 'whatsapp:' prefix.
+    Needed because WhatsApp saves use 'whatsapp:+44...' but web login resolves to '+44...'."""
+    clean = from_number.replace("whatsapp:", "").strip()
+    return [clean, "whatsapp:" + clean]
+
 def _resolve_user_token(token: str):
     """Return from_number for a user token, or None. Populates cache from DB on cold start."""
     if token in _TOKEN_TO_NUMBER:
@@ -8538,7 +8544,9 @@ def api_wa_saves():
             "id,title,url,summary,status,remind_day,created_at,image_url"
         )
         if filter_number:
-            q = q.eq("from_number", filter_number)
+            # DB stores "whatsapp:+44..." but web login resolves to "+44..." — match both
+            clean = filter_number.replace("whatsapp:", "")
+            q = q.in_("from_number", [clean, "whatsapp:" + clean])
         rows = q.order("created_at", desc=True).execute().data
         return jsonify({"saves": rows})
     except Exception as e:
@@ -8561,7 +8569,7 @@ def api_wa_saves_update():
     try:
         q = lib._sb().table("wa_saves").update({"status": status}).eq("id", save_id)
         if from_number:
-            q = q.eq("from_number", from_number)  # users can only update their own
+            q = q.in_("from_number", _wa_number_variants(from_number))  # users can only update their own
         q.execute()
         return jsonify({"ok": True})
     except Exception as e:
@@ -8581,7 +8589,7 @@ def api_wa_saves_delete():
     try:
         q = lib._sb().table("wa_saves").delete().eq("id", save_id)
         if from_number:
-            q = q.eq("from_number", from_number)  # users can only delete their own
+            q = q.in_("from_number", _wa_number_variants(from_number))  # users can only delete their own
         q.execute()
         lib.saves_unsync(save_id)
         return jsonify({"ok": True})
@@ -8605,7 +8613,7 @@ def api_wa_saves_bulk_delete():
         try:
             q = lib._sb().table("wa_saves").delete().eq("id", save_id)
             if from_number:
-                q = q.eq("from_number", from_number)
+                q = q.in_("from_number", _wa_number_variants(from_number))
             q.execute()
             lib.saves_unsync(save_id)
             deleted.append(save_id)
@@ -8847,7 +8855,7 @@ def api_wa_saves_search():
         sb = lib._sb()
         base = sb.table("wa_saves").select("id,title,url,summary,status,created_at,remind_day")
         if from_number:
-            base = base.eq("from_number", from_number)
+            base = base.in_("from_number", _wa_number_variants(from_number))
         try:
             rows = base.text_search("fts", q, config="english").order("created_at", desc=True).limit(20).execute().data
         except Exception:
@@ -8855,7 +8863,7 @@ def api_wa_saves_search():
             def _qi(field):
                 b = sb.table("wa_saves").select("id,title,url,summary,status,created_at,remind_day")
                 if from_number:
-                    b = b.eq("from_number", from_number)
+                    b = b.in_("from_number", _wa_number_variants(from_number))
                 return b.ilike(field, f"%{q}%").order("created_at", desc=True).limit(20).execute().data
             seen, rows = set(), []
             for row in _qi("title") + _qi("summary"):

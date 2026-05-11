@@ -71,7 +71,9 @@ def saves_search(query: str, from_number: str = "", hits_per_page: int = 20) -> 
     """Search wa_saves in Algolia, filtered to a single user when from_number given."""
     params = {"hitsPerPage": hits_per_page}
     if from_number:
-        params["filters"] = f'from_number:"{from_number}"'
+        # Match both 'whatsapp:+44...' (WhatsApp) and '+44...' (web login) forms
+        clean = from_number.replace("whatsapp:", "").strip()
+        params["filters"] = f'from_number:"{clean}" OR from_number:"whatsapp:{clean}"'
     res = _saves_idx().search(query, params)
     return res.get("hits", [])
 
