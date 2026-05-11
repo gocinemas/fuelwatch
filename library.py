@@ -68,14 +68,45 @@ def saves_unsync(save_id: str) -> None:
 
 
 def saves_search(query: str, from_number: str = "", hits_per_page: int = 20) -> list:
-    """Search wa_saves in Algolia, filtered to a single user when from_number given."""
+    """Search wa_saves — Algolia first, Supabase keyword fallback."""
     params = {"hitsPerPage": hits_per_page}
     if from_number:
-        # Match both 'whatsapp:+44...' (WhatsApp) and '+44...' (web login) forms
         clean = from_number.replace("whatsapp:", "").strip()
         params["filters"] = f'from_number:"{clean}" OR from_number:"whatsapp:{clean}"'
-    res = _saves_idx().search(query, params)
-    return res.get("hits", [])
+    try:
+        res = _saves_idx().search(query, params)
+        hits = res.get("hits", [])
+        if hits:
+            return hits
+    except Exception:
+        pass
+    # Supabase fallback — fetch user's saves and score client-side
+    return _saves_search_supabase(query, from_number, hits_per_page)
+
+
+def _saves_search_supabase(query: str, from_number: str = "", limit: int = 20) -> list:
+    try:
+        sb = _sb()
+        q = sb.table("wa_saves").select("id,from_number,title,summary,url,status,created_at")
+        if from_number:
+            clean = from_number.replace("whatsapp:", "").strip()
+            q = q.in_("from_number", [clean, "whatsapp:" + clean])
+        rows = q.order("created_at", desc=True).limit(500).execute().data
+        if not rows:
+            return []
+        q_words = [w.lower() for w in query.split() if len(w) > 2]
+        if not q_words:
+            return rows[:limit]
+
+        def _score(r):
+            text = " ".join(filter(None, [r.get("title",""), r.get("summary",""), r.get("url","")])).lower()
+            return sum(1 for w in q_words if w in text)
+
+        matched = [r for r in rows if _score(r) > 0]
+        matched.sort(key=_score, reverse=True)
+        return matched[:limit]
+    except Exception:
+        return []
 
 
 def chunk_text(text: str, chunk_size: int = 350, overlap: int = 50) -> list:
