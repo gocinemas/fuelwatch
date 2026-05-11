@@ -8511,13 +8511,11 @@ def _ma_gmail_get_token(token_row: dict) -> str:
 
 
 _MA_GMAIL_QUERIES = [
-    ("energy",      "{from:octopus.energy from:britishgas.co.uk from:edf.co.uk from:eonenergy.com from:eon-next.co.uk from:scottishpower.co.uk}"),
-    ("broadband",   "{from:info.ee.co.uk from:eemail.ee.co.uk from:bt.com from:sky.com from:virginmedia.com from:talktalk.co.uk from:plusnet.com}"),
-    ("car_ins",     "{from:admiral.com from:directline.com from:aviva.com from:axa.co.uk from:lv.com from:hastingsdirect.com} {subject:policy subject:renewal subject:insurance subject:certificate}"),
-    ("home_ins",    "{from:admiral.com from:directline.com from:aviva.com from:axa.co.uk from:lv.com} {subject:home subject:building subject:contents}"),
-    ("life_ins",    "{subject:\"life insurance\" subject:\"life cover\"} {subject:policy subject:renewal}"),
+    ("energy",      "from:octopus.energy OR from:britishgas.co.uk OR from:edf.co.uk OR from:eonenergy.com OR from:eon-next.co.uk OR from:scottishpower.co.uk"),
+    ("broadband",   "from:info.ee.co.uk OR from:eemail.ee.co.uk OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com"),
+    ("car_ins",     "from:admiral.com OR from:directline.com OR from:aviva.com OR from:axa.co.uk OR from:lv.com OR from:hastingsdirect.com"),
     ("other",       "from:tvlicensing.co.uk"),
-    ("council_tax", "subject:\"council tax\" {subject:account subject:bill subject:payment}"),
+    ("council_tax", "subject:council tax bill"),
 ]
 
 _MA_EXTRACT_SYSTEM = """You are a data extraction assistant. Extract household account details from UK utility/insurance emails.
@@ -8549,20 +8547,43 @@ def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
         body = ""
         payload = msg.get("payload", {})
 
+        import base64, re as _re
+
+        def _decode_part(part_data):
+            if not part_data:
+                return ""
+            try:
+                return base64.urlsafe_b64decode(part_data + "==").decode("utf-8", errors="ignore")
+            except Exception:
+                return ""
+
+        def _strip_html(html):
+            text = _re.sub(r"<style[^>]*>.*?</style>", " ", html, flags=_re.DOTALL|_re.IGNORECASE)
+            text = _re.sub(r"<script[^>]*>.*?</script>", " ", text, flags=_re.DOTALL|_re.IGNORECASE)
+            text = _re.sub(r"<[^>]+>", " ", text)
+            text = _re.sub(r"[ \t]+", " ", text)
+            text = _re.sub(r"\n{3,}", "\n\n", text)
+            return text.strip()
+
+        html_body = ""
+
         def _extract_text(part):
-            nonlocal body
+            nonlocal body, html_body
             if body and len(body) > 2000:
                 return
             mime = part.get("mimeType", "")
-            if mime == "text/plain":
-                import base64
-                data = part.get("body", {}).get("data", "")
-                if data:
-                    body += base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="ignore")[:2000]
+            data = part.get("body", {}).get("data", "")
+            if mime == "text/plain" and data:
+                body += _decode_part(data)[:2000]
+            elif mime == "text/html" and data and not html_body:
+                html_body = _decode_part(data)[:6000]
             for sub in part.get("parts", []):
                 _extract_text(sub)
 
         _extract_text(payload)
+        # Fall back to stripped HTML if no plain text
+        if not body.strip() and html_body:
+            body = _strip_html(html_body)[:2000]
         if not body.strip():
             return None
 
