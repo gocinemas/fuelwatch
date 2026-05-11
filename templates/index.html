@@ -1297,17 +1297,39 @@
         <div style="font-size:13px;color:var(--muted)">Loading your area…</div>
       </div>
 
-      <!-- Live data sections (populated by JS) -->
-      <div id="myarea-reps"     style="display:none;margin-top:14px"></div>
-      <div id="myarea-council"  style="display:none;margin-top:10px"></div>
-      <div id="myarea-weather"  style="display:none;margin-top:10px"></div>
-      <div id="myarea-train"    style="display:none;margin-top:10px"></div>
-      <div id="myarea-petrol"   style="display:none;margin-top:10px"></div>
-      <div id="myarea-crime"    style="display:none;margin-top:10px"></div>
-      <div id="myarea-gp"       style="display:none;margin-top:10px"></div>
-      <div id="myarea-schools"  style="display:none;margin-top:10px"></div>
-      <div id="myarea-shops"    style="display:none;margin-top:10px"></div>
-      <div id="myarea-pubs"     style="display:none;margin-top:10px"></div>
+      <!-- Tab bar (hidden until first search) -->
+      <div id="myarea-tab-bar" style="display:none;margin-bottom:10px">
+        <div style="display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px">
+          <button onclick="_maShowTab('places')" id="matab-btn-places"
+            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:#065f46;color:#fff">🏡 My Places</button>
+          <button onclick="_maShowTab('services')" id="matab-btn-services"
+            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏥 Services</button>
+          <button onclick="_maShowTab('civic')" id="matab-btn-civic"
+            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏛️ Civic</button>
+        </div>
+      </div>
+
+      <!-- Tab: My Places (weather, train, petrol) -->
+      <div id="matab-places">
+        <div id="myarea-weather" style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-petrol"  style="display:none;margin-bottom:10px"></div>
+      </div>
+
+      <!-- Tab: Services (health, shops, pubs, schools) -->
+      <div id="matab-services" style="display:none">
+        <div id="myarea-gp"      style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-shops"   style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-pubs"    style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-schools" style="display:none;margin-bottom:10px"></div>
+      </div>
+
+      <!-- Tab: Civic (representatives, council, crime) -->
+      <div id="matab-civic" style="display:none">
+        <div id="myarea-reps"    style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-council" style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-crime"   style="display:none;margin-bottom:10px"></div>
+      </div>
 
       <!-- My Vehicles (MOT) -->
       <div style="margin-top:18px">
@@ -2476,7 +2498,7 @@ const _ts = new Date(d.timestamp);
 
   function _maRenderCustomise() {
     const prefs = _maGetPrefs();
-    const always = ["🗳️ Representatives", "🏛️ Council & Utilities", "📌 Saved Places", "🚗 My Vehicles", "📋 My Details"];
+    const always = ["🗳️ Representatives (Civic tab)", "🏛️ Council &amp; Utilities (Civic tab)", "📌 Saved Places", "🚗 My Vehicles", "📋 My Details"];
     const toggles = _MA_PREF_SECTIONS.map(s => {
       const on = prefs[s.key];
       return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -2555,6 +2577,37 @@ const _ts = new Date(d.timestamp);
     if (_maAreaData)  _maRenderGPs(_maAreaData);
     if (_maShopsData) _maRenderShops(_maShopsData);
     if (_maLocalData) { _maRenderPubs(_maLocalData); _maRenderSchools(_maLocalData); }
+  }
+
+  function _maShowTab(tab) {
+    ["places","services","civic"].forEach(t => {
+      document.getElementById(`matab-${t}`).style.display = t === tab ? "" : "none";
+      const btn = document.getElementById(`matab-btn-${t}`);
+      if (btn) {
+        btn.style.background = t === tab ? "#065f46" : "transparent";
+        btn.style.color = t === tab ? "#fff" : "var(--muted)";
+      }
+    });
+    localStorage.setItem("miru_ma_tab", tab);
+  }
+
+  function _maSectionHtml(id, title, bodyHtml) {
+    const collapsed = localStorage.getItem(`miru_mac_${id}`) === "1";
+    return `<div onclick="_maSectionToggle('${id}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0;margin-bottom:6px;user-select:none">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">${title}</div>
+      <span id="ma-toggle-${id}" style="font-size:14px;color:var(--muted);flex-shrink:0;padding-left:8px">${collapsed ? "▸" : "▾"}</span>
+    </div>
+    <div id="ma-body-${id}" style="display:${collapsed ? "none" : ""}">${bodyHtml}</div>`;
+  }
+
+  function _maSectionToggle(id) {
+    const body = document.getElementById(`ma-body-${id}`);
+    const icon = document.getElementById(`ma-toggle-${id}`);
+    if (!body) return;
+    const collapsed = body.style.display === "none";
+    body.style.display = collapsed ? "" : "none";
+    if (icon) icon.textContent = collapsed ? "▾" : "▸";
+    localStorage.setItem(`miru_mac_${id}`, collapsed ? "0" : "1");
   }
 
   function _maIsSaved(name, address) {
@@ -2730,13 +2783,12 @@ const _ts = new Date(d.timestamp);
     if (mp && mp.name && !mp.error) {
       rows += _maRepCard(mp, "🏛️ Your MP", "#bfdbfe", "#1e3a8a");
     }
-    // /api/councillor returns {councillors:[...], ward, council}
     const councillors = (councillorResp && councillorResp.councillors) ? councillorResp.councillors : [];
     councillors.slice(0, 2).forEach(c => {
       rows += _maRepCard(c, "🏘️ Your Councillor", "#bbf7d0", "#14532d");
     });
     if (!rows) { el.style.display = "none"; return; }
-    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🗳️ Your Representatives</div>${_maCard(rows)}`;
+    el.innerHTML = _maSectionHtml("reps", "🗳️ Your Representatives", _maCard(rows));
     el.style.display = "";
   }
 
@@ -2747,15 +2799,14 @@ const _ts = new Date(d.timestamp);
     if (area.water?.name)   rows += _maRow("💧","Water Co.", area.water.name, `Emergency: <a href="tel:${area.water.emergency}" style="color:#2563eb">${area.water.emergency}</a>`, `https://${area.water.website}`);
     if (area.gas?.name)     rows += _maRow("🔥","Gas Network", area.gas.name, `Gas leak: <a href="tel:${area.gas.emergency}" style="color:#dc2626;font-weight:700">${area.gas.emergency}</a>`, `https://${area.gas.website}`);
     if (!rows) { el.style.display = "none"; return; }
-    let html = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏛️ Council &amp; Utilities</div>${_maCard(rows)}`;
-    // Post offices
+    let bodyHtml = _maCard(rows);
     const posts = (area.post_offices || []).slice(0, 3);
     if (posts.length) {
-      html += `<div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">📮 Post Offices</div>
-               <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
-               ${posts.map(x => _maPlaceRow(x, "📮")).join("")}</div>`;
+      bodyHtml += `<div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">📮 Post Offices</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
+        ${posts.map(x => _maPlaceRow(x, "📮")).join("")}</div>`;
     }
-    el.innerHTML = html;
+    el.innerHTML = _maSectionHtml("council", "🏛️ Council &amp; Utilities", bodyHtml);
     el.style.display = "";
   }
 
@@ -2765,32 +2816,34 @@ const _ts = new Date(d.timestamp);
     if (!schools.length) { el.style.display = "none"; return; }
     const saved = (_maSavedPlaces || []).filter(p => p.emoji === "🏫");
     const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
+    let title, bodyHtml;
     if (saved.length) {
-      const nearbyHtml = schools.length ? `
+      title = "🏫 My Schools";
+      const nearbyHtml = `
         <button id="myarea-schools-nearby-btn" onclick="_maToggleNearby('schools')"
           style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
           ▾ See all nearby</button>
-        <div id="myarea-schools-nearby" style="display:none;margin-top:6px">${_card(schools.map(x=>_maPlaceRow(x,"🏫")).join(""))}</div>` : "";
-      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏫 My Schools</div>
-        ${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
+        <div id="myarea-schools-nearby" style="display:none;margin-top:6px">${_card(schools.map(x=>_maPlaceRow(x,"🏫")).join(""))}</div>`;
+      bodyHtml = `${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
     } else {
-      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏫 Nearby Schools</div>
-        ${_card(schools.map(x => _maPlaceRow(x, "🏫")).join(""))}`;
+      title = "🏫 Nearby Schools";
+      bodyHtml = _card(schools.map(x => _maPlaceRow(x, "🏫")).join(""));
     }
+    el.innerHTML = _maSectionHtml("schools", title, bodyHtml);
     if (_maGetPrefs().schools) el.style.display = "";
   }
 
   function _maRenderWeather(w) {
     const el = document.getElementById("myarea-weather");
     if (!w || !el) { if(el) el.style.display="none"; return; }
-    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${w.emoji} Weather</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:14px">
-        <div style="font-size:36px;font-weight:800;color:var(--text)">${w.temp}°</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${w.desc}</div>
-          <div style="font-size:11px;color:var(--muted)">↑${w.high}° ↓${w.low}° · Wind ${w.wind} km/h</div>
-        </div>
-      </div>`;
+    const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:14px">
+      <div style="font-size:36px;font-weight:800;color:var(--text)">${w.temp}°</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${w.desc}</div>
+        <div style="font-size:11px;color:var(--muted)">↑${w.high}° ↓${w.low}° · Wind ${w.wind} km/h</div>
+      </div>
+    </div>`;
+    el.innerHTML = _maSectionHtml("weather", `${w.emoji} Weather`, bodyHtml);
     if (_maGetPrefs().weather) el.style.display = "";
   }
 
@@ -2802,8 +2855,9 @@ const _ts = new Date(d.timestamp);
         <span style="font-size:13px;color:var(--text)">${t.category}</span>
         <span style="font-size:12px;font-weight:700;color:var(--muted)">${t.count}</span>
       </div>`).join("");
-    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🚔 Crime Nearby <span style="font-size:11px;font-weight:400;color:var(--muted)">(${c.total} incidents last month)</span></div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${topHtml}</div>`;
+    const title = `🚔 Crime Nearby <span style="font-size:11px;font-weight:400;color:var(--muted)">(${c.total} incidents last month)</span>`;
+    el.innerHTML = _maSectionHtml("crime", title,
+      `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${topHtml}</div>`);
     if (_maGetPrefs().crime) el.style.display = "";
   }
 
@@ -2818,8 +2872,8 @@ const _ts = new Date(d.timestamp);
           <span style="font-size:15px;font-weight:800;color:#065f46">${s.price}p</span>
         </div>
       </div>`).join("");
-    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">⛽ Nearby Petrol</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
+    el.innerHTML = _maSectionHtml("petrol", "⛽ Nearby Petrol",
+      `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`);
     if (_maGetPrefs().petrol) el.style.display = "";
   }
 
@@ -2827,17 +2881,17 @@ const _ts = new Date(d.timestamp);
     const el = document.getElementById("myarea-train");
     if (!data || !data.name || data.error) { el.style.display = "none"; return; }
     const dist = data.distance_km ? `${(data.distance_km * 0.621371).toFixed(1)} mi away` : "";
-    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🚆 Nearest Station</div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${data.name}</div>
-          ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
-        </div>
-        <button onclick="if(window._fillTrains){_fillTrains('${data.name.replace(/'/g,"\\'")}');}else{showScreen('trains');}"
-          style="flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">
-          Departures →
-        </button>
-      </div>`;
+    const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${data.name}</div>
+        ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
+      </div>
+      <button onclick="if(window._fillTrains){_fillTrains('${data.name.replace(/'/g,"\\'")}');}else{showScreen('trains');}"
+        style="flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">
+        Departures →
+      </button>
+    </div>`;
+    el.innerHTML = _maSectionHtml("train", "🚆 Nearest Station", bodyHtml);
     if (_maGetPrefs().train) el.style.display = "";
   }
 
@@ -2849,7 +2903,9 @@ const _ts = new Date(d.timestamp);
     const saved  = (_maSavedPlaces || []).filter(p => ["🏥","💊"].includes(p.emoji));
     if (!gps.length && !pharms.length && !saved.length) { el.style.display = "none"; return; }
 
+    let title, bodyHtml;
     if (saved.length) {
+      title = "🩺 My Health";
       const nearbyHtml = (gps.length || pharms.length) ? `
         <button id="myarea-gp-nearby-btn" onclick="_maToggleNearby('gp')"
           style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
@@ -2859,19 +2915,19 @@ const _ts = new Date(d.timestamp);
             ${gps.map(x => _maPlaceRow(x, "🏥")).join("")}
             ${pharms.map(x => _maPlaceRow(x, "💊")).join("")}
           </div></div>` : "";
-      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🩺 My Health</div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
-          ${saved.map(_maBookmarkRow).join("")}</div>${nearbyHtml}`;
+      bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
+        ${saved.map(_maBookmarkRow).join("")}</div>${nearbyHtml}`;
     } else {
-      let html = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🩺 Health</div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
+      title = "🩺 Health";
+      let html = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
         ${gps.map(x => _maPlaceRow(x, "🏥")).join("")}</div>`;
       if (pharms.length) html += `
         <div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">💊 Pharmacies</div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
         ${pharms.map(x => _maPlaceRow(x, "💊")).join("")}</div>`;
-      el.innerHTML = html;
+      bodyHtml = html;
     }
+    el.innerHTML = _maSectionHtml("gp", title, bodyHtml);
     el.style.display = "";
   }
 
@@ -2887,7 +2943,9 @@ const _ts = new Date(d.timestamp);
     const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
     const _sub  = (label, rows) => `<div style="font-size:12px;font-weight:700;color:var(--muted);margin:8px 0 4px">${label}</div>${_card(rows)}`;
 
+    let title, bodyHtml;
     if (saved.length) {
+      title = "🛒 My Shops";
       const nearbyRows = [
         supers.length ? _card(supers.map(x => _maPlaceRow(x, "🛒")).join("")) : "",
         offlic.length ? _sub("🍷 Off-Licences", offlic.map(x => _maPlaceRow(x, "🍷")).join("")) : "",
@@ -2898,16 +2956,16 @@ const _ts = new Date(d.timestamp);
           style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
           ▾ See all nearby</button>
         <div id="myarea-shops-nearby" style="display:none;margin-top:6px">${nearbyRows}</div>` : "";
-      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🛒 My Shops</div>
-        ${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
+      bodyHtml = `${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
     } else {
-      const rows = [
+      title = "🛒 Shops";
+      bodyHtml = [
         supers.length ? _card(supers.map(x => _maPlaceRow(x, "🛒")).join("")) : `<div style="font-size:12px;color:var(--muted);padding:8px 0">No supermarkets nearby</div>`,
         offlic.length ? _sub("🍷 Off-Licences", offlic.map(x => _maPlaceRow(x, "🍷")).join("")) : "",
         convs.length  ? _sub("🏪 Convenience",  convs.map(x => _maPlaceRow(x, "🏪")).join(""))  : "",
       ].filter(Boolean).join("");
-      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🛒 Shops</div>${rows}`;
     }
+    el.innerHTML = _maSectionHtml("shops", title, bodyHtml);
     el.style.display = "";
   }
 
@@ -2920,20 +2978,22 @@ const _ts = new Date(d.timestamp);
     const saved = (_maSavedPlaces || []).filter(p => ["🍺","☕","🍽️"].includes(p.emoji));
     if (!items.length && !saved.length) { el.style.display = "none"; return; }
     const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
+    let title, bodyHtml;
     if (saved.length) {
+      title = "🍽️ My Pubs & Restaurants";
       const nearbyRows = items.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join("");
       const nearbyHtml = nearbyRows ? `
         <button id="myarea-pubs-nearby-btn" onclick="_maToggleNearby('pubs')"
           style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
           ▾ See all nearby</button>
         <div id="myarea-pubs-nearby" style="display:none;margin-top:6px">${_card(nearbyRows)}</div>` : "";
-      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🍽️ My Pubs & Restaurants</div>
-        ${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
+      bodyHtml = `${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
     } else {
-      el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🍽️ Pubs & Restaurants</div>
-        ${_card(items.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join(""))}
+      title = "🍽️ Pubs & Restaurants";
+      bodyHtml = `${_card(items.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join(""))}
         <button onclick="myAreaSearchBars()" style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">🔍 Search more nearby</button>`;
     }
+    el.innerHTML = _maSectionHtml("pubs", title, bodyHtml);
     el.style.display = "";
   }
 
@@ -2948,6 +3008,8 @@ const _ts = new Date(d.timestamp);
     ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-petrol","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
+    document.getElementById("myarea-tab-bar").style.display = "";
+    _maShowTab(localStorage.getItem("miru_ma_tab") || "places");
     document.getElementById("myarea-loading").style.display = "block";
 
     let _repsLoaded = false, _areaLoaded = false;

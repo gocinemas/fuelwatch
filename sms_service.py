@@ -3302,7 +3302,9 @@ out center tags;"""
 def _fetch_off_licences_overpass(lat, lon, radius_m=3000):
     query = f"""[out:json][timeout:20];
 (node["shop"="alcohol"](around:{radius_m},{lat},{lon});
- way["shop"="alcohol"](around:{radius_m},{lat},{lon}););
+ way["shop"="alcohol"](around:{radius_m},{lat},{lon});
+ node["shop"="off_licence"](around:{radius_m},{lat},{lon});
+ way["shop"="off_licence"](around:{radius_m},{lat},{lon}););
 out center tags;"""
     try:
         els = _overpass_mirrors(query)
