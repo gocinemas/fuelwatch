@@ -1296,7 +1296,7 @@
           <button onclick="myAreaUseLocation()" title="Use my location"
             style="flex-shrink:0;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer">📍</button>
           <button id="myarea-go-btn" onclick="myAreaSearch()"
-            style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer">Go</button>
+            style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s">Go</button>
         </div>
         <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
       </div>
@@ -2674,7 +2674,8 @@ const _ts = new Date(d.timestamp);
 
   function _maShowTab(tab) {
     ["places","services","civic"].forEach(t => {
-      document.getElementById(`matab-${t}`).style.display = t === tab ? "" : "none";
+      const pane = document.getElementById(`matab-${t}`);
+      if (pane) pane.style.display = t === tab ? "block" : "none";
       const btn = document.getElementById(`matab-btn-${t}`);
       if (btn) {
         btn.style.background = t === tab ? "#065f46" : "transparent";
@@ -3090,15 +3091,23 @@ const _ts = new Date(d.timestamp);
   let _maSearchSeq = 0;
 
   function myAreaSearch() {
-    const input  = document.getElementById("myarea-postcode-input");
-    const errEl  = document.getElementById("myarea-loc-err");
+    // ── Step 1: immediate UI feedback (nothing should prevent this) ───────────────
+    const goBtn  = document.getElementById("myarea-go-btn");
     const tabBar = document.getElementById("myarea-tab-bar");
     const loader = document.getElementById("myarea-loading");
+    if (goBtn)  { goBtn.textContent = "Searching…"; goBtn.style.opacity = "0.7"; setTimeout(() => { goBtn.textContent = "Go"; goBtn.style.opacity = "1"; }, 5000); }
+    if (tabBar) tabBar.style.display = "block";
+    if (loader) loader.style.display = "block";
+    _maShowTab("places");
 
+    // ── Step 2: validate postcode ─────────────────────────────────────────────────
+    const input = document.getElementById("myarea-postcode-input");
+    const errEl = document.getElementById("myarea-loc-err");
     const raw = input ? input.value.trim().toUpperCase() : "";
     if (errEl) errEl.style.display = "none";
 
     if (!raw) {
+      if (loader) loader.style.display = "none";
       if (errEl) { errEl.textContent = "Please enter a postcode."; errEl.style.display = "block"; }
       return;
     }
@@ -3120,11 +3129,6 @@ const _ts = new Date(d.timestamp);
       const el = document.getElementById(id);
       if (el) { el.innerHTML = ""; el.style.display = "none"; }
     });
-
-    // Show tab bar and spinner immediately — explicit display:block
-    if (tabBar) tabBar.style.display = "block";
-    _maShowTab("places");
-    if (loader) loader.style.display = "block";
 
     // Spinner hide: keyed to this search sequence so old callbacks can't hide a newer spinner
     const seq = ++_maSearchSeq;
