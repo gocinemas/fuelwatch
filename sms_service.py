@@ -8550,31 +8550,29 @@ _MA_GMAIL_QUERIES = [
     ("council_tax", 'subject:"council tax" newer_than:3y'),
 ]
 
-_MA_EXTRACT_SYSTEM = """You are a data extraction assistant. Extract household account details from UK utility/insurance emails.
-Return ONLY a JSON object with these fields (omit fields you cannot find):
-{
-  "type": one of: energy|broadband|car_ins|home_ins|life_ins|council_tax|other,
-  "provider": "company name only e.g. Octopus Energy, EE, Thames Water",
-  "account_no": "customer account or policy number as shown on the email — ONLY include if it is a short alphanumeric code (e.g. A-201E4423, GB50302570, 82475235). Do NOT include URLs, tokens, or long hashes.",
-  "phone": "customer service phone number",
-  "renewal_date": "DD/MM/YYYY or blank",
-  "price": "monthly or annual price if visible e.g. £31.99/month",
-  "label": "short human label e.g. Home Insurance, TV Licence, Water, Mobile, Broadband"
-}
-Type mapping:
-- energy = gas, electricity, dual fuel
-- broadband = internet, broadband, home phone, mobile phone, SIM, data plan
-- car_ins = car insurance, motor insurance, vehicle insurance
-- home_ins = home insurance, buildings insurance, contents insurance
-- life_ins = life insurance, life cover
-- council_tax = council tax, local council bill
-- other = water, TV Licence, TV License, health insurance, private medical, dental, pet insurance, or anything else
+_MA_EXTRACT_SYSTEM = """You are a data extraction assistant for UK household accounts. Extract details from utility, telecoms, and insurance emails.
 
-For TV Licensing emails: type="other", label="TV Licence", provider="TV Licensing".
-For water companies: type="other", label="Water".
-For mobile phone bills: type="broadband", label="Mobile".
-If the email is a marketing email with no account details at all, return {"skip": true}.
-Otherwise extract what you can. If unsure about account_no, omit it rather than guessing."""
+Return ONLY a JSON object:
+{
+  "type": "energy|broadband|car_ins|home_ins|life_ins|council_tax|other",
+  "provider": "company name e.g. Three, EE, Thames Water, TV Licensing, Octopus Energy",
+  "account_no": "account/policy number shown in email — short alphanumeric only (e.g. A-201E4423, GB50302570). Omit if not clearly visible.",
+  "phone": "customer service number",
+  "renewal_date": "DD/MM/YYYY if shown, else omit",
+  "price": "monthly/annual cost if shown e.g. £31.99/month",
+  "label": "short label e.g. Mobile, Broadband, TV Licence, Water, Energy"
+}
+
+Type rules:
+- energy = gas / electricity / dual fuel
+- broadband = internet / broadband / mobile phone / SIM / data — includes Three, EE, O2, Vodafone, Giffgaff
+- car_ins = car or motor insurance
+- home_ins = home / buildings / contents insurance
+- life_ins = life insurance
+- council_tax = council tax
+- other = water / TV Licence / health / dental / pet / anything else
+
+IMPORTANT: Only return {"skip": true} if the email is clearly a one-time promotional offer or newsletter with ZERO account or billing information. Monthly bills, account confirmations, payment receipts, renewal notices, and welcome emails all contain account info — DO NOT skip them. When in doubt, extract what you can rather than skipping."""
 
 
 def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
@@ -8642,27 +8640,30 @@ def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
         if not groq_key:
             return None
 
-        prompt = f"Subject: {subject}\nFrom: {sender}\n\n{body[:1500]}"
+        print(f"[ma gmail extract] subject={subject!r} from={sender!r} body_len={len(body)}")
+        prompt = f"Subject: {subject}\nFrom: {sender}\n\n{body[:2000]}"
         r2 = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.1-8b-instant",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [
                     {"role": "system", "content": _MA_EXTRACT_SYSTEM},
                     {"role": "user",   "content": prompt},
                 ],
-                "max_tokens": 200,
+                "max_tokens": 300,
                 "temperature": 0.0,
                 "response_format": {"type": "json_object"},
             },
-            timeout=10,
+            timeout=20,
         )
         if r2.status_code != 200:
+            print(f"[ma gmail extract] groq error {r2.status_code}: {r2.text[:200]}")
             return None
         extracted = r2.json()["choices"][0]["message"]["content"]
         import json as _json
         d = _json.loads(extracted)
+        print(f"[ma gmail extract] result={d}")
         if d.get("skip"):
             return None
         return d
@@ -8705,8 +8706,10 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
                 timeout=10,
             )
             if r.status_code != 200:
+                print(f"[ma gmail scan] query failed {r.status_code}: {query[:60]}")
                 continue
             msgs = r.json().get("messages", [])
+            print(f"[ma gmail scan] query={query[:70]!r} found={len(msgs)} msgs")
             for msg in msgs[:5]:
                 d = _ma_gmail_extract_email(at, msg["id"])
                 if not d:
@@ -8849,6 +8852,44 @@ def ma_gmail_rescan():
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/myarea/gmail/debug-queries")
+def ma_gmail_debug_queries():
+    """Dev tool: run each query and show message counts + subjects (no extraction)."""
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify({"error": "device_id required"}), 400
+    try:
+        rows = lib._sb().table("ma_gmail_tokens").select("*").eq("device_id", device_id).execute().data
+        if not rows:
+            return jsonify({"error": "not_connected"}), 401
+        row = rows[0]
+        at = _ma_gmail_get_token(row)
+        results = []
+        for det_type, query in _MA_GMAIL_QUERIES:
+            r = requests.get(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+                params={"q": query, "maxResults": 5},
+                headers={"Authorization": f"Bearer {at}"},
+                timeout=10,
+            )
+            msgs = r.json().get("messages", []) if r.status_code == 200 else []
+            subjects = []
+            for m in msgs[:3]:
+                mr = requests.get(
+                    f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{m['id']}",
+                    params={"format": "metadata", "metadataHeaders": ["Subject", "From"]},
+                    headers={"Authorization": f"Bearer {at}"},
+                    timeout=8,
+                )
+                if mr.status_code == 200:
+                    hdrs = {h["name"]: h["value"] for h in mr.json().get("payload", {}).get("headers", [])}
+                    subjects.append({"subject": hdrs.get("Subject",""), "from": hdrs.get("From","")})
+            results.append({"type": det_type, "query": query[:80], "count": len(msgs), "samples": subjects})
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 def _web_client_id():
     return os.environ.get("GMAIL_WEB_CLIENT_ID") or os.environ.get("GMAIL_CLIENT_ID", "")
