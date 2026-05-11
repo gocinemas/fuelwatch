@@ -7527,6 +7527,44 @@ def whatsapp_reply():
         )
         return str(resp)
 
+    # ── MY PLACES command: list or search My Area saved places ────────────────
+    if body_lower in ("my places", "my bookmarks", "places", "saved places") or body_lower.startswith("find my "):
+        user_token = _wa_user_token(from_number)
+        query = ""
+        if body_lower.startswith("find my "):
+            query = body_lower[len("find my "):].strip()
+        try:
+            rows = (lib._sb().table("my_area_places")
+                    .select("name,address,phone,emoji,opening_hours")
+                    .eq("device_id", user_token)
+                    .order("created_at").execute().data)
+        except Exception:
+            rows = []
+        if not rows:
+            resp.message(
+                f"📌 No saved places found.\n\n"
+                f"To sync your web bookmarks with WhatsApp, open this link:\n"
+                f"miru.humanagency.co/?screen=myarea&token={user_token}\n\n"
+                f"Bookmarks you add after opening that link will be searchable here."
+            )
+            return str(resp)
+        if query:
+            rows = [r for r in rows if query in r.get("name","").lower() or query in r.get("address","").lower()]
+            if not rows:
+                resp.message(f"🔍 Nothing found for '{query}' in your saved places.")
+                return str(resp)
+        lines = [f"📌 My Saved Places ({len(rows)}):"]
+        for r in rows[:10]:
+            line = f"\n{r.get('emoji','📍')} *{r['name']}*"
+            if r.get("address"):  line += f"\n   {r['address']}"
+            if r.get("phone"):    line += f"\n   📞 {r['phone']}"
+            if r.get("opening_hours"): line += f"\n   🕐 {r['opening_hours']}"
+            lines.append(line)
+        if len(rows) > 10:
+            lines.append(f"\n…and {len(rows)-10} more. Open the app to see all.")
+        resp.message("\n".join(lines))
+        return str(resp)
+
     # ── LIST command: on-demand saves summary ─────────────────────────────────
     if cmd_up == "LIST":
         try:

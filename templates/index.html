@@ -2503,6 +2503,16 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maDeviceId() {
+    // If opened via WhatsApp link (?token=xxx), adopt that token as device_id
+    // so web bookmarks and WhatsApp 'my places' command share the same data
+    const urlToken = new URLSearchParams(window.location.search).get("token");
+    if (urlToken) {
+      const stored = localStorage.getItem("miru_device_id");
+      if (stored !== urlToken) {
+        localStorage.setItem("miru_device_id", urlToken);
+      }
+      return urlToken;
+    }
     let id = localStorage.getItem("miru_device_id");
     if (!id) {
       id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -2631,6 +2641,14 @@ const _ts = new Date(d.timestamp);
     }
     if (count) count.textContent = `(${places.length})`;
     wrap.style.display = "";
+    const urlToken = new URLSearchParams(window.location.search).get("token");
+    const waTip = urlToken
+      ? `<div style="font-size:11px;color:#065f46;padding:8px 0;border-top:1px solid var(--border);margin-top:4px">
+           ✅ Synced with WhatsApp · Text <b>my places</b> to your Miru number to see these
+         </div>`
+      : `<div style="font-size:11px;color:var(--muted);padding:8px 0;border-top:1px solid var(--border);margin-top:4px">
+           💬 To search these on WhatsApp, text <b>my link</b> to your Miru number and open that link once
+         </div>`;
     list.innerHTML = places.map(p => `
       <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1;min-width:0">
@@ -2640,7 +2658,7 @@ const _ts = new Date(d.timestamp);
           ${p.opening_hours ? `<div style="font-size:10px;color:#065f46;margin-top:1px">🕐 ${p.opening_hours}</div>` : ""}
         </div>
         <button onclick="_maRemoveSaved('${p.id}')" style="flex-shrink:0;font-size:14px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 6px">✕</button>
-      </div>`).join("");
+      </div>`).join("") + waTip;
   }
 
   async function _maRemoveSaved(id) {
