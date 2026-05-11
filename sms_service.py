@@ -8511,11 +8511,12 @@ def _ma_gmail_get_token(token_row: dict) -> str:
 
 
 _MA_GMAIL_QUERIES = [
-    ("energy",      "from:octopus.energy OR from:britishgas.co.uk OR from:edf.co.uk OR from:eonenergy.com OR from:eon-next.co.uk OR from:scottishpower.co.uk"),
-    ("broadband",   "from:info.ee.co.uk OR from:eemail.ee.co.uk OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com"),
-    ("car_ins",     "from:admiral.com OR from:directline.com OR from:aviva.com OR from:axa.co.uk OR from:lv.com OR from:hastingsdirect.com"),
-    ("other",       "from:tvlicensing.co.uk"),
-    ("council_tax", "subject:council tax bill"),
+    ("energy",      "from:octopus.energy OR from:britishgas.co.uk OR from:edf.co.uk OR from:eonenergy.com OR from:eon-next.co.uk OR from:scottishpower.co.uk OR from:sse.co.uk OR from:utilita.co.uk OR from:bulb.co.uk"),
+    ("broadband",   "from:info.ee.co.uk OR from:eemail.ee.co.uk OR from:bt.com OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com OR from:vodafone.co.uk OR from:three.co.uk OR from:o2.co.uk"),
+    ("car_ins",     "from:admiral.com OR from:directline.com OR from:aviva.com OR from:axa.co.uk OR from:lv.com OR from:hastingsdirect.com OR from:churchill.com OR from:esure.com OR from:saga.co.uk"),
+    ("home_ins",    "from:admiral.com OR from:directline.com OR from:aviva.com OR from:axa.co.uk OR from:lv.com OR from:churchill.com OR from:johnlewisfinance.com"),
+    ("other",       "from:tvlicensing.co.uk OR from:thameswater.co.uk OR from:affinitywater.co.uk OR from:southern-water.co.uk OR from:anglianwater.co.uk OR from:yorkshirewater.com OR from:unitedutilities.com OR from:severntrent.com OR from:bupa.co.uk OR from:vitality.co.uk"),
+    ("council_tax", "subject:\"council tax\""),
 ]
 
 _MA_EXTRACT_SYSTEM = """You are a data extraction assistant. Extract household account details from UK utility/insurance emails.
@@ -8526,9 +8527,13 @@ Return ONLY a JSON object with these fields (omit fields you cannot find):
   "account_no": "account or policy number",
   "phone": "customer service phone number",
   "renewal_date": "DD/MM/YYYY or blank",
-  "label": "short human label e.g. Home Insurance or TV Licence"
+  "label": "short human label e.g. Home Insurance, TV Licence, Water, Mobile"
 }
-If the email is not about a household account/bill/insurance, return {"skip": true}."""
+Type mapping: energy=gas/electricity, broadband=internet/broadband/mobile/SIM, car_ins=car insurance,
+home_ins=home/contents/buildings insurance, life_ins=life insurance, council_tax=council tax,
+other=water/TV licence/health/anything else.
+If the email is a marketing email with no account details at all, return {"skip": true}.
+Otherwise always try to extract what you can."""
 
 
 def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
