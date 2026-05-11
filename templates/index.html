@@ -797,7 +797,7 @@
               <button id="co-share-btn" onclick="shareCompany()" style="font-size:12px;font-weight:600;color:#4f46e5;background:#eef2ff;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">Share</button>
             </div>
           </div>
-          <div id="brand-extract-el" style="font-size:13px;color:var(--text-secondary,#6b7280);line-height:1.6"></div>
+          <div id="brand-context-bar" style="display:none;margin-top:6px;font-size:11px;color:var(--muted)"></div>
         </div>
 
         <!-- Hidden compat elements renderCompany needs -->
@@ -2724,25 +2724,37 @@ const _ts = new Date(d.timestamp);
   async function _maTogglePlace(name, address, phone, emoji) {
     if (!_maSavedPlaces) _maSavedPlaces = [];
     const existing = _maSavedPlaces.find(p => p.name === name && p.address === (address||""));
+
     if (existing) {
-      // Remove from DB
-      await fetch(`/api/myarea/places/${existing.id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"});
+      // Optimistic: remove immediately, then sync to DB
       _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== existing.id);
+      _maRenderSavedPlaces();
+      _maRefreshBookmarkButtons();
+      _maReRenderSections();
+      fetch(`/api/myarea/places/${existing.id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"}).catch(()=>{});
     } else {
+      // Optimistic: add with temp id immediately, then replace with real record from DB
       const opening_hours = _maPlaceHoursMap[(name||"") + "|" + (address||"")] || "";
-      const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({name, address: address||"", phone: phone||"", emoji: emoji||"📍",
-                              opening_hours,
-                              postcode: document.getElementById("myarea-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase()}),
-      });
-      const saved = await r.json();
-      if (saved && saved.id) _maSavedPlaces.push(saved);
+      const tempId = "tmp_" + Date.now();
+      const temp = {id: tempId, name, address: address||"", phone: phone||"", emoji: emoji||"📍", opening_hours};
+      _maSavedPlaces.push(temp);
+      _maRenderSavedPlaces();
+      _maRefreshBookmarkButtons();
+      _maReRenderSections();
+      try {
+        const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`, {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({name, address: address||"", phone: phone||"", emoji: emoji||"📍",
+                                opening_hours,
+                                postcode: document.getElementById("myarea-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase()}),
+        });
+        const saved = await r.json();
+        if (saved && saved.id) {
+          _maSavedPlaces = _maSavedPlaces.map(p => p.id === tempId ? saved : p);
+        }
+      } catch(e) {}
     }
-    _maRenderSavedPlaces();
-    _maRefreshBookmarkButtons();
-    _maReRenderSections();
   }
 
   function _maRefreshBookmarkButtons() {
@@ -3595,7 +3607,7 @@ const _ts = new Date(d.timestamp);
     logoEl.style.display = "none";
     document.getElementById("brand-name-el").textContent = raw;
     document.getElementById("brand-desc-el").textContent = "";
-    document.getElementById("brand-extract-el").textContent = "";
+    
     const _sg = document.getElementById("brand-stats-grid");
     if (_sg) _sg.style.display = "none";
 
@@ -3623,7 +3635,6 @@ const _ts = new Date(d.timestamp);
         logoEl.onerror = function() { this.style.display = "none"; };
         if (brData.name) document.getElementById("brand-name-el").textContent = brData.name;
         if (brData.description) document.getElementById("brand-desc-el").textContent = brData.description;
-        if (brData.extract) document.getElementById("brand-extract-el").textContent = brData.extract;
       } else if (coData && coData.name) {
         document.getElementById("brand-name-el").textContent = coData.name;
       }
@@ -5827,11 +5838,17 @@ const _ts = new Date(d.timestamp);
     const name = input.value.trim();
     if (!name) return;
 
-    // If user previously resolved this term, jump straight to their choice
+    // If user previously resolved this term, use that choice but show a visible chip
     const _choices = JSON.parse(localStorage.getItem(_BRAND_CHOICES_KEY) || "{}");
     const _storedChoice = _choices[name.toLowerCase()];
     if (_storedChoice && _storedChoice.toLowerCase() !== name.toLowerCase()) {
       input.value = _storedChoice;
+      // Show "Searching for: Lynx deodorant · change" so user knows what happened
+      const dymEl = document.getElementById("brand-did-you-mean");
+      if (dymEl) {
+        dymEl.innerHTML = `🔍 Searching for: <strong>${_storedChoice}</strong> &nbsp;·&nbsp; <a href="#" onclick="_brandForgetChoice('${name.replace(/'/g,"\\'")}');document.getElementById('brand-input').value='${name.replace(/'/g,"\\'")}';document.getElementById('brand-did-you-mean').classList.add('hidden');searchBrand();return false;" style="color:#92400e;font-size:11px;text-decoration:underline">Not right? Search "${name}" directly</a>`;
+        dymEl.classList.remove("hidden");
+      }
       searchBrand();
       return;
     }
@@ -5941,7 +5958,6 @@ const _ts = new Date(d.timestamp);
 
     document.getElementById("brand-name-el").textContent = d.name || "";
     document.getElementById("brand-desc-el").textContent = d.description || "";
-    document.getElementById("brand-extract-el").textContent = d.extract || "";
 
     // Stats grid — only render boxes that have real values
     const _statFields = [
