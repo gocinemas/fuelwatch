@@ -1295,7 +1295,7 @@
             maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter') myAreaSearch()">
           <button onclick="myAreaUseLocation()" title="Use my location"
             style="flex-shrink:0;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer">📍</button>
-          <button onclick="myAreaSearch()"
+          <button id="myarea-go-btn" onclick="myAreaSearch()"
             style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer">Go</button>
         </div>
         <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
@@ -3106,7 +3106,6 @@ const _ts = new Date(d.timestamp);
     const pc = raw.replace(/\s+/g, "");
     _maCurrentPostcode = pc;
     MiruLocation.setHome(raw);
-    localStorage.setItem("miru_ma_visited", "1");
 
     // Persist server-side if logged in
     const _tok = _savesPin() || new URLSearchParams(window.location.search).get("token");
@@ -3325,24 +3324,10 @@ const _ts = new Date(d.timestamp);
     const banner = document.getElementById("myarea-link-banner");
     if (banner) banner.style.display = hasToken ? "none" : "";
 
-    const isFirstVisit = !localStorage.getItem("miru_ma_visited");
     const home = MiruLocation.getHome();
     const input = document.getElementById("myarea-postcode-input");
-
-    if (isFirstVisit) {
-      // Show welcome tip + open customise panel so user sets preferences first
-      const tip = document.getElementById("myarea-first-tip");
-      if (tip) tip.style.display = "block";
-      _maRenderCustomise();
-      const panel = document.getElementById("myarea-customise");
-      if (panel) panel.style.display = "block";
-      if (home && input) input.value = home; // pre-fill if available
-      return; // user clicks Go themselves after customising
-    }
-
-    // Returning user — load straight away
-    if (home) {
-      if (input) input.value = home;
+    if (home && input) {
+      input.value = home;
       myAreaSearch();
     } else if (hasToken) {
       _maLoadHomePostcode();

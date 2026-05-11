@@ -942,10 +942,8 @@ def fetch_brand_data(brand: str) -> dict:
                 if reply.startswith("ONE:"):
                     qualified = reply[4:].strip().strip('"').strip("'")
                     if qualified and qualified.lower() != canonical.lower():
-                        # Use qualified form for Wikipedia lookup so we get the brand, not the animal/person
-                        original = qualified
-                        if not suggested:
-                            suggested = qualified
+                        # Ask the user to confirm — same UX as multi-option disambiguation
+                        return {"disambiguate": [qualified], "name": canonical}
                 elif reply != "CLEAR" and reply.startswith("["):
                     import json as _json
                     options = _json.loads(reply)
@@ -954,7 +952,7 @@ def fetch_brand_data(brand: str) -> dict:
         except Exception:
             pass
 
-    cache_key = brand.strip().lower() + "|brandv23"
+    cache_key = brand.strip().lower() + "|brandv24"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
