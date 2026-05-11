@@ -2592,7 +2592,7 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maSectionHtml(id, title, bodyHtml) {
-    const collapsed = localStorage.getItem(`miru_mac_${id}`) === "1";
+    const collapsed = localStorage.getItem(`miru_mac_${id}`) !== "0";
     return `<div onclick="_maSectionToggle('${id}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0;margin-bottom:6px;user-select:none">
       <div style="font-size:13px;font-weight:700;color:var(--text)">${title}</div>
       <span id="ma-toggle-${id}" style="font-size:14px;color:var(--muted);flex-shrink:0;padding-left:8px">${collapsed ? "▸" : "▾"}</span>
@@ -3012,41 +3012,36 @@ const _ts = new Date(d.timestamp);
     _maShowTab(localStorage.getItem("miru_ma_tab") || "places");
     document.getElementById("myarea-loading").style.display = "block";
 
-    let _repsLoaded = false, _areaLoaded = false;
-    function _maCheckHideSpinner() {
-      if (_repsLoaded && _areaLoaded) document.getElementById("myarea-loading").style.display = "none";
+    function _maHideSpinner() {
+      document.getElementById("myarea-loading").style.display = "none";
     }
 
     // Use cached rep data from elections screen if available (instant render)
     const _cached = _miruRepsCache[pc];
     if (_cached && (_cached.mp || _cached.councillors)) {
       _maRenderReps(_cached.mp || {}, {councillors: _cached.councillors || []});
-      _repsLoaded = true;
-      _maCheckHideSpinner();
+      _maHideSpinner();
     }
 
-    // MP + councillor — fast path, update cache for future My Area / elections cross-use
+    // MP + councillor — fast path (~1-2s); spinner hides as soon as these arrive
     if (!_cached || !_cached.mp || !_cached.councillors) {
       Promise.all([
         fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
         fetch(`/api/councillor?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
       ]).then(([mp, councillorResp]) => {
         _miruRepsCache[pc] = {mp, councillors: (councillorResp && councillorResp.councillors) || []};
-        _repsLoaded = true;
         _maRenderReps(mp, councillorResp);
-        _maCheckHideSpinner();
-      }).catch(() => { _repsLoaded = true; _maCheckHideSpinner(); });
+        _maHideSpinner();
+      }).catch(() => { _maHideSpinner(); });
     }
 
-    // your-area (GPs, council, pharmacies via Overpass — cached 12h, slow on first hit)
+    // your-area (GPs, council, pharmacies via Overpass — renders independently when ready)
     fetch(`/api/your-area?postcode=${pc}`).then(r=>r.json()).then(area => {
       _maAreaData = area;
-      _areaLoaded = true;
       _maRenderCouncil(area);
       _maRenderGPs(area);
       _myAreaPersonalRender();
-      _maCheckHideSpinner();
-    }).catch(() => { _areaLoaded = true; _maCheckHideSpinner(); });
+    }).catch(()=>{});
 
     // Nearest train station (fast — uses in-memory station cache)
     fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_maRenderTrain).catch(()=>{});

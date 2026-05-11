@@ -3093,7 +3093,7 @@ _OVERPASS_URLS = [
 
 # Simple 30-minute in-memory cache for Overpass results keyed by postcode
 _services_cache: dict = {}
-_SERVICES_TTL = 21600  # 6 hours — hospitals/supermarkets/police don't move
+_SERVICES_TTL = 86400  # 24 hours — hospitals/supermarkets/police don't move
 
 def _overpass_mirrors(query, timeout=20):
     """POST to Overpass with mirror fallback. Use for hospitals/supermarkets."""
@@ -3137,7 +3137,8 @@ def _el_coords(el):
 
 def _el_phone(tags):
     return (tags.get("phone") or tags.get("telephone") or
-            tags.get("contact:phone") or tags.get("contact:telephone") or "").strip()
+            tags.get("contact:phone") or tags.get("contact:telephone") or
+            tags.get("contact:mobile") or tags.get("mobile") or "").strip()
 
 def _el_address(tags):
     parts = [
@@ -3461,7 +3462,7 @@ out center tags;"""
     except Exception: return []
 
 _your_area_cache: dict = {}
-_YOUR_AREA_TTL = 43200  # 12 hours
+_YOUR_AREA_TTL = 86400  # 24 hours
 
 @app.route("/api/your-area")
 def api_your_area():

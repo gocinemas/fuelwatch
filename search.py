@@ -356,7 +356,7 @@ def _overpass(query: str) -> list:
 
 # Cache for local amenities keyed by (lat_rounded, lon_rounded)
 _local_cache: dict = {}
-_LOCAL_CACHE_TTL = 21600  # 6 hours — schools/pubs/cafes don't move hour to hour
+_LOCAL_CACHE_TTL = 86400  # 24 hours — schools/pubs/cafes don't move
 
 # Cache for house prices keyed by normalised postcode
 _house_cache: dict = {}
@@ -406,14 +406,23 @@ out center 200;
         if elat is None or elon is None:
             continue
 
-        dist_mi = haversine_km(lat, lon, elat, elon) / 1.60934
-        entry = {"name": name, "dist_mi": dist_mi}
+        dist_km = haversine_km(lat, lon, elat, elon)
+        entry = {"name": name, "dist_mi": round(dist_km / 1.60934, 2)}
+        addr_parts = [tags.get("addr:housenumber",""), tags.get("addr:street","")]
+        entry["address"]     = " ".join(p for p in addr_parts if p).strip()
+        entry["distance_km"] = round(dist_km, 2)
+        entry["opening_hours"] = tags.get("opening_hours", "")
+        def _phone(t):
+            return (t.get("phone") or t.get("telephone") or t.get("contact:phone") or
+                    t.get("contact:telephone") or t.get("contact:mobile") or t.get("mobile") or "").strip()
 
         if amenity in ("school", "college"):
-            entry["urn"] = tags.get("ref:edubase", "")
+            entry["urn"]   = tags.get("ref:edubase", "")
+            entry["phone"] = _phone(tags)
             schools.append(entry)
         elif amenity == "university":
-            entry["urn"] = tags.get("ref:edubase", "")
+            entry["urn"]   = tags.get("ref:edubase", "")
+            entry["phone"] = _phone(tags)
             universities.append(entry)
         elif amenity in ("pub", "bar"):
             real_ale = tags.get("real_ale") == "yes"
@@ -421,14 +430,14 @@ out center 200;
             entry["note"]    = "Real ale" if real_ale else ("Gastropub" if cuisine else "")
             entry["fhrs_id"] = tags.get("fhrs:id", "")
             entry["website"] = tags.get("website", tags.get("contact:website", ""))
-            entry["phone"]   = tags.get("phone", tags.get("contact:phone", ""))
+            entry["phone"]   = _phone(tags)
             entry["lat"]     = elat
             entry["lon"]     = elon
             pubs.append(entry)
         elif amenity in ("cafe", "fast_food"):
             entry["fhrs_id"] = tags.get("fhrs:id", "")
             entry["website"] = tags.get("website", tags.get("contact:website", ""))
-            entry["phone"]   = tags.get("phone", tags.get("contact:phone", ""))
+            entry["phone"]   = _phone(tags)
             entry["lat"]     = elat
             entry["lon"]     = elon
             cafes.append(entry)
