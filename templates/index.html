@@ -1273,6 +1273,9 @@
       <!-- Customise panel -->
       <div id="myarea-customise" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px"></div>
 
+      <!-- Renewals / reminders banner -->
+      <div id="myarea-renewals" style="display:none;margin-bottom:10px"></div>
+
       <!-- ── POSTCODE + IDENTITY ROW ── -->
       <!-- Home banner (shown when home is set) -->
       <div id="myarea-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:9px 14px;margin-bottom:8px;align-items:center;justify-content:space-between">
@@ -1402,7 +1405,10 @@
       <div style="margin-top:18px">
         <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:10px">📋 My Details</div>
         <div id="myarea-personal-cards"></div>
-        <button onclick="myAreaAddDetail()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add insurance, energy, broadband &amp; more</button>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button onclick="myAreaAddDetail()" style="flex:1;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add insurance, energy, broadband &amp; more</button>
+          <button id="ma-test-data-btn" onclick="_maLoadTestData()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer" title="Load sample data for testing">🧪</button>
+        </div>
       </div>
     </div>
 
@@ -3449,14 +3455,17 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── My Vehicles (MOT) ────────────────────────────────────────────────────────
-  let _maVehicles = null; // cached from DB
+  let _maVehicles = null;
+  const _maMotCache = {}; // reg → { days_left, mot_expiry, tax_days_left, tax_due }
+  const _MA_VEHICLES_KEY = "miru_ma_vehicles";
+
+  function _maVehiclesFromLS() {
+    try { return JSON.parse(localStorage.getItem(_MA_VEHICLES_KEY) || "[]"); } catch { return []; }
+  }
+  function _maVehiclesToLS(arr) { localStorage.setItem(_MA_VEHICLES_KEY, JSON.stringify(arr)); }
 
   async function _maLoadVehicles() {
-    try {
-      const r = await fetch(`/api/myarea/vehicles?device_id=${encodeURIComponent(_maDeviceId())}`);
-      _maVehicles = await r.json();
-      if (!Array.isArray(_maVehicles)) _maVehicles = [];
-    } catch { _maVehicles = []; }
+    _maVehicles = _maVehiclesFromLS();
     _maRenderVehicles();
   }
 
@@ -3514,7 +3523,83 @@ const _ts = new Date(d.timestamp);
         ${motBadge}${d.mot_expiry ? `<span style="font-size:11px;color:var(--muted);padding-top:3px">until ${d.mot_expiry}</span>` : ""}
         ${taxBadge}
       </div>`;
+      _maMotCache[v.registration] = {
+        reg: v.registration, nickname: v.nickname || "",
+        mot_expiry: d.mot_expiry, mot_days: d.days_left,
+        tax_due: d.tax_due, tax_days: d.tax_days_left,
+      };
+      _maRenderRenewals();
     } catch { el.innerHTML = `<span style="color:#ef4444">Could not load data</span>`; }
+  }
+
+  function _maRenderRenewals() {
+    const el = document.getElementById("myarea-renewals");
+    if (!el) return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const items = [];
+
+    // Scan My Details for Renewal Date fields
+    (_myAreaGetDetails() || []).forEach(rec => {
+      const type = _MA_DETAIL_TYPES.find(t => t.key === rec.type);
+      const dateStr = rec.data?.["Renewal Date"];
+      if (!dateStr) return;
+      const d = new Date(dateStr); if (isNaN(d)) return;
+      d.setHours(0,0,0,0);
+      const days = Math.round((d - today) / 86400000);
+      if (days > 90 || days < -7) return;
+      const icon = type?.icon || "📋";
+      const provider = rec.data?.["Provider"] || rec.label || type?.label || "Detail";
+      items.push({ icon, label: `${provider} · ${type?.label || ""}`, days, date: dateStr });
+    });
+
+    // Scan MOT cache
+    Object.values(_maMotCache).forEach(v => {
+      const name = v.nickname ? `${v.reg} ${v.nickname}` : v.reg;
+      if (v.mot_days != null && v.mot_days <= 90 && v.mot_days >= -7)
+        items.push({ icon:"🔧", label:`${name} · MOT`, days: v.mot_days, date: v.mot_expiry });
+      if (v.tax_days != null && v.tax_days <= 90 && v.tax_days >= -7)
+        items.push({ icon:"🅿️", label:`${name} · Road Tax`, days: v.tax_days, date: v.tax_due });
+    });
+
+    if (!items.length) { el.style.display = "none"; return; }
+    items.sort((a, b) => a.days - b.days);
+
+    const rows = items.map(it => {
+      const urgency = it.days < 0 ? "#dc2626" : it.days < 30 ? "#dc2626" : it.days < 60 ? "#d97706" : "#16a34a";
+      const label = it.days < 0 ? `${Math.abs(it.days)}d overdue` : it.days === 0 ? "Today!" : `${it.days}d`;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--border)">
+        <span style="font-size:16px">${it.icon}</span>
+        <div style="flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${it.label}</div>
+        <div style="font-size:11px;font-weight:700;color:${urgency};flex-shrink:0">${label}</div>
+      </div>`;
+    }).join("").replace(/border-bottom[^"]*"([^"]*)"(?=[^]*<\/div>\s*$)/, '$1'); // remove last divider
+
+    el.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 6px;border-bottom:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:800;color:var(--text)">📅 Upcoming Renewals</div>
+        <span style="font-size:11px;color:var(--muted)">next 90 days</span>
+      </div>
+      ${rows}
+    </div>`;
+    el.style.display = "";
+  }
+
+  function _maLoadTestData() {
+    const today = new Date();
+    const dateIn = days => { const d = new Date(today); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); };
+    const records = [
+      { type:"home_ins",  label:"Home Insurance",  data:{ Provider:"Aviva", "Policy No":"AV-123456", Phone:"0800 051 5000", "Renewal Date": dateIn(18) }},
+      { type:"car_ins",   label:"Car Insurance",   data:{ Provider:"Direct Line", "Policy No":"DL-789012", Phone:"0345 246 8704", "Renewal Date": dateIn(45), Reg:"KT16 0DA" }},
+      { type:"energy",    label:"Energy",          data:{ Provider:"Octopus Energy", "Account No":"A-ABCD1234", "Emergency Phone":"0800 316 9999", "Renewal Date": dateIn(72) }},
+      { type:"broadband", label:"Broadband",       data:{ Provider:"BT", "Account No":"BT-56789", Phone:"0800 800 150" }},
+      { type:"council_tax",label:"Council Tax",    data:{ Council:"Runnymede Borough Council", "Account No":"CT-00123456", Phone:"01932 838383" }},
+      { type:"health",    label:"Health / BUPA",   data:{ Provider:"BUPA", "Member No":"B1234567", Phone:"0345 609 0111" }},
+    ];
+    _myAreaSaveDetails(records);
+    _myAreaPersonalRender();
+    _maRenderRenewals();
+    const btn = document.getElementById("ma-test-data-btn");
+    if (btn) btn.textContent = "✓ Test data loaded";
   }
 
   function _maAddVehicle() {
@@ -3543,30 +3628,25 @@ const _ts = new Date(d.timestamp);
     document.getElementById("ma-vreg-input").focus();
   }
 
-  async function _maSaveVehicle() {
+  function _maSaveVehicle() {
     const reg  = (document.getElementById("ma-vreg-input").value || "").trim().toUpperCase().replace(/\s+/g,"");
     const nick = (document.getElementById("ma-vnick-input").value || "").trim();
     const errEl = document.getElementById("ma-vreg-err");
     if (!reg) { errEl.textContent = "Enter a registration."; errEl.style.display = "block"; return; }
-    errEl.style.display = "none";
-    try {
-      const r = await fetch(`/api/myarea/vehicles?device_id=${encodeURIComponent(_maDeviceId())}`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({registration: reg, nickname: nick}),
-      });
-      const saved = await r.json();
-      if (saved.error) { errEl.textContent = saved.error; errEl.style.display = "block"; return; }
-      if (!_maVehicles) _maVehicles = [];
-      if (!_maVehicles.find(v => v.id === saved.id)) _maVehicles.push(saved);
-      document.getElementById("ma-vehicle-sheet").remove();
-      _maRenderVehicles();
-    } catch { errEl.textContent = "Could not save — try again."; errEl.style.display = "block"; }
+    if (!_maVehicles) _maVehicles = _maVehiclesFromLS();
+    if (_maVehicles.find(v => v.registration === reg)) {
+      errEl.textContent = "Already added."; errEl.style.display = "block"; return;
+    }
+    const id = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
+    _maVehicles.push({ id, registration: reg, nickname: nick });
+    _maVehiclesToLS(_maVehicles);
+    document.getElementById("ma-vehicle-sheet").remove();
+    _maRenderVehicles();
   }
 
-  async function _maRemoveVehicle(id) {
-    await fetch(`/api/myarea/vehicles/${id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"});
-    if (_maVehicles) _maVehicles = _maVehicles.filter(v => v.id !== id);
+  function _maRemoveVehicle(id) {
+    _maVehicles = (_maVehicles || _maVehiclesFromLS()).filter(v => v.id !== id);
+    _maVehiclesToLS(_maVehicles);
     _maRenderVehicles();
   }
 
@@ -3653,6 +3733,7 @@ const _ts = new Date(d.timestamp);
         ${rows || '<div style="font-size:12px;color:var(--muted)">No details saved yet</div>'}
       </div>`;
     }).join("");
+    _maRenderRenewals();
   }
 
   function myAreaAddDetail() {
