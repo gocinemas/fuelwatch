@@ -2911,11 +2911,12 @@ const _ts = new Date(d.timestamp);
     let title, bodyHtml;
     if (saved.length) {
       title = "🏫 My Schools";
-      const nearbyHtml = `
+      const unsaved = schools.filter(x => !_maIsSaved(x.name, x.address));
+      const nearbyHtml = unsaved.length ? `
         <button id="myarea-schools-nearby-btn" onclick="_maToggleNearby('schools')"
           style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
-          ▾ See all nearby</button>
-        <div id="myarea-schools-nearby" style="display:none;margin-top:6px">${_card(schools.map(x=>_maPlaceRow(x,"🏫")).join(""))}</div>`;
+          ▾ See ${unsaved.length} more nearby</button>
+        <div id="myarea-schools-nearby" style="display:none;margin-top:6px">${_card(unsaved.map(x=>_maPlaceRow(x,"🏫")).join(""))}</div>` : "";
       bodyHtml = `${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
     } else {
       title = "🏫 Nearby Schools";
@@ -3003,14 +3004,17 @@ const _ts = new Date(d.timestamp);
     let title, bodyHtml;
     if (saved.length) {
       title = "🩺 My Health";
-      const nearbyHtml = (gps.length || pharms.length) ? `
+      const unsavedGps   = gps.filter(x => !_maIsSaved(x.name, x.address));
+      const unsavedPharm = pharms.filter(x => !_maIsSaved(x.name, x.address));
+      const unsavedCount = unsavedGps.length + unsavedPharm.length;
+      const nearbyHtml = unsavedCount ? `
         <button id="myarea-gp-nearby-btn" onclick="_maToggleNearby('gp')"
           style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
-          ▾ See all nearby</button>
+          ▾ See ${unsavedCount} more nearby</button>
         <div id="myarea-gp-nearby" style="display:none;margin-top:6px">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
-            ${gps.map(x => _maPlaceRow(x, "🏥")).join("")}
-            ${pharms.map(x => _maPlaceRow(x, "💊")).join("")}
+            ${unsavedGps.map(x => _maPlaceRow(x, "🏥")).join("")}
+            ${unsavedPharm.map(x => _maPlaceRow(x, "💊")).join("")}
           </div></div>` : "";
       bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
         ${saved.map(_maBookmarkRow).join("")}</div>${nearbyHtml}`;
@@ -3043,15 +3047,19 @@ const _ts = new Date(d.timestamp);
     let title, bodyHtml;
     if (saved.length) {
       title = "🛒 My Shops";
+      const unsavedSupers = supers.filter(x => !_maIsSaved(x.name, x.address));
+      const unsavedOfflic = offlic.filter(x => !_maIsSaved(x.name, x.address));
+      const unsavedConvs  = convs.filter(x => !_maIsSaved(x.name, x.address));
+      const unsavedCount  = unsavedSupers.length + unsavedOfflic.length + unsavedConvs.length;
       const nearbyRows = [
-        supers.length ? _card(supers.map(x => _maPlaceRow(x, "🛒")).join("")) : "",
-        offlic.length ? _sub("🍷 Off-Licences", offlic.map(x => _maPlaceRow(x, "🍷")).join("")) : "",
-        convs.length  ? _sub("🏪 Convenience",  convs.map(x => _maPlaceRow(x, "🏪")).join(""))  : "",
+        unsavedSupers.length ? _card(unsavedSupers.map(x => _maPlaceRow(x, "🛒")).join("")) : "",
+        unsavedOfflic.length ? _sub("🍷 Off-Licences", unsavedOfflic.map(x => _maPlaceRow(x, "🍷")).join("")) : "",
+        unsavedConvs.length  ? _sub("🏪 Convenience",  unsavedConvs.map(x => _maPlaceRow(x, "🏪")).join(""))  : "",
       ].filter(Boolean).join("");
-      const nearbyHtml = nearbyRows ? `
+      const nearbyHtml = unsavedCount ? `
         <button id="myarea-shops-nearby-btn" onclick="_maToggleNearby('shops')"
           style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
-          ▾ See all nearby</button>
+          ▾ See ${unsavedCount} more nearby</button>
         <div id="myarea-shops-nearby" style="display:none;margin-top:6px">${nearbyRows}</div>` : "";
       bodyHtml = `${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
     } else {
@@ -3078,11 +3086,12 @@ const _ts = new Date(d.timestamp);
     let title, bodyHtml;
     if (saved.length) {
       title = "🍽️ My Pubs & Restaurants";
-      const nearbyRows = items.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join("");
-      const nearbyHtml = nearbyRows ? `
+      const unsavedItems = items.filter(x => !_maIsSaved(x.name, x.address));
+      const nearbyRows = unsavedItems.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join("");
+      const nearbyHtml = unsavedItems.length ? `
         <button id="myarea-pubs-nearby-btn" onclick="_maToggleNearby('pubs')"
           style="margin-top:6px;width:100%;padding:7px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">
-          ▾ See all nearby</button>
+          ▾ See ${unsavedItems.length} more nearby</button>
         <div id="myarea-pubs-nearby" style="display:none;margin-top:6px">${_card(nearbyRows)}</div>` : "";
       bodyHtml = `${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
     } else {
