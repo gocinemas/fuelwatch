@@ -8703,6 +8703,19 @@ def ma_gmail_status():
     return jsonify({"connected": False})
 
 
+@app.route("/api/myarea/gmail/clear-pending", methods=["POST"])
+def ma_gmail_clear_pending():
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify({"error": "device_id required"}), 400
+    try:
+        lib._sb().table("ma_gmail_tokens").update({"pending": []}) \
+            .eq("device_id", device_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/myarea/gmail/rescan", methods=["POST"])
 def ma_gmail_rescan():
     device_id = request.args.get("device_id", "").strip()
