@@ -8529,50 +8529,55 @@ def _ma_gmail_get_token(token_row: dict) -> str:
 
 
 _MA_GMAIL_QUERIES = [
-    # Energy — domain + subject fallback
-    ("energy",      'from:octopus.energy OR from:ovoenergy.com OR from:britishgas.co.uk OR from:edf.co.uk OR from:eonenergy.com OR from:eon-next.co.uk OR from:scottishpower.co.uk OR from:sse.co.uk OR from:utilita.co.uk OR from:bulb.co.uk OR from:e.on.co.uk newer_than:3y'),
-    ("energy",      'subject:"energy bill" OR subject:"electricity bill" OR subject:"gas bill" OR subject:"energy statement" newer_than:3y'),
-    # EE broadband + mobile — all ee.co.uk subdomains
-    ("broadband",   'from:ee.co.uk OR from:eemail.ee.co.uk OR from:account.ee.co.uk OR from:my.ee.co.uk newer_than:3y'),
-    # Other broadband/mobile
-    ("broadband",   'from:bt.com OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com OR from:vodafone.co.uk OR from:three.co.uk OR from:o2.co.uk OR from:giffgaff.com OR from:smarty.co.uk newer_than:3y'),
-    # TV Licensing — own query so it always gets its full slot
-    ("other",       'from:tvlicensing.co.uk OR subject:"TV Licence" OR subject:"TV License" OR subject:"television licence" newer_than:3y'),
-    # Water — all major UK water companies + subject fallback
+    # Energy — domain only (subject fallbacks attract comparison-site spam)
+    ("energy",      'from:octopus.energy OR from:ovoenergy.com OR from:britishgas.co.uk OR from:edf.co.uk OR from:eonenergy.com OR from:eon-next.co.uk OR from:scottishpower.co.uk OR from:sse.co.uk OR from:utilita.co.uk OR from:bulb.co.uk newer_than:3y'),
+    # EE — all ee.co.uk subdomains (mobile + broadband)
+    ("broadband",   'from:ee.co.uk OR from:eemail.ee.co.uk OR from:account.ee.co.uk OR from:my.ee.co.uk OR from:billing.ee.co.uk newer_than:3y'),
+    # Other broadband/mobile operators — domain only
+    ("broadband",   'from:bt.com OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com OR from:vodafone.co.uk OR from:three.co.uk OR from:o2.co.uk newer_than:3y'),
+    # TV Licensing — specific subject is safe here (not a generic term)
+    ("other",       'from:tvlicensing.co.uk OR subject:"TV Licence" OR subject:"TV License" newer_than:3y'),
+    # Water — domain only
     ("other",       'from:thameswater.co.uk OR from:thameswater.com OR from:affinitywater.co.uk OR from:southern-water.co.uk OR from:anglianwater.co.uk OR from:yorkshirewater.com OR from:unitedutilities.com OR from:severntrent.com OR from:southwest-water.co.uk OR from:dwrcymru.com newer_than:3y'),
-    ("other",       'subject:"water bill" OR subject:"water account" OR subject:"water direct debit" newer_than:3y'),
-    # Insurance
-    ("car_ins",     'from:admiral.com OR from:directline.com OR from:aviva.com OR from:axa.co.uk OR from:lv.com OR from:hastingsdirect.com OR from:churchill.com OR from:esure.com OR from:saga.co.uk OR from:comparethemarket.com newer_than:3y'),
-    ("home_ins",    'from:johnlewisfinance.com OR from:hiscox.co.uk OR from:policyexpert.co.uk OR subject:"home insurance" OR subject:"buildings insurance" OR subject:"contents insurance" newer_than:3y'),
-    # Health
-    ("other",       'from:bupa.co.uk OR from:vitality.co.uk OR from:axa-health.co.uk OR from:aviva.com OR subject:"health insurance" OR subject:"private medical" newer_than:3y'),
-    # Council tax
+    # Insurance — domain only (no subject fallbacks — too noisy)
+    ("car_ins",     'from:admiral.com OR from:directline.com OR from:aviva.com OR from:axa.co.uk OR from:lv.com OR from:hastingsdirect.com OR from:churchill.com OR from:esure.com OR from:saga.co.uk newer_than:3y'),
+    ("home_ins",    'from:johnlewisfinance.com OR from:hiscox.co.uk OR from:policyexpert.co.uk newer_than:3y'),
+    # Health — domain only
+    ("other",       'from:bupa.co.uk OR from:vitality.co.uk OR from:axa-health.co.uk newer_than:3y'),
+    # Council tax — subject is specific enough
     ("council_tax", 'subject:"council tax" newer_than:3y'),
 ]
 
-_MA_EXTRACT_SYSTEM = """You are a data extraction assistant for UK household accounts. Extract details from utility, telecoms, and insurance emails.
+_MA_EXTRACT_SYSTEM = """You are a data extraction assistant for UK household accounts.
 
-Return ONLY a JSON object:
+Your job: decide if this email is about the RECIPIENT'S OWN active account, and if so extract the details.
+
+Return {"skip": true} for ANY of these:
+- Marketing emails inviting you to switch or sign up ("Get EE broadband", "Switch to Octopus")
+- Price comparison results or quote emails
+- Newsletters, offers, or promotional content
+- Emails where no specific account/policy/reference number belonging to the recipient is mentioned
+
+Only extract if the email is clearly about an EXISTING account the recipient holds:
+- Monthly bill / statement / invoice for their account
+- Payment confirmation or direct debit notification
+- Account welcome / confirmation for a service they signed up for
+- Renewal notice for their existing policy or contract
+
+If extracting, return ONLY this JSON (omit fields you can't find):
 {
   "type": "energy|broadband|car_ins|home_ins|life_ins|council_tax|other",
-  "provider": "company name e.g. Three, EE, Thames Water, TV Licensing, Octopus Energy",
-  "account_no": "account/policy number shown in email — short alphanumeric only (e.g. A-201E4423, GB50302570). Omit if not clearly visible.",
-  "phone": "customer service number",
-  "renewal_date": "DD/MM/YYYY if shown, else omit",
-  "price": "monthly/annual cost if shown e.g. £31.99/month",
-  "label": "short label e.g. Mobile, Broadband, TV Licence, Water, Energy"
+  "provider": "company name e.g. EE, Three, Octopus Energy, Thames Water, TV Licensing",
+  "account_no": "their account or policy number — short alphanumeric only (e.g. A-201E4423, GB50302570, 2941997383). Omit if not clearly present.",
+  "phone": "customer service number for their account",
+  "renewal_date": "DD/MM/YYYY if shown",
+  "price": "their monthly/annual cost e.g. £31.99/month",
+  "label": "short label e.g. Mobile, Broadband, TV Licence, Water, Energy, Home Insurance"
 }
 
-Type rules:
-- energy = gas / electricity / dual fuel
-- broadband = internet / broadband / mobile phone / SIM / data — includes Three, EE, O2, Vodafone, Giffgaff
-- car_ins = car or motor insurance
-- home_ins = home / buildings / contents insurance
-- life_ins = life insurance
-- council_tax = council tax
-- other = water / TV Licence / health / dental / pet / anything else
-
-IMPORTANT: Only return {"skip": true} if the email is clearly a one-time promotional offer or newsletter with ZERO account or billing information. Monthly bills, account confirmations, payment receipts, renewal notices, and welcome emails all contain account info — DO NOT skip them. When in doubt, extract what you can rather than skipping."""
+Type rules: energy=gas/electricity, broadband=internet/broadband/mobile/SIM (EE/Three/O2/Vodafone),
+car_ins=car insurance, home_ins=home/buildings/contents, life_ins=life cover,
+council_tax=council tax, other=water/TV Licence/health/anything else."""
 
 
 def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
