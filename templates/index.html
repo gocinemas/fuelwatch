@@ -3634,8 +3634,9 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── Gmail import ─────────────────────────────────────────────────────────────
-  async function _maGmailConnect() {
+  function _maGmailConnect() {
     const did = _maDeviceId();
+    if (!did) { alert("Please set a home postcode first."); return; }
     window.location.href = `/api/myarea/gmail/connect?device_id=${encodeURIComponent(did)}`;
   }
 
@@ -3644,28 +3645,21 @@ const _ts = new Date(d.timestamp);
     try {
       const r = await fetch(`/api/myarea/gmail/status?device_id=${encodeURIComponent(did)}`);
       const d = await r.json();
-      const btn = document.getElementById("ma-gmail-btn");
       const lbl = document.getElementById("ma-gmail-btn-label");
       if (!d.connected) return;
       if (d.scan_status === "scanning") {
         if (lbl) lbl.textContent = "Scanning inbox…";
-        if (btn) btn.style.color = "#d97706";
         setTimeout(_maGmailCheckStatus, 3000);
         return;
       }
       if (d.scan_status === "done") {
         const pending = d.pending || [];
         if (pending.length) {
-          if (lbl) lbl.textContent = `${pending.length} found`;
-          if (btn) { btn.style.color = "#16a34a"; btn.onclick = () => _maGmailShowPreview(pending, d.email); }
-          // Auto-show preview
           if (!document.getElementById("ma-gmail-preview")) {
             _maGmailShowPreview(pending, d.email);
           }
-        } else {
-          if (lbl) lbl.textContent = `Connected (${d.email || "Gmail"})`;
-          if (btn) { btn.style.color = "#16a34a"; btn.onclick = () => _maGmailRescan(); }
         }
+        if (lbl) lbl.textContent = d.email ? `Gmail: ${d.email}` : "Import from Gmail";
       }
     } catch {}
   }
