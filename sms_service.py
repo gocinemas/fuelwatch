@@ -1213,17 +1213,39 @@ def api_house():
 
 @app.route("/api/local")
 def api_local():
-    """Slower endpoint: schools, pubs, cafes from Overpass (cached 1hr)."""
+    """Slower endpoint: schools, pubs, cafes from Overpass + Google Places phone enrichment."""
     result = _resolve_postcode(request.args.get("postcode", ""))
     if not result:
         return jsonify({"error": "Postcode not found."}), 404
     postcode, lat, lon, pc_fmt = result
     analytics.log_search("area", postcode, request.remote_addr, request.user_agent.string)
     local = fetch_local_amenities(lat, lon, 5.0, 5.0)
+
+    # Fill missing phone numbers from Google Places for top pubs and cafes
+    pubs  = local.get("pubs",  [])[:5]
+    cafes = local.get("cafes", [])[:5]
+    if _GOOGLE_PLACES_KEY:
+        def _enrich(entry):
+            if entry.get("phone"):
+                return entry
+            d = _lookup_venue(entry["name"], entry.get("lat"), entry.get("lon"))
+            if d.get("phone"):
+                entry = dict(entry)   # don't mutate cached Overpass data
+                entry["phone"] = d["phone"]
+            return entry
+        try:
+            combined = pubs + cafes
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                combined = list(ex.map(_enrich, combined))
+            pubs  = combined[:len(pubs)]
+            cafes = combined[len(pubs):]
+        except Exception:
+            pass
+
     return jsonify({
-        "schools":      {"schools": local.get("schools", []), "universities": local.get("universities", [])},
-        "pubs":         local.get("pubs", []),
-        "cafes":        local.get("cafes", []),
+        "schools": {"schools": local.get("schools", []), "universities": local.get("universities", [])},
+        "pubs":    pubs,
+        "cafes":   cafes,
     })
 
 
