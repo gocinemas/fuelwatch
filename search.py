@@ -913,8 +913,11 @@ def fetch_brand_data(brand: str) -> dict:
     brand = canonical
 
     # Step 2: classify — what specific brand/product/company is the user looking for?
-    # Run for any bare search (single word, or no product qualifier was stripped)
-    if canonical.lower() == original.lower().strip() or len(canonical.split()) == 1:
+    # Skip if user already added a qualifier (e.g. "Lynx deodorant" → don't re-show disambiguation)
+    _orig_words = original.lower().strip().split()
+    _can_words  = canonical.lower().split()
+    _user_qualified = (original.lower().strip() != canonical.lower()) and (len(_orig_words) > len(_can_words))
+    if not _user_qualified and (canonical.lower() == original.lower().strip() or len(canonical.split()) == 1):
         try:
             if groq_key:
                 r = requests.post(
@@ -983,6 +986,21 @@ def fetch_brand_data(brand: str) -> dict:
         # L2: Supabase persistent cache — skip if AI data is absent
         sb_data = _sb_cache_get("brand:" + cache_key)
         if sb_data and (sb_data.get("timeline") or sb_data.get("competitors")):
+            # Apply non-brand suppression to cached data too — catches stale entries
+            # written before this check was added (e.g. Lynx wildcat cached under v24)
+            _wd_c = (sb_data.get("description", "") + " " + (sb_data.get("extract", "") or "")[:300]).lower()
+            _NON_BRAND_C = ("genus of", "species of", "wild cat", "wildcat", "mammal", "felid",
+                            "extant species", "medium-sized wild", "born in", "born on",
+                            "actor", "actress", "singer", "musician", "politician", "footballer")
+            _BRAND_OK_C  = ("brand", "company", "product", "manufacturer", "deodorant",
+                            "founded", "subsidiary", "corporation", "fragrance", "cosmetic",
+                            "toiletri", "retailer", "fashion")
+            _bad_wiki = _wd_c and any(s in _wd_c for s in _NON_BRAND_C) and not any(s in _wd_c for s in _BRAND_OK_C)
+            if _bad_wiki:
+                # Clear bad wiki fields from the cached entry but keep AI data (timeline, competitors)
+                for fld in ("description", "extract", "wiki_url", "thumbnail"):
+                    sb_data[fld] = ""
+                print(f"[brand_cache] stripped non-brand wiki from cache for '{brand}'")
             _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": sb_data}
             return {**sb_data, "suggested_name": suggested}
 

@@ -1338,6 +1338,9 @@
         <div id="myarea-weather" style="display:none;margin-bottom:10px"></div>
         <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
         <div id="myarea-petrol"  style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-places-empty" style="display:none;text-align:center;padding:28px 16px;color:var(--muted);font-size:13px">
+          No data loaded. Tap <b>Customise</b> above to choose which sections to show, or check your postcode.
+        </div>
       </div>
 
       <!-- Tab: Services (health, shops, pubs, schools) -->
@@ -3129,14 +3132,23 @@ const _ts = new Date(d.timestamp);
       const el = document.getElementById(id);
       if (el) { el.innerHTML = ""; el.style.display = "none"; }
     });
+    const _emptyEl = document.getElementById("myarea-places-empty");
+    if (_emptyEl) _emptyEl.style.display = "none";
 
     // Spinner hide: keyed to this search sequence so old callbacks can't hide a newer spinner
     const seq = ++_maSearchSeq;
     const _hideSpinner = () => {
       if (_maSearchSeq !== seq) return;
       if (loader) loader.style.display = "none";
+      // Show empty-state message if Places tab has no visible content
+      const emptyEl = document.getElementById("myarea-places-empty");
+      if (emptyEl) {
+        const hasContent = ["myarea-weather","myarea-train","myarea-petrol"]
+          .some(id => { const el = document.getElementById(id); return el && el.style.display !== "none" && el.innerHTML.trim(); });
+        emptyEl.style.display = hasContent ? "none" : "";
+      }
     };
-    setTimeout(_hideSpinner, 8000); // hard 8s cap — spinner always hides
+    setTimeout(_hideSpinner, 6000); // 6s cap — spinner always hides
 
     // ── Train station (fast, in-memory cache — primary spinner trigger) ──────────
     fetch(`/api/train/nearest-by-postcode?postcode=${pc}`)
