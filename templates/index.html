@@ -2577,12 +2577,12 @@ const _ts = new Date(d.timestamp);
       const d = await r.json();
       const input = document.getElementById("myarea-postcode-input");
       const pc = d.postcode || MiruLocation.getHome();
-      if (pc && input && !input.value) { input.value = pc; myAreaSearch(); }
-      else if (!pc) _myAreaPersonalRender();
+      if (pc) { if (input) input.value = pc; myAreaSearch(); }
+      else _myAreaPersonalRender();
     } catch {
       const home = MiruLocation.getHome();
       const input = document.getElementById("myarea-postcode-input");
-      if (home && input && !input.value) { input.value = home; myAreaSearch(); }
+      if (home) { if (input) input.value = home; myAreaSearch(); }
       else _myAreaPersonalRender();
     }
   }
@@ -3304,8 +3304,8 @@ const _ts = new Date(d.timestamp);
     } else {
       const home = MiruLocation.getHome();
       const input = document.getElementById("myarea-postcode-input");
-      if (home && input && input.value !== home) { input.value = home; myAreaSearch(); }
-      else if (!home) _myAreaPersonalRender();
+      if (home) { if (input) input.value = home; myAreaSearch(); }
+      else _myAreaPersonalRender();
     }
   }
 

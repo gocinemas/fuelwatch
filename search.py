@@ -685,7 +685,9 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
     groq_key = os.environ.get("GROQ_API_KEY", "")
     if not groq_key:
         return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
-    prompt = f"""Return ONLY valid JSON for brand "{brand}". No markdown, no explanation.
+    # extract doubles as the original user query for context (e.g. "Lynx deodorant")
+    context_hint = f' (the user searched for: "{extract}")' if extract and extract.lower() != brand.lower() else ""
+    prompt = f"""Return ONLY valid JSON for brand "{brand}"{context_hint}. No markdown, no explanation.
 {{"did_you_know":"one striking memorable stat or fact about {brand} — a surprising number, scale, or behaviour (1 sentence, start with the brand name or a specific number)","facts":{{"founded":"","hq":"","industry":"","employees":"","revenue":""}},"competitors":[{{"name":"","revenue":"","description":""}}],"campaigns":[{{"name":"","year":"","description":""}}],"timeline":[{{"year":"","title":"","description":""}}]}}
 Rules: did_you_know must be concrete and surprising, not generic. facts fill all 5 fields. competitors: 4 items each with revenue. campaigns: 4 items. timeline: 8-10 milestones oldest to newest each with title+description."""
     try:
@@ -924,7 +926,7 @@ def fetch_brand_data(brand: str) -> dict:
                               'Is this ambiguous — does it match multiple distinct well-known brands or companies?\n'
                               'Examples of ambiguous: "Virgin" (Virgin Atlantic, Virgin Money, Virgin Media, Virgin Group), '
                               '"Next" (Next retail, Next plc).\n'
-                              'NOT ambiguous: "Apple" (one major brand), "O2" (one UK telco), "Lynx" (deodorant brand by Unilever).\n'
+                              'NOT ambiguous: "Apple" (clearly one tech company), "O2" (one UK telco), "Nike" (one sportswear brand).\n'
                               'If ambiguous, reply ONLY with a JSON array of up to 5 full brand names.\n'
                               'If NOT ambiguous (single clear brand), reply with exactly: NO'}],
                           "max_tokens": 80, "temperature": 0.0},
@@ -975,12 +977,15 @@ def fetch_brand_data(brand: str) -> dict:
 
         fetch_start = time.time()
 
+        # Use original query for Wikipedia so product context is preserved
+        # e.g. "Lynx deodorant" finds Axe/Lynx body spray; "Lynx" alone finds the wild cat
+        wiki_query = original if original.lower() != brand.lower() else brand
         with _cf.ThreadPoolExecutor(max_workers=6) as pool:
-            wiki_f = pool.submit(_fetch_wikipedia, brand)
+            wiki_f = pool.submit(_fetch_wikipedia, wiki_query)
             news_f = pool.submit(_fetch_news, brand, "brand OR campaign OR advertising OR revenue OR launch", 6)
             ads_f  = pool.submit(_fetch_brand_ads, brand)
             fin_f  = pool.submit(_fetch_brand_financials, brand)
-            ai_f   = pool.submit(_fetch_brand_ai, brand, "")
+            ai_f   = pool.submit(_fetch_brand_ai, brand, original)
 
             wiki = {}
             try: wiki = wiki_f.result(timeout=10) or {}
