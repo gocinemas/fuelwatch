@@ -1402,7 +1402,7 @@
       <div style="margin-top:18px">
         <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:10px">📋 My Details</div>
         <div id="myarea-personal-cards"></div>
-        <button onclick="myAreaAddDetail()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add insurance / broadband / other</button>
+        <button onclick="myAreaAddDetail()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add insurance, energy, broadband &amp; more</button>
       </div>
     </div>
 
@@ -3613,12 +3613,14 @@ const _ts = new Date(d.timestamp);
 
   // ── My Area personal details (localStorage) ───────────────────────────────────
   const _MA_DETAIL_TYPES = [
-    { key:"home_ins",  icon:"🏠", label:"Home Insurance",  fields:["Provider","Policy No","Phone","Renewal Date"] },
-    { key:"car_ins",   icon:"🚗", label:"Car Insurance",    fields:["Provider","Policy No","Phone","Renewal Date","Reg"] },
-    { key:"broadband", icon:"📡", label:"Broadband",        fields:["Provider","Account No","Phone"] },
-    { key:"health",    icon:"💳", label:"Health / BUPA",    fields:["Provider","Member No","Phone"] },
-    { key:"life_ins",  icon:"🛡️", label:"Life Insurance",   fields:["Provider","Policy No","Phone","Renewal Date"] },
-    { key:"other",     icon:"📝", label:"Other",            fields:["Label","Detail","Phone"] },
+    { key:"home_ins",    icon:"🏠", label:"Home Insurance",     group:"Home & Utilities",    fields:["Provider","Policy No","Phone","Renewal Date"] },
+    { key:"energy",      icon:"⚡", label:"Energy",             group:"Home & Utilities",    fields:["Provider","Account No","Emergency Phone","Renewal Date"] },
+    { key:"broadband",   icon:"📡", label:"Broadband",          group:"Home & Utilities",    fields:["Provider","Account No","Phone"] },
+    { key:"council_tax", icon:"🏛️", label:"Council Tax",        group:"Home & Utilities",    fields:["Council","Account No","Phone"] },
+    { key:"car_ins",     icon:"🚗", label:"Car Insurance",      group:"Vehicle & Personal",  fields:["Provider","Policy No","Phone","Renewal Date","Reg"] },
+    { key:"health",      icon:"💳", label:"Health / BUPA",      group:"Vehicle & Personal",  fields:["Provider","Member No","Phone"] },
+    { key:"life_ins",    icon:"🛡️", label:"Life Insurance",     group:"Vehicle & Personal",  fields:["Provider","Policy No","Phone","Renewal Date"] },
+    { key:"other",       icon:"📝", label:"Other",              group:"Other",               fields:["Label","Detail","Phone"] },
   ];
 
   function _myAreaGetDetails() {
@@ -3632,7 +3634,7 @@ const _ts = new Date(d.timestamp);
     const records = _myAreaGetDetails();
     if (!records.length) { el.innerHTML = ""; return; }
     el.innerHTML = records.map((rec, idx) => {
-      const type = _MA_DETAIL_TYPES.find(t => t.key === rec.type) || _MA_DETAIL_TYPES[5];
+      const type = _MA_DETAIL_TYPES.find(t => t.key === rec.type) || _MA_DETAIL_TYPES.find(t=>t.key==="other");
       const rows = type.fields.map(f => {
         const val = rec.data?.[f] || "";
         return val ? `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
@@ -3671,10 +3673,15 @@ const _ts = new Date(d.timestamp);
     const overlay = document.createElement("div");
     overlay.id = "ma-detail-overlay";
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
-    const type = existing ? (_MA_DETAIL_TYPES.find(t=>t.key===existing.type)||_MA_DETAIL_TYPES[5]) : _MA_DETAIL_TYPES[0];
+    const type = existing ? (_MA_DETAIL_TYPES.find(t=>t.key===existing.type)||_MA_DETAIL_TYPES.find(t=>t.key==="other")) : _MA_DETAIL_TYPES[0];
     const sheet = document.createElement("div");
     sheet.style.cssText = "background:var(--surface);border-radius:20px 20px 0 0;padding:20px 18px 36px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto";
-    const typeOpts = _MA_DETAIL_TYPES.map(t=>`<option value="${t.key}" ${existing?.type===t.key?"selected":""}>${t.icon} ${t.label}</option>`).join("");
+    const _groups = [...new Set(_MA_DETAIL_TYPES.map(t=>t.group))];
+    const typeOpts = _groups.map(g => {
+      const opts = _MA_DETAIL_TYPES.filter(t=>t.group===g)
+        .map(t=>`<option value="${t.key}" ${existing?.type===t.key?"selected":""}>${t.icon} ${t.label}</option>`).join("");
+      return `<optgroup label="${g}">${opts}</optgroup>`;
+    }).join("");
     sheet.innerHTML = `
       <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:14px">${idx===-1?"Add Detail":"Edit Detail"}</div>
       <div style="margin-bottom:12px">
@@ -3710,7 +3717,7 @@ const _ts = new Date(d.timestamp);
     const overlay = document.getElementById("ma-detail-overlay");
     if (!overlay) return;
     const typeKey = overlay.querySelector("#maed-type").value;
-    const type = _MA_DETAIL_TYPES.find(t=>t.key===typeKey) || _MA_DETAIL_TYPES[5];
+    const type = _MA_DETAIL_TYPES.find(t=>t.key===typeKey) || _MA_DETAIL_TYPES.find(t=>t.key==="other");
     const data = {};
     overlay.querySelectorAll("[data-field]").forEach(inp => { data[inp.dataset.field] = inp.value.trim(); });
     const records = _myAreaGetDetails();
