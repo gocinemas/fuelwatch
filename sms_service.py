@@ -7568,6 +7568,28 @@ def whatsapp_reply():
         resp.message("\n".join(lines))
         return str(resp)
 
+    # ── FIND SAVE command: search wa_saves ───────────────────────────────────
+    if body_lower.startswith("find save ") or body_lower.startswith("search saves ") or body_lower.startswith("find saves "):
+        prefix = next(p for p in ("find save ", "search saves ", "find saves ") if body_lower.startswith(p))
+        query = body_lower[len(prefix):].strip()
+        if query:
+            try:
+                hits = lib.saves_search(query, from_number=from_number, hits_per_page=8)
+            except Exception:
+                hits = []
+            if not hits:
+                resp.message(f"🔍 Nothing found for \"{query}\" in your saves.\n\nTip: search in the app at miru.humanagency.co")
+            else:
+                lines = [f"🔍 Saves matching \"{query}\":"]
+                for h in hits[:6]:
+                    title = h.get("title") or h.get("doc_title") or "Untitled"
+                    summary = (h.get("summary") or "")[:120]
+                    lines.append(f"\n*{title}*")
+                    if summary:
+                        lines.append(f"   {summary}")
+                resp.message("\n".join(lines))
+            return str(resp)
+
     # ── LIST command: on-demand saves summary ─────────────────────────────────
     if cmd_up == "LIST":
         try:

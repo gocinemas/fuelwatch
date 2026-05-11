@@ -1286,7 +1286,7 @@
       <div id="myarea-saved" style="display:none;margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:13px;font-weight:700;color:var(--text)">📌 My Saved Places <span id="myarea-saved-count" style="font-size:11px;font-weight:400;color:var(--muted)"></span></div>
-          <button onclick="_maToggleSavedCollapse()" id="myarea-saved-toggle" style="background:none;border:none;font-size:15px;cursor:pointer;color:var(--muted);padding:2px 4px;line-height:1">▾</button>
+          <button onclick="_maToggleSavedCollapse()" id="myarea-saved-toggle" style="background:none;border:none;font-size:15px;cursor:pointer;color:var(--muted);padding:2px 4px;line-height:1">▸</button>
         </div>
         <div id="myarea-saved-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
       </div>
@@ -2669,6 +2669,7 @@ const _ts = new Date(d.timestamp);
     const collapsed = list.style.display === "none";
     list.style.display = collapsed ? "" : "none";
     if (btn) btn.textContent = collapsed ? "▾" : "▸";
+    localStorage.setItem("miru_ma_saved_open", collapsed ? "1" : "0");
   }
 
   function _maRenderSavedPlaces() {
@@ -2694,6 +2695,11 @@ const _ts = new Date(d.timestamp);
     }
     if (count) count.textContent = `(${places.length})`;
     wrap.style.display = "";
+    // Collapse list by default; only expand if user has explicitly opened it
+    const savedOpen = localStorage.getItem("miru_ma_saved_open") === "1";
+    const toggleBtn = document.getElementById("myarea-saved-toggle");
+    list.style.display = savedOpen ? "" : "none";
+    if (toggleBtn) toggleBtn.textContent = savedOpen ? "▾" : "▸";
     const urlToken = new URLSearchParams(window.location.search).get("token");
     const waTip = urlToken
       ? `<div style="font-size:11px;color:#065f46;padding:8px 0;border-top:1px solid var(--border);margin-top:4px">
@@ -8788,6 +8794,7 @@ _bkBadge();
   // ── Category system ─────────────────────────────────────────────────────────
   var _SAVE_CATS = [
     {key:"all",      label:"All"},
+    {key:"wine",     label:"🍷 Wine"},
     {key:"article",  label:"🔗 Articles"},
     {key:"brand",    label:"🏷️ Brands"},
     {key:"place",    label:"🏪 Restaurants"},
@@ -8800,6 +8807,7 @@ _bkBadge();
 
   function _saveCat(s) {
     const t = s.title || "";
+    if (t.startsWith("🍷")) return "wine";
     if (t.startsWith("🏷️")) return "brand";
     if (t.startsWith("🏪")) return "place";
     if (t.startsWith("📢")) return "ad";
