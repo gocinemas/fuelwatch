@@ -2898,9 +2898,11 @@ const _ts = new Date(d.timestamp);
     const hours = x.opening_hours ? `<div style="font-size:10px;color:#065f46;margin-top:1px">🕐 ${x.opening_hours}</div>` : "";
     if (x.opening_hours) _maPlaceHoursMap[(x.name||"") + "|" + (x.address||"")] = x.opening_hours;
     const saved = _maIsSaved(x.name, x.address);
-    const nameEsc = x.name.replace(/'/g,"&#39;"), addrEsc = (x.address||"").replace(/'/g,"&#39;"), phoneEsc = (x.phone||"").replace(/'/g,"&#39;");
+    const nameEsc = x.name.replace(/"/g,"&quot;"), addrEsc = (x.address||"").replace(/"/g,"&quot;"),
+          phoneEsc = (x.phone||"").replace(/"/g,"&quot;"), emojiEsc = (emoji||"📍").replace(/"/g,"&quot;");
     const saveBtn = `<button data-ma-save-name="${nameEsc}" data-ma-save-addr="${addrEsc}"
-      onclick="_maTogglePlace('${nameEsc}','${addrEsc}','${phoneEsc}','${emoji||"📍"}')"
+      data-ma-save-phone="${phoneEsc}" data-ma-save-emoji="${emojiEsc}"
+      onclick="_maTogglePlace(this.dataset.maSaveName,this.dataset.maSaveAddr,this.dataset.maSavePhone,this.dataset.maSaveEmoji)"
       style="flex-shrink:0;font-size:16px;background:none;border:none;cursor:pointer;padding:4px 2px;color:${saved?"#f59e0b":"#d1d5db"}">
       ${saved?"⭐":"☆"}</button>`;
     return `<div style="display:flex;align-items:flex-start;gap:6px;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -2928,8 +2930,9 @@ const _ts = new Date(d.timestamp);
     const sub2 = [person.constituency, person.ward].filter(Boolean).join(" · ");
     const repEmoji = role.includes("MP") ? "🏛️" : "🏘️";
     const repSaved = _maIsSaved(person.name, person.email || "");
-    const repSaveBtn = `<button data-ma-save-name="${(person.name||"").replace(/'/g,"&#39;")}" data-ma-save-addr="${(person.email||"").replace(/'/g,"&#39;")}"
-      onclick="_maTogglePlace('${(person.name||"").replace(/'/g,"&#39;")}','${(person.email||"").replace(/'/g,"&#39;")}','${(person.phone||"").replace(/'/g,"&#39;")}','${repEmoji}')"
+    const repSaveBtn = `<button data-ma-save-name="${(person.name||"").replace(/"/g,"&quot;")}" data-ma-save-addr="${(person.email||"").replace(/"/g,"&quot;")}"
+      data-ma-save-phone="${(person.phone||"").replace(/"/g,"&quot;")}" data-ma-save-emoji="${repEmoji}"
+      onclick="_maTogglePlace(this.dataset.maSaveName,this.dataset.maSaveAddr,this.dataset.maSavePhone,this.dataset.maSaveEmoji)"
       style="flex-shrink:0;font-size:18px;background:none;border:none;cursor:pointer;padding:4px;color:${repSaved?"#f59e0b":"#d1d5db"}" title="Save to My Places">
       ${repSaved?"⭐":"☆"}</button>`;
     return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
@@ -3051,7 +3054,7 @@ const _ts = new Date(d.timestamp);
     const el = document.getElementById("myarea-train");
     if (!data || !data.name || data.error) { el.style.display = "none"; return; }
     const dist = data.distance_km ? `${(data.distance_km * 0.621371).toFixed(1)} mi away` : "";
-    const nameEsc = data.name.replace(/'/g,"&#39;");
+    const nameEsc = data.name.replace(/"/g,"&quot;");
     const saved = _maIsSaved(data.name, "train-station");
     const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px">
       <div style="flex:1;min-width:0">
@@ -3059,7 +3062,8 @@ const _ts = new Date(d.timestamp);
         ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
       </div>
       <button data-ma-save-name="${nameEsc}" data-ma-save-addr="train-station"
-        onclick="_maTogglePlace('${nameEsc}','train-station','','🚆')"
+        data-ma-save-phone="" data-ma-save-emoji="🚆"
+        onclick="_maTogglePlace(this.dataset.maSaveName,this.dataset.maSaveAddr,this.dataset.maSavePhone,this.dataset.maSaveEmoji)"
         style="flex-shrink:0;font-size:18px;background:none;border:none;cursor:pointer;padding:4px 2px;color:${saved?"#f59e0b":"#d1d5db"}">${saved?"⭐":"☆"}</button>
       <button onclick="if(window._fillTrains){_fillTrains('${data.name.replace(/'/g,"\\'")}');}else{showScreen('trains');}"
         style="flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">
