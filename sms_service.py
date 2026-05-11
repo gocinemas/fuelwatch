@@ -8001,6 +8001,152 @@ def health():
     return {"status": "ok", "stations_loaded": len(stations)}
 
 
+# ── Admin: Gmail import test ──────────────────────────────────────────────────
+
+_ADMIN_KEY = os.environ.get("ADMIN_KEY", "miru-admin-2026")
+
+_GMAIL_TEST_PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Miru — Gmail Import Test</title>
+<style>
+  body{font-family:system-ui,sans-serif;max-width:680px;margin:40px auto;padding:0 20px;background:#f8fafc;color:#1e293b}
+  h1{font-size:20px;font-weight:800;margin-bottom:4px}
+  .sub{font-size:13px;color:#64748b;margin-bottom:24px}
+  label{font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px}
+  textarea{width:100%;height:260px;border:1.5px solid #cbd5e1;border-radius:10px;padding:12px;font-size:13px;font-family:monospace;box-sizing:border-box;resize:vertical;background:#fff}
+  button{background:#065f46;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px}
+  button:hover{background:#047857}
+  #result{margin-top:20px;display:none}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px}
+  .card h2{font-size:14px;font-weight:700;margin:0 0 10px}
+  .row{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+  .lbl{color:#64748b;min-width:110px;flex-shrink:0}
+  .val{font-weight:600;color:#1e293b}
+  .import-btn{background:#2563eb;font-size:12px;padding:7px 14px;margin-top:10px}
+  .hint{font-size:11px;color:#94a3b8;margin-top:6px}
+  #status{font-size:13px;color:#64748b;margin-top:8px}
+  .err{color:#dc2626}
+</style>
+</head>
+<body>
+<h1>📧 Gmail Import Test</h1>
+<p class="sub">Admin only — paste the body of an insurance, energy, broadband or council tax email and Claude will extract the structured fields.</p>
+
+<label>EMAIL BODY (plain text or HTML)</label>
+<textarea id="email-body" placeholder="Paste email content here…"></textarea>
+<div id="status"></div>
+<button onclick="extract()">Extract Details</button>
+
+<div id="result"></div>
+
+<script>
+async function extract() {
+  const body = document.getElementById('email-body').value.trim();
+  if (!body) return;
+  const status = document.getElementById('status');
+  const result = document.getElementById('result');
+  status.textContent = 'Extracting…';
+  result.style.display = 'none';
+  try {
+    const r = await fetch('/admin/gmail-extract?key=%(key)s', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email_body: body})
+    });
+    const d = await r.json();
+    status.textContent = '';
+    if (d.error) { status.innerHTML = '<span class=\"err\">' + d.error + '</span>'; return; }
+    result.style.display = '';
+    result.innerHTML = renderCards(d.records || []);
+  } catch(e) {
+    status.innerHTML = '<span class=\"err\">Error: ' + e.message + '</span>';
+  }
+}
+function renderCards(records) {
+  if (!records.length) return '<div class="card"><h2>No structured data found</h2></div>';
+  return records.map(rec => {
+    const rows = Object.entries(rec.data || {}).filter(([,v])=>v).map(([k,v]) =>
+      `<div class="row"><span class="lbl">${k}</span><span class="val">${v}</span></div>`
+    ).join('');
+    const js = JSON.stringify(rec).replace(/'/g, "\\'");
+    return `<div class="card">
+      <h2>${rec.icon || '📋'} ${rec.label}</h2>
+      ${rows}
+      <button class="import-btn" onclick="copyRecord('${js}')">📋 Copy JSON</button>
+      <p class="hint">Paste this into My Details in Miru (or use the WhatsApp import flow)</p>
+    </div>`;
+  }).join('');
+}
+function copyRecord(js) {
+  navigator.clipboard.writeText(js).then(() => alert('Copied to clipboard!'));
+}
+</script>
+</body>
+</html>"""
+
+@app.route("/admin/gmail-test")
+def admin_gmail_test():
+    key = request.args.get("key", "")
+    if key != _ADMIN_KEY:
+        return "Unauthorized", 401
+    return _GMAIL_TEST_PAGE % {"key": key}
+
+
+@app.route("/admin/gmail-extract", methods=["POST"])
+def admin_gmail_extract():
+    key = request.args.get("key", "")
+    if key != _ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    body = (request.get_json(force=True, silent=True) or {}).get("email_body", "").strip()
+    if not body:
+        return jsonify({"error": "email_body required"}), 400
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY not set"}), 503
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        prompt = f"""Extract structured account/policy details from this email for storage in a personal info app.
+
+Return a JSON object: {{"records": [...]}} where each record is:
+{{
+  "type": one of home_ins|car_ins|energy|broadband|council_tax|health|life_ins|other,
+  "label": human-friendly label,
+  "icon": one relevant emoji,
+  "data": {{
+    "Provider": "",
+    "Policy No": "",        (or "Account No" for energy/broadband/council)
+    "Phone": "",
+    "Renewal Date": "",     (YYYY-MM-DD format if found, else "")
+    "Reg": ""               (car only)
+  }}
+}}
+
+Only include fields that have actual values. Return [] if no relevant data found.
+Respond with ONLY valid JSON, no prose.
+
+EMAIL:
+{body[:8000]}"""
+
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=800,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = msg.content[0].text.strip()
+        # Strip markdown code fences if present
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        return jsonify(json.loads(raw))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Charts ────────────────────────────────────────────────────────────────────
 
 def _make_chart(fig):
