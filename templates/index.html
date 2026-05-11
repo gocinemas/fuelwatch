@@ -1277,7 +1277,10 @@
 
       <!-- Saved Places -->
       <div id="myarea-saved" style="display:none;margin-bottom:14px">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">📌 My Saved Places</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">📌 My Saved Places <span id="myarea-saved-count" style="font-size:11px;font-weight:400;color:var(--muted)"></span></div>
+          <button onclick="_maToggleSavedCollapse()" id="myarea-saved-toggle" style="background:none;border:none;font-size:15px;cursor:pointer;color:var(--muted);padding:2px 4px;line-height:1">▾</button>
+        </div>
         <div id="myarea-saved-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
       </div>
 
@@ -1290,7 +1293,10 @@
       <!-- Live data sections (populated by JS) -->
       <div id="myarea-reps"     style="display:none;margin-top:14px"></div>
       <div id="myarea-council"  style="display:none;margin-top:10px"></div>
+      <div id="myarea-weather"  style="display:none;margin-top:10px"></div>
       <div id="myarea-train"    style="display:none;margin-top:10px"></div>
+      <div id="myarea-petrol"   style="display:none;margin-top:10px"></div>
+      <div id="myarea-crime"    style="display:none;margin-top:10px"></div>
       <div id="myarea-gp"       style="display:none;margin-top:10px"></div>
       <div id="myarea-schools"  style="display:none;margin-top:10px"></div>
       <div id="myarea-shops"    style="display:none;margin-top:10px">
@@ -2429,6 +2435,8 @@ const _ts = new Date(d.timestamp);
 
   // In-memory mirror of DB saved places for instant UI (avoids repeated fetches)
   let _maSavedPlaces = null; // null = not yet loaded
+  // Temporary map: "name|address" → opening_hours (populated as results render, used when saving)
+  const _maPlaceHoursMap = {};
 
   function _maIsSaved(name, address) {
     return (_maSavedPlaces || []).some(p => p.name === name && p.address === (address||""));
@@ -2452,10 +2460,12 @@ const _ts = new Date(d.timestamp);
       await fetch(`/api/myarea/places/${existing.id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"});
       _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== existing.id);
     } else {
+      const opening_hours = _maPlaceHoursMap[(name||"") + "|" + (address||"")] || "";
       const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`, {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({name, address: address||"", phone: phone||"", emoji: emoji||"📍",
+                              opening_hours,
                               postcode: document.getElementById("myarea-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase()}),
       });
       const saved = await r.json();
@@ -2479,10 +2489,19 @@ const _ts = new Date(d.timestamp);
     document.getElementById("myarea-postcode-input").focus();
   }
 
+  function _maToggleSavedCollapse() {
+    const list = document.getElementById("myarea-saved-list");
+    const btn  = document.getElementById("myarea-saved-toggle");
+    const collapsed = list.style.display === "none";
+    list.style.display = collapsed ? "" : "none";
+    if (btn) btn.textContent = collapsed ? "▾" : "▸";
+  }
+
   function _maRenderSavedPlaces() {
     const places = _maSavedPlaces || [];
     const wrap = document.getElementById("myarea-saved");
     const list = document.getElementById("myarea-saved-list");
+    const count = document.getElementById("myarea-saved-count");
     const searchBar = document.getElementById("myarea-search-bar");
     const searchMore = document.getElementById("myarea-search-more-link");
     if (!wrap || !list) return;
@@ -2497,6 +2516,7 @@ const _ts = new Date(d.timestamp);
       searchBar.style.display = "none";
       if (searchMore) searchMore.style.display = "";
     }
+    if (count) count.textContent = `(${places.length})`;
     wrap.style.display = "";
     list.innerHTML = places.map(p => `
       <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -2504,6 +2524,7 @@ const _ts = new Date(d.timestamp);
           <div style="font-size:13px;font-weight:600;color:var(--text)">${p.emoji||"📍"} ${p.name}</div>
           ${p.address ? `<div style="font-size:11px;color:var(--muted)">${p.address}</div>` : ""}
           ${p.phone ? `<a href="tel:${p.phone}" style="color:#2563eb;font-size:11px">${p.phone}</a>` : ""}
+          ${p.opening_hours ? `<div style="font-size:10px;color:#065f46;margin-top:1px">🕐 ${p.opening_hours}</div>` : ""}
         </div>
         <button onclick="_maRemoveSaved('${p.id}')" style="flex-shrink:0;font-size:14px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 6px">✕</button>
       </div>`).join("");
@@ -2520,6 +2541,8 @@ const _ts = new Date(d.timestamp);
     const dist  = x.distance_km ? `<span style="font-size:11px;color:var(--muted);font-weight:400"> · ${(x.distance_km*0.621371).toFixed(1)} mi</span>` : "";
     const phone = x.phone ? `<a href="tel:${x.phone}" style="color:#2563eb;font-size:11px;display:block;margin-top:1px">${x.phone}</a>` : "";
     const addr  = x.address ? `<div style="font-size:11px;color:var(--muted)">${x.address}</div>` : "";
+    const hours = x.opening_hours ? `<div style="font-size:10px;color:#065f46;margin-top:1px">🕐 ${x.opening_hours}</div>` : "";
+    if (x.opening_hours) _maPlaceHoursMap[(x.name||"") + "|" + (x.address||"")] = x.opening_hours;
     const saved = _maIsSaved(x.name, x.address);
     const nameEsc = x.name.replace(/'/g,"&#39;"), addrEsc = (x.address||"").replace(/'/g,"&#39;"), phoneEsc = (x.phone||"").replace(/'/g,"&#39;");
     const saveBtn = `<button data-ma-save-name="${nameEsc}" data-ma-save-addr="${addrEsc}"
@@ -2528,7 +2551,7 @@ const _ts = new Date(d.timestamp);
       ${saved?"⭐":"☆"}</button>`;
     return `<div style="display:flex;align-items:flex-start;gap:6px;padding:8px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${x.name}${dist}</div>${addr}${phone}
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${x.name}${dist}</div>${addr}${phone}${hours}
       </div>${saveBtn}</div>`;
   }
 
@@ -2614,6 +2637,49 @@ const _ts = new Date(d.timestamp);
     el.style.display = "";
   }
 
+  function _maRenderWeather(w) {
+    const el = document.getElementById("myarea-weather");
+    if (!w || !el) { if(el) el.style.display="none"; return; }
+    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${w.emoji} Weather</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:14px">
+        <div style="font-size:36px;font-weight:800;color:var(--text)">${w.temp}°</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${w.desc}</div>
+          <div style="font-size:11px;color:var(--muted)">↑${w.high}° ↓${w.low}° · Wind ${w.wind} km/h</div>
+        </div>
+      </div>`;
+    el.style.display = "";
+  }
+
+  function _maRenderCrime(c) {
+    const el = document.getElementById("myarea-crime");
+    if (!c || !el) { if(el) el.style.display="none"; return; }
+    const topHtml = (c.top||[]).map(t =>
+      `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px;color:var(--text)">${t.category}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">${t.count}</span>
+      </div>`).join("");
+    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🚔 Crime Nearby <span style="font-size:11px;font-weight:400;color:var(--muted)">(${c.total} incidents last month)</span></div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${topHtml}</div>`;
+    el.style.display = "";
+  }
+
+  function _maRenderPetrol(stations) {
+    const el = document.getElementById("myarea-petrol");
+    if (!stations || !stations.length || !el) { if(el) el.style.display="none"; return; }
+    const rows = stations.map(s =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${s.name}</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:11px;color:var(--muted)">${s.dist_mi} mi</span>
+          <span style="font-size:15px;font-weight:800;color:#065f46">${s.price}p</span>
+        </div>
+      </div>`).join("");
+    el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">⛽ Nearby Petrol</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
+    el.style.display = "";
+  }
+
   function _maRenderTrain(data) {
     const el = document.getElementById("myarea-train");
     if (!data || !data.name || data.error) { el.style.display = "none"; return; }
@@ -2695,7 +2761,7 @@ const _ts = new Date(d.timestamp);
     if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
     // Reset sections
-    ["myarea-reps","myarea-council","myarea-train","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
+    ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-petrol","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
     ["myarea-shops-spinner","myarea-pubs-spinner"].forEach(id => {
@@ -2756,10 +2822,12 @@ const _ts = new Date(d.timestamp);
       document.getElementById("myarea-pubs").style.display="none";
     });
 
-    // Collapse search bar back if user has saved places (they searched to add more)
-    if (_maSavedPlaces && _maSavedPlaces.length) {
-      setTimeout(_maRenderSavedPlaces, 600);
-    }
+    // Weather + crime + petrol (parallel, 30-min cache)
+    fetch(`/api/myarea/local-info?postcode=${pc}`).then(r=>r.json()).then(d => {
+      _maRenderWeather(d.weather);
+      _maRenderCrime(d.crime);
+      _maRenderPetrol(d.petrol);
+    }).catch(()=>{});
   }
 
   function myAreaUseLocation() {

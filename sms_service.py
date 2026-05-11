@@ -3251,7 +3251,8 @@ out center tags;
             if not elat or not elon:
                 continue
             dist = round(haversine_km(lat, lon, elat, elon), 2)
-            items.append({"name": name, "address": _el_address(tags), "distance_km": dist})
+            items.append({"name": name, "address": _el_address(tags), "distance_km": dist,
+                          "opening_hours": tags.get("opening_hours", "")})
         items.sort(key=lambda x: x["distance_km"])
         return items[:10]
     except Exception as e:
@@ -3289,7 +3290,8 @@ out center tags;"""
                 continue
             dist = round(haversine_km(lat, lon, elat, elon), 2)
             items.append({"name": name, "address": _el_address(tags),
-                          "phone": _el_phone(tags), "distance_km": dist})
+                          "phone": _el_phone(tags), "distance_km": dist,
+                          "opening_hours": tags.get("opening_hours", "")})
         items.sort(key=lambda x: x["distance_km"])
         return items[:5]
     except Exception as e:
@@ -3315,7 +3317,8 @@ out center tags;"""
                 continue
             dist = round(haversine_km(lat, lon, elat, elon), 2)
             items.append({"name": name, "address": _el_address(tags),
-                          "phone": _el_phone(tags), "distance_km": dist})
+                          "phone": _el_phone(tags), "distance_km": dist,
+                          "opening_hours": tags.get("opening_hours", "")})
         items.sort(key=lambda x: x["distance_km"])
         return items[:5]
     except Exception as e:
@@ -3639,13 +3642,14 @@ def api_myarea_places_post():
         return jsonify({"error": "name required"}), 400
     try:
         row = lib._sb().table("my_area_places").insert({
-            "device_id": device_id,
-            "name":      name,
-            "address":   (body.get("address") or "").strip(),
-            "phone":     (body.get("phone") or "").strip(),
-            "emoji":     (body.get("emoji") or "📍").strip(),
-            "category":  (body.get("category") or "place").strip(),
-            "postcode":  (body.get("postcode") or "").strip(),
+            "device_id":     device_id,
+            "name":          name,
+            "address":       (body.get("address") or "").strip(),
+            "phone":         (body.get("phone") or "").strip(),
+            "emoji":         (body.get("emoji") or "📍").strip(),
+            "category":      (body.get("category") or "place").strip(),
+            "postcode":      (body.get("postcode") or "").strip(),
+            "opening_hours": (body.get("opening_hours") or "").strip()[:200],
         }).execute().data[0]
         return jsonify(row)
     except Exception as e:
@@ -3663,6 +3667,90 @@ def api_myarea_places_delete(place_id):
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+_WMO_EMOJI = {
+    0:"☀️",1:"🌤️",2:"⛅",3:"🌥️",45:"🌫️",48:"🌫️",
+    51:"🌦️",53:"🌦️",55:"🌧️",61:"🌧️",63:"🌧️",65:"🌧️",
+    71:"❄️",73:"❄️",75:"❄️",77:"🌨️",
+    80:"🌦️",81:"🌦️",82:"⛈️",85:"🌨️",86:"🌨️",95:"⛈️",96:"⛈️",99:"⛈️",
+}
+_WMO_DESC = {
+    0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",
+    45:"Fog",48:"Icy fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",
+    61:"Light rain",63:"Rain",65:"Heavy rain",71:"Light snow",73:"Snow",75:"Heavy snow",
+    80:"Showers",81:"Showers",82:"Heavy showers",95:"Thunderstorm",96:"Thunderstorm",99:"Thunderstorm",
+}
+
+_LOCAL_INFO_CACHE: dict = {}
+_LOCAL_INFO_TTL = 1800  # 30 min
+
+@app.route("/api/myarea/local-info")
+def api_myarea_local_info():
+    postcode = request.args.get("postcode", "").replace(" ", "").upper()
+    cached = _LOCAL_INFO_CACHE.get(postcode)
+    if cached and time.time() - cached["_ts"] < _LOCAL_INFO_TTL:
+        return jsonify({k: v for k, v in cached.items() if k != "_ts"})
+
+    result = _resolve_postcode(postcode)
+    if not result:
+        return jsonify({"error": "postcode not found"}), 404
+    _postcode, lat, lon, _pc_fmt = result
+
+    import concurrent.futures as _cf_li, datetime as _dt_li
+    from collections import Counter as _Ctr
+
+    def _get_weather():
+        try:
+            r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+                "latitude": lat, "longitude": lon,
+                "current": "temperature_2m,weather_code,wind_speed_10m",
+                "daily": "temperature_2m_max,temperature_2m_min",
+                "timezone": "Europe/London", "forecast_days": 1,
+            }, timeout=8)
+            d = r.json()
+            code = d["current"]["weather_code"]
+            return {
+                "temp": round(d["current"]["temperature_2m"]),
+                "emoji": _WMO_EMOJI.get(code, "🌡️"),
+                "desc": _WMO_DESC.get(code, ""),
+                "wind": round(d["current"]["wind_speed_10m"]),
+                "high": round(d["daily"]["temperature_2m_max"][0]),
+                "low":  round(d["daily"]["temperature_2m_min"][0]),
+            }
+        except Exception as e:
+            print(f"[weather] {e}"); return None
+
+    def _get_crime():
+        try:
+            month = (_dt_li.date.today().replace(day=1) - _dt_li.timedelta(days=1)).strftime("%Y-%m")
+            r = requests.get("https://data.police.uk/api/crimes-street/all-crime",
+                             params={"lat": lat, "lng": lon, "date": month}, timeout=12)
+            crimes = r.json() if r.status_code == 200 else []
+            counts = _Ctr(c["category"] for c in crimes)
+            top3 = [{"category": k.replace("-", " ").title(), "count": v} for k, v in counts.most_common(3)]
+            return {"total": len(crimes), "top": top3, "month": month}
+        except Exception as e:
+            print(f"[crime] {e}"); return None
+
+    def _get_petrol():
+        try:
+            nearby = _nearby_stations(lat, lon, "petrol", 5.0)
+            nearby.sort(key=lambda x: (x["price"], x["dist_mi"]))
+            return [{"name": s["name"], "price": s["price"], "dist_mi": round(s["dist_mi"], 1)}
+                    for s in nearby[:3]]
+        except Exception as e:
+            print(f"[petrol] {e}"); return []
+
+    with _cf_li.ThreadPoolExecutor(max_workers=3) as ex:
+        fw = ex.submit(_get_weather)
+        fc = ex.submit(_get_crime)
+        fp = ex.submit(_get_petrol)
+        weather, crime, petrol = fw.result(), fc.result(), fp.result()
+
+    payload = {"weather": weather, "crime": crime, "petrol": petrol}
+    _LOCAL_INFO_CACHE[postcode] = {**payload, "_ts": time.time()}
+    return jsonify(payload)
 
 
 _MOT_CACHE: dict = {}
