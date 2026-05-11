@@ -8773,7 +8773,14 @@ def _ma_gmail_clean_account(value: str) -> str:
     return v
 
 
-def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, from_number: str = ""):
+def _hint_to_query(provider: str) -> str:
+    """Build a broad Gmail search query for a user-supplied provider name hint."""
+    import re as _re
+    safe = _re.sub(r'["\\\n\r]', '', provider.strip())[:60]
+    return f'"{safe}" (invoice OR bill OR statement OR account OR payment OR renewal) newer_than:3y'
+
+
+def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, from_number: str = "", provider_hints: list | None = None):
     """Background: scan Gmail for household accounts, extract, store as pending records."""
     token_row = {"device_id": device_id, "access_token": access_token, "refresh_token": refresh_token}
     at = _ma_gmail_get_token(token_row)
@@ -8781,7 +8788,10 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
     seen_accounts  = set()   # secondary dedup by (provider, account_no)
     pending = []
 
-    for det_type, query in _MA_GMAIL_QUERIES:
+    hint_queries = [("other", _hint_to_query(h)) for h in (provider_hints or [])]
+    all_queries = list(_MA_GMAIL_QUERIES) + hint_queries
+
+    for det_type, query in all_queries:
         try:
             r = requests.get(
                 "https://gmail.googleapis.com/gmail/v1/users/me/messages",
@@ -8900,6 +8910,40 @@ def ma_gmail_status():
     return jsonify({"connected": False})
 
 
+@app.route("/api/myarea/gmail/hints", methods=["GET","POST"])
+def ma_gmail_hints():
+    """GET: return provider hints. POST: save hints list."""
+    device_id   = request.args.get("device_id", "").strip()
+    from_number = request.args.get("from_number", "").strip()
+    if not device_id and not from_number:
+        return jsonify({"error": "device_id required"}), 400
+    try:
+        q = lib._sb().table("ma_gmail_tokens")
+        if from_number:
+            q = q.eq("device_id", from_number)
+        else:
+            q = q.eq("device_id", device_id)
+        if request.method == "GET":
+            rows = q.select("provider_hints").execute().data
+            hints = (rows[0].get("provider_hints") or []) if rows else []
+            return jsonify({"hints": hints})
+        else:
+            hints = (request.json or {}).get("hints", [])
+            hints = [h.strip() for h in hints if isinstance(h, str) and h.strip()][:20]
+            q.update({"provider_hints": hints}).execute()
+            # Log for community aggregation
+            try:
+                for h in hints:
+                    lib._sb().table("ma_provider_hints").upsert(
+                        {"provider": h.lower(), "count": 1}, on_conflict="provider"
+                    ).execute()
+            except Exception:
+                pass
+            return jsonify({"ok": True, "hints": hints})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/myarea/gmail/clear-pending", methods=["POST"])
 def ma_gmail_clear_pending():
     device_id = request.args.get("device_id", "").strip()
@@ -8927,10 +8971,12 @@ def ma_gmail_rescan():
             .eq("device_id", device_id).execute()
         at = _ma_gmail_get_token(row)
         from_number = request.args.get("from_number", "").strip()
+        hints = row.get("provider_hints") or []
         import threading
         threading.Thread(
             target=_ma_gmail_scan_bg,
             args=(device_id, at, row.get("refresh_token", ""), from_number),
+            kwargs={"provider_hints": hints},
             daemon=True,
         ).start()
         return jsonify({"ok": True})

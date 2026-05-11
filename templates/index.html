@@ -1446,6 +1446,20 @@
               </div>
             </div>
           </div>
+
+          <!-- Missing bill hints — shown when connected (done or pending) -->
+          <div id="ma-gmail-hints-section" style="display:none;margin-top:12px;padding-top:11px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">Missing a bill?</div>
+            <div id="ma-gmail-hints-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:6px">
+              <input id="ma-gmail-hint-input" type="text" placeholder="e.g. British Gas, Sky…"
+                style="flex:1;padding:8px 11px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none"
+                onkeydown="if(event.key==='Enter')_maGmailAddHint()">
+              <button onclick="_maGmailAddHint()"
+                style="padding:8px 13px;border:none;background:var(--text);color:var(--bg);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Add</button>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px">Name any provider we missed — it'll be searched on next Rescan</div>
+          </div>
         </div>
 
         <!-- 🚗 Motoring — vehicles + car insurance -->
@@ -3733,6 +3747,10 @@ const _ts = new Date(d.timestamp);
       const lbl = document.getElementById("ma-gmail-pending-label");
       if (lbl) lbl.textContent = `${data.pending.length} account${data.pending.length !== 1 ? "s" : ""} found`;
     }
+    // Show hints section when connected (done or pending), hide otherwise
+    const hintsSection = document.getElementById("ma-gmail-hints-section");
+    if (hintsSection) hintsSection.style.display = (state === "done" || state === "pending") ? "" : "none";
+    if (state === "done" || state === "pending") _maGmailLoadHints();
   }
 
   async function _maGmailConnect() {
@@ -3858,6 +3876,57 @@ const _ts = new Date(d.timestamp);
     // Fresh fetch from DB so rendered list is always accurate
     _maDetailsCache = null;
     await _myAreaPersonalRender();
+  }
+
+  // ── Provider hints ────────────────────────────────────────────────────────
+  let _maGmailHints = [];
+
+  async function _maGmailLoadHints() {
+    try {
+      const r = await fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`);
+      const d = await r.json();
+      _maGmailHints = d.hints || [];
+      _maGmailRenderHints();
+    } catch {}
+  }
+
+  function _maGmailRenderHints() {
+    const el = document.getElementById("ma-gmail-hints-list");
+    if (!el) return;
+    if (!_maGmailHints.length) { el.innerHTML = ""; return; }
+    el.innerHTML = _maGmailHints.map(h =>
+      `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#f3f4f6;border-radius:20px;font-size:12px;font-weight:600;color:var(--text)">
+        ${h}
+        <button onclick="_maGmailRemoveHint('${h.replace(/'/g,"\\'")}\")" style="border:none;background:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;margin-left:2px">×</button>
+      </span>`
+    ).join("");
+  }
+
+  async function _maGmailAddHint() {
+    const inp = document.getElementById("ma-gmail-hint-input");
+    const val = (inp?.value || "").trim();
+    if (!val) return;
+    if (_maGmailHints.includes(val)) { inp.value = ""; return; }
+    _maGmailHints = [..._maGmailHints, val];
+    inp.value = "";
+    _maGmailRenderHints();
+    try {
+      await fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ hints: _maGmailHints })
+      });
+    } catch {}
+  }
+
+  async function _maGmailRemoveHint(name) {
+    _maGmailHints = _maGmailHints.filter(h => h !== name);
+    _maGmailRenderHints();
+    try {
+      await fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ hints: _maGmailHints })
+      });
+    } catch {}
   }
 
   async function _maGmailRescan() {
