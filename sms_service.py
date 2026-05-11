@@ -3620,54 +3620,70 @@ relation["shop"="supermarket"](around:5000,{lat},{lon});
 
 @app.route("/api/myarea/places", methods=["GET"])
 def api_myarea_places_get():
-    device_id = request.args.get("device_id", "").strip()
-    if not device_id:
+    from_number = request.args.get("from_number", "").strip()
+    device_id   = request.args.get("device_id", "").strip()
+    if not from_number and not device_id:
         return jsonify([])
     try:
-        rows = lib._sb().table("my_area_places") \
-            .select("id,name,address,phone,emoji,category,postcode") \
-            .eq("device_id", device_id) \
+        q = lib._sb().table("my_area_places") \
+            .select("id,name,address,phone,emoji,category,postcode,opening_hours") \
             .neq("category", "_home") \
-            .order("created_at", desc=False) \
-            .execute().data
-        return jsonify(rows or [])
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+            .order("created_at", desc=False)
+        q = q.eq("from_number", from_number) if from_number else q.eq("device_id", device_id)
+        return jsonify(q.execute().data or [])
+    except Exception:
+        return jsonify([])  # graceful — localStorage is primary store
 
 
 @app.route("/api/myarea/places", methods=["POST"])
 def api_myarea_places_post():
-    device_id = request.args.get("device_id", "").strip()
-    if not device_id:
-        return jsonify({"error": "device_id required"}), 400
+    from_number = request.args.get("from_number", "").strip()
+    device_id   = request.args.get("device_id", "").strip()
+    if not from_number and not device_id:
+        return jsonify({"error": "from_number or device_id required"}), 400
     body = request.get_json(force=True, silent=True) or {}
     name = (body.get("name") or "").strip()
     if not name:
         return jsonify({"error": "name required"}), 400
+    record = {
+        "device_id":     from_number or device_id,
+        "name":          name,
+        "address":       (body.get("address") or "").strip(),
+        "phone":         (body.get("phone") or "").strip(),
+        "emoji":         (body.get("emoji") or "📍").strip(),
+        "category":      (body.get("category") or "place").strip(),
+        "postcode":      (body.get("postcode") or "").strip(),
+        "opening_hours": (body.get("opening_hours") or "").strip()[:200],
+    }
+    if from_number:
+        record["from_number"] = from_number
     try:
-        row = lib._sb().table("my_area_places").insert({
-            "device_id":     device_id,
-            "name":          name,
-            "address":       (body.get("address") or "").strip(),
-            "phone":         (body.get("phone") or "").strip(),
-            "emoji":         (body.get("emoji") or "📍").strip(),
-            "category":      (body.get("category") or "place").strip(),
-            "postcode":      (body.get("postcode") or "").strip(),
-            "opening_hours": (body.get("opening_hours") or "").strip()[:200],
-        }).execute().data[0]
+        row = lib._sb().table("my_area_places").insert(record).execute().data[0]
         return jsonify(row)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        record.pop("from_number", None)
+        try:
+            row = lib._sb().table("my_area_places").insert(record).execute().data[0]
+            return jsonify(row)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/myarea/places/<place_id>", methods=["DELETE"])
 def api_myarea_places_delete(place_id):
-    device_id = request.args.get("device_id", "").strip()
-    if not device_id:
-        return jsonify({"error": "device_id required"}), 400
+    from_number = request.args.get("from_number", "").strip()
+    device_id   = request.args.get("device_id", "").strip()
+    if not from_number and not device_id:
+        return jsonify({"error": "from_number or device_id required"}), 400
     try:
-        lib._sb().table("my_area_places") \
-            .delete().eq("id", place_id).eq("device_id", device_id).execute()
+        sb = lib._sb()
+        if from_number:
+            try:
+                sb.table("my_area_places").delete().eq("id", place_id).eq("from_number", from_number).execute()
+            except Exception:
+                sb.table("my_area_places").delete().eq("id", place_id).execute()
+        else:
+            sb.table("my_area_places").delete().eq("id", place_id).eq("device_id", device_id).execute()
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -3675,15 +3691,15 @@ def api_myarea_places_delete(place_id):
 
 @app.route("/api/myarea/home-postcode", methods=["GET"])
 def api_myarea_home_postcode_get():
-    token = request.args.get("token", "").strip()
-    if not token:
+    from_number = request.args.get("from_number", "").strip()
+    token       = request.args.get("token", "").strip()  # legacy device_id
+    key = from_number or token
+    if not key:
         return jsonify({"postcode": None})
     try:
-        rows = lib._sb().table("my_area_places") \
-            .select("postcode") \
-            .eq("device_id", token) \
-            .eq("category", "_home") \
-            .limit(1).execute().data
+        q = lib._sb().table("my_area_places").select("postcode").eq("category", "_home").limit(1)
+        q = q.eq("from_number", from_number) if from_number else q.eq("device_id", token)
+        rows = q.execute().data
         return jsonify({"postcode": rows[0]["postcode"] if rows else None})
     except Exception:
         return jsonify({"postcode": None})
@@ -3692,21 +3708,22 @@ def api_myarea_home_postcode_get():
 @app.route("/api/myarea/home-postcode", methods=["POST"])
 def api_myarea_home_postcode_post():
     body = request.get_json(force=True, silent=True) or {}
-    token = body.get("token", "").strip()
-    postcode = (body.get("postcode") or "").strip().upper()
-    if not token or not postcode:
+    from_number = (body.get("from_number") or "").strip()
+    token       = (body.get("token") or "").strip()  # legacy device_id
+    postcode    = (body.get("postcode") or "").strip().upper()
+    key = from_number or token
+    if not key or not postcode:
         return jsonify({"ok": False}), 400
     try:
         sb = lib._sb()
-        sb.table("my_area_places").delete() \
-            .eq("device_id", token).eq("category", "_home").execute()
-        sb.table("my_area_places").insert({
-            "device_id": token,
-            "name":      "__home__",
-            "category":  "_home",
-            "postcode":  postcode,
-            "emoji":     "📍",
-        }).execute()
+        record = {"name": "__home__", "category": "_home", "postcode": postcode, "emoji": "📍",
+                  "device_id": key}
+        if from_number:
+            sb.table("my_area_places").delete().eq("from_number", from_number).eq("category", "_home").execute()
+            record["from_number"] = from_number
+        else:
+            sb.table("my_area_places").delete().eq("device_id", token).eq("category", "_home").execute()
+        sb.table("my_area_places").insert(record).execute()
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500

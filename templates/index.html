@@ -1276,16 +1276,17 @@
       <div id="myarea-customise" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px"></div>
 
       <!-- Account link banner (hidden when logged in) -->
-      <div id="myarea-link-banner" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:10px 14px;margin-bottom:10px">
-        <div style="font-size:12px;color:#065f46;font-weight:600;margin-bottom:6px">🔗 Link your phone to sync My Area across devices</div>
+      <div id="myarea-link-banner" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:10px 14px;margin-bottom:8px">
+        <div style="font-size:12px;color:#065f46;font-weight:600;margin-bottom:6px">📱 Your mobile number — syncs bookmarks across devices</div>
         <div style="display:flex;gap:8px">
-          <input id="myarea-phone-input" type="tel" placeholder="+44 7911 123456"
+          <input id="myarea-phone-input" type="tel" placeholder="07911 123456"
             style="flex:1;border:1px solid #bbf7d0;border-radius:8px;padding:7px 10px;font-size:13px;background:#fff;color:var(--text);outline:none"
             onkeydown="if(event.key==='Enter') _maLinkPhone()">
-          <button onclick="_maLinkPhone()" style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Link</button>
+          <button onclick="_maLinkPhone()" style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Save</button>
         </div>
-        <div id="myarea-link-err" style="display:none;font-size:11px;color:#ef4444;margin-top:4px"></div>
+        <div id="myarea-link-err" style="display:none;font-size:11px;color:#ef4444;margin-top:4px">Please enter a valid UK mobile number</div>
       </div>
+      <div id="myarea-linked-phone" style="display:none;font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 2px"></div>
 
       <!-- Postcode bar (collapses when saved places exist) -->
       <div id="myarea-search-bar" style="margin-bottom:6px">
@@ -2591,11 +2592,10 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _maLoadHomePostcode() {
-    const token = _maDeviceId();
-    const isRandom = !_savesPin() && !new URLSearchParams(window.location.search).get("token");
-    if (isRandom) return; // not linked — nothing on server
+    const phone = _miruPhone();
+    if (!phone) return; // no identity yet — nothing on server
     try {
-      const r = await fetch(`/api/myarea/home-postcode?token=${encodeURIComponent(token)}`);
+      const r = await fetch(`/api/myarea/home-postcode?from_number=${encodeURIComponent(phone)}`);
       const d = await r.json();
       const pc = d.postcode;
       if (pc) {
@@ -2610,25 +2610,42 @@ const _ts = new Date(d.timestamp);
     }
   }
 
-  async function _maLinkPhone() {
-    const raw = document.getElementById("myarea-phone-input").value.trim();
-    if (!raw) return;
-    let phone = raw.replace(/\s+/g, '');
-    if (/^0\d{10}$/.test(phone)) phone = '+44' + phone.slice(1);
-    const errEl = document.getElementById("myarea-link-err");
-    errEl.style.display = "none";
-    try {
-      const r = await fetch(`/api/user-token?phone=${encodeURIComponent(phone)}`);
-      const d = await r.json();
-      if (!d.token) throw new Error("not found");
-      localStorage.setItem("wa_saves_token", d.token);
-      document.getElementById("myarea-link-banner").style.display = "none";
-      _maLoadSavedPlaces();
-      _maLoadHomePostcode();
-    } catch {
-      errEl.textContent = "Phone not found — text 'my link' to your Miru number first.";
-      errEl.style.display = "block";
+  function _miruPhone() {
+    return localStorage.getItem("miru_phone") || "";
+  }
+
+  function _maShowLinkedPhone() {
+    const phone = _miruPhone();
+    const el = document.getElementById("myarea-linked-phone");
+    if (!el) return;
+    if (phone) {
+      el.innerHTML = `📱 <strong>${phone}</strong> &nbsp;·&nbsp; <button onclick="_maChangePhone()" style="background:none;border:none;color:#2563eb;font-size:11px;cursor:pointer;padding:0;text-decoration:underline">Change</button>`;
+      el.style.display = "";
+    } else {
+      el.style.display = "none";
     }
+  }
+
+  function _maChangePhone() {
+    localStorage.removeItem("miru_phone");
+    const banner = document.getElementById("myarea-link-banner");
+    if (banner) banner.style.display = "";
+    _maShowLinkedPhone();
+  }
+
+  function _maLinkPhone() {
+    const raw = document.getElementById("myarea-phone-input").value.trim();
+    const errEl = document.getElementById("myarea-link-err");
+    if (!raw) { errEl.style.display = "block"; return; }
+    let phone = raw.replace(/[\s\-\(\)]/g, '');
+    if (/^07\d{9}$/.test(phone)) phone = '+44' + phone.slice(1);
+    if (!/^\+\d{7,15}$/.test(phone)) { errEl.style.display = "block"; return; }
+    errEl.style.display = "none";
+    localStorage.setItem("miru_phone", phone);
+    document.getElementById("myarea-link-banner").style.display = "none";
+    _maShowLinkedPhone();
+    _maLoadSavedPlaces();
+    _maLoadHomePostcode();
   }
 
   // In-memory mirror of DB saved places for instant UI (avoids repeated fetches)
@@ -2720,17 +2737,14 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _maLoadSavedPlaces() {
-    // 1. Load from localStorage immediately so UI is instant
     _maSavedPlaces = _maPlacesFromLS();
-    _maRenderSavedPlaces();
-    _maRefreshBookmarkButtons();
-    _maReRenderSections();
-    // 2. Try to merge from server (Supabase) in background
+    _maRenderSavedPlaces(); _maRefreshBookmarkButtons(); _maReRenderSections();
+    const phone = _miruPhone();
+    const param = phone ? `from_number=${encodeURIComponent(phone)}` : `device_id=${encodeURIComponent(_maDeviceId())}`;
     try {
-      const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`);
+      const r = await fetch(`/api/myarea/places?${param}`);
       const remote = await r.json();
       if (Array.isArray(remote) && remote.length) {
-        // Merge: server records win for any name+address match, otherwise keep local
         const merged = [...remote];
         (_maSavedPlaces || []).forEach(local => {
           if (!merged.some(r => r.name === local.name && r.address === local.address))
@@ -2738,9 +2752,7 @@ const _ts = new Date(d.timestamp);
         });
         _maSavedPlaces = merged;
         _maPlacesToLS(_maSavedPlaces);
-        _maRenderSavedPlaces();
-        _maRefreshBookmarkButtons();
-        _maReRenderSections();
+        _maRenderSavedPlaces(); _maRefreshBookmarkButtons(); _maReRenderSections();
       }
     } catch {}
   }
@@ -2748,31 +2760,27 @@ const _ts = new Date(d.timestamp);
   async function _maTogglePlace(name, address, phone, emoji) {
     if (!_maSavedPlaces) _maSavedPlaces = _maPlacesFromLS();
     const existing = _maSavedPlaces.find(p => p.name === name && p.address === (address||""));
+    const userPhone = _miruPhone();
+    const apiParam  = userPhone ? `from_number=${encodeURIComponent(userPhone)}` : `device_id=${encodeURIComponent(_maDeviceId())}`;
 
     if (existing) {
       _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== existing.id);
       _maPlacesToLS(_maSavedPlaces);
-      _maRenderSavedPlaces();
-      _maRefreshBookmarkButtons();
-      _maReRenderSections();
-      // Sync delete to server in background
+      _maRenderSavedPlaces(); _maRefreshBookmarkButtons(); _maReRenderSections();
       if (!String(existing.id).startsWith("tmp_"))
-        fetch(`/api/myarea/places/${existing.id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"}).catch(()=>{});
+        fetch(`/api/myarea/places/${existing.id}?${apiParam}`, {method:"DELETE"}).catch(()=>{});
     } else {
       const opening_hours = _maPlaceHoursMap[(name||"") + "|" + (address||"")] || "";
       const tempId = "tmp_" + Date.now();
       const temp = {id: tempId, name, address: address||"", phone: phone||"", emoji: emoji||"📍", opening_hours};
       _maSavedPlaces.push(temp);
       _maPlacesToLS(_maSavedPlaces);
-      _maRenderSavedPlaces();
-      _maRefreshBookmarkButtons();
-      _maReRenderSections();
-      // Sync to server in background; replace temp id with real one if it succeeds
+      _maRenderSavedPlaces(); _maRefreshBookmarkButtons(); _maReRenderSections();
       try {
-        const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`, {
+        const r = await fetch(`/api/myarea/places?${apiParam}`, {
           method: "POST", headers: {"Content-Type":"application/json"},
           body: JSON.stringify({name, address: address||"", phone: phone||"", emoji: emoji||"📍",
-                                opening_hours,
+                                opening_hours, from_number: userPhone || undefined,
                                 postcode: document.getElementById("myarea-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase()}),
         });
         const saved = await r.json();
@@ -2853,7 +2861,9 @@ const _ts = new Date(d.timestamp);
       _maRefreshBookmarkButtons();
       _maReRenderSections();
     }
-    fetch(`/api/myarea/places/${id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"}).catch(()=>{});
+    const userPhone = _miruPhone();
+    const param = userPhone ? `from_number=${encodeURIComponent(userPhone)}` : `device_id=${encodeURIComponent(_maDeviceId())}`;
+    fetch(`/api/myarea/places/${id}?${param}`, {method:"DELETE"}).catch(()=>{});
   }
 
   function _maPlaceRow(x, emoji) {
@@ -3372,9 +3382,16 @@ const _ts = new Date(d.timestamp);
   }
 
   function _loadMyArea() {
-    _maApplyPrefs();      // hide off sections before any data loads
-    _maLoadSavedPlaces(); // fetch from DB (async, updates UI when ready)
-    _maLoadVehicles();    // fetch saved registrations + MOT status
+    _maApplyPrefs();
+    // Show phone banner if not set, or linked-phone indicator if set
+    if (_miruPhone()) {
+      _maShowLinkedPhone();
+    } else {
+      const banner = document.getElementById("myarea-link-banner");
+      if (banner) banner.style.display = "";
+    }
+    _maLoadSavedPlaces();
+    _maLoadVehicles();
     const home = MiruLocation.getHome();
     if (home && document.getElementById("myarea-postcode-input").value !== home) {
       document.getElementById("myarea-postcode-input").value = home;
