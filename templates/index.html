@@ -1338,9 +1338,6 @@
         <div id="myarea-weather" style="display:none;margin-bottom:10px"></div>
         <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
         <div id="myarea-petrol"  style="display:none;margin-bottom:10px"></div>
-        <div id="myarea-places-empty" style="display:none;text-align:center;padding:28px 16px;color:var(--muted);font-size:13px">
-          No data loaded. Tap <b>Customise</b> above to choose which sections to show, or check your postcode.
-        </div>
       </div>
 
       <!-- Tab: Services (health, shops, pubs, schools) -->
@@ -2677,8 +2674,7 @@ const _ts = new Date(d.timestamp);
 
   function _maShowTab(tab) {
     ["places","services","civic"].forEach(t => {
-      const pane = document.getElementById(`matab-${t}`);
-      if (pane) pane.style.display = t === tab ? "block" : "none";
+      document.getElementById(`matab-${t}`).style.display = t === tab ? "" : "none";
       const btn = document.getElementById(`matab-btn-${t}`);
       if (btn) {
         btn.style.background = t === tab ? "#065f46" : "transparent";
@@ -3090,102 +3086,69 @@ const _ts = new Date(d.timestamp);
     el.style.display = "";
   }
 
-  // Tracks the current search so stale spinner-hide callbacks don't fire for old searches
-  let _maSearchSeq = 0;
-
   function myAreaSearch() {
-    // ── Step 1: immediate UI feedback (nothing should prevent this) ───────────────
-    const goBtn  = document.getElementById("myarea-go-btn");
-    const tabBar = document.getElementById("myarea-tab-bar");
-    const loader = document.getElementById("myarea-loading");
-    if (goBtn)  { goBtn.textContent = "Searching…"; goBtn.style.opacity = "0.7"; setTimeout(() => { goBtn.textContent = "Go"; goBtn.style.opacity = "1"; }, 5000); }
-    if (tabBar) tabBar.style.display = "block";
-    if (loader) loader.style.display = "block";
-    _maShowTab("places");
-
-    // ── Step 2: validate postcode ─────────────────────────────────────────────────
-    const input = document.getElementById("myarea-postcode-input");
-    const errEl = document.getElementById("myarea-loc-err");
-    const raw = input ? input.value.trim().toUpperCase() : "";
-    if (errEl) errEl.style.display = "none";
-
-    if (!raw) {
-      if (loader) loader.style.display = "none";
-      if (errEl) { errEl.textContent = "Please enter a postcode."; errEl.style.display = "block"; }
-      return;
-    }
-
+    const raw = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
+    if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
     _maCurrentPostcode = pc;
-    MiruLocation.setHome(raw);
-
-    // Persist server-side if logged in
-    const _tok = _savesPin() || new URLSearchParams(window.location.search).get("token");
-    if (_tok) fetch("/api/myarea/home-postcode", {method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({token:_tok, postcode:pc})}).catch(()=>{});
-
-    // Clear old data + reset sections
+    // Clear cached data for new search
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
-    ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-petrol",
-     "myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { el.innerHTML = ""; el.style.display = "none"; }
+    // Reset sections
+    ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-petrol","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = "none";
     });
-    const _emptyEl = document.getElementById("myarea-places-empty");
-    if (_emptyEl) _emptyEl.style.display = "none";
+    document.getElementById("myarea-tab-bar").style.display = "";
+    _maShowTab(localStorage.getItem("miru_ma_tab") || "places");
+    document.getElementById("myarea-loading").style.display = "block";
 
-    // Spinner hide: keyed to this search sequence so old callbacks can't hide a newer spinner
-    const seq = ++_maSearchSeq;
-    const _hideSpinner = () => {
-      if (_maSearchSeq !== seq) return;
-      if (loader) loader.style.display = "none";
-      // Show empty-state message if Places tab has no visible content
-      const emptyEl = document.getElementById("myarea-places-empty");
-      if (emptyEl) {
-        const hasContent = ["myarea-weather","myarea-train","myarea-petrol"]
-          .some(id => { const el = document.getElementById(id); return el && el.style.display !== "none" && el.innerHTML.trim(); });
-        emptyEl.style.display = hasContent ? "none" : "";
-      }
-    };
-    setTimeout(_hideSpinner, 6000); // 6s cap — spinner always hides
-
-    // ── Train station (fast, in-memory cache — primary spinner trigger) ──────────
-    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`)
-      .then(r => r.json()).then(d => { _maRenderTrain(d); _hideSpinner(); })
-      .catch(() => _hideSpinner());
-
-    // ── MPs + Councillors (background, auto-switches to Civic tab on success) ────
-    const _repsCache = _miruRepsCache[pc];
-    if (_repsCache && (_repsCache.mp || _repsCache.councillors)) {
-      _maRenderReps(_repsCache.mp || {}, {councillors: _repsCache.councillors || []});
-    } else {
-      Promise.all([
-        fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
-        fetch(`/api/councillor?postcode=${pc}`).then(r=>r.json()).catch(()=>({}))
-      ]).then(([mp, cr]) => {
-        _miruRepsCache[pc] = {mp, councillors:(cr&&cr.councillors)||[]};
-        _maRenderReps(mp, cr);
-      }).catch(()=>{});
+    function _maHideSpinner() {
+      document.getElementById("myarea-loading").style.display = "none";
     }
 
-    // ── Weather, petrol, crime ────────────────────────────────────────────────────
-    fetch(`/api/myarea/local-info?postcode=${pc}`)
-      .then(r => r.json())
-      .then(d => { _maRenderWeather(d.weather); _maRenderCrime(d.crime); _maRenderPetrol(d.petrol); })
-      .catch(()=>{});
+    // Use cached rep data from elections screen if available (instant render)
+    const _cached = _miruRepsCache[pc];
+    if (_cached && (_cached.mp || _cached.councillors)) {
+      _maRenderReps(_cached.mp || {}, {councillors: _cached.councillors || []});
+      _maHideSpinner();
+    }
 
-    // ── GPs, council ─────────────────────────────────────────────────────────────
-    fetch(`/api/your-area?postcode=${pc}`)
-      .then(r => r.json())
-      .then(area => { _maAreaData=area; _maRenderCouncil(area); _maRenderGPs(area); _myAreaPersonalRender(); })
-      .catch(()=>{});
+    // MP + councillor — fast path (~1-2s); spinner hides as soon as these arrive
+    if (!_cached || !_cached.mp || !_cached.councillors) {
+      Promise.all([
+        fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
+        fetch(`/api/councillor?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
+      ]).then(([mp, councillorResp]) => {
+        _miruRepsCache[pc] = {mp, councillors: (councillorResp && councillorResp.councillors) || []};
+        _maRenderReps(mp, councillorResp);
+        _maHideSpinner();
+      }).catch(() => { _maHideSpinner(); });
+    }
 
-    // ── Shops, pubs, schools (slowest — background) ───────────────────────────────
-    fetch(`/api/shops?postcode=${pc}`)
-      .then(r => r.json()).then(d => { _maShopsData=d; _maRenderShops(d); }).catch(()=>{});
-    fetch(`/api/local?postcode=${pc}`)
-      .then(r => r.json()).then(d => { _maLocalData=d; _maRenderPubs(d); _maRenderSchools(d); }).catch(()=>{});
+    // your-area (GPs, council, pharmacies via Overpass — renders independently when ready)
+    fetch(`/api/your-area?postcode=${pc}`).then(r=>r.json()).then(area => {
+      _maAreaData = area;
+      _maRenderCouncil(area);
+      _maRenderGPs(area);
+      _myAreaPersonalRender();
+    }).catch(()=>{});
+
+    // Nearest train station (fast — uses in-memory station cache)
+    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_maRenderTrain).catch(()=>{});
+
+    // Shops + pubs + schools — Overpass, slowest, always load in background
+    fetch(`/api/shops?postcode=${pc}`).then(r=>r.json()).then(data => {
+      _maShopsData = data; _maRenderShops(data);
+    }).catch(()=>{});
+    fetch(`/api/local?postcode=${pc}`).then(r=>r.json()).then(data => {
+      _maLocalData = data; _maRenderPubs(data); _maRenderSchools(data);
+    }).catch(()=>{});
+
+    // Weather + crime + petrol (parallel, 30-min cache)
+    fetch(`/api/myarea/local-info?postcode=${pc}`).then(r=>r.json()).then(d => {
+      _maRenderWeather(d.weather);
+      _maRenderCrime(d.crime);
+      _maRenderPetrol(d.petrol);
+    }).catch(()=>{});
   }
 
   function myAreaUseLocation() {
@@ -3331,22 +3294,15 @@ const _ts = new Date(d.timestamp);
   }
 
   function _loadMyArea() {
-    _maApplyPrefs();
-    _maLoadSavedPlaces();
-    _maLoadVehicles();
-    _myAreaPersonalRender();
-
-    const hasToken = !!(_savesPin() || new URLSearchParams(window.location.search).get("token"));
-    const banner = document.getElementById("myarea-link-banner");
-    if (banner) banner.style.display = hasToken ? "none" : "";
-
+    _maApplyPrefs();      // hide off sections before any data loads
+    _maLoadSavedPlaces(); // fetch from DB (async, updates UI when ready)
+    _maLoadVehicles();    // fetch saved registrations + MOT status
     const home = MiruLocation.getHome();
-    const input = document.getElementById("myarea-postcode-input");
-    if (home && input) {
-      input.value = home;
+    if (home && document.getElementById("myarea-postcode-input").value !== home) {
+      document.getElementById("myarea-postcode-input").value = home;
       myAreaSearch();
-    } else if (hasToken) {
-      _maLoadHomePostcode();
+    } else if (!home) {
+      _myAreaPersonalRender();
     }
   }
 
