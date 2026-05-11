@@ -423,7 +423,7 @@ def sms_reply():
 
 @app.route("/")
 def index():
-    intel_mode = "intel." in request.host
+    intel_mode = "intel." in request.host or request.args.get("intel") == "1"
     return render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=intel_mode)
 
 @app.route("/privacy")
