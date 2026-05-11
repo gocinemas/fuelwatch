@@ -1403,11 +1403,16 @@
 
       <!-- Personal details (localStorage) -->
       <div style="margin-top:18px">
-        <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:10px">📋 My Details</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px">📋 My Details</div>
+          <button id="ma-gmail-btn" onclick="_maGmailConnect()" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:20px;border:1.5px solid #4285f4;background:#fff;font-size:12px;font-weight:700;color:#4285f4;cursor:pointer">
+            <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            <span id="ma-gmail-btn-label">Import from Gmail</span>
+          </button>
+        </div>
         <div id="myarea-personal-cards"></div>
         <div style="display:flex;gap:6px;margin-top:8px">
-          <button onclick="myAreaAddDetail()" style="flex:1;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add insurance, energy, broadband &amp; more</button>
-          <button onclick="_maImportJson()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer" title="Import from JSON">📋</button>
+          <button onclick="myAreaAddDetail()" style="flex:1;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add manually</button>
           <button onclick="_maClearAllDetails()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:#dc2626;cursor:pointer" title="Delete all details">🗑️</button>
           <button id="ma-test-data-btn" onclick="_maLoadTestData()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer" title="Load sample data for testing">🧪</button>
         </div>
@@ -3627,6 +3632,116 @@ const _ts = new Date(d.timestamp);
     document.getElementById("ma-import-overlay").remove();
     _myAreaPersonalRender();
   }
+
+  // ── Gmail import ─────────────────────────────────────────────────────────────
+  async function _maGmailConnect() {
+    const did = _maDeviceId();
+    window.location.href = `/api/myarea/gmail/connect?device_id=${encodeURIComponent(did)}`;
+  }
+
+  async function _maGmailCheckStatus() {
+    const did = _maDeviceId();
+    try {
+      const r = await fetch(`/api/myarea/gmail/status?device_id=${encodeURIComponent(did)}`);
+      const d = await r.json();
+      const btn = document.getElementById("ma-gmail-btn");
+      const lbl = document.getElementById("ma-gmail-btn-label");
+      if (!d.connected) return;
+      if (d.scan_status === "scanning") {
+        if (lbl) lbl.textContent = "Scanning inbox…";
+        if (btn) btn.style.color = "#d97706";
+        setTimeout(_maGmailCheckStatus, 3000);
+        return;
+      }
+      if (d.scan_status === "done") {
+        const pending = d.pending || [];
+        if (pending.length) {
+          if (lbl) lbl.textContent = `${pending.length} found — review`;
+          if (btn) { btn.style.color = "#16a34a"; btn.onclick = () => _maGmailShowPreview(pending, d.email); }
+        } else {
+          if (lbl) lbl.textContent = `Connected (${d.email || "Gmail"})`;
+          if (btn) btn.style.color = "#16a34a";
+        }
+      }
+    } catch {}
+  }
+
+  function _maGmailShowPreview(records, email) {
+    const overlay = document.createElement("div");
+    overlay.id = "ma-gmail-preview";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
+    const rows = records.map((r, i) => {
+      const fields = Object.entries(r.data || {}).map(([k, v]) => v ? `<span style="font-size:11px;color:var(--muted)">${k}:</span> <span style="font-size:12px;font-weight:600">${v}</span>` : "").filter(Boolean).join(" &nbsp;·&nbsp; ");
+      return `<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px">
+        <input type="checkbox" id="gmail-rec-${i}" checked style="margin-top:3px;flex-shrink:0">
+        <label for="gmail-rec-${i}" style="cursor:pointer">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${r.label || r.type}</div>
+          <div style="margin-top:3px;line-height:1.6">${fields}</div>
+        </label>
+      </div>`;
+    }).join("");
+    overlay.innerHTML = `
+      <div style="background:var(--surface);border-radius:20px 20px 0 0;padding:20px 18px 36px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto">
+        <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">📧 Found in Gmail</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">From ${email || "your inbox"} — select which to import</div>
+        ${rows}
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button id="ma-gmail-import-btn" onclick="_maGmailImportSelected()" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">Import selected</button>
+          <button onclick="document.getElementById('ma-gmail-preview').remove()" style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>
+        </div>
+      </div>`;
+    overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+    overlay._records = records;
+    document.body.appendChild(overlay);
+  }
+
+  async function _maGmailImportSelected() {
+    const overlay = document.getElementById("ma-gmail-preview");
+    if (!overlay) return;
+    const records = overlay._records || [];
+    const btn = document.getElementById("ma-gmail-import-btn");
+    if (btn) { btn.textContent = "Saving…"; btn.disabled = true; }
+    for (let i = 0; i < records.length; i++) {
+      const cb = document.getElementById(`gmail-rec-${i}`);
+      if (!cb || !cb.checked) continue;
+      const r = records[i];
+      const saved = await _maDetailsPost(null, r.type, r.label, r.data);
+      (_maDetailsCache = _maDetailsCache || []).push(saved);
+    }
+    // Clear pending from server
+    try {
+      await fetch(`/api/myarea/gmail/status?device_id=${encodeURIComponent(_maDeviceId())}`);
+    } catch {}
+    overlay.remove();
+    const lbl = document.getElementById("ma-gmail-btn-label");
+    if (lbl) lbl.textContent = "Connected";
+    _myAreaPersonalRender();
+  }
+
+  // On load: check if returning from OAuth or if already connected
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gmail_scan") === "1") {
+      // Coming back from OAuth — start polling
+      history.replaceState({}, "", window.location.pathname + "#myarea");
+      showScreen("myarea");
+      setTimeout(() => {
+        const lbl = document.getElementById("ma-gmail-btn-label");
+        if (lbl) lbl.textContent = "Scanning inbox…";
+        _maGmailCheckStatus();
+      }, 500);
+    } else if (params.get("gmail_error")) {
+      history.replaceState({}, "", window.location.pathname + "#myarea");
+      showScreen("myarea");
+      setTimeout(() => {
+        const lbl = document.getElementById("ma-gmail-btn-label");
+        if (lbl) lbl.textContent = "Connection failed — try again";
+      }, 500);
+    } else {
+      // Check silently if already connected
+      setTimeout(_maGmailCheckStatus, 1500);
+    }
+  })();
 
   async function _maClearAllDetails() {
     if (!confirm("Delete all saved details?")) return;

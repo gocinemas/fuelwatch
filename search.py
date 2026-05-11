@@ -19,6 +19,17 @@ from typing import Optional
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "AIzaSyDSJyUiYSCADhDdtBcOFI_iF-b-HOlUEq8")
 
+_MA_DETAIL_TYPES_MAP = {
+    "home_ins":    "Home Insurance",
+    "energy":      "Energy",
+    "broadband":   "Broadband",
+    "council_tax": "Council Tax",
+    "car_ins":     "Car Insurance",
+    "health":      "Health / BUPA",
+    "life_ins":    "Life Insurance",
+    "other":       "Other",
+}
+
 # ── CMA Retailer Price Feed URLs ──────────────────────────────────────────────
 # Confirmed working (tested March 2026)
 RETAILER_FEEDS = {

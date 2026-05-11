@@ -8413,8 +8413,318 @@ def school_signup_page():
     return render_template("school_signup.html", prefill_wa=prefill_wa)
 
 
-_SCHOOL_OAUTH_REDIRECT = "https://miru.humanagency.co/school/oauth/callback"
-_SCHOOL_OAUTH_SCOPES   = "https://www.googleapis.com/auth/gmail.readonly"
+_SCHOOL_OAUTH_REDIRECT  = "https://miru.humanagency.co/school/oauth/callback"
+_MA_GMAIL_REDIRECT      = "https://miru.humanagency.co/api/myarea/gmail/callback"
+_SCHOOL_OAUTH_SCOPES    = "https://www.googleapis.com/auth/gmail.readonly"
+
+
+# ── My Details Gmail import ────────────────────────────────────────────────────
+
+@app.route("/api/myarea/gmail/connect")
+def ma_gmail_connect():
+    import urllib.parse
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return "Missing device_id", 400
+    if not _web_client_id():
+        return "Gmail OAuth not configured", 503
+    params = {
+        "client_id":     _web_client_id(),
+        "redirect_uri":  _MA_GMAIL_REDIRECT,
+        "response_type": "code",
+        "scope":         _SCHOOL_OAUTH_SCOPES,
+        "access_type":   "offline",
+        "prompt":        "consent",
+        "state":         device_id,
+    }
+    return redirect("https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params))
+
+
+@app.route("/api/myarea/gmail/callback")
+def ma_gmail_callback():
+    code      = request.args.get("code", "")
+    device_id = request.args.get("state", "")
+    error     = request.args.get("error", "")
+    if error or not code or not device_id:
+        return redirect("/?gmail_error=cancelled#myarea")
+    try:
+        r = requests.post("https://oauth2.googleapis.com/token", data={
+            "code":          code,
+            "client_id":     _web_client_id(),
+            "client_secret": _web_client_secret(),
+            "redirect_uri":  _MA_GMAIL_REDIRECT,
+            "grant_type":    "authorization_code",
+        }, timeout=15)
+        tokens = r.json()
+    except Exception as e:
+        print(f"[ma gmail] token exchange error: {e}")
+        return redirect("/?gmail_error=auth#myarea")
+    refresh_token = tokens.get("refresh_token", "")
+    access_token  = tokens.get("access_token", "")
+    if not (refresh_token or access_token):
+        return redirect("/?gmail_error=auth#myarea")
+    # Store token and kick off scan
+    try:
+        lib._sb().table("ma_gmail_tokens").upsert({
+            "device_id":     device_id,
+            "refresh_token": refresh_token,
+            "access_token":  access_token,
+            "scan_status":   "scanning",
+            "pending":       [],
+        }, on_conflict="device_id").execute()
+    except Exception as e:
+        print(f"[ma gmail] db upsert error: {e}")
+    import threading
+    threading.Thread(
+        target=_ma_gmail_scan_bg,
+        args=(device_id, access_token, refresh_token),
+        daemon=True,
+    ).start()
+    return redirect("/?gmail_scan=1#myarea")
+
+
+def _ma_gmail_get_token(token_row: dict) -> str:
+    """Return a valid access token, refreshing if needed."""
+    at = token_row.get("access_token", "")
+    rt = token_row.get("refresh_token", "")
+    if not rt:
+        return at
+    try:
+        r = requests.post("https://oauth2.googleapis.com/token", data={
+            "client_id":     _web_client_id(),
+            "client_secret": _web_client_secret(),
+            "refresh_token": rt,
+            "grant_type":    "refresh_token",
+        }, timeout=10)
+        d = r.json()
+        new_at = d.get("access_token", "")
+        if new_at:
+            try:
+                lib._sb().table("ma_gmail_tokens").update({"access_token": new_at}) \
+                    .eq("device_id", token_row["device_id"]).execute()
+            except Exception:
+                pass
+            return new_at
+    except Exception:
+        pass
+    return at
+
+
+_MA_GMAIL_QUERIES = [
+    ("energy",      "from:(octopus.energy OR britishgas.co.uk OR edf.co.uk OR eonenergy.com OR eon-next.co.uk OR scottishpower.co.uk) subject:(bill OR account OR statement OR tariff OR welcome)"),
+    ("broadband",   "from:(info.ee.co.uk OR eemail.ee.co.uk OR bt.com OR sky.com OR virginmedia.com OR talktalk.co.uk OR plusnet.com) subject:(order OR account OR bill OR welcome OR broadband)"),
+    ("car_ins",     "from:(admiral.com OR directline.com OR aviva.com OR axa.co.uk OR lv.com OR hastingsdirect.com OR confused.com) subject:(policy OR renewal OR insurance OR certificate)"),
+    ("home_ins",    "from:(admiral.com OR directline.com OR aviva.com OR axa.co.uk OR lv.com) subject:(home OR building OR contents OR renewal)"),
+    ("life_ins",    "subject:(life insurance OR life cover) (policy OR renewal OR certificate)"),
+    ("other",       "from:(tvlicensing.co.uk) subject:(licence OR renewal OR renew)"),
+    ("council_tax", "subject:(council tax) (account OR bill OR payment OR instalment)"),
+]
+
+_MA_EXTRACT_SYSTEM = """You are a data extraction assistant. Extract household account details from UK utility/insurance emails.
+Return ONLY a JSON object with these fields (omit fields you cannot find):
+{
+  "type": one of: energy|broadband|car_ins|home_ins|life_ins|council_tax|other,
+  "provider": "company name",
+  "account_no": "account or policy number",
+  "phone": "customer service phone number",
+  "renewal_date": "DD/MM/YYYY or blank",
+  "label": "short human label e.g. Home Insurance or TV Licence"
+}
+If the email is not about a household account/bill/insurance, return {"skip": true}."""
+
+
+def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
+    """Fetch one Gmail message and extract account details via Groq."""
+    try:
+        r = requests.get(
+            f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}",
+            params={"format": "full"},
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return None
+        msg = r.json()
+        # Extract plain text body
+        body = ""
+        payload = msg.get("payload", {})
+
+        def _extract_text(part):
+            nonlocal body
+            if body and len(body) > 2000:
+                return
+            mime = part.get("mimeType", "")
+            if mime == "text/plain":
+                import base64
+                data = part.get("body", {}).get("data", "")
+                if data:
+                    body += base64.urlsafe_b64decode(data + "==").decode("utf-8", errors="ignore")[:2000]
+            for sub in part.get("parts", []):
+                _extract_text(sub)
+
+        _extract_text(payload)
+        if not body.strip():
+            return None
+
+        # Subject line
+        headers = {h["name"]: h["value"] for h in payload.get("headers", [])}
+        subject = headers.get("Subject", "")
+        sender  = headers.get("From", "")
+
+        groq_key = os.environ.get("GROQ_API_KEY", "")
+        if not groq_key:
+            return None
+
+        prompt = f"Subject: {subject}\nFrom: {sender}\n\n{body[:1500]}"
+        r2 = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [
+                    {"role": "system", "content": _MA_EXTRACT_SYSTEM},
+                    {"role": "user",   "content": prompt},
+                ],
+                "max_tokens": 200,
+                "temperature": 0.0,
+                "response_format": {"type": "json_object"},
+            },
+            timeout=10,
+        )
+        if r2.status_code != 200:
+            return None
+        extracted = r2.json()["choices"][0]["message"]["content"]
+        import json as _json
+        d = _json.loads(extracted)
+        if d.get("skip"):
+            return None
+        return d
+    except Exception as e:
+        print(f"[ma gmail extract] {msg_id}: {e}")
+        return None
+
+
+def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str):
+    """Background: scan Gmail for household accounts, extract, store as pending records."""
+    token_row = {"device_id": device_id, "access_token": access_token, "refresh_token": refresh_token}
+    at = _ma_gmail_get_token(token_row)
+    seen_accounts = set()
+    pending = []
+
+    for det_type, query in _MA_GMAIL_QUERIES:
+        try:
+            r = requests.get(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+                params={"q": query, "maxResults": 5},
+                headers={"Authorization": f"Bearer {at}"},
+                timeout=10,
+            )
+            if r.status_code != 200:
+                continue
+            msgs = r.json().get("messages", [])
+            for msg in msgs[:3]:
+                d = _ma_gmail_extract_email(at, msg["id"])
+                if not d:
+                    continue
+                key = (d.get("provider", ""), d.get("account_no", ""))
+                if key in seen_accounts:
+                    continue
+                seen_accounts.add(key)
+                # Build ma_details-compatible record
+                rec_type = d.get("type") or det_type
+                rec_type_map = {
+                    "energy": "energy", "broadband": "broadband",
+                    "car_ins": "car_ins", "home_ins": "home_ins",
+                    "life_ins": "life_ins", "council_tax": "council_tax", "other": "other",
+                }
+                rec_type = rec_type_map.get(rec_type, "other")
+                data = {}
+                if d.get("provider"):
+                    field = "Council" if rec_type == "council_tax" else "Provider"
+                    data[field] = d["provider"]
+                if d.get("account_no"):
+                    field = "Account No" if rec_type not in ("car_ins","home_ins","life_ins") else "Policy No"
+                    data[field] = d["account_no"]
+                if d.get("phone"):
+                    data["Phone"] = d["phone"]
+                if d.get("renewal_date"):
+                    data["Renewal Date"] = d["renewal_date"]
+                from search import _MA_DETAIL_TYPES_MAP
+                label = d.get("label") or _MA_DETAIL_TYPES_MAP.get(rec_type, rec_type)
+                pending.append({"type": rec_type, "label": label, "data": data})
+        except Exception as e:
+            print(f"[ma gmail scan] query '{det_type}': {e}")
+
+    # Get Gmail address
+    gmail_email = ""
+    try:
+        r = requests.get(
+            "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+            headers={"Authorization": f"Bearer {at}"},
+            timeout=8,
+        )
+        if r.status_code == 200:
+            gmail_email = r.json().get("emailAddress", "")
+    except Exception:
+        pass
+
+    try:
+        import json as _json
+        lib._sb().table("ma_gmail_tokens").update({
+            "scan_status": "done",
+            "pending":     pending,
+            "email":       gmail_email,
+            "last_scan":   "now()",
+        }).eq("device_id", device_id).execute()
+    except Exception as e:
+        print(f"[ma gmail scan] db update error: {e}")
+
+
+@app.route("/api/myarea/gmail/status")
+def ma_gmail_status():
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify({"connected": False})
+    try:
+        rows = lib._sb().table("ma_gmail_tokens") \
+            .select("device_id,email,scan_status,pending,last_scan") \
+            .eq("device_id", device_id).execute().data
+        if rows:
+            row = rows[0]
+            return jsonify({
+                "connected":   True,
+                "email":       row.get("email", ""),
+                "scan_status": row.get("scan_status", ""),
+                "pending":     row.get("pending", []),
+                "last_scan":   row.get("last_scan", ""),
+            })
+    except Exception as e:
+        print(f"[ma gmail status] {e}")
+    return jsonify({"connected": False})
+
+
+@app.route("/api/myarea/gmail/rescan", methods=["POST"])
+def ma_gmail_rescan():
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify({"error": "device_id required"}), 400
+    try:
+        rows = lib._sb().table("ma_gmail_tokens").select("*").eq("device_id", device_id).execute().data
+        if not rows:
+            return jsonify({"error": "not_connected"}), 401
+        row = rows[0]
+        lib._sb().table("ma_gmail_tokens").update({"scan_status": "scanning"}) \
+            .eq("device_id", device_id).execute()
+        at = _ma_gmail_get_token(row)
+        import threading
+        threading.Thread(
+            target=_ma_gmail_scan_bg,
+            args=(device_id, at, row.get("refresh_token", "")),
+            daemon=True,
+        ).start()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def _web_client_id():
     return os.environ.get("GMAIL_WEB_CLIENT_ID") or os.environ.get("GMAIL_CLIENT_ID", "")
