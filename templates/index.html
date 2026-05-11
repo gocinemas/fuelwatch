@@ -1197,229 +1197,101 @@
     </div>
 
     <!-- ── LOCAL PLACES SCREEN ── -->
-    <div id="screen-places" class="screen pt-5">
+    <div id="screen-places" class="screen" style="padding:0 0 80px">
+      <div style="max-width:600px;margin:0 auto;padding:0 16px">
 
-      <!-- Local tab strip -->
-      <div style="display:flex;gap:6px;margin:0 18px 14px">
-        <button id="loctab-places" onclick="locTab('places')"
-          style="padding:8px 16px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--text,#1a1a2e);color:var(--bg,#fff)">📍 Discover</button>
-        <button id="loctab-finder" onclick="locTab('finder')"
-          style="padding:8px 16px;border-radius:10px;border:1.5px solid var(--border,#e5e7eb);font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--text,#1a1a2e)">🔍 Find a service</button>
-      </div>
-
-      <!-- ── DISCOVER PANEL ── -->
-      <div id="local-discover-panel">
-
-      <!-- Home postcode banner -->
-      <div id="places-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin:0 18px 10px;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="places-home-pc-label"></span></span>
-        <div style="display:flex;gap:6px">
-          <button onclick="placesUseHome()" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
-          <button onclick="placesClearHome()" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer">Clear</button>
+        <!-- Header -->
+        <div style="padding:16px 0 14px">
+          <div style="font-size:21px;font-weight:900;color:var(--text);letter-spacing:-.5px">📍 Local</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:1px">Trades, health &amp; local services near you</div>
         </div>
-      </div>
-
-      <!-- ── Single search bar ── -->
-      <div style="display:flex;gap:8px;padding:0 18px 14px;align-items:center">
-        <button id="places-loc-btn" onclick="placesUseLocation()" title="Use my location"
-          style="flex-shrink:0;width:44px;height:44px;border-radius:12px;border:1.5px solid #3b82f6;background:#eff6ff;color:#1d4ed8;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
-          📍
-        </button>
-        <input id="places-input" type="text" placeholder="e.g. London Bridge or SW1A 1AA"
-          style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
-          onkeydown="if(event.key==='Enter') placesSearch()"
-          onfocus="this.style.boxShadow='0 0 0 3px rgba(59,130,246,.15)'"
-          onblur="this.style.boxShadow=''">
-        <button onclick="placesSearch()"
-          style="flex-shrink:0;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 18px;border-radius:12px;border:none;cursor:pointer">Go</button>
-      </div>
-
-      <!-- ── Feedback ── -->
-      <div id="places-search-loading" class="hidden" style="text-align:center;padding:28px 0">
-        <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:24px;height:24px"></div>
-        <div style="font-size:13px;color:var(--subtle)">Searching…</div>
-      </div>
-      <div id="places-search-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin:0 18px 12px"></div>
-      <div id="places-did-you-mean" class="hidden" style="background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:10px 14px;font-size:13px;color:#713f12;margin:0 18px 12px"></div>
-
-      <!-- WA hint -->
-      <div style="margin:0 18px 16px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;font-size:12px;color:#166534">
-        <div style="font-weight:700;margin-bottom:6px">🏛️ Local Services on WhatsApp</div>
-        <div style="margin-bottom:3px">Send: <code style="background:#dcfce7;padding:1px 6px;border-radius:4px">places KT1 2BA</code></div>
-        <div>Or a specific service: <code style="background:#dcfce7;padding:1px 6px;border-radius:4px">GP near KT1 2BA</code></div>
-      </div>
-
-      <!-- ── Home / empty state ── -->
-      <div id="places-step-home" style="padding:0 18px 24px">
-        <div style="font-size:13px;color:var(--subtle);line-height:1.7">
-          Tap 📍 to see what's near you, or search by name or postcode.
-        </div>
-      </div>
-
-      <!-- Save home postcode nudge (shown after a successful search) -->
-      <div id="places-save-home-row" style="display:none;margin:0 18px 12px;text-align:center">
-        <button onclick="placesSaveHome()" style="font-size:12px;font-weight:600;color:#166534;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:7px 14px;cursor:pointer;width:100%">
-          📍 Save this as my home postcode
-        </button>
-      </div>
-
-      <!-- ── Candidate picker ── -->
-      <div id="places-candidates" class="hidden" style="padding:0 18px 16px">
-        <div style="font-size:12px;font-weight:600;color:var(--subtle);margin-bottom:8px;padding:0 2px">Select a place</div>
-        <div id="places-candidates-list" style="display:flex;flex-direction:column;gap:8px"></div>
-      </div>
-
-      <!-- ── Results ── -->
-      <div id="places-step-details" style="display:none">
-        <div style="display:flex;align-items:center;gap:10px;padding:0 18px 12px">
-          <button onclick="placesBackToSearch()"
-            style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--subtle);cursor:pointer">
-            ← Back
-          </button>
-          <div id="places-detail-title" style="font-size:15px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-        </div>
-        <div id="places-loading" class="hidden" style="text-align:center;padding:40px 0">
-          <div class="spinner mx-auto mb-3" style="border-top-color:#3b82f6;width:26px;height:26px"></div>
-          <div style="font-size:13px;color:var(--subtle)">Finding places nearby…</div>
-        </div>
-        <div id="places-error" class="hidden" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#dc2626;margin:0 18px 12px"></div>
-        <div id="places-result" class="hidden" style="padding:0 18px 24px">
-          <div style="margin-bottom:14px;padding:0 2px">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-            <div id="places-location" style="font-size:13px;font-weight:600;color:var(--subtle)"></div>
-            <button onclick="_sharePlacesResults()" style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">📤 Share</button>
-          </div>
-          </div>
-          <div id="places-list" style="display:flex;flex-direction:column;gap:10px"></div>
-          <div style="font-size:11px;color:var(--subtle);margin-top:16px;text-align:center">Data: OpenStreetMap contributors</div>
-        </div>
-      </div>
-
-      </div><!-- end local-discover-panel -->
-
-      <!-- ── FINDER PANEL ── -->
-      <div id="local-finder-panel" style="display:none;padding:0 6px">
 
         <!-- Location bar -->
-        <div style="display:flex;align-items:center;gap:0;background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:8px">
+        <div style="display:flex;align-items:stretch;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.07)">
           <button id="finder-loc-btn" onclick="useLocation('finder')"
-            style="flex-shrink:0;display:flex;align-items:center;gap:6px;background:#2563eb;color:#fff;font-size:13px;font-weight:700;padding:11px 16px;border:none;cursor:pointer;white-space:nowrap;transition:background .15s">
-            📍 My Location
+            style="flex-shrink:0;display:flex;align-items:center;gap:6px;background:#2563eb;color:#fff;font-size:13px;font-weight:700;padding:12px 14px;border:none;cursor:pointer;white-space:nowrap">
+            📍 Near me
           </button>
-          <div style="width:1px;height:28px;background:#e5e7eb;flex-shrink:0"></div>
+          <div style="width:1px;background:var(--border);flex-shrink:0"></div>
           <input id="finder-postcode" type="text" placeholder="or enter postcode…" maxlength="10"
-            style="flex:1;border:none;outline:none;font-size:14px;color:#111827;background:transparent;padding:11px 14px"
+            style="flex:1;border:none;outline:none;font-size:14px;color:var(--text);background:transparent;padding:12px 14px"
             autocomplete="off"
             oninput="finderPostcodeInput(this.value)"
             onkeydown="if(event.key==='Enter')finderSearch()">
         </div>
         <div id="finder-didyoumean" class="hidden" style="font-size:12px;color:#2563eb;font-weight:600;margin-bottom:8px;cursor:pointer" onclick="finderAcceptSuggestion()"></div>
         <div id="finder-loc-err"    class="hidden" style="font-size:12px;color:#ef4444;margin-bottom:8px"></div>
-        <div id="finder-loc-ok"     class="hidden" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:8px">📍 Location set</div>
+        <div id="finder-loc-ok"     class="hidden" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:8px"></div>
 
-        <!-- Vertical tab layout -->
-        <div style="display:flex;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:24px">
+        <!-- Category grid -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+          <button class="loc-cat" data-cat="trades" onclick="localCatSelect('trades',this)">
+            <span style="font-size:24px">🔧</span><span class="loc-cat-lbl">Trades</span>
+          </button>
+          <button class="loc-cat" data-cat="health" onclick="localCatSelect('health',this)">
+            <span style="font-size:24px">🏥</span><span class="loc-cat-lbl">Health</span>
+          </button>
+          <button class="loc-cat" data-cat="home"   onclick="localCatSelect('home',this)">
+            <span style="font-size:24px">🏠</span><span class="loc-cat-lbl">Home</span>
+          </button>
+          <button class="loc-cat" data-cat="pro"    onclick="localCatSelect('pro',this)">
+            <span style="font-size:24px">👔</span><span class="loc-cat-lbl">Pro</span>
+          </button>
+          <button class="loc-cat" data-cat="family" onclick="localCatSelect('family',this)">
+            <span style="font-size:24px">👶</span><span class="loc-cat-lbl">Family</span>
+          </button>
+          <button class="loc-cat" data-cat="auto"   onclick="localCatSelect('auto',this)">
+            <span style="font-size:24px">🚗</span><span class="loc-cat-lbl">Auto</span>
+          </button>
+        </div>
 
-          <!-- Left tab rail -->
-          <div style="display:flex;flex-direction:column;border-right:1px solid var(--border);background:#f9f8f6;flex-shrink:0;width:72px">
-            <button class="rptab rptab-on" data-fcat="trades" onclick="finderTabSwitch('trades',this)"><span style="font-size:20px">🔧</span><span class="rptab-lbl">Trades</span></button>
-            <button class="rptab" data-fcat="health" onclick="finderTabSwitch('health',this)"><span style="font-size:20px">🏥</span><span class="rptab-lbl">Health</span></button>
-            <button class="rptab" data-fcat="home"   onclick="finderTabSwitch('home',this)"  ><span style="font-size:20px">🏠</span><span class="rptab-lbl">Home</span></button>
-            <button class="rptab" data-fcat="pro"    onclick="finderTabSwitch('pro',this)"   ><span style="font-size:20px">👔</span><span class="rptab-lbl">Pro</span></button>
-            <button class="rptab" data-fcat="family" onclick="finderTabSwitch('family',this)"><span style="font-size:20px">👶</span><span class="rptab-lbl">Family</span></button>
-            <button class="rptab" data-fcat="auto"   onclick="finderTabSwitch('auto',this)"  ><span style="font-size:20px">🚗</span><span class="rptab-lbl">Auto</span></button>
-          </div>
+        <!-- Service pills — shown when category is selected -->
+        <div id="local-service-pills" style="display:none;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+          <div id="local-service-pills-inner" style="display:flex;gap:8px;width:max-content"></div>
+        </div>
 
-          <!-- Right content panel -->
-          <div style="flex:1;min-width:0;padding:14px 12px">
-            <div id="fcat-panel-trades" class="fsub-panel">
-              <button class="fsub" data-q="plumber"                            onclick="finderCatSearch(this)">🔧 Plumber</button>
-              <button class="fsub" data-q="electrician"                        onclick="finderCatSearch(this)">⚡ Electrician</button>
-              <button class="fsub" data-q="gas engineer boiler repair"         onclick="finderCatSearch(this)">🔥 Gas / Boiler</button>
-              <button class="fsub" data-q="builder"                            onclick="finderCatSearch(this)">🔨 Builder</button>
-              <button class="fsub" data-q="painter decorator"                  onclick="finderCatSearch(this)">🎨 Decorator</button>
-              <button class="fsub" data-q="locksmith"                          onclick="finderCatSearch(this)">🔒 Locksmith</button>
-              <button class="fsub" data-q="handyman"                           onclick="finderCatSearch(this)">🏗️ Handyman</button>
-              <button class="fsub" data-q="roofer roofing"                     onclick="finderCatSearch(this)">🏚️ Roofer</button>
-              <button class="fsub" data-q="tiler tiling"                       onclick="finderCatSearch(this)">🪟 Tiler</button>
-              <button class="fsub" data-q="plasterer plastering"               onclick="finderCatSearch(this)">🖌️ Plasterer</button>
-            </div>
-            <div id="fcat-panel-health" class="fsub-panel" style="display:none">
-              <button class="fsub" data-q="GP surgery doctor"                  onclick="finderCatSearch(this)">🏥 GP Surgery</button>
-              <button class="fsub" data-q="dentist"                            onclick="finderCatSearch(this)">🦷 Dentist</button>
-              <button class="fsub" data-q="pharmacy chemist"                   onclick="finderCatSearch(this)">💊 Pharmacy</button>
-              <button class="fsub" data-q="optician optometrist"               onclick="finderCatSearch(this)">👁️ Optician</button>
-              <button class="fsub" data-q="physiotherapy physio"               onclick="finderCatSearch(this)">🏋️ Physio</button>
-              <button class="fsub" data-q="mental health counsellor therapist" onclick="finderCatSearch(this)">🧠 Therapist</button>
-              <button class="fsub" data-q="chiropractor osteopath"             onclick="finderCatSearch(this)">💆 Chiro / Osteo</button>
-            </div>
-            <div id="fcat-panel-home" class="fsub-panel" style="display:none">
-              <button class="fsub" data-q="cleaning service"                   onclick="finderCatSearch(this)">🧹 Cleaning</button>
-              <button class="fsub" data-q="gardener landscaping"               onclick="finderCatSearch(this)">🌿 Gardener</button>
-              <button class="fsub" data-q="pest control"                       onclick="finderCatSearch(this)">🪲 Pest Control</button>
-              <button class="fsub" data-q="veterinary vet"                     onclick="finderCatSearch(this)">🐾 Vet</button>
-              <button class="fsub" data-q="dog walker pet sitting"             onclick="finderCatSearch(this)">🐕 Dog Walker</button>
-              <button class="fsub" data-q="tutor tutoring"                     onclick="finderCatSearch(this)">📚 Tutor</button>
-              <button class="fsub" data-q="gym fitness centre"                 onclick="finderCatSearch(this)">💪 Gym</button>
-            </div>
-            <div id="fcat-panel-pro" class="fsub-panel" style="display:none">
-              <button class="fsub" data-q="solicitor lawyer"                   onclick="finderCatSearch(this)">⚖️ Solicitor</button>
-              <button class="fsub" data-q="accountant"                         onclick="finderCatSearch(this)">💰 Accountant</button>
-              <button class="fsub" data-q="estate agent"                       onclick="finderCatSearch(this)">🏘️ Estate Agent</button>
-              <button class="fsub" data-q="financial advisor IFA"              onclick="finderCatSearch(this)">💼 Financial Advisor</button>
-              <button class="fsub" data-q="mortgage broker"                    onclick="finderCatSearch(this)">🏦 Mortgage Broker</button>
-              <button class="fsub" data-q="insurance broker"                   onclick="finderCatSearch(this)">🛡️ Insurance</button>
-              <button class="fsub" data-q="recruitment agency"                 onclick="finderCatSearch(this)">🤝 Recruitment</button>
-            </div>
-            <div id="fcat-panel-family" class="fsub-panel" style="display:none">
-              <button class="fsub" data-q="nursery childcare"                  onclick="finderCatSearch(this)">🏫 Childcare</button>
-              <button class="fsub" data-q="nanny agency"                       onclick="finderCatSearch(this)">🤱 Nanny Agency</button>
-              <button class="fsub" data-q="coworking space shared office"      onclick="finderCatSearch(this)">🖥️ Co-working</button>
-              <button class="fsub" data-q="primary school"                     onclick="finderCatSearch(this)">🏫 Primary School</button>
-              <button class="fsub" data-q="after school club"                  onclick="finderCatSearch(this)">🌟 After School</button>
-              <button class="fsub" data-q="children's activity class"          onclick="finderCatSearch(this)">🎨 Kids Activities</button>
-            </div>
-            <div id="fcat-panel-auto" class="fsub-panel" style="display:none">
-              <button class="fsub" data-q="car mechanic garage"                onclick="finderCatSearch(this)">🔧 Mechanic</button>
-              <button class="fsub" data-q="car wash valet"                     onclick="finderCatSearch(this)">🚿 Car Wash</button>
-              <button class="fsub" data-q="MOT centre"                         onclick="finderCatSearch(this)">✅ MOT Centre</button>
-              <button class="fsub" data-q="tyre fitting"                       onclick="finderCatSearch(this)">🛞 Tyres</button>
-              <button class="fsub" data-q="car body repair"                    onclick="finderCatSearch(this)">🚗 Body Repair</button>
-              <button class="fsub" data-q="driving instructor"                 onclick="finderCatSearch(this)">🚦 Driving Lessons</button>
-            </div>
+        <!-- Divider -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+          <span style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.08em">OR SEARCH</span>
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+        </div>
 
-            <!-- Free-text search -->
-            <div style="display:flex;gap:8px;margin-top:14px">
-              <input id="finder-q" type="text" placeholder="Or search anything…"
-                style="flex:1;border:1.5px solid #e5e7eb;border-radius:10px;padding:9px 12px;font-size:13px;color:#111827;outline:none;background:#fff"
-                onkeydown="if(event.key==='Enter')finderSearch()">
-              <button onclick="finderSearch()"
-                style="padding:9px 16px;border-radius:10px;border:none;background:#111827;color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Go</button>
-            </div>
+        <!-- Free text search -->
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input id="finder-q" type="text" placeholder="e.g. plumber, dentist, gym…"
+            style="flex:1;padding:11px 14px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;outline:none"
+            onkeydown="if(event.key==='Enter')finderSearch()">
+          <button onclick="finderSearch()"
+            style="padding:11px 20px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">Go</button>
+        </div>
 
-            <!-- Controls -->
-            <div id="finder-controls" style="display:none;justify-content:space-between;align-items:center;margin-top:10px">
-              <button id="finder-open-now-btn" onclick="finderToggleOpenNow()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:2px solid #d1fae5;background:#f0fdf4;color:#065f46;font-size:12px;font-weight:700;cursor:pointer">
-                <span id="finder-open-now-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
-                Open Now <span id="finder-open-now-state" style="font-weight:400;opacity:.7">Off</span>
-              </button>
-              <button id="finder-saved-btn" onclick="finderShowSaved()" style="display:none;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer"></button>
-            </div>
-            <input type="checkbox" id="finder-open-now" style="display:none">
+        <!-- Controls (open now / saved) -->
+        <div id="finder-controls" style="display:none;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <button id="finder-open-now-btn" onclick="finderToggleOpenNow()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:2px solid #d1fae5;background:#f0fdf4;color:#065f46;font-size:12px;font-weight:700;cursor:pointer">
+            <span id="finder-open-now-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0"></span>
+            Open Now <span id="finder-open-now-state" style="font-weight:400;opacity:.7">Off</span>
+          </button>
+          <button id="finder-saved-btn" onclick="finderShowSaved()" style="display:none;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer"></button>
+        </div>
+        <input type="checkbox" id="finder-open-now" style="display:none">
 
-            <div id="finder-loading" class="hidden text-center py-6 text-gray-400 text-sm">
-              <div class="spinner text-blue-600 mx-auto mb-2"></div>Searching nearby…
-            </div>
-            <div id="finder-results" style="display:none;margin-top:12px">
-              <div id="finder-results-hdr" style="margin-bottom:10px"></div>
-              <div id="finder-list"></div>
-            </div>
+        <div id="finder-loading" class="hidden" style="text-align:center;padding:40px 0">
+          <div class="spinner mx-auto mb-3" style="border-top-color:#2563eb;width:28px;height:28px"></div>
+          <div style="font-size:13px;color:var(--muted)">Searching nearby…</div>
+        </div>
+        <div id="finder-results" style="display:none">
+          <div id="finder-results-hdr" style="margin-bottom:12px"></div>
+          <div id="finder-list"></div>
+        </div>
 
-          </div><!-- end right panel -->
-        </div><!-- end vertical tab layout -->
+        <!-- WhatsApp hint -->
+        <div id="local-wa-hint" style="padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;font-size:12px;color:#166534;margin-top:8px">
+          <div style="font-weight:700;margin-bottom:4px">📱 Also works on WhatsApp</div>
+          <div>Send: <code style="background:#dcfce7;padding:1px 6px;border-radius:4px">plumber near KT1 2BA</code></div>
+        </div>
 
-      </div><!-- end local-finder-panel -->
-
+      </div>
     </div>
 
     <!-- ── MY AREA SCREEN ── -->
@@ -7973,7 +7845,6 @@ const _ts = new Date(d.timestamp);
     window._fillReport = pc => { const el = document.getElementById('report-postcode'); if (el) el.value = pc; showScreen('report'); };
     window._fillFinder = (pc, q) => {
       showScreen('places');
-      locTab('finder');
       if (pc) document.getElementById('finder-postcode').value = pc;
       if (q)  document.getElementById('finder-q').value = q;
       if (pc || q) setTimeout(() => finderSearch(), 100);
@@ -9070,6 +8941,11 @@ _bkBadge();
 .fsub:active,.fsub.fsub-on{background:#2563eb;color:#fff;border-color:#2563eb}
 /* Result cards */
 .finder-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px}
+/* Local category grid */
+.loc-cat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:14px 8px;border-radius:14px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;transition:all .12s;width:100%}
+.loc-cat:hover{border-color:#93c5fd;background:#eff6ff}
+.loc-cat.loc-cat-on{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+.loc-cat-lbl{font-size:11px;font-weight:700;color:var(--text);letter-spacing:.01em}
 </style>
 
 <script>
@@ -9169,6 +9045,31 @@ _bkBadge();
     if(!q){ _showOk("📍 Location set! Tap a category or type your search."); return; }
     _finderCurrentQ = q;
     await _finderFetch(q);
+  };
+
+  /* ── category grid ── */
+  const _LOCAL_SERVICES = {
+    trades: [{q:"plumber",label:"🔧 Plumber"},{q:"electrician",label:"⚡ Electrician"},{q:"builder",label:"🏗️ Builder"},{q:"locksmith",label:"🔑 Locksmith"},{q:"handyman",label:"🛠️ Handyman"},{q:"roofer",label:"🏠 Roofer"},{q:"plasterer",label:"🪣 Plasterer"},{q:"decorator",label:"🖌️ Decorator"},{q:"boiler repair",label:"🔥 Boiler"}],
+    health: [{q:"gp doctor",label:"🩺 GP/Doctor"},{q:"dentist",label:"🦷 Dentist"},{q:"pharmacy",label:"💊 Pharmacy"},{q:"optician",label:"👓 Optician"},{q:"physio",label:"🏃 Physio"},{q:"mental health",label:"🧠 Mental Health"},{q:"hospital",label:"🏥 Hospital"}],
+    home:   [{q:"supermarket",label:"🛒 Supermarket"},{q:"cafe",label:"☕ Cafe"},{q:"restaurant",label:"🍽️ Restaurant"},{q:"pub",label:"🍺 Pub"},{q:"takeaway",label:"🥡 Takeaway"},{q:"gym",label:"💪 Gym"},{q:"hairdresser",label:"✂️ Hairdresser"}],
+    pro:    [{q:"solicitor",label:"⚖️ Solicitor"},{q:"accountant",label:"📊 Accountant"},{q:"financial advisor",label:"💼 Financial Advisor"},{q:"estate agent",label:"🏠 Estate Agent"},{q:"mortgage broker",label:"🏦 Mortgage"},{q:"insurance broker",label:"🛡️ Insurance"}],
+    family: [{q:"nursery",label:"👶 Nursery"},{q:"school",label:"🏫 School"},{q:"childminder",label:"🧸 Childminder"},{q:"tutor",label:"📚 Tutor"},{q:"park",label:"🌳 Park"},{q:"soft play",label:"🎠 Soft Play"}],
+    auto:   [{q:"garage car repair",label:"🔧 Garage"},{q:"petrol station",label:"⛽ Petrol"},{q:"car wash",label:"🚿 Car Wash"},{q:"mot test",label:"🚗 MOT"},{q:"tyre fitting",label:"🔄 Tyres"},{q:"parking",label:"🅿️ Parking"}],
+  };
+
+  window.localCatSelect = function(cat, btn){
+    const alreadyOn = btn.classList.contains('loc-cat-on');
+    document.querySelectorAll('.loc-cat').forEach(b => b.classList.remove('loc-cat-on'));
+    const pillsContainer = document.getElementById('local-service-pills');
+    const pillsInner = document.getElementById('local-service-pills-inner');
+    if(alreadyOn){ pillsContainer.style.display = 'none'; return; }
+    btn.classList.add('loc-cat-on');
+    const services = _LOCAL_SERVICES[cat] || [];
+    pillsInner.innerHTML = services.map(s =>
+      `<button class="fsub" data-q="${s.q}" onclick="finderCatSearch(this)">${s.label}</button>`
+    ).join('');
+    pillsContainer.style.display = '';
+    pillsInner.scrollLeft = 0;
   };
 
   /* ── category chip search ── */
