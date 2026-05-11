@@ -10386,15 +10386,18 @@ def api_train_nearest():
     except ValueError:
         return jsonify({"error": "invalid lat/lng"}), 400
 
-    best, best_dist = None, float("inf")
-    for s in _STATION_CACHE.values():
-        if s.get("lat") and s.get("lon"):
-            d = (s["lat"] - user_lat) ** 2 + (s["lon"] - user_lon) ** 2
-            if d < best_dist:
-                best_dist, best = d, s
-    if best:
-        return jsonify({"name": best["name"], "crs": best["crs"], "lat": best["lat"], "lng": best["lon"]})
-    return jsonify({"error": "No station found"}), 404
+    scored = sorted(
+        [(haversine_km(user_lat, user_lon, s["lat"], s["lon"]), s)
+         for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
+        key=lambda x: x[0]
+    )[:3]
+    if not scored:
+        return jsonify({"error": "No station found"}), 404
+    stations = [
+        {"name": s["name"], "crs": s["crs"], "distance_km": round(d, 2)}
+        for d, s in scored
+    ]
+    return jsonify({"stations": stations})
 
 
 @app.route("/api/train/nearest-by-postcode")

@@ -10991,24 +10991,32 @@ window.spotifyAddTrack = window.spotifyLike;
 
   <!-- ── IDLE: pick a station ── -->
   <div id="train-idle">
-    <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin:0 0 18px">🚆 Next Train</h2>
+    <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin:0 0 16px">🚆 Train Times</h2>
 
-    <!-- Saved station — only shown when bookmark exists -->
-    <div id="train-bm-row" style="display:none;margin-bottom:16px">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Saved station</div>
-      <button id="train-bm-btn" onclick="trainUseBookmark()"
-        style="width:100%;text-align:left;padding:14px 16px;border:2px solid #fbbf24;border-radius:14px;background:#fffbeb;color:var(--text);font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px">
-        <span>⭐</span>
-        <span id="train-bm-name" style="flex:1"></span>
-        <span style="font-size:12px;color:#92400e;font-weight:600">Load →</span>
-      </button>
+    <!-- Saved stations (Home + Work) — shown when at least one exists -->
+    <div id="train-saved-row" style="display:none;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Saved stations</div>
+      <div style="display:flex;gap:8px">
+        <button id="train-saved-home-btn" onclick="trainUseBookmark('home')" style="display:none;flex:1;text-align:left;padding:12px 14px;border:2px solid #fbbf24;border-radius:14px;background:#fffbeb;color:var(--text);font-size:13px;font-weight:700;cursor:pointer">
+          <div style="font-size:11px;color:#92400e;margin-bottom:2px">⭐ HOME</div>
+          <div id="train-saved-home-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        </button>
+        <button id="train-saved-work-btn" onclick="trainUseBookmark('work')" style="display:none;flex:1;text-align:left;padding:12px 14px;border:2px solid #bfdbfe;border-radius:14px;background:#eff6ff;color:var(--text);font-size:13px;font-weight:700;cursor:pointer">
+          <div style="font-size:11px;color:#1e40af;margin-bottom:2px">🏢 WORK</div>
+          <div id="train-saved-work-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        </button>
+      </div>
     </div>
 
     <!-- Location button -->
     <button id="train-locate-btn" onclick="trainLocate()"
       style="width:100%;padding:15px;border:none;background:var(--text);color:var(--bg);border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">
-      📍 Use my current location
+      📍 Nearest stations
     </button>
+
+    <!-- Nearest stations picker — appears after location granted -->
+    <div id="train-nearest-list" style="display:none;margin-bottom:12px"></div>
+
     <div id="train-locate-hint" style="display:none;font-size:12px;color:var(--muted);margin-bottom:12px;text-align:center">
       Location unavailable — search by name below
     </div>
@@ -11026,23 +11034,30 @@ window.spotifyAddTrack = window.spotifyLike;
 
   <!-- ── ACTIVE: departures ── -->
   <div id="train-active" style="display:none">
+
     <!-- Station header -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
       <div style="flex:1;min-width:0">
-        <div id="train-station-name" style="font-size:17px;font-weight:800;color:var(--text)"></div>
+        <div id="train-station-name" style="font-size:17px;font-weight:800;color:var(--text);line-height:1.2"></div>
       </div>
-      <button id="train-star-btn" onclick="trainToggleBookmark()" title="Save station"
-        style="border:none;background:none;font-size:22px;cursor:pointer;padding:2px;line-height:1">☆</button>
-      <button id="train-relocate-btn" onclick="trainRelocate()" title="Use my location"
-        style="border:1.5px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;padding:6px 10px;border-radius:10px;line-height:1">📍</button>
+      <button id="train-save-home-btn" onclick="trainSaveSlot('home')" title="Save as Home"
+        style="border:none;background:none;font-size:19px;cursor:pointer;padding:4px;line-height:1;opacity:.7">⭐</button>
+      <button id="train-save-work-btn" onclick="trainSaveSlot('work')" title="Save as Work"
+        style="border:none;background:none;font-size:19px;cursor:pointer;padding:4px;line-height:1;opacity:.7">🏢</button>
+      <button id="train-relocate-btn" onclick="trainRelocate()" title="Nearest station"
+        style="border:1.5px solid var(--border);background:var(--surface);font-size:15px;cursor:pointer;padding:5px 9px;border-radius:10px;line-height:1">📍</button>
       <button onclick="trainChangeStation()"
-        style="border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;padding:6px 12px;border-radius:10px">Change</button>
+        style="border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;padding:5px 11px;border-radius:10px">Change</button>
     </div>
 
-    <!-- Destination filter -->
-    <input id="train-dest-input" type="text" placeholder="Filter by destination…"
-      style="width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none;background:var(--surface);color:var(--text);margin-bottom:14px"
-      oninput="trainFilterResults()">
+    <!-- Last updated -->
+    <div id="train-updated-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span id="train-updated-label" style="font-size:12px;color:var(--muted)"></span>
+      <button onclick="trainRefresh()" style="font-size:12px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0">↻ Refresh</button>
+    </div>
+
+    <!-- Destination chips -->
+    <div id="train-dest-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;scrollbar-width:none"></div>
 
     <div id="train-loading" style="display:none;text-align:center;padding:24px;color:var(--muted);font-size:13px">Loading trains…</div>
     <div id="train-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;font-size:13px;color:#b91c1c;margin-bottom:12px"></div>
@@ -11053,66 +11068,220 @@ window.spotifyAddTrack = window.spotifyLike;
 
 <script>
 (function(){
-  var _trainData = [];
-  var _trainCrs  = "";
-  var _trainName = "";
+  var _trainData   = [];
+  var _trainCrs    = "";
+  var _trainName   = "";
+  var _trainDest   = "";   // active chip filter
+  var _trainLoadedAt  = 0;
+  var _trainRefreshTm = null;
+  var _trainTickTm    = null;
 
-  function _getBm()       { try { return JSON.parse(localStorage.getItem("miru_train_bm")||"null"); } catch { return null; } }
-  function _saveBm(c,n)   { localStorage.setItem("miru_train_bm", JSON.stringify({crs:c,name:n})); }
-  function _clearBm()     { localStorage.removeItem("miru_train_bm"); }
+  // ── Storage: two slots (home / work) ──────────────────────────────────────
+  function _getBm(slot)     { try { return JSON.parse(localStorage.getItem("miru_train_bm_"+(slot||"home"))||"null"); } catch { return null; } }
+  function _saveBm(slot,c,n){ localStorage.setItem("miru_train_bm_"+(slot||"home"), JSON.stringify({crs:c,name:n})); }
+  function _clearBm(slot)   { localStorage.removeItem("miru_train_bm_"+(slot||"home")); }
 
-  function _renderBm() {
-    var bm = _getBm();
-    var row = document.getElementById("train-bm-row");
-    if (bm && bm.crs) {
-      document.getElementById("train-bm-name").textContent = bm.name + " (" + bm.crs + ")";
-      row.style.display = "block";
-    } else {
-      row.style.display = "none";
-    }
+  // ── Idle: render saved row ─────────────────────────────────────────────────
+  function _renderSaved() {
+    var bh = _getBm("home"), bw = _getBm("work");
+    var row = document.getElementById("train-saved-row");
+    var hBtn = document.getElementById("train-saved-home-btn");
+    var wBtn = document.getElementById("train-saved-work-btn");
+    if (!bh && !bw) { row.style.display = "none"; return; }
+    row.style.display = "block";
+    if (bh) { hBtn.style.display = "block"; document.getElementById("train-saved-home-name").textContent = bh.name; }
+    else { hBtn.style.display = "none"; }
+    if (bw) { wBtn.style.display = "block"; document.getElementById("train-saved-work-name").textContent = bw.name; }
+    else { wBtn.style.display = "none"; }
   }
 
-  function _updateStar() {
-    var bm = _getBm();
-    var btn = document.getElementById("train-star-btn");
-    if (btn) btn.textContent = (bm && bm.crs === _trainCrs) ? "⭐" : "☆";
+  // ── Active: update save button states ─────────────────────────────────────
+  function _updateSaveBtns() {
+    var bh = _getBm("home"), bw = _getBm("work");
+    var hb = document.getElementById("train-save-home-btn");
+    var wb = document.getElementById("train-save-work-btn");
+    if (hb) hb.style.opacity = (bh && bh.crs === _trainCrs) ? "1" : ".45";
+    if (wb) wb.style.opacity = (bw && bw.crs === _trainCrs) ? "1" : ".45";
   }
 
+  // ── "In X mins" ───────────────────────────────────────────────────────────
+  function _minsUntil(hhmm) {
+    if (!hhmm || hhmm.length < 4) return "";
+    var now = new Date();
+    var ph = parseInt(hhmm.slice(0,2)), pm = parseInt(hhmm.slice(3,5));
+    var nowMins  = now.getHours() * 60 + now.getMinutes();
+    var thenMins = ph * 60 + pm;
+    var diff = thenMins - nowMins;
+    if (diff < -120) diff += 1440;
+    if (diff < 0)   return "";
+    if (diff === 0) return "now";
+    if (diff === 1) return "1 min";
+    if (diff < 60)  return diff + " mins";
+    return "";
+  }
+
+  // ── Show/hide panels ──────────────────────────────────────────────────────
   function _showIdle() {
-    document.getElementById("train-idle").style.display = "block";
+    _stopTimers();
+    document.getElementById("train-idle").style.display   = "block";
     document.getElementById("train-active").style.display = "none";
-    document.getElementById("train-results").innerHTML = "";
+    document.getElementById("train-results").innerHTML    = "";
     document.getElementById("train-search-results").innerHTML = "";
-    document.getElementById("train-search-input").value = "";
-    document.getElementById("train-dest-input").value = "";
-    document.getElementById("train-locate-hint").style.display = "none";
-    _trainCrs = ""; _trainName = "";
-    _renderBm();
+    document.getElementById("train-search-input").value   = "";
+    document.getElementById("train-nearest-list").style.display = "none";
+    document.getElementById("train-locate-hint").style.display  = "none";
+    _trainCrs = ""; _trainName = ""; _trainDest = "";
+    _renderSaved();
   }
 
   function _showActive(name, crs) {
-    document.getElementById("train-station-name").textContent = name + (crs ? " (" + crs + ")" : "");
-    document.getElementById("train-idle").style.display = "none";
+    document.getElementById("train-station-name").textContent = name + " (" + crs + ")";
+    document.getElementById("train-idle").style.display   = "none";
     document.getElementById("train-active").style.display = "block";
-    document.getElementById("train-dest-input").value = "";
-    _trainCrs = crs; _trainName = name;
-    _updateStar();
+    document.getElementById("train-dest-chips").innerHTML = "";
+    _trainCrs  = crs; _trainName = name; _trainDest = "";
+    _updateSaveBtns();
   }
 
-  window.trainUseBookmark = function() {
-    var bm = _getBm();
+  // ── Updated-at label ─────────────────────────────────────────────────────
+  function _updateAgoLabel() {
+    if (!_trainLoadedAt) return;
+    var secs = Math.round((Date.now() - _trainLoadedAt) / 1000);
+    var lbl  = document.getElementById("train-updated-label");
+    if (!lbl) return;
+    lbl.textContent = secs < 10 ? "Just updated" :
+                      secs < 60 ? "Updated " + secs + "s ago" :
+                                  "Updated " + Math.round(secs/60) + " min ago";
+  }
+
+  // ── Auto-refresh timers ───────────────────────────────────────────────────
+  function _startTimers(crs) {
+    _stopTimers();
+    _trainRefreshTm = setInterval(function(){ _loadDeps(crs, true); }, 60000);
+    _trainTickTm    = setInterval(_updateAgoLabel, 10000);
+  }
+  function _stopTimers() {
+    if (_trainRefreshTm) { clearInterval(_trainRefreshTm); _trainRefreshTm = null; }
+    if (_trainTickTm)    { clearInterval(_trainTickTm);    _trainTickTm    = null; }
+  }
+
+  // ── Nearest station picker ────────────────────────────────────────────────
+  function _showNearestPicker(stations) {
+    var nl = document.getElementById("train-nearest-list");
+    nl.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">📍 Nearest stations</div>'
+      + stations.map(function(s){
+          var dist = s.distance_km < 1.6 ? Math.round(s.distance_km * 0.621371 * 10)/10 + " mi"
+                                         : Math.round(s.distance_km * 0.621371) + " mi";
+          return '<button onclick="trainSelectStation(\''+s.crs+'\',\''+s.name.replace(/'/g,"\\'")+'\')"'
+            +' style="display:flex;align-items:center;width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">'
+            +'<span style="flex:1">'+s.name+'</span>'
+            +'<span style="font-size:12px;color:var(--muted);font-weight:400;margin-right:8px">'+dist+'</span>'
+            +'<span style="color:var(--muted)">→</span>'
+            +'</button>';
+        }).join("");
+    nl.style.display = "block";
+  }
+
+  // ── Destination chips ─────────────────────────────────────────────────────
+  function _renderChips() {
+    var dests = [];
+    _trainData.forEach(function(t){ if (dests.indexOf(t.destination) < 0) dests.push(t.destination); });
+    if (dests.length <= 1) { document.getElementById("train-dest-chips").innerHTML = ""; return; }
+    var chips = ['<button onclick="trainSelectDest(\'\')" id="train-chip-all"'
+      +' style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:'+(_trainDest?'var(--surface)':'var(--text)')+';color:'+(_trainDest?'var(--muted)':'var(--bg)')+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">All</button>'];
+    dests.slice(0,7).forEach(function(d){
+      var active = (_trainDest === d);
+      chips.push('<button onclick="trainSelectDest(\''+d.replace(/'/g,"\\'")+'\')"'
+        +' style="flex-shrink:0;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:'+(active?'var(--text)':'var(--surface)')+';color:'+(active?'var(--bg)':'var(--muted)')+';font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">'+d+'</button>');
+    });
+    document.getElementById("train-dest-chips").innerHTML = chips.join("");
+  }
+
+  // ── Render train cards ────────────────────────────────────────────────────
+  function _renderResults() {
+    var trains = _trainDest
+      ? _trainData.filter(function(t){ return t.destination === _trainDest; })
+      : _trainData;
+    var el = document.getElementById("train-results");
+    if (!trains.length) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No departures'+(
+        _trainDest ? ' to '+_trainDest : '')+' found</div>';
+      return;
+    }
+    el.innerHTML = trains.map(function(t){
+      var onTime    = t.expected === "On time";
+      var cancelled = t.cancelled;
+      var dot    = cancelled ? "#ef4444" : onTime ? "#22c55e" : "#f59e0b";
+      var scol   = cancelled ? "#ef4444" : onTime ? "#16a34a" : "#d97706";
+      var inMins = cancelled ? "" : _minsUntil(t.scheduled);
+      return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);margin-bottom:7px">'
+        + '<div style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0;margin-top:2px"></div>'
+        + '<div style="flex:1;min-width:0">'
+        +   '<div style="font-size:15px;font-weight:700;color:var(--text)">'+t.scheduled+' → '+t.destination+'</div>'
+        +   (t.platform
+              ? '<div style="display:inline-flex;align-items:center;margin-top:4px;padding:2px 8px;background:#e0e7ff;border-radius:6px;font-size:11px;font-weight:800;color:#3730a3">Plat '+t.platform+'</div>'
+              : '')
+        + '</div>'
+        + '<div style="text-align:right;flex-shrink:0">'
+        +   '<div style="font-size:12px;font-weight:700;color:'+scol+'">'+t.expected+'</div>'
+        +   (inMins ? '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+inMins+'</div>' : '')
+        + '</div>'
+        + '</div>';
+    }).join("");
+  }
+
+  // ── Load departures ───────────────────────────────────────────────────────
+  function _loadDeps(crs, silent) {
+    var el = document.getElementById("train-loading");
+    var er = document.getElementById("train-error");
+    if (!silent) { el.style.display = "block"; }
+    er.style.display = "none";
+    if (!silent) document.getElementById("train-results").innerHTML = "";
+    fetch("/api/train/departures?crs=" + crs)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        el.style.display = "none";
+        if (d.error) { er.textContent = d.error; er.style.display = "block"; return; }
+        _trainData = d.trains || [];
+        _trainLoadedAt = Date.now();
+        _updateAgoLabel();
+        _renderChips();
+        _renderResults();
+        _startTimers(crs);
+      })
+      .catch(function(){
+        el.style.display = "none";
+        er.textContent = "Could not load departures";
+        er.style.display = "block";
+      });
+  }
+
+  // ── Public API ────────────────────────────────────────────────────────────
+  window.trainUseBookmark = function(slot) {
+    var bm = _getBm(slot);
     if (!bm) return;
     _showActive(bm.name, bm.crs);
     _loadDeps(bm.crs);
   };
 
-  window.trainToggleBookmark = function() {
-    var bm = _getBm();
-    if (bm && bm.crs === _trainCrs) { _clearBm(); } else { _saveBm(_trainCrs, _trainName); }
-    _updateStar();
+  window.trainSaveSlot = function(slot) {
+    var bm = _getBm(slot);
+    if (bm && bm.crs === _trainCrs) { _clearBm(slot); }
+    else { _saveBm(slot, _trainCrs, _trainName); }
+    _updateSaveBtns();
   };
 
   window.trainChangeStation = _showIdle;
+
+  window.trainRefresh = function() {
+    if (_trainCrs) _loadDeps(_trainCrs, true);
+  };
+
+  window.trainSelectDest = function(dest) {
+    _trainDest = dest;
+    _renderChips();
+    _renderResults();
+  };
 
   window.trainRelocate = function() {
     var btn = document.getElementById("train-relocate-btn");
@@ -11121,9 +11290,14 @@ window.spotifyAddTrack = window.spotifyLike;
         fetch("/api/train/nearest?lat=" + loc.lat + "&lng=" + loc.lon)
           .then(function(r){ return r.json(); })
           .then(function(d){
-            if (d.error) return;
-            _showActive(d.name, d.crs);
-            _loadDeps(d.crs);
+            if (d.error || !d.stations) return;
+            if (d.stations.length === 1) {
+              var s = d.stations[0];
+              _showActive(s.name, s.crs); _loadDeps(s.crs);
+            } else {
+              _showIdle();
+              _showNearestPicker(d.stations);
+            }
           });
       },
       function() {}
@@ -11131,110 +11305,63 @@ window.spotifyAddTrack = window.spotifyLike;
   };
 
   window.trainLocate = function() {
-    var btn = document.getElementById("train-locate-btn");
+    var btn  = document.getElementById("train-locate-btn");
     var hint = document.getElementById("train-locate-hint");
     hint.style.display = "none";
+    document.getElementById("train-nearest-list").style.display = "none";
     MiruLocation.request(btn,
       function(loc) {
         fetch("/api/train/nearest?lat=" + loc.lat + "&lng=" + loc.lon)
           .then(function(r){ return r.json(); })
           .then(function(d){
-            if (d.error) { hint.textContent = d.error; hint.style.display = "block"; return; }
-            _showActive(d.name, d.crs);
-            _loadDeps(d.crs);
+            if (d.error || !d.stations) { hint.textContent = d.error || "No stations found"; hint.style.display = "block"; return; }
+            _showNearestPicker(d.stations);
           })
           .catch(function(){ hint.textContent = "Could not find nearest station"; hint.style.display = "block"; });
       },
-      function() {
-        hint.style.display = "block";
-        document.getElementById("train-search-input").focus();
-      }
+      function() { hint.style.display = "block"; document.getElementById("train-search-input").focus(); }
     );
   };
 
   window.trainSearch = function() {
-    var q = (document.getElementById("train-search-input").value || "").trim();
+    var q  = (document.getElementById("train-search-input").value || "").trim();
     if (!q) return;
     var sr = document.getElementById("train-search-results");
     sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Searching…</div>';
     fetch("/api/train/search?q=" + encodeURIComponent(q))
       .then(function(r){ return r.json(); })
       .then(function(d){
-        if (!d.results || !d.results.length) {
-          var list = (d.suggestions && d.suggestions.length) ? d.suggestions : [];
-          if (!list.length) { sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No stations found</div>'; return; }
-          sr.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Did you mean:</div>' + _stationBtns(list);
-        } else {
-          sr.innerHTML = _stationBtns(d.results);
-        }
+        var list = (d.results && d.results.length) ? d.results : (d.suggestions || []);
+        if (!list.length) { sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No stations found</div>'; return; }
+        var prefix = (!d.results || !d.results.length) ? '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Did you mean:</div>' : '';
+        sr.innerHTML = prefix + list.map(function(s){
+          return '<button onclick="trainSelectStation(\''+s.crs+'\',\''+s.name.replace(/'/g,"\\'")+'\')\"'
+            +' style="display:flex;align-items:center;width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">'
+            +'<span style="flex:1">'+s.name+'</span>'
+            +'<span style="font-size:12px;color:var(--muted);font-weight:400">('+s.crs+')</span>'
+            +'</button>';
+        }).join("");
       })
       .catch(function(){ sr.innerHTML = '<div style="font-size:13px;color:#b91c1c;padding:6px 0">Could not search. Try again.</div>'; });
   };
-
-  function _stationBtns(list) {
-    return list.map(function(s){
-      return '<button onclick="trainSelectStation(\''+s.crs+'\',\''+s.name.replace(/'/g,"\\'")+'\')\"'
-        +' style="display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">'
-        +s.name+' <span style="font-size:12px;color:var(--muted);font-weight:400">('+s.crs+')</span></button>';
-    }).join("");
-  }
 
   window.trainSelectStation = function(crs, name) {
     _showActive(name, crs);
     _loadDeps(crs);
   };
 
-  function _loadDeps(crs) {
-    var el = document.getElementById("train-loading");
-    var er = document.getElementById("train-error");
-    el.style.display = "block"; er.style.display = "none";
-    document.getElementById("train-results").innerHTML = "";
-    fetch("/api/train/departures?crs=" + crs)
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        el.style.display = "none";
-        if (d.error) { er.textContent = d.error; er.style.display = "block"; return; }
-        _trainData = d.trains || [];
-        trainFilterResults();
-      })
-      .catch(function(){ el.style.display = "none"; er.textContent = "Could not load departures"; er.style.display = "block"; });
-  }
-
-  window.trainFilterResults = function() {
-    var filter = (document.getElementById("train-dest-input").value || "").toLowerCase().trim();
-    var trains = _trainData.filter(function(t){ return !filter || t.destination.toLowerCase().includes(filter); });
-    var el = document.getElementById("train-results");
-    if (!trains.length) {
-      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No trains found' + (filter ? " to " + filter : "") + '</div>';
-      return;
-    }
-    el.innerHTML = trains.map(function(t){
-      var onTime    = t.expected === "On time";
-      var cancelled = t.cancelled;
-      var dot       = cancelled ? "#ef4444" : onTime ? "#22c55e" : "#f59e0b";
-      var statusCol = cancelled ? "#ef4444" : onTime ? "#16a34a" : "#d97706";
-      return '<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);margin-bottom:7px">'
-        + '<div style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0"></div>'
-        + '<div style="flex:1;min-width:0">'
-        + '<div style="font-size:15px;font-weight:700;color:var(--text)">'+t.scheduled+' → '+t.destination+'</div>'
-        + (t.platform ? '<div style="font-size:12px;color:var(--muted);margin-top:1px">Platform '+t.platform+'</div>' : '')
-        + '</div>'
-        + '<div style="font-size:12px;font-weight:700;color:'+statusCol+'">'+t.expected+'</div>'
-        + '</div>';
-    }).join("");
-  };
-
   var _origShowScreenTrains = window.showScreen;
   window.showScreen = function(name) {
     _origShowScreenTrains(name);
     if (name === "trains") {
-      var bm = _getBm();
-      if (bm && bm.crs && !_trainCrs) {
-        _showActive(bm.name, bm.crs);
-        _loadDeps(bm.crs);
-      } else if (!_trainCrs) {
+      if (!_trainCrs) {
         _showIdle();
+        // Auto-load home bookmark if set
+        var bh = _getBm("home");
+        if (bh && bh.crs) { _showActive(bh.name, bh.crs); _loadDeps(bh.crs); }
       }
+    } else {
+      _stopTimers();
     }
   };
 })();
