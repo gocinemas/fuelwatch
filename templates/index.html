@@ -5,22 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Miru">
-  <meta name="theme-color" content="#dc2626">
-  <title>Miru — Your everyday UK companion</title>
-  <meta name="description" content="Fuel prices, research an area, area research, book scanner, company intel and more — all in one place. Also works on WhatsApp.">
+  <meta name="apple-mobile-web-app-title" content="{% if intel_mode %}Intel{% else %}Miru{% endif %}">
+  <meta name="theme-color" content="{% if intel_mode %}#4f46e5{% else %}#dc2626{% endif %}">
+  <title>{% if intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}</title>
+  <meta name="description" content="{% if intel_mode %}Brand &amp; Company intelligence — financials, strategy, news, campaigns and more.{% else %}Fuel prices, research an area, area research, book scanner, company intel and more — all in one place. Also works on WhatsApp.{% endif %}">
 
-  <!-- Open Graph (WhatsApp, Facebook, iMessage previews) -->
+  <!-- Open Graph -->
   <meta property="og:type"        content="website">
-  <meta property="og:url"         content="https://miru.humanagency.co/">
-  <meta property="og:title"       content="Miru — Your everyday UK companion">
-  <meta property="og:description" content="Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.">
+  <meta property="og:url"         content="{% if intel_mode %}https://intel.humanagency.co/{% else %}https://miru.humanagency.co/{% endif %}">
+  <meta property="og:title"       content="{% if intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
+  <meta property="og:description" content="{% if intel_mode %}Brand &amp; Company intelligence — financials, strategy, news and more.{% else %}Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.{% endif %}">
   <meta property="og:image"       content="https://miru.humanagency.co/static/miru-preview.png">
 
   <!-- Twitter / X card -->
   <meta name="twitter:card"        content="summary_large_image">
-  <meta name="twitter:title"       content="Miru — Your everyday UK companion">
-  <meta name="twitter:description" content="Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.">
+  <meta name="twitter:title"       content="{% if intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
+  <meta name="twitter:description" content="{% if intel_mode %}Brand &amp; Company intelligence — financials, strategy, news and more.{% else %}Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.{% endif %}">
   <meta name="twitter:image"       content="https://miru.humanagency.co/static/miru-preview.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -299,17 +299,29 @@
   <header id="app-header">
     <div class="inner">
       <div style="display:flex;align-items:center;gap:10px">
+        {% if intel_mode %}
+        <div class="logo" onclick="showHome()">
+          <div class="logo-dot" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">🧠</div>
+          <span class="logo-text">Intel</span>
+          <span style="font-size:10px;font-weight:800;color:#7c3aed;background:#f3e8ff;border:1px solid #ddd6fe;border-radius:6px;padding:2px 7px;letter-spacing:.5px;line-height:1.5">BETA</span>
+        </div>
+        {% else %}
         <button class="back-btn" id="back-btn" onclick="showHome()">← Back</button>
         <div class="logo" onclick="showHome()">
           <div class="logo-dot" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">👁</div>
           <span class="logo-text">Miru</span>
           <span style="font-size:10px;font-weight:800;color:#7c3aed;background:#f3e8ff;border:1px solid #ddd6fe;border-radius:6px;padding:2px 7px;letter-spacing:.5px;line-height:1.5">BETA</span>
         </div>
+        {% endif %}
       </div>
       <div style="display:flex;align-items:center;gap:4px">
+        {% if intel_mode %}
+        <a href="https://miru.humanagency.co" style="font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:5px 10px;border:1.5px solid var(--border);border-radius:99px">← Miru</a>
+        {% else %}
         <button onclick="openMiruStory()"
           style="font-size:13px;font-weight:700;border:1.5px solid var(--border);background:transparent;cursor:pointer;padding:5px 11px;border-radius:99px;line-height:1;color:var(--muted);font-family:inherit"
           title="What is Miru?">What's this?</button>
+        {% endif %}
         <button id="theme-btn" onclick="cycleTheme()"
           style="font-size:16px;border:none;background:transparent;cursor:pointer;padding:6px 8px;border-radius:8px;line-height:1;color:var(--subtle)"
           title="Toggle theme"></button>
@@ -404,10 +416,10 @@
           <span class="tool-icon-emoji">📍</span>
           <span class="tool-icon-label">Local Search</span>
         </button>
-        <button class="tool-icon-btn" onclick="showScreen('company')">
-          <span class="tool-icon-emoji">🔍</span>
+        <a href="https://intel.humanagency.co" class="tool-icon-btn" style="text-decoration:none">
+          <span class="tool-icon-emoji">🧠</span>
           <span class="tool-icon-label">Intel</span>
-        </button>
+        </a>
         <button class="tool-icon-btn" onclick="showScreen('library')">
           <span class="tool-icon-emoji">📄</span>
           <span class="tool-icon-label">My Documents</span>
@@ -751,6 +763,7 @@
         <button onclick="_intelRedirectToFinder()" style="background:#d97706;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px">Find nearby →</button>
       </div>
       <!-- Save → Intel tip (shown when no search has been made yet) -->
+      {% if not intel_mode %}
       <div id="intel-tip-card" style="background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;gap:12px;align-items:center">
         <div style="font-size:28px;flex-shrink:0">📸</div>
         <div>
@@ -758,6 +771,7 @@
           <div style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.5">Photo an ad, billboard, or product label → Miru saves it → tap <strong style="color:#a5b4fc">🔍 Intel</strong> on the card to research the brand here</div>
         </div>
       </div>
+      {% endif %}
 
       <!-- Loading / Error (unified) -->
       <div id="intel-loading" class="hidden text-center py-10">
@@ -1762,7 +1776,9 @@
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function setFooter(name) {}
+  const _INTEL_MODE = {{ 'true' if intel_mode else 'false' }};
   function showHome() {
+    if (_INTEL_MODE) { showScreen("company"); return; }
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     document.getElementById("screen-home").classList.add("active");
     window.scrollTo({top:0, behavior:"smooth"});
@@ -1794,8 +1810,12 @@
   document.getElementById("report-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchReport(); });
   // company-input is now a hidden compat field; intel-input handles keydown via onkeydown attr
 
+  // Intel mode: go straight to company screen, skip home
+  if (_INTEL_MODE) { showScreen("company"); }
+
   // Hash-based deep links — e.g. /#places opens Local Places directly
   (function() {
+    if (_INTEL_MODE) return;
     const auto = "{{ autoscreen|default('') }}";
     const hash = window.location.hash.replace("#", "").toLowerCase();
     const params = new URLSearchParams(window.location.search);
