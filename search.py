@@ -687,9 +687,9 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
         return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
     # extract doubles as the original user query for context (e.g. "Lynx deodorant")
     context_hint = f' (the user searched for: "{extract}")' if extract and extract.lower() != brand.lower() else ""
-    prompt = f"""Return ONLY valid JSON for brand "{brand}"{context_hint}. No markdown, no explanation.
-{{"did_you_know":"one striking memorable stat or fact about {brand} — a surprising number, scale, or behaviour (1 sentence, start with the brand name or a specific number)","facts":{{"founded":"","hq":"","industry":"","employees":"","revenue":""}},"competitors":[{{"name":"","revenue":"","description":""}}],"campaigns":[{{"name":"","year":"","description":""}}],"timeline":[{{"year":"","title":"","description":""}}]}}
-Rules: did_you_know must be concrete and surprising, not generic. facts fill all 5 fields. competitors: 4 items each with revenue. campaigns: 4 items. timeline: 8-10 milestones oldest to newest each with title+description."""
+    prompt = f"""Return ONLY valid JSON for brand "{brand}"{context_hint}. No markdown, no explanation, no preamble.
+{{"did_you_know":"one striking fact about {brand} — specific number or surprising detail, 1 sentence","facts":{{"founded":"year","hq":"city, country","industry":"sector","employees":"number","revenue":"amount"}},"competitors":[{{"name":"","revenue":"","description":""}}],"campaigns":[{{"name":"","year":"","description":""}}],"timeline":[{{"year":"","title":"","description":""}}]}}
+Strict rules: competitors = exactly 4 real competitors each with real revenue. campaigns = exactly 4 famous advertising campaigns. timeline = exactly 6 key milestones oldest first, each description under 25 words. All fields must be populated. Return ONLY the JSON object."""
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -698,7 +698,7 @@ Rules: did_you_know must be concrete and surprising, not generic. facts fill all
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.2,
-                "max_tokens": 2500,
+                "max_tokens": 4096,
             },
             timeout=35,
         )
@@ -912,8 +912,8 @@ def fetch_brand_data(brand: str) -> dict:
     suggested = canonical if canonical.lower() != original.lower() else ""
     brand = canonical
 
-    # Step 2: disambiguation — only after canonicalisation, and only for short bare brand names
-    # Skip if query already included a product qualifier (already resolved above)
+    # Step 2: classify — what specific brand/product/company is the user looking for?
+    # Run for any bare search (single word, or no product qualifier was stripped)
     if canonical.lower() == original.lower().strip() or len(canonical.split()) == 1:
         try:
             if groq_key:
@@ -922,22 +922,35 @@ def fetch_brand_data(brand: str) -> dict:
                     headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
                     json={"model": "llama-3.1-8b-instant",
                           "messages": [{"role": "user", "content":
-                              f'Brand search query: "{canonical}"\n'
-                              'Is this ambiguous — does it match multiple distinct well-known brands or companies?\n'
-                              'Examples of ambiguous: "Virgin" (Virgin Atlantic, Virgin Money, Virgin Media, Virgin Group), '
-                              '"Next" (Next retail, Next plc).\n'
-                              'NOT ambiguous: "Apple" (clearly one tech company), "O2" (one UK telco), "Nike" (one sportswear brand).\n'
-                              'If ambiguous, reply ONLY with a JSON array of up to 5 full brand names.\n'
-                              'If NOT ambiguous (single clear brand), reply with exactly: NO'}],
-                          "max_tokens": 80, "temperature": 0.0},
+                              f'User typed "{canonical}" in a Brand & Company Intelligence search.\n'
+                              'What well-known brand(s), company(ies), or products use this name?\n'
+                              'Reply with ONE of these three formats (nothing else):\n'
+                              '1. CLEAR — the name unambiguously refers to ONE major company or brand '
+                              '(e.g. "Apple", "Nike", "Unilever", "Amazon").\n'
+                              '2. ONE:<qualified form> — the name belongs to ONE clear brand but a product '
+                              'qualifier helps avoid confusion with non-brand meanings (animals, people, '
+                              'words). e.g. "Lynx" → ONE:Lynx deodorant, "Mitchum" → ONE:Mitchum deodorant, '
+                              '"Dove" → ONE:Dove soap (if only one brand), "Shell" → ONE:Shell petrol.\n'
+                              '3. A JSON array of up to 5 specific options — the name is shared by multiple '
+                              'well-known brands. e.g. "Virgin" → ["Virgin Atlantic","Virgin Money","Virgin Media"], '
+                              '"Dove" → ["Dove soap","Dove chocolate"], "Next" → ["Next fashion","Next plc"].\n'
+                              'Reply ONLY with CLEAR, ONE:<form>, or a JSON array.'}],
+                          "max_tokens": 100, "temperature": 0.0},
                     timeout=6,
                 )
                 reply = r.json()["choices"][0]["message"]["content"].strip()
-                if reply != "NO" and reply.startswith("["):
+                if reply.startswith("ONE:"):
+                    qualified = reply[4:].strip().strip('"').strip("'")
+                    if qualified and qualified.lower() != canonical.lower():
+                        # Use qualified form for Wikipedia lookup so we get the brand, not the animal/person
+                        original = qualified
+                        if not suggested:
+                            suggested = qualified
+                elif reply != "CLEAR" and reply.startswith("["):
                     import json as _json
                     options = _json.loads(reply)
-                    if isinstance(options, list) and len(options) > 1:
-                        return {"disambiguate": options, "name": original}
+                    if isinstance(options, list) and len(options) >= 1:
+                        return {"disambiguate": options, "name": canonical}
         except Exception:
             pass
 
@@ -991,22 +1004,22 @@ def fetch_brand_data(brand: str) -> dict:
             try: wiki = wiki_f.result(timeout=10) or {}
             except Exception: pass
 
-            # Discard Wikipedia result if it describes a person, not a brand/product
+            # Discard Wikipedia result if it describes a person, animal, or non-brand entity
             _wd = wiki.get("description", "").lower()
             _we = (wiki.get("extract", "") or "")[:300].lower()
-            _PERSON_SIGNALS = ("actor", "actress", "singer", "musician", "politician",
-                               "footballer", "director", "author", "writer", "athlete",
-                               "born in", "born on", "is an american", "is a british",
-                               "is an english", "is an australian")
-            _BRAND_SIGNALS  = ("brand", "company", "product", "manufacturer", "deodorant",
-                               "founded", "subsidiary", "corporation", "ltd", "plc", "inc.",
-                               "fragrance", "cosmetic", "toiletri")
-            _looks_person = (any(s in _wd for s in _PERSON_SIGNALS) or
-                             any(s in _we for s in ("born in", "born on", "is an american",
-                                                    "is a british", "is an english")))
-            _looks_brand  = any(s in _wd + " " + _we for s in _BRAND_SIGNALS)
-            if _looks_person and not _looks_brand:
-                print(f"[brand_wiki] suppressed person article for '{brand}': {_wd[:80]}")
+            _combined = _wd + " " + _we
+            _NON_BRAND = (
+                "actor", "actress", "singer", "musician", "politician", "footballer",
+                "director", "author", "writer", "athlete", "born in", "born on",
+                "is an american", "is a british", "is an english", "is an australian",
+                "genus of", "species of", "wild cat", "wildcat", "mammal", "felid",
+                "extant species", "medium-sized wild",
+            )
+            _BRAND_OK = ("brand", "company", "product", "manufacturer", "deodorant",
+                         "founded", "subsidiary", "corporation", "ltd", "plc", "inc.",
+                         "fragrance", "cosmetic", "toiletri", "retailer", "fashion")
+            if any(s in _combined for s in _NON_BRAND) and not any(s in _combined for s in _BRAND_OK):
+                print(f"[brand_wiki] suppressed non-brand article for '{brand}': {_wd[:80]}")
                 wiki = {}
 
             news = []

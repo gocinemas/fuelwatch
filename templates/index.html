@@ -5774,14 +5774,17 @@ const _ts = new Date(d.timestamp);
       document.getElementById("brand-loading").classList.add("hidden");
       if (d.error) { document.getElementById("brand-error").textContent = d.error; document.getElementById("brand-error").classList.remove("hidden"); return; }
 
-      // Disambiguation: brand name maps to multiple companies — ask user to pick
+      // Disambiguation: brand name maps to multiple options — ask user to pick
       const dymEl = document.getElementById("brand-did-you-mean");
-      if (d.disambiguate && d.disambiguate.length > 1) {
+      if (d.disambiguate && d.disambiguate.length >= 1) {
         const btns = d.disambiguate.map(opt =>
           `<button onclick="document.getElementById('brand-input').value='${opt.replace(/'/g,"\\'")}';document.getElementById('brand-did-you-mean').classList.add('hidden');searchBrand()"
             style="font-size:12px;font-weight:600;padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer">${opt}</button>`
         ).join("");
-        dymEl.innerHTML = `<div style="font-size:13px;font-weight:600;color:#92400e;margin-bottom:8px">Which ${d.name} do you mean?</div><div style="display:flex;flex-wrap:wrap;gap:6px">${btns}</div>`;
+        const prompt = d.disambiguate.length === 1
+          ? `Did you mean:`
+          : `Which <strong>${d.name}</strong> do you mean?`;
+        dymEl.innerHTML = `<div style="font-size:13px;font-weight:600;color:#92400e;margin-bottom:8px">🔍 ${prompt}</div><div style="display:flex;flex-wrap:wrap;gap:6px">${btns}</div>`;
         dymEl.classList.remove("hidden");
         return;
       }
