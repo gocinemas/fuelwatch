@@ -430,7 +430,7 @@
         </button>
         <button class="tool-icon-btn" onclick="showScreen('scan')">
           <span class="tool-icon-emoji">📚</span>
-          <span class="tool-icon-label">Book Scanner</span>
+          <span class="tool-icon-label">My Books</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('music')">
           <span class="tool-icon-emoji">🎵</span>
@@ -8094,6 +8094,13 @@ const _ts = new Date(d.timestamp);
 
   <!-- ── MY LIBRARY PANEL ── -->
   <div id="books-library-panel" style="display:none">
+    <!-- Sort pills -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="bk-sort-btn bk-sort-on" data-sort="added"  onclick="bkSetSort('added',this)" >📅 Recent</button>
+      <button class="bk-sort-btn"            data-sort="rating" onclick="bkSetSort('rating',this)">⭐ Rating</button>
+      <button class="bk-sort-btn"            data-sort="author" onclick="bkSetSort('author',this)">👤 Author</button>
+      <button class="bk-sort-btn"            data-sort="title"  onclick="bkSetSort('title',this)" >🔤 Title</button>
+    </div>
     <!-- Phone sync banner -->
     <div id="bk-phone-banner" style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:14px;padding:14px 16px;margin-bottom:14px">
       <div style="font-size:13px;font-weight:700;color:#4c1d95;margin-bottom:6px">📱 Sync across devices</div>
@@ -8126,6 +8133,15 @@ const _ts = new Date(d.timestamp);
         <div id="bd-meta"   style="font-size:12px;color:var(--subtle)"></div>
       </div>
     </div>
+
+    <!-- Quick save row -->
+    <div id="bd-quick-save-row" style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="bd-quick-save-btn" onclick="bookQuickSave()"
+        style="flex:1;padding:11px;border-radius:12px;border:none;background:#059669;color:#fff;font-size:14px;font-weight:700;cursor:pointer">🔖 Add to Wishlist</button>
+      <button id="bd-quick-reading-btn" onclick="bookQuickReading()"
+        style="padding:11px 14px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer">📖 Reading</button>
+    </div>
+    <div id="bd-in-library-row" style="display:none;background:#d1fae5;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:700;color:#065f46">✓ In your library</div>
 
     <div id="bd-community-rating" style="display:none;font-size:14px;color:var(--muted);padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;margin-bottom:14px"></div>
     <div id="bd-subjects" style="display:none;font-size:12px;color:var(--subtle);line-height:1.8;margin-bottom:14px"></div>
@@ -8193,6 +8209,8 @@ const _ts = new Date(d.timestamp);
 .btab.btab-on{background:var(--text);color:var(--bg);border-color:var(--text)}
 .bstatus-btn{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s}
 .bstatus-btn.bstatus-on{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.bk-sort-btn{padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s}
+.bk-sort-btn.bk-sort-on{background:var(--text);color:var(--bg);border-color:var(--text)}
 </style>
 
 <script>
@@ -8200,6 +8218,7 @@ const _ts = new Date(d.timestamp);
 var _bookCurrentDetail = null;
 var _bookDetailRating = 0;
 var _bookDetailStatus = "";
+var _bkSort = "added";
 
 function _bkGetLib(){ try{ return JSON.parse(localStorage.getItem("miru_books")||"[]"); }catch(e){ return []; } }
 function _bkSetLib(a){ localStorage.setItem("miru_books", JSON.stringify(a)); }
@@ -8449,6 +8468,7 @@ function _bkShowDetail(bk){
   document.getElementById("books-search-panel").style.display = "none";
   document.getElementById("books-library-panel").style.display = "none";
   document.getElementById("book-detail").style.display = "block";
+  _bkUpdateQuickSaveRow();
 }
 
 function bookCloseDetail(){
@@ -8539,7 +8559,7 @@ function bookSave(){
 }
 
 function _bkRenderLib(){
-  var lib=_bkGetLib(), empty=document.getElementById("books-library-empty"), list=document.getElementById("books-library-list");
+  var lib=_bkSortedLib(), empty=document.getElementById("books-library-empty"), list=document.getElementById("books-library-list");
   if(!lib.length){ empty.style.display="block"; list.innerHTML=""; return; }
   empty.style.display="none";
   var labels={reading:"📖 Reading",read:"✅ Read",wishlist:"🔖 Want to read"};
@@ -8562,6 +8582,43 @@ function _bkRenderLib(){
 
 function bookOpenFromLib(bk){ _bkShowDetail(bk); }
 function bookDeleteLib(isbn){ _bkSetLib(_bkGetLib().filter(function(b){ return b.isbn!==isbn; })); _bkRenderLib(); }
+
+function bkSetSort(sort, btn){
+  _bkSort = sort;
+  document.querySelectorAll(".bk-sort-btn").forEach(function(b){ b.classList.remove("bk-sort-on"); });
+  if(btn) btn.classList.add("bk-sort-on");
+  _bkRenderLib();
+}
+
+function _bkSortedLib(){
+  var lib = _bkGetLib();
+  if(_bkSort==="rating") lib.sort(function(a,b){ return (b.rating||0)-(a.rating||0); });
+  else if(_bkSort==="author") lib.sort(function(a,b){ return (a.author||"").localeCompare(b.author||""); });
+  else if(_bkSort==="title") lib.sort(function(a,b){ return (a.title||"").localeCompare(b.title||""); });
+  return lib;
+}
+
+function bookQuickSave(){
+  if(!_bookCurrentDetail) return;
+  _bookDetailStatus = "wishlist";
+  _bookDetailRating = _bookDetailRating || 0;
+  bookSave();
+  _bkUpdateQuickSaveRow();
+}
+
+function bookQuickReading(){
+  if(!_bookCurrentDetail) return;
+  _bookDetailStatus = "reading";
+  bookSave();
+  _bkUpdateQuickSaveRow();
+}
+
+function _bkUpdateQuickSaveRow(){
+  var bk = _bookCurrentDetail;
+  var inLib = bk && bk.isbn && _bkByIsbn(bk.isbn);
+  document.getElementById("bd-quick-save-row").style.display = inLib ? "none" : "flex";
+  document.getElementById("bd-in-library-row").style.display = inLib ? "block" : "none";
+}
 
 var _bkScanner = null;
 
@@ -8656,7 +8713,7 @@ function _bkHandleISBN(isbn){
   document.getElementById("book-loading").style.display="block";
   _bkFetchISBN(isbn).then(function(bk){
     document.getElementById("book-loading").style.display="none";
-    if(bk){ _bkShowDetail(bk); }
+    if(bk){ _bkShowDetail(bk); setTimeout(bookLoadSummary, 300); }
     else { document.getElementById("book-error").textContent="ISBN "+isbn+" not found. Try the title search above."; document.getElementById("book-error").style.display="block"; document.getElementById("book-input").value=isbn; }
   });
 }
