@@ -1350,24 +1350,27 @@
       </div>
 
       <!-- Tab bar (hidden until first search) -->
-      <div id="myarea-tab-bar" style="display:none;margin-bottom:10px">
+      <!-- Tab bar — always visible once My Area loads -->
+      <div id="myarea-tab-bar" style="margin-bottom:10px">
         <div style="display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px">
           <button onclick="_maShowTab('places')" id="matab-btn-places"
-            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:#065f46;color:#fff">🏡 My Places</button>
+            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏡 Places</button>
           <button onclick="_maShowTab('services')" id="matab-btn-services"
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏥 Services</button>
           <button onclick="_maShowTab('civic')" id="matab-btn-civic"
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏛️ Civic</button>
+          <button onclick="_maShowTab('accounts')" id="matab-btn-accounts"
+            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:#065f46;color:#fff">📋 My Accounts</button>
         </div>
       </div>
 
       <!-- Tab: My Places (weather, train) -->
-      <div id="matab-places">
+      <div id="matab-places" style="display:none">
         <div id="myarea-weather" style="display:none;margin-bottom:10px"></div>
         <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
       </div>
 
-      <!-- Tab: Services — skeletons shown while loading, replaced by real data -->
+      <!-- Tab: Services -->
       <div id="matab-services" style="display:none">
         <div id="myarea-services-loading" style="display:none">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;opacity:.5">
@@ -1387,15 +1390,15 @@
         <div id="myarea-schools" style="display:none;margin-bottom:10px"></div>
       </div>
 
-      <!-- Tab: Civic (representatives, council, crime) -->
+      <!-- Tab: Civic — MP, councillors, council, crime only -->
       <div id="matab-civic" style="display:none">
         <div id="myarea-reps"    style="display:none;margin-bottom:10px"></div>
         <div id="myarea-council" style="display:none;margin-bottom:10px"></div>
         <div id="myarea-crime"   style="display:none;margin-bottom:10px"></div>
       </div>
 
-      <!-- ── MY DETAILS ── -->
-      <div style="margin-top:18px">
+      <!-- Tab: My Accounts — personal bills, vehicles, insurance -->
+      <div id="matab-accounts">
 
         <!-- Gmail import card -->
         <div id="ma-gmail-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:16px">
@@ -1476,7 +1479,8 @@
           <button onclick="_maClearAllDetails()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:#dc2626;cursor:pointer" title="Delete all details">🗑️</button>
           <button id="ma-test-data-btn" onclick="_maLoadTestData()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer" title="Load sample data for testing">🧪</button>
         </div>
-      </div>
+
+      </div><!-- /matab-accounts -->
     </div>
 
     <!-- ── LIBRARY SCREEN ── -->
@@ -2798,7 +2802,13 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maShowTab(tab) {
-    ["places","services","civic"].forEach(t => {
+    const postcodeRequired = ["places","services","civic"];
+    // If switching to a postcode-dependent tab without a postcode, nudge to search first
+    if (postcodeRequired.includes(tab) && !_maCurrentPostcode) {
+      document.getElementById("myarea-postcode-input")?.focus();
+      return;
+    }
+    ["places","services","civic","accounts"].forEach(t => {
       document.getElementById(`matab-${t}`).style.display = t === tab ? "" : "none";
       const btn = document.getElementById(`matab-btn-${t}`);
       if (btn) {
@@ -2806,7 +2816,6 @@ const _ts = new Date(d.timestamp);
         btn.style.color = t === tab ? "#fff" : "var(--muted)";
       }
     });
-    // Show services skeleton only when switching to services tab during an active load
     const svcSkel = document.getElementById("myarea-services-loading");
     if (svcSkel && tab === "services") {
       const hasContent = ["myarea-gp","myarea-shops","myarea-pubs","myarea-schools"]
@@ -3386,9 +3395,8 @@ const _ts = new Date(d.timestamp);
     ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
-    document.getElementById("myarea-tab-bar").style.display = "";
     const activeTab = localStorage.getItem("miru_ma_tab") || "places";
-    _maShowTab(activeTab);
+    _maShowTab(activeTab !== "accounts" ? activeTab : "places");
     // Show services skeleton while loading
     const svcSkel = document.getElementById("myarea-services-loading");
     if (svcSkel) svcSkel.style.display = activeTab === "services" ? "" : "none";
@@ -3958,12 +3966,6 @@ const _ts = new Date(d.timestamp);
     const inputEl = document.getElementById("myarea-postcode-input");
 
     if (_maCurrentPostcode) {
-      // User has already searched a postcode this session — never override it.
-      // The results are still in the DOM; just make sure the tab bar is visible.
-      if (document.getElementById("myarea-tab-bar").style.display === "none") {
-        document.getElementById("myarea-tab-bar").style.display = "";
-        _maShowTab(localStorage.getItem("miru_ma_tab") || "places");
-      }
       return;
     }
 
@@ -3974,8 +3976,9 @@ const _ts = new Date(d.timestamp);
       inputEl.value = home;
       myAreaSearch();
     } else if (!currentVal) {
-      // New user: show empty state
+      // No postcode yet — show My Accounts tab by default
       document.getElementById("myarea-empty-state").style.display = "";
+      _maShowTab("accounts");
       _myAreaPersonalRender();
     } else {
       // Input has a value typed by the user but not yet searched
