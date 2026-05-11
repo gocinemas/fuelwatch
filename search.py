@@ -955,7 +955,7 @@ def fetch_brand_data(brand: str) -> dict:
         except Exception:
             pass
 
-    cache_key = brand.strip().lower() + "|brandv24"
+    cache_key = brand.strip().lower() + "|brandv25"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -1238,11 +1238,14 @@ def _fetch_wikipedia(company: str) -> dict:
     # Step 1: try direct title match
     result = _summary(company)
 
-    # Step 1b: for product-qualified queries like "Lynx deodorant", try "Lynx (brand)"
-    # so we find the brand article instead of the animal/person article
+    # Step 1b: for product-qualified queries like "Lynx deodorant", try
+    # "Lynx (deodorant)", then "Lynx (brand)" — Wikipedia uses parenthetical disambiguation
     if not result:
         parts = company.split()
         if len(parts) >= 2:
+            # Try "FirstWord (qualifier)" e.g. "Lynx (deodorant)"
+            result = _summary(parts[0] + " (" + parts[1].lower() + ")")
+        if not result and len(parts) >= 2:
             result = _summary(parts[0] + " (brand)")
 
     # Step 2: if that fails, search Wikipedia for the best matching article
@@ -1251,17 +1254,19 @@ def _fetch_wikipedia(company: str) -> dict:
             sr = requests.get(
                 "https://en.wikipedia.org/w/api.php",
                 params={"action": "query", "list": "search", "srsearch": company,
-                        "srlimit": 3, "format": "json"},
+                        "srlimit": 5, "format": "json"},
                 timeout=6, headers=ua,
             )
             hits = sr.json().get("query", {}).get("search", [])
-            query_words = set(company.lower().split()) - {"the", "a", "an", "of", "and", "&"}
+            import re as _re
+            # Strip parenthetical disambiguation suffixes like "(deodorant)" → "deodorant"
+            def _title_words(t):
+                return set(_re.sub(r"[()']", "", t.lower()).split()) - {"the", "a", "an", "of", "and", "&"}
+            query_words = _title_words(company)
             for hit in hits:
-                title_words = set(hit["title"].lower().split())
+                tw = _title_words(hit["title"])
                 # Require ALL significant query words appear in the article title.
-                # Partial overlap causes false positives (e.g. "The CooCoo Nut Grove"
-                # matching "Pip & Nut" on "nut" alone).
-                if query_words and not query_words.issubset(title_words):
+                if query_words and not query_words.issubset(tw):
                     continue
                 result = _summary(hit["title"])
                 if result:

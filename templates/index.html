@@ -1260,62 +1260,75 @@
 
     <!-- ── MY AREA SCREEN ── -->
     <div id="screen-myarea" class="screen" style="padding:16px 16px 48px;max-width:600px;margin:0 auto">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px">🏡 My Area</div>
-        <button onclick="_maToggleCustomise()" style="background:none;border:1px solid var(--border);border-radius:10px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">⚙️ Customise</button>
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Your representatives, local services &amp; personal records</div>
 
-      <!-- First-time welcome tip -->
-      <div id="myarea-first-tip" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:13px;color:#065f46">
-        👋 <strong>Welcome to My Area!</strong> Choose what you'd like to see below, then enter your postcode and tap <strong>Go</strong>.
-        <button onclick="document.getElementById('myarea-first-tip').style.display='none'" style="float:right;background:none;border:none;font-size:16px;cursor:pointer;color:#065f46;line-height:1;margin-top:-2px">✕</button>
+      <!-- Header row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px">🏡 My Area</div>
+          <div id="myarea-subtitle" style="font-size:12px;color:var(--muted);margin-top:1px">Your MP, council, local services &amp; more</div>
+        </div>
+        <button onclick="_maToggleCustomise()" style="background:none;border:1px solid var(--border);border-radius:10px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">⚙️</button>
       </div>
 
       <!-- Customise panel -->
       <div id="myarea-customise" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px"></div>
 
-      <!-- Account link banner (hidden when logged in) -->
-      <div id="myarea-link-banner" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:10px 14px;margin-bottom:8px">
-        <div style="font-size:12px;color:#065f46;font-weight:600;margin-bottom:6px">📱 Your mobile number — syncs bookmarks across devices</div>
-        <div style="display:flex;gap:8px">
+      <!-- ── POSTCODE + IDENTITY ROW ── -->
+      <!-- Home banner (shown when home is set) -->
+      <div id="myarea-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:9px 14px;margin-bottom:8px;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="myarea-home-pc-label"></span></span>
+        <button onclick="myAreaUseHome()" style="font-size:12px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
+      </div>
+
+      <!-- Postcode search bar — always visible -->
+      <div style="margin-bottom:8px">
+        <div style="display:flex;gap:6px;margin-bottom:4px">
+          <input id="myarea-postcode-input" type="text" placeholder="Enter postcode e.g. KT16 0DA"
+            style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;text-transform:uppercase"
+            maxlength="10" autocomplete="off"
+            oninput="_maOnPostcodeInput()"
+            onkeydown="if(event.key==='Enter') myAreaSearch()">
+          <button onclick="myAreaUseLocation()" title="Use my location"
+            style="flex-shrink:0;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;padding:10px 13px;font-size:16px;cursor:pointer">📍</button>
+          <button id="myarea-go-btn" onclick="myAreaSearch()"
+            style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s">Go</button>
+        </div>
+        <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:4px"></div>
+        <!-- Hint: shown when user types a postcode different from current search -->
+        <div id="myarea-search-hint" style="display:none;font-size:12px;color:#065f46;padding:0 2px;margin-bottom:2px"></div>
+        <!-- Save home row: shown after a search when postcode ≠ home -->
+        <div id="myarea-save-home-row" style="display:none;text-align:center;margin-top:2px">
+          <button onclick="myAreaSaveHome()" style="font-size:12px;color:#16a34a;background:none;border:none;cursor:pointer;text-decoration:underline">📍 Save as my home postcode</button>
+        </div>
+      </div>
+
+      <!-- Phone link: subtle inline (not a big banner) -->
+      <div id="myarea-link-banner" style="display:none;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:8px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px">📱 Add your mobile number to sync bookmarks across devices</div>
+        <div style="display:flex;gap:6px">
           <input id="myarea-phone-input" type="tel" placeholder="07911 123456"
-            style="flex:1;border:1px solid #bbf7d0;border-radius:8px;padding:7px 10px;font-size:13px;background:#fff;color:var(--text);outline:none"
+            style="flex:1;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;background:var(--surface);color:var(--text);outline:none"
             onkeydown="if(event.key==='Enter') _maLinkPhone()">
-          <button onclick="_maLinkPhone()" style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Save</button>
+          <button onclick="_maLinkPhone()" style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Save</button>
+          <button onclick="document.getElementById('myarea-link-banner').style.display='none'" style="flex-shrink:0;background:none;border:none;font-size:16px;color:var(--muted);cursor:pointer;padding:0 4px">✕</button>
         </div>
         <div id="myarea-link-err" style="display:none;font-size:11px;color:#ef4444;margin-top:4px">Please enter a valid UK mobile number</div>
       </div>
       <div id="myarea-linked-phone" style="display:none;font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 2px"></div>
 
-      <!-- Home postcode banner -->
-      <div id="myarea-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="myarea-home-pc-label"></span></span>
-        <button onclick="myAreaUseHome()" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
-      </div>
-
-      <!-- Postcode bar (collapses when saved places exist) -->
-      <div id="myarea-search-bar" style="margin-bottom:6px">
-        <div style="display:flex;gap:8px;margin-bottom:6px">
-          <input id="myarea-postcode-input" type="text" placeholder="Enter postcode e.g. KT16 0DA"
-            style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;text-transform:uppercase"
-            maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter') myAreaSearch()">
-          <button onclick="myAreaUseLocation()" title="Use my location"
-            style="flex-shrink:0;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer">📍</button>
-          <button id="myarea-go-btn" onclick="myAreaSearch()"
-            style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s">Go</button>
+      <!-- Empty state: shown before first search -->
+      <div id="myarea-empty-state" style="display:none;text-align:center;padding:28px 0 16px">
+        <div style="font-size:36px;margin-bottom:10px">🏡</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">What's in your area?</div>
+        <div style="font-size:13px;color:var(--muted);max-width:260px;margin:0 auto;line-height:1.5">Enter your postcode above to see your MP, local council, GPs, shops, schools, train station and more.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px">
+          <span style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🏛️ Your MP &amp; Council</span>
+          <span style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🩺 GPs &amp; Pharmacies</span>
+          <span style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🛒 Supermarkets</span>
+          <span style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🏫 Schools</span>
+          <span style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🚆 Train station</span>
+          <span style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 11px">🍺 Pubs &amp; cafés</span>
         </div>
-        <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
-        <div id="myarea-save-home-row" style="display:none;text-align:center;margin-bottom:4px">
-          <button onclick="myAreaSaveHome()" style="font-size:12px;color:#16a34a;background:none;border:none;cursor:pointer;text-decoration:underline">
-            📍 Save this as my home postcode
-          </button>
-        </div>
-      </div>
-      <!-- Shown instead of search bar when saved places exist -->
-      <div id="myarea-search-more-link" style="display:none;margin-bottom:10px;display:none;align-items:center;justify-content:space-between">
-        <span id="myarea-current-pc" style="font-size:13px;font-weight:700;color:var(--text)"></span>
-        <button onclick="_maShowSearch()" style="background:none;border:none;color:#065f46;font-size:12px;font-weight:600;cursor:pointer;padding:4px 0">✏️ Change area / add more</button>
       </div>
 
       <!-- Saved Places -->
@@ -1330,7 +1343,7 @@
       <!-- Phase 1 loading -->
       <div id="myarea-loading" style="display:none;text-align:center;padding:36px 0">
         <div class="spinner mx-auto mb-3" style="border-top-color:#065f46;width:26px;height:26px"></div>
-        <div style="font-size:13px;color:var(--muted)">Loading your area…</div>
+        <div id="myarea-loading-label" style="font-size:13px;color:var(--muted)">Loading your area…</div>
       </div>
 
       <!-- Tab bar (hidden until first search) -->
@@ -1351,8 +1364,20 @@
         <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
       </div>
 
-      <!-- Tab: Services (health, shops, pubs, schools) -->
+      <!-- Tab: Services — skeletons shown while loading, replaced by real data -->
       <div id="matab-services" style="display:none">
+        <div id="myarea-services-loading" style="display:none">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;opacity:.5">
+            <div style="height:13px;background:var(--border);border-radius:4px;width:40%;margin-bottom:8px"></div>
+            <div style="height:11px;background:var(--border);border-radius:4px;width:70%;margin-bottom:5px"></div>
+            <div style="height:11px;background:var(--border);border-radius:4px;width:55%"></div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;opacity:.4">
+            <div style="height:13px;background:var(--border);border-radius:4px;width:35%;margin-bottom:8px"></div>
+            <div style="height:11px;background:var(--border);border-radius:4px;width:60%;margin-bottom:5px"></div>
+            <div style="height:11px;background:var(--border);border-radius:4px;width:45%"></div>
+          </div>
+        </div>
         <div id="myarea-gp"      style="display:none;margin-bottom:10px"></div>
         <div id="myarea-shops"   style="display:none;margin-bottom:10px"></div>
         <div id="myarea-pubs"    style="display:none;margin-bottom:10px"></div>
@@ -2660,6 +2685,7 @@ const _ts = new Date(d.timestamp);
   const _maPlaceHoursMap = {};
   // Cached API data for re-render when bookmark state changes
   let _maCurrentPostcode = "";
+  let _maSearchGen = 0;  // incremented on each search; guards stale callbacks
   let _maAreaData = null, _maShopsData = null, _maLocalData = null;
 
   function _maBookmarkRow(p) {
@@ -2710,6 +2736,15 @@ const _ts = new Date(d.timestamp);
         btn.style.color = t === tab ? "#fff" : "var(--muted)";
       }
     });
+    // Show services skeleton only when switching to services tab during an active load
+    const svcSkel = document.getElementById("myarea-services-loading");
+    if (svcSkel && tab === "services") {
+      const hasContent = ["myarea-gp","myarea-shops","myarea-pubs","myarea-schools"]
+        .some(id => { const el = document.getElementById(id); return el && el.style.display !== "none"; });
+      if (!hasContent && _maCurrentPostcode) svcSkel.style.display = "";
+    } else if (svcSkel) {
+      svcSkel.style.display = "none";
+    }
     localStorage.setItem("miru_ma_tab", tab);
   }
 
@@ -3190,6 +3225,18 @@ const _ts = new Date(d.timestamp);
     el.style.display = "";
   }
 
+  function _maOnPostcodeInput() {
+    const typed = document.getElementById("myarea-postcode-input").value.trim().toUpperCase().replace(/\s+/g,"");
+    const current = _maCurrentPostcode;
+    const hint = document.getElementById("myarea-search-hint");
+    if (typed && typed !== current) {
+      hint.textContent = `↵ Press Go to search ${typed}`;
+      hint.style.display = "";
+    } else {
+      hint.style.display = "none";
+    }
+  }
+
   function myAreaSearch() {
     const raw = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
     if (!raw) return;
@@ -3197,16 +3244,35 @@ const _ts = new Date(d.timestamp);
     _maCurrentPostcode = pc;
     // Clear cached data for new search
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
+    // Hide search hint
+    document.getElementById("myarea-search-hint").style.display = "none";
+    // Hide empty state
+    document.getElementById("myarea-empty-state").style.display = "none";
     // Reset sections
     ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
     document.getElementById("myarea-tab-bar").style.display = "";
-    _maShowTab(localStorage.getItem("miru_ma_tab") || "places");
+    const activeTab = localStorage.getItem("miru_ma_tab") || "places";
+    _maShowTab(activeTab);
+    // Show services skeleton while loading
+    const svcSkel = document.getElementById("myarea-services-loading");
+    if (svcSkel) svcSkel.style.display = activeTab === "services" ? "" : "none";
     document.getElementById("myarea-loading").style.display = "block";
+    document.getElementById("myarea-loading-label").textContent = `Loading ${raw}…`;
+
+    // Track this search generation so stale callbacks don't render over newer results
+    const searchGen = ++_maSearchGen;
+    function _guard(fn) { return (...args) => { if (_maSearchGen === searchGen) fn(...args); }; }
 
     function _maHideSpinner() {
+      if (_maSearchGen !== searchGen) return;
       document.getElementById("myarea-loading").style.display = "none";
+    }
+    function _maHideServicesSkeleton() {
+      if (_maSearchGen !== searchGen) return;
+      const sk = document.getElementById("myarea-services-loading");
+      if (sk) sk.style.display = "none";
     }
 
     // Use cached rep data from elections screen if available (instant render)
@@ -3221,45 +3287,50 @@ const _ts = new Date(d.timestamp);
       Promise.all([
         fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
         fetch(`/api/councillor?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
-      ]).then(([mp, councillorResp]) => {
+      ]).then(_guard(([mp, councillorResp]) => {
         _miruRepsCache[pc] = {mp, councillors: (councillorResp && councillorResp.councillors) || []};
         _maRenderReps(mp, councillorResp);
         _maHideSpinner();
-      }).catch(() => { _maHideSpinner(); });
+      })).catch(() => { _maHideSpinner(); });
     }
 
     // Nearest train station (fast — uses in-memory station cache)
-    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_maRenderTrain).catch(()=>{});
+    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_guard(_maRenderTrain)).catch(()=>{});
 
     // your-area (GPs, council, pharmacies) — LS-cached 24h, Overpass on miss
-    _maFetchCached(`your-area:${pc}`, `/api/your-area?postcode=${pc}`, 86400, area => {
+    _maFetchCached(`your-area:${pc}`, `/api/your-area?postcode=${pc}`, 86400, _guard(area => {
       _maAreaData = area; _maRenderCouncil(area); _maRenderGPs(area); _myAreaPersonalRender();
-    });
+      _maHideServicesSkeleton();
+    }));
 
     // Shops — slowest Overpass call, LS-cached 24h
-    _maFetchCached(`shops:${pc}`, `/api/shops?postcode=${pc}`, 86400, data => {
+    _maFetchCached(`shops:${pc}`, `/api/shops?postcode=${pc}`, 86400, _guard(data => {
       _maShopsData = data; _maRenderShops(data);
-    });
+      _maHideServicesSkeleton();
+    }));
 
     // Pubs + schools — LS-cached 24h (v2 key forces refresh after Google Places phone enrichment)
-    _maFetchCached(`localv2:${pc}`, `/api/local?postcode=${pc}`, 86400, data => {
+    _maFetchCached(`localv2:${pc}`, `/api/local?postcode=${pc}`, 86400, _guard(data => {
       _maLocalData = data; _maRenderPubs(data); _maRenderSchools(data);
-    });
+      _maHideServicesSkeleton();
+    }));
 
     // Weather + crime (shorter 30-min cache — more time-sensitive)
-    _maFetchCached(`localinfo:${pc}`, `/api/myarea/local-info?postcode=${pc}`, 1800, d => {
+    _maFetchCached(`localinfo:${pc}`, `/api/myarea/local-info?postcode=${pc}`, 1800, _guard(d => {
       _maRenderWeather(d.weather); _maRenderCrime(d.crime);
-    });
+    }));
 
     _myAreaRefreshHomeRow();
   }
 
   function _myAreaRefreshHomeRow() {
-    const pc   = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
-    const home = MiruLocation.getHome();
-    // "Save as Home" row — shown when searching a postcode that isn't already home
+    const pcNorm = document.getElementById("myarea-postcode-input").value.trim().toUpperCase().replace(/\s+/g,"");
+    const home   = MiruLocation.getHome();
+    const homeNorm = home ? home.replace(/\s+/g,"").toUpperCase() : "";
+    // "Save as Home" row — shown after a search when postcode ≠ home
     const saveRow = document.getElementById("myarea-save-home-row");
-    if (saveRow) saveRow.style.display = (pc && pc !== home) ? "" : "none";
+    if (saveRow) saveRow.style.display = (pcNorm && homeNorm && pcNorm !== homeNorm) ? "" :
+                                          (pcNorm && !homeNorm) ? "" : "none";
     // "Home: KT16 0DA · Use" banner — shown when home is set
     const homeRow = document.getElementById("myarea-home-row");
     const label   = document.getElementById("myarea-home-pc-label");
@@ -3278,6 +3349,7 @@ const _ts = new Date(d.timestamp);
     if (!home) return;
     document.getElementById("myarea-postcode-input").value = home;
     document.getElementById("myarea-save-home-row").style.display = "none";
+    document.getElementById("myarea-search-hint").style.display = "none";
     myAreaSearch();
   }
 
@@ -3436,7 +3508,7 @@ const _ts = new Date(d.timestamp);
 
   function _loadMyArea() {
     _maApplyPrefs();
-    // Show phone banner if not set, or linked-phone indicator if set
+    // Show phone banner (subtle) if phone not yet set
     if (_miruPhone()) {
       _maShowLinkedPhone();
     } else {
@@ -3447,11 +3519,24 @@ const _ts = new Date(d.timestamp);
     _maLoadVehicles();
     _myAreaRefreshHomeRow();
     const home = MiruLocation.getHome();
-    if (home && document.getElementById("myarea-postcode-input").value !== home) {
-      document.getElementById("myarea-postcode-input").value = home;
-      myAreaSearch();
-    } else if (!home) {
+    const inputEl = document.getElementById("myarea-postcode-input");
+    const currentVal = inputEl.value.trim().toUpperCase().replace(/\s+/g,"");
+    if (home) {
+      // Normalise stored home for display
+      const homeNorm = home.replace(/\s+/g,"").toUpperCase();
+      if (currentVal !== homeNorm) {
+        inputEl.value = home;
+        myAreaSearch();
+      }
+      // Already searched this postcode — nothing to do
+    } else if (!currentVal) {
+      // New user: no home set, no postcode typed — show empty state
+      document.getElementById("myarea-empty-state").style.display = "";
       _myAreaPersonalRender();
+    }
+    // If user had typed a postcode before but navigated away and back, re-search
+    else if (currentVal && currentVal !== _maCurrentPostcode) {
+      myAreaSearch();
     }
   }
 
