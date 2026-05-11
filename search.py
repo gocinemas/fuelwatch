@@ -878,35 +878,8 @@ def fetch_brand_data(brand: str) -> dict:
 
     groq_key = os.environ.get("GROQ_API_KEY", "")
 
-    # Step 1: disambiguation — if brand name maps to multiple well-known companies, return options immediately
-    try:
-        if groq_key:
-            r = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant",
-                      "messages": [{"role": "user", "content":
-                          f'Brand search query: "{original}"\n'
-                          'Is this ambiguous — does it match multiple distinct well-known brands or companies?\n'
-                          'Examples of ambiguous: "Virgin" (Virgin Atlantic, Virgin Money, Virgin Media, Virgin Group), '
-                          '"Apple" (only one major brand — NOT ambiguous), '
-                          '"Next" (Next retail, Next plc — ambiguous), '
-                          '"O2" (O2 UK, Telefónica O2 — same company, NOT ambiguous).\n'
-                          'If ambiguous, reply ONLY with a JSON array of up to 5 full brand names, e.g. ["Virgin Atlantic","Virgin Money","Virgin Media","Virgin Group"].\n'
-                          'If NOT ambiguous (single clear brand), reply with exactly: NO'}],
-                      "max_tokens": 80, "temperature": 0.0},
-                timeout=6,
-            )
-            reply = r.json()["choices"][0]["message"]["content"].strip()
-            if reply != "NO" and reply.startswith("["):
-                import json as _json
-                options = _json.loads(reply)
-                if isinstance(options, list) and len(options) > 1:
-                    return {"disambiguate": options, "name": original}
-    except Exception:
-        pass
-
-    # Step 2: canonicalise (fix typos / expand abbreviations)
+    # Step 1: canonicalise — strip product descriptors, fix typos, expand abbreviations
+    # Do this BEFORE disambiguation so "Lynx deodorant" → "Lynx" before ambiguity check
     try:
         if groq_key:
             r = requests.post(
@@ -916,24 +889,55 @@ def fetch_brand_data(brand: str) -> dict:
                       "messages": [{"role": "user", "content":
                           f'The user searched for brand/company: "{original}".\n'
                           'Return ONLY the canonical brand or company name. Rules:\n'
-                          '1. Fix clear spelling errors only (e.g. "Nkie" → "Nike", "Amazn" → "Amazon").\n'
-                          '2. Expand obvious abbreviations (e.g. "P&G" → "Procter & Gamble").\n'
-                          '3. If you do not recognise the brand, return the original UNCHANGED.\n'
-                          '4. NEVER substitute a different brand — if unsure, return the input as-is.\n'
-                          'Return ONLY the name, nothing else.'}],
+                          '1. If the query is "Brand ProductType" (e.g. "Lynx deodorant", "Dove soap", '
+                          '"Samsung TV", "Nike trainers", "Walkers crisps"), return ONLY the brand name '
+                          '(e.g. "Lynx", "Dove", "Samsung", "Nike", "Walkers"). Product type words '
+                          'like deodorant, soap, shampoo, crisps, trainers, phone, TV, etc. are NOT part of the brand name.\n'
+                          '2. Fix clear spelling errors (e.g. "Nkie" → "Nike", "Amazn" → "Amazon").\n'
+                          '3. Expand obvious abbreviations (e.g. "P&G" → "Procter & Gamble").\n'
+                          '4. If you do not recognise the brand at all, return the original UNCHANGED.\n'
+                          '5. NEVER substitute a completely different brand — only clean up the input.\n'
+                          'Return ONLY the brand name, nothing else.'}],
                       "max_tokens": 40, "temperature": 0.0},
                 timeout=6,
             )
             resolved = r.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
-            orig_words = set(original.lower().split())
-            res_words  = set(resolved.lower().split())
-            if _is_valid_canonical(resolved) and (orig_words & res_words or len(orig_words) <= 1):
+            if _is_valid_canonical(resolved):
                 canonical = resolved
     except Exception:
         pass
 
     suggested = canonical if canonical.lower() != original.lower() else ""
     brand = canonical
+
+    # Step 2: disambiguation — only after canonicalisation, and only for short bare brand names
+    # Skip if query already included a product qualifier (already resolved above)
+    if canonical.lower() == original.lower().strip() or len(canonical.split()) == 1:
+        try:
+            if groq_key:
+                r = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                    json={"model": "llama-3.1-8b-instant",
+                          "messages": [{"role": "user", "content":
+                              f'Brand search query: "{canonical}"\n'
+                              'Is this ambiguous — does it match multiple distinct well-known brands or companies?\n'
+                              'Examples of ambiguous: "Virgin" (Virgin Atlantic, Virgin Money, Virgin Media, Virgin Group), '
+                              '"Next" (Next retail, Next plc).\n'
+                              'NOT ambiguous: "Apple" (one major brand), "O2" (one UK telco), "Lynx" (deodorant brand by Unilever).\n'
+                              'If ambiguous, reply ONLY with a JSON array of up to 5 full brand names.\n'
+                              'If NOT ambiguous (single clear brand), reply with exactly: NO'}],
+                          "max_tokens": 80, "temperature": 0.0},
+                    timeout=6,
+                )
+                reply = r.json()["choices"][0]["message"]["content"].strip()
+                if reply != "NO" and reply.startswith("["):
+                    import json as _json
+                    options = _json.loads(reply)
+                    if isinstance(options, list) and len(options) > 1:
+                        return {"disambiguate": options, "name": original}
+        except Exception:
+            pass
 
     cache_key = brand.strip().lower() + "|brandv21"
 
