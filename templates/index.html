@@ -3099,6 +3099,52 @@ const _ts = new Date(d.timestamp);
     if (_maGetPrefs().petrol) el.style.display = "";
   }
 
+  function _maRenderDepsInto(panel, d) {
+    if (d.error) { panel.innerHTML = `<div style="font-size:12px;color:#b91c1c;padding:4px 0">${d.error}</div>`; return; }
+    const trains = (d.trains || []).slice(0, 5);
+    if (!trains.length) { panel.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">No departures found</div>'; return; }
+    const depRows = trains.map((t, i) => {
+      const border = i < trains.length - 1 ? "border-bottom:1px solid var(--border);" : "";
+      const statusColor = t.cancelled ? "#b91c1c" : t.expected === "On time" ? "#059669" : "#d97706";
+      const statusW = t.cancelled ? "font-weight:700;" : t.expected !== "On time" ? "font-weight:600;" : "";
+      return `<div style="${border}display:flex;align-items:center;gap:8px;padding:6px 12px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);min-width:38px">${t.scheduled}</div>
+        <div style="flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.destination}</div>
+        ${t.platform ? `<div style="font-size:10px;color:var(--muted);background:var(--border);border-radius:4px;padding:1px 5px">Plt ${t.platform}</div>` : ""}
+        <div style="font-size:11px;${statusW}color:${statusColor}">${t.expected}</div>
+      </div>`;
+    }).join("");
+    panel.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:4px">${depRows}</div>
+      <button onclick="_maRefreshDeps('${panel.dataset.crs}',document.getElementById('ma-deps-${panel.dataset.crs}'))"
+        style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">↻ Refresh</button>`;
+  }
+
+  function _maToggleDeps(crs, btn) {
+    const panel = document.getElementById(`ma-deps-${crs}`);
+    if (panel.style.display !== "none") {
+      panel.style.display = "none";
+      btn.textContent = "▾ Next trains";
+      return;
+    }
+    panel.style.display = "";
+    btn.textContent = "▴ Next trains";
+    if (panel.dataset.loaded === "1") return;
+    panel.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">Loading…</div>';
+    fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`)
+      .then(r => r.json())
+      .then(d => { panel.dataset.loaded = "1"; _maRenderDepsInto(panel, d); })
+      .catch(() => { panel.innerHTML = '<div style="font-size:12px;color:#b91c1c;padding:4px 0">Could not load — tap ↻ to retry</div>'; });
+  }
+
+  function _maRefreshDeps(crs, panel) {
+    panel.dataset.loaded = "0";
+    panel.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">Loading…</div>';
+    fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`)
+      .then(r => r.json())
+      .then(d => { panel.dataset.loaded = "1"; _maRenderDepsInto(panel, d); })
+      .catch(() => { panel.innerHTML = '<div style="font-size:12px;color:#b91c1c;padding:4px 0">Could not load — tap ↻ to retry</div>'; });
+  }
+
   function _maRenderTrain(data) {
     const el = document.getElementById("myarea-train");
     if (!data || data.error) { el.style.display = "none"; return; }
@@ -3108,23 +3154,26 @@ const _ts = new Date(d.timestamp);
       const dist = st.distance_km ? `${(st.distance_km * 0.621371).toFixed(1)} mi away` : "";
       const nameEsc = st.name.replace(/"/g,"&quot;");
       const saved = _maIsSaved(st.name, "train-station");
-      const sep = (idx < stations.length - 1) ? ";border-bottom:1px solid var(--border)" : "";
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px${sep}">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${st.name}</div>
-          ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
+      const sep = (idx < stations.length - 1) ? "border-bottom:1px solid var(--border);" : "";
+      return `<div style="${sep}padding:10px 14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700;color:var(--text)">${st.name}</div>
+            ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
+            <button onclick="_maToggleDeps('${st.crs}',this)" style="margin-top:3px;font-size:11px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0">▾ Next trains</button>
+          </div>
+          <button data-ma-save-name="${nameEsc}" data-ma-save-addr="train-station"
+            data-ma-save-phone="" data-ma-save-emoji="🚆"
+            onclick="_maTogglePlace(this.dataset.maSaveName,this.dataset.maSaveAddr,this.dataset.maSavePhone,this.dataset.maSaveEmoji)"
+            style="flex-shrink:0;font-size:18px;background:none;border:none;cursor:pointer;padding:4px 2px;color:${saved?"#f59e0b":"#d1d5db"}">${saved?"⭐":"☆"}</button>
+          <button onclick="showScreen('trains');if(window.trainSelectStation){trainSelectStation('${st.crs}','${st.name.replace(/'/g,"\\'")}');}"
+            style="flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">
+            Full →
+          </button>
         </div>
-        <button data-ma-save-name="${nameEsc}" data-ma-save-addr="train-station"
-          data-ma-save-phone="" data-ma-save-emoji="🚆"
-          onclick="_maTogglePlace(this.dataset.maSaveName,this.dataset.maSaveAddr,this.dataset.maSavePhone,this.dataset.maSaveEmoji)"
-          style="flex-shrink:0;font-size:18px;background:none;border:none;cursor:pointer;padding:4px 2px;color:${saved?"#f59e0b":"#d1d5db"}">${saved?"⭐":"☆"}</button>
-        <button onclick="showScreen('trains');if(window.trainSelectStation){trainSelectStation('${st.crs}','${st.name.replace(/'/g,"\\'")}');}"
-          style="flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">
-          Departures →
-        </button>
+        <div id="ma-deps-${st.crs}" data-deps-panel data-crs="${st.crs}" style="display:none;margin-top:8px"></div>
       </div>`;
     }).join("");
-    // Remove last border-bottom on final row
     const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">${rows}</div>`;
     el.innerHTML = _maSectionHtml("train", stations.length > 1 ? "🚆 Nearest Stations" : "🚆 Nearest Station", bodyHtml);
     if (_maGetPrefs().train) el.style.display = "";
