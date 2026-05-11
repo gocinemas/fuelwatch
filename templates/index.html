@@ -1254,8 +1254,14 @@
 
     <!-- ── MY AREA SCREEN ── -->
     <div id="screen-myarea" class="screen" style="padding:16px 16px 48px;max-width:600px;margin:0 auto">
-      <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px;margin-bottom:4px">🏡 My Area</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Your representatives, local services &amp; personal records</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px">🏡 My Area</div>
+        <button onclick="_maToggleCustomise()" style="background:none;border:1px solid var(--border);border-radius:10px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">⚙️ Customise</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Your representatives, local services &amp; personal records</div>
+
+      <!-- Customise panel -->
+      <div id="myarea-customise" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px"></div>
 
       <!-- Postcode bar (collapses when saved places exist) -->
       <div id="myarea-search-bar" style="margin-bottom:6px">
@@ -2424,6 +2430,98 @@ const _ts = new Date(d.timestamp);
 
 
 
+  // ── My Area preferences ──────────────────────────────────────────────────────
+  const _MA_PREFS_KEY = "miru_myarea_prefs";
+  const _MA_PREF_SECTIONS = [
+    { key:"weather", label:"☀️ Weather",           dflt:false },
+    { key:"train",   label:"🚆 Nearest Station",    dflt:true  },
+    { key:"petrol",  label:"⛽ Nearby Petrol",       dflt:true  },
+    { key:"crime",   label:"🚔 Crime Nearby",        dflt:false },
+    { key:"gp",      label:"🩺 GPs & Pharmacies",    dflt:true  },
+    { key:"schools", label:"🏫 Schools",             dflt:false },
+    { key:"shops",   label:"🛒 Shops",               dflt:true  },
+    { key:"pubs",    label:"🍽️ Pubs & Restaurants",  dflt:false },
+  ];
+  const _MA_SECTION_EL = {
+    weather:"myarea-weather", train:"myarea-train", petrol:"myarea-petrol",
+    crime:"myarea-crime", gp:"myarea-gp", schools:"myarea-schools",
+    shops:"myarea-shops", pubs:"myarea-pubs",
+  };
+
+  function _maGetPrefs() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(_MA_PREFS_KEY) || "{}");
+      const defaults = Object.fromEntries(_MA_PREF_SECTIONS.map(s => [s.key, s.dflt]));
+      return {...defaults, ...saved};
+    } catch { return Object.fromEntries(_MA_PREF_SECTIONS.map(s => [s.key, s.dflt])); }
+  }
+
+  function _maTogglePref(key) {
+    const prefs = _maGetPrefs();
+    prefs[key] = !prefs[key];
+    localStorage.setItem(_MA_PREFS_KEY, JSON.stringify(prefs));
+    const btn = document.getElementById(`ma-pref-btn-${key}`);
+    if (btn) _maPrefBtnStyle(btn, prefs[key]);
+    const el = document.getElementById(_MA_SECTION_EL[key]);
+    if (el) {
+      if (!prefs[key]) { el.style.display = "none"; }
+      else if (el.innerHTML.trim()) { el.style.display = ""; }
+    }
+  }
+
+  function _maPrefBtnStyle(btn, on) {
+    btn.textContent = on ? "On" : "Off";
+    btn.style.background   = on ? "#065f46" : "transparent";
+    btn.style.color        = on ? "#fff"    : "var(--muted)";
+    btn.style.borderColor  = on ? "#065f46" : "var(--border)";
+  }
+
+  function _maApplyPrefs() {
+    const prefs = _maGetPrefs();
+    _MA_PREF_SECTIONS.forEach(({key}) => {
+      if (!prefs[key]) {
+        const el = document.getElementById(_MA_SECTION_EL[key]);
+        if (el) el.style.display = "none";
+      }
+    });
+  }
+
+  function _maToggleCustomise() {
+    const panel = document.getElementById("myarea-customise");
+    if (!panel) return;
+    if (panel.style.display !== "none") { panel.style.display = "none"; return; }
+    _maRenderCustomise();
+    panel.style.display = "";
+  }
+
+  function _maRenderCustomise() {
+    const prefs = _maGetPrefs();
+    const always = ["🗳️ Representatives", "🏛️ Council & Utilities", "📌 Saved Places", "🚗 My Vehicles", "📋 My Details"];
+    const toggles = _MA_PREF_SECTIONS.map(s => {
+      const on = prefs[s.key];
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px;color:var(--text)">${s.label}</span>
+        <button id="ma-pref-btn-${s.key}" onclick="_maTogglePref('${s.key}')"
+          style="padding:4px 14px;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid;
+                 background:${on?"#065f46":"transparent"};color:${on?"#fff":"var(--muted)"};border-color:${on?"#065f46":"var(--border)"}">
+          ${on?"On":"Off"}</button>
+      </div>`;
+    }).join("");
+    const alwaysHtml = always.map(l =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:12px;color:var(--muted)">${l}</span>
+        <span style="font-size:11px;color:var(--muted);font-style:italic">Always on</span>
+      </div>`).join("");
+    document.getElementById("myarea-customise").innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">⚙️ Customise My Area</div>
+        <button onclick="_maToggleCustomise()" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--muted);padding:0">✕</button>
+      </div>
+      ${toggles}
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 4px">Always shown</div>
+      ${alwaysHtml}`;
+  }
+
   function _maDeviceId() {
     let id = localStorage.getItem("miru_device_id");
     if (!id) {
@@ -2634,7 +2732,7 @@ const _ts = new Date(d.timestamp);
     el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🏫 Nearby Schools</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">
       ${schools.map(x => _maPlaceRow(x, "🏫")).join("")}</div>`;
-    el.style.display = "";
+    if (_maGetPrefs().schools) el.style.display = "";
   }
 
   function _maRenderWeather(w) {
@@ -2648,7 +2746,7 @@ const _ts = new Date(d.timestamp);
           <div style="font-size:11px;color:var(--muted)">↑${w.high}° ↓${w.low}° · Wind ${w.wind} km/h</div>
         </div>
       </div>`;
-    el.style.display = "";
+    if (_maGetPrefs().weather) el.style.display = "";
   }
 
   function _maRenderCrime(c) {
@@ -2661,7 +2759,7 @@ const _ts = new Date(d.timestamp);
       </div>`).join("");
     el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">🚔 Crime Nearby <span style="font-size:11px;font-weight:400;color:var(--muted)">(${c.total} incidents last month)</span></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${topHtml}</div>`;
-    el.style.display = "";
+    if (_maGetPrefs().crime) el.style.display = "";
   }
 
   function _maRenderPetrol(stations) {
@@ -2677,7 +2775,7 @@ const _ts = new Date(d.timestamp);
       </div>`).join("");
     el.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">⛽ Nearby Petrol</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
-    el.style.display = "";
+    if (_maGetPrefs().petrol) el.style.display = "";
   }
 
   function _maRenderTrain(data) {
@@ -2695,7 +2793,7 @@ const _ts = new Date(d.timestamp);
           Departures →
         </button>
       </div>`;
-    el.style.display = "";
+    if (_maGetPrefs().train) el.style.display = "";
   }
 
   function _maRenderGPs(area) {
@@ -2711,7 +2809,7 @@ const _ts = new Date(d.timestamp);
     }
     html += "</div>";
     el.innerHTML = html;
-    el.style.display = "";
+    if (_maGetPrefs().gp) el.style.display = "";
   }
 
   function _maRenderShops(data) {
@@ -2738,7 +2836,7 @@ const _ts = new Date(d.timestamp);
       convList.innerHTML = convs.map(x => _maPlaceRow(x, "🏪")).join("");
       convWrap.style.display = "";
     } else if (convWrap) { convWrap.style.display = "none"; }
-    el.style.display = "";
+    if (_maGetPrefs().shops) el.style.display = "";
   }
 
   function _maRenderPubs(data) {
@@ -2753,7 +2851,7 @@ const _ts = new Date(d.timestamp);
     if (!items.length) { el.style.display = "none"; return; }
     list.innerHTML = items.map(x => _maPlaceRow(x, pubs.includes(x) ? "🍺" : "☕")).join("");
     if (more) more.style.display = "";
-    el.style.display = "";
+    if (_maGetPrefs().pubs) el.style.display = "";
   }
 
   function myAreaSearch() {
@@ -2968,6 +3066,7 @@ const _ts = new Date(d.timestamp);
   }
 
   function _loadMyArea() {
+    _maApplyPrefs();      // hide off sections before any data loads
     _maLoadSavedPlaces(); // fetch from DB (async, updates UI when ready)
     _maLoadVehicles();    // fetch saved registrations + MOT status
     const home = MiruLocation.getHome();
