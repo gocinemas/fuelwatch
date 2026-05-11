@@ -8590,6 +8590,37 @@ Type rules:
 - council_tax = council tax
 - other = water bill, TV Licence, health insurance, dental, pet, or anything else"""
 
+_MA_PDF_EXTRACT_SYSTEM = """You are a data extraction assistant for UK household bills and account documents.
+
+The user has uploaded a bill or account document. Extract as much useful account information as possible.
+
+Return ONLY this JSON (omit fields you cannot find — do not guess):
+{
+  "type": "energy|broadband|mobile|car_ins|home_ins|life_ins|council_tax|other",
+  "provider": "company or council name",
+  "account_no": "account reference / policy number / licence number — short alphanumeric only, omit if not clearly present",
+  "phone": "customer service or payment phone number",
+  "price": "monthly or regular payment amount e.g. £142.08/month",
+  "annual": "total annual amount if shown e.g. £1704.96/year",
+  "renewal_date": "policy or contract end date DD/MM/YYYY",
+  "due_date": "next payment due date DD/MM/YYYY",
+  "financial_year": "billing period or financial year e.g. 2025/26",
+  "band": "council tax band (A–H) if shown",
+  "label": "short label e.g. Council Tax, Energy, Broadband, Car Insurance, TV Licence"
+}
+
+Type rules:
+- energy = gas or electricity supply
+- broadband = home internet / fibre
+- mobile = mobile phone contract or SIM
+- car_ins = car or motor insurance
+- home_ins = home / buildings / contents insurance
+- life_ins = life insurance
+- council_tax = council tax bill
+- other = water bill, TV Licence, health, dental, or anything else
+
+IMPORTANT: Extract every field you can find. For council tax specifically, always try to extract: band, annual amount, monthly instalment (price), financial year, and account reference."""
+
 
 def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
     """Fetch one Gmail message and extract account details via Groq."""
@@ -8929,7 +8960,7 @@ def ma_pdf_extract():
     if not groq_key:
         return jsonify({"error": "Extraction service not configured"}), 503
 
-    prompt = f"Filename: {f.filename}\n\n{text[:3000]}"
+    prompt = f"Filename: {f.filename}\n\n{text[:4000]}"
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -8937,10 +8968,10 @@ def ma_pdf_extract():
             json={
                 "model": "llama-3.3-70b-versatile",
                 "messages": [
-                    {"role": "system", "content": _MA_EXTRACT_SYSTEM},
+                    {"role": "system", "content": _MA_PDF_EXTRACT_SYSTEM},
                     {"role": "user",   "content": prompt},
                 ],
-                "max_tokens": 300,
+                "max_tokens": 400,
                 "temperature": 0.0,
                 "response_format": {"type": "json_object"},
             },

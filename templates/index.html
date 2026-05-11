@@ -1440,7 +1440,10 @@
                   <div style="font-size:11px;color:var(--muted);margin-top:1px">Ready to import into My Details</div>
                 </div>
               </div>
-              <button id="ma-gmail-review-btn" onclick="_maGmailReviewPending()" style="font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:8px 14px;cursor:pointer">Review →</button>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#6b7280;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 10px;cursor:pointer">Rescan</button>
+                <button id="ma-gmail-review-btn" onclick="_maGmailReviewPending()" style="font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:8px 14px;cursor:pointer">Review →</button>
+              </div>
             </div>
           </div>
         </div>
@@ -3908,37 +3911,48 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maPdfShowPreview(d, filename) {
-    // Map extracted JSON to ma_details record shape
     const typeKey = d.type || "other";
     const typeDef = _MA_DETAIL_TYPES.find(t => t.key === typeKey) || _MA_DETAIL_TYPES.find(t => t.key === "other");
     const label = d.label || typeDef.label;
-    // Build data object — all non-empty fields
-    const fieldMap = {
-      "Provider":   d.provider,
-      "Account No": d.account_no,
-      "Policy No":  d.account_no,
-      "Council":    d.provider,
-      "Phone":      d.phone,
-      "Renewal Date": d.renewal_date,
-      "Price":      d.price,
+
+    // Canonical name mapping: extracted field → display field name for this type
+    const isIns = ["car_ins","home_ins","life_ins"].includes(typeKey);
+    const nameMap = {
+      provider:       typeKey === "council_tax" ? "Council" : "Provider",
+      account_no:     isIns ? "Policy No" : typeKey === "health" ? "Member No" : "Account No",
+      phone:          "Phone",
+      price:          "Price",
+      renewal_date:   "Renewal Date",
+      band:           "Band",
+      annual:         "Annual Amount",
+      due_date:       "Due Date",
+      financial_year: "Financial Year",
     };
+
+    // Build data: type-defined fields first (preserves order), then any extras extracted
     const data = {};
     typeDef.fields.forEach(f => {
-      const v = fieldMap[f];
-      if (v) data[f] = v;
+      const srcKey = Object.entries(nameMap).find(([,v]) => v === f)?.[0];
+      const val = srcKey ? d[srcKey] : undefined;
+      if (val) data[f] = val;
+    });
+    // Add any extra extracted fields not already in data
+    Object.entries(nameMap).forEach(([src, displayName]) => {
+      if (d[src] && !data[displayName]) data[displayName] = d[src];
     });
 
     const sheet = document.createElement("div");
+    sheet.dataset.pdfSheet = "1";
     sheet.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
     const rows = Object.entries(data).map(([k,v]) => `
       <div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:11px;color:var(--muted);flex-shrink:0;width:90px;padding-top:2px">${k}</span>
-        <input data-field="${k}" value="${v}" style="flex:1;border:none;background:transparent;font-size:13px;font-weight:600;color:var(--text);outline:none">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0;width:100px;padding-top:2px">${k}</span>
+        <input data-field="${k}" value="${v.toString().replace(/"/g,'&quot;')}" style="flex:1;border:none;background:transparent;font-size:13px;font-weight:600;color:var(--text);outline:none">
       </div>`).join("");
     sheet.innerHTML = `
       <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:20px 18px 36px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto">
-        <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px">📄 ${filename.replace(".pdf","")}</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Review and edit the extracted details, then save</div>
+        <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px">📄 ${filename.replace(/\.pdf$/i,"")}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Review and edit, then save</div>
         <div style="margin-bottom:4px">
           <span style="font-size:11px;color:var(--muted)">Type</span>
           <select id="ma-pdf-type" style="margin-left:8px;font-size:12px;font-weight:600;border:1px solid var(--border);border-radius:8px;padding:4px 8px;background:var(--surface);color:var(--text)">
@@ -3951,7 +3965,7 @@ const _ts = new Date(d.timestamp);
           <button id="ma-pdf-save-btn" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer"
             onclick="_maPdfSave(this)">Save to My Accounts</button>
           <button style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer"
-            onclick="this.closest('[style*=\"position:fixed\"]').remove()">Cancel</button>
+            onclick="this.closest('[data-pdf-sheet]').remove()">Cancel</button>
         </div>
       </div>`;
     document.body.appendChild(sheet);
@@ -3960,7 +3974,7 @@ const _ts = new Date(d.timestamp);
 
   async function _maPdfSave(btn) {
     btn.textContent = "Saving…"; btn.disabled = true;
-    const sheet = btn.closest('[style*="position:fixed"]');
+    const sheet = btn.closest('[data-pdf-sheet]');
     const typeKey = document.getElementById("ma-pdf-type").value;
     const label   = document.getElementById("ma-pdf-label").value.trim();
     const data = {};
@@ -4090,7 +4104,7 @@ const _ts = new Date(d.timestamp);
     { key:"energy",      icon:"⚡", label:"Energy",          group:"home",      fields:["Provider","Account No","Emergency Phone","Price","Renewal Date"] },
     { key:"broadband",   icon:"📡", label:"Broadband",       group:"home",      fields:["Provider","Account No","Phone","Price","Renewal Date"] },
     { key:"mobile",      icon:"📱", label:"Mobile",          group:"mobile",    fields:["Provider","Account No","Phone","Price","Renewal Date"] },
-    { key:"council_tax", icon:"🏛️", label:"Council Tax",     group:"home",      fields:["Council","Account No","Phone"] },
+    { key:"council_tax", icon:"🏛️", label:"Council Tax",     group:"home",      fields:["Council","Account No","Phone","Price"] },
     { key:"home_ins",    icon:"🏠", label:"Home Insurance",  group:"home",      fields:["Provider","Policy No","Phone","Renewal Date"] },
     { key:"other",       icon:"📝", label:"Other",           group:"home",      fields:["Label","Detail","Phone","Account No","Renewal Date"] },
     { key:"car_ins",     icon:"🚗", label:"Car Insurance",   group:"motoring",  fields:["Provider","Policy No","Phone","Renewal Date","Reg"] },
