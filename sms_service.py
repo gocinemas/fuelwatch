@@ -3671,6 +3671,115 @@ def api_myarea_places_delete(place_id):
         return jsonify({"error": str(e)}), 500
 
 
+_MOT_CACHE: dict = {}
+_MOT_CACHE_TTL = 86400  # 24 hours — MOT status changes at most once a year
+
+@app.route("/api/mot")
+def api_mot():
+    """Fetch MOT history for a UK registration from DVSA API."""
+    reg = request.args.get("reg", "").strip().upper().replace(" ", "")
+    if not reg:
+        return jsonify({"error": "reg required"}), 400
+    cache_hit = _MOT_CACHE.get(reg)
+    if cache_hit and time.time() - cache_hit["ts"] < _MOT_CACHE_TTL:
+        return jsonify(cache_hit["data"])
+    ves_key = os.environ.get("DVLA_VES_API_KEY", "")
+    if not ves_key:
+        return jsonify({"error": "DVLA_VES_API_KEY not configured — add your Vehicle Enquiry Service key in Railway env vars"}), 503
+    try:
+        import uuid as _uuid
+        r = requests.post(
+            "https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles",
+            headers={
+                "x-api-key":        ves_key,
+                "x-correlation-id": str(_uuid.uuid4()),
+                "Content-Type":     "application/json",
+            },
+            json={"registrationNumber": reg},
+            timeout=12,
+        )
+        if r.status_code == 404:
+            return jsonify({"error": "Vehicle not found"}), 404
+        if r.status_code == 403:
+            return jsonify({"error": "API key invalid or not yet active"}), 403
+        if r.status_code != 200:
+            return jsonify({"error": f"DVLA API error {r.status_code}"}), 502
+        v = r.json()
+        from datetime import date as _date
+        def _days(date_str):
+            if not date_str:
+                return None
+            try:
+                return (_date.fromisoformat(date_str) - _date.today()).days
+            except Exception:
+                return None
+        data = {
+            "registration":  v.get("registrationNumber", reg),
+            "make":          v.get("make", "").title(),
+            "colour":        v.get("colour", "").title(),
+            "fuel":          v.get("fuelType", "").title(),
+            "year":          v.get("yearOfManufacture", ""),
+            "mot_status":    v.get("motStatus", ""),
+            "mot_expiry":    v.get("motExpiryDate", ""),
+            "days_left":     _days(v.get("motExpiryDate")),
+            "tax_status":    v.get("taxStatus", ""),
+            "tax_due":       v.get("taxDueDate", ""),
+            "tax_days_left": _days(v.get("taxDueDate")),
+        }
+        _MOT_CACHE[reg] = {"data": data, "ts": time.time()}
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/myarea/vehicles", methods=["GET"])
+def api_myarea_vehicles_get():
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify([])
+    try:
+        rows = lib._sb().table("my_area_vehicles") \
+            .select("id,registration,nickname") \
+            .eq("device_id", device_id) \
+            .order("created_at").execute().data
+        return jsonify(rows or [])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/myarea/vehicles", methods=["POST"])
+def api_myarea_vehicles_post():
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify({"error": "device_id required"}), 400
+    body = request.get_json(force=True, silent=True) or {}
+    reg  = (body.get("registration") or "").strip().upper().replace(" ", "")
+    if not reg:
+        return jsonify({"error": "registration required"}), 400
+    try:
+        row = lib._sb().table("my_area_vehicles").upsert({
+            "device_id":    device_id,
+            "registration": reg,
+            "nickname":     (body.get("nickname") or "").strip(),
+        }, on_conflict="device_id,registration").execute().data[0]
+        return jsonify(row)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/myarea/vehicles/<vehicle_id>", methods=["DELETE"])
+def api_myarea_vehicles_delete(vehicle_id):
+    device_id = request.args.get("device_id", "").strip()
+    if not device_id:
+        return jsonify({"error": "device_id required"}), 400
+    try:
+        lib._sb().table("my_area_vehicles") \
+            .delete().eq("id", vehicle_id).eq("device_id", device_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/health")
 def api_health():
     """Full diagnostic: env vars, Groq API call, JSON parse."""

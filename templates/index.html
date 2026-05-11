@@ -1311,6 +1311,13 @@
         <button id="myarea-bars-more" onclick="myAreaSearchBars()" style="display:none;margin-top:6px;width:100%;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer">🔍 Search more nearby</button>
       </div>
 
+      <!-- My Vehicles (MOT) -->
+      <div style="margin-top:18px">
+        <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:10px">🚗 My Vehicles</div>
+        <div id="myarea-vehicles-list"></div>
+        <button onclick="_maAddVehicle()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add vehicle by registration</button>
+      </div>
+
       <!-- Personal details (localStorage) -->
       <div style="margin-top:18px">
         <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:10px">📋 My Details</div>
@@ -2750,8 +2757,126 @@ const _ts = new Date(d.timestamp);
     setTimeout(() => placesSearch(), 100);
   }
 
+  // ── My Vehicles (MOT) ────────────────────────────────────────────────────────
+  let _maVehicles = null; // cached from DB
+
+  async function _maLoadVehicles() {
+    try {
+      const r = await fetch(`/api/myarea/vehicles?device_id=${encodeURIComponent(_maDeviceId())}`);
+      _maVehicles = await r.json();
+      if (!Array.isArray(_maVehicles)) _maVehicles = [];
+    } catch { _maVehicles = []; }
+    _maRenderVehicles();
+  }
+
+  function _maRenderVehicles() {
+    const wrap = document.getElementById("myarea-vehicles-list");
+    if (!wrap) return;
+    if (!_maVehicles || !_maVehicles.length) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = _maVehicles.map(v => `
+      <div id="mv-${v.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div>
+            <span style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:.05em">${v.registration}</span>
+            ${v.nickname ? `<span style="font-size:12px;color:var(--muted);margin-left:8px">${v.nickname}</span>` : ""}
+          </div>
+          <button onclick="_maRemoveVehicle('${v.id}')" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px">✕</button>
+        </div>
+        <div id="mv-mot-${v.id}" style="font-size:12px;color:var(--muted)">Loading MOT…</div>
+      </div>`).join("");
+    // Fetch MOT for each
+    _maVehicles.forEach(v => _maFetchMOT(v));
+  }
+
+  async function _maFetchMOT(v) {
+    const el = document.getElementById(`mv-mot-${v.id}`);
+    if (!el) return;
+    try {
+      const r = await fetch(`/api/mot?reg=${encodeURIComponent(v.registration)}`);
+      const d = await r.json();
+      if (d.error) { el.innerHTML = `<span style="color:#ef4444">${d.error}</span>`; return; }
+      const days = d.days_left;
+      const colour = days == null ? "#6b7280"
+                   : days < 0   ? "#dc2626"
+                   : days < 30  ? "#dc2626"
+                   : days < 60  ? "#d97706"
+                   : "#16a34a";
+      const status = days == null ? "No MOT data"
+                   : days < 0   ? `Expired ${Math.abs(days)} days ago`
+                   : days === 0 ? "Expires today!"
+                   : `${days} days left`;
+      const badge = `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${colour}22;color:${colour}">${status}</span>`;
+      const make  = [d.make, d.model, d.colour].filter(Boolean).join(" · ");
+      // Tax status
+      const taxDays   = d.tax_days_left;
+      const taxColour = taxDays == null ? "#6b7280" : taxDays < 0 ? "#dc2626" : taxDays < 30 ? "#d97706" : "#16a34a";
+      const taxBadge  = d.tax_status ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${taxColour}22;color:${taxColour}">🅿️ Tax: ${d.tax_status}${d.tax_due ? " · "+d.tax_due : ""}</span>` : "";
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+          ${badge}
+          ${d.mot_expiry ? `<span style="font-size:12px;color:var(--muted)">Expires ${d.mot_expiry}</span>` : ""}
+        </div>
+        ${taxBadge ? `<div style="margin-bottom:6px">${taxBadge}</div>` : ""}
+        ${make ? `<div style="font-size:12px;color:var(--muted)">${make}${d.year ? " · "+d.year : ""}</div>` : ""}`;
+    } catch { el.innerHTML = `<span style="color:#ef4444">Could not load MOT data</span>`; }
+  }
+
+  function _maAddVehicle() {
+    const sheet = document.createElement("div");
+    sheet.id = "ma-vehicle-sheet";
+    sheet.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center";
+    sheet.innerHTML = `
+      <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:480px">
+        <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:16px">🚗 Add Vehicle</div>
+        <input id="ma-vreg-input" type="text" placeholder="Registration e.g. KT21 ABC"
+          style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:15px;font-weight:700;background:var(--surface);color:var(--text);outline:none;text-transform:uppercase;margin-bottom:10px;box-sizing:border-box"
+          oninput="this.value=this.value.toUpperCase()">
+        <input id="ma-vnick-input" type="text" placeholder="Nickname (optional) e.g. My Car"
+          style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;margin-bottom:14px;box-sizing:border-box">
+        <div id="ma-vreg-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:10px"></div>
+        <button onclick="_maSaveVehicle()"
+          style="width:100%;background:#065f46;color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px">
+          Save Vehicle
+        </button>
+        <button onclick="document.getElementById('ma-vehicle-sheet').remove()"
+          style="width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:11px;font-size:14px;color:var(--muted);cursor:pointer">
+          Cancel
+        </button>
+      </div>`;
+    document.body.appendChild(sheet);
+    document.getElementById("ma-vreg-input").focus();
+  }
+
+  async function _maSaveVehicle() {
+    const reg  = (document.getElementById("ma-vreg-input").value || "").trim().toUpperCase().replace(/\s+/g,"");
+    const nick = (document.getElementById("ma-vnick-input").value || "").trim();
+    const errEl = document.getElementById("ma-vreg-err");
+    if (!reg) { errEl.textContent = "Enter a registration."; errEl.style.display = "block"; return; }
+    errEl.style.display = "none";
+    try {
+      const r = await fetch(`/api/myarea/vehicles?device_id=${encodeURIComponent(_maDeviceId())}`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({registration: reg, nickname: nick}),
+      });
+      const saved = await r.json();
+      if (saved.error) { errEl.textContent = saved.error; errEl.style.display = "block"; return; }
+      if (!_maVehicles) _maVehicles = [];
+      if (!_maVehicles.find(v => v.id === saved.id)) _maVehicles.push(saved);
+      document.getElementById("ma-vehicle-sheet").remove();
+      _maRenderVehicles();
+    } catch { errEl.textContent = "Could not save — try again."; errEl.style.display = "block"; }
+  }
+
+  async function _maRemoveVehicle(id) {
+    await fetch(`/api/myarea/vehicles/${id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"});
+    if (_maVehicles) _maVehicles = _maVehicles.filter(v => v.id !== id);
+    _maRenderVehicles();
+  }
+
   function _loadMyArea() {
     _maLoadSavedPlaces(); // fetch from DB (async, updates UI when ready)
+    _maLoadVehicles();    // fetch saved registrations + MOT status
     const home = MiruLocation.getHome();
     if (home && document.getElementById("myarea-postcode-input").value !== home) {
       document.getElementById("myarea-postcode-input").value = home;
