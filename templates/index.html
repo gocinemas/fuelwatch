@@ -1476,9 +1476,11 @@
 
         <div style="display:flex;gap:6px;margin-top:4px">
           <button onclick="myAreaAddDetail()" style="flex:1;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add manually</button>
+          <button onclick="_maPdfUploadTap()" title="Upload a bill PDF" style="padding:10px 13px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer">📄</button>
           <button onclick="_maClearAllDetails()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:#dc2626;cursor:pointer" title="Delete all details">🗑️</button>
           <button id="ma-test-data-btn" onclick="_maLoadTestData()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer" title="Load sample data for testing">🧪</button>
         </div>
+        <input id="ma-pdf-input" type="file" accept=".pdf,application/pdf" style="display:none" onchange="_maPdfSelected(this)">
 
       </div><!-- /matab-accounts -->
     </div>
@@ -3872,6 +3874,103 @@ const _ts = new Date(d.timestamp);
     } else {
       setTimeout(_maGmailCheckStatus, 2000);
     }
+  }
+
+  // ── PDF bill upload ──────────────────────────────────────────────────────────
+  function _maPdfUploadTap() {
+    const inp = document.getElementById("ma-pdf-input");
+    if (inp) { inp.value = ""; inp.click(); }
+  }
+
+  async function _maPdfSelected(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    // Show loading overlay
+    const overlay = document.createElement("div");
+    overlay.id = "ma-pdf-overlay";
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px";
+    overlay.innerHTML = `
+      <div style="width:44px;height:44px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite"></div>
+      <div style="color:#fff;font-size:15px;font-weight:700">Reading PDF…</div>`;
+    document.body.appendChild(overlay);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/myarea/pdf-extract", { method: "POST", body: fd });
+      const d = await r.json();
+      overlay.remove();
+      if (d.error) { alert("Could not extract details: " + d.error); return; }
+      _maPdfShowPreview(d, file.name);
+    } catch (e) {
+      overlay.remove();
+      alert("Upload failed — please try again.");
+    }
+  }
+
+  function _maPdfShowPreview(d, filename) {
+    // Map extracted JSON to ma_details record shape
+    const typeKey = d.type || "other";
+    const typeDef = _MA_DETAIL_TYPES.find(t => t.key === typeKey) || _MA_DETAIL_TYPES.find(t => t.key === "other");
+    const label = d.label || typeDef.label;
+    // Build data object — all non-empty fields
+    const fieldMap = {
+      "Provider":   d.provider,
+      "Account No": d.account_no,
+      "Policy No":  d.account_no,
+      "Council":    d.provider,
+      "Phone":      d.phone,
+      "Renewal Date": d.renewal_date,
+      "Price":      d.price,
+    };
+    const data = {};
+    typeDef.fields.forEach(f => {
+      const v = fieldMap[f];
+      if (v) data[f] = v;
+    });
+
+    const sheet = document.createElement("div");
+    sheet.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
+    const rows = Object.entries(data).map(([k,v]) => `
+      <div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0;width:90px;padding-top:2px">${k}</span>
+        <input data-field="${k}" value="${v}" style="flex:1;border:none;background:transparent;font-size:13px;font-weight:600;color:var(--text);outline:none">
+      </div>`).join("");
+    sheet.innerHTML = `
+      <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:20px 18px 36px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto">
+        <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:2px">📄 ${filename.replace(".pdf","")}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Review and edit the extracted details, then save</div>
+        <div style="margin-bottom:4px">
+          <span style="font-size:11px;color:var(--muted)">Type</span>
+          <select id="ma-pdf-type" style="margin-left:8px;font-size:12px;font-weight:600;border:1px solid var(--border);border-radius:8px;padding:4px 8px;background:var(--surface);color:var(--text)">
+            ${_MA_DETAIL_TYPES.map(t => `<option value="${t.key}" ${t.key===typeKey?"selected":""}>${t.icon} ${t.label}</option>`).join("")}
+          </select>
+          <input id="ma-pdf-label" value="${label}" placeholder="Label" style="margin-left:8px;font-size:12px;font-weight:600;border:1px solid var(--border);border-radius:8px;padding:4px 8px;background:var(--surface);color:var(--text);width:110px">
+        </div>
+        <div id="ma-pdf-fields" style="margin-top:10px">${rows}</div>
+        <div style="display:flex;gap:8px;margin-top:18px">
+          <button id="ma-pdf-save-btn" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer"
+            onclick="_maPdfSave(this)">Save to My Accounts</button>
+          <button style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer"
+            onclick="this.closest('[style*=\"position:fixed\"]').remove()">Cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(sheet);
+    sheet.addEventListener("click", e => { if (e.target === sheet) sheet.remove(); });
+  }
+
+  async function _maPdfSave(btn) {
+    btn.textContent = "Saving…"; btn.disabled = true;
+    const sheet = btn.closest('[style*="position:fixed"]');
+    const typeKey = document.getElementById("ma-pdf-type").value;
+    const label   = document.getElementById("ma-pdf-label").value.trim();
+    const data = {};
+    sheet.querySelectorAll("[data-field]").forEach(inp => {
+      if (inp.value.trim()) data[inp.getAttribute("data-field")] = inp.value.trim();
+    });
+    await _maDetailsPost(null, typeKey, label, data);
+    _maDetailsCache = null;
+    sheet.remove();
+    await _myAreaPersonalRender();
   }
 
   async function _maClearAllDetails() {

@@ -8904,6 +8904,59 @@ def ma_gmail_debug_queries():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/myarea/pdf-extract", methods=["POST"])
+def ma_pdf_extract():
+    """Upload a bill PDF, extract text, return structured account details via Groq."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    f = request.files["file"]
+    if not f.filename.lower().endswith(".pdf"):
+        return jsonify({"error": "Only PDF files are supported"}), 400
+    try:
+        import fitz
+        raw = f.read()
+        pdf = fitz.open(stream=raw, filetype="pdf")
+        text = "\n".join(page.get_text() for page in pdf).strip()
+    except Exception as e:
+        return jsonify({"error": f"Could not read PDF: {e}"}), 400
+    if not text:
+        return jsonify({"error": "PDF appears to be scanned/image-only — no text could be extracted"}), 400
+
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "Extraction service not configured"}), 503
+
+    prompt = f"Filename: {f.filename}\n\n{text[:3000]}"
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": _MA_EXTRACT_SYSTEM},
+                    {"role": "user",   "content": prompt},
+                ],
+                "max_tokens": 300,
+                "temperature": 0.0,
+                "response_format": {"type": "json_object"},
+            },
+            timeout=20,
+        )
+        if r.status_code != 200:
+            return jsonify({"error": "Extraction failed"}), 502
+        import json as _json
+        d = _json.loads(r.json()["choices"][0]["message"]["content"])
+        if d.get("skip"):
+            return jsonify({"error": "No account details found in this PDF"}), 422
+        # Clean account_no same as Gmail scan
+        if d.get("account_no"):
+            d["account_no"] = _ma_gmail_clean_account(d["account_no"]) or ""
+        return jsonify(d)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _web_client_id():
     return os.environ.get("GMAIL_WEB_CLIENT_ID") or os.environ.get("GMAIL_CLIENT_ID", "")
 
