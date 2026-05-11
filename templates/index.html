@@ -1267,7 +1267,7 @@
           <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px">🏡 My Area</div>
           <div id="myarea-subtitle" style="font-size:12px;color:var(--muted);margin-top:1px">Your MP, council, local services &amp; more</div>
         </div>
-        <button onclick="_maToggleCustomise()" style="background:none;border:1px solid var(--border);border-radius:10px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">⚙️</button>
+        <button onclick="_maToggleCustomise()" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:5px">⚙️ <span>Customise</span></button>
       </div>
 
       <!-- Customise panel -->
@@ -3093,25 +3093,32 @@ const _ts = new Date(d.timestamp);
 
   function _maRenderTrain(data) {
     const el = document.getElementById("myarea-train");
-    if (!data || !data.name || data.error) { el.style.display = "none"; return; }
-    const dist = data.distance_km ? `${(data.distance_km * 0.621371).toFixed(1)} mi away` : "";
-    const nameEsc = data.name.replace(/"/g,"&quot;");
-    const saved = _maIsSaved(data.name, "train-station");
-    const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${data.name}</div>
-        ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
-      </div>
-      <button data-ma-save-name="${nameEsc}" data-ma-save-addr="train-station"
-        data-ma-save-phone="" data-ma-save-emoji="🚆"
-        onclick="_maTogglePlace(this.dataset.maSaveName,this.dataset.maSaveAddr,this.dataset.maSavePhone,this.dataset.maSaveEmoji)"
-        style="flex-shrink:0;font-size:18px;background:none;border:none;cursor:pointer;padding:4px 2px;color:${saved?"#f59e0b":"#d1d5db"}">${saved?"⭐":"☆"}</button>
-      <button onclick="if(window._fillTrains){_fillTrains('${data.name.replace(/'/g,"\\'")}');}else{showScreen('trains');}"
-        style="flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">
-        Departures →
-      </button>
-    </div>`;
-    el.innerHTML = _maSectionHtml("train", "🚆 Nearest Station", bodyHtml);
+    if (!data || data.error) { el.style.display = "none"; return; }
+    const stations = data.stations || (data.name ? [data] : []);
+    if (!stations.length) { el.style.display = "none"; return; }
+    const rows = stations.map((st, idx) => {
+      const dist = st.distance_km ? `${(st.distance_km * 0.621371).toFixed(1)} mi away` : "";
+      const nameEsc = st.name.replace(/"/g,"&quot;");
+      const saved = _maIsSaved(st.name, "train-station");
+      const sep = (idx < stations.length - 1) ? ";border-bottom:1px solid var(--border)" : "";
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px${sep}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${st.name}</div>
+          ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
+        </div>
+        <button data-ma-save-name="${nameEsc}" data-ma-save-addr="train-station"
+          data-ma-save-phone="" data-ma-save-emoji="🚆"
+          onclick="_maTogglePlace(this.dataset.maSaveName,this.dataset.maSaveAddr,this.dataset.maSavePhone,this.dataset.maSaveEmoji)"
+          style="flex-shrink:0;font-size:18px;background:none;border:none;cursor:pointer;padding:4px 2px;color:${saved?"#f59e0b":"#d1d5db"}">${saved?"⭐":"☆"}</button>
+        <button onclick="if(window._fillTrains){_fillTrains('${st.name.replace(/'/g,"\\'")}');}else{showScreen('trains');}"
+          style="flex-shrink:0;background:#1e3a8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">
+          Departures →
+        </button>
+      </div>`;
+    }).join("");
+    // Remove last border-bottom on final row
+    const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">${rows}</div>`;
+    el.innerHTML = _maSectionHtml("train", stations.length > 1 ? "🚆 Nearest Stations" : "🚆 Nearest Station", bodyHtml);
     if (_maGetPrefs().train) el.style.display = "";
   }
 

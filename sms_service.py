@@ -9655,17 +9655,21 @@ def api_train_nearest_by_postcode():
         lat, lon = _latlon_for_postcode(postcode)
         if lat is None:
             return jsonify({"error": "Postcode not found"}), 404
-        best, best_dist = None, float("inf")
+        scored = []
         for s in _STATION_CACHE.values():
             if s.get("lat") and s.get("lon"):
                 d = haversine_km(lat, lon, s["lat"], s["lon"])
-                if d < best_dist:
-                    best_dist, best = d, s
-        if best:
-            return jsonify({"name": best["name"], "crs": best["crs"],
-                            "lat": best["lat"], "lng": best["lon"],
-                            "distance_km": round(best_dist, 2)})
-        return jsonify({"error": "No station found"}), 404
+                scored.append((d, s))
+        scored.sort(key=lambda x: x[0])
+        if not scored:
+            return jsonify({"error": "No station found"}), 404
+        stations = [
+            {"name": s["name"], "crs": s["crs"],
+             "lat": s["lat"], "lng": s["lon"],
+             "distance_km": round(d, 2)}
+            for d, s in scored[:2]
+        ]
+        return jsonify({"stations": stations, **stations[0]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
