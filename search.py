@@ -993,9 +993,11 @@ def fetch_brand_data(brand: str) -> dict:
         # Use original query for Wikipedia so product context is preserved
         # e.g. "Lynx deodorant" finds Axe/Lynx body spray; "Lynx" alone finds the wild cat
         wiki_query = original if original.lower() != brand.lower() else brand
+        # Use qualified name for news too — "Lynx deodorant" not "Lynx" avoids sports/finance noise
+        news_query = original if original.lower() != brand.lower() else brand
         with _cf.ThreadPoolExecutor(max_workers=6) as pool:
             wiki_f = pool.submit(_fetch_wikipedia, wiki_query)
-            news_f = pool.submit(_fetch_news, brand, "brand OR campaign OR advertising OR revenue OR launch", 6)
+            news_f = pool.submit(_fetch_news, news_query, "brand OR product OR advertising OR campaign OR launch", 6)
             ads_f  = pool.submit(_fetch_brand_ads, brand)
             fin_f  = pool.submit(_fetch_brand_financials, brand)
             ai_f   = pool.submit(_fetch_brand_ai, brand, original)
@@ -1025,6 +1027,11 @@ def fetch_brand_data(brand: str) -> dict:
             news = []
             try: news = news_f.result(timeout=8) or []
             except Exception: pass
+            # Drop news articles that don't mention the brand at all in the title
+            _brand_words = set(brand.lower().split())
+            _orig_words  = set(original.lower().split())
+            _keep_words  = _brand_words | _orig_words
+            news = [n for n in news if any(w in n.get("title","").lower() for w in _keep_words)]
 
             ads = []
             try: ads = ads_f.result(timeout=8) or []
@@ -1033,6 +1040,13 @@ def fetch_brand_data(brand: str) -> dict:
             financials = {}
             try: financials = fin_f.result(timeout=8) or {}
             except Exception: pass
+            # Suppress financials if the wiki article is a consumer brand (not a listed company)
+            if financials and wiki:
+                _fin_brand_ok = any(s in wiki.get("description","").lower() for s in
+                    ("brand", "deodorant", "cosmetic", "fragrance", "toiletri", "soap", "shampoo",
+                     "clothing", "fashion", "food", "beverage", "beer", "snack"))
+                if _fin_brand_ok:
+                    financials = {}  # consumer brand — skip irrelevant stock/financials
 
             # Give AI the remainder of a 27s wall-clock budget from fetch start
             ai_budget = max(27 - (time.time() - fetch_start), 3)

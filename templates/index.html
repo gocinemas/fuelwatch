@@ -1266,6 +1266,12 @@
       </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Your representatives, local services &amp; personal records</div>
 
+      <!-- First-time welcome tip -->
+      <div id="myarea-first-tip" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:13px;color:#065f46">
+        👋 <strong>Welcome to My Area!</strong> Choose what you'd like to see below, then enter your postcode and tap <strong>Go</strong>.
+        <button onclick="document.getElementById('myarea-first-tip').style.display='none'" style="float:right;background:none;border:none;font-size:16px;cursor:pointer;color:#065f46;line-height:1;margin-top:-2px">✕</button>
+      </div>
+
       <!-- Customise panel -->
       <div id="myarea-customise" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px"></div>
 
@@ -2873,8 +2879,6 @@ const _ts = new Date(d.timestamp);
     if (!rows) { el.style.display = "none"; return; }
     el.innerHTML = _maSectionHtml("reps", "🗳️ Your Representatives", _maCard(rows));
     el.style.display = "";
-    // Auto-switch to Civic tab now that reps have loaded (only if user is still on default Places tab)
-    if (localStorage.getItem("miru_ma_tab") === "places") _maShowTab("civic");
   }
 
   function _maRenderCouncil(area) {
@@ -3082,84 +3086,91 @@ const _ts = new Date(d.timestamp);
     el.style.display = "";
   }
 
+  // Tracks the current search so stale spinner-hide callbacks don't fire for old searches
+  let _maSearchSeq = 0;
+
   function myAreaSearch() {
-    const raw = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
-    if (!raw) return;
+    const input  = document.getElementById("myarea-postcode-input");
+    const errEl  = document.getElementById("myarea-loc-err");
+    const tabBar = document.getElementById("myarea-tab-bar");
+    const loader = document.getElementById("myarea-loading");
+
+    const raw = input ? input.value.trim().toUpperCase() : "";
+    if (errEl) errEl.style.display = "none";
+
+    if (!raw) {
+      if (errEl) { errEl.textContent = "Please enter a postcode."; errEl.style.display = "block"; }
+      return;
+    }
+
     const pc = raw.replace(/\s+/g, "");
     _maCurrentPostcode = pc;
-    // Always persist locally so next visit loads instantly without async server call
     MiruLocation.setHome(raw);
-    // Persist home postcode server-side if logged in
-    const _maTok = _savesPin() || new URLSearchParams(window.location.search).get("token");
-    if (_maTok) {
-      fetch("/api/myarea/home-postcode", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({token: _maTok, postcode: pc})
-      }).catch(() => {});
-    }
-    // Clear cached data for new search
+    localStorage.setItem("miru_ma_visited", "1");
+
+    // Persist server-side if logged in
+    const _tok = _savesPin() || new URLSearchParams(window.location.search).get("token");
+    if (_tok) fetch("/api/myarea/home-postcode", {method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({token:_tok, postcode:pc})}).catch(()=>{});
+
+    // Clear old data + reset sections
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
-    // Reset sections
-    ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-petrol","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
-      const el = document.getElementById(id); if (el) el.style.display = "none";
+    ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-petrol",
+     "myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.innerHTML = ""; el.style.display = "none"; }
     });
-    document.getElementById("myarea-tab-bar").style.display = "";
+
+    // Show tab bar and spinner immediately — explicit display:block
+    if (tabBar) tabBar.style.display = "block";
     _maShowTab("places");
-    document.getElementById("myarea-loading").style.display = "block";
+    if (loader) loader.style.display = "block";
 
-    let _spinnerHidden = false;
-    function _maHideSpinner() {
-      if (_spinnerHidden) return;
-      _spinnerHidden = true;
-      document.getElementById("myarea-loading").style.display = "none";
-    }
-    // Hard safety net — spinner never spins forever
-    setTimeout(_maHideSpinner, 12000);
+    // Spinner hide: keyed to this search sequence so old callbacks can't hide a newer spinner
+    const seq = ++_maSearchSeq;
+    const _hideSpinner = () => {
+      if (_maSearchSeq !== seq) return;
+      if (loader) loader.style.display = "none";
+    };
+    setTimeout(_hideSpinner, 8000); // hard 8s cap — spinner always hides
 
-    // Use cached rep data from elections screen if available (instant render)
-    const _cached = _miruRepsCache[pc];
-    if (_cached && (_cached.mp || _cached.councillors)) {
-      _maRenderReps(_cached.mp || {}, {councillors: _cached.councillors || []});
-    }
+    // ── Train station (fast, in-memory cache — primary spinner trigger) ──────────
+    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`)
+      .then(r => r.json()).then(d => { _maRenderTrain(d); _hideSpinner(); })
+      .catch(() => _hideSpinner());
 
-    // MP + councillor — load in background; don't block spinner on these
-    if (!_cached || !_cached.mp || !_cached.councillors) {
+    // ── MPs + Councillors (background, auto-switches to Civic tab on success) ────
+    const _repsCache = _miruRepsCache[pc];
+    if (_repsCache && (_repsCache.mp || _repsCache.councillors)) {
+      _maRenderReps(_repsCache.mp || {}, {councillors: _repsCache.councillors || []});
+    } else {
       Promise.all([
         fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
-        fetch(`/api/councillor?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
-      ]).then(([mp, councillorResp]) => {
-        _miruRepsCache[pc] = {mp, councillors: (councillorResp && councillorResp.councillors) || []};
-        _maRenderReps(mp, councillorResp);
-      }).catch(() => {});
+        fetch(`/api/councillor?postcode=${pc}`).then(r=>r.json()).catch(()=>({}))
+      ]).then(([mp, cr]) => {
+        _miruRepsCache[pc] = {mp, councillors:(cr&&cr.councillors)||[]};
+        _maRenderReps(mp, cr);
+      }).catch(()=>{});
     }
 
-    // your-area (GPs, council, pharmacies via Overpass — renders independently when ready)
-    fetch(`/api/your-area?postcode=${pc}`).then(r=>r.json()).then(area => {
-      _maAreaData = area;
-      _maRenderCouncil(area);
-      _maRenderGPs(area);
-      _myAreaPersonalRender();
-    }).catch(()=>{});
+    // ── Weather, petrol, crime ────────────────────────────────────────────────────
+    fetch(`/api/myarea/local-info?postcode=${pc}`)
+      .then(r => r.json())
+      .then(d => { _maRenderWeather(d.weather); _maRenderCrime(d.crime); _maRenderPetrol(d.petrol); })
+      .catch(()=>{});
 
-    // Nearest train station (fast — uses in-memory station cache; hides spinner on arrival)
-    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(d => {
-      _maRenderTrain(d); _maHideSpinner();
-    }).catch(() => { _maHideSpinner(); });
+    // ── GPs, council ─────────────────────────────────────────────────────────────
+    fetch(`/api/your-area?postcode=${pc}`)
+      .then(r => r.json())
+      .then(area => { _maAreaData=area; _maRenderCouncil(area); _maRenderGPs(area); _myAreaPersonalRender(); })
+      .catch(()=>{});
 
-    // Shops + pubs + schools — Overpass, slowest, always load in background
-    fetch(`/api/shops?postcode=${pc}`).then(r=>r.json()).then(data => {
-      _maShopsData = data; _maRenderShops(data);
-    }).catch(()=>{});
-    fetch(`/api/local?postcode=${pc}`).then(r=>r.json()).then(data => {
-      _maLocalData = data; _maRenderPubs(data); _maRenderSchools(data);
-    }).catch(()=>{});
-
-    // Weather + crime + petrol (parallel, 30-min cache)
-    fetch(`/api/myarea/local-info?postcode=${pc}`).then(r=>r.json()).then(d => {
-      _maRenderWeather(d.weather);
-      _maRenderCrime(d.crime);
-      _maRenderPetrol(d.petrol);
-    }).catch(()=>{});
+    // ── Shops, pubs, schools (slowest — background) ───────────────────────────────
+    fetch(`/api/shops?postcode=${pc}`)
+      .then(r => r.json()).then(d => { _maShopsData=d; _maRenderShops(d); }).catch(()=>{});
+    fetch(`/api/local?postcode=${pc}`)
+      .then(r => r.json()).then(d => { _maLocalData=d; _maRenderPubs(d); _maRenderSchools(d); }).catch(()=>{});
   }
 
   function myAreaUseLocation() {
@@ -3309,20 +3320,33 @@ const _ts = new Date(d.timestamp);
     _maLoadSavedPlaces();
     _maLoadVehicles();
     _myAreaPersonalRender();
+
     const hasToken = !!(_savesPin() || new URLSearchParams(window.location.search).get("token"));
     const banner = document.getElementById("myarea-link-banner");
     if (banner) banner.style.display = hasToken ? "none" : "";
-    // Try local postcode first (instant, synchronous)
+
+    const isFirstVisit = !localStorage.getItem("miru_ma_visited");
     const home = MiruLocation.getHome();
+    const input = document.getElementById("myarea-postcode-input");
+
+    if (isFirstVisit) {
+      // Show welcome tip + open customise panel so user sets preferences first
+      const tip = document.getElementById("myarea-first-tip");
+      if (tip) tip.style.display = "block";
+      _maRenderCustomise();
+      const panel = document.getElementById("myarea-customise");
+      if (panel) panel.style.display = "block";
+      if (home && input) input.value = home; // pre-fill if available
+      return; // user clicks Go themselves after customising
+    }
+
+    // Returning user — load straight away
     if (home) {
-      const input = document.getElementById("myarea-postcode-input");
       if (input) input.value = home;
       myAreaSearch();
     } else if (hasToken) {
-      // No local postcode — check server (cross-device sync)
       _maLoadHomePostcode();
     }
-    // If nothing found anywhere, search bar stays empty — user types their postcode
   }
 
   // ── My Area personal details (localStorage) ───────────────────────────────────
