@@ -11264,8 +11264,8 @@ window.spotifyAddTrack = window.spotifyLike;
     if (!bar) return;
     if (_trainSetMode) {
       lbl.textContent = _trainSetMode === "home"
-        ? "⭐ Choose your Home station below"
-        : "🏢 Choose your Work station below";
+        ? "⭐ Tap a station to save it as Home"
+        : "🏢 Tap a station to save it as Work";
       bar.style.display = "block";
     } else {
       bar.style.display = "none";
@@ -11395,10 +11395,11 @@ window.spotifyAddTrack = window.spotifyLike;
   };
 
   // Enter "set mode" — next station picked will be saved to this slot
+  // Immediately trigger geolocation so stations appear without an extra tap
   window.trainSetSlot = function(slot) {
     _trainSetMode = slot;
     _renderSetModeBar();
-    document.getElementById("train-search-input").focus();
+    trainLocate();
   };
 
   window.trainClearSlot = function(slot) {
