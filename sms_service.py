@@ -3262,7 +3262,7 @@ out center tags;
 
 def _fetch_supermarkets(lat, lon):
     # Overpass-only: Google Places returns incorrect UK supermarket results
-    return _fetch_supermarkets_overpass(lat, lon, radius_m=16000)  # ~10 miles
+    return _fetch_supermarkets_overpass(lat, lon, radius_m=5000)  # ~3 miles, fast query
 
 
 _UK_CONVENIENCE_CHAINS = {
@@ -3606,9 +3606,9 @@ relation["shop"="supermarket"](around:5000,{lat},{lon});
             sm_f   = ex.submit(_fetch_supermarkets, lat, lon)
             offl_f = ex.submit(_fetch_off_licences_overpass, lat, lon)
             conv_f = ex.submit(_fetch_convenience_overpass, lat, lon)
-            supermarkets  = sm_f.result(timeout=40)
-            off_licences  = offl_f.result(timeout=25)
-            convenience   = conv_f.result(timeout=25)
+            supermarkets  = sm_f.result(timeout=15)
+            off_licences  = offl_f.result(timeout=15)
+            convenience   = conv_f.result(timeout=15)
         result = {"supermarkets": supermarkets, "off_licences": off_licences,
                   "convenience": convenience}
         if supermarkets or off_licences or convenience:

@@ -2727,6 +2727,28 @@ const _ts = new Date(d.timestamp);
     return (_maSavedPlaces || []).some(p => p.name === name && p.address === (address||""));
   }
 
+  // ── My Area API response cache (localStorage, survives Railway restarts) ────
+  function _maCacheGet(key) {
+    try {
+      const s = localStorage.getItem("miru_mac_" + key);
+      if (!s) return null;
+      const {data, ts, ttl} = JSON.parse(s);
+      if (Date.now() - ts > ttl * 1000) { localStorage.removeItem("miru_mac_" + key); return null; }
+      return data;
+    } catch { return null; }
+  }
+  function _maCacheSet(key, data, ttlSeconds) {
+    try { localStorage.setItem("miru_mac_" + key, JSON.stringify({data, ts: Date.now(), ttl: ttlSeconds})); } catch {}
+  }
+  function _maFetchCached(cacheKey, url, ttlSeconds, onData) {
+    const cached = _maCacheGet(cacheKey);
+    if (cached) { onData(cached); return; }
+    fetch(url).then(r => r.json()).then(data => {
+      _maCacheSet(cacheKey, data, ttlSeconds);
+      onData(data);
+    }).catch(() => {});
+  }
+
   const _MA_PLACES_LS_KEY = "miru_saved_places_v1";
 
   function _maPlacesFromLS() {
@@ -3193,30 +3215,28 @@ const _ts = new Date(d.timestamp);
       }).catch(() => { _maHideSpinner(); });
     }
 
-    // your-area (GPs, council, pharmacies via Overpass — renders independently when ready)
-    fetch(`/api/your-area?postcode=${pc}`).then(r=>r.json()).then(area => {
-      _maAreaData = area;
-      _maRenderCouncil(area);
-      _maRenderGPs(area);
-      _myAreaPersonalRender();
-    }).catch(()=>{});
-
     // Nearest train station (fast — uses in-memory station cache)
     fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_maRenderTrain).catch(()=>{});
 
-    // Shops + pubs + schools — Overpass, slowest, always load in background
-    fetch(`/api/shops?postcode=${pc}`).then(r=>r.json()).then(data => {
-      _maShopsData = data; _maRenderShops(data);
-    }).catch(()=>{});
-    fetch(`/api/local?postcode=${pc}`).then(r=>r.json()).then(data => {
-      _maLocalData = data; _maRenderPubs(data); _maRenderSchools(data);
-    }).catch(()=>{});
+    // your-area (GPs, council, pharmacies) — LS-cached 24h, Overpass on miss
+    _maFetchCached(`your-area:${pc}`, `/api/your-area?postcode=${pc}`, 86400, area => {
+      _maAreaData = area; _maRenderCouncil(area); _maRenderGPs(area); _myAreaPersonalRender();
+    });
 
-    // Weather + crime (parallel, 30-min cache)
-    fetch(`/api/myarea/local-info?postcode=${pc}`).then(r=>r.json()).then(d => {
-      _maRenderWeather(d.weather);
-      _maRenderCrime(d.crime);
-    }).catch(()=>{});
+    // Shops — slowest Overpass call, LS-cached 24h
+    _maFetchCached(`shops:${pc}`, `/api/shops?postcode=${pc}`, 86400, data => {
+      _maShopsData = data; _maRenderShops(data);
+    });
+
+    // Pubs + schools — LS-cached 24h
+    _maFetchCached(`local:${pc}`, `/api/local?postcode=${pc}`, 86400, data => {
+      _maLocalData = data; _maRenderPubs(data); _maRenderSchools(data);
+    });
+
+    // Weather + crime (shorter 30-min cache — more time-sensitive)
+    _maFetchCached(`localinfo:${pc}`, `/api/myarea/local-info?postcode=${pc}`, 1800, d => {
+      _maRenderWeather(d.weather); _maRenderCrime(d.crime);
+    });
 
     _myAreaRefreshHomeRow();
   }
