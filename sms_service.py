@@ -8520,13 +8520,16 @@ def ma_gmail_callback():
     if not (refresh_token or access_token):
         return redirect("/?gmail_error=auth#myarea")
     try:
-        lib._sb().table("ma_gmail_tokens").upsert({
+        row_data = {
             "device_id":     device_id,
             "refresh_token": refresh_token,
             "access_token":  access_token,
             "scan_status":   "scanning",
             "pending":       [],
-        }, on_conflict="device_id").execute()
+        }
+        if from_number:
+            row_data["from_number"] = from_number
+        lib._sb().table("ma_gmail_tokens").upsert(row_data, on_conflict="device_id").execute()
     except Exception as e:
         print(f"[ma gmail] db upsert error: {e}")
     import threading
@@ -8889,13 +8892,18 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
 
 @app.route("/api/myarea/gmail/status")
 def ma_gmail_status():
-    device_id = request.args.get("device_id", "").strip()
-    if not device_id:
+    device_id   = request.args.get("device_id", "").strip()
+    from_number = request.args.get("from_number", "").strip()
+    if not device_id and not from_number:
         return jsonify({"connected": False})
     try:
-        rows = lib._sb().table("ma_gmail_tokens") \
-            .select("device_id,email,scan_status,pending,last_scan") \
-            .eq("device_id", device_id).execute().data
+        tbl = lib._sb().table("ma_gmail_tokens") \
+            .select("device_id,email,scan_status,pending,last_scan")
+        rows = tbl.eq("device_id", device_id).execute().data if device_id else []
+        if not rows and from_number:
+            rows = lib._sb().table("ma_gmail_tokens") \
+                .select("device_id,email,scan_status,pending,last_scan") \
+                .eq("from_number", from_number).execute().data
         if rows:
             row = rows[0]
             return jsonify({
@@ -8959,23 +8967,27 @@ def ma_gmail_clear_pending():
 
 @app.route("/api/myarea/gmail/rescan", methods=["POST"])
 def ma_gmail_rescan():
-    device_id = request.args.get("device_id", "").strip()
-    if not device_id:
+    device_id   = request.args.get("device_id", "").strip()
+    from_number = request.args.get("from_number", "").strip()
+    if not device_id and not from_number:
         return jsonify({"error": "device_id required"}), 400
     try:
-        rows = lib._sb().table("ma_gmail_tokens").select("*").eq("device_id", device_id).execute().data
+        rows = lib._sb().table("ma_gmail_tokens").select("*").eq("device_id", device_id).execute().data if device_id else []
+        if not rows and from_number:
+            rows = lib._sb().table("ma_gmail_tokens").select("*").eq("from_number", from_number).execute().data
         if not rows:
             return jsonify({"error": "not_connected"}), 401
         row = rows[0]
+        row_device_id = row["device_id"]
         lib._sb().table("ma_gmail_tokens").update({"scan_status": "scanning"}) \
-            .eq("device_id", device_id).execute()
+            .eq("device_id", row_device_id).execute()
         at = _ma_gmail_get_token(row)
-        from_number = request.args.get("from_number", "").strip()
         hints = row.get("provider_hints") or []
+        phone = from_number or row.get("from_number", "")
         import threading
         threading.Thread(
             target=_ma_gmail_scan_bg,
-            args=(device_id, at, row.get("refresh_token", ""), from_number),
+            args=(row_device_id, at, row.get("refresh_token", ""), phone),
             kwargs={"provider_hints": hints},
             daemon=True,
         ).start()

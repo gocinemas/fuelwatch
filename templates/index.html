@@ -1404,7 +1404,7 @@
         <div id="ma-gmail-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:16px">
           <div id="ma-gmail-state-connect" style="display:flex;align-items:center;justify-content:space-between">
             <div>
-              <div style="font-size:13px;font-weight:700;color:var(--text)">📧 Import from Gmail</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">📧 Gmail scan</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">Auto-detect energy, mobile, insurance &amp; more</div>
             </div>
             <a href="#" onclick="_maGmailConnect();return false;" style="display:flex;align-items:center;gap:5px;padding:8px 13px;border-radius:20px;border:1.5px solid #4285f4;background:#fff;font-size:12px;font-weight:700;color:#4285f4;cursor:pointer;text-decoration:none;flex-shrink:0">
@@ -3758,7 +3758,9 @@ const _ts = new Date(d.timestamp);
     const phone = _miruPhone();
     // If already connected, rescan instead of re-doing OAuth
     try {
-      const r = await fetch(`/api/myarea/gmail/status?device_id=${encodeURIComponent(did)}`);
+      const sp = new URLSearchParams({ device_id: did });
+      if (phone) sp.set("from_number", phone);
+      const r = await fetch(`/api/myarea/gmail/status?${sp.toString()}`);
       const d = await r.json();
       if (d.connected) { _maGmailRescan(); return; }
     } catch {}
@@ -3798,9 +3800,12 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _maGmailCheckStatus() {
-    const did = _maDeviceId();
+    const did   = _maDeviceId();
+    const phone = _miruPhone();
     try {
-      const r = await fetch(`/api/myarea/gmail/status?device_id=${encodeURIComponent(did)}`);
+      const sp = new URLSearchParams({ device_id: did });
+      if (phone) sp.set("from_number", phone);
+      const r = await fetch(`/api/myarea/gmail/status?${sp.toString()}`);
       const d = await r.json();
       if (!d.connected) { _maGmailScanOverlay(false); _maGmailSetState("connect"); return; }
       if (d.scan_status === "scanning") {
