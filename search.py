@@ -991,6 +991,24 @@ def fetch_brand_data(brand: str) -> dict:
             try: wiki = wiki_f.result(timeout=10) or {}
             except Exception: pass
 
+            # Discard Wikipedia result if it describes a person, not a brand/product
+            _wd = wiki.get("description", "").lower()
+            _we = (wiki.get("extract", "") or "")[:300].lower()
+            _PERSON_SIGNALS = ("actor", "actress", "singer", "musician", "politician",
+                               "footballer", "director", "author", "writer", "athlete",
+                               "born in", "born on", "is an american", "is a british",
+                               "is an english", "is an australian")
+            _BRAND_SIGNALS  = ("brand", "company", "product", "manufacturer", "deodorant",
+                               "founded", "subsidiary", "corporation", "ltd", "plc", "inc.",
+                               "fragrance", "cosmetic", "toiletri")
+            _looks_person = (any(s in _wd for s in _PERSON_SIGNALS) or
+                             any(s in _we for s in ("born in", "born on", "is an american",
+                                                    "is a british", "is an english")))
+            _looks_brand  = any(s in _wd + " " + _we for s in _BRAND_SIGNALS)
+            if _looks_person and not _looks_brand:
+                print(f"[brand_wiki] suppressed person article for '{brand}': {_wd[:80]}")
+                wiki = {}
+
             news = []
             try: news = news_f.result(timeout=8) or []
             except Exception: pass
