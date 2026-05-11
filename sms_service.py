@@ -3712,6 +3712,59 @@ def api_myarea_home_postcode_post():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/intel/brand-choices", methods=["GET"])
+def api_intel_brand_choices_get():
+    token = request.args.get("token", "").strip()
+    if not token:
+        return jsonify({"choices": {}})
+    try:
+        rows = lib._sb().table("brand_choices") \
+            .select("brand_key,chosen") \
+            .eq("device_id", token) \
+            .execute().data
+        choices = {r["brand_key"]: r["chosen"] for r in rows}
+        return jsonify({"choices": choices})
+    except Exception:
+        return jsonify({"choices": {}})
+
+
+@app.route("/api/intel/brand-choices", methods=["POST"])
+def api_intel_brand_choices_post():
+    body = request.get_json(force=True, silent=True) or {}
+    token = body.get("token", "").strip()
+    brand_key = (body.get("brand_key") or "").strip().lower()
+    chosen = (body.get("chosen") or "").strip()
+    if not token or not brand_key or not chosen:
+        return jsonify({"ok": False}), 400
+    try:
+        sb = lib._sb()
+        sb.table("brand_choices").delete() \
+            .eq("device_id", token).eq("brand_key", brand_key).execute()
+        sb.table("brand_choices").insert({
+            "device_id": token,
+            "brand_key": brand_key,
+            "chosen":    chosen,
+        }).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/intel/brand-choices/delete", methods=["POST"])
+def api_intel_brand_choices_delete():
+    body = request.get_json(force=True, silent=True) or {}
+    token = body.get("token", "").strip()
+    brand_key = (body.get("brand_key") or "").strip().lower()
+    if not token or not brand_key:
+        return jsonify({"ok": False}), 400
+    try:
+        lib._sb().table("brand_choices").delete() \
+            .eq("device_id", token).eq("brand_key", brand_key).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 _WMO_EMOJI = {
     0:"☀️",1:"🌤️",2:"⛅",3:"🌥️",45:"🌫️",48:"🌫️",
     51:"🌦️",53:"🌦️",55:"🌧️",61:"🌧️",63:"🌧️",65:"🌧️",

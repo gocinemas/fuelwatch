@@ -2873,6 +2873,8 @@ const _ts = new Date(d.timestamp);
     if (!rows) { el.style.display = "none"; return; }
     el.innerHTML = _maSectionHtml("reps", "🗳️ Your Representatives", _maCard(rows));
     el.style.display = "";
+    // Auto-switch to Civic tab now that reps have loaded (only if user is still on default Places tab)
+    if (localStorage.getItem("miru_ma_tab") === "places") _maShowTab("civic");
   }
 
   function _maRenderCouncil(area) {
@@ -3102,21 +3104,25 @@ const _ts = new Date(d.timestamp);
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
     document.getElementById("myarea-tab-bar").style.display = "";
-    _maShowTab("civic");
+    _maShowTab("places");
     document.getElementById("myarea-loading").style.display = "block";
 
+    let _spinnerHidden = false;
     function _maHideSpinner() {
+      if (_spinnerHidden) return;
+      _spinnerHidden = true;
       document.getElementById("myarea-loading").style.display = "none";
     }
+    // Hard safety net — spinner never spins forever
+    setTimeout(_maHideSpinner, 12000);
 
     // Use cached rep data from elections screen if available (instant render)
     const _cached = _miruRepsCache[pc];
     if (_cached && (_cached.mp || _cached.councillors)) {
       _maRenderReps(_cached.mp || {}, {councillors: _cached.councillors || []});
-      _maHideSpinner();
     }
 
-    // MP + councillor — fast path (~1-2s); spinner hides as soon as these arrive
+    // MP + councillor — load in background; don't block spinner on these
     if (!_cached || !_cached.mp || !_cached.councillors) {
       Promise.all([
         fetch(`/api/mp?postcode=${pc}`).then(r=>r.json()).catch(()=>({})),
@@ -3124,8 +3130,7 @@ const _ts = new Date(d.timestamp);
       ]).then(([mp, councillorResp]) => {
         _miruRepsCache[pc] = {mp, councillors: (councillorResp && councillorResp.councillors) || []};
         _maRenderReps(mp, councillorResp);
-        _maHideSpinner();
-      }).catch(() => { _maHideSpinner(); });
+      }).catch(() => {});
     }
 
     // your-area (GPs, council, pharmacies via Overpass — renders independently when ready)
@@ -3136,8 +3141,10 @@ const _ts = new Date(d.timestamp);
       _myAreaPersonalRender();
     }).catch(()=>{});
 
-    // Nearest train station (fast — uses in-memory station cache)
-    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_maRenderTrain).catch(()=>{});
+    // Nearest train station (fast — uses in-memory station cache; hides spinner on arrival)
+    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(d => {
+      _maRenderTrain(d); _maHideSpinner();
+    }).catch(() => { _maHideSpinner(); });
 
     // Shops + pubs + schools — Overpass, slowest, always load in background
     fetch(`/api/shops?postcode=${pc}`).then(r=>r.json()).then(data => {
@@ -5758,16 +5765,45 @@ const _ts = new Date(d.timestamp);
   const _BRAND_CHOICES_KEY = "miru_brand_choices";
 
   function _brandSaveChoice(original, chosen) {
+    const key = original.toLowerCase().trim();
     const map = JSON.parse(localStorage.getItem(_BRAND_CHOICES_KEY) || "{}");
-    map[original.toLowerCase().trim()] = chosen;
+    map[key] = chosen;
     localStorage.setItem(_BRAND_CHOICES_KEY, JSON.stringify(map));
+    // Sync to Supabase in background
+    const tok = _maDeviceId();
+    fetch("/api/intel/brand-choices", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({token: tok, brand_key: key, chosen: chosen})
+    }).catch(() => {});
   }
 
   function _brandForgetChoice(original) {
+    const key = original.toLowerCase().trim();
     const map = JSON.parse(localStorage.getItem(_BRAND_CHOICES_KEY) || "{}");
-    delete map[original.toLowerCase().trim()];
+    delete map[key];
     localStorage.setItem(_BRAND_CHOICES_KEY, JSON.stringify(map));
+    // Remove from Supabase in background
+    const tok = _maDeviceId();
+    fetch("/api/intel/brand-choices/delete", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({token: tok, brand_key: key})
+    }).catch(() => {});
   }
+
+  function _brandLoadChoicesFromServer() {
+    const tok = _maDeviceId();
+    fetch(`/api/intel/brand-choices?token=${encodeURIComponent(tok)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.choices || !Object.keys(d.choices).length) return;
+        const local = JSON.parse(localStorage.getItem(_BRAND_CHOICES_KEY) || "{}");
+        // Server wins for keys not present locally (cross-device sync)
+        Object.assign(local, d.choices);
+        localStorage.setItem(_BRAND_CHOICES_KEY, JSON.stringify(local));
+      }).catch(() => {});
+  }
+  // Load server choices once on startup
+  _brandLoadChoicesFromServer();
 
   async function searchBrand() {
     const input = document.getElementById("brand-input");
