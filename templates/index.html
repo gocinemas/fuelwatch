@@ -3669,6 +3669,7 @@ const _ts = new Date(d.timestamp);
 
   function _myAreaOpenDetailEditor(idx, existing) {
     const overlay = document.createElement("div");
+    overlay.id = "ma-detail-overlay";
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
     const type = existing ? (_MA_DETAIL_TYPES.find(t=>t.key===existing.type)||_MA_DETAIL_TYPES[5]) : _MA_DETAIL_TYPES[0];
     const sheet = document.createElement("div");
@@ -3683,11 +3684,11 @@ const _ts = new Date(d.timestamp);
       <div id="maed-fields"></div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button onclick="myAreaEditorSave(${idx})" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">Save</button>
-        <button onclick="this.closest('[style*=\"position:fixed\"]').remove()" style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>
+        <button onclick="document.getElementById('ma-detail-overlay').remove()" style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>
       </div>`;
     overlay.appendChild(sheet);
     document.body.appendChild(overlay);
-    overlay.addEventListener("click", e => { if (e.target===overlay) overlay.remove(); });
+    overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
     window._maEditorExisting = existing;
     myAreaEditorTypeChange(sheet.querySelector("#maed-type"));
   }
@@ -3706,7 +3707,7 @@ const _ts = new Date(d.timestamp);
   };
 
   window.myAreaEditorSave = function(idx) {
-    const overlay = document.querySelector("[style*=\"position:fixed\"][style*=\"z-index:9000\"]");
+    const overlay = document.getElementById("ma-detail-overlay");
     if (!overlay) return;
     const typeKey = overlay.querySelector("#maed-type").value;
     const type = _MA_DETAIL_TYPES.find(t=>t.key===typeKey) || _MA_DETAIL_TYPES[5];
