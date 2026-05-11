@@ -8523,17 +8523,18 @@ _MA_EXTRACT_SYSTEM = """You are a data extraction assistant. Extract household a
 Return ONLY a JSON object with these fields (omit fields you cannot find):
 {
   "type": one of: energy|broadband|car_ins|home_ins|life_ins|council_tax|other,
-  "provider": "company name",
-  "account_no": "account or policy number",
+  "provider": "company name only e.g. Octopus Energy, EE, Thames Water",
+  "account_no": "customer account or policy number as shown on the email — ONLY include if it is a short alphanumeric code (e.g. A-201E4423, GB50302570, 82475235). Do NOT include URLs, tokens, or long hashes.",
   "phone": "customer service phone number",
   "renewal_date": "DD/MM/YYYY or blank",
-  "label": "short human label e.g. Home Insurance, TV Licence, Water, Mobile"
+  "price": "monthly or annual price if visible e.g. £31.99/month",
+  "label": "short human label e.g. Home Insurance, TV Licence, Water, Mobile, Broadband"
 }
 Type mapping: energy=gas/electricity, broadband=internet/broadband/mobile/SIM, car_ins=car insurance,
 home_ins=home/contents/buildings insurance, life_ins=life insurance, council_tax=council tax,
 other=water/TV licence/health/anything else.
 If the email is a marketing email with no account details at all, return {"skip": true}.
-Otherwise always try to extract what you can."""
+Otherwise extract what you can. If unsure about account_no, omit it rather than guessing."""
 
 
 def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
@@ -8630,11 +8631,29 @@ def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
         return None
 
 
+def _ma_gmail_clean_account(value: str) -> str:
+    """Return value if it looks like a real account number, else empty string."""
+    if not value:
+        return ""
+    v = value.strip()
+    # Reject anything that looks like a base64 hash/token (contains / or = with no spaces, long)
+    if len(v) > 25 and not " " in v and ("/" in v or "=" in v or "-" in v and v.count("-") > 2):
+        return ""
+    # Reject very short pure-numeric strings (just a line/order number like "96")
+    if v.isdigit() and len(v) <= 3:
+        return ""
+    # Reject obvious URL fragments
+    if v.startswith("http") or v.startswith("//"):
+        return ""
+    return v
+
+
 def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str):
     """Background: scan Gmail for household accounts, extract, store as pending records."""
     token_row = {"device_id": device_id, "access_token": access_token, "refresh_token": refresh_token}
     at = _ma_gmail_get_token(token_row)
-    seen_accounts = set()
+    seen_providers = set()   # deduplicate by provider name (case-insensitive)
+    seen_accounts  = set()   # secondary dedup by (provider, account_no)
     pending = []
 
     for det_type, query in _MA_GMAIL_QUERIES:
@@ -8652,10 +8671,20 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str):
                 d = _ma_gmail_extract_email(at, msg["id"])
                 if not d:
                     continue
-                key = (d.get("provider", ""), d.get("account_no", ""))
-                if key in seen_accounts:
+                provider = (d.get("provider") or "").strip()
+                account_no = _ma_gmail_clean_account(d.get("account_no", ""))
+                if not provider:
                     continue
-                seen_accounts.add(key)
+                provider_key = provider.lower()
+                # Skip if we already have a record for this provider+account combo
+                pair_key = (provider_key, account_no.lower())
+                if pair_key in seen_accounts:
+                    continue
+                seen_accounts.add(pair_key)
+                # Also skip if same provider with no account_no (avoids duplicate blank entries)
+                if not account_no and provider_key in seen_providers:
+                    continue
+                seen_providers.add(provider_key)
                 # Build ma_details-compatible record
                 rec_type = d.get("type") or det_type
                 rec_type_map = {
@@ -8665,16 +8694,17 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str):
                 }
                 rec_type = rec_type_map.get(rec_type, "other")
                 data = {}
-                if d.get("provider"):
-                    field = "Council" if rec_type == "council_tax" else "Provider"
-                    data[field] = d["provider"]
-                if d.get("account_no"):
-                    field = "Account No" if rec_type not in ("car_ins","home_ins","life_ins") else "Policy No"
-                    data[field] = d["account_no"]
+                field = "Council" if rec_type == "council_tax" else "Provider"
+                data[field] = provider
+                if account_no:
+                    acc_field = "Account No" if rec_type not in ("car_ins","home_ins","life_ins") else "Policy No"
+                    data[acc_field] = account_no
                 if d.get("phone"):
                     data["Phone"] = d["phone"]
                 if d.get("renewal_date"):
                     data["Renewal Date"] = d["renewal_date"]
+                if d.get("price"):
+                    data["Price"] = d["price"]
                 from search import _MA_DETAIL_TYPES_MAP
                 label = d.get("label") or _MA_DETAIL_TYPES_MAP.get(rec_type, rec_type)
                 pending.append({"type": rec_type, "label": label, "data": data})

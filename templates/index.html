@@ -3639,19 +3639,36 @@ const _ts = new Date(d.timestamp);
     window.location.href = "/api/myarea/gmail/connect?device_id=" + encodeURIComponent(did || "unknown");
   }
 
+  function _maGmailScanOverlay(show) {
+    const id = "ma-gmail-scan-overlay";
+    if (!show) { document.getElementById(id)?.remove(); return; }
+    if (document.getElementById(id)) return;
+    const el = document.createElement("div");
+    el.id = id;
+    el.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px";
+    el.innerHTML = `
+      <div style="width:52px;height:52px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin 0.9s linear infinite"></div>
+      <div style="text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:6px">📧 Scanning your inbox…</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.7)">Looking for energy, broadband, insurance &amp; more</div>
+      </div>`;
+    document.body.appendChild(el);
+  }
+
   async function _maGmailCheckStatus() {
     const did = _maDeviceId();
     try {
       const r = await fetch(`/api/myarea/gmail/status?device_id=${encodeURIComponent(did)}`);
       const d = await r.json();
       const lbl = document.getElementById("ma-gmail-btn-label");
-      if (!d.connected) return;
+      if (!d.connected) { _maGmailScanOverlay(false); return; }
       if (d.scan_status === "scanning") {
         if (lbl) lbl.textContent = "Scanning inbox…";
         setTimeout(_maGmailCheckStatus, 3000);
         return;
       }
       if (d.scan_status === "done") {
+        _maGmailScanOverlay(false);
         const pending = d.pending || [];
         if (pending.length) {
           if (!document.getElementById("ma-gmail-preview")) {
@@ -3660,7 +3677,7 @@ const _ts = new Date(d.timestamp);
         }
         if (lbl) lbl.textContent = "Import from Gmail";
       }
-    } catch {}
+    } catch { _maGmailScanOverlay(false); }
   }
 
   function _maGmailShowPreview(records, email) {
@@ -3702,8 +3719,7 @@ const _ts = new Date(d.timestamp);
       const cb = document.getElementById(`gmail-rec-${i}`);
       if (!cb || !cb.checked) continue;
       const r = records[i];
-      const saved = await _maDetailsPost(null, r.type, r.label, r.data);
-      (_maDetailsCache = _maDetailsCache || []).push(saved);
+      await _maDetailsPost(null, r.type, r.label, r.data);
     }
     // Clear pending on server
     try {
@@ -3712,7 +3728,9 @@ const _ts = new Date(d.timestamp);
     overlay.remove();
     const lbl = document.getElementById("ma-gmail-btn-label");
     if (lbl) lbl.textContent = "Connected";
-    _myAreaPersonalRender();
+    // Fresh fetch from DB so rendered list is always accurate
+    _maDetailsCache = null;
+    await _myAreaPersonalRender();
   }
 
   async function _maGmailRescan() {
@@ -3720,6 +3738,7 @@ const _ts = new Date(d.timestamp);
     if (lbl) lbl.textContent = "Scanning…";
     try {
       await fetch(`/api/myarea/gmail/rescan?device_id=${encodeURIComponent(_maDeviceId())}`, { method: "POST" });
+      _maGmailScanOverlay(true);
       setTimeout(_maGmailCheckStatus, 3000);
     } catch {}
   }
@@ -3729,8 +3748,7 @@ const _ts = new Date(d.timestamp);
     if (params.get("gmail_scan") === "1") {
       history.replaceState({}, "", window.location.pathname);
       showScreen("myarea");
-      const lbl = document.getElementById("ma-gmail-btn-label");
-      if (lbl) lbl.textContent = "Scanning inbox…";
+      _maGmailScanOverlay(true);
       setTimeout(_maGmailCheckStatus, 2000);
     } else if (params.get("gmail_error")) {
       history.replaceState({}, "", window.location.pathname);
@@ -3860,8 +3878,8 @@ const _ts = new Date(d.timestamp);
   // ── My Area personal details (Supabase) ───────────────────────────────────────
   const _MA_DETAIL_TYPES = [
     { key:"home_ins",    icon:"🏠", label:"Home Insurance",     group:"Home & Utilities",    fields:["Provider","Policy No","Phone","Renewal Date"] },
-    { key:"energy",      icon:"⚡", label:"Energy",             group:"Home & Utilities",    fields:["Provider","Account No","Emergency Phone","Renewal Date"] },
-    { key:"broadband",   icon:"📡", label:"Broadband",          group:"Home & Utilities",    fields:["Provider","Account No","Phone","Renewal Date"] },
+    { key:"energy",      icon:"⚡", label:"Energy",             group:"Home & Utilities",    fields:["Provider","Account No","Emergency Phone","Price","Renewal Date"] },
+    { key:"broadband",   icon:"📡", label:"Broadband",          group:"Home & Utilities",    fields:["Provider","Account No","Phone","Price","Renewal Date"] },
     { key:"council_tax", icon:"🏛️", label:"Council Tax",        group:"Home & Utilities",    fields:["Council","Account No","Phone"] },
     { key:"car_ins",     icon:"🚗", label:"Car Insurance",      group:"Vehicle & Personal",  fields:["Provider","Policy No","Phone","Renewal Date","Reg"] },
     { key:"health",      icon:"💳", label:"Health / BUPA",      group:"Vehicle & Personal",  fields:["Provider","Member No","Phone","Renewal Date"] },
