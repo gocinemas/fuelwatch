@@ -2622,7 +2622,7 @@ const _ts = new Date(d.timestamp);
       return urlToken;
     }
     // If user has logged in via phone (Saves screen or My Area banner), use that token
-    const savesToken = _savesPin();
+    const savesToken = typeof _savesPin === "function" ? _savesPin() : "";
     if (savesToken) return savesToken;
     let id = localStorage.getItem("miru_device_id");
     if (!id) {
@@ -3635,12 +3635,8 @@ const _ts = new Date(d.timestamp);
 
   // ── Gmail import ─────────────────────────────────────────────────────────────
   function _maGmailConnect() {
-    try {
-      const did = _maDeviceId();
-      window.location.href = `/api/myarea/gmail/connect?device_id=${encodeURIComponent(did || "unknown")}`;
-    } catch(e) {
-      alert("Error: " + e.message);
-    }
+    const did = _maDeviceId();
+    window.location.href = "/api/myarea/gmail/connect?device_id=" + encodeURIComponent(did || "unknown");
   }
 
   async function _maGmailCheckStatus() {
