@@ -513,15 +513,20 @@
       </div>
 
       <!-- My Fuel saved stations -->
-      <div id="my-fuel-card" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:16px 18px;margin-bottom:12px">
+      <div id="my-fuel-card" style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:16px 18px;margin-bottom:12px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <span style="font-size:14px;font-weight:700;color:var(--text)">⭐ My Regular Stations</span>
           <div style="display:flex;align-items:center;gap:6px">
             <span id="my-fuel-updated" style="font-size:11px;color:var(--muted)"></span>
-            <button onclick="_myFuelRefresh()" style="font-size:11px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:0">Refresh</button>
+            <button onclick="_myFuelRefresh()" style="display:none;font-size:11px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:0" id="my-fuel-refresh-btn">Refresh</button>
           </div>
         </div>
         <div id="my-fuel-list"></div>
+        <!-- Empty state hint -->
+        <div id="my-fuel-empty" style="text-align:center;padding:8px 0 4px">
+          <div style="font-size:20px;letter-spacing:6px;color:var(--border);margin-bottom:6px">☆ ☆ ☆</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">Save up to 3 regular stations — tap <b>☆</b> on any result to track today's price</div>
+        </div>
       </div>
 
       <!-- Price drop alert — collapsed by default -->
@@ -1928,7 +1933,7 @@ const _ts = new Date(d.timestamp);
               <button id="${starId}"
                 onclick="_myFuelToggle(${i}, '${starId}')"
                 title="${isSaved ? 'Remove from My Fuel' : 'Save as regular station'}"
-                style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;opacity:${isSaved?1:0.35};transition:opacity .15s">
+                style="font-size:15px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;opacity:${isSaved?1:0.5};transition:opacity .15s">
                 ${isSaved ? '⭐' : '☆'}
               </button>
               <button
@@ -1990,7 +1995,7 @@ const _ts = new Date(d.timestamp);
     const btn = document.getElementById(starId);
     if (idx >= 0) {
       saved.splice(idx, 1);
-      if (btn) { btn.textContent = "☆"; btn.style.opacity = "0.35"; btn.title = "Save as regular station"; }
+      if (btn) { btn.textContent = "☆"; btn.style.opacity = "0.5"; btn.title = "Save as regular station"; }
     } else {
       if (saved.length >= _MF_MAX) { alert(`You can save up to ${_MF_MAX} regular stations. Remove one first.`); return; }
       saved.push({ brand: s.brand, address: s.address || "", postcode: s.postcode || "", lat: s.lat, lon: s.lon });
@@ -2003,8 +2008,16 @@ const _ts = new Date(d.timestamp);
   function _myFuelRenderCard() {
     const card = document.getElementById("my-fuel-card");
     const saved = _myFuelLoad();
-    if (!saved.length) { card.style.display = "none"; return; }
-    card.style.display = "block";
+    const emptyEl = document.getElementById("my-fuel-empty");
+    const refreshBtn = document.getElementById("my-fuel-refresh-btn");
+    if (!saved.length) {
+      if (emptyEl) emptyEl.style.display = "";
+      if (refreshBtn) refreshBtn.style.display = "none";
+      document.getElementById("my-fuel-list").innerHTML = "";
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = "none";
+    if (refreshBtn) refreshBtn.style.display = "";
     const list = document.getElementById("my-fuel-list");
     const gUrl = s => `https://maps.google.com/?q=${s.lat},${s.lon}`;
     list.innerHTML = saved.map((s, i) => `
