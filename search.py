@@ -941,7 +941,7 @@ def fetch_brand_data(brand: str) -> dict:
         except Exception:
             pass
 
-    cache_key = brand.strip().lower() + "|brandv21"
+    cache_key = brand.strip().lower() + "|brandv22"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
