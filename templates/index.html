@@ -1271,7 +1271,7 @@
 
       <!-- Saved Places -->
       <div id="myarea-saved" style="display:none;margin-bottom:14px">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">📌 My Saved Places <span style="font-size:11px;font-weight:400;color:var(--muted)">(up to 5)</span></div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">📌 My Saved Places</div>
         <div id="myarea-saved-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
       </div>
 
@@ -2410,7 +2410,7 @@ const _ts = new Date(d.timestamp);
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${html}</div></div>`;
   }
 
-  const _MA_PLACES_MAX = 5;
+
 
   function _maDeviceId() {
     let id = localStorage.getItem("miru_device_id");
@@ -2446,10 +2446,6 @@ const _ts = new Date(d.timestamp);
       await fetch(`/api/myarea/places/${existing.id}?device_id=${encodeURIComponent(_maDeviceId())}`, {method:"DELETE"});
       _maSavedPlaces = _maSavedPlaces.filter(p => p.id !== existing.id);
     } else {
-      if (_maSavedPlaces.length >= _MA_PLACES_MAX) {
-        alert("You can save up to 5 places. Remove one first.");
-        return;
-      }
       const r = await fetch(`/api/myarea/places?device_id=${encodeURIComponent(_maDeviceId())}`, {
         method: "POST",
         headers: {"Content-Type":"application/json"},

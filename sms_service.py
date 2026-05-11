@@ -3612,8 +3612,6 @@ relation["shop"="supermarket"](around:5000,{lat},{lon});
         return jsonify({"error": str(e)}), 500
 
 
-_MA_PLACES_MAX = 5
-
 @app.route("/api/myarea/places", methods=["GET"])
 def api_myarea_places_get():
     device_id = request.args.get("device_id", "").strip()
@@ -3640,10 +3638,6 @@ def api_myarea_places_post():
     if not name:
         return jsonify({"error": "name required"}), 400
     try:
-        existing = lib._sb().table("my_area_places") \
-            .select("id").eq("device_id", device_id).execute().data or []
-        if len(existing) >= _MA_PLACES_MAX:
-            return jsonify({"error": f"Max {_MA_PLACES_MAX} saved places"}), 400
         row = lib._sb().table("my_area_places").insert({
             "device_id": device_id,
             "name":      name,
