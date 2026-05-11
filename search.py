@@ -955,7 +955,7 @@ def fetch_brand_data(brand: str) -> dict:
         except Exception:
             pass
 
-    cache_key = brand.strip().lower() + "|brandv25"
+    cache_key = brand.strip().lower() + "|brandv26"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -1118,7 +1118,7 @@ def fetch_brand_data(brand: str) -> dict:
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600
-_COMPANY_VER = "v16"
+_COMPANY_VER = "v17"
 _COMPANY_INFLIGHT: dict = {}
 _COMPANY_LOCK = _threading.Lock()
 
@@ -1235,18 +1235,35 @@ def _fetch_wikipedia(company: str) -> dict:
             "thumbnail":   (d.get("thumbnail") or d.get("originalimage") or {}).get("source", ""),
         }
 
-    # Step 1: try direct title match
+    _NON_COMPANY = {
+        "species","genus","wild cat","wild cats","animal","bird","fish","insect","plant","tree","flower",
+        "geographical","river","lake","mountain","city","town","village","country","county","district",
+        "surname","given name","first name","fictional character","television series","film","movie",
+        "video game","album","song","musical","comic","novel","asteroid","spacecraft",
+    }
+
+    def _is_non_company(res: dict) -> bool:
+        """Return True if the Wikipedia article is clearly not about a company/brand."""
+        text = ((res.get("description") or "") + " " + (res.get("extract") or "")[:200]).lower()
+        return any(sig in text for sig in _NON_COMPANY)
+
+    # Step 1: try direct title match — but reject clearly non-company articles
     result = _summary(company)
+    if result and _is_non_company(result):
+        result = {}
 
     # Step 1b: for product-qualified queries like "Lynx deodorant", try
-    # "Lynx (deodorant)", then "Lynx (brand)" — Wikipedia uses parenthetical disambiguation
+    # "Lynx (deodorant)", then "Lynx (brand)" — Wikipedia uses parenthetical disambiguation.
+    # Also runs for single-word queries when Step 1 was rejected as non-company.
     if not result:
         parts = company.split()
+        base = parts[0]
         if len(parts) >= 2:
-            # Try "FirstWord (qualifier)" e.g. "Lynx (deodorant)"
-            result = _summary(parts[0] + " (" + parts[1].lower() + ")")
-        if not result and len(parts) >= 2:
-            result = _summary(parts[0] + " (brand)")
+            result = _summary(base + " (" + parts[1].lower() + ")")
+        if not result:
+            result = _summary(base + " (brand)")
+        if not result:
+            result = _summary(base + " (company)")
 
     # Step 2: if that fails, search Wikipedia for the best matching article
     if not result:

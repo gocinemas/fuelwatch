@@ -4007,6 +4007,76 @@ def api_myarea_vehicles_delete(vehicle_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/myarea/details", methods=["GET"])
+def api_myarea_details_get():
+    from_number = request.args.get("from_number", "").strip()
+    device_id   = request.args.get("device_id", "").strip()
+    did = from_number or device_id
+    if not did:
+        return jsonify([])
+    try:
+        q = lib._sb().table("ma_details").select("id,type,label,data,created_at")
+        q = q.eq("device_id", did)
+        return jsonify(q.order("created_at").execute().data or [])
+    except Exception:
+        return jsonify([])
+
+
+@app.route("/api/myarea/details", methods=["POST"])
+def api_myarea_details_post():
+    from_number = request.args.get("from_number", "").strip()
+    device_id   = request.args.get("device_id", "").strip()
+    did = from_number or device_id
+    if not did:
+        return jsonify({"error": "from_number or device_id required"}), 400
+    body = request.get_json(force=True, silent=True) or {}
+    rec_id = (body.get("id") or "").strip()
+    rec = {
+        "device_id": did,
+        "type":      body.get("type", "other"),
+        "label":     body.get("label", ""),
+        "data":      body.get("data", {}),
+    }
+    try:
+        sb = lib._sb()
+        if rec_id:
+            rows = sb.table("ma_details").update(rec).eq("id", rec_id).eq("device_id", did).execute().data
+            return jsonify(rows[0] if rows else {})
+        else:
+            row = sb.table("ma_details").insert(rec).execute().data[0]
+            return jsonify(row)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/myarea/details/<detail_id>", methods=["DELETE"])
+def api_myarea_details_delete(detail_id):
+    from_number = request.args.get("from_number", "").strip()
+    device_id   = request.args.get("device_id", "").strip()
+    did = from_number or device_id
+    if not did:
+        return jsonify({"error": "from_number or device_id required"}), 400
+    try:
+        lib._sb().table("ma_details").delete().eq("id", detail_id).eq("device_id", did).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/myarea/details", methods=["DELETE"])
+def api_myarea_details_delete_all():
+    from_number = request.args.get("from_number", "").strip()
+    device_id   = request.args.get("device_id", "").strip()
+    did = from_number or device_id
+    if not did:
+        return jsonify({"error": "from_number or device_id required"}), 400
+    try:
+        lib._sb().table("ma_details").delete().eq("device_id", did).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/health")
 def api_health():
     """Full diagnostic: env vars, Groq API call, JSON parse."""

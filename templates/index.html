@@ -1832,8 +1832,6 @@
       },
       // Wire up a 📍 button. Calls onDone({lat,lon,postcode}) or onFail(msg).
       async request(btn, onDone, onFail) {
-        const home = localStorage.getItem(HOME_KEY);
-        if (home) { onDone({ postcode: home, lat: null, lon: null }); return; }
         const orig = btn.innerHTML;
         btn.innerHTML = "⏳"; btn.disabled = true;
         try {
@@ -2494,7 +2492,6 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── My Area screen ────────────────────────────────────────────────────────────
-  const _MA_DETAILS_KEY = "miru_my_details";
 
   function _maRow(icon, label, val, sub, href) {
     const v = href ? `<a href="${href}" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:none">${val} ↗</a>`
@@ -3541,7 +3538,7 @@ const _ts = new Date(d.timestamp);
     const items = [];
 
     // Scan My Details for Renewal Date fields
-    (_myAreaGetDetails() || []).forEach(rec => {
+    (_maDetailsCache || []).forEach(rec => {
       const type = _MA_DETAIL_TYPES.find(t => t.key === rec.type);
       const dateStr = rec.data?.["Renewal Date"];
       if (!dateStr) return;
@@ -3607,7 +3604,7 @@ const _ts = new Date(d.timestamp);
     document.getElementById("ma-import-json-input").focus();
   }
 
-  function _maImportJsonSave() {
+  async function _maImportJsonSave() {
     const raw = (document.getElementById("ma-import-json-input").value || "").trim();
     const errEl = document.getElementById("ma-import-err");
     let parsed;
@@ -3620,25 +3617,25 @@ const _ts = new Date(d.timestamp);
       errEl.textContent = 'No valid records found. Each record needs "type" and "data" fields.';
       errEl.style.display = ""; return;
     }
-    const records = _myAreaGetDetails();
-    valid.forEach(r => {
+    const btn = document.querySelector("#ma-import-overlay button");
+    if (btn) { btn.textContent = "Saving…"; btn.disabled = true; }
+    for (const r of valid) {
       const type = _MA_DETAIL_TYPES.find(t => t.key === r.type);
-      records.push({ type: r.type, label: r.label || type?.label || r.type, data: r.data });
-    });
-    _myAreaSaveDetails(records);
+      const saved = await _maDetailsPost(null, r.type, r.label || type?.label || r.type, r.data);
+      (_maDetailsCache = _maDetailsCache || []).push(saved);
+    }
     document.getElementById("ma-import-overlay").remove();
     _myAreaPersonalRender();
-    _maRenderRenewals();
   }
 
-  function _maClearAllDetails() {
+  async function _maClearAllDetails() {
     if (!confirm("Delete all saved details?")) return;
-    _myAreaSaveDetails([]);
+    await _maDetailsDeleteAll();
+    _maDetailsCache = [];
     _myAreaPersonalRender();
-    _maRenderRenewals();
   }
 
-  function _maLoadTestData() {
+  async function _maLoadTestData() {
     const today = new Date();
     const dateIn = days => { const d = new Date(today); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); };
     const records = [
@@ -3649,11 +3646,14 @@ const _ts = new Date(d.timestamp);
       { type:"council_tax",label:"Council Tax",    data:{ Council:"Runnymede Borough Council", "Account No":"CT-00123456", Phone:"01932 838383" }},
       { type:"health",    label:"Health / BUPA",   data:{ Provider:"BUPA", "Member No":"B1234567", Phone:"0345 609 0111" }},
     ];
-    _myAreaSaveDetails(records);
-    _myAreaPersonalRender();
-    _maRenderRenewals();
     const btn = document.getElementById("ma-test-data-btn");
-    if (btn) btn.textContent = "✓ Test data loaded";
+    if (btn) { btn.textContent = "⏳ Loading…"; btn.disabled = true; }
+    for (const r of records) {
+      const saved = await _maDetailsPost(null, r.type, r.label, r.data);
+      (_maDetailsCache = _maDetailsCache || []).push(saved);
+    }
+    _myAreaPersonalRender();
+    if (btn) { btn.textContent = "✓ Loaded"; btn.disabled = false; }
   }
 
   function _maAddVehicle() {
@@ -3745,29 +3745,73 @@ const _ts = new Date(d.timestamp);
     }
   }
 
-  // ── My Area personal details (localStorage) ───────────────────────────────────
+  // ── My Area personal details (Supabase) ───────────────────────────────────────
   const _MA_DETAIL_TYPES = [
     { key:"home_ins",    icon:"🏠", label:"Home Insurance",     group:"Home & Utilities",    fields:["Provider","Policy No","Phone","Renewal Date"] },
     { key:"energy",      icon:"⚡", label:"Energy",             group:"Home & Utilities",    fields:["Provider","Account No","Emergency Phone","Renewal Date"] },
-    { key:"broadband",   icon:"📡", label:"Broadband",          group:"Home & Utilities",    fields:["Provider","Account No","Phone"] },
+    { key:"broadband",   icon:"📡", label:"Broadband",          group:"Home & Utilities",    fields:["Provider","Account No","Phone","Renewal Date"] },
     { key:"council_tax", icon:"🏛️", label:"Council Tax",        group:"Home & Utilities",    fields:["Council","Account No","Phone"] },
     { key:"car_ins",     icon:"🚗", label:"Car Insurance",      group:"Vehicle & Personal",  fields:["Provider","Policy No","Phone","Renewal Date","Reg"] },
-    { key:"health",      icon:"💳", label:"Health / BUPA",      group:"Vehicle & Personal",  fields:["Provider","Member No","Phone"] },
+    { key:"health",      icon:"💳", label:"Health / BUPA",      group:"Vehicle & Personal",  fields:["Provider","Member No","Phone","Renewal Date"] },
     { key:"life_ins",    icon:"🛡️", label:"Life Insurance",     group:"Vehicle & Personal",  fields:["Provider","Policy No","Phone","Renewal Date"] },
     { key:"other",       icon:"📝", label:"Other",              group:"Other",               fields:["Label","Detail","Phone"] },
   ];
 
-  function _myAreaGetDetails() {
-    try { return JSON.parse(localStorage.getItem(_MA_DETAILS_KEY) || "[]"); } catch { return []; }
-  }
-  function _myAreaSaveDetails(arr) { localStorage.setItem(_MA_DETAILS_KEY, JSON.stringify(arr)); }
+  let _maDetailsCache = null;
 
-  function _myAreaPersonalRender() {
+  function _maDetailsApiParam() {
+    const phone = _miruPhone();
+    return phone ? `from_number=${encodeURIComponent(phone)}` : `device_id=${encodeURIComponent(_maDeviceId())}`;
+  }
+
+  async function _maDetailsFetch() {
+    try {
+      const r = await fetch(`/api/myarea/details?${_maDetailsApiParam()}`);
+      const data = await r.json();
+      _maDetailsCache = Array.isArray(data) ? data : [];
+      // One-time migration from localStorage
+      const lsKey = "miru_my_details";
+      const ls = (() => { try { return JSON.parse(localStorage.getItem(lsKey) || "[]"); } catch { return []; } })();
+      if (!_maDetailsCache.length && ls.length) {
+        for (const rec of ls) {
+          const type = _MA_DETAIL_TYPES.find(t => t.key === rec.type);
+          await _maDetailsPost(null, rec.type, rec.label || type?.label || rec.type, rec.data || {});
+        }
+        localStorage.removeItem(lsKey);
+        const r2 = await fetch(`/api/myarea/details?${_maDetailsApiParam()}`);
+        _maDetailsCache = await r2.json();
+      }
+    } catch {
+      const lsKey = "miru_my_details";
+      try { _maDetailsCache = JSON.parse(localStorage.getItem(lsKey) || "[]"); } catch { _maDetailsCache = []; }
+    }
+    return _maDetailsCache || [];
+  }
+
+  async function _maDetailsPost(id, type, label, data) {
+    const body = { type, label, data };
+    if (id) body.id = id;
+    const r = await fetch(`/api/myarea/details?${_maDetailsApiParam()}`, {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+    });
+    return r.json();
+  }
+
+  async function _maDetailsDelete(id) {
+    await fetch(`/api/myarea/details/${id}?${_maDetailsApiParam()}`, { method: "DELETE" });
+  }
+
+  async function _maDetailsDeleteAll() {
+    await fetch(`/api/myarea/details?${_maDetailsApiParam()}`, { method: "DELETE" });
+  }
+
+  async function _myAreaPersonalRender() {
     const el = document.getElementById("myarea-personal-cards");
     if (!el) return;
-    const records = _myAreaGetDetails();
-    if (!records.length) { el.innerHTML = ""; return; }
-    el.innerHTML = records.map((rec, idx) => {
+    if (!_maDetailsCache) await _maDetailsFetch();
+    const records = _maDetailsCache || [];
+    if (!records.length) { el.innerHTML = ""; _maRenderRenewals(); return; }
+    el.innerHTML = records.map(rec => {
       const type = _MA_DETAIL_TYPES.find(t => t.key === rec.type) || _MA_DETAIL_TYPES.find(t=>t.key==="other");
       const rows = type.fields.map(f => {
         const val = rec.data?.[f] || "";
@@ -3776,12 +3820,13 @@ const _ts = new Date(d.timestamp);
           <span style="font-size:13px;font-weight:600;color:var(--text)">${f.toLowerCase().includes("phone") ? `<a href="tel:${val}" style="color:#2563eb">${val}</a>` : val}</span>
         </div>` : "";
       }).join("");
+      const id = rec.id || "";
       return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="font-size:14px;font-weight:700;color:var(--text)">${type.icon} ${rec.label || type.label}</div>
           <div style="display:flex;gap:8px">
-            <button onclick="myAreaEditDetail(${idx})" style="font-size:12px;color:#2563eb;background:none;border:none;cursor:pointer;font-weight:600">Edit</button>
-            <button onclick="myAreaDeleteDetail(${idx})" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer">Delete</button>
+            <button onclick="myAreaEditDetail('${id}')" style="font-size:12px;color:#2563eb;background:none;border:none;cursor:pointer;font-weight:600">Edit</button>
+            <button onclick="myAreaDeleteDetail('${id}')" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer">Delete</button>
           </div>
         </div>
         ${rows || '<div style="font-size:12px;color:var(--muted)">No details saved yet</div>'}
@@ -3791,16 +3836,15 @@ const _ts = new Date(d.timestamp);
   }
 
   function myAreaAddDetail() {
-    _myAreaOpenDetailEditor(-1, null);
+    _myAreaOpenDetailEditor(null, null);
   }
-  function myAreaEditDetail(idx) {
-    const records = _myAreaGetDetails();
-    _myAreaOpenDetailEditor(idx, records[idx]);
+  function myAreaEditDetail(id) {
+    const rec = (_maDetailsCache || []).find(r => r.id === id);
+    if (rec) _myAreaOpenDetailEditor(id, rec);
   }
-  function myAreaDeleteDetail(idx) {
-    const records = _myAreaGetDetails();
-    records.splice(idx, 1);
-    _myAreaSaveDetails(records);
+  async function myAreaDeleteDetail(id) {
+    await _maDetailsDelete(id);
+    _maDetailsCache = (_maDetailsCache || []).filter(r => r.id !== id);
     _myAreaPersonalRender();
   }
 
@@ -3825,7 +3869,7 @@ const _ts = new Date(d.timestamp);
       </div>
       <div id="maed-fields"></div>
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="myAreaEditorSave(${idx})" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">Save</button>
+        <button onclick="myAreaEditorSave('${existing?.id||''}')" style="flex:1;background:#065f46;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">Save</button>
         <button onclick="document.getElementById('ma-detail-overlay').remove()" style="flex:1;background:var(--border);color:var(--text);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>
       </div>`;
     overlay.appendChild(sheet);
@@ -3848,18 +3892,20 @@ const _ts = new Date(d.timestamp);
     }).join("");
   };
 
-  window.myAreaEditorSave = function(idx) {
+  window.myAreaEditorSave = async function(id) {
     const overlay = document.getElementById("ma-detail-overlay");
     if (!overlay) return;
     const typeKey = overlay.querySelector("#maed-type").value;
     const type = _MA_DETAIL_TYPES.find(t=>t.key===typeKey) || _MA_DETAIL_TYPES.find(t=>t.key==="other");
     const data = {};
     overlay.querySelectorAll("[data-field]").forEach(inp => { data[inp.dataset.field] = inp.value.trim(); });
-    const records = _myAreaGetDetails();
-    const rec = { type: typeKey, label: type.label, data };
-    if (idx === -1) records.push(rec); else records[idx] = rec;
-    _myAreaSaveDetails(records);
     overlay.remove();
+    const saved = await _maDetailsPost(id || null, typeKey, type.label, data);
+    if (id) {
+      _maDetailsCache = (_maDetailsCache || []).map(r => r.id === id ? saved : r);
+    } else {
+      (_maDetailsCache = _maDetailsCache || []).push(saved);
+    }
     _myAreaPersonalRender();
   };
 
