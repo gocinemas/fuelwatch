@@ -1333,11 +1333,10 @@
         </div>
       </div>
 
-      <!-- Tab: My Places (weather, train, petrol) -->
+      <!-- Tab: My Places (weather, train) -->
       <div id="matab-places">
         <div id="myarea-weather" style="display:none;margin-bottom:10px"></div>
         <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
-        <div id="myarea-petrol"  style="display:none;margin-bottom:10px"></div>
       </div>
 
       <!-- Tab: Services (health, shops, pubs, schools) -->
@@ -2481,7 +2480,6 @@ const _ts = new Date(d.timestamp);
   const _MA_PREF_SECTIONS = [
     { key:"weather", label:"☀️ Weather",           dflt:false },
     { key:"train",   label:"🚆 Nearest Station",    dflt:true  },
-    { key:"petrol",  label:"⛽ Nearby Petrol",       dflt:true  },
     { key:"crime",   label:"🚔 Crime Nearby",        dflt:false },
     { key:"gp",      label:"🩺 GPs & Pharmacies",    dflt:true  },
     { key:"schools", label:"🏫 Schools",             dflt:false },
@@ -2489,7 +2487,7 @@ const _ts = new Date(d.timestamp);
     { key:"pubs",    label:"🍽️ Pubs & Restaurants",  dflt:false },
   ];
   const _MA_SECTION_EL = {
-    weather:"myarea-weather", train:"myarea-train", petrol:"myarea-petrol",
+    weather:"myarea-weather", train:"myarea-train",
     crime:"myarea-crime", gp:"myarea-gp", schools:"myarea-schools",
     shops:"myarea-shops", pubs:"myarea-pubs",
   };
@@ -2666,7 +2664,7 @@ const _ts = new Date(d.timestamp);
 
   // One-time reset: clear old section-collapse keys written when default was collapsed
   if (!localStorage.getItem("miru_mac_v3")) {
-    ["gp","shops","pubs","schools","reps","council","crime","weather","petrol","train"].forEach(id => {
+    ["gp","shops","pubs","schools","reps","council","crime","weather","train"].forEach(id => {
       localStorage.removeItem(`miru_mac_${id}`);
     });
     localStorage.setItem("miru_mac_v3", "1");
@@ -3094,7 +3092,7 @@ const _ts = new Date(d.timestamp);
     // Clear cached data for new search
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
     // Reset sections
-    ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-petrol","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
+    ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
     document.getElementById("myarea-tab-bar").style.display = "";
@@ -3143,11 +3141,10 @@ const _ts = new Date(d.timestamp);
       _maLocalData = data; _maRenderPubs(data); _maRenderSchools(data);
     }).catch(()=>{});
 
-    // Weather + crime + petrol (parallel, 30-min cache)
+    // Weather + crime (parallel, 30-min cache)
     fetch(`/api/myarea/local-info?postcode=${pc}`).then(r=>r.json()).then(d => {
       _maRenderWeather(d.weather);
       _maRenderCrime(d.crime);
-      _maRenderPetrol(d.petrol);
     }).catch(()=>{});
   }
 
