@@ -1257,17 +1257,23 @@
       <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px;margin-bottom:4px">🏡 My Area</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Your representatives, local services &amp; personal records</div>
 
-      <!-- Postcode bar -->
-      <div style="display:flex;gap:8px;margin-bottom:6px">
-        <input id="myarea-postcode-input" type="text" placeholder="Enter postcode e.g. KT16 0DA"
-          style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;text-transform:uppercase"
-          maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter') myAreaSearch()">
-        <button onclick="myAreaUseLocation()" title="Use my location"
-          style="flex-shrink:0;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer">📍</button>
-        <button onclick="myAreaSearch()"
-          style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer">Go</button>
+      <!-- Postcode bar (collapses when saved places exist) -->
+      <div id="myarea-search-bar" style="margin-bottom:6px">
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <input id="myarea-postcode-input" type="text" placeholder="Enter postcode e.g. KT16 0DA"
+            style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:11px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;text-transform:uppercase"
+            maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter') myAreaSearch()">
+          <button onclick="myAreaUseLocation()" title="Use my location"
+            style="flex-shrink:0;border:1.5px solid var(--border);background:var(--surface);border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer">📍</button>
+          <button onclick="myAreaSearch()"
+            style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer">Go</button>
+        </div>
+        <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
       </div>
-      <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:6px"></div>
+      <!-- Shown instead of search bar when saved places exist -->
+      <div id="myarea-search-more-link" style="display:none;text-align:right;margin-bottom:10px">
+        <button onclick="_maShowSearch()" style="background:none;border:none;color:#065f46;font-size:12px;font-weight:600;cursor:pointer;padding:4px 0">🔍 Search to add more +</button>
+      </div>
 
       <!-- Saved Places -->
       <div id="myarea-saved" style="display:none;margin-bottom:14px">
@@ -2467,12 +2473,30 @@ const _ts = new Date(d.timestamp);
     });
   }
 
+  function _maShowSearch() {
+    document.getElementById("myarea-search-bar").style.display = "";
+    document.getElementById("myarea-search-more-link").style.display = "none";
+    document.getElementById("myarea-postcode-input").focus();
+  }
+
   function _maRenderSavedPlaces() {
     const places = _maSavedPlaces || [];
     const wrap = document.getElementById("myarea-saved");
     const list = document.getElementById("myarea-saved-list");
+    const searchBar = document.getElementById("myarea-search-bar");
+    const searchMore = document.getElementById("myarea-search-more-link");
     if (!wrap || !list) return;
-    if (!places.length) { wrap.style.display = "none"; return; }
+    if (!places.length) {
+      wrap.style.display = "none";
+      if (searchBar) searchBar.style.display = "";
+      if (searchMore) searchMore.style.display = "none";
+      return;
+    }
+    // Has saved places — collapse search bar, show "add more" link
+    if (searchBar && searchBar.style.display !== "none") {
+      searchBar.style.display = "none";
+      if (searchMore) searchMore.style.display = "";
+    }
     wrap.style.display = "";
     list.innerHTML = places.map(p => `
       <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
@@ -2731,6 +2755,11 @@ const _ts = new Date(d.timestamp);
       const sp = document.getElementById("myarea-pubs-spinner"); if(sp) sp.style.display="none";
       document.getElementById("myarea-pubs").style.display="none";
     });
+
+    // Collapse search bar back if user has saved places (they searched to add more)
+    if (_maSavedPlaces && _maSavedPlaces.length) {
+      setTimeout(_maRenderSavedPlaces, 600);
+    }
   }
 
   function myAreaUseLocation() {
