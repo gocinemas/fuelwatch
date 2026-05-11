@@ -1845,6 +1845,13 @@
     const llParam  = params.get("ll");
     const llParts  = llParam ? llParam.split(",").map(Number) : [];
     const hasLL    = llParts.length === 2 && !isNaN(llParts[0]) && !isNaN(llParts[1]);
+    // ?screen=scan — deep link into My Books (from WhatsApp book scan reply)
+    if (params.get("screen") === "scan") {
+      showScreen("scan");
+      setTimeout(() => bookTab("library", document.getElementById("btab-library")), 200);
+      return;
+    }
+
     // ?report=SW1A1AA — deep link into Area Report
     const reportPC = params.get("report");
     if (reportPC) {
@@ -8719,6 +8726,12 @@ function _bkHandleISBN(isbn){
 }
 
 _bkBadge();
+
+// Auto-sync on page load if phone already known (silent, no banner needed)
+(function(){
+  var _p = _miruPhone();
+  if(_p){ bkSyncWithPhone(_p, function(){ _bkBadge(); }); }
+})();
 </script>
 
 <!-- ===================== FINDER SCREEN ===================== -->

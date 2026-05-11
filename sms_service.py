@@ -6393,6 +6393,60 @@ def _vivino_lookup(wine_name: str) -> dict:
 _WINE_RATING_STATE: dict = {}  # from_number → {save_id, wine_name, expires}
 
 
+def _try_isbn_from_image(raw_bytes: bytes) -> dict | None:
+    """Run pyzbar on image bytes; if an ISBN barcode is found, look it up via Google Books."""
+    try:
+        from pyzbar import pyzbar as _pyzbar
+        from PIL import Image as _PILImage, ImageOps as _ImageOps
+        import io as _io
+        img = _PILImage.open(_io.BytesIO(raw_bytes))
+        img = _ImageOps.exif_transpose(img).convert("RGB")
+        codes = _pyzbar.decode(img)
+        if not codes:
+            from PIL import ImageEnhance as _IE
+            enhanced = _IE.Contrast(img.convert("L")).enhance(2.0).convert("RGB")
+            codes = _pyzbar.decode(enhanced)
+        isbn = None
+        for c in codes:
+            val = c.data.decode("utf-8", errors="ignore").replace("-", "").strip()
+            if re.match(r"^(978|979)\d{10}$", val) or re.match(r"^\d{10}$", val):
+                isbn = val
+                break
+        if not isbn:
+            return None
+        gbooks_key = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
+        r = requests.get(
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": f"isbn:{isbn}", "maxResults": 1, **({"key": gbooks_key} if gbooks_key else {})},
+            timeout=10,
+        )
+        items = r.json().get("items")
+        if not items:
+            return {"isbn": isbn, "title": f"Book (ISBN {isbn})", "found": True}
+        vi = items[0].get("volumeInfo", {})
+        all_isbns = [x["identifier"] for x in vi.get("industryIdentifiers", []) if x.get("type") in ("ISBN_13","ISBN_10")]
+        cover = ""
+        if vi.get("imageLinks"):
+            cover = (vi["imageLinks"].get("thumbnail") or vi["imageLinks"].get("smallThumbnail") or "").replace("http://","https://")
+        rating = vi.get("averageRating")
+        return {
+            "found":           True,
+            "isbn":            all_isbns[0] if all_isbns else isbn,
+            "title":           vi.get("title", ""),
+            "author":          ", ".join(vi.get("authors", [])) or "Unknown author",
+            "cover":           cover,
+            "description":     vi.get("description", ""),
+            "subjects":        " · ".join(vi.get("categories", [])[:5]),
+            "year":            vi.get("publishedDate", "")[:4] if vi.get("publishedDate") else "",
+            "publishers":      vi.get("publisher", ""),
+            "communityRating": {"avg": round(float(rating), 1), "count": vi.get("ratingsCount", 0)} if rating else None,
+            "status":          "wishlist",
+        }
+    except Exception as e:
+        print(f"[isbn barcode] {e}")
+        return None
+
+
 def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
     """Download a WhatsApp photo, analyse with Groq vision, save to wa_saves."""
     import base64, threading
@@ -7019,6 +7073,34 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         else:
             msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
         _wa_send_proactive(fn, msg)
+
+    # ── ISBN barcode detection — short-circuit vision pipeline for books ────────
+    _isbn_hit = _try_isbn_from_image(r.content)
+    if _isbn_hit:
+        try:
+            url = f"book:{_isbn_hit['isbn']}"
+            lib._sb().table("wa_saves").update({
+                "url":     url,
+                "title":   _isbn_hit.get("title", "Book"),
+                "summary": json.dumps(_isbn_hit),
+                "status":  "wishlist",
+            }).eq("id", save_id).execute()
+        except Exception as _be:
+            print(f"[isbn] save update failed: {_be}")
+        user_token = _wa_user_token(from_number)
+        msg = f"📚 *{_isbn_hit.get('title','Unknown title')}*"
+        if _isbn_hit.get("author"):
+            msg += f"\nby {_isbn_hit['author']}"
+        cr = _isbn_hit.get("communityRating")
+        if cr and cr.get("avg"):
+            stars = "⭐" * round(cr["avg"])
+            msg += f"\n{stars} {cr['avg']}/5"
+            if cr.get("count"): msg += f" ({cr['count']:,} ratings)"
+        if _isbn_hit.get("description"):
+            msg += f"\n\n_{_isbn_hit['description'][:220].strip()}…_"
+        msg += f"\n\n📚 Added to My Books: miru.humanagency.co/?screen=scan&token={user_token}"
+        _wa_send_proactive(from_number, msg)
+        return "📚 Book scanned!"
 
     def _bg_safe():
         try:
