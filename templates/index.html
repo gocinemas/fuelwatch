@@ -3520,22 +3520,29 @@ const _ts = new Date(d.timestamp);
     _myAreaRefreshHomeRow();
     const home = MiruLocation.getHome();
     const inputEl = document.getElementById("myarea-postcode-input");
+
+    if (_maCurrentPostcode) {
+      // User has already searched a postcode this session — never override it.
+      // The results are still in the DOM; just make sure the tab bar is visible.
+      if (document.getElementById("myarea-tab-bar").style.display === "none") {
+        document.getElementById("myarea-tab-bar").style.display = "";
+        _maShowTab(localStorage.getItem("miru_ma_tab") || "places");
+      }
+      return;
+    }
+
+    // First load: no active search yet
     const currentVal = inputEl.value.trim().toUpperCase().replace(/\s+/g,"");
     if (home) {
-      // Normalise stored home for display
-      const homeNorm = home.replace(/\s+/g,"").toUpperCase();
-      if (currentVal !== homeNorm) {
-        inputEl.value = home;
-        myAreaSearch();
-      }
-      // Already searched this postcode — nothing to do
+      // Auto-search home postcode
+      inputEl.value = home;
+      myAreaSearch();
     } else if (!currentVal) {
-      // New user: no home set, no postcode typed — show empty state
+      // New user: show empty state
       document.getElementById("myarea-empty-state").style.display = "";
       _myAreaPersonalRender();
-    }
-    // If user had typed a postcode before but navigated away and back, re-search
-    else if (currentVal && currentVal !== _maCurrentPostcode) {
+    } else {
+      // Input has a value typed by the user but not yet searched
       myAreaSearch();
     }
   }
