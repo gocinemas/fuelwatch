@@ -9009,13 +9009,14 @@ def ma_gmail_hints():
     if not device_id and not from_number:
         return jsonify({"error": "device_id required"}), 400
     try:
-        q = lib._sb().table("ma_gmail_tokens")
-        if from_number:
-            q = q.eq("device_id", from_number)
-        else:
-            q = q.eq("device_id", device_id)
+        sb = lib._sb()
+        # Find the token row by device_id first, then from_number fallback
+        rows = sb.table("ma_gmail_tokens").select("device_id,provider_hints").eq("device_id", device_id).execute().data if device_id else []
+        if not rows and from_number:
+            rows = sb.table("ma_gmail_tokens").select("device_id,provider_hints").eq("from_number", from_number).execute().data
+        row_device_id = rows[0]["device_id"] if rows else (device_id or from_number)
+        q = sb.table("ma_gmail_tokens").eq("device_id", row_device_id)
         if request.method == "GET":
-            rows = q.select("provider_hints").execute().data
             hints = (rows[0].get("provider_hints") or []) if rows else []
             return jsonify({"hints": hints})
         else:
@@ -10309,6 +10310,7 @@ def api_books_save():
     else:
         sb.table("wa_saves").insert(payload).execute()
 
+    lib.books_upsert(phone, bk)
     return jsonify({"ok": True})
 
 
@@ -10325,7 +10327,36 @@ def api_books_delete():
         .eq("from_number", phone) \
         .eq("url", f"book:{isbn}") \
         .execute()
+    lib.books_delete(phone, isbn)
     return jsonify({"ok": True})
+
+
+@app.route("/api/books/search")
+def api_books_search():
+    phone = (request.args.get("phone") or "").strip()
+    q     = (request.args.get("q") or "").strip()
+    if not phone or not q:
+        return jsonify({"results": []})
+    hits = lib.books_search(phone, q)
+    if not hits:
+        rows = lib._sb().table("wa_saves") \
+            .select("url,title,summary") \
+            .eq("from_number", phone) \
+            .like("url", "book:%") \
+            .order("created_at", desc=True) \
+            .limit(500).execute().data
+        q_words = [w.lower() for w in q.split() if len(w) > 1]
+        for row in rows:
+            try:
+                bk = json.loads(row["summary"] or "{}")
+            except Exception:
+                bk = {}
+            bk.setdefault("isbn", row["url"].replace("book:", ""))
+            bk.setdefault("title", row["title"] or "")
+            text = f"{bk.get('title','')} {bk.get('author','')}".lower()
+            if any(w in text for w in q_words):
+                hits.append(bk)
+    return jsonify({"results": hits[:30]})
 
 
 @app.route("/api/music/spotify-status")

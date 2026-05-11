@@ -14,6 +14,7 @@ _ALGOLIA_APP  = os.environ.get("ALGOLIA_APP_ID", "")
 _ALGOLIA_KEY  = os.environ.get("ALGOLIA_API_KEY", "")
 _INDEX_NAME        = "library_chunks"
 _SAVES_INDEX_NAME  = "wa_saves"
+_BOOKS_INDEX_NAME  = "miru_books"
 
 
 _sb_client = None
@@ -41,6 +42,58 @@ def _saves_idx():
         raise RuntimeError("Algolia credentials not set")
     client = SearchClient.create(_ALGOLIA_APP, _ALGOLIA_KEY)
     return client.init_index(_SAVES_INDEX_NAME)
+
+
+def _books_idx():
+    if not _ALGOLIA_OK:
+        raise RuntimeError("algoliasearch not installed")
+    if not _ALGOLIA_APP or not _ALGOLIA_KEY:
+        raise RuntimeError("Algolia credentials not set")
+    client = SearchClient.create(_ALGOLIA_APP, _ALGOLIA_KEY)
+    return client.init_index(_BOOKS_INDEX_NAME)
+
+
+def books_upsert(phone: str, bk: dict) -> None:
+    """Index a book in Algolia miru_books. Fails silently."""
+    try:
+        isbn = bk.get("isbn", "")
+        if not isbn or not phone:
+            return
+        _books_idx().save_object({
+            "objectID": f"{phone}_{isbn}",
+            "phone":    phone,
+            "isbn":     isbn,
+            "title":    bk.get("title", ""),
+            "author":   bk.get("author", ""),
+            "year":     str(bk.get("year", "")),
+            "status":   bk.get("status", ""),
+            "owned":    bool(bk.get("owned", False)),
+            "source":   bk.get("source", "scanned"),
+            "rating":   int(bk.get("rating") or 0),
+            "added":    bk.get("added", ""),
+        })
+    except Exception:
+        pass
+
+
+def books_delete(phone: str, isbn: str) -> None:
+    """Remove a book from Algolia miru_books. Fails silently."""
+    try:
+        _books_idx().delete_object(f"{phone}_{isbn}")
+    except Exception:
+        pass
+
+
+def books_search(phone: str, query: str, hits_per_page: int = 30) -> list:
+    """Search a phone's books in Algolia. Returns list of book dicts."""
+    try:
+        res = _books_idx().search(query, {
+            "hitsPerPage": hits_per_page,
+            "filters": f'phone:"{phone}"',
+        })
+        return res.get("hits", [])
+    except Exception:
+        return []
 
 
 def saves_sync(save: dict) -> None:
