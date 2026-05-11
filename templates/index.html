@@ -1401,15 +1401,59 @@
         <button onclick="_maAddVehicle()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add vehicle by registration</button>
       </div>
 
-      <!-- Personal details (localStorage) -->
+      <!-- Personal details -->
       <div style="margin-top:18px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px">📋 My Details</div>
-          <a id="ma-gmail-btn" href="#" onclick="_maGmailConnect();return false;" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:20px;border:1.5px solid #4285f4;background:#fff;font-size:12px;font-weight:700;color:#4285f4;cursor:pointer;text-decoration:none">
-            <svg width="14" height="14" viewBox="0 0 24 24" style="pointer-events:none"><path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            <span id="ma-gmail-btn-label">Import from Gmail</span>
-          </a>
+        <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:10px">📋 My Details</div>
+
+        <!-- Gmail import card — state managed by _maGmailRenderBtn() -->
+        <div id="ma-gmail-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:12px">
+          <!-- Not connected (default) -->
+          <div id="ma-gmail-state-connect" style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">📧 Import from Gmail</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Auto-detect energy, broadband, insurance &amp; more</div>
+            </div>
+            <a href="#" onclick="_maGmailConnect();return false;" style="display:flex;align-items:center;gap:5px;padding:8px 13px;border-radius:20px;border:1.5px solid #4285f4;background:#fff;font-size:12px;font-weight:700;color:#4285f4;cursor:pointer;text-decoration:none;flex-shrink:0">
+              <svg width="13" height="13" viewBox="0 0 24 24"><path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Connect
+            </a>
+          </div>
+          <!-- Scanning state -->
+          <div id="ma-gmail-state-scanning" style="display:none;align-items:center;gap:10px">
+            <span style="width:16px;height:16px;border:2px solid #d1d5db;border-top-color:#4285f4;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Scanning your inbox…</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Looking for accounts — this takes a few seconds</div>
+            </div>
+          </div>
+          <!-- Connected / done state -->
+          <div id="ma-gmail-state-done" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="font-size:15px">✅</span>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:var(--text)">Gmail connected</div>
+                  <div id="ma-gmail-email-label" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
+                </div>
+              </div>
+              <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
+            </div>
+          </div>
+          <!-- Pending items found -->
+          <div id="ma-gmail-state-pending" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="font-size:15px">📬</span>
+                <div>
+                  <div id="ma-gmail-pending-label" style="font-size:13px;font-weight:700;color:var(--text)">Items found</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:1px">Ready to import into My Details</div>
+                </div>
+              </div>
+              <button id="ma-gmail-review-btn" onclick="_maGmailReviewPending()" style="font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:8px 14px;cursor:pointer">Review →</button>
+            </div>
+          </div>
         </div>
+
         <div id="myarea-personal-cards"></div>
         <div style="display:flex;gap:6px;margin-top:8px">
           <button onclick="myAreaAddDetail()" style="flex:1;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add manually</button>
@@ -3634,8 +3678,33 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── Gmail import ─────────────────────────────────────────────────────────────
-  function _maGmailConnect() {
+  let _maGmailPendingCache = null;
+
+  function _maGmailSetState(state, data) {
+    // state: "connect" | "scanning" | "done" | "pending"
+    ["connect","scanning","done","pending"].forEach(s => {
+      const el = document.getElementById(`ma-gmail-state-${s}`);
+      if (el) el.style.display = (s === state) ? "flex" : "none";
+    });
+    if (state === "done" && data?.email) {
+      const lbl = document.getElementById("ma-gmail-email-label");
+      if (lbl) lbl.textContent = data.email;
+    }
+    if (state === "pending" && data?.pending) {
+      _maGmailPendingCache = { records: data.pending, email: data.email };
+      const lbl = document.getElementById("ma-gmail-pending-label");
+      if (lbl) lbl.textContent = `${data.pending.length} account${data.pending.length !== 1 ? "s" : ""} found`;
+    }
+  }
+
+  async function _maGmailConnect() {
     const did = _maDeviceId();
+    // If already connected, rescan instead of re-doing OAuth
+    try {
+      const r = await fetch(`/api/myarea/gmail/status?device_id=${encodeURIComponent(did)}`);
+      const d = await r.json();
+      if (d.connected) { _maGmailRescan(); return; }
+    } catch {}
     window.location.href = "/api/myarea/gmail/connect?device_id=" + encodeURIComponent(did || "unknown");
   }
 
@@ -3660,10 +3729,9 @@ const _ts = new Date(d.timestamp);
     try {
       const r = await fetch(`/api/myarea/gmail/status?device_id=${encodeURIComponent(did)}`);
       const d = await r.json();
-      const lbl = document.getElementById("ma-gmail-btn-label");
-      if (!d.connected) { _maGmailScanOverlay(false); return; }
+      if (!d.connected) { _maGmailScanOverlay(false); _maGmailSetState("connect"); return; }
       if (d.scan_status === "scanning") {
-        if (lbl) lbl.textContent = "Scanning inbox…";
+        _maGmailSetState("scanning");
         setTimeout(_maGmailCheckStatus, 3000);
         return;
       }
@@ -3671,13 +3739,17 @@ const _ts = new Date(d.timestamp);
         _maGmailScanOverlay(false);
         const pending = d.pending || [];
         if (pending.length) {
-          if (!document.getElementById("ma-gmail-preview")) {
-            _maGmailShowPreview(pending, d.email);
-          }
+          _maGmailSetState("pending", d);
+        } else {
+          _maGmailSetState("done", d);
         }
-        if (lbl) lbl.textContent = "Import from Gmail";
       }
     } catch { _maGmailScanOverlay(false); }
+  }
+
+  function _maGmailReviewPending() {
+    if (!_maGmailPendingCache) return;
+    _maGmailShowPreview(_maGmailPendingCache.records, _maGmailPendingCache.email);
   }
 
   function _maGmailShowPreview(records, email) {
@@ -3726,16 +3798,15 @@ const _ts = new Date(d.timestamp);
       await fetch(`/api/myarea/gmail/clear-pending?device_id=${encodeURIComponent(_maDeviceId())}`, { method: "POST" });
     } catch {}
     overlay.remove();
-    const lbl = document.getElementById("ma-gmail-btn-label");
-    if (lbl) lbl.textContent = "Connected";
+    _maGmailPendingCache = null;
+    _maGmailSetState("done", { email: document.getElementById("ma-gmail-email-label")?.textContent });
     // Fresh fetch from DB so rendered list is always accurate
     _maDetailsCache = null;
     await _myAreaPersonalRender();
   }
 
   async function _maGmailRescan() {
-    const lbl = document.getElementById("ma-gmail-btn-label");
-    if (lbl) lbl.textContent = "Scanning…";
+    _maGmailSetState("scanning");
     try {
       await fetch(`/api/myarea/gmail/rescan?device_id=${encodeURIComponent(_maDeviceId())}`, { method: "POST" });
       _maGmailScanOverlay(true);
@@ -3748,6 +3819,7 @@ const _ts = new Date(d.timestamp);
     if (params.get("gmail_scan") === "1") {
       history.replaceState({}, "", window.location.pathname);
       showScreen("myarea");
+      _maGmailSetState("scanning");
       _maGmailScanOverlay(true);
       setTimeout(_maGmailCheckStatus, 2000);
     } else if (params.get("gmail_error")) {
