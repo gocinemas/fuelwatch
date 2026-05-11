@@ -8537,8 +8537,8 @@ _MA_GMAIL_QUERIES = [
     ("mobile",      'from:three.co.uk OR from:o2.co.uk OR from:vodafone.co.uk newer_than:3y'),
     # Home broadband operators
     ("broadband",   'from:bt.com OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com newer_than:3y'),
-    # TV Licensing — specific subject is safe here (not a generic term)
-    ("other",       'from:tvlicensing.co.uk OR subject:"TV Licence" OR subject:"TV License" newer_than:3y'),
+    # TV Licensing — no newer_than: licence is annual, any email is valid; include common noreply subdomain
+    ("other",       'from:tvlicensing.co.uk OR from:donotreply@tvlicensing.co.uk OR subject:"TV Licence" OR subject:"TV License"'),
     # Water — domain only
     ("other",       'from:thameswater.co.uk OR from:thameswater.com OR from:affinitywater.co.uk OR from:southern-water.co.uk OR from:anglianwater.co.uk OR from:yorkshirewater.com OR from:unitedutilities.com OR from:severntrent.com OR from:southwest-water.co.uk OR from:dwrcymru.com newer_than:3y'),
     # Insurance — domain only (no subject fallbacks — too noisy)
@@ -8565,6 +8565,9 @@ Only extract if the email is clearly about an EXISTING account the recipient hol
 - Payment confirmation or direct debit notification
 - Account welcome / confirmation for a service they signed up for
 - Renewal notice for their existing policy or contract
+
+IMPORTANT EXCEPTIONS — always extract (never skip) these even if they mention payment:
+- Any email from tvlicensing.co.uk — TV Licence renewal reminders always belong to an existing licence holder. Extract provider="TV Licensing", label="TV Licence", type="other". The licence number is the account_no (format: 3 digits space 3 digits space 4 digits, e.g. "123 456 7890").
 
 If extracting, return ONLY this JSON (omit fields you can't find):
 {
