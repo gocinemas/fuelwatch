@@ -3053,12 +3053,20 @@ const _ts = new Date(d.timestamp);
       ? `<img src="${person.photo_url}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${accentBg}" onerror="this.style.display='none'">`
       : `<div style="width:44px;height:44px;border-radius:50%;background:${col.bg};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:${col.text};flex-shrink:0">${(person.name||"?")[0]}</div>`;
     const badge = person.party ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${col.bg};color:${col.text}">${person.party}</span>` : "";
+    const officeHtml = person.office_address
+      ? `<div style="margin-top:5px;padding:7px 9px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0">
+           <div style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">📍 Constituency Office</div>
+           <div style="font-size:12px;color:var(--text);font-weight:500">${person.office_address}</div>
+           <a href="https://maps.google.com/?q=${encodeURIComponent(person.office_address)}" target="_blank"
+              style="font-size:11px;color:#15803d;font-weight:600;display:inline-block;margin-top:3px">Open in Maps ↗</a>
+         </div>` : "";
+    const surgeryLinkLabel = role.includes("MP") ? "Surgery &amp; contact info ↗" : "Council profile ↗";
+    const surgeryUrl = person.parliament_url || person.council_profile_url || "";
     const links = [
       person.email    ? `<a href="mailto:${person.email}" style="font-size:12px;color:#1e40af;font-weight:600;display:flex;align-items:center;gap:4px">📧 ${person.email}</a>` : "",
       person.phone    ? `<a href="tel:${person.phone}"    style="font-size:12px;color:#1e40af;font-weight:600;display:flex;align-items:center;gap:4px">📞 ${person.phone}</a>` : "",
       person.twitter  ? `<a href="https://x.com/${person.twitter}" target="_blank" style="font-size:12px;color:#1e40af;font-weight:600">𝕏 @${person.twitter}</a>` : "",
-      person.parliament_url ? `<a href="${person.parliament_url}" target="_blank" style="font-size:11px;color:#4f46e5;font-weight:600">Parliament profile ↗</a>` : "",
-      person.council_profile_url ? `<a href="${person.council_profile_url}" target="_blank" style="font-size:11px;color:#4f46e5;font-weight:600">Council profile ↗</a>` : "",
+      surgeryUrl      ? `<a href="${surgeryUrl}" target="_blank" style="font-size:11px;color:#4f46e5;font-weight:600">${surgeryLinkLabel}</a>` : "",
     ].filter(Boolean).join("");
     const sub2 = [person.constituency, person.ward].filter(Boolean).join(" · ");
     const repEmoji = role.includes("MP") ? "🏛️" : "🏘️";
@@ -3077,6 +3085,7 @@ const _ts = new Date(d.timestamp);
           ${sub2 ? `<div style="font-size:12px;color:var(--muted);margin-bottom:3px">${sub2}</div>` : ""}
           ${badge ? `<div style="margin-bottom:5px">${badge}</div>` : ""}
           <div style="display:flex;flex-direction:column;gap:3px">${links}</div>
+          ${officeHtml}
         </div>
         ${repSaveBtn}
       </div></div>`;

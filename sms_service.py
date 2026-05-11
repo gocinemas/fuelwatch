@@ -2321,6 +2321,13 @@ def _fetch_dc_elected(council_slug: str, ward_name: str, election_date: str) -> 
                             if ident.get("value_type") == "email" and not email:
                                 email = ident.get("value", "")
                         photo_url = ((pd.get("image") or {}).get("image_url") or "")
+                        # Prefer actual council website link over DC profile page
+                        for lnk in (pd.get("links") or []):
+                            href = lnk.get("value") or lnk.get("url") or ""
+                            ltype = (lnk.get("link_type") or lnk.get("type") or "").lower()
+                            if href and ltype in ("homepage", "council", "council_profile") and not href.startswith("http://democracyclub"):
+                                profile_url = href
+                                break
                 except Exception:
                     pass
             results.append({"name": name, "party": party, "email": email,
@@ -2496,7 +2503,7 @@ _mp_mem_lock = _threading.Lock()
 
 def _fetch_contacts(mp_id: int) -> dict:
     """Fetch contact details for one MP from Parliament API."""
-    email = phone = website = twitter = ""
+    email = phone = website = twitter = office_address = office_phone = ""
     try:
         cr = requests.get(
             f"https://members-api.parliament.uk/api/Members/{mp_id}/Contact",
@@ -2505,13 +2512,34 @@ def _fetch_contacts(mp_id: int) -> dict:
         )
         if cr.ok:
             for c in cr.json().get("value", []):
-                if not email   and c.get("email"):                              email   = c["email"]
-                if not phone   and c.get("phone"):                              phone   = c["phone"]
-                if not website and (c.get("line1") or "").startswith("http"):   website = c["line1"]
-                if not twitter and "twitter" in (c.get("type") or "").lower():  twitter = c.get("line1", "").lstrip("@")
+                type_name = (c.get("type") or "").lower()
+                if not email  and c.get("email"):                              email  = c["email"]
+                if not twitter and "twitter" in type_name:                     twitter = c.get("line1", "").lstrip("@")
+                if not website and (c.get("line1") or "").startswith("http"):  website = c["line1"]
+                # Constituency office address (typeId 4) — extract full address
+                if not office_address and "constituency" in type_name:
+                    lines = [c.get(f"line{i}") or "" for i in range(1, 6)]
+                    pc    = c.get("postcode") or c.get("postCode") or ""
+                    parts = [l.strip() for l in lines if l.strip()]
+                    if pc.strip():
+                        parts.append(pc.strip())
+                    if parts:
+                        office_address = ", ".join(parts)
+                    if c.get("phone") and not office_phone:
+                        office_phone = c["phone"]
+                # General phone fallback (Parliament office)
+                if not phone and c.get("phone"):
+                    phone = c["phone"]
     except Exception:
         pass
-    return {"email": email, "phone": phone, "website": website, "twitter": twitter}
+    # Prefer constituency phone for the main phone field
+    return {
+        "email":          email,
+        "phone":          office_phone or phone,
+        "website":        website,
+        "twitter":        twitter,
+        "office_address": office_address,
+    }
 
 
 def _seed_mps_to_db() -> int:
@@ -2629,19 +2657,27 @@ def api_mp():
         if not row:
             return jsonify({"error": f"No MP found for {constituency}", "db_count": len(mem)})
 
-        # Step 3: fetch contacts in background if not yet stored (avoids blocking gunicorn worker)
-        if not row.get("contacts_fetched"):
+        # Step 3: fetch contacts in background if not yet stored or office_address missing
+        needs_fetch = not row.get("contacts_fetched") or row.get("office_address") is None
+        if needs_fetch:
             mp_id   = row["mp_id"]
             con_key = constituency.lower()
             def _bg_contacts():
                 contacts = _fetch_contacts(mp_id)
+                # Update in-memory cache immediately regardless of DB success
+                with _mp_mem_lock:
+                    _mp_mem[con_key] = {**_mp_mem.get(con_key, row), **contacts, "contacts_fetched": True}
                 try:
                     lib._sb().table("mps").update({**contacts, "contacts_fetched": True}) \
                         .eq("constituency", con_key).execute()
-                    with _mp_mem_lock:
-                        _mp_mem[con_key] = {**_mp_mem.get(con_key, row), **contacts, "contacts_fetched": True}
                 except Exception:
-                    pass
+                    # office_address column may not exist yet — retry without it
+                    try:
+                        contacts_safe = {k: v for k, v in contacts.items() if k != "office_address"}
+                        lib._sb().table("mps").update({**contacts_safe, "contacts_fetched": True}) \
+                            .eq("constituency", con_key).execute()
+                    except Exception:
+                        pass
             _threading.Thread(target=_bg_contacts, daemon=True).start()
 
         return jsonify({
@@ -2654,6 +2690,7 @@ def api_mp():
             "website":        row.get("website", ""),
             "twitter":        row.get("twitter", ""),
             "parliament_url": row["parliament_url"],
+            "office_address": row.get("office_address", ""),
         })
     except Exception as e:
         print(f"[mp] {e}")
