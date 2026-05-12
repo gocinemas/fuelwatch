@@ -13079,6 +13079,121 @@ def ping():
     return "OK", 200
 
 
+# ── Space product ─────────────────────────────────────────────────────────────
+
+_SPACE_CACHE: dict = {}  # key → (data, timestamp)
+
+@app.route("/space")
+def space_home():
+    return render_template("space.html")
+
+@app.route("/api/space/iss")
+def api_space_iss():
+    try:
+        r = requests.get("https://api.wheretheiss.at/v1/satellites/25544", timeout=6)
+        d = r.json()
+        return jsonify({
+            "lat":        round(d.get("latitude",  0), 4),
+            "lon":        round(d.get("longitude", 0), 4),
+            "altitude":   round(d.get("altitude",  0)),
+            "velocity":   round(d.get("velocity",  0)),
+            "visibility": d.get("visibility", ""),
+            "timestamp":  d.get("timestamp"),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+@app.route("/api/space/launches")
+def api_space_launches():
+    ck = "launches"
+    if ck in _SPACE_CACHE and time.time() - _SPACE_CACHE[ck][1] < 1800:
+        return jsonify(_SPACE_CACHE[ck][0])
+    try:
+        r = requests.get(
+            "https://ll.thespacedevs.com/2.2.0/launch/upcoming/",
+            params={"format": "json", "limit": 8, "mode": "list"},
+            timeout=12,
+            headers={"User-Agent": "space.humanagency.co/1.0"},
+        )
+        launches = []
+        for l in r.json().get("results", []):
+            pad     = l.get("pad") or {}
+            loc     = pad.get("location") or {}
+            mission = l.get("mission") or {}
+            launches.append({
+                "name":        l.get("name", ""),
+                "net":         l.get("net", ""),
+                "location":    loc.get("name", ""),
+                "country":     loc.get("country_code", ""),
+                "status":      (l.get("status") or {}).get("name", ""),
+                "description": (mission.get("description") or "")[:220].strip(),
+                "image":       l.get("image") or "",
+            })
+        out = {"launches": launches}
+        _SPACE_CACHE[ck] = (out, time.time())
+        return jsonify(out)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+@app.route("/api/space/apod")
+def api_space_apod():
+    ck = "apod"
+    if ck in _SPACE_CACHE and time.time() - _SPACE_CACHE[ck][1] < 3600:
+        return jsonify(_SPACE_CACHE[ck][0])
+    try:
+        r = requests.get(
+            "https://api.nasa.gov/planetary/apod",
+            params={"api_key": os.environ.get("NASA_API_KEY", "DEMO_KEY")},
+            timeout=8,
+        )
+        d = r.json()
+        out = {
+            "title":       d.get("title", ""),
+            "explanation": d.get("explanation", ""),
+            "url":         d.get("url", ""),
+            "hdurl":       d.get("hdurl") or d.get("url", ""),
+            "media_type":  d.get("media_type", "image"),
+            "date":        d.get("date", ""),
+            "copyright":   d.get("copyright", ""),
+        }
+        _SPACE_CACHE[ck] = (out, time.time())
+        return jsonify(out)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+@app.route("/api/space/news")
+def api_space_news():
+    ck = "news"
+    if ck in _SPACE_CACHE and time.time() - _SPACE_CACHE[ck][1] < 1800:
+        return jsonify(_SPACE_CACHE[ck][0])
+    import xml.etree.ElementTree as ET
+    feeds = [
+        ("https://ukspaceagency.blog.gov.uk/feed/", "UK Space Agency"),
+        ("https://www.esa.int/rssfeed/Our_Activities/Space_Engineering_Technology", "ESA"),
+        ("https://spacenews.com/feed/", "SpaceNews"),
+    ]
+    items = []
+    for feed_url, source in feeds:
+        try:
+            r = requests.get(feed_url, timeout=7, headers={"User-Agent": "Mozilla/5.0"})
+            root = ET.fromstring(r.content)
+            channel = root.find("channel")
+            if channel is None:
+                continue
+            for item in list(channel.findall("item"))[:3]:
+                title = (item.findtext("title") or "").strip()
+                link  = (item.findtext("link")  or "").strip()
+                desc  = re.sub(r'<[^>]+>', '', item.findtext("description") or "")[:260].strip()
+                pub   = (item.findtext("pubDate") or "").strip()
+                if title and link:
+                    items.append({"title": title, "summary": desc,
+                                  "link": link, "published": pub, "source": source})
+        except Exception as ex:
+            print(f"[space news {source}] {ex}")
+    out = {"items": items[:9]}
+    _SPACE_CACHE[ck] = (out, time.time())
+    return jsonify(out)
+
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 

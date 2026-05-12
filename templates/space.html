@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Space — humanagency.co</title>
+<meta name="description" content="Your window into space. ISS live, upcoming launches, UK space news.">
+<meta name="theme-color" content="#05050f">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #05050f;
+    --surface: #0d0d20;
+    --surface2:#13132a;
+    --border:  #1e1e42;
+    --text:    #dde0f5;
+    --muted:   #6b6b99;
+    --subtle:  #2e2e58;
+    --accent:  #818cf8;
+    --amber:   #f59e0b;
+    --green:   #34d399;
+    --red:     #f87171;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* stars background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.35) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 15%, rgba(255,255,255,.25) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 70%, rgba(255,255,255,.3)  0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,.2)  0%, transparent 100%),
+      radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,.25) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 55% 40%, rgba(200,200,255,.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 55%, rgba(255,255,255,.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 85%, rgba(255,255,255,.2) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 16px 60px;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #312e81, #4f46e5);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+  }
+  .logo-name {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: -1px;
+  }
+
+  /* Postcode bar */
+  .postcode-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 24px;
+  }
+  .postcode-bar input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .postcode-bar input::placeholder { color: var(--muted); }
+  .postcode-bar button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* Section label */
+  .section-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .card-meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .card-body {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  /* ISS live card */
+  .iss-card {
+    background: linear-gradient(135deg, #0d0d28 0%, #131340 100%);
+    border: 1px solid #2a2a6a;
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  #iss-map {
+    width: 100%;
+    height: 200px;
+    border-radius: 10px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .iss-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .iss-stat {
+    flex: 1;
+    min-width: 80px;
+  }
+  .iss-stat-val {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .iss-stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+  .live-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    margin-right: 5px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  /* APOD card */
+  .apod-img {
+    width: 100%;
+    border-radius: 10px;
+    max-height: 300px;
+    object-fit: cover;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .apod-explanation {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .read-more {
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 4px 0;
+    font-family: inherit;
+    display: block;
+    margin-top: 6px;
+  }
+
+  /* Launches */
+  .launch-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .launch-item:last-child { border-bottom: none; }
+  .launch-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .launch-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+  .launch-time {
+    font-size: 13px;
+    color: var(--amber);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .launch-loc {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .launch-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .launch-uk-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(129,140,248,.15);
+    color: var(--accent);
+    border: 1px solid rgba(129,140,248,.3);
+    border-radius: 6px;
+    padding: 1px 7px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  /* News */
+  .news-item {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .news-item:last-child { border-bottom: none; }
+  .news-source {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .news-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.35;
+    margin-bottom: 5px;
+    text-decoration: none;
+    display: block;
+  }
+  .news-title:hover { color: var(--accent); }
+  .news-summary {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .news-date {
+    font-size: 11px;
+    color: var(--subtle);
+    margin-top: 5px;
+  }
+
+  /* Divider */
+  .section-gap { margin-top: 28px; }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .toggle-btn {
+    flex: 1;
+    padding: 7px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: .15s;
+  }
+  .toggle-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  /* Loading / error states */
+  .loading { color: var(--muted); font-size: 13px; padding: 12px 0; }
+  .error   { color: var(--red);   font-size: 13px; padding: 8px 0; }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--subtle);
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🛸</div>
+      <div>
+        <div class="logo-name">Space</div>
+        <div class="logo-sub">humanagency.co</div>
+      </div>
+    </div>
+    <div id="header-pc" style="font-size:13px;color:var(--muted);cursor:pointer" onclick="document.getElementById('pc-input').focus()">📍 <span id="header-pc-label">Add postcode</span></div>
+  </header>
+
+  <!-- Postcode bar -->
+  <div class="postcode-bar" id="pc-bar">
+    <span style="font-size:14px">📍</span>
+    <input id="pc-input" type="text" placeholder="Your postcode for tonight's sky (e.g. KT15 3RL)"
+      maxlength="8" oninput="this.value=this.value.toUpperCase()"
+      onkeydown="if(event.key==='Enter') savePostcode()">
+    <button onclick="savePostcode()">Set</button>
+  </div>
+
+  <!-- ISS Live -->
+  <div class="section-label"><span class="live-dot"></span>ISS Live</div>
+  <div class="iss-card">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.3px">International Space Station</div>
+        <div id="iss-location" style="font-size:13px;color:var(--muted);margin-top:2px">Loading position…</div>
+      </div>
+      <div style="font-size:22px">🛸</div>
+    </div>
+    <div id="iss-map"></div>
+    <div class="iss-stats">
+      <div class="iss-stat">
+        <div class="iss-stat-val" id="iss-alt">—</div>
+        <div class="iss-stat-label">Altitude (km)</div>
+      </div>
+      <div class="iss-stat">
+        <div class="iss-stat-val" id="iss-vel">—</div>
+        <div class="iss-stat-label">Speed (km/h)</div>
+      </div>
+      <div class="iss-stat">
+        <div class="iss-stat-val" id="iss-vis">—</div>
+        <div class="iss-stat-label">Visibility</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--muted)">
+      The ISS orbits Earth every ~92 minutes at ~408km altitude.
+      <a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener"
+        style="color:var(--accent);text-decoration:none;margin-left:4px">Spot it from your postcode →</a>
+    </div>
+  </div>
+
+  <!-- APOD -->
+  <div class="section-gap"></div>
+  <div class="section-label">Astronomy Picture of the Day</div>
+  <div class="card" id="apod-card">
+    <div class="loading">Loading…</div>
+  </div>
+
+  <!-- Launches -->
+  <div class="section-gap"></div>
+  <div class="section-label">Upcoming Launches</div>
+  <div class="toggle-row">
+    <button class="toggle-btn active" id="tab-all" onclick="launchTab('all')">All</button>
+    <button class="toggle-btn" id="tab-uk" onclick="launchTab('uk')">UK & Europe</button>
+  </div>
+  <div class="card" id="launches-card">
+    <div class="loading">Loading…</div>
+  </div>
+
+  <!-- UK Space News -->
+  <div class="section-gap"></div>
+  <div class="section-label">UK Space</div>
+  <div class="card" id="news-card">
+    <div class="loading">Loading…</div>
+  </div>
+
+  <footer>
+    <div style="margin-bottom:6px">🛸 space.humanagency.co</div>
+    <div>Data: NASA · Launch Library 2 · UK Space Agency · ESA</div>
+    <div style="margin-top:4px"><a href="https://miru.humanagency.co">← Miru</a></div>
+  </footer>
+
+</div><!-- /wrap -->
+
+<script>
+// ── Postcode ──────────────────────────────────────────────────────────────────
+var _pc = localStorage.getItem('space_postcode') || '';
+if (_pc) {
+  document.getElementById('header-pc-label').textContent = _pc;
+  document.getElementById('pc-input').value = _pc;
+}
+
+function savePostcode() {
+  var v = (document.getElementById('pc-input').value || '').trim().replace(/\s+/g,'').toUpperCase();
+  if (!v) return;
+  localStorage.setItem('space_postcode', v);
+  _pc = v;
+  var fmt = v.length > 3 ? v.slice(0,-3) + ' ' + v.slice(-3) : v;
+  document.getElementById('header-pc-label').textContent = fmt;
+  document.getElementById('pc-input').value = fmt;
+}
+
+// ── ISS ───────────────────────────────────────────────────────────────────────
+var _issMap = null;
+var _issMarker = null;
+var _issPath = [];
+var _issPathLine = null;
+
+function _initISSMap(lat, lon) {
+  if (_issMap) return;
+  _issMap = L.map('iss-map', {zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 5
+  }).addTo(_issMap);
+  _issMap.setView([lat, lon], 2);
+  var icon = L.divIcon({html:'<div style="font-size:22px;line-height:1">🛸</div>', iconSize:[28,28], iconAnchor:[14,14], className:''});
+  _issMarker = L.marker([lat, lon], {icon: icon}).addTo(_issMap);
+}
+
+function _updateISS(d) {
+  var lat = d.lat, lon = d.lon;
+  document.getElementById('iss-alt').textContent = (d.altitude || '—').toLocaleString();
+  document.getElementById('iss-vel').textContent = (d.velocity || '—').toLocaleString();
+  var vis = d.visibility === 'daylight' ? '☀️ Day' : d.visibility === 'eclipsed' ? '🌑 Night' : d.visibility || '—';
+  document.getElementById('iss-vis').textContent = vis;
+  // Reverse geocode country from lat/lon approximately
+  _issLocationLabel(lat, lon);
+  if (!_issMap) {
+    _initISSMap(lat, lon);
+  } else {
+    _issMarker.setLatLng([lat, lon]);
+    _issMap.panTo([lat, lon], {animate: true, duration: 2});
+  }
+  // Draw orbital path (simplified: ±30 degrees ahead)
+  _issPath.push([lat, lon]);
+  if (_issPath.length > 60) _issPath.shift();
+  if (_issPathLine) _issMap.removeLayer(_issPathLine);
+  if (_issPath.length > 1) {
+    _issPathLine = L.polyline(_issPath, {color:'#818cf8', weight:1.5, opacity:0.5, dashArray:'4 4'}).addTo(_issMap);
+  }
+}
+
+function _issLocationLabel(lat, lon) {
+  // Simple lat/lon to hemisphere description
+  var ns = lat >= 0 ? 'N' : 'S';
+  var ew = lon >= 0 ? 'E' : 'W';
+  var latAbs = Math.abs(lat).toFixed(1), lonAbs = Math.abs(lon).toFixed(1);
+  document.getElementById('iss-location').textContent = latAbs + '° ' + ns + ', ' + lonAbs + '° ' + ew;
+}
+
+function _pollISS() {
+  fetch('/api/space/iss').then(function(r){return r.json();}).then(function(d){
+    if (d.lat !== undefined) _updateISS(d);
+  }).catch(function(){});
+}
+_pollISS();
+setInterval(_pollISS, 5000);
+
+// ── APOD ─────────────────────────────────────────────────────────────────────
+function _renderAPOD(d) {
+  var el = document.getElementById('apod-card');
+  if (d.error) { el.innerHTML = '<div class="error">Could not load today\'s image</div>'; return; }
+  var dateStr = d.date ? new Date(d.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '';
+  var copy = d.copyright ? ' · © ' + d.copyright.trim() : '';
+  var mediaHtml = d.media_type === 'image'
+    ? '<img src="'+d.url+'" class="apod-img" alt="'+_esc(d.title)+'" loading="lazy">'
+    : '<div style="background:var(--surface2);border-radius:10px;padding:20px;text-align:center;margin-bottom:12px;font-size:13px;color:var(--muted)">📺 Video — <a href="'+d.url+'" target="_blank" style="color:var(--accent)">Watch on NASA</a></div>';
+  var exp = d.explanation || '';
+  el.innerHTML =
+    mediaHtml +
+    '<div class="card-title">'+_esc(d.title)+'</div>'+
+    '<div class="card-meta">'+dateStr+copy+'</div>'+
+    '<div class="apod-explanation" id="apod-exp">'+_esc(exp)+'</div>'+
+    '<button class="read-more" onclick="_apodToggle()">Read more</button>';
+}
+var _apodExpanded = false;
+function _apodToggle() {
+  var el = document.getElementById('apod-exp');
+  var btn = el.nextElementSibling;
+  _apodExpanded = !_apodExpanded;
+  el.style.webkitLineClamp = _apodExpanded ? 'unset' : '4';
+  btn.textContent = _apodExpanded ? 'Show less' : 'Read more';
+}
+fetch('/api/space/apod').then(function(r){return r.json();}).then(_renderAPOD).catch(function(){
+  document.getElementById('apod-card').innerHTML = '<div class="error">Could not load APOD</div>';
+});
+
+// ── Launches ──────────────────────────────────────────────────────────────────
+var _allLaunches = [];
+var _launchTab = 'all';
+
+var _UK_EU_COUNTRIES = ['GBR','FRA','DEU','ITA','NLD','NOR','SWE','BEL','ESP','RUS','UKR'];
+
+function _renderLaunches(launches) {
+  var el = document.getElementById('launches-card');
+  if (!launches || !launches.length) {
+    el.innerHTML = '<div class="loading">No upcoming launches found</div>';
+    return;
+  }
+  var filtered = _launchTab === 'uk'
+    ? launches.filter(function(l){ return _UK_EU_COUNTRIES.indexOf(l.country) >= 0; })
+    : launches;
+  if (!filtered.length) {
+    el.innerHTML = '<div class="card-body" style="padding:8px 0">No upcoming UK / European launches in next few days. Showing all.</div>';
+    filtered = launches;
+  }
+  var html = '';
+  filtered.slice(0,5).forEach(function(l) {
+    var isUK = l.country === 'GBR';
+    var date = l.net ? _fmtLaunchDate(l.net) : 'TBD';
+    var desc = l.description ? '<div class="launch-desc">'+_esc(l.description)+'</div>' : '';
+    html +=
+      '<div class="launch-item">'+
+        '<div class="launch-icon">🚀</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="launch-name">'+_esc(l.name)+(isUK?'<span class="launch-uk-badge">🇬🇧 UK</span>':'')+'</div>'+
+          '<div class="launch-time">'+date+'</div>'+
+          '<div class="launch-loc">'+_esc(l.location)+'</div>'+
+          desc+
+        '</div>'+
+      '</div>';
+  });
+  el.innerHTML = html || '<div class="loading">No launches found</div>';
+}
+
+function _fmtLaunchDate(netStr) {
+  try {
+    var d = new Date(netStr);
+    var now = new Date();
+    var diff = d - now;
+    if (diff < 0) return 'Launched';
+    var days = Math.floor(diff / 86400000);
+    var hrs  = Math.floor((diff % 86400000) / 3600000);
+    var mins = Math.floor((diff % 3600000)  / 60000);
+    var timeStr = d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+    var dateStr = d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    if (days === 0)      return 'Today ' + timeStr;
+    if (days === 1)      return 'Tomorrow ' + timeStr;
+    if (days < 7)        return 'In ' + days + 'd ' + hrs + 'h · ' + dateStr;
+    return dateStr + ' · ' + timeStr;
+  } catch(e) { return netStr; }
+}
+
+function launchTab(tab) {
+  _launchTab = tab;
+  document.getElementById('tab-all').classList.toggle('active', tab === 'all');
+  document.getElementById('tab-uk').classList.toggle('active',  tab === 'uk');
+  _renderLaunches(_allLaunches);
+}
+
+fetch('/api/space/launches').then(function(r){return r.json();}).then(function(d){
+  _allLaunches = d.launches || [];
+  _renderLaunches(_allLaunches);
+}).catch(function(){
+  document.getElementById('launches-card').innerHTML = '<div class="error">Could not load launches</div>';
+});
+
+// ── News ─────────────────────────────────────────────────────────────────────
+function _renderNews(items) {
+  var el = document.getElementById('news-card');
+  if (!items || !items.length) { el.innerHTML = '<div class="loading">No news found</div>'; return; }
+  var html = '';
+  items.forEach(function(item) {
+    var pub = item.published ? _fmtNewsDate(item.published) : '';
+    html +=
+      '<div class="news-item">'+
+        '<div class="news-source">'+_esc(item.source)+'</div>'+
+        '<a href="'+_esc(item.link)+'" target="_blank" rel="noopener" class="news-title">'+_esc(item.title)+'</a>'+
+        (item.summary ? '<div class="news-summary">'+_esc(item.summary)+'</div>' : '')+
+        (pub ? '<div class="news-date">'+pub+'</div>' : '')+
+      '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function _fmtNewsDate(str) {
+  try {
+    return new Date(str).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  } catch(e) { return str; }
+}
+
+fetch('/api/space/news').then(function(r){return r.json();}).then(function(d){
+  _renderNews(d.items || []);
+}).catch(function(){
+  document.getElementById('news-card').innerHTML = '<div class="error">Could not load news</div>';
+});
+
+// ── Util ─────────────────────────────────────────────────────────────────────
+function _esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
