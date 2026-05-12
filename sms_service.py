@@ -4544,6 +4544,7 @@ _PLACE_CATEGORY = {
     "community_centre": {"label": "Community Centre",  "emoji": "🏘️"},
     "arts_centre":      {"label": "Arts Centre",       "emoji": "🎭"},
     "doctors":          {"label": "GP Surgery",        "emoji": "🩺"},
+    "clinic":           {"label": "Clinic",            "emoji": "🩺"},
     "hospital":         {"label": "Hospital",          "emoji": "🏥"},
     "dentist":          {"label": "Dentist",           "emoji": "🦷"},
     "pharmacy":         {"label": "Pharmacy",          "emoji": "💊"},
@@ -4948,9 +4949,9 @@ def _overpass_places(lat: float, lon: float, radius: int = 1500):
     import html as _html
     services_types = "|".join([
         "library", "community_centre", "arts_centre", "hospital",
-        "dentist", "pharmacy", "post_office", "townhall", "social_facility",
-        "food_bank", "police", "fire_station", "leisure_centre",
-        "veterinary", "bank",
+        "dentist", "doctors", "clinic", "pharmacy", "post_office",
+        "townhall", "social_facility", "food_bank", "police",
+        "fire_station", "leisure_centre", "veterinary", "bank",
     ])
     # Pubs/food at 5km — rural areas (e.g. Longcross) have pubs spread 3-5km out
     food_types = "cafe|restaurant|fast_food|pub|bar|fuel"
@@ -7477,8 +7478,8 @@ _PLACES_WORDS = {"places", "services", "local", "near", "nearby", "around",
 
 
 _SERVICE_SYNONYMS = {
-    "gp":         ["doctor", "gp", "surgery", "medical centre", "health centre"],
-    "doctor":     ["doctor", "gp", "surgery", "medical"],
+    "gp":         ["doctor", "gp", "surgery", "medical centre", "health centre", "clinic"],
+    "doctor":     ["doctor", "gp", "surgery", "medical", "clinic"],
     "pharmacy":   ["pharmacy", "chemist"],
     "dentist":    ["dentist", "dental"],
     "hospital":   ["hospital"],
@@ -7502,14 +7503,11 @@ def whatsapp_places_format(q: str, service_filter: str = "") -> str:
             return f"Couldn't find '{q}'. Try a postcode or town name — e.g. places KT1 2BA"
         lat, lon, display = geo[0], geo[1], geo[2]
         places = _overpass_places(lat, lon)
-        if not places:
-            return f"No local services found near {display}. Try a different postcode or area."
 
         # Apply service filter if provided
         sf = service_filter.lower().strip()
+        filter_words = None
         if sf:
-            # Find synonyms for the filter keyword
-            filter_words = None
             for key, synonyms in _SERVICE_SYNONYMS.items():
                 if key in sf:
                     filter_words = synonyms
@@ -7517,21 +7515,47 @@ def whatsapp_places_format(q: str, service_filter: str = "") -> str:
             if filter_words is None:
                 filter_words = [w for w in sf.split() if len(w) > 2]
 
-            if filter_words:
-                filtered = [
-                    p for p in places
-                    if any(fw in p.get("name", "").lower() or fw in p.get("category", "").lower()
-                           for fw in filter_words)
-                ]
-                if filtered:
-                    places = filtered
-                # else fall through to show everything
+        filtered_places = places
+        if filter_words and places:
+            filtered = [
+                p for p in places
+                if any(fw in p.get("name", "").lower() or fw in p.get("category", "").lower()
+                       for fw in filter_words)
+            ]
+            if filtered:
+                filtered_places = filtered
+            # else fall through to show everything
+
+        # Google Places fallback for sparse OSM areas or specific service queries
+        if not filtered_places and _GOOGLE_PLACES_KEY:
+            gq = f"{sf or 'local services'} near {display}" if display else (sf or q)
+            raw = _gplaces_text_search(gq, lat, lon, radius=5000)
+            seen_g = set()
+            gp_lines = []
+            for p in raw[:8]:
+                name = p.get("name", "")
+                if not name or name.lower() in seen_g:
+                    continue
+                seen_g.add(name.lower())
+                addr = p.get("formatted_address") or p.get("vicinity") or ""
+                # Trim address to local part
+                addr_short = ", ".join(addr.split(",")[:2]) if addr else ""
+                line = f"🩺 {name}" if "doctor" in gq.lower() or "gp" in gq.lower() else f"📍 {name}"
+                if addr_short:
+                    line += f"\n  📍 {addr_short}"
+                gp_lines.append(line)
+            if gp_lines:
+                header = f"🏛️ {sf.title() if sf else 'Local services'} near {display}"
+                return header + "\n\n" + "\n\n".join(gp_lines) + f"\n\n📍 miru.humanagency.co"
+
+        if not filtered_places:
+            return f"No local services found near {display}. Try a different postcode or area."
 
         from itertools import groupby
         header = f"🏛️ {sf.title() if sf else 'Local services'} near {display}\n" if sf else f"🏛️ Local services near {display}\n"
         lines = [header]
         count = 0
-        for cat, group in groupby(places, key=lambda p: p["category"]):
+        for cat, group in groupby(filtered_places, key=lambda p: p["category"]):
             items = list(group)[:2]
             for p in items:
                 if count >= 12:
@@ -7912,30 +7936,48 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
 
 
 _HELP_MSG = (
-    "Miru 🇬🇧 — your UK assistant\n"
+    "👋 *Miru — your UK assistant*\n"
+    "No app. Just WhatsApp.\n"
     "\n"
-    "⛽ *Fuel Prices*\n"
-    "Send your postcode:\n"
-    "  e.g. KT1 2BA\n"
-    "  e.g. petrol KT1 2BA\n"
+    "⛽ *Cheap Fuel*\n"
+    "  cheapest petrol near KT15\n"
+    "  diesel prices GU25\n"
     "\n"
-    "🗳️ *Elections & Voting*\n"
-    "Send vote + your postcode:\n"
-    "  e.g. vote KT1 2BA\n"
+    "🚂 *Next Train*\n"
+    "  next train Woking to Waterloo\n"
+    "  trains from Addlestone\n"
     "\n"
-    "🏛️ *Local Services*\n"
-    "Send places + postcode or service:\n"
-    "  e.g. places KT1 2BA\n"
-    "  e.g. GP near KT1 2BA\n"
+    "🏫 *Schools*\n"
+    "  school news\n"
+    "  what time does school finish Friday\n"
+    "\n"
+    "🏡 *My Area*\n"
+    "  places KT15 3RL\n"
+    "  GP near me\n"
+    "  pubs near GU25\n"
+    "\n"
+    "📚 *Books*\n"
+    "  book The Alchemist\n"
+    "  my books\n"
+    "  books I want to read\n"
+    "  (or send a barcode photo)\n"
     "\n"
     "🔖 *Save for Later*\n"
-    "Send any article URL to save it.\n"
-    "Then:\n"
-    "  LIST — see pending saves\n"
-    "  1 READ · 2 SKIP · 3 REMIND Monday\n"
-    "  (You'll also get a daily digest)\n"
+    "  Send any URL to save it\n"
+    "  books by Seth Godin\n"
+    "  restaurants saved last week\n"
+    "  wine saved yesterday\n"
     "\n"
-    "Reply *HELP* anytime for this menu"
+    "🛒 *Price Check*\n"
+    "  price olive oil\n"
+    "  compare oat milk\n"
+    "\n"
+    "📋 *My Details*\n"
+    "  Visit miru.humanagency.co\n"
+    "  → My Area → My Accounts\n"
+    "  (bills, renewals, Gmail scan)\n"
+    "\n"
+    "Reply *HELP* anytime to see this"
 )
 
 _GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru", "join"}
