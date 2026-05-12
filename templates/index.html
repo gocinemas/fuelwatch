@@ -3201,8 +3201,9 @@ const _ts = new Date(d.timestamp);
   function _maRenderSchools(data) {
     const el = document.getElementById("myarea-schools");
     const schools = (data.schools?.schools || []).slice(0, 5);
-    if (!schools.length) { el.style.display = "none"; return; }
     const saved = _maSavedForSection(["🏫"]);
+    // Hide only if nothing at all — saved schools should always show
+    if (!schools.length && !saved.length) { el.style.display = "none"; return; }
     const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
     let title, bodyHtml;
     if (saved.length) {
