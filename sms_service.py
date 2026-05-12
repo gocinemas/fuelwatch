@@ -7913,6 +7913,48 @@ _HELP_MSG = (
 _GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru", "join"}
 
 
+def _wa_classify_intent(body: str) -> dict | None:
+    """Use Groq to classify a free-text WhatsApp message into a known intent.
+    Returns {intent, query} or None on failure.
+    Only called when no exact command matched — handles typos and natural phrasing."""
+    try:
+        from groq import Groq as _Groq
+        import json as _json
+        gc = _Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+        result = gc.chat.completions.create(
+            model="llama3-8b-8192",
+            temperature=0,
+            messages=[{"role": "system", "content": (
+                "Classify the user message into ONE intent. Respond with JSON only — no other text.\n\n"
+                "Intents:\n"
+                "  book_lookup  — user wants to find, save or add a book (any phrasing, typos ok). "
+                                "Extract query = title, author, or ISBN they mentioned.\n"
+                "  worth_it     — user wants a review or verdict on the last book they saved "
+                                "(e.g. 'is it worth reading', 'should i read it', 'any good', 'worth it', typos ok).\n"
+                "  shopping_list — user wants a shopping/ingredients list from their last saved recipe "
+                                "(e.g. 'what do i need to buy', 'ingredients', 'shopping list', typos ok).\n"
+                "  my_saves     — user wants to see their saved items / reading list.\n"
+                "  my_link      — user wants their personal Miru link.\n"
+                "  unknown      — anything else (fuel prices, product prices, place searches, etc.).\n\n"
+                "Reply format — exactly one of:\n"
+                '{"intent":"book_lookup","query":"<extracted title/author/isbn>"}\n'
+                '{"intent":"worth_it"}\n'
+                '{"intent":"shopping_list"}\n'
+                '{"intent":"my_saves"}\n'
+                '{"intent":"my_link"}\n'
+                '{"intent":"unknown"}'
+            )}, {"role": "user", "content": body[:300]}],
+            max_tokens=80,
+        ).choices[0].message.content.strip()
+        # Strip any markdown fences Groq sometimes adds
+        result = re.sub(r"^```[a-z]*\n?|```$", "", result.strip()).strip()
+        parsed = _json.loads(result)
+        return parsed if parsed.get("intent") and parsed["intent"] != "unknown" else None
+    except Exception as _e:
+        print(f"[intent] classify failed: {_e}")
+        return None
+
+
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     body        = request.form.get("Body", "").strip()
@@ -8409,6 +8451,135 @@ def whatsapp_reply():
             resp.message(f"📖 Note saved for *{_book_title}*\n\n_{_note_text[:120]}{'…' if len(_note_text)>120 else ''}_")
         except Exception as _bne:
             resp.message(f"Sorry, couldn't save the note: {_bne}")
+        return str(resp)
+
+    # ── Natural language fallback — Groq intent classification ───────────────
+    _intent = _wa_classify_intent(body)
+    if _intent:
+        _itype = _intent.get("intent")
+        if _itype == "book_lookup":
+            bk_query = _intent.get("query", "").strip() or body.strip()
+            _isbn_raw = re.sub(r"[\s\-]", "", bk_query)
+            if re.match(r"^(978|979)\d{10}$", _isbn_raw) or re.match(r"^\d{10}$", _isbn_raw):
+                bk_info = _lookup_book_by_isbn(_isbn_raw)
+                bk_isbn = _isbn_raw
+            else:
+                bk_info = _lookup_book_by_title(bk_query)
+                bk_isbn = bk_info.get("isbn", "") if bk_info else ""
+            if not bk_info or not bk_info.get("title"):
+                resp.message(f"📚 Couldn't find *{bk_query}* — try: *book the midnight library* or the ISBN number.")
+                return str(resp)
+            try:
+                plain_number = from_number.replace("whatsapp:", "").strip()
+                existing = (lib._sb().table("wa_saves").select("id")
+                            .in_("from_number", [from_number, plain_number])
+                            .eq("url", f"book:{bk_isbn}").limit(1).execute().data)
+                already = bool(existing)
+                if not already:
+                    lib._sb().table("wa_saves").insert({
+                        "from_number": plain_number, "url": f"book:{bk_isbn}",
+                        "title": bk_info["title"], "summary": json.dumps(bk_info), "status": "wishlist",
+                    }).execute()
+                    try: lib.books_upsert(plain_number, {**bk_info, "isbn": bk_isbn, "source": "whatsapp_text"})
+                    except Exception: pass
+            except Exception: already = False
+            user_token = _wa_user_token(from_number)
+            msg = f"📚 *{bk_info['title']}*"
+            if bk_info.get("author"): msg += f"\nby {bk_info['author']}"
+            cr = bk_info.get("communityRating")
+            if cr and cr.get("avg"):
+                msg += f"\n{'⭐' * round(cr['avg'])} {cr['avg']}/5"
+                if cr.get("count"): msg += f" ({cr['count']:,} ratings)"
+            if bk_info.get("description"): msg += f"\n\n_{bk_info['description'][:220].strip()}…_"
+            msg += f"\n\n📚 {'Already in' if already else 'Saved to'} My Books: miru.humanagency.co/?screen=scan&token={user_token}"
+            resp.message(msg)
+            return str(resp)
+        elif _itype == "worth_it":
+            body = "WORTH IT"
+            cmd_up = "WORTH IT"
+            body_lower = "worth it"
+        elif _itype == "shopping_list":
+            body = "SHOPPING LIST"
+            cmd_up = "SHOPPING LIST"
+            body_lower = "shopping list"
+        elif _itype == "my_saves":
+            body = "LIST"
+            cmd_up = "LIST"
+            body_lower = "list"
+        elif _itype == "my_link":
+            body = "MY LINK"
+            cmd_up = "MY LINK"
+            body_lower = "my link"
+
+    # ── Re-check commands if intent classifier redirected ─────────────────────
+    if cmd_up in ("WORTH IT", "WORTH IT?", "REVIEWS", "BOOK REVIEW", "THOUGHTS"):
+        plain_number = from_number.replace("whatsapp:", "").strip()
+        wa_number    = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
+        try:
+            rows = (lib._sb().table("wa_saves").select("id,title,url,summary")
+                    .in_("from_number", [from_number, plain_number, wa_number])
+                    .like("url", "book:%")
+                    .order("created_at", desc=True).limit(1).execute().data)
+        except Exception: rows = []
+        if not rows:
+            resp.message("📚 No books saved yet — send *book <title>* to add one, then ask again.")
+            return str(resp)
+        row = rows[0]
+        bk = {}
+        try: bk = json.loads(row.get("summary") or "{}")
+        except Exception: pass
+        book_label  = bk.get("title") or row.get("title") or "your book"
+        book_rating = (bk.get("communityRating") or {}).get("avg")
+        description = bk.get("description", "")
+        genre       = bk.get("subjects", "")
+        author      = bk.get("author", "")
+        context = f"Book: {book_label}"
+        if author:      context += f"\nAuthor: {author}"
+        if genre:       context += f"\nGenre/subjects: {genre}"
+        if book_rating: context += f"\nGoogle Books rating: {book_rating}/5"
+        if description: context += f"\nDescription: {description[:400]}"
+        try:
+            from groq import Groq as _Groq2
+            verdict = _Groq2(api_key=os.environ.get("GROQ_API_KEY","")).chat.completions.create(
+                model="llama3-8b-8192", temperature=0.4,
+                system=(
+                    "You are a concise book critic. Given book metadata, "
+                    "write exactly 4 lines:\n"
+                    "Line 1: ✅ Fans say: [what the description/genre suggests readers will love — max 15 words]\n"
+                    "Line 2: ⚠️ Critics say: [likely criticism based on genre/style — max 15 words]\n"
+                    "Line 3: 🎯 Best for: [who this book suits — max 10 words]\n"
+                    "Line 4: 📖 Verdict: Worth it / Skip it / Depends on taste — one sentence reason\n"
+                    "If you don't have enough information, be honest and say so on line 1. No other text."
+                ),
+                messages=[{"role": "user", "content": context}],
+                max_tokens=220,
+            ).choices[0].message.content.strip()
+        except Exception: verdict = ""
+        if not verdict:
+            resp.message(f"📚 Couldn't generate a review for {book_label} right now.")
+            return str(resp)
+        rating_line = f"\n⭐ {book_rating}/5 on Google Books" if book_rating else ""
+        resp.message(f"📚 {book_label}{rating_line}\n\n{verdict}")
+        return str(resp)
+
+    if cmd_up in ("LIST",):
+        try:
+            plain_number = from_number.replace("whatsapp:", "").strip()
+            wa_number    = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
+            rows = (lib._sb().table("wa_saves").select("id,title,url,status")
+                    .in_("from_number", [from_number, plain_number, wa_number])
+                    .in_("status", ["pending", "remind"]).order("created_at", desc=True).limit(9).execute().data)
+            if not rows:
+                resp.message("📂 No pending saves. Send a link to save something!")
+                return str(resp)
+            lines = [f"{i+1}. {r.get('title') or r.get('url','?')[:60]}" for i, r in enumerate(rows)]
+            resp.message("📂 Your saves:\n" + "\n".join(lines) + "\n\nReply *1 READ*, *2 SKIP*, etc.")
+            return str(resp)
+        except Exception: pass
+
+    if body_lower in ("my link", "link", "my saves link", "get link", "access", "my access"):
+        user_token = _wa_user_token(from_number)
+        resp.message(f"🔗 Your personal Miru link:\nmiru.humanagency.co/?screen=saves&token={user_token}")
         return str(resp)
 
     # Decide: fuel query or product query
