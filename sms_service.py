@@ -8768,6 +8768,17 @@ _WELCOME_MSG = (
     "Set your home postcode at miru.humanagency.co 🏠"
 )
 
+_CLARIFY_MSG = (
+    "Hmm, not sure what you mean 🤔\n\n"
+    "Try:\n"
+    "☕ _good coffee near KT15_\n"
+    "🚆 _train waterloo to lewisham_\n"
+    "🍺 _cheap beer KT16_\n"
+    "🚇 _tube status_\n"
+    "⛽ KT15 petrol\n\n"
+    "Reply *HELP* for the full list."
+)
+
 _GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru", "join"}
 
 _SEEN_NUMBERS: set = set()
@@ -9815,7 +9826,7 @@ def whatsapp_reply():
         _question_starters = {"what","why","how","when","who","can","could","would","should",
                                "is","are","do","does","help","please","show","tell","get","give"}
         if _pn_words and (_pn_words[0].lower() in _question_starters or "?" in product_name):
-            resp.message(_HELP_MSG)
+            resp.message(_CLARIFY_MSG)
             return str(resp)
         _, loc_postcode = _split_product_postcode(body)
         cache_key = f"product:{product_name.lower().strip()}:{loc_postcode or ''}"
@@ -9830,7 +9841,7 @@ def whatsapp_reply():
 
     # Fuel query
     if not postcode:
-        resp.message("FuelWatch UK 🇬🇧\nCouldn't read that.\nFor fuel: SW1A 1AA\nFor prices: Heinz Baked Beans")
+        resp.message(_CLARIFY_MSG)
         return str(resp)
 
     cache_key = f"fuel:{postcode}:{fuel}:{radius}:{retailer or ''}"

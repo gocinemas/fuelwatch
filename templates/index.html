@@ -463,10 +463,6 @@
           <span class="tool-icon-emoji">🎵</span>
           <span class="tool-icon-label">Music ID</span>
         </button>
-        <a class="tool-icon-btn" href="https://space.humanagency.co" target="_blank" rel="noopener" style="text-decoration:none">
-          <span class="tool-icon-emoji">🛸</span>
-          <span class="tool-icon-label">Space</span>
-        </a>
       </div>
 
       <!-- WhatsApp strip — with food examples -->
@@ -2058,7 +2054,16 @@
         if (!postcode) return;
         const pc = postcode.trim().toUpperCase();
         localStorage.setItem(HOME_KEY, pc);
-        _cache = null; _cacheTime = 0; // force fresh geocode next get()
+        _cache = null; _cacheTime = 0;
+        // Persist to backend so WhatsApp can look it up by phone number
+        const phone = _miruPhone();
+        const did   = _maDeviceId ? _maDeviceId() : (localStorage.getItem('_maDeviceId') || '');
+        const body  = { postcode: pc };
+        if (phone)  body.from_number = phone;
+        else if (did) body.token = did;
+        if (body.from_number || body.token) {
+          fetch('/api/myarea/home-postcode', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }).catch(()=>{});
+        }
       },
       clearHome() {
         localStorage.removeItem(HOME_KEY);
