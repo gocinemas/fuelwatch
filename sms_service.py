@@ -344,18 +344,36 @@ def get_tube_status(line: str = None) -> str:
     return result
 
 
+_STATION_QUALIFIER_RE = re.compile(
+    r'\b(national rail|dlr|tube|underground|overground|tfl|elizabeth line)\b', re.I
+)
+
 def _resolve_tube_station(name: str):
-    """Return (naptan_id, display_name) for the best-matching tube station, or (None, None)."""
-    try:
+    """Return (naptan_id, display_name) for the best-matching TfL station, or (None, None)."""
+    clean = _STATION_QUALIFIER_RE.sub('', name).strip()
+    if not clean:
+        clean = name.strip()
+
+    def _tfl_search(q):
         r = requests.get(
-            "https://api.tfl.gov.uk/StopPoint/Search/" + requests.utils.quote(name),
-            params={"modes": "tube,dlr,elizabeth-line,overground", "includeHubs": "false", "maxResults": "1"},
+            "https://api.tfl.gov.uk/StopPoint/Search/" + requests.utils.quote(q),
+            params={"modes": "tube,dlr,elizabeth-line,overground", "includeHubs": "false", "maxResults": "6"},
             timeout=8,
         )
         r.raise_for_status()
-        matches = r.json().get("matches", [])
+        return r.json().get("matches", [])
+
+    try:
+        matches = _tfl_search(clean)
+        # "London Waterloo" → try "Waterloo" if no results
+        if not matches and clean.lower().startswith("london "):
+            matches = _tfl_search(clean[7:])
+        # Prefer 940G IDs (true TfL metro naptan — avoids NR 910G IDs in journey planner)
+        for m in matches:
+            if m["id"].startswith("940G"):
+                return m["id"], m["name"].replace(" Underground Station", "").replace(" Station", "")
         if matches:
-            return matches[0]["id"], matches[0]["name"]
+            return matches[0]["id"], matches[0]["name"].replace(" Underground Station", "").replace(" Station", "")
     except Exception:
         pass
     return None, None
@@ -371,7 +389,7 @@ def get_tube_journey(from_name: str, to_name: str) -> str:
     try:
         r = requests.get(
             f"https://api.tfl.gov.uk/Journey/JourneyResults/{from_id}/to/{to_id}",
-            params={"mode": "tube"},
+            params={"mode": "tube,dlr,elizabeth-line,overground"},
             timeout=10,
         )
         r.raise_for_status()
@@ -402,12 +420,13 @@ def get_tube_journey(from_name: str, to_name: str) -> str:
         arr = _short(leg.get("arrivalPoint", {}).get("commonName", ""))
         route_opts = leg.get("routeOptions", [])
         line_name = route_opts[0].get("name", "") if route_opts else ""
-        if mode == "tube":
+        if mode in ("tube", "dlr", "elizabeth-line", "overground", "national-rail"):
+            fallback_label = {"dlr": "DLR", "elizabeth-line": "Elizabeth", "overground": "Overground"}.get(mode, "Tube")
             # Only show leg detail if it's not trivially the same as the header
             if dep != from_short or arr != to_short or len(legs) > 1:
-                parts.append(f"• {line_name or 'Tube'}: {dep} → {arr} ({leg_dur} min)")
+                parts.append(f"• {line_name or fallback_label}: {dep} → {arr} ({leg_dur} min)")
             else:
-                parts.append(f"• {line_name or 'Tube'} line ({leg_dur} min)")
+                parts.append(f"• {line_name or fallback_label} line ({leg_dur} min)")
             tube_legs.append({"line": line_name, "dep_id": from_id})
         elif mode == "walking":
             if leg_dur and int(leg_dur) > 1:
@@ -8120,9 +8139,9 @@ def _wa_train_format(from_name: str, to_name: str = "") -> str:
     if not from_name:
         return None
     try:
-        # Look up station CRS from name
-        from_lower = from_name.lower().strip()
-        to_lower   = to_name.lower().strip() if to_name else ""
+        # Strip qualifier words users add (e.g. "Lewisham national rail" → "lewisham")
+        from_lower = _STATION_QUALIFIER_RE.sub('', from_name.lower()).strip()
+        to_lower   = _STATION_QUALIFIER_RE.sub('', to_name.lower()).strip() if to_name else ""
 
         # Find best match in station cache
         def _find_crs(name):
@@ -8146,6 +8165,13 @@ def _wa_train_format(from_name: str, to_name: str = "") -> str:
             return None, None
 
         crs, stn_display = _find_crs(from_lower)
+        # Z-prefix CRS = DLR/TfL station — route directly to TfL journey planner
+        if crs and crs.upper().startswith('Z'):
+            if to_lower:
+                tube_reply = get_tube_journey(from_lower, to_lower)
+                if tube_reply and "Couldn't find" not in tube_reply:
+                    return tube_reply
+            return None
         if not crs:
             # Station not in National Rail — try TfL journey planner directly
             if to_lower:
