@@ -337,6 +337,158 @@
     margin-top: 5px;
   }
 
+  /* SEN live */
+  .sen-card {
+    background: linear-gradient(135deg, #0a0a1f 0%, #0d1a2e 100%);
+    border: 1px solid #1a3a5c;
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .sen-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(56,189,248,.12) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .sen-watch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 14px;
+    padding: 10px 18px;
+    background: linear-gradient(135deg, #0ea5e9, #2563eb);
+    border: none;
+    border-radius: 22px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity .15s;
+  }
+  .sen-watch-btn:hover { opacity: .85; }
+
+  /* UK hubs map */
+  #uk-hubs-map {
+    width: 100%;
+    height: 320px;
+    border-radius: 12px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+
+  /* Budget */
+  .budget-total {
+    text-align: center;
+    padding: 16px 0 20px;
+  }
+  .budget-total-val {
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: -1.5px;
+    line-height: 1;
+  }
+  .budget-total-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .budget-bar-row {
+    margin-bottom: 12px;
+  }
+  .budget-bar-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 5px;
+  }
+  .budget-bar-name {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .budget-bar-val {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+    margin-left: 8px;
+  }
+  .budget-bar-track {
+    background: var(--subtle);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+  }
+  .budget-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+  }
+
+  /* Companies */
+  .company-filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .company-filter-btn {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: .15s;
+  }
+  .company-filter-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .company-item {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .company-item:last-child { border-bottom: none; }
+  .company-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .company-loc {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .company-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .sector-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 2px 7px;
+    margin-right: 5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    vertical-align: middle;
+  }
+
   /* Divider */
   .section-gap { margin-top: 28px; }
 
@@ -455,10 +607,81 @@
     <div class="loading">Loading…</div>
   </div>
 
+  <!-- SEN Live Camera -->
+  <div class="section-gap"></div>
+  <div class="section-label"><span class="live-dot"></span>Earth Live — SEN Camera</div>
+  <div class="sen-card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;margin-bottom:4px">Earth from Space</div>
+        <div style="font-size:13px;color:#93c5fd;line-height:1.55">
+          SEN is a British company streaming live, uninterrupted views of Earth from cameras mounted on the ISS — 24/7, free to watch.
+        </div>
+        <div style="font-size:12px;color:#64748b;margin-top:8px;line-height:1.5">
+          Watch weather systems, city lights, oceans and auroras in real time as the ISS crosses your horizon at 28,000 km/h.
+        </div>
+      </div>
+      <div style="font-size:36px;flex-shrink:0">🌍</div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="https://sen.com/live" target="_blank" rel="noopener" class="sen-watch-btn">
+        <span class="live-dot" style="margin-right:0"></span> Watch Live on SEN
+      </a>
+      <a href="https://www.youtube.com/@SENtv/streams" target="_blank" rel="noopener"
+        style="display:inline-flex;align-items:center;gap:7px;margin-top:14px;padding:10px 16px;border:1px solid #1a3a5c;border-radius:22px;color:#93c5fd;font-size:13px;font-weight:600;text-decoration:none">
+        ▶ YouTube streams
+      </a>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #1a3a5c;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="font-size:12px;color:#64748b"><span style="color:#93c5fd;font-weight:700">Founded</span><br>2018 · London, UK</div>
+      <div style="font-size:12px;color:#64748b"><span style="color:#93c5fd;font-weight:700">Cameras</span><br>4K aboard the ISS</div>
+    </div>
+  </div>
+
+  <!-- UK Space Hubs Map -->
+  <div class="section-gap"></div>
+  <div class="section-label">UK Space Hubs</div>
+  <div class="card" style="padding:14px">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.5">
+      The UK space sector employs <strong style="color:var(--text)">48,800 people</strong> at over <strong style="color:var(--text)">1,200 organisations</strong>, clustered around key sites.
+    </div>
+    <div id="uk-hubs-map"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#818cf8;display:inline-block"></span>Cluster</span>
+      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Launch site</span>
+      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#34d399;display:inline-block"></span>Company</span>
+      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fb923c;display:inline-block"></span>Research</span>
+    </div>
+  </div>
+
+  <!-- UK Space Budget -->
+  <div class="section-gap"></div>
+  <div class="section-label">UK Space Budget</div>
+  <div class="card">
+    <div class="budget-total">
+      <div class="budget-total-val">£702M</div>
+      <div class="budget-total-label">Total UK space spending · 2023/24</div>
+    </div>
+    <div id="budget-bars"></div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£330M</span>ESA membership & programmes</div>
+      <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£372M</span>National (UKSA direct)</div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--subtle)">Source: UK Space Agency · 2024 Size & Health of the UK Space Industry</div>
+  </div>
+
   <!-- UK Space News -->
   <div class="section-gap"></div>
   <div class="section-label">UK Space</div>
   <div class="card" id="news-card">
+    <div class="loading">Loading…</div>
+  </div>
+
+  <!-- UK Space Companies -->
+  <div class="section-gap"></div>
+  <div class="section-label">UK Space Companies</div>
+  <div class="company-filters" id="co-filters"></div>
+  <div class="card" id="companies-card">
     <div class="loading">Loading…</div>
   </div>
 
@@ -672,6 +895,163 @@ fetch('/api/space/news').then(function(r){return r.json();}).then(function(d){
 }).catch(function(){
   document.getElementById('news-card').innerHTML = '<div class="error">Could not load news</div>';
 });
+
+// ── UK Space Hubs Map ─────────────────────────────────────────────────────────
+var _UK_HUBS = [
+  {name:"Harwell Space Campus",      loc:"Oxfordshire",     lat:51.571, lon:-1.309, type:"cluster",  desc:"UK's largest space cluster — UKSA HQ, ESA BIC, 120+ companies & 2,500 jobs"},
+  {name:"OneWeb / Eutelsat",         loc:"London",          lat:51.509, lon:-0.122, type:"cluster",  desc:"Global LEO broadband constellation, partly UK-government owned"},
+  {name:"Surrey Satellite Technology",loc:"Guildford",      lat:51.236, lon:-0.570, type:"company",  desc:"Pioneer of small satellite manufacturing — 70+ satellites built since 1985"},
+  {name:"Airbus Defence & Space",    loc:"Stevenage",       lat:51.903, lon:-0.205, type:"company",  desc:"Europe's largest space manufacturer — builds telecom & observation satellites"},
+  {name:"Reaction Engines",          loc:"Culham, Oxon",    lat:51.652, lon:-1.232, type:"research", desc:"Developing SABRE — a revolutionary hybrid air-breathing rocket engine"},
+  {name:"Westcott Venture Park",     loc:"Buckinghamshire", lat:51.865, lon:-0.978, type:"research", desc:"Historic UK rocket testing; now centre for green propulsion R&D"},
+  {name:"National Space Centre",     loc:"Leicester",       lat:52.661, lon:-1.097, type:"cluster",  desc:"UK's largest space attraction; University of Leicester space research hub"},
+  {name:"Spire Global / Open Cosmos",loc:"Glasgow",         lat:55.864, lon:-4.252, type:"cluster",  desc:"Scotland's growing small satellite cluster — data, Earth observation"},
+  {name:"Orbex",                     loc:"Forres, Moray",   lat:57.611, lon:-3.615, type:"company",  desc:"Building Prime — a small orbital rocket to launch from Scottish soil"},
+  {name:"SaxaVord Spaceport",        loc:"Unst, Shetland",  lat:60.832, lon:-0.871, type:"launch",   desc:"UK's first operational orbital launch site — northernmost in Europe"},
+  {name:"Sutherland Spaceport",      loc:"North Highland",  lat:58.535, lon:-4.010, type:"launch",   desc:"Planned vertical launch site for Orbex Prime and other small launchers"},
+  {name:"Prestwick Spaceport",       loc:"Ayrshire",        lat:55.509, lon:-4.587, type:"launch",   desc:"Proposed horizontal launch (HALO) spaceport in Scotland"},
+];
+
+var _HUB_COLOURS = {cluster:"#818cf8", launch:"#f59e0b", company:"#34d399", research:"#fb923c"};
+var _hubsMap = null;
+
+function _initHubsMap() {
+  if (_hubsMap) return;
+  _hubsMap = L.map('uk-hubs-map', {zoomControl:true, attributionControl:false, scrollWheelZoom:false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:13}).addTo(_hubsMap);
+  _hubsMap.setView([54.8, -3.5], 5);
+  _UK_HUBS.forEach(function(h) {
+    var colour = _HUB_COLOURS[h.type] || '#818cf8';
+    var icon = L.divIcon({
+      html: '<div style="width:14px;height:14px;border-radius:50%;background:'+colour+';border:2px solid rgba(255,255,255,.4);box-shadow:0 0 8px '+colour+'88"></div>',
+      iconSize:[14,14], iconAnchor:[7,7], className:''
+    });
+    L.marker([h.lat, h.lon], {icon:icon})
+      .bindPopup(
+        '<div style="min-width:180px;font-family:system-ui,sans-serif">' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:2px">'+h.name+'</div>'+
+        '<div style="font-size:11px;color:#6b7280;margin-bottom:5px">📍 '+h.loc+'</div>'+
+        '<div style="font-size:12px;line-height:1.5;color:#374151">'+h.desc+'</div>'+
+        '</div>',
+        {maxWidth:220}
+      )
+      .addTo(_hubsMap);
+  });
+}
+// Defer until visible (IntersectionObserver)
+(function() {
+  var el = document.getElementById('uk-hubs-map');
+  if (!el) return;
+  var obs = new IntersectionObserver(function(entries) {
+    if (entries[0].isIntersecting) { _initHubsMap(); obs.disconnect(); }
+  }, {threshold:0.1});
+  obs.observe(el);
+})();
+
+// ── UK Space Budget ───────────────────────────────────────────────────────────
+var _BUDGET_ITEMS = [
+  {name:"ESA programmes & membership", pct:47, val:"£330M", colour:"#818cf8"},
+  {name:"Earth Observation & Science",  pct:19, val:"£133M", colour:"#38bdf8"},
+  {name:"Telecoms & Navigation",        pct:12, val:"£84M",  colour:"#34d399"},
+  {name:"UK Launch Capability",         pct:10, val:"£70M",  colour:"#f59e0b"},
+  {name:"Skills, Innovation & Catapult",pct: 8, val:"£56M",  colour:"#fb923c"},
+  {name:"Space Situational Awareness",  pct: 4, val:"£28M",  colour:"#f87171"},
+];
+
+(function() {
+  var el = document.getElementById('budget-bars');
+  if (!el) return;
+  var html = '';
+  _BUDGET_ITEMS.forEach(function(b) {
+    html +=
+      '<div class="budget-bar-row">'+
+        '<div class="budget-bar-meta">'+
+          '<span class="budget-bar-name">'+b.name+'</span>'+
+          '<span class="budget-bar-val">'+b.val+' · '+b.pct+'%</span>'+
+        '</div>'+
+        '<div class="budget-bar-track">'+
+          '<div class="budget-bar-fill" style="width:0%;background:'+b.colour+'" data-pct="'+b.pct+'"></div>'+
+        '</div>'+
+      '</div>';
+  });
+  el.innerHTML = html;
+  // Animate bars after a tick
+  setTimeout(function() {
+    el.querySelectorAll('.budget-bar-fill').forEach(function(bar) {
+      bar.style.width = bar.getAttribute('data-pct') + '%';
+    });
+  }, 200);
+})();
+
+// ── UK Space Companies ────────────────────────────────────────────────────────
+var _UK_COMPANIES = [
+  {name:"Surrey Satellite Technology (SSTL)", loc:"Guildford, Surrey", sector:"satellites",   badge:"#38bdf8", desc:"World leader in small satellite manufacturing — 70+ satellites built since 1985. Part of Airbus group. Employs 700+ in Surrey."},
+  {name:"Airbus Defence & Space",             loc:"Stevenage, Herts",  sector:"satellites",   badge:"#38bdf8", desc:"Europe's largest space manufacturer in the UK. Builds telecom, Earth observation and science satellites employing 3,000+."},
+  {name:"OneWeb / Eutelsat",                  loc:"London",            sector:"broadband",    badge:"#818cf8", desc:"LEO satellite constellation delivering global broadband. UK government holds a strategic stake alongside Eutelsat."},
+  {name:"Inmarsat",                           loc:"London",            sector:"broadband",    badge:"#818cf8", desc:"Global leader in mobile satellite communications since 1979. Flagship British space brand, now part of Viasat."},
+  {name:"Reaction Engines",                   loc:"Culham, Oxon",      sector:"propulsion",   badge:"#f59e0b", desc:"Developing SABRE — a revolutionary hybrid air-breathing rocket engine that could transform access to space. BAE Systems backed."},
+  {name:"Orbex",                              loc:"Forres, Scotland",  sector:"launch",       badge:"#34d399", desc:"Building Prime — a small orbital rocket. First UK-designed, UK-built launcher to reach orbit from Scottish soil."},
+  {name:"Skyrora",                            loc:"Edinburgh",         sector:"launch",       badge:"#34d399", desc:"Developing Skyrora XL small launcher for UK orbital launch. Also builds test vehicles for propulsion R&D."},
+  {name:"Open Cosmos",                        loc:"Harwell, Oxon",     sector:"satellites",   badge:"#38bdf8", desc:"End-to-end small satellite missions — hardware, software and operations — for commercial and government customers."},
+  {name:"Spire Global",                       loc:"Glasgow",           sector:"data",         badge:"#fb923c", desc:"Constellation of over 110 nanosatellites providing maritime, weather and RF data services globally."},
+  {name:"BAE Systems Space",                  loc:"Various UK",        sector:"defence",      badge:"#f87171", desc:"Space situational awareness, electronic intelligence and responsive space programmes for UK and allied governments."},
+  {name:"Thales Alenia Space UK",             loc:"Bristol",           sector:"satellites",   badge:"#38bdf8", desc:"UK arm of the Franco-Italian prime contractor. Builds telecom payloads and contributes to ESA science missions."},
+  {name:"Satellite Applications Catapult",    loc:"Harwell, Oxon",     sector:"innovation",   badge:"#a78bfa", desc:"Government-backed national innovation centre. Connects satellite data and services to UK businesses and public sector."},
+  {name:"Astroscale UK",                      loc:"Harwell, Oxon",     sector:"innovation",   badge:"#a78bfa", desc:"Pioneering orbital debris removal and satellite life-extension. Flew the world's first commercial debris capture mission."},
+  {name:"In-Space Missions",                  loc:"Alton, Hampshire",  sector:"satellites",   badge:"#38bdf8", desc:"Builds cost-effective small satellites for commercial and government customers. Focus on rapid development."},
+  {name:"SEN",                                loc:"London",            sector:"data",         badge:"#fb923c", desc:"British space media company streaming live 4K Earth views from cameras aboard the ISS at sen.com."},
+  {name:"D-Orbit UK",                         loc:"Oxford",            sector:"innovation",   badge:"#a78bfa", desc:"Satellite transportation, in-orbit servicing and hosted payload missions for the growing new-space market."},
+  {name:"Goonhilly Earth Station",            loc:"Cornwall",          sector:"broadband",    badge:"#818cf8", desc:"Deep space communications facility. Tracking Moon and Mars missions, and operating as a commercial ground station."},
+];
+
+var _coFilter = 'all';
+
+function _renderCompanies() {
+  var el = document.getElementById('companies-card');
+  var shown = _coFilter === 'all' ? _UK_COMPANIES : _UK_COMPANIES.filter(function(c){return c.sector===_coFilter;});
+  if (!shown.length) { el.innerHTML = '<div class="loading">None in this sector</div>'; return; }
+  var html = '';
+  shown.forEach(function(c) {
+    html +=
+      '<div class="company-item">'+
+        '<div class="company-name">'+
+          '<span class="sector-badge" style="background:'+c.badge+'22;color:'+c.badge+';border:1px solid '+c.badge+'44">'+c.sector+'</span>'+
+          _esc(c.name)+
+        '</div>'+
+        '<div class="company-loc">📍 '+_esc(c.loc)+'</div>'+
+        '<div class="company-desc">'+_esc(c.desc)+'</div>'+
+      '</div>';
+  });
+  el.innerHTML = html;
+}
+
+(function() {
+  var filters = [
+    {key:'all',       label:'All'},
+    {key:'satellites',label:'Satellites'},
+    {key:'launch',    label:'Launch'},
+    {key:'broadband', label:'Broadband'},
+    {key:'propulsion',label:'Propulsion'},
+    {key:'data',      label:'Data'},
+    {key:'innovation',label:'Innovation'},
+    {key:'defence',   label:'Defence'},
+  ];
+  var fEl = document.getElementById('co-filters');
+  var html = '';
+  filters.forEach(function(f) {
+    html += '<button class="company-filter-btn'+(f.key==='all'?' active':'')+'" onclick="_coTab(\''+f.key+'\')">'+f.label+'</button>';
+  });
+  fEl.innerHTML = html;
+  _renderCompanies();
+})();
+
+function _coTab(key) {
+  _coFilter = key;
+  document.querySelectorAll('.company-filter-btn').forEach(function(b){
+    b.classList.toggle('active', b.textContent.toLowerCase() === key || (key==='all' && b.textContent==='All'));
+  });
+  _renderCompanies();
+}
 
 // ── Util ─────────────────────────────────────────────────────────────────────
 function _esc(s) {
