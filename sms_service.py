@@ -4143,10 +4143,13 @@ def api_myarea_details_post():
         sb = lib._sb()
         if rec_id:
             rows = sb.table("ma_details").update(rec).eq("id", rec_id).eq("device_id", did).execute().data
-            return jsonify(rows[0] if rows else {})
+            saved = rows[0] if rows else {}
         else:
-            row = sb.table("ma_details").insert(rec).execute().data[0]
-            return jsonify(row)
+            saved = sb.table("ma_details").insert(rec).execute().data[0]
+        # Keep provider_hints in sync so future Gmail scans include this provider
+        import threading as _t
+        _t.Thread(target=_ma_gmail_sync_hints_from_details, args=(did,), daemon=True).start()
+        return jsonify(saved)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -9634,10 +9637,14 @@ def ma_gmail_callback():
                 pass
     except Exception as e:
         print(f"[ma gmail] db upsert error: {e}")
+    # Sync any already-saved providers into hints before first scan
+    did_for_details = from_number or device_id
+    initial_hints = _ma_gmail_sync_hints_from_details(did_for_details)
     import threading
     threading.Thread(
         target=_ma_gmail_scan_bg,
         args=(device_id, access_token, refresh_token, from_number),
+        kwargs={"provider_hints": initial_hints or None},
         daemon=True,
     ).start()
     return redirect("/?gmail_scan=1#myarea")
@@ -9896,6 +9903,53 @@ def _ma_gmail_clean_account(value: str) -> str:
     if v.startswith("http") or v.startswith("//"):
         return ""
     return v
+
+
+def _ma_gmail_sync_hints_from_details(did: str) -> list:
+    """Pull provider names from ma_details and merge into ma_gmail_tokens.provider_hints.
+    Returns the merged list. `did` is the device_id (or from_number) used for ma_details."""
+    try:
+        sb = lib._sb()
+        # Fetch all saved accounts for this user
+        rows = sb.table("ma_details").select("data").eq("device_id", did).execute().data or []
+        saved_providers = []
+        for r in rows:
+            d = r.get("data") or {}
+            name = (d.get("Provider") or d.get("Council") or "").strip()
+            if name and len(name) > 1:
+                saved_providers.append(name)
+
+        if not saved_providers:
+            return []
+
+        # Find existing hints in ma_gmail_tokens (try device_id, fallback from_number)
+        token_rows = sb.table("ma_gmail_tokens").select("device_id,provider_hints") \
+            .eq("device_id", did).execute().data
+        if not token_rows:
+            # did might be a from_number — try that column
+            token_rows = sb.table("ma_gmail_tokens").select("device_id,provider_hints") \
+                .eq("from_number", did).execute().data
+        if not token_rows:
+            return saved_providers  # no token row yet — nothing to update
+
+        token_device_id = token_rows[0]["device_id"]
+        existing = token_rows[0].get("provider_hints") or []
+        existing_lower = {h.lower() for h in existing}
+        # Add any saved provider not already in hints (case-insensitive)
+        merged = list(existing)
+        for p in saved_providers:
+            if p.lower() not in existing_lower:
+                merged.append(p)
+                existing_lower.add(p.lower())
+        merged = merged[:30]  # cap at 30
+
+        sb.table("ma_gmail_tokens").update({"provider_hints": merged}) \
+            .eq("device_id", token_device_id).execute()
+        print(f"[ma gmail hints] synced {len(saved_providers)} saved providers → {len(merged)} total hints for device={token_device_id!r}")
+        return merged
+    except Exception as e:
+        print(f"[ma gmail hints] sync error: {e}")
+        return []
 
 
 def _hint_to_query(provider: str) -> str:
@@ -10161,8 +10215,10 @@ def ma_gmail_rescan():
         lib._sb().table("ma_gmail_tokens").update({"scan_status": "scanning"}) \
             .eq("device_id", row_device_id).execute()
         at = _ma_gmail_get_token(row)
-        hints = row.get("provider_hints") or []
         phone = from_number or row.get("from_number", "")
+        # Merge saved providers from ma_details into hints so all known accounts are re-searched
+        did_for_details = phone or row_device_id
+        hints = _ma_gmail_sync_hints_from_details(did_for_details) or (row.get("provider_hints") or [])
         _did = row_device_id
         def _scan_safe():
             try:
