@@ -12640,7 +12640,7 @@ window.spotifyAddTrack = window.spotifyLike;
   <div style="padding-top:8px">
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--subtle);margin-bottom:10px">What is Miru?</div>
     <div style="font-size:26px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.15;margin-bottom:6px">Your everyday<br>UK toolkit.</div>
-    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:28px">Free tools for real life — no account needed.</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:28px">Free tools for real life — just add your postcode to get started.</div>
 
     <!-- Feature points -->
     <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:28px">
@@ -12699,9 +12699,30 @@ window.spotifyAddTrack = window.spotifyLike;
       </div>
     </div>
 
-    <button onclick="closeMiruStory()"
+    <!-- Quick setup -->
+    <div style="background:var(--bg);border-radius:16px;padding:16px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">⚡ Quick setup — takes 10 seconds</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;flex-shrink:0">📍</span>
+          <input id="story-postcode-input" type="text" placeholder="Your postcode (e.g. KT15 3RL)"
+            style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--surface);color:var(--text);outline:none;font-family:inherit"
+            oninput="this.value=this.value.toUpperCase()" maxlength="8">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;flex-shrink:0">📱</span>
+          <input id="story-phone-input" type="tel" placeholder="Mobile number (optional)"
+            style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--surface);color:var(--text);outline:none;font-family:inherit">
+        </div>
+      </div>
+    </div>
+
+    <button onclick="_storySetup()"
       style="width:100%;padding:15px;border-radius:16px;border:none;background:var(--text);color:var(--bg);font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:-0.2px">
-      Got it, let's go →
+      Get started →
+    </button>
+    <button onclick="closeMiruStory()" style="width:100%;margin-top:8px;padding:10px;border-radius:16px;border:none;background:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit">
+      Skip for now
     </button>
   </div>
 </div>
@@ -12723,6 +12744,29 @@ window.spotifyAddTrack = window.spotifyLike;
       document.getElementById('miru-story-backdrop').style.display = 'none';
     }, 350);
     localStorage.setItem('miru-story-seen', '1');
+  }
+  function _storySetup() {
+    var pc    = (document.getElementById('story-postcode-input').value || '').trim().replace(/\s+/g,'').toUpperCase();
+    var phone = (document.getElementById('story-phone-input').value || '').trim().replace(/[\s\-()]/g,'');
+    // Save postcode to identity bar / localStorage
+    if (pc) {
+      localStorage.setItem('miru_postcode', pc);
+      var lbl = document.getElementById('id-postcode-label');
+      if (lbl) lbl.textContent = pc;
+      // Also pre-fill My Area
+      if (window._miruPostcode) { /* identity bar handles this */ }
+    }
+    // Save phone
+    if (phone) {
+      localStorage.setItem('miru_phone', phone);
+      var plbl = document.getElementById('id-phone-label');
+      if (plbl) plbl.textContent = phone;
+    }
+    closeMiruStory();
+    // If postcode saved, immediately open My Area
+    if (pc && window.showScreen) {
+      setTimeout(function() { showScreen('myarea'); }, 400);
+    }
   }
   // Auto-show once for first-time visitors
   if (!localStorage.getItem('miru-story-seen')) {
