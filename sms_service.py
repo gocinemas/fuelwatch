@@ -8106,7 +8106,16 @@ def _wa_train_format(from_name: str, to_name: str = "") -> str:
 
         crs, stn_display = _find_crs(from_lower)
         if not crs:
-            return None  # not a train query — let it fall through
+            # Station not in National Rail — try TfL journey planner directly
+            if to_lower:
+                tube_reply = get_tube_journey(from_name, to_name)
+                if tube_reply and "Couldn't find" not in tube_reply:
+                    return tube_reply
+            # Try TfL arrivals at nearest matching tube station
+            tube_reply = get_tube_journey(from_name, to_name) if to_lower else None
+            if tube_reply and "Couldn't find" not in tube_reply:
+                return tube_reply
+            return None  # genuinely unknown — let it fall through
 
         to_crs, to_display = _find_crs(to_lower) if to_lower else (None, None)
 
@@ -8344,15 +8353,15 @@ _HELP_MSG = (
     "  KT15 petrol\n"
     "  diesel prices GU25\n"
     "\n"
-    "🚆 *Train*\n"
+    "🚆🚇 *Train & Tube Services*\n"
     "  next train Woking to Waterloo\n"
-    "  trains from Addlestone\n"
+    "  trains from Blackfriars\n"
+    "  next train Blackfriars to Ealing Broadway\n"
+    "  _(works for National Rail + Elizabeth line + Tube)_\n"
     "\n"
-    "🚇 *Tube*\n"
-    "  tube  _(nearest station arrivals)_\n"
-    "  tube status  _(all lines)_\n"
+    "  tube  _(nearest station live arrivals)_\n"
+    "  tube status  _(all line disruptions)_\n"
     "  tube victoria\n"
-    "  tube Kings Cross to Waterloo\n"
     "\n"
     "🏡 *My Area*\n"
     "  places KT15 3RL\n"
@@ -8386,8 +8395,8 @@ _WELCOME_MSG = (
     "I'm your UK life assistant — no app needed, just WhatsApp.\n"
     "\n"
     "*Try these to get started:*\n"
-    "🚆  next train Woking to Waterloo\n"
-    "🚇  tube status\n"
+    "🚆🚇  next train Blackfriars to Ealing Broadway\n"
+    "       _(National Rail, Elizabeth line & Tube all work)_\n"
     "⛽  KT15 petrol\n"
     "🏡  places KT15 3RL\n"
     "🔖  send any link to save it\n"
