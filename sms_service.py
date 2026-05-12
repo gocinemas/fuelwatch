@@ -8139,30 +8139,30 @@ _FOOD_CHAINS = frozenset({
 
 _FOOD_INTENTS = [
     (re.compile(r'\b(coffee|cafe|café|flat white|cappuccino|espresso|latte)\b', re.I),
-     {"type": "cafe", "emoji": "☕", "label": "coffee",
+     {"type": "cafe", "keyword": "coffee", "emoji": "☕", "label": "coffee",
       "keywords": ["flat white", "espresso", "coffee", "latte", "cappuccino",
                    "specialty", "barista", "oat milk", "roast", "brew"]}),
     (re.compile(r'\b(breakfast|brunch)\b', re.I),
-     {"type": "cafe", "emoji": "🍳", "label": "breakfast",
+     {"type": "cafe", "keyword": "breakfast", "emoji": "🍳", "label": "breakfast",
       "keywords": ["breakfast", "brunch", "eggs", "full english", "bacon",
                    "avocado", "pancake", "toast", "granola"]}),
     (re.compile(r'\b(sandwich|sarnie)\b', re.I),
-     {"type": "restaurant", "emoji": "🥪", "label": "sandwiches",
+     {"type": "restaurant", "keyword": "sandwich deli", "emoji": "🥪", "label": "sandwiches",
       "keywords": ["sandwich", "sourdough", "ciabatta", "deli", "filling",
                    "fresh", "toastie", "baguette"]}),
     (re.compile(r'\b(lunch|what.{0,25}(eat|have).{0,10}lunch)\b', re.I),
-     {"type": "restaurant", "emoji": "🥗", "label": "lunch",
+     {"type": "restaurant", "keyword": "", "emoji": "🥗", "label": "lunch",
       "keywords": ["lunch", "food", "tasty", "fresh", "menu", "portion",
                    "meal", "delicious"]}),
     (re.compile(r'\b(pizza)\b', re.I),
-     {"type": "restaurant", "emoji": "🍕", "label": "pizza",
+     {"type": "restaurant", "keyword": "pizza", "emoji": "🍕", "label": "pizza",
       "keywords": ["pizza", "dough", "crust", "toppings", "wood fired", "thin"]}),
     (re.compile(r'\b(dinner|supper)\b', re.I),
-     {"type": "restaurant", "emoji": "🍽️", "label": "dinner",
+     {"type": "restaurant", "keyword": "", "emoji": "🍽️", "label": "dinner",
       "keywords": ["dinner", "atmosphere", "service", "menu", "delicious",
                    "romantic", "cosy"]}),
     (re.compile(r'\b(beer|pint|pub|ale|lager)\b', re.I),
-     {"type": "bar", "emoji": "🍺", "label": "a pub",
+     {"type": "bar", "keyword": "pub beer", "emoji": "🍺", "label": "a pub",
       "keywords": ["beer", "pint", "ale", "lager", "craft", "cheap", "atmosphere",
                    "garden", "friendly", "tap", "cask"]}),
 ]
@@ -8171,15 +8171,19 @@ _PRICE_LEVEL = {1: "£", 2: "££", 3: "£££", 4: "££££"}
 
 
 def _find_food_nearby(lat: float, lon: float, place_type: str,
-                      radius: int = 1000, cheap: bool = False) -> list:
+                      radius: int = 1500, cheap: bool = False,
+                      keyword: str = "") -> list:
     key = os.environ.get("GOOGLE_PLACES_KEY", "")
     if not key:
         return []
     try:
+        params = {"location": f"{lat},{lon}", "radius": radius,
+                  "type": place_type, "key": key}
+        if keyword:
+            params["keyword"] = keyword
         r = requests.get(
             "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
-            params={"location": f"{lat},{lon}", "radius": radius,
-                    "type": place_type, "key": key},
+            params=params,
             timeout=10,
         )
         items = []
@@ -8259,7 +8263,8 @@ def _places_review_snippet(place_id: str, keywords: list) -> str:
 
 def _wa_food_find(body: str, from_number: str):
     """Return WhatsApp-formatted food/drink picks, or None if not a food query."""
-    body_lower = body.lower()
+    # Normalise typos: collapse 3+ repeated letters (coffeee→coffee, beeer→beer)
+    body_lower = re.sub(r'(.)\1{2,}', r'\1\1', body.lower())
 
     intent = None
     for pattern, info in _FOOD_INTENTS:
@@ -8312,7 +8317,8 @@ def _wa_food_find(body: str, from_number: str):
                 f"Or save your home postcode on miru.humanagency.co and just send *{intent['label']}*")
 
     wants_cheap = bool(re.search(r'\bcheap\b', body_lower))
-    places = _find_food_nearby(lat, lon, intent["type"], cheap=wants_cheap)
+    places = _find_food_nearby(lat, lon, intent["type"],
+                               cheap=wants_cheap, keyword=intent.get("keyword", ""))
     if not places:
         return f"No {intent['label']} spots found near {pc_fmt}. Sorry!"
 
@@ -8330,6 +8336,14 @@ def _wa_food_find(body: str, from_number: str):
         second = places[1]
 
     # Fetch review snippets in parallel (max 4s total)
+    # Only show snippet if the place name itself suggests it fits the category
+    _cat_words = intent.get("keyword", "").lower().split()
+    def _is_relevant(p):
+        if not _cat_words:
+            return True
+        name_l = p["name"].lower()
+        return any(w in name_l for w in _cat_words)
+
     picks = [p for p in [top, second] if p]
     if keywords and picks:
         with ThreadPoolExecutor(max_workers=2) as exe:
@@ -8338,7 +8352,9 @@ def _wa_food_find(body: str, from_number: str):
             for fut in futs:
                 i = futs[fut]
                 try:
-                    picks[i]["snippet"] = fut.result(timeout=4)
+                    snippet = fut.result(timeout=4)
+                    # Suppress snippet if place seems off-category (e.g. restaurant in coffee results)
+                    picks[i]["snippet"] = snippet if _is_relevant(picks[i]) else ""
                 except Exception:
                     picks[i]["snippet"] = ""
 
