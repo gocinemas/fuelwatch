@@ -895,6 +895,10 @@ def handle_wa_school(from_number: str, text: str) -> str:
         all_events = dated + undated
         return sorted(all_events, key=lambda e: (e.get("event_date") or "9999", e.get("event_title") or ""))
 
+    if cmd in ("school news", "school today", "school update", "school updates") or cmd.startswith("school news"):
+        events = _events_for(None, days_ahead=14, days_back=7)
+        return format_digest(events, title="School updates")
+
     if cmd.startswith("school week"):
         extra = cmd[len("school week"):].split()
         pid, child = _resolve_child(extra)

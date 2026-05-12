@@ -329,6 +329,18 @@
     </div>
   </header>
 
+  <!-- Global phone setup bar — shown once until number is saved -->
+  <div id="global-phone-bar" style="display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:8px 16px">
+    <div class="max-w-xl mx-auto" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap">📱 Your WhatsApp number</span>
+      <input id="global-phone-input" type="tel" placeholder="+44 7911 123456"
+        style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:13px;background:var(--bg);color:var(--text);outline:none"
+        onkeydown="if(event.key==='Enter') _globalPhoneSave()">
+      <button onclick="_globalPhoneSave()" style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">Save</button>
+      <button onclick="_globalPhoneBarDismiss()" style="flex-shrink:0;background:none;border:none;font-size:15px;color:var(--muted);cursor:pointer;padding:0 4px" title="Dismiss">✕</button>
+    </div>
+  </div>
+
   <div class="max-w-xl mx-auto px-4 main-content">
 
     <!-- ── HOME SCREEN ── -->
@@ -1564,6 +1576,21 @@
           <button id="ma-test-data-btn" onclick="_maLoadTestData()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer" title="Load sample data for testing">🧪</button>
         </div>
         <input id="ma-pdf-input" type="file" accept=".pdf,application/pdf" style="display:none" onchange="_maPdfSelected(this)">
+
+        <!-- School comms card -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-top:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:9px">
+              <span style="font-size:18px">🏫</span>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--text)">School Comms</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">Events, newsletters &amp; term dates from school emails</div>
+              </div>
+            </div>
+            <button onclick="_maOpenSchoolSettings()" style="font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:8px 14px;cursor:pointer;flex-shrink:0">Setup →</button>
+          </div>
+          <div id="ma-school-status" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
+        </div>
 
       </div><!-- /matab-accounts -->
     </div>
@@ -2825,6 +2852,31 @@ const _ts = new Date(d.timestamp);
     return localStorage.getItem("miru_phone") || "";
   }
 
+  // Global phone bar — show once if number not saved and not permanently dismissed
+  function _globalPhoneBarInit() {
+    const bar = document.getElementById("global-phone-bar");
+    if (!bar) return;
+    if (_miruPhone()) { bar.style.display = "none"; return; }
+    if (localStorage.getItem("miru_phone_bar_dismissed") === "1") { bar.style.display = "none"; return; }
+    bar.style.display = "";
+  }
+  function _globalPhoneSave() {
+    const inp = document.getElementById("global-phone-input");
+    if (!inp) return;
+    let phone = (inp.value || "").trim().replace(/[\s\-\(\)]/g, "");
+    if (/^07\d{9}$/.test(phone)) phone = "+44" + phone.slice(1);
+    if (!/^\+\d{7,15}$/.test(phone)) { inp.style.borderColor = "#ef4444"; return; }
+    inp.style.borderColor = "";
+    localStorage.setItem("miru_phone", phone);
+    document.getElementById("global-phone-bar").style.display = "none";
+    _maShowLinkedPhone();
+    _maLoadSavedPlaces && _maLoadSavedPlaces();
+  }
+  function _globalPhoneBarDismiss() {
+    localStorage.setItem("miru_phone_bar_dismissed", "1");
+    document.getElementById("global-phone-bar").style.display = "none";
+  }
+
   function _maShowLinkedPhone() {
     const phone = _miruPhone();
     const el = document.getElementById("myarea-linked-phone");
@@ -2994,6 +3046,7 @@ const _ts = new Date(d.timestamp);
       svcSkel.style.display = "none";
     }
     localStorage.setItem("miru_ma_tab", tab);
+    if (tab === "accounts") _maSchoolStatusLoad();
   }
 
   function _maSectionHtml(id, title, bodyHtml) {
@@ -4297,6 +4350,30 @@ const _ts = new Date(d.timestamp);
     _myAreaPersonalRender();
   }
 
+  function _maOpenSchoolSettings() {
+    const phone = _miruPhone();
+    const wa = phone ? phone.replace(/^\+/, "") : "";
+    const url = wa ? `/school/settings?wa=${encodeURIComponent(wa)}` : "/school/signup";
+    window.location.href = url;
+  }
+
+  async function _maSchoolStatusLoad() {
+    const phone = _miruPhone();
+    const el = document.getElementById("ma-school-status");
+    if (!el || !phone) return;
+    try {
+      const wa = phone.replace(/^whatsapp:/, "");
+      const r  = await fetch(`/api/school/settings?wa=${encodeURIComponent(wa)}`);
+      const d  = await r.json();
+      const profiles = d.profiles || [];
+      if (!profiles.length) {
+        el.innerHTML = `No schools set up yet. <button onclick="_maOpenSchoolSettings()" style="background:none;border:none;color:#2563eb;font-size:11px;cursor:pointer;text-decoration:underline;padding:0">Add a school</button>`;
+      } else {
+        el.textContent = profiles.map(p => `${p.school_name}${p.child_name ? " ("+p.child_name+")" : ""}`).join(" · ");
+      }
+    } catch {}
+  }
+
   async function _maLoadTestData() {
     const today = new Date();
     const dateIn = days => { const d = new Date(today); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); };
@@ -4378,6 +4455,7 @@ const _ts = new Date(d.timestamp);
     _maLoadSavedPlaces();
     _maLoadVehicles();
     _myAreaRefreshHomeRow();
+    _maSchoolStatusLoad();
     const home = MiruLocation.getHome();
     const inputEl = document.getElementById("myarea-postcode-input");
 
@@ -7799,6 +7877,13 @@ const _ts = new Date(d.timestamp);
     libOpenDoc("{{ prefill_doc }}");
   });
   {% endif %}
+
+  // ── Global phone bar init ────────────────────────────────────────────────────
+  if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", _globalPhoneBarInit);
+  } else {
+    _globalPhoneBarInit();
+  }
 
   // ── Gmail My Details init ────────────────────────────────────────────────────
   if (document.readyState === "loading") {

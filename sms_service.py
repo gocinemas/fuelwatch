@@ -8061,17 +8061,17 @@ _HELP_MSG = (
     "\n"
     "🏫 *Schools*\n"
     "  school news\n"
-    "  what time does school finish Friday\n"
+    "  school week\n"
+    "  school setup\n"
     "\n"
     "🏡 *My Area*\n"
     "  places KT15 3RL\n"
-    "  GP near me\n"
+    "  GP near KT15\n"
     "  pubs near GU25\n"
     "\n"
     "📚 *Books*\n"
     "  book The Alchemist\n"
     "  my books\n"
-    "  books I want to read\n"
     "  (or send a barcode photo)\n"
     "\n"
     "🔖 *Save for Later*\n"
@@ -8623,6 +8623,75 @@ def whatsapp_reply():
             resp.message("\n".join(lines))
         return str(resp)
 
+    # ── MY BOOKS command ─────────────────────────────────────────────────────
+    _MY_BOOKS_TRIGGERS = {
+        "my books", "books", "my reading list", "reading list",
+        "books i want to read", "my wishlist", "book list",
+        "show my books", "list my books",
+    }
+    if body_lower in _MY_BOOKS_TRIGGERS or body_lower.startswith("my books") or body_lower.startswith("books i "):
+        plain_number = from_number.replace("whatsapp:", "").strip()
+        wa_number    = f"whatsapp:{plain_number}"
+        try:
+            rows = (lib._sb().table("wa_saves")
+                    .select("title,url,status,created_at")
+                    .in_("from_number", [from_number, plain_number, wa_number])
+                    .like("url", "book:%")
+                    .order("created_at", desc=True).limit(12).execute().data)
+        except Exception:
+            rows = []
+        if not rows:
+            user_token = _wa_user_token(from_number)
+            resp.message(
+                "📚 No books saved yet.\n\n"
+                "• Send *book The Midnight Library* to add one\n"
+                "• Or scan a barcode: miru.humanagency.co"
+            )
+        else:
+            status_map = {"wishlist": "📌 want", "reading": "📖 reading", "read": "✅ read"}
+            lines = [f"📚 Your books ({len(rows)}):"]
+            for r in rows[:10]:
+                title = (r.get("title") or r.get("url","")).replace("📚 ","")[:50]
+                st = status_map.get(r.get("status",""), "")
+                lines.append(f"\n{'📚' if not st else st.split()[0]} *{title}*" + (f"  _{st.split(None,1)[-1] if st else ''}_" if st and " " in st else ""))
+            if len(rows) > 10:
+                lines.append(f"\n…+{len(rows)-10} more. See all: miru.humanagency.co")
+            resp.message("\n".join(lines))
+        return str(resp)
+
+    # ── PRICE CHECK / COMPARE — strip prefix so "price olive oil" works ──────
+    _PRICE_PREFIX_RE = re.compile(
+        r'^(?:price\s+|compare\s+prices?\s+|compare\s+|price\s+check\s+|check\s+price\s+(?:of\s+)?|how\s+much\s+is\s+)', re.I
+    )
+    _price_match = _PRICE_PREFIX_RE.match(body_lower.strip())
+    if _price_match:
+        product_q = body_lower[_price_match.end():].strip()
+        if product_q:
+            reply = whatsapp_product_format(product_q)
+            resp.message(reply)
+            return str(resp)
+
+    # ── Natural-language school queries ──────────────────────────────────────
+    _SCHOOL_NL_RE = re.compile(
+        r'\b(?:school|class|teacher|term|half[\s-]?term|assembly|parents[\'']?\s*evening|'
+        r'sports\s*day|nativity|play\s*rehearsal|inset\s*day|'
+        r'what\s+time\s+does\s+(school|class)\s+(start|finish|end|open|close)|'
+        r'when\s+does\s+school|school\s+times|school\s+hours|school\s+run|'
+        r'school\s+event|school\s+news|school\s+week|what\'s\s+on\s+at\s+school)\b',
+        re.I
+    )
+    if _SCHOOL_NL_RE.search(body) and from_number not in school_service._SETUP_STATE:
+        try:
+            # Route natural language school queries to school_service
+            # Normalise: if it doesn't start with "school", prepend it so handle_wa_school can route it
+            _school_body = body if body_lower.startswith("school") else "school week " + body
+            reply = school_service.handle_wa_school(from_number, _school_body)
+        except Exception as _e:
+            reply = ""
+        if reply:
+            resp.message(reply)
+            return str(resp)
+
     # ── School comms ──────────────────────────────────────────────────────────
     if body_lower.startswith("school") or from_number in school_service._SETUP_STATE:
         try:
@@ -8650,6 +8719,18 @@ def whatsapp_reply():
             service_filter = re.sub(
                 r'\b(?:places|services|local|near|nearby|around)\b', '', service_filter, flags=re.I
             ).strip()
+        elif re.search(r'\bme\b|\bmy\s+area\b|\bmy\s+postcode\b', body_lower):
+            # "GP near me" — needs a postcode; ask the user
+            service_filter = re.sub(
+                r'\b(?:places|services|local|near|nearby|around|me|my\s+area|my\s+postcode)\b', '', body, flags=re.I
+            ).strip()
+            label = service_filter if service_filter else "local services"
+            resp.message(
+                f"📍 To find {label} near you, include your postcode:\n\n"
+                f"  *{label} KT15 3RL*\n\n"
+                f"Or set your home area at miru.humanagency.co"
+            )
+            return str(resp)
         else:
             places_q = re.sub(
                 r'\b(?:places|services|local|near|nearby|around)\b', '', body, flags=re.I
