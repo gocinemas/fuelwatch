@@ -1214,13 +1214,20 @@ def api_house():
 
 @app.route("/api/local")
 def api_local():
-    """Slower endpoint: schools, pubs, cafes from Overpass + Google Places phone enrichment."""
+    """Slower endpoint: schools (Google Places), pubs, cafes from Overpass + Google Places phone enrichment."""
     result = _resolve_postcode(request.args.get("postcode", ""))
     if not result:
         return jsonify({"error": "Postcode not found."}), 404
     postcode, lat, lon, pc_fmt = result
     analytics.log_search("area", postcode, request.remote_addr, request.user_agent.string)
-    local = fetch_local_amenities(lat, lon, 5.0, 5.0)
+
+    # Schools via Google Places (more complete than OSM); pubs/cafes still from Overpass
+    from concurrent.futures import ThreadPoolExecutor as _TPE
+    with _TPE(max_workers=2) as ex:
+        schools_f = ex.submit(fetch_nearby_schools, lat, lon, 5.0)
+        local_f   = ex.submit(fetch_local_amenities, lat, lon, 5.0, 5.0)
+    schools_data = schools_f.result()
+    local        = local_f.result()
 
     # Fill missing phone numbers from Google Places for top pubs and cafes
     pubs  = local.get("pubs",  [])[:5]
@@ -1231,7 +1238,7 @@ def api_local():
                 return entry
             d = _lookup_venue(entry["name"], entry.get("lat"), entry.get("lon"))
             if d.get("phone"):
-                entry = dict(entry)   # don't mutate cached Overpass data
+                entry = dict(entry)
                 entry["phone"] = d["phone"]
             return entry
         try:
@@ -1244,7 +1251,7 @@ def api_local():
             pass
 
     return jsonify({
-        "schools": {"schools": local.get("schools", []), "universities": local.get("universities", [])},
+        "schools": schools_data,
         "pubs":    pubs,
         "cafes":   cafes,
     })
