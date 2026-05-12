@@ -101,6 +101,39 @@
   }
   .btn-amber:hover { background: #d97706; }
 
+  .btn-google {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 13px 18px;
+    background: #fff;
+    color: #374151;
+    border: 1.5px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+    text-decoration: none;
+  }
+  .btn-google:hover { border-color: #9ca3af; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+  .btn-google svg { flex-shrink: 0; }
+
+  .gmail-connected-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #d1fae5;
+    color: #065f46;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 20px;
+  }
+
   .error-msg {
     background: #fee2e2;
     color: #991b1b;
@@ -206,6 +239,41 @@
   }
   .profile-edit-btn:hover { background: #e5e7eb; }
 
+  /* Events */
+  .event-item {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 12px 0;
+  }
+  .event-item:last-child { border-bottom: none; }
+  .event-header { display: flex; align-items: flex-start; gap: 10px; }
+  .event-date-badge {
+    flex-shrink: 0;
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    white-space: nowrap;
+  }
+  .event-date-badge.soon { background: #fef3c7; color: #92400e; }
+  .event-date-badge.past { background: #f3f4f6; color: #9ca3af; }
+  .event-title { font-size: 14px; font-weight: 600; color: #1a1a2e; flex: 1; }
+  .event-desc { font-size: 13px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+  .event-action { font-size: 12px; color: #d97706; font-weight: 600; margin-top: 4px; }
+  .event-delete-btn {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: #d1d5db;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .event-delete-btn:hover { color: #ef4444; }
+  .events-loading { font-size: 13px; color: #9ca3af; padding: 12px 0; text-align: center; }
+
   /* Screens */
   #screen-lookup  { }
   #screen-profile { display: none; }
@@ -239,7 +307,24 @@
 
   <!-- Step 2: profile + email management -->
   <div id="screen-profile">
+
+    <!-- Gmail connection status -->
+    <div id="gmail-section"></div>
+
+    <!-- Profile + email cards -->
     <div id="profile-list"></div>
+
+    <!-- Events review -->
+    <div class="card" id="events-card" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="section-title" style="margin:0">School events found</div>
+        <button onclick="loadEvents()" style="border:none;background:none;font-size:12px;color:#9ca3af;cursor:pointer;padding:0">Refresh</button>
+      </div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:14px;line-height:1.5">
+        Events Miru parsed from school emails. Tap ✕ to remove any that are wrong.
+      </p>
+      <div id="events-list"><div class="events-loading">Loading…</div></div>
+    </div>
 
     <!-- Fetch now -->
     <div class="card" style="text-align:center">
@@ -257,7 +342,7 @@
 </div>
 
 <script>
-let _profiles = [];   // [{id, child_name, school_name, class_name, teacher_name, sender_emails}, ...]
+let _profiles = [];
 let _waNumber = null;
 
 function _normaliseWa(raw) {
@@ -290,15 +375,53 @@ async function lookupProfile() {
     }
     _waNumber  = wa;
     _profiles  = d.profiles;
+    renderGmailSection();
     renderAllProfiles();
     document.getElementById("screen-lookup").style.display  = "none";
     document.getElementById("screen-profile").style.display = "block";
+    loadEvents();
   } catch(e) {
     document.getElementById("lookup-error").style.display = "block";
     document.getElementById("lookup-error").textContent = "Network error — please try again.";
     btn.disabled = false;
     btn.textContent = "Find my account";
   }
+}
+
+function renderGmailSection() {
+  const el = document.getElementById("gmail-section");
+  const notConnected = _profiles.filter(p => !p.gmail_connected);
+  const allConnected = notConnected.length === 0;
+
+  if (allConnected) {
+    el.innerHTML = `
+      <div class="card" style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:22px">📬</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px">Gmail connected</div>
+          <div style="font-size:13px;color:#6b7280">Miru is scanning your inbox for school emails.</div>
+        </div>
+        <span class="gmail-connected-badge" style="margin-left:auto">✓ Connected</span>
+      </div>`;
+    return;
+  }
+
+  const buttons = notConnected.map(p => {
+    const label = _profiles.length > 1 && p.child_name ? ` for ${p.child_name}` : "";
+    return `<a href="${_esc(p.oauth_url)}" class="btn-google" style="margin-bottom:8px">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.48A4.8 4.8 0 0 1 4.5 7.5V5.43H1.83a8 8 0 0 0 0 7.14l2.67-2.09z"/><path fill="#EA4335" d="M8.98 3.58c1.32 0 2.5.45 3.44 1.35l2.54-2.54A8 8 0 0 0 1.83 5.43L4.5 7.5a4.77 4.77 0 0 1 4.48-3.92z"/></svg>
+      Connect Gmail${label}
+    </a>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="card" style="border-color:#fbbf24;background:#fffbeb">
+      <div class="section-title" style="color:#92400e;margin-bottom:10px">Gmail not connected</div>
+      <p style="font-size:13px;color:#78350f;margin-bottom:16px;line-height:1.6">
+        Miru needs access to your Gmail to scan for school emails. Connect below — Miru only reads emails from the school addresses you've added.
+      </p>
+      ${buttons}
+    </div>`;
 }
 
 function renderAllProfiles() {
@@ -359,6 +482,9 @@ function _profileCard(p, pi) {
 }
 
 function _esc(s) { return (s || "").replace(/"/g, "&quot;"); }
+function _escHtml(s) {
+  return (s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
 
 function startEdit(pi) {
   document.getElementById("profile-view-" + pi).style.display = "none";
@@ -393,7 +519,6 @@ async function saveProfile(pi) {
     _profiles[pi].class_name   = class_name;
     _profiles[pi].teacher_name = teacher_name;
     cancelEdit(pi);
-    // Refresh the view rows
     document.getElementById("profile-view-" + pi).innerHTML =
       [["Child", child_name], ["School", p.school_name], ["Class", class_name], ["Teacher", teacher_name]].map(([l,v]) =>
         `<div class="profile-row"><span class="profile-label">${l}</span><span class="profile-value">${v || "—"}</span></div>`
@@ -487,6 +612,87 @@ async function _saveEmails(pi, emails) {
   }
 }
 
+// ── Events ──────────────────────────────────────────────────────────────────
+
+async function loadEvents() {
+  if (!_waNumber) return;
+  const card = document.getElementById("events-card");
+  const listEl = document.getElementById("events-list");
+  card.style.display = "block";
+  listEl.innerHTML = '<div class="events-loading">Loading events…</div>';
+
+  try {
+    const r = await fetch("/api/school/events?days=60&back=30", {
+      headers: { "X-School-WA": _waNumber }
+    });
+    const d = await r.json();
+    if (!r.ok || !d.events) {
+      listEl.innerHTML = '<div class="events-loading">Could not load events.</div>';
+      return;
+    }
+    const events = d.events;
+    if (!events.length) {
+      listEl.innerHTML = '<div class="events-loading">No events found yet. Connect Gmail and tap "Fetch emails now" to scan your inbox.</div>';
+      return;
+    }
+    listEl.innerHTML = events.map(e => _eventHtml(e)).join("");
+  } catch(err) {
+    listEl.innerHTML = '<div class="events-loading">Network error loading events.</div>';
+  }
+}
+
+function _eventHtml(e) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  let dateBadge = "No date";
+  let badgeClass = "";
+  if (e.event_date) {
+    const dt = new Date(e.event_date + "T00:00:00");
+    const diffDays = Math.round((dt - today) / 86400000);
+    if (diffDays < 0)       badgeClass = "past";
+    else if (diffDays <= 7) badgeClass = "soon";
+    dateBadge = dt.toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short" });
+    if (diffDays === 0) dateBadge = "Today";
+    else if (diffDays === 1) dateBadge = "Tomorrow";
+  }
+  const desc = e.description ? `<div class="event-desc">${_escHtml(e.description)}</div>` : "";
+  const action = e.action_needed ? `<div class="event-action">⚡ ${_escHtml(e.action_needed)}</div>` : "";
+  return `
+    <div class="event-item" id="event-${e.id}">
+      <div class="event-header">
+        <span class="event-date-badge ${badgeClass}">${dateBadge}</span>
+        <span class="event-title">${_escHtml(e.event_title)}</span>
+        <button class="event-delete-btn" onclick="deleteEvent('${e.id}')" title="Remove this event">✕</button>
+      </div>
+      ${desc}${action}
+    </div>`;
+}
+
+async function deleteEvent(eventId) {
+  const el = document.getElementById("event-" + eventId);
+  if (el) el.style.opacity = "0.4";
+  try {
+    const r = await fetch("/api/school/events/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: eventId, wa: _waNumber })
+    });
+    if (r.ok) {
+      if (el) el.remove();
+      const listEl = document.getElementById("events-list");
+      if (listEl && !listEl.querySelector(".event-item")) {
+        listEl.innerHTML = '<div class="events-loading">No events yet.</div>';
+      }
+    } else {
+      if (el) el.style.opacity = "1";
+    }
+  } catch {
+    if (el) el.style.opacity = "1";
+  }
+}
+
+// ── Fetch now ────────────────────────────────────────────────────────────────
+
 async function fetchNow() {
   const btn = document.getElementById("fetch-btn");
   const res = document.getElementById("fetch-result");
@@ -500,10 +706,10 @@ async function fetchNow() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ wa: _waNumber })
     });
-    const d = await r.json();
     if (r.ok) {
       res.style.color = "#065f46";
-      res.textContent = "✅ Checking your inbox — any new events will arrive on WhatsApp shortly.";
+      res.textContent = "✅ Scanning inbox — new events will appear below in a few seconds.";
+      setTimeout(loadEvents, 4000);
     } else {
       res.style.color = "#991b1b";
       res.textContent = "Something went wrong — please try again.";
@@ -521,6 +727,28 @@ async function fetchNow() {
 document.getElementById("wa-input").addEventListener("keydown", e => {
   if (e.key === "Enter") lookupProfile();
 });
+
+// Auto-fill WA number from URL param or localStorage; auto-lookup on OAuth return
+(function() {
+  const params = new URLSearchParams(location.search);
+  const wa = params.get("wa") || localStorage.getItem("miru_phone") || "";
+  if (wa) {
+    document.getElementById("wa-input").value = wa;
+    if (params.get("oauth") === "success") {
+      // Just returned from Gmail OAuth — auto-lookup and show a success banner
+      lookupProfile().then(() => {
+        const sec = document.getElementById("gmail-section");
+        if (sec) {
+          const banner = document.createElement("div");
+          banner.style.cssText = "background:#d1fae5;color:#065f46;font-size:13px;font-weight:600;padding:10px 14px;border-radius:10px;margin-bottom:12px";
+          banner.textContent = "✅ Gmail connected! Scanning your inbox for school emails now…";
+          sec.prepend(banner);
+          setTimeout(() => banner.remove(), 6000);
+        }
+      });
+    }
+  }
+})();
 </script>
 </body>
 </html>

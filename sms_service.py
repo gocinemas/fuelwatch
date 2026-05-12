@@ -1776,17 +1776,20 @@ def school_settings_get():
                 break
         if not profiles:
             return _cors(jsonify({"error": "not found"})), 404
-        return _cors(jsonify({"profiles": [
-            {
-                "id":            p["id"],
-                "child_name":    p.get("child_name", ""),
-                "school_name":   p.get("school_name", ""),
-                "class_name":    p.get("class_name", ""),
-                "teacher_name":  p.get("teacher_name", ""),
-                "sender_emails": p.get("sender_emails") or [],
-            }
-            for p in profiles
-        ]}))
+        result = []
+        for p in profiles:
+            gmail_connected = bool(p.get("gmail_refresh_token"))
+            result.append({
+                "id":              p["id"],
+                "child_name":      p.get("child_name", ""),
+                "school_name":     p.get("school_name", ""),
+                "class_name":      p.get("class_name", ""),
+                "teacher_name":    p.get("teacher_name", ""),
+                "sender_emails":   p.get("sender_emails") or [],
+                "gmail_connected": gmail_connected,
+                "oauth_url":       _school_oauth_url(p["id"]) if not gmail_connected else None,
+            })
+        return _cors(jsonify({"profiles": result}))
     except Exception as e:
         return _cors(jsonify({"error": str(e)})), 500
 
@@ -1875,6 +1878,32 @@ def school_fetch_now():
             daemon=True,
         ).start()
         return _cors(jsonify({"ok": True, "started": True}))
+    except Exception as e:
+        return _cors(jsonify({"error": str(e)})), 500
+
+
+@app.route("/api/school/events/delete", methods=["POST", "OPTIONS"])
+def school_event_delete():
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+    try:
+        data     = request.get_json(force=True, silent=True) or {}
+        event_id = data.get("event_id", "").strip()
+        wa       = data.get("wa", "").strip()
+        if not event_id or not wa:
+            return _cors(jsonify({"error": "event_id and wa required"})), 400
+        wa = _normalise_from_number(wa)
+        # Verify the event belongs to this parent before deleting
+        ev = lib._sb().table("school_events").select("profile_id").eq("id", event_id).execute().data
+        if not ev:
+            return _cors(jsonify({"error": "event not found"})), 404
+        profile_id = ev[0]["profile_id"]
+        owns = lib._sb().table("school_profiles") \
+            .select("id").eq("id", profile_id).eq("from_number", wa).execute().data
+        if not owns:
+            return _cors(jsonify({"error": "not authorized"})), 403
+        lib._sb().table("school_events").delete().eq("id", event_id).execute()
+        return _cors(jsonify({"ok": True}))
     except Exception as e:
         return _cors(jsonify({"error": str(e)})), 500
 
@@ -10272,6 +10301,16 @@ def school_oauth_callback():
         daemon=True,
     ).start()
 
+    # Redirect back to settings page with the WA number pre-filled so the user sees their events
+    try:
+        import urllib.parse as _up
+        prof_row = lib._sb().table("school_profiles") \
+            .select("from_number").eq("id", profile_id).execute().data
+        wa_raw = (prof_row[0]["from_number"] if prof_row else "").replace("whatsapp:", "")
+        if wa_raw:
+            return redirect(f"/school/settings?wa={_up.quote(wa_raw)}&oauth=success")
+    except Exception:
+        pass
     return redirect("/?screen=school&oauth=success")
 
 
