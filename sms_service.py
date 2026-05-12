@@ -8600,6 +8600,48 @@ def whatsapp_reply():
             resp.message(f"Sorry, couldn't save the note: {_bne}")
         return str(resp)
 
+    # ── Fast save-filter matching (before Groq — catches "X saved last week" etc.) ──
+    _SAVE_FILTER_WORDS = {
+        "books": "books", "book": "books",
+        "wine": "wine", "wines": "wine",
+        "recipe": "recipes", "recipes": "recipes",
+        "menu": "menus", "menus": "menus",
+        "restaurant": "restaurants", "restaurants": "restaurants",
+        "video": "videos", "videos": "videos",
+        "product": "products", "products": "products",
+        "saves": "all", "links": "all",
+    }
+    _TIMEFRAME_WORDS = {
+        "today": "today", "yesterday": "yesterday",
+        "last week": "last_week", "this week": "last_week",
+        "last month": "last_month", "this month": "last_month",
+    }
+    # Trigger words that indicate "show me my saved items" context
+    _SAVES_CONTEXT = re.compile(
+        r'\b(saved|my saves?|show me|see my|list my|get my|find my|all my|i saved|i have saved)\b', re.I
+    )
+    _bl = body_lower.strip()
+    _sf_filter, _sf_timeframe, _sf_author = None, "all", ""
+    _by_m = re.search(r'\bby\s+([a-z ]{3,40}?)(?:\s+saved|\s+last|\s+this|\s+today|$)', _bl)
+    if _by_m:
+        _sf_author = _by_m.group(1).strip()
+    for _fw, _fval in _SAVE_FILTER_WORDS.items():
+        if re.search(r'\b' + re.escape(_fw) + r'\b', _bl):
+            _sf_filter = _fval
+            break
+    if _sf_filter:
+        # Only route here if there's a "saved/show me/my" indicator OR a timeframe word
+        _has_timeframe = any(tw in _bl for tw in _TIMEFRAME_WORDS)
+        _has_context   = bool(_SAVES_CONTEXT.search(_bl)) or bool(_sf_author)
+        if _has_timeframe or _has_context:
+            for _tw, _tval in _TIMEFRAME_WORDS.items():
+                if _tw in _bl:
+                    _sf_timeframe = _tval
+                    break
+            msg = _wa_search_saves(from_number, _sf_filter, _sf_timeframe, _sf_author)
+            resp.message(msg)
+            return str(resp)
+
     # ── Natural language fallback — Groq intent classification ───────────────
     _intent = _wa_classify_intent(body)
     if _intent:
