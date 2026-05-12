@@ -4060,6 +4060,7 @@ const _ts = new Date(d.timestamp);
 
   const _GMAIL_HINTS_LS_KEY = "miru_gmail_hints_v1";
 
+  // localStorage is a fast-display cache only — Supabase is the source of truth
   function _gmailHintsToLS(hints) {
     try { localStorage.setItem(_GMAIL_HINTS_LS_KEY, JSON.stringify(hints)); } catch {}
   }
@@ -4068,24 +4069,17 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _maGmailLoadHints() {
+    // Show cached hints immediately while the fetch is in flight
+    const cached = _gmailHintsFromLS();
+    if (cached.length && !_maGmailHints.length) {
+      _maGmailHints = cached;
+      _maGmailRenderHints();
+    }
     try {
       const r = await fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`);
       const d = await r.json();
       _maGmailHints = d.hints || [];
-      if (_maGmailHints.length) {
-        _gmailHintsToLS(_maGmailHints);
-      } else {
-        // Token has no hints (e.g. just reconnected) — restore from localStorage
-        const saved = _gmailHintsFromLS();
-        if (saved.length) {
-          _maGmailHints = saved;
-          // Push back to the new token record silently
-          fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`, {
-            method: "POST", headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({ hints: _maGmailHints })
-          }).catch(() => {});
-        }
-      }
+      _gmailHintsToLS(_maGmailHints);
       _maGmailRenderHints();
     } catch {}
   }
@@ -4109,25 +4103,25 @@ const _ts = new Date(d.timestamp);
     if (_maGmailHints.includes(val)) { inp.value = ""; return; }
     _maGmailHints = [..._maGmailHints, val];
     inp.value = "";
-    _gmailHintsToLS(_maGmailHints);
     _maGmailRenderHints();
     try {
       await fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`, {
         method: "POST", headers: {"Content-Type":"application/json"},
         body: JSON.stringify({ hints: _maGmailHints })
       });
+      _gmailHintsToLS(_maGmailHints); // update cache after confirmed DB write
     } catch {}
   }
 
   async function _maGmailRemoveHint(name) {
     _maGmailHints = _maGmailHints.filter(h => h !== name);
-    _gmailHintsToLS(_maGmailHints);
     _maGmailRenderHints();
     try {
       await fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`, {
         method: "POST", headers: {"Content-Type":"application/json"},
         body: JSON.stringify({ hints: _maGmailHints })
       });
+      _gmailHintsToLS(_maGmailHints);
     } catch {}
   }
 

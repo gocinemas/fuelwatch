@@ -9303,6 +9303,9 @@ def ma_gmail_callback():
     if not (refresh_token or access_token):
         return redirect("/?gmail_error=auth#myarea")
     try:
+        sb = lib._sb()
+        # Upsert auth fields — provider_hints is NOT included so existing hints
+        # are preserved automatically when reconnecting on the same browser/device
         row_data = {
             "device_id":     device_id,
             "refresh_token": refresh_token,
@@ -9312,7 +9315,27 @@ def ma_gmail_callback():
         }
         if from_number:
             row_data["from_number"] = from_number
-        lib._sb().table("ma_gmail_tokens").upsert(row_data, on_conflict="device_id").execute()
+        sb.table("ma_gmail_tokens").upsert(row_data, on_conflict="device_id").execute()
+
+        # For a new device: inherit provider_hints from any other record with the
+        # same from_number (e.g. user added hints on phone, now connecting on desktop)
+        if from_number:
+            try:
+                current = sb.table("ma_gmail_tokens").select("provider_hints") \
+                    .eq("device_id", device_id).execute().data
+                has_hints = bool((current[0].get("provider_hints") or []) if current else [])
+                if not has_hints:
+                    others = sb.table("ma_gmail_tokens").select("provider_hints") \
+                        .eq("from_number", from_number).neq("device_id", device_id).execute().data
+                    inherited = next(
+                        (r["provider_hints"] for r in others if r.get("provider_hints")), []
+                    )
+                    if inherited:
+                        sb.table("ma_gmail_tokens").update({"provider_hints": inherited}) \
+                            .eq("device_id", device_id).execute()
+                        print(f"[ma gmail] inherited {len(inherited)} hints for new device")
+            except Exception:
+                pass
     except Exception as e:
         print(f"[ma gmail] db upsert error: {e}")
     import threading
@@ -9702,15 +9725,17 @@ def ma_gmail_status():
     if not device_id and not from_number:
         return jsonify({"connected": False})
     try:
-        tbl = lib._sb().table("ma_gmail_tokens") \
-            .select("device_id,email,scan_status,pending,last_scan")
-        rows = tbl.eq("device_id", device_id).execute().data if device_id else []
+        sb  = lib._sb()
+        sel = "device_id,email,scan_status,pending,last_scan,access_token,refresh_token"
+        rows = sb.table("ma_gmail_tokens").select(sel).eq("device_id", device_id).execute().data if device_id else []
         if not rows and from_number:
-            rows = lib._sb().table("ma_gmail_tokens") \
-                .select("device_id,email,scan_status,pending,last_scan") \
-                .eq("from_number", from_number).execute().data
+            rows = sb.table("ma_gmail_tokens").select(sel).eq("from_number", from_number).execute().data
         if rows:
             row = rows[0]
+            # A record exists but may have been disconnected (tokens cleared)
+            has_tokens = bool(row.get("access_token") or row.get("refresh_token"))
+            if not has_tokens:
+                return jsonify({"connected": False})
             return jsonify({
                 "connected":   True,
                 "email":       row.get("email", ""),
@@ -9773,16 +9798,19 @@ def ma_gmail_clear_pending():
 
 @app.route("/api/myarea/gmail/disconnect", methods=["POST"])
 def ma_gmail_disconnect():
+    """Clear auth tokens but keep provider_hints so they survive reconnect."""
     device_id   = request.args.get("device_id", "").strip()
     from_number = request.args.get("from_number", "").strip()
     if not device_id and not from_number:
         return jsonify({"error": "device_id or from_number required"}), 400
     try:
         sb = lib._sb()
+        clear = {"access_token": None, "refresh_token": None,
+                 "scan_status": "disconnected", "pending": [], "email": None}
         if device_id:
-            sb.table("ma_gmail_tokens").delete().eq("device_id", device_id).execute()
+            sb.table("ma_gmail_tokens").update(clear).eq("device_id", device_id).execute()
         if from_number:
-            sb.table("ma_gmail_tokens").delete().eq("from_number", from_number).execute()
+            sb.table("ma_gmail_tokens").update(clear).eq("from_number", from_number).execute()
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
