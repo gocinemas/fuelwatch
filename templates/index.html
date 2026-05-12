@@ -1468,7 +1468,10 @@
                   <div id="ma-gmail-scan-result" style="font-size:11px;color:var(--muted);margin-top:1px;display:none"></div>
                 </div>
               </div>
-              <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button onclick="_maGmailDisconnect()" style="font-size:12px;font-weight:600;color:#9ca3af;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 10px;cursor:pointer">Disconnect</button>
+                <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
+              </div>
             </div>
           </div>
           <div id="ma-gmail-state-pending" style="display:none">
@@ -1481,6 +1484,7 @@
                 </div>
               </div>
               <div style="display:flex;gap:6px;align-items:center">
+                <button onclick="_maGmailDisconnect()" style="font-size:12px;font-weight:600;color:#9ca3af;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 8px;cursor:pointer">✕</button>
                 <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#6b7280;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 10px;cursor:pointer">Rescan</button>
                 <button id="ma-gmail-review-btn" onclick="_maGmailReviewPending()" style="font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:8px 14px;cursor:pointer">Review →</button>
               </div>
@@ -4076,6 +4080,17 @@ const _ts = new Date(d.timestamp);
         body: JSON.stringify({ hints: _maGmailHints })
       });
     } catch {}
+  }
+
+  async function _maGmailDisconnect() {
+    if (!confirm("Disconnect your Gmail account? You can reconnect at any time.")) return;
+    try {
+      const params = new URLSearchParams({ device_id: _maDeviceId() });
+      const phone = _miruPhone();
+      if (phone) params.set("from_number", phone);
+      await fetch(`/api/myarea/gmail/disconnect?${params.toString()}`, { method: "POST" });
+    } catch {}
+    _maGmailSetState("connect");
   }
 
   async function _maGmailRescan() {

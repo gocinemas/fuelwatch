@@ -9771,6 +9771,23 @@ def ma_gmail_clear_pending():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/myarea/gmail/disconnect", methods=["POST"])
+def ma_gmail_disconnect():
+    device_id   = request.args.get("device_id", "").strip()
+    from_number = request.args.get("from_number", "").strip()
+    if not device_id and not from_number:
+        return jsonify({"error": "device_id or from_number required"}), 400
+    try:
+        sb = lib._sb()
+        if device_id:
+            sb.table("ma_gmail_tokens").delete().eq("device_id", device_id).execute()
+        if from_number:
+            sb.table("ma_gmail_tokens").delete().eq("from_number", from_number).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/myarea/gmail/rescan", methods=["POST"])
 def ma_gmail_rescan():
     device_id   = request.args.get("device_id", "").strip()
