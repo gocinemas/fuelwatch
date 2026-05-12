@@ -8356,6 +8356,8 @@ def _wa_food_find(body: str, from_number: str):
     if not intent:
         return None
 
+    wants_cheap = bool(re.search(r'\bcheap\b', body_lower))
+
     # Postcode from message — accept full (KT16 0DA) or outward-only (KT16)
     _full_pc  = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', body.upper())
     _out_pc   = re.search(r'\b([A-Z]{1,2}\d{1,2}[A-Z]?)\b', body.upper())
@@ -8402,7 +8404,6 @@ def _wa_food_find(body: str, from_number: str):
                 f"Reply with your postcode — e.g. *KT16* — and I'll find the best {intent['label']} near you.\n"
                 f"_(Or set your home postcode at miru.humanagency.co so you never need to send it)_")
 
-    wants_cheap = bool(re.search(r'\bcheap\b', body_lower))
     places = _find_food_nearby(lat, lon, intent["type"],
                                cheap=wants_cheap,
                                keyword=intent.get("keyword", ""),
@@ -9513,15 +9514,29 @@ def whatsapp_reply():
                 r'\b(?:places|services|local|near|nearby|around)\b', '', service_filter, flags=re.I
             ).strip()
         elif re.search(r'\bme\b|\bmy\s+area\b|\bmy\s+postcode\b', body_lower):
-            # "GP near me" — needs a postcode; ask the user
+            # "coffee near me" or "GP near me" — try food handler first (uses home postcode)
+            _food_r = _wa_food_find(body, from_number)
+            if _food_r:
+                resp.message(_food_r)
+                return str(resp)
+            # Not a food query — try home postcode for places
+            _home_pc = _get_wa_home_postcode(from_number)
+            if _home_pc:
+                places_q = _home_pc
+                service_filter = re.sub(
+                    r'\b(?:places|services|local|near|nearby|around|me|my\s+area|my\s+postcode)\b', '', body, flags=re.I
+                ).strip()
+                reply = whatsapp_places_format(places_q, service_filter=service_filter)
+                resp.message(reply)
+                return str(resp)
             service_filter = re.sub(
                 r'\b(?:places|services|local|near|nearby|around|me|my\s+area|my\s+postcode)\b', '', body, flags=re.I
             ).strip()
             label = service_filter if service_filter else "local services"
             resp.message(
-                f"📍 To find {label} near you, include your postcode:\n\n"
+                f"📍 To find {label} near you, reply with your postcode:\n\n"
                 f"  *{label} KT15 3RL*\n\n"
-                f"Or set your home area at miru.humanagency.co"
+                f"Or set your home postcode at miru.humanagency.co 🏠"
             )
             return str(resp)
         else:
