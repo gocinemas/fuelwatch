@@ -8072,7 +8072,7 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
 
     lines.append("\nReply with a product name to compare prices")
     lines.append("Or a postcode for fuel prices")
-    lines.append("🔗 miru.humanagency.co")
+    lines.append("Not right? Reply *HELP*")
     return "\n".join(lines)
 
 
@@ -9087,6 +9087,13 @@ def whatsapp_reply():
             product_name, _ = _split_product_postcode(body)
 
     if is_product and product_name and len(product_name.strip()) > 1:
+        # Don't treat question/conversational messages as product queries — redirect to HELP
+        _pn_words = product_name.strip().split()
+        _question_starters = {"what","why","how","when","who","can","could","would","should",
+                               "is","are","do","does","help","please","show","tell","get","give"}
+        if _pn_words and (_pn_words[0].lower() in _question_starters or "?" in product_name):
+            resp.message(_HELP_MSG)
+            return str(resp)
         _, loc_postcode = _split_product_postcode(body)
         cache_key = f"product:{product_name.lower().strip()}:{loc_postcode or ''}"
         cached = _WA_CACHE.get(cache_key)
