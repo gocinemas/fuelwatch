@@ -511,12 +511,25 @@ def _fetch_schools_google(lat: float, lon: float, radius_m: int = 5000) -> list:
                     "key": GOOGLE_API_KEY, "region": "uk"},
             timeout=8,
         )
+        # Types that confirm a real school
+        _SCHOOL_TYPES = {"school", "primary_school", "secondary_school",
+                         "university", "establishment"}
+        # Types that indicate a non-school business (false positives from text search)
+        _NON_SCHOOL_TYPES = {"restaurant", "food", "cafe", "bar", "night_club",
+                             "lodging", "store", "gym", "health"}
         results = r.json().get("results", [])
         seen_names = set()
         schools = []
         for p in results:
             name = p.get("name", "")
             if not name:
+                continue
+            types = set(p.get("types", []))
+            # Skip if it has non-school types (cafe, restaurant, etc.)
+            if types & _NON_SCHOOL_TYPES:
+                continue
+            # Only include if Google tagged it with a school type
+            if not (types & _SCHOOL_TYPES):
                 continue
             name_key = name.lower().strip()
             if name_key in seen_names:
