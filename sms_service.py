@@ -6400,6 +6400,119 @@ def _vivino_lookup(wine_name: str) -> dict:
 _WINE_RATING_STATE: dict = {}  # from_number → {save_id, wine_name, expires}
 
 
+def _lookup_book_by_isbn(isbn: str) -> dict | None:
+    """Google Books → Open Library lookup by ISBN. Returns normalised book dict or None."""
+    gbooks_key = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
+    try:
+        r = requests.get(
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": f"isbn:{isbn}", "maxResults": 1, **({"key": gbooks_key} if gbooks_key else {})},
+            timeout=10,
+        )
+        items = r.json().get("items")
+        if items:
+            vi = items[0].get("volumeInfo", {})
+            isbns = [x["identifier"] for x in vi.get("industryIdentifiers", [])
+                     if x.get("type") in ("ISBN_13", "ISBN_10")]
+            cover = ""
+            if vi.get("imageLinks"):
+                cover = (vi["imageLinks"].get("thumbnail") or vi["imageLinks"].get("smallThumbnail") or "").replace("http://", "https://")
+            rating = vi.get("averageRating")
+            return {
+                "found": True, "isbn": isbns[0] if isbns else isbn,
+                "title": vi.get("title", ""),
+                "author": ", ".join(vi.get("authors", [])) or "Unknown author",
+                "cover": cover,
+                "description": vi.get("description", ""),
+                "subjects": " · ".join(vi.get("categories", [])[:5]),
+                "year": vi.get("publishedDate", "")[:4],
+                "publishers": vi.get("publisher", ""),
+                "communityRating": {"avg": round(float(rating), 1), "count": vi.get("ratingsCount", 0)} if rating else None,
+                "status": "wishlist",
+            }
+    except Exception:
+        pass
+    # Open Library fallback
+    try:
+        ol = requests.get(f"https://openlibrary.org/isbn/{isbn}.json", timeout=8).json()
+        title = ol.get("title", "")
+        work_key = (ol.get("works") or [{}])[0].get("key", "")
+        author, description, year = "", "", (ol.get("publish_date") or "")[:4]
+        if work_key:
+            wd = requests.get(f"https://openlibrary.org{work_key}.json", timeout=6).json()
+            title = title or wd.get("title", "")
+            desc = wd.get("description", "")
+            description = desc.get("value", desc) if isinstance(desc, dict) else str(desc)
+            for a in (wd.get("authors") or [])[:1]:
+                ak = a.get("author", {}).get("key", "")
+                if ak:
+                    author = requests.get(f"https://openlibrary.org{ak}.json", timeout=5).json().get("name", "")
+        covers = ol.get("covers") or []
+        cover = f"https://covers.openlibrary.org/b/id/{covers[0]}-M.jpg" if covers else ""
+        if title:
+            return {"found": True, "isbn": isbn, "title": title,
+                    "author": author or "Unknown author", "cover": cover,
+                    "description": description[:600], "year": year,
+                    "subjects": "", "publishers": "", "communityRating": None, "status": "wishlist"}
+    except Exception:
+        pass
+    return None
+
+
+def _lookup_book_by_title(query: str) -> dict | None:
+    """Search Google Books by title/author query. Returns best match as normalised dict or None."""
+    gbooks_key = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
+    try:
+        r = requests.get(
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": query, "maxResults": 1, "printType": "books",
+                    **({"key": gbooks_key} if gbooks_key else {})},
+            timeout=8,
+        )
+        items = r.json().get("items")
+        if items:
+            vi = items[0].get("volumeInfo", {})
+            isbns = [x["identifier"] for x in vi.get("industryIdentifiers", [])
+                     if x.get("type") in ("ISBN_13", "ISBN_10")]
+            cover = ""
+            if vi.get("imageLinks"):
+                cover = (vi["imageLinks"].get("thumbnail") or vi["imageLinks"].get("smallThumbnail") or "").replace("http://", "https://")
+            rating = vi.get("averageRating")
+            return {
+                "found": True, "isbn": isbns[0] if isbns else "",
+                "title": vi.get("title", ""),
+                "author": ", ".join(vi.get("authors", [])) or "Unknown author",
+                "cover": cover,
+                "description": vi.get("description", ""),
+                "subjects": " · ".join(vi.get("categories", [])[:5]),
+                "year": vi.get("publishedDate", "")[:4],
+                "publishers": vi.get("publisher", ""),
+                "communityRating": {"avg": round(float(rating), 1), "count": vi.get("ratingsCount", 0)} if rating else None,
+                "status": "wishlist",
+            }
+    except Exception:
+        pass
+    # Open Library fallback
+    try:
+        r = requests.get("https://openlibrary.org/search.json",
+                         params={"q": query, "limit": 1, "fields": "key,title,author_name,isbn,first_publish_year"},
+                         timeout=10)
+        docs = r.json().get("docs", [])
+        if docs:
+            d = docs[0]
+            isbns = d.get("isbn") or []
+            isbn13 = next((i for i in isbns if len(i) == 13), isbns[0] if isbns else "")
+            return {"found": True, "isbn": isbn13,
+                    "title": d.get("title", ""),
+                    "author": ", ".join(d.get("author_name", [])) or "Unknown author",
+                    "cover": f"https://covers.openlibrary.org/b/isbn/{isbn13}-M.jpg" if isbn13 else "",
+                    "description": "", "year": str(d.get("first_publish_year", "")),
+                    "subjects": "", "publishers": "", "communityRating": None, "status": "wishlist"}
+    except Exception:
+        pass
+    return None
+
+
 _ISBN_BARCODE_FAILED = object()  # sentinel: pyzbar ran but found no ISBN
 
 def _try_isbn_from_image(raw_bytes: bytes):
@@ -6446,73 +6559,10 @@ def _try_isbn_from_image(raw_bytes: bytes):
         if not isbn:
             print("[isbn barcode] pyzbar found no ISBN barcode in image")
             return _ISBN_BARCODE_FAILED
-        gbooks_key = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
-        vi, all_isbns = None, []
-        try:
-            r = requests.get(
-                "https://www.googleapis.com/books/v1/volumes",
-                params={"q": f"isbn:{isbn}", "maxResults": 1, **({"key": gbooks_key} if gbooks_key else {})},
-                timeout=10,
-            )
-            items = r.json().get("items")
-            if items:
-                vi = items[0].get("volumeInfo", {})
-                all_isbns = [x["identifier"] for x in vi.get("industryIdentifiers", []) if x.get("type") in ("ISBN_13","ISBN_10")]
-        except Exception:
-            pass
-
-        # Open Library fallback when Google Books is unavailable or returns nothing
-        if not vi:
-            try:
-                ol = requests.get(f"https://openlibrary.org/isbn/{isbn}.json", timeout=8).json()
-                work_key = (ol.get("works") or [{}])[0].get("key", "")
-                title = ol.get("title", "")
-                author = ""
-                cover = ""
-                description = ""
-                year = (ol.get("publish_date") or "")[:4]
-                if work_key:
-                    wd = requests.get(f"https://openlibrary.org{work_key}.json", timeout=6).json()
-                    title = title or wd.get("title", "")
-                    desc = wd.get("description", "")
-                    description = desc.get("value", desc) if isinstance(desc, dict) else str(desc)
-                    for a in (wd.get("authors") or [])[:1]:
-                        ak = a.get("author", {}).get("key", "")
-                        if ak:
-                            ad = requests.get(f"https://openlibrary.org{ak}.json", timeout=5).json()
-                            author = ad.get("name", "")
-                covers = ol.get("covers") or []
-                if covers:
-                    cover = f"https://covers.openlibrary.org/b/id/{covers[0]}-M.jpg"
-                if title:
-                    return {
-                        "found": True, "isbn": isbn,
-                        "title": title, "author": author or "Unknown author",
-                        "cover": cover, "description": description[:600],
-                        "subjects": "", "year": year, "publishers": "",
-                        "communityRating": None, "status": "wishlist",
-                    }
-            except Exception:
-                pass
+        result = _lookup_book_by_isbn(isbn)
+        if not result:
             return {"isbn": isbn, "title": f"Book (ISBN {isbn})", "found": True}
-
-        cover = ""
-        if vi.get("imageLinks"):
-            cover = (vi["imageLinks"].get("thumbnail") or vi["imageLinks"].get("smallThumbnail") or "").replace("http://","https://")
-        rating = vi.get("averageRating")
-        return {
-            "found":           True,
-            "isbn":            all_isbns[0] if all_isbns else isbn,
-            "title":           vi.get("title", ""),
-            "author":          ", ".join(vi.get("authors", [])) or "Unknown author",
-            "cover":           cover,
-            "description":     vi.get("description", ""),
-            "subjects":        " · ".join(vi.get("categories", [])[:5]),
-            "year":            vi.get("publishedDate", "")[:4] if vi.get("publishedDate") else "",
-            "publishers":      vi.get("publisher", ""),
-            "communityRating": {"avg": round(float(rating), 1), "count": vi.get("ratingsCount", 0)} if rating else None,
-            "status":          "wishlist",
-        }
+        return result
     except Exception as e:
         print(f"[isbn barcode] {e}")
         return None
@@ -8124,6 +8174,65 @@ def whatsapp_reply():
             return str(resp)
         rating_line = f"\n⭐ {book_rating}/5 on Google Books" if book_rating else ""
         resp.message(f"📚 {book_label}{rating_line}\n\n{verdict}")
+        return str(resp)
+
+    # ── BOOK <title or ISBN> command ──────────────────────────────────────────
+    _book_prefixes = ("book ", "add book ", "save book ", "find book ")
+    _bk_prefix = next((p for p in _book_prefixes if body_lower.startswith(p)), None)
+    if _bk_prefix:
+        bk_query = body[len(_bk_prefix):].strip()
+        if not bk_query:
+            resp.message("📚 Tell me what to find — e.g.\n*book The Midnight Library*\nor\n*book 9781399401739*")
+            return str(resp)
+        # Normalise ISBN: strip dashes/spaces, check 13 or 10 digits
+        _isbn_raw = re.sub(r"[\s\-]", "", bk_query)
+        if re.match(r"^(978|979)\d{10}$", _isbn_raw) or re.match(r"^\d{10}$", _isbn_raw):
+            bk_isbn = _isbn_raw
+            bk_info = _lookup_book_by_isbn(bk_isbn)
+        else:
+            bk_info = _lookup_book_by_title(bk_query)
+            bk_isbn = bk_info.get("isbn", "") if bk_info else ""
+        if not bk_info or not bk_info.get("title"):
+            resp.message(f"📚 Couldn't find *{bk_query}* — try a more specific title or the ISBN printed below the barcode.")
+            return str(resp)
+        # Save to wa_saves
+        try:
+            plain_number = from_number.replace("whatsapp:", "").strip()
+            existing = (lib._sb().table("wa_saves").select("id")
+                        .in_("from_number", [from_number, plain_number])
+                        .eq("url", f"book:{bk_isbn}").limit(1).execute().data)
+            if existing:
+                already = True
+            else:
+                already = False
+                lib._sb().table("wa_saves").insert({
+                    "from_number": plain_number,
+                    "url":         f"book:{bk_isbn}",
+                    "title":       bk_info["title"],
+                    "summary":     json.dumps(bk_info),
+                    "status":      "wishlist",
+                }).execute()
+                try:
+                    lib.books_upsert(plain_number, {**bk_info, "isbn": bk_isbn, "source": "whatsapp_text"})
+                except Exception:
+                    pass
+        except Exception:
+            already = False
+        user_token = _wa_user_token(from_number)
+        msg = f"📚 *{bk_info['title']}*"
+        if bk_info.get("author"):
+            msg += f"\nby {bk_info['author']}"
+        cr = bk_info.get("communityRating")
+        if cr and cr.get("avg"):
+            msg += f"\n{'⭐' * round(cr['avg'])} {cr['avg']}/5"
+            if cr.get("count"): msg += f" ({cr['count']:,} ratings)"
+        if bk_info.get("description"):
+            msg += f"\n\n_{bk_info['description'][:220].strip()}…_"
+        if already:
+            msg += f"\n\n_(already in your books)_"
+        else:
+            msg += f"\n\n📚 Saved to My Books: miru.humanagency.co/?screen=scan&token={user_token}"
+        resp.message(msg)
         return str(resp)
 
     # ── FIND SAVE command: search wa_saves ───────────────────────────────────
