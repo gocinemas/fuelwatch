@@ -329,15 +329,30 @@
     </div>
   </header>
 
-  <!-- Global phone setup bar — shown once until number is saved -->
-  <div id="global-phone-bar" style="display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:8px 16px">
-    <div class="max-w-xl mx-auto" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span style="font-size:12px;color:var(--muted);white-space:nowrap">📱 Your WhatsApp number</span>
-      <input id="global-phone-input" type="tel" placeholder="+44 7911 123456"
-        style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:13px;background:var(--bg);color:var(--text);outline:none"
-        onkeydown="if(event.key==='Enter') _globalPhoneSave()">
-      <button onclick="_globalPhoneSave()" style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">Save</button>
-      <button onclick="_globalPhoneBarDismiss()" style="flex-shrink:0;background:none;border:none;font-size:15px;color:var(--muted);cursor:pointer;padding:0 4px" title="Dismiss">✕</button>
+  <!-- Persistent identity bar — always visible, shows phone + postcode -->
+  <div id="identity-bar" style="background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px">
+    <div class="max-w-xl mx-auto" style="display:flex;align-items:center;gap:6px;height:36px;overflow:hidden">
+      <!-- Phone pill -->
+      <button id="id-phone-pill" onclick="_idEdit('phone')"
+        style="display:flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600;color:var(--muted);transition:background .15s;white-space:nowrap"
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">
+        <span>📱</span><span id="id-phone-label">Add phone</span>
+      </button>
+      <span style="color:var(--border);font-size:14px;flex-shrink:0">·</span>
+      <!-- Postcode pill -->
+      <button id="id-postcode-pill" onclick="_idEdit('postcode')"
+        style="display:flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600;color:var(--muted);transition:background .15s;white-space:nowrap"
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">
+        <span>📍</span><span id="id-postcode-label">Add postcode</span>
+      </button>
+      <!-- Inline edit form (hidden until triggered) -->
+      <div id="id-edit-form" style="display:none;flex:1;display:none;align-items:center;gap:6px;margin-left:4px">
+        <input id="id-edit-input" type="text"
+          style="flex:1;min-width:0;border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:12px;background:var(--bg);color:var(--text);outline:none;font-family:inherit"
+          onkeydown="if(event.key==='Enter')_idSave();if(event.key==='Escape')_idCancel()">
+        <button onclick="_idSave()" style="flex-shrink:0;background:var(--text);color:var(--bg);border:none;border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">Save</button>
+        <button onclick="_idCancel()" style="flex-shrink:0;background:none;border:none;font-size:14px;color:var(--muted);cursor:pointer;padding:0 2px">✕</button>
+      </div>
     </div>
   </div>
 
@@ -1863,7 +1878,7 @@
     window.scrollTo({top:0, behavior:"smooth"});
     const bb = document.getElementById("back-btn");
     if (bb) bb.classList.add("visible");
-    if (name === "fuel")    { document.getElementById("fuel-postcode").focus();   _renderRecent("miru_fuel",    "fuel-recent",    "fuel-postcode",   "searchFuel()"); _myFuelRenderCard(); }
+    if (name === "fuel")    { const _fpc = document.getElementById("fuel-postcode"); if (!_fpc.value.trim()) _fpc.value = _miruPostcode(); _fpc.focus(); _renderRecent("miru_fuel","fuel-recent","fuel-postcode","searchFuel()"); _myFuelRenderCard(); }
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); _reportRefreshHomeRow(); }
     if (name === "company") { document.getElementById("intel-input").focus(); _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()"); }
     if (name === "library") { libCheckPin(); }
@@ -2125,6 +2140,9 @@
     const fuel     = document.getElementById("fuel-type").value;
     const radius   = document.getElementById("fuel-radius").value;
     if (!postcode) return;
+    // Sync postcode back to global identity bar
+    localStorage.setItem("miru_postcode", postcode);
+    _idBarRefresh && _idBarRefresh();
     _saveRecent("miru_fuel", postcode);
     // Pre-fill alert postcode and fuel type to match search
     const alertType = document.getElementById("fuel-alert-type");
@@ -2842,31 +2860,88 @@ const _ts = new Date(d.timestamp);
   function _miruPhone() {
     return localStorage.getItem("miru_phone") || "";
   }
+  function _miruPostcode() {
+    return localStorage.getItem("miru_postcode") || "";
+  }
 
-  // Global phone bar — show once if number not saved and not permanently dismissed
-  function _globalPhoneBarInit() {
-    const bar = document.getElementById("global-phone-bar");
-    if (!bar) return;
-    if (_miruPhone()) { bar.style.display = "none"; return; }
-    if (localStorage.getItem("miru_phone_bar_dismissed") === "1") { bar.style.display = "none"; return; }
-    bar.style.display = "";
+  // ── Identity bar (persistent phone + postcode) ─────────────────────────────
+  let _idEditField = null;
+
+  function _idBarRefresh() {
+    const phone = _miruPhone();
+    const pc    = _miruPostcode();
+    const phoneLbl = document.getElementById("id-phone-label");
+    const pcLbl    = document.getElementById("id-postcode-label");
+    if (phoneLbl) phoneLbl.textContent = phone ? phone : "Add phone";
+    if (pcLbl)    pcLbl.textContent    = pc    ? pc    : "Add postcode";
+    const phonePill = document.getElementById("id-phone-pill");
+    const pcPill    = document.getElementById("id-postcode-pill");
+    if (phonePill) phonePill.style.color = phone ? "var(--text)" : "var(--muted)";
+    if (pcPill)    pcPill.style.color    = pc    ? "var(--text)" : "var(--muted)";
   }
-  function _globalPhoneSave() {
-    const inp = document.getElementById("global-phone-input");
-    if (!inp) return;
-    let phone = (inp.value || "").trim().replace(/[\s\-\(\)]/g, "");
-    if (/^07\d{9}$/.test(phone)) phone = "+44" + phone.slice(1);
-    if (!/^\+\d{7,15}$/.test(phone)) { inp.style.borderColor = "#ef4444"; return; }
-    inp.style.borderColor = "";
-    localStorage.setItem("miru_phone", phone);
-    document.getElementById("global-phone-bar").style.display = "none";
-    _maShowLinkedPhone();
-    _maLoadSavedPlaces && _maLoadSavedPlaces();
+
+  function _idEdit(field) {
+    _idEditField = field;
+    const form  = document.getElementById("id-edit-form");
+    const input = document.getElementById("id-edit-input");
+    const pills = document.querySelectorAll("#id-phone-pill, #id-postcode-pill, #identity-bar > div > span");
+    pills.forEach(el => el.style.display = "none");
+    if (field === "phone") {
+      input.type        = "tel";
+      input.placeholder = "+44 7911 123456";
+      input.value       = _miruPhone();
+    } else {
+      input.type        = "text";
+      input.placeholder = "e.g. KT16 0DA";
+      input.value       = _miruPostcode();
+    }
+    form.style.display = "flex";
+    setTimeout(() => { input.focus(); input.select(); }, 50);
   }
-  function _globalPhoneBarDismiss() {
-    localStorage.setItem("miru_phone_bar_dismissed", "1");
-    document.getElementById("global-phone-bar").style.display = "none";
+
+  function _idSave() {
+    const input = document.getElementById("id-edit-input");
+    let val = (input.value || "").trim();
+    if (_idEditField === "phone") {
+      let phone = val.replace(/[\s\-\(\)]/g, "");
+      if (/^07\d{9}$/.test(phone)) phone = "+44" + phone.slice(1);
+      if (phone && !/^\+\d{7,15}$/.test(phone)) { input.style.outline = "2px solid #ef4444"; return; }
+      input.style.outline = "";
+      if (phone) localStorage.setItem("miru_phone", phone);
+      else localStorage.removeItem("miru_phone");
+      _maShowLinkedPhone && _maShowLinkedPhone();
+      _maLoadSavedPlaces && _maLoadSavedPlaces();
+    } else {
+      const pc = val.toUpperCase().replace(/\s+/g, "");
+      if (pc) localStorage.setItem("miru_postcode", pc);
+      else localStorage.removeItem("miru_postcode");
+      // Push postcode into all postcode inputs
+      _idPushPostcode(pc);
+    }
+    _idCancel();
+    _idBarRefresh();
   }
+
+  function _idCancel() {
+    const form  = document.getElementById("id-edit-form");
+    const pills = document.querySelectorAll("#id-phone-pill, #id-postcode-pill, #identity-bar > div > span");
+    form.style.display = "none";
+    pills.forEach(el => el.style.display = "");
+    _idEditField = null;
+  }
+
+  function _idPushPostcode(pc) {
+    if (!pc) return;
+    const fuel = document.getElementById("fuel-postcode");
+    if (fuel && !fuel.value.trim()) fuel.value = pc;
+    const ma = document.getElementById("myarea-postcode-input");
+    if (ma && !ma.value.trim()) ma.value = pc;
+  }
+
+  // Legacy compat
+  function _globalPhoneBarInit() { _idBarRefresh(); }
+  function _globalPhoneSave() {}
+  function _globalPhoneBarDismiss() {}
 
   function _maShowLinkedPhone() {
     const phone = _miruPhone();
@@ -3611,6 +3686,9 @@ const _ts = new Date(d.timestamp);
     if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
     _maCurrentPostcode = pc;
+    // Sync back to global identity bar
+    localStorage.setItem("miru_postcode", pc);
+    _idBarRefresh && _idBarRefresh();
     // Clear cached data for new search
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
     // Hide search hint
@@ -4436,13 +4514,7 @@ const _ts = new Date(d.timestamp);
 
   function _loadMyArea() {
     _maApplyPrefs();
-    // Show phone banner (subtle) if phone not yet set
-    if (_miruPhone()) {
-      _maShowLinkedPhone();
-    } else {
-      const banner = document.getElementById("myarea-link-banner");
-      if (banner) banner.style.display = "";
-    }
+    _maShowLinkedPhone();
     _maLoadSavedPlaces();
     _maLoadVehicles();
     _myAreaRefreshHomeRow();
@@ -4454,11 +4526,13 @@ const _ts = new Date(d.timestamp);
       return;
     }
 
-    // First load: no active search yet
+    // First load: no active search yet — prefer home location, then global postcode
     const currentVal = inputEl.value.trim().toUpperCase().replace(/\s+/g,"");
     if (home) {
-      // Auto-search home postcode
       inputEl.value = home;
+      myAreaSearch();
+    } else if (!currentVal && _miruPostcode()) {
+      inputEl.value = _miruPostcode();
       myAreaSearch();
     } else if (!currentVal) {
       // No postcode yet — show My Accounts tab by default
