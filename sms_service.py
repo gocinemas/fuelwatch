@@ -12088,6 +12088,34 @@ def api_tube_test():
     return jsonify(results)
 
 
+@app.route("/api/tube/nearest")
+def api_tube_nearest():
+    """Find nearest tube stations by lat/lon (mirrors /api/train/nearest)."""
+    try:
+        lat = float(request.args.get("lat", ""))
+        lon = float(request.args.get("lng", ""))
+    except (TypeError, ValueError):
+        return jsonify({"error": "lat/lng required"}), 400
+    try:
+        r = requests.get(
+            "https://api.tfl.gov.uk/StopPoint",
+            params={"lat": lat, "lon": lon, "stopTypes": "NaptanMetroStation",
+                    "radius": 1500, "modes": "tube", "returnLines": "false"},
+            timeout=8,
+        )
+        r.raise_for_status()
+        stops = r.json().get("stopPoints", [])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+    stations = [
+        {"id": s["id"],
+         "name": s["commonName"].replace(" Underground Station", ""),
+         "distance_km": round(s.get("distance", 0) / 1000, 2)}
+        for s in stops[:4]
+    ]
+    return jsonify({"stations": stations})
+
+
 @app.route("/api/tube/nearest-by-postcode")
 def api_tube_nearest_by_postcode():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()

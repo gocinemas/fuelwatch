@@ -11856,6 +11856,8 @@ window.spotifyAddTrack = window.spotifyLike;
   var _trainLoadedAt  = 0;
   var _trainRefreshTm = null;
   var _trainTickTm    = null;
+  var _tubeMode       = false;  // true when a tube station is active
+  var _tubeNaptanId   = "";
 
   // ── Storage ────────────────────────────────────────────────────────────────
   function _getBm(slot)     { try { return JSON.parse(localStorage.getItem("miru_train_bm_"+(slot||"home"))||"null"); } catch { return null; } }
@@ -11913,18 +11915,26 @@ window.spotifyAddTrack = window.spotifyLike;
     document.getElementById("train-nearest-list").style.display = "none";
     document.getElementById("train-locate-hint").style.display  = "none";
     _trainCrs = ""; _trainName = ""; _trainDest = "";
+    _tubeMode = false; _tubeNaptanId = "";
     if (!keepMode) _trainSetMode = null;
     _renderSaved();
     _renderSetModeBar();
   }
 
-  function _showActive(name, crs) {
-    document.getElementById("train-station-name").textContent = name + " (" + crs + ")";
+  function _showActive(name, id, mode) {
+    var isTube = (mode === "tube");
+    var label  = isTube ? "🚇 " + name : name + " (" + id + ")";
+    document.getElementById("train-station-name").textContent = label;
     document.getElementById("train-idle").style.display   = "none";
     document.getElementById("train-active").style.display = "block";
     document.getElementById("train-dest-chips").innerHTML = "";
-    _trainCrs  = crs; _trainName = name; _trainDest = "";
-    _updateSlotLabel();
+    _tubeMode = isTube;
+    if (isTube) {
+      _tubeNaptanId = id; _trainCrs = ""; _trainName = name; _trainDest = "";
+    } else {
+      _trainCrs = id; _trainName = name; _trainDest = ""; _tubeNaptanId = "";
+    }
+    if (!isTube) _updateSlotLabel();
   }
 
   // ── Set-mode banner ───────────────────────────────────────────────────────
@@ -11954,9 +11964,9 @@ window.spotifyAddTrack = window.spotifyLike;
   }
 
   // ── Auto-refresh timers ───────────────────────────────────────────────────
-  function _startTimers(crs) {
+  function _startTimers(id) {
     _stopTimers();
-    _trainRefreshTm = setInterval(function(){ _loadDeps(crs, true); }, 60000);
+    _trainRefreshTm = setInterval(function(){ _loadDeps(id, true); }, 30000);
     _trainTickTm    = setInterval(_updateAgoLabel, 10000);
   }
   function _stopTimers() {
@@ -11964,20 +11974,29 @@ window.spotifyAddTrack = window.spotifyLike;
     if (_trainTickTm)    { clearInterval(_trainTickTm);    _trainTickTm    = null; }
   }
 
-  // ── Nearest station picker ────────────────────────────────────────────────
-  function _showNearestPicker(stations) {
+  // ── Nearest station picker (rail + tube merged) ───────────────────────────
+  function _showNearestPicker(railStations, tubeStations) {
     var nl = document.getElementById("train-nearest-list");
-    nl.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">📍 Nearest stations</div>'
-      + stations.map(function(s){
-          var dist = s.distance_km < 1.6 ? Math.round(s.distance_km * 0.621371 * 10)/10 + " mi"
-                                         : Math.round(s.distance_km * 0.621371) + " mi";
-          return '<button onclick="trainSelectStation(\''+s.crs+'\',\''+s.name.replace(/'/g,"\\'")+'\')"'
-            +' style="display:flex;align-items:center;width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">'
-            +'<span style="flex:1">'+s.name+'</span>'
-            +'<span style="font-size:12px;color:var(--muted);font-weight:400;margin-right:8px">'+dist+'</span>'
-            +'<span style="color:var(--muted)">→</span>'
-            +'</button>';
-        }).join("");
+    var html = '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">📍 Nearest stations</div>';
+    var allStations = (railStations || []).map(function(s){ return {id:s.crs, name:s.name, dist:s.distance_km, type:"rail"}; })
+      .concat((tubeStations || []).map(function(s){ return {id:s.id, name:s.name, dist:s.distance_km, type:"tube"}; }));
+    allStations.sort(function(a,b){ return a.dist - b.dist; });
+    html += allStations.map(function(s){
+      var distMi = s.dist < 1.6 ? Math.round(s.dist * 0.621371 * 10)/10 + " mi"
+                                 : Math.round(s.dist * 0.621371) + " mi";
+      var icon   = s.type === "tube" ? "🚇" : "🚆";
+      var onclick = s.type === "tube"
+        ? "trainSelectTubeStation('"+s.id+"','"+s.name.replace(/'/g,"\\'")+"')"
+        : "trainSelectStation('"+s.id+"','"+s.name.replace(/'/g,"\\'")+"')";
+      return '<button onclick="'+onclick+'"'
+        +' style="display:flex;align-items:center;width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">'
+        +'<span style="margin-right:8px">'+icon+'</span>'
+        +'<span style="flex:1">'+s.name+'</span>'
+        +'<span style="font-size:12px;color:var(--muted);font-weight:400;margin-right:8px">'+distMi+'</span>'
+        +'<span style="color:var(--muted)">→</span>'
+        +'</button>';
+    }).join("");
+    nl.innerHTML = html;
     nl.style.display = "block";
   }
 
@@ -12029,14 +12048,65 @@ window.spotifyAddTrack = window.spotifyLike;
     }).join("");
   }
 
-  // ── Load departures ───────────────────────────────────────────────────────
-  function _loadDeps(crs, silent) {
+  // ── Render tube arrivals ──────────────────────────────────────────────────
+  function _renderTubeArrivals(trains) {
+    var el = document.getElementById("train-results");
+    if (!trains || !trains.length) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No arrivals data right now</div>';
+      return;
+    }
+    // Colour map for common lines
+    var lineColour = {
+      "Bakerloo":"#894e24","Central":"#dc241f","Circle":"#ffd329","District":"#007229",
+      "Hammersmith & City":"#d799af","Jubilee":"#6a7278","Metropolitan":"#751056",
+      "Northern":"#000000","Piccadilly":"#0019a8","Victoria":"#0098d4",
+      "Waterloo & City":"#76d0bd","Elizabeth line":"#6950a1","DLR":"#00a4a7"
+    };
+    el.innerHTML = trains.map(function(t){
+      var col   = lineColour[t.line] || "#6b7280";
+      var mins  = t.due ? "Due" : t.minutes + " min";
+      var minsCol = t.due ? "#059669" : t.minutes <= 2 ? "#d97706" : "var(--text)";
+      var plat  = t.platform ? t.platform.replace(/bound/i,"").trim() : "";
+      return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);margin-bottom:7px">'
+        + '<div style="width:4px;align-self:stretch;border-radius:4px;background:'+col+';flex-shrink:0"></div>'
+        + '<div style="flex:1;min-width:0">'
+        +   '<div style="font-size:15px;font-weight:700;color:var(--text)">'+t.destination+'</div>'
+        +   '<div style="font-size:12px;color:var(--muted);margin-top:2px">'+t.line+(plat?' · '+plat:'')+'</div>'
+        + '</div>'
+        + '<div style="font-size:15px;font-weight:800;color:'+minsCol+'">'+mins+'</div>'
+        + '</div>';
+    }).join("");
+  }
+
+  // ── Load departures / arrivals ────────────────────────────────────────────
+  function _loadDeps(id, silent) {
     var el = document.getElementById("train-loading");
     var er = document.getElementById("train-error");
     if (!silent) { el.style.display = "block"; }
     er.style.display = "none";
     if (!silent) document.getElementById("train-results").innerHTML = "";
-    fetch("/api/train/departures?crs=" + crs)
+
+    if (_tubeMode) {
+      fetch("/api/tube/arrivals?id=" + encodeURIComponent(id))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          el.style.display = "none";
+          if (d.error) { er.textContent = d.error; er.style.display = "block"; return; }
+          _trainLoadedAt = Date.now();
+          _updateAgoLabel();
+          document.getElementById("train-dest-chips").innerHTML = "";
+          _renderTubeArrivals(d.trains || []);
+          _startTimers(id);
+        })
+        .catch(function(){
+          el.style.display = "none";
+          er.textContent = "Could not load tube arrivals";
+          er.style.display = "block";
+        });
+      return;
+    }
+
+    fetch("/api/train/departures?crs=" + id)
       .then(function(r){ return r.json(); })
       .then(function(d){
         el.style.display = "none";
@@ -12046,7 +12116,7 @@ window.spotifyAddTrack = window.spotifyLike;
         _updateAgoLabel();
         _renderChips();
         _renderResults();
-        _startTimers(crs);
+        _startTimers(id);
       })
       .catch(function(){
         el.style.display = "none";
@@ -12060,7 +12130,7 @@ window.spotifyAddTrack = window.spotifyLike;
     var bm = _getBm(slot);
     if (!bm) return;
     _trainSetMode = null;
-    _showActive(bm.name, bm.crs);
+    _showActive(bm.name, bm.crs, "rail");
     _loadDeps(bm.crs);
   };
 
@@ -12094,22 +12164,30 @@ window.spotifyAddTrack = window.spotifyLike;
     _renderResults();
   };
 
+  function _locateBoth(lat, lng, onResults, onError) {
+    var railP = fetch("/api/train/nearest?lat=" + lat + "&lng=" + lng).then(function(r){ return r.json(); }).catch(function(){ return {stations:[]}; });
+    var tubeP = fetch("/api/tube/nearest?lat="  + lat + "&lng=" + lng).then(function(r){ return r.json(); }).catch(function(){ return {stations:[]}; });
+    Promise.all([railP, tubeP]).then(function(results){
+      var rail = results[0].stations || [];
+      var tube = results[1].stations || [];
+      if (!rail.length && !tube.length) { onError("No stations found nearby"); return; }
+      onResults(rail, tube);
+    }).catch(function(){ onError("Could not find nearest stations"); });
+  }
+
   window.trainRelocate = function() {
     var btn = document.getElementById("train-relocate-btn");
     MiruLocation.request(btn,
       function(loc) {
-        fetch("/api/train/nearest?lat=" + loc.lat + "&lng=" + loc.lon)
-          .then(function(r){ return r.json(); })
-          .then(function(d){
-            if (d.error || !d.stations) return;
-            if (d.stations.length === 1) {
-              var s = d.stations[0];
-              _showActive(s.name, s.crs); _loadDeps(s.crs);
-            } else {
-              _showIdle();
-              _showNearestPicker(d.stations);
-            }
-          });
+        _locateBoth(loc.lat, loc.lon,
+          function(rail, tube) {
+            var allOne = rail.length + tube.length === 1;
+            if (allOne && rail.length) { var s=rail[0]; _showActive(s.name,s.crs,"rail"); _loadDeps(s.crs); }
+            else if (allOne && tube.length) { var s=tube[0]; trainSelectTubeStation(s.id, s.name); }
+            else { _showIdle(); _showNearestPicker(rail, tube); }
+          },
+          function() {}
+        );
       },
       function() {}
     );
@@ -12122,13 +12200,10 @@ window.spotifyAddTrack = window.spotifyLike;
     document.getElementById("train-nearest-list").style.display = "none";
     MiruLocation.request(btn,
       function(loc) {
-        fetch("/api/train/nearest?lat=" + loc.lat + "&lng=" + loc.lon)
-          .then(function(r){ return r.json(); })
-          .then(function(d){
-            if (d.error || !d.stations) { hint.textContent = d.error || "No stations found"; hint.style.display = "block"; return; }
-            _showNearestPicker(d.stations);
-          })
-          .catch(function(){ hint.textContent = "Could not find nearest station"; hint.style.display = "block"; });
+        _locateBoth(loc.lat, loc.lon,
+          function(rail, tube) { _showNearestPicker(rail, tube); },
+          function(msg) { hint.textContent = msg; hint.style.display = "block"; }
+        );
       },
       function() { hint.style.display = "block"; document.getElementById("train-search-input").focus(); }
     );
@@ -12162,8 +12237,13 @@ window.spotifyAddTrack = window.spotifyLike;
       _trainSetMode = null;
       _renderSaved();
     }
-    _showActive(name, crs);
+    _showActive(name, crs, "rail");
     _loadDeps(crs);
+  };
+
+  window.trainSelectTubeStation = function(id, name) {
+    _showActive(name, id, "tube");
+    _loadDeps(id);
   };
 
   var _origShowScreenTrains = window.showScreen;
@@ -12174,7 +12254,7 @@ window.spotifyAddTrack = window.spotifyLike;
         _showIdle();
         // Auto-load home bookmark if set
         var bh = _getBm("home");
-        if (bh && bh.crs) { _showActive(bh.name, bh.crs); _loadDeps(bh.crs); }
+        if (bh && bh.crs) { _showActive(bh.name, bh.crs, "rail"); _loadDeps(bh.crs); }
       }
     } else {
       _stopTimers();
