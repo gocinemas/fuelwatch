@@ -9636,8 +9636,10 @@ def ma_gmail_callback():
     return redirect("/?gmail_scan=1#myarea")
 
 
+_MA_GMAIL_FATAL_ERRORS = {"invalid_grant", "invalid_client", "invalid_request", "unauthorized_client"}
+
 def _ma_gmail_get_token(token_row: dict) -> str:
-    """Return a valid access token, refreshing if needed."""
+    """Return a valid access token, refreshing if needed. Returns "" on fatal auth errors."""
     at = token_row.get("access_token", "")
     rt = token_row.get("refresh_token", "")
     if not rt:
@@ -9658,6 +9660,17 @@ def _ma_gmail_get_token(token_row: dict) -> str:
             except Exception:
                 pass
             return new_at
+        # Fatal OAuth error — token is no longer valid
+        err = d.get("error", "")
+        if err in _MA_GMAIL_FATAL_ERRORS:
+            print(f"[ma gmail token] fatal OAuth error '{err}' for device={token_row.get('device_id','?')!r}")
+            try:
+                lib._sb().table("ma_gmail_tokens").update({
+                    "access_token": "", "refresh_token": "", "scan_status": "auth_error"
+                }).eq("device_id", token_row["device_id"]).execute()
+            except Exception:
+                pass
+            return ""
     except Exception:
         pass
     return at
@@ -9886,6 +9899,10 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
     """Background: scan Gmail for household accounts, extract, store as pending records."""
     token_row = {"device_id": device_id, "access_token": access_token, "refresh_token": refresh_token}
     at = _ma_gmail_get_token(token_row)
+    if not at:
+        # Token refresh failed fatally — auth_error already set in DB by _ma_gmail_get_token
+        print(f"[ma gmail scan] aborting — no valid token for device={device_id!r}")
+        return
     seen_providers = set()   # deduplicate by provider name (case-insensitive)
     seen_accounts  = set()   # secondary dedup by (provider, account_no)
     pending = []
@@ -10030,6 +10047,9 @@ def ma_gmail_status():
             # A record exists but may have been disconnected (tokens cleared)
             has_tokens = bool(row.get("access_token") or row.get("refresh_token"))
             if not has_tokens:
+                # Still surface auth_error status so UI can show reconnect warning
+                if row.get("scan_status") == "auth_error":
+                    return jsonify({"connected": False, "scan_status": "auth_error"})
                 return jsonify({"connected": False})
             return jsonify({
                 "connected":   True,
