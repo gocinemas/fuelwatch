@@ -386,14 +386,15 @@ def get_tube_journey(from_name: str, to_name: str) -> str:
     duration = j.get("duration", "?")
     legs = j.get("legs", [])
 
-    # Strip " Underground Station" suffix for readability
     def _short(name):
         return name.replace(" Underground Station", "").replace(" Station", "")
 
-    parts = [
-        f"🚇 *{_short(from_display)} → {_short(to_display)}*",
-        f"⏱ {duration} min",
-    ]
+    from_short = _short(from_display)
+    to_short   = _short(to_display)
+
+    parts = [f"🚇 *{from_short} → {to_short}*", f"⏱ {duration} min"]
+
+    tube_legs = []
     for leg in legs:
         mode = leg.get("mode", {}).get("name", "")
         leg_dur = leg.get("duration", "?")
@@ -402,9 +403,49 @@ def get_tube_journey(from_name: str, to_name: str) -> str:
         route_opts = leg.get("routeOptions", [])
         line_name = route_opts[0].get("name", "") if route_opts else ""
         if mode == "tube":
-            parts.append(f"• {line_name or 'Tube'}: {dep} → {arr} ({leg_dur} min)")
+            # Only show leg detail if it's not trivially the same as the header
+            if dep != from_short or arr != to_short or len(legs) > 1:
+                parts.append(f"• {line_name or 'Tube'}: {dep} → {arr} ({leg_dur} min)")
+            else:
+                parts.append(f"• {line_name or 'Tube'} line ({leg_dur} min)")
+            tube_legs.append({"line": line_name, "dep_id": from_id})
         elif mode == "walking":
-            parts.append(f"• Walk {leg_dur} min")
+            if leg_dur and int(leg_dur) > 1:
+                parts.append(f"• Walk {leg_dur} min")
+
+    # Append live next departures on the first tube leg from the origin
+    if tube_legs:
+        first_line = tube_legs[0]["line"]
+        try:
+            arr_r = requests.get(
+                f"https://api.tfl.gov.uk/StopPoint/{from_id}/Arrivals",
+                timeout=6,
+            )
+            arr_r.raise_for_status()
+            arrivals = arr_r.json()
+            arrivals.sort(key=lambda a: a.get("timeToStation", 9999))
+            next_deps = []
+            seen_dir = set()
+            for a in arrivals:
+                if first_line and a.get("lineName", "").lower() != first_line.lower():
+                    continue
+                secs = a.get("timeToStation", 0)
+                mins = secs // 60
+                platform = a.get("platformName", "")
+                dir_key = platform
+                if dir_key in seen_dir:
+                    continue
+                seen_dir.add(dir_key)
+                due = "Due" if mins < 1 else f"{mins} min"
+                dest = a.get("destinationName", "").replace(" Underground Station", "")
+                next_deps.append(f"  {due} → {dest}")
+                if len(next_deps) >= 3:
+                    break
+            if next_deps:
+                parts.append(f"\n*Next {first_line} from {from_short}:*")
+                parts.extend(next_deps)
+        except Exception:
+            pass
 
     return "\n".join(parts)
 
@@ -8187,8 +8228,8 @@ def _wa_train_format(from_name: str, to_name: str = "") -> str:
             if to_name:
                 tube_reply = get_tube_journey(from_name, to_name)
                 if tube_reply and "Couldn't find" not in tube_reply:
-                    return tube_reply + "\n\n_No direct National Rail service found — showing tube route_"
-            return f"🚂 No departures found from {stn_display}{dest_note}.\n\nTry: *tube {from_name} to {to_name or '...'}*\n\nmiru.humanagency.co"
+                    return tube_reply
+            return f"No service found from {stn_display}{dest_note}.\n\nTry: *tube {from_name} to {to_name or '...'}*"
         dest_note = f" to {to_display or to_name.title()}" if to_name else ""
         header = f"🚂 *{stn_display}*{dest_note}"
         return header + "\n\n" + "\n".join(lines) + "\n\nmiru.humanagency.co"
