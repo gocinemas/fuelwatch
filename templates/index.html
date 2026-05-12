@@ -3880,15 +3880,23 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maGmailShowPreview(records, email) {
+    const existing = (_maDetailsCache || []);
     const overlay = document.createElement("div");
     overlay.id = "ma-gmail-preview";
     overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center";
     const rows = records.map((r, i) => {
       const fields = Object.entries(r.data || {}).map(([k, v]) => v ? `<span style="font-size:11px;color:var(--muted)">${k}:</span> <span style="font-size:12px;font-weight:600">${v}</span>` : "").filter(Boolean).join(" &nbsp;·&nbsp; ");
+      const rProvider = ((r.data || {}).Provider || (r.data || {}).Council || "").toLowerCase();
+      const alreadyAdded = existing.some(e => {
+        if (e.type !== r.type) return false;
+        const eProvider = ((e.data || {}).Provider || (e.data || {}).Council || "").toLowerCase();
+        return rProvider && eProvider === rProvider;
+      });
+      const badge = alreadyAdded ? `<span style="font-size:10px;font-weight:700;color:#059669;background:#d1fae5;border-radius:20px;padding:2px 7px;margin-left:6px">✓ already added</span>` : "";
       return `<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px">
-        <input type="checkbox" id="gmail-rec-${i}" checked style="margin-top:3px;flex-shrink:0">
+        <input type="checkbox" id="gmail-rec-${i}" ${alreadyAdded ? "" : "checked"} style="margin-top:3px;flex-shrink:0">
         <label for="gmail-rec-${i}" style="cursor:pointer">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">${r.label || r.type}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${r.label || r.type}${badge}</div>
           <div style="margin-top:3px;line-height:1.6">${fields}</div>
         </label>
       </div>`;
