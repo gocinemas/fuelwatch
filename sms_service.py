@@ -442,8 +442,8 @@ def _nearest_tube_station(lat: float, lon: float, radius_m: int = 2000):
         if stops:
             s = stops[0]
             return s["id"], s["commonName"], round(s.get("distance", 0))
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[tube nearest] {e}")
     return None, None, None
 
 
@@ -12086,6 +12086,61 @@ def api_tube_test():
         except Exception as e:
             results["nearest_station_error"] = str(e)
     return jsonify(results)
+
+
+@app.route("/api/tube/nearest-by-postcode")
+def api_tube_nearest_by_postcode():
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+    latlon = postcode_to_latlon(postcode)
+    if not latlon:
+        return jsonify({"error": "Postcode not found"}), 404
+    lat, lon = latlon
+    nid, nname, ndist = _nearest_tube_station(lat, lon, radius_m=3000)
+    if not nid:
+        return jsonify({"error": "No tube station within 3km"}), 404
+    dist_km = round((ndist or 0) / 1000, 2)
+    return jsonify({"id": nid, "name": nname, "distance_km": dist_km, "lat": lat, "lon": lon})
+
+
+@app.route("/api/tube/arrivals")
+def api_tube_arrivals():
+    naptan_id = request.args.get("id", "").strip()
+    if not naptan_id:
+        return jsonify({"error": "id required"}), 400
+    try:
+        r = requests.get(
+            f"https://api.tfl.gov.uk/StopPoint/{naptan_id}/Arrivals",
+            timeout=8,
+        )
+        r.raise_for_status()
+        raw = r.json()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+    raw.sort(key=lambda a: a.get("timeToStation", 9999))
+    seen, trains = set(), []
+    for a in raw:
+        line     = a.get("lineName", "")
+        dest     = a.get("destinationName", "").replace(" Underground Station", "")
+        platform = a.get("platformName", "")
+        secs     = a.get("timeToStation", 0)
+        mins     = secs // 60
+        key      = (line, platform)
+        if key in seen:
+            continue
+        seen.add(key)
+        trains.append({
+            "line": line,
+            "destination": dest,
+            "platform": platform,
+            "minutes": mins,
+            "due": mins < 1,
+        })
+        if len(trains) >= 10:
+            break
+    return jsonify({"trains": trains})
 
 
 @app.route("/api/train/test")

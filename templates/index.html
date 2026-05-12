@@ -1432,6 +1432,7 @@
       <div id="matab-places" style="display:none">
         <div id="myarea-weather" style="display:none;margin-bottom:10px"></div>
         <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-tube"    style="display:none;margin-bottom:10px"></div>
       </div>
 
       <!-- Tab: Services -->
@@ -3531,6 +3532,74 @@ const _ts = new Date(d.timestamp);
     if (_maGetPrefs().train) el.style.display = "";
   }
 
+  function _maTubeRenderArrivals(panel, data) {
+    if (!data || data.error || !data.trains || !data.trains.length) {
+      panel.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">No arrivals data</div>';
+      return;
+    }
+    const rows = data.trains.map((t, i) => {
+      const border = i < data.trains.length - 1 ? "border-bottom:1px solid var(--border);" : "";
+      const timeStr = t.due ? "Due" : `${t.minutes} min`;
+      const timeColor = t.due ? "#059669" : t.minutes <= 2 ? "#d97706" : "var(--text)";
+      return `<div style="${border}display:flex;align-items:center;gap:8px;padding:6px 12px">
+        <div style="font-size:13px;font-weight:700;color:${timeColor};min-width:42px">${timeStr}</div>
+        <div style="flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.destination}</div>
+        <div style="font-size:11px;color:var(--muted);white-space:nowrap">${t.line}</div>
+        ${t.platform ? `<div style="font-size:10px;color:var(--muted);background:var(--border);border-radius:4px;padding:1px 5px">${t.platform.replace('Bound','').trim()}</div>` : ''}
+      </div>`;
+    }).join("");
+    panel.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:4px">${rows}</div>
+      <button onclick="_maTubeRefreshArrivals('${panel.dataset.nid}',this.closest('[data-tube-panel]'))"
+        style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">↻ Refresh</button>`;
+  }
+
+  function _maTubeToggleArrivals(nid, btn) {
+    const panel = document.getElementById(`tube-arr-${nid}`);
+    if (panel.style.display !== "none") {
+      panel.style.display = "none";
+      btn.textContent = "▾ Next trains";
+      return;
+    }
+    panel.style.display = "";
+    btn.textContent = "▴ Next trains";
+    if (panel.dataset.loaded === "1") return;
+    panel.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">Loading…</div>';
+    fetch(`/api/tube/arrivals?id=${encodeURIComponent(nid)}`)
+      .then(r => r.json())
+      .then(d => { panel.dataset.loaded = "1"; _maTubeRenderArrivals(panel, d); })
+      .catch(() => { panel.innerHTML = '<div style="font-size:12px;color:#b91c1c;padding:4px 0">Could not load</div>'; });
+  }
+
+  function _maTubeRefreshArrivals(nid, panel) {
+    panel.dataset.loaded = "0";
+    panel.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">Loading…</div>';
+    fetch(`/api/tube/arrivals?id=${encodeURIComponent(nid)}`)
+      .then(r => r.json())
+      .then(d => { panel.dataset.loaded = "1"; _maTubeRenderArrivals(panel, d); })
+      .catch(() => { panel.innerHTML = '<div style="font-size:12px;color:#b91c1c;padding:4px 0">Could not load</div>'; });
+  }
+
+  function _maRenderTube(data) {
+    const el = document.getElementById("myarea-tube");
+    if (!data || data.error || !data.id) { el.style.display = "none"; return; }
+    const dist = data.distance_km ? `${(data.distance_km * 0.621371).toFixed(1)} mi away` : "";
+    const shortName = data.name.replace(" Underground Station", "");
+    const row = `<div style="padding:10px 14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${shortName}</div>
+          ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
+          <button onclick="_maTubeToggleArrivals('${data.id}',this)"
+            style="margin-top:3px;font-size:11px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0">▾ Next trains</button>
+        </div>
+      </div>
+      <div id="tube-arr-${data.id}" data-tube-panel data-nid="${data.id}" style="display:none;margin-top:8px"></div>
+    </div>`;
+    const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">${row}</div>`;
+    el.innerHTML = _maSectionHtml("tube", "🚇 Nearest Tube", bodyHtml);
+    el.style.display = "";
+  }
+
   function _maRenderGPs(area) {
     const el = document.getElementById("myarea-gp");
     if (!_maGetPrefs().gp) { el.style.display = "none"; return; }
@@ -3669,7 +3738,7 @@ const _ts = new Date(d.timestamp);
     // Hide empty state
     document.getElementById("myarea-empty-state").style.display = "none";
     // Reset sections
-    ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
+    ["myarea-reps","myarea-council","myarea-weather","myarea-train","myarea-tube","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
     const activeTab = localStorage.getItem("miru_ma_tab") || "places";
@@ -3715,6 +3784,9 @@ const _ts = new Date(d.timestamp);
 
     // Nearest train station (fast — uses in-memory station cache)
     fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_guard(_maRenderTrain)).catch(()=>{});
+
+    // Nearest tube station (TfL API)
+    fetch(`/api/tube/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_guard(_maRenderTube)).catch(()=>{});
 
     // your-area (GPs, council, pharmacies) — LS-cached 24h, Overpass on miss
     _maFetchCached(`your-area:${pc}`, `/api/your-area?postcode=${pc}`, 86400, _guard(area => {
