@@ -1377,7 +1377,10 @@
       <div id="myarea-saved" style="display:none;margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:13px;font-weight:700;color:var(--text)">📌 My Saved Places <span id="myarea-saved-count" style="font-size:11px;font-weight:400;color:var(--muted)"></span></div>
-          <button onclick="_maToggleSavedCollapse()" id="myarea-saved-toggle" style="background:none;border:none;font-size:15px;cursor:pointer;color:var(--muted);padding:2px 4px;line-height:1">▸</button>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button onclick="_maOpenEditPlaces()" style="font-size:11px;font-weight:700;color:#2563eb;background:none;border:1.5px solid #bfdbfe;border-radius:8px;padding:3px 10px;cursor:pointer">Edit</button>
+            <button onclick="_maToggleSavedCollapse()" id="myarea-saved-toggle" style="background:none;border:none;font-size:15px;cursor:pointer;color:var(--muted);padding:2px 4px;line-height:1">▸</button>
+          </div>
         </div>
         <div id="myarea-saved-list" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px"></div>
       </div>
@@ -2848,55 +2851,60 @@ const _ts = new Date(d.timestamp);
 
   function _maBookmarkRow(p) {
     const addr  = p.address ? `<div style="font-size:11px;color:var(--muted)">${p.address}</div>`
-                            : `<div style="font-size:11px;color:#d97706">No address — tap ✏️ to add</div>`;
+                            : `<div style="font-size:11px;color:#d97706">No address saved</div>`;
     const phone = p.phone   ? `<a href="tel:${p.phone}" style="color:#2563eb;font-size:11px">${p.phone}</a>`
-                            : `<div style="font-size:11px;color:#d97706">No phone — tap ✏️ to add</div>`;
+                            : `<div style="font-size:11px;color:#d97706">No phone saved</div>`;
     const hours = p.opening_hours ? `<div style="font-size:10px;color:#065f46;margin-top:1px">🕐 ${p.opening_hours}</div>` : "";
-    const safeP = JSON.stringify(p).replace(/'/g,"&#39;");
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:var(--text)">⭐ ${p.name}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${p.emoji || '⭐'} ${p.name}</div>
         ${addr}${phone}${hours}
       </div>
-      <div style="display:flex;gap:2px;flex-shrink:0">
-        <button onclick="_maEditPlace('${p.id}')" style="font-size:14px;color:#2563eb;background:none;border:none;cursor:pointer;padding:4px 6px" title="Edit">✏️</button>
-        <button onclick="_maRemoveSaved('${p.id}')" style="font-size:14px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 6px" title="Remove">✕</button>
-      </div>
+      <button onclick="_maRemoveSaved('${p.id}')" style="font-size:14px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 6px;flex-shrink:0" title="Remove">✕</button>
     </div>`;
   }
 
-  async function _maEditPlace(placeId) {
-    const place = (_maSavedPlaces || []).find(p => String(p.id) === String(placeId));
-    if (!place) return;
-    const sheet = document.createElement("div");
-    sheet.id = "ma-edit-place-sheet";
-    sheet.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center";
-    sheet.innerHTML = `
-      <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;box-sizing:border-box">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-          <div style="font-size:16px;font-weight:800;color:var(--text)">✏️ Edit ${place.name}</div>
-          <button onclick="document.getElementById('ma-edit-place-sheet').remove()" style="font-size:20px;background:none;border:none;cursor:pointer;color:var(--muted)">✕</button>
+  function _maOpenEditPlaces() {
+    const places = (_maSavedPlaces || []).filter(p => p.category !== "_home");
+    const overlay = document.createElement("div");
+    overlay.id = "ma-edit-places-overlay";
+    overlay.style.cssText = "position:fixed;inset:0;background:var(--bg);z-index:9999;overflow-y:auto;-webkit-overflow-scrolling:touch";
+    const rows = places.length ? places.map(p => `
+      <div style="padding:18px 0;border-bottom:1px solid var(--border)" data-place-id="${p.id}">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">${p.emoji || '⭐'} ${p.name}</div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px">Address</label>
+        <input class="ma-ep-addr" data-id="${p.id}"
+          value="${(p.address||'').replace(/"/g,'&quot;')}"
+          placeholder="e.g. 12 High Street, KT15 3RL"
+          style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:10px;font-family:inherit"
+          onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px">Phone</label>
+        <input class="ma-ep-phone" data-id="${p.id}"
+          value="${(p.phone||'').replace(/"/g,'&quot;')}"
+          type="tel" placeholder="e.g. 01932 336571"
+          style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:12px;font-family:inherit"
+          onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+        <button onclick="_maEditPlaceSaveRow('${p.id}',this)"
+          style="padding:8px 20px;border-radius:10px;border:none;background:#065f46;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>
+      </div>`).join("") : `<div style="padding:32px 0;text-align:center;color:var(--muted);font-size:14px">No saved places yet.</div>`;
+    overlay.innerHTML = `
+      <div style="max-width:520px;margin:0 auto;padding:0 20px 60px">
+        <div style="position:sticky;top:0;background:var(--bg);padding:16px 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px;display:flex;align-items:center;gap:12px;z-index:1">
+          <button onclick="document.getElementById('ma-edit-places-overlay').remove()" style="font-size:22px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0;line-height:1">←</button>
+          <div style="font-size:17px;font-weight:800;color:var(--text)">Edit Saved Places</div>
         </div>
-        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Address</label>
-        <input id="ma-edit-addr" value="${(place.address||'').replace(/"/g,'&quot;')}"
-          style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;margin-bottom:12px;box-sizing:border-box">
-        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Phone</label>
-        <input id="ma-edit-phone" value="${(place.phone||'').replace(/"/g,'&quot;')}" type="tel"
-          style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;margin-bottom:20px;box-sizing:border-box">
-        <button onclick="_maEditPlaceSave('${placeId}')"
-          style="width:100%;padding:13px;border-radius:12px;border:none;background:#065f46;color:#fff;font-size:15px;font-weight:700;cursor:pointer">
-          Save
-        </button>
+        <div id="ma-ep-rows">${rows}</div>
       </div>`;
-    document.body.appendChild(sheet);
-    sheet.addEventListener("click", e => { if (e.target === sheet) sheet.remove(); });
-    document.getElementById("ma-edit-addr").focus();
+    document.body.appendChild(overlay);
   }
 
-  async function _maEditPlaceSave(placeId) {
-    const addr  = document.getElementById("ma-edit-addr")?.value.trim() || "";
-    const phone = document.getElementById("ma-edit-phone")?.value.trim() || "";
-    document.getElementById("ma-edit-place-sheet")?.remove();
+  async function _maEditPlaceSaveRow(placeId, btn) {
+    const addrEl  = document.querySelector(`.ma-ep-addr[data-id="${placeId}"]`);
+    const phoneEl = document.querySelector(`.ma-ep-phone[data-id="${placeId}"]`);
+    const addr    = addrEl?.value.trim()  || "";
+    const phone   = phoneEl?.value.trim() || "";
+    const orig    = btn.textContent;
+    btn.textContent = "Saving…"; btn.disabled = true;
     const idx = (_maSavedPlaces || []).findIndex(p => String(p.id) === String(placeId));
     if (idx >= 0) {
       _maSavedPlaces[idx] = {..._maSavedPlaces[idx], address: addr, phone};
@@ -2910,7 +2918,11 @@ const _ts = new Date(d.timestamp);
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({address: addr, phone})
       });
-    } catch {}
+      btn.textContent = "Saved ✓"; btn.style.background = "#16a34a";
+    } catch {
+      btn.textContent = orig;
+    }
+    btn.disabled = false;
   }
 
   function _maToggleNearby(section) {
