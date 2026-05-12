@@ -1342,13 +1342,6 @@
       <!-- Renewals / reminders banner -->
       <div id="myarea-renewals" style="display:none;margin-bottom:10px"></div>
 
-      <!-- ── POSTCODE + IDENTITY ROW ── -->
-      <!-- Home banner (shown when home is set) -->
-      <div id="myarea-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:9px 14px;margin-bottom:8px;align-items:center;justify-content:space-between">
-        <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="myarea-home-pc-label"></span></span>
-        <button onclick="myAreaUseHome()" style="font-size:12px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
-      </div>
-
       <!-- Postcode search bar — always visible -->
       <div style="margin-bottom:8px">
         <div style="display:flex;gap:6px;margin-bottom:4px">
@@ -1363,12 +1356,7 @@
             style="flex-shrink:0;background:#065f46;color:#fff;border:none;border-radius:12px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s">Go</button>
         </div>
         <div id="myarea-loc-err" style="display:none;font-size:12px;color:#ef4444;margin-bottom:4px"></div>
-        <!-- Hint: shown when user types a postcode different from current search -->
         <div id="myarea-search-hint" style="display:none;font-size:12px;color:#065f46;padding:0 2px;margin-bottom:2px"></div>
-        <!-- Save home row: shown after a search when postcode ≠ home -->
-        <div id="myarea-save-home-row" style="display:none;text-align:center;margin-top:2px">
-          <button onclick="myAreaSaveHome()" style="font-size:12px;color:#16a34a;background:none;border:none;cursor:pointer;text-decoration:underline">📍 Save as my home postcode</button>
-        </div>
       </div>
 
       <!-- Phone link: subtle inline (not a big banner) -->
@@ -3761,46 +3749,7 @@ const _ts = new Date(d.timestamp);
     _myAreaRefreshHomeRow();
   }
 
-  function _myAreaRefreshHomeRow() {
-    const pcNorm = document.getElementById("myarea-postcode-input").value.trim().toUpperCase().replace(/\s+/g,"");
-    const home   = MiruLocation.getHome();
-    const homeNorm = home ? home.replace(/\s+/g,"").toUpperCase() : "";
-    // "Save as Home" row — shown after a search when postcode ≠ home
-    const saveRow = document.getElementById("myarea-save-home-row");
-    if (saveRow) saveRow.style.display = (pcNorm && homeNorm && pcNorm !== homeNorm) ? "" :
-                                          (pcNorm && !homeNorm) ? "" : "none";
-    // "Home: KT1 2BA · Use" banner — shown when home is set
-    const homeRow = document.getElementById("myarea-home-row");
-    const label   = document.getElementById("myarea-home-pc-label");
-    if (homeRow && label) {
-      if (home) {
-        label.textContent = home;
-        homeRow.style.display = "flex";
-      } else {
-        homeRow.style.display = "none";
-      }
-    }
-  }
-
-  function myAreaUseHome() {
-    const home = MiruLocation.getHome();
-    if (!home) return;
-    document.getElementById("myarea-postcode-input").value = home;
-    document.getElementById("myarea-save-home-row").style.display = "none";
-    document.getElementById("myarea-search-hint").style.display = "none";
-    myAreaSearch();
-  }
-
-  function myAreaSaveHome() {
-    const pc = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
-    if (!pc) return;
-    MiruLocation.setHome(pc);
-    _myAreaRefreshHomeRow();
-    // Refresh home row in other modules too
-    if (window._electionsRefreshHomeRow) _electionsRefreshHomeRow();
-    if (window._reportRefreshHomeRow)    _reportRefreshHomeRow();
-    if (window._placesRefreshHomeRow)    _placesRefreshHomeRow();
-  }
+  function _myAreaRefreshHomeRow() { /* removed — identity bar handles postcode */ }
 
   function myAreaUseLocation() {
     const errEl = document.getElementById("myarea-loc-err");
@@ -4444,31 +4393,24 @@ const _ts = new Date(d.timestamp);
     _maShowLinkedPhone();
     _maLoadSavedPlaces();
     _maLoadVehicles();
-    _myAreaRefreshHomeRow();
     _maSchoolStatusLoad();
-    const home = MiruLocation.getHome();
     const inputEl = document.getElementById("myarea-postcode-input");
 
     if (_maCurrentPostcode) {
       return;
     }
 
-    // First load: no active search yet — prefer home location, then global postcode
     const currentVal = inputEl.value.trim().toUpperCase().replace(/\s+/g,"");
-    if (home) {
-      inputEl.value = home;
+    const idPostcode = _miruPostcode();
+    if (!currentVal && idPostcode) {
+      inputEl.value = idPostcode;
       myAreaSearch();
-    } else if (!currentVal && _miruPostcode()) {
-      inputEl.value = _miruPostcode();
+    } else if (currentVal) {
       myAreaSearch();
-    } else if (!currentVal) {
-      // No postcode yet — show My Accounts tab by default
+    } else {
       document.getElementById("myarea-empty-state").style.display = "";
       _maShowTab("accounts");
       _myAreaPersonalRender();
-    } else {
-      // Input has a value typed by the user but not yet searched
-      myAreaSearch();
     }
   }
 
