@@ -3200,10 +3200,10 @@ const _ts = new Date(d.timestamp);
 
   function _maRenderSchools(data) {
     const el = document.getElementById("myarea-schools");
+    if (!el) return;
+    if (!_maGetPrefs().schools) { el.style.display = "none"; return; }
     const schools = (data.schools?.schools || []).slice(0, 5);
     const saved = _maSavedForSection(["🏫"]);
-    // Hide only if nothing at all — saved schools should always show
-    if (!schools.length && !saved.length) { el.style.display = "none"; return; }
     const _card = (rows) => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
     let title, bodyHtml;
     if (saved.length) {
@@ -3215,12 +3215,15 @@ const _ts = new Date(d.timestamp);
           ▾ See ${unsaved.length} more nearby</button>
         <div id="myarea-schools-nearby" style="display:none;margin-top:6px">${_card(unsaved.map(x=>_maPlaceRow(x,"🏫")).join(""))}</div>` : "";
       bodyHtml = `${_card(saved.map(_maBookmarkRow).join(""))}${nearbyHtml}`;
-    } else {
+    } else if (schools.length) {
       title = "🏫 Nearby Schools";
       bodyHtml = _card(schools.map(x => _maPlaceRow(x, "🏫")).join(""));
+    } else {
+      title = "🏫 Schools";
+      bodyHtml = `<div style="padding:12px 0;text-align:center;color:var(--muted);font-size:13px">No schools found nearby — search your postcode or bookmark one via 🔍 Services</div>`;
     }
     el.innerHTML = _maSectionHtml("schools", title, bodyHtml);
-    if (_maGetPrefs().schools) el.style.display = "";
+    el.style.display = "";
   }
 
   function _maRenderWeather(w) {

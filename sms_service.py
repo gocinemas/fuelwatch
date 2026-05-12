@@ -6400,31 +6400,52 @@ def _vivino_lookup(wine_name: str) -> dict:
 _WINE_RATING_STATE: dict = {}  # from_number → {save_id, wine_name, expires}
 
 
-def _try_isbn_from_image(raw_bytes: bytes) -> dict | None:
-    """Run pyzbar on image bytes; if an ISBN barcode is found, look it up via Google Books."""
+_ISBN_BARCODE_FAILED = object()  # sentinel: pyzbar ran but found no ISBN
+
+def _try_isbn_from_image(raw_bytes: bytes):
+    """Run pyzbar on image bytes; if an ISBN barcode is found, look it up via Google Books.
+    Returns a book dict on success, _ISBN_BARCODE_FAILED if pyzbar ran but found nothing, None on error."""
     try:
         from pyzbar import pyzbar as _pyzbar
-        from PIL import Image as _PILImage, ImageOps as _ImageOps
+        from PIL import Image as _PILImage, ImageOps as _ImageOps, ImageEnhance as _IE, ImageFilter as _IF
         import io as _io
         img = _PILImage.open(_io.BytesIO(raw_bytes))
         img = _ImageOps.exif_transpose(img).convert("RGB")
-        codes = _pyzbar.decode(img)
-        if not codes:
-            from PIL import ImageEnhance as _IE
-            enhanced = _IE.Contrast(img.convert("L")).enhance(2.0).convert("RGB")
-            codes = _pyzbar.decode(enhanced)
-        isbn = None
-        isbn10 = None
-        for c in codes:
-            val = c.data.decode("utf-8", errors="ignore").replace("-", "").strip()
-            if re.match(r"^(978|979)\d{10}$", val):
-                isbn = val; break          # ISBN-13 — take immediately
-            elif re.match(r"^\d{10}$", val) and not isbn10:
-                isbn10 = val              # ISBN-10 fallback
+
+        def _extract_isbn(codes):
+            isbn, isbn10 = None, None
+            for c in codes:
+                val = c.data.decode("utf-8", errors="ignore").replace("-", "").replace(" ", "").strip()
+                if re.match(r"^(978|979)\d{10}$", val):
+                    isbn = val; break
+                elif re.match(r"^\d{10}$", val) and not isbn10:
+                    isbn10 = val
+            return isbn or isbn10
+
+        # Attempt 1: raw image
+        isbn = _extract_isbn(_pyzbar.decode(img))
+
+        # Attempt 2: high-contrast greyscale
         if not isbn:
-            isbn = isbn10                 # use ISBN-10 only if no ISBN-13 found
+            grey = img.convert("L")
+            isbn = _extract_isbn(_pyzbar.decode(_IE.Contrast(grey).enhance(2.5).convert("RGB")))
+
+        # Attempt 3: crop bottom third (ISBN barcode usually near bottom of back cover)
         if not isbn:
-            return None
+            w, h = img.size
+            bottom = img.crop((0, int(h * 0.6), w, h))
+            isbn = _extract_isbn(_pyzbar.decode(bottom))
+            if not isbn:
+                isbn = _extract_isbn(_pyzbar.decode(_IE.Contrast(bottom.convert("L")).enhance(2.5).convert("RGB")))
+
+        # Attempt 4: sharpen then scan
+        if not isbn:
+            sharp = img.filter(_IF.SHARPEN)
+            isbn = _extract_isbn(_pyzbar.decode(sharp))
+
+        if not isbn:
+            print("[isbn barcode] pyzbar found no ISBN barcode in image")
+            return _ISBN_BARCODE_FAILED
         gbooks_key = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
         vi, all_isbns = None, []
         try:
@@ -7126,6 +7147,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
 
     # ── ISBN barcode detection — short-circuit vision pipeline for books ────────
     _isbn_hit = _try_isbn_from_image(r.content)
+    if _isbn_hit is _ISBN_BARCODE_FAILED:
+        user_token = _wa_user_token(from_number)
+        _wa_send_proactive(from_number,
+            "📚 *Couldn't read the barcode* — try again with the barcode filling most of the frame, in good light.\n\n"
+            "Or send the book title as a message and I'll find it.")
+        return "📚 Barcode not readable."
     if _isbn_hit:
         try:
             url = f"book:{_isbn_hit['isbn']}"
