@@ -7789,6 +7789,118 @@ def _split_product_postcode(body: str):
     return remaining, postcode
 
 
+def _wa_train_format(from_name: str, to_name: str = "") -> str:
+    """Return WhatsApp-formatted train departures. Returns None if station not found."""
+    if not from_name:
+        return None
+    try:
+        # Look up station CRS from name
+        from_lower = from_name.lower().strip()
+        to_lower   = to_name.lower().strip() if to_name else ""
+
+        # Find best match in station cache
+        def _find_crs(name):
+            if not name:
+                return None, None
+            exact = [(k, s) for k, s in _STATION_CACHE.items() if k == name]
+            if exact:
+                return exact[0][1]["crs"], exact[0][1]["name"]
+            prefix = [(k, s) for k, s in _STATION_CACHE.items() if k.startswith(name)]
+            if prefix:
+                return prefix[0][1]["crs"], prefix[0][1]["name"]
+            contains = [(k, s) for k, s in _STATION_CACHE.items() if name in k]
+            if contains:
+                return contains[0][1]["crs"], contains[0][1]["name"]
+            # Fuzzy
+            import difflib as _dl
+            close = _dl.get_close_matches(name, list(_STATION_CACHE.keys()), n=1, cutoff=0.6)
+            if close:
+                s = _STATION_CACHE[close[0]]
+                return s["crs"], s["name"]
+            return None, None
+
+        crs, stn_display = _find_crs(from_lower)
+        if not crs:
+            return None  # not a train query — let it fall through
+
+        to_crs, to_display = _find_crs(to_lower) if to_lower else (None, None)
+
+        # Fetch departures
+        access = _get_rtt_token()
+        r = requests.get(
+            "https://data.rtt.io/rtt/location",
+            headers={"Authorization": f"Bearer {access}"},
+            params={"code": f"gb-nr:{crs}"},
+            timeout=12,
+        )
+        if r.status_code != 200:
+            return f"Couldn't load departures for {stn_display} right now. Try again shortly."
+        data = r.json()
+        services = data.get("services") or []
+
+        def fmt_time(dt):
+            if not dt: return ""
+            s = str(dt).strip()
+            if len(s) >= 16: return s[11:16]
+            if len(s) == 5 and s[2] == ":": return s
+            if len(s) == 4 and s.isdigit(): return s[:2] + ":" + s[2:]
+            return s[:5] if len(s) >= 5 else s
+
+        lines = []
+        shown = 0
+        for svc in services:
+            if shown >= 6:
+                break
+            td  = svc.get("temporalData", {})
+            dep = td.get("departure", {})
+            dest_list = svc.get("destination") or [{}]
+            dest = (dest_list[0].get("location") or {}).get("description", "") if dest_list else ""
+            if not dest:
+                continue
+            # Filter by destination if given
+            if to_crs:
+                dest_crs = (dest_list[0].get("location") or {}).get("crs", "")
+                # Try to match by name or CRS
+                if to_crs.upper() != dest_crs.upper() and to_lower not in dest.lower():
+                    continue
+            sched = fmt_time(dep.get("scheduleAdvertised") or dep.get("scheduled") or "")
+            real_raw = (dep.get("realtimeForecast") or dep.get("forecast") or
+                        dep.get("realtimeActual") or dep.get("actual") or "")
+            real  = fmt_time(real_raw)
+            cancelled = dep.get("isCancelled", False) or dep.get("cancelled", False)
+            platform_raw = (svc.get("locationMetadata") or {}).get("platform")
+            if isinstance(platform_raw, dict):
+                platform = str(platform_raw.get("display") or platform_raw.get("number") or "")
+            else:
+                platform = str(platform_raw) if platform_raw else ""
+            if not sched:
+                continue
+            if cancelled:
+                status = "❌ Cancelled"
+            elif real and real != sched:
+                status = f"🕐 Exp {real}"
+            else:
+                status = "✅ On time"
+            line = f"*{sched}* → {dest}  {status}"
+            if platform:
+                line += f"  Plat {platform}"
+            lines.append(line)
+            shown += 1
+
+        if not lines:
+            dest_note = f" to {to_display or to_name.title()}" if to_name else ""
+            return f"🚂 No upcoming departures found from {stn_display}{dest_note}.\n\nmiru.humanagency.co"
+        dest_note = f" to {to_display or to_name.title()}" if to_name else ""
+        header = f"🚂 *{stn_display}*{dest_note}"
+        return header + "\n\n" + "\n".join(lines) + "\n\nmiru.humanagency.co"
+    except RuntimeError as e:
+        print(f"[wa train] {e}")
+        return None  # RTT not configured — fall through
+    except Exception as e:
+        print(f"[wa train format] {e}")
+        return None
+
+
 def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
     """Look up a grocery product and return a WhatsApp-friendly price summary."""
     import requests as _req, json as _json
@@ -8822,6 +8934,31 @@ def whatsapp_reply():
         resp.message(f"🔗 Your personal Miru link:\nmiru.humanagency.co/?screen=saves&token={user_token}")
         return str(resp)
 
+    # ── Train departures query ────────────────────────────────────────────────
+    _TRAIN_RE = re.compile(
+        r'\b(?:next\s+)?trains?\s+(?:from\s+)?(.+?)(?:\s+to\s+(.+))?$'
+        r'|\bnext\s+train\s+(.+?)(?:\s+to\s+(.+))?$',
+        re.I
+    )
+    _tm = _TRAIN_RE.match(body_lower.strip())
+    if _tm or re.match(r'^(?:next\s+)?train\b', body_lower.strip()):
+        # Parse from/to station names
+        if _tm:
+            from_stn = (_tm.group(1) or _tm.group(3) or "").strip().lower()
+            to_stn   = (_tm.group(2) or _tm.group(4) or "").strip().lower()
+        else:
+            from_stn = re.sub(r'^(?:next\s+)?train\s+(?:from\s+)?', '', body_lower.strip()).strip()
+            to_stn = ""
+        # Strip "to X" from from_stn if not already split
+        if not to_stn and " to " in from_stn:
+            parts = from_stn.split(" to ", 1)
+            from_stn, to_stn = parts[0].strip(), parts[1].strip()
+        if from_stn:
+            wa_train_reply = _wa_train_format(from_stn, to_stn)
+            if wa_train_reply:
+                resp.message(wa_train_reply)
+                return str(resp)
+
     # Decide: fuel query or product query
     # Product query if: no postcode at all, OR postcode present but there's
     # substantial non-fuel text alongside it
@@ -9734,15 +9871,21 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
     except Exception:
         pass
 
-    try:
-        lib._sb().table("ma_gmail_tokens").update({
-            "scan_status": "done",
-            "pending":     pending,
-            "email":       gmail_email,
-            "last_scan":   "now()",
-        }).eq("device_id", device_id).execute()
-    except Exception as e:
-        print(f"[ma gmail scan] db update error: {e}")
+    from datetime import datetime as _dt
+    # Always mark scan as done — use ISO timestamp (not "now()" which PostgREST won't evaluate)
+    for _attempt in range(3):
+        try:
+            lib._sb().table("ma_gmail_tokens").update({
+                "scan_status": "done",
+                "pending":     pending,
+                "email":       gmail_email,
+                "last_scan":   _dt.utcnow().isoformat() + "Z",
+            }).eq("device_id", device_id).execute()
+            print(f"[ma gmail scan] completed: {len(pending)} records, email={gmail_email!r}")
+            break
+        except Exception as e:
+            print(f"[ma gmail scan] db update attempt {_attempt+1} error: {e}")
+            import time as _t; _t.sleep(1)
 
     # WhatsApp notification when scan finds something
     if pending:

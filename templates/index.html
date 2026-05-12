@@ -483,6 +483,10 @@
     <div id="screen-fuel" class="screen pt-5">
       <div class="bg-white rounded-2xl shadow p-5 mb-4">
         <h2 class="font-bold text-gray-800 mb-3">⛽ Fuel Prices</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+          <span style="font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:3px 10px;font-weight:600">💬 cheapest petrol near KT15</span>
+          <span style="font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:3px 10px;font-weight:600">💬 diesel prices GU25</span>
+        </div>
         <div class="flex gap-2 mb-3">
           <input id="fuel-postcode" type="text" placeholder="Postcode e.g. TW3 3SF"
             class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 uppercase"
@@ -1305,6 +1309,11 @@
         <div>
           <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px">🏡 My Area</div>
           <div id="myarea-subtitle" style="font-size:12px;color:var(--muted);margin-top:1px">Your MP, council, local services &amp; more</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">
+            <span style="font-size:10px;color:#1e3a5f;background:#dbeafe;border:1px solid #bfdbfe;border-radius:99px;padding:2px 8px;font-weight:600">💬 places KT15 3RL</span>
+            <span style="font-size:10px;color:#1e3a5f;background:#dbeafe;border:1px solid #bfdbfe;border-radius:99px;padding:2px 8px;font-weight:600">💬 GP near me</span>
+            <span style="font-size:10px;color:#1e3a5f;background:#dbeafe;border:1px solid #bfdbfe;border-radius:99px;padding:2px 8px;font-weight:600">💬 pubs near GU25</span>
+          </div>
         </div>
         <button onclick="_maToggleCustomise()" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:5px">⚙️ <span>Customise</span></button>
       </div>
@@ -1444,6 +1453,8 @@
 
         <!-- Gmail import card -->
         <div id="ma-gmail-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:16px">
+
+          <!-- State: connect -->
           <div id="ma-gmail-state-connect" style="display:flex;align-items:center;justify-content:space-between">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--text)">📧 Gmail scan</div>
@@ -1454,13 +1465,17 @@
               Connect
             </a>
           </div>
-          <div id="ma-gmail-state-scanning" style="display:none;align-items:center;gap:10px">
-            <span style="width:16px;height:16px;border:2px solid #d1d5db;border-top-color:#4285f4;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></span>
-            <div>
+
+          <!-- State: scanning -->
+          <div id="ma-gmail-state-scanning" style="display:none;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:16px;height:16px;border:2px solid #d1d5db;border-top-color:#4285f4;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></span>
               <div style="font-size:13px;font-weight:700;color:var(--text)">Scanning your inbox…</div>
-              <div id="ma-gmail-scan-subtext" style="font-size:11px;color:var(--muted);margin-top:2px">Looking for accounts — this takes a few seconds</div>
             </div>
+            <div style="font-size:11px;color:var(--muted)">Looking for energy, broadband, insurance &amp; more. We'll WhatsApp you when done.</div>
           </div>
+
+          <!-- State: done (no pending items) -->
           <div id="ma-gmail-state-done" style="display:none">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div style="display:flex;align-items:center;gap:7px">
@@ -1468,7 +1483,7 @@
                 <div>
                   <div style="font-size:13px;font-weight:700;color:var(--text)">Gmail connected</div>
                   <div id="ma-gmail-email-label" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
-                  <div id="ma-gmail-scan-result" style="font-size:11px;color:var(--muted);margin-top:1px;display:none"></div>
+                  <div id="ma-gmail-scan-result" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
                 </div>
               </div>
               <div style="display:flex;gap:6px;align-items:center">
@@ -1477,24 +1492,25 @@
               </div>
             </div>
           </div>
+
+          <!-- State: pending (items found) -->
           <div id="ma-gmail-state-pending" style="display:none">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div style="display:flex;align-items:center;gap:7px">
                 <span style="font-size:15px">📬</span>
                 <div>
-                  <div id="ma-gmail-pending-label" style="font-size:13px;font-weight:700;color:var(--text)">Items found</div>
-                  <div style="font-size:11px;color:var(--muted);margin-top:1px">Ready to import into My Details</div>
+                  <div id="ma-gmail-pending-label" style="font-size:13px;font-weight:700;color:var(--text)">Accounts found</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:1px">Tap Review to import into My Details</div>
                 </div>
               </div>
               <div style="display:flex;gap:6px;align-items:center">
-                <button onclick="_maGmailDisconnect()" style="font-size:12px;font-weight:600;color:#9ca3af;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 8px;cursor:pointer">✕</button>
                 <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#6b7280;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 10px;cursor:pointer">Rescan</button>
                 <button id="ma-gmail-review-btn" onclick="_maGmailReviewPending()" style="font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:8px 14px;cursor:pointer">Review →</button>
               </div>
             </div>
           </div>
 
-          <!-- Missing bill hints — shown when connected (done or pending) -->
+          <!-- Missing bill hints — shown when connected -->
           <div id="ma-gmail-hints-section" style="display:none;margin-top:12px;padding-top:11px;border-top:1px solid var(--border)">
             <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px">Missing a bill?</div>
             <div id="ma-gmail-hints-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
@@ -1506,6 +1522,9 @@
                 style="padding:8px 13px;border:none;background:var(--text);color:var(--bg);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Add</button>
             </div>
             <div style="font-size:11px;color:var(--muted);margin-top:5px">Name any provider we missed — it'll be searched on next Rescan</div>
+            <div style="margin-top:8px">
+              <button onclick="_maGmailDisconnect()" style="font-size:11px;font-weight:600;color:#9ca3af;background:none;border:none;cursor:pointer;text-decoration:underline">Disconnect Gmail</button>
+            </div>
           </div>
         </div>
 
@@ -3864,27 +3883,29 @@ const _ts = new Date(d.timestamp);
     _myAreaPersonalRender();
   }
 
-  // ── Gmail import ─────────────────────────────────────────────────────────────
+  // ── Gmail ────────────────────────────────────────────────────────────────────
   let _maGmailPendingCache = null;
+  let _maGmailScanStart    = 0;
+  let _maGmailPolling      = false;
 
   function _maGmailSetState(state, data) {
-    // state: "connect" | "scanning" | "done" | "pending"
     ["connect","scanning","done","pending"].forEach(s => {
       const el = document.getElementById(`ma-gmail-state-${s}`);
-      if (el) el.style.display = (s === state) ? "flex" : "none";
+      if (!el) return;
+      el.style.display = (s === state) ? (s === "scanning" ? "flex" : "block") : "none";
     });
-    if (state === "done" && data?.email) {
-      const lbl = document.getElementById("ma-gmail-email-label");
-      if (lbl) lbl.textContent = data.email;
-    }
     if (state === "done") {
-      const resultEl = document.getElementById("ma-gmail-scan-result");
-      if (resultEl && _maGmailScanStart > 0) {
-        resultEl.innerHTML = "Nothing found — add your provider names below (e.g. <em>Affinity Water</em>, <em>Octopus Energy</em>) and tap Rescan";
-        resultEl.style.display = "";
-        _maGmailScanStart = 0;
-      } else if (resultEl) {
-        resultEl.style.display = "none";
+      const lbl = document.getElementById("ma-gmail-email-label");
+      if (lbl && data?.email) lbl.textContent = data.email;
+      const res = document.getElementById("ma-gmail-scan-result");
+      if (res) {
+        if (_maGmailScanStart > 0) {
+          const n = (data?.pending || []).length;
+          res.textContent = n ? "" : "Scan complete — nothing found. Add provider names below and tap Rescan.";
+          _maGmailScanStart = 0;
+        } else {
+          res.textContent = "";
+        }
       }
     }
     if (state === "pending" && data?.pending) {
@@ -3892,16 +3913,14 @@ const _ts = new Date(d.timestamp);
       const lbl = document.getElementById("ma-gmail-pending-label");
       if (lbl) lbl.textContent = `${data.pending.length} account${data.pending.length !== 1 ? "s" : ""} found`;
     }
-    // Show hints section when connected (done or pending), hide otherwise
-    const hintsSection = document.getElementById("ma-gmail-hints-section");
-    if (hintsSection) hintsSection.style.display = (state === "done" || state === "pending") ? "" : "none";
+    const hints = document.getElementById("ma-gmail-hints-section");
+    if (hints) hints.style.display = (state === "done" || state === "pending") ? "" : "none";
     if (state === "done" || state === "pending") _maGmailLoadHints();
   }
 
   async function _maGmailConnect() {
     const did   = _maDeviceId();
     const phone = _miruPhone();
-    // If already connected, rescan instead of re-doing OAuth
     try {
       const sp = new URLSearchParams({ device_id: did });
       if (phone) sp.set("from_number", phone);
@@ -3914,79 +3933,48 @@ const _ts = new Date(d.timestamp);
     window.location.href = "/api/myarea/gmail/connect?" + params.toString();
   }
 
-  function _maGmailScanOverlay(show) {
-    const id = "ma-gmail-scan-overlay";
-    if (!show) { document.getElementById(id)?.remove(); return; }
-    if (document.getElementById(id)) return;
-    const el = document.createElement("div");
-    el.id = id;
-    el.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .5s";
-    el.innerHTML = `
-      <div style="width:52px;height:52px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin 0.9s linear infinite"></div>
-      <div style="text-align:center">
-        <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:6px">📧 Scanning your inbox…</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.7)">Looking for energy, broadband, insurance &amp; more</div>
-      </div>`;
-    document.body.appendChild(el);
-    // After 8s — if still scanning, fade overlay out and show background card state
-    setTimeout(() => {
-      const still = document.getElementById(id);
-      if (!still) return;
-      still.style.opacity = "0";
-      setTimeout(() => still.remove(), 500);
-      // Show inline scanning card with WhatsApp promise
-      const hasPhone = !!_miruPhone();
-      const sub = document.getElementById("ma-gmail-scan-subtext");
-      if (sub) sub.textContent = hasPhone
-        ? "Running in background — we'll WhatsApp you when done"
-        : "Running in background — check back in a moment";
-      _maGmailSetState("scanning");
-    }, 8000);
-  }
-
-  let _maGmailScanStart = 0;
-  async function _maGmailCheckStatus() {
+  async function _maGmailPoll() {
+    if (_maGmailPolling) return;
+    _maGmailPolling = true;
     const did   = _maDeviceId();
     const phone = _miruPhone();
-    try {
-      const sp = new URLSearchParams({ device_id: did });
-      if (phone) sp.set("from_number", phone);
-      const r = await fetch(`/api/myarea/gmail/status?${sp.toString()}`);
-      const d = await r.json();
-      if (!d.connected) {
-        // Just returned from OAuth — give the DB up to 15s to propagate before giving up
-        if (_maGmailScanStart && Date.now() - _maGmailScanStart < 15000) {
-          setTimeout(_maGmailCheckStatus, 2000);
-          return;
+    let attempts = 0;
+    const maxAttempts = 100; // ~5 min at 3s intervals
+    while (attempts < maxAttempts) {
+      attempts++;
+      await new Promise(r => setTimeout(r, attempts === 1 ? 2000 : 3000));
+      try {
+        const sp = new URLSearchParams({ device_id: did });
+        if (phone) sp.set("from_number", phone);
+        const res  = await fetch(`/api/myarea/gmail/status?${sp.toString()}`);
+        const d    = await res.json();
+        if (!d.connected) {
+          // Grace period: DB write may not be visible immediately after OAuth
+          if (_maGmailScanStart && Date.now() - _maGmailScanStart < 20000) continue;
+          _maGmailSetState("connect");
+          break;
         }
-        _maGmailScanOverlay(false);
-        _maGmailSetState("connect");
-        return;
-      }
-      if (d.scan_status === "scanning") {
-        // Timeout after 90 seconds — show done state to unblock the user
-        if (_maGmailScanStart && Date.now() - _maGmailScanStart > 90000) {
-          _maGmailScanOverlay(false);
-          _maGmailSetState("done", d);
-          return;
+        if (d.scan_status === "scanning") {
+          _maGmailSetState("scanning");
+          continue;
         }
-        _maGmailSetState("scanning");
-        setTimeout(_maGmailCheckStatus, 3000);
-        return;
-      }
-      if (d.scan_status === "done") {
-        _maGmailScanOverlay(false);
+        // done (or any other terminal status)
         const pending = d.pending || [];
         if (pending.length) {
           _maGmailSetState("pending", d);
         } else {
           _maGmailSetState("done", d);
         }
-        return;
+        break;
+      } catch {
+        // network error — keep trying
       }
-      // Unknown scan_status but connected — keep polling if we're mid-scan
-      if (_maGmailScanStart) setTimeout(_maGmailCheckStatus, 3000);
-    } catch { _maGmailScanOverlay(false); }
+    }
+    // Timeout: force done state so user isn't stuck
+    if (attempts >= maxAttempts) {
+      _maGmailSetState("done", {});
+    }
+    _maGmailPolling = false;
   }
 
   function _maGmailReviewPending() {
@@ -4040,27 +4028,22 @@ const _ts = new Date(d.timestamp);
     for (let i = 0; i < records.length; i++) {
       const cb = document.getElementById(`gmail-rec-${i}`);
       if (!cb || !cb.checked) continue;
-      const r = records[i];
-      await _maDetailsPost(null, r.type, r.label, r.data);
+      await _maDetailsPost(null, records[i].type, records[i].label, records[i].data);
     }
-    // Clear pending on server
     try {
       await fetch(`/api/myarea/gmail/clear-pending?device_id=${encodeURIComponent(_maDeviceId())}`, { method: "POST" });
     } catch {}
     overlay.remove();
     _maGmailPendingCache = null;
     _maGmailSetState("done", { email: document.getElementById("ma-gmail-email-label")?.textContent });
-    // Fresh fetch from DB so rendered list is always accurate
     _maDetailsCache = null;
     await _myAreaPersonalRender();
   }
 
   // ── Provider hints ────────────────────────────────────────────────────────
   let _maGmailHints = [];
-
   const _GMAIL_HINTS_LS_KEY = "miru_gmail_hints_v1";
 
-  // localStorage is a fast-display cache only — Supabase is the source of truth
   function _gmailHintsToLS(hints) {
     try { localStorage.setItem(_GMAIL_HINTS_LS_KEY, JSON.stringify(hints)); } catch {}
   }
@@ -4069,12 +4052,8 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _maGmailLoadHints() {
-    // Show cached hints immediately while the fetch is in flight
     const cached = _gmailHintsFromLS();
-    if (cached.length && !_maGmailHints.length) {
-      _maGmailHints = cached;
-      _maGmailRenderHints();
-    }
+    if (cached.length && !_maGmailHints.length) { _maGmailHints = cached; _maGmailRenderHints(); }
     try {
       const r = await fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`);
       const d = await r.json();
@@ -4087,11 +4066,9 @@ const _ts = new Date(d.timestamp);
   function _maGmailRenderHints() {
     const el = document.getElementById("ma-gmail-hints-list");
     if (!el) return;
-    if (!_maGmailHints.length) { el.innerHTML = ""; return; }
     el.innerHTML = _maGmailHints.map(h =>
       `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#f3f4f6;border-radius:20px;font-size:12px;font-weight:600;color:var(--text)">
-        ${h}
-        <button onclick="_maGmailRemoveHint('${h.replace(/'/g,"\\'")}\")" style="border:none;background:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;margin-left:2px">×</button>
+        ${h}<button onclick="_maGmailRemoveHint('${h.replace(/'/g,"\\'")}\')" style="border:none;background:none;cursor:pointer;font-size:14px;color:var(--muted);padding:0;line-height:1;margin-left:2px">×</button>
       </span>`
     ).join("");
   }
@@ -4099,17 +4076,16 @@ const _ts = new Date(d.timestamp);
   async function _maGmailAddHint() {
     const inp = document.getElementById("ma-gmail-hint-input");
     const val = (inp?.value || "").trim();
-    if (!val) return;
-    if (_maGmailHints.includes(val)) { inp.value = ""; return; }
+    if (!val || _maGmailHints.includes(val)) { if (inp) inp.value = ""; return; }
     _maGmailHints = [..._maGmailHints, val];
-    inp.value = "";
+    if (inp) inp.value = "";
     _maGmailRenderHints();
     try {
       await fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`, {
         method: "POST", headers: {"Content-Type":"application/json"},
         body: JSON.stringify({ hints: _maGmailHints })
       });
-      _gmailHintsToLS(_maGmailHints); // update cache after confirmed DB write
+      _gmailHintsToLS(_maGmailHints);
     } catch {}
   }
 
@@ -4126,18 +4102,20 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _maGmailDisconnect() {
-    if (!confirm("Disconnect your Gmail account? You can reconnect at any time.")) return;
+    if (!confirm("Disconnect Gmail? You can reconnect at any time.")) return;
     try {
       const params = new URLSearchParams({ device_id: _maDeviceId() });
       const phone = _miruPhone();
       if (phone) params.set("from_number", phone);
       await fetch(`/api/myarea/gmail/disconnect?${params.toString()}`, { method: "POST" });
     } catch {}
+    _maGmailHints = [];
+    _maGmailPendingCache = null;
+    _maGmailPolling = false;
     _maGmailSetState("connect");
   }
 
   async function _maGmailRescan() {
-    // Flush any unsaved hint text from the input box before rescanning
     const inp = document.getElementById("ma-gmail-hint-input");
     const pendingHint = (inp?.value || "").trim();
     if (pendingHint && !_maGmailHints.includes(pendingHint)) {
@@ -4152,20 +4130,18 @@ const _ts = new Date(d.timestamp);
       } catch {}
     }
     _maGmailSetState("scanning");
-    _maGmailScanOverlay(true);
     _maGmailScanStart = Date.now();
+    _maGmailPolling = false; // allow new poll loop
     try {
       const params = new URLSearchParams({ device_id: _maDeviceId() });
       const phone = _miruPhone();
       if (phone) params.set("from_number", phone);
       const r = await fetch(`/api/myarea/gmail/rescan?${params.toString()}`, { method: "POST" });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      setTimeout(_maGmailCheckStatus, 3000);
+      _maGmailPoll();
     } catch(e) {
       console.error("[gmail rescan]", e);
-      _maGmailSetState("done");
-      _maGmailScanOverlay(false);
-      alert("Rescan failed — please try again or reconnect Gmail.");
+      _maGmailSetState("done", {});
     }
   }
 
@@ -4174,17 +4150,35 @@ const _ts = new Date(d.timestamp);
     if (params.get("gmail_scan") === "1") {
       history.replaceState({}, "", window.location.pathname);
       showScreen("myarea");
-      _maShowTab("accounts");   // make the Gmail card visible when overlay fades
+      _maShowTab("accounts");
       _maGmailSetState("scanning");
-      _maGmailScanOverlay(true);
       _maGmailScanStart = Date.now();
-      setTimeout(_maGmailCheckStatus, 2000);
+      _maGmailPoll();
     } else if (params.get("gmail_error")) {
       history.replaceState({}, "", window.location.pathname);
       showScreen("myarea");
       _maShowTab("accounts");
     } else {
-      setTimeout(_maGmailCheckStatus, 2000);
+      // On normal page load: check current status once
+      (async () => {
+        try {
+          const did   = _maDeviceId();
+          const phone = _miruPhone();
+          const sp = new URLSearchParams({ device_id: did });
+          if (phone) sp.set("from_number", phone);
+          const res = await fetch(`/api/myarea/gmail/status?${sp.toString()}`);
+          const d   = await res.json();
+          if (!d.connected) return;
+          if (d.scan_status === "scanning") {
+            _maGmailSetState("scanning");
+            _maGmailPoll();
+          } else if ((d.pending || []).length) {
+            _maGmailSetState("pending", d);
+          } else {
+            _maGmailSetState("done", d);
+          }
+        } catch {}
+      })();
     }
   }
 
@@ -8306,7 +8300,13 @@ const _ts = new Date(d.timestamp);
 <div style="max-width:36rem;margin:0 auto;padding:0 16px calc(80px + env(safe-area-inset-bottom))">
 
   <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px">My Books</div>
-  <div style="font-size:13px;color:var(--subtle);margin-bottom:16px">Search, scan barcodes, track your reading</div>
+  <div style="font-size:13px;color:var(--subtle);margin-bottom:10px">Search, scan barcodes, track your reading</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+    <span style="font-size:11px;color:#4c1d95;background:#ede9fe;border:1px solid #ddd6fe;border-radius:99px;padding:3px 10px;font-weight:600">💬 book The Alchemist</span>
+    <span style="font-size:11px;color:#4c1d95;background:#ede9fe;border:1px solid #ddd6fe;border-radius:99px;padding:3px 10px;font-weight:600">💬 my books</span>
+    <span style="font-size:11px;color:#4c1d95;background:#ede9fe;border:1px solid #ddd6fe;border-radius:99px;padding:3px 10px;font-weight:600">💬 books I want to read</span>
+    <span style="font-size:11px;color:#4c1d95;background:#ede9fe;border:1px solid #ddd6fe;border-radius:99px;padding:3px 10px;font-weight:600">💬 or send a barcode photo</span>
+  </div>
 
   <!-- Tab strip -->
   <div style="display:flex;gap:6px;margin-bottom:18px">
@@ -9820,6 +9820,13 @@ _bkBadge();
         style="background:var(--text);color:var(--bg);border:none;border-radius:14px;padding:9px 16px;font-size:20px;font-weight:300;cursor:pointer;line-height:1;flex-shrink:0">
         +
       </button>
+    </div>
+
+    <!-- WhatsApp search examples -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+      <span style="font-size:11px;color:#065f46;background:#d1fae5;border:1px solid #a7f3d0;border-radius:99px;padding:3px 10px;font-weight:600">💬 books by Seth Godin</span>
+      <span style="font-size:11px;color:#065f46;background:#d1fae5;border:1px solid #a7f3d0;border-radius:99px;padding:3px 10px;font-weight:600">💬 restaurants saved last week</span>
+      <span style="font-size:11px;color:#065f46;background:#d1fae5;border:1px solid #a7f3d0;border-radius:99px;padding:3px 10px;font-weight:600">💬 wine saved yesterday</span>
     </div>
 
     <!-- Search -->
@@ -11548,7 +11555,11 @@ window.spotifyAddTrack = window.spotifyLike;
 
   <!-- ── IDLE: pick a station ── -->
   <div id="train-idle">
-    <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin:0 0 14px">🚆 Train Times</h2>
+    <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin:0 0 10px">🚆 Train Times</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+      <span style="font-size:11px;color:#1e3a5f;background:#dbeafe;border:1px solid #bfdbfe;border-radius:99px;padding:3px 10px;font-weight:600">💬 next train Woking to Waterloo</span>
+      <span style="font-size:11px;color:#1e3a5f;background:#dbeafe;border:1px solid #bfdbfe;border-radius:99px;padding:3px 10px;font-weight:600">💬 trains from Addlestone</span>
+    </div>
 
     <!-- My Stations — always visible, shows saved or setup prompts -->
     <div style="margin-bottom:16px">
