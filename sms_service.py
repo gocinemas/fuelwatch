@@ -9599,6 +9599,7 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
                 continue
             msgs = r.json().get("messages", [])
             print(f"[ma gmail scan] query={query[:70]!r} found={len(msgs)} msgs hint={confirmed_provider!r}")
+            hint_found = False
             for msg in msgs[:10 if is_hint else 5]:
                 d = _ma_gmail_extract_email(at, msg["id"], confirmed_provider=confirmed_provider)
                 if not d:
@@ -9640,6 +9641,18 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
                 from search import _MA_DETAIL_TYPES_MAP
                 label = d.get("label") or _MA_DETAIL_TYPES_MAP.get(rec_type, rec_type)
                 pending.append({"type": rec_type, "label": label, "data": data})
+                if is_hint:
+                    hint_found = True
+            # If user confirmed this provider but extraction found nothing, add minimal placeholder
+            if is_hint and not hint_found and confirmed_provider.lower() not in seen_providers:
+                from search import _MA_DETAIL_TYPES_MAP
+                pending.append({
+                    "type": "other",
+                    "label": _MA_DETAIL_TYPES_MAP.get("other", "Other"),
+                    "data": {"Provider": confirmed_provider},
+                })
+                seen_providers.add(confirmed_provider.lower())
+                print(f"[ma gmail scan] hint '{confirmed_provider}' — no extraction match, added minimal placeholder")
         except Exception as e:
             print(f"[ma gmail scan] query='{query[:60]}' fallback_type='{fallback_type}': {e}")
 

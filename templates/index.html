@@ -1465,6 +1465,7 @@
                 <div>
                   <div style="font-size:13px;font-weight:700;color:var(--text)">Gmail connected</div>
                   <div id="ma-gmail-email-label" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
+                  <div id="ma-gmail-scan-result" style="font-size:11px;color:var(--muted);margin-top:1px;display:none"></div>
                 </div>
               </div>
               <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
@@ -3859,6 +3860,16 @@ const _ts = new Date(d.timestamp);
     if (state === "done" && data?.email) {
       const lbl = document.getElementById("ma-gmail-email-label");
       if (lbl) lbl.textContent = data.email;
+    }
+    if (state === "done") {
+      const resultEl = document.getElementById("ma-gmail-scan-result");
+      if (resultEl && _maGmailScanStart > 0) {
+        resultEl.textContent = "Scan complete — no new accounts found";
+        resultEl.style.display = "";
+        _maGmailScanStart = 0;
+      } else if (resultEl) {
+        resultEl.style.display = "none";
+      }
     }
     if (state === "pending" && data?.pending) {
       _maGmailPendingCache = { records: data.pending, email: data.email };
