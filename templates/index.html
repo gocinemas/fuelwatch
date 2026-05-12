@@ -10397,6 +10397,7 @@ _bkBadge();
   // ── Category system ─────────────────────────────────────────────────────────
   var _SAVE_CATS = [
     {key:"all",      label:"All"},
+    {key:"book",     label:"📚 Books"},
     {key:"recipe",   label:"🍳 Recipes"},
     {key:"wine",     label:"🍷 Wine"},
     {key:"article",  label:"🔗 Articles"},
@@ -10412,6 +10413,7 @@ _bkBadge();
   ];
 
   function _saveCat(s) {
+    if ((s.url || "").startsWith("book:")) return "book";
     const t = s.title || "";
     if (t.startsWith("🍳")) return "recipe";
     if (t.startsWith("🍷")) return "wine";
@@ -10517,6 +10519,7 @@ _bkBadge();
     })() : "";
 
     const date = s.created_at ? new Date(s.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}) : "";
+    const isBook   = (s.url || "").startsWith("book:");
     const isPhoto = !s.url || s.url.includes("twilio") || s.url.includes("media.sid");
     const isSearch = s.url && s.url.includes("google.com/search");
     const isMaps   = s.url && s.url.includes("maps.google.com");
@@ -10567,18 +10570,20 @@ _bkBadge();
       : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>`;
 
     let sourceDomain = "";
-    if (s.url && !isPhoto) {
+    if (s.url && !isPhoto && !isBook) {
       try { sourceDomain = new URL(s.url).hostname.replace(/^www\./,""); } catch(e) {}
     }
-    const sourceRow = sourceDomain
+    const sourceRow = isBook
+      ? `<div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:500">📚 Book</div>`
+      : sourceDomain
       ? `<div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:500">${sourceDomain}</div>`
       : isPhoto ? `<div style="font-size:11px;color:var(--muted);margin-bottom:5px">📷 WhatsApp capture</div>` : "";
 
-    const rawTitle = s.title || (isPhoto ? "📷 Photo" : sourceDomain || "Save");
+    const rawTitle = s.title || (isPhoto ? "📷 Photo" : isBook ? "📚 Book" : sourceDomain || "Save");
     const _prefixMatch = rawTitle.match(/^(🏪|🍽️|🎫|📢|🧾|🪧|📄|📷|🏷️)\s*/u);
     const titlePrefix = _prefixMatch ? _prefixMatch[0].trim() : "";
     const editableTitle = titlePrefix ? rawTitle.slice(_prefixMatch[0].length).trim() || rawTitle : rawTitle;
-    const titleHtml = s.url && !isPhoto
+    const titleHtml = s.url && !isPhoto && !isBook
       ? `<a href="${s.url}" target="_blank" style="font-size:15px;font-weight:700;color:var(--text);text-decoration:none;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${rawTitle}</a>`
       : `<span style="font-size:15px;font-weight:700;color:var(--text);line-height:1.35">${rawTitle}</span>`;
 
@@ -10614,7 +10619,7 @@ _bkBadge();
            style="width:100%;border-radius:12px;margin-bottom:10px;max-height:220px;object-fit:cover;display:block">`
       : "";
 
-    const openBtn = s.url && !isPhoto
+    const openBtn = s.url && !isPhoto && !isBook
       ? `<a href="${s.url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">↗</a>`
       : "";
 
