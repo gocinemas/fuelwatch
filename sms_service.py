@@ -8005,34 +8005,49 @@ def whatsapp_reply():
             resp.message("📚 No scanned books found. Scan a book barcode in the Miru app first.")
             return str(resp)
         row = rows[0]
-        book_title, book_author = row.get("title", ""), ""
+        book_title, book_author, book_desc, book_genre, book_rating = row.get("title", ""), "", "", "", None
         try:
             import json as _json
             bk = _json.loads(row.get("summary") or "{}")
             book_title  = bk.get("title", book_title)
             book_author = bk.get("author", "")
+            book_desc   = bk.get("description", "")[:600]
+            book_genre  = bk.get("subjects", "") or bk.get("genre", "")
+            cr = bk.get("communityRating") or {}
+            book_rating = cr.get("avg")
         except Exception:
             pass
         book_label = f"*{book_title}*" + (f" by {book_author}" if book_author else "")
+
+        # Build grounded context from stored data so Groq doesn't hallucinate
+        context_lines = [f"Title: {book_title}"]
+        if book_author: context_lines.append(f"Author: {book_author}")
+        if book_genre:  context_lines.append(f"Genre: {book_genre}")
+        if book_rating: context_lines.append(f"Google Books rating: {book_rating}/5")
+        if book_desc:   context_lines.append(f"Description: {book_desc}")
+        context = "\n".join(context_lines)
+
         try:
             verdict = _groq_chat(
                 system=(
-                    "You are a concise book critic. Given a book title and author, write exactly 4 lines:\n"
-                    "Line 1: ✅ Fans say: [what readers who love it praise — max 15 words]\n"
-                    "Line 2: ⚠️ Critics say: [most common complaint from 3-star reviewers — max 15 words]\n"
-                    "Line 3: 🎯 Best for: [who this book is for — max 10 words]\n"
-                    "Line 4: 📖 Verdict: [Worth it / Skip it / Depends on taste] — one sentence reason\n"
-                    "No other text."
+                    "You are a concise book critic. Using ONLY the provided book information (do not invent facts), "
+                    "write exactly 4 lines:\n"
+                    "Line 1: ✅ Fans say: [what the description/genre suggests readers will love — max 15 words]\n"
+                    "Line 2: ⚠️ Critics say: [likely criticism based on genre/style — max 15 words]\n"
+                    "Line 3: 🎯 Best for: [who this book suits — max 10 words]\n"
+                    "Line 4: 📖 Verdict: Worth it / Skip it / Depends on taste — one sentence reason\n"
+                    "If you don't have enough information, be honest and say so on line 1. No other text."
                 ),
-                messages=[{"role": "user", "content": f"Book: {book_title}" + (f"\nAuthor: {book_author}" if book_author else "")}],
-                max_tokens=200,
+                messages=[{"role": "user", "content": context}],
+                max_tokens=220,
             ).strip()
         except Exception:
             verdict = ""
         if not verdict:
             resp.message(f"📚 Couldn't generate a review for {book_label} right now. Try again shortly.")
             return str(resp)
-        resp.message(f"📚 {book_label}\n\n{verdict}")
+        rating_line = f"\n⭐ {book_rating}/5 on Google Books" if book_rating else ""
+        resp.message(f"📚 {book_label}{rating_line}\n\n{verdict}")
         return str(resp)
 
     # ── FIND SAVE command: search wa_saves ───────────────────────────────────
