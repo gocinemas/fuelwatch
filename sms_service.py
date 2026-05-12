@@ -1229,9 +1229,10 @@ def api_local():
     schools_data = schools_f.result()
     local        = local_f.result()
 
-    # Fill missing phone numbers from Google Places for top pubs and cafes
-    pubs  = local.get("pubs",  [])[:5]
-    cafes = local.get("cafes", [])[:5]
+    # Fill missing phone numbers from Google Places for top pubs, cafes, and schools
+    pubs    = local.get("pubs",  [])[:5]
+    cafes   = local.get("cafes", [])[:5]
+    schools = (schools_data.get("schools") or [])[:5]
     if _GOOGLE_PLACES_KEY:
         def _enrich(entry):
             if entry.get("phone"):
@@ -1242,13 +1243,16 @@ def api_local():
                 entry["phone"] = d["phone"]
             return entry
         try:
-            combined = pubs + cafes
-            with ThreadPoolExecutor(max_workers=4) as ex:
+            combined = pubs + cafes + schools
+            with ThreadPoolExecutor(max_workers=6) as ex:
                 combined = list(ex.map(_enrich, combined))
-            pubs  = combined[:len(pubs)]
-            cafes = combined[len(pubs):]
+            n_pubs = len(pubs); n_cafes = len(cafes)
+            pubs    = combined[:n_pubs]
+            cafes   = combined[n_pubs:n_pubs + n_cafes]
+            schools = combined[n_pubs + n_cafes:]
         except Exception:
             pass
+    schools_data = {**schools_data, "schools": schools}
 
     return jsonify({
         "schools": schools_data,
@@ -9378,13 +9382,14 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
     seen_accounts  = set()   # secondary dedup by (provider, account_no)
     pending = []
 
-    # Store hints as (provider_name, query) so we can pass the confirmed provider to Groq
-    hint_queries = [(h, _hint_to_query(h)) for h in (provider_hints or [])]
-    # Standard queries: (None, query) — no confirmed provider hint
-    std_queries  = [(None, q) for _, q in _MA_GMAIL_QUERIES]
+    # Each entry: (confirmed_provider_name, query, fallback_type)
+    # confirmed_provider: non-None for user hints — passed to Groq as a hint
+    # fallback_type: used when Groq doesn't identify a type from the email
+    hint_queries = [(h, _hint_to_query(h), "other") for h in (provider_hints or [])]
+    std_queries  = [(None, q, dt) for dt, q in _MA_GMAIL_QUERIES]
     all_queries  = std_queries + hint_queries
 
-    for confirmed_provider, query in all_queries:
+    for confirmed_provider, query, fallback_type in all_queries:
         is_hint = confirmed_provider is not None
         try:
             r = requests.get(
@@ -9417,11 +9422,11 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
                     continue
                 seen_providers.add(provider_key)
                 # Build ma_details-compatible record
-                rec_type = d.get("type") or det_type
+                rec_type = d.get("type") or fallback_type
                 rec_type_map = {
                     "energy": "energy", "broadband": "broadband", "mobile": "mobile",
                     "car_ins": "car_ins", "home_ins": "home_ins",
-                    "life_ins": "life_ins", "council_tax": "council_tax", "other": "other",
+                    "life_ins": "life_ins", "council_tax": "council_tax", "water": "other", "other": "other",
                 }
                 rec_type = rec_type_map.get(rec_type, "other")
                 data = {}
@@ -9440,7 +9445,7 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
                 label = d.get("label") or _MA_DETAIL_TYPES_MAP.get(rec_type, rec_type)
                 pending.append({"type": rec_type, "label": label, "data": data})
         except Exception as e:
-            print(f"[ma gmail scan] query '{det_type}': {e}")
+            print(f"[ma gmail scan] query='{query[:60]}' fallback_type='{fallback_type}': {e}")
 
     # Get Gmail address
     gmail_email = ""

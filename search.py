@@ -512,11 +512,16 @@ def _fetch_schools_google(lat: float, lon: float, radius_m: int = 5000) -> list:
             timeout=8,
         )
         results = r.json().get("results", [])
+        seen_names = set()
         schools = []
         for p in results:
             name = p.get("name", "")
             if not name:
                 continue
+            name_key = name.lower().strip()
+            if name_key in seen_names:
+                continue
+            seen_names.add(name_key)
             loc = p.get("geometry", {}).get("location", {})
             plat, plon = loc.get("lat"), loc.get("lng")
             dist_km = haversine_km(lat, lon, plat, plon) if plat and plon else 999
@@ -526,7 +531,7 @@ def _fetch_schools_google(lat: float, lon: float, radius_m: int = 5000) -> list:
                 "distance_km": round(dist_km, 2),
                 "address":     p.get("vicinity", ""),
                 "rating":      p.get("rating"),
-                "phone":       "",
+                "phone":       p.get("formatted_phone_number", ""),
                 "ofsted":      "",
             })
         schools.sort(key=lambda x: x["dist_mi"])
