@@ -12345,6 +12345,28 @@ def api_train_search():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/tube/search")
+def api_tube_search():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"error": "q required"}), 400
+    try:
+        r = requests.get(
+            f"https://api.tfl.gov.uk/StopPoint/Search/{requests.utils.quote(q)}",
+            params={"modes": "tube", "includeHubs": "false", "maxResults": "6"},
+            timeout=8,
+        )
+        r.raise_for_status()
+        matches = r.json().get("matches", [])
+        results = [
+            {"id": m["id"], "name": m["name"].replace(" Underground Station", "")}
+            for m in matches
+        ]
+        return jsonify({"results": results})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+
 _rtt_access: dict = {"token": None, "exp": 0.0}
 _rtt_departures_cache: dict = {}   # crs → (payload, ts), 30-second TTL
 _RTT_DEPARTURES_TTL = 30

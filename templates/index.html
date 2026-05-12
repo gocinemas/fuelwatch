@@ -11806,7 +11806,7 @@ window.spotifyAddTrack = window.spotifyLike;
 
     <!-- Search -->
     <div style="display:flex;gap:8px;margin-top:8px">
-      <input id="train-search-input" type="text" placeholder="Search station name…"
+      <input id="train-search-input" type="text" placeholder="Search rail or tube station…"
         style="flex:1;padding:13px 16px;border:1.5px solid var(--border);border-radius:14px;font-size:15px;outline:none;background:var(--surface);color:var(--text)"
         onkeydown="if(event.key==='Enter') trainSearch()">
       <button onclick="trainSearch()"
@@ -12214,21 +12214,40 @@ window.spotifyAddTrack = window.spotifyLike;
     if (!q) return;
     var sr = document.getElementById("train-search-results");
     sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Searching…</div>';
-    fetch("/api/train/search?q=" + encodeURIComponent(q))
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var list = (d.results && d.results.length) ? d.results : (d.suggestions || []);
-        if (!list.length) { sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No stations found</div>'; return; }
-        var prefix = (!d.results || !d.results.length) ? '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Did you mean:</div>' : '';
-        sr.innerHTML = prefix + list.map(function(s){
-          return '<button onclick="trainSelectStation(\''+s.crs+'\',\''+s.name.replace(/'/g,"\\'")+'\')\"'
-            +' style="display:flex;align-items:center;width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">'
-            +'<span style="flex:1">'+s.name+'</span>'
-            +'<span style="font-size:12px;color:var(--muted);font-weight:400">('+s.crs+')</span>'
-            +'</button>';
-        }).join("");
-      })
-      .catch(function(){ sr.innerHTML = '<div style="font-size:13px;color:#b91c1c;padding:6px 0">Could not search. Try again.</div>'; });
+    var railP = fetch("/api/train/search?q=" + encodeURIComponent(q)).then(function(r){ return r.json(); }).catch(function(){ return {}; });
+    var tubeP = fetch("/api/tube/search?q="  + encodeURIComponent(q)).then(function(r){ return r.json(); }).catch(function(){ return {}; });
+    Promise.all([railP, tubeP]).then(function(res) {
+      var railRes  = res[0].results  || [];
+      var railSug  = res[0].suggestions || [];
+      var tubeRes  = res[1].results  || [];
+      var hasRail  = railRes.length > 0;
+      var hasTube  = tubeRes.length > 0;
+      if (!hasRail && !hasTube && !railSug.length) {
+        sr.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No stations found</div>';
+        return;
+      }
+      var html = "";
+      if (!hasRail && railSug.length) {
+        html += '<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Did you mean:</div>';
+      }
+      var btnStyle = 'style="display:flex;align-items:center;width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer"';
+      var railList = hasRail ? railRes : railSug;
+      railList.slice(0,5).forEach(function(s) {
+        html += '<button onclick="trainSelectStation(\''+s.crs+'\',\''+s.name.replace(/'/g,"\\'")+'\\'+'\')" '+btnStyle+'>'
+          +'<span style="margin-right:8px">🚆</span>'
+          +'<span style="flex:1">'+s.name+'</span>'
+          +'<span style="font-size:11px;color:var(--muted);font-weight:400">National Rail</span>'
+          +'</button>';
+      });
+      tubeRes.slice(0,4).forEach(function(s) {
+        html += '<button onclick="trainSelectTubeStation(\''+s.id+'\',\''+s.name.replace(/'/g,"\\'")+'\\'+'\')" '+btnStyle+'>'
+          +'<span style="margin-right:8px">🚇</span>'
+          +'<span style="flex:1">'+s.name+'</span>'
+          +'<span style="font-size:11px;color:var(--muted);font-weight:400">Tube</span>'
+          +'</button>';
+      });
+      sr.innerHTML = html || '<div style="font-size:13px;color:var(--muted);padding:8px 0">No stations found</div>';
+    }).catch(function(){ sr.innerHTML = '<div style="font-size:13px;color:#b91c1c;padding:6px 0">Could not search. Try again.</div>'; });
   };
 
   window.trainSelectStation = function(crs, name) {
