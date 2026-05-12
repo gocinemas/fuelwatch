@@ -1897,10 +1897,18 @@
 
     async function _toPostcode(lat, lon) {
       try {
-        const r = await fetch(`https://api.postcodes.io/postcodes?lon=${lon}&lat=${lat}&limit=1`);
+        const r = await fetch(`https://api.postcodes.io/postcodes?lon=${lon}&lat=${lat}&limit=1`, { signal: AbortSignal.timeout(5000) });
         const d = await r.json();
-        return d?.result?.[0]?.postcode || null;
-      } catch (_) { return null; }
+        if (d?.result?.[0]?.postcode) return d.result[0].postcode;
+      } catch (_) {}
+      // Fallback: Nominatim reverse geocode
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, { headers: { "Accept-Language": "en-GB" }, signal: AbortSignal.timeout(6000) });
+        const d = await r.json();
+        const pc = d?.address?.postcode;
+        if (pc) return pc.replace(/\s+/g, " ").trim().toUpperCase();
+      } catch (_) {}
+      return null;
     }
 
     async function _fromIP() {
