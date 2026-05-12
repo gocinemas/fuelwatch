@@ -8174,7 +8174,12 @@ def _wa_train_format(from_name: str, to_name: str = "") -> str:
 
         if not lines:
             dest_note = f" to {to_display or to_name.title()}" if to_name else ""
-            return f"🚂 No upcoming departures found from {stn_display}{dest_note}.\n\nmiru.humanagency.co"
+            # Try tube journey planner as fallback (catches Elizabeth line / TfL-only routes)
+            if to_name:
+                tube_reply = get_tube_journey(from_name, to_name)
+                if tube_reply and "Couldn't find" not in tube_reply:
+                    return tube_reply + "\n\n_No direct National Rail service found — showing tube route_"
+            return f"🚂 No departures found from {stn_display}{dest_note}.\n\nTry: *tube {from_name} to {to_name or '...'}*\n\nmiru.humanagency.co"
         dest_note = f" to {to_display or to_name.title()}" if to_name else ""
         header = f"🚂 *{stn_display}*{dest_note}"
         return header + "\n\n" + "\n".join(lines) + "\n\nmiru.humanagency.co"
@@ -8333,51 +8338,83 @@ def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
 
 
 _HELP_MSG = (
-    "👋 *Miru — your UK assistant*\n"
-    "No app. Just WhatsApp.\n"
+    "📋 *Miru — command guide*\n"
     "\n"
-    "⛽ *Cheap Fuel*\n"
-    "  cheapest petrol near KT15\n"
+    "⛽ *Fuel*\n"
+    "  KT15 petrol\n"
     "  diesel prices GU25\n"
     "\n"
-    "🚂 *Next Train*\n"
+    "🚆 *Train*\n"
     "  next train Woking to Waterloo\n"
     "  trains from Addlestone\n"
     "\n"
-    "🏫 *Schools*\n"
-    "  school news\n"
-    "  school week\n"
-    "  school setup\n"
+    "🚇 *Tube*\n"
+    "  tube  _(nearest station arrivals)_\n"
+    "  tube status  _(all lines)_\n"
+    "  tube victoria\n"
+    "  tube Kings Cross to Waterloo\n"
     "\n"
     "🏡 *My Area*\n"
     "  places KT15 3RL\n"
     "  GP near KT15\n"
     "  pubs near GU25\n"
     "\n"
+    "🏫 *Schools*\n"
+    "  school news  |  school week  |  school setup\n"
+    "\n"
     "📚 *Books*\n"
-    "  book The Alchemist\n"
-    "  my books\n"
-    "  (or send a barcode photo)\n"
+    "  book The Alchemist  |  my books\n"
+    "  _(or send a barcode photo)_\n"
     "\n"
-    "🔖 *Save for Later*\n"
-    "  Send any URL to save it\n"
-    "  books by Seth Godin\n"
+    "🔖 *Save a link*\n"
+    "  Send any URL — I'll save it\n"
     "  restaurants saved last week\n"
-    "  wine saved yesterday\n"
     "\n"
-    "🛒 *Price Check*\n"
-    "  price olive oil\n"
-    "  compare oat milk\n"
+    "🛒 *Price check*\n"
+    "  price olive oil  |  compare oat milk\n"
     "\n"
-    "📋 *My Details*\n"
-    "  Visit miru.humanagency.co\n"
-    "  → My Area → My Accounts\n"
-    "  (bills, renewals, Gmail scan)\n"
+    "📸 *Photo*\n"
+    "  Send a photo to describe or identify it\n"
     "\n"
-    "Reply *HELP* anytime to see this"
+    "🌐 miru.humanagency.co\n"
+    "Reply *HELP* anytime"
+)
+
+_WELCOME_MSG = (
+    "👋 Welcome to *Miru*!\n"
+    "\n"
+    "I'm your UK life assistant — no app needed, just WhatsApp.\n"
+    "\n"
+    "*Try these to get started:*\n"
+    "🚆  next train Woking to Waterloo\n"
+    "🚇  tube status\n"
+    "⛽  KT15 petrol\n"
+    "🏡  places KT15 3RL\n"
+    "🔖  send any link to save it\n"
+    "📸  send a photo\n"
+    "\n"
+    "Reply *HELP* for the full command list.\n"
+    "Or visit miru.humanagency.co to set up your profile 🏠"
 )
 
 _GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru", "join"}
+
+_SEEN_NUMBERS: set = set()
+
+def _is_new_user(from_number: str) -> bool:
+    """True if this number has no prior history in Miru."""
+    if from_number in _SEEN_NUMBERS:
+        return False
+    try:
+        variants = _wa_number_variants(from_number)
+        for table, col in [("wa_saves", "from_number"), ("school_profiles", "wa_number"), ("my_area_places", "from_number")]:
+            rows = lib._sb().table(table).select("id").in_(col, variants).limit(1).execute().data
+            if rows:
+                _SEEN_NUMBERS.add(from_number)
+                return False
+        return True
+    except Exception:
+        return False
 
 
 def _wa_classify_intent(body: str) -> dict | None:
@@ -8574,7 +8611,13 @@ def whatsapp_reply():
 
     body_lower = body.strip().lower()
     if not body or body_lower in _GREETING_WORDS or body_lower.startswith("join "):
-        resp.message(_HELP_MSG)
+        is_join = body_lower.startswith("join ") or body_lower == "join"
+        if is_join or _is_new_user(from_number):
+            _SEEN_NUMBERS.add(from_number)
+            resp.message(_WELCOME_MSG)
+            resp.message(_HELP_MSG)
+        else:
+            resp.message(_HELP_MSG)
         return str(resp)
 
     # ── URL save ──────────────────────────────────────────────────────────────
