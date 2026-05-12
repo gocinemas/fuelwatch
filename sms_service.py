@@ -8269,31 +8269,54 @@ def _wa_food_find(body: str, from_number: str):
     if not intent:
         return None
 
-    # Postcode from message, or stored home postcode
-    pc_m = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', body.upper())
-    postcode = pc_m.group(0).replace(" ", "") if pc_m else _get_wa_home_postcode(from_number)
-    if not postcode:
-        return (f"{intent['emoji']} Try: *{intent['label']} KT15 3RL*\n"
-                f"Or save your home postcode on miru.humanagency.co and just send *{intent['label']}*")
+    # Postcode from message — accept full (KT16 0DA) or outward-only (KT16)
+    _full_pc  = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', body.upper())
+    _out_pc   = re.search(r'\b([A-Z]{1,2}\d{1,2}[A-Z]?)\b', body.upper())
+    lat = lon = None
+    pc_fmt = ""
 
-    try:
-        pc_r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=5)
-        if pc_r.status_code != 200:
-            return f"Couldn't look up {postcode}."
-        res = pc_r.json().get("result", {})
-        lat, lon = res.get("latitude"), res.get("longitude")
-        if not lat:
-            return f"Couldn't look up {postcode}."
-    except Exception:
-        return f"Couldn't look up {postcode}."
+    if _full_pc:
+        postcode = _full_pc.group(0).replace(" ", "")
+        try:
+            r2 = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=5)
+            if r2.status_code == 200:
+                res = r2.json().get("result", {})
+                lat, lon = res.get("latitude"), res.get("longitude")
+                pc_fmt = postcode[:-3] + " " + postcode[-3:]
+        except Exception:
+            pass
+    if lat is None and _out_pc:
+        outcode = _out_pc.group(1)
+        try:
+            r2 = requests.get(f"https://api.postcodes.io/outcodes/{outcode}", timeout=5)
+            if r2.status_code == 200:
+                res = r2.json().get("result", {})
+                lat, lon = res.get("latitude"), res.get("longitude")
+                pc_fmt = outcode
+        except Exception:
+            pass
+    if lat is None:
+        # Fall back to stored home postcode
+        stored = _get_wa_home_postcode(from_number)
+        if stored:
+            try:
+                r2 = requests.get(f"https://api.postcodes.io/postcodes/{stored}", timeout=5)
+                if r2.status_code == 200:
+                    res = r2.json().get("result", {})
+                    lat, lon = res.get("latitude"), res.get("longitude")
+                    pc_fmt = stored[:-3] + " " + stored[-3:]
+            except Exception:
+                pass
+    if lat is None:
+        return (f"{intent['emoji']} Try: *{intent['label']} KT16*\n"
+                f"Or save your home postcode on miru.humanagency.co and just send *{intent['label']}*")
 
     wants_cheap = bool(re.search(r'\bcheap\b', body_lower))
     places = _find_food_nearby(lat, lon, intent["type"], cheap=wants_cheap)
     if not places:
-        return f"No {intent['label']} spots found near {postcode}. Sorry!"
+        return f"No {intent['label']} spots found near {pc_fmt}. Sorry!"
 
     emoji, label = intent["emoji"], intent["label"]
-    pc_fmt = postcode[:-3] + " " + postcode[-3:]
     keywords = intent.get("keywords", [])
 
     # Pick top and optional second before fetching reviews
