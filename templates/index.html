@@ -4007,15 +4007,35 @@ const _ts = new Date(d.timestamp);
   }
 
   async function _maGmailRescan() {
+    // Flush any unsaved hint text from the input box before rescanning
+    const inp = document.getElementById("ma-gmail-hint-input");
+    const pendingHint = (inp?.value || "").trim();
+    if (pendingHint && !_maGmailHints.includes(pendingHint)) {
+      _maGmailHints = [..._maGmailHints, pendingHint];
+      if (inp) inp.value = "";
+      _maGmailRenderHints();
+      try {
+        await fetch(`/api/myarea/gmail/hints?${_maDetailsApiParam()}`, {
+          method: "POST", headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ hints: _maGmailHints })
+        });
+      } catch {}
+    }
     _maGmailSetState("scanning");
     _maGmailScanOverlay(true);
     try {
       const params = new URLSearchParams({ device_id: _maDeviceId() });
       const phone = _miruPhone();
       if (phone) params.set("from_number", phone);
-      await fetch(`/api/myarea/gmail/rescan?${params.toString()}`, { method: "POST" });
+      const r = await fetch(`/api/myarea/gmail/rescan?${params.toString()}`, { method: "POST" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       setTimeout(_maGmailCheckStatus, 3000);
-    } catch {}
+    } catch(e) {
+      console.error("[gmail rescan]", e);
+      _maGmailSetState("connected");
+      _maGmailScanOverlay(false);
+      alert("Rescan failed — please try again or reconnect Gmail.");
+    }
   }
 
   function _maGmailInit() {

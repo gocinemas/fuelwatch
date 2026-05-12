@@ -8700,32 +8700,6 @@ def health():
 _ADMIN_KEY = os.environ.get("ADMIN_KEY", "miru-admin-2026")
 
 
-@app.route("/admin/patch-place", methods=["POST"])
-def admin_patch_place():
-    """One-shot: update a saved place record by name + from_number."""
-    if request.args.get("key") != _ADMIN_KEY:
-        return jsonify({"error": "forbidden"}), 403
-    body = request.get_json(force=True, silent=True) or {}
-    from_number = body.get("from_number", "").strip()
-    name        = body.get("name", "").strip()
-    updates     = {k: v for k, v in body.items() if k not in ("from_number", "name")}
-    if not from_number or not name or not updates:
-        return jsonify({"error": "from_number, name, and at least one field to update required"}), 400
-    try:
-        sb = lib._sb()
-        rows = sb.table("my_area_places") \
-            .select("id,name,address,phone") \
-            .eq("from_number", from_number) \
-            .ilike("name", f"%{name}%").execute().data
-        if not rows:
-            return jsonify({"error": "no matching record", "from_number": from_number, "name": name}), 404
-        updated = []
-        for row in rows:
-            sb.table("my_area_places").update(updates).eq("id", row["id"]).execute()
-            updated.append({**row, **updates})
-        return jsonify({"ok": True, "updated": updated})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 _GMAIL_TEST_PAGE = """<!DOCTYPE html>
 <html lang="en">
