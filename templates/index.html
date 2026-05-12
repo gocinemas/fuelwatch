@@ -2867,6 +2867,13 @@ const _ts = new Date(d.timestamp);
       else localStorage.removeItem("miru_phone");
       _maShowLinkedPhone && _maShowLinkedPhone();
       _maLoadSavedPlaces && _maLoadSavedPlaces();
+      // Auto-login Saves and Library with the new phone
+      if (phone) {
+        _autoFetchToken(phone).then(tok => {
+          localStorage.setItem("wa_saves_token", tok);
+          localStorage.setItem("lib_pin", tok);
+        }).catch(() => {});
+      }
     } else {
       const pc = val.toUpperCase().replace(/\s+/g, "");
       if (pc) localStorage.setItem("miru_postcode", pc);
@@ -7303,30 +7310,33 @@ const _ts = new Date(d.timestamp);
     setTimeout(() => document.getElementById("lib-phone-input").focus(), 100);
   }
 
+  function _libUnlock() {
+    document.getElementById("lib-pin-screen").style.display = "none";
+    document.getElementById("lib-list-view").classList.remove("hidden");
+    libLoadDocs();
+  }
+
   function libCheckPin() {
-    if (_libPin()) {
-      document.getElementById("lib-pin-screen").style.display = "none";
-      document.getElementById("lib-list-view").classList.remove("hidden");
-      libLoadDocs();
-    } else {
-      _libShowLock();
+    if (_libPin()) { _libUnlock(); return; }
+    const globalPhone = _miruPhone();
+    if (globalPhone) {
+      _autoFetchToken(globalPhone).then(tok => {
+        localStorage.setItem("lib_pin", tok);
+        _libUnlock();
+      }).catch(() => _libShowLock());
+      return;
     }
+    _libShowLock();
   }
 
   async function libSubmitPhone() {
     const raw = document.getElementById("lib-phone-input").value.trim();
     if (!raw) return;
-    let phone = raw.replace(/\s+/g, '');
-    if (/^0\d{10}$/.test(phone)) phone = '+44' + phone.slice(1);
     try {
-      const r = await fetch(`/api/user-token?phone=${encodeURIComponent(phone)}`);
-      const d = await r.json();
-      if (!d.token) throw new Error("no token");
-      localStorage.setItem("lib_pin", d.token);
+      const tok = await _autoFetchToken(raw);
+      localStorage.setItem("lib_pin", tok);
       document.getElementById("lib-pin-error").style.display = "none";
-      document.getElementById("lib-pin-screen").style.display = "none";
-      document.getElementById("lib-list-view").classList.remove("hidden");
-      libLoadDocs();
+      _libUnlock();
     } catch(e) {
       document.getElementById("lib-pin-error").style.display = "block";
     }
@@ -10293,20 +10303,34 @@ _bkBadge();
     savesLoad();
   }
 
+  async function _autoFetchToken(phone) {
+    let p = phone.replace(/\s+/g, '');
+    if (/^0\d{10}$/.test(p)) p = '+44' + p.slice(1);
+    const r = await fetch(`/api/user-token?phone=${encodeURIComponent(p)}`);
+    const d = await r.json();
+    if (!d.token) throw new Error("no token");
+    return d.token;
+  }
+
   function savesCheckPin() {
-    if (_savesPin()) { _savesShowMain(); } else { _savesShowPhone(); }
+    if (_savesPin()) { _savesShowMain(); return; }
+    const globalPhone = _miruPhone();
+    if (globalPhone) {
+      _autoFetchToken(globalPhone).then(tok => {
+        localStorage.setItem("wa_saves_token", tok);
+        _savesShowMain();
+      }).catch(() => _savesShowPhone());
+      return;
+    }
+    _savesShowPhone();
   }
 
   window.savesSubmitPhone = async function() {
     const raw = document.getElementById("saves-phone-input").value.trim();
     if (!raw) return;
-    let phone = raw.replace(/\s+/g, '');
-    if (/^0\d{10}$/.test(phone)) phone = '+44' + phone.slice(1);
     try {
-      const r = await fetch(`/api/user-token?phone=${encodeURIComponent(phone)}`);
-      const d = await r.json();
-      if (!d.token) throw new Error("no token");
-      localStorage.setItem("wa_saves_token", d.token);
+      const tok = await _autoFetchToken(raw);
+      localStorage.setItem("wa_saves_token", tok);
       document.getElementById("saves-phone-error").style.display = "none";
       _savesShowMain();
     } catch(e) {
