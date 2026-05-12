@@ -9946,9 +9946,40 @@ def _ma_gmail_sync_hints_from_details(did: str) -> list:
         sb.table("ma_gmail_tokens").update({"provider_hints": merged}) \
             .eq("device_id", token_device_id).execute()
         print(f"[ma gmail hints] synced {len(saved_providers)} saved providers → {len(merged)} total hints for device={token_device_id!r}")
+        # Feed confirmed providers into community database
+        for p in saved_providers:
+            _ma_community_add_provider(p)
         return merged
     except Exception as e:
         print(f"[ma gmail hints] sync error: {e}")
+        return []
+
+
+def _ma_community_add_provider(provider_name: str) -> None:
+    """Record a confirmed provider in the shared community table (increments count)."""
+    name = provider_name.strip().lower()
+    if not name or len(name) < 2:
+        return
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_provider_hints").select("id,count").eq("provider", name).execute().data
+        if rows:
+            sb.table("ma_provider_hints").update({"count": rows[0]["count"] + 1}) \
+                .eq("id", rows[0]["id"]).execute()
+        else:
+            sb.table("ma_provider_hints").insert({"provider": name, "count": 1}).execute()
+    except Exception as e:
+        print(f"[ma community] add_provider error: {e}")
+
+
+def _ma_community_top_providers(limit: int = 60) -> list:
+    """Return the top provider names from the community table, ordered by usage count."""
+    try:
+        rows = lib._sb().table("ma_provider_hints").select("provider") \
+            .order("count", desc=True).limit(limit).execute().data or []
+        return [r["provider"] for r in rows if r.get("provider")]
+    except Exception as e:
+        print(f"[ma community] top_providers error: {e}")
         return []
 
 
@@ -9977,7 +10008,17 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
     # Each entry: (confirmed_provider_name, query, fallback_type)
     # confirmed_provider: non-None for user hints — passed to Groq as a hint
     # fallback_type: used when Groq doesn't identify a type from the email
-    hint_queries = [(h, _hint_to_query(h), "other") for h in (provider_hints or [])]
+    # Personal hints (from user's saved accounts) + community top providers
+    personal = list(provider_hints or [])
+    community = _ma_community_top_providers(60)
+    personal_lower = {h.lower() for h in personal}
+    # Add community providers not already in personal hints and not in std domain list
+    _std_domains = " ".join(q for _, q in _MA_GMAIL_QUERIES)
+    for cp in community:
+        if cp.lower() not in personal_lower and cp.lower() not in _std_domains.lower():
+            personal.append(cp)
+            personal_lower.add(cp.lower())
+    hint_queries = [(h, _hint_to_query(h), "other") for h in personal]
     std_queries  = [(None, q, dt) for dt, q in _MA_GMAIL_QUERIES]
     all_queries  = std_queries + hint_queries
 
@@ -10037,6 +10078,7 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
                 from search import _MA_DETAIL_TYPES_MAP
                 label = d.get("label") or _MA_DETAIL_TYPES_MAP.get(rec_type, rec_type)
                 pending.append({"type": rec_type, "label": label, "data": data})
+                _ma_community_add_provider(provider)  # grow community database
                 if is_hint:
                     hint_found = True
             # If user confirmed this provider but extraction found nothing, add minimal placeholder
