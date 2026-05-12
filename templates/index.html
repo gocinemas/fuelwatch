@@ -1352,7 +1352,7 @@
       <!-- Postcode search bar — always visible -->
       <div style="margin-bottom:8px">
         <div style="display:flex;gap:6px;margin-bottom:4px">
-          <input id="myarea-postcode-input" type="text" placeholder="Enter postcode e.g. KT16 0DA"
+          <input id="myarea-postcode-input" type="text" placeholder="Enter postcode e.g. KT1 2BA"
             style="flex:1;border:1.5px solid var(--border);border-radius:12px;padding:10px 14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;text-transform:uppercase"
             maxlength="10" autocomplete="off"
             oninput="_maOnPostcodeInput()"
@@ -2848,7 +2848,7 @@ const _ts = new Date(d.timestamp);
       input.value       = _miruPhone();
     } else {
       input.type        = "text";
-      input.placeholder = "e.g. KT16 0DA";
+      input.placeholder = "e.g. KT1 2BA";
       input.value       = _miruPostcode();
     }
     form.style.display = "flex";
@@ -2968,7 +2968,7 @@ const _ts = new Date(d.timestamp);
         <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px">Address</label>
         <input class="ma-ep-addr" data-id="${p.id}"
           value="${(p.address||'').replace(/"/g,'&quot;')}"
-          placeholder="e.g. 12 High Street, KT15 3RL"
+          placeholder="e.g. 12 High Street, KT1 2BA"
           style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:10px;font-family:inherit"
           onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
         <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px">Phone</label>
@@ -3733,7 +3733,7 @@ const _ts = new Date(d.timestamp);
     const saveRow = document.getElementById("myarea-save-home-row");
     if (saveRow) saveRow.style.display = (pcNorm && homeNorm && pcNorm !== homeNorm) ? "" :
                                           (pcNorm && !homeNorm) ? "" : "none";
-    // "Home: KT16 0DA · Use" banner — shown when home is set
+    // "Home: KT1 2BA · Use" banner — shown when home is set
     const homeRow = document.getElementById("myarea-home-row");
     const label   = document.getElementById("myarea-home-pc-label");
     if (homeRow && label) {
@@ -4083,25 +4083,35 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maGmailInit() {
-    const params = new URLSearchParams(window.location.search);
-    const hasGmailParam = params.get("gmail_scan") === "1" || params.get("gmail_error");
-    if (hasGmailParam) {
+    const params   = new URLSearchParams(window.location.search);
+    const fromOAuth = params.get("gmail_scan") === "1";
+    if (fromOAuth || params.get("gmail_error")) {
       history.replaceState({}, "", window.location.pathname);
       showScreen("myarea");
       _maShowTab("accounts");
     }
-    // Check status once on load — show connected state if already linked
-    (async () => {
-      try {
-        const did   = _maDeviceId();
-        const phone = _miruPhone();
-        const sp = new URLSearchParams({ device_id: did });
-        if (phone) sp.set("from_number", phone);
-        const res = await fetch(`/api/myarea/gmail/status?${sp.toString()}`);
-        const d   = await res.json();
-        if (d.connected) _maGmailSetState("done", d);
-      } catch {}
-    })();
+    if (fromOAuth) {
+      // Just returned from OAuth — show connected optimistically while scan runs in background
+      _maGmailSetState("done", {});
+      const msg = document.getElementById("ma-gmail-scan-msg");
+      if (msg) { msg.style.display = ""; setTimeout(() => { if (msg) msg.style.display = "none"; }, 8000); }
+      // Refresh email address after DB write settles
+      setTimeout(_maGmailCheckStatus, 3000);
+      return;
+    }
+    _maGmailCheckStatus();
+  }
+
+  async function _maGmailCheckStatus() {
+    try {
+      const did   = _maDeviceId();
+      const phone = _miruPhone();
+      const sp = new URLSearchParams({ device_id: did });
+      if (phone) sp.set("from_number", phone);
+      const res = await fetch(`/api/myarea/gmail/status?${sp.toString()}`);
+      const d   = await res.json();
+      if (d.connected) _maGmailSetState("done", d);
+    } catch {}
   }
 
   // ── PDF bill upload ──────────────────────────────────────────────────────────
@@ -4248,7 +4258,7 @@ const _ts = new Date(d.timestamp);
     const dateIn = days => { const d = new Date(today); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); };
     const records = [
       { type:"home_ins",  label:"Home Insurance",  data:{ Provider:"Aviva", "Policy No":"AV-123456", Phone:"0800 051 5000", "Renewal Date": dateIn(18) }},
-      { type:"car_ins",   label:"Car Insurance",   data:{ Provider:"Direct Line", "Policy No":"DL-789012", Phone:"0345 246 8704", "Renewal Date": dateIn(45), Reg:"KT16 0DA" }},
+      { type:"car_ins",   label:"Car Insurance",   data:{ Provider:"Direct Line", "Policy No":"DL-789012", Phone:"0345 246 8704", "Renewal Date": dateIn(45), Reg:"KT1 2BA" }},
       { type:"energy",    label:"Energy",          data:{ Provider:"Octopus Energy", "Account No":"A-ABCD1234", "Emergency Phone":"0800 316 9999", "Renewal Date": dateIn(72) }},
       { type:"broadband", label:"Broadband",       data:{ Provider:"BT", "Account No":"BT-56789", Phone:"0800 800 150" }},
       { type:"council_tax",label:"Council Tax",    data:{ Council:"Runnymede Borough Council", "Account No":"CT-00123456", Phone:"01932 838383" }},
@@ -7888,7 +7898,7 @@ const _ts = new Date(d.timestamp);
 
     // Miru tips — rotate every 8 seconds, fade between them
     const _tips = [
-      "💡 Try: search 'cheap fuel near KT16' to find the lowest prices nearby.",
+      "💡 Try: search 'cheap fuel near KT1' to find the lowest prices nearby.",
       "🚆 Ask about train times — type your station and Miru finds the next departure.",
       "☕ Looking for a café, plumber or GP? Local search works for almost anything.",
       "📌 Save any article or link from WhatsApp — it'll appear in your Saves here.",
@@ -9804,7 +9814,7 @@ _bkBadge();
       <div style="font-size:13px;font-weight:700;color:#9ca3af;padding-bottom:12px;text-align:center">vs</div>
       <div>
         <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:5px">AREA 2</label>
-        <input id="cmp-pc2" type="text" placeholder="e.g. KT16 0DA" autocomplete="off" autocapitalize="characters"
+        <input id="cmp-pc2" type="text" placeholder="e.g. KT1 2BA" autocomplete="off" autocapitalize="characters"
           style="width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;font-size:14px;box-sizing:border-box;outline:none"
           onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e5e7eb'" />
       </div>
