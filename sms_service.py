@@ -6426,16 +6426,55 @@ def _try_isbn_from_image(raw_bytes: bytes) -> dict | None:
         if not isbn:
             return None
         gbooks_key = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
-        r = requests.get(
-            "https://www.googleapis.com/books/v1/volumes",
-            params={"q": f"isbn:{isbn}", "maxResults": 1, **({"key": gbooks_key} if gbooks_key else {})},
-            timeout=10,
-        )
-        items = r.json().get("items")
-        if not items:
+        vi, all_isbns = None, []
+        try:
+            r = requests.get(
+                "https://www.googleapis.com/books/v1/volumes",
+                params={"q": f"isbn:{isbn}", "maxResults": 1, **({"key": gbooks_key} if gbooks_key else {})},
+                timeout=10,
+            )
+            items = r.json().get("items")
+            if items:
+                vi = items[0].get("volumeInfo", {})
+                all_isbns = [x["identifier"] for x in vi.get("industryIdentifiers", []) if x.get("type") in ("ISBN_13","ISBN_10")]
+        except Exception:
+            pass
+
+        # Open Library fallback when Google Books is unavailable or returns nothing
+        if not vi:
+            try:
+                ol = requests.get(f"https://openlibrary.org/isbn/{isbn}.json", timeout=8).json()
+                work_key = (ol.get("works") or [{}])[0].get("key", "")
+                title = ol.get("title", "")
+                author = ""
+                cover = ""
+                description = ""
+                year = (ol.get("publish_date") or "")[:4]
+                if work_key:
+                    wd = requests.get(f"https://openlibrary.org{work_key}.json", timeout=6).json()
+                    title = title or wd.get("title", "")
+                    desc = wd.get("description", "")
+                    description = desc.get("value", desc) if isinstance(desc, dict) else str(desc)
+                    for a in (wd.get("authors") or [])[:1]:
+                        ak = a.get("author", {}).get("key", "")
+                        if ak:
+                            ad = requests.get(f"https://openlibrary.org{ak}.json", timeout=5).json()
+                            author = ad.get("name", "")
+                covers = ol.get("covers") or []
+                if covers:
+                    cover = f"https://covers.openlibrary.org/b/id/{covers[0]}-M.jpg"
+                if title:
+                    return {
+                        "found": True, "isbn": isbn,
+                        "title": title, "author": author or "Unknown author",
+                        "cover": cover, "description": description[:600],
+                        "subjects": "", "year": year, "publishers": "",
+                        "communityRating": None, "status": "wishlist",
+                    }
+            except Exception:
+                pass
             return {"isbn": isbn, "title": f"Book (ISBN {isbn})", "found": True}
-        vi = items[0].get("volumeInfo", {})
-        all_isbns = [x["identifier"] for x in vi.get("industryIdentifiers", []) if x.get("type") in ("ISBN_13","ISBN_10")]
+
         cover = ""
         if vi.get("imageLinks"):
             cover = (vi["imageLinks"].get("thumbnail") or vi["imageLinks"].get("smallThumbnail") or "").replace("http://","https://")
