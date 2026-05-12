@@ -1223,6 +1223,9 @@
         <div id="finder-loc-err"    class="hidden" style="font-size:12px;color:#ef4444;margin-bottom:8px"></div>
         <div id="finder-loc-ok"     class="hidden" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:8px"></div>
 
+        <!-- Context cards — upcoming renewals from My Details -->
+        <div id="local-context-cards" style="display:none;margin-bottom:12px"></div>
+
         <!-- Category grid -->
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
           <button class="loc-cat" data-cat="trades" onclick="localCatSelect('trades',this)">
@@ -5447,7 +5450,74 @@ const _ts = new Date(d.timestamp);
       homeRow.style.display = "none";
     }
     document.getElementById("places-save-home-row").style.display = "none";
+    _localContextCardsRender();
   }
+
+  const _LOCAL_CTX_QUERIES = {
+    energy:      { q: "energy broker",        label: "Energy",          icon: "⚡" },
+    broadband:   { q: "broadband provider",   label: "Broadband",       icon: "📡" },
+    mobile:      { q: "mobile phone shop",    label: "Mobile",          icon: "📱" },
+    car_ins:     { q: "car insurance broker", label: "Car Insurance",   icon: "🚗" },
+    home_ins:    { q: "insurance broker",     label: "Home Insurance",  icon: "🏠" },
+    life_ins:    { q: "financial advisor",    label: "Life Insurance",  icon: "🛡️" },
+    council_tax: { q: "council offices",      label: "Council Tax",     icon: "🏛️" },
+  };
+
+  async function _localContextCardsRender() {
+    const el = document.getElementById("local-context-cards");
+    if (!el) return;
+    if (!_maDetailsCache) {
+      try {
+        const r = await fetch(`/api/myarea/details?${_maDetailsApiParam()}`);
+        const d = await r.json();
+        _maDetailsCache = Array.isArray(d) ? d : [];
+      } catch { _maDetailsCache = []; }
+    }
+    const records = _maDetailsCache || [];
+    const today = new Date();
+    const cards = [];
+
+    for (const rec of records) {
+      const renewal = (rec.data || {})["Renewal Date"] || "";
+      if (!renewal) continue;
+      const dt = new Date(renewal);
+      if (isNaN(dt)) continue;
+      const days = Math.round((dt - today) / 86400000);
+      if (days < 0 || days > 90) continue;
+      const cfg = _LOCAL_CTX_QUERIES[rec.type];
+      if (!cfg) continue;
+      const provider = (rec.data || {}).Provider || (rec.data || {}).Council || "";
+      const urgency = days <= 14
+        ? "background:#fef2f2;border-color:#fca5a5;color:#dc2626"
+        : days <= 30
+          ? "background:#fffbeb;border-color:#fcd34d;color:#d97706"
+          : "background:#f0fdf4;border-color:#86efac;color:#16a34a";
+      const daysLabel = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
+      cards.push(`
+        <button onclick="finderCtxSearch(${JSON.stringify(cfg.q)})"
+          style="width:100%;text-align:left;border-radius:12px;border:1.5px solid;padding:10px 13px;cursor:pointer;${urgency};margin-bottom:6px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">${cfg.icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:800;letter-spacing:.01em">${rec.label || cfg.label} renewal ${daysLabel}</div>
+            ${provider ? `<div style="font-size:11px;opacity:.8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${provider} — tap to find alternatives near you</div>` : ""}
+          </div>
+          <span style="font-size:16px;flex-shrink:0">→</span>
+        </button>`);
+    }
+
+    if (cards.length) {
+      el.innerHTML = cards.join("");
+      el.style.display = "";
+    } else {
+      el.style.display = "none";
+    }
+  }
+
+  window.finderCtxSearch = async function(q) {
+    document.getElementById("finder-q").value = q;
+    await finderSearch();
+    document.getElementById("finder-q").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
 
   function placesUseHome() {
     const home = MiruLocation.getHome();
