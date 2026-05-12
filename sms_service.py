@@ -483,6 +483,52 @@ def _get_wa_home_postcode(from_number: str):
         return None
 
 
+def _set_wa_pending_intent(from_number: str, intent: dict):
+    """Store a pending intent in Supabase so it survives Railway redeploys."""
+    plain = from_number.replace("whatsapp:", "").strip()
+    try:
+        sb = lib._sb()
+        sb.table("wa_saves").delete().eq("from_number", plain).eq("status", "pending_intent").execute()
+        sb.table("wa_saves").insert({
+            "from_number": plain,
+            "status": "pending_intent",
+            "url": "pending:" + json.dumps(intent),
+            "title": "Pending intent: " + intent.get("type", ""),
+        }).execute()
+    except Exception as e:
+        print(f"[pending_intent set] {e}")
+
+
+def _get_wa_pending_intent(from_number: str):
+    """Return stored pending intent dict, or None."""
+    plain = from_number.replace("whatsapp:", "").strip()
+    wa    = f"whatsapp:{plain}"
+    try:
+        rows = (lib._sb().table("wa_saves")
+                .select("url,created_at")
+                .in_("from_number", [from_number, plain, wa])
+                .eq("status", "pending_intent")
+                .order("created_at", desc=True)
+                .limit(1).execute().data)
+        if not rows:
+            return None
+        url = rows[0].get("url", "")
+        if url.startswith("pending:"):
+            return json.loads(url[8:])
+    except Exception:
+        pass
+    return None
+
+
+def _clear_wa_pending_intent(from_number: str):
+    plain = from_number.replace("whatsapp:", "").strip()
+    wa    = f"whatsapp:{plain}"
+    try:
+        lib._sb().table("wa_saves").delete().in_("from_number", [from_number, plain, wa]).eq("status", "pending_intent").execute()
+    except Exception:
+        pass
+
+
 def _nearest_tube_station(lat: float, lon: float, radius_m: int = 2000):
     """Return (naptan_id, display_name, distance_m) for nearest tube station, or (None,None,None)."""
     try:
@@ -8349,8 +8395,12 @@ def _wa_food_find(body: str, from_number: str):
             except Exception:
                 pass
     if lat is None:
-        return (f"{intent['emoji']} Try: *{intent['label']} KT16*\n"
-                f"Or save your home postcode on miru.humanagency.co and just send *{intent['label']}*")
+        _set_wa_pending_intent(from_number, {
+            "type": "food", "food_type": intent["label"], "cheap": wants_cheap
+        })
+        return (f"{intent['emoji']} Where are you?\n\n"
+                f"Reply with your postcode — e.g. *KT16* — and I'll find the best {intent['label']} near you.\n"
+                f"_(Or set your home postcode at miru.humanagency.co so you never need to send it)_")
 
     wants_cheap = bool(re.search(r'\bcheap\b', body_lower))
     places = _find_food_nearby(lat, lon, intent["type"],
@@ -9015,6 +9065,25 @@ def whatsapp_reply():
         else:
             resp.message(_HELP_MSG)
         return str(resp)
+
+    # ── Pending intent: postcode reply resolves a stored intent ─────────────────
+    _pc_reply = re.match(r'^([A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?)\s*$', body.upper().strip())
+    if _pc_reply:
+        _pending = _get_wa_pending_intent(from_number)
+        if _pending:
+            _clear_wa_pending_intent(from_number)
+            _ptype = _pending.get("type", "")
+            if _ptype == "food":
+                _cheap_pfx = "cheap " if _pending.get("cheap") else ""
+                _food_body  = f"{_cheap_pfx}{_pending['food_type']} {_pc_reply.group(1)}"
+                _food_reply = _wa_food_find(_food_body, from_number)
+                resp.message(_food_reply or f"Nothing found near {_pc_reply.group(1)}. Try again!")
+                return str(resp)
+            elif _ptype == "train":
+                _tr = _wa_train_format(_pending.get("from", ""), _pc_reply.group(1))
+                if _tr:
+                    resp.message(_tr)
+                    return str(resp)
 
     # ── URL save ──────────────────────────────────────────────────────────────
     url_m = re.search(r'https?://\S+', body)
@@ -9801,6 +9870,28 @@ def whatsapp_reply():
     _food_reply = _wa_food_find(body, from_number)
     if _food_reply:
         resp.message(_food_reply)
+        return str(resp)
+
+    # ── Guard: conversational replies must not fall through to product search ────
+    _CONVERSATIONAL = frozenset({
+        "already there","its there","already set","already done","set already","its already there",
+        "ok","okay","k","ok thanks","ok cool","ok great","thanks","thank you","ty","cheers","ta",
+        "got it","cool","great","good","fine","alright","sure","right","noted","sorted","done",
+        "yes","no","nope","yep","yeah","nah","correct","exactly","perfect",
+        "hmm","hm","oh","ah","wait","really","seriously","come on","lol","haha",
+        "already","never mind","nevermind","forget it","ignore that",
+    })
+    _bl = body_lower.strip()
+    if _bl in _CONVERSATIONAL or (
+            len(_bl.split()) <= 4 and not any(c.isdigit() for c in _bl) and
+            _bl.split()[0] in {"already","ok","okay","yes","no","yeah","nope","thanks","cool",
+                                "done","right","hmm","oh","sure","got","alright","wait","never",
+                                "sorted","cheers","fine","great","noted","nah","correct","lol"}):
+        _pending_check = _get_wa_pending_intent(from_number)
+        if _pending_check:
+            # They said something conversational while we're waiting for their postcode
+            _clear_wa_pending_intent(from_number)
+        resp.message(_CLARIFY_MSG)
         return str(resp)
 
     # Decide: fuel query or product query
@@ -13236,20 +13327,22 @@ def api_space_launches():
     try:
         r = requests.get(
             "https://ll.thespacedevs.com/2.2.0/launch/upcoming/",
-            params={"format": "json", "limit": 8, "mode": "list"},
+            params={"format": "json", "limit": 12, "mode": "list"},
             timeout=12,
             headers={"User-Agent": "space.humanagency.co/1.0"},
         )
         launches = []
         for l in r.json().get("results", []):
-            pad     = l.get("pad") or {}
-            loc     = pad.get("location") or {}
-            mission = l.get("mission") or {}
+            pad      = l.get("pad") or {}
+            loc      = pad.get("location") or {}
+            mission  = l.get("mission") or {}
+            provider = (l.get("launch_service_provider") or {}).get("name", "")
             launches.append({
                 "name":        l.get("name", ""),
                 "net":         l.get("net", ""),
                 "location":    loc.get("name", ""),
                 "country":     loc.get("country_code", ""),
+                "provider":    provider,
                 "status":      (l.get("status") or {}).get("name", ""),
                 "description": (mission.get("description") or "")[:220].strip(),
                 "image":       l.get("image") or "",
@@ -13293,9 +13386,12 @@ def api_space_news():
         return jsonify(_SPACE_CACHE[ck][0])
     import xml.etree.ElementTree as ET
     feeds = [
-        ("https://ukspaceagency.blog.gov.uk/feed/", "UK Space Agency"),
-        ("https://www.esa.int/rssfeed/Our_Activities/Space_Engineering_Technology", "ESA"),
-        ("https://spacenews.com/feed/", "SpaceNews"),
+        ("https://ukspaceagency.blog.gov.uk/feed/",                              "UK Space Agency"),
+        ("https://www.esa.int/rssfeed/Our_Activities/Space_Engineering_Technology","ESA"),
+        ("https://spacenews.com/feed/",                                           "SpaceNews"),
+        ("https://spaceflightnow.com/feed/",                                      "Spaceflight Now"),
+        ("https://www.nasaspaceflight.com/feed/",                                 "NASASpaceFlight"),
+        ("https://www.nasa.gov/rss/dyn/breaking_news.rss",                        "NASA"),
     ]
     items = []
     for feed_url, source in feeds:
@@ -13305,7 +13401,7 @@ def api_space_news():
             channel = root.find("channel")
             if channel is None:
                 continue
-            for item in list(channel.findall("item"))[:3]:
+            for item in list(channel.findall("item"))[:2]:
                 title = (item.findtext("title") or "").strip()
                 link  = (item.findtext("link")  or "").strip()
                 desc  = re.sub(r'<[^>]+>', '', item.findtext("description") or "")[:260].strip()
@@ -13315,9 +13411,78 @@ def api_space_news():
                                   "link": link, "published": pub, "source": source})
         except Exception as ex:
             print(f"[space news {source}] {ex}")
-    out = {"items": items[:9]}
+    out = {"items": items[:12]}
     _SPACE_CACHE[ck] = (out, time.time())
     return jsonify(out)
+
+
+@app.route("/api/space/planets")
+def api_space_planets():
+    """Approximate Earth–planet distances using simplified Keplerian orbits (J2000 epoch)."""
+    import math
+    _PLANETS = {
+        'Mercury': {'a': 0.387, 'T': 87.97,    'L0': 252.25, 'color': '#9e9e9e', 'diameter_km': 4_879,   'moons': 0,  'fact': 'Scorching days (430°C) and freezing nights (−180°C) — no atmosphere to regulate'},
+        'Venus':   {'a': 0.723, 'T': 224.70,   'L0': 181.98, 'color': '#e8cda0', 'diameter_km': 12_104,  'moons': 0,  'fact': 'Hottest planet at 462°C — thick CO₂ atmosphere creates a runaway greenhouse effect'},
+        'Mars':    {'a': 1.524, 'T': 686.97,   'L0': 355.45, 'color': '#c1440e', 'diameter_km': 6_779,   'moons': 2,  'fact': 'Home to Olympus Mons — the tallest volcano in the solar system at 22km high'},
+        'Jupiter': {'a': 5.203, 'T': 4332.59,  'L0': 34.40,  'color': '#c88b3a', 'diameter_km': 139_820, 'moons': 95, 'fact': 'Its Great Red Spot is a storm bigger than Earth that has raged for 350+ years'},
+        'Saturn':  {'a': 9.537, 'T': 10759.22, 'L0': 49.94,  'color': '#e4d191', 'diameter_km': 116_460, 'moons': 146,'fact': 'Its rings are mostly ice — spanning 282,000km but only 20m thick in places'},
+        'Uranus':  {'a': 19.19, 'T': 30685.0,  'L0': 313.23, 'color': '#7de8e8', 'diameter_km': 50_724,  'moons': 28, 'fact': 'Rotates on its side with an axial tilt of 98° — thought to be from an ancient collision'},
+        'Neptune': {'a': 30.07, 'T': 60190.0,  'L0': 304.88, 'color': '#4b70dd', 'diameter_km': 49_244,  'moons': 16, 'fact': 'Has the strongest winds in the solar system — up to 2,100 km/h'},
+    }
+    _EARTH = {'a': 1.0, 'T': 365.25, 'L0': 100.464}
+    _J2000 = datetime(2000, 1, 1, 12)
+    days = (datetime.utcnow() - _J2000).total_seconds() / 86400.0
+    ea = math.radians((_EARTH['L0'] + 360.0 * days / _EARTH['T']) % 360)
+    ex, ey = math.cos(ea), math.sin(ea)
+    result = []
+    for name, p in _PLANETS.items():
+        pa = math.radians((p['L0'] + 360.0 * days / p['T']) % 360)
+        px = p['a'] * math.cos(pa)
+        py = p['a'] * math.sin(pa)
+        dist_au = math.sqrt((px - ex)**2 + (py - ey)**2)
+        dist_km = dist_au * 149_597_870.7
+        result.append({
+            'name':        name,
+            'dist_au':     round(dist_au, 3),
+            'dist_M_km':   round(dist_km / 1e6, 1),
+            'light_min':   round(dist_au * 8.317, 1),
+            'color':       p['color'],
+            'diameter_km': p['diameter_km'],
+            'moons':       p['moons'],
+            'fact':        p['fact'],
+            'helio_au':    p['a'],
+        })
+    return jsonify({'planets': result, 'ts': datetime.utcnow().isoformat()})
+
+
+@app.route("/api/space/artemis")
+def api_space_artemis():
+    ck = "artemis"
+    if ck in _SPACE_CACHE and time.time() - _SPACE_CACHE[ck][1] < 3600:
+        return jsonify(_SPACE_CACHE[ck][0])
+    try:
+        r = requests.get(
+            "https://images-api.nasa.gov/search",
+            params={"q": "artemis moon", "media_type": "image", "page_size": 6},
+            timeout=8,
+        )
+        photos = []
+        for item in r.json().get("collection", {}).get("items", [])[:6]:
+            data  = (item.get("data") or [{}])[0]
+            links = item.get("links") or []
+            thumb = next((lk.get("href", "") for lk in links
+                          if lk.get("render") == "image" or lk.get("rel") == "preview"), "")
+            photos.append({
+                "title": (data.get("title") or "")[:90],
+                "desc":  re.sub(r'<[^>]+>', '', data.get("description") or "")[:200].strip(),
+                "date":  (data.get("date_created") or "")[:10],
+                "thumb": thumb,
+            })
+        out = {"photos": photos}
+        _SPACE_CACHE[ck] = (out, time.time())
+        return jsonify(out)
+    except Exception as e:
+        return jsonify({"error": str(e), "photos": []})
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
