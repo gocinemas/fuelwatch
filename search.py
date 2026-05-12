@@ -17,7 +17,9 @@ import time
 from datetime import datetime
 from typing import Optional
 
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "AIzaSyDSJyUiYSCADhDdtBcOFI_iF-b-HOlUEq8")
+GOOGLE_API_KEY = (os.environ.get("GOOGLE_PLACES_KEY") or
+                  os.environ.get("GOOGLE_API_KEY") or
+                  "AIzaSyDSJyUiYSCADhDdtBcOFI_iF-b-HOlUEq8")
 
 _MA_DETAIL_TYPES_MAP = {
     "home_ins":    "Home Insurance",

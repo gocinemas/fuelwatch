@@ -6414,11 +6414,15 @@ def _try_isbn_from_image(raw_bytes: bytes) -> dict | None:
             enhanced = _IE.Contrast(img.convert("L")).enhance(2.0).convert("RGB")
             codes = _pyzbar.decode(enhanced)
         isbn = None
+        isbn10 = None
         for c in codes:
             val = c.data.decode("utf-8", errors="ignore").replace("-", "").strip()
-            if re.match(r"^(978|979)\d{10}$", val) or re.match(r"^\d{10}$", val):
-                isbn = val
-                break
+            if re.match(r"^(978|979)\d{10}$", val):
+                isbn = val; break          # ISBN-13 — take immediately
+            elif re.match(r"^\d{10}$", val) and not isbn10:
+                isbn10 = val              # ISBN-10 fallback
+        if not isbn:
+            isbn = isbn10                 # use ISBN-10 only if no ISBN-13 found
         if not isbn:
             return None
         gbooks_key = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
@@ -7106,6 +7110,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if _isbn_hit.get("description"):
             msg += f"\n\n_{_isbn_hit['description'][:220].strip()}…_"
         msg += f"\n\n📚 Added to My Books: miru.humanagency.co/?screen=scan&token={user_token}"
+        msg += f"\n_ISBN: {_isbn_hit['isbn']}_"
         _wa_send_proactive(from_number, msg)
         return "📚 Book scanned!"
 
