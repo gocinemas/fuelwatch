@@ -498,9 +498,51 @@ out center 200;
 
 
 # Kept for backward compatibility with the SMS service
+def _fetch_schools_google(lat: float, lon: float, radius_m: int = 5000) -> list:
+    """Fetch nearby schools via Google Places Text Search (more complete than type=school nearby)."""
+    if not GOOGLE_API_KEY:
+        return []
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            params={"query": "school", "location": f"{lat},{lon}", "radius": radius_m,
+                    "key": GOOGLE_API_KEY, "region": "uk"},
+            timeout=8,
+        )
+        results = r.json().get("results", [])
+        schools = []
+        for p in results:
+            name = p.get("name", "")
+            if not name:
+                continue
+            loc = p.get("geometry", {}).get("location", {})
+            plat, plon = loc.get("lat"), loc.get("lng")
+            dist_km = haversine_km(lat, lon, plat, plon) if plat and plon else 999
+            schools.append({
+                "name":        name,
+                "dist_mi":     round(dist_km / 1.60934, 2),
+                "distance_km": round(dist_km, 2),
+                "address":     p.get("vicinity", ""),
+                "rating":      p.get("rating"),
+                "phone":       "",
+                "ofsted":      "",
+            })
+        schools.sort(key=lambda x: x["dist_mi"])
+        return schools[:15]
+    except Exception:
+        return []
+
+
 def fetch_nearby_schools(lat: float, lon: float, radius_km: float = 5.0) -> dict:
-    data = fetch_local_amenities(lat, lon, school_km=radius_km)
-    return {"schools": data["schools"], "universities": data["universities"]}
+    schools = _fetch_schools_google(lat, lon, radius_m=int(radius_km * 1000))
+    if not schools:
+        # Fallback to OSM if Google fails
+        data = fetch_local_amenities(lat, lon, school_km=radius_km)
+        schools = data["schools"]
+        universities = data["universities"]
+    else:
+        universities = []
+    return {"schools": schools, "universities": universities}
 
 
 def fetch_nearby_pubs(lat: float, lon: float, radius_km: float = 2.5) -> list:

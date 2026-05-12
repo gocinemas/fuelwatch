@@ -8745,7 +8745,7 @@ Type rules:
 IMPORTANT: Extract every field you can find. For council tax specifically, always try to extract: band, annual amount, monthly instalment (price), financial year, and account reference."""
 
 
-def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
+def _ma_gmail_extract_email(access_token: str, msg_id: str, confirmed_provider: str | None = None) -> dict | None:
     """Fetch one Gmail message and extract account details via Groq."""
     try:
         r = requests.get(
@@ -8810,8 +8810,9 @@ def _ma_gmail_extract_email(access_token: str, msg_id: str) -> dict | None:
         if not groq_key:
             return None
 
-        print(f"[ma gmail extract] subject={subject!r} from={sender!r} body_len={len(body)}")
-        prompt = f"Subject: {subject}\nFrom: {sender}\n\n{body[:2000]}"
+        print(f"[ma gmail extract] subject={subject!r} from={sender!r} body_len={len(body)} hint={confirmed_provider!r}")
+        hint_note = f"\n\nNOTE: The user has confirmed they have an account with '{confirmed_provider}'. If this email is from or about '{confirmed_provider}', extract it even if it looks like a welcome or policy document. Still skip purely promotional/marketing emails that don't relate to an existing account." if confirmed_provider else ""
+        prompt = f"Subject: {subject}\nFrom: {sender}\n\n{body[:2000]}{hint_note}"
         r2 = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
@@ -8860,10 +8861,13 @@ def _ma_gmail_clean_account(value: str) -> str:
 
 
 def _hint_to_query(provider: str) -> str:
-    """Build a broad Gmail search query for a user-supplied provider name hint."""
+    """Build a Gmail search query for a user-supplied provider name hint."""
     import re as _re
     safe = _re.sub(r'["\\\n\r]', '', provider.strip())[:60]
-    return f'"{safe}" (invoice OR bill OR statement OR account OR payment OR renewal) newer_than:3y'
+    # Broad: any email mentioning the provider — Groq decides relevance.
+    # We avoid restricting to invoice/bill keywords because many provider emails
+    # use different wording (e.g. "Your policy document", "Monthly summary").
+    return f'"{safe}" newer_than:5y'
 
 
 def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, from_number: str = "", provider_hints: list | None = None):
@@ -8874,14 +8878,18 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
     seen_accounts  = set()   # secondary dedup by (provider, account_no)
     pending = []
 
-    hint_queries = [("other", _hint_to_query(h)) for h in (provider_hints or [])]
-    all_queries = list(_MA_GMAIL_QUERIES) + hint_queries
+    # Store hints as (provider_name, query) so we can pass the confirmed provider to Groq
+    hint_queries = [(h, _hint_to_query(h)) for h in (provider_hints or [])]
+    # Standard queries: (None, query) — no confirmed provider hint
+    std_queries  = [(None, q) for _, q in _MA_GMAIL_QUERIES]
+    all_queries  = std_queries + hint_queries
 
-    for det_type, query in all_queries:
+    for confirmed_provider, query in all_queries:
+        is_hint = confirmed_provider is not None
         try:
             r = requests.get(
                 "https://gmail.googleapis.com/gmail/v1/users/me/messages",
-                params={"q": query, "maxResults": 10},
+                params={"q": query, "maxResults": 20 if is_hint else 10},
                 headers={"Authorization": f"Bearer {at}"},
                 timeout=10,
             )
@@ -8889,12 +8897,12 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
                 print(f"[ma gmail scan] query failed {r.status_code}: {query[:60]}")
                 continue
             msgs = r.json().get("messages", [])
-            print(f"[ma gmail scan] query={query[:70]!r} found={len(msgs)} msgs")
-            for msg in msgs[:5]:
-                d = _ma_gmail_extract_email(at, msg["id"])
+            print(f"[ma gmail scan] query={query[:70]!r} found={len(msgs)} msgs hint={confirmed_provider!r}")
+            for msg in msgs[:10 if is_hint else 5]:
+                d = _ma_gmail_extract_email(at, msg["id"], confirmed_provider=confirmed_provider)
                 if not d:
                     continue
-                provider = (d.get("provider") or "").strip()
+                provider = (d.get("provider") or confirmed_provider or "").strip()
                 account_no = _ma_gmail_clean_account(d.get("account_no", ""))
                 if not provider:
                     continue
