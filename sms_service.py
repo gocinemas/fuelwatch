@@ -8140,60 +8140,94 @@ _FOOD_CHAINS = frozenset({
 _FOOD_INTENTS = [
     (re.compile(r'\b(coffee|cafe|café|flat white|cappuccino|espresso|latte)\b', re.I),
      {"type": "cafe", "keyword": "coffee", "emoji": "☕", "label": "coffee",
-      "keywords": ["flat white", "espresso", "coffee", "latte", "cappuccino",
-                   "specialty", "barista", "oat milk", "roast", "brew"]}),
+      "required_types": ["cafe", "bakery"],
+      "review_terms": ["coffee", "latte", "cappuccino", "espresso", "flat white",
+                       "americano", "cortado", "cold brew", "barista", "oat milk"]}),
     (re.compile(r'\b(breakfast|brunch)\b', re.I),
      {"type": "cafe", "keyword": "breakfast", "emoji": "🍳", "label": "breakfast",
-      "keywords": ["breakfast", "brunch", "eggs", "full english", "bacon",
-                   "avocado", "pancake", "toast", "granola"]}),
+      "required_types": ["cafe", "bakery", "restaurant"],
+      "review_terms": ["breakfast", "brunch", "eggs", "full english", "bacon",
+                       "avocado", "toast", "granola", "pancake"]}),
     (re.compile(r'\b(sandwich|sarnie)\b', re.I),
      {"type": "restaurant", "keyword": "sandwich deli", "emoji": "🥪", "label": "sandwiches",
-      "keywords": ["sandwich", "sourdough", "ciabatta", "deli", "filling",
-                   "fresh", "toastie", "baguette"]}),
+      "required_types": ["cafe", "bakery", "restaurant", "meal_takeaway", "food"],
+      "review_terms": ["sandwich", "sourdough", "baguette", "ciabatta", "toastie", "deli", "roll"]}),
     (re.compile(r'\b(lunch|what.{0,25}(eat|have).{0,10}lunch)\b', re.I),
      {"type": "restaurant", "keyword": "", "emoji": "🥗", "label": "lunch",
-      "keywords": ["lunch", "food", "tasty", "fresh", "menu", "portion",
-                   "meal", "delicious"]}),
+      "required_types": ["restaurant", "cafe", "food"],
+      "review_terms": ["lunch", "food", "meal", "menu", "tasty", "fresh", "delicious"]}),
     (re.compile(r'\b(pizza)\b', re.I),
      {"type": "restaurant", "keyword": "pizza", "emoji": "🍕", "label": "pizza",
-      "keywords": ["pizza", "dough", "crust", "toppings", "wood fired", "thin"]}),
+      "required_types": ["restaurant", "meal_delivery", "food"],
+      "review_terms": ["pizza", "dough", "crust", "toppings", "wood fired", "neapolitan"]}),
     (re.compile(r'\b(dinner|supper)\b', re.I),
      {"type": "restaurant", "keyword": "", "emoji": "🍽️", "label": "dinner",
-      "keywords": ["dinner", "atmosphere", "service", "menu", "delicious",
-                   "romantic", "cosy"]}),
+      "required_types": ["restaurant", "food"],
+      "review_terms": ["dinner", "food", "atmosphere", "service", "menu", "delicious", "evening"]}),
     (re.compile(r'\b(beer|pint|pub|ale|lager)\b', re.I),
-     {"type": "bar", "keyword": "pub beer", "emoji": "🍺", "label": "a pub",
-      "keywords": ["beer", "pint", "ale", "lager", "craft", "cheap", "atmosphere",
-                   "garden", "friendly", "tap", "cask"]}),
+     {"type": "bar", "keyword": "pub", "emoji": "🍺", "label": "a pub",
+      "required_types": ["bar", "night_club", "pub"],
+      "review_terms": ["beer", "pint", "ale", "lager", "craft", "tap", "cask", "atmosphere", "garden"]}),
 ]
 
 _PRICE_LEVEL = {1: "£", 2: "££", 3: "£££", 4: "££££"}
 
+_REVIEW_POSITIVES = frozenset([
+    "great", "amazing", "excellent", "best", "lovely", "good", "awesome",
+    "perfect", "fantastic", "brilliant", "superb", "nice", "wonderful",
+    "incredible", "outstanding", "delicious", "exceptional", "top", "love",
+])
+
 
 def _find_food_nearby(lat: float, lon: float, place_type: str,
                       radius: int = 1500, cheap: bool = False,
-                      keyword: str = "") -> list:
+                      keyword: str = "", required_types: list = None,
+                      min_ratings: int = 100) -> list:
     key = os.environ.get("GOOGLE_PLACES_KEY", "")
     if not key:
         return []
-    try:
-        params = {"location": f"{lat},{lon}", "radius": radius,
+
+    def _search(kw, rad):
+        params = {"location": f"{lat},{lon}", "radius": rad,
                   "type": place_type, "key": key}
-        if keyword:
-            params["keyword"] = keyword
+        if kw:
+            params["keyword"] = kw
         r = requests.get(
             "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
-            params=params,
-            timeout=10,
+            params=params, timeout=10,
         )
+        return r.json().get("results", [])
+
+    try:
+        results = _search(keyword, radius)
+        # If fewer than 3 qualify after filtering, widen radius
+        def _qualify(p):
+            n = p.get("user_ratings_total", 0)
+            if n < min_ratings:
+                return False
+            if required_types:
+                p_types = p.get("types", [])
+                if not any(t in p_types for t in required_types):
+                    return False
+            return True
+
+        qualified = [p for p in results if _qualify(p)]
+        if len(qualified) < 2:
+            # Widen radius and relax min_ratings to 50
+            results2 = _search(keyword, radius * 2)
+            for p in results2:
+                if p not in results:
+                    results.append(p)
+            qualified = [p for p in results if
+                         p.get("user_ratings_total", 0) >= 50 and
+                         (not required_types or any(t in p.get("types", []) for t in required_types))]
+
         items = []
-        for p in r.json().get("results", []):
+        for p in qualified:
             loc = p.get("geometry", {}).get("location", {})
             plat, plon = loc.get("lat"), loc.get("lng")
             dist_km = haversine_km(lat, lon, plat, plon) if plat and plon else 999
             name = p.get("name", "")
-            open_now = p.get("opening_hours", {}).get("open_now")
-            price_level = p.get("price_level")  # 1=£ 2=££ 3=£££ 4=££££
             items.append({
                 "name":        name,
                 "place_id":    p.get("place_id", ""),
@@ -8201,22 +8235,17 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
                 "dist_mi":     round(dist_km * 0.621371, 1),
                 "rating":      p.get("rating", 0),
                 "n_ratings":   p.get("user_ratings_total", 0),
-                "open_now":    open_now,
-                "price_level": price_level,
+                "open_now":    p.get("opening_hours", {}).get("open_now"),
+                "price_level": p.get("price_level"),
                 "is_chain":    name.lower().strip() in _FOOD_CHAINS,
                 "snippet":     "",
             })
+
         if cheap:
-            # Prefer cheaper places; within same price tier sort by rating
-            items.sort(key=lambda x: (
-                x["price_level"] or 9,
-                -min(x["rating"], 5.0),
-                x["dist_km"],
-            ))
+            items.sort(key=lambda x: (x["price_level"] or 9, -x["rating"], x["dist_km"]))
         else:
-            # Best rating first, penalise closed slightly
             items.sort(key=lambda x: (
-                -min(x["rating"], 5.0) * (1.0 if x["open_now"] is not False else 0.9),
+                -x["rating"] * (1.0 if x["open_now"] is not False else 0.9),
                 x["dist_km"],
             ))
         return items
@@ -8226,7 +8255,7 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
 
 
 def _places_review_snippet(place_id: str, keywords: list) -> str:
-    """Fetch Google Places reviews and return a short quote matching any keyword, or ''."""
+    """Return a highly-positive sentence from Google Places reviews matching any keyword."""
     key = os.environ.get("GOOGLE_PLACES_KEY", "")
     if not key or not place_id:
         return ""
@@ -8237,25 +8266,32 @@ def _places_review_snippet(place_id: str, keywords: list) -> str:
             timeout=4,
         )
         reviews = r.json().get("result", {}).get("reviews", [])
-        # Highest-rated reviews first
+        # Only use 4- and 5-star reviews
+        reviews = [rv for rv in reviews if rv.get("rating", 0) >= 4]
         reviews.sort(key=lambda rv: -rv.get("rating", 0))
+
+        best_score = 0
+        best_sentence = ""
+
         for review in reviews:
             text = review.get("text", "").replace("\n", " ")
-            text_l = text.lower()
-            for kw in keywords:
-                idx = text_l.find(kw)
-                if idx < 0:
+            # Split into sentences
+            sentences = re.split(r'(?<=[.!?])\s+', text)
+            for sent in sentences:
+                sent_l = sent.lower()
+                kw_hit = any(kw in sent_l for kw in keywords)
+                if not kw_hit:
                     continue
-                # Extract a ~70-char window around the keyword
-                start = max(0, idx - 15)
-                end   = min(len(text), idx + len(kw) + 45)
-                snippet = text[start:end].strip()
-                if start > 0:
-                    snippet = "…" + snippet
-                if end < len(text):
-                    snippet = snippet + "…"
-                if len(snippet) <= 90:
-                    return f'"{snippet}"'
+                pos_hits = sum(1 for w in _REVIEW_POSITIVES if w in sent_l)
+                if pos_hits == 0:
+                    continue
+                score = pos_hits + review.get("rating", 4) - 4
+                if score > best_score and len(sent) <= 100:
+                    best_score = score
+                    best_sentence = sent.strip()
+
+        if best_sentence:
+            return f'"{best_sentence}"'
     except Exception:
         pass
     return ""
@@ -8318,12 +8354,14 @@ def _wa_food_find(body: str, from_number: str):
 
     wants_cheap = bool(re.search(r'\bcheap\b', body_lower))
     places = _find_food_nearby(lat, lon, intent["type"],
-                               cheap=wants_cheap, keyword=intent.get("keyword", ""))
+                               cheap=wants_cheap,
+                               keyword=intent.get("keyword", ""),
+                               required_types=intent.get("required_types", []))
     if not places:
         return f"No {intent['label']} spots found near {pc_fmt}. Sorry!"
 
     emoji, label = intent["emoji"], intent["label"]
-    keywords = intent.get("keywords", [])
+    keywords = intent.get("review_terms", [])
 
     # Pick top and optional second before fetching reviews
     top = places[0]
