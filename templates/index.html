@@ -2951,8 +2951,12 @@ const _ts = new Date(d.timestamp);
       }
     } else {
       const pc = val.toUpperCase().replace(/\s+/g, "");
-      if (pc) localStorage.setItem("miru_postcode", pc);
-      else localStorage.removeItem("miru_postcode");
+      if (pc) {
+        localStorage.setItem("miru_postcode", pc);
+        MiruLocation.setHome(pc);  // sync to backend so WhatsApp can use it
+      } else {
+        localStorage.removeItem("miru_postcode");
+      }
       // Push postcode into all postcode inputs
       _idPushPostcode(pc);
     }
