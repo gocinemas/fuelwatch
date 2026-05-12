@@ -8673,7 +8673,7 @@ def whatsapp_reply():
 
     # ── Natural-language school queries ──────────────────────────────────────
     _SCHOOL_NL_RE = re.compile(
-        r'\b(?:school|class|teacher|term|half[\s-]?term|assembly|parents[\'']?\s*evening|'
+        r"\b(?:school|class|teacher|term|half[\s-]?term|assembly|parents(?:'|\u2019)?\s*evening|"
         r'sports\s*day|nativity|play\s*rehearsal|inset\s*day|'
         r'what\s+time\s+does\s+(school|class)\s+(start|finish|end|open|close)|'
         r'when\s+does\s+school|school\s+times|school\s+hours|school\s+run|'
