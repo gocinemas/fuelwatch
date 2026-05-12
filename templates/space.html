@@ -521,6 +521,42 @@
   .loading { color: var(--muted); font-size: 13px; padding: 12px 0; }
   .error   { color: var(--red);   font-size: 13px; padding: 8px 0; }
 
+  /* Tab nav */
+  .tab-nav {
+    display: flex;
+    gap: 3px;
+    padding: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    position: sticky;
+    top: 8px;
+    z-index: 100;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 8px 6px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: .15s;
+    white-space: nowrap;
+    letter-spacing: .01em;
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(129,140,248,.3);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
   /* Footer */
   footer {
     text-align: center;
@@ -557,211 +593,193 @@
     <button onclick="savePostcode()">Set</button>
   </div>
 
-  <!-- ISS Live -->
-  <div class="section-label"><span class="live-dot"></span>ISS Live</div>
-  <div class="iss-card">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.3px">International Space Station</div>
-        <div id="iss-location" style="font-size:13px;color:var(--muted);margin-top:2px">Loading position…</div>
-      </div>
-      <div style="font-size:22px">🛸</div>
-    </div>
-    <div id="iss-map"></div>
-    <div class="iss-stats">
-      <div class="iss-stat">
-        <div class="iss-stat-val" id="iss-alt">—</div>
-        <div class="iss-stat-label">Altitude (km)</div>
-      </div>
-      <div class="iss-stat">
-        <div class="iss-stat-val" id="iss-vel">—</div>
-        <div class="iss-stat-label">Speed (km/h)</div>
-      </div>
-      <div class="iss-stat">
-        <div class="iss-stat-val" id="iss-vis">—</div>
-        <div class="iss-stat-label">Visibility</div>
-      </div>
-    </div>
-    <div style="margin-top:12px;font-size:12px;color:var(--muted)">
-      The ISS orbits Earth every ~92 minutes at ~408km altitude.
-      <a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener"
-        style="color:var(--accent);text-decoration:none;margin-left:4px">Spot it from your postcode →</a>
-    </div>
-  </div>
+  <!-- Tab Nav -->
+  <nav class="tab-nav" id="main-tab-nav">
+    <button class="tab-btn active" data-tab="live"    onclick="_showTab('live')">🔴 Live</button>
+    <button class="tab-btn"        data-tab="launches" onclick="_showTab('launches')">🚀 Launches</button>
+    <button class="tab-btn"        data-tab="uk"       onclick="_showTab('uk')">🇬🇧 UK</button>
+    <button class="tab-btn"        data-tab="explore"  onclick="_showTab('explore')">🔭 Explore</button>
+  </nav>
 
-  <!-- APOD -->
-  <div class="section-gap"></div>
-  <div class="section-label">Astronomy Picture of the Day</div>
-  <div class="card" id="apod-card">
-    <div class="loading">Loading…</div>
-  </div>
+  <!-- ── Tab: Live ────────────────────────────────────────────────────────── -->
+  <div class="tab-panel active" id="tab-live">
 
-  <!-- Launches -->
-  <div class="section-gap"></div>
-  <div class="section-label">Upcoming Launches</div>
-  <div class="toggle-row">
-    <button class="toggle-btn active" id="tab-all" onclick="launchTab('all')">All</button>
-    <button class="toggle-btn" id="tab-uk" onclick="launchTab('uk')">UK & Europe</button>
-  </div>
-  <div class="card" id="launches-card">
-    <div class="loading">Loading…</div>
-  </div>
-
-  <!-- SEN Live Camera — embedded -->
-  <div class="section-gap"></div>
-  <div class="section-label"><span class="live-dot"></span>Earth Live — SEN Camera</div>
-  <div class="sen-card" style="padding:0;overflow:hidden">
-    <!-- 16:9 responsive iframe wrapper -->
-    <div style="position:relative;width:100%;padding-top:56.25%">
-      <iframe id="sen-iframe"
-        src="https://www.youtube.com/embed/fO9e9jnhYK8?autoplay=1&mute=1&rel=0&modestbranding=1"
-        style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        referrerpolicy="strict-origin-when-cross-origin"
-        allowfullscreen></iframe>
-    </div>
-    <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div>
-        <div style="font-size:13px;font-weight:700;color:#93c5fd">SEN · Earth from the ISS</div>
-        <div style="font-size:11px;color:#64748b;margin-top:2px">British company · 4K cameras aboard the International Space Station</div>
+    <div class="section-label"><span class="live-dot"></span>Earth Live — SEN Camera</div>
+    <div class="sen-card" style="padding:0;overflow:hidden">
+      <div style="position:relative;width:100%;padding-top:56.25%">
+        <iframe id="sen-iframe"
+          src="https://www.youtube.com/embed/fO9e9jnhYK8?autoplay=1&mute=1&rel=0&modestbranding=1"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen></iframe>
       </div>
-      <div style="display:flex;gap:8px;flex-shrink:0">
+      <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#93c5fd">SEN · Earth from the ISS</div>
+          <div style="font-size:11px;color:#64748b;margin-top:1px">British company · 4K cameras on the International Space Station</div>
+        </div>
         <a href="https://sen.com/live" target="_blank" rel="noopener"
-          style="font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,#0ea5e9,#2563eb);border-radius:20px;padding:7px 14px;text-decoration:none;display:flex;align-items:center;gap:5px">
-          <span class="live-dot" style="margin-right:0"></span>SEN Live
-        </a>
-        <a href="https://www.youtube.com/@SENtv/streams" target="_blank" rel="noopener"
-          style="font-size:12px;font-weight:600;color:#93c5fd;border:1px solid #1a3a5c;border-radius:20px;padding:7px 12px;text-decoration:none">
-          ▶ YouTube
+          style="font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,#0ea5e9,#2563eb);border-radius:20px;padding:6px 14px;text-decoration:none;display:flex;align-items:center;gap:5px;flex-shrink:0">
+          <span class="live-dot" style="margin-right:0"></span>sen.com/live
         </a>
       </div>
     </div>
-  </div>
 
-  <!-- UK Space Hubs Map -->
-  <div class="section-gap"></div>
-  <div class="section-label">UK Space Hubs</div>
-  <div class="card" style="padding:14px">
-    <div style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.5">
-      The UK space sector employs <strong style="color:var(--text)">48,800 people</strong> at over <strong style="color:var(--text)">1,200 organisations</strong>, clustered around key sites.
-    </div>
-    <div id="uk-hubs-map"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
-      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#818cf8;display:inline-block"></span>Cluster</span>
-      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Launch site</span>
-      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#34d399;display:inline-block"></span>Company</span>
-      <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fb923c;display:inline-block"></span>Research</span>
-    </div>
-  </div>
-
-  <!-- UK Space Budget -->
-  <div class="section-gap"></div>
-  <div class="section-label">UK Space Budget</div>
-  <div class="card">
-    <div class="budget-total">
-      <div class="budget-total-val">£702M</div>
-      <div class="budget-total-label">Total UK space spending · 2023/24</div>
-    </div>
-    <div id="budget-bars"></div>
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£330M</span>ESA membership & programmes</div>
-      <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£372M</span>National (UKSA direct)</div>
-    </div>
-    <div style="margin-top:10px;font-size:11px;color:var(--subtle)">Source: UK Space Agency · 2024 Size & Health of the UK Space Industry</div>
-  </div>
-
-  <!-- UK Space News -->
-  <div class="section-gap"></div>
-  <div class="section-label">UK Space</div>
-  <div class="card" id="news-card">
-    <div class="loading">Loading…</div>
-  </div>
-
-  <!-- UK Space Companies -->
-  <div class="section-gap"></div>
-  <div class="section-label">UK Space Companies</div>
-  <div class="company-filters" id="co-filters"></div>
-  <div class="card" id="companies-card">
-    <div class="loading">Loading…</div>
-  </div>
-
-  <!-- Artemis Mission -->
-  <div class="section-gap"></div>
-  <div class="section-label">Artemis — Back to the Moon</div>
-  <div class="card">
-    <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">What is Artemis?</div>
-    <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">
-      NASA's Artemis programme is humanity's return to the Moon — the first crewed lunar landing since Apollo 17 in 1972. Named after Apollo's twin sister, the Greek goddess of the Moon, it aims to land the <strong style="color:var(--text)">first woman and first person of colour</strong> on the lunar surface and establish a permanent human presence there by the end of the decade.<br><br>
-      The UK is a key partner through ESA — contributing the European Service Module that powers the Orion spacecraft, built partly at Airbus in Bremen and with British components. Artemis is also laying the groundwork for eventual <strong style="color:var(--text)">crewed missions to Mars</strong>.
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-      <div style="background:var(--surface2);border-radius:12px;padding:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Artemis I</div>
-        <div style="font-size:13px;font-weight:700;color:var(--text)">✅ Nov 2022</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">Uncrewed Orion flew to the Moon and back — 25 days, 1.4M miles</div>
+    <div class="section-gap"></div>
+    <div class="section-label"><span class="live-dot"></span>ISS Live</div>
+    <div class="iss-card">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.3px">International Space Station</div>
+          <div id="iss-location" style="font-size:13px;color:var(--muted);margin-top:2px">Loading position…</div>
+        </div>
+        <div style="font-size:22px">🛸</div>
       </div>
-      <div style="background:var(--surface2);border-radius:12px;padding:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Artemis II</div>
-        <div style="font-size:13px;font-weight:700;color:var(--amber)">🚀 2026</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">First crewed flight around the Moon — 4 astronauts, 10-day mission</div>
+      <div id="iss-map"></div>
+      <div class="iss-stats">
+        <div class="iss-stat"><div class="iss-stat-val" id="iss-alt">—</div><div class="iss-stat-label">Altitude (km)</div></div>
+        <div class="iss-stat"><div class="iss-stat-val" id="iss-vel">—</div><div class="iss-stat-label">Speed (km/h)</div></div>
+        <div class="iss-stat"><div class="iss-stat-val" id="iss-vis">—</div><div class="iss-stat-label">Visibility</div></div>
       </div>
-      <div style="background:var(--surface2);border-radius:12px;padding:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Artemis III</div>
-        <div style="font-size:13px;font-weight:700;color:var(--amber)">🌙 2027+</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">First crewed lunar landing since 1972 — South Pole, near water ice</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:12px;padding:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Gateway</div>
-        <div style="font-size:13px;font-weight:700;color:var(--accent)">🛸 2028+</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">Lunar orbital station — a stepping stone for long-duration missions</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted)">
+        Orbits Earth every ~92 min at ~408 km.
+        <a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener"
+          style="color:var(--accent);text-decoration:none;margin-left:4px">Spot it from your postcode →</a>
       </div>
     </div>
-    <div id="artemis-photos" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"></div>
-    <div style="font-size:11px;color:var(--subtle)">
-      🇬🇧 UK contribution: European Service Module (Airbus/ESA) · Solar array panels · Communications · Propulsion
-    </div>
-  </div>
 
-  <!-- Solar System — Live Distances -->
-  <div class="section-gap"></div>
-  <div class="section-label">Solar System — Live Distances from Earth</div>
-  <div class="card" id="planets-card">
-    <div class="loading">Computing positions…</div>
-  </div>
+  </div><!-- /tab-live -->
 
-  <!-- AI in Space -->
-  <div class="section-gap"></div>
-  <div class="section-label">AI & Space</div>
-  <div class="card">
-    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
-      Space is one of the most data-rich environments on Earth — and AI is transforming how we use it. Every day, satellites generate more data than any human team could analyse. Machine learning now handles everything from tracking ocean plastic to predicting crop yields.
+  <!-- ── Tab: Launches ────────────────────────────────────────────────────── -->
+  <div class="tab-panel" id="tab-launches">
+
+    <div class="section-label">Upcoming Launches</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="launch-tab-all" onclick="launchTab('all')">All</button>
+      <button class="toggle-btn" id="launch-tab-uk" onclick="launchTab('uk')">UK & Europe</button>
     </div>
-    <div style="display:flex;flex-direction:column;gap:0" id="ai-space-list"></div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Key use cases</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        <span style="font-size:12px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:4px 10px">🌍 Earth observation analysis</span>
-        <span style="font-size:12px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:4px 10px">🛰️ Autonomous satellite ops</span>
-        <span style="font-size:12px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:4px 10px">🌊 Ocean & climate tracking</span>
-        <span style="font-size:12px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:4px 10px">🚀 Launch optimisation</span>
-        <span style="font-size:12px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:4px 10px">🌀 Space weather prediction</span>
-        <span style="font-size:12px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:4px 10px">🗑️ Debris detection & removal</span>
-        <span style="font-size:12px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:4px 10px">🌾 Agricultural monitoring</span>
-        <span style="font-size:12px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:4px 10px">🚢 Maritime & AIS tracking</span>
+    <div class="card" id="launches-card"><div class="loading">Loading…</div></div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Space News</div>
+    <div class="card" id="news-card"><div class="loading">Loading…</div></div>
+
+  </div><!-- /tab-launches -->
+
+  <!-- ── Tab: UK ──────────────────────────────────────────────────────────── -->
+  <div class="tab-panel" id="tab-uk">
+
+    <div class="section-label">UK Space Companies</div>
+    <div class="company-filters" id="co-filters"></div>
+    <div class="card" id="companies-card"><div class="loading">Loading…</div></div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">UK Space Hubs</div>
+    <div class="card" style="padding:14px">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.5">
+        <strong style="color:var(--text)">48,800 people</strong> across <strong style="color:var(--text)">1,200+ organisations</strong> clustered around key sites.
+      </div>
+      <div id="uk-hubs-map"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#818cf8;display:inline-block"></span>Cluster</span>
+        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Launch site</span>
+        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#34d399;display:inline-block"></span>Company</span>
+        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fb923c;display:inline-block"></span>Research</span>
       </div>
     </div>
-  </div>
 
-  <!-- UK Careers in Space -->
-  <div class="section-gap"></div>
-  <div class="section-label">Get Into UK Space</div>
-  <div class="card">
-    <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">How to start a career in space</div>
-    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">
-      The UK space industry needs far more than rocket scientists. Engineers, data analysts, software developers, lawyers, policy specialists and business graduates are all in demand. Here's how to get in.
+    <div class="section-gap"></div>
+    <div class="section-label">UK Space Budget</div>
+    <div class="card">
+      <div class="budget-total">
+        <div class="budget-total-val">£702M</div>
+        <div class="budget-total-label">Total UK space spending · 2023/24</div>
+      </div>
+      <div id="budget-bars"></div>
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£330M</span>ESA membership & programmes</div>
+        <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£372M</span>National (UKSA direct)</div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--subtle)">Source: UK Space Agency · 2024 Size & Health report</div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px" id="careers-list"></div>
-  </div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Get Into UK Space</div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">How to start a career in space</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+        The industry needs engineers, data analysts, developers, lawyers and policy specialists — not just rocket scientists.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px" id="careers-list"></div>
+    </div>
+
+  </div><!-- /tab-uk -->
+
+  <!-- ── Tab: Explore ─────────────────────────────────────────────────────── -->
+  <div class="tab-panel" id="tab-explore">
+
+    <div class="section-label">Astronomy Picture of the Day</div>
+    <div class="card" id="apod-card"><div class="loading">Loading…</div></div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Solar System — Live Distances from Earth</div>
+    <div class="card" id="planets-card"><div class="loading">Computing positions…</div></div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Artemis — Back to the Moon</div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">What is Artemis?</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">
+        NASA's return to the Moon — first crewed landing since 1972. Aims to land the <strong style="color:var(--text)">first woman and first person of colour</strong> on the lunar surface. UK contributes the European Service Module that powers the Orion spacecraft.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="background:var(--surface2);border-radius:12px;padding:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis I</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">✅ Nov 2022</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Uncrewed Moon orbit — 25 days, 1.4M miles</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis II</div>
+          <div style="font-size:13px;font-weight:700;color:var(--amber)">🚀 2026</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">First crewed Moon flyby — 4 astronauts</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis III</div>
+          <div style="font-size:13px;font-weight:700;color:var(--amber)">🌙 2027+</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Crewed lunar landing — South Pole</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Gateway</div>
+          <div style="font-size:13px;font-weight:700;color:var(--accent)">🛸 2028+</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Lunar orbital station</div>
+        </div>
+      </div>
+      <div id="artemis-photos" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"></div>
+      <div style="font-size:11px;color:var(--subtle)">🇬🇧 UK: European Service Module · Solar arrays · Communications · Propulsion</div>
+    </div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">AI & Space</div>
+    <div class="card">
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+        Satellites generate more data daily than any human team can process. ML now handles ocean plastic tracking, crop yield prediction, and debris removal.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0" id="ai-space-list"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Key use cases</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌍 Earth observation</span>
+          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🛰️ Autonomous ops</span>
+          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌊 Ocean tracking</span>
+          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🚀 Launch optimisation</span>
+          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🗑️ Debris removal</span>
+          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌾 Crop monitoring</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-explore -->
 
   <footer>
     <div style="margin-bottom:6px">🛸 space.humanagency.co</div>
@@ -787,6 +805,21 @@ function savePostcode() {
   var fmt = v.length > 3 ? v.slice(0,-3) + ' ' + v.slice(-3) : v;
   document.getElementById('header-pc-label').textContent = fmt;
   document.getElementById('pc-input').value = fmt;
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function _showTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(function(p) {
+    p.classList.toggle('active', p.id === 'tab-' + name);
+  });
+  if (name === 'uk' && !_hubsMap) _initHubsMap();
+  if (name === 'explore') {
+    if (!_planetsLoaded) _loadPlanets();
+    if (!_artemisLoaded) _loadArtemis();
+  }
 }
 
 // ── ISS ───────────────────────────────────────────────────────────────────────
@@ -933,8 +966,8 @@ function _fmtLaunchDate(netStr) {
 
 function launchTab(tab) {
   _launchTab = tab;
-  document.getElementById('tab-all').classList.toggle('active', tab === 'all');
-  document.getElementById('tab-uk').classList.toggle('active',  tab === 'uk');
+  document.getElementById('launch-tab-all').classList.toggle('active', tab === 'all');
+  document.getElementById('launch-tab-uk').classList.toggle('active',  tab === 'uk');
   _renderLaunches(_allLaunches);
 }
 
@@ -1017,15 +1050,7 @@ function _initHubsMap() {
       .addTo(_hubsMap);
   });
 }
-// Defer until visible (IntersectionObserver)
-(function() {
-  var el = document.getElementById('uk-hubs-map');
-  if (!el) return;
-  var obs = new IntersectionObserver(function(entries) {
-    if (entries[0].isIntersecting) { _initHubsMap(); obs.disconnect(); }
-  }, {threshold:0.1});
-  obs.observe(el);
-})();
+// Map inits when UK tab is opened (_showTab calls _initHubsMap)
 
 // ── UK Space Budget ───────────────────────────────────────────────────────────
 var _BUDGET_ITEMS = [
@@ -1166,9 +1191,14 @@ function _renderPlanets(d) {
   el.innerHTML = html + ts;
 }
 
-fetch('/api/space/planets').then(function(r){return r.json();}).then(_renderPlanets).catch(function(){
-  document.getElementById('planets-card').innerHTML = '<div class="error">Could not load planet distances</div>';
-});
+var _planetsLoaded = false;
+function _loadPlanets() {
+  if (_planetsLoaded) return;
+  _planetsLoaded = true;
+  fetch('/api/space/planets').then(function(r){return r.json();}).then(_renderPlanets).catch(function(){
+    document.getElementById('planets-card').innerHTML = '<div class="error">Could not load planet distances</div>';
+  });
+}
 
 // ── Artemis Photos ────────────────────────────────────────────────────────────
 function _renderArtemis(d) {
@@ -1190,7 +1220,12 @@ function _renderArtemis(d) {
   el.innerHTML = html;
 }
 
-fetch('/api/space/artemis').then(function(r){return r.json();}).then(_renderArtemis).catch(function(){});
+var _artemisLoaded = false;
+function _loadArtemis() {
+  if (_artemisLoaded) return;
+  _artemisLoaded = true;
+  fetch('/api/space/artemis').then(function(r){return r.json();}).then(_renderArtemis).catch(function(){});
+}
 
 // ── AI in Space Companies ─────────────────────────────────────────────────────
 var _AI_SPACE_COS = [
