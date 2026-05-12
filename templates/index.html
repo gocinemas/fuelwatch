@@ -3953,7 +3953,16 @@ const _ts = new Date(d.timestamp);
       if (phone) sp.set("from_number", phone);
       const r = await fetch(`/api/myarea/gmail/status?${sp.toString()}`);
       const d = await r.json();
-      if (!d.connected) { _maGmailScanOverlay(false); _maGmailSetState("connect"); return; }
+      if (!d.connected) {
+        // Just returned from OAuth — give the DB up to 15s to propagate before giving up
+        if (_maGmailScanStart && Date.now() - _maGmailScanStart < 15000) {
+          setTimeout(_maGmailCheckStatus, 2000);
+          return;
+        }
+        _maGmailScanOverlay(false);
+        _maGmailSetState("connect");
+        return;
+      }
       if (d.scan_status === "scanning") {
         // Timeout after 90 seconds — show done state to unblock the user
         if (_maGmailScanStart && Date.now() - _maGmailScanStart > 90000) {
@@ -3973,7 +3982,10 @@ const _ts = new Date(d.timestamp);
         } else {
           _maGmailSetState("done", d);
         }
+        return;
       }
+      // Unknown scan_status but connected — keep polling if we're mid-scan
+      if (_maGmailScanStart) setTimeout(_maGmailCheckStatus, 3000);
     } catch { _maGmailScanOverlay(false); }
   }
 
@@ -4143,12 +4155,15 @@ const _ts = new Date(d.timestamp);
     if (params.get("gmail_scan") === "1") {
       history.replaceState({}, "", window.location.pathname);
       showScreen("myarea");
+      _maShowTab("accounts");   // make the Gmail card visible when overlay fades
       _maGmailSetState("scanning");
       _maGmailScanOverlay(true);
+      _maGmailScanStart = Date.now();
       setTimeout(_maGmailCheckStatus, 2000);
     } else if (params.get("gmail_error")) {
       history.replaceState({}, "", window.location.pathname);
       showScreen("myarea");
+      _maShowTab("accounts");
     } else {
       setTimeout(_maGmailCheckStatus, 2000);
     }
