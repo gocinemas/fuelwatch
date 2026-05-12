@@ -3769,6 +3769,30 @@ def api_myarea_places_delete(place_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/myarea/places/<place_id>", methods=["PATCH"])
+def api_myarea_places_patch(place_id):
+    from_number = request.args.get("from_number", "").strip()
+    device_id   = request.args.get("device_id", "").strip()
+    if not from_number and not device_id:
+        return jsonify({"error": "from_number or device_id required"}), 400
+    body = request.get_json(force=True, silent=True) or {}
+    allowed = ("address", "phone", "opening_hours", "name")
+    updates = {k: v for k, v in body.items() if k in allowed}
+    if not updates:
+        return jsonify({"error": "nothing to update"}), 400
+    try:
+        sb = lib._sb()
+        q = sb.table("my_area_places").update(updates).eq("id", place_id)
+        if from_number:
+            q = q.eq("from_number", from_number)
+        else:
+            q = q.eq("device_id", device_id)
+        result = q.execute()
+        return jsonify({"ok": True, "updated": result.data})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/myarea/home-postcode", methods=["GET"])
 def api_myarea_home_postcode_get():
     from_number = request.args.get("from_number", "").strip()
