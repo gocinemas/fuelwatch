@@ -2818,25 +2818,6 @@ const _ts = new Date(d.timestamp);
     return id;
   }
 
-  async function _maLoadHomePostcode() {
-    const phone = _miruPhone();
-    if (!phone) return; // no identity yet — nothing on server
-    try {
-      const r = await fetch(`/api/myarea/home-postcode?from_number=${encodeURIComponent(phone)}`);
-      const d = await r.json();
-      const pc = d.postcode;
-      if (pc) {
-        const input = document.getElementById("myarea-postcode-input");
-        if (input) input.value = pc;
-        MiruLocation.setHome(pc);
-        myAreaSearch();
-      }
-      // No postcode on server — leave search bar empty for user to type
-    } catch {
-      // Network error — leave search bar empty
-    }
-  }
-
   function _miruPhone() {
     return localStorage.getItem("miru_phone") || "";
   }
@@ -2950,18 +2931,20 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maLinkPhone() {
-    const raw = document.getElementById("myarea-phone-input").value.trim();
+    const phoneInput = document.getElementById("myarea-phone-input");
     const errEl = document.getElementById("myarea-link-err");
+    if (!phoneInput || !errEl) return;
+    const raw = phoneInput.value.trim();
     if (!raw) { errEl.style.display = "block"; return; }
     let phone = raw.replace(/[\s\-\(\)]/g, '');
     if (/^07\d{9}$/.test(phone)) phone = '+44' + phone.slice(1);
     if (!/^\+\d{7,15}$/.test(phone)) { errEl.style.display = "block"; return; }
     errEl.style.display = "none";
     localStorage.setItem("miru_phone", phone);
-    document.getElementById("myarea-link-banner").style.display = "none";
+    const banner = document.getElementById("myarea-link-banner");
+    if (banner) banner.style.display = "none";
     _maShowLinkedPhone();
     _maLoadSavedPlaces();
-    _maLoadHomePostcode();
   }
 
   // In-memory mirror of DB saved places for instant UI (avoids repeated fetches)
@@ -3229,9 +3212,11 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maShowSearch() {
-    document.getElementById("myarea-search-bar").style.display = "";
-    document.getElementById("myarea-search-more-link").style.display = "none";
-    document.getElementById("myarea-postcode-input").focus();
+    const bar = document.getElementById("myarea-search-bar");
+    const link = document.getElementById("myarea-search-more-link");
+    if (bar) bar.style.display = "";
+    if (link) link.style.display = "none";
+    document.getElementById("myarea-postcode-input")?.focus();
   }
 
   function _maToggleSavedCollapse() {
@@ -3814,8 +3799,8 @@ const _ts = new Date(d.timestamp);
     const pc = document.getElementById("myarea-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase();
     if (!pc) return;
     showScreen("places");
-    const fi = document.getElementById("places-input"); if (fi) fi.value = pc;
-    document.getElementById("places-input").value = pc + " bars";
+    const fi = document.getElementById("places-input");
+    if (fi) fi.value = pc + " bars";
     setTimeout(() => placesSearch(), 100);
   }
 
@@ -4467,6 +4452,14 @@ const _ts = new Date(d.timestamp);
       const locBar = document.getElementById("myarea-location-bar");
       const locLabel = document.getElementById("myarea-location-label");
       if (locBar && locLabel) { locLabel.textContent = _maCurrentPostcode; locBar.style.display = "flex"; }
+      // Ensure correct tab is showing
+      const savedTab = localStorage.getItem("miru_ma_tab") || "places";
+      _maShowTab(savedTab !== "accounts" ? savedTab : "places");
+      // If API data was cleared (e.g. user changed postcode) but callbacks didn't complete, re-fetch
+      if (!_maAreaData && !_maLocalData) {
+        document.getElementById("myarea-postcode-input").value = _maCurrentPostcode;
+        myAreaSearch();
+      }
       return;
     }
 
