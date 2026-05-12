@@ -3653,9 +3653,6 @@ const _ts = new Date(d.timestamp);
     if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
     _maCurrentPostcode = pc;
-    // Sync back to global identity bar
-    localStorage.setItem("miru_postcode", pc);
-    _idBarRefresh && _idBarRefresh();
     // Clear cached data for new search
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
     // Hide search hint
