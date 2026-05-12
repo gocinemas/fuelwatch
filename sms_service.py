@@ -349,7 +349,7 @@ def _resolve_tube_station(name: str):
     try:
         r = requests.get(
             "https://api.tfl.gov.uk/StopPoint/Search/" + requests.utils.quote(name),
-            params={"modes": "tube", "includeHubs": "false", "maxResults": "1"},
+            params={"modes": "tube,dlr,elizabeth-line,overground", "includeHubs": "false", "maxResults": "1"},
             timeout=8,
         )
         r.raise_for_status()
@@ -471,9 +471,9 @@ def _nearest_tube_station(lat: float, lon: float, radius_m: int = 2000):
             "https://api.tfl.gov.uk/StopPoint",
             params={
                 "lat": lat, "lon": lon,
-                "stopTypes": "NaptanMetroStation",
+                "stopTypes": "NaptanMetroStation,NaptanRailAccessArea",
                 "radius": radius_m,
-                "modes": "tube",
+                "modes": "tube,dlr,elizabeth-line,overground",
                 "returnLines": "false",
             },
             timeout=8,
@@ -12192,8 +12192,8 @@ def api_tube_nearest():
     try:
         r = requests.get(
             "https://api.tfl.gov.uk/StopPoint",
-            params={"lat": lat, "lon": lon, "stopTypes": "NaptanMetroStation",
-                    "radius": 1500, "modes": "tube", "returnLines": "false"},
+            params={"lat": lat, "lon": lon, "stopTypes": "NaptanMetroStation,NaptanRailAccessArea",
+                    "radius": 1500, "modes": "tube,dlr,elizabeth-line,overground", "returnLines": "false"},
             timeout=8,
         )
         r.raise_for_status()
@@ -12394,7 +12394,7 @@ def api_tube_search():
     try:
         r = requests.get(
             f"https://api.tfl.gov.uk/StopPoint/Search/{requests.utils.quote(q)}",
-            params={"modes": "tube", "includeHubs": "false", "maxResults": "6"},
+            params={"modes": "tube,dlr,elizabeth-line,overground", "includeHubs": "false", "maxResults": "6"},
             timeout=8,
         )
         r.raise_for_status()

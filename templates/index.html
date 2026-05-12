@@ -12233,10 +12233,16 @@ window.spotifyAddTrack = window.spotifyLike;
       var btnStyle = 'style="display:flex;align-items:center;width:100%;text-align:left;padding:12px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer"';
       var railList = hasRail ? railRes : railSug;
       railList.slice(0,5).forEach(function(s) {
-        html += '<button onclick="trainSelectStation(\''+s.crs+'\',\''+s.name.replace(/'/g,"\\'")+'\\'+'\')" '+btnStyle+'>'
-          +'<span style="margin-right:8px">🚆</span>'
+        var isTfl = s.crs && s.crs.charAt(0) === 'Z';
+        var icon  = isTfl ? '🚇' : '🚆';
+        var label = isTfl ? 'DLR / TfL' : 'National Rail';
+        var onclick = isTfl
+          ? "trainSelectStation('"+s.crs+"','"+s.name.replace(/'/g,"\\'")+"')"
+          : "trainSelectStation('"+s.crs+"','"+s.name.replace(/'/g,"\\'")+"')";
+        html += '<button onclick="'+onclick+'" '+btnStyle+'>'
+          +'<span style="margin-right:8px">'+icon+'</span>'
           +'<span style="flex:1">'+s.name+'</span>'
-          +'<span style="font-size:11px;color:var(--muted);font-weight:400">National Rail</span>'
+          +'<span style="font-size:11px;color:var(--muted);font-weight:400">'+label+'</span>'
           +'</button>';
       });
       tubeRes.slice(0,4).forEach(function(s) {
@@ -12251,6 +12257,24 @@ window.spotifyAddTrack = window.spotifyLike;
   };
 
   window.trainSelectStation = function(crs, name) {
+    // Z-prefix CRS = DLR / TfL station — look up naptan ID and use TfL arrivals
+    if (crs && crs.charAt(0) === 'Z') {
+      fetch('/api/tube/search?q=' + encodeURIComponent(name))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var match = d.results && d.results[0];
+          if (match) { trainSelectTubeStation(match.id, match.name); }
+          else {
+            document.getElementById('train-error').textContent = 'Could not load TfL data for ' + name;
+            document.getElementById('train-error').style.display = 'block';
+          }
+        })
+        .catch(function(){
+          document.getElementById('train-error').textContent = 'Could not connect to TfL';
+          document.getElementById('train-error').style.display = 'block';
+        });
+      return;
+    }
     if (_trainSetMode) {
       _saveBm(_trainSetMode, crs, name);
       _trainSetMode = null;
