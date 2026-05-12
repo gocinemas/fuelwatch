@@ -3128,7 +3128,7 @@ const _ts = new Date(d.timestamp);
   // Only inject bookmarks into a section when viewing the home postcode.
   // When the user searches a different area, show live results only.
   function _maSavedForSection(emojis) {
-    const home = (MiruLocation.getHome() || "").replace(/\s+/g, "").toUpperCase();
+    const home = (_miruPostcode() || "").replace(/\s+/g, "").toUpperCase();
     if (!home || _maCurrentPostcode !== home) return [];
     return (_maSavedPlaces || []).filter(p => emojis.includes(p.emoji));
   }
