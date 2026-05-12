@@ -8126,19 +8126,6 @@ def whatsapp_results_format(postcode: str) -> str:
 
 # ── Food & drink discovery ───────────────────────────────────────────────────
 
-# Pending intent store: remembers what a user was asking for so a bare postcode
-# reply resolves correctly. TTL=2 min, keyed by from_number.
-_WA_PENDING: dict = {}
-_WA_PENDING_TTL = 120  # seconds
-
-def _wa_set_pending(from_number: str, intent: dict):
-    _WA_PENDING[from_number] = {"intent": intent, "ts": time.time()}
-
-def _wa_pop_pending(from_number: str):
-    p = _WA_PENDING.pop(from_number, None)
-    if p and time.time() - p["ts"] <= _WA_PENDING_TTL:
-        return p["intent"]
-    return None
 
 _FOOD_CHAINS = frozenset({
     "starbucks", "costa", "costa coffee", "pret", "pret a manger",
@@ -8270,28 +8257,24 @@ def _places_review_snippet(place_id: str, keywords: list) -> str:
     return ""
 
 
-def _wa_food_find(body: str, from_number: str, forced_intent: dict = None):
+def _wa_food_find(body: str, from_number: str):
     """Return WhatsApp-formatted food/drink picks, or None if not a food query."""
     body_lower = body.lower()
 
-    if forced_intent:
-        intent = forced_intent
-    else:
-        intent = None
-        for pattern, info in _FOOD_INTENTS:
-            if pattern.search(body_lower):
-                intent = info
-                break
-        if not intent:
-            return None
+    intent = None
+    for pattern, info in _FOOD_INTENTS:
+        if pattern.search(body_lower):
+            intent = info
+            break
+    if not intent:
+        return None
 
     # Postcode from message, or stored home postcode
     pc_m = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', body.upper())
     postcode = pc_m.group(0).replace(" ", "") if pc_m else _get_wa_home_postcode(from_number)
     if not postcode:
-        _wa_set_pending(from_number, intent)
-        return (f"Where are you? Reply with your postcode and I'll find "
-                f"{intent['emoji']} {intent['label']} nearby.")
+        return (f"{intent['emoji']} Try: *{intent['label']} KT15 3RL*\n"
+                f"Or save your home postcode on miru.humanagency.co and just send *{intent['label']}*")
 
     try:
         pc_r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=5)
@@ -9658,16 +9641,6 @@ def whatsapp_reply():
         user_token = _wa_user_token(from_number)
         resp.message(f"🔗 Your personal Miru link:\nmiru.humanagency.co/?screen=saves&token={user_token}")
         return str(resp)
-
-    # ── Pending intent resolution (e.g. user replied with postcode after "coffee") ──
-    _pc_only = re.match(r'^([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})\s*$', body.upper().strip())
-    if _pc_only:
-        _pending = _wa_pop_pending(from_number)
-        if _pending:
-            _food_reply = _wa_food_find(body, from_number, forced_intent=_pending)
-            if _food_reply:
-                resp.message(_food_reply)
-                return str(resp)
 
     # ── Train departures query ────────────────────────────────────────────────
     _TRAIN_RE = re.compile(
