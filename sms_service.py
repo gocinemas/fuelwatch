@@ -409,7 +409,83 @@ def get_tube_journey(from_name: str, to_name: str) -> str:
     return "\n".join(parts)
 
 
-def handle_tube_command(text: str) -> str:
+def _get_wa_home_postcode(from_number: str):
+    """Return the user's stored home postcode, or None."""
+    try:
+        plain = from_number.replace("whatsapp:", "").strip()
+        wa    = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
+        rows = (lib._sb().table("my_area_places").select("postcode")
+                .eq("category", "_home")
+                .in_("from_number", [from_number, plain, wa])
+                .limit(1).execute().data)
+        return rows[0]["postcode"] if rows else None
+    except Exception:
+        return None
+
+
+def _nearest_tube_station(lat: float, lon: float, radius_m: int = 2000):
+    """Return (naptan_id, display_name, distance_m) for nearest tube station, or (None,None,None)."""
+    try:
+        r = requests.get(
+            "https://api.tfl.gov.uk/StopPoint",
+            params={
+                "lat": lat, "lon": lon,
+                "stopTypes": "NaptanMetroStation",
+                "radius": radius_m,
+                "modes": "tube",
+                "returnLines": "false",
+            },
+            timeout=8,
+        )
+        r.raise_for_status()
+        stops = r.json().get("stopPoints", [])
+        if stops:
+            s = stops[0]
+            return s["id"], s["commonName"], round(s.get("distance", 0))
+    except Exception:
+        pass
+    return None, None, None
+
+
+def get_tube_arrivals(naptan_id: str, station_name: str) -> str:
+    """Return WhatsApp-formatted next arrivals at a tube station."""
+    try:
+        r = requests.get(
+            f"https://api.tfl.gov.uk/StopPoint/{naptan_id}/Arrivals",
+            timeout=8,
+        )
+        r.raise_for_status()
+        arrivals = r.json()
+    except Exception as e:
+        return f"Couldn't fetch arrivals: {e}"
+
+    if not arrivals:
+        return f"🚇 *{station_name}*\nNo arrivals data right now."
+
+    arrivals.sort(key=lambda a: a.get("timeToStation", 9999))
+
+    seen, lines = set(), []
+    for a in arrivals:
+        line    = a.get("lineName", "")
+        dest    = a.get("destinationName", "").replace(" Underground Station", "")
+        platform = a.get("platformName", "")
+        secs    = a.get("timeToStation", 0)
+        mins    = secs // 60
+        due     = "Due" if mins < 1 else f"{mins} min"
+        key     = (line, platform)
+        if key in seen:
+            continue
+        seen.add(key)
+        dir_part = f"  _{platform}_" if platform else ""
+        lines.append(f"• *{line}* → {dest}  {due}{dir_part}")
+        if len(lines) >= 8:
+            break
+
+    short_name = station_name.replace(" Underground Station", "")
+    return f"🚇 *{short_name}*\n" + "\n".join(lines)
+
+
+def handle_tube_command(text: str, from_number: str = None) -> str:
     """Route a 'tube ...' WhatsApp message to the right TfL function."""
     remainder = text[4:].strip().lower()  # strip 'tube'
 
@@ -417,12 +493,28 @@ def handle_tube_command(text: str) -> str:
         parts = remainder.split(" to ", 1)
         return get_tube_journey(parts[0].strip(), parts[1].strip())
 
-    if not remainder or remainder == "status":
-        return get_tube_status()
-
     for alias, tfl_id in TFL_LINE_ALIASES.items():
         if remainder == alias or remainder.startswith(alias + " "):
             return get_tube_status(tfl_id)
+
+    if remainder == "status":
+        return get_tube_status()
+
+    # "tube" or "tube near me" — show nearest station arrivals from home postcode
+    if not remainder or remainder in ("near me", "nearest", "local"):
+        if from_number:
+            postcode = _get_wa_home_postcode(from_number)
+            if postcode:
+                latlon = postcode_to_latlon(postcode)
+                if latlon:
+                    lat, lon = latlon
+                    naptan_id, name, dist_m = _nearest_tube_station(lat, lon)
+                    if naptan_id:
+                        dist_str = f"{dist_m}m away" if dist_m < 1000 else f"{dist_m/1000:.1f}km away"
+                        header = get_tube_arrivals(naptan_id, name)
+                        return header + f"\n\n_{dist_str} from {postcode}_"
+                    return "No tube station found within 2km of your home postcode.\n\nTry: *tube Kings Cross to Waterloo*"
+        return get_tube_status()
 
     return get_tube_status()
 
@@ -9233,6 +9325,11 @@ def whatsapp_reply():
                 resp.message(wa_train_reply)
                 return str(resp)
 
+    # ── Tube query ───────────────────────────────────────────────────────────
+    if body_lower.strip().startswith("tube"):
+        resp.message(handle_tube_command(body, from_number))
+        return str(resp)
+
     # Decide: fuel query or product query
     # Product query if: no postcode at all, OR postcode present but there's
     # substantial non-fuel text alongside it
@@ -11954,7 +12051,7 @@ def spotify_callback():
 
 @app.route("/api/tube/test")
 def api_tube_test():
-    """Test TfL tube integration — no auth needed."""
+    """Test TfL tube integration — no auth needed. Pass ?postcode=SW1A1AA to test nearest-station."""
     results = {}
     try:
         results["status_all"] = get_tube_status()
@@ -11973,6 +12070,21 @@ def api_tube_test():
         results["command_parse_journey"] = handle_tube_command("tube Victoria to Waterloo")
     except Exception as e:
         results["command_parse_error"] = str(e)
+    # Nearest station test — pass ?postcode=SW1A1AA
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if postcode:
+        try:
+            latlon = postcode_to_latlon(postcode)
+            if latlon:
+                lat, lon = latlon
+                nid, nname, ndist = _nearest_tube_station(lat, lon)
+                results["nearest_station"] = {"id": nid, "name": nname, "dist_m": ndist}
+                if nid:
+                    results["nearest_arrivals"] = get_tube_arrivals(nid, nname)
+            else:
+                results["nearest_station_error"] = "Postcode not found"
+        except Exception as e:
+            results["nearest_station_error"] = str(e)
     return jsonify(results)
 
 
