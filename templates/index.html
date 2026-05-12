@@ -1529,7 +1529,10 @@
                   <div id="ma-gmail-email-label" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
                 </div>
               </div>
-              <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button onclick="_maGmailDisconnect()" style="font-size:12px;font-weight:600;color:#9ca3af;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 10px;cursor:pointer">Disconnect</button>
+                <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
+              </div>
             </div>
           </div>
           <div id="ma-gmail-state-pending" style="display:none">
@@ -4138,6 +4141,23 @@ const _ts = new Date(d.timestamp);
     const params = new URLSearchParams({ device_id: did || "unknown" });
     if (phone) params.set("from_number", phone);
     window.location.href = "/api/myarea/gmail/connect?" + params.toString();
+  }
+
+  async function _maGmailDisconnect() {
+    if (!confirm("Disconnect Gmail? Your provider hints will be kept, so a reconnect picks up where you left off.")) return;
+    const did   = _maDeviceId();
+    const phone = _miruPhone();
+    const sp = new URLSearchParams({ device_id: did || "" });
+    if (phone) sp.set("from_number", phone);
+    try {
+      await fetch(`/api/myarea/gmail/disconnect?${sp.toString()}`, { method: "POST" });
+    } catch {}
+    // Show the connect state
+    ["connect","scanning","done","pending"].forEach(s => {
+      const el = document.getElementById(`ma-gmail-state-${s}`);
+      if (el) el.style.display = s === "connect" ? "flex" : "none";
+    });
+    document.getElementById("ma-gmail-hints-section").style.display = "none";
   }
 
   function _maGmailScanOverlay(show) {
