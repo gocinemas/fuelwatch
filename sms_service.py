@@ -270,6 +270,163 @@ def get_weather(lat: float, lon: float) -> str:
         return ""
 
 
+# ── TfL Tube ──────────────────────────────────────────────────────────────────
+
+TFL_LINE_ALIASES = {
+    "bakerloo": "bakerloo",
+    "central": "central",
+    "circle": "circle",
+    "district": "district",
+    "hammersmith": "hammersmith-city",
+    "hammersmith & city": "hammersmith-city",
+    "hammersmith and city": "hammersmith-city",
+    "jubilee": "jubilee",
+    "metropolitan": "metropolitan",
+    "northern": "northern",
+    "piccadilly": "piccadilly",
+    "victoria": "victoria",
+    "waterloo & city": "waterloo-city",
+    "waterloo and city": "waterloo-city",
+    "elizabeth": "elizabeth",
+    "dlr": "dlr",
+    "overground": "london-overground",
+}
+
+_TUBE_STATUS_EMOJI = {
+    "Good Service": "✅",
+    "Minor Delays": "⚠️",
+    "Severe Delays": "🔴",
+    "Part Suspended": "🔴",
+    "Suspended": "🚫",
+    "Part Closure": "🚫",
+    "Closed": "🚫",
+    "Planned Closure": "🔵",
+    "Bus Service": "🚌",
+    "Reduced Service": "⚠️",
+}
+
+_tube_cache: dict = {}
+
+
+def get_tube_status(line: str = None) -> str:
+    key = line or "all"
+    cached = _tube_cache.get(key)
+    if cached and (time.time() - cached["ts"]) < 120:
+        return cached["v"]
+    try:
+        if line:
+            url = f"https://api.tfl.gov.uk/Line/{line}/Status"
+        else:
+            url = "https://api.tfl.gov.uk/Line/Mode/tube,elizabeth-line,dlr,overground/Status"
+        r = requests.get(url, timeout=8)
+        r.raise_for_status()
+        data = r.json()
+    except Exception as e:
+        return f"Couldn't fetch tube status: {e}"
+
+    lines_out = []
+    for entry in data:
+        name = entry.get("name", "")
+        statuses = entry.get("lineStatuses", [])
+        if statuses:
+            sev_desc = statuses[0].get("statusSeverityDescription", "Unknown")
+            disruption = statuses[0].get("disruption") or {}
+            reason = disruption.get("description", "") if isinstance(disruption, dict) else ""
+            emoji = _TUBE_STATUS_EMOJI.get(sev_desc, "ℹ️")
+            line_str = f"{emoji} {name}: {sev_desc}"
+            if reason and sev_desc != "Good Service":
+                reason = reason[:100] + "…" if len(reason) > 100 else reason
+                line_str += f"\n   {reason}"
+            lines_out.append(line_str)
+
+    result = "🚇 *Tube Status*\n" + "\n".join(lines_out)
+    _tube_cache[key] = {"v": result, "ts": time.time()}
+    return result
+
+
+def _resolve_tube_station(name: str):
+    """Return (naptan_id, display_name) for the best-matching tube station, or (None, None)."""
+    try:
+        r = requests.get(
+            "https://api.tfl.gov.uk/StopPoint/Search/" + requests.utils.quote(name),
+            params={"modes": "tube", "includeHubs": "false", "maxResults": "1"},
+            timeout=8,
+        )
+        r.raise_for_status()
+        matches = r.json().get("matches", [])
+        if matches:
+            return matches[0]["id"], matches[0]["name"]
+    except Exception:
+        pass
+    return None, None
+
+
+def get_tube_journey(from_name: str, to_name: str) -> str:
+    from_id, from_display = _resolve_tube_station(from_name)
+    to_id, to_display = _resolve_tube_station(to_name)
+    if not from_id:
+        return f"Couldn't find tube station: {from_name}"
+    if not to_id:
+        return f"Couldn't find tube station: {to_name}"
+    try:
+        r = requests.get(
+            f"https://api.tfl.gov.uk/Journey/JourneyResults/{from_id}/to/{to_id}",
+            params={"mode": "tube"},
+            timeout=10,
+        )
+        r.raise_for_status()
+        journeys = r.json().get("journeys", [])
+    except Exception as e:
+        return f"Journey planner error: {e}"
+
+    if not journeys:
+        return f"No tube journey found from {from_display} to {to_display}"
+
+    j = journeys[0]
+    duration = j.get("duration", "?")
+    legs = j.get("legs", [])
+
+    # Strip " Underground Station" suffix for readability
+    def _short(name):
+        return name.replace(" Underground Station", "").replace(" Station", "")
+
+    parts = [
+        f"🚇 *{_short(from_display)} → {_short(to_display)}*",
+        f"⏱ {duration} min",
+    ]
+    for leg in legs:
+        mode = leg.get("mode", {}).get("name", "")
+        leg_dur = leg.get("duration", "?")
+        dep = _short(leg.get("departurePoint", {}).get("commonName", ""))
+        arr = _short(leg.get("arrivalPoint", {}).get("commonName", ""))
+        route_opts = leg.get("routeOptions", [])
+        line_name = route_opts[0].get("name", "") if route_opts else ""
+        if mode == "tube":
+            parts.append(f"• {line_name or 'Tube'}: {dep} → {arr} ({leg_dur} min)")
+        elif mode == "walking":
+            parts.append(f"• Walk {leg_dur} min")
+
+    return "\n".join(parts)
+
+
+def handle_tube_command(text: str) -> str:
+    """Route a 'tube ...' WhatsApp message to the right TfL function."""
+    remainder = text[4:].strip().lower()  # strip 'tube'
+
+    if " to " in remainder:
+        parts = remainder.split(" to ", 1)
+        return get_tube_journey(parts[0].strip(), parts[1].strip())
+
+    if not remainder or remainder == "status":
+        return get_tube_status()
+
+    for alias, tfl_id in TFL_LINE_ALIASES.items():
+        if remainder == alias or remainder.startswith(alias + " "):
+            return get_tube_status(tfl_id)
+
+    return get_tube_status()
+
+
 # ── Search & Format ───────────────────────────────────────────────────────────
 
 def search_and_format(postcode: str, fuel: str, radius_miles: float, retailer: str = None) -> str:
@@ -405,6 +562,10 @@ def sms_reply():
 
     if not body:
         resp.message("FuelWatch UK\nText your postcode to get fuel prices.\nExample: KT16 0DA\nOr: KT16 0DA diesel 10")
+        return str(resp)
+
+    if body.lower().startswith("tube"):
+        resp.message(handle_tube_command(body))
         return str(resp)
 
     postcode, fuel, radius, retailer = parse_sms(body)
@@ -11789,6 +11950,30 @@ def spotify_callback():
         f"window.location='/?screen=music&sp_connected=1';"
         f"</script></body></html>"
     )
+
+
+@app.route("/api/tube/test")
+def api_tube_test():
+    """Test TfL tube integration — no auth needed."""
+    results = {}
+    try:
+        results["status_all"] = get_tube_status()
+    except Exception as e:
+        results["status_all_error"] = str(e)
+    try:
+        results["status_victoria"] = get_tube_status("victoria")
+    except Exception as e:
+        results["status_victoria_error"] = str(e)
+    try:
+        results["journey_kgx_to_wat"] = get_tube_journey("Kings Cross", "Waterloo")
+    except Exception as e:
+        results["journey_error"] = str(e)
+    try:
+        results["command_parse_status"]  = handle_tube_command("tube status")
+        results["command_parse_journey"] = handle_tube_command("tube Victoria to Waterloo")
+    except Exception as e:
+        results["command_parse_error"] = str(e)
+    return jsonify(results)
 
 
 @app.route("/api/train/test")
