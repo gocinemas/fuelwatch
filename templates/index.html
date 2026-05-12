@@ -1351,7 +1351,10 @@
           <span style="font-size:15px">📍</span>
           <span id="myarea-location-label" style="font-size:14px;font-weight:700;color:var(--text)"></span>
         </div>
-        <button onclick="_maOpenLocationPicker()" style="font-size:12px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">Change location →</button>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button id="myarea-home-btn" onclick="_maGoHome()" style="display:none;font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">← Home</button>
+          <button onclick="_maOpenLocationPicker()" style="font-size:12px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">Change →</button>
+        </div>
       </div>
 
       <!-- Empty state: shown before first search -->
@@ -3675,6 +3678,7 @@ const _ts = new Date(d.timestamp);
     const locBar = document.getElementById("myarea-location-bar");
     const locLabel = document.getElementById("myarea-location-label");
     if (locBar && locLabel) { locLabel.textContent = raw; locBar.style.display = "flex"; }
+    _maUpdateHomeBtn(pc);
     // Clear cached data for new search
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
     // Hide search hint
@@ -3793,6 +3797,20 @@ const _ts = new Date(d.timestamp);
   }
 
   function myAreaUseLocation() { _maOpenLocationPicker(); }
+
+  function _maGoHome() {
+    const home = _miruPostcode();
+    if (!home) return;
+    document.getElementById("myarea-postcode-input").value = home;
+    myAreaSearch();
+  }
+
+  function _maUpdateHomeBtn(currentPc) {
+    const btn = document.getElementById("myarea-home-btn");
+    if (!btn) return;
+    const home = (_miruPostcode() || "").replace(/\s+/g, "");
+    btn.style.display = (home && home !== currentPc) ? "" : "none";
+  }
 
   function myAreaSearchBars() {
     const pc = document.getElementById("myarea-postcode-input").value.trim().replace(/\s+/g,"").toUpperCase();
