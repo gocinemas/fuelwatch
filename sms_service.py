@@ -7195,6 +7195,42 @@ def _wa_save_url(from_number: str, url: str) -> str:
         title   = fetched.get("title") or u
         text    = fetched.get("text", "")
 
+        # Detect content type from URL domain first, then title/text
+        _RECIPE_DOMAINS = ("allrecipes.com","bbc.co.uk/food","bbc.co.uk/recipe","jamieoliver.com",
+                           "food.com","delicious.com","taste.com","bonappetit.com","epicurious.com",
+                           "recipetineats.com","nigella.com","seriouseats.com","thespruceeats.com",
+                           "yummly.com","cookinglight.com","simplyrecipes.com","delish.com")
+        _VIDEO_DOMAINS  = ("youtube.com","youtu.be","vimeo.com","dailymotion.com","tiktok.com")
+        _PRODUCT_DOMAINS= ("amazon.co.uk/dp","amazon.com/dp","ebay.co.uk/itm","ebay.com/itm",
+                           "asos.com/prd","johnlewis.com","currys.co.uk","argos.co.uk")
+
+        import re as _re
+        u_lower = u.lower()
+        if any(d in u_lower for d in _RECIPE_DOMAINS):
+            content_type = "recipe"
+        elif any(d in u_lower for d in _VIDEO_DOMAINS):
+            content_type = "video"
+        elif any(d in u_lower for d in _PRODUCT_DOMAINS):
+            content_type = "product"
+        elif text:
+            # Ask Groq to classify if domain isn't conclusive
+            try:
+                ct = _groq_chat(
+                    system="Reply with ONLY one word: recipe, video, product, event, or article.",
+                    messages=[{"role": "user", "content": f"What type of content is this?\nTitle: {title}\n\n{text[:800]}"}],
+                    max_tokens=5,
+                ).strip().lower()
+                content_type = ct if ct in ("recipe","video","product","event") else "article"
+            except Exception:
+                content_type = "article"
+        else:
+            content_type = "article"
+
+        _TYPE_EMOJI = {"recipe":"🍳","video":"📺","product":"📦","event":"🎫","article":""}
+        emoji = _TYPE_EMOJI.get(content_type, "")
+        if emoji and not title.startswith(emoji):
+            title = f"{emoji} {title}"
+
         summary = ""
         if text:
             try:

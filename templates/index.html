@@ -10223,8 +10223,11 @@ _bkBadge();
   // ── Category system ─────────────────────────────────────────────────────────
   var _SAVE_CATS = [
     {key:"all",      label:"All"},
+    {key:"recipe",   label:"🍳 Recipes"},
     {key:"wine",     label:"🍷 Wine"},
     {key:"article",  label:"🔗 Articles"},
+    {key:"video",    label:"📺 Videos"},
+    {key:"product",  label:"📦 Products"},
     {key:"brand",    label:"🏷️ Brands"},
     {key:"place",    label:"🏪 Restaurants"},
     {key:"ad",       label:"📢 Ads"},
@@ -10236,7 +10239,10 @@ _bkBadge();
 
   function _saveCat(s) {
     const t = s.title || "";
+    if (t.startsWith("🍳")) return "recipe";
     if (t.startsWith("🍷")) return "wine";
+    if (t.startsWith("📺")) return "video";
+    if (t.startsWith("📦")) return "product";
     if (t.startsWith("🏷️")) return "brand";
     if (t.startsWith("🏪")) return "place";
     if (t.startsWith("📢")) return "ad";
