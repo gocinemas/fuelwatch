@@ -7919,7 +7919,7 @@ _GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru", "join"
 
 def _wa_classify_intent(body: str) -> dict | None:
     """Use Groq to classify a free-text WhatsApp message into a known intent.
-    Returns {intent, query} or None on failure.
+    Returns intent dict or None on failure / unknown.
     Only called when no exact command matched — handles typos and natural phrasing."""
     try:
         from groq import Groq as _Groq
@@ -7931,32 +7931,151 @@ def _wa_classify_intent(body: str) -> dict | None:
             messages=[{"role": "system", "content": (
                 "Classify the user message into ONE intent. Respond with JSON only — no other text.\n\n"
                 "Intents:\n"
-                "  book_lookup  — user wants to find, save or add a book (any phrasing, typos ok). "
-                                "Extract query = title, author, or ISBN they mentioned.\n"
-                "  worth_it     — user wants a review or verdict on the last book they saved "
-                                "(e.g. 'is it worth reading', 'should i read it', 'any good', 'worth it', typos ok).\n"
-                "  shopping_list — user wants a shopping/ingredients list from their last saved recipe "
-                                "(e.g. 'what do i need to buy', 'ingredients', 'shopping list', typos ok).\n"
-                "  my_saves     — user wants to see their saved items / reading list.\n"
-                "  my_link      — user wants their personal Miru link.\n"
-                "  unknown      — anything else (fuel prices, product prices, place searches, etc.).\n\n"
-                "Reply format — exactly one of:\n"
-                '{"intent":"book_lookup","query":"<extracted title/author/isbn>"}\n'
+                "  book_lookup   — user wants to find/save/add a book. Extract: query (title/author/ISBN).\n"
+                "  search_saves  — user wants to browse/filter things they already saved. "
+                                 "Extract: filter (books|wine|recipes|menus|restaurants|videos|products|all), "
+                                 "author (if 'by X' mentioned, else null), "
+                                 "timeframe (today|yesterday|last_week|last_month|all).\n"
+                "  worth_it      — wants review/verdict on last saved book.\n"
+                "  shopping_list — wants ingredients/shopping list from last saved recipe.\n"
+                "  my_link       — wants their personal Miru link.\n"
+                "  unknown       — anything else.\n\n"
+                "Reply format:\n"
+                '{"intent":"book_lookup","query":"..."}\n'
+                '{"intent":"search_saves","filter":"books","author":"seth godin","timeframe":"all"}\n'
+                '{"intent":"search_saves","filter":"wine","author":null,"timeframe":"yesterday"}\n'
+                '{"intent":"search_saves","filter":"restaurants","author":null,"timeframe":"last_week"}\n'
                 '{"intent":"worth_it"}\n'
                 '{"intent":"shopping_list"}\n'
-                '{"intent":"my_saves"}\n'
                 '{"intent":"my_link"}\n'
                 '{"intent":"unknown"}'
             )}, {"role": "user", "content": body[:300]}],
-            max_tokens=80,
+            max_tokens=120,
         ).choices[0].message.content.strip()
-        # Strip any markdown fences Groq sometimes adds
         result = re.sub(r"^```[a-z]*\n?|```$", "", result.strip()).strip()
         parsed = _json.loads(result)
         return parsed if parsed.get("intent") and parsed["intent"] != "unknown" else None
     except Exception as _e:
         print(f"[intent] classify failed: {_e}")
         return None
+
+
+def _wa_search_saves(from_number: str, filter_type: str, timeframe: str, author: str = "") -> str:
+    """Query wa_saves (and my_area_places for restaurants) and format for WhatsApp."""
+    from datetime import datetime, timedelta, timezone
+    import json as _json
+
+    plain = from_number.replace("whatsapp:", "").strip()
+    wa    = f"whatsapp:{plain}" if not plain.startswith("whatsapp:") else plain
+    nums  = [from_number, plain, wa]
+
+    # Timeframe → cutoff datetime
+    now = datetime.now(timezone.utc)
+    cutoff = None
+    if timeframe == "today":
+        cutoff = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif timeframe == "yesterday":
+        d = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        cutoff = d
+        end_cutoff = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif timeframe == "last_week":
+        cutoff = now - timedelta(days=7)
+    elif timeframe == "last_month":
+        cutoff = now - timedelta(days=30)
+
+    # --- Restaurant/place saves: from my_area_places ---
+    if filter_type == "restaurants":
+        try:
+            sb = lib._sb()
+            q = sb.table("my_area_places").select("name,address,phone,created_at") \
+                .in_("from_number", nums) \
+                .in_("emoji", ["🍺", "☕", "🍽️", "🥘"])
+            if cutoff:
+                q = q.gte("created_at", cutoff.isoformat())
+            rows = q.order("created_at", desc=True).limit(10).execute().data or []
+            if not rows:
+                tf = {"today":"today","yesterday":"yesterday","last_week":"last 7 days","last_month":"last month"}.get(timeframe,"")
+                return f"🍽️ No restaurants saved{' ' + tf if tf else ''}."
+            lines = []
+            for r in rows:
+                line = f"🍽️ *{r['name']}*"
+                if r.get("address"): line += f"\n   {r['address']}"
+                if r.get("phone"):   line += f" · {r['phone']}"
+                lines.append(line)
+            tf_label = {"today":"today","yesterday":"yesterday","last_week":"this week","last_month":"this month"}.get(timeframe,"")
+            header = f"🍽️ *Restaurants saved{' ' + tf_label if tf_label else ''}* ({len(rows)})"
+            return header + "\n\n" + "\n\n".join(lines)
+        except Exception as e:
+            print(f"[search_saves] restaurants: {e}")
+            return "Couldn't fetch your restaurant saves right now."
+
+    # --- All other types: from wa_saves ---
+    filter_map = {
+        "books":    ("url", "book:%"),
+        "wine":     ("title", "🍷%"),
+        "recipes":  ("title", "🍳%"),
+        "menus":    ("title", "%menu%"),
+        "videos":   ("title", "📺%"),
+        "products": ("title", "📦%"),
+    }
+    emoji_labels = {
+        "books": "📚", "wine": "🍷", "recipes": "🍳",
+        "menus": "📋", "videos": "📺", "products": "📦", "all": "📂",
+    }
+
+    try:
+        sb = lib._sb()
+        q = sb.table("wa_saves").select("id,title,url,summary,created_at") \
+            .in_("from_number", nums)
+        col, pat = filter_map.get(filter_type, (None, None))
+        if col and pat:
+            q = q.ilike(col, pat)
+        if cutoff:
+            q = q.gte("created_at", cutoff.isoformat())
+        if timeframe == "yesterday" and "end_cutoff" in dir():
+            q = q.lt("created_at", end_cutoff.isoformat())
+        rows = q.order("created_at", desc=True).limit(10).execute().data or []
+
+        # Filter by author if requested (checks summary JSON)
+        if author and filter_type == "books":
+            def _matches_author(row):
+                try:
+                    bk = _json.loads(row.get("summary") or "{}")
+                    return author.lower() in (bk.get("author") or "").lower()
+                except Exception:
+                    return False
+            rows = [r for r in rows if _matches_author(r)]
+
+        if not rows:
+            tf = {"today":"today","yesterday":"yesterday","last_week":"last 7 days","last_month":"last month"}.get(timeframe,"")
+            by = f" by {author}" if author else ""
+            return f"{emoji_labels.get(filter_type,'📂')} No {filter_type}{by} saved{' in the ' + tf if tf else ''}."
+
+        lines = []
+        for r in rows:
+            title = r.get("title") or r.get("url", "?")
+            if filter_type == "books":
+                try:
+                    bk = _json.loads(r.get("summary") or "{}")
+                    title = bk.get("title") or title
+                    auth  = bk.get("author", "")
+                    cr    = bk.get("communityRating") or {}
+                    line  = f"📚 *{title}*"
+                    if auth: line += f"\n   by {auth}"
+                    if cr.get("avg"): line += f" · {'⭐'*round(cr['avg'])} {cr['avg']}/5"
+                except Exception:
+                    line = f"📚 *{title}*"
+            else:
+                line = f"{emoji_labels.get(filter_type,'📂')} *{title}*"
+            lines.append(line)
+
+        tf_label = {"today":"today","yesterday":"yesterday","last_week":"this week","last_month":"this month"}.get(timeframe,"")
+        by = f" by {author.title()}" if author else ""
+        header = f"{emoji_labels.get(filter_type,'📂')} *{filter_type.title()}{by}{' — ' + tf_label if tf_label else ''}* ({len(rows)})"
+        return header + "\n\n" + "\n\n".join(lines)
+    except Exception as e:
+        print(f"[search_saves] {filter_type}: {e}")
+        return "Couldn't search your saves right now."
 
 
 @app.route("/whatsapp", methods=["POST"])
@@ -8506,6 +8625,15 @@ def whatsapp_reply():
             body = "SHOPPING LIST"
             cmd_up = "SHOPPING LIST"
             body_lower = "shopping list"
+        elif _itype == "search_saves":
+            msg = _wa_search_saves(
+                from_number,
+                filter_type=_intent.get("filter", "all"),
+                timeframe=_intent.get("timeframe", "all"),
+                author=_intent.get("author") or "",
+            )
+            resp.message(msg)
+            return str(resp)
         elif _itype == "my_saves":
             body = "LIST"
             cmd_up = "LIST"
@@ -9583,13 +9711,20 @@ def ma_gmail_rescan():
         at = _ma_gmail_get_token(row)
         hints = row.get("provider_hints") or []
         phone = from_number or row.get("from_number", "")
+        _did = row_device_id
+        def _scan_safe():
+            try:
+                _ma_gmail_scan_bg(_did, at, row.get("refresh_token", ""), phone, provider_hints=hints)
+            except Exception as _se:
+                print(f"[ma gmail scan] thread crashed: {_se}")
+                try:
+                    lib._sb().table("ma_gmail_tokens").update({
+                        "scan_status": "done", "pending": []
+                    }).eq("device_id", _did).execute()
+                except Exception:
+                    pass
         import threading
-        threading.Thread(
-            target=_ma_gmail_scan_bg,
-            args=(row_device_id, at, row.get("refresh_token", ""), phone),
-            kwargs={"provider_hints": hints},
-            daemon=True,
-        ).start()
+        threading.Thread(target=_scan_safe, daemon=True).start()
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

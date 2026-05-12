@@ -3863,6 +3863,7 @@ const _ts = new Date(d.timestamp);
     }, 8000);
   }
 
+  let _maGmailScanStart = 0;
   async function _maGmailCheckStatus() {
     const did   = _maDeviceId();
     const phone = _miruPhone();
@@ -3873,6 +3874,12 @@ const _ts = new Date(d.timestamp);
       const d = await r.json();
       if (!d.connected) { _maGmailScanOverlay(false); _maGmailSetState("connect"); return; }
       if (d.scan_status === "scanning") {
+        // Timeout after 90 seconds — show done state to unblock the user
+        if (_maGmailScanStart && Date.now() - _maGmailScanStart > 90000) {
+          _maGmailScanOverlay(false);
+          _maGmailSetState("done", d);
+          return;
+        }
         _maGmailSetState("scanning");
         setTimeout(_maGmailCheckStatus, 3000);
         return;
@@ -4023,6 +4030,7 @@ const _ts = new Date(d.timestamp);
     }
     _maGmailSetState("scanning");
     _maGmailScanOverlay(true);
+    _maGmailScanStart = Date.now();
     try {
       const params = new URLSearchParams({ device_id: _maDeviceId() });
       const phone = _miruPhone();
@@ -4032,7 +4040,7 @@ const _ts = new Date(d.timestamp);
       setTimeout(_maGmailCheckStatus, 3000);
     } catch(e) {
       console.error("[gmail rescan]", e);
-      _maGmailSetState("connected");
+      _maGmailSetState("done");
       _maGmailScanOverlay(false);
       alert("Rescan failed — please try again or reconnect Gmail.");
     }
