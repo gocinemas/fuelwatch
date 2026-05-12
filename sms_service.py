@@ -8124,6 +8124,137 @@ def whatsapp_results_format(postcode: str) -> str:
         )
 
 
+# ── Food & drink discovery ───────────────────────────────────────────────────
+
+_FOOD_CHAINS = frozenset({
+    "starbucks", "costa", "costa coffee", "pret", "pret a manger",
+    "greggs", "mcdonalds", "mcdonald's", "subway", "kfc", "burger king",
+    "nando's", "nandos", "wagamama", "itsu", "leon", "pod", "pure",
+    "caffe nero", "caffè nero", "nero", "wetherspoons", "wetherspoon",
+    "j d wetherspoon", "jd wetherspoon", "pizza hut", "domino's",
+    "dominoes", "dominos", "five guys", "pizza express", "bella italia",
+    "ask italian", "harvester", "toby carvery", "the real greek",
+})
+
+_FOOD_INTENTS = [
+    (re.compile(r'\b(coffee|cafe|café|flat white|cappuccino|espresso|latte)\b', re.I),
+     {"type": "cafe", "emoji": "☕", "label": "coffee"}),
+    (re.compile(r'\b(breakfast|brunch)\b', re.I),
+     {"type": "cafe", "emoji": "🍳", "label": "breakfast"}),
+    (re.compile(r'\b(sandwich|sarnie)\b', re.I),
+     {"type": "restaurant", "emoji": "🥪", "label": "sandwiches"}),
+    (re.compile(r'\b(lunch|what.{0,25}(eat|have).{0,10}lunch)\b', re.I),
+     {"type": "restaurant", "emoji": "🥗", "label": "lunch"}),
+    (re.compile(r'\b(pizza)\b', re.I),
+     {"type": "restaurant", "emoji": "🍕", "label": "pizza"}),
+    (re.compile(r'\b(dinner|supper)\b', re.I),
+     {"type": "restaurant", "emoji": "🍽️", "label": "dinner"}),
+    (re.compile(r'\b(beer|pint|pub|ale|lager)\b', re.I),
+     {"type": "bar", "emoji": "🍺", "label": "a pub"}),
+]
+
+
+def _find_food_nearby(lat: float, lon: float, place_type: str, radius: int = 1000) -> list:
+    key = os.environ.get("GOOGLE_PLACES_KEY", "")
+    if not key:
+        return []
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params={"location": f"{lat},{lon}", "radius": radius,
+                    "type": place_type, "key": key},
+            timeout=10,
+        )
+        items = []
+        for p in r.json().get("results", []):
+            loc = p.get("geometry", {}).get("location", {})
+            plat, plon = loc.get("lat"), loc.get("lng")
+            dist_km = haversine_km(lat, lon, plat, plon) if plat and plon else 999
+            name = p.get("name", "")
+            open_now = p.get("opening_hours", {}).get("open_now")
+            items.append({
+                "name":     name,
+                "dist_km":  dist_km,
+                "dist_mi":  round(dist_km * 0.621371, 1),
+                "rating":   p.get("rating", 0),
+                "open_now": open_now,
+                "is_chain": name.lower().strip() in _FOOD_CHAINS,
+            })
+        # Penalise closed slightly; sort by rating then distance
+        items.sort(key=lambda x: (
+            -min(x["rating"], 5.0) * (1.0 if x["open_now"] is not False else 0.9),
+            x["dist_km"],
+        ))
+        return items
+    except Exception as e:
+        print(f"[food_nearby] {e}")
+        return []
+
+
+def _wa_food_find(body: str, from_number: str):
+    """Return WhatsApp-formatted food/drink picks, or None if not a food query."""
+    body_lower = body.lower()
+
+    intent = None
+    for pattern, info in _FOOD_INTENTS:
+        if pattern.search(body_lower):
+            intent = info
+            break
+    if not intent:
+        return None
+
+    # Postcode from message, or stored home postcode
+    pc_m = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', body.upper())
+    postcode = pc_m.group(0).replace(" ", "") if pc_m else _get_wa_home_postcode(from_number)
+    if not postcode:
+        return (f"Where are you? Send your postcode and I'll find "
+                f"{intent['emoji']} {intent['label']} nearby.")
+
+    try:
+        pc_r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=5)
+        if pc_r.status_code != 200:
+            return f"Couldn't look up {postcode}."
+        res = pc_r.json().get("result", {})
+        lat, lon = res.get("latitude"), res.get("longitude")
+        if not lat:
+            return f"Couldn't look up {postcode}."
+    except Exception:
+        return f"Couldn't look up {postcode}."
+
+    places = _find_food_nearby(lat, lon, intent["type"])
+    if not places:
+        return f"No {intent['label']} spots found near {postcode}. Sorry!"
+
+    emoji, label = intent["emoji"], intent["label"]
+    pc_fmt = postcode[:-3] + " " + postcode[-3:]
+
+    def _line(p):
+        parts = [f"{p['rating']}★"] if p["rating"] else []
+        parts.append(f"{p['dist_mi']}mi")
+        if p["open_now"] is True:
+            parts.append("Open now")
+        elif p["open_now"] is False:
+            parts.append("May be closed")
+        return f"*{p['name']}* · " + " · ".join(parts)
+
+    top = places[0]
+
+    # Show a second pick if top is a chain or there's a good independent nearby
+    second = None
+    if top["is_chain"]:
+        indys = [p for p in places[1:] if not p["is_chain"] and p["rating"] >= 4.0]
+        if indys:
+            second = indys[0]
+    elif len(places) > 1 and places[1]["rating"] >= 4.0 and places[1]["dist_km"] <= 1.0:
+        second = places[1]
+
+    if second:
+        return (f"{emoji} *{label.title()} near {pc_fmt}*\n\n"
+                f"{_line(top)}\n\n{_line(second)}\n\nmiru.humanagency.co")
+    return (f"{emoji} *Best {label} near {pc_fmt}*\n\n"
+            f"{_line(top)}\n\nmiru.humanagency.co")
+
+
 def _split_product_postcode(body: str):
     """Return (product_name, postcode_or_None) from a freeform message."""
     m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
@@ -8429,6 +8560,10 @@ _HELP_MSG = (
     "  tube  _(nearest station live arrivals)_\n"
     "  tube status  _(all line disruptions)_\n"
     "  tube victoria\n"
+    "\n"
+    "☕🍺 *Food & Drink*\n"
+    "  coffee  |  lunch  |  pub  |  breakfast\n"
+    "  _(uses your saved postcode or add one: coffee KT15)_\n"
     "\n"
     "🏡 *My Area*\n"
     "  places KT15 3RL\n"
@@ -9447,6 +9582,12 @@ def whatsapp_reply():
     # ── Tube query ───────────────────────────────────────────────────────────
     if body_lower.strip().startswith("tube"):
         resp.message(handle_tube_command(body, from_number))
+        return str(resp)
+
+    # ── Food & drink discovery ───────────────────────────────────────────────
+    _food_reply = _wa_food_find(body, from_number)
+    if _food_reply:
+        resp.message(_food_reply)
         return str(resp)
 
     # Decide: fuel query or product query
