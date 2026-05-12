@@ -7942,6 +7942,92 @@ def whatsapp_reply():
         resp.message("\n".join(lines))
         return str(resp)
 
+    # ── SHOPPING LIST command: extract ingredients from last recipe save ─────
+    if cmd_up in ("SHOPPING LIST", "INGREDIENTS", "LIST INGREDIENTS", "RECIPE LIST"):
+        try:
+            rows = (lib._sb().table("wa_saves").select("id,title,url,summary")
+                    .eq("from_number", from_number)
+                    .like("title", "🍳%")
+                    .order("created_at", desc=True).limit(1).execute().data)
+        except Exception:
+            rows = []
+        if not rows:
+            resp.message("🍳 No recipe saves found. Save a recipe URL first — e.g. send a link from BBC Food or AllRecipes.")
+            return str(resp)
+        row = rows[0]
+        recipe_title = (row.get("title") or "").replace("🍳 ", "").strip()
+        recipe_url   = row.get("url", "")
+        # Try to fetch fresh page text; fall back to stored summary
+        try:
+            fetched = _fetch_url_text(recipe_url)
+            page_text = fetched.get("text", "") or row.get("summary", "")
+        except Exception:
+            page_text = row.get("summary", "")
+        if not page_text:
+            resp.message(f"🍳 Couldn't load *{recipe_title}* — try opening the recipe link directly.")
+            return str(resp)
+        try:
+            ingredients = _groq_chat(
+                system=(
+                    "Extract the shopping list (ingredients only, no quantities of equipment) "
+                    "from this recipe. Format as a plain bullet list with • prefix, one item per line. "
+                    "Group by category if helpful (e.g. Produce, Dairy, Meat). "
+                    "Max 30 items. No intro or outro text."
+                ),
+                messages=[{"role": "user", "content": f"Recipe: {recipe_title}\n\n{page_text[:4000]}"}],
+                max_tokens=400,
+            ).strip()
+        except Exception:
+            ingredients = ""
+        if not ingredients:
+            resp.message(f"🍳 Couldn't extract ingredients from *{recipe_title}*. Try opening the recipe link.")
+            return str(resp)
+        resp.message(f"🛒 *Shopping list — {recipe_title}*\n\n{ingredients}")
+        return str(resp)
+
+    # ── WORTH IT / BOOK REVIEW command ────────────────────────────────────────
+    if cmd_up in ("WORTH IT", "WORTH IT?", "REVIEWS", "BOOK REVIEW", "THOUGHTS"):
+        try:
+            rows = (lib._sb().table("wa_saves").select("id,title,url,summary")
+                    .eq("from_number", from_number)
+                    .like("url", "book:%")
+                    .order("created_at", desc=True).limit(1).execute().data)
+        except Exception:
+            rows = []
+        if not rows:
+            resp.message("📚 No scanned books found. Scan a book barcode in the Miru app first.")
+            return str(resp)
+        row = rows[0]
+        book_title, book_author = row.get("title", ""), ""
+        try:
+            import json as _json
+            bk = _json.loads(row.get("summary") or "{}")
+            book_title  = bk.get("title", book_title)
+            book_author = bk.get("author", "")
+        except Exception:
+            pass
+        book_label = f"*{book_title}*" + (f" by {book_author}" if book_author else "")
+        try:
+            verdict = _groq_chat(
+                system=(
+                    "You are a concise book critic. Given a book title and author, write exactly 4 lines:\n"
+                    "Line 1: ✅ Fans say: [what readers who love it praise — max 15 words]\n"
+                    "Line 2: ⚠️ Critics say: [most common complaint from 3-star reviewers — max 15 words]\n"
+                    "Line 3: 🎯 Best for: [who this book is for — max 10 words]\n"
+                    "Line 4: 📖 Verdict: [Worth it / Skip it / Depends on taste] — one sentence reason\n"
+                    "No other text."
+                ),
+                messages=[{"role": "user", "content": f"Book: {book_title}" + (f"\nAuthor: {book_author}" if book_author else "")}],
+                max_tokens=200,
+            ).strip()
+        except Exception:
+            verdict = ""
+        if not verdict:
+            resp.message(f"📚 Couldn't generate a review for {book_label} right now. Try again shortly.")
+            return str(resp)
+        resp.message(f"📚 {book_label}\n\n{verdict}")
+        return str(resp)
+
     # ── FIND SAVE command: search wa_saves ───────────────────────────────────
     if body_lower.startswith("find save ") or body_lower.startswith("search saves ") or body_lower.startswith("find saves "):
         prefix = next(p for p in ("find save ", "search saves ", "find saves ") if body_lower.startswith(p))
