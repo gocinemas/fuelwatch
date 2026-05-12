@@ -9684,42 +9684,48 @@ def _ma_gmail_get_token(token_row: dict) -> str:
 
 
 _MA_GMAIL_QUERIES = [
-    # Energy — domain only (subject fallbacks attract comparison-site spam)
-    ("energy",      'from:octopus.energy OR from:ovoenergy.com OR from:britishgas.co.uk OR from:edf.co.uk OR from:eonenergy.com OR from:eon-next.co.uk OR from:scottishpower.co.uk OR from:sse.co.uk OR from:utilita.co.uk OR from:bulb.co.uk newer_than:3y'),
+    # Energy — major UK suppliers
+    ("energy",      'from:octopus.energy OR from:ovoenergy.com OR from:britishgas.co.uk OR from:edf.co.uk OR from:eonenergy.com OR from:eon-next.co.uk OR from:scottishpower.co.uk OR from:sse.co.uk OR from:utilita.co.uk OR from:bulb.co.uk OR from:npower.com OR from:e.on.com OR from:shell.co.uk OR from:so.energy OR from:goodenergy.co.uk OR from:ecotricity.co.uk newer_than:3y'),
     # EE — all ee.co.uk subdomains (Groq will classify as broadband or mobile based on email)
     ("mobile",      'from:ee.co.uk OR from:eemail.ee.co.uk OR from:account.ee.co.uk OR from:my.ee.co.uk OR from:billing.ee.co.uk newer_than:3y'),
-    # Mobile operators — Three, O2, Vodafone
-    ("mobile",      'from:three.co.uk OR from:o2.co.uk OR from:vodafone.co.uk newer_than:3y'),
-    # Home broadband operators
-    ("broadband",   'from:bt.com OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com newer_than:3y'),
-    # TV Licensing — no newer_than: licence is annual, any email is valid; include common noreply subdomain
-    ("other",       'from:tvlicensing.co.uk OR from:donotreply@tvlicensing.co.uk OR subject:"TV Licence" OR subject:"TV License"'),
-    # Water — domain only
-    ("other",       'from:thameswater.co.uk OR from:thameswater.com OR from:affinitywater.co.uk OR from:southern-water.co.uk OR from:anglianwater.co.uk OR from:yorkshirewater.com OR from:unitedutilities.com OR from:severntrent.com OR from:southwest-water.co.uk OR from:dwrcymru.com newer_than:3y'),
-    # Insurance — domain only (no subject fallbacks — too noisy)
-    ("car_ins",     'from:admiral.com OR from:directline.com OR from:aviva.com OR from:axa.co.uk OR from:lv.com OR from:hastingsdirect.com OR from:churchill.com OR from:esure.com OR from:saga.co.uk newer_than:3y'),
-    ("home_ins",    'from:johnlewisfinance.com OR from:hiscox.co.uk OR from:policyexpert.co.uk newer_than:3y'),
-    # Health — domain only
-    ("other",       'from:bupa.co.uk OR from:vitality.co.uk OR from:axa-health.co.uk newer_than:3y'),
+    # Mobile operators
+    ("mobile",      'from:three.co.uk OR from:o2.co.uk OR from:vodafone.co.uk OR from:giffgaff.com OR from:iD.co.uk OR from:smarty.co.uk OR from:lebara.com OR from:talkmobile.co.uk newer_than:3y'),
+    # Home broadband + EE broadband
+    ("broadband",   'from:bt.com OR from:sky.com OR from:virginmedia.com OR from:talktalk.co.uk OR from:plusnet.com OR from:zen.co.uk OR from:hyperoptic.com OR from:now.co.uk OR from:community-fibre.co.uk OR from:gigaclear.com newer_than:3y'),
+    # TV / streaming subscriptions
+    ("other",       'from:tvlicensing.co.uk OR subject:"TV Licence" OR subject:"TV License" OR from:netflix.com OR from:disneyplus.com OR from:amazon.co.uk OR from:primevideo.com newer_than:3y'),
+    # Water — all major UK water companies
+    ("other",       'from:thameswater.co.uk OR from:thameswater.com OR from:affinitywater.co.uk OR from:southern-water.co.uk OR from:anglianwater.co.uk OR from:yorkshirewater.com OR from:unitedutilities.com OR from:severntrent.com OR from:southwest-water.co.uk OR from:dwrcymru.com OR from:bristolwater.co.uk OR from:portsmouthwater.co.uk newer_than:3y'),
+    # Car / motor insurance
+    ("car_ins",     'from:admiral.com OR from:directline.com OR from:aviva.com OR from:axa.co.uk OR from:lv.com OR from:hastingsdirect.com OR from:churchill.com OR from:esure.com OR from:saga.co.uk OR from:rac.co.uk OR from:aa.com OR from:confused.com OR from:gocompare.com OR from:comparethemarket.com newer_than:3y'),
+    # Home insurance
+    ("home_ins",    'from:johnlewisfinance.com OR from:hiscox.co.uk OR from:policyexpert.co.uk OR from:homeprotect.co.uk OR from:axa.co.uk newer_than:3y'),
+    # Health / dental / pet insurance
+    ("other",       'from:bupa.co.uk OR from:vitality.co.uk OR from:axa-health.co.uk OR from:denplan.co.uk OR from:petplan.co.uk OR from:moreths.co.uk newer_than:3y'),
     # Council tax — subject is specific enough
     ("council_tax", 'subject:"council tax" newer_than:3y'),
+    # Broad catch-all: billing keywords Groq will filter to real accounts only
+    ("other",       'subject:"your bill" OR subject:"your invoice" OR subject:"your statement" OR subject:"direct debit" OR subject:"payment confirmation" OR subject:"your account" newer_than:2y -from:amazon.co.uk -from:paypal.com -from:ebay.co.uk'),
+    # Renewal / insurance catch-all
+    ("other",       'subject:"your renewal" OR subject:"renewal notice" OR subject:"policy renewal" OR subject:"renewal reminder" newer_than:2y'),
 ]
 
 _MA_EXTRACT_SYSTEM = """You are a data extraction assistant for UK household accounts.
 
 Your job: decide if this email is about the RECIPIENT'S OWN active account, and if so extract the details.
 
-Return {"skip": true} for ANY of these:
+Return {"skip": true} ONLY for:
 - Marketing emails inviting you to switch or sign up ("Get EE broadband", "Switch to Octopus")
-- Price comparison results or quote emails
-- Newsletters, offers, or promotional content
-- Emails where no specific account/policy/reference number belonging to the recipient is mentioned
+- Price comparison results or quote emails from a comparison site
+- Pure newsletters or promotional content with no billing/account information at all
 
-Only extract if the email is clearly about an EXISTING account the recipient holds:
+Extract (do NOT skip) if the email is clearly about an EXISTING account the recipient holds:
 - Monthly bill / statement / invoice for their account
 - Payment confirmation or direct debit notification
 - Account welcome / confirmation for a service they signed up for
 - Renewal notice for their existing policy or contract
+- Any email mentioning a specific amount charged, payment due, or account reference
+Note: an account number is NOT required to extract — extract the provider name even if no reference is visible.
 
 IMPORTANT EXCEPTIONS — always extract (never skip) these even if they mention payment:
 - Any email from tvlicensing.co.uk — TV Licence renewal reminders always belong to an existing licence holder. Extract provider="TV Licensing", label="TV Licence", type="other". The licence number is the account_no (format: 3 digits space 3 digits space 4 digits, e.g. "123 456 7890").
@@ -9926,7 +9932,7 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
         try:
             r = requests.get(
                 "https://gmail.googleapis.com/gmail/v1/users/me/messages",
-                params={"q": query, "maxResults": 20 if is_hint else 10},
+                params={"q": query, "maxResults": 25 if is_hint else 20},
                 headers={"Authorization": f"Bearer {at}"},
                 timeout=10,
             )
@@ -9936,7 +9942,7 @@ def _ma_gmail_scan_bg(device_id: str, access_token: str, refresh_token: str, fro
             msgs = r.json().get("messages", [])
             print(f"[ma gmail scan] query={query[:70]!r} found={len(msgs)} msgs hint={confirmed_provider!r}")
             hint_found = False
-            for msg in msgs[:10 if is_hint else 5]:
+            for msg in msgs[:15 if is_hint else 10]:
                 d = _ma_gmail_extract_email(at, msg["id"], confirmed_provider=confirmed_provider)
                 if not d:
                     continue
