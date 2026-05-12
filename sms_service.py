@@ -7951,9 +7951,11 @@ def whatsapp_reply():
 
     # ── SHOPPING LIST command: extract ingredients from last recipe save ─────
     if cmd_up in ("SHOPPING LIST", "INGREDIENTS", "LIST INGREDIENTS", "RECIPE LIST"):
+        plain_number = from_number.replace("whatsapp:", "").strip()
+        wa_number    = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
         try:
             rows = (lib._sb().table("wa_saves").select("id,title,url,summary")
-                    .eq("from_number", from_number)
+                    .in_("from_number", [from_number, plain_number, wa_number])
                     .like("title", "🍳%")
                     .order("created_at", desc=True).limit(1).execute().data)
         except Exception:
@@ -7994,9 +7996,12 @@ def whatsapp_reply():
 
     # ── WORTH IT / BOOK REVIEW command ────────────────────────────────────────
     if cmd_up in ("WORTH IT", "WORTH IT?", "REVIEWS", "BOOK REVIEW", "THOUGHTS"):
+        # Books saved via app use plain number; WhatsApp scans use "whatsapp:+..." prefix
+        plain_number = from_number.replace("whatsapp:", "").strip()
+        wa_number    = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
         try:
             rows = (lib._sb().table("wa_saves").select("id,title,url,summary")
-                    .eq("from_number", from_number)
+                    .in_("from_number", [from_number, plain_number, wa_number])
                     .like("url", "book:%")
                     .order("created_at", desc=True).limit(1).execute().data)
         except Exception:
