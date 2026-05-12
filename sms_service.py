@@ -8801,7 +8801,7 @@ def _is_new_user(from_number: str) -> bool:
 def _wa_classify_intent(body: str) -> dict | None:
     """Use Groq to classify a free-text WhatsApp message into a known intent.
     Returns intent dict or None on failure / unknown.
-    Only called when no exact command matched — handles typos and natural phrasing."""
+    Called when no exact command matched — handles typos, word-order variations, and natural phrasing."""
     try:
         from groq import Groq as _Groq
         import json as _json
@@ -8810,28 +8810,42 @@ def _wa_classify_intent(body: str) -> dict | None:
             model="llama3-8b-8192",
             temperature=0,
             messages=[{"role": "system", "content": (
-                "Classify the user message into ONE intent. Respond with JSON only — no other text.\n\n"
+                "Classify the user message into ONE intent. Respond with JSON only — no markdown, no explanation.\n\n"
                 "Intents:\n"
-                "  book_lookup   — user wants to find/save/add a book. Extract: query (title/author/ISBN).\n"
-                "  search_saves  — user wants to browse/filter things they already saved. "
-                                 "Extract: filter (books|wine|recipes|menus|restaurants|videos|products|all), "
-                                 "author (if 'by X' mentioned, else null), "
-                                 "timeframe (today|yesterday|last_week|last_month|all).\n"
-                "  worth_it      — wants review/verdict on last saved book.\n"
-                "  shopping_list — wants ingredients/shopping list from last saved recipe.\n"
-                "  my_link       — wants their personal Miru link.\n"
-                "  unknown       — anything else.\n\n"
-                "Reply format:\n"
-                '{"intent":"book_lookup","query":"..."}\n'
-                '{"intent":"search_saves","filter":"books","author":"seth godin","timeframe":"all"}\n'
-                '{"intent":"search_saves","filter":"wine","author":null,"timeframe":"yesterday"}\n'
-                '{"intent":"search_saves","filter":"restaurants","author":null,"timeframe":"last_week"}\n'
+                "  train        — train/rail departures or journey. Extract: from (station name, str), to (station name or null).\n"
+                "  tube         — London tube/DLR/Overground/Elizabeth line status, journey, or line info.\n"
+                "                 Extract: from (station or null), to (station or null),\n"
+                "                 query (status | journey | line name — infer from message, default 'status').\n"
+                "  food         — food or drink discovery nearby. Extract: food_type (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub),\n"
+                "                 postcode (UK outcode like KT16 or full postcode — extract exactly as written, or null if not present),\n"
+                "                 cheap (bool, true only if user explicitly says cheap/budget/affordable).\n"
+                "  book_lookup  — user wants to find/save/add a book. Extract: query (title/author/ISBN).\n"
+                "  search_saves — user wants to browse/filter things they already saved.\n"
+                "                 Extract: filter (books|wine|recipes|menus|restaurants|videos|products|all),\n"
+                "                 author (if 'by X' mentioned, else null), timeframe (today|yesterday|last_week|last_month|all).\n"
+                "  worth_it     — wants review/verdict on last saved book.\n"
+                "  shopping_list— wants ingredients/shopping list from last saved recipe.\n"
+                "  my_saves     — wants to see their saved items list.\n"
+                "  my_link      — wants their personal Miru link.\n"
+                "  unknown      — anything else (fuel prices, postcodes alone, greetings, etc.).\n\n"
+                "Examples (JSON only):\n"
+                '{"intent":"train","from":"waterloo","to":"lewisham"}\n'
+                '{"intent":"train","from":"reading","to":null}\n'
+                '{"intent":"tube","from":null,"to":null,"query":"status"}\n'
+                '{"intent":"tube","from":null,"to":null,"query":"jubilee"}\n'
+                '{"intent":"tube","from":"canary wharf","to":"oxford circus","query":"journey"}\n'
+                '{"intent":"food","food_type":"coffee","postcode":"KT16","cheap":false}\n'
+                '{"intent":"food","food_type":"beer","postcode":null,"cheap":true}\n'
+                '{"intent":"food","food_type":"coffee","postcode":null,"cheap":false}\n'
+                '{"intent":"book_lookup","query":"midnight library"}\n'
+                '{"intent":"search_saves","filter":"wine","author":null,"timeframe":"last_week"}\n'
                 '{"intent":"worth_it"}\n'
                 '{"intent":"shopping_list"}\n'
+                '{"intent":"my_saves"}\n'
                 '{"intent":"my_link"}\n'
                 '{"intent":"unknown"}'
             )}, {"role": "user", "content": body[:300]}],
-            max_tokens=120,
+            max_tokens=160,
         ).choices[0].message.content.strip()
         result = re.sub(r"^```[a-z]*\n?|```$", "", result.strip()).strip()
         parsed = _json.loads(result)
@@ -9652,6 +9666,34 @@ def whatsapp_reply():
             body = "MY LINK"
             cmd_up = "MY LINK"
             body_lower = "my link"
+        elif _itype == "train":
+            _from_stn = (_intent.get("from") or "").strip()
+            _to_stn   = (_intent.get("to") or "").strip()
+            if _from_stn:
+                _train_reply = _wa_train_format(_from_stn, _to_stn)
+                if _train_reply:
+                    resp.message(_train_reply)
+                    return str(resp)
+                resp.message(f"🚂 Couldn't find '{_from_stn}' — try: *train waterloo to lewisham*")
+                return str(resp)
+        elif _itype == "tube":
+            _from_stn = (_intent.get("from") or "").strip()
+            _to_stn   = (_intent.get("to") or "").strip()
+            _query    = (_intent.get("query") or "status").strip()
+            if _from_stn and _to_stn:
+                resp.message(get_tube_journey(_from_stn, _to_stn))
+            else:
+                resp.message(handle_tube_command(f"tube {_query}", from_number))
+            return str(resp)
+        elif _itype == "food":
+            _ftype    = (_intent.get("food_type") or "coffee").strip()
+            _fpc      = (_intent.get("postcode") or "").strip()
+            _fcheap   = _intent.get("cheap", False)
+            _synthetic = f"{'cheap ' if _fcheap else ''}{_ftype} {_fpc}".strip()
+            _food_reply = _wa_food_find(_synthetic, from_number)
+            if _food_reply:
+                resp.message(_food_reply)
+                return str(resp)
 
     # ── Re-check commands if intent classifier redirected ─────────────────────
     if cmd_up in ("WORTH IT", "WORTH IT?", "REVIEWS", "BOOK REVIEW", "THOUGHTS"):
