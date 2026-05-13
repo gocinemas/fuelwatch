@@ -1431,6 +1431,31 @@ def _fetch_wikipedia(company: str) -> dict:
                      _field("location_city") or _field("location") or
                      _field("origin") or _field("country"))
         industry  = _field("industry") or _field("type") or _field("genre")
+
+        # Key people: parse "key_people" infobox field into [{name, role}] list
+        key_people = []
+        kp_raw = _field("key_people") or _field("founder") or ""
+        if kp_raw:
+            for entry in _re.split(r'[,\n•;]+', kp_raw):
+                entry = entry.strip()
+                if not entry or len(entry) < 2:
+                    continue
+                # Try to extract role in parentheses: "Tom Blomfield (founder)"
+                role_m = _re.search(r'\(([^)]{2,40})\)', entry)
+                role = role_m.group(1).strip() if role_m else ""
+                name = _re.sub(r'\s*\([^)]*\)', '', entry).strip()
+                if name and name[0].isupper():
+                    key_people.append({"name": name[:40], "role": role[:40]})
+                    if len(key_people) >= 6:
+                        break
+        # If separate founder field, prepend with role=Founder
+        if not key_people:
+            fdr = _field("founder")
+            if fdr:
+                for f in _re.split(r'[,\n•;]+', fdr)[:3]:
+                    f = f.strip()
+                    if f and f[0].isupper():
+                        key_people.append({"name": f[:40], "role": "Founder"})
         # Only use dedicated brands/subsidiaries fields — not products (which gives service descriptions)
         brands_raw = _field("brands") or _field("subsidiaries")
         _service_words = {"account", "card", "trading", "payment", "transfer", "loan",
@@ -1477,7 +1502,7 @@ def _fetch_wikipedia(company: str) -> dict:
 
     return {**result, "employees": employees, "revenue": revenue,
             "founded": founded, "hq": hq, "industry": industry, "brands": brands,
-            "domain": domain, "thumbnail": result.get("thumbnail", "")}
+            "key_people": key_people, "domain": domain, "thumbnail": result.get("thumbnail", "")}
 
 def _co_slugs(name: str) -> list:
     """Generate ATS slug candidates from a company name."""
