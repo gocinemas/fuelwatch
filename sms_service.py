@@ -4431,6 +4431,15 @@ def api_mot():
     reg = request.args.get("reg", "").strip().upper().replace(" ", "")
     if not reg:
         return jsonify({"error": "reg required"}), 400
+    # Normalise common O/0 confusion: UK plates are LL DD LLL — letters in positions 0-1 and 4-6
+    # digits in positions 2-3. Swap 0→O in letter positions, O→0 in digit positions.
+    if len(reg) == 7:
+        reg = list(reg)
+        for i in (0, 1, 4, 5, 6):
+            if reg[i] == "0": reg[i] = "O"
+        for i in (2, 3):
+            if reg[i] == "O": reg[i] = "0"
+        reg = "".join(reg)
     cache_hit = _MOT_CACHE.get(reg)
     if cache_hit and time.time() - cache_hit["ts"] < _MOT_CACHE_TTL:
         return jsonify(cache_hit["data"])
