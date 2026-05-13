@@ -23,11 +23,13 @@
     --amber:   #f59e0b;
     --green:   #34d399;
     --red:     #f87171;
+    --glass:   rgba(13,13,32,0.65);
+    --glass2:  rgba(19,19,42,0.5);
+    --gborder: rgba(255,255,255,0.07);
   }
 
-  /* Light mode overrides */
   body.light {
-    --bg:      #f0f2ff;
+    --bg:      #eef0fb;
     --surface: #ffffff;
     --surface2:#e8eaff;
     --border:  #d0d4f0;
@@ -38,11 +40,14 @@
     --amber:   #d97706;
     --green:   #059669;
     --red:     #dc2626;
+    --glass:   rgba(255,255,255,0.82);
+    --glass2:  rgba(240,242,255,0.8);
+    --gborder: rgba(0,0,0,0.07);
   }
   body.light::before { display: none; }
+  body.light .iss-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
   body.light .sen-card { border-color: var(--border); }
-  body.light .iss-card { border-color: var(--border); background: var(--surface); }
-  body.light footer a { color: var(--muted); }
+  body.light footer a  { color: var(--muted); }
 
   body {
     background: var(--bg);
@@ -53,7 +58,6 @@
     min-height: 100vh;
   }
 
-  /* stars background */
   body::before {
     content: '';
     position: fixed;
@@ -71,627 +75,341 @@
     z-index: 0;
   }
 
-  .wrap {
+  /* ── App shell ─────────────────────────────────────────────────────────── */
+  .app-shell {
+    display: flex;
+    min-height: 100vh;
     position: relative;
     z-index: 1;
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 0 16px 60px;
   }
 
-  /* Header */
-  header {
+  /* ── Sidebar ───────────────────────────────────────────────────────────── */
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 0 16px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 24px;
+    flex-direction: column;
+    padding: 24px 14px;
+    border-right: 1px solid var(--gborder);
+    background: var(--glass);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    overflow-y: auto;
+    z-index: 100;
   }
+
   .logo {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 0 4px;
   }
   .logo-icon {
-    width: 32px;
-    height: 32px;
+    width: 36px; height: 36px;
     background: linear-gradient(135deg, #312e81, #4f46e5);
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 17px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
   }
-  .logo-name {
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    color: var(--text);
-  }
-  .logo-sub {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: -1px;
+  .logo-name { font-size: 17px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); line-height: 1.2; }
+  .logo-sub  { font-size: 10px; color: var(--muted); }
+
+  .sidebar-divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+  .sidebar-sect {
+    font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+    padding: 0 8px; margin-bottom: 6px;
   }
 
-  /* Postcode bar */
+  .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+
+  .sidebar-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 10px; border-radius: 10px;
+    border: none; background: transparent;
+    color: var(--muted); font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit; text-align: left;
+    transition: background .15s, color .15s;
+    width: 100%;
+  }
+  .sidebar-btn:hover  { background: var(--surface2); color: var(--text); }
+  .sidebar-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(129,140,248,.35); }
+
+  .sidebar-spacer { flex: 1; }
+
+  /* Postcode block */
   .postcode-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 8px 12px;
-    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 7px 10px;
   }
   .postcode-bar input {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    color: var(--text);
-    font-size: 14px;
-    font-family: inherit;
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text); font-size: 12px; font-family: inherit; min-width: 0;
   }
   .postcode-bar input::placeholder { color: var(--muted); }
   .postcode-bar button {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 5px 12px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 6px; padding: 4px 10px;
+    font-size: 11px; font-weight: 700;
+    cursor: pointer; font-family: inherit; flex-shrink: 0;
   }
 
-  /* Section label */
-  .section-label {
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 10px;
-  }
-
-  /* Cards */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 12px;
-  }
-  .card-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-  .card-meta {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 10px;
-  }
-  .card-body {
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.65;
-  }
-
-  /* ISS live card */
-  .iss-card {
-    background: linear-gradient(135deg, #0d0d28 0%, #131340 100%);
-    border: 1px solid #2a2a6a;
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 12px;
-  }
-  #iss-map {
-    width: 100%;
-    height: 200px;
-    border-radius: 10px;
-    margin-top: 12px;
-    overflow: hidden;
-  }
-  .iss-stats {
-    display: flex;
-    gap: 16px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-  }
-  .iss-stat {
-    flex: 1;
-    min-width: 80px;
-  }
-  .iss-stat-val {
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--accent);
-    letter-spacing: -0.5px;
-  }
-  .iss-stat-label {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 1px;
-  }
-  .live-dot {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    background: var(--green);
-    border-radius: 50%;
-    margin-right: 5px;
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.3; }
-  }
-
-  /* APOD card */
-  .apod-img {
-    width: 100%;
-    border-radius: 10px;
-    max-height: 300px;
-    object-fit: cover;
-    margin-bottom: 12px;
-    display: block;
-  }
-  .apod-explanation {
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.7;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .read-more {
-    font-size: 12px;
-    color: var(--accent);
-    cursor: pointer;
-    border: none;
-    background: none;
-    padding: 4px 0;
-    font-family: inherit;
-    display: block;
-    margin-top: 6px;
-  }
-
-  /* Launches */
-  .launch-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .launch-item:last-child { border-bottom: none; }
-  .launch-icon {
-    font-size: 20px;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-  .launch-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1.3;
-    margin-bottom: 3px;
-  }
-  .launch-time {
-    font-size: 13px;
-    color: var(--amber);
-    font-weight: 600;
-    margin-bottom: 2px;
-  }
-  .launch-loc {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 4px;
-  }
-  .launch-desc {
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.55;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .launch-uk-badge {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    background: rgba(129,140,248,.15);
-    color: var(--accent);
-    border: 1px solid rgba(129,140,248,.3);
-    border-radius: 6px;
-    padding: 1px 7px;
-    margin-left: 6px;
-    vertical-align: middle;
-  }
-
-  /* News */
-  .news-item {
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .news-item:last-child { border-bottom: none; }
-  .news-source {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--accent);
-    margin-bottom: 4px;
-  }
-  .news-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1.35;
-    margin-bottom: 5px;
-    text-decoration: none;
-    display: block;
-  }
-  .news-title:hover { color: var(--accent); }
-  .news-summary {
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.6;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .news-date {
-    font-size: 11px;
-    color: var(--subtle);
-    margin-top: 5px;
-  }
-
-  /* SEN live */
-  .sen-card {
-    background: linear-gradient(135deg, #0a0a1f 0%, #0d1a2e 100%);
-    border: 1px solid #1a3a5c;
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 12px;
-    position: relative;
-    overflow: hidden;
-  }
-  .sen-card::before {
-    content: '';
-    position: absolute;
-    top: -40px; right: -40px;
-    width: 120px; height: 120px;
-    background: radial-gradient(circle, rgba(56,189,248,.12) 0%, transparent 70%);
-    border-radius: 50%;
-  }
-  .sen-watch-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    margin-top: 14px;
-    padding: 10px 18px;
-    background: linear-gradient(135deg, #0ea5e9, #2563eb);
-    border: none;
-    border-radius: 22px;
-    color: #fff;
-    font-size: 13px;
-    font-weight: 700;
-    text-decoration: none;
-    cursor: pointer;
-    font-family: inherit;
-    transition: opacity .15s;
-  }
-  .sen-watch-btn:hover { opacity: .85; }
-
-  /* UK hubs map */
-  #uk-hubs-map {
-    width: 100%;
-    height: 320px;
-    border-radius: 12px;
-    margin-top: 12px;
-    overflow: hidden;
-  }
-
-  /* Budget */
-  .budget-total {
-    text-align: center;
-    padding: 16px 0 20px;
-  }
-  .budget-total-val {
-    font-size: 36px;
-    font-weight: 900;
-    color: var(--accent);
-    letter-spacing: -1.5px;
-    line-height: 1;
-  }
-  .budget-total-label {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 4px;
-  }
-  .budget-bar-row {
-    margin-bottom: 12px;
-  }
-  .budget-bar-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 5px;
-  }
-  .budget-bar-name {
-    font-size: 13px;
-    color: var(--text);
-    font-weight: 600;
-  }
-  .budget-bar-val {
-    font-size: 12px;
-    color: var(--muted);
-    white-space: nowrap;
-    margin-left: 8px;
-  }
-  .budget-bar-track {
-    background: var(--subtle);
-    border-radius: 4px;
-    height: 8px;
-    overflow: hidden;
-  }
-  .budget-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 1s ease;
-  }
-
-  /* Companies */
-  .company-filters {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
-  }
-  .company-filter-btn {
-    padding: 5px 12px;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-    transition: .15s;
-  }
-  .company-filter-btn.active {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-  }
-  .company-item {
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .company-item:last-child { border-bottom: none; }
-  .company-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 2px;
-  }
-  .company-loc {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 5px;
-  }
-  .company-desc {
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.6;
-  }
-  .sector-badge {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    border-radius: 5px;
-    padding: 2px 7px;
-    margin-right: 5px;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    vertical-align: middle;
-  }
-
-  /* Divider */
-  .section-gap { margin-top: 28px; }
-
-  /* Toggle */
-  .toggle-row {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 14px;
-  }
-  .toggle-btn {
-    flex: 1;
-    padding: 7px;
-    border-radius: 9px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-    transition: .15s;
-  }
-  .toggle-btn.active {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
-  }
-
-  /* Loading / error states */
-  .loading { color: var(--muted); font-size: 13px; padding: 12px 0; }
-  .error   { color: var(--red);   font-size: 13px; padding: 8px 0; }
-
-  /* Mode toggle */
+  /* Mode button */
   .mode-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 50%;
-    width: 34px; height: 34px;
-    font-size: 16px;
-    cursor: pointer;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 50%; width: 32px; height: 32px;
+    font-size: 15px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: .15s;
-    flex-shrink: 0;
+    transition: .15s; flex-shrink: 0;
   }
   .mode-btn:hover { background: var(--border); }
 
-  /* Sky card */
-  .sky-quality-bar {
-    height: 6px; border-radius: 3px;
-    background: var(--surface2);
-    overflow: hidden; margin: 8px 0 4px;
+  /* ── Main content ──────────────────────────────────────────────────────── */
+  .main-content {
+    flex: 1; min-width: 0;
+    padding: 32px 36px 80px;
   }
+
+  /* ── Page header ──────────────────────────────────────────────────────── */
+  .page-header { margin-bottom: 28px; }
+  .page-title {
+    font-size: 30px; font-weight: 900; letter-spacing: -1.2px; line-height: 1.1;
+    background: linear-gradient(135deg, var(--text) 30%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 6px;
+  }
+  .page-subtitle { font-size: 14px; color: var(--muted); line-height: 1.6; max-width: 600px; }
+  .page-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .page-chip {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    background: rgba(129,140,248,.1); border: 1px solid rgba(129,140,248,.2);
+    border-radius: 20px; padding: 3px 10px;
+  }
+
+  /* ── Section heading ──────────────────────────────────────────────────── */
+  .section-label {
+    font-size: 10px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+  .section-gap { margin-top: 20px; }
+
+  /* ── Glass card ───────────────────────────────────────────────────────── */
+  .card {
+    background: var(--glass2);
+    border: 1px solid var(--gborder);
+    border-radius: 18px; padding: 20px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .card-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .card-meta  { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .card-body  { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+  /* ── Bento grids ──────────────────────────────────────────────────────── */
+  .live-bento  { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; align-items: start; }
+  .bento-2     { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  .uk-bento    { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
+
+  /* ── ISS card ─────────────────────────────────────────────────────────── */
+  .iss-card {
+    background: linear-gradient(135deg, rgba(13,13,40,.85) 0%, rgba(19,19,64,.85) 100%);
+    border: 1px solid rgba(42,42,106,.5);
+    border-radius: 18px; padding: 16px;
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  }
+  #iss-map { width: 100%; height: 160px; border-radius: 10px; margin-top: 10px; overflow: hidden; }
+  .iss-stats { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .iss-stat  { flex: 1; min-width: 64px; }
+  .iss-stat-val   { font-size: 15px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+  .iss-stat-label { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .live-dot {
+    display: inline-block; width: 7px; height: 7px;
+    background: var(--green); border-radius: 50%;
+    margin-right: 5px; animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── SEN card ─────────────────────────────────────────────────────────── */
+  .sen-card {
+    background: linear-gradient(135deg, rgba(10,10,31,.9) 0%, rgba(13,26,46,.9) 100%);
+    border: 1px solid rgba(26,58,92,.5);
+    border-radius: 18px; overflow: hidden;
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    position: relative;
+  }
+  .sen-card::before {
+    content: ''; position: absolute; top: -40px; right: -40px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(56,189,248,.12) 0%, transparent 70%);
+    border-radius: 50%; pointer-events: none;
+  }
+
+  /* ── APOD ─────────────────────────────────────────────────────────────── */
+  .apod-img { width: 100%; border-radius: 12px; max-height: 240px; object-fit: cover; margin-bottom: 12px; display: block; }
+  .apod-explanation {
+    font-size: 13px; color: var(--muted); line-height: 1.7;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .read-more {
+    font-size: 12px; color: var(--accent); cursor: pointer;
+    border: none; background: none; padding: 4px 0; font-family: inherit; display: block; margin-top: 6px;
+  }
+
+  /* ── Launches ─────────────────────────────────────────────────────────── */
+  .launch-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .launch-item:last-child { border-bottom: none; }
+  .launch-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .launch-name { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.3; margin-bottom: 3px; }
+  .launch-time { font-size: 13px; color: var(--amber); font-weight: 600; margin-bottom: 2px; }
+  .launch-loc  { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .launch-desc { font-size: 12px; color: var(--muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .launch-uk-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    background: rgba(129,140,248,.15); color: var(--accent);
+    border: 1px solid rgba(129,140,248,.3);
+    border-radius: 6px; padding: 1px 7px; margin-left: 6px; vertical-align: middle;
+  }
+  .spacex-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    background: rgba(248,113,113,.1); color: #f87171;
+    border: 1px solid rgba(248,113,113,.3);
+    border-radius: 6px; padding: 1px 7px; margin-left: 6px; vertical-align: middle;
+  }
+
+  /* ── News ─────────────────────────────────────────────────────────────── */
+  .news-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .news-item:last-child { border-bottom: none; }
+  .news-source { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); margin-bottom: 4px; }
+  .news-title  { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.35; margin-bottom: 5px; text-decoration: none; display: block; }
+  .news-title:hover { color: var(--accent); }
+  .news-summary { font-size: 12px; color: var(--muted); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .news-date { font-size: 11px; color: var(--subtle); margin-top: 5px; }
+
+  /* ── Toggle / filter rows ─────────────────────────────────────────────── */
+  .toggle-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .toggle-btn {
+    padding: 6px 14px; border-radius: 9px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: .15s;
+  }
+  .toggle-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── UK companies ─────────────────────────────────────────────────────── */
+  .company-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .company-filter-btn {
+    padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: .15s;
+  }
+  .company-filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .company-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .company-item:last-child { border-bottom: none; }
+  .company-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .company-loc  { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  .company-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .sector-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    border-radius: 5px; padding: 2px 7px; margin-right: 5px;
+    text-transform: uppercase; letter-spacing: .04em; vertical-align: middle;
+  }
+
+  /* ── UK map ───────────────────────────────────────────────────────────── */
+  #uk-hubs-map { width: 100%; height: 340px; border-radius: 12px; margin-top: 12px; overflow: hidden; }
+
+  /* ── Budget ───────────────────────────────────────────────────────────── */
+  .budget-total { text-align: center; padding: 12px 0 18px; }
+  .budget-total-val   { font-size: 38px; font-weight: 900; color: var(--accent); letter-spacing: -1.5px; line-height: 1; }
+  .budget-total-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .budget-bar-row  { margin-bottom: 12px; }
+  .budget-bar-meta { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+  .budget-bar-name { font-size: 13px; color: var(--text); font-weight: 600; }
+  .budget-bar-val  { font-size: 12px; color: var(--muted); white-space: nowrap; margin-left: 8px; }
+  .budget-bar-track{ background: var(--subtle); border-radius: 4px; height: 8px; overflow: hidden; }
+  .budget-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+
+  /* ── Sky card ─────────────────────────────────────────────────────────── */
+  .sky-quality-bar  { height: 6px; border-radius: 3px; background: var(--surface2); overflow: hidden; margin: 8px 0 4px; }
   .sky-quality-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
 
-  /* About hero */
-  .about-hero {
-    background: linear-gradient(135deg, rgba(49,46,129,.35) 0%, rgba(15,23,42,.0) 100%);
-    border: 1px solid rgba(129,140,248,.2);
-    border-radius: 16px;
-    padding: 16px 18px;
-    margin-bottom: 18px;
-  }
-  .about-title {
-    font-size: 18px;
-    font-weight: 900;
-    letter-spacing: -0.5px;
-    color: var(--text);
-    margin-bottom: 5px;
-  }
-  .about-desc {
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.6;
-    margin-bottom: 12px;
-  }
-  .about-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .about-chip {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--accent);
-    background: rgba(129,140,248,.1);
-    border: 1px solid rgba(129,140,248,.2);
-    border-radius: 20px;
-    padding: 3px 10px;
-  }
-
-  /* Jargon accordion */
+  /* ── Jargon ───────────────────────────────────────────────────────────── */
   .jargon-item { border-bottom: 1px solid var(--border); }
   .jargon-item:last-child { border-bottom: none; }
   .jargon-q {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-    user-select: none;
-    gap: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; cursor: pointer; font-size: 13px; font-weight: 700;
+    color: var(--text); user-select: none; gap: 8px;
   }
   .jargon-q-left { display: flex; align-items: center; gap: 8px; }
-  .jargon-icon { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
-  .jargon-chevron {
-    color: var(--muted);
-    font-size: 12px;
-    transition: transform .2s;
-    flex-shrink: 0;
-  }
+  .jargon-icon    { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+  .jargon-chevron { color: var(--muted); font-size: 12px; transition: transform .2s; flex-shrink: 0; }
   .jargon-item.open .jargon-chevron { transform: rotate(180deg); color: var(--accent); }
-  .jargon-a {
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.7;
-    padding: 0 0 12px 32px;
-    display: none;
-  }
+  .jargon-a { font-size: 12px; color: var(--muted); line-height: 1.7; padding: 0 0 12px 32px; display: none; }
   .jargon-item.open .jargon-a { display: block; }
   .jargon-tag {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    color: var(--accent);
-    background: rgba(129,140,248,.1);
-    border-radius: 4px;
-    padding: 1px 5px;
-    margin-right: 4px;
+    display: inline-block; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+    color: var(--accent); background: rgba(129,140,248,.1);
+    border-radius: 4px; padding: 1px 5px; margin-right: 4px;
   }
 
-  /* Tab nav */
-  .tab-nav {
-    display: flex;
-    gap: 3px;
-    padding: 4px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    margin-bottom: 20px;
-    position: sticky;
-    top: 8px;
-    z-index: 100;
-  }
-  .tab-btn {
-    flex: 1;
-    padding: 8px 6px;
-    border: none;
-    border-radius: 10px;
-    background: transparent;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-    transition: .15s;
-    white-space: nowrap;
-    letter-spacing: .01em;
-  }
-  .tab-btn.active {
-    background: var(--accent);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(129,140,248,.3);
-  }
-  .tab-panel { display: none; }
+  /* ── States ───────────────────────────────────────────────────────────── */
+  .loading { color: var(--muted); font-size: 13px; padding: 12px 0; }
+  .error   { color: var(--red);   font-size: 13px; padding:  8px 0; }
+
+  /* ── Tab panels ───────────────────────────────────────────────────────── */
+  .tab-panel        { display: none; }
   .tab-panel.active { display: block; }
 
-  /* Footer */
-  footer {
-    text-align: center;
-    font-size: 12px;
-    color: var(--subtle);
-    margin-top: 40px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-  }
+  /* ── Footer ───────────────────────────────────────────────────────────── */
+  footer { font-size: 11px; color: var(--subtle); padding-top: 20px; border-top: 1px solid var(--border); margin-top: 40px; }
   footer a { color: var(--muted); text-decoration: none; }
+
+  /* ── Mobile tab bar ───────────────────────────────────────────────────── */
+  .mobile-tab-bar {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--glass);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--gborder);
+    z-index: 200;
+  }
+  .mobile-tab-btn {
+    flex: 1; padding: 10px 4px 14px;
+    border: none; background: transparent;
+    color: var(--muted); font-size: 9px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    transition: color .15s; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .mobile-tab-btn .tab-icon { font-size: 20px; line-height: 1; }
+  .mobile-tab-btn.active { color: var(--accent); }
+
+  /* ── Responsive ───────────────────────────────────────────────────────── */
+  @media (max-width: 960px) {
+    .sidebar { display: none; }
+    .mobile-tab-bar { display: flex; }
+    .main-content { padding: 20px 18px 90px; }
+    .live-bento, .bento-2, .uk-bento { grid-template-columns: 1fr; }
+    .page-title { font-size: 22px; }
+  }
+  @media (max-width: 480px) {
+    .main-content { padding: 16px 14px 90px; }
+    .card { padding: 16px; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- Header -->
-  <header>
+<div class="app-shell">
+
+  <!-- ── Sidebar (desktop only) ──────────────────────────────────────────── -->
+  <aside class="sidebar">
     <div class="logo">
       <div class="logo-icon">🛸</div>
       <div>
@@ -699,258 +417,328 @@
         <div class="logo-sub">humanagency.co</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <div id="header-pc" style="font-size:13px;color:var(--muted);cursor:pointer" onclick="document.getElementById('pc-input').focus()">📍 <span id="header-pc-label">Add postcode</span></div>
-      <button class="mode-btn" id="mode-btn" onclick="_toggleMode()" title="Toggle light/dark">☀️</button>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-sect">Navigate</div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-btn active" data-tab="live"     onclick="_showTab('live')"><span>🔴</span> Live</button>
+      <button class="sidebar-btn"        data-tab="launches" onclick="_showTab('launches')"><span>🚀</span> Launches</button>
+      <button class="sidebar-btn"        data-tab="uk"       onclick="_showTab('uk')"><span>🇬🇧</span> UK Industry</button>
+      <button class="sidebar-btn"        data-tab="explore"  onclick="_showTab('explore')"><span>🔭</span> Explore</button>
+    </nav>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-sect">Tonight's Sky</div>
+    <div class="postcode-bar" id="pc-bar">
+      <span style="font-size:14px;flex-shrink:0">📍</span>
+      <input id="pc-input" type="text" placeholder="Postcode e.g. KT15"
+        maxlength="8" oninput="this.value=this.value.toUpperCase()"
+        onkeydown="if(event.key==='Enter') savePostcode()">
+      <button onclick="savePostcode()">Go</button>
     </div>
-  </header>
-
-  <!-- Postcode bar -->
-  <div class="postcode-bar" id="pc-bar">
-    <span style="font-size:14px">📍</span>
-    <input id="pc-input" type="text" placeholder="Your postcode for tonight's sky (e.g. KT15 3RL)"
-      maxlength="8" oninput="this.value=this.value.toUpperCase()"
-      onkeydown="if(event.key==='Enter') savePostcode()">
-    <button onclick="savePostcode()">Set</button>
-  </div>
-
-  <!-- About -->
-  <div class="about-hero">
-    <div class="about-title">🛸 Your window into space</div>
-    <div class="about-desc">
-      A live dashboard built for curious people — not aerospace engineers.
-      Watch Earth from the ISS right now, track what's launching this week,
-      explore the UK's space industry, and learn the basics without the jargon.
+    <div id="header-pc" style="font-size:11px;color:var(--muted);margin-top:6px;padding:0 2px;min-height:16px">
+      <span id="header-pc-label"></span>
     </div>
-    <div class="about-chips">
-      <span class="about-chip">🔴 Live ISS &amp; Earth feed</span>
-      <span class="about-chip">🚀 Upcoming launches</span>
-      <span class="about-chip">🇬🇧 UK industry &amp; jobs</span>
-      <span class="about-chip">🔭 Solar system &amp; Artemis</span>
-      <span class="about-chip">📖 Space 101 glossary</span>
-    </div>
-  </div>
 
-  <!-- Tab Nav -->
-  <nav class="tab-nav" id="main-tab-nav">
-    <button class="tab-btn active" data-tab="live"    onclick="_showTab('live')">🔴 Live</button>
-    <button class="tab-btn"        data-tab="launches" onclick="_showTab('launches')">🚀 Launches</button>
-    <button class="tab-btn"        data-tab="uk"       onclick="_showTab('uk')">🇬🇧 UK</button>
-    <button class="tab-btn"        data-tab="explore"  onclick="_showTab('explore')">🔭 Explore</button>
-  </nav>
+    <div class="sidebar-spacer"></div>
 
-  <!-- ── Tab: Live ────────────────────────────────────────────────────────── -->
-  <div class="tab-panel active" id="tab-live">
-
-    <div class="section-label"><span class="live-dot"></span>Earth Live — SEN Camera</div>
-    <div class="sen-card" style="padding:0;overflow:hidden">
-      <div style="position:relative;width:100%;padding-top:56.25%">
-        <iframe id="sen-iframe"
-          src="https://www.youtube.com/embed/fO9e9jnhYK8?autoplay=1&mute=1&rel=0&modestbranding=1"
-          style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen></iframe>
+    <div style="padding:0 4px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <span style="font-size:11px;color:var(--muted)">Light / dark</span>
+        <button class="mode-btn" id="mode-btn" onclick="_toggleMode()" title="Toggle light/dark">☀️</button>
       </div>
-      <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div style="font-size:10px;color:var(--subtle);line-height:1.6">
+        Data: NASA · Launch Library 2<br>UK Space Agency · ESA · JPL<br>
+        <a href="https://miru.humanagency.co" style="color:var(--muted)">← Back to Miru</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main content ────────────────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div class="page-title">Your window into space</div>
+      <div class="page-subtitle">
+        A live dashboard built for curious people — not aerospace engineers.
+        Real-time ISS tracking, upcoming launches, UK industry and the basics, explained.
+      </div>
+      <div class="page-chips">
+        <span class="page-chip">🔴 Live Earth feed</span>
+        <span class="page-chip">🚀 Upcoming launches</span>
+        <span class="page-chip">🇬🇧 UK industry &amp; jobs</span>
+        <span class="page-chip">🔭 Solar system</span>
+        <span class="page-chip">📖 Space 101 glossary</span>
+      </div>
+    </div>
+
+    <!-- ── Tab: Live ──────────────────────────────────────────────────────── -->
+    <div class="tab-panel active" id="tab-live">
+
+      <div class="section-label"><span class="live-dot"></span>Earth Live — SEN Camera &amp; ISS Tracker</div>
+
+      <div class="live-bento">
+
+        <!-- Left: SEN camera -->
+        <div class="sen-card">
+          <div style="position:relative;width:100%;padding-top:56.25%">
+            <iframe id="sen-iframe"
+              src="https://www.youtube.com/embed/fO9e9jnhYK8?autoplay=1&mute=1&rel=0&modestbranding=1"
+              style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen></iframe>
+          </div>
+          <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#93c5fd">SEN · Earth from the ISS</div>
+              <div style="font-size:11px;color:#64748b;margin-top:1px">British company · 4K cameras on the International Space Station</div>
+            </div>
+            <a href="https://sen.com/live" target="_blank" rel="noopener"
+              style="font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,#0ea5e9,#2563eb);border-radius:20px;padding:6px 14px;text-decoration:none;display:flex;align-items:center;gap:5px;flex-shrink:0">
+              <span class="live-dot" style="margin-right:0"></span>sen.com/live
+            </a>
+          </div>
+        </div>
+
+        <!-- Right: ISS + Sky stacked -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <div class="iss-card">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px">
+                  <span class="live-dot"></span>ISS Live Position
+                </div>
+                <div id="iss-location" style="font-size:12px;color:var(--muted);margin-top:2px">Loading position…</div>
+              </div>
+              <div style="font-size:20px">🛸</div>
+            </div>
+            <div id="iss-map"></div>
+            <div class="iss-stats">
+              <div class="iss-stat"><div class="iss-stat-val" id="iss-alt">—</div><div class="iss-stat-label">Alt (km)</div></div>
+              <div class="iss-stat"><div class="iss-stat-val" id="iss-vel">—</div><div class="iss-stat-label">Speed km/h</div></div>
+              <div class="iss-stat"><div class="iss-stat-val" id="iss-vis">—</div><div class="iss-stat-label">Visibility</div></div>
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+              Orbits every ~92 min at ~408 km ·
+              <a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">Spot it from your postcode →</a>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">🌙 Tonight's Sky</div>
+            <div id="sky-body" style="font-size:12px;color:var(--muted)">
+              Enter your postcode in the sidebar to see sky conditions
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /tab-live -->
+
+    <!-- ── Tab: Launches ──────────────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-launches">
+
+      <div class="bento-2">
+
         <div>
-          <div style="font-size:13px;font-weight:700;color:#93c5fd">SEN · Earth from the ISS</div>
-          <div style="font-size:11px;color:#64748b;margin-top:1px">British company · 4K cameras on the International Space Station</div>
+          <div class="section-label">Upcoming Launches</div>
+          <div class="toggle-row">
+            <button class="toggle-btn active" id="launch-tab-all"    onclick="launchTab('all')">All</button>
+            <button class="toggle-btn"        id="launch-tab-spacex" onclick="launchTab('spacex')">SpaceX</button>
+            <button class="toggle-btn"        id="launch-tab-uk"     onclick="launchTab('uk')">🇬🇧 UK &amp; Europe</button>
+          </div>
+          <div class="card" id="launches-card"><div class="loading">Loading…</div></div>
         </div>
-        <a href="https://sen.com/live" target="_blank" rel="noopener"
-          style="font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,#0ea5e9,#2563eb);border-radius:20px;padding:6px 14px;text-decoration:none;display:flex;align-items:center;gap:5px;flex-shrink:0">
-          <span class="live-dot" style="margin-right:0"></span>sen.com/live
-        </a>
-      </div>
-    </div>
 
-    <div class="section-gap"></div>
-    <div class="section-label"><span class="live-dot"></span>ISS Live</div>
-    <div class="iss-card">
-      <div style="display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.3px">International Space Station</div>
-          <div id="iss-location" style="font-size:13px;color:var(--muted);margin-top:2px">Loading position…</div>
+          <div class="section-label">Space News</div>
+          <div class="card" id="news-card"><div class="loading">Loading…</div></div>
         </div>
-        <div style="font-size:22px">🛸</div>
+
       </div>
-      <div id="iss-map"></div>
-      <div class="iss-stats">
-        <div class="iss-stat"><div class="iss-stat-val" id="iss-alt">—</div><div class="iss-stat-label">Altitude (km)</div></div>
-        <div class="iss-stat"><div class="iss-stat-val" id="iss-vel">—</div><div class="iss-stat-label">Speed (km/h)</div></div>
-        <div class="iss-stat"><div class="iss-stat-val" id="iss-vis">—</div><div class="iss-stat-label">Visibility</div></div>
-      </div>
-      <div style="margin-top:12px;font-size:12px;color:var(--muted)">
-        Orbits Earth every ~92 min at ~408 km.
-        <a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener"
-          style="color:var(--accent);text-decoration:none;margin-left:4px">Spot it from your postcode →</a>
-      </div>
-    </div>
 
-    <div class="section-gap"></div>
-    <div class="section-label">Tonight's Sky</div>
-    <div class="card" id="sky-card">
-      <div id="sky-body" style="text-align:center;padding:12px 0;font-size:13px;color:var(--muted)">
-        Add your postcode above to see sky conditions
-      </div>
-    </div>
+    </div><!-- /tab-launches -->
 
-  </div><!-- /tab-live -->
+    <!-- ── Tab: UK ────────────────────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-uk">
 
-  <!-- ── Tab: Launches ────────────────────────────────────────────────────── -->
-  <div class="tab-panel" id="tab-launches">
+      <div class="uk-bento">
 
-    <div class="section-label">Upcoming Launches</div>
-    <div class="toggle-row">
-      <button class="toggle-btn active" id="launch-tab-all" onclick="launchTab('all')">All</button>
-      <button class="toggle-btn" id="launch-tab-uk" onclick="launchTab('uk')">UK & Europe</button>
-    </div>
-    <div class="card" id="launches-card"><div class="loading">Loading…</div></div>
-
-    <div class="section-gap"></div>
-    <div class="section-label">Space News</div>
-    <div class="card" id="news-card"><div class="loading">Loading…</div></div>
-
-  </div><!-- /tab-launches -->
-
-  <!-- ── Tab: UK ──────────────────────────────────────────────────────────── -->
-  <div class="tab-panel" id="tab-uk">
-
-    <div class="section-label">UK Space Companies</div>
-    <div class="company-filters" id="co-filters"></div>
-    <div class="card" id="companies-card"><div class="loading">Loading…</div></div>
-
-    <div class="section-gap"></div>
-    <div class="section-label">UK Space Hubs</div>
-    <div class="card" style="padding:14px">
-      <div style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.5">
-        <strong style="color:var(--text)">48,800 people</strong> across <strong style="color:var(--text)">1,200+ organisations</strong> clustered around key sites.
-      </div>
-      <div id="uk-hubs-map"></div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
-        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#818cf8;display:inline-block"></span>Cluster</span>
-        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Launch site</span>
-        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#34d399;display:inline-block"></span>Company</span>
-        <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fb923c;display:inline-block"></span>Research</span>
-      </div>
-    </div>
-
-    <div class="section-gap"></div>
-    <div class="section-label">UK Space Budget</div>
-    <div class="card">
-      <div class="budget-total">
-        <div class="budget-total-val">£702M</div>
-        <div class="budget-total-label">Total UK space spending · 2023/24</div>
-      </div>
-      <div id="budget-bars"></div>
-      <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£330M</span>ESA membership & programmes</div>
-        <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£372M</span>National (UKSA direct)</div>
-      </div>
-      <div style="margin-top:10px;font-size:11px;color:var(--subtle)">Source: UK Space Agency · 2024 Size & Health report</div>
-    </div>
-
-    <div class="section-gap"></div>
-    <div class="section-label">Get Into UK Space</div>
-    <div class="card">
-      <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">How to start a career in space</div>
-      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
-        The industry needs engineers, data analysts, developers, lawyers and policy specialists — not just rocket scientists.
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px" id="careers-list"></div>
-    </div>
-
-  </div><!-- /tab-uk -->
-
-  <!-- ── Tab: Explore ─────────────────────────────────────────────────────── -->
-  <div class="tab-panel" id="tab-explore">
-
-    <div class="section-label">Solar System — Live Distances from Earth</div>
-    <div class="card" id="planets-card"><div class="loading">Computing positions…</div></div>
-
-    <div class="section-gap"></div>
-    <div class="section-label">Astronomy Picture of the Day</div>
-    <div class="card" id="apod-card"><div class="loading">Loading…</div></div>
-
-    <div class="section-gap"></div>
-    <div class="section-label">Artemis — Back to the Moon</div>
-    <div class="card">
-      <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">What is Artemis?</div>
-      <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">
-        NASA's return to the Moon — first crewed landing since 1972. Aims to land the <strong style="color:var(--text)">first woman and first person of colour</strong> on the lunar surface. UK contributes the European Service Module that powers the Orion spacecraft.
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-        <div style="background:var(--surface2);border-radius:12px;padding:12px">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis I</div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">✅ Nov 2022</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Uncrewed Moon orbit — 25 days, 1.4M miles</div>
+        <!-- Left: companies -->
+        <div>
+          <div class="section-label">UK Space Companies</div>
+          <div class="company-filters" id="co-filters"></div>
+          <div class="card" id="companies-card"><div class="loading">Loading…</div></div>
         </div>
-        <div style="background:var(--surface2);border-radius:12px;padding:12px">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis II</div>
-          <div style="font-size:13px;font-weight:700;color:var(--amber)">🚀 2026</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">First crewed Moon flyby — 4 astronauts</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:12px;padding:12px">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis III</div>
-          <div style="font-size:13px;font-weight:700;color:var(--amber)">🌙 2027+</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Crewed lunar landing — South Pole</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:12px;padding:12px">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Gateway</div>
-          <div style="font-size:13px;font-weight:700;color:var(--accent)">🛸 2028+</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Lunar orbital station</div>
+
+        <!-- Right: map + budget + careers -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+
+          <div>
+            <div class="section-label">UK Space Hubs</div>
+            <div class="card" style="padding:14px">
+              <div style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.5">
+                <strong style="color:var(--text)">48,800 people</strong> across <strong style="color:var(--text)">1,200+ organisations</strong> clustered around key sites.
+              </div>
+              <div id="uk-hubs-map"></div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#818cf8;display:inline-block"></span>Cluster</span>
+                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Launch site</span>
+                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#34d399;display:inline-block"></span>Company</span>
+                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fb923c;display:inline-block"></span>Research</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-label">UK Space Budget</div>
+            <div class="card">
+              <div class="budget-total">
+                <div class="budget-total-val">£702M</div>
+                <div class="budget-total-label">Total UK space spending · 2023/24</div>
+              </div>
+              <div id="budget-bars"></div>
+              <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£330M</span>ESA membership &amp; programmes</div>
+                <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£372M</span>National (UKSA direct)</div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;color:var(--subtle)">Source: UK Space Agency · 2024 Size &amp; Health report</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-label">Get Into UK Space</div>
+            <div class="card">
+              <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">How to start a career in space</div>
+              <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+                The industry needs engineers, data analysts, developers, lawyers and policy specialists — not just rocket scientists.
+              </div>
+              <div style="display:flex;flex-direction:column;gap:0" id="careers-list"></div>
+            </div>
+          </div>
+
         </div>
       </div>
-      <div id="artemis-photos" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"></div>
-      <div style="font-size:11px;color:var(--subtle)">🇬🇧 UK: European Service Module · Solar arrays · Communications · Propulsion</div>
-    </div>
 
-    <div class="section-gap"></div>
-    <div class="section-label">AI & Space</div>
-    <div class="card">
-      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
-        Satellites generate more data daily than any human team can process. ML now handles ocean plastic tracking, crop yield prediction, and debris removal.
-      </div>
-      <div style="display:flex;flex-direction:column;gap:0" id="ai-space-list"></div>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Key use cases</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌍 Earth observation</span>
-          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🛰️ Autonomous ops</span>
-          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌊 Ocean tracking</span>
-          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🚀 Launch optimisation</span>
-          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🗑️ Debris removal</span>
-          <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌾 Crop monitoring</span>
+    </div><!-- /tab-uk -->
+
+    <!-- ── Tab: Explore ────────────────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-explore">
+
+      <div class="bento-2" style="margin-bottom:18px">
+        <div>
+          <div class="section-label">Solar System — Live Distances from Earth</div>
+          <div class="card" id="planets-card"><div class="loading">Computing positions…</div></div>
+        </div>
+        <div>
+          <div class="section-label">Astronomy Picture of the Day</div>
+          <div class="card" id="apod-card"><div class="loading">Loading…</div></div>
         </div>
       </div>
-    </div>
 
-    <div class="section-gap"></div>
-    <div class="section-label">Space 101 — Jargon Buster</div>
-    <div class="card" id="jargon-card">
-      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
-        Space coverage is full of acronyms and terms that assume you already know everything.
-        Here's plain English for the ones that come up most.
+      <div class="bento-2">
+
+        <div>
+          <div class="section-label">Artemis — Back to the Moon</div>
+          <div class="card">
+            <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">What is Artemis?</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">
+              NASA's return to the Moon — first crewed landing since 1972. Aims to land the <strong style="color:var(--text)">first woman and first person of colour</strong> on the lunar surface. UK contributes the European Service Module that powers the Orion spacecraft.
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+              <div style="background:var(--surface2);border-radius:12px;padding:12px">
+                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis I</div>
+                <div style="font-size:13px;font-weight:700;color:var(--text)">✅ Nov 2022</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">Uncrewed Moon orbit — 25 days, 1.4M miles</div>
+              </div>
+              <div style="background:var(--surface2);border-radius:12px;padding:12px">
+                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis II</div>
+                <div style="font-size:13px;font-weight:700;color:var(--amber)">🚀 2026</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">First crewed Moon flyby — 4 astronauts</div>
+              </div>
+              <div style="background:var(--surface2);border-radius:12px;padding:12px">
+                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis III</div>
+                <div style="font-size:13px;font-weight:700;color:var(--amber)">🌙 2027+</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">Crewed lunar landing — South Pole</div>
+              </div>
+              <div style="background:var(--surface2);border-radius:12px;padding:12px">
+                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Gateway</div>
+                <div style="font-size:13px;font-weight:700;color:var(--accent)">🛸 2028+</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">Lunar orbital station</div>
+              </div>
+            </div>
+            <div id="artemis-photos" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"></div>
+            <div style="font-size:11px;color:var(--subtle)">🇬🇧 UK: European Service Module · Solar arrays · Communications · Propulsion</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:18px">
+
+          <div>
+            <div class="section-label">AI &amp; Space</div>
+            <div class="card">
+              <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+                Satellites generate more data daily than any human team can process. ML now handles ocean plastic tracking, crop yield prediction, and debris removal.
+              </div>
+              <div style="display:flex;flex-direction:column;gap:0" id="ai-space-list"></div>
+              <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Key use cases</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌍 Earth observation</span>
+                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🛰️ Autonomous ops</span>
+                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌊 Ocean tracking</span>
+                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🚀 Launch optimisation</span>
+                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🗑️ Debris removal</span>
+                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌾 Crop monitoring</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-label">Space 101 — Jargon Buster</div>
+            <div class="card" id="jargon-card">
+              <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+                Plain English for space terms that assume you already know everything.
+              </div>
+              <div id="jargon-list"></div>
+            </div>
+          </div>
+
+        </div>
       </div>
-      <div id="jargon-list"></div>
-    </div>
 
-  </div><!-- /tab-explore -->
+    </div><!-- /tab-explore -->
 
-  <footer>
-    <div style="margin-bottom:6px">🛸 space.humanagency.co</div>
-    <div>Data: NASA · Launch Library 2 · UK Space Agency · ESA · JPL</div>
-    <div style="margin-top:4px"><a href="https://miru.humanagency.co">← Miru</a></div>
-  </footer>
+    <footer>
+      <div>🛸 space.humanagency.co · Data: NASA · Launch Library 2 · UK Space Agency · ESA · JPL</div>
+      <div style="margin-top:4px"><a href="https://miru.humanagency.co">← Miru</a></div>
+    </footer>
 
-</div><!-- /wrap -->
+  </main>
+</div><!-- /app-shell -->
+
+<!-- ── Mobile tab bar ───────────────────────────────────────────────────────── -->
+<nav class="mobile-tab-bar" id="mobile-tab-bar">
+  <button class="mobile-tab-btn active" data-tab="live"     onclick="_showTab('live')"><span class="tab-icon">🔴</span>Live</button>
+  <button class="mobile-tab-btn"        data-tab="launches" onclick="_showTab('launches')"><span class="tab-icon">🚀</span>Launches</button>
+  <button class="mobile-tab-btn"        data-tab="uk"       onclick="_showTab('uk')"><span class="tab-icon">🇬🇧</span>UK</button>
+  <button class="mobile-tab-btn"        data-tab="explore"  onclick="_showTab('explore')"><span class="tab-icon">🔭</span>Explore</button>
+</nav>
 
 <script>
-// ── Postcode ──────────────────────────────────────────────────────────────────
+// ── Postcode ───────────────────────────────────────────────────────────────────
 var _pc = localStorage.getItem('space_postcode') || '';
 if (_pc) {
-  document.getElementById('header-pc-label').textContent = _pc;
-  document.getElementById('pc-input').value = _pc;
+  var _fmtInitPc = _pc.length > 3 ? _pc.slice(0,-3) + ' ' + _pc.slice(-3) : _pc;
+  document.getElementById('header-pc-label').textContent = '📍 ' + _fmtInitPc;
+  document.getElementById('pc-input').value = _fmtInitPc;
 }
 
 function savePostcode() {
@@ -959,12 +747,12 @@ function savePostcode() {
   localStorage.setItem('space_postcode', v);
   _pc = v;
   var fmt = v.length > 3 ? v.slice(0,-3) + ' ' + v.slice(-3) : v;
-  document.getElementById('header-pc-label').textContent = fmt;
+  document.getElementById('header-pc-label').textContent = '📍 ' + fmt;
   document.getElementById('pc-input').value = fmt;
   _loadSky(v);
 }
 
-// ── Tonight's Sky ─────────────────────────────────────────────────────────────
+// ── Tonight's Sky ──────────────────────────────────────────────────────────────
 var _skyQualityColours = {excellent:'#34d399', good:'#818cf8', fair:'#f59e0b', poor:'#6b7280'};
 
 function _renderSky(d) {
@@ -976,43 +764,43 @@ function _renderSky(d) {
   var dayNight = d.is_day ? '☀️ Day' : '🌙 Night';
   var iss_url = 'https://spotthestation.nasa.gov/sightings/view.cfm?country=United_Kingdom&region=None&city=None';
   el.innerHTML =
-    '<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">'+
-      '<div style="font-size:48px;line-height:1">'+d.weather_icon+'</div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
+      '<div style="font-size:40px;line-height:1">'+d.weather_icon+'</div>'+
       '<div style="flex:1">'+
-        '<div style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.3px">'+_esc(d.weather_desc)+'</div>'+
-        '<div style="font-size:13px;color:var(--muted);margin-top:2px">'+
+        '<div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px">'+_esc(d.weather_desc)+'</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-top:2px">'+
           (d.temp_c !== null ? d.temp_c.toFixed(0)+'°C' : '') +
           (d.wind_kmh ? ' · '+ d.wind_kmh.toFixed(0)+' km/h wind' : '') +
           ' · ' + dayNight +
         '</div>'+
       '</div>'+
     '</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'+
-      '<div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">'+
-        '<div style="font-size:11px;color:var(--muted);margin-bottom:3px">Cloud cover</div>'+
-        '<div style="font-size:18px;font-weight:800;color:var(--text)">'+d.cloud_pct+'%</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">'+
+      '<div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">'+
+        '<div style="font-size:10px;color:var(--muted);margin-bottom:2px">Cloud</div>'+
+        '<div style="font-size:16px;font-weight:800;color:var(--text)">'+d.cloud_pct+'%</div>'+
       '</div>'+
-      '<div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">'+
-        '<div style="font-size:11px;color:var(--muted);margin-bottom:3px">Sunrise</div>'+
-        '<div style="font-size:16px;font-weight:700;color:var(--amber)">'+_esc(d.sunrise||'—')+'</div>'+
+      '<div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">'+
+        '<div style="font-size:10px;color:var(--muted);margin-bottom:2px">Sunrise</div>'+
+        '<div style="font-size:14px;font-weight:700;color:var(--amber)">'+_esc(d.sunrise||'—')+'</div>'+
       '</div>'+
-      '<div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">'+
-        '<div style="font-size:11px;color:var(--muted);margin-bottom:3px">Sunset</div>'+
-        '<div style="font-size:16px;font-weight:700;color:var(--amber)">'+_esc(d.sunset||'—')+'</div>'+
+      '<div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center">'+
+        '<div style="font-size:10px;color:var(--muted);margin-bottom:2px">Sunset</div>'+
+        '<div style="font-size:14px;font-weight:700;color:var(--amber)">'+_esc(d.sunset||'—')+'</div>'+
       '</div>'+
     '</div>'+
     '<div style="margin-bottom:6px">'+
       '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">'+
-        '<span style="font-size:12px;font-weight:700;color:var(--text)">Stargazing tonight</span>'+
-        '<span style="font-size:13px;font-weight:700;color:'+qCol+'">'+d.quality_icon+' '+_esc(d.quality_label)+'</span>'+
+        '<span style="font-size:11px;font-weight:700;color:var(--text)">Stargazing tonight</span>'+
+        '<span style="font-size:12px;font-weight:700;color:'+qCol+'">'+d.quality_icon+' '+_esc(d.quality_label)+'</span>'+
       '</div>'+
       '<div class="sky-quality-bar"><div class="sky-quality-fill" style="width:'+qPct+'%;background:'+qCol+'"></div></div>'+
     '</div>'+
-    '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'+
-      '<span style="font-size:12px;color:var(--muted)">ISS visible from your postcode?</span>'+
-      '<a href="'+iss_url+'" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:var(--accent);text-decoration:none">Check →</a>'+
+    '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'+
+      '<span style="font-size:11px;color:var(--muted)">ISS visible?</span>'+
+      '<a href="'+iss_url+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:var(--accent);text-decoration:none">Check →</a>'+
     '</div>'+
-    '<div style="margin-top:6px;font-size:10px;color:var(--subtle)">Weather via Open-Meteo · UK Met Office data</div>';
+    '<div style="margin-top:5px;font-size:10px;color:var(--subtle)">Open-Meteo · UK Met Office data</div>';
 }
 
 function _loadSky(pc) {
@@ -1027,26 +815,24 @@ function _loadSky(pc) {
 
 if (_pc) _loadSky(_pc);
 
-// ── Light / dark mode ─────────────────────────────────────────────────────────
+// ── Light / dark mode ──────────────────────────────────────────────────────────
 (function() {
   var saved = localStorage.getItem('space_mode');
   if (saved === 'light') document.body.classList.add('light');
 })();
-
 function _toggleMode() {
   var light = document.body.classList.toggle('light');
   localStorage.setItem('space_mode', light ? 'light' : 'dark');
   document.getElementById('mode-btn').textContent = light ? '🌙' : '☀️';
 }
-
 (function() {
   if (document.body.classList.contains('light'))
     document.getElementById('mode-btn').textContent = '🌙';
 })();
 
-// ── Tab switching ─────────────────────────────────────────────────────────────
+// ── Tab switching ──────────────────────────────────────────────────────────────
 function _showTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(function(b) {
+  document.querySelectorAll('.sidebar-btn, .mobile-tab-btn').forEach(function(b) {
     b.classList.toggle('active', b.dataset.tab === name);
   });
   document.querySelectorAll('.tab-panel').forEach(function(p) {
@@ -1059,7 +845,7 @@ function _showTab(name) {
   }
 }
 
-// ── ISS ───────────────────────────────────────────────────────────────────────
+// ── ISS ────────────────────────────────────────────────────────────────────────
 var _issMap = null;
 var _issMarker = null;
 var _issPath = [];
@@ -1067,30 +853,26 @@ var _issPathLine = null;
 
 function _initISSMap(lat, lon) {
   if (_issMap) return;
-  _issMap = L.map('iss-map', {zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 5
-  }).addTo(_issMap);
+  _issMap = L.map('iss-map', {zoomControl:false, attributionControl:false, dragging:false, scrollWheelZoom:false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:5}).addTo(_issMap);
   _issMap.setView([lat, lon], 2);
-  var icon = L.divIcon({html:'<div style="font-size:22px;line-height:1">🛸</div>', iconSize:[28,28], iconAnchor:[14,14], className:''});
-  _issMarker = L.marker([lat, lon], {icon: icon}).addTo(_issMap);
+  var icon = L.divIcon({html:'<div style="font-size:20px;line-height:1">🛸</div>', iconSize:[26,26], iconAnchor:[13,13], className:''});
+  _issMarker = L.marker([lat, lon], {icon:icon}).addTo(_issMap);
 }
 
 function _updateISS(d) {
   var lat = d.lat, lon = d.lon;
   document.getElementById('iss-alt').textContent = (d.altitude || '—').toLocaleString();
   document.getElementById('iss-vel').textContent = (d.velocity || '—').toLocaleString();
-  var vis = d.visibility === 'daylight' ? '☀️ Day' : d.visibility === 'eclipsed' ? '🌑 Night' : d.visibility || '—';
+  var vis = d.visibility === 'daylight' ? '☀️' : d.visibility === 'eclipsed' ? '🌑' : d.visibility || '—';
   document.getElementById('iss-vis').textContent = vis;
-  // Reverse geocode country from lat/lon approximately
   _issLocationLabel(lat, lon);
   if (!_issMap) {
     _initISSMap(lat, lon);
   } else {
     _issMarker.setLatLng([lat, lon]);
-    _issMap.panTo([lat, lon], {animate: true, duration: 2});
+    _issMap.panTo([lat, lon], {animate:true, duration:2});
   }
-  // Draw orbital path (simplified: ±30 degrees ahead)
   _issPath.push([lat, lon]);
   if (_issPath.length > 60) _issPath.shift();
   if (_issPathLine) _issMap.removeLayer(_issPathLine);
@@ -1100,11 +882,9 @@ function _updateISS(d) {
 }
 
 function _issLocationLabel(lat, lon) {
-  // Simple lat/lon to hemisphere description
   var ns = lat >= 0 ? 'N' : 'S';
   var ew = lon >= 0 ? 'E' : 'W';
-  var latAbs = Math.abs(lat).toFixed(1), lonAbs = Math.abs(lon).toFixed(1);
-  document.getElementById('iss-location').textContent = latAbs + '° ' + ns + ', ' + lonAbs + '° ' + ew;
+  document.getElementById('iss-location').textContent = Math.abs(lat).toFixed(1)+'° '+ns+', '+Math.abs(lon).toFixed(1)+'° '+ew;
 }
 
 function _pollISS() {
@@ -1115,7 +895,7 @@ function _pollISS() {
 _pollISS();
 setInterval(_pollISS, 5000);
 
-// ── APOD ─────────────────────────────────────────────────────────────────────
+// ── APOD ───────────────────────────────────────────────────────────────────────
 function _renderAPOD(d) {
   var el = document.getElementById('apod-card');
   if (d.error) { el.innerHTML = '<div class="error">Could not load today\'s image</div>'; return; }
@@ -1135,44 +915,44 @@ function _renderAPOD(d) {
 var _apodExpanded = false;
 function _apodToggle() {
   var el = document.getElementById('apod-exp');
-  var btn = el.nextElementSibling;
   _apodExpanded = !_apodExpanded;
   el.style.webkitLineClamp = _apodExpanded ? 'unset' : '4';
-  btn.textContent = _apodExpanded ? 'Show less' : 'Read more';
+  el.nextElementSibling.textContent = _apodExpanded ? 'Show less' : 'Read more';
 }
 fetch('/api/space/apod').then(function(r){return r.json();}).then(_renderAPOD).catch(function(){
   document.getElementById('apod-card').innerHTML = '<div class="error">Could not load APOD</div>';
 });
 
-// ── Launches ──────────────────────────────────────────────────────────────────
+// ── Launches ───────────────────────────────────────────────────────────────────
 var _allLaunches = [];
 var _launchTab = 'all';
-
 var _UK_EU_COUNTRIES = ['GBR','FRA','DEU','ITA','NLD','NOR','SWE','BEL','ESP','RUS','UKR'];
 
 function _renderLaunches(launches) {
   var el = document.getElementById('launches-card');
-  if (!launches || !launches.length) {
-    el.innerHTML = '<div class="loading">No upcoming launches found</div>';
-    return;
-  }
-  var filtered = _launchTab === 'uk'
-    ? launches.filter(function(l){ return _UK_EU_COUNTRIES.indexOf(l.country) >= 0; })
-    : launches;
-  if (!filtered.length) {
-    el.innerHTML = '<div class="card-body" style="padding:8px 0">No upcoming UK / European launches in next few days. Showing all.</div>';
-    filtered = launches;
+  if (!launches || !launches.length) { el.innerHTML = '<div class="loading">No upcoming launches found</div>'; return; }
+  var filtered = launches;
+  if (_launchTab === 'uk') {
+    filtered = launches.filter(function(l){ return _UK_EU_COUNTRIES.indexOf(l.country) >= 0; });
+    if (!filtered.length) filtered = launches;
+  } else if (_launchTab === 'spacex') {
+    filtered = launches.filter(function(l){ return l.provider && l.provider.toLowerCase().indexOf('spacex') >= 0; });
+    if (!filtered.length) { el.innerHTML = '<div class="card-body" style="padding:8px 0">No upcoming SpaceX launches in the feed — showing all.</div>'; filtered = launches; }
   }
   var html = '';
-  filtered.slice(0,5).forEach(function(l) {
-    var isUK = l.country === 'GBR';
+  filtered.slice(0,8).forEach(function(l) {
+    var isUK     = l.country === 'GBR';
+    var isSpaceX = l.provider && l.provider.toLowerCase().indexOf('spacex') >= 0;
     var date = l.net ? _fmtLaunchDate(l.net) : 'TBD';
     var desc = l.description ? '<div class="launch-desc">'+_esc(l.description)+'</div>' : '';
     html +=
       '<div class="launch-item">'+
         '<div class="launch-icon">🚀</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div class="launch-name">'+_esc(l.name)+(isUK?'<span class="launch-uk-badge">🇬🇧 UK</span>':'')+'</div>'+
+          '<div class="launch-name">'+_esc(l.name)+
+            (isUK    ? '<span class="launch-uk-badge">🇬🇧 UK</span>'     : '')+
+            (isSpaceX && !isUK ? '<span class="spacex-badge">SpaceX</span>' : '')+
+          '</div>'+
           (l.provider ? '<div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:2px">'+_esc(l.provider)+'</div>' : '')+
           '<div class="launch-time">'+date+'</div>'+
           '<div class="launch-loc">'+_esc(l.location)+'</div>'+
@@ -1191,20 +971,20 @@ function _fmtLaunchDate(netStr) {
     if (diff < 0) return 'Launched';
     var days = Math.floor(diff / 86400000);
     var hrs  = Math.floor((diff % 86400000) / 3600000);
-    var mins = Math.floor((diff % 3600000)  / 60000);
     var timeStr = d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
     var dateStr = d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    if (days === 0)      return 'Today ' + timeStr;
-    if (days === 1)      return 'Tomorrow ' + timeStr;
-    if (days < 7)        return 'In ' + days + 'd ' + hrs + 'h · ' + dateStr;
+    if (days === 0) return 'Today ' + timeStr;
+    if (days === 1) return 'Tomorrow ' + timeStr;
+    if (days < 7)  return 'In ' + days + 'd ' + hrs + 'h · ' + dateStr;
     return dateStr + ' · ' + timeStr;
   } catch(e) { return netStr; }
 }
 
 function launchTab(tab) {
   _launchTab = tab;
-  document.getElementById('launch-tab-all').classList.toggle('active', tab === 'all');
-  document.getElementById('launch-tab-uk').classList.toggle('active',  tab === 'uk');
+  document.getElementById('launch-tab-all').classList.toggle('active',    tab === 'all');
+  document.getElementById('launch-tab-spacex').classList.toggle('active', tab === 'spacex');
+  document.getElementById('launch-tab-uk').classList.toggle('active',     tab === 'uk');
   _renderLaunches(_allLaunches);
 }
 
@@ -1215,7 +995,7 @@ fetch('/api/space/launches').then(function(r){return r.json();}).then(function(d
   document.getElementById('launches-card').innerHTML = '<div class="error">Could not load launches</div>';
 });
 
-// ── News ─────────────────────────────────────────────────────────────────────
+// ── News ───────────────────────────────────────────────────────────────────────
 function _renderNews(items) {
   var el = document.getElementById('news-card');
   if (!items || !items.length) { el.innerHTML = '<div class="loading">No news found</div>'; return; }
@@ -1232,35 +1012,31 @@ function _renderNews(items) {
   });
   el.innerHTML = html;
 }
-
 function _fmtNewsDate(str) {
-  try {
-    return new Date(str).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-  } catch(e) { return str; }
+  try { return new Date(str).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+  catch(e) { return str; }
 }
-
 fetch('/api/space/news').then(function(r){return r.json();}).then(function(d){
   _renderNews(d.items || []);
 }).catch(function(){
   document.getElementById('news-card').innerHTML = '<div class="error">Could not load news</div>';
 });
 
-// ── UK Space Hubs Map ─────────────────────────────────────────────────────────
+// ── UK Hubs Map ────────────────────────────────────────────────────────────────
 var _UK_HUBS = [
-  {name:"Harwell Space Campus",      loc:"Oxfordshire",     lat:51.571, lon:-1.309, type:"cluster",  desc:"UK's largest space cluster — UKSA HQ, ESA BIC, 120+ companies & 2,500 jobs"},
-  {name:"OneWeb / Eutelsat",         loc:"London",          lat:51.509, lon:-0.122, type:"cluster",  desc:"Global LEO broadband constellation, partly UK-government owned"},
-  {name:"Surrey Satellite Technology",loc:"Guildford",      lat:51.236, lon:-0.570, type:"company",  desc:"Pioneer of small satellite manufacturing — 70+ satellites built since 1985"},
-  {name:"Airbus Defence & Space",    loc:"Stevenage",       lat:51.903, lon:-0.205, type:"company",  desc:"Europe's largest space manufacturer — builds telecom & observation satellites"},
-  {name:"Reaction Engines",          loc:"Culham, Oxon",    lat:51.652, lon:-1.232, type:"research", desc:"Developing SABRE — a revolutionary hybrid air-breathing rocket engine"},
-  {name:"Westcott Venture Park",     loc:"Buckinghamshire", lat:51.865, lon:-0.978, type:"research", desc:"Historic UK rocket testing; now centre for green propulsion R&D"},
-  {name:"National Space Centre",     loc:"Leicester",       lat:52.661, lon:-1.097, type:"cluster",  desc:"UK's largest space attraction; University of Leicester space research hub"},
-  {name:"Spire Global / Open Cosmos",loc:"Glasgow",         lat:55.864, lon:-4.252, type:"cluster",  desc:"Scotland's growing small satellite cluster — data, Earth observation"},
-  {name:"Orbex",                     loc:"Forres, Moray",   lat:57.611, lon:-3.615, type:"company",  desc:"Building Prime — a small orbital rocket to launch from Scottish soil"},
-  {name:"SaxaVord Spaceport",        loc:"Unst, Shetland",  lat:60.832, lon:-0.871, type:"launch",   desc:"UK's first operational orbital launch site — northernmost in Europe"},
-  {name:"Sutherland Spaceport",      loc:"North Highland",  lat:58.535, lon:-4.010, type:"launch",   desc:"Planned vertical launch site for Orbex Prime and other small launchers"},
-  {name:"Prestwick Spaceport",       loc:"Ayrshire",        lat:55.509, lon:-4.587, type:"launch",   desc:"Proposed horizontal launch (HALO) spaceport in Scotland"},
+  {name:"Harwell Space Campus",       loc:"Oxfordshire",     lat:51.571, lon:-1.309, type:"cluster",  desc:"UK's largest space cluster — UKSA HQ, ESA BIC, 120+ companies & 2,500 jobs"},
+  {name:"OneWeb / Eutelsat",          loc:"London",          lat:51.509, lon:-0.122, type:"cluster",  desc:"Global LEO broadband constellation, partly UK-government owned"},
+  {name:"Surrey Satellite Technology",loc:"Guildford",       lat:51.236, lon:-0.570, type:"company",  desc:"Pioneer of small satellite manufacturing — 70+ satellites built since 1985"},
+  {name:"Airbus Defence & Space",     loc:"Stevenage",       lat:51.903, lon:-0.205, type:"company",  desc:"Europe's largest space manufacturer — builds telecom & observation satellites"},
+  {name:"Reaction Engines",           loc:"Culham, Oxon",    lat:51.652, lon:-1.232, type:"research", desc:"Developing SABRE — a revolutionary hybrid air-breathing rocket engine"},
+  {name:"Westcott Venture Park",      loc:"Buckinghamshire", lat:51.865, lon:-0.978, type:"research", desc:"Historic UK rocket testing; now centre for green propulsion R&D"},
+  {name:"National Space Centre",      loc:"Leicester",       lat:52.661, lon:-1.097, type:"cluster",  desc:"UK's largest space attraction; University of Leicester space research hub"},
+  {name:"Spire Global / Open Cosmos", loc:"Glasgow",         lat:55.864, lon:-4.252, type:"cluster",  desc:"Scotland's growing small satellite cluster — data, Earth observation"},
+  {name:"Orbex",                      loc:"Forres, Moray",   lat:57.611, lon:-3.615, type:"company",  desc:"Building Prime — a small orbital rocket to launch from Scottish soil"},
+  {name:"SaxaVord Spaceport",         loc:"Unst, Shetland",  lat:60.832, lon:-0.871, type:"launch",   desc:"UK's first operational orbital launch site — northernmost in Europe"},
+  {name:"Sutherland Spaceport",       loc:"North Highland",  lat:58.535, lon:-4.010, type:"launch",   desc:"Planned vertical launch site for Orbex Prime and other small launchers"},
+  {name:"Prestwick Spaceport",        loc:"Ayrshire",        lat:55.509, lon:-4.587, type:"launch",   desc:"Proposed horizontal launch (HALO) spaceport in Scotland"},
 ];
-
 var _HUB_COLOURS = {cluster:"#818cf8", launch:"#f59e0b", company:"#34d399", research:"#fb923c"};
 var _hubsMap = null;
 
@@ -1272,24 +1048,21 @@ function _initHubsMap() {
   _UK_HUBS.forEach(function(h) {
     var colour = _HUB_COLOURS[h.type] || '#818cf8';
     var icon = L.divIcon({
-      html: '<div style="width:14px;height:14px;border-radius:50%;background:'+colour+';border:2px solid rgba(255,255,255,.4);box-shadow:0 0 8px '+colour+'88"></div>',
+      html:'<div style="width:14px;height:14px;border-radius:50%;background:'+colour+';border:2px solid rgba(255,255,255,.4);box-shadow:0 0 8px '+colour+'88"></div>',
       iconSize:[14,14], iconAnchor:[7,7], className:''
     });
     L.marker([h.lat, h.lon], {icon:icon})
       .bindPopup(
-        '<div style="min-width:180px;font-family:system-ui,sans-serif">' +
+        '<div style="min-width:180px;font-family:system-ui,sans-serif">'+
         '<div style="font-weight:700;font-size:13px;margin-bottom:2px">'+h.name+'</div>'+
         '<div style="font-size:11px;color:#6b7280;margin-bottom:5px">📍 '+h.loc+'</div>'+
         '<div style="font-size:12px;line-height:1.5;color:#374151">'+h.desc+'</div>'+
-        '</div>',
-        {maxWidth:220}
-      )
-      .addTo(_hubsMap);
+        '</div>', {maxWidth:220}
+      ).addTo(_hubsMap);
   });
 }
-// Map inits when UK tab is opened (_showTab calls _initHubsMap)
 
-// ── UK Space Budget ───────────────────────────────────────────────────────────
+// ── UK Budget ──────────────────────────────────────────────────────────────────
 var _BUDGET_ITEMS = [
   {name:"ESA programmes & membership", pct:47, val:"£330M", colour:"#818cf8"},
   {name:"Earth Observation & Science",  pct:19, val:"£133M", colour:"#38bdf8"},
@@ -1298,7 +1071,6 @@ var _BUDGET_ITEMS = [
   {name:"Skills, Innovation & Catapult",pct: 8, val:"£56M",  colour:"#fb923c"},
   {name:"Space Situational Awareness",  pct: 4, val:"£28M",  colour:"#f87171"},
 ];
-
 (function() {
   var el = document.getElementById('budget-bars');
   if (!el) return;
@@ -1316,7 +1088,6 @@ var _BUDGET_ITEMS = [
       '</div>';
   });
   el.innerHTML = html;
-  // Animate bars after a tick
   setTimeout(function() {
     el.querySelectorAll('.budget-bar-fill').forEach(function(bar) {
       bar.style.width = bar.getAttribute('data-pct') + '%';
@@ -1324,7 +1095,7 @@ var _BUDGET_ITEMS = [
   }, 200);
 })();
 
-// ── UK Space Companies ────────────────────────────────────────────────────────
+// ── UK Space Companies ─────────────────────────────────────────────────────────
 var _UK_COMPANIES = [
   {name:"Surrey Satellite Technology (SSTL)", loc:"Guildford, Surrey", sector:"satellites",   badge:"#38bdf8", desc:"World leader in small satellite manufacturing — 70+ satellites built since 1985. Part of Airbus group. Employs 700+ in Surrey."},
   {name:"Airbus Defence & Space",             loc:"Stevenage, Herts",  sector:"satellites",   badge:"#38bdf8", desc:"Europe's largest space manufacturer in the UK. Builds telecom, Earth observation and science satellites employing 3,000+."},
@@ -1344,7 +1115,6 @@ var _UK_COMPANIES = [
   {name:"D-Orbit UK",                         loc:"Oxford",            sector:"innovation",   badge:"#a78bfa", desc:"Satellite transportation, in-orbit servicing and hosted payload missions for the growing new-space market."},
   {name:"Goonhilly Earth Station",            loc:"Cornwall",          sector:"broadband",    badge:"#818cf8", desc:"Deep space communications facility. Tracking Moon and Mars missions, and operating as a commercial ground station."},
 ];
-
 var _coFilter = 'all';
 
 function _renderCompanies() {
@@ -1365,17 +1135,11 @@ function _renderCompanies() {
   });
   el.innerHTML = html;
 }
-
 (function() {
   var filters = [
-    {key:'all',       label:'All'},
-    {key:'satellites',label:'Satellites'},
-    {key:'launch',    label:'Launch'},
-    {key:'broadband', label:'Broadband'},
-    {key:'propulsion',label:'Propulsion'},
-    {key:'data',      label:'Data'},
-    {key:'innovation',label:'Innovation'},
-    {key:'defence',   label:'Defence'},
+    {key:'all',label:'All'},{key:'satellites',label:'Satellites'},{key:'launch',label:'Launch'},
+    {key:'broadband',label:'Broadband'},{key:'propulsion',label:'Propulsion'},
+    {key:'data',label:'Data'},{key:'innovation',label:'Innovation'},{key:'defence',label:'Defence'},
   ];
   var fEl = document.getElementById('co-filters');
   var html = '';
@@ -1385,7 +1149,6 @@ function _renderCompanies() {
   fEl.innerHTML = html;
   _renderCompanies();
 })();
-
 function _coTab(key) {
   _coFilter = key;
   document.querySelectorAll('.company-filter-btn').forEach(function(b){
@@ -1394,14 +1157,11 @@ function _coTab(key) {
   _renderCompanies();
 }
 
-// ── Planet Distances ──────────────────────────────────────────────────────────
+// ── Planet Distances ───────────────────────────────────────────────────────────
 var _PLANET_EMOJI = {Mercury:'☿',Venus:'♀',Mars:'♂',Jupiter:'♃',Saturn:'♄',Uranus:'⛢',Neptune:'♆'};
-
 function _renderPlanets(d) {
   var el = document.getElementById('planets-card');
-  if (!d || d.error || !d.planets || !d.planets.length) {
-    el.innerHTML = '<div class="error">Could not compute positions</div>'; return;
-  }
+  if (!d || d.error || !d.planets || !d.planets.length) { el.innerHTML = '<div class="error">Could not compute positions</div>'; return; }
   var html = '<div style="display:flex;flex-direction:column;gap:0">';
   d.planets.forEach(function(p) {
     var bar = Math.min(100, Math.round(p.dist_au / 32 * 100));
@@ -1417,9 +1177,7 @@ function _renderPlanets(d) {
           '<div style="background:var(--surface2);border-radius:4px;height:5px;overflow:hidden;margin-bottom:5px">'+
             '<div style="height:5px;width:'+bar+'%;background:var(--accent);border-radius:4px;transition:width .6s ease"></div>'+
           '</div>'+
-          '<div style="font-size:11px;color:var(--subtle)">'+
-            'Light takes '+p.light_min.toFixed(1)+' min to reach it &nbsp;·&nbsp; '+_esc(p.fact)+
-          '</div>'+
+          '<div style="font-size:11px;color:var(--subtle)">Light takes '+p.light_min.toFixed(1)+' min · '+_esc(p.fact)+'</div>'+
         '</div>'+
       '</div>';
   });
@@ -1427,7 +1185,6 @@ function _renderPlanets(d) {
   var ts = d.ts ? '<div style="font-size:10px;color:var(--subtle);margin-top:8px;text-align:right">Computed '+new Date(d.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' UTC</div>' : '';
   el.innerHTML = html + ts;
 }
-
 var _planetsLoaded = false;
 function _loadPlanets() {
   if (_planetsLoaded) return;
@@ -1437,7 +1194,7 @@ function _loadPlanets() {
   });
 }
 
-// ── Artemis Photos ────────────────────────────────────────────────────────────
+// ── Artemis Photos ─────────────────────────────────────────────────────────────
 function _renderArtemis(d) {
   var el = document.getElementById('artemis-photos');
   if (!el) return;
@@ -1447,16 +1204,12 @@ function _renderArtemis(d) {
   photos.forEach(function(p) {
     html +=
       '<a href="'+_esc(p.thumb)+'" target="_blank" rel="noopener" style="display:block;border-radius:8px;overflow:hidden;background:var(--surface2);text-decoration:none">'+
-        '<img src="'+_esc(p.thumb)+'" alt="'+_esc(p.title)+'" loading="lazy" '+
-          'style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">'+
-        '<div style="padding:5px 7px;font-size:10px;color:var(--muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
-          _esc(p.title)+
-        '</div>'+
+        '<img src="'+_esc(p.thumb)+'" alt="'+_esc(p.title)+'" loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">'+
+        '<div style="padding:5px 7px;font-size:10px;color:var(--muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(p.title)+'</div>'+
       '</a>';
   });
   el.innerHTML = html;
 }
-
 var _artemisLoaded = false;
 function _loadArtemis() {
   if (_artemisLoaded) return;
@@ -1464,17 +1217,16 @@ function _loadArtemis() {
   fetch('/api/space/artemis').then(function(r){return r.json();}).then(_renderArtemis).catch(function(){});
 }
 
-// ── AI in Space Companies ─────────────────────────────────────────────────────
+// ── AI in Space ────────────────────────────────────────────────────────────────
 var _AI_SPACE_COS = [
-  {name:"SEN",                            loc:"London",                   what:"Streams live 4K Earth footage from the ISS; AI models identify ships, weather systems and land-use changes in real time."},
-  {name:"Spire Global",                   loc:"Glasgow",                  what:"110+ nanosatellites feeding ML pipelines that predict weather, track maritime vessels, detect aircraft and analyse RF spectrum."},
-  {name:"Astroscale UK",                  loc:"Harwell",                  what:"Computer vision and autonomous rendezvous guidance for debris capture and satellite life-extension — no human hand-holding needed."},
-  {name:"Open Cosmos",                    loc:"Harwell",                  what:"AI mission planning and automated satellite operations that cut ground-ops costs by up to 10×."},
-  {name:"Satellite Applications Catapult",loc:"Harwell",                  what:"Applies AI to satellite Earth observation data for precision agriculture, flood mapping, urban planning and disaster response."},
-  {name:"Airbus / SSTL",                  loc:"Stevenage / Guildford",    what:"Onboard AI image processing for next-gen observation satellites — compresses, classifies and prioritises imagery before downlink."},
-  {name:"D-Orbit UK",                     loc:"Oxford",                   what:"AI-driven orbital insertion and in-orbit operations for hosted payloads, enabling smart multi-satellite deployments."},
+  {name:"SEN",                            loc:"London",               what:"Streams live 4K Earth footage from the ISS; AI models identify ships, weather systems and land-use changes in real time."},
+  {name:"Spire Global",                   loc:"Glasgow",              what:"110+ nanosatellites feeding ML pipelines that predict weather, track maritime vessels, detect aircraft and analyse RF spectrum."},
+  {name:"Astroscale UK",                  loc:"Harwell",              what:"Computer vision and autonomous rendezvous guidance for debris capture and satellite life-extension."},
+  {name:"Open Cosmos",                    loc:"Harwell",              what:"AI mission planning and automated satellite operations that cut ground-ops costs by up to 10×."},
+  {name:"Satellite Applications Catapult",loc:"Harwell",              what:"Applies AI to satellite Earth observation data for precision agriculture, flood mapping and disaster response."},
+  {name:"Airbus / SSTL",                  loc:"Stevenage / Guildford",what:"Onboard AI image processing for next-gen observation satellites — classifies and prioritises imagery before downlink."},
+  {name:"D-Orbit UK",                     loc:"Oxford",               what:"AI-driven orbital insertion and in-orbit operations for hosted payloads, enabling smart multi-satellite deployments."},
 ];
-
 (function() {
   var el = document.getElementById('ai-space-list');
   if (!el) return;
@@ -1484,8 +1236,7 @@ var _AI_SPACE_COS = [
     html +=
       '<div style="padding:10px 0;'+bdr+'">'+
         '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">'+
-          _esc(c.name)+
-          '<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:8px">📍 '+_esc(c.loc)+'</span>'+
+          _esc(c.name)+'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:8px">📍 '+_esc(c.loc)+'</span>'+
         '</div>'+
         '<div style="font-size:12px;color:var(--muted);line-height:1.5">'+_esc(c.what)+'</div>'+
       '</div>';
@@ -1493,16 +1244,15 @@ var _AI_SPACE_COS = [
   el.innerHTML = html;
 })();
 
-// ── UK Careers ────────────────────────────────────────────────────────────────
+// ── UK Careers ─────────────────────────────────────────────────────────────────
 var _CAREERS = [
-  {icon:"🎓", step:"Study the right subjects",   body:"Physics, maths, engineering, and computer science are core. But business, law, policy and geography all have strong space applications. No single route is required."},
-  {icon:"🔭", step:"Get involved early",          body:"UK Space Design Competition, British Astronomy & Astrophysics Olympiad (BAAO), or a local astronomy club. Doing counts more than knowing — start before university."},
-  {icon:"🏢", step:"Target your first employer",  body:"SSTL (Guildford), Orbex (Scotland), Airbus (Stevenage), Open Cosmos and the Satellite Applications Catapult all run graduate and placement programmes."},
+  {icon:"🎓", step:"Study the right subjects",   body:"Physics, maths, engineering, and computer science are core. But business, law, policy and geography all have strong space applications."},
+  {icon:"🔭", step:"Get involved early",          body:"UK Space Design Competition, British Astronomy & Astrophysics Olympiad (BAAO), or a local astronomy club. Doing counts more than knowing."},
+  {icon:"🏢", step:"Target your first employer",  body:"SSTL (Guildford), Orbex (Scotland), Airbus (Stevenage), Open Cosmos and the Satellite Applications Catapult all run graduate programmes."},
   {icon:"🌐", step:"Use the right portals",        body:"jobs.ukspace.org (UKSA), Space Talent, LinkedIn filtered to 'space + UK'. ESA has UK-facing graduate traineeship programmes too."},
-  {icon:"📡", step:"Build with what you have",    body:"Universities hold CubeSat records. Raspberry Pi and ground-software skills translate directly. Open-source GitHub contributions to space tools are visible to hiring managers."},
+  {icon:"📡", step:"Build with what you have",    body:"Universities hold CubeSat records. Raspberry Pi and ground-software skills translate directly. Open-source space tools are visible to hiring managers."},
   {icon:"🤝", step:"Network",                     body:"UK Space Conference (annual), NewSpace People events, UKSEDS (students & grads). The industry is smaller than it looks — people remember faces."},
 ];
-
 (function() {
   var el = document.getElementById('careers-list');
   if (!el) return;
@@ -1521,42 +1271,25 @@ var _CAREERS = [
   el.innerHTML = html;
 })();
 
-// ── Space 101 Jargon ─────────────────────────────────────────────────────────
+// ── Space 101 Jargon ───────────────────────────────────────────────────────────
 var _JARGON = [
-  {icon:"🌍", tag:"orbit", term:"LEO — Low Earth Orbit",
-   def:"The region of space from about 160 km to 2,000 km above Earth. The ISS orbits here at ~408 km. Most satellites — including Starlink and Spire — operate in LEO because it's cheap to reach and has low signal delay."},
-  {icon:"📡", tag:"orbit", term:"GEO — Geostationary Orbit",
-   def:"At exactly 35,786 km altitude, a satellite orbits at the same speed the Earth rotates — so it appears fixed above one spot on the ground. That's where your Sky TV dish points. Most comms satellites live here."},
-  {icon:"🚀", tag:"launch", term:"Launch Vehicle",
-   def:"The rocket. It's called a 'vehicle' because it transports something — the payload — to orbit. SpaceX's Falcon 9, Orbex Prime, and Ariane 6 are all launch vehicles."},
-  {icon:"📦", tag:"launch", term:"Payload",
-   def:"Whatever the rocket is carrying — a satellite, a telescope, cargo for the ISS, even a crewed capsule. It sits on top of the rocket. Once in orbit, the payload separates and the launch vehicle's job is done."},
-  {icon:"🔩", tag:"launch", term:"Rocket Stages",
-   def:"Rockets shed weight as they go. A first stage burns to get off the ground, then detaches. A second stage takes over in near-vacuum. SpaceX's party trick is landing the first stage back for reuse — dramatically cutting costs."},
-  {icon:"🛡️", tag:"launch", term:"Payload Fairing",
-   def:"The nose cone that covers the payload during ascent, protecting it from air and heat. Once in space it splits and falls away. SpaceX catches fairings in a net on a ship — they cost ~$6M each."},
-  {icon:"🪐", tag:"basics", term:"Orbital Period",
-   def:"How long one orbit takes. The ISS completes a full orbit every ~92 minutes. GPS satellites at medium orbit take ~12 hours. Geostationary satellites take exactly 24 hours — which is why they hover above the same spot."},
-  {icon:"📏", tag:"basics", term:"AU — Astronomical Unit",
-   def:"The average distance from Earth to the Sun: ~150 million km. Used to describe distances within our solar system. Mars is about 1.5 AU from the Sun. Neptune is 30 AU away. Proxima Centauri (nearest star) is 268,000 AU."},
-  {icon:"💡", tag:"basics", term:"Light Minute / Light Year",
-   def:"How far light travels in a minute or a year. Sunlight takes 8 minutes to reach Earth. A light year (~9.5 trillion km) is used for interstellar distances. The nearest star is 4.2 light years away."},
-  {icon:"📡", tag:"satellites", term:"CubeSat / Nanosatellite",
-   def:"Tiny standardised satellites (often 10×10×10 cm, about 1 kg). Cheap to build and launch. Dozens can hitch a ride on a single rocket. Spire's fleet of 110+ and SSTL's smaller missions use this form factor."},
-  {icon:"🌐", tag:"satellites", term:"Constellation",
-   def:"A large coordinated fleet of satellites working together. Starlink (5,000+ satellites) provides global broadband. OneWeb (650+ satellites) does the same. Together they're called 'mega-constellations'."},
-  {icon:"🔥", tag:"basics", term:"Reentry & Heat Shield",
-   def:"Coming back from space means hitting the atmosphere at ~7 km/s — fast enough to generate temperatures above 1,600°C. A heat shield (ablative coating or tiles) absorbs this energy. Without it, the spacecraft burns up."},
-  {icon:"🏛️", tag:"orgs", term:"ESA / NASA / UKSA — who are they?",
-   def:"NASA is the US space agency. ESA is the European Space Agency (22 member countries including the UK). UKSA is the UK Space Agency — it funds UK participation in ESA programmes and national missions. ESA is not part of the EU."},
-  {icon:"🪟", tag:"launch", term:"Launch Window",
-   def:"The brief period when conditions are right to launch — the right planetary alignment, orbital geometry, or weather. Miss it and you wait for the next one (could be hours, days or months depending on the mission)."},
-  {icon:"🌊", tag:"satellites", term:"Earth Observation (EO)",
-   def:"Using satellites to image and monitor the Earth's surface. Measures crop health, ocean temperature, deforestation, ice melt, flood extent and more. A huge commercial growth area — most UK space revenue comes from EO data services."},
-  {icon:"📍", tag:"orbit", term:"Lagrange Points",
-   def:"Five points in space where gravity from two bodies (e.g. Sun + Earth) perfectly balances centrifugal force, so objects 'hover' there with minimal fuel. The James Webb Space Telescope sits at Sun-Earth L2, about 1.5M km from Earth."},
+  {icon:"🌍", tag:"orbit",     term:"LEO — Low Earth Orbit",            def:"The region of space from about 160 km to 2,000 km above Earth. The ISS orbits here at ~408 km. Most satellites — including Starlink and Spire — operate in LEO because it's cheap to reach and has low signal delay."},
+  {icon:"📡", tag:"orbit",     term:"GEO — Geostationary Orbit",         def:"At exactly 35,786 km altitude, a satellite orbits at the same speed the Earth rotates — so it appears fixed above one spot on the ground. That's where your Sky TV dish points. Most comms satellites live here."},
+  {icon:"🚀", tag:"launch",    term:"Launch Vehicle",                    def:"The rocket. It's called a 'vehicle' because it transports something — the payload — to orbit. SpaceX's Falcon 9, Orbex Prime, and Ariane 6 are all launch vehicles."},
+  {icon:"📦", tag:"launch",    term:"Payload",                           def:"Whatever the rocket is carrying — a satellite, telescope, ISS cargo, or crewed capsule. Once in orbit, the payload separates and the launch vehicle's job is done."},
+  {icon:"🔩", tag:"launch",    term:"Rocket Stages",                     def:"Rockets shed weight as they go. A first stage burns to get off the ground, then detaches. SpaceX's party trick is landing the first stage back for reuse — dramatically cutting costs."},
+  {icon:"🛡️", tag:"launch",   term:"Payload Fairing",                   def:"The nose cone that covers the payload during ascent, protecting it from air and heat. Once in space it splits and falls away. SpaceX catches fairings in a net on a ship — they cost ~$6M each."},
+  {icon:"🪐", tag:"basics",    term:"Orbital Period",                    def:"How long one orbit takes. The ISS completes a full orbit every ~92 minutes. GPS satellites take ~12 hours. Geostationary satellites take exactly 24 hours — which is why they hover above the same spot."},
+  {icon:"📏", tag:"basics",    term:"AU — Astronomical Unit",            def:"The average distance from Earth to the Sun: ~150 million km. Mars is about 1.5 AU from the Sun. Neptune is 30 AU away. Proxima Centauri (nearest star) is 268,000 AU."},
+  {icon:"💡", tag:"basics",    term:"Light Minute / Light Year",         def:"How far light travels in a minute or a year. Sunlight takes 8 minutes to reach Earth. A light year (~9.5 trillion km) is used for interstellar distances. The nearest star is 4.2 light years away."},
+  {icon:"📡", tag:"satellites",term:"CubeSat / Nanosatellite",           def:"Tiny standardised satellites (often 10×10×10 cm, about 1 kg). Cheap to build and launch. Dozens can hitch a ride on a single rocket. Spire's fleet of 110+ uses this form factor."},
+  {icon:"🌐", tag:"satellites",term:"Constellation",                     def:"A large coordinated fleet of satellites working together. Starlink (5,000+ satellites) provides global broadband. OneWeb (650+ satellites) does the same."},
+  {icon:"🔥", tag:"basics",    term:"Reentry & Heat Shield",             def:"Coming back from space means hitting the atmosphere at ~7 km/s — fast enough to generate temperatures above 1,600°C. A heat shield absorbs this energy. Without it, the spacecraft burns up."},
+  {icon:"🏛️", tag:"orgs",     term:"ESA / NASA / UKSA — who are they?", def:"NASA is the US space agency. ESA is the European Space Agency (22 member countries including the UK). UKSA is the UK Space Agency. ESA is not part of the EU."},
+  {icon:"🪟", tag:"launch",    term:"Launch Window",                     def:"The brief period when conditions are right to launch. Miss it and you wait for the next one — could be hours, days or months depending on the mission."},
+  {icon:"🌊", tag:"satellites",term:"Earth Observation (EO)",            def:"Using satellites to image and monitor the Earth's surface. Measures crop health, ocean temperature, deforestation, ice melt, flood extent. A huge commercial growth area for UK space."},
+  {icon:"📍", tag:"orbit",     term:"Lagrange Points",                   def:"Five points where gravity from two bodies perfectly balances centrifugal force. The James Webb Space Telescope sits at Sun-Earth L2, about 1.5M km from Earth."},
 ];
-
 (function() {
   var el = document.getElementById('jargon-list');
   if (!el) return;
@@ -1567,10 +1300,7 @@ var _JARGON = [
         '<div class="jargon-q" onclick="_jargonToggle('+i+')">'+
           '<div class="jargon-q-left">'+
             '<span class="jargon-icon">'+j.icon+'</span>'+
-            '<span>'+
-              '<span class="jargon-tag">'+j.tag+'</span>'+
-              _esc(j.term)+
-            '</span>'+
+            '<span><span class="jargon-tag">'+j.tag+'</span>'+_esc(j.term)+'</span>'+
           '</div>'+
           '<span class="jargon-chevron">▼</span>'+
         '</div>'+
@@ -1579,13 +1309,12 @@ var _JARGON = [
   });
   el.innerHTML = html;
 })();
-
 function _jargonToggle(i) {
   var el = document.getElementById('jarg-'+i);
   if (el) el.classList.toggle('open');
 }
 
-// ── Util ─────────────────────────────────────────────────────────────────────
+// ── Util ───────────────────────────────────────────────────────────────────────
 function _esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
