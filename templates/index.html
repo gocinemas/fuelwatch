@@ -11301,7 +11301,7 @@ _bkBadge();
     const brandBtn = _saveCat(s) === "brand" && brandGuess
       ? `<button onclick="saveOpenBrandIntel('${brandGuess.replace(/'/g,"\\'")}')\" style=\"flex:1;padding:8px 6px;border-radius:10px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;cursor:pointer;color:#92400e\">🔍 Intel →</button>`
       : "";
-    const isAd = isPhoto || _saveCat(s) === "ad" || _saveCat(s) === "photo";
+    const isAd = isPhoto || _saveCat(s) === "ad" || _saveCat(s) === "photo" || (_saveCat(s) === "wine" && !!s.image_url);
     const adAiBtn = isAd
       ? `<button onclick="savesAdIntel('${s.id}',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #d1fae5;background:#ecfdf5;font-size:11px;font-weight:600;cursor:pointer;color:#065f46">🤖 AI</button>`
       : "";
@@ -11471,14 +11471,25 @@ _bkBadge();
 
       const propStr = [d.bedrooms ? d.bedrooms + " bed" : "", d.property_type].filter(Boolean).join(" ");
       const locStr  = [d.address, d.postcode || d.area].filter(Boolean).join(", ");
+      const noteDiv = d.notes ? `<div style="padding:7px 0 3px;font-size:12px;color:var(--muted);font-style:italic">${d.notes}</div>` : "";
 
-      const rows = [
-        row("🏢", "Agent", d.company),
-        row("🏠", "Property", propStr || null),
-        row("📍", "Location", locStr || null),
-        row("💷", "Price", d.price),
-        d.notes ? `<div style="padding:7px 0 3px;font-size:12px;color:var(--muted);font-style:italic">${d.notes}</div>` : "",
-      ].filter(Boolean).join("");
+      const rows = d.ad_type === "wine"
+        ? [
+            row("🍷", "Wine",     d.wine_name),
+            row("🏭", "Producer", d.company),
+            row("📅", "Vintage",  d.vintage),
+            row("🍇", "Grape",    d.grape),
+            row("🗺️", "Region",  d.region),
+            row("💷", "Price",    d.price),
+            noteDiv,
+          ].filter(Boolean).join("")
+        : [
+            row("🏢", "Agent",    d.company),
+            row("🏠", "Property", propStr || null),
+            row("📍", "Location", locStr  || null),
+            row("💷", "Price",    d.price),
+            noteDiv,
+          ].filter(Boolean).join("");
 
       const linksHtml = (d.links || []).map(l =>
         `<a href="${l.url}" target="_blank" rel="noopener"

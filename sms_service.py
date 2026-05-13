@@ -12147,16 +12147,21 @@ def api_wa_saves_ad_intel():
         return jsonify({"error": "no content to analyse"}), 400
 
     prompt = (
-        "Extract structured info from this saved ad, photo or property listing.\n"
+        "Extract structured info from this saved ad, photo or property listing. "
+        "If it is a wine photo/label, set ad_type to wine and fill the wine fields.\n"
         f"Title: {title}\nContent: {summary[:1200]}\n\n"
         "Reply with JSON only (no markdown):\n"
-        '{"company":"letting agent or company name, exactly as written in the ad","ad_type":"real_estate|car|product|job|other",'
-        '"website":"agent or company website domain if you know it e.g. breckensidgelettings.co.uk, else null",'
+        '{"company":"letting agent, winery/producer name, or company name exactly as written","ad_type":"real_estate|wine|car|product|job|other",'
+        '"website":"website domain if you can infer it e.g. breckensidgelettings.co.uk, else null",'
         '"postcode":"UK postcode if visible else null","area":"area or town name if no postcode",'
         '"address":"full street address if visible else null",'
-        '"price":"price with British pound symbol e.g. £2785 pcm or £450000, NOT ¢","bedrooms":null,'
+        '"price":"price with £ symbol e.g. £2785pcm or £450000 or £18.99, NOT ¢","bedrooms":null,'
         '"property_type":"house/flat/studio/commercial/land or null",'
-        '"notes":"one sentence: key facts about this listing"}'
+        '"wine_name":"name of the wine if visible else null",'
+        '"vintage":"year of the wine if visible else null",'
+        '"grape":"grape variety/varietal if visible else null",'
+        '"region":"wine region e.g. Burgundy, Rioja, Napa if visible else null",'
+        '"notes":"one sentence: key facts about this item"}'
     )
 
     import json as _json, re as _re
@@ -12167,15 +12172,19 @@ def api_wa_saves_ad_intel():
     except Exception as e:
         return jsonify({"error": f"AI failed: {e}"}), 500
 
-    ad_type  = result.get("ad_type", "other")
-    company  = (result.get("company") or "").strip()
-    website  = (result.get("website") or "").strip().lower().lstrip("https://").lstrip("http://").rstrip("/")
-    postcode = (result.get("postcode") or "").strip().upper()
-    area     = (result.get("area") or "").strip()
-    address  = (result.get("address") or "").strip()
-    notes    = (result.get("notes") or "").strip()
-    beds     = result.get("bedrooms")
-    prop_t   = result.get("property_type") or ""
+    ad_type   = result.get("ad_type", "other")
+    company   = (result.get("company")   or "").strip()
+    website   = (result.get("website")   or "").strip().lower().lstrip("https://").lstrip("http://").rstrip("/")
+    postcode  = (result.get("postcode")  or "").strip().upper()
+    area      = (result.get("area")      or "").strip()
+    address   = (result.get("address")   or "").strip()
+    notes     = (result.get("notes")     or "").strip()
+    beds      = result.get("bedrooms")
+    prop_t    = result.get("property_type") or ""
+    wine_name = (result.get("wine_name") or "").strip()
+    vintage   = (result.get("vintage")   or "").strip()
+    grape     = (result.get("grape")     or "").strip()
+    region    = (result.get("region")    or "").strip()
 
     # Fix currency: Groq sometimes returns ¢ instead of £
     raw_price = str(result.get("price") or "").strip()
@@ -12195,13 +12204,18 @@ def api_wa_saves_ad_intel():
             if website and "." in website:
                 links.append({"label": f"{company} website", "url": f"https://{website}"})
             else:
-                # Unquoted search — finds their own website at top of results for any agent
                 ws_q = _q(f"{company} {loc} lettings agent website")
                 links.append({"label": f"Find {company} website", "url": f"https://www.google.com/search?q={ws_q}"})
         if loc:
             pc_slug = loc.replace(" ", "%20")
             links.append({"label": "Rightmove", "url": f"https://www.rightmove.co.uk/property-to-rent/search.html?searchLocation={pc_slug}&useLocationIdentifier=true"})
             links.append({"label": "Zoopla", "url": f"https://www.zoopla.co.uk/to-rent/property/{loc.lower().replace(' ', '-')}/"})
+
+    elif ad_type == "wine":
+        vivino_q = _q(f"{wine_name} {company}".strip())
+        links.append({"label": "Search Vivino", "url": f"https://www.vivino.com/search/wines?q={vivino_q}"})
+        if company:
+            links.append({"label": f"Find {company}", "url": f"https://www.google.com/search?q={_q(company + ' winery wine')}"})
 
     elif ad_type == "car":
         links.append({"label": "AutoTrader", "url": f"https://www.autotrader.co.uk/car-search?search_term={_q(company or notes or title)}"})
@@ -12211,17 +12225,26 @@ def api_wa_saves_ad_intel():
         if company:
             links.append({"label": f"Find {company}", "url": f"https://www.google.com/search?q={_q(company + ' ' + loc)}"})
 
-    # Auto-save: update title to a clean one-liner, and update META location in summary
+    # Auto-save: update title, location in summary, and persist website to url field
     import json as _json, re as _re
     try:
-        parts = []
-        if company: parts.append(company)
-        if beds: parts.append(f"{beds} bed")
-        if prop_t: parts.append(prop_t)
-        if postcode: parts.append(postcode)
-        elif area: parts.append(area)
-        if price: parts.append(price)
-        new_title = " · ".join(str(p) for p in parts) if parts else (title or "")
+        if ad_type == "wine":
+            parts = []
+            if wine_name: parts.append(f"🍷 {wine_name}")
+            if company:   parts.append(company)
+            if vintage:   parts.append(vintage)
+            if grape:     parts.append(grape)
+            if price:     parts.append(price)
+            new_title = " · ".join(parts) if parts else (title or "")
+        else:
+            parts = []
+            if company: parts.append(company)
+            if beds:    parts.append(f"{beds} bed")
+            if prop_t:  parts.append(prop_t)
+            if postcode: parts.append(postcode)
+            elif area:   parts.append(area)
+            if price:    parts.append(price)
+            new_title = " · ".join(str(p) for p in parts) if parts else (title or "")
 
         loc_str = postcode or area
         old_summary = save.get("summary") or ""
@@ -12240,6 +12263,9 @@ def api_wa_saves_ad_intel():
         update_fields = {"summary": new_summary}
         if new_title and new_title != title:
             update_fields["title"] = new_title
+        # Persist the company website so the save card shows a direct link permanently
+        if website and "." in website and not (save.get("url") or "").startswith("http"):
+            update_fields["url"] = f"https://{website}"
         lib._sb().table("wa_saves").update(update_fields).eq("id", save_id).execute()
     except Exception:
         pass
@@ -12255,6 +12281,10 @@ def api_wa_saves_ad_intel():
         "price":         price,
         "bedrooms":      beds,
         "property_type": prop_t,
+        "wine_name":     wine_name,
+        "vintage":       vintage,
+        "grape":         grape,
+        "region":        region,
         "notes":         notes,
         "links":         links,
     })
