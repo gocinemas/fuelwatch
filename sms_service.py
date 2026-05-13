@@ -4281,7 +4281,7 @@ def api_intel_pin():
     kind = (body.get("type") or "").strip()
     if not name or kind not in ("brand", "company"):
         return jsonify({"error": "name and type required"}), 400
-    sb_key = f"brand:{name.lower()}|brandv26" if kind == "brand" else f"company:{name.lower()}|v17"
+    sb_key = f"brand:{name.lower()}|brandv28" if kind == "brand" else f"company:{name.lower()}|v17"
     try:
         sb = lib._sb()
         rows = sb.table("ai_cache").select("data").eq("key", sb_key).execute().data
@@ -4302,7 +4302,7 @@ def api_intel_unpin():
     kind = (body.get("type") or "").strip()
     if not name or kind not in ("brand", "company"):
         return jsonify({"error": "name and type required"}), 400
-    sb_key = f"brand:{name.lower()}|brandv26" if kind == "brand" else f"company:{name.lower()}|v17"
+    sb_key = f"brand:{name.lower()}|brandv28" if kind == "brand" else f"company:{name.lower()}|v17"
     try:
         sb = lib._sb()
         rows = sb.table("ai_cache").select("data").eq("key", sb_key).execute().data
@@ -12059,19 +12059,21 @@ def api_wa_saves_ad_intel():
         return jsonify({"error": "no content to analyse"}), 400
 
     prompt = (
-        "Extract structured info from this saved ad or photo.\n"
+        "Extract structured info from this saved ad, photo or property listing.\n"
         f"Title: {title}\nContent: {summary[:1200]}\n\n"
         "Reply with JSON only (no markdown):\n"
-        '{"company":"name of company/agent/brand","ad_type":"real_estate|car|product|job|other",'
+        '{"company":"letting agent or company name, exactly as written in the ad","ad_type":"real_estate|car|product|job|other",'
+        '"website":"agent or company website domain if you know it e.g. breckensidgelettings.co.uk, else null",'
         '"postcode":"UK postcode if visible else null","area":"area or town name if no postcode",'
-        '"price":"price string if found else null","bedrooms":null,'
-        '"property_type":"house/flat/commercial/land or null",'
-        '"search_query":"best Google search to find this listing or company website"}'
+        '"address":"full street address if visible else null",'
+        '"price":"price with British pound symbol e.g. £2785 pcm or £450000, NOT ¢","bedrooms":null,'
+        '"property_type":"house/flat/studio/commercial/land or null",'
+        '"notes":"one sentence: key facts about this listing"}'
     )
 
     import json as _json, re as _re
     try:
-        raw = _groq_chat("You are a data extraction assistant. Reply with JSON only.", [{"role": "user", "content": prompt}], max_tokens=350, json_mode=True)
+        raw = _groq_chat("You are a data extraction assistant. Reply with JSON only.", [{"role": "user", "content": prompt}], max_tokens=400, json_mode=True)
         raw = _re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
         result = _json.loads(raw)
     except Exception as e:
@@ -12079,106 +12081,93 @@ def api_wa_saves_ad_intel():
 
     ad_type  = result.get("ad_type", "other")
     company  = (result.get("company") or "").strip()
+    website  = (result.get("website") or "").strip().lower().lstrip("https://").lstrip("http://").rstrip("/")
     postcode = (result.get("postcode") or "").strip().upper()
-    area     = (result.get("area") or postcode or "").strip()
-    price    = result.get("price")
+    area     = (result.get("area") or "").strip()
+    address  = (result.get("address") or "").strip()
+    notes    = (result.get("notes") or "").strip()
     beds     = result.get("bedrooms")
-    prop_t   = result.get("property_type")
-    search_q = (result.get("search_query") or company or title).strip()
+    prop_t   = result.get("property_type") or ""
 
-    def _q(s): return s.replace(" ", "+").replace('"', "%22")
+    # Fix currency: Groq sometimes returns ¢ instead of £
+    raw_price = str(result.get("price") or "").strip()
+    for bad_cur in ["¢", "$", "€"]:  # ¢, $, €
+        raw_price = raw_price.replace(bad_cur, "£")  # £
+    if raw_price and raw_price[0].isdigit():
+        raw_price = "£" + raw_price
+    price = raw_price or None
 
-    # Build relevant links
+    def _q(s): return str(s).replace(" ", "+").replace('"', "%22")
+
+    loc = postcode or area
     links = []
-    if ad_type == "real_estate":
-        loc = postcode or area
-        ad_type_str = "to let" if (prop_t and "let" in prop_t.lower()) else "for sale"
 
-        # If agent/company is known, build a targeted listing search first
-        if company and loc:
-            bed_str = f"{beds} bedroom " if beds else ""
-            # Primary: Google search for agent's OWN website — works for any agent, local or national
-            own_site_q = _q(f'"{company}" {bed_str}{ad_type_str} {loc}')
-            links.append({
-                "label": f"Search {company}",
-                "url": f"https://www.google.com/search?q={own_site_q}"
-            })
-            # Secondary: portal site-scoped searches
-            parts = [f'"{company}"', f'"{loc}"']
-            if beds: parts.append(f'"{beds} bed"')
-            rm_q = "+".join(_q(p) for p in parts)
-            links.append({
-                "label": f"Rightmove: {company}",
-                "url": f"https://www.google.com/search?q=site%3Arightmove.co.uk+{rm_q}"
-            })
-            links.append({
-                "label": f"Zoopla: {company}",
-                "url": f"https://www.google.com/search?q=site%3Azoopla.co.uk+{rm_q}"
-            })
-            # Direct link for well-known UK estate agents
-            _AGENT_SITES = {
-                "knight frank": "knightfrank.co.uk/properties/for-sale",
-                "savills": "search.savills.com/property-for-sale",
-                "hamptons": "hamptons.co.uk/property/for-sale",
-                "foxtons": "foxtons.co.uk/sales",
-                "purplebricks": "purplebricks.co.uk/search",
-                "strutt & parker": "struttandparker.com/property-for-sale",
-                "jll": "jll.co.uk/en/listings/residential/residential-for-sale",
-                "colliers": "colliers.com/en-gb/properties/for-sale",
-                "cbre": "cbre.co.uk/properties/for-lease-for-sale",
-            }
-            agent_key = company.lower().strip()
-            agent_site = next((v for k, v in _AGENT_SITES.items() if k in agent_key or agent_key in k), None)
-            if agent_site:
-                links.append({"label": f"{company} website", "url": f"https://{agent_site}"})
-        elif loc:
-            # No agent name — fall back to portal postcode search
+    if ad_type == "real_estate":
+        if company:
+            if website and "." in website:
+                links.append({"label": f"{company} website", "url": f"https://{website}"})
+            else:
+                # Unquoted search — finds their own website at top of results for any agent
+                ws_q = _q(f"{company} {loc} lettings agent website")
+                links.append({"label": f"Find {company} website", "url": f"https://www.google.com/search?q={ws_q}"})
+        if loc:
             pc_slug = loc.replace(" ", "%20")
-            links.append({"label": "Rightmove", "url": f"https://www.rightmove.co.uk/property-for-sale/search.html?searchLocation={pc_slug}&useLocationIdentifier=true"})
-            links.append({"label": "Zoopla",    "url": f"https://www.zoopla.co.uk/for-sale/property/{loc.lower().replace(' ','-')}/"})
-            links.append({"label": "OnTheMarket","url": f"https://www.onthemarket.com/for-sale/property/{loc.lower().replace(' ','-')}/"})
+            links.append({"label": "Rightmove", "url": f"https://www.rightmove.co.uk/property-to-rent/search.html?searchLocation={pc_slug}&useLocationIdentifier=true"})
+            links.append({"label": "Zoopla", "url": f"https://www.zoopla.co.uk/to-rent/property/{loc.lower().replace(' ', '-')}/"})
 
     elif ad_type == "car":
-        links.append({"label": "AutoTrader", "url": f"https://www.autotrader.co.uk/car-search?search_term={_q(search_q)}"})
-        links.append({"label": "Google search", "url": f"https://www.google.com/search?q={_q(search_q)}+for+sale"})
+        links.append({"label": "AutoTrader", "url": f"https://www.autotrader.co.uk/car-search?search_term={_q(company or notes or title)}"})
     elif ad_type == "job":
-        links.append({"label": "Indeed",  "url": f"https://uk.indeed.com/jobs?q={_q(search_q)}"})
-        links.append({"label": "LinkedIn","url": f"https://www.linkedin.com/jobs/search/?keywords={_q(search_q)}"})
+        links.append({"label": "Indeed", "url": f"https://uk.indeed.com/jobs?q={_q(company or title)}"})
+    else:
+        if company:
+            links.append({"label": f"Find {company}", "url": f"https://www.google.com/search?q={_q(company + ' ' + loc)}"})
 
-    if ad_type not in ("real_estate",) and search_q:
-        links.append({"label": f"Google: {company or 'listing'}", "url": f"https://www.google.com/search?q={_q(search_q)}"})
-    elif ad_type == "real_estate" and not company and not (postcode or area):
-        # Nothing useful extracted — provide a plain Google search
-        links.append({"label": "Google search", "url": f"https://www.google.com/search?q={_q(search_q)}"})
+    # Auto-save: update title to a clean one-liner, and update META location in summary
+    import json as _json, re as _re
+    try:
+        parts = []
+        if company: parts.append(company)
+        if beds: parts.append(f"{beds} bed")
+        if prop_t: parts.append(prop_t)
+        if postcode: parts.append(postcode)
+        elif area: parts.append(area)
+        if price: parts.append(price)
+        new_title = " · ".join(str(p) for p in parts) if parts else (title or "")
 
-    # Update postcode/area in the save's META location (background, best-effort)
-    if postcode or area:
-        try:
-            loc_str = postcode or area
-            old_summary = save.get("summary") or ""
+        loc_str = postcode or area
+        old_summary = save.get("summary") or ""
+        if loc_str:
             if _re.search(r"📍[^\n]*", old_summary):
                 new_summary = _re.sub(r"📍[^\n]*", f"📍 {loc_str}", old_summary, count=1)
             elif old_summary.startswith("META:"):
                 nl = old_summary.find("\n")
-                if nl == -1:
-                    new_summary = old_summary + f" · 📍 {loc_str}"
-                else:
-                    new_summary = old_summary[:nl] + f" · 📍 {loc_str}" + old_summary[nl:]
+                insert = f" · 📍 {loc_str}"
+                new_summary = (old_summary[:nl] + insert + old_summary[nl:]) if nl != -1 else (old_summary + insert)
             else:
                 new_summary = f"META: 📍 {loc_str}\n" + old_summary
-            lib._sb().table("wa_saves").update({"summary": new_summary}).eq("id", save_id).execute()
-        except Exception:
-            pass  # location update is best-effort
+        else:
+            new_summary = old_summary
+
+        update_fields = {"summary": new_summary}
+        if new_title and new_title != title:
+            update_fields["title"] = new_title
+        lib._sb().table("wa_saves").update(update_fields).eq("id", save_id).execute()
+    except Exception:
+        pass
 
     return jsonify({
         "ok":            True,
         "company":       company,
+        "website":       website,
         "ad_type":       ad_type,
         "postcode":      postcode,
         "area":          area,
+        "address":       address,
         "price":         price,
         "bedrooms":      beds,
         "property_type": prop_t,
+        "notes":         notes,
         "links":         links,
     })
 

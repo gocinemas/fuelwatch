@@ -759,16 +759,34 @@ def _is_valid_canonical(s: str) -> bool:
 
 
 def _fetch_brand_ai(brand: str, extract: str) -> dict:
-    """Ask Groq for timeline, campaigns, competitors, and key facts for a brand."""
+    """Ask Groq for brand story, tagline, timeline, campaigns (last 5 years), and competitors."""
     import json
     groq_key = os.environ.get("GROQ_API_KEY", "")
     if not groq_key:
         return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
-    # extract doubles as the original user query for context (e.g. "Lynx deodorant")
-    context_hint = f' (the user searched for: "{extract}")' if extract and extract.lower() != brand.lower() else ""
-    prompt = f"""Return ONLY valid JSON for brand "{brand}"{context_hint}. No markdown, no explanation, no preamble.
-{{"did_you_know":"one striking fact about {brand} — specific number or surprising detail, 1 sentence","slogan":"brand's most famous tagline or current slogan","facts":{{"founded":"year","hq":"city, country","industry":"sector","employees":"number","revenue":"amount"}},"competitors":[{{"name":"","revenue":"","description":""}}],"campaigns":[{{"name":"","year":"","slogan":"","description":""}}],"timeline":[{{"year":"","title":"","description":""}}]}}
-Strict rules: competitors = exactly 4 real competitors each with real revenue. campaigns = exactly 6 famous advertising campaigns or brand slogans (include the famous tagline if any). timeline = exactly 8 key milestones oldest first, each description under 25 words. All fields must be populated. Return ONLY the JSON object."""
+    context_hint = f' (user searched: "{extract}")' if extract and extract.lower() != brand.lower() else ""
+    current_year = 2025
+    prompt = (
+        f'Brand: "{brand}"{context_hint}\n'
+        'Return ONLY this JSON, no markdown, no explanation:\n'
+        '{\n'
+        f'  "slogan": "most famous or current tagline of {brand}",\n'
+        f'  "did_you_know": "one surprising specific fact about {brand} — a real number or unusual detail, 1 sentence",\n'
+        '  "facts": {"founded": "year", "hq": "city, country", "industry": "sector", "employees": "number"},\n'
+        '  "timeline": [\n'
+        '    {"year": "YYYY", "title": "event name", "description": "under 20 words"}\n'
+        '  ],\n'
+        '  "campaigns": [\n'
+        '    {"name": "campaign name", "year": "YYYY", "slogan": "tagline if any", "description": "under 20 words"}\n'
+        '  ],\n'
+        '  "competitors": [\n'
+        '    {"name": "brand name", "description": "one line why they compete"}\n'
+        '  ]\n'
+        '}\n'
+        f'Rules: timeline = 6 key milestones oldest-first. '
+        f'campaigns = 5 campaigns from the last 5 years (2020-{current_year}), most impactful first — if fewer than 5 exist fill with older iconic ones. '
+        'competitors = 4 direct brand competitors. All strings under 25 words. Return ONLY the JSON.'
+    )
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -776,16 +794,16 @@ Strict rules: competitors = exactly 4 real competitors each with real revenue. c
             json={
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.2,
-                "max_tokens": 4096,
+                "temperature": 0.15,
+                "max_tokens": 1600,
             },
-            timeout=35,
+            timeout=28,
         )
         if r.status_code != 200:
             print(f"[brand_ai] HTTP {r.status_code}: {r.text[:200]}")
             return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
         content = r.json()["choices"][0]["message"]["content"].strip()
-        print(f"[brand_ai] raw ({len(content)} chars): {content[:300]}")
+        print(f"[brand_ai] raw ({len(content)} chars): {content[:200]}")
         m = _re.search(r'\{.*\}', content, _re.DOTALL)
         if m:
             try:
@@ -1045,7 +1063,7 @@ def fetch_brand_data(brand: str) -> dict:
         except Exception:
             pass
 
-    cache_key = brand.strip().lower() + "|brandv27"
+    cache_key = brand.strip().lower() + "|brandv28"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
@@ -1182,6 +1200,7 @@ def fetch_brand_data(brand: str) -> dict:
             "wiki_url":     wiki.get("wiki_url", ""),
             "domain":       wiki.get("domain", ""),
             "thumbnail":    wiki.get("thumbnail", ""),
+            "slogan":       ai.get("slogan", ""),
             "did_you_know": ai.get("did_you_know", ""),
             "timeline":     ai.get("timeline", []),
             "campaigns":    ai.get("campaigns", []),
