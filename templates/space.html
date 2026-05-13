@@ -373,6 +373,29 @@
   footer { font-size: 11px; color: var(--subtle); padding-top: 20px; border-top: 1px solid var(--border); margin-top: 40px; }
   footer a { color: var(--muted); text-decoration: none; }
 
+  /* ── Tab header (unique per section) ────────────────────────────────── */
+  .tab-header {
+    display: flex; align-items: center; gap: 18px;
+    margin-bottom: 28px; padding-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-header-icon {
+    width: 60px; height: 60px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; flex-shrink: 0;
+  }
+  .tab-header-title {
+    font-size: 24px; font-weight: 900; letter-spacing: -0.8px;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; line-height: 1.15; margin-bottom: 4px;
+  }
+  .tab-header-sub { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  @media (max-width: 480px) {
+    .tab-header { gap: 12px; margin-bottom: 20px; }
+    .tab-header-icon { width: 48px; height: 48px; font-size: 22px; border-radius: 14px; }
+    .tab-header-title { font-size: 20px; }
+  }
+
   /* ── World powers grid ───────────────────────────────────────────────── */
   .powers-grid {
     display: grid;
@@ -391,9 +414,12 @@
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid var(--gborder);
     z-index: 200;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .mobile-tab-bar::-webkit-scrollbar { display: none; }
   .mobile-tab-btn {
-    flex: 1; padding: 10px 4px 16px;
+    flex-shrink: 0; min-width: 68px; padding: 10px 8px 16px;
     border: none; background: transparent;
     color: var(--muted); font-size: 10px; font-weight: 700;
     cursor: pointer; font-family: inherit;
@@ -435,17 +461,33 @@
     <div class="sidebar-divider"></div>
 
     <nav class="sidebar-nav">
-      <button class="sidebar-btn active" data-tab="now"      onclick="_showTab('now')">
+      <button class="sidebar-btn active" data-tab="now"         onclick="_showTab('now')">
         <span class="sb-icon">🔴</span>
         <div><div class="sb-label">Now</div><div class="sb-desc">ISS live · Launches · Tonight's sky</div></div>
       </button>
-      <button class="sidebar-btn"        data-tab="nations"  onclick="_showTab('nations')">
-        <span class="sb-icon">🌍</span>
-        <div><div class="sb-label">Nations</div><div class="sb-desc">UK industry · World powers</div></div>
+      <button class="sidebar-btn"        data-tab="uk-industry" onclick="_showTab('uk-industry')">
+        <span class="sb-icon">🇬🇧</span>
+        <div><div class="sb-label">UK Industry</div><div class="sb-desc">Companies · Space hubs · Map</div></div>
       </button>
-      <button class="sidebar-btn"        data-tab="universe" onclick="_showTab('universe')">
+      <button class="sidebar-btn"        data-tab="budgets"     onclick="_showTab('budgets')">
+        <span class="sb-icon">💰</span>
+        <div><div class="sb-label">Budgets &amp; Nations</div><div class="sb-desc">UK spend · World powers</div></div>
+      </button>
+      <button class="sidebar-btn"        data-tab="careers"     onclick="_showTab('careers')">
+        <span class="sb-icon">🎓</span>
+        <div><div class="sb-label">Get Into Space</div><div class="sb-desc">Careers · Pathways · Jobs</div></div>
+      </button>
+      <button class="sidebar-btn"        data-tab="universe"    onclick="_showTab('universe')">
         <span class="sb-icon">🔭</span>
-        <div><div class="sb-label">Universe</div><div class="sb-desc">Solar system · Artemis · Jargon</div></div>
+        <div><div class="sb-label">Universe</div><div class="sb-desc">Solar system · Artemis · APOD</div></div>
+      </button>
+      <button class="sidebar-btn"        data-tab="ai"          onclick="_showTab('ai')">
+        <span class="sb-icon">🤖</span>
+        <div><div class="sb-label">AI &amp; Space</div><div class="sb-desc">Use cases · UK AI companies</div></div>
+      </button>
+      <button class="sidebar-btn"        data-tab="jargon"      onclick="_showTab('jargon')">
+        <span class="sb-icon">📖</span>
+        <div><div class="sb-label">Jargon Buster</div><div class="sb-desc">Space 101 · Plain English</div></div>
       </button>
     </nav>
 
@@ -493,6 +535,13 @@
 
     <!-- ── Tab: Now ─────────────────────────────────────────────────────────── -->
     <div class="tab-panel active" id="tab-now">
+      <div class="tab-header">
+        <div class="tab-header-icon" style="background:linear-gradient(135deg,#0f172a,#1e3a5f)">🔴</div>
+        <div>
+          <div class="tab-header-title" style="background:linear-gradient(135deg,#93c5fd,#818cf8)">Right Now</div>
+          <div class="tab-header-sub">Earth live from orbit · ISS live position · Upcoming launches · Tonight's stargazing</div>
+        </div>
+      </div>
 
       <!-- Live bento: SEN + ISS + Sky -->
       <div class="section-label"><span class="live-dot"></span>Earth Live — SEN Camera &amp; ISS Tracker</div>
@@ -579,8 +628,15 @@
 
     </div><!-- /tab-now -->
 
-    <!-- ── Tab: Nations ──────────────────────────────────────────────────── -->
-    <div class="tab-panel" id="tab-nations">
+    <!-- ── Tab: UK Industry ──────────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-uk-industry">
+      <div class="tab-header">
+        <div class="tab-header-icon" style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8)">🇬🇧</div>
+        <div>
+          <div class="tab-header-title" style="background:linear-gradient(135deg,#60a5fa,#38bdf8)">UK Space Industry</div>
+          <div class="tab-header-sub">17 companies · 48,800 jobs · 1,200+ organisations · spaceports opening across Scotland</div>
+        </div>
+      </div>
 
       <div class="uk-bento">
 
@@ -591,57 +647,73 @@
           <div class="card" id="companies-card"><div class="loading">Loading…</div></div>
         </div>
 
-        <!-- Right: map + budget + careers -->
-        <div style="display:flex;flex-direction:column;gap:20px">
-
-          <div>
-            <div class="section-label">UK Space Hubs</div>
-            <div class="card" style="padding:14px">
-              <div style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.5">
-                <strong style="color:var(--text)">48,800 people</strong> across <strong style="color:var(--text)">1,200+ organisations</strong> clustered around key sites.
-              </div>
-              <div id="uk-hubs-map"></div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
-                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#818cf8;display:inline-block"></span>Cluster</span>
-                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Launch site</span>
-                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#34d399;display:inline-block"></span>Company</span>
-                <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fb923c;display:inline-block"></span>Research</span>
-              </div>
+        <!-- Right: map -->
+        <div>
+          <div class="section-label">UK Space Hubs</div>
+          <div class="card" style="padding:14px">
+            <div style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.5">
+              <strong style="color:var(--text)">48,800 people</strong> across <strong style="color:var(--text)">1,200+ organisations</strong> clustered around key sites.
+            </div>
+            <div id="uk-hubs-map"></div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+              <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#818cf8;display:inline-block"></span>Cluster</span>
+              <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Launch site</span>
+              <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#34d399;display:inline-block"></span>Company</span>
+              <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fb923c;display:inline-block"></span>Research</span>
             </div>
           </div>
+        </div>
 
-          <div>
-            <div class="section-label">UK Space Budget</div>
-            <div class="card">
-              <div class="budget-total">
-                <div class="budget-total-val">£702M</div>
-                <div class="budget-total-label">Total UK space spending · 2023/24</div>
-              </div>
-              <div id="budget-bars"></div>
-              <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£330M</span>ESA membership &amp; programmes</div>
-                <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£372M</span>National (UKSA direct)</div>
-              </div>
-              <div style="margin-top:10px;font-size:11px;color:var(--subtle)">Source: UK Space Agency · 2024 Size &amp; Health report</div>
-            </div>
-          </div>
+      </div>
+    </div><!-- /tab-uk-industry -->
 
-          <div>
-            <div class="section-label">Get Into UK Space</div>
-            <div class="card">
-              <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">How to start a career in space</div>
-              <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
-                The industry needs engineers, data analysts, developers, lawyers and policy specialists — not just rocket scientists.
-              </div>
-              <div style="display:flex;flex-direction:column;gap:0" id="careers-list"></div>
-            </div>
-          </div>
-
+    <!-- ── Tab: Budgets & Nations ────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-budgets">
+      <div class="tab-header">
+        <div class="tab-header-icon" style="background:linear-gradient(135deg,#4c1d95,#6d28d9)">💰</div>
+        <div>
+          <div class="tab-header-title" style="background:linear-gradient(135deg,#c4b5fd,#818cf8)">Budgets &amp; Nations</div>
+          <div class="tab-header-sub">How the UK's £702M investment compares to the world's space superpowers</div>
         </div>
       </div>
 
-      <!-- Full-width world powers section -->
-      <div class="section-gap" style="margin-top:28px"></div>
+      <div class="bento-2" style="margin-bottom:28px">
+        <div>
+          <div class="section-label">UK Space Budget 2023/24</div>
+          <div class="card">
+            <div class="budget-total">
+              <div class="budget-total-val">£702M</div>
+              <div class="budget-total-label">Total UK space spending · 2023/24</div>
+            </div>
+            <div id="budget-bars"></div>
+            <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£330M</span>ESA membership &amp; programmes</div>
+              <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£372M</span>National (UKSA direct)</div>
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:var(--subtle)">Source: UK Space Agency · 2024 Size &amp; Health report</div>
+          </div>
+        </div>
+        <div>
+          <div class="section-label">UK Commercial Strength</div>
+          <div class="card">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="background:var(--surface2);border-radius:12px;padding:14px">
+                <div style="font-size:28px;font-weight:900;color:var(--accent);letter-spacing:-1px;line-height:1">£17.5B</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px">Annual commercial space revenue — one of the best GDP ratios globally</div>
+              </div>
+              <div style="background:var(--surface2);border-radius:12px;padding:14px">
+                <div style="font-size:28px;font-weight:900;color:var(--green);letter-spacing:-1px;line-height:1">#7</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px">By government budget — but top 3 by commercial satellite services revenue</div>
+              </div>
+              <div style="background:var(--surface2);border-radius:12px;padding:14px">
+                <div style="font-size:28px;font-weight:900;color:var(--amber);letter-spacing:-1px;line-height:1">3</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px">Spaceports in development — SaxaVord open, Sutherland &amp; Prestwick planned</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="section-label">🌍 World Space Powers — How the UK Compares</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;max-width:700px">
         Eight countries dominate global space activity. Here's where each one stands — and where the UK sits in the picture.
@@ -649,10 +721,74 @@
       <div class="powers-grid" id="world-powers-grid"></div>
       <div style="margin-top:12px;font-size:11px;color:var(--subtle)">Budget figures are 2024 estimates · China includes estimated military component · Sources: NASA, ESA, CNSA, JAXA, ISRO annual reports</div>
 
-    </div><!-- /tab-nations -->
+    </div><!-- /tab-budgets -->
+
+    <!-- ── Tab: Get Into Space ───────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-careers">
+      <div class="tab-header">
+        <div class="tab-header-icon" style="background:linear-gradient(135deg,#92400e,#b45309)">🎓</div>
+        <div>
+          <div class="tab-header-title" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">Get Into Space</div>
+          <div class="tab-header-sub">The UK space industry needs engineers, developers, lawyers and policy specialists — not just rocket scientists</div>
+        </div>
+      </div>
+
+      <div class="bento-2">
+        <div>
+          <div class="section-label">Career Pathways</div>
+          <div class="card">
+            <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">How to start a career in space</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+              The industry needs engineers, data analysts, developers, lawyers and policy specialists — not just rocket scientists.
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0" id="careers-list"></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div>
+            <div class="section-label">Key Job Boards</div>
+            <div class="card">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <a href="https://jobs.ukspace.org" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;text-decoration:none;padding:10px;background:var(--surface2);border-radius:10px">
+                  <div style="font-size:22px">🚀</div>
+                  <div><div style="font-size:13px;font-weight:700;color:var(--text)">jobs.ukspace.org</div><div style="font-size:11px;color:var(--muted);margin-top:1px">Official UKSA jobs board</div></div>
+                </a>
+                <a href="https://spacetalent.org" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;text-decoration:none;padding:10px;background:var(--surface2);border-radius:10px">
+                  <div style="font-size:22px">⭐</div>
+                  <div><div style="font-size:13px;font-weight:700;color:var(--text)">Space Talent</div><div style="font-size:11px;color:var(--muted);margin-top:1px">Global new-space job listings</div></div>
+                </a>
+                <a href="https://www.esa.int/About_Us/Careers_at_ESA" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;text-decoration:none;padding:10px;background:var(--surface2);border-radius:10px">
+                  <div style="font-size:22px">🌍</div>
+                  <div><div style="font-size:13px;font-weight:700;color:var(--text)">ESA Careers</div><div style="font-size:11px;color:var(--muted);margin-top:1px">UK-facing graduate traineeships</div></div>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="section-label">Organisations to Know</div>
+            <div class="card">
+              <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted)">
+                <div><strong style="color:var(--text)">UKSEDS</strong> — UK Students for the Exploration &amp; Development of Space. Largest student space org in the UK.</div>
+                <div><strong style="color:var(--text)">UK Space Conference</strong> — Annual industry gathering. Best networking event for early-career.</div>
+                <div><strong style="color:var(--text)">NewSpace People</strong> — Community events across the UK for space professionals.</div>
+                <div><strong style="color:var(--text)">BAAO</strong> — British Astronomy &amp; Astrophysics Olympiad for students.</div>
+                <div><strong style="color:var(--text)">UK Space Design Competition</strong> — Team-based challenge open to school and university students.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /tab-careers -->
 
     <!-- ── Tab: Universe ──────────────────────────────────────────────────── -->
     <div class="tab-panel" id="tab-universe">
+      <div class="tab-header">
+        <div class="tab-header-icon" style="background:linear-gradient(135deg,#1e1b4b,#4338ca)">🔭</div>
+        <div>
+          <div class="tab-header-title" style="background:linear-gradient(135deg,#a5b4fc,#c4b5fd)">The Universe</div>
+          <div class="tab-header-sub">Solar system live distances · NASA Picture of the Day · Artemis — humanity's return to the Moon</div>
+        </div>
+      </div>
 
       <div class="bento-2" style="margin-bottom:18px">
         <div>
@@ -665,79 +801,109 @@
         </div>
       </div>
 
-      <div class="bento-2">
-
-        <div>
-          <div class="section-label">Artemis — Back to the Moon</div>
-          <div class="card">
-            <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">What is Artemis?</div>
-            <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">
-              NASA's return to the Moon — first crewed landing since 1972. Aims to land the <strong style="color:var(--text)">first woman and first person of colour</strong> on the lunar surface. UK contributes the European Service Module that powers the Orion spacecraft.
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-              <div style="background:var(--surface2);border-radius:12px;padding:12px">
-                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis I</div>
-                <div style="font-size:13px;font-weight:700;color:var(--text)">✅ Nov 2022</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:2px">Uncrewed Moon orbit — 25 days, 1.4M miles</div>
-              </div>
-              <div style="background:var(--surface2);border-radius:12px;padding:12px">
-                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis II</div>
-                <div style="font-size:13px;font-weight:700;color:var(--amber)">🚀 2026</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:2px">First crewed Moon flyby — 4 astronauts</div>
-              </div>
-              <div style="background:var(--surface2);border-radius:12px;padding:12px">
-                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis III</div>
-                <div style="font-size:13px;font-weight:700;color:var(--amber)">🌙 2027+</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:2px">Crewed lunar landing — South Pole</div>
-              </div>
-              <div style="background:var(--surface2);border-radius:12px;padding:12px">
-                <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Gateway</div>
-                <div style="font-size:13px;font-weight:700;color:var(--accent)">🛸 2028+</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:2px">Lunar orbital station</div>
-              </div>
-            </div>
-            <div id="artemis-photos" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"></div>
-            <div style="font-size:11px;color:var(--subtle)">🇬🇧 UK: European Service Module · Solar arrays · Communications · Propulsion</div>
+      <div class="section-label">Artemis — Back to the Moon</div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">What is Artemis?</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">
+          NASA's return to the Moon — first crewed landing since 1972. Aims to land the <strong style="color:var(--text)">first woman and first person of colour</strong> on the lunar surface. UK contributes the European Service Module that powers the Orion spacecraft.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+          <div style="background:var(--surface2);border-radius:12px;padding:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis I</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">✅ Nov 2022</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Uncrewed Moon orbit — 25 days, 1.4M miles</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:12px;padding:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis II</div>
+            <div style="font-size:13px;font-weight:700;color:var(--amber)">🚀 2026</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">First crewed Moon flyby — 4 astronauts</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:12px;padding:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Artemis III</div>
+            <div style="font-size:13px;font-weight:700;color:var(--amber)">🌙 2027+</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Crewed lunar landing — South Pole</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:12px;padding:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Gateway</div>
+            <div style="font-size:13px;font-weight:700;color:var(--accent)">🛸 2028+</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Lunar orbital station</div>
           </div>
         </div>
+        <div id="artemis-photos" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px"></div>
+        <div style="font-size:11px;color:var(--subtle)">🇬🇧 UK: European Service Module · Solar arrays · Communications · Propulsion</div>
+      </div>
 
+    </div><!-- /tab-universe -->
+
+    <!-- ── Tab: AI & Space ───────────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-ai">
+      <div class="tab-header">
+        <div class="tab-header-icon" style="background:linear-gradient(135deg,#164e63,#0e7490)">🤖</div>
+        <div>
+          <div class="tab-header-title" style="background:linear-gradient(135deg,#67e8f9,#38bdf8)">AI &amp; Space</div>
+          <div class="tab-header-sub">Satellites generate more data than any human team can process — ML is the only way to keep up</div>
+        </div>
+      </div>
+
+      <div class="bento-2">
+        <div>
+          <div class="section-label">UK Companies Using AI in Space</div>
+          <div class="card">
+            <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+              Satellites generate more data daily than any human team can process. ML now handles ocean plastic tracking, crop yield prediction, and debris removal.
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0" id="ai-space-list"></div>
+          </div>
+        </div>
         <div style="display:flex;flex-direction:column;gap:18px">
-
           <div>
-            <div class="section-label">AI &amp; Space</div>
+            <div class="section-label">Key Use Cases</div>
             <div class="card">
-              <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
-                Satellites generate more data daily than any human team can process. ML now handles ocean plastic tracking, crop yield prediction, and debris removal.
-              </div>
-              <div style="display:flex;flex-direction:column;gap:0" id="ai-space-list"></div>
-              <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Key use cases</div>
-                <div style="display:flex;flex-wrap:wrap;gap:6px">
-                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌍 Earth observation</span>
-                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🛰️ Autonomous ops</span>
-                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌊 Ocean tracking</span>
-                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🚀 Launch optimisation</span>
-                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🗑️ Debris removal</span>
-                  <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌾 Crop monitoring</span>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="background:var(--surface2);border-radius:10px;padding:12px;display:flex;align-items:flex-start;gap:10px">
+                  <div style="font-size:20px">🌍</div>
+                  <div><div style="font-size:13px;font-weight:700;color:var(--text)">Earth Observation</div><div style="font-size:12px;color:var(--muted);margin-top:2px">AI classifies land use, deforestation, flood extent and crop health from orbit — faster than any ground team.</div></div>
+                </div>
+                <div style="background:var(--surface2);border-radius:10px;padding:12px;display:flex;align-items:flex-start;gap:10px">
+                  <div style="font-size:20px">🛰️</div>
+                  <div><div style="font-size:13px;font-weight:700;color:var(--text)">Autonomous Operations</div><div style="font-size:12px;color:var(--muted);margin-top:2px">On-board AI makes real-time decisions — when to fire thrusters, avoid debris, downlink critical images.</div></div>
+                </div>
+                <div style="background:var(--surface2);border-radius:10px;padding:12px;display:flex;align-items:flex-start;gap:10px">
+                  <div style="font-size:20px">🗑️</div>
+                  <div><div style="font-size:13px;font-weight:700;color:var(--text)">Debris Removal</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Computer vision guides robotic arms to capture defunct satellites — Astroscale UK ran the world's first commercial capture mission.</div></div>
+                </div>
+                <div style="background:var(--surface2);border-radius:10px;padding:12px;display:flex;align-items:flex-start;gap:10px">
+                  <div style="font-size:20px">🌊</div>
+                  <div><div style="font-size:13px;font-weight:700;color:var(--text)">Ocean &amp; Maritime</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Spire's 110+ nanosatellites track 350,000+ ships — AI spots dark vessels, illegal fishing, and pollution.</div></div>
+                </div>
+                <div style="background:var(--surface2);border-radius:10px;padding:12px;display:flex;align-items:flex-start;gap:10px">
+                  <div style="font-size:20px">🚀</div>
+                  <div><div style="font-size:13px;font-weight:700;color:var(--text)">Launch Optimisation</div><div style="font-size:12px;color:var(--muted);margin-top:2px">ML models optimise trajectory, fuel burn and staging — shaving weight and cost from every mission.</div></div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div><!-- /tab-ai -->
 
-          <div>
-            <div class="section-label">Space 101 — Jargon Buster</div>
-            <div class="card" id="jargon-card">
-              <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
-                Plain English for space terms that assume you already know everything.
-              </div>
-              <div id="jargon-list"></div>
-            </div>
-          </div>
-
+    <!-- ── Tab: Jargon ───────────────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-jargon">
+      <div class="tab-header">
+        <div class="tab-header-icon" style="background:linear-gradient(135deg,#065f46,#0d9488)">📖</div>
+        <div>
+          <div class="tab-header-title" style="background:linear-gradient(135deg,#6ee7b7,#34d399)">Space 101 Jargon</div>
+          <div class="tab-header-sub">Plain English for the terms that assume you already know everything. No PhD required.</div>
         </div>
       </div>
 
-    </div><!-- /tab-universe -->
+      <div class="card" id="jargon-card">
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+          Plain English for space terms that assume you already know everything.
+        </div>
+        <div id="jargon-list"></div>
+      </div>
+    </div><!-- /tab-jargon -->
 
     <footer>
       <div>🛸 space.humanagency.co · Data: NASA · Launch Library 2 · UK Space Agency · ESA · JPL</div>
@@ -749,9 +915,13 @@
 
 <!-- ── Mobile tab bar ───────────────────────────────────────────────────────── -->
 <nav class="mobile-tab-bar" id="mobile-tab-bar">
-  <button class="mobile-tab-btn active" data-tab="now"      onclick="_showTab('now')"><span class="tab-icon">🔴</span>Now</button>
-  <button class="mobile-tab-btn"        data-tab="nations"  onclick="_showTab('nations')"><span class="tab-icon">🌍</span>Nations</button>
-  <button class="mobile-tab-btn"        data-tab="universe" onclick="_showTab('universe')"><span class="tab-icon">🔭</span>Universe</button>
+  <button class="mobile-tab-btn active" data-tab="now"         onclick="_showTab('now')"><span class="tab-icon">🔴</span>Now</button>
+  <button class="mobile-tab-btn"        data-tab="uk-industry" onclick="_showTab('uk-industry')"><span class="tab-icon">🇬🇧</span>UK</button>
+  <button class="mobile-tab-btn"        data-tab="budgets"     onclick="_showTab('budgets')"><span class="tab-icon">💰</span>Budgets</button>
+  <button class="mobile-tab-btn"        data-tab="careers"     onclick="_showTab('careers')"><span class="tab-icon">🎓</span>Careers</button>
+  <button class="mobile-tab-btn"        data-tab="universe"    onclick="_showTab('universe')"><span class="tab-icon">🔭</span>Universe</button>
+  <button class="mobile-tab-btn"        data-tab="ai"          onclick="_showTab('ai')"><span class="tab-icon">🤖</span>AI</button>
+  <button class="mobile-tab-btn"        data-tab="jargon"      onclick="_showTab('jargon')"><span class="tab-icon">📖</span>Jargon</button>
 </nav>
 
 <script>
@@ -864,7 +1034,7 @@ function _showTab(name) {
   document.querySelectorAll('.tab-panel').forEach(function(p) {
     p.classList.toggle('active', p.id === 'tab-' + name);
   });
-  if (name === 'nations' && !_hubsMap) _initHubsMap();
+  if (name === 'uk-industry' && !_hubsMap) _initHubsMap();
   if (name === 'universe') {
     if (!_planetsLoaded) _loadPlanets();
     if (!_artemisLoaded) _loadArtemis();
@@ -1433,15 +1603,15 @@ function _buildSearchIndex() {
   _SEARCH_INDEX = [];
   // Jargon
   _JARGON.forEach(function(j) {
-    _SEARCH_INDEX.push({type:'jargon', tab:'universe', icon:j.icon, title:j.term, body:j.def, tag:j.tag});
+    _SEARCH_INDEX.push({type:'jargon', tab:'jargon', icon:j.icon, title:j.term, body:j.def, tag:j.tag});
   });
   // Companies
   _UK_COMPANIES.forEach(function(c) {
-    _SEARCH_INDEX.push({type:'company', tab:'nations', icon:'🏢', title:c.name, body:c.desc+' '+c.loc, url:c.url});
+    _SEARCH_INDEX.push({type:'company', tab:'uk-industry', icon:'🏢', title:c.name, body:c.desc+' '+c.loc, url:c.url});
   });
   // Space powers
   _SPACE_POWERS.forEach(function(p) {
-    _SEARCH_INDEX.push({type:'country', tab:'nations', icon:p.flag, title:p.country+' ('+p.agency+')', body:p.strength+' '+p.vsUK+' '+p.programs.join(' ')});
+    _SEARCH_INDEX.push({type:'country', tab:'budgets', icon:p.flag, title:p.country+' ('+p.agency+')', body:p.strength+' '+p.vsUK+' '+p.programs.join(' ')});
   });
   // Launches (if loaded)
   _allLaunches.forEach(function(l) {
