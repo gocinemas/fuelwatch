@@ -3993,9 +3993,9 @@ const _ts = new Date(d.timestamp);
       const d = await r.json();
       if (d.error) { el.innerHTML = `<span style="color:#ef4444">${d.error}</span>`; return; }
 
-      // Vehicle identity line (make / year / colour / fuel)
-      const fuelEmoji = {petrol:"⛽",diesel:"🛢️",electric:"⚡",hybrid:"🔋"}[(d.fuel||"").toLowerCase()] || "🔧";
-      const identParts = [d.make, d.year, d.colour, d.fuel ? `${fuelEmoji} ${d.fuel}` : ""].filter(Boolean);
+      // Vehicle identity line (make / year / colour / fuel / engine)
+      const fuelEmoji = {petrol:"⛽",diesel:"🛢️",electric:"⚡"}[Object.keys({petrol:1,diesel:1,electric:1}).find(k=>(d.fuel||"").toLowerCase().includes(k))||""] || "🔋";
+      const identParts = [d.make, d.year, d.colour, d.engine, d.fuel ? `${fuelEmoji} ${d.fuel}` : ""].filter(Boolean);
       if (makeEl && identParts.length) makeEl.textContent = identParts.join(" · ");
 
       // MOT badge
@@ -4014,14 +4014,30 @@ const _ts = new Date(d.timestamp);
         ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${taxColour}22;color:${taxColour}">🅿️ ${d.tax_status}${d.tax_due ? " · "+d.tax_due : ""}</span>`
         : "";
 
-      el.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap">
+      // ULEZ badge
+      const ulezBadge = d.ulez_exempt === true  ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#16a34a22;color:#16a34a">✅ ULEZ Exempt</span>`
+                      : d.ulez_exempt === false ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#dc262622;color:#dc2626">❌ ULEZ Charge</span>`
+                      : "";
+
+      // ART (luxury supplement) badge — only show if ending within 3 years
+      const artBadge = (d.art_end && d.art_days_left != null && d.art_days_left > 0)
+        ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#7c3aed22;color:#7c3aed" title="Additional Rate Tax (luxury supplement) ends ${d.art_end}">💜 ART ends ${d.art_end}</span>`
+        : "";
+
+      // CO2 + Euro info line
+      const specLine = [d.co2 ? `${d.co2}g/km CO₂` : "", d.euro || ""].filter(Boolean).join(" · ");
+
+      el.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${specLine?'6':'0'}px">
         ${motBadge}${d.mot_expiry ? `<span style="font-size:11px;color:var(--muted);padding-top:3px">until ${d.mot_expiry}</span>` : ""}
         ${taxBadge}
-      </div>`;
+        ${ulezBadge}
+        ${artBadge}
+      </div>${specLine ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${specLine}</div>` : ""}`;
       _maMotCache[v.registration] = {
         reg: v.registration, nickname: v.nickname || "",
         mot_expiry: d.mot_expiry, mot_days: d.days_left,
         tax_due: d.tax_due, tax_days: d.tax_days_left,
+        art_end: d.art_end, art_days: d.art_days_left,
       };
       _maRenderRenewals();
     } catch { el.innerHTML = `<span style="color:#ef4444">Could not load data</span>`; }
@@ -4054,6 +4070,8 @@ const _ts = new Date(d.timestamp);
         items.push({ icon:"🔧", label:`${name} · MOT`, days: v.mot_days, date: v.mot_expiry });
       if (v.tax_days != null && v.tax_days <= 90 && v.tax_days >= -7)
         items.push({ icon:"🅿️", label:`${name} · Road Tax`, days: v.tax_days, date: v.tax_due });
+      if (v.art_days != null && v.art_days <= 90 && v.art_days >= 0)
+        items.push({ icon:"💜", label:`${name} · Luxury supplement ends`, days: v.art_days, date: v.art_end });
     });
 
     if (!items.length) { el.style.display = "none"; return; }

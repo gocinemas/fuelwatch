@@ -4401,12 +4401,38 @@ def api_mot():
                 return (_date.fromisoformat(date_str) - _date.today()).days
             except Exception:
                 return None
+        fuel_raw = v.get("fuelType", "")
+        euro = v.get("euroStatus", "")
+        # ULEZ exempt: petrol Euro 4+, diesel Euro 6+, electric/hybrid always exempt
+        fuel_lc = fuel_raw.lower()
+        ulez_exempt = None
+        if "electric" in fuel_lc or "hybrid" in fuel_lc:
+            ulez_exempt = True
+        elif euro:
+            euro_num = 0
+            import re as _re
+            m = _re.search(r"(\d+)", euro)
+            if m:
+                euro_num = int(m.group(1))
+            if "diesel" in fuel_lc:
+                ulez_exempt = euro_num >= 6
+            else:
+                ulez_exempt = euro_num >= 4
+        cc = v.get("engineCapacity")
+        engine_litres = f"{cc/1000:.1f}L" if cc else ""
         data = {
             "registration":  v.get("registrationNumber", reg),
             "make":          v.get("make", "").title(),
             "colour":        v.get("colour", "").title(),
-            "fuel":          v.get("fuelType", "").title(),
+            "fuel":          fuel_raw.title(),
             "year":          v.get("yearOfManufacture", ""),
+            "engine":        engine_litres,
+            "co2":           v.get("co2Emissions"),
+            "euro":          euro,
+            "ulez_exempt":   ulez_exempt,
+            "art_end":       v.get("artEndDate", ""),
+            "art_days_left": _days(v.get("artEndDate")),
+            "v5c_issued":    v.get("dateOfLastV5CIssued", ""),
             "mot_status":    v.get("motStatus", ""),
             "mot_expiry":    v.get("motExpiryDate", ""),
             "days_left":     _days(v.get("motExpiryDate")),
