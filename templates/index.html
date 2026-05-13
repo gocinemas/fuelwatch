@@ -7962,7 +7962,8 @@ const _ts = new Date(d.timestamp);
         }).join("")
       : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:20px 0">No competitor data available.</div>`;
 
-    // News
+    // News — Phase 1 already showed fresh news; only update if Phase 2 has its own.
+    // Never hide: if Phase 2 cache has no news, keep whatever Phase 1 rendered.
     const news = d.news || [];
     if (news.length) {
       document.getElementById("brand-news-el").innerHTML = news.map(n => `
@@ -7972,8 +7973,6 @@ const _ts = new Date(d.timestamp);
           <div style="font-size:11px;color:#9ca3af;margin-top:2px">${n.source ? n.source + " · " : ""}${n.date || ""}</div>
         </a>`).join("");
       document.getElementById("brand-news-section").style.display = "";
-    } else {
-      document.getElementById("brand-news-section").style.display = "none";
     }
 
     document.getElementById("brand-result").classList.remove("hidden");

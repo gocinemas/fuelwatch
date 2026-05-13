@@ -1136,7 +1136,7 @@ def fetch_brand_data(brand: str) -> dict:
         news_query = original if original.lower() != brand.lower() else brand
         with _cf.ThreadPoolExecutor(max_workers=6) as pool:
             wiki_f = pool.submit(_fetch_wikipedia, wiki_query)
-            news_f = pool.submit(_fetch_news, news_query, "brand OR product OR advertising OR campaign OR launch", 6)
+            news_f = pool.submit(_fetch_news, news_query, "", 6)
             ads_f  = pool.submit(_fetch_brand_ads, brand)
             fin_f  = pool.submit(_fetch_brand_financials, brand)
             ai_f   = pool.submit(_fetch_brand_ai, brand, original)

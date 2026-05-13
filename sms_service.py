@@ -1809,7 +1809,7 @@ def api_brand_basic():
     import concurrent.futures as _cf
     with _cf.ThreadPoolExecutor(max_workers=2) as pool:
         wiki_f = pool.submit(_fetch_wikipedia, name)
-        news_f = pool.submit(_fetch_news, name, "brand OR product", 6)
+        news_f = pool.submit(_fetch_news, name, "", 6)
         wiki = {}
         try: wiki = wiki_f.result(timeout=8) or {}
         except Exception: pass
