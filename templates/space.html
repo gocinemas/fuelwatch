@@ -532,7 +532,17 @@
           <div class="card">
             <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">🌙 Tonight's Sky</div>
             <div id="sky-body" style="font-size:12px;color:var(--muted)">
-              Enter your postcode in the sidebar to see sky conditions
+              <div id="sky-pc-prompt">
+                <div style="margin-bottom:8px;color:var(--muted);font-size:12px">Enter your postcode to see tonight's sky conditions</div>
+                <div style="display:flex;gap:6px">
+                  <input id="sky-pc-input" type="text" placeholder="e.g. KT15 3RL"
+                    maxlength="8" oninput="this.value=this.value.toUpperCase()"
+                    onkeydown="if(event.key==='Enter') _saveSkyCast()"
+                    style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;min-width:0">
+                  <button onclick="_saveSkyCast()"
+                    style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Go</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -744,11 +754,23 @@ if (_pc) {
 function savePostcode() {
   var v = (document.getElementById('pc-input').value || '').trim().replace(/\s+/g,'').toUpperCase();
   if (!v) return;
+  _applyPostcode(v);
+}
+
+function _saveSkyCast() {
+  var v = (document.getElementById('sky-pc-input').value || '').trim().replace(/\s+/g,'').toUpperCase();
+  if (!v) return;
+  _applyPostcode(v);
+}
+
+function _applyPostcode(v) {
   localStorage.setItem('space_postcode', v);
   _pc = v;
   var fmt = v.length > 3 ? v.slice(0,-3) + ' ' + v.slice(-3) : v;
   document.getElementById('header-pc-label').textContent = '📍 ' + fmt;
   document.getElementById('pc-input').value = fmt;
+  var skyPrompt = document.getElementById('sky-pc-prompt');
+  if (skyPrompt) skyPrompt.style.display = 'none';
   _loadSky(v);
 }
 
@@ -813,7 +835,11 @@ function _loadSky(pc) {
     .catch(function(){ el.innerHTML = '<div class="error">Could not load sky data</div>'; });
 }
 
-if (_pc) _loadSky(_pc);
+if (_pc) {
+  var _skp = document.getElementById('sky-pc-prompt');
+  if (_skp) _skp.style.display = 'none';
+  _loadSky(_pc);
+}
 
 // ── Light / dark mode ──────────────────────────────────────────────────────────
 (function() {
