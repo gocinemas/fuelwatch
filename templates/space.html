@@ -370,6 +370,16 @@
   footer { font-size: 11px; color: var(--subtle); padding-top: 20px; border-top: 1px solid var(--border); margin-top: 40px; }
   footer a { color: var(--muted); text-decoration: none; }
 
+  /* ── World powers grid ───────────────────────────────────────────────── */
+  .powers-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 1200px) { .powers-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 960px)  { .powers-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .powers-grid { grid-template-columns: 1fr; } }
+
   /* ── Mobile tab bar ───────────────────────────────────────────────────── */
   .mobile-tab-bar {
     display: none;
@@ -380,15 +390,16 @@
     z-index: 200;
   }
   .mobile-tab-btn {
-    flex: 1; padding: 10px 4px 14px;
+    flex: 1; padding: 10px 4px 16px;
     border: none; background: transparent;
-    color: var(--muted); font-size: 9px; font-weight: 700;
+    color: var(--muted); font-size: 10px; font-weight: 700;
     cursor: pointer; font-family: inherit;
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
-    transition: color .15s; letter-spacing: .04em; text-transform: uppercase;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: color .15s;
   }
-  .mobile-tab-btn .tab-icon { font-size: 20px; line-height: 1; }
+  .mobile-tab-btn .tab-icon { font-size: 22px; line-height: 1; }
   .mobile-tab-btn.active { color: var(--accent); }
+  .mobile-tab-btn.active .tab-icon { filter: drop-shadow(0 0 4px var(--accent)); }
 
   /* ── Responsive ───────────────────────────────────────────────────────── */
   @media (max-width: 960px) {
@@ -424,7 +435,7 @@
     <nav class="sidebar-nav">
       <button class="sidebar-btn active" data-tab="live"     onclick="_showTab('live')"><span>🔴</span> Live</button>
       <button class="sidebar-btn"        data-tab="launches" onclick="_showTab('launches')"><span>🚀</span> Launches</button>
-      <button class="sidebar-btn"        data-tab="uk"       onclick="_showTab('uk')"><span>🇬🇧</span> UK Industry</button>
+      <button class="sidebar-btn"        data-tab="uk"       onclick="_showTab('uk')"><span>🇬🇧</span> UK &amp; World</button>
       <button class="sidebar-btn"        data-tab="explore"  onclick="_showTab('explore')"><span>🔭</span> Explore</button>
     </nav>
 
@@ -473,6 +484,15 @@
         <span class="page-chip">🔭 Solar system</span>
         <span class="page-chip">📖 Space 101 glossary</span>
       </div>
+    </div>
+
+    <!-- Search -->
+    <div style="margin-bottom:24px;position:relative;max-width:480px">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">🔍</span>
+      <input id="space-search" type="search" placeholder="Search jargon, companies, missions…"
+        oninput="_spaceSearch(this.value)"
+        style="width:100%;background:var(--glass2);border:1px solid var(--gborder);border-radius:12px;padding:10px 14px 10px 38px;color:var(--text);font-size:14px;font-family:inherit;outline:none">
+      <div id="search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:300;max-height:360px;overflow-y:auto"></div>
     </div>
 
     <!-- ── Tab: Live ──────────────────────────────────────────────────────── -->
@@ -622,19 +642,6 @@
           </div>
 
           <div>
-            <div class="section-label">World Space Spending</div>
-            <div class="card">
-              <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
-                How the UK's £702M compares globally — annual government civil space budgets, 2024 estimates.
-              </div>
-              <div id="world-budget-bars"></div>
-              <div style="margin-top:12px;font-size:11px;color:var(--subtle)">
-                Sources: NASA, ESA, CNSA, JAXA, ISRO annual reports · estimates vary · China includes estimated military component
-              </div>
-            </div>
-          </div>
-
-          <div>
             <div class="section-label">Get Into UK Space</div>
             <div class="card">
               <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:6px">How to start a career in space</div>
@@ -647,6 +654,15 @@
 
         </div>
       </div>
+
+      <!-- Full-width world powers section -->
+      <div class="section-gap" style="margin-top:28px"></div>
+      <div class="section-label">🌍 World Space Powers — How the UK Compares</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;max-width:700px">
+        Eight countries dominate global space activity. Here's where each one stands — and where the UK sits in the picture.
+      </div>
+      <div class="powers-grid" id="world-powers-grid"></div>
+      <div style="margin-top:12px;font-size:11px;color:var(--subtle)">Budget figures are 2024 estimates · China includes estimated military component · Sources: NASA, ESA, CNSA, JAXA, ISRO annual reports</div>
 
     </div><!-- /tab-uk -->
 
@@ -750,7 +766,7 @@
 <nav class="mobile-tab-bar" id="mobile-tab-bar">
   <button class="mobile-tab-btn active" data-tab="live"     onclick="_showTab('live')"><span class="tab-icon">🔴</span>Live</button>
   <button class="mobile-tab-btn"        data-tab="launches" onclick="_showTab('launches')"><span class="tab-icon">🚀</span>Launches</button>
-  <button class="mobile-tab-btn"        data-tab="uk"       onclick="_showTab('uk')"><span class="tab-icon">🇬🇧</span>UK</button>
+  <button class="mobile-tab-btn"        data-tab="uk"       onclick="_showTab('uk')"><span class="tab-icon">🇬🇧</span>UK & World</button>
   <button class="mobile-tab-btn"        data-tab="explore"  onclick="_showTab('explore')"><span class="tab-icon">🔭</span>Explore</button>
 </nav>
 
@@ -1134,42 +1150,85 @@ var _BUDGET_ITEMS = [
   }, 200);
 })();
 
-// ── World Space Budgets ────────────────────────────────────────────────────────
-var _WORLD_BUDGETS = [
-  {flag:"🇺🇸", name:"USA (NASA)",   val:"$25.4B", usd:25400, colour:"#38bdf8", note:"Civil + DoD space"},
-  {flag:"🇨🇳", name:"China (CNSA)", val:"~$12B",  usd:12000, colour:"#f87171", note:"Est. incl. military"},
-  {flag:"🇪🇺", name:"ESA (Europe)", val:"$9.6B",  usd:9600,  colour:"#818cf8", note:"22 member states"},
-  {flag:"🇷🇺", name:"Russia",       val:"~$3.2B", usd:3200,  colour:"#fb923c", note:"Roscosmos, declining"},
-  {flag:"🇯🇵", name:"Japan (JAXA)", val:"$2.7B",  usd:2700,  colour:"#34d399", note:"Civil + national"},
-  {flag:"🇮🇳", name:"India (ISRO)", val:"$1.9B",  usd:1900,  colour:"#f59e0b", note:"Extremely cost-effective"},
-  {flag:"🇬🇧", name:"UK (UKSA)",    val:"~$0.9B", usd:900,   colour:"#a78bfa", note:"ESA + national £702M"},
+// ── World Space Powers ─────────────────────────────────────────────────────────
+var _SPACE_POWERS = [
+  {flag:"🇺🇸", country:"United States", agency:"NASA",    budget:"$25.4B", usd:25400, colour:"#38bdf8",
+   crew:true,  rank:1,
+   programs:["Artemis (Moon)","James Webb","Mars Perseverance","SpaceX Dragon"],
+   strength:"Deep space, commercial ecosystem, Mars surface exploration.",
+   vsUK:"28× the UK budget. SpaceX alone launches more missions than most nations combined."},
+  {flag:"🇨🇳", country:"China",          agency:"CNSA",    budget:"~$12B",  usd:12000, colour:"#f87171",
+   crew:true,  rank:2,
+   programs:["Tiangong Station","Chang'e 6 (Moon)","Tianwen-1 (Mars)"],
+   strength:"Fastest-growing space power. Owns the only operational space station beyond ISS.",
+   vsUK:"13× the UK budget. Chang'e 6 returned lunar farside samples in 2024 — a world first."},
+  {flag:"🇪🇺", country:"Europe",         agency:"ESA",     budget:"$9.6B",  usd:9600,  colour:"#818cf8",
+   crew:false, rank:3,
+   programs:["Ariane 6","Galileo GPS","Copernicus EO","Euclid telescope"],
+   strength:"Collaborative 22-nation agency. World-class Earth observation and navigation systems.",
+   vsUK:"UK contributes £330M/yr to ESA — its single biggest space investment."},
+  {flag:"🇷🇺", country:"Russia",         agency:"Roscosmos",budget:"~$3.2B",usd:3200,  colour:"#fb923c",
+   crew:true,  rank:4,
+   programs:["Soyuz","GLONASS","Luna programme"],
+   strength:"Pioneered spaceflight — first satellite (1957), first human (1961). Now declining.",
+   vsUK:"3.5× the UK budget, but heavily reduced post-2022. Luna-25 crashed on the Moon in 2023."},
+  {flag:"🇯🇵", country:"Japan",          agency:"JAXA",    budget:"$2.7B",  usd:2700,  colour:"#34d399",
+   crew:false, rank:5,
+   programs:["SLIM Moon lander","Hayabusa2","H3 rocket","ISS Kibo module"],
+   strength:"Precision engineering. First pinpoint lunar landing (SLIM, Jan 2024). Asteroid sample return.",
+   vsUK:"3× the UK budget. Hayabusa2 returned asteroid material from 300M km — cost $300M total."},
+  {flag:"🇮🇳", country:"India",          agency:"ISRO",    budget:"$1.9B",  usd:1900,  colour:"#f59e0b",
+   crew:true,  rank:6,
+   programs:["Chandrayaan-3","Gaganyaan (crew)","Aditya-L1 (solar)"],
+   strength:"World's most cost-effective space programme. First to soft-land at the lunar south pole.",
+   vsUK:"2× the UK budget. Chandrayaan-3 cost ~$75M — less than many Hollywood blockbusters."},
+  {flag:"🇬🇧", country:"United Kingdom", agency:"UKSA",    budget:"~$0.9B", usd:900,   colour:"#a78bfa",
+   crew:false, rank:7, isUK:true,
+   programs:["SaxaVord Spaceport","OneWeb broadband","ESA missions","SEN ISS cameras"],
+   strength:"Commercial satellite services leader. £17.5B/yr commercial revenue — one of the best GDP ratios globally.",
+   vsUK:"Ranked 7th by budget. Strength is commercial: satellite services, Earth observation, telecoms — not government rockets."},
+  {flag:"🇰🇷", country:"South Korea",    agency:"KARI",    budget:"~$0.7B", usd:700,   colour:"#64748b",
+   crew:false, rank:8,
+   programs:["Nuri rocket","KPLO lunar orbiter","CubeSats"],
+   strength:"First independent orbital launch in 2022 (Nuri). Rapidly building sovereign launch capability.",
+   vsUK:"Slightly below the UK. Joined Artemis Accords. Targeting crewed lunar orbit by 2035."},
 ];
+
 (function() {
-  var el = document.getElementById('world-budget-bars');
+  var el = document.getElementById('world-powers-grid');
   if (!el) return;
-  var max = _WORLD_BUDGETS[0].usd;
+  var maxUSD = 25400;
   var html = '';
-  _WORLD_BUDGETS.forEach(function(b) {
-    var pct = Math.round(b.usd / max * 100);
-    var isUK = b.flag === '🇬🇧';
+  _SPACE_POWERS.forEach(function(p) {
+    var pct = Math.round(p.usd / maxUSD * 100);
+    var isUK = p.isUK;
     html +=
-      '<div class="budget-bar-row">'+
-        '<div class="budget-bar-meta">'+
-          '<span class="budget-bar-name">'+b.flag+' '+_esc(b.name)+(isUK?' <span style="font-size:10px;color:var(--accent)">← you</span>':'')+'</span>'+
-          '<span class="budget-bar-val">'+_esc(b.val)+'</span>'+
+      '<div class="card" style="position:relative;'+(isUK ? 'border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)44,0 4px 24px rgba(129,140,248,.18)' : '')+'">'+
+        (isUK ? '<div style="position:absolute;top:-1px;right:14px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;letter-spacing:.07em;padding:3px 9px;border-radius:0 0 7px 7px;text-transform:uppercase">You are here</div>' : '')+
+        '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">'+
+          '<div style="font-size:28px;line-height:1;margin-top:1px">'+p.flag+'</div>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px;line-height:1.2">'+_esc(p.country)+'</div>'+
+            '<div style="font-size:11px;color:var(--muted);margin-top:1px">'+_esc(p.agency)+' · <strong style="color:var(--text)">'+_esc(p.budget)+'</strong>/yr</div>'+
+          '</div>'+
+          '<div style="font-size:10px;font-weight:700;color:'+p.colour+';background:'+p.colour+'18;border:1px solid '+p.colour+'33;border-radius:6px;padding:2px 8px;flex-shrink:0">#'+p.rank+'</div>'+
         '</div>'+
-        '<div class="budget-bar-track">'+
-          '<div class="budget-bar-fill" style="width:0%;background:'+b.colour+(isUK?';box-shadow:0 0 6px '+b.colour+'88':'')+'" data-pct="'+pct+'"></div>'+
+        '<div style="background:var(--surface2);border-radius:4px;height:5px;overflow:hidden;margin-bottom:4px">'+
+          '<div style="height:5px;width:'+pct+'%;background:'+p.colour+';border-radius:4px'+(isUK?';box-shadow:0 0 6px '+p.colour+'99':'')+'"></div>'+
         '</div>'+
-        '<div style="font-size:10px;color:var(--subtle);margin-top:3px">'+_esc(b.note)+'</div>'+
+        '<div style="font-size:10px;color:var(--subtle);margin-bottom:10px">'+(pct === 100 ? 'Benchmark' : pct+'% of USA spend')+'</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">'+
+          p.programs.slice(0,3).map(function(prog){
+            return '<span style="font-size:10px;background:'+p.colour+'18;color:'+p.colour+';border:1px solid '+p.colour+'33;border-radius:5px;padding:2px 7px;font-weight:600;line-height:1.5">'+_esc(prog)+'</span>';
+          }).join('')+
+        '</div>'+
+        '<div style="font-size:11px;margin-bottom:8px">'+
+          (p.crew ? '<span style="color:var(--green);font-weight:700">✅ Crewed launches</span>' : '<span style="color:var(--muted)">— No independent crewed launches</span>')+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--muted);line-height:1.6;padding-top:8px;border-top:1px solid var(--border)">'+_esc(p.vsUK)+'</div>'+
       '</div>';
   });
   el.innerHTML = html;
-  setTimeout(function() {
-    el.querySelectorAll('.budget-bar-fill').forEach(function(bar) {
-      bar.style.width = bar.getAttribute('data-pct') + '%';
-    });
-  }, 400);
 })();
 
 // ── UK Space Companies ─────────────────────────────────────────────────────────
@@ -1394,6 +1453,73 @@ function _jargonToggle(i) {
   var el = document.getElementById('jarg-'+i);
   if (el) el.classList.toggle('open');
 }
+
+// ── Search ─────────────────────────────────────────────────────────────────────
+var _SEARCH_INDEX = null;
+
+function _buildSearchIndex() {
+  if (_SEARCH_INDEX) return;
+  _SEARCH_INDEX = [];
+  // Jargon
+  _JARGON.forEach(function(j) {
+    _SEARCH_INDEX.push({type:'jargon', tab:'explore', icon:j.icon, title:j.term, body:j.def, tag:j.tag});
+  });
+  // Companies
+  _UK_COMPANIES.forEach(function(c) {
+    _SEARCH_INDEX.push({type:'company', tab:'uk', icon:'🏢', title:c.name, body:c.desc+' '+c.loc, url:c.url});
+  });
+  // Space powers
+  _SPACE_POWERS.forEach(function(p) {
+    _SEARCH_INDEX.push({type:'country', tab:'uk', icon:p.flag, title:p.country+' ('+p.agency+')', body:p.strength+' '+p.vsUK+' '+p.programs.join(' ')});
+  });
+  // Launches (if loaded)
+  _allLaunches.forEach(function(l) {
+    _SEARCH_INDEX.push({type:'launch', tab:'launches', icon:'🚀', title:l.name, body:(l.provider||'')+' '+l.location});
+  });
+}
+
+function _spaceSearch(q) {
+  var el = document.getElementById('search-results');
+  if (!q || q.trim().length < 2) { el.style.display = 'none'; return; }
+  _buildSearchIndex();
+  var terms = q.toLowerCase().trim().split(/\s+/);
+  var hits = _SEARCH_INDEX.filter(function(item) {
+    var haystack = (item.title + ' ' + item.body).toLowerCase();
+    return terms.every(function(t) { return haystack.indexOf(t) >= 0; });
+  }).slice(0, 8);
+  if (!hits.length) {
+    el.innerHTML = '<div style="padding:14px 16px;font-size:13px;color:var(--muted)">No results for "'+_esc(q)+'"</div>';
+    el.style.display = 'block'; return;
+  }
+  var html = '';
+  hits.forEach(function(h) {
+    var snippet = h.body.length > 80 ? h.body.slice(0,80)+'…' : h.body;
+    html +=
+      '<div onclick="_searchGo(\''+h.tab+'\')" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:.1s" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">'+
+          '<span style="font-size:14px">'+h.icon+'</span>'+
+          '<span style="font-size:13px;font-weight:700;color:var(--text)">'+_esc(h.title)+'</span>'+
+          '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-left:auto;flex-shrink:0">'+_esc(h.type)+'</span>'+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--muted);margin-left:22px">'+_esc(snippet)+'</div>'+
+      '</div>';
+  });
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+function _searchGo(tab) {
+  _showTab(tab);
+  document.getElementById('space-search').value = '';
+  document.getElementById('search-results').style.display = 'none';
+}
+
+document.addEventListener('click', function(e) {
+  var sr = document.getElementById('search-results');
+  if (sr && !sr.contains(e.target) && e.target.id !== 'space-search') {
+    sr.style.display = 'none';
+  }
+});
 
 // ── Util ───────────────────────────────────────────────────────────────────────
 function _esc(s) {
