@@ -12086,23 +12086,62 @@ def api_wa_saves_ad_intel():
     prop_t   = result.get("property_type")
     search_q = (result.get("search_query") or company or title).strip()
 
+    def _q(s): return s.replace(" ", "+").replace('"', "%22")
+
     # Build relevant links
     links = []
     if ad_type == "real_estate":
         loc = postcode or area
-        if loc:
+
+        # If agent/company is known, build a targeted listing search first
+        if company and loc:
+            # site-scoped Google search — surfaces the actual listing page
+            parts = [f'"{company}"', f'"{loc}"']
+            if beds: parts.append(f'"{beds}+bedroom" OR "{beds}+bed"')
+            rm_q = "+".join(_q(p) for p in parts)
+            links.append({
+                "label": f"Find on Rightmove: {company}",
+                "url": f"https://www.google.com/search?q=site%3Arightmove.co.uk+{rm_q}"
+            })
+            links.append({
+                "label": f"Find on Zoopla: {company}",
+                "url": f"https://www.google.com/search?q=site%3Azoopla.co.uk+{rm_q}"
+            })
+            # Direct agent website for well-known UK estate agents
+            _AGENT_SITES = {
+                "knight frank": "knightfrank.co.uk/properties/for-sale",
+                "savills": "search.savills.com/property-for-sale",
+                "hamptons": "hamptons.co.uk/property/for-sale",
+                "foxtons": "foxtons.co.uk/sales",
+                "purplebricks": "purplebricks.co.uk/search",
+                "strutt & parker": "struttandparker.com/property-for-sale",
+                "jll": "jll.co.uk/en/listings/residential/residential-for-sale",
+                "colliers": "colliers.com/en-gb/properties/for-sale",
+                "cbre": "cbre.co.uk/properties/for-lease-for-sale",
+            }
+            agent_key = company.lower().strip()
+            agent_site = next((v for k, v in _AGENT_SITES.items() if k in agent_key or agent_key in k), None)
+            if agent_site:
+                links.append({"label": f"{company} website", "url": f"https://{agent_site}"})
+        elif loc:
+            # No agent name — fall back to portal postcode search
             pc_slug = loc.replace(" ", "%20")
             links.append({"label": "Rightmove", "url": f"https://www.rightmove.co.uk/property-for-sale/search.html?searchLocation={pc_slug}&useLocationIdentifier=true"})
             links.append({"label": "Zoopla",    "url": f"https://www.zoopla.co.uk/for-sale/property/{loc.lower().replace(' ','-')}/"})
             links.append({"label": "OnTheMarket","url": f"https://www.onthemarket.com/for-sale/property/{loc.lower().replace(' ','-')}/"})
-    elif ad_type == "car":
-        links.append({"label": "AutoTrader", "url": f"https://www.autotrader.co.uk/car-search?search_term={search_q.replace(' ','+')}"})
-    elif ad_type == "job":
-        links.append({"label": "Indeed",  "url": f"https://uk.indeed.com/jobs?q={search_q.replace(' ','+')}"})
-        links.append({"label": "LinkedIn","url": f"https://www.linkedin.com/jobs/search/?keywords={search_q.replace(' ','+')}"})
 
-    if search_q:
-        links.append({"label": f"Google: {company or 'listing'}", "url": f"https://www.google.com/search?q={search_q.replace(' ','+')}"})
+    elif ad_type == "car":
+        links.append({"label": "AutoTrader", "url": f"https://www.autotrader.co.uk/car-search?search_term={_q(search_q)}"})
+        links.append({"label": "Google search", "url": f"https://www.google.com/search?q={_q(search_q)}+for+sale"})
+    elif ad_type == "job":
+        links.append({"label": "Indeed",  "url": f"https://uk.indeed.com/jobs?q={_q(search_q)}"})
+        links.append({"label": "LinkedIn","url": f"https://www.linkedin.com/jobs/search/?keywords={_q(search_q)}"})
+
+    if ad_type not in ("real_estate",) and search_q:
+        links.append({"label": f"Google: {company or 'listing'}", "url": f"https://www.google.com/search?q={_q(search_q)}"})
+    elif ad_type == "real_estate" and not company and not (postcode or area):
+        # Nothing useful extracted — provide a plain Google search
+        links.append({"label": "Google search", "url": f"https://www.google.com/search?q={_q(search_q)}"})
 
     # Update postcode/area in the save's META location (background, best-effort)
     if postcode or area:
