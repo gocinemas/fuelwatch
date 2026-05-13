@@ -795,30 +795,36 @@
     <!-- ── COMPANY SCREEN ── -->
     <div id="screen-company" class="screen pt-5">
 
-      <!-- ── Intel header ── -->
+      {% if intel_mode %}
+      <!-- Landing: choose Brand or Company -->
+      <div id="intel-landing" style="margin-bottom:16px">
+        <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;color:var(--text);margin-bottom:4px">Intel</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">What would you like to research?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button onclick="setIntelMode('brand')" style="text-align:left;padding:18px 14px;border:2px solid #e9d5ff;border-radius:16px;background:#faf5ff;cursor:pointer;width:100%">
+            <div style="font-size:26px;margin-bottom:8px">🏷️</div>
+            <div style="font-size:14px;font-weight:800;color:#6d28d9;margin-bottom:4px">Brand Intel</div>
+            <div style="font-size:11px;color:#7c3aed;line-height:1.5;opacity:.8">History · campaigns · identity · rivals</div>
+          </button>
+          <button onclick="setIntelMode('company')" style="text-align:left;padding:18px 14px;border:2px solid #c7d2fe;border-radius:16px;background:#eef2ff;cursor:pointer;width:100%">
+            <div style="font-size:26px;margin-bottom:8px">🏢</div>
+            <div style="font-size:14px;font-weight:800;color:#3730a3;margin-bottom:4px">Company Intel</div>
+            <div style="font-size:11px;color:#4338ca;line-height:1.5;opacity:.8">Financials · strategy · AI focus · news</div>
+          </button>
+        </div>
+      </div>
+      <!-- Hidden compat mode-btn IDs (setIntelMode references these, null-safe) -->
+      <div id="intel-mode-btn-brand" style="display:none"></div>
+      <div id="intel-mode-btn-company" style="display:none"></div>
+      <div id="intel-mode-bar" style="display:none"></div>
+      <div id="intel-screen-subtitle" style="display:none"></div>
+      {% else %}
+      <!-- miru.humanagency.co intel header -->
       <div style="margin-bottom:14px">
         <div style="font-size:24px;font-weight:900;letter-spacing:-0.5px;color:var(--text)">Intel</div>
         <div id="intel-screen-subtitle" style="font-size:12px;color:var(--muted);margin-top:2px">Brand &amp; Company intelligence</div>
       </div>
-
-      {% if intel_mode %}
-      <!-- Landing: choose Brand or Company (hidden once mode is set) -->
-      <div id="intel-landing" style="margin-bottom:16px">
-        <div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px">What would you like to research?</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <button onclick="setIntelMode('brand')" style="text-align:left;padding:18px 14px;border:1.5px solid var(--border);border-radius:16px;background:var(--surface);cursor:pointer;width:100%">
-            <div style="font-size:26px;margin-bottom:8px">🏷️</div>
-            <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px">Brand Intel</div>
-            <div style="font-size:11px;color:var(--muted);line-height:1.5">History · campaigns · identity · competitors</div>
-          </button>
-          <button onclick="setIntelMode('company')" style="text-align:left;padding:18px 14px;border:1.5px solid var(--border);border-radius:16px;background:var(--surface);cursor:pointer;width:100%">
-            <div style="font-size:26px;margin-bottom:8px">🏢</div>
-            <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px">Company Intel</div>
-            <div style="font-size:11px;color:var(--muted);line-height:1.5">Financials · strategy · AI focus · news</div>
-          </button>
-        </div>
-      </div>
-      <!-- Mode pill bar (shown after landing is dismissed) -->
+      <!-- Mode pill bar (miru only) -->
       <div id="intel-mode-bar" style="display:none;background:var(--border);padding:4px;border-radius:12px;margin-bottom:10px">
         <div style="display:flex;gap:4px">
           <button id="intel-mode-btn-brand"   onclick="setIntelMode('brand')"   style="flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s">🏷️ Brand</button>
@@ -828,35 +834,51 @@
       {% endif %}
 
       {% if intel_mode %}
-      <!-- Brand search row (intel.humanagency.co — brand mode) -->
+      <!-- ── Brand panel (intel.humanagency.co, brand mode) ── -->
       <div id="brand-search-row" style="display:none">
+        <!-- Brand mode header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#6d28d9">🏷️ Brand Intel</div>
+            <div style="font-size:12px;color:#7c3aed;margin-top:2px;opacity:.8">Story · campaigns · identity · rivals</div>
+          </div>
+          <button onclick="_intelShowLanding()" style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer">← Switch</button>
+        </div>
         <div style="display:flex;gap:8px;margin-bottom:10px">
           <input id="brand-q" type="text" placeholder="Nike, Walkers, Coca-Cola, Sky…"
-            style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+            style="flex:1;border:1.5px solid #e9d5ff;border-radius:12px;padding:11px 14px;font-size:15px;background:#faf5ff;color:var(--text);outline:none"
             oninput="document.getElementById('intel-input').value=this.value"
             onkeydown="if(event.key==='Enter'){document.getElementById('intel-input').value=this.value;searchIntel()}"
-            onfocus="this.style.boxShadow='0 0 0 3px rgba(79,70,229,.15)'"
-            onblur="this.style.boxShadow=''"
+            onfocus="this.style.boxShadow='0 0 0 3px rgba(109,40,217,.15)';this.style.borderColor='#c084fc'"
+            onblur="this.style.boxShadow='';this.style.borderColor='#e9d5ff'"
             autocomplete="off">
           <button onclick="_intelScan()" title="Scan brand from photo"
-            style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer;flex-shrink:0">📷</button>
+            style="background:#faf5ff;border:1.5px solid #e9d5ff;border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer;flex-shrink:0">📷</button>
           <input id="intel-scan-file" type="file" accept="image/*" capture="environment" style="display:none" onchange="_intelScanFile(this)">
           <button onclick="document.getElementById('intel-input').value=document.getElementById('brand-q').value;searchIntel()"
-            style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 20px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
+            style="background:#7c3aed;color:#fff;font-size:14px;font-weight:700;padding:11px 20px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
         </div>
       </div>
-      <!-- Company search row (intel.humanagency.co — company mode) -->
+      <!-- ── Company panel (intel.humanagency.co, company mode) ── -->
       <div id="company-search-row" style="display:none">
+        <!-- Company mode header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#3730a3">🏢 Company Intel</div>
+            <div style="font-size:12px;color:#4338ca;margin-top:2px;opacity:.8">Financials · strategy · AI focus · news</div>
+          </div>
+          <button onclick="_intelShowLanding()" style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer">← Switch</button>
+        </div>
         <div style="display:flex;gap:8px;margin-bottom:10px">
           <input id="company-q" type="text" placeholder="Tesco, BP, HSBC, BT Group…"
-            style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+            style="flex:1;border:1.5px solid #c7d2fe;border-radius:12px;padding:11px 14px;font-size:15px;background:#eef2ff;color:var(--text);outline:none"
             oninput="document.getElementById('intel-input').value=this.value"
             onkeydown="if(event.key==='Enter'){document.getElementById('intel-input').value=this.value;searchIntel()}"
-            onfocus="this.style.boxShadow='0 0 0 3px rgba(79,70,229,.15)'"
-            onblur="this.style.boxShadow=''"
+            onfocus="this.style.boxShadow='0 0 0 3px rgba(55,48,163,.15)';this.style.borderColor='#818cf8'"
+            onblur="this.style.boxShadow='';this.style.borderColor='#c7d2fe'"
             autocomplete="off">
           <button onclick="document.getElementById('intel-input').value=document.getElementById('company-q').value;searchIntel()"
-            style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 20px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
+            style="background:#3730a3;color:#fff;font-size:14px;font-weight:700;padding:11px 20px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
         </div>
       </div>
       <!-- Hidden compat input (synced from brand-q/company-q; also set by recent-item clicks) -->
@@ -4965,11 +4987,9 @@ const _ts = new Date(d.timestamp);
 
   window.setIntelMode = function(mode) {
     _intelSearchMode = mode;
+    // Hide landing, show the mode-specific panel
     var landing = document.getElementById("intel-landing");
     if (landing) landing.style.display = "none";
-    var bar = document.getElementById("intel-mode-bar");
-    if (bar) bar.style.display = "block";
-    // Show the relevant separate search row, hide the other
     var bRow = document.getElementById("brand-search-row");
     var cRow = document.getElementById("company-search-row");
     if (bRow) bRow.style.display = mode === "brand" ? "" : "none";
@@ -4992,22 +5012,43 @@ const _ts = new Date(d.timestamp);
     if (err) err.classList.add("hidden");
     var load = document.getElementById("intel-loading");
     if (load) load.classList.add("hidden");
+    // miru pill bar (not present on intel.humanagency.co)
     ["brand","company"].forEach(function(m) {
       var btn = document.getElementById("intel-mode-btn-" + m);
-      if (!btn) return;
+      if (!btn || btn.tagName === "DIV") return; // stub divs on intel mode, skip
       btn.style.background = m === mode ? "#4f46e5" : "transparent";
       btn.style.color = m === mode ? "#fff" : "var(--muted)";
     });
-    // On miru (non-intel mode), update the shared input placeholder
+    var bar = document.getElementById("intel-mode-bar");
+    if (bar && bar.tagName === "DIV" && bar.children.length === 0) bar.style.display = "none"; // stub
+    else if (bar) bar.style.display = "block"; // miru pill bar
+    // On miru, update shared input placeholder and subtitle
     var inp = document.getElementById("intel-input");
     if (inp && inp.type !== "hidden") {
       inp.placeholder = mode === "brand" ? "Nike, Walkers, Coca-Cola, Sky…" : "Tesco, BP, HSBC, BT Group…";
     }
     var sub = document.getElementById("intel-screen-subtitle");
-    if (sub) sub.textContent = mode === "brand" ? "Brand intelligence" : "Company intelligence";
+    if (sub && sub.style.display !== "none") sub.textContent = mode === "brand" ? "Brand intelligence" : "Company intelligence";
     // Camera button: only on miru single-input row
     var scanBtn = document.getElementById("intel-scan-btn");
     if (scanBtn) scanBtn.style.display = mode === "brand" ? "" : "none";
+  };
+
+  // Show the landing cards and reset mode (intel.humanagency.co "← Switch" button)
+  window._intelShowLanding = function() {
+    _intelSearchMode = null;
+    var landing = document.getElementById("intel-landing");
+    if (landing) landing.style.display = "";
+    var bRow = document.getElementById("brand-search-row");
+    var cRow = document.getElementById("company-search-row");
+    if (bRow) bRow.style.display = "none";
+    if (cRow) cRow.style.display = "none";
+    var res = document.getElementById("intel-result");
+    if (res) res.style.display = "none";
+    var err = document.getElementById("intel-error");
+    if (err) err.classList.add("hidden");
+    var load = document.getElementById("intel-loading");
+    if (load) load.classList.add("hidden");
   };
 
   // Auto-select brand mode on intel.humanagency.co (called here after setIntelMode is defined)
