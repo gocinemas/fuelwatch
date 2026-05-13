@@ -890,6 +890,7 @@
             <div style="flex:1;min-width:0">
               <div id="brand-name-el" style="font-size:22px;font-weight:900;letter-spacing:-0.8px;color:var(--text)"></div>
               <div id="brand-desc-el" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+              <div id="brand-slogan-el" style="display:none;font-size:11px;font-style:italic;font-weight:700;color:#7c3aed;margin-top:3px"></div>
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
               <button id="intel-pin-btn" onclick="_intelTogglePin()" style="font-size:12px;font-weight:600;color:#6b7280;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">📌 Pin</button>
@@ -908,8 +909,8 @@
         <div id="intel-tab-bar" style="display:flex;gap:4px;background:var(--border);padding:4px;border-radius:14px;margin-bottom:14px;overflow-x:auto">
           <button id="itab-btn-about"     onclick="switchIntelTab('about')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:#4f46e5;color:#fff">About</button>
           <button id="itab-btn-finance"   onclick="switchIntelTab('finance')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Finance</button>
-          <button id="itab-btn-history"   onclick="switchIntelTab('history')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">History</button>
-          <button id="itab-btn-campaigns" onclick="switchIntelTab('campaigns')" class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Campaigns</button>
+          <button id="itab-btn-history"   onclick="switchIntelTab('history')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">📖 Story</button>
+          <button id="itab-btn-campaigns" onclick="switchIntelTab('campaigns')" class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">🎯 Ads</button>
           <button id="itab-btn-intel"     onclick="switchIntelTab('intel')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Intel</button>
         </div>
 
@@ -1039,7 +1040,7 @@
               <img id="brand-tl-logo" src="" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:contain;border:1px solid var(--border);background:#fafafa;padding:5px;flex-shrink:0" onerror="this.style.opacity='.15'">
               <div>
                 <div id="brand-tl-name" style="font-size:15px;font-weight:900;color:var(--text);letter-spacing:-0.3px"></div>
-                <div style="font-size:11px;color:var(--muted);margin-top:1px">Brand History</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:1px">Brand Story & Milestones</div>
               </div>
             </div>
             <div id="brand-timeline-el"></div>
@@ -1049,7 +1050,7 @@
         <!-- ── Campaigns tab ── -->
         <div id="intel-tab-campaigns" style="display:none">
           <div id="brand-campaigns-section" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:12px">
-            <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">🎯 Iconic Campaigns & Slogans</div>
+            <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">🎯 Iconic Ads, Campaigns & Slogans</div>
             <div id="brand-campaigns-el"></div>
           </div>
           <div id="brand-ads-section" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
@@ -5120,6 +5121,8 @@ const _ts = new Date(d.timestamp);
         logoEl.onerror = function() { this.style.display = "none"; };
         if (brData.name) document.getElementById("brand-name-el").textContent = brData.name;
         if (brData.description) document.getElementById("brand-desc-el").textContent = brData.description;
+        const _sEl = document.getElementById("brand-slogan-el");
+        if (_sEl && brData.slogan) { _sEl.textContent = `"${brData.slogan}"`; _sEl.style.display = ""; }
       } else if (coData && coData.name) {
         document.getElementById("brand-name-el").textContent = coData.name;
       }
@@ -5175,7 +5178,8 @@ const _ts = new Date(d.timestamp);
       });
       const _tb = document.getElementById("intel-tab-bar");
       if (_tb) _tb.style.display = visibleTabs.length > 1 ? "" : "none";
-      if (visibleTabs[0]) switchIntelTab(visibleTabs[0]);
+      const _defaultTab = (_intelSearchMode === "brand" && visibleTabs.includes("history")) ? "history" : visibleTabs[0];
+      if (_defaultTab) switchIntelTab(_defaultTab);
 
       // Pin state — set from cached result if present
       const pinned = !!(br._pinned || co._pinned);
@@ -7542,6 +7546,11 @@ const _ts = new Date(d.timestamp);
 
     document.getElementById("brand-name-el").textContent = d.name || "";
     document.getElementById("brand-desc-el").textContent = d.description || "";
+    const _sloganEl = document.getElementById("brand-slogan-el");
+    if (_sloganEl) {
+      if (d.slogan) { _sloganEl.textContent = `"${d.slogan}"`; _sloganEl.style.display = ""; }
+      else _sloganEl.style.display = "none";
+    }
 
     // Stats grid — only render boxes that have real values
     const _statFields = [
@@ -7596,6 +7605,7 @@ const _ts = new Date(d.timestamp);
                 Watch
               </a>
             </div>
+            ${c.slogan ? `<div style="font-size:12px;font-style:italic;font-weight:700;color:#7c3aed;margin-bottom:4px">"${c.slogan}"</div>` : ""}
             <div style="font-size:13px;color:#6b7280;line-height:1.55">${c.description || ""}</div>
           </div>`;
         }).join("")

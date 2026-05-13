@@ -767,8 +767,8 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
     # extract doubles as the original user query for context (e.g. "Lynx deodorant")
     context_hint = f' (the user searched for: "{extract}")' if extract and extract.lower() != brand.lower() else ""
     prompt = f"""Return ONLY valid JSON for brand "{brand}"{context_hint}. No markdown, no explanation, no preamble.
-{{"did_you_know":"one striking fact about {brand} — specific number or surprising detail, 1 sentence","facts":{{"founded":"year","hq":"city, country","industry":"sector","employees":"number","revenue":"amount"}},"competitors":[{{"name":"","revenue":"","description":""}}],"campaigns":[{{"name":"","year":"","description":""}}],"timeline":[{{"year":"","title":"","description":""}}]}}
-Strict rules: competitors = exactly 4 real competitors each with real revenue. campaigns = exactly 4 famous advertising campaigns. timeline = exactly 6 key milestones oldest first, each description under 25 words. All fields must be populated. Return ONLY the JSON object."""
+{{"did_you_know":"one striking fact about {brand} — specific number or surprising detail, 1 sentence","slogan":"brand's most famous tagline or current slogan","facts":{{"founded":"year","hq":"city, country","industry":"sector","employees":"number","revenue":"amount"}},"competitors":[{{"name":"","revenue":"","description":""}}],"campaigns":[{{"name":"","year":"","slogan":"","description":""}}],"timeline":[{{"year":"","title":"","description":""}}]}}
+Strict rules: competitors = exactly 4 real competitors each with real revenue. campaigns = exactly 6 famous advertising campaigns or brand slogans (include the famous tagline if any). timeline = exactly 8 key milestones oldest first, each description under 25 words. All fields must be populated. Return ONLY the JSON object."""
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
