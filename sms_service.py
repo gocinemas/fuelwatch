@@ -14180,6 +14180,190 @@ def ai_newsletter_preview():
         return f"<p style='font-family:sans-serif;padding:40px;color:red'>Error: {e}</p>", 500
 
 
+# ── PM Intel ──────────────────────────────────────────────────────────────────
+
+@app.route("/pm")
+def pm_home():
+    return render_template("pm.html")
+
+
+def _sb_pm():
+    from supabase import create_client
+    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+
+
+@app.route("/api/pm/projects", methods=["GET", "POST"])
+def api_pm_projects():
+    try:
+        sb = _sb_pm()
+        if request.method == "POST":
+            data = request.json or {}
+            name = (data.get("name") or "").strip()
+            if not name:
+                return jsonify({"error": "Name required"}), 400
+            row = sb.table("pm_projects").insert({
+                "name": name,
+                "proj_type": data.get("proj_type", "IT Transformation"),
+                "phase": int(data.get("phase", 1)),
+                "description": data.get("description", ""),
+            }).execute()
+            return jsonify({"ok": True, "project": row.data[0]})
+        rows = sb.table("pm_projects").select("*").order("created_at", desc=True).execute()
+        return jsonify(rows.data or [])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/pm/projects/<project_id>", methods=["PATCH", "DELETE"])
+def api_pm_project(project_id):
+    try:
+        sb = _sb_pm()
+        if request.method == "DELETE":
+            sb.table("pm_docs").delete().eq("project_id", project_id).execute()
+            sb.table("pm_projects").delete().eq("id", project_id).execute()
+            return jsonify({"ok": True})
+        sb.table("pm_projects").update(request.json or {}).eq("id", project_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/pm/docs", methods=["GET", "POST"])
+def api_pm_docs():
+    try:
+        sb = _sb_pm()
+        if request.method == "POST":
+            data = request.json or {}
+            row = sb.table("pm_docs").insert({
+                "project_id": data.get("project_id"),
+                "phase": int(data.get("phase", 1)),
+                "doc_type": data.get("doc_type", "note"),
+                "title": data.get("title", ""),
+                "content": data.get("content", ""),
+                "ai_summary": data.get("ai_summary", ""),
+                "status": data.get("status", "draft"),
+            }).execute()
+            return jsonify({"ok": True, "doc": row.data[0]})
+        project_id = request.args.get("project_id")
+        q = sb.table("pm_docs").select("*").order("created_at", desc=True)
+        if project_id:
+            q = q.eq("project_id", project_id)
+        return jsonify(q.execute().data or [])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/pm/docs/<doc_id>", methods=["PATCH", "DELETE"])
+def api_pm_doc(doc_id):
+    try:
+        sb = _sb_pm()
+        if request.method == "DELETE":
+            sb.table("pm_docs").delete().eq("id", doc_id).execute()
+            return jsonify({"ok": True})
+        sb.table("pm_docs").update(request.json or {}).eq("id", doc_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/pm/analyse", methods=["POST"])
+def api_pm_analyse():
+    data = request.json or {}
+    action = data.get("action", "summarise")
+    content = (data.get("content") or "").strip()
+    context = (data.get("context") or "").strip()
+    if not content:
+        return jsonify({"error": "Content required"}), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "AI not configured"}), 500
+
+    PROMPTS = {
+        "boscard": (
+            "You are a senior programme manager. Generate a complete BOSCARD from the brief below.\n"
+            "Output clean markdown with these sections:\n"
+            "## Benefits\nWhat value does this deliver to the business?\n"
+            "## Objectives\n3-5 SMART, measurable objectives\n"
+            "## Scope\n**In scope:** ...\n**Out of scope:** ...\n"
+            "## Constraints\nTime, budget, resource, regulatory limits\n"
+            "## Assumptions\nKey assumptions being made\n"
+            "## Risks\nTop 5 risks with (High/Med/Low) probability and impact\n"
+            "## Dependencies\nInternal and external dependencies\n\nBrief:\n"
+        ),
+        "raid": (
+            "You are a programme manager. Extract ALL RAID items from the text below.\n"
+            "Output clean markdown tables:\n"
+            "## Risks\n| ID | Description | Prob | Impact | Owner | Mitigation |\n|---|---|---|---|---|---|\n"
+            "## Assumptions\n| ID | Description | Owner | Validation |\n|---|---|---|---|\n"
+            "## Issues\n| ID | Description | Priority | Owner | Resolution |\n|---|---|---|---|---|\n"
+            "## Dependencies\n| ID | Description | Type | Owner | Due |\n|---|---|---|---|---|\n\nText:\n"
+        ),
+        "status": (
+            "You are a programme manager. Write a formal Weekly Status Report from the notes below.\n"
+            "Format:\n**Week ending:** [date if mentioned, else 'w/e [today]']\n"
+            "**Overall RAG:** 🟢 Green / 🟡 Amber / 🔴 Red — [one-line reason]\n"
+            "**Executive Summary:** [2-3 sentences]\n\n"
+            "**Accomplishments this week:**\n- [bullet]\n\n"
+            "**Planned next week:**\n- [bullet]\n\n"
+            "**Risks & Issues:**\n| Item | RAG | Owner | Action |\n|---|---|---|---|\n\n"
+            "**Decisions required:**\n- [bullet or 'None this week']\n\nNotes:\n"
+        ),
+        "pir": (
+            "You are a programme manager writing a Post-Implementation Review.\n"
+            "Structure the input into:\n"
+            "## Executive Summary\n"
+            "## Objectives vs Actuals\n| Objective | Target | Achieved | RAG |\n|---|---|---|---|\n"
+            "## What Went Well\n- [bullets]\n"
+            "## Areas for Improvement\n- [bullets]\n"
+            "## Recommendations for Future Projects\n- [bullets]\n"
+            "## Benefits Realised\n\nInput:\n"
+        ),
+        "tsa": (
+            "You are an IT separation programme manager reviewing a TSA document.\n"
+            "Produce:\n## TSA Summary\nServices, exit dates, SLAs\n"
+            "## Open Actions\n| Action | Owner | Due | Status |\n|---|---|---|---|\n"
+            "## Exit Risk Areas\nServices at risk of delayed exit\n"
+            "## Recommendations\nNext steps and critical path items\n\nContent:\n"
+        ),
+        "summarise": (
+            "Summarise the following document for a senior executive. Output:\n"
+            "**One-line summary** (max 20 words)\n"
+            "**Key Points** (5 bullets max)\n"
+            "**Decisions / Actions needed** (if any)\n"
+            "**RAG Status** (Green/Amber/Red with reason, if inferable)\n\nDocument:\n"
+        ),
+        "raci": (
+            "You are a programme manager. Generate a RACI matrix from the content below.\n"
+            "List all activities/deliverables as rows. List stakeholder roles as columns.\n"
+            "Use R=Responsible, A=Accountable, C=Consulted, I=Informed.\n"
+            "Output as a markdown table.\n\nContent:\n"
+        ),
+    }
+
+    prompt_text = PROMPTS.get(action, PROMPTS["summarise"])
+    if context:
+        prompt_text = f"Project context: {context}\n\n" + prompt_text
+
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt_text + content}],
+                "temperature": 0.25,
+                "max_tokens": 2000,
+            },
+            timeout=35,
+        )
+        if r.status_code != 200:
+            return jsonify({"error": f"AI error {r.status_code}"}), 500
+        result = r.json()["choices"][0]["message"]["content"].strip()
+        return jsonify({"result": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

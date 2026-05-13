@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>PM Intel — humanagency</title>
+  <meta name="description" content="IT project lifecycle intelligence — BOSCARD, RAID, weekly status and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg:#f8fafc; --surface:#fff; --surface2:#f1f5f9; --border:#e2e8f0;
+      --text:#0f172a; --muted:#64748b; --accent:#6366f1; --accent-light:#eef2ff;
+      --green:#16a34a; --amber:#d97706; --red:#dc2626;
+    }
+    [data-theme="dark"] {
+      --bg:#0f172a; --surface:#1e293b; --surface2:#334155; --border:#334155;
+      --text:#f1f5f9; --muted:#94a3b8; --accent:#818cf8; --accent-light:#1e1b4b;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* ── Top bar ── */
+    #topbar {
+      position:sticky; top:0; z-index:100;
+      background:var(--surface); border-bottom:1px solid var(--border);
+      padding:0 16px; height:52px;
+      display:flex; align-items:center; gap:12px;
+    }
+    #topbar .brand { font-size:16px; font-weight:900; letter-spacing:-0.5px; color:var(--accent); flex-shrink:0; }
+    #topbar .brand span { color:var(--muted); font-weight:500; }
+    #project-picker {
+      flex:1; max-width:320px;
+      border:1px solid var(--border); border-radius:10px;
+      padding:7px 12px; font-size:13px; font-weight:600;
+      background:var(--surface2); color:var(--text); cursor:pointer;
+    }
+    .icon-btn {
+      width:36px; height:36px; border-radius:10px;
+      border:1px solid var(--border); background:var(--surface2);
+      cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;
+      flex-shrink:0;
+    }
+    .icon-btn:hover { background:var(--border); }
+    #topbar .ml-auto { margin-left:auto; display:flex; gap:8px; align-items:center; }
+
+    /* ── Layout ── */
+    #layout { display:flex; min-height:calc(100vh - 52px); }
+    #sidebar {
+      width:240px; flex-shrink:0;
+      border-right:1px solid var(--border);
+      background:var(--surface);
+      padding:16px 12px;
+      display:flex; flex-direction:column; gap:4px;
+      position:sticky; top:52px; height:calc(100vh - 52px); overflow-y:auto;
+    }
+    #main { flex:1; padding:20px 16px; max-width:860px; }
+
+    /* ── Lifecycle rail ── */
+    #lifecycle-rail {
+      display:flex; gap:0; margin-bottom:24px; overflow-x:auto;
+      background:var(--surface); border:1px solid var(--border); border-radius:16px;
+      padding:4px;
+    }
+    .phase-btn {
+      flex:1; min-width:80px; padding:10px 8px;
+      border:none; border-radius:12px; cursor:pointer;
+      font-size:11px; font-weight:700; text-align:center;
+      background:transparent; color:var(--muted); transition:all .15s;
+      line-height:1.35;
+    }
+    .phase-btn .phase-icon { font-size:18px; display:block; margin-bottom:3px; }
+    .phase-btn.active { background:var(--accent); color:#fff; }
+    .phase-btn.done { background:var(--accent-light); color:var(--accent); }
+    .phase-btn.current-proj { outline:2px solid var(--amber); outline-offset:-2px; }
+
+    /* ── Section card ── */
+    .card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:16px; padding:16px; margin-bottom:14px;
+    }
+    .card-title {
+      font-size:14px; font-weight:800; color:var(--text);
+      margin-bottom:12px; padding-bottom:10px;
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:8px;
+    }
+
+    /* ── Doc list ── */
+    .doc-item {
+      display:flex; align-items:center; gap:10px;
+      padding:10px 0; border-bottom:1px solid var(--border);
+      cursor:pointer;
+    }
+    .doc-item:last-child { border-bottom:none; padding-bottom:0; }
+    .doc-item:hover .doc-title { color:var(--accent); }
+    .doc-status {
+      width:8px; height:8px; border-radius:50%; flex-shrink:0;
+    }
+    .doc-title { font-size:13px; font-weight:600; flex:1; }
+    .doc-meta { font-size:11px; color:var(--muted); white-space:nowrap; }
+    .doc-type-chip {
+      font-size:10px; font-weight:700; padding:2px 7px;
+      border-radius:99px; background:var(--accent-light); color:var(--accent);
+      white-space:nowrap; flex-shrink:0;
+    }
+    .add-doc-row {
+      display:flex; align-items:center; gap:8px;
+      padding:10px 0; color:var(--muted); font-size:12px; cursor:pointer;
+    }
+    .add-doc-row:hover { color:var(--accent); }
+
+    /* ── AI workspace ── */
+    #ai-workspace {
+      background:linear-gradient(135deg,#1e1b4b,#312e81);
+      border-radius:16px; padding:16px; margin-bottom:14px;
+    }
+    #ai-workspace .ai-title {
+      font-size:13px; font-weight:800; color:#a5b4fc; margin-bottom:12px;
+    }
+    .ai-action-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+    .ai-action-btn {
+      padding:8px 14px; border-radius:10px;
+      border:1px solid rgba(165,180,252,.3);
+      background:rgba(255,255,255,.08);
+      color:#e0e7ff; font-size:12px; font-weight:600;
+      cursor:pointer; transition:all .15s;
+    }
+    .ai-action-btn:hover { background:rgba(255,255,255,.15); }
+    .ai-action-btn.active { background:#6366f1; border-color:#6366f1; color:#fff; }
+    #ai-input {
+      width:100%; border-radius:12px; padding:11px 14px;
+      font-size:13px; font-family:inherit; line-height:1.5;
+      border:1px solid rgba(165,180,252,.3); background:rgba(255,255,255,.06);
+      color:#e0e7ff; resize:vertical; min-height:100px;
+      margin-bottom:10px;
+    }
+    #ai-input::placeholder { color:rgba(165,180,252,.5); }
+    #ai-input:focus { outline:none; border-color:rgba(165,180,252,.6); }
+    #ai-run-btn {
+      background:#6366f1; color:#fff; border:none;
+      padding:10px 20px; border-radius:10px; font-size:13px; font-weight:700;
+      cursor:pointer; width:100%;
+    }
+    #ai-run-btn:disabled { opacity:.5; cursor:not-allowed; }
+    #ai-output {
+      display:none; margin-top:14px;
+      background:rgba(255,255,255,.05); border:1px solid rgba(165,180,252,.2);
+      border-radius:12px; padding:14px;
+    }
+    #ai-output-content {
+      font-size:13px; color:#e0e7ff; line-height:1.65;
+      max-height:50vh; overflow-y:auto;
+    }
+    #ai-output-content table { width:100%; border-collapse:collapse; font-size:12px; }
+    #ai-output-content th { background:rgba(99,102,241,.3); padding:6px 8px; text-align:left; }
+    #ai-output-content td { padding:5px 8px; border-bottom:1px solid rgba(165,180,252,.15); }
+    #ai-output-content h2,#ai-output-content h3 { color:#a5b4fc; margin:12px 0 6px; font-size:13px; }
+    #ai-output-content strong { color:#c7d2fe; }
+    #ai-output-actions {
+      display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;
+    }
+    .ai-out-btn {
+      padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
+      border:1px solid rgba(165,180,252,.3); background:transparent; color:#a5b4fc;
+    }
+    .ai-out-btn:hover { background:rgba(165,180,252,.15); }
+
+    /* ── Phase doc types ── */
+    .phase-doc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .phase-doc-card {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:12px; padding:10px 12px; cursor:pointer;
+      transition:all .15s;
+    }
+    .phase-doc-card:hover { border-color:var(--accent); }
+    .phase-doc-card.has-content { border-color:var(--green); background:#f0fdf4; }
+    [data-theme="dark"] .phase-doc-card.has-content { background:#052e16; }
+    .phase-doc-card-icon { font-size:18px; margin-bottom:4px; }
+    .phase-doc-card-name { font-size:12px; font-weight:700; color:var(--text); }
+    .phase-doc-card-hint { font-size:11px; color:var(--muted); margin-top:2px; }
+
+    /* ── Modals ── */
+    .modal-backdrop {
+      position:fixed; inset:0; background:rgba(0,0,0,.45);
+      display:none; z-index:200; align-items:flex-end; justify-content:center;
+    }
+    .modal-backdrop.open { display:flex; }
+    .modal {
+      background:var(--surface); width:100%; max-width:600px;
+      border-radius:20px 20px 0 0; padding:20px 16px 32px;
+      max-height:92vh; overflow-y:auto;
+    }
+    @media(min-width:640px) {
+      .modal-backdrop { align-items:center; }
+      .modal { border-radius:20px; max-height:85vh; }
+    }
+    .modal-title { font-size:16px; font-weight:800; margin-bottom:16px; }
+    .modal-close { float:right; font-size:20px; cursor:pointer; color:var(--muted); }
+    .form-label { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; display:block; }
+    .form-input {
+      width:100%; border:1px solid var(--border); border-radius:10px;
+      padding:10px 12px; font-size:14px; font-family:inherit;
+      background:var(--surface2); color:var(--text); margin-bottom:12px;
+    }
+    .form-input:focus { outline:none; border-color:var(--accent); }
+    textarea.form-input { min-height:80px; resize:vertical; line-height:1.5; }
+    .form-select { appearance:none; }
+    .btn-primary {
+      width:100%; padding:12px; border-radius:12px; border:none;
+      background:var(--accent); color:#fff; font-size:14px; font-weight:700;
+      cursor:pointer;
+    }
+    .btn-primary:hover { opacity:.9; }
+    .btn-danger { background:var(--red); }
+
+    /* ── Empty states ── */
+    .empty-state { text-align:center; padding:48px 20px; color:var(--muted); }
+    .empty-state .es-icon { font-size:40px; margin-bottom:12px; }
+    .empty-state p { font-size:14px; line-height:1.6; margin-bottom:16px; }
+
+    /* ── Project sidebar items ── */
+    .proj-item {
+      display:flex; align-items:center; gap:8px;
+      padding:9px 10px; border-radius:10px; cursor:pointer;
+      font-size:13px; font-weight:600; color:var(--muted);
+      transition:all .15s;
+    }
+    .proj-item:hover { background:var(--surface2); color:var(--text); }
+    .proj-item.active { background:var(--accent-light); color:var(--accent); }
+    .proj-item .proj-phase-dot {
+      width:8px; height:8px; border-radius:50%; flex-shrink:0;
+    }
+
+    /* ── RAG badge ── */
+    .rag { display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:700; }
+    .rag-g { background:#dcfce7; color:#16a34a; }
+    .rag-a { background:#fef3c7; color:#d97706; }
+    .rag-r { background:#fee2e2; color:#dc2626; }
+
+    /* ── Saved docs list ── */
+    .saved-doc-row {
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer;
+    }
+    .saved-doc-row:last-child { border-bottom:none; }
+    .saved-doc-icon { font-size:20px; flex-shrink:0; }
+    .saved-doc-title { font-size:13px; font-weight:700; color:var(--text); }
+    .saved-doc-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+
+    /* ── Spinner ── */
+    .spinner { width:18px; height:18px; border-radius:50%; border:2px solid rgba(165,180,252,.3); border-top-color:#a5b4fc; animation:spin .7s linear infinite; display:inline-block; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media(max-width:640px) {
+      #sidebar { display:none; }
+      #main { padding:14px 12px; }
+      .phase-doc-grid { grid-template-columns:1fr; }
+    }
+
+    /* ── Setup banner ── */
+    #setup-banner {
+      display:none; background:#fef3c7; border:1px solid #fde68a;
+      border-radius:12px; padding:12px 14px; margin-bottom:16px;
+      font-size:12px; color:#92400e;
+    }
+    #setup-banner code { background:#fde68a; padding:2px 5px; border-radius:4px; font-size:11px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ── -->
+<div id="topbar">
+  <div class="brand">PM<span> Intel</span></div>
+  <select id="project-picker" onchange="_pickProject(this.value)">
+    <option value="">— select project —</option>
+  </select>
+  <div class="ml-auto">
+    <button class="icon-btn" onclick="_openNewProject()" title="New project">＋</button>
+    <button class="icon-btn" onclick="_toggleTheme()" title="Toggle theme">🌙</button>
+  </div>
+</div>
+
+<!-- ── Layout ── -->
+<div id="layout">
+
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:4px 10px 8px">Projects</div>
+    <div id="sidebar-projects"></div>
+    <button onclick="_openNewProject()" style="margin-top:8px;display:flex;align-items:center;gap:6px;padding:9px 10px;border:1px dashed var(--border);border-radius:10px;background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;width:100%">
+      ＋ New project
+    </button>
+    <div style="flex:1"></div>
+    <div id="sidebar-setup" style="display:none;margin-top:auto;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);line-height:1.5">⚠️ Run the SQL below in Supabase to enable storage.</div>
+      <button onclick="_showSetupSQL()" style="margin-top:6px;font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;font-weight:600">View setup SQL →</button>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main id="main">
+
+    <!-- Setup banner -->
+    <div id="setup-banner">
+      ⚠️ Supabase tables not set up. Run this SQL in your Supabase SQL editor, then refresh:
+      <pre style="margin-top:8px;font-size:10px;background:#fef9c3;padding:8px;border-radius:6px;overflow-x:auto">create table if not exists pm_projects (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  proj_type text default 'IT Transformation',
+  phase int default 1,
+  description text default '',
+  created_at timestamptz default now()
+);
+create table if not exists pm_docs (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid,
+  phase int not null,
+  doc_type text not null,
+  title text not null,
+  content text default '',
+  ai_summary text default '',
+  status text default 'draft',
+  created_at timestamptz default now()
+);</pre>
+    </div>
+
+    <!-- No project selected -->
+    <div id="empty-view">
+      <div class="empty-state">
+        <div class="es-icon">🗂️</div>
+        <p>Select or create a project to see its lifecycle,<br>track artefacts, and run AI on your documents.</p>
+        <button onclick="_openNewProject()" class="btn-primary" style="width:auto;padding:12px 28px">
+          Create first project
+        </button>
+      </div>
+    </div>
+
+    <!-- Project view -->
+    <div id="project-view" style="display:none">
+
+      <!-- Project header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
+        <div>
+          <div id="proj-name-heading" style="font-size:20px;font-weight:900;letter-spacing:-0.5px;color:var(--text)"></div>
+          <div id="proj-meta-heading" style="font-size:12px;color:var(--muted);margin-top:3px"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0;align-items:center">
+          <button onclick="_editPhase()" style="font-size:12px;font-weight:600;padding:7px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer">
+            Move phase →
+          </button>
+          <button onclick="_deleteProject()" style="font-size:12px;color:var(--red);background:none;border:none;cursor:pointer">Delete</button>
+        </div>
+      </div>
+
+      <!-- Lifecycle rail -->
+      <div id="lifecycle-rail">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Phase panel -->
+      <div id="phase-panel">
+
+        <!-- Phase overview -->
+        <div class="card">
+          <div class="card-title">
+            <span id="phase-icon-heading"></span>
+            <span id="phase-name-heading"></span>
+            <span id="phase-rag-badge"></span>
+          </div>
+          <div id="phase-description" style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px"></div>
+
+          <!-- Standard documents for this phase -->
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Artefacts for this phase</div>
+          <div id="phase-docs-grid" class="phase-doc-grid"></div>
+        </div>
+
+        <!-- My saved documents for this phase -->
+        <div class="card" id="saved-docs-card" style="display:none">
+          <div class="card-title">📁 Saved Documents</div>
+          <div id="saved-docs-list"></div>
+          <button onclick="_openAddDoc()" style="margin-top:10px;display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px dashed var(--border);border-radius:10px;background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer">
+            ＋ Add document
+          </button>
+        </div>
+
+        <!-- AI workspace -->
+        <div id="ai-workspace">
+          <div class="ai-title">🤖 AI workspace — paste content, run action</div>
+
+          <!-- Context line -->
+          <div style="font-size:11px;color:rgba(165,180,252,.7);margin-bottom:10px" id="ai-context-hint"></div>
+
+          <!-- Action buttons -->
+          <div class="ai-action-row" id="ai-actions-row"></div>
+
+          <textarea id="ai-input" placeholder="Paste your brief, notes, meeting transcript or document here…"></textarea>
+
+          <button id="ai-run-btn" onclick="_runAI()">Run AI →</button>
+
+          <!-- Output -->
+          <div id="ai-output">
+            <div style="font-size:11px;color:rgba(165,180,252,.6);margin-bottom:8px;display:flex;justify-content:space-between">
+              <span id="ai-output-label"></span>
+              <span id="ai-spinner"></span>
+            </div>
+            <div id="ai-output-content"></div>
+            <div class="ai-output-actions" id="ai-output-actions">
+              <button class="ai-out-btn" onclick="_copyOutput()">📋 Copy</button>
+              <button class="ai-out-btn" onclick="_saveOutputAsDoc()">💾 Save as document</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /phase-panel -->
+
+    </div><!-- /project-view -->
+
+  </main>
+</div><!-- /layout -->
+
+<!-- ── New Project modal ── -->
+<div class="modal-backdrop" id="modal-new-project">
+  <div class="modal">
+    <span class="modal-close" onclick="_closeModal('modal-new-project')">✕</span>
+    <div class="modal-title">New Project</div>
+    <label class="form-label">Project name</label>
+    <input class="form-input" id="np-name" placeholder="e.g. Verdi IT Separation, Project Athena…">
+    <label class="form-label">Type</label>
+    <select class="form-input form-select" id="np-type">
+      <option>IT Transformation</option>
+      <option>IT Separation</option>
+      <option>ERP Implementation</option>
+      <option>Digital / App</option>
+      <option>Infrastructure</option>
+      <option>Programme Management</option>
+      <option>Other</option>
+    </select>
+    <label class="form-label">Current phase</label>
+    <select class="form-input form-select" id="np-phase">
+      <option value="1">1 — Initiate</option>
+      <option value="2">2 — Design</option>
+      <option value="3">3 — Build & Deliver</option>
+      <option value="4">4 — Test & Validate</option>
+      <option value="5">5 — Transition</option>
+      <option value="6">6 — Close</option>
+    </select>
+    <label class="form-label">Brief description (optional)</label>
+    <textarea class="form-input" id="np-desc" placeholder="One-liner about the programme…"></textarea>
+    <button class="btn-primary" onclick="_createProject()">Create project</button>
+  </div>
+</div>
+
+<!-- ── Add / Edit Document modal ── -->
+<div class="modal-backdrop" id="modal-doc">
+  <div class="modal">
+    <span class="modal-close" onclick="_closeModal('modal-doc')">✕</span>
+    <div class="modal-title" id="modal-doc-title">Add Document</div>
+    <input type="hidden" id="doc-edit-id">
+    <label class="form-label">Document title</label>
+    <input class="form-input" id="doc-title" placeholder="e.g. Weekly Status w/e 9 Jan…">
+    <label class="form-label">Type</label>
+    <select class="form-input form-select" id="doc-type">
+      <option value="boscard">BOSCARD</option>
+      <option value="business_case">Business Case</option>
+      <option value="stakeholder_map">Stakeholder Map</option>
+      <option value="raid">RAID Log</option>
+      <option value="raci">RACI Matrix</option>
+      <option value="map_workbook">MAP Workbook</option>
+      <option value="weekly_status">Weekly Status</option>
+      <option value="tsa">TSA Document</option>
+      <option value="test_plan">Test Plan</option>
+      <option value="pir">PIR</option>
+      <option value="note">Note / Other</option>
+    </select>
+    <label class="form-label">Content (paste from Word / PPT / email)</label>
+    <textarea class="form-input" id="doc-content" style="min-height:180px" placeholder="Paste document content here…"></textarea>
+    <label class="form-label">Status</label>
+    <select class="form-input form-select" id="doc-status">
+      <option value="draft">Draft</option>
+      <option value="in_review">In Review</option>
+      <option value="approved">Approved / Final</option>
+    </select>
+    <button class="btn-primary" onclick="_saveDoc()" style="margin-bottom:8px">Save document</button>
+    <button id="doc-delete-btn" class="btn-primary btn-danger" onclick="_deleteDoc()" style="display:none">Delete</button>
+  </div>
+</div>
+
+<!-- ── Setup SQL modal ── -->
+<div class="modal-backdrop" id="modal-setup">
+  <div class="modal">
+    <span class="modal-close" onclick="_closeModal('modal-setup')">✕</span>
+    <div class="modal-title">Supabase Setup SQL</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Run this in your Supabase SQL editor:</p>
+    <pre style="font-size:11px;background:var(--surface2);padding:12px;border-radius:10px;overflow-x:auto;line-height:1.5;color:var(--text)">create table if not exists pm_projects (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  proj_type text default 'IT Transformation',
+  phase int default 1,
+  description text default '',
+  created_at timestamptz default now()
+);
+create table if not exists pm_docs (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid,
+  phase int not null,
+  doc_type text not null,
+  title text not null,
+  content text default '',
+  ai_summary text default '',
+  status text default 'draft',
+  created_at timestamptz default now()
+);</pre>
+    <button class="btn-primary" onclick="_closeModal('modal-setup')" style="margin-top:12px">Got it</button>
+  </div>
+</div>
+
+<script>
+  // ── Lifecycle definition ───────────────────────────────────────────────────
+  const PHASES = [
+    {
+      id:1, icon:"🚀", name:"Initiate",
+      desc:"Establish the business case, secure sponsorship, and define the programme scope. Key output: signed-off BOSCARD and initial stakeholder map.",
+      docs:[
+        {type:"business_case", icon:"📄", name:"Business Case", hint:"Problem, benefits, cost estimate"},
+        {type:"boscard",       icon:"🎯", name:"BOSCARD",       hint:"Benefits · Objectives · Scope · Constraints · Assumptions · Risks · Dependencies"},
+        {type:"stakeholder_map", icon:"👥", name:"Stakeholder Map", hint:"Who, what level of influence, communication plan"},
+        {type:"note",          icon:"📋", name:"Project Charter", hint:"Formal mandate and governance structure"},
+      ],
+      aiActions:[
+        {id:"boscard",   label:"Generate BOSCARD"},
+        {id:"summarise", label:"Summarise brief"},
+      ],
+      aiHint:"Paste a business brief or problem statement → generate a full BOSCARD"
+    },
+    {
+      id:2, icon:"🏗️", name:"Design",
+      desc:"Define the solution architecture, agree TSA scope (for separations), build the RAID log, and finalise the RACI. Stakeholders locked in.",
+      docs:[
+        {type:"raid",    icon:"⚠️", name:"RAID Log",       hint:"Risks · Assumptions · Issues · Dependencies"},
+        {type:"raci",    icon:"🔲", name:"RACI Matrix",    hint:"Who is Responsible, Accountable, Consulted, Informed"},
+        {type:"tsa",     icon:"📜", name:"TSA / SLA Draft", hint:"Transition Service Agreement — services, exit dates"},
+        {type:"note",    icon:"🏛️", name:"Architecture Doc", hint:"Solution design, integration points"},
+      ],
+      aiActions:[
+        {id:"raid",      label:"Extract RAID from notes"},
+        {id:"raci",      label:"Generate RACI"},
+        {id:"tsa",       label:"Summarise TSA"},
+        {id:"summarise", label:"Summarise doc"},
+      ],
+      aiHint:"Paste meeting notes or requirements → extract full RAID log"
+    },
+    {
+      id:3, icon:"⚙️", name:"Build & Deliver",
+      desc:"Execute the plan. Track progress via MAP Workbook, publish weekly status, manage change log, and escalate blockers.",
+      docs:[
+        {type:"map_workbook",  icon:"📊", name:"MAP Workbook",      hint:"Master project tracker, workstream RAG"},
+        {type:"weekly_status", icon:"📅", name:"Weekly Status",     hint:"RAG, accomplishments, plan, risks"},
+        {type:"note",          icon:"📝", name:"Change Log",        hint:"Approved and pending change requests"},
+        {type:"note",          icon:"✅", name:"Decision Log",      hint:"Key decisions, owners, dates"},
+      ],
+      aiActions:[
+        {id:"status",    label:"Write weekly status"},
+        {id:"summarise", label:"Summarise update"},
+        {id:"raid",      label:"Extract RAID from notes"},
+      ],
+      aiHint:"Paste bullet-point progress notes → get a formal weekly status report"
+    },
+    {
+      id:4, icon:"🧪", name:"Test & Validate",
+      desc:"UAT, access validation, defect resolution and sign-off. For IT separations: role matrix testing, integration testing, data migration validation.",
+      docs:[
+        {type:"note",    icon:"📋", name:"Test Plan",          hint:"Scope, approach, entry/exit criteria"},
+        {type:"note",    icon:"🐛", name:"Defect Log",         hint:"Defects, severity, owner, resolution"},
+        {type:"note",    icon:"🔐", name:"Access Validation",  hint:"SAP roles, access control sign-off"},
+        {type:"note",    icon:"✅", name:"UAT Sign-off",       hint:"User acceptance criteria and approval"},
+      ],
+      aiActions:[
+        {id:"summarise", label:"Summarise test results"},
+        {id:"status",    label:"Write status update"},
+      ],
+      aiHint:"Paste test results or defect list → get an executive test summary"
+    },
+    {
+      id:5, icon:"🔄", name:"Transition",
+      desc:"Go-live preparation, cutover execution, hypercare and TSA management. This is the highest-risk phase — keep daily status visible.",
+      docs:[
+        {type:"note",    icon:"🔁", name:"Cutover Plan",     hint:"Day-by-day tasks, owners, checkpoints"},
+        {type:"tsa",     icon:"📜", name:"TSA (Signed)",     hint:"Final agreed Transition Service Agreement"},
+        {type:"note",    icon:"🏥", name:"Hypercare Plan",   hint:"Support model post go-live"},
+        {type:"weekly_status", icon:"📅", name:"Steering Pack", hint:"C-suite update for go-live readiness"},
+      ],
+      aiActions:[
+        {id:"tsa",       label:"Review TSA"},
+        {id:"status",    label:"Write steering update"},
+        {id:"summarise", label:"Summarise cutover notes"},
+      ],
+      aiHint:"Paste TSA content or cutover notes → get risk areas and open actions"
+    },
+    {
+      id:6, icon:"🎯", name:"Close",
+      desc:"Formal programme closure — benefits realisation, PIR, lessons learned, and handover to BAU. TSA exit confirmation.",
+      docs:[
+        {type:"pir",     icon:"📊", name:"PIR",              hint:"Post-Implementation Review — objectives vs actuals"},
+        {type:"note",    icon:"💡", name:"Lessons Learned",  hint:"What worked, what didn't, recommendations"},
+        {type:"note",    icon:"🤝", name:"Handover Doc",     hint:"BAU owners, support model, run-book"},
+        {type:"note",    icon:"🚪", name:"TSA Exit",         hint:"Service termination confirmation"},
+      ],
+      aiActions:[
+        {id:"pir",       label:"Draft PIR"},
+        {id:"summarise", label:"Summarise notes"},
+      ],
+      aiHint:"Paste retrospective notes → generate a full Post-Implementation Review"
+    },
+  ];
+
+  const PHASE_COLORS = ["#7c3aed","#2563eb","#059669","#d97706","#dc2626","#6366f1"];
+  const STATUS_COLOR = {draft:"#94a3b8", in_review:"#d97706", approved:"#16a34a"};
+  const DOC_LABELS = {
+    boscard:"BOSCARD", business_case:"Business Case", stakeholder_map:"Stakeholder Map",
+    raid:"RAID Log", raci:"RACI Matrix", map_workbook:"MAP Workbook",
+    weekly_status:"Weekly Status", tsa:"TSA", test_plan:"Test Plan", pir:"PIR", note:"Note",
+  };
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let _projects = [];
+  let _docs = [];
+  let _currentProject = null;
+  let _currentPhase = 1;
+  let _currentAction = "summarise";
+  let _editDocId = null;
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  (async function init() {
+    _loadTheme();
+    await _loadProjects();
+    const saved = localStorage.getItem("pm_current_project");
+    if (saved && _projects.find(p => p.id === saved)) {
+      _selectProject(saved);
+    }
+  })();
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
+  function _loadTheme() {
+    if (localStorage.getItem("pm_theme") === "dark") document.documentElement.setAttribute("data-theme","dark");
+  }
+  function _toggleTheme() {
+    const dark = document.documentElement.getAttribute("data-theme") === "dark";
+    document.documentElement.setAttribute("data-theme", dark ? "" : "dark");
+    localStorage.setItem("pm_theme", dark ? "light" : "dark");
+  }
+
+  // ── Projects ──────────────────────────────────────────────────────────────
+  async function _loadProjects() {
+    try {
+      const r = await fetch("/api/pm/projects");
+      if (r.ok) {
+        _projects = await r.json();
+        if (_projects.error) { _showSetupNeeded(); _projects = []; }
+      } else { _showSetupNeeded(); }
+    } catch(e) { _showSetupNeeded(); }
+    _renderProjectList();
+  }
+
+  function _showSetupNeeded() {
+    document.getElementById("setup-banner").style.display = "";
+    document.getElementById("sidebar-setup").style.display = "";
+  }
+
+  function _renderProjectList() {
+    const picker = document.getElementById("project-picker");
+    const sidebar = document.getElementById("sidebar-projects");
+    picker.innerHTML = '<option value="">— select project —</option>';
+    sidebar.innerHTML = "";
+    _projects.forEach(p => {
+      const ph = PHASES[p.phase - 1] || PHASES[0];
+      const opt = document.createElement("option");
+      opt.value = p.id; opt.textContent = p.name;
+      if (_currentProject?.id === p.id) opt.selected = true;
+      picker.appendChild(opt);
+
+      const div = document.createElement("div");
+      div.className = "proj-item" + (_currentProject?.id === p.id ? " active" : "");
+      div.innerHTML = `<span class="proj-phase-dot" style="background:${PHASE_COLORS[p.phase-1]||'#6366f1'}"></span>${p.name}`;
+      div.onclick = () => _selectProject(p.id);
+      sidebar.appendChild(div);
+    });
+  }
+
+  function _pickProject(id) {
+    if (id) _selectProject(id);
+  }
+
+  async function _selectProject(id) {
+    _currentProject = _projects.find(p => p.id === id) || null;
+    localStorage.setItem("pm_current_project", id);
+    document.getElementById("project-picker").value = id;
+    if (!_currentProject) {
+      document.getElementById("empty-view").style.display = "";
+      document.getElementById("project-view").style.display = "none";
+    } else {
+      _currentPhase = _currentProject.phase;
+      document.getElementById("empty-view").style.display = "none";
+      document.getElementById("project-view").style.display = "";
+      _renderProjectHeader();
+      _renderLifecycleRail();
+      await _loadDocs();
+      _renderPhasePanel();
+    }
+    _renderProjectList();
+  }
+
+  function _renderProjectHeader() {
+    const p = _currentProject;
+    document.getElementById("proj-name-heading").textContent = p.name;
+    document.getElementById("proj-meta-heading").textContent =
+      `${p.proj_type} · Phase ${p.phase}: ${PHASES[p.phase-1]?.name || ""}` +
+      (p.description ? ` · ${p.description}` : "");
+  }
+
+  function _renderLifecycleRail() {
+    const rail = document.getElementById("lifecycle-rail");
+    rail.innerHTML = PHASES.map(ph => {
+      const isDone = ph.id < _currentProject.phase;
+      const isActive = ph.id === _currentPhase;
+      const isCurrent = ph.id === _currentProject.phase;
+      let cls = "phase-btn";
+      if (isActive) cls += " active";
+      else if (isDone) cls += " done";
+      if (isCurrent) cls += " current-proj";
+      return `<button class="${cls}" onclick="_switchPhase(${ph.id})">
+        <span class="phase-icon">${ph.icon}</span>
+        <span>${ph.name}</span>
+      </button>`;
+    }).join("");
+  }
+
+  // ── Docs ──────────────────────────────────────────────────────────────────
+  async function _loadDocs() {
+    try {
+      const r = await fetch(`/api/pm/docs?project_id=${_currentProject.id}`);
+      _docs = r.ok ? (await r.json()) : [];
+      if (_docs.error) _docs = [];
+    } catch(e) { _docs = []; }
+  }
+
+  function _docsForPhase(phase) {
+    return _docs.filter(d => d.phase === phase);
+  }
+
+  // ── Phase panel ───────────────────────────────────────────────────────────
+  function _switchPhase(phaseId) {
+    _currentPhase = phaseId;
+    _renderLifecycleRail();
+    _renderPhasePanel();
+  }
+
+  function _renderPhasePanel() {
+    const ph = PHASES[_currentPhase - 1];
+    if (!ph) return;
+
+    document.getElementById("phase-icon-heading").textContent = ph.icon + " ";
+    document.getElementById("phase-name-heading").textContent = ph.name;
+    document.getElementById("phase-description").textContent = ph.desc;
+
+    // RAG badge based on docs
+    const phaseDocs = _docsForPhase(_currentPhase);
+    const hasApproved = phaseDocs.some(d => d.status === "approved");
+    const hasDraft = phaseDocs.length > 0;
+    const badge = document.getElementById("phase-rag-badge");
+    if (hasApproved) badge.innerHTML = '<span class="rag rag-g">✓ Docs ready</span>';
+    else if (hasDraft) badge.innerHTML = '<span class="rag rag-a">In progress</span>';
+    else badge.innerHTML = '<span class="rag rag-r">Not started</span>';
+
+    // Standard doc cards
+    const grid = document.getElementById("phase-docs-grid");
+    grid.innerHTML = ph.docs.map(d => {
+      const hasDoc = phaseDocs.some(pd => pd.doc_type === d.type);
+      return `<div class="phase-doc-card${hasDoc ? " has-content" : ""}"
+        onclick="_openAddDoc('${d.type}','${d.name}')">
+        <div class="phase-doc-card-icon">${d.icon}</div>
+        <div class="phase-doc-card-name">${d.name}</div>
+        <div class="phase-doc-card-hint">${hasDoc ? "✓ Document saved" : d.hint}</div>
+      </div>`;
+    }).join("");
+
+    // Saved docs
+    const savedCard = document.getElementById("saved-docs-card");
+    const savedList = document.getElementById("saved-docs-list");
+    if (phaseDocs.length) {
+      savedCard.style.display = "";
+      savedList.innerHTML = phaseDocs.map(d => `
+        <div class="saved-doc-row" onclick="_editDoc('${d.id}')">
+          <div class="saved-doc-icon">${_docIcon(d.doc_type)}</div>
+          <div style="flex:1;min-width:0">
+            <div class="saved-doc-title">${_esc(d.title)}</div>
+            <div class="saved-doc-meta">
+              <span class="rag ${d.status==='approved'?'rag-g':d.status==='in_review'?'rag-a':'rag-r'}" style="font-size:10px">${d.status?.replace("_"," ")}</span>
+              · ${DOC_LABELS[d.doc_type]||d.doc_type}
+              · ${_relTime(d.created_at)}
+            </div>
+          </div>
+          <div style="font-size:18px;color:var(--muted)">›</div>
+        </div>`).join("");
+    } else {
+      savedCard.style.display = "none";
+    }
+
+    // AI workspace
+    const actRow = document.getElementById("ai-actions-row");
+    actRow.innerHTML = ph.aiActions.map(a =>
+      `<button class="ai-action-btn${_currentAction===a.id?' active':''}"
+        onclick="_setAction('${a.id}',this)">${a.label}</button>`
+    ).join("");
+    document.getElementById("ai-context-hint").textContent =
+      `${ph.icon} ${ph.name} phase · ${_currentProject.name}`;
+    if (!ph.aiActions.find(a => a.id === _currentAction)) {
+      _currentAction = ph.aiActions[0]?.id || "summarise";
+    }
+    document.getElementById("ai-output").style.display = "none";
+    document.getElementById("ai-input").placeholder = ph.aiHint;
+  }
+
+  function _docIcon(type) {
+    const m = {boscard:"🎯",business_case:"📄",stakeholder_map:"👥",raid:"⚠️",raci:"🔲",
+               map_workbook:"📊",weekly_status:"📅",tsa:"📜",test_plan:"📋",pir:"📊",note:"📝"};
+    return m[type] || "📄";
+  }
+
+  // ── AI workspace ──────────────────────────────────────────────────────────
+  function _setAction(actionId, btn) {
+    _currentAction = actionId;
+    document.querySelectorAll(".ai-action-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("ai-output").style.display = "none";
+  }
+
+  async function _runAI() {
+    const content = document.getElementById("ai-input").value.trim();
+    if (!content) { alert("Paste some content first"); return; }
+    const btn = document.getElementById("ai-run-btn");
+    btn.disabled = true; btn.textContent = "Running…";
+    const outDiv = document.getElementById("ai-output");
+    const outContent = document.getElementById("ai-output-content");
+    outDiv.style.display = "";
+    document.getElementById("ai-spinner").innerHTML = '<span class="spinner"></span>';
+    document.getElementById("ai-output-label").textContent = _actionLabel(_currentAction) + "…";
+    outContent.innerHTML = "";
+
+    try {
+      const r = await fetch("/api/pm/analyse", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          action: _currentAction,
+          content,
+          context: `${_currentProject?.name || ""} — ${PHASES[_currentPhase-1]?.name || ""}`,
+        }),
+      });
+      const data = await r.json();
+      if (data.error) {
+        outContent.innerHTML = `<span style="color:#f87171">Error: ${_esc(data.error)}</span>`;
+      } else {
+        outContent.innerHTML = marked.parse(data.result || "");
+        document.getElementById("ai-output-actions").style.display = "flex";
+        window._lastAIResult = data.result;
+      }
+    } catch(e) {
+      outContent.innerHTML = `<span style="color:#f87171">Network error</span>`;
+    }
+    document.getElementById("ai-spinner").innerHTML = "";
+    document.getElementById("ai-output-label").textContent = _actionLabel(_currentAction) + " result";
+    btn.disabled = false; btn.textContent = "Run AI →";
+  }
+
+  function _actionLabel(id) {
+    const m = {boscard:"BOSCARD",raid:"RAID extraction",status:"Weekly status",
+               pir:"PIR",tsa:"TSA review",summarise:"Summary",raci:"RACI"};
+    return m[id] || id;
+  }
+
+  function _copyOutput() {
+    if (!window._lastAIResult) return;
+    navigator.clipboard.writeText(window._lastAIResult).then(() => alert("Copied to clipboard"));
+  }
+
+  function _saveOutputAsDoc() {
+    if (!window._lastAIResult) return;
+    document.getElementById("doc-title").value = _actionLabel(_currentAction) + " — " + new Date().toLocaleDateString("en-GB");
+    document.getElementById("doc-type").value = _currentAction === "status" ? "weekly_status" :
+      _currentAction === "boscard" ? "boscard" : _currentAction === "pir" ? "pir" :
+      _currentAction === "raid" ? "raid" : "note";
+    document.getElementById("doc-content").value = window._lastAIResult;
+    document.getElementById("doc-status").value = "draft";
+    document.getElementById("doc-edit-id").value = "";
+    document.getElementById("doc-delete-btn").style.display = "none";
+    document.getElementById("modal-doc-title").textContent = "Save AI Output";
+    _editDocId = null;
+    _openModal("modal-doc");
+  }
+
+  // ── Doc CRUD ─────────────────────────────────────────────────────────────
+  function _openAddDoc(type, name) {
+    document.getElementById("doc-edit-id").value = "";
+    document.getElementById("doc-title").value = name || "";
+    document.getElementById("doc-type").value = type || "note";
+    document.getElementById("doc-content").value = "";
+    document.getElementById("doc-status").value = "draft";
+    document.getElementById("doc-delete-btn").style.display = "none";
+    document.getElementById("modal-doc-title").textContent = "Add Document";
+    _editDocId = null;
+    _openModal("modal-doc");
+  }
+
+  function _editDoc(id) {
+    const doc = _docs.find(d => d.id === id);
+    if (!doc) return;
+    _editDocId = id;
+    document.getElementById("doc-edit-id").value = id;
+    document.getElementById("doc-title").value = doc.title;
+    document.getElementById("doc-type").value = doc.doc_type;
+    document.getElementById("doc-content").value = doc.content;
+    document.getElementById("doc-status").value = doc.status || "draft";
+    document.getElementById("doc-delete-btn").style.display = "";
+    document.getElementById("modal-doc-title").textContent = "Edit Document";
+    _openModal("modal-doc");
+  }
+
+  async function _saveDoc() {
+    const title = document.getElementById("doc-title").value.trim();
+    if (!title) { alert("Add a title"); return; }
+    const payload = {
+      project_id: _currentProject.id,
+      phase: _currentPhase,
+      doc_type: document.getElementById("doc-type").value,
+      title,
+      content: document.getElementById("doc-content").value,
+      status: document.getElementById("doc-status").value,
+    };
+    if (_editDocId) {
+      await fetch(`/api/pm/docs/${_editDocId}`, {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    } else {
+      await fetch("/api/pm/docs", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    }
+    _closeModal("modal-doc");
+    await _loadDocs();
+    _renderPhasePanel();
+  }
+
+  async function _deleteDoc() {
+    if (!_editDocId || !confirm("Delete this document?")) return;
+    await fetch(`/api/pm/docs/${_editDocId}`, {method:"DELETE"});
+    _closeModal("modal-doc");
+    await _loadDocs();
+    _renderPhasePanel();
+  }
+
+  // ── Project CRUD ─────────────────────────────────────────────────────────
+  function _openNewProject() { _openModal("modal-new-project"); }
+
+  async function _createProject() {
+    const name = document.getElementById("np-name").value.trim();
+    if (!name) { alert("Enter a project name"); return; }
+    const r = await fetch("/api/pm/projects", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        name,
+        proj_type: document.getElementById("np-type").value,
+        phase: parseInt(document.getElementById("np-phase").value),
+        description: document.getElementById("np-desc").value.trim(),
+      }),
+    });
+    const data = await r.json();
+    if (data.error) { alert("Error: " + data.error); return; }
+    _closeModal("modal-new-project");
+    document.getElementById("np-name").value = "";
+    document.getElementById("np-desc").value = "";
+    await _loadProjects();
+    if (data.project?.id) _selectProject(data.project.id);
+  }
+
+  async function _editPhase() {
+    const ph = prompt(`Move to phase (1-6):\n1 Initiate  2 Design  3 Build & Deliver\n4 Test & Validate  5 Transition  6 Close\n\nCurrent: ${_currentProject.phase}`);
+    const n = parseInt(ph);
+    if (!n || n < 1 || n > 6) return;
+    await fetch(`/api/pm/projects/${_currentProject.id}`, {
+      method:"PATCH", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({phase:n}),
+    });
+    _currentProject.phase = n;
+    _currentPhase = n;
+    _renderProjectHeader();
+    _renderLifecycleRail();
+    _renderPhasePanel();
+    _projects = _projects.map(p => p.id === _currentProject.id ? {...p, phase:n} : p);
+    _renderProjectList();
+  }
+
+  async function _deleteProject() {
+    if (!confirm(`Delete "${_currentProject.name}" and all its documents?`)) return;
+    await fetch(`/api/pm/projects/${_currentProject.id}`, {method:"DELETE"});
+    _currentProject = null;
+    localStorage.removeItem("pm_current_project");
+    await _loadProjects();
+    document.getElementById("project-view").style.display = "none";
+    document.getElementById("empty-view").style.display = "";
+  }
+
+  // ── Modals ────────────────────────────────────────────────────────────────
+  function _openModal(id) { document.getElementById(id).classList.add("open"); }
+  function _closeModal(id) { document.getElementById(id).classList.remove("open"); }
+  function _showSetupSQL() { _openModal("modal-setup"); }
+  document.querySelectorAll(".modal-backdrop").forEach(el =>
+    el.addEventListener("click", e => { if (e.target === el) el.classList.remove("open"); })
+  );
+
+  // ── Utils ─────────────────────────────────────────────────────────────────
+  function _esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function _relTime(ts) {
+    if (!ts) return "";
+    const d = Math.floor((Date.now() - new Date(ts)) / 86400000);
+    if (d === 0) return "today";
+    if (d === 1) return "yesterday";
+    return `${d}d ago`;
+  }
+</script>
+</body>
+</html>
