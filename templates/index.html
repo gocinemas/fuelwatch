@@ -1948,8 +1948,8 @@
   document.getElementById("report-postcode").addEventListener("keydown", e => { if (e.key==="Enter") searchReport(); });
   // company-input is now a hidden compat field; intel-input handles keydown via onkeydown attr
 
-  // Intel mode: go straight to company screen, auto-select brand mode
-  if (_INTEL_MODE) { showScreen("company"); setIntelMode("brand"); }
+  // Intel mode: go straight to company screen (mode auto-set after all JS loads)
+  if (_INTEL_MODE) { showScreen("company"); }
 
   // Hash-based deep links — e.g. /#places opens Local Places directly
   (function() {
@@ -4942,7 +4942,6 @@ const _ts = new Date(d.timestamp);
     var inp = document.getElementById("intel-input");
     if (inp) {
       inp.placeholder = mode === "brand" ? "Nike, Walkers, Coca-Cola, Sky…" : "Tesco, BP, HSBC, BT Group…";
-      inp.focus();
     }
     var sub = document.getElementById("intel-screen-subtitle");
     if (sub) sub.textContent = mode === "brand" ? "Brand intelligence" : "Company intelligence";
@@ -4950,6 +4949,9 @@ const _ts = new Date(d.timestamp);
     var scanBtn = document.getElementById("intel-scan-btn");
     if (scanBtn) scanBtn.style.display = mode === "brand" ? "" : "none";
   };
+
+  // Auto-select brand mode on intel.humanagency.co (called here after setIntelMode is defined)
+  if (_INTEL_MODE) { setIntelMode("brand"); }
 
   // ── Brand scan via camera ──────────────────────────────────────────────────
   window._intelScan = function() {
