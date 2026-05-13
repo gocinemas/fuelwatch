@@ -37,7 +37,8 @@ from twilio.twiml.messaging_response import MessagingResponse
 from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
                     fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
-                    fetch_company_info, fetch_brand_data)
+                    fetch_company_info, fetch_brand_data,
+                    _fetch_wikipedia, _fetch_news)
 import analytics
 import library as lib
 import school_service
@@ -1773,13 +1774,73 @@ def api_brand_debug():
     return jsonify(trace)
 
 
+def _save_brand_profile(data: dict):
+    """Persist brand data to brand_profiles table (upsert on name)."""
+    try:
+        from datetime import datetime as _dt
+        name = (data.get("name") or "").strip()
+        if not name:
+            return
+        row = {
+            "name":             name,
+            "description":      data.get("description") or "",
+            "tagline":          data.get("slogan") or "",
+            "founded":          str(data.get("founded") or ""),
+            "hq":               data.get("hq") or "",
+            "industry":         data.get("industry") or "",
+            "domain":           data.get("domain") or "",
+            "wikipedia_url":    data.get("wiki_url") or "",
+            "did_you_know":     data.get("did_you_know") or "",
+            "raw_data":         data,
+            "last_enriched_at": _dt.utcnow().isoformat() + "Z",
+        }
+        lib._sb().table("brand_profiles").upsert(row, on_conflict="name").execute()
+        print(f"[brand_profiles] saved: {name}")
+    except Exception as e:
+        print(f"[brand_profiles] save failed (table may not exist yet): {e}")
+
+
+@app.route("/api/brand/basic")
+def api_brand_basic():
+    """Fast endpoint: Wikipedia + news only, no AI. Returns in ~3-5s."""
+    name = request.args.get("name", "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "name required"}), 400
+    import concurrent.futures as _cf
+    with _cf.ThreadPoolExecutor(max_workers=2) as pool:
+        wiki_f = pool.submit(_fetch_wikipedia, name)
+        news_f = pool.submit(_fetch_news, name, "brand OR product", 6)
+        wiki = {}
+        try: wiki = wiki_f.result(timeout=8) or {}
+        except Exception: pass
+        news = []
+        try: news = news_f.result(timeout=8) or []
+        except Exception: pass
+    return jsonify({
+        "name":        name,
+        "description": wiki.get("description", ""),
+        "extract":     wiki.get("extract", ""),
+        "founded":     wiki.get("founded", ""),
+        "hq":          wiki.get("hq", ""),
+        "industry":    wiki.get("industry", ""),
+        "domain":      wiki.get("domain", ""),
+        "thumbnail":   wiki.get("thumbnail", ""),
+        "wiki_url":    wiki.get("wiki_url", ""),
+        "news":        news,
+        "_partial":    True,
+    })
+
+
 @app.route("/api/brand")
 def api_brand():
     name = request.args.get("name", "").strip()
     if not name or len(name) < 2:
         return jsonify({"error": "Brand name required"}), 400
     analytics.log_search("brand", name, request.remote_addr, request.user_agent.string)
-    return jsonify(fetch_brand_data(name))
+    data = fetch_brand_data(name)
+    if data.get("timeline") or data.get("competitors"):
+        _save_brand_profile(data)
+    return jsonify(data)
 
 
 # ── Elections ─────────────────────────────────────────────────────────────────

@@ -792,12 +792,12 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
-                "model": "llama-3.3-70b-versatile",
+                "model": "llama-3.1-8b-instant",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.15,
-                "max_tokens": 1600,
+                "max_tokens": 1200,
             },
-            timeout=28,
+            timeout=15,
         )
         if r.status_code != 200:
             print(f"[brand_ai] HTTP {r.status_code}: {r.text[:200]}")

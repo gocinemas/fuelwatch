@@ -5319,6 +5319,11 @@ const _ts = new Date(d.timestamp);
       if (panel && !visible) panel.style.display = "none";
     }
 
+    // Skeleton pulse blocks (reuse existing `pulse` keyframe)
+    const _skel = () => `<div style="display:flex;flex-direction:column;gap:10px;padding:4px 0">
+      ${[72,60,72].map(h=>`<div style="background:#e9eaec;border-radius:12px;height:${h}px;animation:pulse 1.8s ease-in-out infinite"></div>`).join("")}
+    </div>`;
+
     // Fire APIs — skip the one not needed when a mode is set
     if (_intelSearchMode !== "brand") {
       _fetchWithTimeout(`/api/company?name=${encodeURIComponent(raw)}`, 30000)
@@ -5330,6 +5335,57 @@ const _ts = new Date(d.timestamp);
     }
 
     if (_intelSearchMode !== "company") {
+      // Brand mode: two-phase — show Wikipedia in ~4s, AI fills in at ~12s
+      if (_intelSearchMode === "brand") {
+        // Phase 1: fast Wikipedia stub
+        _fetchWithTimeout(`/api/brand/basic?name=${encodeURIComponent(raw)}`, 12000)
+          .then(r => r.json())
+          .then(function(b) {
+            if (b.error || brSettled) return; // full data already arrived, skip
+            document.getElementById("intel-loading").classList.add("hidden");
+            document.getElementById("intel-result").style.display = "";
+            // Header
+            if (b.name) document.getElementById("brand-name-el").textContent = b.name;
+            if (b.description) document.getElementById("brand-desc-el").textContent = b.description;
+            // Logo
+            const lu = b.domain
+              ? `https://logo.clearbit.com/${b.domain}`
+              : `https://logo.clearbit.com/${(b.name||raw).toLowerCase().replace(/[^a-z0-9]/g,"")}.com`;
+            logoEl.src = lu; logoEl.style.display = "";
+            logoEl.onerror = function() { this.style.display = "none"; };
+            // Stats grid from Wikipedia
+            const sf = [["Founded",b.founded],["HQ",b.hq],["Industry",b.industry]]
+              .filter(([,v])=>v && String(v).trim());
+            const sg = document.getElementById("brand-stats-grid");
+            if (sg && sf.length) {
+              sg.innerHTML = sf.map(([l,v])=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px"><div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${l}</div><div style="font-size:15px;font-weight:800;color:var(--text);margin-top:3px">${v}</div></div>`).join("");
+              sg.style.display = "grid";
+            }
+            // Skeletons in AI-powered tabs while full data loads
+            const tlEl = document.getElementById("brand-timeline-el");
+            const cpEl = document.getElementById("brand-campaigns-el");
+            const coEl = document.getElementById("brand-competitors-el");
+            if (tlEl) tlEl.innerHTML = _skel();
+            if (cpEl) { cpEl.innerHTML = _skel(); document.getElementById("brand-campaigns-section").style.display = ""; }
+            if (coEl) coEl.innerHTML = _skel();
+            // Show all tabs with skeleton content; switch to Story
+            _setIntelTab("history", true); _setIntelTab("campaigns", true); _setIntelTab("intel", true);
+            const tb = document.getElementById("intel-tab-bar"); if (tb) tb.style.display = "";
+            switchIntelTab("history");
+            // News section (already have real data)
+            if (b.news && b.news.length) {
+              const newsEl = document.getElementById("brand-news-el");
+              const newsWrap = document.getElementById("brand-news-section");
+              if (newsEl) {
+                newsEl.innerHTML = b.news.map(n=>`<a href="${n.url}" target="_blank" rel="noopener" style="display:block;text-decoration:none;padding:8px 0;border-bottom:1px solid #f3f4f6"><div style="font-size:13px;font-weight:600;color:#111;line-height:1.4">${n.title}</div><div style="font-size:11px;color:#9ca3af;margin-top:2px">${n.source?n.source+" · ":""}${n.date||""}</div></a>`).join("");
+                if (newsWrap) newsWrap.style.display = "";
+              }
+            }
+          })
+          .catch(function() {}); // silent — phase 2 handles it
+      }
+
+      // Phase 2 (or only phase for non-brand-mode): full AI-enriched data
       _fetchWithTimeout(`/api/brand?name=${encodeURIComponent(raw)}`, 45000)
         .then(r => r.json())
         .then(d => { brData = d.error ? null : d; brErr = !!d.error; brSettled = true; finish(); })
