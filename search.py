@@ -783,8 +783,8 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
         '    {"name": "brand name", "description": "one line why they compete"}\n'
         '  ]\n'
         '}\n'
-        f'Rules: timeline = 6 key milestones oldest-first. '
-        f'campaigns = 5 campaigns from the last 5 years (2020-{current_year}), most impactful first — if fewer than 5 exist fill with older iconic ones. '
+        'Rules: timeline = 6 key milestones oldest-first. '
+        'campaigns = 5 most famous advertising campaigns or slogans ever, prioritising any from the last 5 years — include iconic older ones if no recent ones exist. '
         'competitors = 4 direct brand competitors. All strings under 25 words. Return ONLY the JSON.'
     )
     try:
@@ -1063,7 +1063,7 @@ def fetch_brand_data(brand: str) -> dict:
         except Exception:
             pass
 
-    cache_key = brand.strip().lower() + "|brandv28"
+    cache_key = brand.strip().lower() + "|brandv29"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)

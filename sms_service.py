@@ -4281,7 +4281,7 @@ def api_intel_pin():
     kind = (body.get("type") or "").strip()
     if not name or kind not in ("brand", "company"):
         return jsonify({"error": "name and type required"}), 400
-    sb_key = f"brand:{name.lower()}|brandv28" if kind == "brand" else f"company:{name.lower()}|v17"
+    sb_key = f"brand:{name.lower()}|brandv29" if kind == "brand" else f"company:{name.lower()}|v17"
     try:
         sb = lib._sb()
         rows = sb.table("ai_cache").select("data").eq("key", sb_key).execute().data
@@ -4302,7 +4302,7 @@ def api_intel_unpin():
     kind = (body.get("type") or "").strip()
     if not name or kind not in ("brand", "company"):
         return jsonify({"error": "name and type required"}), 400
-    sb_key = f"brand:{name.lower()}|brandv28" if kind == "brand" else f"company:{name.lower()}|v17"
+    sb_key = f"brand:{name.lower()}|brandv29" if kind == "brand" else f"company:{name.lower()}|v17"
     try:
         sb = lib._sb()
         rows = sb.table("ai_cache").select("data").eq("key", sb_key).execute().data
