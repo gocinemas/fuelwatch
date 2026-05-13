@@ -4933,6 +4933,15 @@ const _ts = new Date(d.timestamp);
     if (landing) landing.style.display = "none";
     var bar = document.getElementById("intel-mode-bar");
     if (bar) bar.style.display = "block";
+    // Clear previous results so brand data never bleeds into company view or vice versa
+    var res = document.getElementById("intel-result");
+    if (res) res.style.display = "none";
+    var dym1 = document.getElementById("brand-did-you-mean");
+    if (dym1) dym1.classList.add("hidden");
+    var dym2 = document.getElementById("co-did-you-mean");
+    if (dym2) dym2.classList.add("hidden");
+    var err = document.getElementById("intel-error");
+    if (err) err.classList.add("hidden");
     ["brand","company"].forEach(function(m) {
       var btn = document.getElementById("intel-mode-btn-" + m);
       if (!btn) return;

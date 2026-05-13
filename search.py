@@ -1007,16 +1007,19 @@ def fetch_brand_data(brand: str) -> dict:
                               f'User typed "{canonical}" in a BRAND-only intelligence search.\n'
                               'This tool is for consumer-facing brands only — NOT parent corporations.\n'
                               'Reply with ONE of these four formats (nothing else):\n'
-                              '1. CLEAR — this IS a consumer brand (e.g. "Nike","Dove","Marmite","Walkers","iPhone").\n'
+                              '1. CLEAR — this IS a consumer brand with its own marketing identity '
+                              '(e.g. "Nike","Dove","Marmite","Walkers","iPhone","KitKat","Persil","Lynx").\n'
+                              '   IMPORTANT: Even if the brand is OWNED by a larger company, if it has its own '
+                              '   consumer identity, reply CLEAR. Marmite→CLEAR, Dove→CLEAR, KitKat→CLEAR.\n'
                               '2. ONE:<qualified form> — one brand but needs qualifier to avoid confusion '
                               '(e.g. "Lynx"→ONE:Lynx deodorant, "Shell"→ONE:Shell petrol).\n'
-                              '3. A JSON array of up to 5 brand options — ambiguous between multiple brands '
+                              '3. A JSON array of up to 5 brand options — genuinely ambiguous between multiple distinct brands '
                               '(e.g. "Dove"→["Dove soap","Dove chocolate"]).\n'
                               '4. COMPANY:<json array of up to 5 famous consumer brands they own> — '
-                              'this is a parent company/conglomerate, not a consumer brand '
+                              'ONLY use this if the term is a pure holding company with NO direct consumer brand identity of its own '
                               '(e.g. "Unilever"→COMPANY:["Dove","Marmite","Persil","Lynx","Domestos"], '
-                              '"P&G"→COMPANY:["Gillette","Pampers","Fairy","Ariel","Head & Shoulders"], '
-                              '"Nestlé"→COMPANY:["KitKat","Nescafé","Maggi","Perrier","Milkybar"]).\n'
+                              '"P&G"→COMPANY:["Gillette","Pampers","Fairy","Ariel","Head & Shoulders"]). '
+                              'Do NOT use COMPANY: for Marmite, Dove, KitKat, Persil or any brand that consumers recognise directly.\n'
                               'Reply ONLY with CLEAR, ONE:<form>, a JSON array, or COMPANY:<json array>.'}],
                           "max_tokens": 120, "temperature": 0.0},
                     timeout=6,
@@ -1042,7 +1045,7 @@ def fetch_brand_data(brand: str) -> dict:
         except Exception:
             pass
 
-    cache_key = brand.strip().lower() + "|brandv26"
+    cache_key = brand.strip().lower() + "|brandv27"
 
     # L1: in-memory
     cached = _BRAND_CACHE.get(cache_key)
