@@ -128,7 +128,7 @@
   .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
 
   .sidebar-btn {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: flex-start; gap: 10px;
     padding: 10px 10px; border-radius: 10px;
     border: none; background: transparent;
     color: var(--muted); font-size: 13px; font-weight: 600;
@@ -138,6 +138,9 @@
   }
   .sidebar-btn:hover  { background: var(--surface2); color: var(--text); }
   .sidebar-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(129,140,248,.35); }
+  .sb-icon { font-size: 17px; margin-top: 1px; flex-shrink: 0; line-height: 1; }
+  .sb-label { font-size: 13px; font-weight: 700; line-height: 1.3; }
+  .sb-desc  { font-size: 10px; font-weight: 400; opacity: .72; margin-top: 2px; line-height: 1.4; }
 
   .sidebar-spacer { flex: 1; }
 
@@ -431,27 +434,20 @@
 
     <div class="sidebar-divider"></div>
 
-    <div class="sidebar-sect">Navigate</div>
     <nav class="sidebar-nav">
-      <button class="sidebar-btn active" data-tab="live"     onclick="_showTab('live')"><span>🔴</span> Live</button>
-      <button class="sidebar-btn"        data-tab="launches" onclick="_showTab('launches')"><span>🚀</span> Launches</button>
-      <button class="sidebar-btn"        data-tab="uk"       onclick="_showTab('uk')"><span>🇬🇧</span> UK &amp; World</button>
-      <button class="sidebar-btn"        data-tab="explore"  onclick="_showTab('explore')"><span>🔭</span> Explore</button>
+      <button class="sidebar-btn active" data-tab="now"      onclick="_showTab('now')">
+        <span class="sb-icon">🔴</span>
+        <div><div class="sb-label">Now</div><div class="sb-desc">ISS live · Launches · Tonight's sky</div></div>
+      </button>
+      <button class="sidebar-btn"        data-tab="nations"  onclick="_showTab('nations')">
+        <span class="sb-icon">🌍</span>
+        <div><div class="sb-label">Nations</div><div class="sb-desc">UK industry · World powers</div></div>
+      </button>
+      <button class="sidebar-btn"        data-tab="universe" onclick="_showTab('universe')">
+        <span class="sb-icon">🔭</span>
+        <div><div class="sb-label">Universe</div><div class="sb-desc">Solar system · Artemis · Jargon</div></div>
+      </button>
     </nav>
-
-    <div class="sidebar-divider"></div>
-
-    <div class="sidebar-sect">Tonight's Sky</div>
-    <div class="postcode-bar" id="pc-bar">
-      <span style="font-size:14px;flex-shrink:0">📍</span>
-      <input id="pc-input" type="text" placeholder="Postcode e.g. KT15"
-        maxlength="8" oninput="this.value=this.value.toUpperCase()"
-        onkeydown="if(event.key==='Enter') savePostcode()">
-      <button onclick="savePostcode()">Go</button>
-    </div>
-    <div id="header-pc" style="font-size:11px;color:var(--muted);margin-top:6px;padding:0 2px;min-height:16px">
-      <span id="header-pc-label"></span>
-    </div>
 
     <div class="sidebar-spacer"></div>
 
@@ -495,22 +491,20 @@
       <div id="search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:300;max-height:360px;overflow-y:auto"></div>
     </div>
 
-    <!-- ── Tab: Live ──────────────────────────────────────────────────────── -->
-    <div class="tab-panel active" id="tab-live">
+    <!-- ── Tab: Now ─────────────────────────────────────────────────────────── -->
+    <div class="tab-panel active" id="tab-now">
 
+      <!-- Live bento: SEN + ISS + Sky -->
       <div class="section-label"><span class="live-dot"></span>Earth Live — SEN Camera &amp; ISS Tracker</div>
+      <div class="live-bento" style="margin-bottom:24px">
 
-      <div class="live-bento">
-
-        <!-- Left: SEN camera -->
         <div class="sen-card">
           <div style="position:relative;width:100%;padding-top:56.25%">
             <iframe id="sen-iframe"
               src="https://www.youtube.com/embed/fO9e9jnhYK8?autoplay=1&mute=1&rel=0&modestbranding=1"
               style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerpolicy="strict-origin-when-cross-origin"
-              allowfullscreen></iframe>
+              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
           </div>
           <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <div>
@@ -524,8 +518,7 @@
           </div>
         </div>
 
-        <!-- Right: ISS + Sky stacked -->
-        <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:14px">
 
           <div class="iss-card">
             <div style="display:flex;align-items:center;justify-content:space-between">
@@ -544,39 +537,34 @@
               <div class="iss-stat"><div class="iss-stat-val" id="iss-vis">—</div><div class="iss-stat-label">Visibility</div></div>
             </div>
             <div style="margin-top:10px;font-size:11px;color:var(--muted)">
-              Orbits every ~92 min at ~408 km ·
-              <a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">Spot it from your postcode →</a>
+              ~92 min orbit · 408 km altitude ·
+              <a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">Can you spot it? →</a>
             </div>
           </div>
 
           <div class="card">
-            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">🌙 Tonight's Sky</div>
-            <!-- Postcode bar — always visible, works on mobile and desktop -->
-            <div style="display:flex;gap:6px;margin-bottom:12px">
-              <input id="sky-pc-input" type="text" placeholder="Enter postcode (e.g. KT15)"
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px">🌙 Stargazing tonight?</div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Cloud cover &amp; sky conditions at your location</div>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <input id="sky-pc-input" type="text" placeholder="Your postcode (e.g. KT15)"
                 maxlength="8" oninput="this.value=this.value.toUpperCase()"
                 onkeydown="if(event.key==='Enter') _saveSkyCast()"
                 style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none;min-width:0">
               <button onclick="_saveSkyCast()"
-                style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Go</button>
+                style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Check</button>
             </div>
             <div id="sky-body" style="font-size:12px;color:var(--muted)">
-              <div style="text-align:center;padding:12px 0;font-size:13px;color:var(--muted)">☝️ Enter your postcode above</div>
+              <div style="text-align:center;padding:8px 0;font-size:12px;color:var(--muted)">Enter your postcode to check cloud cover and stargazing conditions</div>
             </div>
           </div>
 
         </div>
       </div>
 
-    </div><!-- /tab-live -->
-
-    <!-- ── Tab: Launches ──────────────────────────────────────────────────── -->
-    <div class="tab-panel" id="tab-launches">
-
+      <!-- Launches + News bento -->
+      <div class="section-label">🚀 What's Launching &amp; Space News</div>
       <div class="bento-2">
-
         <div>
-          <div class="section-label">Upcoming Launches</div>
           <div class="toggle-row">
             <button class="toggle-btn active" id="launch-tab-all"    onclick="launchTab('all')">All</button>
             <button class="toggle-btn"        id="launch-tab-spacex" onclick="launchTab('spacex')">SpaceX</button>
@@ -584,18 +572,15 @@
           </div>
           <div class="card" id="launches-card"><div class="loading">Loading…</div></div>
         </div>
-
         <div>
-          <div class="section-label">Space News</div>
           <div class="card" id="news-card"><div class="loading">Loading…</div></div>
         </div>
-
       </div>
 
-    </div><!-- /tab-launches -->
+    </div><!-- /tab-now -->
 
-    <!-- ── Tab: UK ────────────────────────────────────────────────────────── -->
-    <div class="tab-panel" id="tab-uk">
+    <!-- ── Tab: Nations ──────────────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-nations">
 
       <div class="uk-bento">
 
@@ -664,10 +649,10 @@
       <div class="powers-grid" id="world-powers-grid"></div>
       <div style="margin-top:12px;font-size:11px;color:var(--subtle)">Budget figures are 2024 estimates · China includes estimated military component · Sources: NASA, ESA, CNSA, JAXA, ISRO annual reports</div>
 
-    </div><!-- /tab-uk -->
+    </div><!-- /tab-nations -->
 
-    <!-- ── Tab: Explore ────────────────────────────────────────────────────── -->
-    <div class="tab-panel" id="tab-explore">
+    <!-- ── Tab: Universe ──────────────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-universe">
 
       <div class="bento-2" style="margin-bottom:18px">
         <div>
@@ -752,7 +737,7 @@
         </div>
       </div>
 
-    </div><!-- /tab-explore -->
+    </div><!-- /tab-universe -->
 
     <footer>
       <div>🛸 space.humanagency.co · Data: NASA · Launch Library 2 · UK Space Agency · ESA · JPL</div>
@@ -764,10 +749,9 @@
 
 <!-- ── Mobile tab bar ───────────────────────────────────────────────────────── -->
 <nav class="mobile-tab-bar" id="mobile-tab-bar">
-  <button class="mobile-tab-btn active" data-tab="live"     onclick="_showTab('live')"><span class="tab-icon">🔴</span>Live</button>
-  <button class="mobile-tab-btn"        data-tab="launches" onclick="_showTab('launches')"><span class="tab-icon">🚀</span>Launches</button>
-  <button class="mobile-tab-btn"        data-tab="uk"       onclick="_showTab('uk')"><span class="tab-icon">🇬🇧</span>UK & World</button>
-  <button class="mobile-tab-btn"        data-tab="explore"  onclick="_showTab('explore')"><span class="tab-icon">🔭</span>Explore</button>
+  <button class="mobile-tab-btn active" data-tab="now"      onclick="_showTab('now')"><span class="tab-icon">🔴</span>Now</button>
+  <button class="mobile-tab-btn"        data-tab="nations"  onclick="_showTab('nations')"><span class="tab-icon">🌍</span>Nations</button>
+  <button class="mobile-tab-btn"        data-tab="universe" onclick="_showTab('universe')"><span class="tab-icon">🔭</span>Universe</button>
 </nav>
 
 <script>
@@ -775,14 +759,8 @@
 var _pc = localStorage.getItem('space_postcode') || '';
 if (_pc) {
   var _fmtInitPc = _pc.length > 3 ? _pc.slice(0,-3) + ' ' + _pc.slice(-3) : _pc;
-  document.getElementById('header-pc-label').textContent = '📍 ' + _fmtInitPc;
-  document.getElementById('pc-input').value = _fmtInitPc;
-}
-
-function savePostcode() {
-  var v = (document.getElementById('pc-input').value || '').trim().replace(/\s+/g,'').toUpperCase();
-  if (!v) return;
-  _applyPostcode(v);
+  var _skyInInit = document.getElementById('sky-pc-input');
+  if (_skyInInit) _skyInInit.value = _fmtInitPc;
 }
 
 function _saveSkyCast() {
@@ -795,8 +773,6 @@ function _applyPostcode(v) {
   localStorage.setItem('space_postcode', v);
   _pc = v;
   var fmt = v.length > 3 ? v.slice(0,-3) + ' ' + v.slice(-3) : v;
-  document.getElementById('header-pc-label').textContent = '📍 ' + fmt;
-  document.getElementById('pc-input').value = fmt;
   var skyIn = document.getElementById('sky-pc-input');
   if (skyIn) skyIn.value = fmt;
   _loadSky(v);
@@ -863,12 +839,7 @@ function _loadSky(pc) {
     .catch(function(){ el.innerHTML = '<div class="error">Could not load sky data</div>'; });
 }
 
-if (_pc) {
-  var _fmtSkyPc = _pc.length > 3 ? _pc.slice(0,-3) + ' ' + _pc.slice(-3) : _pc;
-  var _skyIn = document.getElementById('sky-pc-input');
-  if (_skyIn) _skyIn.value = _fmtSkyPc;
-  _loadSky(_pc);
-}
+if (_pc) _loadSky(_pc);
 
 // ── Light / dark mode ──────────────────────────────────────────────────────────
 (function() {
@@ -893,8 +864,8 @@ function _showTab(name) {
   document.querySelectorAll('.tab-panel').forEach(function(p) {
     p.classList.toggle('active', p.id === 'tab-' + name);
   });
-  if (name === 'uk' && !_hubsMap) _initHubsMap();
-  if (name === 'explore') {
+  if (name === 'nations' && !_hubsMap) _initHubsMap();
+  if (name === 'universe') {
     if (!_planetsLoaded) _loadPlanets();
     if (!_artemisLoaded) _loadArtemis();
   }
@@ -1462,19 +1433,19 @@ function _buildSearchIndex() {
   _SEARCH_INDEX = [];
   // Jargon
   _JARGON.forEach(function(j) {
-    _SEARCH_INDEX.push({type:'jargon', tab:'explore', icon:j.icon, title:j.term, body:j.def, tag:j.tag});
+    _SEARCH_INDEX.push({type:'jargon', tab:'universe', icon:j.icon, title:j.term, body:j.def, tag:j.tag});
   });
   // Companies
   _UK_COMPANIES.forEach(function(c) {
-    _SEARCH_INDEX.push({type:'company', tab:'uk', icon:'🏢', title:c.name, body:c.desc+' '+c.loc, url:c.url});
+    _SEARCH_INDEX.push({type:'company', tab:'nations', icon:'🏢', title:c.name, body:c.desc+' '+c.loc, url:c.url});
   });
   // Space powers
   _SPACE_POWERS.forEach(function(p) {
-    _SEARCH_INDEX.push({type:'country', tab:'uk', icon:p.flag, title:p.country+' ('+p.agency+')', body:p.strength+' '+p.vsUK+' '+p.programs.join(' ')});
+    _SEARCH_INDEX.push({type:'country', tab:'nations', icon:p.flag, title:p.country+' ('+p.agency+')', body:p.strength+' '+p.vsUK+' '+p.programs.join(' ')});
   });
   // Launches (if loaded)
   _allLaunches.forEach(function(l) {
-    _SEARCH_INDEX.push({type:'launch', tab:'launches', icon:'🚀', title:l.name, body:(l.provider||'')+' '+l.location});
+    _SEARCH_INDEX.push({type:'launch', tab:'now', icon:'🚀', title:l.name, body:(l.provider||'')+' '+l.location});
   });
 }
 
