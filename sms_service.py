@@ -12092,22 +12092,30 @@ def api_wa_saves_ad_intel():
     links = []
     if ad_type == "real_estate":
         loc = postcode or area
+        ad_type_str = "to let" if (prop_t and "let" in prop_t.lower()) else "for sale"
 
         # If agent/company is known, build a targeted listing search first
         if company and loc:
-            # site-scoped Google search — surfaces the actual listing page
+            bed_str = f"{beds} bedroom " if beds else ""
+            # Primary: Google search for agent's OWN website — works for any agent, local or national
+            own_site_q = _q(f'"{company}" {bed_str}{ad_type_str} {loc}')
+            links.append({
+                "label": f"Search {company}",
+                "url": f"https://www.google.com/search?q={own_site_q}"
+            })
+            # Secondary: portal site-scoped searches
             parts = [f'"{company}"', f'"{loc}"']
-            if beds: parts.append(f'"{beds}+bedroom" OR "{beds}+bed"')
+            if beds: parts.append(f'"{beds} bed"')
             rm_q = "+".join(_q(p) for p in parts)
             links.append({
-                "label": f"Find on Rightmove: {company}",
+                "label": f"Rightmove: {company}",
                 "url": f"https://www.google.com/search?q=site%3Arightmove.co.uk+{rm_q}"
             })
             links.append({
-                "label": f"Find on Zoopla: {company}",
+                "label": f"Zoopla: {company}",
                 "url": f"https://www.google.com/search?q=site%3Azoopla.co.uk+{rm_q}"
             })
-            # Direct agent website for well-known UK estate agents
+            # Direct link for well-known UK estate agents
             _AGENT_SITES = {
                 "knight frank": "knightfrank.co.uk/properties/for-sale",
                 "savills": "search.savills.com/property-for-sale",
