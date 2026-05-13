@@ -521,6 +521,83 @@
   .loading { color: var(--muted); font-size: 13px; padding: 12px 0; }
   .error   { color: var(--red);   font-size: 13px; padding: 8px 0; }
 
+  /* About hero */
+  .about-hero {
+    background: linear-gradient(135deg, rgba(49,46,129,.35) 0%, rgba(15,23,42,.0) 100%);
+    border: 1px solid rgba(129,140,248,.2);
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .about-title {
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    margin-bottom: 5px;
+  }
+  .about-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .about-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .about-chip {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    background: rgba(129,140,248,.1);
+    border: 1px solid rgba(129,140,248,.2);
+    border-radius: 20px;
+    padding: 3px 10px;
+  }
+
+  /* Jargon accordion */
+  .jargon-item { border-bottom: 1px solid var(--border); }
+  .jargon-item:last-child { border-bottom: none; }
+  .jargon-q {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    user-select: none;
+    gap: 8px;
+  }
+  .jargon-q-left { display: flex; align-items: center; gap: 8px; }
+  .jargon-icon { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+  .jargon-chevron {
+    color: var(--muted);
+    font-size: 12px;
+    transition: transform .2s;
+    flex-shrink: 0;
+  }
+  .jargon-item.open .jargon-chevron { transform: rotate(180deg); color: var(--accent); }
+  .jargon-a {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+    padding: 0 0 12px 32px;
+    display: none;
+  }
+  .jargon-item.open .jargon-a { display: block; }
+  .jargon-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--accent);
+    background: rgba(129,140,248,.1);
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-right: 4px;
+  }
+
   /* Tab nav */
   .tab-nav {
     display: flex;
@@ -591,6 +668,23 @@
       maxlength="8" oninput="this.value=this.value.toUpperCase()"
       onkeydown="if(event.key==='Enter') savePostcode()">
     <button onclick="savePostcode()">Set</button>
+  </div>
+
+  <!-- About -->
+  <div class="about-hero">
+    <div class="about-title">🛸 Your window into space</div>
+    <div class="about-desc">
+      A live dashboard built for curious people — not aerospace engineers.
+      Watch Earth from the ISS right now, track what's launching this week,
+      explore the UK's space industry, and learn the basics without the jargon.
+    </div>
+    <div class="about-chips">
+      <span class="about-chip">🔴 Live ISS &amp; Earth feed</span>
+      <span class="about-chip">🚀 Upcoming launches</span>
+      <span class="about-chip">🇬🇧 UK industry &amp; jobs</span>
+      <span class="about-chip">🔭 Solar system &amp; Artemis</span>
+      <span class="about-chip">📖 Space 101 glossary</span>
+    </div>
   </div>
 
   <!-- Tab Nav -->
@@ -777,6 +871,16 @@
           <span style="font-size:11px;background:rgba(129,140,248,.1);color:var(--accent);border:1px solid rgba(129,140,248,.2);border-radius:20px;padding:3px 9px">🌾 Crop monitoring</span>
         </div>
       </div>
+    </div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Space 101 — Jargon Buster</div>
+    <div class="card" id="jargon-card">
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+        Space coverage is full of acronyms and terms that assume you already know everything.
+        Here's plain English for the ones that come up most.
+      </div>
+      <div id="jargon-list"></div>
     </div>
 
   </div><!-- /tab-explore -->
@@ -1283,6 +1387,70 @@ var _CAREERS = [
   });
   el.innerHTML = html;
 })();
+
+// ── Space 101 Jargon ─────────────────────────────────────────────────────────
+var _JARGON = [
+  {icon:"🌍", tag:"orbit", term:"LEO — Low Earth Orbit",
+   def:"The region of space from about 160 km to 2,000 km above Earth. The ISS orbits here at ~408 km. Most satellites — including Starlink and Spire — operate in LEO because it's cheap to reach and has low signal delay."},
+  {icon:"📡", tag:"orbit", term:"GEO — Geostationary Orbit",
+   def:"At exactly 35,786 km altitude, a satellite orbits at the same speed the Earth rotates — so it appears fixed above one spot on the ground. That's where your Sky TV dish points. Most comms satellites live here."},
+  {icon:"🚀", tag:"launch", term:"Launch Vehicle",
+   def:"The rocket. It's called a 'vehicle' because it transports something — the payload — to orbit. SpaceX's Falcon 9, Orbex Prime, and Ariane 6 are all launch vehicles."},
+  {icon:"📦", tag:"launch", term:"Payload",
+   def:"Whatever the rocket is carrying — a satellite, a telescope, cargo for the ISS, even a crewed capsule. It sits on top of the rocket. Once in orbit, the payload separates and the launch vehicle's job is done."},
+  {icon:"🔩", tag:"launch", term:"Rocket Stages",
+   def:"Rockets shed weight as they go. A first stage burns to get off the ground, then detaches. A second stage takes over in near-vacuum. SpaceX's party trick is landing the first stage back for reuse — dramatically cutting costs."},
+  {icon:"🛡️", tag:"launch", term:"Payload Fairing",
+   def:"The nose cone that covers the payload during ascent, protecting it from air and heat. Once in space it splits and falls away. SpaceX catches fairings in a net on a ship — they cost ~$6M each."},
+  {icon:"🪐", tag:"basics", term:"Orbital Period",
+   def:"How long one orbit takes. The ISS completes a full orbit every ~92 minutes. GPS satellites at medium orbit take ~12 hours. Geostationary satellites take exactly 24 hours — which is why they hover above the same spot."},
+  {icon:"📏", tag:"basics", term:"AU — Astronomical Unit",
+   def:"The average distance from Earth to the Sun: ~150 million km. Used to describe distances within our solar system. Mars is about 1.5 AU from the Sun. Neptune is 30 AU away. Proxima Centauri (nearest star) is 268,000 AU."},
+  {icon:"💡", tag:"basics", term:"Light Minute / Light Year",
+   def:"How far light travels in a minute or a year. Sunlight takes 8 minutes to reach Earth. A light year (~9.5 trillion km) is used for interstellar distances. The nearest star is 4.2 light years away."},
+  {icon:"📡", tag:"satellites", term:"CubeSat / Nanosatellite",
+   def:"Tiny standardised satellites (often 10×10×10 cm, about 1 kg). Cheap to build and launch. Dozens can hitch a ride on a single rocket. Spire's fleet of 110+ and SSTL's smaller missions use this form factor."},
+  {icon:"🌐", tag:"satellites", term:"Constellation",
+   def:"A large coordinated fleet of satellites working together. Starlink (5,000+ satellites) provides global broadband. OneWeb (650+ satellites) does the same. Together they're called 'mega-constellations'."},
+  {icon:"🔥", tag:"basics", term:"Reentry & Heat Shield",
+   def:"Coming back from space means hitting the atmosphere at ~7 km/s — fast enough to generate temperatures above 1,600°C. A heat shield (ablative coating or tiles) absorbs this energy. Without it, the spacecraft burns up."},
+  {icon:"🏛️", tag:"orgs", term:"ESA / NASA / UKSA — who are they?",
+   def:"NASA is the US space agency. ESA is the European Space Agency (22 member countries including the UK). UKSA is the UK Space Agency — it funds UK participation in ESA programmes and national missions. ESA is not part of the EU."},
+  {icon:"🪟", tag:"launch", term:"Launch Window",
+   def:"The brief period when conditions are right to launch — the right planetary alignment, orbital geometry, or weather. Miss it and you wait for the next one (could be hours, days or months depending on the mission)."},
+  {icon:"🌊", tag:"satellites", term:"Earth Observation (EO)",
+   def:"Using satellites to image and monitor the Earth's surface. Measures crop health, ocean temperature, deforestation, ice melt, flood extent and more. A huge commercial growth area — most UK space revenue comes from EO data services."},
+  {icon:"📍", tag:"orbit", term:"Lagrange Points",
+   def:"Five points in space where gravity from two bodies (e.g. Sun + Earth) perfectly balances centrifugal force, so objects 'hover' there with minimal fuel. The James Webb Space Telescope sits at Sun-Earth L2, about 1.5M km from Earth."},
+];
+
+(function() {
+  var el = document.getElementById('jargon-list');
+  if (!el) return;
+  var html = '';
+  _JARGON.forEach(function(j, i) {
+    html +=
+      '<div class="jargon-item" id="jarg-'+i+'">'+
+        '<div class="jargon-q" onclick="_jargonToggle('+i+')">'+
+          '<div class="jargon-q-left">'+
+            '<span class="jargon-icon">'+j.icon+'</span>'+
+            '<span>'+
+              '<span class="jargon-tag">'+j.tag+'</span>'+
+              _esc(j.term)+
+            '</span>'+
+          '</div>'+
+          '<span class="jargon-chevron">▼</span>'+
+        '</div>'+
+        '<div class="jargon-a">'+_esc(j.def)+'</div>'+
+      '</div>';
+  });
+  el.innerHTML = html;
+})();
+
+function _jargonToggle(i) {
+  var el = document.getElementById('jarg-'+i);
+  if (el) el.classList.toggle('open');
+}
 
 // ── Util ─────────────────────────────────────────────────────────────────────
 function _esc(s) {
