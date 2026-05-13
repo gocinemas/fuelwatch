@@ -13879,6 +13879,216 @@ def space_newsletter_preview():
     except Exception as e:
         return f"<p style='font-family:sans-serif;padding:40px;color:red'>Error: {e}</p>", 500
 
+# ── AI Newsletter ─────────────────────────────────────────────────────────────
+
+_AI_NL_CONCEPTS = [
+    {"term": "LLM", "full": "Large Language Model", "definition": "The technology behind ChatGPT, Claude and Gemini. Trained on vast amounts of text to predict the next word — billions of times — until it can write, reason and converse fluently. It's not looking things up; it learned patterns so deeply that it can generate plausible, useful text from scratch."},
+    {"term": "RAG", "full": "Retrieval-Augmented Generation", "definition": "A way to ground AI answers in real, up-to-date information. Instead of relying only on what the model learned during training, it first searches a database or document store, retrieves the relevant bits, then generates an answer using those as context. This is how AI assistants can reference your company's own documents."},
+    {"term": "Hallucination", "full": "When AI Gets It Wrong", "definition": "AI systems sometimes state things that are completely false — with total confidence. It happens because the model generates plausible-sounding text, not necessarily true text. The fix: treat AI like a brilliant but overconfident colleague. Useful for drafts and ideas. Always verify facts that matter."},
+    {"term": "AI Agent", "full": "AI That Takes Action", "definition": "Until recently, AI mostly answered questions. Agents take action. Give an agent a goal — 'research competitors and write a report' — and it will browse the web, read pages, take notes, and draft the report itself. This is the next big shift: AI as a capable junior colleague that can actually get things done."},
+    {"term": "Prompt", "full": "How You Talk to AI", "definition": "A prompt is what you type to an AI. The way you phrase a request makes an enormous difference to the output quality. Specificity wins: tell the AI who the answer is for, what format you want, what to avoid, and what you already know. 'Summarise this for a non-technical CFO in 3 bullets' beats 'summarise this' every time."},
+    {"term": "Fine-tuning", "full": "Teaching AI Your Domain", "definition": "Taking a general-purpose model and training it further on your specific data — medical records, legal contracts, customer service logs — so it becomes a specialist. Like hiring a smart generalist and giving them six months of deep sector experience. The result is a model that speaks your language."},
+    {"term": "Transformer", "full": "The Architecture Behind Everything", "definition": "The neural network design that powers virtually all modern AI. Introduced in a 2017 Google paper called 'Attention Is All You Need.' The 'T' in GPT, the 'T' in BERT. Transformers use 'attention' — a mechanism that lets the model weigh how important each word is relative to every other word in the input."},
+    {"term": "RLHF", "full": "Reinforcement Learning from Human Feedback", "definition": "The key technique that makes LLMs helpful rather than chaotic. Human raters score model outputs — 'this response is helpful,' 'this one is harmful' — and the model trains to produce what humans prefer. It's how ChatGPT went from raw text predictor to something that actually follows instructions."},
+    {"term": "Chain of Thought", "full": "Getting AI to Show Its Working", "definition": "A prompting technique: ask the model to 'think step by step' before giving an answer. It dramatically improves accuracy on maths, logic and reasoning tasks. The model isn't smarter — it's just forced to break the problem down before committing to an answer, which catches many errors."},
+    {"term": "Mixture of Experts", "full": "How GPT-4 Is So Large Yet So Fast", "definition": "An architecture where a massive model is actually made up of many specialist sub-models — 'experts.' For each input, only the most relevant experts are activated. This lets you build enormously capable models while keeping the compute cost manageable. It's how GPT-4 reportedly has 1.8 trillion parameters but doesn't cost a fortune to run."},
+    {"term": "Multimodal AI", "full": "AI That Sees, Hears and Reads", "definition": "AI that can process multiple types of input — text, images, audio, video — rather than just one. GPT-4o, Gemini and Claude are all multimodal: show them a photo and ask a question, paste a chart and ask for analysis, or speak to them directly. This is what makes AI feel genuinely versatile rather than a clever search box."},
+    {"term": "On-Device AI", "full": "AI Without the Cloud", "definition": "AI that runs entirely on your phone or laptop, without sending data to a server. Apple Intelligence, Google's Gemini Nano, and Meta's small Llama models are examples. Faster responses, full privacy — your data never leaves your device. The tradeoff: smaller models, less capable than the cloud giants."},
+]
+
+_AI_NL_TOOLS = [
+    {"name": "Claude", "maker": "Anthropic", "url": "https://claude.ai", "category": "AI Assistant", "desc": "Anthropic's AI assistant, built with safety as a first principle using Constitutional AI. Known for nuanced long-form writing, careful reasoning, and admitting uncertainty. Handles 200,000+ token contexts — you can paste an entire book and ask questions. Strong for analysis, drafting, and coding."},
+    {"name": "ChatGPT", "maker": "OpenAI", "url": "https://chat.openai.com", "category": "AI Assistant", "desc": "The product that launched the generative AI era in November 2022 — 100 million users in 2 months. Powered by GPT-4o, which understands text, images and audio. Has a huge plugin/tool ecosystem, web browsing, image generation (DALL-E) and code execution built in. The Swiss Army knife of AI tools."},
+    {"name": "Perplexity", "maker": "Perplexity AI", "url": "https://perplexity.ai", "category": "AI Search", "desc": "An AI search engine that answers questions with cited, real-time sources — unlike ChatGPT which relies on training data. Ask it anything and it searches, reads and summarises relevant pages with footnotes. Particularly good for research, fact-checking, and staying current. Faster and more accurate than Googling and reading articles yourself."},
+    {"name": "Cursor", "maker": "Anysphere", "url": "https://cursor.sh", "category": "AI Coding", "desc": "The AI code editor that's taken the developer world by storm. Built on VS Code but deeply integrated with Claude and GPT-4. You can describe a feature in plain English and it writes the code, spots bugs before you see them, and edits multiple files simultaneously. Millions of developers have switched from traditional editors."},
+    {"name": "Notebook LM", "maker": "Google", "url": "https://notebooklm.google.com", "category": "Research", "desc": "Upload your own documents — PDFs, articles, meeting notes — and have an AI that has read all of them answer your questions. No hallucination risk on things it hasn't read because it only draws on what you gave it. Also generates audio summaries you can listen to. Excellent for researchers, analysts, and anyone drowning in documents."},
+    {"name": "Gamma", "maker": "Gamma", "url": "https://gamma.app", "category": "Presentations", "desc": "Type a topic or paste an outline and get a full presentation in seconds — designed slides, clean layout, relevant structure. Not a replacement for a designer, but a way to go from blank page to first draft in under a minute. Saves the three hours you'd spend arguing with PowerPoint to get something that looks decent."},
+    {"name": "ElevenLabs", "maker": "ElevenLabs", "url": "https://elevenlabs.io", "category": "Voice AI", "desc": "The most convincing AI voice synthesis available. Can clone a voice from a short audio sample, create characters with distinct voices, and generate narration that's nearly indistinguishable from a professional voiceover. Used by podcasters, game developers, audiobook creators and content makers worldwide."},
+    {"name": "Midjourney", "maker": "Midjourney", "url": "https://midjourney.com", "category": "Image Generation", "desc": "The image generator that changed what people thought AI could do. Type a description and get a photorealistic or artistic image in seconds. The current gold standard for quality, particularly for illustrations, concept art and creative work. Still requires a Discord account but the results justify the friction."},
+    {"name": "Otter.ai", "maker": "Otter AI", "url": "https://otter.ai", "category": "Transcription", "desc": "Joins your Zoom/Teams/Meet calls and transcribes in real time, identifying who said what. At the end of any meeting you get a full transcript, summary, and action items automatically. The 20-minute post-meeting write-up that everyone dreads now takes 30 seconds to review. Genuinely changes how meetings work."},
+    {"name": "Runway", "maker": "Runway ML", "url": "https://runwayml.com", "category": "Video AI", "desc": "Text-to-video generation that's actually usable. Describe a scene and get a short video clip; extend existing footage; remove backgrounds in real time. Used by film studios including Marvel to accelerate post-production. The most credible answer to 'what does AI do to video production?'"},
+]
+
+_AI_NL_PEOPLE = [
+    {"name": "Geoffrey Hinton", "role": "Godfather of Deep Learning · Turing Award 2018", "bio": "Spent decades championing neural networks when everyone thought they were a dead end. He was proved spectacularly right. In 2023, he left Google specifically so he could speak freely about AI risks — a rare move from someone who built the technology. His warnings carry weight because of what he built.", "quote": "I console myself with the normal excuse: if I hadn't done it, someone else would have.", "url": "https://en.wikipedia.org/wiki/Geoffrey_Hinton"},
+    {"name": "Andrej Karpathy", "role": "Former OpenAI & Tesla · AI Educator", "bio": "Led AI at Tesla (Autopilot) and was a founding OpenAI member. Now the most popular AI educator in the world — his YouTube tutorials on building neural networks from scratch have been watched by millions. If you want to truly understand how LLMs work, his 'Neural Networks: Zero to Hero' series is the starting point.", "quote": "The hottest new programming language is English.", "url": "https://karpathy.ai"},
+    {"name": "Demis Hassabis", "role": "CEO · Google DeepMind · Nobel Prize 2024", "bio": "Co-founded DeepMind with a mission to 'solve intelligence, then use it to solve everything else.' Built AlphaGo, which beat the world Go champion — considered far harder than chess — then AlphaFold, which cracked protein folding, a 50-year biology problem. Won the Nobel Prize in Chemistry in 2024. The only person to win the Nobel and design a world-beating game AI.", "quote": "Science is the engine of prosperity. AI is the most powerful tool we have to accelerate it.", "url": "https://en.wikipedia.org/wiki/Demis_Hassabis"},
+    {"name": "Fei-Fei Li", "role": "Co-Director · Stanford HAI", "bio": "Created ImageNet — 14 million labelled images that became the benchmark that sparked the deep learning revolution. When she released the dataset in 2009, computers could barely recognise objects. Within 5 years they were beating humans. She also advocates for AI that serves humanity broadly, not just tech companies.", "quote": "AI is neither good nor evil. It's a tool that amplifies human intent.", "url": "https://en.wikipedia.org/wiki/Fei-Fei_Li"},
+    {"name": "Sam Altman", "role": "CEO · OpenAI", "bio": "Turned OpenAI from a research lab into the company that brought AI to hundreds of millions of people with ChatGPT. Simultaneously believes he's building potentially the most dangerous technology ever made, and that it's still the right thing to do. The most consequential product launch since the smartphone — 100 million users in 2 months.", "quote": "AI will be the greatest tool humanity has ever built.", "url": "https://en.wikipedia.org/wiki/Sam_Altman"},
+    {"name": "Yann LeCun", "role": "Chief AI Scientist · Meta · Turing Award 2018", "bio": "Invented convolutional neural networks (CNNs) — the technology that made computers able to see. Every photo tag on Facebook, every face unlocking your phone, every medical scan uses CNNs. Now a vocal sceptic of current AI safety concerns and a proponent of open-source AI. Argues the current LLM approach is fundamentally limited.", "quote": "Our intelligence is what makes us human, and AI is an extension of that quality.", "url": "https://en.wikipedia.org/wiki/Yann_LeCun"},
+    {"name": "Yoshua Bengio", "role": "Founder · Mila · Turing Award 2018", "bio": "One of the three scientists who made deep learning work, he helped establish Montreal as a world AI hub. Unlike some peers, Bengio now spends much of his time warning about AI risks and advocating for safety research — signed a letter calling for a pause on the most powerful AI training.", "quote": "AI is not good or evil in itself. It's a tool, like fire. The question is how we use it.", "url": "https://en.wikipedia.org/wiki/Yoshua_Bengio"},
+    {"name": "Dario Amodei", "role": "CEO · Anthropic", "bio": "Left OpenAI in 2021 with his sister Daniela to found Anthropic, after growing concerns about AI safety. Created Claude — an AI designed from the ground up to be safe, honest and helpful. Pioneer of Constitutional AI, a method that trains the model to follow principles rather than just optimising for approval. One of the most thoughtful voices on both the capability and danger of AI.", "quote": "We are building one of the most transformative and potentially dangerous technologies in history.", "url": "https://en.wikipedia.org/wiki/Dario_Amodei"},
+]
+
+_AI_NL_PROMPTS = [
+    {"title": "Rewrite anything for your audience", "prompt": "Rewrite this [document/email/report] for [audience description]. Keep all the key information but adjust the tone, vocabulary and examples so it lands for someone who [describe what they know/care about]. Here is the original:\n\n[paste text]", "why": "The most common AI mistake is forgetting to specify the audience. This one change transforms generic output into something that actually works. Use it for proposals, comms, and anything you need multiple versions of."},
+    {"title": "Turn a meeting into action", "prompt": "Here is a transcript/notes from a meeting:\n\n[paste transcript or notes]\n\nExtract: (1) key decisions made, (2) action items with owner and deadline if mentioned, (3) open questions that need answers, (4) a 3-sentence summary I could send to someone who wasn't there.", "why": "Paste this into Claude or ChatGPT immediately after a meeting. Turns 60 minutes of conversation into a clear record in under 10 seconds. Saves the post-meeting write-up that everyone dreads."},
+    {"title": "Pressure-test your own argument", "prompt": "I am about to [propose / present / argue for] the following:\n\n[describe your position or plan]\n\nPlease play devil's advocate. What are the strongest objections? What assumptions am I making that could be wrong? What would a sceptic say? Don't hold back.", "why": "Most people use AI to confirm their thinking. This flips it. Use before a big presentation, pitch, or decision to find the holes in your argument before someone else does."},
+    {"title": "Explain anything in plain English", "prompt": "Explain [technical concept / report / document] as if you're talking to a smart, curious person who has no background in [field]. Use a real-world analogy. Avoid jargon. Then give me 3 questions a non-expert might ask about it.", "why": "Works for understanding dense reports, briefing non-technical stakeholders, or preparing to explain something in a meeting. The 'analogy' instruction is the key — it forces the AI to connect the concept to something real."},
+    {"title": "Generate a week of content", "prompt": "I need 5 social media posts for [platform: LinkedIn / Instagram / X] about [topic]. I am a [role] targeting [audience]. Tone: [professional / conversational / direct]. Each post should be different in format — one question, one tip, one story, one statistic, one opinion. Keep each under [word count].", "why": "Most people use AI for one post at a time. Batching a week's worth in one prompt, with format constraints, gets you varied content that doesn't feel repetitive. Adjust the format list to whatever works for your platform."},
+    {"title": "Decode any document before you sign", "prompt": "Here is a [contract / terms / agreement]. Read it and tell me: (1) what I am committing to, (2) any clauses that are unusual or unfair, (3) what happens if things go wrong, (4) the 3 questions I should ask before signing. Plain English only.\n\n[paste document]", "why": "Legal documents are written for lawyers. This prompt makes them readable. Don't use it as legal advice — use it to know which questions to ask your actual solicitor, or to decide if you even need one."},
+    {"title": "Build a study guide for anything", "prompt": "I want to understand [topic] deeply. I have [X hours/weeks] to learn it. I have [describe current knowledge level]. Create a structured learning plan: what to study in what order, the best free resources for each section, and 10 questions I should be able to answer when I'm done.", "why": "AI is an extraordinary tutor when you point it at a specific goal. This prompt turns 'I want to learn X' into an actual plan with sequenced content. Works for career pivots, exam prep, or just getting to grips with something your job now requires."},
+    {"title": "Write a first draft, then make it yours", "prompt": "Write a first draft of [email / report / proposal / bio] with the following brief:\n- Purpose: [what it needs to achieve]\n- Audience: [who will read it]\n- Key points to cover: [list them]\n- Tone: [formal / warm / direct]\n- Length: approximately [X words]\n\nThen list 3 things I should consider changing to make it feel more personal.", "why": "The blank page is the hardest part. This generates a solid draft fast, and the follow-up question ('what should I change') actively invites you to edit rather than just accept it. The best AI output is always what you do with the draft."},
+]
+
+_AI_NL_DUMMIES = [
+    {"q": "What actually is AI?", "a": "Software that learned from millions of examples instead of following a hand-written rulebook. Show it enough cat photos and it learns to spot cats — no programmer needed. It's very good at pattern matching and completely hopeless at common sense."},
+    {"q": "Why does ChatGPT sound confident even when it's wrong?", "a": "Because it's predicting likely words, not looking up facts. It's an incredibly sophisticated autocomplete — it generates whatever text sounds most plausible. Plausible isn't the same as true. Always check anything important."},
+    {"q": "Is AI going to take my job?", "a": "Some tasks, yes. Whole jobs, rarely overnight. AI is better thought of as a very fast junior assistant — it handles the repetitive bits while you handle the judgement, context, and relationships. The jobs most at risk are ones that are almost entirely routine text or data work."},
+    {"q": "What's the difference between ChatGPT, Claude, and Gemini?", "a": "They're all large language models — the same basic technology. ChatGPT (OpenAI) has the biggest ecosystem and brand recognition. Claude (Anthropic) is often considered strongest at long documents and nuanced writing. Gemini (Google) is built into Google's products — Search, Docs, Gmail. Try all three on the same task and pick the one that works best for you."},
+    {"q": "Do I need to know how to code to use AI?", "a": "No. The whole point is that you just talk to it in plain English. You do need to be specific — vague requests get vague answers. But writing a good prompt is more about being clear than being technical. If you can write a decent email, you can use AI effectively."},
+    {"q": "Is my data private when I use ChatGPT or Claude?", "a": "By default, conversations may be used to train models — so don't paste in personal data, passwords, client details, or anything confidential. Both OpenAI and Anthropic have paid plans and enterprise options with stronger privacy guarantees. When in doubt, imagine your IT department can read every message."},
+]
+
+def _render_ai_newsletter_html(concept, tool, person, prompt_item, dummy, week_str):
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🤖 AI Digest — {week_str}</title></head>
+<body style="background:#f8fafc;color:#1e293b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;max-width:600px;margin:0 auto;padding:24px 20px">
+
+<!-- Header -->
+<div style="text-align:center;padding:32px 0 28px;border-bottom:2px solid #e2e8f0;margin-bottom:32px">
+  <div style="font-size:36px;margin-bottom:10px">🤖</div>
+  <div style="font-size:26px;font-weight:900;letter-spacing:-1px;background:linear-gradient(135deg,#4f46e5,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent">AI Digest</div>
+  <div style="font-size:13px;color:#64748b;margin-top:6px">Week of {week_str} · <a href="https://ai.humanagency.co" style="color:#4f46e5;text-decoration:none">ai.humanagency.co</a></div>
+  <div style="font-size:12px;color:#94a3b8;margin-top:4px">What changed in AI, what it means for you — no hype, no jargon</div>
+</div>
+
+<!-- Concept of the Week -->
+<div style="background:linear-gradient(135deg,#eef2ff,#f5f3ff);border:1px solid #c7d2fe;border-radius:16px;padding:22px;margin-bottom:24px">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#6366f1;margin-bottom:10px">🧠 Concept of the Week</div>
+  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+    <span style="font-size:22px;font-weight:900;color:#312e81">{concept["term"]}</span>
+    <span style="font-size:13px;color:#6366f1;font-weight:600">{concept["full"]}</span>
+  </div>
+  <div style="font-size:14px;color:#1e293b;line-height:1.75">{concept["definition"]}</div>
+  <div style="margin-top:14px">
+    <a href="https://ai.humanagency.co#jargon" style="font-size:11px;color:#6366f1;text-decoration:none;font-weight:700;border:1px solid #c7d2fe;border-radius:20px;padding:5px 14px">See full jargon decoder →</a>
+  </div>
+</div>
+
+<!-- Tool Spotlight -->
+<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:22px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7c3aed;margin-bottom:10px">🛠 Tool Spotlight</div>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+    <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;flex-shrink:0">{tool["name"][0]}</div>
+    <div>
+      <div style="font-size:17px;font-weight:800;color:#1e293b">{tool["name"]}</div>
+      <div style="font-size:12px;color:#94a3b8">{tool["maker"]} · {tool["category"]}</div>
+    </div>
+  </div>
+  <div style="font-size:13px;color:#475569;line-height:1.75;margin-bottom:14px">{tool["desc"]}</div>
+  <a href="{tool["url"]}" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;text-decoration:none;border-radius:20px;padding:9px 18px;font-size:12px;font-weight:700">Try {tool["name"]} →</a>
+</div>
+
+<!-- Try It Yourself (Prompt) -->
+<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:22px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#0891b2;margin-bottom:10px">⚡ Try It Yourself</div>
+  <div style="font-size:16px;font-weight:800;color:#1e293b;margin-bottom:8px">{prompt_item["title"]}</div>
+  <div style="background:#f1f5f9;border-left:3px solid #4f46e5;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Copy this prompt →</div>
+    <div style="font-size:13px;color:#1e293b;line-height:1.7;white-space:pre-wrap;font-family:monospace">{prompt_item["prompt"]}</div>
+  </div>
+  <div style="font-size:12px;color:#64748b;line-height:1.6"><strong style="color:#475569">Why it works:</strong> {prompt_item["why"]}</div>
+</div>
+
+<!-- Who to Follow -->
+<div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:22px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#059669;margin-bottom:14px">👤 Person Behind the AI</div>
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+    <div style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;flex-shrink:0">{person["name"][0]}</div>
+    <div>
+      <div style="font-size:16px;font-weight:800;color:#1e293b">{person["name"]}</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">{person["role"]}</div>
+    </div>
+  </div>
+  <div style="font-size:13px;color:#475569;line-height:1.75;margin-bottom:12px">{person["bio"]}</div>
+  <div style="background:#f0fdf4;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+    <div style="font-size:13px;color:#166534;font-style:italic;line-height:1.6">"{person["quote"]}"</div>
+  </div>
+  <a href="{person["url"]}" style="font-size:12px;color:#059669;text-decoration:none;font-weight:700">Read more →</a>
+</div>
+
+<!-- Plain English -->
+<div style="background:linear-gradient(135deg,#fefce8,#fffbeb);border:1px solid #fde68a;border-radius:16px;padding:22px;margin-bottom:24px">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#d97706;margin-bottom:12px">🙋 Plain English Q&amp;A</div>
+  <div style="font-size:15px;font-weight:800;color:#1e293b;margin-bottom:10px">{dummy["q"]}</div>
+  <div style="font-size:13px;color:#78350f;line-height:1.75">{dummy["a"]}</div>
+</div>
+
+<!-- CTA -->
+<div style="text-align:center;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:16px;padding:28px 20px;margin-bottom:28px">
+  <div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:8px">Explore the full AI guide</div>
+  <div style="font-size:13px;color:#c7d2fe;margin-bottom:18px">Jargon decoder · Use cases by role · People who built it · Articles worth reading</div>
+  <a href="https://ai.humanagency.co" style="display:inline-block;background:#fff;color:#4f46e5;text-decoration:none;border-radius:20px;padding:10px 24px;font-size:13px;font-weight:800">Open ai.humanagency.co →</a>
+</div>
+
+<!-- Footer -->
+<div style="text-align:center;padding-top:20px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;line-height:1.9">
+  <div>🤖 <a href="https://ai.humanagency.co" style="color:#4f46e5;text-decoration:none">ai.humanagency.co</a> · <a href="https://humanagency.co" style="color:#4f46e5;text-decoration:none">humanagency.co</a></div>
+  <div>You signed up for the AI Digest at ai.humanagency.co</div>
+</div>
+
+</body>
+</html>"""
+
+
+@app.route("/api/ai/newsletter/generate", methods=["GET", "POST"])
+def api_ai_newsletter_generate():
+    import datetime
+    token = request.args.get("token") or (request.get_json(silent=True) or {}).get("token", "")
+    if token != os.environ.get("AI_NL_TOKEN", "ai-digest-2026"):
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        today    = datetime.date.today()
+        week_num = today.isocalendar()[1]
+        week_str = today.strftime("%d %b %Y")
+
+        concept = _AI_NL_CONCEPTS[week_num % len(_AI_NL_CONCEPTS)]
+        tool    = _AI_NL_TOOLS[week_num % len(_AI_NL_TOOLS)]
+        person  = _AI_NL_PEOPLE[week_num % len(_AI_NL_PEOPLE)]
+        prompt_item = _AI_NL_PROMPTS[week_num % len(_AI_NL_PROMPTS)]
+        dummy   = _AI_NL_DUMMIES[week_num % len(_AI_NL_DUMMIES)]
+
+        html    = _render_ai_newsletter_html(concept, tool, person, prompt_item, dummy, week_str)
+        subject = f"🤖 AI Digest — {week_str}"
+
+        try:
+            lib._sb().table("ai_newsletter").insert({
+                "week_of":      str(today),
+                "subject":      subject,
+                "html_content": html,
+                "sent":         False,
+            }).execute()
+        except Exception as db_err:
+            print(f"[ai_nl] DB insert failed (table may not exist yet): {db_err}")
+
+        return jsonify({"ok": True, "subject": subject, "concept": concept["term"], "tool": tool["name"], "person": person["name"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ai/newsletter/latest")
+def api_ai_newsletter_latest():
+    try:
+        rows = lib._sb().table("ai_newsletter").select("id,week_of,subject,created_at,sent").order("created_at", desc=True).limit(5).execute().data or []
+        return jsonify({"editions": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/ai/newsletter")
+def ai_newsletter_preview():
+    try:
+        rows = lib._sb().table("ai_newsletter").select("html_content,subject,week_of").order("created_at", desc=True).limit(1).execute().data or []
+        if rows and rows[0].get("html_content"):
+            return rows[0]["html_content"]
+        return "<p style='font-family:sans-serif;padding:40px;color:#666'>No newsletter generated yet. Hit <code>/api/ai/newsletter/generate?token=ai-digest-2026</code> to generate one.</p>", 404
+    except Exception as e:
+        return f"<p style='font-family:sans-serif;padding:40px;color:red'>Error: {e}</p>", 500
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
