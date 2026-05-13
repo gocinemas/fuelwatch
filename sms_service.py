@@ -4387,7 +4387,9 @@ def api_mot():
             timeout=12,
         )
         if r.status_code == 404:
-            return jsonify({"error": "Vehicle not found"}), 404
+            return jsonify({"error": "Vehicle not found — check the plate and try again"}), 404
+        if r.status_code == 400:
+            return jsonify({"error": "Invalid registration — check the plate and try again"}), 400
         if r.status_code == 403:
             return jsonify({"error": "API key invalid or not yet active"}), 403
         if r.status_code != 200:
