@@ -1091,6 +1091,21 @@ def fetch_brand_data(brand: str) -> dict:
         return cached["data"] if cached else {}
 
     try:
+        # L1.5: brand_profiles — permanent store, survives cache version bumps
+        # Searched by any user → available to all users instantly
+        try:
+            from supabase import create_client as _sbcc
+            _sb2 = _sbcc(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+            _bp_rows = _sb2.table("brand_profiles").select("raw_data,last_enriched_at").ilike("name", brand.strip()).limit(1).execute().data
+            if _bp_rows and _bp_rows[0].get("raw_data"):
+                _bp = _bp_rows[0]["raw_data"]
+                if _bp.get("timeline") or _bp.get("competitors"):
+                    print(f"[brand_profiles] hit: {brand}")
+                    _BRAND_CACHE[cache_key] = {"ts": time.time(), "data": _bp}
+                    return {**_bp, "suggested_name": suggested}
+        except Exception as _bpe:
+            print(f"[brand_profiles] read failed: {_bpe}")
+
         # L2: Supabase persistent cache — skip if AI data is absent
         sb_data = _sb_cache_get("brand:" + cache_key)
         if sb_data and (sb_data.get("timeline") or sb_data.get("competitors")):
