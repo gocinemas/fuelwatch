@@ -13616,6 +13616,269 @@ def api_space_sky():
         return jsonify({"error": str(e)}), 500
 
 
+# ── Space Newsletter ──────────────────────────────────────────────────────────
+
+_NL_COMPANIES = [
+    {"name":"Surrey Satellite Technology (SSTL)", "loc":"Guildford, Surrey",  "url":"https://www.sstl.co.uk",         "desc":"World leader in small satellite manufacturing — 70+ satellites built since 1985. Part of the Airbus group. Employs 700+ people in Surrey and has shaped the global small-sat industry."},
+    {"name":"Orbex",                              "loc":"Forres, Scotland",    "url":"https://orbex.space",            "desc":"Building Prime — a small orbital rocket designed to launch from Scottish soil. One of the most exciting UK startups, aiming to put the UK on the orbital launch map for the first time."},
+    {"name":"Astroscale UK",                      "loc":"Harwell, Oxfordshire","url":"https://astroscale.com",         "desc":"Pioneering commercial debris removal and satellite life-extension. Ran the world's first commercial debris capture mission. A critical company for the long-term sustainability of space."},
+    {"name":"OneWeb / Eutelsat",                  "loc":"London",              "url":"https://oneweb.net",             "desc":"Global LEO broadband constellation with 650+ satellites. Part UK-government owned. Aims to connect the unconnected — schools, ships, remote communities — with high-speed internet from orbit."},
+    {"name":"Spire Global",                       "loc":"Glasgow",             "url":"https://spire.com",             "desc":"110+ nanosatellites providing maritime tracking, weather data, and RF spectrum analysis globally. A shining example of Scotland's growing small-sat cluster."},
+    {"name":"Reaction Engines",                   "loc":"Culham, Oxfordshire", "url":"https://www.reactionengines.co.uk","desc":"Developing SABRE — a hybrid air-breathing rocket engine that could halve the cost of getting to orbit. A genuinely revolutionary British engineering project backed by BAE Systems and ESA."},
+    {"name":"Open Cosmos",                        "loc":"Harwell, Oxfordshire","url":"https://opencosmos.com",        "desc":"End-to-end small satellite missions — hardware, software and operations — for commercial and government customers. Making space accessible to organisations that couldn't previously afford it."},
+    {"name":"SEN",                                "loc":"London",              "url":"https://sen.com",               "desc":"British space media company streaming live 4K Earth footage from cameras on the ISS. The live stream you can watch on space.humanagency.co right now is powered by SEN."},
+    {"name":"Goonhilly Earth Station",            "loc":"Cornwall",            "url":"https://goonhilly.org",         "desc":"Deep space communications facility in Cornwall tracking Moon and Mars missions. A piece of Cold War infrastructure reinvented as a commercial ground station for the new space era."},
+    {"name":"Satellite Applications Catapult",    "loc":"Harwell, Oxfordshire","url":"https://sa.catapult.org.uk",   "desc":"Government-backed innovation centre connecting satellite data to UK businesses and public services — from flood mapping to precision agriculture. The bridge between space and the economy."},
+    {"name":"Skyrora",                            "loc":"Edinburgh",           "url":"https://www.skyrora.com",       "desc":"Developing Skyrora XL for UK orbital launch. Also produces test vehicles for propulsion R&D. Part of Scotland's growing launch ecosystem alongside Orbex."},
+    {"name":"BAE Systems Space",                  "loc":"Various UK",          "url":"https://www.baesystems.com",    "desc":"Space situational awareness, electronic intelligence and responsive space programmes for UK and allied governments. One of the largest employers in UK space."},
+]
+
+_NL_CAREERS = [
+    {"icon":"🎓", "step":"Study the right subjects",    "body":"Physics, maths, engineering, and computer science are core — but business, law, policy and geography all have strong space applications. The industry needs far more people than it has rocket scientists."},
+    {"icon":"🔭", "step":"Get involved early",           "body":"UK Space Design Competition, British Astronomy & Astrophysics Olympiad (BAAO), or a local astronomy club. Doing counts more than knowing — and it makes your CV stand out."},
+    {"icon":"🏢", "step":"Target your first employer",   "body":"SSTL (Guildford), Orbex (Scotland), Airbus (Stevenage), Open Cosmos and the Satellite Applications Catapult all run graduate programmes. Apply early — cohorts are small."},
+    {"icon":"🌐", "step":"Use the right job portals",    "body":"jobs.ukspace.org (UKSA), Space Talent, LinkedIn filtered to 'space + UK'. ESA runs UK-facing graduate traineeship programmes too. Don't just search 'aerospace' — 'satellite' and 'earth observation' find different roles."},
+    {"icon":"📡", "step":"Build with what you have",    "body":"Universities hold CubeSat records. Raspberry Pi and software-defined radio skills translate directly to space work. Open-source ground station tools are genuinely visible to hiring managers in this industry."},
+    {"icon":"🤝", "step":"Network — the industry is tiny","body":"UK Space Conference (annual), NewSpace People events, UKSEDS (students & grads). The UK space sector employs 48,800 people. Compared to finance or tech, it's a village. People remember faces and names."},
+]
+
+_NL_FACTS = [
+    {"term":"Where does oxygen come from on the ISS?",     "def":"The ISS splits water into hydrogen and oxygen via electrolysis, powered by its solar panels. Solid fuel 'oxygen candles' serve as backup. CO₂ is scrubbed out continuously. The ISS carries 90 days of emergency reserves."},
+    {"term":"How do toilets work in space?",               "def":"Like vacuum cleaners. A suction fan pulls liquid waste into a sealed container; solid waste goes into a bag. Astronauts need foot restraints and thigh bars to stay in position. The ISS toilet cost $19 million and took years to get right."},
+    {"term":"Is astronaut urine really recycled into drinking water?", "def":"Yes — and it's cleaner than most tap water. The Water Recovery System distils urine using centrifugal force, filters it, and UV-treats it. Recovery rates have reached 98%. NASA's line: 'Yesterday's coffee is tomorrow's coffee.'"},
+    {"term":"What is the ISS, actually?",                  "def":"A football-pitch-sized laboratory at 408 km altitude, travelling at 28,000 km/h. Built by 15 countries between 1998 and 2011. Permanently crewed since 2000. It has hosted 273 people from 21 countries. The UK contributes through ESA."},
+    {"term":"Why don't astronauts use bread in space?",    "def":"Crumbs float, get inhaled, clog equipment, and can short-circuit electronics. Tortillas replaced bread in the 1980s. They're flat, seal tightly, produce no crumbs, and stay fresh longer in the sealed ISS environment."},
+    {"term":"How do astronauts sleep on the ISS?",         "def":"In small soundproofed sleeping bags attached to the wall of a phone-booth-sized cabin. There's no 'up' or 'down', so any orientation works. The ISS sees 16 sunrises every 24 hours — lighting is controlled to maintain sleep rhythms."},
+    {"term":"What happened to Columbia in 2003?",          "def":"A piece of foam broke off during launch and punched a hole in the heat shield. On reentry at 7 km/s, superheated gas entered the breach and destroyed the vehicle. All 7 crew were killed. It grounded the Shuttle for 2 years and reshaped NASA's safety culture."},
+    {"term":"How far away is the Moon, really?",           "def":"About 384,000 km — which sounds precise until you know it varies from 356,000 km (perigee) to 406,000 km (apogee) as the Moon's orbit wobbles. Apollo 11 took 3 days to get there. Light makes the trip in 1.3 seconds."},
+    {"term":"What is microgravity — is it zero gravity?",  "def":"No. At 408 km, Earth's gravity is still 88% as strong as on the surface. What makes things 'float' is that the ISS is in constant freefall — it's moving sideways so fast that it falls around the Earth rather than into it. Everything inside falls together."},
+    {"term":"What does SpaceX's Falcon 9 reuse mean?",     "def":"Before SpaceX, rocket first stages were thrown away after each launch — like burning the plane after every flight. Falcon 9's first stage lands itself on a drone ship or back at the launch site. It's been reused up to 20 times per booster, slashing the cost per kilogram to orbit."},
+]
+
+def _fetch_nl_launches(upcoming=True):
+    """Fetch upcoming or previous launches from Launch Library 2."""
+    endpoint = "upcoming" if upcoming else "previous"
+    try:
+        r = requests.get(
+            f"https://ll.thespacedevs.com/2.2.0/launch/{endpoint}/",
+            params={"format": "json", "limit": 10, "mode": "list"},
+            timeout=12,
+            headers={"User-Agent": "space.humanagency.co/1.0"},
+        )
+        out = []
+        for l in r.json().get("results", []):
+            out.append({
+                "name":         l.get("name", ""),
+                "net":          l.get("net", ""),
+                "provider":     l.get("lsp_name", "") or "",
+                "location":     l.get("location", "") or "",
+                "status":       (l.get("status") or {}).get("name", ""),
+                "mission_type": l.get("mission_type", "") or "",
+            })
+        return out
+    except Exception as e:
+        print(f"[nl_launches] {e}")
+        return []
+
+def _render_nl_launch_rows(launches, limit=6):
+    rows = ""
+    for l in launches[:limit]:
+        net = l.get("net", "")
+        try:
+            import datetime as _dt
+            dt = _dt.datetime.fromisoformat(net.replace("Z", "+00:00"))
+            date_str = dt.strftime("%a %d %b, %H:%M UTC")
+        except Exception:
+            date_str = net
+        status = l.get("status", "")
+        icon = "✅" if "success" in status.lower() else ("❌" if "fail" in status.lower() else "🚀")
+        rows += (
+            f'<tr><td style="padding:10px 0;border-bottom:1px solid #1e1e42">'
+            f'<div style="font-size:14px;font-weight:700;color:#dde0f5">{icon} {l["name"]}</div>'
+            f'<div style="font-size:12px;color:#818cf8;margin-top:2px">{l["provider"]} · {date_str}</div>'
+            f'<div style="font-size:11px;color:#6b6b99;margin-top:1px">📍 {l["location"]}</div>'
+            f'</td></tr>'
+        )
+    if not rows:
+        rows = '<tr><td style="color:#6b6b99;font-size:13px;padding:10px 0">No launches in feed.</td></tr>'
+    return rows
+
+def _render_space_newsletter_html(upcoming, previous, company, career, fact, iss_data, week_str):
+    upcoming_rows  = _render_nl_launch_rows(upcoming)
+    previous_rows  = _render_nl_launch_rows(previous)
+
+    iss_block = ""
+    if iss_data and iss_data.get("lat") is not None:
+        lat, lon = iss_data["lat"], iss_data["lon"]
+        ns = "N" if lat >= 0 else "S"
+        ew = "E" if lon >= 0 else "W"
+        iss_block = (
+            f'<div style="background:#13132a;border-radius:10px;padding:14px;margin-bottom:12px">'
+            f'<div style="font-size:12px;color:#818cf8;font-weight:700;margin-bottom:4px">🛸 Current ISS position</div>'
+            f'<div style="font-size:13px;color:#dde0f5;font-weight:700">{abs(lat):.1f}°{ns}, {abs(lon):.1f}°{ew}</div>'
+            f'<div style="font-size:11px;color:#6b6b99;margin-top:2px">~408 km altitude · ~27,600 km/h · orbiting every 92 min</div>'
+            f'</div>'
+        )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🛸 Space Digest — {week_str}</title></head>
+<body style="background:#05050f;color:#dde0f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto;padding:24px 20px">
+
+<!-- Header -->
+<div style="text-align:center;padding:28px 0 24px;border-bottom:1px solid #1e1e42;margin-bottom:28px">
+  <div style="font-size:36px;margin-bottom:10px">🛸</div>
+  <div style="font-size:26px;font-weight:900;letter-spacing:-1px;color:#a5b4fc">Space Digest</div>
+  <div style="font-size:13px;color:#6b6b99;margin-top:6px">Week of {week_str} · <a href="https://miru.humanagency.co/space" style="color:#818cf8;text-decoration:none">space.humanagency.co</a></div>
+</div>
+
+<!-- ISS + SEN -->
+<div style="margin-bottom:32px">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#6b6b99;margin-bottom:14px">🔴 ISS &amp; Live Earth</div>
+  {iss_block}
+  <div style="font-size:13px;color:#6b6b99;line-height:1.7">
+    Right now, <strong style="color:#dde0f5">7 people</strong> are living and working aboard the International Space Station — conducting microgravity science, maintaining life systems, and watching the Earth pass below every 92 minutes.
+    <br><br>
+    British company <strong style="color:#dde0f5">SEN</strong> has 4K cameras mounted on the ISS exterior, streaming live video of Earth from orbit.
+    <br><br>
+    <a href="https://sen.com/live" style="display:inline-block;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;text-decoration:none;border-radius:20px;padding:9px 18px;font-size:12px;font-weight:700">📺 Watch Earth live — SEN →</a>
+    &nbsp;
+    <a href="https://spotthestation.nasa.gov/" style="display:inline-block;background:#13132a;border:1px solid #1e1e42;color:#818cf8;text-decoration:none;border-radius:20px;padding:9px 18px;font-size:12px;font-weight:700">Spot the ISS →</a>
+  </div>
+</div>
+
+<!-- Last week's launches -->
+<div style="margin-bottom:32px">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#6b6b99;margin-bottom:14px">📅 What Launched Last Week</div>
+  <table style="width:100%;border-collapse:collapse">{previous_rows}</table>
+  <div style="margin-top:12px;font-size:11px;color:#6b6b99">Data: Launch Library 2 · Includes all orbital and suborbital attempts worldwide</div>
+</div>
+
+<!-- Upcoming launches -->
+<div style="margin-bottom:32px">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#6b6b99;margin-bottom:14px">🚀 Coming Up</div>
+  <table style="width:100%;border-collapse:collapse">{upcoming_rows}</table>
+  <div style="margin-top:14px">
+    <a href="https://miru.humanagency.co/space" style="color:#818cf8;font-size:12px;text-decoration:none;font-weight:600">See all upcoming launches on the live dashboard →</a>
+  </div>
+</div>
+
+<!-- Fact of the week -->
+<div style="background:#0d0d20;border:1px solid #2e2e58;border-radius:14px;padding:20px;margin-bottom:28px">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#818cf8;margin-bottom:12px">💡 Space 101 — Fact of the Week</div>
+  <div style="font-size:15px;font-weight:800;color:#dde0f5;margin-bottom:10px;line-height:1.3">{fact["term"]}</div>
+  <div style="font-size:13px;color:#6b6b99;line-height:1.7">{fact["def"]}</div>
+</div>
+
+<!-- UK Company Spotlight -->
+<div style="background:#0d0d20;border:1px solid #2e2e58;border-radius:14px;padding:20px;margin-bottom:28px">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#34d399;margin-bottom:12px">🇬🇧 UK Company Spotlight</div>
+  <div style="font-size:16px;font-weight:800;color:#dde0f5;margin-bottom:4px">{company["name"]}</div>
+  <div style="font-size:12px;color:#6b6b99;margin-bottom:12px">📍 {company["loc"]}</div>
+  <div style="font-size:13px;color:#6b6b99;line-height:1.7;margin-bottom:14px">{company["desc"]}</div>
+  <a href="{company["url"]}" style="color:#34d399;font-size:12px;text-decoration:none;font-weight:700">{company["url"].replace("https://","").replace("http://","").rstrip("/")} →</a>
+</div>
+
+<!-- Careers -->
+<div style="background:#0d0d20;border:1px solid #2e2e58;border-radius:14px;padding:20px;margin-bottom:28px">
+  <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#f59e0b;margin-bottom:12px">🎓 Get Into Space</div>
+  <div style="font-size:15px;font-weight:800;color:#dde0f5;margin-bottom:10px">{career["icon"]} {career["step"]}</div>
+  <div style="font-size:13px;color:#6b6b99;line-height:1.7;margin-bottom:14px">{career["body"]}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+    <a href="https://jobs.ukspace.org" style="font-size:11px;color:#f59e0b;text-decoration:none;border:1px solid #f59e0b44;border-radius:20px;padding:4px 12px;font-weight:600">jobs.ukspace.org</a>
+    <a href="https://spacetalent.org" style="font-size:11px;color:#f59e0b;text-decoration:none;border:1px solid #f59e0b44;border-radius:20px;padding:4px 12px;font-weight:600">Space Talent</a>
+    <a href="https://ukseds.org" style="font-size:11px;color:#f59e0b;text-decoration:none;border:1px solid #f59e0b44;border-radius:20px;padding:4px 12px;font-weight:600">UKSEDS</a>
+  </div>
+</div>
+
+<!-- Footer -->
+<div style="text-align:center;padding-top:24px;border-top:1px solid #1e1e42;font-size:11px;color:#2e2e58;line-height:1.8">
+  <div>🛸 <a href="https://miru.humanagency.co/space" style="color:#818cf8;text-decoration:none">space.humanagency.co</a> · humanagency.co</div>
+  <div>You signed up for the UK Space Digest at space.humanagency.co</div>
+</div>
+
+</body>
+</html>"""
+
+@app.route("/api/space/newsletter/generate", methods=["GET", "POST"])
+def api_space_newsletter_generate():
+    import datetime
+    token = request.args.get("token") or (request.get_json(silent=True) or {}).get("token", "")
+    if token != os.environ.get("SPACE_NL_TOKEN", "space-digest-2026"):
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        today     = datetime.date.today()
+        week_num  = today.isocalendar()[1]
+        week_str  = today.strftime("%d %b %Y")
+
+        upcoming = _fetch_nl_launches(upcoming=True)
+        previous = _fetch_nl_launches(upcoming=False)
+
+        company = _NL_COMPANIES[week_num % len(_NL_COMPANIES)]
+        career  = _NL_CAREERS[week_num % len(_NL_CAREERS)]
+        fact    = _NL_FACTS[week_num % len(_NL_FACTS)]
+
+        iss_data = None
+        try:
+            ri = requests.get("http://api.open-notify.org/iss-now.json", timeout=5)
+            pos = ri.json().get("iss_position", {})
+            iss_data = {"lat": float(pos.get("latitude", 0)), "lon": float(pos.get("longitude", 0))}
+        except Exception:
+            pass
+
+        html    = _render_space_newsletter_html(upcoming, previous, company, career, fact, iss_data, week_str)
+        subject = f"🛸 Space Digest — {week_str}"
+
+        # Store in Supabase (space_newsletter table)
+        try:
+            lib._sb().table("space_newsletter").insert({
+                "week_of":      str(today),
+                "subject":      subject,
+                "html_content": html,
+                "sent":         False,
+            }).execute()
+        except Exception as db_err:
+            print(f"[space_nl] DB insert failed (table may not exist yet): {db_err}")
+
+        # Also save launches to space_launches table
+        try:
+            all_launches = upcoming + previous
+            for l in all_launches:
+                lib._sb().table("space_launches").upsert({
+                    "name":         l["name"],
+                    "provider":     l["provider"],
+                    "location":     l["location"],
+                    "net":          l["net"] or None,
+                    "status":       l["status"],
+                    "mission_type": l["mission_type"],
+                    "fetched_at":   datetime.datetime.utcnow().isoformat(),
+                }, on_conflict="name,net").execute()
+        except Exception as db_err:
+            print(f"[space_nl] launches DB insert failed: {db_err}")
+
+        return jsonify({"ok": True, "subject": subject, "upcoming": len(upcoming), "previous": len(previous)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/space/newsletter/latest")
+def api_space_newsletter_latest():
+    try:
+        rows = lib._sb().table("space_newsletter").select("id,week_of,subject,created_at,sent").order("created_at", desc=True).limit(5).execute().data or []
+        return jsonify({"editions": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/space/newsletter")
+def space_newsletter_preview():
+    try:
+        rows = lib._sb().table("space_newsletter").select("html_content,subject,week_of").order("created_at", desc=True).limit(1).execute().data or []
+        if rows and rows[0].get("html_content"):
+            return rows[0]["html_content"]
+        return "<p style='font-family:sans-serif;padding:40px;color:#666'>No newsletter generated yet. Hit <code>/api/space/newsletter/generate?token=space-digest-2026</code> to generate one.</p>", 404
+    except Exception as e:
+        return f"<p style='font-family:sans-serif;padding:40px;color:red'>Error: {e}</p>", 500
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
