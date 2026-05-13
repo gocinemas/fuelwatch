@@ -5087,6 +5087,20 @@ const _ts = new Date(d.timestamp);
 
     const finish = function() {
       if (!coSettled || !brSettled) return; // wait for both APIs to resolve or fail
+      // Company typed in brand mode — show brand picker, bail early
+      if (brData && brData.company_not_brand) {
+        document.getElementById("intel-loading").classList.add("hidden");
+        const dymEl = document.getElementById("brand-did-you-mean");
+        const brands = brData.brands || [];
+        const btns = brands.map(b =>
+          `<button onclick="document.getElementById('intel-input').value='${b.replace(/'/g,"\\'")}';document.getElementById('brand-did-you-mean').classList.add('hidden');searchIntel()"
+            style="font-size:12px;font-weight:600;padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer">${b}</button>`
+        ).join("");
+        dymEl.innerHTML = `<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:4px">🏢 <strong>${brData.name}</strong> is a company, not a brand.</div><div style="font-size:12px;color:#1e3a8a;margin-bottom:8px">Did you mean one of their brands?</div><div style="display:flex;flex-wrap:wrap;gap:6px">${btns}</div>`;
+        dymEl.style.background = "#eff6ff"; dymEl.style.borderColor = "#93c5fd"; dymEl.style.color = "#1e40af";
+        dymEl.classList.remove("hidden");
+        return;
+      }
       document.getElementById("intel-loading").classList.add("hidden");
       if (coErr && brErr) {
         document.getElementById("intel-error").textContent = "Could not load data — try again.";
@@ -7424,8 +7438,25 @@ const _ts = new Date(d.timestamp);
       document.getElementById("brand-loading").classList.add("hidden");
       if (d.error) { document.getElementById("brand-error").textContent = d.error; document.getElementById("brand-error").classList.remove("hidden"); return; }
 
-      // Disambiguation: brand name maps to multiple options — ask user to pick
+      // Company entered in brand mode — redirect to brand picker
       const dymEl = document.getElementById("brand-did-you-mean");
+      if (d.company_not_brand) {
+        const brands = d.brands || [];
+        const btns = brands.map(b =>
+          `<button onclick="document.getElementById('brand-input').value='${b.replace(/'/g,"\\'")}';document.getElementById('intel-input').value='${b.replace(/'/g,"\\'")}';document.getElementById('brand-did-you-mean').classList.add('hidden');searchBrand()"
+            style="font-size:12px;font-weight:600;padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer">${b}</button>`
+        ).join("");
+        const brandHint = brands.length ? `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">${btns}</div>` : "";
+        dymEl.innerHTML = `<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:4px">🏢 <strong>${d.name}</strong> is a company, not a brand.</div><div style="font-size:12px;color:#1e3a8a">Did you mean one of their brands?</div>${brandHint}`;
+        dymEl.style.background = "#eff6ff";
+        dymEl.style.borderColor = "#93c5fd";
+        dymEl.style.color = "#1e40af";
+        dymEl.classList.remove("hidden");
+        document.getElementById("intel-loading").classList.add("hidden");
+        return;
+      }
+
+      // Disambiguation: brand name maps to multiple options — ask user to pick
       if (d.disambiguate && d.disambiguate.length >= 1) {
         const btns = d.disambiguate.map(opt =>
           `<button onclick="_brandSaveChoice('${d.name.replace(/'/g,"\\'")}','${opt.replace(/'/g,"\\'")}');document.getElementById('brand-input').value='${opt.replace(/'/g,"\\'")}';document.getElementById('brand-did-you-mean').classList.add('hidden');searchBrand()"

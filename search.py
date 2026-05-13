@@ -1004,27 +1004,35 @@ def fetch_brand_data(brand: str) -> dict:
                     headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
                     json={"model": "llama-3.1-8b-instant",
                           "messages": [{"role": "user", "content":
-                              f'User typed "{canonical}" in a Brand & Company Intelligence search.\n'
-                              'What well-known brand(s), company(ies), or products use this name?\n'
-                              'Reply with ONE of these three formats (nothing else):\n'
-                              '1. CLEAR — the name unambiguously refers to ONE major company or brand '
-                              '(e.g. "Apple", "Nike", "Unilever", "Amazon").\n'
-                              '2. ONE:<qualified form> — the name belongs to ONE clear brand but a product '
-                              'qualifier helps avoid confusion with non-brand meanings (animals, people, '
-                              'words). e.g. "Lynx" → ONE:Lynx deodorant, "Mitchum" → ONE:Mitchum deodorant, '
-                              '"Dove" → ONE:Dove soap (if only one brand), "Shell" → ONE:Shell petrol.\n'
-                              '3. A JSON array of up to 5 specific options — the name is shared by multiple '
-                              'well-known brands. e.g. "Virgin" → ["Virgin Atlantic","Virgin Money","Virgin Media"], '
-                              '"Dove" → ["Dove soap","Dove chocolate"], "Next" → ["Next fashion","Next plc"].\n'
-                              'Reply ONLY with CLEAR, ONE:<form>, or a JSON array.'}],
-                          "max_tokens": 100, "temperature": 0.0},
+                              f'User typed "{canonical}" in a BRAND-only intelligence search.\n'
+                              'This tool is for consumer-facing brands only — NOT parent corporations.\n'
+                              'Reply with ONE of these four formats (nothing else):\n'
+                              '1. CLEAR — this IS a consumer brand (e.g. "Nike","Dove","Marmite","Walkers","iPhone").\n'
+                              '2. ONE:<qualified form> — one brand but needs qualifier to avoid confusion '
+                              '(e.g. "Lynx"→ONE:Lynx deodorant, "Shell"→ONE:Shell petrol).\n'
+                              '3. A JSON array of up to 5 brand options — ambiguous between multiple brands '
+                              '(e.g. "Dove"→["Dove soap","Dove chocolate"]).\n'
+                              '4. COMPANY:<json array of up to 5 famous consumer brands they own> — '
+                              'this is a parent company/conglomerate, not a consumer brand '
+                              '(e.g. "Unilever"→COMPANY:["Dove","Marmite","Persil","Lynx","Domestos"], '
+                              '"P&G"→COMPANY:["Gillette","Pampers","Fairy","Ariel","Head & Shoulders"], '
+                              '"Nestlé"→COMPANY:["KitKat","Nescafé","Maggi","Perrier","Milkybar"]).\n'
+                              'Reply ONLY with CLEAR, ONE:<form>, a JSON array, or COMPANY:<json array>.'}],
+                          "max_tokens": 120, "temperature": 0.0},
                     timeout=6,
                 )
                 reply = r.json()["choices"][0]["message"]["content"].strip()
-                if reply.startswith("ONE:"):
+                if reply.startswith("COMPANY:"):
+                    import json as _json
+                    brands_raw = reply[8:].strip()
+                    try:
+                        brand_list = _json.loads(brands_raw)
+                    except Exception:
+                        brand_list = []
+                    return {"company_not_brand": True, "name": canonical, "brands": brand_list}
+                elif reply.startswith("ONE:"):
                     qualified = reply[4:].strip().strip('"').strip("'")
                     if qualified and qualified.lower() != canonical.lower():
-                        # Ask the user to confirm — same UX as multi-option disambiguation
                         return {"disambiguate": [qualified], "name": canonical}
                 elif reply != "CLEAR" and reply.startswith("["):
                     import json as _json
