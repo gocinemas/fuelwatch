@@ -427,14 +427,16 @@ create table if not exists pm_docs (
     <span class="modal-close" onclick="_closeModal('modal-new-project')">✕</span>
     <div class="modal-title">New Project</div>
     <label class="form-label">Project name</label>
-    <input class="form-input" id="np-name" placeholder="e.g. Verdi IT Separation, Project Athena…">
+    <input class="form-input" id="np-name" placeholder="e.g. SAP Migration, Project Phoenix, Cloud Move…">
     <label class="form-label">Type</label>
     <select class="form-input form-select" id="np-type">
       <option>IT Transformation</option>
-      <option>IT Separation</option>
+      <option>Data / Cloud Migration</option>
       <option>ERP Implementation</option>
-      <option>Digital / App</option>
-      <option>Infrastructure</option>
+      <option>De-merger / Separation</option>
+      <option>Digital / App Build</option>
+      <option>Infrastructure Refresh</option>
+      <option>Process Improvement</option>
       <option>Programme Management</option>
       <option>Other</option>
     </select>
@@ -522,97 +524,98 @@ create table if not exists pm_docs (
   const PHASES = [
     {
       id:1, icon:"🚀", name:"Initiate",
-      desc:"Establish the business case, secure sponsorship, and define the programme scope. Key output: signed-off BOSCARD and initial stakeholder map.",
+      desc:"Define the problem, secure sponsorship and agree the scope. Works for any project type — migration, de-merger, ERP, app build or process change. Key output: BOSCARD and stakeholder alignment.",
       docs:[
-        {type:"business_case", icon:"📄", name:"Business Case", hint:"Problem, benefits, cost estimate"},
-        {type:"boscard",       icon:"🎯", name:"BOSCARD",       hint:"Benefits · Objectives · Scope · Constraints · Assumptions · Risks · Dependencies"},
-        {type:"stakeholder_map", icon:"👥", name:"Stakeholder Map", hint:"Who, what level of influence, communication plan"},
-        {type:"note",          icon:"📋", name:"Project Charter", hint:"Formal mandate and governance structure"},
+        {type:"business_case",   icon:"📄", name:"Business Case / Brief", hint:"What problem are we solving, what's the benefit, rough cost"},
+        {type:"boscard",         icon:"🎯", name:"BOSCARD",               hint:"Benefits · Objectives · Scope · Constraints · Assumptions · Risks · Dependencies"},
+        {type:"stakeholder_map", icon:"👥", name:"Stakeholder Map",       hint:"Who needs to know, who can block, communication approach"},
+        {type:"note",            icon:"📋", name:"Project Charter",       hint:"Formal mandate, governance model, reporting lines"},
       ],
       aiActions:[
         {id:"boscard",   label:"Generate BOSCARD"},
+        {id:"raci",      label:"Draft RACI"},
         {id:"summarise", label:"Summarise brief"},
       ],
-      aiHint:"Paste a business brief or problem statement → generate a full BOSCARD"
+      aiHint:"Paste any brief, email chain or problem statement → get a full BOSCARD"
     },
     {
-      id:2, icon:"🏗️", name:"Design",
-      desc:"Define the solution architecture, agree TSA scope (for separations), build the RAID log, and finalise the RACI. Stakeholders locked in.",
+      id:2, icon:"🏗️", name:"Plan & Design",
+      desc:"Lock down the approach, dependencies and who does what. Whether you're designing a cloud architecture, a migration blueprint, a service model or an org change — the RAID log and RACI are universal.",
       docs:[
-        {type:"raid",    icon:"⚠️", name:"RAID Log",       hint:"Risks · Assumptions · Issues · Dependencies"},
-        {type:"raci",    icon:"🔲", name:"RACI Matrix",    hint:"Who is Responsible, Accountable, Consulted, Informed"},
-        {type:"tsa",     icon:"📜", name:"TSA / SLA Draft", hint:"Transition Service Agreement — services, exit dates"},
-        {type:"note",    icon:"🏛️", name:"Architecture Doc", hint:"Solution design, integration points"},
+        {type:"raid",    icon:"⚠️", name:"RAID Log",           hint:"Risks · Assumptions · Issues · Dependencies (universal to all projects)"},
+        {type:"raci",    icon:"🔲", name:"RACI Matrix",        hint:"Responsible · Accountable · Consulted · Informed"},
+        {type:"note",    icon:"🏛️", name:"Solution / Approach Doc", hint:"Architecture, migration plan, process design, operating model"},
+        {type:"note",    icon:"📜", name:"Contracts / Agreements", hint:"SLA, SOW, MSA, TSA, vendor contracts — whatever applies"},
       ],
       aiActions:[
         {id:"raid",      label:"Extract RAID from notes"},
         {id:"raci",      label:"Generate RACI"},
-        {id:"tsa",       label:"Summarise TSA"},
         {id:"summarise", label:"Summarise doc"},
       ],
-      aiHint:"Paste meeting notes or requirements → extract full RAID log"
+      aiHint:"Paste requirements, meeting notes or a design doc → extract a full RAID log"
     },
     {
-      id:3, icon:"⚙️", name:"Build & Deliver",
-      desc:"Execute the plan. Track progress via MAP Workbook, publish weekly status, manage change log, and escalate blockers.",
+      id:3, icon:"⚙️", name:"Execute",
+      desc:"Deliver the work. Track progress, manage scope changes, keep stakeholders informed and escalate blockers early. Weekly status and change log are your key tools regardless of project type.",
       docs:[
-        {type:"map_workbook",  icon:"📊", name:"MAP Workbook",      hint:"Master project tracker, workstream RAG"},
-        {type:"weekly_status", icon:"📅", name:"Weekly Status",     hint:"RAG, accomplishments, plan, risks"},
-        {type:"note",          icon:"📝", name:"Change Log",        hint:"Approved and pending change requests"},
-        {type:"note",          icon:"✅", name:"Decision Log",      hint:"Key decisions, owners, dates"},
+        {type:"map_workbook",  icon:"📊", name:"Project Tracker / Workbook", hint:"Master plan, workstream RAG, milestones, owners"},
+        {type:"weekly_status", icon:"📅", name:"Weekly Status Report",       hint:"RAG, accomplishments, next week plan, risks, decisions needed"},
+        {type:"note",          icon:"📝", name:"Change Log",                 hint:"All change requests — approved, pending, rejected"},
+        {type:"note",          icon:"✅", name:"Decision Log",               hint:"Key decisions made, rationale, owners"},
       ],
       aiActions:[
         {id:"status",    label:"Write weekly status"},
-        {id:"summarise", label:"Summarise update"},
         {id:"raid",      label:"Extract RAID from notes"},
+        {id:"summarise", label:"Summarise update"},
       ],
-      aiHint:"Paste bullet-point progress notes → get a formal weekly status report"
+      aiHint:"Paste bullet-point progress notes or a status call transcript → get a formal weekly status"
     },
     {
       id:4, icon:"🧪", name:"Test & Validate",
-      desc:"UAT, access validation, defect resolution and sign-off. For IT separations: role matrix testing, integration testing, data migration validation.",
+      desc:"Prove the solution works before go-live. UAT for apps, data validation for migrations, parallel run for ERP, process rehearsal for org changes — same lifecycle, different content.",
       docs:[
-        {type:"note",    icon:"📋", name:"Test Plan",          hint:"Scope, approach, entry/exit criteria"},
-        {type:"note",    icon:"🐛", name:"Defect Log",         hint:"Defects, severity, owner, resolution"},
-        {type:"note",    icon:"🔐", name:"Access Validation",  hint:"SAP roles, access control sign-off"},
-        {type:"note",    icon:"✅", name:"UAT Sign-off",       hint:"User acceptance criteria and approval"},
+        {type:"note", icon:"📋", name:"Test Plan",         hint:"What's being tested, by whom, entry/exit criteria, timeline"},
+        {type:"note", icon:"🐛", name:"Defect / Issue Log", hint:"Bugs, data issues, process gaps — severity, owner, resolution"},
+        {type:"note", icon:"✅", name:"UAT / Validation Sign-off", hint:"User acceptance, data quality sign-off, compliance check"},
+        {type:"note", icon:"📊", name:"Test Results Summary", hint:"Pass/fail rates, outstanding items, go-live readiness"},
       ],
       aiActions:[
         {id:"summarise", label:"Summarise test results"},
-        {id:"status",    label:"Write status update"},
+        {id:"status",    label:"Write readiness update"},
+        {id:"raid",      label:"Extract issues as RAID"},
       ],
-      aiHint:"Paste test results or defect list → get an executive test summary"
+      aiHint:"Paste test results or a defect list → get an executive readiness summary"
     },
     {
-      id:5, icon:"🔄", name:"Transition",
-      desc:"Go-live preparation, cutover execution, hypercare and TSA management. This is the highest-risk phase — keep daily status visible.",
+      id:5, icon:"🔄", name:"Go-Live & Transition",
+      desc:"Switch on, cut over, migrate or hand over — whatever your go-live looks like. Highest-risk phase for any project. Daily status, clear runbook and a hypercare model are non-negotiable.",
       docs:[
-        {type:"note",    icon:"🔁", name:"Cutover Plan",     hint:"Day-by-day tasks, owners, checkpoints"},
-        {type:"tsa",     icon:"📜", name:"TSA (Signed)",     hint:"Final agreed Transition Service Agreement"},
-        {type:"note",    icon:"🏥", name:"Hypercare Plan",   hint:"Support model post go-live"},
-        {type:"weekly_status", icon:"📅", name:"Steering Pack", hint:"C-suite update for go-live readiness"},
+        {type:"note",          icon:"🔁", name:"Go-Live / Cutover Plan", hint:"Step-by-step tasks, owners, timings, rollback triggers"},
+        {type:"note",          icon:"📗", name:"Runbook / Operations Guide", hint:"How to run the new system or service — for BAU team"},
+        {type:"note",          icon:"🏥", name:"Hypercare / Support Plan", hint:"Who provides support post go-live, escalation path, duration"},
+        {type:"weekly_status", icon:"📅", name:"Steering / Exec Update",   hint:"C-suite briefing on go-live readiness and day-1 status"},
       ],
       aiActions:[
-        {id:"tsa",       label:"Review TSA"},
-        {id:"status",    label:"Write steering update"},
+        {id:"status",    label:"Write go-live update"},
         {id:"summarise", label:"Summarise cutover notes"},
+        {id:"raid",      label:"Extract issues as RAID"},
       ],
-      aiHint:"Paste TSA content or cutover notes → get risk areas and open actions"
+      aiHint:"Paste cutover notes, war room updates or a runbook draft → get a structured go-live summary"
     },
     {
       id:6, icon:"🎯", name:"Close",
-      desc:"Formal programme closure — benefits realisation, PIR, lessons learned, and handover to BAU. TSA exit confirmation.",
+      desc:"Formally close the project — capture what you delivered vs what was promised, what worked, what didn't, and hand over to whoever runs it from here. Valuable for every project type.",
       docs:[
-        {type:"pir",     icon:"📊", name:"PIR",              hint:"Post-Implementation Review — objectives vs actuals"},
-        {type:"note",    icon:"💡", name:"Lessons Learned",  hint:"What worked, what didn't, recommendations"},
-        {type:"note",    icon:"🤝", name:"Handover Doc",     hint:"BAU owners, support model, run-book"},
-        {type:"note",    icon:"🚪", name:"TSA Exit",         hint:"Service termination confirmation"},
+        {type:"pir",  icon:"📊", name:"Post-Implementation Review (PIR)", hint:"Objectives vs actuals, benefits delivered, timeline vs plan"},
+        {type:"note", icon:"💡", name:"Lessons Learned",                  hint:"What worked well · what to do differently · recommendations"},
+        {type:"note", icon:"🤝", name:"Handover / Closure Doc",           hint:"BAU owners, support model, outstanding items, sign-off"},
+        {type:"note", icon:"📈", name:"Benefits Realisation",             hint:"Measured outcomes vs the business case — did we deliver?"},
       ],
       aiActions:[
         {id:"pir",       label:"Draft PIR"},
-        {id:"summarise", label:"Summarise notes"},
+        {id:"summarise", label:"Summarise retrospective"},
       ],
-      aiHint:"Paste retrospective notes → generate a full Post-Implementation Review"
+      aiHint:"Paste retrospective notes or a project summary → generate a full PIR"
     },
   ];
 
