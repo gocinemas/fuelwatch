@@ -533,6 +533,23 @@
       </div>
     </div>
 
+    <!-- Email bar — always visible -->
+    <div id="digest-bar" style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(129,140,248,.15),rgba(99,102,241,.08));border:1px solid rgba(129,140,248,.28);border-radius:14px;padding:12px 16px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="font-size:18px;flex-shrink:0">🛸</div>
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:13px;font-weight:800;color:var(--text);letter-spacing:-0.2px">Weekly UK Space Digest</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">Launches · UK angle · plain English — once a week</div>
+      </div>
+      <div id="digest-form" style="display:flex;gap:6px;flex-shrink:0">
+        <input id="digest-email" type="email" placeholder="your@email.com"
+          onkeydown="if(event.key==='Enter') _spaceNotify()"
+          style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none;width:180px">
+        <button onclick="_spaceNotify()"
+          style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Notify me →</button>
+      </div>
+      <div id="digest-msg" style="display:none;font-size:12px;font-weight:600"></div>
+    </div>
+
     <!-- Search -->
     <div style="margin-bottom:24px;position:relative;max-width:480px">
       <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none">🔍</span>
@@ -619,26 +636,10 @@
         </div>
       </div>
 
-      <!-- SpaceX Live -->
-      <div class="section-label" style="margin-top:4px">🔴 SpaceX Live Stream</div>
-      <div class="card" style="padding:0;overflow:hidden;margin-bottom:24px">
-        <div style="position:relative;width:100%;padding-top:42%">
-          <iframe id="spacex-stream"
-            src="https://www.youtube.com/embed/live_stream?channel=UCtI0Hodo5o5dUb67FeUjAlg&autoplay=0&mute=1&rel=0&modestbranding=1"
-            style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen></iframe>
-        </div>
-        <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div>
-            <div id="spacex-stream-label" style="font-size:13px;font-weight:700;color:#f87171">SpaceX Live Channel</div>
-            <div id="spacex-next-launch" style="font-size:11px;color:var(--muted);margin-top:1px">Checking next launch…</div>
-          </div>
-          <a href="https://www.youtube.com/@SpaceX/live" target="_blank" rel="noopener"
-            style="font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:20px;padding:6px 14px;text-decoration:none;display:flex;align-items:center;gap:5px;flex-shrink:0">
-            <span style="display:inline-block;width:7px;height:7px;background:#fff;border-radius:50%;animation:pulse 2s infinite"></span>Watch on YouTube
-          </a>
-        </div>
+      <!-- SpaceX Launch -->
+      <div class="section-label" style="margin-top:4px">🚀 SpaceX — Next Launch</div>
+      <div class="card" id="spacex-launch-card" style="margin-bottom:24px">
+        <div style="font-size:13px;color:var(--muted)">Loading SpaceX launches…</div>
       </div>
 
       <!-- Launches + News bento -->
@@ -652,21 +653,8 @@
           </div>
           <div class="card" id="launches-card"><div class="loading">Loading…</div></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:18px">
+        <div>
           <div class="card" id="news-card"><div class="loading">Loading…</div></div>
-          <!-- Notify card -->
-          <div class="card" style="background:linear-gradient(135deg,rgba(129,140,248,.12),rgba(99,102,241,.08));border-color:rgba(129,140,248,.25)">
-            <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:4px">🛸 Weekly UK Space Digest</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px">What launched, what it means, and the UK angle — plain English, once a week.</div>
-            <div id="notify-form" style="display:flex;gap:6px">
-              <input id="notify-email" type="email" placeholder="your@email.com"
-                onkeydown="if(event.key==='Enter') _spaceNotify()"
-                style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;min-width:0">
-              <button onclick="_spaceNotify()"
-                style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">Notify me</button>
-            </div>
-            <div id="notify-msg" style="display:none;font-size:12px;margin-top:8px"></div>
-          </div>
         </div>
       </div>
 
@@ -1252,31 +1240,66 @@ fetch('/api/space/launches').then(function(r){return r.json();}).then(function(d
 });
 
 function _updateSpaceXLabel(launches) {
-  var el = document.getElementById('spacex-next-launch');
-  var lb = document.getElementById('spacex-stream-label');
-  if (!el || !lb) return;
+  var card = document.getElementById('spacex-launch-card');
+  if (!card) return;
   var sx = launches.filter(function(l){ return l.provider && l.provider.toLowerCase().indexOf('spacex') >= 0; });
-  if (!sx.length) { el.textContent = 'No upcoming SpaceX launches in feed'; return; }
+  if (!sx.length) {
+    card.innerHTML = '<div style="font-size:13px;color:var(--muted)">No upcoming SpaceX launches in the current feed.</div>';
+    return;
+  }
   var next = sx[0];
   var d = next.net ? new Date(next.net) : null;
-  if (!d) { el.textContent = next.name; return; }
-  var diff = d - new Date();
-  if (diff < 0) {
-    el.textContent = next.name + ' — launched';
-  } else if (diff < 3 * 3600 * 1000) {
-    lb.innerHTML = '<span style="display:inline-block;width:7px;height:7px;background:#f87171;border-radius:50%;animation:pulse 2s infinite;margin-right:5px"></span>LAUNCHING SOON';
-    lb.style.color = '#f87171';
-    el.textContent = next.name + ' · ' + _fmtLaunchDate(next.net);
+  var diff = d ? (d - new Date()) : null;
+  var isLiveSoon = diff !== null && diff >= 0 && diff < 2 * 3600 * 1000;
+  var isImminent = diff !== null && diff >= 0 && diff < 24 * 3600 * 1000;
+
+  var statusHtml;
+  if (diff !== null && diff < 0) {
+    statusHtml = '<span style="color:var(--muted)">Launched</span>';
+  } else if (isLiveSoon) {
+    statusHtml = '<span style="color:#f87171;font-weight:800"><span class="live-dot"></span>LIVE or launching very soon</span>';
+  } else if (isImminent) {
+    statusHtml = '<span style="color:var(--amber);font-weight:700">🟡 Launching today — ' + _fmtLaunchDate(next.net) + '</span>';
   } else {
-    el.textContent = 'Next: ' + next.name + ' · ' + _fmtLaunchDate(next.net);
+    statusHtml = '<span style="color:var(--muted)">' + (d ? _fmtLaunchDate(next.net) : 'TBD') + '</span>';
   }
+
+  var embedHtml = '';
+  if (isLiveSoon) {
+    embedHtml =
+      '<div style="position:relative;width:100%;padding-top:52%;border-radius:12px;overflow:hidden;margin-bottom:16px">'+
+        '<iframe src="https://www.youtube.com/embed/live_stream?channel=UCtI0Hodo5o5dUb67FeUjAlg&autoplay=1&mute=1&rel=0&modestbranding=1" '+
+          'style="position:absolute;top:0;left:0;width:100%;height:100%;border:none" '+
+          'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>'+
+      '</div>';
+  }
+
+  card.innerHTML =
+    embedHtml +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px;margin-bottom:4px">'+_esc(next.name)+'</div>'+
+        '<div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:6px">'+_esc(next.provider)+'</div>'+
+        '<div style="font-size:13px;margin-bottom:4px">'+statusHtml+'</div>'+
+        '<div style="font-size:12px;color:var(--muted)">📍 '+_esc(next.location)+'</div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0">'+
+        '<a href="https://www.youtube.com/@SpaceX/live" target="_blank" rel="noopener" '+
+          'style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#fff;'+
+          'background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:20px;padding:8px 16px;text-decoration:none;white-space:nowrap">'+
+          '<span style="display:inline-block;width:7px;height:7px;background:#fff;border-radius:50%;'+(isLiveSoon?'animation:pulse 2s infinite':'')+'"></span>'+
+          (isLiveSoon ? 'Watch Live now' : 'Watch on YouTube')+
+        '</a>'+
+        (sx.length > 1 ? '<div style="font-size:10px;color:var(--muted);text-align:right">'+_esc(sx.length-1)+' more SpaceX launches upcoming</div>' : '')+
+      '</div>'+
+    '</div>';
 }
 
 // ── Space notify ───────────────────────────────────────────────────────────────
 function _spaceNotify() {
-  var email = (document.getElementById('notify-email').value || '').trim();
-  var msg   = document.getElementById('notify-msg');
-  var btn   = document.querySelector('#notify-form button');
+  var email = (document.getElementById('digest-email').value || '').trim();
+  var msg   = document.getElementById('digest-msg');
+  var btn   = document.querySelector('#digest-form button');
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     msg.style.display = 'block'; msg.style.color = 'var(--red)';
     msg.textContent = 'Please enter a valid email address.'; return;
@@ -1288,7 +1311,7 @@ function _spaceNotify() {
     body: JSON.stringify({email: email, source: 'space'})
   }).then(function(r){return r.json();}).then(function(d){
     if (d.ok) {
-      document.getElementById('notify-form').style.display = 'none';
+      document.getElementById('digest-form').style.display = 'none';
       msg.style.display = 'block'; msg.style.color = 'var(--green)';
       msg.textContent = '✅ You\'re on the list. First issue coming soon.';
     } else {
