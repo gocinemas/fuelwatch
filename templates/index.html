@@ -827,9 +827,44 @@
       </div>
       {% endif %}
 
-      <!-- Single search input -->
+      {% if intel_mode %}
+      <!-- Brand search row (intel.humanagency.co — brand mode) -->
+      <div id="brand-search-row" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input id="brand-q" type="text" placeholder="Nike, Walkers, Coca-Cola, Sky…"
+            style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+            oninput="document.getElementById('intel-input').value=this.value"
+            onkeydown="if(event.key==='Enter'){document.getElementById('intel-input').value=this.value;searchIntel()}"
+            onfocus="this.style.boxShadow='0 0 0 3px rgba(79,70,229,.15)'"
+            onblur="this.style.boxShadow=''"
+            autocomplete="off">
+          <button onclick="_intelScan()" title="Scan brand from photo"
+            style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:18px;cursor:pointer;flex-shrink:0">📷</button>
+          <input id="intel-scan-file" type="file" accept="image/*" capture="environment" style="display:none" onchange="_intelScanFile(this)">
+          <button onclick="document.getElementById('intel-input').value=document.getElementById('brand-q').value;searchIntel()"
+            style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 20px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
+        </div>
+      </div>
+      <!-- Company search row (intel.humanagency.co — company mode) -->
+      <div id="company-search-row" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input id="company-q" type="text" placeholder="Tesco, BP, HSBC, BT Group…"
+            style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
+            oninput="document.getElementById('intel-input').value=this.value"
+            onkeydown="if(event.key==='Enter'){document.getElementById('intel-input').value=this.value;searchIntel()}"
+            onfocus="this.style.boxShadow='0 0 0 3px rgba(79,70,229,.15)'"
+            onblur="this.style.boxShadow=''"
+            autocomplete="off">
+          <button onclick="document.getElementById('intel-input').value=document.getElementById('company-q').value;searchIntel()"
+            style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 20px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
+        </div>
+      </div>
+      <!-- Hidden compat input (synced from brand-q/company-q; also set by recent-item clicks) -->
+      <input id="intel-input" type="hidden">
+      {% else %}
+      <!-- Single search input (miru.humanagency.co) -->
       <div style="display:flex;gap:8px;margin-bottom:10px">
-        <input id="intel-input" type="text" placeholder="{% if intel_mode %}Choose Brand or Company above{% else %}Nike, PepsiCo, Walkers, Tesco…{% endif %}"
+        <input id="intel-input" type="text" placeholder="Nike, PepsiCo, Walkers, Tesco…"
           style="flex:1;border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:15px;background:var(--surface);color:var(--text);outline:none"
           onkeydown="if(event.key==='Enter') searchIntel()"
           onfocus="this.style.boxShadow='0 0 0 3px rgba(79,70,229,.15)'"
@@ -841,6 +876,7 @@
         <button onclick="searchIntel()"
           style="background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:11px 20px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap">Search</button>
       </div>
+      {% endif %}
       <div id="intel-recent" style="margin-bottom:8px"></div>
       <!-- Local-service redirect nudge (shown when query looks like a local service) -->
       <div id="intel-local-nudge" style="display:none;background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:#92400e">
@@ -1933,7 +1969,7 @@
     if (bb) bb.classList.add("visible");
     if (name === "fuel")    { const _fpc = document.getElementById("fuel-postcode"); if (!_fpc.value.trim()) _fpc.value = _miruPostcode(); _fpc.focus(); _renderRecent("miru_fuel","fuel-recent","fuel-postcode","searchFuel()"); _myFuelRenderCard(); }
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); _reportRefreshHomeRow(); }
-    if (name === "company") { document.getElementById("intel-input").focus(); _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()"); }
+    if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()"); }
     if (name === "library") { libCheckPin(); }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
@@ -4933,6 +4969,18 @@ const _ts = new Date(d.timestamp);
     if (landing) landing.style.display = "none";
     var bar = document.getElementById("intel-mode-bar");
     if (bar) bar.style.display = "block";
+    // Show the relevant separate search row, hide the other
+    var bRow = document.getElementById("brand-search-row");
+    var cRow = document.getElementById("company-search-row");
+    if (bRow) bRow.style.display = mode === "brand" ? "" : "none";
+    if (cRow) cRow.style.display = mode === "company" ? "" : "none";
+    // Clear the inactive mode's input and reset intel-input
+    var bQ = document.getElementById("brand-q");
+    var cQ = document.getElementById("company-q");
+    if (mode === "company" && bQ) bQ.value = "";
+    if (mode === "brand"   && cQ) cQ.value = "";
+    var _ii = document.getElementById("intel-input");
+    if (_ii) _ii.value = "";
     // Clear previous results so brand data never bleeds into company view or vice versa
     var res = document.getElementById("intel-result");
     if (res) res.style.display = "none";
@@ -4942,19 +4990,22 @@ const _ts = new Date(d.timestamp);
     if (dym2) dym2.classList.add("hidden");
     var err = document.getElementById("intel-error");
     if (err) err.classList.add("hidden");
+    var load = document.getElementById("intel-loading");
+    if (load) load.classList.add("hidden");
     ["brand","company"].forEach(function(m) {
       var btn = document.getElementById("intel-mode-btn-" + m);
       if (!btn) return;
       btn.style.background = m === mode ? "#4f46e5" : "transparent";
       btn.style.color = m === mode ? "#fff" : "var(--muted)";
     });
+    // On miru (non-intel mode), update the shared input placeholder
     var inp = document.getElementById("intel-input");
-    if (inp) {
+    if (inp && inp.type !== "hidden") {
       inp.placeholder = mode === "brand" ? "Nike, Walkers, Coca-Cola, Sky…" : "Tesco, BP, HSBC, BT Group…";
     }
     var sub = document.getElementById("intel-screen-subtitle");
     if (sub) sub.textContent = mode === "brand" ? "Brand intelligence" : "Company intelligence";
-    // Show camera button only for brand mode
+    // Camera button: only on miru single-input row
     var scanBtn = document.getElementById("intel-scan-btn");
     if (scanBtn) scanBtn.style.display = mode === "brand" ? "" : "none";
   };
@@ -4969,7 +5020,8 @@ const _ts = new Date(d.timestamp);
   window._intelScanFile = async function(input) {
     var file = input.files[0];
     if (!file) return;
-    var inp = document.getElementById("intel-input");
+    // On intel mode write to brand-q; on miru write to intel-input
+    var inp = document.getElementById("brand-q") || document.getElementById("intel-input");
     inp.value = ""; inp.placeholder = "Scanning…";
     // Try native BarcodeDetector first (no round-trip needed)
     if ("BarcodeDetector" in window) {
@@ -4984,7 +5036,7 @@ const _ts = new Date(d.timestamp);
           if (r.ok) {
             var pj = await r.json();
             var brand = pj.product && (pj.product.brands || "").split(",")[0].trim();
-            if (brand) { inp.value = brand; inp.placeholder = ""; input.value = ""; searchIntel(); return; }
+            if (brand) { inp.value = brand; inp.placeholder = ""; document.getElementById("intel-input").value = brand; input.value = ""; searchIntel(); return; }
           }
         }
       } catch(_) {}
@@ -4997,7 +5049,7 @@ const _ts = new Date(d.timestamp);
       try {
         var r = await fetch("/api/brand/scan", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({image:b64, mime:mime})});
         var d = await r.json();
-        if (d.brand) { inp.value = d.brand; inp.placeholder = ""; input.value = ""; searchIntel(); }
+        if (d.brand) { inp.value = d.brand; inp.placeholder = ""; document.getElementById("intel-input").value = d.brand; input.value = ""; searchIntel(); }
         else { inp.placeholder = "Couldn't identify brand — try typing it"; input.value = ""; }
       } catch(_) { inp.placeholder = "Scan failed — try typing the brand"; input.value = ""; }
     };
@@ -5045,7 +5097,8 @@ const _ts = new Date(d.timestamp);
   const _LOCAL_PFX = /^(local |nearest |near me|find a |find me |best |where (is|are|can i find)|looking for |i need a )/i;
 
   window._intelRedirectToFinder = function() {
-    const q = document.getElementById("intel-input").value.trim();
+    var _qEl = (_INTEL_MODE && _intelSearchMode === "company") ? document.getElementById("company-q") : (_INTEL_MODE ? document.getElementById("brand-q") : null);
+    const q = (_qEl && _qEl.value.trim()) || document.getElementById("intel-input").value.trim();
     document.getElementById("intel-local-nudge").style.display = "none";
     showScreen("local");
     const fi = document.getElementById("finder-input");
@@ -5053,7 +5106,16 @@ const _ts = new Date(d.timestamp);
   };
 
   window.searchIntel = async function() {
-    const raw = document.getElementById("intel-input").value.trim();
+    // On intel.humanagency.co, read from the mode-specific visible input; fallback to hidden intel-input (set by recent-item clicks)
+    var raw;
+    if (_INTEL_MODE) {
+      var _visQ = _intelSearchMode === "company" ? document.getElementById("company-q") : document.getElementById("brand-q");
+      raw = (_visQ && _visQ.value.trim()) || document.getElementById("intel-input").value.trim();
+      if (_visQ && !_visQ.value.trim()) _visQ.value = raw; // sync visible input when recent item clicked
+    } else {
+      raw = document.getElementById("intel-input").value.trim();
+    }
+    document.getElementById("intel-input").value = raw; // keep compat input in sync
     if (!raw) return;
 
     // Detect local-service searches and nudge toward Finder
@@ -8692,6 +8754,8 @@ const _ts = new Date(d.timestamp);
         const bco = _detectBrandOrCompany(q);
         if (bco) {
           document.getElementById("intel-input").value = bco.name;
+          var _hvq = bco.type === "company" ? document.getElementById("company-q") : document.getElementById("brand-q");
+          if (_hvq) _hvq.value = bco.name;
           searchIntel();
           homeSearchClear();
         }
@@ -10803,6 +10867,9 @@ _bkBadge();
 
   window.intelSavesView = function(type, name, idx) {
     document.getElementById("intel-input").value = name;
+    if (type === "company") setIntelMode("company"); else setIntelMode("brand");
+    var _vq = type === "company" ? document.getElementById("company-q") : document.getElementById("brand-q");
+    if (_vq) _vq.value = name;
     showScreen("company");
     setTimeout(() => searchIntel(), 100);
   };
