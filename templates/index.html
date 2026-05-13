@@ -11939,7 +11939,7 @@ _bkBadge();
           <div id="music-artist" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
         </div>
       </div>
-      <div id="music-lyrics" style="display:none;font-size:13px;color:var(--muted);font-style:italic;line-height:1.7;background:var(--surface2,#f8fafc);border-left:3px solid #a78bfa;border-radius:0 10px 10px 0;padding:10px 12px;margin-bottom:12px;white-space:pre-line"></div>
+      <div id="music-lyrics" style="display:none;font-size:13px;color:var(--muted);font-style:italic;line-height:1.8;background:var(--surface2,#f8fafc);border-left:3px solid #a78bfa;border-radius:0 10px 10px 0;padding:10px 12px;margin-bottom:12px;white-space:pre-line;max-height:52vh;overflow-y:auto"></div>
       <div style="display:flex;gap:8px">
         <a id="music-spotify-link" href="" target="_blank" rel="noopener"
           style="flex:1;padding:9px 0;border:none;background:#1db954;color:#fff;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none">▶ Spotify</a>
@@ -12068,7 +12068,7 @@ _bkBadge();
       var lr = await fetch('https://api.lyrics.ovh/v1/'+encodeURIComponent(t.artistName||'')+'/'+encodeURIComponent(t.trackName||''));
       var ld = await lr.json();
       if (ld.lyrics) {
-        var lines = ld.lyrics.split('\n').map(function(l){ return l.trim(); }).filter(function(l){ return l; }).slice(0, 4).join('\n');
+        var lines = ld.lyrics.trim();
         if (lines) { lyricsEl.textContent = lines; lyricsEl.style.display = 'block'; }
       }
     } catch(e) {} // lyrics are optional — silent fail
