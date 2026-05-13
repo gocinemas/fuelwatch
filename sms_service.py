@@ -1802,7 +1802,7 @@ def _save_brand_profile(data: dict):
 
 @app.route("/api/brand/basic")
 def api_brand_basic():
-    """Fast endpoint: Wikipedia + news only, no AI. Returns in ~3-5s."""
+    """Fast endpoint: Wikipedia + news + community spins. Returns in ~3-5s."""
     name = request.args.get("name", "").strip()
     if not name or len(name) < 2:
         return jsonify({"error": "name required"}), 400
@@ -1816,6 +1816,12 @@ def api_brand_basic():
         news = []
         try: news = news_f.result(timeout=8) or []
         except Exception: pass
+    spins = []
+    try:
+        spins = lib._sb().table("brand_spins").select("caption,url,created_at") \
+            .ilike("brand_name", name.strip()).order("created_at", desc=True).limit(20).execute().data or []
+    except Exception:
+        pass
     return jsonify({
         "name":        name,
         "description": wiki.get("description", ""),
@@ -1827,8 +1833,29 @@ def api_brand_basic():
         "thumbnail":   wiki.get("thumbnail", ""),
         "wiki_url":    wiki.get("wiki_url", ""),
         "news":        news,
+        "spins":       spins,
         "_partial":    True,
     })
+
+
+@app.route("/api/brand/spin", methods=["POST"])
+def api_brand_spin():
+    data = request.get_json(silent=True) or {}
+    brand   = (data.get("brand")   or "").strip()
+    caption = (data.get("caption") or "").strip()
+    url     = (data.get("url")     or "").strip()
+    if not brand or not caption:
+        return jsonify({"error": "brand and caption required"}), 400
+    try:
+        lib._sb().table("brand_spins").insert({
+            "brand_name": brand,
+            "caption":    caption,
+            "url":        url or None,
+        }).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"[brand_spins] insert failed: {e}")
+        return jsonify({"error": "could not save spin"}), 500
 
 
 @app.route("/api/brand")

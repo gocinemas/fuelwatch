@@ -1125,6 +1125,26 @@
             <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">📺 Watch Ads</div>
             <div id="brand-ads-el" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
+          <!-- Community Spins -->
+          <div id="brand-spins-section" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-top:12px">
+            <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">🎙️ Community Spins</div>
+            <div id="brand-spins-el"><div style="font-size:13px;color:#9ca3af;text-align:center;padding:12px 0">No spins yet — be the first!</div></div>
+            <div id="brand-spin-form" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+              <input id="brand-spin-url" type="url" placeholder="YouTube / podcast URL (optional)"
+                style="width:100%;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;margin-bottom:8px;box-sizing:border-box">
+              <textarea id="brand-spin-caption" placeholder="Your take — a great ad, podcast, insight…" rows="2"
+                style="width:100%;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;resize:none;box-sizing:border-box;margin-bottom:8px"></textarea>
+              <div style="display:flex;gap:8px">
+                <button id="brand-spin-submit-btn" onclick="brandSpinSubmit()" style="flex:1;background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">Share Spin</button>
+                <button onclick="document.getElementById('brand-spin-form').style.display='none';document.getElementById('brand-spin-add-btn').style.display=''"
+                  style="background:none;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--muted);cursor:pointer">Cancel</button>
+              </div>
+            </div>
+            <button id="brand-spin-add-btn" onclick="document.getElementById('brand-spin-form').style.display='';document.getElementById('brand-spin-add-btn').style.display='none'"
+              style="width:100%;margin-top:10px;padding:10px;border-radius:12px;border:1px dashed var(--border);background:none;color:var(--muted);font-size:13px;cursor:pointer">
+              + Add your Spin
+            </button>
+          </div>
         </div>
 
         <!-- ── Intel tab ── -->
@@ -5203,6 +5223,9 @@ const _ts = new Date(d.timestamp);
     const _sg = document.getElementById("brand-stats-grid");
     if (_sg) _sg.style.display = "none";
 
+    window._brandCurrentSpins = [];
+    window._brandSpinsBrand = raw;
+
     let coData = null, brData = null, coErr = false, brErr = false;
     let coSettled = false, brSettled = false;
 
@@ -5379,6 +5402,18 @@ const _ts = new Date(d.timestamp);
               if (newsEl) {
                 newsEl.innerHTML = b.news.map(n=>`<a href="${n.url}" target="_blank" rel="noopener" style="display:block;text-decoration:none;padding:8px 0;border-bottom:1px solid #f3f4f6"><div style="font-size:13px;font-weight:600;color:#111;line-height:1.4">${n.title}</div><div style="font-size:11px;color:#9ca3af;margin-top:2px">${n.source?n.source+" · ":""}${n.date||""}</div></a>`).join("");
                 if (newsWrap) newsWrap.style.display = "";
+              }
+            }
+          })
+            // Spins from community (available in basic response)
+            if (b.spins) {
+              window._brandCurrentSpins = b.spins;
+              window._brandSpinsBrand = b.name || "";
+              const _sEl = document.getElementById("brand-spins-el");
+              if (_sEl) {
+                _sEl.innerHTML = b.spins.length
+                  ? b.spins.map(_renderSpinCard).join("")
+                  : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:12px 0">No spins yet — be the first!</div>`;
               }
             }
           })
@@ -7700,6 +7735,62 @@ const _ts = new Date(d.timestamp);
     return `https://logo.clearbit.com/${slug}.com`;
   }
 
+  // ── Community Spins ───────────────────────────────────────────────────────
+  window._brandCurrentSpins = [];
+  window._brandSpinsBrand = "";
+
+  function _renderSpinCard(s) {
+    var urlHost = null;
+    if (s.url) { try { urlHost = new URL(s.url).hostname.replace("www.", ""); } catch(e) {} }
+    const isYT = urlHost && (urlHost.includes("youtu") || urlHost.includes("youtube"));
+    const favicon = urlHost ? `https://www.google.com/s2/favicons?domain=${urlHost}&sz=16` : null;
+    const d = s.created_at ? new Date(s.created_at).toLocaleDateString("en-GB", {day:"numeric",month:"short"}) : "";
+    const safe = (v) => (v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    return `<div style="border-left:3px solid #6366f1;padding:10px 12px;margin-bottom:8px;background:#f5f3ff;border-radius:0 12px 12px 0">
+      <div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:${s.url ? '6px' : '0'}">"${safe(s.caption)}"</div>
+      ${s.url ? `<a href="${safe(s.url)}" target="_blank" rel="noopener"
+        style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:${isYT ? "#dc2626" : "#4f46e5"};text-decoration:none;background:#fff;border:1px solid #ede9fe;border-radius:8px;padding:3px 8px">
+        ${favicon ? `<img src="${favicon}" width="12" height="12">` : ""}${safe(urlHost || s.url)}
+      </a>` : ""}
+      ${d ? `<span style="font-size:10px;color:#9ca3af;margin-left:6px">${d}</span>` : ""}
+    </div>`;
+  }
+
+  window.brandSpinSubmit = async function() {
+    const caption = (document.getElementById("brand-spin-caption").value || "").trim();
+    const url     = (document.getElementById("brand-spin-url").value     || "").trim();
+    if (!caption) { alert("Add a caption first"); return; }
+    const btn = document.getElementById("brand-spin-submit-btn");
+    if (btn) { btn.textContent = "Sharing…"; btn.disabled = true; }
+    try {
+      const r = await fetch("/api/brand/spin", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ brand: window._brandSpinsBrand, caption, url }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        document.getElementById("brand-spin-caption").value = "";
+        document.getElementById("brand-spin-url").value = "";
+        document.getElementById("brand-spin-form").style.display = "none";
+        document.getElementById("brand-spin-add-btn").style.display = "";
+        const newSpin = { caption, url, created_at: new Date().toISOString() };
+        window._brandCurrentSpins.unshift(newSpin);
+        const el = document.getElementById("brand-spins-el");
+        if (el) el.insertAdjacentHTML("afterbegin", _renderSpinCard(newSpin));
+        // Remove empty-state placeholder if present
+        const placeholder = el && el.querySelector("div[style*='No spins yet']");
+        if (placeholder) placeholder.remove();
+      } else {
+        alert("Couldn't save — try again");
+      }
+    } catch(e) {
+      alert("Couldn't save — try again");
+    }
+    if (btn) { btn.textContent = "Share Spin"; btn.disabled = false; }
+  };
+
+  // ── Brand rendering ───────────────────────────────────────────────────────
   function _renderBrand(d) {
     // Logo (Clearbit, fallback to Wikipedia thumbnail, then hidden)
     const logoUrl = _brandLogoUrl(d);
@@ -7784,6 +7875,21 @@ const _ts = new Date(d.timestamp);
         }).join("")
       : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:20px 0">No campaign data available.</div>`;
     document.getElementById("brand-campaigns-section").style.display = "";
+
+    // Community Spins
+    window._brandSpinsBrand = d.name || "";
+    const _spinsData = d.spins || window._brandCurrentSpins || [];
+    const _spinsEl = document.getElementById("brand-spins-el");
+    if (_spinsEl) {
+      _spinsEl.innerHTML = _spinsData.length
+        ? _spinsData.map(_renderSpinCard).join("")
+        : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:12px 0">No spins yet — be the first!</div>`;
+    }
+    // reset form state
+    const _spinForm = document.getElementById("brand-spin-form");
+    const _spinAddBtn = document.getElementById("brand-spin-add-btn");
+    if (_spinForm) _spinForm.style.display = "none";
+    if (_spinAddBtn) _spinAddBtn.style.display = "";
 
     // Financials
     const fin = d.financials || {};
@@ -11931,6 +12037,7 @@ _bkBadge();
     <div id="music-search-results" style="display:none;margin-bottom:14px"></div>
 
     <!-- Selected song card -->
+    <audio id="music-preview-audio" style="display:none" onended="document.getElementById('music-play-btn').textContent='▶ Play Preview'"></audio>
     <div id="music-result" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:4px">
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
         <img id="music-cover" src="" alt="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.12)">
@@ -11939,13 +12046,15 @@ _bkBadge();
           <div id="music-artist" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
         </div>
       </div>
-      <div id="music-lyrics" style="display:none;font-size:13px;color:var(--muted);font-style:italic;line-height:1.8;background:var(--surface2,#f8fafc);border-left:3px solid #a78bfa;border-radius:0 10px 10px 0;padding:10px 12px;margin-bottom:12px;white-space:pre-line;max-height:52vh;overflow-y:auto"></div>
-      <div style="display:flex;gap:8px">
-        <a id="music-spotify-link" href="" target="_blank" rel="noopener"
-          style="flex:1;padding:9px 0;border:none;background:#1db954;color:#fff;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none">▶ Spotify</a>
+      <div id="music-lyrics" style="display:none;font-size:13px;color:var(--muted);font-style:italic;line-height:1.8;background:var(--surface2,#f8fafc);border-left:3px solid #a78bfa;border-radius:0 10px 10px 0;padding:10px 12px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button id="music-play-btn" onclick="musicTogglePlay()"
+          style="flex:1;padding:9px 0;border:none;background:#7c3aed;color:#fff;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer">▶ Play Preview</button>
         <button onclick="musicSave()"
           style="flex:1;padding:9px 0;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:99px;font-size:13px;font-weight:700;cursor:pointer">💾 Save</button>
       </div>
+      <a id="music-spotify-link" href="" target="_blank" rel="noopener"
+        style="display:block;text-align:center;font-size:12px;color:#1db954;font-weight:600;text-decoration:none">Open in Spotify →</a>
       <div id="music-saved-msg" style="display:none;font-size:12px;color:#7c3aed;margin-top:10px;font-weight:600;text-align:center">✓ Saved to your list</div>
     </div>
 
@@ -12041,17 +12150,38 @@ _bkBadge();
     }
   };
 
+  window.musicTogglePlay = function() {
+    var audio = document.getElementById('music-preview-audio');
+    var btn   = document.getElementById('music-play-btn');
+    if (!audio.src) return;
+    if (audio.paused) {
+      audio.play().catch(function(){});
+      btn.textContent = '⏸ Pause';
+    } else {
+      audio.pause();
+      btn.textContent = '▶ Play Preview';
+    }
+  };
+
+  window._musicShowMoreLyrics = function() {
+    var rest = document.getElementById('music-lyrics-rest');
+    var btn  = document.getElementById('music-lyrics-more-btn');
+    if (rest) { rest.style.display = ''; rest.style.whiteSpace = 'pre-line'; }
+    if (btn)  btn.style.display = 'none';
+  };
+
   window.musicSelectTrack = async function(idx) {
     var t = _musicSearchResults[idx];
     if (!t) return;
     var cover = (t.artworkUrl100 || '').replace('100x100bb', '300x300bb').replace('100x100', '300x300');
     _musicResult = {
-      title:   t.trackName  || '',
-      artist:  t.artistName || '',
-      cover:   cover,
-      spotify: 'https://open.spotify.com/search/'+encodeURIComponent((t.trackName||'')+' '+(t.artistName||'')),
-      url:     t.trackViewUrl || '',
-      saved:   new Date().toISOString().slice(0, 10),
+      title:      t.trackName  || '',
+      artist:     t.artistName || '',
+      cover:      cover,
+      spotify:    'https://open.spotify.com/search/'+encodeURIComponent((t.trackName||'')+' '+(t.artistName||'')),
+      url:        t.trackViewUrl || '',
+      previewUrl: t.previewUrl || '',
+      saved:      new Date().toISOString().slice(0, 10),
     };
     document.getElementById('music-search-results').style.display = 'none';
     document.getElementById('music-cover').src = cover;
@@ -12061,15 +12191,38 @@ _bkBadge();
     document.getElementById('music-saved-msg').style.display = 'none';
     var lyricsEl = document.getElementById('music-lyrics');
     lyricsEl.style.display = 'none';
+    lyricsEl.innerHTML = '';
     document.getElementById('music-result').style.display = 'block';
 
-    // Try lyrics snippet (first 4 non-empty lines)
+    // Auto-play 30s iTunes preview
+    var audio = document.getElementById('music-preview-audio');
+    var playBtn = document.getElementById('music-play-btn');
+    if (t.previewUrl) {
+      audio.src = t.previewUrl;
+      audio.play().catch(function(){});
+      playBtn.textContent = '⏸ Pause';
+    } else {
+      audio.src = '';
+      playBtn.textContent = '▶ Play Preview';
+    }
+
+    // Lyrics: show first 6 lines, "Show more" reveals rest
     try {
       var lr = await fetch('https://api.lyrics.ovh/v1/'+encodeURIComponent(t.artistName||'')+'/'+encodeURIComponent(t.trackName||''));
       var ld = await lr.json();
       if (ld.lyrics) {
-        var lines = ld.lyrics.trim();
-        if (lines) { lyricsEl.textContent = lines; lyricsEl.style.display = 'block'; }
+        var allLines = ld.lyrics.trim().split('\n').filter(function(l){ return l.trim(); });
+        if (allLines.length) {
+          var first6 = allLines.slice(0, 6).join('\n');
+          var rest   = allLines.slice(6).join('\n');
+          var html   = '<div style="white-space:pre-line">' + first6.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</div>';
+          if (rest) {
+            html += '<div id="music-lyrics-rest" style="display:none">' + rest.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</div>';
+            html += '<button onclick="_musicShowMoreLyrics()" id="music-lyrics-more-btn" style="margin-top:8px;background:none;border:none;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;padding:0">Show more ↓</button>';
+          }
+          lyricsEl.innerHTML = html;
+          lyricsEl.style.display = 'block';
+        }
       }
     } catch(e) {} // lyrics are optional — silent fail
   };
