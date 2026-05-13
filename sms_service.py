@@ -13361,18 +13361,35 @@ def api_space_launches():
         )
         launches = []
         for l in r.json().get("results", []):
-            pad      = l.get("pad") or {}
-            loc      = pad.get("location") or {}
-            mission  = l.get("mission") or {}
-            provider = (l.get("launch_service_provider") or {}).get("name", "")
+            location = l.get("location", "") or ""
+            provider = l.get("lsp_name", "") or ""
+            loc_lc   = location.lower()
+            if "united kingdom" in loc_lc or ", uk" in loc_lc or "scotland" in loc_lc or "shetland" in loc_lc:
+                country = "GBR"
+            elif "french guiana" in loc_lc or "kourou" in loc_lc:
+                country = "FRA"
+            elif "russia" in loc_lc or "baikonur" in loc_lc or "plesetsk" in loc_lc or "vostochny" in loc_lc:
+                country = "RUS"
+            elif "china" in loc_lc or "jiuquan" in loc_lc or "xichang" in loc_lc or "taiyuan" in loc_lc or "wenchang" in loc_lc:
+                country = "CHN"
+            elif "japan" in loc_lc or "tanegashima" in loc_lc or "uchinoura" in loc_lc:
+                country = "JPN"
+            elif "india" in loc_lc or "sriharikota" in loc_lc:
+                country = "IND"
+            elif "new zealand" in loc_lc or "mahia" in loc_lc:
+                country = "NZL"
+            elif "usa" in loc_lc or "cape canaveral" in loc_lc or "kennedy" in loc_lc or "vandenberg" in loc_lc or "wallops" in loc_lc or "kwajalein" in loc_lc:
+                country = "USA"
+            else:
+                country = ""
             launches.append({
                 "name":        l.get("name", ""),
                 "net":         l.get("net", ""),
-                "location":    loc.get("name", ""),
-                "country":     loc.get("country_code", ""),
+                "location":    location,
+                "country":     country,
                 "provider":    provider,
                 "status":      (l.get("status") or {}).get("name", ""),
-                "description": (mission.get("description") or "")[:220].strip(),
+                "description": (l.get("mission_type") or ""),
                 "image":       l.get("image") or "",
             })
         out = {"launches": launches}

@@ -1131,7 +1131,7 @@ fetch('/api/space/apod').then(function(r){return r.json();}).then(_renderAPOD).c
 // ── Launches ───────────────────────────────────────────────────────────────────
 var _allLaunches = [];
 var _launchTab = 'all';
-var _UK_EU_COUNTRIES = ['GBR','FRA','DEU','ITA','NLD','NOR','SWE','BEL','ESP','RUS','UKR'];
+var _UK_EU_COUNTRIES = ['GBR','FRA','NZL'];
 
 function _renderLaunches(launches) {
   var el = document.getElementById('launches-card');
