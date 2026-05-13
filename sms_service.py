@@ -12871,6 +12871,81 @@ def _get_spotify_app_token() -> str:
     return _spotify_app_token
 
 
+@app.route("/api/music/save", methods=["POST"])
+def api_music_save():
+    data = request.get_json(silent=True) or {}
+    phone   = (data.get("phone")   or "").strip()
+    title   = (data.get("title")   or "").strip()
+    artist  = (data.get("artist")  or "").strip()
+    if not phone or not title:
+        return jsonify({"error": "phone and title required"}), 400
+    cover       = data.get("cover")       or ""
+    spotify     = data.get("spotify")     or ""
+    album       = data.get("album")       or ""
+    year        = data.get("year")        or ""
+    genre       = data.get("genre")       or ""
+    preview_url = data.get("preview_url") or ""
+    label = f"🎵 {title} · {artist}"
+    meta_parts = [x for x in [album, year, genre] if x]
+    summary = "META: 🎵 " + " · ".join(meta_parts) if meta_parts else "META: 🎵"
+    try:
+        existing = lib._sb().table("wa_saves").select("id").eq("from_number", phone).eq("title", label).execute().data
+        if existing:
+            return jsonify({"ok": True, "id": existing[0]["id"], "already": True})
+        row = lib._sb().table("wa_saves").insert({
+            "from_number": phone,
+            "title":       label,
+            "summary":     summary,
+            "image_url":   cover,
+            "url":         spotify or preview_url,
+            "status":      "saved",
+        }).execute().data
+        return jsonify({"ok": True, "id": row[0]["id"] if row else None})
+    except Exception as e:
+        print(f"[music/save] {e}")
+        return jsonify({"error": "could not save"}), 500
+
+
+@app.route("/api/music/saves")
+def api_music_saves():
+    phone = request.args.get("phone", "").strip()
+    if not phone:
+        return jsonify({"error": "phone required"}), 400
+    try:
+        rows = lib._sb().table("wa_saves").select("id,title,summary,image_url,url,created_at") \
+            .eq("from_number", phone).like("title", "🎵 %") \
+            .order("created_at", desc=True).limit(50).execute().data or []
+        songs = []
+        for r in rows:
+            t = (r.get("title") or "").replace("🎵 ", "", 1)
+            parts = t.split(" · ", 1)
+            songs.append({
+                "id":     r["id"],
+                "title":  parts[0] if parts else t,
+                "artist": parts[1] if len(parts) > 1 else "",
+                "cover":  r.get("image_url") or "",
+                "url":    r.get("url") or "",
+                "saved":  (r.get("created_at") or "")[:10],
+            })
+        return jsonify({"songs": songs})
+    except Exception as e:
+        print(f"[music/saves] {e}")
+        return jsonify({"error": "could not load"}), 500
+
+
+@app.route("/api/music/save/<save_id>", methods=["DELETE"])
+def api_music_save_delete(save_id):
+    phone = request.args.get("phone", "").strip()
+    if not phone:
+        return jsonify({"error": "phone required"}), 400
+    try:
+        lib._sb().table("wa_saves").delete().eq("id", save_id).eq("from_number", phone).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"[music/save/delete] {e}")
+        return jsonify({"error": "could not delete"}), 500
+
+
 @app.route("/api/music/charts")
 def api_music_charts():
     country = request.args.get("country", "").upper()
