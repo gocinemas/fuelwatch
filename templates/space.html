@@ -531,18 +531,17 @@
 
           <div class="card">
             <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">🌙 Tonight's Sky</div>
+            <!-- Postcode bar — always visible, works on mobile and desktop -->
+            <div style="display:flex;gap:6px;margin-bottom:12px">
+              <input id="sky-pc-input" type="text" placeholder="Enter postcode (e.g. KT15)"
+                maxlength="8" oninput="this.value=this.value.toUpperCase()"
+                onkeydown="if(event.key==='Enter') _saveSkyCast()"
+                style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none;min-width:0">
+              <button onclick="_saveSkyCast()"
+                style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Go</button>
+            </div>
             <div id="sky-body" style="font-size:12px;color:var(--muted)">
-              <div id="sky-pc-prompt">
-                <div style="margin-bottom:8px;color:var(--muted);font-size:12px">Enter your postcode to see tonight's sky conditions</div>
-                <div style="display:flex;gap:6px">
-                  <input id="sky-pc-input" type="text" placeholder="e.g. KT15 3RL"
-                    maxlength="8" oninput="this.value=this.value.toUpperCase()"
-                    onkeydown="if(event.key==='Enter') _saveSkyCast()"
-                    style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;font-family:inherit;outline:none;min-width:0">
-                  <button onclick="_saveSkyCast()"
-                    style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">Go</button>
-                </div>
-              </div>
+              <div style="text-align:center;padding:12px 0;font-size:13px;color:var(--muted)">☝️ Enter your postcode above</div>
             </div>
           </div>
 
@@ -619,6 +618,19 @@
                 <div style="font-size:12px;color:var(--muted)"><span style="color:var(--text);font-weight:700;display:block;font-size:15px">£372M</span>National (UKSA direct)</div>
               </div>
               <div style="margin-top:10px;font-size:11px;color:var(--subtle)">Source: UK Space Agency · 2024 Size &amp; Health report</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-label">World Space Spending</div>
+            <div class="card">
+              <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+                How the UK's £702M compares globally — annual government civil space budgets, 2024 estimates.
+              </div>
+              <div id="world-budget-bars"></div>
+              <div style="margin-top:12px;font-size:11px;color:var(--subtle)">
+                Sources: NASA, ESA, CNSA, JAXA, ISRO annual reports · estimates vary · China includes estimated military component
+              </div>
             </div>
           </div>
 
@@ -769,8 +781,8 @@ function _applyPostcode(v) {
   var fmt = v.length > 3 ? v.slice(0,-3) + ' ' + v.slice(-3) : v;
   document.getElementById('header-pc-label').textContent = '📍 ' + fmt;
   document.getElementById('pc-input').value = fmt;
-  var skyPrompt = document.getElementById('sky-pc-prompt');
-  if (skyPrompt) skyPrompt.style.display = 'none';
+  var skyIn = document.getElementById('sky-pc-input');
+  if (skyIn) skyIn.value = fmt;
   _loadSky(v);
 }
 
@@ -836,8 +848,9 @@ function _loadSky(pc) {
 }
 
 if (_pc) {
-  var _skp = document.getElementById('sky-pc-prompt');
-  if (_skp) _skp.style.display = 'none';
+  var _fmtSkyPc = _pc.length > 3 ? _pc.slice(0,-3) + ' ' + _pc.slice(-3) : _pc;
+  var _skyIn = document.getElementById('sky-pc-input');
+  if (_skyIn) _skyIn.value = _fmtSkyPc;
   _loadSky(_pc);
 }
 
@@ -1121,25 +1134,63 @@ var _BUDGET_ITEMS = [
   }, 200);
 })();
 
+// ── World Space Budgets ────────────────────────────────────────────────────────
+var _WORLD_BUDGETS = [
+  {flag:"🇺🇸", name:"USA (NASA)",   val:"$25.4B", usd:25400, colour:"#38bdf8", note:"Civil + DoD space"},
+  {flag:"🇨🇳", name:"China (CNSA)", val:"~$12B",  usd:12000, colour:"#f87171", note:"Est. incl. military"},
+  {flag:"🇪🇺", name:"ESA (Europe)", val:"$9.6B",  usd:9600,  colour:"#818cf8", note:"22 member states"},
+  {flag:"🇷🇺", name:"Russia",       val:"~$3.2B", usd:3200,  colour:"#fb923c", note:"Roscosmos, declining"},
+  {flag:"🇯🇵", name:"Japan (JAXA)", val:"$2.7B",  usd:2700,  colour:"#34d399", note:"Civil + national"},
+  {flag:"🇮🇳", name:"India (ISRO)", val:"$1.9B",  usd:1900,  colour:"#f59e0b", note:"Extremely cost-effective"},
+  {flag:"🇬🇧", name:"UK (UKSA)",    val:"~$0.9B", usd:900,   colour:"#a78bfa", note:"ESA + national £702M"},
+];
+(function() {
+  var el = document.getElementById('world-budget-bars');
+  if (!el) return;
+  var max = _WORLD_BUDGETS[0].usd;
+  var html = '';
+  _WORLD_BUDGETS.forEach(function(b) {
+    var pct = Math.round(b.usd / max * 100);
+    var isUK = b.flag === '🇬🇧';
+    html +=
+      '<div class="budget-bar-row">'+
+        '<div class="budget-bar-meta">'+
+          '<span class="budget-bar-name">'+b.flag+' '+_esc(b.name)+(isUK?' <span style="font-size:10px;color:var(--accent)">← you</span>':'')+'</span>'+
+          '<span class="budget-bar-val">'+_esc(b.val)+'</span>'+
+        '</div>'+
+        '<div class="budget-bar-track">'+
+          '<div class="budget-bar-fill" style="width:0%;background:'+b.colour+(isUK?';box-shadow:0 0 6px '+b.colour+'88':'')+'" data-pct="'+pct+'"></div>'+
+        '</div>'+
+        '<div style="font-size:10px;color:var(--subtle);margin-top:3px">'+_esc(b.note)+'</div>'+
+      '</div>';
+  });
+  el.innerHTML = html;
+  setTimeout(function() {
+    el.querySelectorAll('.budget-bar-fill').forEach(function(bar) {
+      bar.style.width = bar.getAttribute('data-pct') + '%';
+    });
+  }, 400);
+})();
+
 // ── UK Space Companies ─────────────────────────────────────────────────────────
 var _UK_COMPANIES = [
-  {name:"Surrey Satellite Technology (SSTL)", loc:"Guildford, Surrey", sector:"satellites",   badge:"#38bdf8", desc:"World leader in small satellite manufacturing — 70+ satellites built since 1985. Part of Airbus group. Employs 700+ in Surrey."},
-  {name:"Airbus Defence & Space",             loc:"Stevenage, Herts",  sector:"satellites",   badge:"#38bdf8", desc:"Europe's largest space manufacturer in the UK. Builds telecom, Earth observation and science satellites employing 3,000+."},
-  {name:"OneWeb / Eutelsat",                  loc:"London",            sector:"broadband",    badge:"#818cf8", desc:"LEO satellite constellation delivering global broadband. UK government holds a strategic stake alongside Eutelsat."},
-  {name:"Inmarsat",                           loc:"London",            sector:"broadband",    badge:"#818cf8", desc:"Global leader in mobile satellite communications since 1979. Flagship British space brand, now part of Viasat."},
-  {name:"Reaction Engines",                   loc:"Culham, Oxon",      sector:"propulsion",   badge:"#f59e0b", desc:"Developing SABRE — a revolutionary hybrid air-breathing rocket engine that could transform access to space. BAE Systems backed."},
-  {name:"Orbex",                              loc:"Forres, Scotland",  sector:"launch",       badge:"#34d399", desc:"Building Prime — a small orbital rocket. First UK-designed, UK-built launcher to reach orbit from Scottish soil."},
-  {name:"Skyrora",                            loc:"Edinburgh",         sector:"launch",       badge:"#34d399", desc:"Developing Skyrora XL small launcher for UK orbital launch. Also builds test vehicles for propulsion R&D."},
-  {name:"Open Cosmos",                        loc:"Harwell, Oxon",     sector:"satellites",   badge:"#38bdf8", desc:"End-to-end small satellite missions — hardware, software and operations — for commercial and government customers."},
-  {name:"Spire Global",                       loc:"Glasgow",           sector:"data",         badge:"#fb923c", desc:"Constellation of over 110 nanosatellites providing maritime, weather and RF data services globally."},
-  {name:"BAE Systems Space",                  loc:"Various UK",        sector:"defence",      badge:"#f87171", desc:"Space situational awareness, electronic intelligence and responsive space programmes for UK and allied governments."},
-  {name:"Thales Alenia Space UK",             loc:"Bristol",           sector:"satellites",   badge:"#38bdf8", desc:"UK arm of the Franco-Italian prime contractor. Builds telecom payloads and contributes to ESA science missions."},
-  {name:"Satellite Applications Catapult",    loc:"Harwell, Oxon",     sector:"innovation",   badge:"#a78bfa", desc:"Government-backed national innovation centre. Connects satellite data and services to UK businesses and public sector."},
-  {name:"Astroscale UK",                      loc:"Harwell, Oxon",     sector:"innovation",   badge:"#a78bfa", desc:"Pioneering orbital debris removal and satellite life-extension. Flew the world's first commercial debris capture mission."},
-  {name:"In-Space Missions",                  loc:"Alton, Hampshire",  sector:"satellites",   badge:"#38bdf8", desc:"Builds cost-effective small satellites for commercial and government customers. Focus on rapid development."},
-  {name:"SEN",                                loc:"London",            sector:"data",         badge:"#fb923c", desc:"British space media company streaming live 4K Earth views from cameras aboard the ISS at sen.com."},
-  {name:"D-Orbit UK",                         loc:"Oxford",            sector:"innovation",   badge:"#a78bfa", desc:"Satellite transportation, in-orbit servicing and hosted payload missions for the growing new-space market."},
-  {name:"Goonhilly Earth Station",            loc:"Cornwall",          sector:"broadband",    badge:"#818cf8", desc:"Deep space communications facility. Tracking Moon and Mars missions, and operating as a commercial ground station."},
+  {name:"Surrey Satellite Technology (SSTL)", loc:"Guildford, Surrey", sector:"satellites",   badge:"#38bdf8", url:"https://www.sstl.co.uk",                      desc:"World leader in small satellite manufacturing — 70+ satellites built since 1985. Part of Airbus group. Employs 700+ in Surrey."},
+  {name:"Airbus Defence & Space",             loc:"Stevenage, Herts",  sector:"satellites",   badge:"#38bdf8", url:"https://www.airbus.com/en/space",              desc:"Europe's largest space manufacturer in the UK. Builds telecom, Earth observation and science satellites employing 3,000+."},
+  {name:"OneWeb / Eutelsat",                  loc:"London",            sector:"broadband",    badge:"#818cf8", url:"https://oneweb.net",                           desc:"LEO satellite constellation delivering global broadband. UK government holds a strategic stake alongside Eutelsat."},
+  {name:"Inmarsat",                           loc:"London",            sector:"broadband",    badge:"#818cf8", url:"https://www.inmarsat.com",                     desc:"Global leader in mobile satellite communications since 1979. Flagship British space brand, now part of Viasat."},
+  {name:"Reaction Engines",                   loc:"Culham, Oxon",      sector:"propulsion",   badge:"#f59e0b", url:"https://www.reactionengines.co.uk",            desc:"Developing SABRE — a revolutionary hybrid air-breathing rocket engine that could transform access to space. BAE Systems backed."},
+  {name:"Orbex",                              loc:"Forres, Scotland",  sector:"launch",       badge:"#34d399", url:"https://orbex.space",                          desc:"Building Prime — a small orbital rocket. First UK-designed, UK-built launcher to reach orbit from Scottish soil."},
+  {name:"Skyrora",                            loc:"Edinburgh",         sector:"launch",       badge:"#34d399", url:"https://www.skyrora.com",                      desc:"Developing Skyrora XL small launcher for UK orbital launch. Also builds test vehicles for propulsion R&D."},
+  {name:"Open Cosmos",                        loc:"Harwell, Oxon",     sector:"satellites",   badge:"#38bdf8", url:"https://opencosmos.com",                       desc:"End-to-end small satellite missions — hardware, software and operations — for commercial and government customers."},
+  {name:"Spire Global",                       loc:"Glasgow",           sector:"data",         badge:"#fb923c", url:"https://spire.com",                            desc:"Constellation of over 110 nanosatellites providing maritime, weather and RF data services globally."},
+  {name:"BAE Systems Space",                  loc:"Various UK",        sector:"defence",      badge:"#f87171", url:"https://www.baesystems.com/en/our-company/space",desc:"Space situational awareness, electronic intelligence and responsive space programmes for UK and allied governments."},
+  {name:"Thales Alenia Space UK",             loc:"Bristol",           sector:"satellites",   badge:"#38bdf8", url:"https://www.thalesaleniaspace.com",            desc:"UK arm of the Franco-Italian prime contractor. Builds telecom payloads and contributes to ESA science missions."},
+  {name:"Satellite Applications Catapult",    loc:"Harwell, Oxon",     sector:"innovation",   badge:"#a78bfa", url:"https://sa.catapult.org.uk",                   desc:"Government-backed national innovation centre. Connects satellite data and services to UK businesses and public sector."},
+  {name:"Astroscale UK",                      loc:"Harwell, Oxon",     sector:"innovation",   badge:"#a78bfa", url:"https://astroscale.com",                       desc:"Pioneering orbital debris removal and satellite life-extension. Flew the world's first commercial debris capture mission."},
+  {name:"In-Space Missions",                  loc:"Alton, Hampshire",  sector:"satellites",   badge:"#38bdf8", url:"https://www.in-space.co.uk",                   desc:"Builds cost-effective small satellites for commercial and government customers. Focus on rapid development."},
+  {name:"SEN",                                loc:"London",            sector:"data",         badge:"#fb923c", url:"https://sen.com",                              desc:"British space media company streaming live 4K Earth views from cameras aboard the ISS."},
+  {name:"D-Orbit UK",                         loc:"Oxford",            sector:"innovation",   badge:"#a78bfa", url:"https://www.dorbit.space",                     desc:"Satellite transportation, in-orbit servicing and hosted payload missions for the growing new-space market."},
+  {name:"Goonhilly Earth Station",            loc:"Cornwall",          sector:"broadband",    badge:"#818cf8", url:"https://goonhilly.org",                        desc:"Deep space communications facility. Tracking Moon and Mars missions, and operating as a commercial ground station."},
 ];
 var _coFilter = 'all';
 
@@ -1149,11 +1200,15 @@ function _renderCompanies() {
   if (!shown.length) { el.innerHTML = '<div class="loading">None in this sector</div>'; return; }
   var html = '';
   shown.forEach(function(c) {
+    var domain = c.url ? c.url.replace(/^https?:\/\//, '').replace(/\/$/, '') : '';
     html +=
       '<div class="company-item">'+
-        '<div class="company-name">'+
-          '<span class="sector-badge" style="background:'+c.badge+'22;color:'+c.badge+';border:1px solid '+c.badge+'44">'+c.sector+'</span>'+
-          _esc(c.name)+
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:2px">'+
+          '<div class="company-name" style="margin-bottom:0">'+
+            '<span class="sector-badge" style="background:'+c.badge+'22;color:'+c.badge+';border:1px solid '+c.badge+'44">'+c.sector+'</span>'+
+            _esc(c.name)+
+          '</div>'+
+          (c.url ? '<a href="'+_esc(c.url)+'" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none;font-weight:600;white-space:nowrap;flex-shrink:0">'+_esc(domain)+' →</a>' : '')+
         '</div>'+
         '<div class="company-loc">📍 '+_esc(c.loc)+'</div>'+
         '<div class="company-desc">'+_esc(c.desc)+'</div>'+

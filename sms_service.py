@@ -13355,7 +13355,7 @@ def api_space_launches():
     try:
         r = requests.get(
             "https://ll.thespacedevs.com/2.2.0/launch/upcoming/",
-            params={"format": "json", "limit": 12, "mode": "list"},
+            params={"format": "json", "limit": 20, "mode": "list"},
             timeout=12,
             headers={"User-Agent": "space.humanagency.co/1.0"},
         )
