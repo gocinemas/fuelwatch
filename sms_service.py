@@ -4274,6 +4274,69 @@ def api_intel_brand_choices_delete():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/intel/pin", methods=["POST"])
+def api_intel_pin():
+    body = request.get_json(force=True, silent=True) or {}
+    name = (body.get("name") or "").strip()
+    kind = (body.get("type") or "").strip()
+    if not name or kind not in ("brand", "company"):
+        return jsonify({"error": "name and type required"}), 400
+    sb_key = f"brand:{name.lower()}|brandv26" if kind == "brand" else f"company:{name.lower()}|v17"
+    try:
+        sb = lib._sb()
+        rows = sb.table("ai_cache").select("data").eq("key", sb_key).execute().data
+        if not rows:
+            return jsonify({"error": "No cached result to pin — search first"}), 404
+        data = dict(rows[0]["data"] or {})
+        data["_pinned"] = True
+        sb.table("ai_cache").upsert({"key": sb_key, "data": data, "cached_at": "2099-12-31T00:00:00+00:00"}).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/intel/unpin", methods=["POST"])
+def api_intel_unpin():
+    body = request.get_json(force=True, silent=True) or {}
+    name = (body.get("name") or "").strip()
+    kind = (body.get("type") or "").strip()
+    if not name or kind not in ("brand", "company"):
+        return jsonify({"error": "name and type required"}), 400
+    sb_key = f"brand:{name.lower()}|brandv26" if kind == "brand" else f"company:{name.lower()}|v17"
+    try:
+        sb = lib._sb()
+        rows = sb.table("ai_cache").select("data").eq("key", sb_key).execute().data
+        if rows:
+            data = dict(rows[0]["data"] or {})
+            data.pop("_pinned", None)
+            sb.table("ai_cache").upsert({"key": sb_key, "data": data, "cached_at": "now()"}).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/brand/scan", methods=["POST"])
+def api_brand_scan():
+    """Identify a brand from a photo using Groq vision."""
+    body = request.get_json(force=True, silent=True) or {}
+    img_b64 = (body.get("image") or "").strip()
+    mime = body.get("mime", "image/jpeg")
+    if not img_b64:
+        return jsonify({"error": "image required"}), 400
+    try:
+        raw = _groq_vision(
+            img_b64, mime,
+            'Identify the brand shown in this image (on packaging, label, logo, or advertisement). '
+            'Return JSON only: {"brand": "ExactBrandName", "confidence": "high/medium/low"}. '
+            'If no brand is clearly identifiable set brand to null.',
+        )
+        import json as _json
+        parsed = _json.loads(raw.strip().strip("```json").strip("```").strip())
+        return jsonify(parsed)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 _WMO_EMOJI = {
     0:"☀️",1:"🌤️",2:"⛅",3:"🌥️",45:"🌫️",48:"🌫️",
     51:"🌦️",53:"🌦️",55:"🌧️",61:"🌧️",63:"🌧️",65:"🌧️",

@@ -719,13 +719,16 @@ def _sb_cache_get(key: str):
         rows = sb.table("ai_cache").select("data,cached_at").eq("key", key).execute().data
         if not rows:
             return None
-        import datetime as _datetime
-        cached_at_str = rows[0]["cached_at"]
-        cached_at = _datetime.datetime.fromisoformat(cached_at_str.replace("Z", "+00:00"))
-        age = (_datetime.datetime.now(_datetime.timezone.utc) - cached_at).total_seconds()
-        if age > _SB_CACHE_TTL:
-            return None
-        return rows[0]["data"]
+        row_data = rows[0]["data"] or {}
+        # Pinned entries never expire
+        if not row_data.get("_pinned"):
+            import datetime as _datetime
+            cached_at_str = rows[0]["cached_at"]
+            cached_at = _datetime.datetime.fromisoformat(cached_at_str.replace("Z", "+00:00"))
+            age = (_datetime.datetime.now(_datetime.timezone.utc) - cached_at).total_seconds()
+            if age > _SB_CACHE_TTL:
+                return None
+        return row_data
     except Exception:
         return None
 
