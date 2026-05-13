@@ -418,6 +418,15 @@
     scrollbar-width: none;
   }
   .mobile-tab-bar::-webkit-scrollbar { display: none; }
+  .mobile-tab-bar::after {
+    content: '';
+    position: fixed; bottom: 0; right: 0;
+    width: 40px; height: 60px;
+    background: linear-gradient(to left, var(--glass) 40%, transparent);
+    pointer-events: none; z-index: 201;
+    transition: opacity .3s;
+  }
+  .mobile-tab-bar.scrolled-end::after { opacity: 0; }
   .mobile-tab-btn {
     flex-shrink: 0; min-width: 68px; padding: 10px 8px 16px;
     border: none; background: transparent;
@@ -1654,6 +1663,15 @@ function _searchGo(tab) {
   document.getElementById('space-search').value = '';
   document.getElementById('search-results').style.display = 'none';
 }
+
+(function() {
+  var bar = document.getElementById('mobile-tab-bar');
+  if (!bar) return;
+  bar.addEventListener('scroll', function() {
+    var atEnd = bar.scrollLeft + bar.clientWidth >= bar.scrollWidth - 4;
+    bar.classList.toggle('scrolled-end', atEnd);
+  });
+})();
 
 document.addEventListener('click', function(e) {
   var sr = document.getElementById('search-results');
