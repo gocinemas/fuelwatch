@@ -34,11 +34,12 @@ _MA_DETAIL_TYPES_MAP = {
 }
 
 # ── CMA Retailer Price Feed URLs ──────────────────────────────────────────────
-# Confirmed working (tested March 2026)
+# Confirmed working (tested May 2026)
+# BP removed from this list — they retired their own CMA feed (returns 403/404 as of May 2026).
+# BP has migrated to the new gov.uk Fuel Finder scheme (OAuth required, not yet integrated).
 RETAILER_FEEDS = {
     "Asda":        "https://storelocator.asda.com/fuel_prices_data.json",
     "Tesco":       "https://www.tesco.com/fuel_prices/fuel_prices_data.json",
-    "BP":          "https://www.bp.com/en_gb/united-kingdom/home/fuelprices/fuel_prices_data.json",
     "Shell":       "https://www.shell.co.uk/fuel-prices-data.html",
     "Sainsburys":  "https://api.sainsburys.co.uk/v1/exports/latest/fuel_prices_data.json",
     "Morrisons":   "https://www.morrisons.com/fuel-prices/fuel.json",
@@ -101,6 +102,7 @@ def fetch_retailer(name: str, url: str) -> list:
     try:
         resp = requests.get(url, timeout=5, headers=HEADERS)
         if resp.status_code != 200:
+            print(f"  [fetch_retailer] {name}: HTTP {resp.status_code}")
             return []
         data = resp.json()
 
