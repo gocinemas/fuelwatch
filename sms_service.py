@@ -13513,6 +13513,92 @@ def api_space_artemis():
         return jsonify({"error": str(e), "photos": []})
 
 
+@app.route("/api/space/sky")
+def api_space_sky():
+    postcode = request.args.get("postcode", "").strip().upper().replace(" ", "")
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+    try:
+        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=5)
+        if r.status_code != 200:
+            r2 = requests.get(f"https://api.postcodes.io/outcodes/{postcode}", timeout=5)
+            if r2.status_code != 200:
+                return jsonify({"error": "postcode not found"}), 404
+            res = r2.json().get("result", {})
+        else:
+            res = r.json().get("result", {})
+        lat, lon = res.get("latitude"), res.get("longitude")
+        if not lat:
+            return jsonify({"error": "no coords"}), 404
+    except Exception:
+        return jsonify({"error": "postcode lookup failed"}), 500
+    try:
+        r2 = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat, "longitude": lon,
+                "current": "cloud_cover,weather_code,is_day,temperature_2m,wind_speed_10m",
+                "daily":   "sunrise,sunset",
+                "timezone": "Europe/London",
+                "forecast_days": 1,
+            },
+            timeout=8,
+        )
+        d = r2.json()
+        cur   = d.get("current", {})
+        daily = d.get("daily", {})
+        cloud   = cur.get("cloud_cover", 0)
+        code    = cur.get("weather_code", 0)
+        is_day  = cur.get("is_day", 1)
+        temp    = cur.get("temperature_2m")
+        wind    = cur.get("wind_speed_10m")
+        sunrise = (daily.get("sunrise") or [""])[0]
+        sunset  = (daily.get("sunset")  or [""])[0]
+        _WMO = {
+            0:"Clear sky", 1:"Mainly clear", 2:"Partly cloudy", 3:"Overcast",
+            45:"Fog", 48:"Icy fog",
+            51:"Light drizzle", 53:"Drizzle", 55:"Heavy drizzle",
+            61:"Light rain", 63:"Rain", 65:"Heavy rain",
+            71:"Light snow", 73:"Snow", 75:"Heavy snow",
+            80:"Rain showers", 81:"Heavy showers", 82:"Violent showers",
+            95:"Thunderstorm", 96:"Thunderstorm with hail",
+        }
+        _WMO_ICON = {
+            0:"☀️" if is_day else "🌙", 1:"🌤️", 2:"⛅", 3:"☁️",
+            45:"🌫️", 48:"🌫️",
+            51:"🌦️", 53:"🌧️", 55:"🌧️",
+            61:"🌧️", 63:"🌧️", 65:"🌧️",
+            71:"🌨️", 73:"❄️", 75:"❄️",
+            80:"🌦️", 81:"🌧️", 82:"⛈️",
+            95:"⛈️", 96:"⛈️",
+        }
+        if cloud < 20:
+            quality = "excellent"; qlabel = "Excellent for stargazing"; qicon = "⭐⭐⭐"
+        elif cloud < 40:
+            quality = "good";      qlabel = "Good — patches of cloud";  qicon = "⭐⭐"
+        elif cloud < 70:
+            quality = "fair";      qlabel = "Fair — mostly cloudy";     qicon = "⭐"
+        else:
+            quality = "poor";      qlabel = "Poor — heavy cloud cover"; qicon = "☁️"
+        return jsonify({
+            "lat": lat, "lon": lon,
+            "cloud_pct": cloud,
+            "weather_code": code,
+            "weather_desc": _WMO.get(code, "Varied"),
+            "weather_icon": _WMO_ICON.get(code, "🌡️"),
+            "is_day": is_day,
+            "temp_c": temp,
+            "wind_kmh": wind,
+            "sunrise": sunrise[11:16] if len(sunrise) > 10 else sunrise,
+            "sunset":  sunset[11:16]  if len(sunset)  > 10 else sunset,
+            "quality": quality,
+            "quality_label": qlabel,
+            "quality_icon": qicon,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

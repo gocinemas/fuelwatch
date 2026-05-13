@@ -25,6 +25,25 @@
     --red:     #f87171;
   }
 
+  /* Light mode overrides */
+  body.light {
+    --bg:      #f0f2ff;
+    --surface: #ffffff;
+    --surface2:#e8eaff;
+    --border:  #d0d4f0;
+    --text:    #1a1a3e;
+    --muted:   #5a5a8a;
+    --subtle:  #b0b4d8;
+    --accent:  #4f46e5;
+    --amber:   #d97706;
+    --green:   #059669;
+    --red:     #dc2626;
+  }
+  body.light::before { display: none; }
+  body.light .sen-card { border-color: var(--border); }
+  body.light .iss-card { border-color: var(--border); background: var(--surface); }
+  body.light footer a { color: var(--muted); }
+
   body {
     background: var(--bg);
     color: var(--text);
@@ -521,6 +540,28 @@
   .loading { color: var(--muted); font-size: 13px; padding: 12px 0; }
   .error   { color: var(--red);   font-size: 13px; padding: 8px 0; }
 
+  /* Mode toggle */
+  .mode-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 34px; height: 34px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: .15s;
+    flex-shrink: 0;
+  }
+  .mode-btn:hover { background: var(--border); }
+
+  /* Sky card */
+  .sky-quality-bar {
+    height: 6px; border-radius: 3px;
+    background: var(--surface2);
+    overflow: hidden; margin: 8px 0 4px;
+  }
+  .sky-quality-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
   /* About hero */
   .about-hero {
     background: linear-gradient(135deg, rgba(49,46,129,.35) 0%, rgba(15,23,42,.0) 100%);
@@ -658,7 +699,10 @@
         <div class="logo-sub">humanagency.co</div>
       </div>
     </div>
-    <div id="header-pc" style="font-size:13px;color:var(--muted);cursor:pointer" onclick="document.getElementById('pc-input').focus()">📍 <span id="header-pc-label">Add postcode</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div id="header-pc" style="font-size:13px;color:var(--muted);cursor:pointer" onclick="document.getElementById('pc-input').focus()">📍 <span id="header-pc-label">Add postcode</span></div>
+      <button class="mode-btn" id="mode-btn" onclick="_toggleMode()" title="Toggle light/dark">☀️</button>
+    </div>
   </header>
 
   <!-- Postcode bar -->
@@ -743,6 +787,14 @@
       </div>
     </div>
 
+    <div class="section-gap"></div>
+    <div class="section-label">Tonight's Sky</div>
+    <div class="card" id="sky-card">
+      <div id="sky-body" style="text-align:center;padding:12px 0;font-size:13px;color:var(--muted)">
+        Add your postcode above to see sky conditions
+      </div>
+    </div>
+
   </div><!-- /tab-live -->
 
   <!-- ── Tab: Launches ────────────────────────────────────────────────────── -->
@@ -813,12 +865,12 @@
   <!-- ── Tab: Explore ─────────────────────────────────────────────────────── -->
   <div class="tab-panel" id="tab-explore">
 
-    <div class="section-label">Astronomy Picture of the Day</div>
-    <div class="card" id="apod-card"><div class="loading">Loading…</div></div>
-
-    <div class="section-gap"></div>
     <div class="section-label">Solar System — Live Distances from Earth</div>
     <div class="card" id="planets-card"><div class="loading">Computing positions…</div></div>
+
+    <div class="section-gap"></div>
+    <div class="section-label">Astronomy Picture of the Day</div>
+    <div class="card" id="apod-card"><div class="loading">Loading…</div></div>
 
     <div class="section-gap"></div>
     <div class="section-label">Artemis — Back to the Moon</div>
@@ -909,7 +961,88 @@ function savePostcode() {
   var fmt = v.length > 3 ? v.slice(0,-3) + ' ' + v.slice(-3) : v;
   document.getElementById('header-pc-label').textContent = fmt;
   document.getElementById('pc-input').value = fmt;
+  _loadSky(v);
 }
+
+// ── Tonight's Sky ─────────────────────────────────────────────────────────────
+var _skyQualityColours = {excellent:'#34d399', good:'#818cf8', fair:'#f59e0b', poor:'#6b7280'};
+
+function _renderSky(d) {
+  var el = document.getElementById('sky-body');
+  if (!el) return;
+  if (d.error) { el.innerHTML = '<div class="error">Could not load sky conditions</div>'; return; }
+  var qCol  = _skyQualityColours[d.quality] || '#818cf8';
+  var qPct  = {excellent:100, good:70, fair:40, poor:15}[d.quality] || 50;
+  var dayNight = d.is_day ? '☀️ Day' : '🌙 Night';
+  var iss_url = 'https://spotthestation.nasa.gov/sightings/view.cfm?country=United_Kingdom&region=None&city=None';
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">'+
+      '<div style="font-size:48px;line-height:1">'+d.weather_icon+'</div>'+
+      '<div style="flex:1">'+
+        '<div style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.3px">'+_esc(d.weather_desc)+'</div>'+
+        '<div style="font-size:13px;color:var(--muted);margin-top:2px">'+
+          (d.temp_c !== null ? d.temp_c.toFixed(0)+'°C' : '') +
+          (d.wind_kmh ? ' · '+ d.wind_kmh.toFixed(0)+' km/h wind' : '') +
+          ' · ' + dayNight +
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'+
+      '<div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">'+
+        '<div style="font-size:11px;color:var(--muted);margin-bottom:3px">Cloud cover</div>'+
+        '<div style="font-size:18px;font-weight:800;color:var(--text)">'+d.cloud_pct+'%</div>'+
+      '</div>'+
+      '<div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">'+
+        '<div style="font-size:11px;color:var(--muted);margin-bottom:3px">Sunrise</div>'+
+        '<div style="font-size:16px;font-weight:700;color:var(--amber)">'+_esc(d.sunrise||'—')+'</div>'+
+      '</div>'+
+      '<div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center">'+
+        '<div style="font-size:11px;color:var(--muted);margin-bottom:3px">Sunset</div>'+
+        '<div style="font-size:16px;font-weight:700;color:var(--amber)">'+_esc(d.sunset||'—')+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="margin-bottom:6px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">'+
+        '<span style="font-size:12px;font-weight:700;color:var(--text)">Stargazing tonight</span>'+
+        '<span style="font-size:13px;font-weight:700;color:'+qCol+'">'+d.quality_icon+' '+_esc(d.quality_label)+'</span>'+
+      '</div>'+
+      '<div class="sky-quality-bar"><div class="sky-quality-fill" style="width:'+qPct+'%;background:'+qCol+'"></div></div>'+
+    '</div>'+
+    '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'+
+      '<span style="font-size:12px;color:var(--muted)">ISS visible from your postcode?</span>'+
+      '<a href="'+iss_url+'" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:var(--accent);text-decoration:none">Check →</a>'+
+    '</div>'+
+    '<div style="margin-top:6px;font-size:10px;color:var(--subtle)">Weather via Open-Meteo · UK Met Office data</div>';
+}
+
+function _loadSky(pc) {
+  var el = document.getElementById('sky-body');
+  if (!el || !pc) return;
+  el.innerHTML = '<div class="loading">Loading sky conditions…</div>';
+  fetch('/api/space/sky?postcode=' + encodeURIComponent(pc))
+    .then(function(r){return r.json();})
+    .then(_renderSky)
+    .catch(function(){ el.innerHTML = '<div class="error">Could not load sky data</div>'; });
+}
+
+if (_pc) _loadSky(_pc);
+
+// ── Light / dark mode ─────────────────────────────────────────────────────────
+(function() {
+  var saved = localStorage.getItem('space_mode');
+  if (saved === 'light') document.body.classList.add('light');
+})();
+
+function _toggleMode() {
+  var light = document.body.classList.toggle('light');
+  localStorage.setItem('space_mode', light ? 'light' : 'dark');
+  document.getElementById('mode-btn').textContent = light ? '🌙' : '☀️';
+}
+
+(function() {
+  if (document.body.classList.contains('light'))
+    document.getElementById('mode-btn').textContent = '🌙';
+})();
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function _showTab(name) {
