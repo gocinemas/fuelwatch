@@ -7539,17 +7539,6 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── Brand Intel ─────────────────────────────────────────────────────────────
-  function brandTab(name) {
-    ["overview","timeline","ads","rivals"].forEach(t => {
-      const panel = document.getElementById("brand-tab-" + t);
-      const btn   = document.getElementById("btab-" + t);
-      const active = t === name;
-      panel.style.display = active ? "" : "none";
-      btn.style.background = active ? "#7c3aed" : "transparent";
-      btn.style.color      = active ? "#fff"     : "#6b7280";
-    });
-  }
-
   const _BRAND_CHOICES_KEY = "miru_brand_choices";
 
   function _brandSaveChoice(original, chosen) {
@@ -7711,12 +7700,7 @@ const _ts = new Date(d.timestamp);
     return `https://logo.clearbit.com/${slug}.com`;
   }
 
-  let _pendingBrandTab = null;
-
   function _renderBrand(d) {
-    brandTab(_pendingBrandTab || "overview");
-    _pendingBrandTab = null;
-
     // Logo (Clearbit, fallback to Wikipedia thumbnail, then hidden)
     const logoUrl = _brandLogoUrl(d);
     const thumb   = d.thumbnail || "";
