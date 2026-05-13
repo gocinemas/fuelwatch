@@ -12034,6 +12034,108 @@ def api_wa_saves_update_location():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/wa-saves/ad-intel", methods=["POST"])
+def api_wa_saves_ad_intel():
+    """AI analysis of an ad/photo save: extract company, location, type and build relevant search links."""
+    from_number, err = _check_saves_pin()
+    if err:
+        return err
+    data = request.json or {}
+    save_id = data.get("id", "")
+    if not save_id:
+        return jsonify({"error": "id required"}), 400
+
+    rows = lib._sb().table("wa_saves").select("id,title,summary,image_url,url,from_number").eq("id", save_id).execute().data
+    if not rows:
+        return jsonify({"error": "save not found"}), 404
+    save = rows[0]
+    if from_number and save.get("from_number") != from_number:
+        return jsonify({"error": "not your save"}), 403
+
+    title   = (save.get("title") or "").strip()
+    summary = (save.get("summary") or "").strip()
+
+    if not title and not summary:
+        return jsonify({"error": "no content to analyse"}), 400
+
+    prompt = (
+        "Extract structured info from this saved ad or photo.\n"
+        f"Title: {title}\nContent: {summary[:1200]}\n\n"
+        "Reply with JSON only (no markdown):\n"
+        '{"company":"name of company/agent/brand","ad_type":"real_estate|car|product|job|other",'
+        '"postcode":"UK postcode if visible else null","area":"area or town name if no postcode",'
+        '"price":"price string if found else null","bedrooms":null,'
+        '"property_type":"house/flat/commercial/land or null",'
+        '"search_query":"best Google search to find this listing or company website"}'
+    )
+
+    import json as _json, re as _re
+    try:
+        raw = _groq_chat("You are a data extraction assistant. Reply with JSON only.", [{"role": "user", "content": prompt}], max_tokens=350, json_mode=True)
+        raw = _re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
+        result = _json.loads(raw)
+    except Exception as e:
+        return jsonify({"error": f"AI failed: {e}"}), 500
+
+    ad_type  = result.get("ad_type", "other")
+    company  = (result.get("company") or "").strip()
+    postcode = (result.get("postcode") or "").strip().upper()
+    area     = (result.get("area") or postcode or "").strip()
+    price    = result.get("price")
+    beds     = result.get("bedrooms")
+    prop_t   = result.get("property_type")
+    search_q = (result.get("search_query") or company or title).strip()
+
+    # Build relevant links
+    links = []
+    if ad_type == "real_estate":
+        loc = postcode or area
+        if loc:
+            pc_slug = loc.replace(" ", "%20")
+            links.append({"label": "Rightmove", "url": f"https://www.rightmove.co.uk/property-for-sale/search.html?searchLocation={pc_slug}&useLocationIdentifier=true"})
+            links.append({"label": "Zoopla",    "url": f"https://www.zoopla.co.uk/for-sale/property/{loc.lower().replace(' ','-')}/"})
+            links.append({"label": "OnTheMarket","url": f"https://www.onthemarket.com/for-sale/property/{loc.lower().replace(' ','-')}/"})
+    elif ad_type == "car":
+        links.append({"label": "AutoTrader", "url": f"https://www.autotrader.co.uk/car-search?search_term={search_q.replace(' ','+')}"})
+    elif ad_type == "job":
+        links.append({"label": "Indeed",  "url": f"https://uk.indeed.com/jobs?q={search_q.replace(' ','+')}"})
+        links.append({"label": "LinkedIn","url": f"https://www.linkedin.com/jobs/search/?keywords={search_q.replace(' ','+')}"})
+
+    if search_q:
+        links.append({"label": f"Google: {company or 'listing'}", "url": f"https://www.google.com/search?q={search_q.replace(' ','+')}"})
+
+    # Update postcode/area in the save's META location (background, best-effort)
+    if postcode or area:
+        try:
+            loc_str = postcode or area
+            old_summary = save.get("summary") or ""
+            if _re.search(r"📍[^\n]*", old_summary):
+                new_summary = _re.sub(r"📍[^\n]*", f"📍 {loc_str}", old_summary, count=1)
+            elif old_summary.startswith("META:"):
+                nl = old_summary.find("\n")
+                if nl == -1:
+                    new_summary = old_summary + f" · 📍 {loc_str}"
+                else:
+                    new_summary = old_summary[:nl] + f" · 📍 {loc_str}" + old_summary[nl:]
+            else:
+                new_summary = f"META: 📍 {loc_str}\n" + old_summary
+            lib._sb().table("wa_saves").update({"summary": new_summary}).eq("id", save_id).execute()
+        except Exception:
+            pass  # location update is best-effort
+
+    return jsonify({
+        "ok":            True,
+        "company":       company,
+        "ad_type":       ad_type,
+        "postcode":      postcode,
+        "area":          area,
+        "price":         price,
+        "bedrooms":      beds,
+        "property_type": prop_t,
+        "links":         links,
+    })
+
+
 @app.route("/api/wa-saves/rename", methods=["POST"])
 def api_wa_saves_rename():
     """Update the title of a saved item."""

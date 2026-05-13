@@ -11156,6 +11156,10 @@ _bkBadge();
     const brandBtn = _saveCat(s) === "brand" && brandGuess
       ? `<button onclick="saveOpenBrandIntel('${brandGuess.replace(/'/g,"\\'")}')\" style=\"flex:1;padding:8px 6px;border-radius:10px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;cursor:pointer;color:#92400e\">🔍 Intel →</button>`
       : "";
+    const isAd = isPhoto || _saveCat(s) === "ad" || _saveCat(s) === "photo";
+    const adAiBtn = isAd
+      ? `<button onclick="savesAdIntel('${s.id}',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #d1fae5;background:#ecfdf5;font-size:11px;font-weight:600;cursor:pointer;color:#065f46">🤖 AI</button>`
+      : "";
 
     const imageThumb = s.image_url
       ? `<img src="${s.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"
@@ -11188,7 +11192,9 @@ _bkBadge();
         ${deleteBtn}
         ${enrichBtn}
         ${brandBtn}
+        ${adAiBtn}
       </div>
+      <div id="ad-intel-result-${s.id}" style="display:none;margin-top:10px"></div>
     </div>`;
   }
 
@@ -11293,6 +11299,57 @@ _bkBadge();
       body: JSON.stringify({id}),
     });
     await savesLoad();
+  };
+
+  window.savesAdIntel = async function(id, btn) {
+    btn.textContent = "🤖 Analysing…";
+    btn.disabled = true;
+    const resultEl = document.getElementById("ad-intel-result-" + id);
+    if (resultEl) resultEl.style.display = "none";
+    try {
+      const r = await fetch("/api/wa-saves/ad-intel", {
+        method: "POST",
+        headers: _savesHeaders(),
+        body: JSON.stringify({id}),
+      });
+      const d = await r.json();
+      if (d.error) { btn.textContent = "🤖 AI"; btn.disabled = false; alert(d.error); return; }
+
+      // Build result panel
+      const typeLabels = {real_estate:"🏠 Property", car:"🚗 Car", product:"📦 Product", job:"💼 Job", other:"📢 Ad"};
+      const typeLabel = typeLabels[d.ad_type] || "📢 Ad";
+      const chips = [
+        d.company   ? `<span style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;color:#065f46">${d.company}</span>` : "",
+        d.postcode  ? `<span style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;color:#1e40af">📍 ${d.postcode}</span>` : "",
+        d.area && !d.postcode ? `<span style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;color:#1e40af">📍 ${d.area}</span>` : "",
+        d.price     ? `<span style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;color:#92400e">${d.price}</span>` : "",
+        d.bedrooms  ? `<span style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:4px 10px;font-size:12px;color:#5b21b6">${d.bedrooms} bed</span>` : "",
+        d.property_type ? `<span style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:4px 10px;font-size:12px;color:#5b21b6">${d.property_type}</span>` : "",
+      ].filter(Boolean).join(" ");
+
+      const linksHtml = (d.links || []).map(l =>
+        `<a href="${l.url}" target="_blank" rel="noopener"
+          style="display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:#2563eb;text-decoration:none;white-space:nowrap">
+          ${l.label} ↗
+         </a>`
+      ).join("");
+
+      if (resultEl) {
+        resultEl.innerHTML = `
+          <div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${typeLabel} · AI analysis</div>
+            ${chips ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${chips}</div>` : ""}
+            ${linksHtml ? `<div style="display:flex;flex-wrap:wrap;gap:6px">${linksHtml}</div>` : ""}
+            ${!chips && !linksHtml ? `<div style="font-size:12px;color:var(--muted)">No structured data found — check the summary above.</div>` : ""}
+          </div>`;
+        resultEl.style.display = "";
+      }
+      btn.textContent = "🤖 AI ✓";
+      btn.style.background = "#d1fae5";
+    } catch(e) {
+      btn.textContent = "🤖 AI";
+      btn.disabled = false;
+    }
   };
 
   window.savesEnrich = async function(id, venue, btn) {
