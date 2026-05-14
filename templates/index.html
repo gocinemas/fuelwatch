@@ -12881,7 +12881,7 @@ _bkBadge();
       return;
     }
     listEl.innerHTML = events.map(function(ev){
-      var dateStr = ev.date ? new Date(ev.date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) : '';
+      var dateStr = ev.date ? new Date(ev.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) : '';
       var timeStr = ev.time ? ev.time.slice(0,5) : '';
       return '<a href="'+ev.url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);text-decoration:none">'
         +(ev.image ? '<img src="'+ev.image+'" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0">'
