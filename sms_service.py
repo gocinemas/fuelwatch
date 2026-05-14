@@ -15631,6 +15631,64 @@ def api_pm_analyse():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/pm/intake", methods=["POST"])
+def api_pm_intake():
+    data = request.json or {}
+    problem = (data.get("problem") or "").strip()
+    if not problem:
+        return jsonify({"error": "Problem description required"}), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "AI not configured"}), 500
+
+    prompt = (
+        "You are a senior programme manager with deep experience in IT projects "
+        "(SAP, ERP, migrations, de-mergers, digital builds, consumer goods industry).\n\n"
+        "A user has described a problem or idea. Your job:\n"
+        "1. Assess feasibility: green = clear & worth doing, amber = viable but needs clarity, red = too vague\n"
+        "2. Generate a full BOSCARD\n"
+        "3. Suggest project type and starting phase (1=Initiate, 2=Plan & Design, 3=Execute, 4=Test, 5=Transition, 6=Close)\n\n"
+        "Return ONLY valid JSON, no extra text:\n"
+        "{\n"
+        '  "feasibility": "green|amber|red",\n'
+        '  "feasibility_reason": "2 sentence explanation",\n'
+        '  "clarifying_questions": ["question if amber/red, else empty array"],\n'
+        '  "project_name": "short descriptive project name",\n'
+        '  "project_type": "one of: IT Transformation / Data / Cloud Migration / ERP Implementation / De-merger / Separation / Digital / App Build / Infrastructure Refresh / Process Improvement / Programme Management",\n'
+        '  "suggested_phase": 1,\n'
+        '  "boscard": "## Benefits\\n...\\n## Objectives\\n...\\n## Scope\\n**In scope:**...\\n**Out of scope:**...\\n## Constraints\\n...\\n## Assumptions\\n...\\n## Risks\\n...\\n## Dependencies\\n..."\n'
+        "}\n\n"
+        "Problem description:\n"
+    )
+
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt + problem}],
+                "temperature": 0.2,
+                "max_tokens": 2500,
+            },
+            timeout=40,
+        )
+        if r.status_code != 200:
+            return jsonify({"error": f"AI error {r.status_code}"}), 500
+        raw = r.json()["choices"][0]["message"]["content"].strip()
+        # Strip markdown code fences if present
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        import json as _json
+        parsed = _json.loads(raw)
+        return jsonify(parsed)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

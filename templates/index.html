@@ -9083,10 +9083,11 @@ const _ts = new Date(d.timestamp);
     window._fillTrains = pc => { document.getElementById('train-search-input').value = pc; showScreen('trains'); trainSearch(); };
     window._fillReport = pc => { const el = document.getElementById('report-postcode'); if (el) el.value = pc; showScreen('report'); };
     window._fillFinder = (pc, q) => {
+      const _pc = pc || (localStorage.getItem('miru_postcode') || '').replace(/\s+/g,'').toUpperCase();
       showScreen('places');
-      if (pc) document.getElementById('finder-postcode').value = pc;
-      if (q)  document.getElementById('finder-q').value = q;
-      if (pc || q) setTimeout(() => finderSearch(), 100);
+      if (_pc) document.getElementById('finder-postcode').value = _pc;
+      if (q)   document.getElementById('finder-q').value = q;
+      if (_pc || q) setTimeout(() => finderSearch(), 100);
     };
 
     // Map postcode keywords to a screen + pre-fill action

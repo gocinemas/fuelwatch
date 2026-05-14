@@ -260,6 +260,47 @@
       .phase-doc-grid { grid-template-columns:1fr; }
     }
 
+    /* ── Intake ── */
+    #intake-form-wrap { max-width:580px; margin:0 auto; padding:12px 4px 32px; }
+    .intake-hero { text-align:center; padding:32px 16px 20px; }
+    .intake-logo { font-size:40px; margin-bottom:12px; }
+    .intake-h1 { font-size:22px; font-weight:900; letter-spacing:-0.5px; color:var(--text); margin-bottom:8px; }
+    .intake-sub { font-size:14px; color:var(--muted); line-height:1.6; }
+    .intake-textarea {
+      width:100%; min-height:150px;
+      border:2px solid var(--border); border-radius:16px;
+      padding:16px; font-size:14px; font-family:inherit;
+      background:var(--surface); color:var(--text);
+      resize:vertical; line-height:1.6; transition:border-color .15s;
+    }
+    .intake-textarea:focus { outline:none; border-color:var(--accent); }
+    .intake-submit {
+      width:100%; padding:14px; border-radius:14px; border:none;
+      background:var(--accent); color:#fff; font-size:15px; font-weight:700;
+      cursor:pointer; margin-top:12px;
+    }
+    .intake-submit:disabled { opacity:.5; cursor:not-allowed; }
+    .intake-skip { text-align:center; font-size:12px; color:var(--muted); margin-top:10px; }
+    .intake-skip a { color:var(--accent); text-decoration:none; }
+    #intake-result-wrap { max-width:580px; margin:0 auto; padding:12px 4px 32px; }
+    .feasibility-card {
+      border-radius:16px; padding:16px;
+      display:flex; align-items:flex-start; gap:12px;
+    }
+    .feasibility-card.green { background:#f0fdf4; border:1px solid #86efac; }
+    .feasibility-card.amber { background:#fffbeb; border:1px solid #fcd34d; }
+    .feasibility-card.red   { background:#fef2f2; border:1px solid #fca5a5; }
+    [data-theme="dark"] .feasibility-card.green { background:#052e16; border-color:#166534; }
+    [data-theme="dark"] .feasibility-card.amber { background:#1c1400; border-color:#854d0e; }
+    [data-theme="dark"] .feasibility-card.red   { background:#1c0a0a; border-color:#991b1b; }
+    .feasibility-icon { font-size:28px; flex-shrink:0; }
+    .feasibility-label { font-size:13px; font-weight:800; margin-bottom:4px; color:var(--text); }
+    .feasibility-reason { font-size:13px; color:var(--muted); line-height:1.5; }
+    .intake-qs { font-size:12px; color:var(--muted); margin-top:8px; }
+    .intake-qs strong { color:var(--text); }
+    .intake-qs ul { margin:4px 0 0 16px; }
+    .intake-qs li { margin-bottom:2px; }
+
     /* ── Setup banner ── */
     #setup-banner {
       display:none; background:#fef3c7; border:1px solid #fde68a;
@@ -327,15 +368,32 @@ create table if not exists pm_docs (
 );</pre>
     </div>
 
-    <!-- No project selected -->
+    <!-- No project selected — AI intake -->
     <div id="empty-view">
-      <div class="empty-state">
-        <div class="es-icon">🗂️</div>
-        <p>Select or create a project to see its lifecycle,<br>track artefacts, and run AI on your documents.</p>
-        <button onclick="_openNewProject()" class="btn-primary" style="width:auto;padding:12px 28px">
-          Create first project
-        </button>
+
+      <!-- Step 1: problem input -->
+      <div id="intake-form-wrap">
+        <div class="intake-hero">
+          <div class="intake-logo">💡</div>
+          <h1 class="intake-h1">What problem are you solving?</h1>
+          <p class="intake-sub">Describe it in plain English — AI will check feasibility and draft your BOSCARD</p>
+        </div>
+        <textarea id="intake-input" class="intake-textarea"
+          placeholder="e.g. We're separating our IT systems from the parent company after a de-merger. 14 production systems, 6 months to exit, and no clear IT owner on the NewCo side yet..."></textarea>
+        <button id="intake-btn" class="intake-submit" onclick="_runIntake()">Assess &amp; Draft BOSCARD →</button>
+        <div class="intake-skip">or <a href="#" onclick="_openNewProject();return false">create project manually</a></div>
       </div>
+
+      <!-- Step 2: AI result -->
+      <div id="intake-result-wrap" style="display:none">
+        <div id="intake-feasibility-card"></div>
+        <div id="intake-boscard-card" class="card" style="margin-top:14px"></div>
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+          <button id="intake-start-btn" class="btn-primary" style="flex:1;min-width:160px" onclick="_startProjectFromIntake()">Start this project →</button>
+          <button onclick="_resetIntake()" style="padding:12px 18px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">Refine</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- Project view -->
@@ -1019,6 +1077,108 @@ create table if not exists pm_docs (
   document.querySelectorAll(".modal-backdrop").forEach(el =>
     el.addEventListener("click", e => { if (e.target === el) el.classList.remove("open"); })
   );
+
+  // ── Utils ─────────────────────────────────────────────────────────────────
+  // ── Intake flow ───────────────────────────────────────────────────────────
+  let _intakeResult = null;
+
+  async function _runIntake() {
+    const input = document.getElementById("intake-input").value.trim();
+    if (!input) { alert("Describe your problem first"); return; }
+    const btn = document.getElementById("intake-btn");
+    btn.disabled = true; btn.textContent = "Assessing…";
+    try {
+      const r = await fetch("/api/pm/intake", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({problem: input}),
+      });
+      const data = await r.json();
+      if (data.error) { alert("Error: " + data.error); btn.disabled=false; btn.textContent="Assess & Draft BOSCARD →"; return; }
+      _intakeResult = data;
+      _renderIntakeResult(data);
+      document.getElementById("intake-form-wrap").style.display = "none";
+      document.getElementById("intake-result-wrap").style.display = "";
+    } catch(e) {
+      alert("Network error — try again");
+    }
+    btn.disabled = false; btn.textContent = "Assess & Draft BOSCARD →";
+  }
+
+  function _renderIntakeResult(data) {
+    const fMap = {
+      green: {icon:"🟢", label:"Feasible — good to go", cls:"green"},
+      amber: {icon:"🟡", label:"Viable — needs some clarity", cls:"amber"},
+      red:   {icon:"🔴", label:"Needs more detail before starting", cls:"red"},
+    };
+    const f = fMap[data.feasibility] || fMap.amber;
+    let qs = "";
+    if (data.clarifying_questions?.length) {
+      qs = `<div class="intake-qs"><strong>Clarifying questions:</strong><ul>` +
+        data.clarifying_questions.map(q => `<li>${_esc(q)}</li>`).join("") + `</ul></div>`;
+    }
+    document.getElementById("intake-feasibility-card").innerHTML = `
+      <div class="feasibility-card ${f.cls}">
+        <div class="feasibility-icon">${f.icon}</div>
+        <div>
+          <div class="feasibility-label">${f.label}</div>
+          <div class="feasibility-reason">${_esc(data.feasibility_reason || "")}</div>
+          ${qs}
+        </div>
+      </div>`;
+    const ph = PHASES[(data.suggested_phase||1)-1];
+    document.getElementById("intake-boscard-card").innerHTML = `
+      <div class="card-title">🎯 Draft BOSCARD — ${_esc(data.project_name || "Your project")}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        Suggested type: <strong style="color:var(--text)">${_esc(data.project_type||"")}</strong> ·
+        Starting phase: <strong style="color:var(--text)">${data.suggested_phase||1} — ${ph?.name||""}</strong>
+      </div>
+      <div style="font-size:13px;line-height:1.65;max-height:300px;overflow-y:auto">
+        ${marked.parse(data.boscard || "")}
+      </div>`;
+  }
+
+  function _resetIntake() {
+    _intakeResult = null;
+    document.getElementById("intake-result-wrap").style.display = "none";
+    document.getElementById("intake-form-wrap").style.display = "";
+  }
+
+  async function _startProjectFromIntake() {
+    if (!_intakeResult) return;
+    const btn = document.getElementById("intake-start-btn");
+    btn.disabled = true; btn.textContent = "Creating…";
+    const r = await fetch("/api/pm/projects", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        name: _intakeResult.project_name || "New Project",
+        proj_type: _intakeResult.project_type || "IT Transformation",
+        phase: _intakeResult.suggested_phase || 1,
+        description: "",
+      }),
+    });
+    const projData = await r.json();
+    if (projData.error) { alert("Error: " + projData.error); btn.disabled=false; btn.textContent="Start this project →"; return; }
+    const projId = projData.project?.id;
+    if (projId && _intakeResult.boscard) {
+      await fetch("/api/pm/docs", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          project_id: projId,
+          phase: 1,
+          doc_type: "boscard",
+          title: "BOSCARD — AI Draft",
+          content: _intakeResult.boscard,
+          status: "draft",
+        }),
+      });
+    }
+    _intakeResult = null;
+    await _loadProjects();
+    if (projId) _selectProject(projId);
+  }
 
   // ── Utils ─────────────────────────────────────────────────────────────────
   function _esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
