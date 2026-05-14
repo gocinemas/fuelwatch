@@ -3998,8 +3998,8 @@ const _ts = new Date(d.timestamp);
     document.getElementById("myarea-loading").style.display = "block";
     document.getElementById("myarea-loading-label").textContent = `Loading ${raw}…`;
 
-    // Council Services renders immediately — links are mostly static GOV.UK, no API needed
-    _maRenderCouncilServices({}, pc);
+    // Council Services renders immediately — pass spaced postcode for FixMyStreet
+    _maRenderCouncilServices({}, raw);
 
     // Track this search generation so stale callbacks don't render over newer results
     const searchGen = ++_maSearchGen;
@@ -4043,7 +4043,7 @@ const _ts = new Date(d.timestamp);
     // your-area (GPs, council, pharmacies) — LS-cached 24h, Overpass on miss
     _maFetchCached(`your-area:${pc}`, `/api/your-area?postcode=${pc}`, 86400, _guard(area => {
       _maAreaData = area; _maRenderCouncil(area); _maRenderGPs(area); _myAreaPersonalRender();
-      _maRenderCouncilServices(area, _maCurrentPostcode);
+      _maRenderCouncilServices(area, raw);
       _maHideServicesSkeleton();
     }));
 
