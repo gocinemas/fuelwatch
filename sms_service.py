@@ -8714,24 +8714,34 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
                 "snippet":     "",
             })
 
-        def _type_relevance(name, ptype):
-            """Score 0.3–1.0 for how well the place name matches the query type."""
+        def _type_relevance(name, ptype, kw=""):
+            """Score 0.3–1.0 for how well the place name matches the actual query."""
             n = name.lower()
             if ptype == "cafe":
-                if any(w in n for w in ("coffee", "cafe", "café", "espresso", "barista", "roast", "brew", "latte")):
-                    return 1.0
-                if any(w in n for w in ("bakery", "patisserie", "tearoom", "tea room", "deli")):
-                    return 0.85
-                if any(w in n for w in ("bistro", "bar", "pub", "grill", "brasserie",
-                                         "restaurant", "hotel", "inn", "arms", "tavern", "kitchen")):
-                    return 0.35
+                if kw == "tea":
+                    if any(w in n for w in ("tea", "tearoom", "tea room", "chai")):
+                        return 1.0
+                    if any(w in n for w in ("coffee", "cafe", "café", "espresso", "barista", "bakery", "deli")):
+                        return 0.85
+                    if any(w in n for w in ("bistro", "bar", "pub", "grill", "brasserie",
+                                             "restaurant", "hotel", "inn", "arms", "tavern", "kitchen")):
+                        return 0.35
+                    return 0.75
+                else:
+                    if any(w in n for w in ("coffee", "cafe", "café", "espresso", "barista", "roast", "brew", "latte")):
+                        return 1.0
+                    if any(w in n for w in ("bakery", "patisserie", "tearoom", "tea room", "deli")):
+                        return 0.85
+                    if any(w in n for w in ("bistro", "bar", "pub", "grill", "brasserie",
+                                             "restaurant", "hotel", "inn", "arms", "tavern", "kitchen")):
+                        return 0.35
             return 0.75  # neutral / unknown
 
         if cheap:
             items.sort(key=lambda x: (x["price_level"] or 9, -x["rating"], x["dist_km"]))
         else:
             items.sort(key=lambda x: (
-                -x["rating"] * _type_relevance(x["name"], place_type) * (1.0 if x["open_now"] is not False else 0.9),
+                -x["rating"] * _type_relevance(x["name"], place_type, keyword) * (1.0 if x["open_now"] is not False else 0.9),
                 x["dist_km"],
             ))
         return items
