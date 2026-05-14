@@ -13408,58 +13408,88 @@ def api_voice_query():
 
 @app.route("/api/music/gigs")
 def api_music_gigs():
-    key = os.environ.get("TICKETMASTER_KEY", "")
-    postcode = request.args.get("postcode", "").replace(" ", "").upper()
+    tm_key     = os.environ.get("TICKETMASTER_KEY", "")
+    sk_key     = os.environ.get("SKIDDLE_KEY", "")
+    postcode   = request.args.get("postcode", "").replace(" ", "").upper()
     if not postcode:
         return jsonify({"error": "postcode required"}), 400
+    if not tm_key and not sk_key:
+        return jsonify({"error": "Gigs not available — no API keys configured in Railway"})
     try:
         pc_r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=5)
         pc_d = pc_r.json()
-        lat = pc_d["result"]["latitude"]
-        lng = pc_d["result"]["longitude"]
+        lat  = pc_d["result"]["latitude"]
+        lng  = pc_d["result"]["longitude"]
     except Exception:
         return jsonify({"error": "Could not resolve postcode"}), 400
-    if not key:
-        return jsonify({"error": "Gigs not available yet — TICKETMASTER_KEY not configured in Railway"})
-    try:
-        r = requests.get(
-            "https://app.ticketmaster.com/discovery/v2/events.json",
-            params={
-                "apikey": key,
-                "latlong": f"{lat},{lng}",
-                "radius": "20",
-                "unit": "miles",
-                "classificationName": "music",
-                "sort": "date,asc",
-                "size": "15",
-            },
-            timeout=10,
-        )
-        r.raise_for_status()
-        data = r.json()
-        events_raw = (data.get("_embedded") or {}).get("events", [])
-        events = []
-        for ev in events_raw:
-            venue = ((ev.get("_embedded") or {}).get("venues") or [{}])[0]
-            date_info = ev.get("dates", {}).get("start", {})
-            image_url = next(
-                (i["url"] for i in (ev.get("images") or [])
-                 if i.get("ratio") == "16_9" and i.get("width", 0) >= 640),
-                "",
+
+    events = []
+    seen   = set()  # dedupe by lowercased name+date
+
+    # ── Ticketmaster ─────────────────────────────────────────────
+    if tm_key:
+        try:
+            r = requests.get(
+                "https://app.ticketmaster.com/discovery/v2/events.json",
+                params={"apikey": tm_key, "latlong": f"{lat},{lng}", "radius": "20",
+                        "unit": "miles", "classificationName": "music",
+                        "sort": "date,asc", "size": "15"},
+                timeout=10,
             )
-            events.append({
-                "name":  ev.get("name", ""),
-                "date":  date_info.get("localDate", ""),
-                "time":  date_info.get("localTime", ""),
-                "venue": venue.get("name", ""),
-                "city":  (venue.get("city") or {}).get("name", ""),
-                "url":   ev.get("url", ""),
-                "image": image_url,
-            })
-        return jsonify({"events": events})
-    except Exception as e:
-        print(f"[music/gigs] {e}")
-        return jsonify({"error": str(e)}), 500
+            r.raise_for_status()
+            for ev in (r.json().get("_embedded") or {}).get("events", []):
+                venue    = ((ev.get("_embedded") or {}).get("venues") or [{}])[0]
+                date_inf = ev.get("dates", {}).get("start", {})
+                image    = next((i["url"] for i in (ev.get("images") or [])
+                                 if i.get("ratio") == "16_9" and i.get("width", 0) >= 640), "")
+                name = ev.get("name", "")
+                date = date_inf.get("localDate", "")
+                key_ = (name.lower(), date)
+                if key_ not in seen:
+                    seen.add(key_)
+                    events.append({"name": name, "date": date,
+                                   "time": date_inf.get("localTime", ""),
+                                   "venue": venue.get("name", ""),
+                                   "city":  (venue.get("city") or {}).get("name", ""),
+                                   "url":   ev.get("url", ""), "image": image,
+                                   "source": "ticketmaster"})
+        except Exception as e:
+            print(f"[gigs/ticketmaster] {e}")
+
+    # ── Skiddle ──────────────────────────────────────────────────
+    if sk_key:
+        try:
+            r = requests.get(
+                "https://www.skiddle.com/api/v1/events/search/",
+                params={"api_key": sk_key, "latitude": lat, "longitude": lng,
+                        "radius": 20, "order": "date", "type": "LIVE",
+                        "limit": 20, "description": 1},
+                timeout=10,
+            )
+            r.raise_for_status()
+            for ev in r.json().get("results", []):
+                name  = ev.get("eventname", "") or ev.get("EventName", "")
+                date  = ev.get("startdate", "")[:10] if ev.get("startdate") else ""
+                venue = (ev.get("venue") or {}).get("name", "")
+                city  = (ev.get("venue") or {}).get("town", "")
+                url   = ev.get("link", "") or f"https://www.skiddle.com/e/{ev.get('id','')}"
+                image = ev.get("largeimageurl", "") or ev.get("imageurl", "")
+                time_ = ev.get("starttime", "")
+                key_  = (name.lower(), date)
+                if key_ not in seen:
+                    seen.add(key_)
+                    events.append({"name": name, "date": date, "time": time_,
+                                   "venue": venue, "city": city,
+                                   "url": url, "image": image,
+                                   "source": "skiddle"})
+        except Exception as e:
+            print(f"[gigs/skiddle] {e}")
+
+    events.sort(key=lambda e: e.get("date") or "9999")
+    return jsonify({"events": events[:25], "sources": {
+        "ticketmaster": bool(tm_key),
+        "skiddle":      bool(sk_key),
+    }})
 
 
 @app.route("/api/music/charts")
