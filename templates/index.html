@@ -2111,7 +2111,7 @@
     if (bb) bb.classList.add("visible");
     if (name === "fuel")    { const _fpc = document.getElementById("fuel-postcode"); if (!_fpc.value.trim()) _fpc.value = _miruPostcode(); _fpc.focus(); _renderRecent("miru_fuel","fuel-recent","fuel-postcode","searchFuel()"); _myFuelRenderCard(); }
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); _reportRefreshHomeRow(); }
-    if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); }
+    if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); }
     if (name === "library") { libCheckPin(); }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
