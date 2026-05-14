@@ -12878,23 +12878,104 @@ _bkBadge();
   function _musicRenderGigs(events) {
     var listEl = document.getElementById('music-gigs-list');
     if (!events.length) {
-      listEl.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--muted);font-size:13px">No upcoming gigs found within 20 miles.<br>Try checking back nearer the weekend.</div>';
+      listEl.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--muted);font-size:13px">No upcoming gigs found nearby.<br>Try checking back nearer the weekend.</div>';
       return;
     }
-    listEl.innerHTML = events.map(function(ev){
-      var dateStr = ev.date ? new Date(ev.date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) : '';
-      var timeStr = ev.time ? ev.time.slice(0,5) : '';
-      return '<a href="'+ev.url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);text-decoration:none">'
-        +(ev.image ? '<img src="'+ev.image+'" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0">'
-                   : '<div style="width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,#7c3aed22,#a78bfa22);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🎟</div>')
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ev.name+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+ev.venue+(ev.city?', '+ev.city:'')+'</div>'
-        +'<div style="font-size:11px;color:#7c3aed;font-weight:600;margin-top:2px">'+dateStr+(timeStr?' · '+timeStr:'')+'</div>'
-        +'</div>'
-        +'<div style="font-size:18px;flex-shrink:0;color:var(--muted)">›</div>'
-        +'</a>';
-    }).join('');
+
+    // Group by date label
+    var today    = new Date(); today.setHours(0,0,0,0);
+    var tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+    var thisWeekEnd = new Date(today); thisWeekEnd.setDate(today.getDate()+7);
+
+    function _dateLabel(dateStr) {
+      if (!dateStr) return 'Coming up';
+      var d = new Date(dateStr+'T12:00:00'); d.setHours(0,0,0,0);
+      if (d.getTime()===today.getTime())    return 'Today';
+      if (d.getTime()===tomorrow.getTime()) return 'Tomorrow';
+      if (d < thisWeekEnd) return d.toLocaleDateString('en-GB',{weekday:'long'});
+      return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+    }
+
+    function _dayNum(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr+'T12:00:00');
+      return d.toLocaleDateString('en-GB',{day:'numeric'});
+    }
+    function _monthAbbr(dateStr) {
+      if (!dateStr) return '';
+      var d = new Date(dateStr+'T12:00:00');
+      return d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase();
+    }
+
+    // Bucket events by group label
+    var groups = [], groupMap = {};
+    events.forEach(function(ev) {
+      var label = _dateLabel(ev.date);
+      if (!groupMap[label]) { groupMap[label] = []; groups.push(label); }
+      groupMap[label].push(ev);
+    });
+
+    var gradients = [
+      'linear-gradient(135deg,#1e1b4b,#312e81)',
+      'linear-gradient(135deg,#0f172a,#1e3a5f)',
+      'linear-gradient(135deg,#1a0533,#4a1272)',
+      'linear-gradient(135deg,#0c1a0c,#1a4020)',
+      'linear-gradient(135deg,#1f0a0a,#5c1a1a)',
+    ];
+    var gIdx = 0;
+
+    var html = '';
+    groups.forEach(function(label) {
+      html += '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px">'
+            + label + '</div>';
+
+      groupMap[label].forEach(function(ev) {
+        var timeStr  = ev.time ? ev.time.slice(0,5) : '';
+        var distMi   = ev.distance_km ? (ev.distance_km * 0.621371).toFixed(1)+' mi' : '';
+        var grad     = gradients[gIdx++ % gradients.length];
+        var venue    = ev.venue || '';
+        var city     = ev.city  || '';
+        var location = venue + (city && venue ? ', ' : '') + city;
+
+        if (ev.image) {
+          // Image card: artwork as background, text overlaid
+          html += '<a href="'+ev.url+'" target="_blank" rel="noopener" style="display:block;text-decoration:none;margin-bottom:10px;border-radius:18px;overflow:hidden;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.18)">'
+            + '<img src="'+ev.image+'" style="width:100%;height:160px;object-fit:cover;display:block">'
+            + '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.05) 30%,rgba(0,0,0,.82) 100%)"></div>'
+            // top badges
+            + '<div style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border-radius:10px;padding:4px 10px;text-align:center">'
+            +   '<div style="font-size:16px;font-weight:900;color:#fff;line-height:1">'+_dayNum(ev.date)+'</div>'
+            +   '<div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:.06em">'+_monthAbbr(ev.date)+'</div>'
+            + '</div>'
+            + (distMi ? '<div style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:700;color:rgba(255,255,255,.85)">📍 '+distMi+'</div>' : '')
+            // bottom text
+            + '<div style="position:absolute;bottom:0;left:0;right:0;padding:12px 14px">'
+            +   '<div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-.2px;text-shadow:0 1px 4px rgba(0,0,0,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ev.name+'</div>'
+            +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">'
+            +     '<div style="font-size:11px;color:rgba(255,255,255,.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+location+(timeStr?' · '+timeStr:'')+'</div>'
+            +     '<div style="font-size:11px;font-weight:700;color:#a78bfa;flex-shrink:0;margin-left:8px">Tickets →</div>'
+            +   '</div>'
+            + '</div>'
+            + '</a>';
+        } else {
+          // No image: gradient card
+          html += '<a href="'+ev.url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:14px;text-decoration:none;margin-bottom:10px;border-radius:18px;padding:14px 16px;background:'+grad+';box-shadow:0 4px 16px rgba(0,0,0,.18)">'
+            + '<div style="flex-shrink:0;text-align:center;min-width:36px">'
+            +   '<div style="font-size:22px;font-weight:900;color:#fff;line-height:1">'+(_dayNum(ev.date)||'🎟')+'</div>'
+            +   '<div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.06em">'+_monthAbbr(ev.date)+'</div>'
+            + '</div>'
+            + '<div style="flex:1;min-width:0">'
+            +   '<div style="font-size:14px;font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ev.name+'</div>'
+            +   '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+location+(timeStr?' · '+timeStr:'')+'</div>'
+            +   (distMi ? '<div style="font-size:10px;color:rgba(255,255,255,.45);margin-top:2px">📍 '+distMi+'</div>' : '')
+            + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.55);flex-shrink:0">›</div>'
+            + '</a>';
+        }
+      });
+    });
+
+    listEl.innerHTML = html;
   }
 
   function _heq(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
