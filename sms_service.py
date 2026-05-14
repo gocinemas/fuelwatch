@@ -14865,7 +14865,8 @@ def api_space_artemis():
     try:
         r = requests.get(
             "https://images-api.nasa.gov/search",
-            params={"q": "artemis moon", "media_type": "image", "page_size": 6},
+            params={"q": "artemis orion crew 2024 2025", "media_type": "image",
+                    "page_size": 9, "year_start": "2022"},
             timeout=8,
         )
         photos = []
