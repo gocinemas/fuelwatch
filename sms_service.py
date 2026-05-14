@@ -2344,9 +2344,26 @@ def school_settings_get():
                 "teacher_name":    p.get("teacher_name", ""),
                 "sender_emails":   p.get("sender_emails") or [],
                 "gmail_connected": gmail_connected,
-                "oauth_url":       _school_oauth_url(p["id"]) if not gmail_connected else None,
+                "oauth_url":       _school_oauth_url(p["id"]),
             })
         return _cors(jsonify({"profiles": result}))
+    except Exception as e:
+        return _cors(jsonify({"error": str(e)})), 500
+
+
+@app.route("/api/school/gmail-disconnect", methods=["POST", "OPTIONS"])
+def school_gmail_disconnect():
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+    data       = request.get_json(force=True, silent=True) or {}
+    profile_id = data.get("profile_id", "").strip()
+    if not profile_id:
+        return _cors(jsonify({"error": "profile_id required"})), 400
+    try:
+        lib._sb().table("school_profiles").update(
+            {"gmail_refresh_token": None}
+        ).eq("id", profile_id).execute()
+        return _cors(jsonify({"ok": True, "oauth_url": _school_oauth_url(profile_id)}))
     except Exception as e:
         return _cors(jsonify({"error": str(e)})), 500
 
