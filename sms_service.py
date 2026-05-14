@@ -2343,8 +2343,9 @@ def school_settings_get():
                 "class_name":      p.get("class_name", ""),
                 "teacher_name":    p.get("teacher_name", ""),
                 "sender_emails":   p.get("sender_emails") or [],
-                "gmail_connected": gmail_connected,
-                "oauth_url":       _school_oauth_url(p["id"]),
+                "gmail_connected":    gmail_connected,
+                "gmail_token_error": bool(p.get("gmail_token_error")),
+                "oauth_url":         _school_oauth_url(p["id"]),
             })
         return _cors(jsonify({"profiles": result}))
     except Exception as e:
@@ -2448,7 +2449,7 @@ def school_fetch_now():
         import threading
         threading.Thread(
             target=school_service.poll_all_profiles,
-            kwargs={"days_back": 3, "force": True, "profile_ids": profile_ids},
+            kwargs={"days_back": 3, "force": True, "profile_ids": profile_ids, "on_error": _school_gmail_token_alert},
             daemon=True,
         ).start()
         return _cors(jsonify({"ok": True, "started": True}))
@@ -11677,7 +11678,7 @@ def school_oauth_callback():
 
     try:
         lib._sb().table("school_profiles").update(
-            {"gmail_refresh_token": refresh_token}
+            {"gmail_refresh_token": refresh_token, "gmail_token_error": False}
         ).eq("id", profile_id).execute()
     except Exception as e:
         print(f"[school oauth] db error: {e}")
@@ -11819,10 +11820,40 @@ def school_poll():
     import threading
     threading.Thread(
         target=school_service.poll_all_profiles,
-        kwargs={"days_back": days_back, "force": force},
+        kwargs={"days_back": days_back, "force": force, "on_error": _school_gmail_token_alert},
         daemon=True,
     ).start()
     return jsonify({"status": "started", "days_back": days_back, "force": force})
+
+
+_school_token_alert_sent: dict = {}  # from_number → last alert timestamp
+
+def _school_gmail_token_alert(from_number: str, profiles: list):
+    """Send a WhatsApp alert when Gmail token is revoked. Rate-limited to once per 24h."""
+    import time
+    now = time.time()
+    last = _school_token_alert_sent.get(from_number, 0)
+    if now - last < 86400:
+        return
+    _school_token_alert_sent[from_number] = now
+
+    child_names = ", ".join(p["child_name"] for p in profiles if p.get("child_name")) or "your child"
+    wa_number = from_number.replace("whatsapp:", "")
+    msg = (
+        f"⚠️ *Miru school comms paused*\n\n"
+        f"Miru lost access to your Gmail and can no longer fetch school emails for {child_names}.\n\n"
+        f"Tap below to reconnect (takes 30 seconds):\n"
+        f"https://miru.humanagency.co/school/settings?wa={wa_number}"
+    )
+    try:
+        twilio_client.messages.create(
+            body=msg,
+            from_=os.environ.get("TWILIO_WHATSAPP_NUMBER", ""),
+            to=from_number,
+        )
+        print(f"[school] token alert sent to {from_number}")
+    except Exception as e:
+        print(f"[school] token alert send failed for {from_number}: {e}")
 
 
 def _normalise_from_number(raw: str) -> str:

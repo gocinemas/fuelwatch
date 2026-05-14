@@ -393,21 +393,38 @@ function renderGmailSection() {
   const notConnected = _profiles.filter(p => !p.gmail_connected);
   const allConnected = notConnected.length === 0;
 
+  const hasTokenError = _profiles.some(p => p.gmail_token_error);
+
   if (allConnected) {
     const reconnectBtns = _profiles.map(p => {
       const label = _profiles.length > 1 && p.child_name ? ` (${p.child_name})` : "";
-      return `<button onclick="_gmailReconnect('${p.id}','${_esc(p.oauth_url)}')" style="font-size:12px;color:#6b7280;background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">Reconnect${label}</button>`;
+      return `<button onclick="_gmailReconnect('${p.id}','${_esc(p.oauth_url)}')" style="font-size:12px;color:${hasTokenError?'#dc2626':'#6b7280'};background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">Reconnect${label}</button>`;
     }).join(" · ");
-    el.innerHTML = `
-      <div class="card" style="display:flex;align-items:center;gap:12px">
-        <div style="font-size:22px">📬</div>
-        <div>
-          <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px">Gmail connected</div>
-          <div style="font-size:13px;color:#6b7280">Miru is scanning your inbox for school emails.</div>
-          <div style="margin-top:6px">${reconnectBtns}</div>
-        </div>
-        <span class="gmail-connected-badge" style="margin-left:auto">✓ Connected</span>
-      </div>`;
+
+    if (hasTokenError) {
+      el.innerHTML = `
+        <div class="card" style="border-color:#fca5a5;background:#fef2f2">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:22px">⚠️</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#991b1b;margin-bottom:2px">Gmail access expired</div>
+              <div style="font-size:13px;color:#b91c1c">Miru can't reach your Gmail — school comms are paused.</div>
+            </div>
+          </div>
+          <div>${reconnectBtns}</div>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div class="card" style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:22px">📬</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px">Gmail connected</div>
+            <div style="font-size:13px;color:#6b7280">Miru is scanning your inbox for school emails.</div>
+            <div style="margin-top:6px">${reconnectBtns}</div>
+          </div>
+          <span class="gmail-connected-badge" style="margin-left:auto">✓ Connected</span>
+        </div>`;
+    }
     return;
   }
 

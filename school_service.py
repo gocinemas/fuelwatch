@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS school_profiles (
 );
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS class_wa_group text NOT NULL DEFAULT '';
 -- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS gmail_refresh_token text;
+-- Migration: ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS gmail_token_error boolean NOT NULL DEFAULT false;
 CREATE INDEX ON school_profiles(from_number);
 
 CREATE TABLE IF NOT EXISTS school_events (
@@ -451,7 +452,22 @@ def _get_this_week_events(from_number: str) -> list[dict]:
 
 # ── Email polling ──────────────────────────────────────────────────────────────
 
-def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list = None) -> dict:
+def _flag_token_error(from_number: str, profiles: list, on_error=None):
+    """Mark all profiles for this parent as having a bad token, then notify via callback."""
+    ids = [p["id"] for p in profiles]
+    try:
+        lib._sb().table("school_profiles").update({"gmail_token_error": True}) \
+            .in_("id", ids).execute()
+    except Exception as e:
+        print(f"[school] flag token error DB write failed: {e}")
+    if callable(on_error):
+        try:
+            on_error(from_number, profiles)
+        except Exception as e:
+            print(f"[school] on_error callback failed: {e}")
+
+
+def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list = None, on_error=None) -> dict:
     """
     For every active school profile (optionally filtered to profile_ids),
     fetch emails from school senders using each parent's own Gmail token.
@@ -507,6 +523,8 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
             res = _gmail_get("messages", {"q": query, "maxResults": 50}, refresh_token=gmail_token)
         except Exception as e:
             print(f"[school] Gmail list error for {from_number}: {e}")
+            if "400" in str(e) or "401" in str(e):
+                _flag_token_error(from_number, parent_profiles, on_error)
             continue
 
         msg_stubs = res.get("messages", [])
