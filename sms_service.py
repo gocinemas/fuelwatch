@@ -8635,7 +8635,8 @@ _FOOD_INTENTS = [
       "review_terms": ["steak", "ribeye", "sirloin", "fillet", "medium rare", "wagyu", "sauce", "sides"]}),
     (re.compile(r'\b(wine|wines|red wine|white wine|ros[eé]|house wine|bottle of wine|glass of wine)\b', re.I),
      {"type": "bar", "keyword": "wine bar", "emoji": "🍷", "label": "wine",
-      "required_types": ["bar", "restaurant"],
+      "required_types": ["bar", "restaurant", "establishment"],
+      "radius": 5000,
       "review_terms": ["wine", "red", "white", "rosé", "bottle", "glass", "selection", "sommelier", "natural wine"]}),
     (re.compile(r'\b(lunch|what.{0,25}(eat|have).{0,10}lunch)\b', re.I),
      {"type": "restaurant", "keyword": "", "emoji": "🥗", "label": "lunch",
@@ -8933,7 +8934,8 @@ def _wa_food_find(body: str, from_number: str):
     places = _find_food_nearby(lat, lon, intent["type"],
                                cheap=wants_cheap,
                                keyword=intent.get("keyword", ""),
-                               required_types=intent.get("required_types", []))
+                               required_types=intent.get("required_types", []),
+                               radius=intent.get("radius", 1500))
     if not places:
         return f"No {intent['label']} spots found near {pc_fmt}. Sorry!"
 
