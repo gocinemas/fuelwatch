@@ -3823,27 +3823,31 @@ def _places_nearby(lat, lon, place_type, radius_m, max_results):
         print(f"[places_nearby {place_type}] {e}")
         return []
 
-def _fetch_hospitals_overpass(lat, lon, radius_m=10000):
-    query = f"""[out:json][timeout:25];
+def _fetch_hospitals_overpass(lat, lon, radius_m=20000):
+    query = f"""[out:json][timeout:30];
 (
   node["amenity"="hospital"](around:{radius_m},{lat},{lon});
   way["amenity"="hospital"](around:{radius_m},{lat},{lon});
   relation["amenity"="hospital"](around:{radius_m},{lat},{lon});
+  node["healthcare"="hospital"](around:{radius_m},{lat},{lon});
+  way["healthcare"="hospital"](around:{radius_m},{lat},{lon});
+  relation["healthcare"="hospital"](around:{radius_m},{lat},{lon});
 );
 out center tags;"""
     _SKIP_HOSPITAL_WORDS = {
-        "gp", "surgery", "medical centre", "health centre", "dental",
+        "gp", "surgery", "dental",
         "dentist", "optician", "pharmacy", "veterinary", "vet ", "beauty",
         "cosmetic", "aesthetic", "therapy", "therapist",
     }
     try:
-        elements = _overpass_mirrors(query)
-        items = []
+        elements = _overpass_mirrors(query, timeout=35)
+        seen, items = set(), []
         for el in elements:
             tags = el.get("tags", {})
             name = tags.get("name", "")
-            if not name:
+            if not name or name in seen:
                 continue
+            seen.add(name)
             nl = name.lower()
             if any(w in nl for w in _SKIP_HOSPITAL_WORDS):
                 continue
@@ -3858,13 +3862,18 @@ out center tags;"""
                 "phone": _el_phone(tags),
             })
         items.sort(key=lambda x: x["distance_km"])
-        return items[:4]
+        return items[:5]
     except Exception as e:
         print(f"[overpass hospitals] {e}")
         return []
 
 def _fetch_hospitals(lat, lon):
-    return _fetch_hospitals_overpass(lat, lon)
+    results = _fetch_hospitals_overpass(lat, lon)
+    if not results:
+        # Google Places fallback for areas with sparse OSM hospital tagging
+        gp = places_nearby(lat, lon, "hospital", radius_m=20000, max_results=5)
+        results = [{"name": p["name"], "address": p.get("address",""), "distance_km": p.get("distance_km",0), "phone": ""} for p in gp]
+    return results
 
 _UK_SUPERMARKET_CHAINS = {
     "sainsbury", "tesco", "asda", "lidl", "aldi", "waitrose", "morrisons",

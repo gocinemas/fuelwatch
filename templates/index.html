@@ -2634,33 +2634,51 @@ const _ts = new Date(d.timestamp);
       });
 
     // Services and shops load in the background — don't block the main allSettled
-    fetchWithTimeout(`/api/services?postcode=${postcode}`, 35000)
-      .then(async r => {
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || "Services lookup failed");
-        renderServicesData(d);
-      })
-      .catch(err => {
-        document.getElementById("report-services-list").innerHTML =
-          `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
-      })
-      .finally(() => {
-        document.getElementById("rptab-loading-services").style.display = "none";
-      });
+    // Hospitals/GPs are cached 24h; shops 6h (they rarely change)
+    const _svcKey = `rpt_services_${postcode}`;
+    const _shpKey = `rpt_shops_${postcode}`;
+    const _svcCached = (() => { try { const c = JSON.parse(localStorage.getItem(_svcKey)||"null"); return c && (Date.now()-c.ts < 86400000) ? c.data : null; } catch{return null;} })();
+    const _shpCached = (() => { try { const c = JSON.parse(localStorage.getItem(_shpKey)||"null"); return c && (Date.now()-c.ts < 21600000) ? c.data : null; } catch{return null;} })();
 
-    fetchWithTimeout(`/api/shops?postcode=${postcode}`, 35000)
-      .then(async r => {
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || "Shops lookup failed");
-        renderShopsData(d);
-      })
-      .catch(err => {
-        document.getElementById("report-shops-list").innerHTML =
-          `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
-      })
-      .finally(() => {
-        document.getElementById("rptab-loading-shops").style.display = "none";
-      });
+    if (_svcCached) {
+      renderServicesData(_svcCached);
+      document.getElementById("rptab-loading-services").style.display = "none";
+    } else {
+      fetchWithTimeout(`/api/services?postcode=${postcode}`, 35000)
+        .then(async r => {
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "Services lookup failed");
+          try { localStorage.setItem(_svcKey, JSON.stringify({ts: Date.now(), data: d})); } catch{}
+          renderServicesData(d);
+        })
+        .catch(err => {
+          document.getElementById("report-services-list").innerHTML =
+            `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+        })
+        .finally(() => {
+          document.getElementById("rptab-loading-services").style.display = "none";
+        });
+    }
+
+    if (_shpCached) {
+      renderShopsData(_shpCached);
+      document.getElementById("rptab-loading-shops").style.display = "none";
+    } else {
+      fetchWithTimeout(`/api/shops?postcode=${postcode}`, 35000)
+        .then(async r => {
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "Shops lookup failed");
+          try { localStorage.setItem(_shpKey, JSON.stringify({ts: Date.now(), data: d})); } catch{}
+          renderShopsData(d);
+        })
+        .catch(err => {
+          document.getElementById("report-shops-list").innerHTML =
+            `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+        })
+        .finally(() => {
+          document.getElementById("rptab-loading-shops").style.display = "none";
+        });
+    }
 
     await Promise.allSettled([houseP, localP, crimeP]);
     clearTimeout(slowTimer);
