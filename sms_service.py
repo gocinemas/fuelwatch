@@ -8623,7 +8623,7 @@ _FOOD_INTENTS = [
       "review_terms": ["sandwich", "sourdough", "baguette", "ciabatta", "toastie", "deli", "roll"]}),
     (re.compile(r'\b(burger|burgers|smash burger|smash)\b', re.I),
      {"type": "restaurant", "keyword": "burger", "emoji": "🍔", "label": "burgers",
-      "required_types": ["restaurant", "meal_takeaway", "food"],
+      "required_types": ["restaurant", "meal_takeaway", "food"], "always_best": True,
       "review_terms": ["burger", "smash", "patty", "brioche", "beef", "cheese", "fries", "loaded"]}),
     (re.compile(r'\b(kebab|kebabs|shawarma|doner)\b', re.I),
      {"type": "restaurant", "keyword": "kebab", "emoji": "🌯", "label": "kebab",
@@ -8631,8 +8631,12 @@ _FOOD_INTENTS = [
       "review_terms": ["kebab", "doner", "shawarma", "lamb", "chicken", "wrap", "pita", "garlic sauce"]}),
     (re.compile(r'\b(steak|steakhouse|ribeye|sirloin)\b', re.I),
      {"type": "restaurant", "keyword": "steak", "emoji": "🥩", "label": "steak",
-      "required_types": ["restaurant", "food"],
+      "required_types": ["restaurant", "food"], "always_best": True,
       "review_terms": ["steak", "ribeye", "sirloin", "fillet", "medium rare", "wagyu", "sauce", "sides"]}),
+    (re.compile(r'\b(wine|wines|red wine|white wine|ros[eé]|house wine|bottle of wine|glass of wine)\b', re.I),
+     {"type": "bar", "keyword": "wine bar", "emoji": "🍷", "label": "wine",
+      "required_types": ["bar", "restaurant"],
+      "review_terms": ["wine", "red", "white", "rosé", "bottle", "glass", "selection", "sommelier", "natural wine"]}),
     (re.compile(r'\b(lunch|what.{0,25}(eat|have).{0,10}lunch)\b', re.I),
      {"type": "restaurant", "keyword": "", "emoji": "🥗", "label": "lunch",
       "required_types": ["restaurant", "cafe", "food"],
@@ -8823,7 +8827,8 @@ def _wa_food_find(body: str, from_number: str):
     if not intent:
         return None
 
-    wants_cheap = bool(re.search(r'\bcheap\b', body_lower))
+    # Some categories (steak, burger) are always about quality — never sort by price
+    wants_cheap = bool(re.search(r'\bcheap\b', body_lower)) and not intent.get("always_best")
 
     # Postcode from message — accept full (KT16 0DA) or outward-only (KT16)
     _full_pc  = re.search(r'[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', body.upper())
@@ -9376,11 +9381,12 @@ def _wa_classify_intent(body: str) -> dict | None:
                 "  tube         — London tube/DLR/Overground/Elizabeth line status, journey, or line info.\n"
                 "                 Extract: from (station or null), to (station or null),\n"
                 "                 query (status | journey | line name — infer from message, default 'status').\n"
-                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea|burger|kebab|steak).\n"
+                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea|burger|kebab|steak|wine).\n"
                 "                 Map latte/cappuccino/capuccino/mocha/pistachio latte/espresso/flat white/americano/cortado/coffee/cofee/coffeeee → coffee.\n"
                 "                 Map tea/english breakfast/chai/brew/cuppa → tea.\n"
-                "                 Map beer/pint/ale/lager/craft beer/cheap beer → beer.\n"
+                "                 Map beer/pint/ale/lager/craft beer/cheap beer/good beer → beer.\n"
                 "                 Map burger/burgers/smash burger → burger. Map kebab/doner/shawarma → kebab. Map steak/steakhouse/ribeye/sirloin → steak.\n"
+                "                 Map wine/red wine/white wine/rosé/house wine/glass of wine → wine.\n"
                 "                 postcode (UK outcode like KT16 or full postcode — extract exactly as written, or null if not present),\n"
                 "                 cheap (bool, true only if user explicitly says cheap/budget/affordable).\n"
                 "  book_lookup  — user wants to find/save/add a book. Extract: query (title/author/ISBN).\n"
