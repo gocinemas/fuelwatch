@@ -9876,6 +9876,63 @@ def whatsapp_reply():
         resp.message(f"📚 {book_label}{rating_line}\n\n{verdict}")
         return str(resp)
 
+    # ── SAVE SONG <title> command ─────────────────────────────────────────────
+    _song_prefixes = ("save song ", "song ", "add song ", "music ")
+    _sg_prefix = next((p for p in _song_prefixes if body_lower.startswith(p)), None)
+    if _sg_prefix:
+        sg_query = body[len(_sg_prefix):].strip()
+        if not sg_query:
+            resp.message("🎵 Tell me what to save — e.g.\n*save song Blinding Lights*")
+            return str(resp)
+        try:
+            _it = requests.get(
+                "https://itunes.apple.com/search",
+                params={"term": sg_query, "entity": "song", "limit": 1, "country": "GB"},
+                timeout=8,
+            ).json()
+            _track = (_it.get("results") or [None])[0]
+        except Exception:
+            _track = None
+        if not _track:
+            resp.message(f"🎵 Couldn't find *{sg_query}* — try the full song title and artist, e.g.\n*save song Blinding Lights The Weeknd*")
+            return str(resp)
+        _sg_title   = _track.get("trackName", sg_query)
+        _sg_artist  = _track.get("artistName", "")
+        _sg_album   = _track.get("collectionName", "")
+        _sg_year    = str(_track.get("releaseDate", ""))[:4]
+        _sg_genre   = _track.get("primaryGenreName", "")
+        _sg_cover   = (_track.get("artworkUrl100") or "").replace("100x100", "300x300")
+        _sg_preview = _track.get("previewUrl", "")
+        _sg_spotify = f"https://open.spotify.com/search/{requests.utils.quote(_sg_title + ' ' + _sg_artist)}"
+        _wa_phone   = from_number.replace("whatsapp:", "")
+        try:
+            _existing = lib._sb().table("music_saves") \
+                .select("id").eq("phone", _wa_phone).eq("title", _sg_title).eq("artist", _sg_artist).execute().data
+            if not _existing:
+                lib._sb().table("music_saves").insert({
+                    "phone":       _wa_phone,
+                    "title":       _sg_title,
+                    "artist":      _sg_artist,
+                    "album":       _sg_album,
+                    "year":        _sg_year,
+                    "genre":       _sg_genre,
+                    "cover_url":   _sg_cover,
+                    "preview_url": _sg_preview,
+                    "spotify_url": _sg_spotify,
+                }).execute()
+            _already = bool(_existing)
+        except Exception:
+            _already = False
+        _save_status = "Already in" if _already else "Saved to"
+        resp.message(
+            f"🎵 *{_sg_title}*\n{_sg_artist}"
+            + (f" · {_sg_album}" if _sg_album else "")
+            + (f" · {_sg_year}" if _sg_year else "")
+            + f"\n\n{'✅' if not _already else '📌'} {_save_status} your Music tab"
+            + f"\nmiru.humanagency.co/?screen=music"
+        )
+        return str(resp)
+
     # ── BOOK <title or ISBN> command ──────────────────────────────────────────
     _book_prefixes = ("book ", "add book ", "save book ", "find book ")
     _bk_prefix = next((p for p in _book_prefixes if body_lower.startswith(p)), None)
