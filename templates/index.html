@@ -12016,7 +12016,8 @@ _bkBadge();
   if (_deepScreen) {
     const _dsAlias = { intel: 'company', library: 'scan' };
     const _dsTarget = _dsAlias[_deepScreen] || _deepScreen;
-    window.showScreen(_dsTarget);
+    // Defer so all showScreen overrides (music, trains, news) are registered first
+    setTimeout(function() { window.showScreen(_dsTarget); }, 0);
     // Auto-fill postcode for fuel and report screens
     if (_deepPc) {
       if (_dsTarget === 'fuel') {
