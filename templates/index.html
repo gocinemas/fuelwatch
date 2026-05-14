@@ -5228,12 +5228,13 @@ const _ts = new Date(d.timestamp);
   };
 
   window.searchIntel = async function() {
-    // On intel.humanagency.co, read from the mode-specific visible input; fallback to hidden intel-input (set by recent-item clicks)
+    // intel-input is the canonical value (set by typing via oninput sync AND by recent-item clicks).
+    // _visQ (brand-q/company-q) can be stale after a recent-item click, so always prefer intel-input.
     var raw;
     if (_INTEL_MODE) {
       var _visQ = _intelSearchMode === "company" ? document.getElementById("company-q") : document.getElementById("brand-q");
-      raw = (_visQ && _visQ.value.trim()) || document.getElementById("intel-input").value.trim();
-      if (_visQ && !_visQ.value.trim()) _visQ.value = raw; // sync visible input when recent item clicked
+      raw = document.getElementById("intel-input").value.trim() || (_visQ && _visQ.value.trim());
+      if (_visQ) _visQ.value = raw; // keep visible input in sync with the resolved term
     } else {
       raw = document.getElementById("intel-input").value.trim();
     }
