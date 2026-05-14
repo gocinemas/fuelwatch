@@ -16,6 +16,23 @@
     --muted: #606068;
     --accent: #22c55e;
     --r: 20px;
+    --pill-bg: rgba(28,28,32,.95);
+    --saves-bg: rgba(20,20,22,.95);
+    --moon-erase: #06111a;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface2: #ebebed;
+      --border: rgba(0,0,0,0.07);
+      --text: #111113;
+      --muted: #888890;
+      --pill-bg: rgba(255,255,255,.92);
+      --saves-bg: rgba(255,255,255,.95);
+      --moon-erase: #f5f5f7;
+    }
   }
 
   body {
@@ -182,7 +199,7 @@
   .wx-moon::after {
     content: ''; position: absolute;
     top: -2px; right: -5px;
-    width: 20px; height: 20px; background: #06111a; border-radius: 50%;
+    width: 20px; height: 20px; background: var(--moon-erase); border-radius: 50%;
   }
   .wx-stars { position: absolute; inset: 0; }
   .wx-star {
@@ -238,7 +255,7 @@
     z-index: 250;
   }
   #saves-pill {
-    background: rgba(20,20,22,.95);
+    background: var(--saves-bg);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid rgba(255,255,255,.1);
@@ -303,10 +320,10 @@
   }
   #pill-shell {
     display: flex; align-items: center; justify-content: center;
-    background: rgba(28,28,32,.95);
+    background: var(--pill-bg);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255,255,255,.1);
+    border: 1px solid var(--border);
     border-radius: 30px; height: 46px; width: 150px;
     overflow: hidden; position: relative; cursor: pointer;
     transition: width .38s cubic-bezier(.34,1.56,.64,1);
