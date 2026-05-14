@@ -788,6 +788,10 @@ def index():
     intel_mode = "intel." in request.host or request.args.get("intel") == "1"
     return render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=intel_mode)
 
+@app.route("/design/home")
+def design_home():
+    return render_template("design_home_bento.html")
+
 @app.route("/privacy")
 def privacy_page():
     return render_template("privacy.html")
