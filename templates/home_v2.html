@@ -382,6 +382,15 @@
 
 <script>
 // ── HELPERS ────────────────────────────────────────────────────
+// Seed identity from URL params (e.g. ?pc=KT160HY&phone=447700900000)
+(function(){
+  var _p = new URLSearchParams(location.search);
+  var _pc = (_p.get('pc') || _p.get('postcode') || '').replace(/\s+/g,'').toUpperCase();
+  var _ph = _p.get('phone') || '';
+  if (_pc) localStorage.setItem('miru_postcode', _pc);
+  if (_ph) localStorage.setItem('miru_phone', _ph);
+})();
+
 const _rawPC = (localStorage.getItem('miru_postcode') || '').replace(/\s+/g,'').toUpperCase();
 const PC     = _rawPC || '';
 const PC_FMT = PC.length > 4 ? PC.slice(0,-3)+' '+PC.slice(-3) : PC;
