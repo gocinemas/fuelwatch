@@ -803,7 +803,10 @@ const _screenMap = {
 function nav(screen) {
   if (screen === 'home') return;
   const target = _screenMap[screen] || screen;
-  window.location.href = '/?screen=' + target;
+  // Pass postcode for screens that need it
+  const _pcParam = PC ? '&pc=' + encodeURIComponent(PC) : '';
+  const _usesPc = ['trains','fuel','myarea','report'].includes(target);
+  window.location.href = '/?screen=' + target + (_usesPc ? _pcParam : '');
 }
 
 let _tt;

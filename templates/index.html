@@ -12005,11 +12005,28 @@ _bkBadge();
     if (name === "saves") savesCheckPin();
   };
 
-  // Deep-link: ?screen=X — run after full DOM ready
+  // Deep-link: ?screen=X&pc=POSTCODE — run after full DOM ready
   const _deepScreen = new URLSearchParams(location.search).get("screen");
+  const _deepPc     = new URLSearchParams(location.search).get("pc");
   if (_deepScreen) {
     const _dsAlias = { intel: 'company', library: 'scan' };
-    window.showScreen(_dsAlias[_deepScreen] || _deepScreen);
+    const _dsTarget = _dsAlias[_deepScreen] || _deepScreen;
+    window.showScreen(_dsTarget);
+    // Auto-fill postcode for fuel and report screens
+    if (_deepPc) {
+      if (_dsTarget === 'fuel') {
+        setTimeout(function() {
+          var el = document.getElementById('fuel-postcode');
+          if (el && !el.value.trim()) { el.value = _deepPc; if (window.searchFuel) searchFuel(); }
+        }, 150);
+      }
+      if (_dsTarget === 'report') {
+        setTimeout(function() {
+          var el = document.getElementById('report-postcode');
+          if (el && !el.value.trim()) { el.value = _deepPc; if (window.searchReport) searchReport(); }
+        }, 150);
+      }
+    }
   }
 
   // Tab helpers for merged cards
@@ -13569,7 +13586,15 @@ window.spotifyAddTrack = window.spotifyLike;
         _showIdle();
         // Auto-load home bookmark if set
         var bh = _getBm("home");
-        if (bh && bh.crs) { _showActive(bh.name, bh.crs, "rail"); _loadDeps(bh.crs); }
+        if (bh && bh.crs) { _showActive(bh.name, bh.crs, "rail"); _loadDeps(bh.crs); return; }
+        // Fall back to saved postcode (e.g. from ?pc= param or identity bar)
+        var _tpc = new URLSearchParams(location.search).get("pc") || _miruPostcode();
+        if (_tpc) {
+          setTimeout(function() {
+            var inp = document.getElementById("train-search-input");
+            if (inp) { inp.value = _tpc; if (window.trainSearch) trainSearch(); }
+          }, 150);
+        }
       }
     } else {
       _stopTimers();
