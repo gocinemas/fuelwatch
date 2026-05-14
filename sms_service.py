@@ -8537,7 +8537,7 @@ _FOOD_CHAINS = frozenset({
 })
 
 _FOOD_INTENTS = [
-    (re.compile(r'\b(coffee|cafe|café|flat white|cappuccino|espresso|latte)\b', re.I),
+    (re.compile(r'\b(coffee|cafe|café|flat white|cappuccino|espresso|latte|americano|cortado|cofee)\b', re.I),
      {"type": "cafe", "keyword": "coffee", "emoji": "☕", "label": "coffee",
       "required_types": ["cafe", "bakery"],
       "review_terms": ["coffee", "latte", "cappuccino", "espresso", "flat white",
@@ -8563,10 +8563,14 @@ _FOOD_INTENTS = [
      {"type": "restaurant", "keyword": "", "emoji": "🍽️", "label": "dinner",
       "required_types": ["restaurant", "food"],
       "review_terms": ["dinner", "food", "atmosphere", "service", "menu", "delicious", "evening"]}),
-    (re.compile(r'\b(beer|pint|pub|ale|lager)\b', re.I),
+    (re.compile(r'\b(beer|pint|pub|ale|lager|craft beer)\b', re.I),
      {"type": "bar", "keyword": "pub", "emoji": "🍺", "label": "a pub",
       "required_types": ["bar", "night_club", "pub"],
       "review_terms": ["beer", "pint", "ale", "lager", "craft", "tap", "cask", "atmosphere", "garden"]}),
+    (re.compile(r'\b(tea|english breakfast tea|chai|cuppa|brew)\b', re.I),
+     {"type": "cafe", "keyword": "tea", "emoji": "🍵", "label": "tea",
+      "required_types": ["cafe", "bakery"],
+      "review_terms": ["tea", "chai", "english breakfast", "earl grey", "herbal", "pot of tea", "scone", "cake"]}),
 ]
 
 _PRICE_LEVEL = {1: "£", 2: "££", 3: "£££", 4: "££££"}
@@ -9266,7 +9270,10 @@ def _wa_classify_intent(body: str) -> dict | None:
                 "  tube         — London tube/DLR/Overground/Elizabeth line status, journey, or line info.\n"
                 "                 Extract: from (station or null), to (station or null),\n"
                 "                 query (status | journey | line name — infer from message, default 'status').\n"
-                "  food         — food or drink discovery nearby. Extract: food_type (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub),\n"
+                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea).\n"
+                "                 Map latte/cappuccino/espresso/flat white/americano/cortado/coffee/cofee/coffeeee → coffee.\n"
+                "                 Map tea/english breakfast/chai/brew/cuppa → tea.\n"
+                "                 Map beer/pint/ale/lager/craft beer/cheap beer → beer.\n"
                 "                 postcode (UK outcode like KT16 or full postcode — extract exactly as written, or null if not present),\n"
                 "                 cheap (bool, true only if user explicitly says cheap/budget/affordable).\n"
                 "  book_lookup  — user wants to find/save/add a book. Extract: query (title/author/ISBN).\n"
@@ -10694,17 +10701,21 @@ def api_planning():
     return jsonify(data)
 
 
+_digest_last_sent: dict = {}  # from_number → last sent epoch seconds
+_DIGEST_MIN_GAP_HOURS = 20   # never send to same user more than once per 20h
+
 @app.route("/api/wa-digest")
 def wa_digest():
-    """Send weekly digest of pending saves to each user via WhatsApp.
-    Trigger weekly via cron-job.org: GET /api/wa-digest?token=YOUR_DIGEST_TOKEN
+    """Send daily digest of pending saves. Safe to call frequently — per-user
+    rate limit of 20h prevents spam regardless of cron schedule.
+    Trigger via cron-job.org: GET /api/wa-digest?token=YOUR_DIGEST_TOKEN
     """
+    import time as _time
     token = request.args.get("token", "")
     if not token or token != os.environ.get("DIGEST_TOKEN", ""):
         return jsonify({"error": "Unauthorized"}), 401
 
     try:
-        # Include pending + remind (overdue reminders resurface in digest)
         rows = (lib._sb().table("wa_saves").select("*")
                 .in_("status", ["pending", "remind"])
                 .order("created_at")
@@ -10729,11 +10740,27 @@ def wa_digest():
 
     from twilio.rest import Client as _TwilioClient
     client = _TwilioClient(twilio_sid, twilio_token)
-    sent = 0
+    sent = skipped = 0
 
     for from_number, saves in by_user.items():
+        # Rate limit: skip if sent within the last 20 hours
+        now = _time.time()
+        last = _digest_last_sent.get(from_number, 0)
+        if now - last < _DIGEST_MIN_GAP_HOURS * 3600:
+            skipped += 1
+            continue
+        _digest_last_sent[from_number] = now
+
+        # Only include saves added since last digest (or overdue reminders)
+        cutoff = last  # epoch seconds of last send (0 = never sent)
+        new_saves    = [s for s in saves if s.get("status") == "remind" or
+                        (s.get("created_at") or "") > _time.strftime("%Y-%m-%dT%H:%M:%S", _time.gmtime(cutoff))]
+        if not new_saves:
+            skipped += 1
+            continue
+
         # Cap at 9 for numbered triage replies (1–9)
-        batch = saves[:9]
+        batch = new_saves[:9]
         _PENDING_DIGEST[from_number] = [
             {"id": s["id"], "title": s.get("title") or "Untitled", "url": s.get("url", "")}
             for s in batch
@@ -10780,7 +10807,7 @@ def wa_digest():
         except Exception:
             pass
 
-    return jsonify({"sent": sent, "total_users": len(by_user)})
+    return jsonify({"sent": sent, "skipped": skipped, "total_users": len(by_user)})
 
 
 # ── School web signup ──────────────────────────────────────────────────────────
@@ -12391,33 +12418,54 @@ def api_wa_saves_ad_intel():
     if from_number and save.get("from_number") != from_number:
         return jsonify({"error": "not your save"}), 403
 
-    title   = (save.get("title") or "").strip()
-    summary = (save.get("summary") or "").strip()
+    title     = (save.get("title") or "").strip()
+    summary   = (save.get("summary") or "").strip()
+    image_url = (save.get("image_url") or "").strip()
 
-    if not title and not summary:
+    if not title and not summary and not image_url:
         return jsonify({"error": "no content to analyse"}), 400
 
-    prompt = (
-        "Extract structured info from this saved ad, photo or property listing. "
-        "If it is a wine photo/label, set ad_type to wine and fill the wine fields.\n"
-        f"Title: {title}\nContent: {summary[:1200]}\n\n"
-        "Reply with JSON only (no markdown):\n"
-        '{"company":"letting agent, winery/producer name, or company name exactly as written","ad_type":"real_estate|wine|car|product|job|other",'
-        '"website":"website domain if you can infer it e.g. breckensidgelettings.co.uk, else null",'
-        '"postcode":"UK postcode if visible else null","area":"area or town name if no postcode",'
+    json_schema = (
+        '{"company":"company/brand name exactly as written, or null","ad_type":"real_estate|wine|car|vehicle|product|job|other",'
+        '"website":"website domain if inferable e.g. rightmove.co.uk, else null",'
+        '"postcode":"UK postcode if visible else null","area":"area or town if no postcode",'
         '"address":"full street address if visible else null",'
-        '"price":"price with £ symbol e.g. £2785pcm or £450000 or £18.99, NOT ¢","bedrooms":null,'
+        '"price":"price with £ symbol e.g. £2785pcm or £450000 or £18.99, else null","bedrooms":null,'
         '"property_type":"house/flat/studio/commercial/land or null",'
         '"wine_name":"name of the wine if visible else null",'
         '"vintage":"year of the wine if visible else null",'
-        '"grape":"grape variety/varietal if visible else null",'
+        '"grape":"grape variety if visible else null",'
         '"region":"wine region e.g. Burgundy, Rioja, Napa if visible else null",'
-        '"notes":"one sentence: key facts about this item"}'
+        '"registration":"vehicle registration plate exactly as shown, else null",'
+        '"notes":"one sentence: key facts, anything notable visible in the image"}'
     )
 
     import json as _json, re as _re
     try:
-        raw = _groq_chat("You are a data extraction assistant. Reply with JSON only.", [{"role": "user", "content": prompt}], max_tokens=400, json_mode=True)
+        if image_url:
+            # Vision model — send image URL directly
+            groq_key = os.environ.get("GROQ_API_KEY", "")
+            vision_messages = [{"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": image_url}},
+                {"type": "text", "text": (
+                    f"Extract structured info from this image. Additional context — title: {title or 'none'}, summary: {summary[:400] or 'none'}.\n"
+                    f"Reply with JSON only:\n{json_schema}"
+                )},
+            ]}]
+            vr = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={"model": "meta-llama/llama-4-scout-17b-16e-instruct", "messages": vision_messages, "max_tokens": 500},
+                timeout=20,
+            )
+            vr.raise_for_status()
+            raw = vr.json()["choices"][0]["message"]["content"].strip()
+        else:
+            prompt = (
+                "Extract structured info from this saved ad or listing.\n"
+                f"Title: {title}\nContent: {summary[:1200]}\n\nReply with JSON only:\n{json_schema}"
+            )
+            raw = _groq_chat("You are a data extraction assistant. Reply with JSON only.", [{"role": "user", "content": prompt}], max_tokens=500, json_mode=True)
         raw = _re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
         result = _json.loads(raw)
     except Exception as e:

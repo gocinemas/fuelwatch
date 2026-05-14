@@ -11548,11 +11548,15 @@ _bkBadge();
       : "";
 
     const imageThumb = s.image_url
-      ? `<img src="${s.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"
-           style="width:100%;border-radius:12px;margin-bottom:10px;max-height:220px;object-fit:cover;display:block">`
+      ? `<a href="${s.image_url}" target="_blank" rel="noopener" style="display:block;margin-bottom:10px">
+           <img src="${s.image_url}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"
+             style="width:100%;border-radius:12px;max-height:220px;object-fit:cover;display:block">
+         </a>`
       : "";
 
-    const openBtn = s.url && !isPhoto && !isBook
+    const openBtn = s.image_url
+      ? `<a href="${s.image_url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">🖼 View</a>`
+      : s.url && !isBook
       ? `<a href="${s.url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">↗</a>`
       : "";
 
@@ -11722,6 +11726,13 @@ _bkBadge();
             row("🍇", "Grape",    d.grape),
             row("🗺️", "Region",  d.region),
             row("💷", "Price",    d.price),
+            noteDiv,
+          ].filter(Boolean).join("")
+        : d.ad_type === "vehicle" || d.registration
+        ? [
+            row("🚗", "Reg",      d.registration),
+            row("🏢", "Company",  d.company),
+            row("📍", "Location", locStr || null),
             noteDiv,
           ].filter(Boolean).join("")
         : [
