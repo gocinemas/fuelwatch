@@ -13249,18 +13249,44 @@ def api_voice_query():
     if intent_type == "train":
         from_s = (intent.get("from_station") or "").strip()
         to_s   = (intent.get("to_station")   or "").strip()
+
+        # No from station — find nearest from postcode
+        if not from_s and postcode:
+            try:
+                base = request.host_url.rstrip("/")
+                nr = requests.get(f"{base}/api/train/nearest-by-postcode?postcode={postcode}", timeout=8)
+                nr_d = nr.json()
+                from_s = nr_d.get("name") or ""
+            except Exception:
+                pass
+
         if not from_s:
             return jsonify({"answer": "Which station would you like departures from?", "intent": "train"})
+
         result = _wa_train_format(from_s, to_s)
         if not result:
             return jsonify({"answer": f"I couldn't find {from_s} station. Check the name and try again.", "intent": "train"})
-        # Strip WhatsApp markup for speech
-        import re as _re
-        clean = _re.sub(r'[*_`]', '', result)
-        clean = clean.replace("🚆", "").replace("⏱", "").replace("🔴", "Cancelled.") \
-                     .replace("✅", "On time.").replace("→", "to").replace("\n\n", ". ").replace("\n", ". ")
-        clean = _re.sub(r'\s{2,}', ' ', clean).strip()
-        return jsonify({"answer": clean, "intent": "train"})
+
+        # Use Groq to turn raw departure data into a natural spoken sentence
+        try:
+            spoken = _groq_chat(
+                "You are a friendly UK voice assistant. "
+                "The user asked: \"" + query + "\". "
+                "Below is live train departure data. "
+                "Reply in ONE natural conversational sentence covering just the next train or two. "
+                "Mention departure time, destination, and whether it's on time or delayed. "
+                "No markdown, no lists, no asterisks, no emojis.",
+                [{"role": "user", "content": result}],
+                max_tokens=120
+            )
+            return jsonify({"answer": spoken.strip(), "intent": "train"})
+        except Exception:
+            # Fallback: basic cleanup
+            import re as _re
+            clean = _re.sub(r'[*_`]', '', result)
+            clean = clean.replace("→", "to").replace("\n", ". ")
+            clean = _re.sub(r'\s{2,}', ' ', clean).strip()
+            return jsonify({"answer": clean, "intent": "train"})
 
     elif intent_type == "fuel":
         if not postcode:
@@ -13271,16 +13297,16 @@ def api_voice_query():
             d = r.json()
             stations = d.get("stations") or d.get("results") or []
             if not stations:
-                return jsonify({"answer": f"No fuel stations found near {postcode}.", "intent": "fuel"})
+                return jsonify({"answer": f"I couldn't find any fuel stations near you right now.", "intent": "fuel"})
             best  = stations[0]
             price = best.get("price") or best.get("petrol_price")
             name  = best.get("name") or best.get("brand") or "a nearby station"
             dist  = best.get("distance")
-            dist_str = f", {dist:.1f} miles away" if dist else ""
-            answer = f"Cheapest petrol near {postcode} is {price:.1f}p at {name}{dist_str}."
+            dist_str = f" about {dist:.1f} miles away" if dist else " nearby"
+            answer = f"The cheapest petrol near you is {price:.1f}p a litre at {name},{dist_str}."
             return jsonify({"answer": answer, "intent": "fuel"})
         except Exception as e:
-            return jsonify({"answer": "Couldn't get fuel prices right now.", "intent": "fuel"})
+            return jsonify({"answer": "I couldn't get fuel prices right now. Try again in a moment.", "intent": "fuel"})
 
     elif intent_type == "weather":
         if not postcode:
@@ -13304,10 +13330,14 @@ def api_voice_query():
                      45:"foggy",51:"light drizzle",61:"light rain",63:"rain",65:"heavy rain",
                      80:"showers",81:"heavy showers",95:"thunderstorms"}
             desc = descs.get(code, "cloudy")
-            answer = f"In {district} it's {temp} degrees with {desc}, feeling like {feel} degrees."
+            feel_note = ""
+            if feel <= 4:   feel_note = " Wrap up well, it feels really cold."
+            elif feel <= 10: feel_note = " You'll want a jacket."
+            elif feel >= 22: feel_note = " Quite warm — enjoy it!"
+            answer = f"In {district} it's {temp} degrees with {desc}, feeling like {feel}.{feel_note}"
             return jsonify({"answer": answer, "intent": "weather"})
         except Exception as e:
-            return jsonify({"answer": "Couldn't get the weather right now.", "intent": "weather"})
+            return jsonify({"answer": "I couldn't get the weather right now. Try again in a moment.", "intent": "weather"})
 
     else:
         # General — let Groq answer
