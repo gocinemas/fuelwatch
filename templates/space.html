@@ -821,7 +821,9 @@
           <div class="section-label">Solar System — Live Distances from Earth</div>
           <div class="card" id="planets-card"><div class="loading">Computing positions…</div></div>
           <div id="planet-tooltip">
-            <img id="pt-img" src="" alt="">
+            <img id="pt-img" src="" alt="" crossorigin="anonymous"
+              onerror="this.style.display='none'"
+              onload="this.style.display='block'">
             <div class="pt-body">
               <div class="pt-name" id="pt-name"></div>
               <div class="pt-dist" id="pt-dist"></div>
@@ -1584,21 +1586,24 @@ function _coTab(key) {
 // ── Planet Distances ───────────────────────────────────────────────────────────
 var _PLANET_EMOJI = {Mercury:'☿',Venus:'♀',Mars:'♂',Jupiter:'♃',Saturn:'♄',Uranus:'⛢',Neptune:'♆'};
 var _PLANET_IMG = {
-  Mercury: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Mercury_in_true_color.jpg/800px-Mercury_in_true_color.jpg',
-  Venus:   'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Venus-real_color.jpg/800px-Venus-real_color.jpg',
-  Mars:    'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/OSIRIS_Mars_true_color.jpg/800px-OSIRIS_Mars_true_color.jpg',
-  Jupiter: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/800px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg',
-  Saturn:  'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Saturn_during_Equinox.jpg/800px-Saturn_during_Equinox.jpg',
-  Uranus:  'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Uranus2.jpg/800px-Uranus2.jpg',
-  Neptune: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Neptune_Full.jpg/800px-Neptune_Full.jpg',
+  Mercury: 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Mercury_in_true_color.jpg',
+  Venus:   'https://science.nasa.gov/wp-content/uploads/2024/03/venus-mariner-10-pia23791-fig2.jpg',
+  Mars:    'https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg',
+  Jupiter: 'https://science.nasa.gov/wp-content/uploads/2023/05/jupiter-marble-pia22946-1920x640-1.jpg',
+  Saturn:  'https://upload.wikimedia.org/wikipedia/commons/c/c7/Saturn_during_Equinox.jpg',
+  Uranus:  'https://images-assets.nasa.gov/image/PIA18182/PIA18182~orig.jpg',
+  Neptune: 'https://upload.wikimedia.org/wikipedia/commons/5/56/Neptune_Full.jpg',
 };
 
 var _ptTip = null, _ptHideTimer = null;
 function _ptShow(el, p) {
   if (!_ptTip) _ptTip = document.getElementById('planet-tooltip');
   clearTimeout(_ptHideTimer);
-  document.getElementById('pt-img').src = _PLANET_IMG[p.name] || '';
-  document.getElementById('pt-img').alt = p.name;
+  var img = document.getElementById('pt-img');
+  var src = _PLANET_IMG[p.name] || '';
+  img.style.display = src ? 'block' : 'none';
+  if (src && img.src !== src) { img.src = src; }
+  img.alt = p.name;
   document.getElementById('pt-name').textContent = p.name;
   document.getElementById('pt-dist').textContent = p.dist_M_km.toFixed(1) + ' million km · light takes ' + p.light_min.toFixed(1) + ' min';
   document.getElementById('pt-fact').textContent = p.fact || '';
@@ -1645,6 +1650,11 @@ function _renderPlanets(d) {
   html += '</div>';
   var ts = d.ts ? '<div style="font-size:10px;color:var(--subtle);margin-top:8px;text-align:right">Computed '+new Date(d.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' UTC</div>' : '';
   el.innerHTML = html + ts;
+
+  // Preload all planet images silently
+  d.planets.forEach(function(p) {
+    if (_PLANET_IMG[p.name]) { var i = new Image(); i.crossOrigin='anonymous'; i.src = _PLANET_IMG[p.name]; }
+  });
 
   // Attach hover + touch events
   var rows = el.querySelectorAll('.planet-row');
