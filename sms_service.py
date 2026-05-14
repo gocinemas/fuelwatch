@@ -13219,6 +13219,7 @@ def api_voice_query():
     data = request.json or {}
     query    = (data.get("query") or "").strip()
     postcode = (data.get("postcode") or "").replace(" ", "").upper()
+    phone    = (data.get("phone") or "").strip()
 
     if not query:
         return jsonify({"error": "No query provided"})
@@ -13226,11 +13227,15 @@ def api_voice_query():
     if not os.environ.get("GROQ_API_KEY"):
         return jsonify({"error": "Voice assistant not configured (GROQ_API_KEY missing)"})
 
+    # Resolve postcode from DB if not in localStorage (phone is the key)
+    if not postcode and phone:
+        postcode = _get_wa_home_postcode(phone) or ""
+
     # Step 1: parse intent
     intent_prompt = (
         f'Parse this voice query from a UK user and return JSON only.\n'
         f'Query: "{query}"\n'
-        f'Return exactly: {{"intent":"train|fuel|weather|general","from_station":"name or null","to_station":"name or null"}}'
+        f'Return exactly: {{"intent":"train|fuel|weather|councillor|mp|general","from_station":"name or null","to_station":"name or null"}}'
     )
     try:
         raw = _groq_chat(
@@ -13339,16 +13344,62 @@ def api_voice_query():
         except Exception as e:
             return jsonify({"answer": "I couldn't get the weather right now. Try again in a moment.", "intent": "weather"})
 
-    else:
-        # General — let Groq answer with full user context
+    elif intent_type in ("councillor", "mp"):
+        if not postcode:
+            return jsonify({"answer": "I couldn't find your postcode. Set it in My Area first.", "intent": intent_type})
         try:
-            ctx = f"The user's postcode is {postcode}. " if postcode else ""
+            if intent_type == "mp":
+                base = request.host_url.rstrip("/")
+                r = requests.get(f"{base}/api/mp?postcode={postcode}", timeout=10)
+                d = r.json()
+                mp = d.get("mp") or {}
+                name  = mp.get("name") or d.get("name") or ""
+                party = mp.get("party") or d.get("party") or ""
+                const = mp.get("constituency") or d.get("constituency") or ""
+                if name:
+                    answer = f"Your MP is {name} of {party}, representing {const}."
+                else:
+                    answer = "I couldn't find your MP details right now."
+            else:
+                result = _resolve_councillors(postcode)
+                cllrs  = result.get("councillors") or []
+                ward   = result.get("ward") or ""
+                if not cllrs:
+                    answer = f"I couldn't find councillor details for your area."
+                elif len(cllrs) == 1:
+                    c = cllrs[0]
+                    answer = f"Your councillor for {ward} is {c.get('name','')}, {c.get('party','')}."
+                else:
+                    names = ", ".join(c.get("name","") for c in cllrs[:3])
+                    answer = f"Your councillors for {ward} are {names}."
+            return jsonify({"answer": answer, "intent": intent_type})
+        except Exception as e:
+            return jsonify({"answer": "I couldn't look up your local representatives right now.", "intent": intent_type})
+
+    else:
+        # General — Groq with full user context pulled from DB
+        try:
+            ctx_parts = []
+            if postcode:
+                ctx_parts.append(f"postcode {postcode}")
+            # Pull stored My Area data (councillors, GPs, etc.) if available
+            if postcode:
+                try:
+                    cllr_data = _resolve_councillors(postcode)
+                    cllrs = cllr_data.get("councillors") or []
+                    ward  = cllr_data.get("ward") or ""
+                    if cllrs:
+                        names = ", ".join(f"{c.get('name','')} ({c.get('party','')})" for c in cllrs[:3])
+                        ctx_parts.append(f"local councillors for {ward}: {names}")
+                except Exception:
+                    pass
+            ctx = "User context: " + "; ".join(ctx_parts) + ". " if ctx_parts else ""
             answer = _groq_chat(
                 f"You are Miru, a helpful UK voice assistant. {ctx}"
-                "You already know the user's location — never ask for it. "
+                "You already know the user's location and stored details — never ask for them. "
                 "Give a short, direct spoken answer in 1-2 sentences. No markdown, no bullet points, no emojis.",
                 [{"role": "user", "content": query}],
-                max_tokens=120
+                max_tokens=150
             )
             return jsonify({"answer": answer.strip(), "intent": "general"})
         except Exception:

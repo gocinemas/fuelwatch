@@ -929,7 +929,7 @@ async function _voiceSubmit(query) {
     var r = await fetch('/api/voice-query', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ query: query, postcode: PC })
+      body: JSON.stringify({ query: query, postcode: PC, phone: PHONE })
     });
     var d = await r.json();
     if (d.error) { _voiceSetState('error', d.error); return; }
