@@ -8654,9 +8654,9 @@ _FOOD_INTENTS = [
       "required_types": ["bar", "night_club", "pub"],
       "review_terms": ["beer", "pint", "ale", "lager", "craft", "tap", "cask", "atmosphere", "garden"]}),
     (re.compile(r'\b(tea|english breakfast tea|chai|cuppa|brew)\b', re.I),
-     {"type": "cafe", "keyword": "tea", "emoji": "🍵", "label": "tea",
-      "required_types": ["cafe", "bakery"],
-      "review_terms": ["tea", "chai", "english breakfast", "earl grey", "herbal", "pot of tea", "scone", "cake"]}),
+     {"type": "cafe", "keyword": "", "emoji": "🍵", "label": "tea",
+      "required_types": ["cafe", "bakery", "restaurant"],
+      "review_terms": ["tea", "chai", "english breakfast", "earl grey", "herbal", "pot of tea", "scone", "cake", "afternoon tea"]}),
 ]
 
 _PRICE_LEVEL = {1: "£", 2: "££", 3: "£££", 4: "££££"}
