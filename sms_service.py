@@ -8607,11 +8607,11 @@ _FOOD_CHAINS = frozenset({
 })
 
 _FOOD_INTENTS = [
-    (re.compile(r'\b(coffee|cafe|café|flat white|cappuccino|espresso|latte|americano|cortado|cofee)\b', re.I),
+    (re.compile(r'\b(coffee|cafe|café|flat white|cappuccino|capuccino|espresso|latte|americano|cortado|mocha|pistachio latte|cofee)\b', re.I),
      {"type": "cafe", "keyword": "coffee", "emoji": "☕", "label": "coffee",
       "required_types": ["cafe", "bakery"],
       "review_terms": ["coffee", "latte", "cappuccino", "espresso", "flat white",
-                       "americano", "cortado", "cold brew", "barista", "oat milk"]}),
+                       "americano", "cortado", "mocha", "cold brew", "barista", "oat milk"]}),
     (re.compile(r'\b(breakfast|brunch)\b', re.I),
      {"type": "cafe", "keyword": "breakfast", "emoji": "🍳", "label": "breakfast",
       "required_types": ["cafe", "bakery", "restaurant"],
@@ -8621,6 +8621,18 @@ _FOOD_INTENTS = [
      {"type": "restaurant", "keyword": "sandwich deli", "emoji": "🥪", "label": "sandwiches",
       "required_types": ["cafe", "bakery", "restaurant", "meal_takeaway", "food"],
       "review_terms": ["sandwich", "sourdough", "baguette", "ciabatta", "toastie", "deli", "roll"]}),
+    (re.compile(r'\b(burger|burgers|smash burger|smash)\b', re.I),
+     {"type": "restaurant", "keyword": "burger", "emoji": "🍔", "label": "burgers",
+      "required_types": ["restaurant", "meal_takeaway", "food"],
+      "review_terms": ["burger", "smash", "patty", "brioche", "beef", "cheese", "fries", "loaded"]}),
+    (re.compile(r'\b(kebab|kebabs|shawarma|doner)\b', re.I),
+     {"type": "restaurant", "keyword": "kebab", "emoji": "🌯", "label": "kebab",
+      "required_types": ["restaurant", "meal_takeaway", "food"],
+      "review_terms": ["kebab", "doner", "shawarma", "lamb", "chicken", "wrap", "pita", "garlic sauce"]}),
+    (re.compile(r'\b(steak|steakhouse|ribeye|sirloin)\b', re.I),
+     {"type": "restaurant", "keyword": "steak", "emoji": "🥩", "label": "steak",
+      "required_types": ["restaurant", "food"],
+      "review_terms": ["steak", "ribeye", "sirloin", "fillet", "medium rare", "wagyu", "sauce", "sides"]}),
     (re.compile(r'\b(lunch|what.{0,25}(eat|have).{0,10}lunch)\b', re.I),
      {"type": "restaurant", "keyword": "", "emoji": "🥗", "label": "lunch",
       "required_types": ["restaurant", "cafe", "food"],
@@ -9364,10 +9376,11 @@ def _wa_classify_intent(body: str) -> dict | None:
                 "  tube         — London tube/DLR/Overground/Elizabeth line status, journey, or line info.\n"
                 "                 Extract: from (station or null), to (station or null),\n"
                 "                 query (status | journey | line name — infer from message, default 'status').\n"
-                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea).\n"
-                "                 Map latte/cappuccino/espresso/flat white/americano/cortado/coffee/cofee/coffeeee → coffee.\n"
+                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea|burger|kebab|steak).\n"
+                "                 Map latte/cappuccino/capuccino/mocha/pistachio latte/espresso/flat white/americano/cortado/coffee/cofee/coffeeee → coffee.\n"
                 "                 Map tea/english breakfast/chai/brew/cuppa → tea.\n"
                 "                 Map beer/pint/ale/lager/craft beer/cheap beer → beer.\n"
+                "                 Map burger/burgers/smash burger → burger. Map kebab/doner/shawarma → kebab. Map steak/steakhouse/ribeye/sirloin → steak.\n"
                 "                 postcode (UK outcode like KT16 or full postcode — extract exactly as written, or null if not present),\n"
                 "                 cheap (bool, true only if user explicitly says cheap/budget/affordable).\n"
                 "  book_lookup  — user wants to find/save/add a book. Extract: query (title/author/ISBN).\n"
