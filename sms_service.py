@@ -13213,6 +13213,62 @@ def api_music_save_delete(save_id):
         return jsonify({"error": "could not delete"}), 500
 
 
+@app.route("/api/music/gigs")
+def api_music_gigs():
+    key = os.environ.get("TICKETMASTER_KEY", "")
+    postcode = request.args.get("postcode", "").replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+    try:
+        pc_r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=5)
+        pc_d = pc_r.json()
+        lat = pc_d["result"]["latitude"]
+        lng = pc_d["result"]["longitude"]
+    except Exception:
+        return jsonify({"error": "Could not resolve postcode"}), 400
+    if not key:
+        return jsonify({"error": "Gigs feature not configured — TICKETMASTER_KEY missing"}), 503
+    try:
+        r = requests.get(
+            "https://app.ticketmaster.com/discovery/v2/events.json",
+            params={
+                "apikey": key,
+                "latlong": f"{lat},{lng}",
+                "radius": "20",
+                "unit": "miles",
+                "classificationName": "music",
+                "sort": "date,asc",
+                "size": "15",
+            },
+            timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json()
+        events_raw = (data.get("_embedded") or {}).get("events", [])
+        events = []
+        for ev in events_raw:
+            venue = ((ev.get("_embedded") or {}).get("venues") or [{}])[0]
+            date_info = ev.get("dates", {}).get("start", {})
+            image_url = next(
+                (i["url"] for i in (ev.get("images") or [])
+                 if i.get("ratio") == "16_9" and i.get("width", 0) >= 640),
+                "",
+            )
+            events.append({
+                "name":  ev.get("name", ""),
+                "date":  date_info.get("localDate", ""),
+                "time":  date_info.get("localTime", ""),
+                "venue": venue.get("name", ""),
+                "city":  (venue.get("city") or {}).get("name", ""),
+                "url":   ev.get("url", ""),
+                "image": image_url,
+            })
+        return jsonify({"events": events})
+    except Exception as e:
+        print(f"[music/gigs] {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/music/charts")
 def api_music_charts():
     country = request.args.get("country", "").upper()

@@ -12360,18 +12360,41 @@ _bkBadge();
   <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin-bottom:16px">🎵 Music</h2>
 
   <!-- Tabs -->
-  <div style="display:flex;background:var(--border);border-radius:12px;padding:3px;margin-bottom:20px;gap:2px">
+  <div style="display:flex;background:var(--border);border-radius:12px;padding:3px;margin-bottom:20px;gap:2px;overflow-x:auto;scrollbar-width:none">
     <button id="mtab-identify" onclick="musicTab('identify',this)"
-      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text)">🎵 Find & Save</button>
+      style="flex:1;min-width:70px;padding:8px 6px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:var(--surface);color:var(--text);white-space:nowrap">🎵 Find</button>
     <button id="mtab-uk" onclick="musicTab('uk',this)"
-      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🇬🇧 UK Charts</button>
+      style="flex:1;min-width:70px;padding:8px 6px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);white-space:nowrap">🇬🇧 UK</button>
     <button id="mtab-global" onclick="musicTab('global',this)"
-      style="flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🌍 Global</button>
+      style="flex:1;min-width:70px;padding:8px 6px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);white-space:nowrap">🌍 Global</button>
+    <button id="mtab-gigs" onclick="musicTab('gigs',this)"
+      style="flex:1;min-width:70px;padding:8px 6px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);white-space:nowrap">🎟 Gigs</button>
   </div>
 
 
   <!-- Find & Save panel -->
   <div id="music-identify-panel">
+    <!-- 🎤 Tap to Listen -->
+    <style>
+      @keyframes _mic-pulse {
+        0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.5),0 4px 24px rgba(124,58,237,.35)}
+        50%{box-shadow:0 0 0 14px rgba(124,58,237,.0),0 4px 24px rgba(124,58,237,.35)}
+      }
+      .music-btn-pulse{animation:_mic-pulse 1.4s ease-in-out infinite}
+    </style>
+    <div id="music-listen-area" style="text-align:center;padding:16px 0 20px">
+      <button id="music-listen-btn" onclick="musicListen()"
+        style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a78bfa);border:none;color:#fff;font-size:28px;cursor:pointer;box-shadow:0 4px 24px rgba(124,58,237,.35);transition:all .2s;outline:none">
+        🎤
+      </button>
+      <div id="music-listen-label" style="font-size:13px;font-weight:700;color:var(--muted);margin-top:10px">Tap to identify a song</div>
+      <div id="music-listen-timer" style="display:none;font-size:28px;font-weight:800;color:#7c3aed;margin-top:4px;letter-spacing:-1px;font-variant-numeric:tabular-nums">8</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <div style="font-size:11px;color:var(--muted);font-weight:600;flex-shrink:0">or search by name</div>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
     <!-- Search input -->
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <input id="music-search-input" type="text" placeholder="Song name or artist…"
@@ -12421,6 +12444,16 @@ _bkBadge();
       <button onclick="musicTabRetry()" style="padding:7px 18px;border:none;border-radius:99px;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Try again</button>
     </div>
     <div id="music-charts-list"></div>
+  </div>
+
+  <!-- Gigs near me panel -->
+  <div id="music-gigs-panel" style="display:none">
+    <div id="music-gigs-loading" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Finding gigs near you…</div>
+    <div id="music-gigs-error" style="display:none;border-radius:12px;padding:14px 16px;text-align:center;background:#fef2f2;border:1px solid #fecaca">
+      <div id="music-gigs-error-msg" style="font-size:13px;color:#b91c1c;margin-bottom:10px"></div>
+      <button onclick="_musicLoadGigs(true)" style="padding:7px 18px;border:none;border-radius:99px;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Try again</button>
+    </div>
+    <div id="music-gigs-list"></div>
   </div>
 
   <!-- WhatsApp CTA -->
@@ -12490,15 +12523,18 @@ _bkBadge();
 
   window.musicTab = function(tab, btn) {
     _musicCurrentTab = tab;
-    ['identify','uk','global'].forEach(function(t){
+    ['identify','uk','global','gigs'].forEach(function(t){
       var b = document.getElementById('mtab-'+t);
+      if (!b) return;
       b.style.background = t===tab ? 'var(--surface)' : 'transparent';
       b.style.color = t===tab ? 'var(--text)' : 'var(--muted)';
     });
     document.getElementById('music-identify-panel').style.display = tab==='identify' ? 'block' : 'none';
-    document.getElementById('music-charts-panel').style.display   = tab!=='identify' ? 'block' : 'none';
-    if(tab !== 'identify') _musicLoadCharts(tab);
-    if(tab === 'identify') _musicRenderSaved();
+    document.getElementById('music-charts-panel').style.display   = (tab==='uk'||tab==='global') ? 'block' : 'none';
+    document.getElementById('music-gigs-panel').style.display     = tab==='gigs' ? 'block' : 'none';
+    if(tab==='uk'||tab==='global') _musicLoadCharts(tab);
+    if(tab==='identify') _musicRenderSaved();
+    if(tab==='gigs') _musicLoadGigs(false);
   };
 
   // ── Search via iTunes Search API (free, no auth, CORS-friendly) ──────────
@@ -12659,8 +12695,179 @@ _bkBadge();
 
   window.musicTabRetry = function(){
     var tab = _musicCurrentTab;
-    if(tab !== 'identify'){ delete _chartsCache[tab]; _musicLoadCharts(tab); }
+    if(tab==='uk'||tab==='global'){ delete _chartsCache[tab]; _musicLoadCharts(tab); }
+    if(tab==='gigs') _musicLoadGigs(true);
   };
+
+  // ── 🎤 Mic identification ────────────────────────────────────────────────
+  var _micStream = null;
+  window.musicListen = async function() {
+    var btn   = document.getElementById('music-listen-btn');
+    var label = document.getElementById('music-listen-label');
+    var timer = document.getElementById('music-listen-timer');
+    if (btn.dataset.rec === '1') return;
+    try {
+      var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      _micStream = stream;
+      btn.dataset.rec = '1';
+      btn.style.background = 'linear-gradient(135deg,#dc2626,#ef4444)';
+      btn.textContent = '⏹';
+      btn.classList.add('music-btn-pulse');
+      label.textContent = 'Listening…';
+      timer.style.display = 'block';
+      var secs = 8;
+      timer.textContent = secs;
+      var chunks = [];
+      var mr = new MediaRecorder(stream);
+      mr.ondataavailable = function(e){ if(e.data && e.data.size) chunks.push(e.data); };
+      var tick = setInterval(function(){
+        secs--;
+        timer.textContent = secs > 0 ? secs : '🔍';
+        if(secs <= 0) clearInterval(tick);
+      }, 1000);
+      mr.onstop = async function(){
+        clearInterval(tick);
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        _micStream = null;
+        btn.dataset.rec = '0';
+        btn.classList.remove('music-btn-pulse');
+        btn.style.background = 'linear-gradient(135deg,#7c3aed,#a78bfa)';
+        btn.textContent = '🎤';
+        timer.style.display = 'none';
+        label.textContent = 'Identifying…';
+        var blob = new Blob(chunks, { type: mr.mimeType });
+        var reader = new FileReader();
+        reader.onload = async function(){
+          var b64 = reader.result.split(',')[1];
+          try {
+            var resp = await fetch('/api/music/identify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: b64,
+            });
+            var data = await resp.json();
+            if (data.match) {
+              label.textContent = '🎉 Found it!';
+              var spotUrl = data.spotify
+                ? 'https://open.spotify.com/track/' + data.spotify.replace('spotify:track:','')
+                : 'https://open.spotify.com/search/' + encodeURIComponent((data.title||'') + ' ' + (data.artist||''));
+              _musicResult = {
+                title:      data.title  || '',
+                artist:     data.artist || '',
+                cover:      data.cover  || '',
+                album: '', year: '', genre: '',
+                spotify:    spotUrl,
+                url:        data.url || '',
+                previewUrl: '',
+                saved:      new Date().toISOString().slice(0,10),
+              };
+              document.getElementById('music-cover').src = _musicResult.cover;
+              document.getElementById('music-title').textContent  = _musicResult.title;
+              document.getElementById('music-artist').textContent = _musicResult.artist;
+              var metaEl = document.getElementById('music-meta');
+              if (metaEl) metaEl.textContent = '';
+              document.getElementById('music-spotify-link').href = _musicResult.spotify;
+              document.getElementById('music-saved-msg').style.display = 'none';
+              var lyricsEl = document.getElementById('music-lyrics');
+              lyricsEl.style.display = 'none';
+              lyricsEl.innerHTML = '';
+              document.getElementById('music-search-results').style.display = 'none';
+              document.getElementById('music-result').style.display = 'block';
+              _miniShow(_musicResult);
+              // Auto-load full lyrics for singalong
+              try {
+                var lr = await fetch('https://api.lyrics.ovh/v1/'+encodeURIComponent(_musicResult.artist)+'/'+encodeURIComponent(_musicResult.title));
+                var ld = await lr.json();
+                if (ld.lyrics) {
+                  var lines = ld.lyrics.trim().split('\n').filter(function(l){ return l.trim(); });
+                  if (lines.length) {
+                    var esc = function(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+                    lyricsEl.innerHTML = '<div style="white-space:pre-line">'+esc(lines.join('\n'))+'</div>';
+                    lyricsEl.style.display = 'block';
+                  }
+                }
+              } catch(e) {}
+            } else {
+              label.textContent = 'No match — try again or search below';
+              setTimeout(function(){ label.textContent = 'Tap to identify a song'; }, 4000);
+            }
+          } catch(e) {
+            label.textContent = 'Something went wrong — try again';
+            setTimeout(function(){ label.textContent = 'Tap to identify a song'; }, 4000);
+          }
+        };
+        reader.readAsDataURL(blob);
+      };
+      mr.start();
+      setTimeout(function(){ if(mr.state === 'recording') mr.stop(); }, 8000);
+    } catch(e) {
+      btn.dataset.rec = '0';
+      label.textContent = 'Microphone not available — check browser permissions';
+      setTimeout(function(){ label.textContent = 'Tap to identify a song'; }, 5000);
+    }
+  };
+
+  // ── 🎟 Gigs near me ─────────────────────────────────────────────────────
+  var _gigsCache = null;
+  window._musicLoadGigs = function(force) {
+    var pc = (localStorage.getItem('miru_postcode') || '').replace(/\s+/g,'').toUpperCase();
+    var loadingEl = document.getElementById('music-gigs-loading');
+    var errorEl   = document.getElementById('music-gigs-error');
+    var listEl    = document.getElementById('music-gigs-list');
+    if (!pc) {
+      loadingEl.style.display = 'none';
+      errorEl.style.display   = 'none';
+      listEl.innerHTML = '<div style="text-align:center;padding:32px 16px">'
+        +'<div style="font-size:32px;margin-bottom:10px">📍</div>'
+        +'<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Set your postcode first</div>'
+        +'<div style="font-size:13px;color:var(--muted)">Add your postcode in the identity bar to find gigs near you</div>'
+        +'</div>';
+      return;
+    }
+    if (_gigsCache && !force) { _musicRenderGigs(_gigsCache); return; }
+    loadingEl.style.display = 'block';
+    errorEl.style.display   = 'none';
+    listEl.innerHTML = '';
+    fetch('/api/music/gigs?postcode='+encodeURIComponent(pc))
+      .then(function(r){ if(!r.ok) throw new Error('Server error '+r.status); return r.json(); })
+      .then(function(d){
+        loadingEl.style.display = 'none';
+        if (d.error) {
+          document.getElementById('music-gigs-error-msg').textContent = d.error;
+          errorEl.style.display = 'block';
+          return;
+        }
+        _gigsCache = d.events || [];
+        _musicRenderGigs(_gigsCache);
+      })
+      .catch(function(e){
+        loadingEl.style.display = 'none';
+        document.getElementById('music-gigs-error-msg').textContent = e.message || 'Could not load gigs — tap to retry';
+        errorEl.style.display = 'block';
+      });
+  };
+
+  function _musicRenderGigs(events) {
+    var listEl = document.getElementById('music-gigs-list');
+    if (!events.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--muted);font-size:13px">No upcoming gigs found within 20 miles.<br>Try checking back nearer the weekend.</div>';
+      return;
+    }
+    listEl.innerHTML = events.map(function(ev){
+      var dateStr = ev.date ? new Date(ev.date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) : '';
+      var timeStr = ev.time ? ev.time.slice(0,5) : '';
+      return '<a href="'+ev.url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);text-decoration:none">'
+        +(ev.image ? '<img src="'+ev.image+'" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0">'
+                   : '<div style="width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,#7c3aed22,#a78bfa22);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🎟</div>')
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ev.name+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+ev.venue+(ev.city?', '+ev.city:'')+'</div>'
+        +'<div style="font-size:11px;color:#7c3aed;font-weight:600;margin-top:2px">'+dateStr+(timeStr?' · '+timeStr:'')+'</div>'
+        +'</div>'
+        +'<div style="font-size:18px;flex-shrink:0;color:var(--muted)">›</div>'
+        +'</a>';
+    }).join('');
+  }
 
   function _heq(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
   function _musicRenderCharts(tracks) {
