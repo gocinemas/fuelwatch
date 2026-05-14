@@ -5170,8 +5170,9 @@ const _ts = new Date(d.timestamp);
     if (landing) landing.style.display = "none";
     var bRow = document.getElementById("brand-search-row");
     var cRow = document.getElementById("company-search-row");
-    if (bRow) bRow.style.display = mode === "brand" ? "" : "none";
-    if (cRow) cRow.style.display = mode === "company" ? "" : "none";
+    if (bRow) bRow.style.display = mode === "brand" ? "block" : "none";
+    if (cRow) cRow.style.display = mode === "company" ? "block" : "none";
+    window.scrollTo({top: 0, behavior: "smooth"});
     // Clear the inactive mode's input and reset intel-input
     var bQ = document.getElementById("brand-q");
     var cQ = document.getElementById("company-q");
@@ -12834,7 +12835,7 @@ _bkBadge();
     errorEl.style.display   = 'none';
     listEl.innerHTML = '';
     fetch('/api/music/gigs?postcode='+encodeURIComponent(pc))
-      .then(function(r){ if(!r.ok) throw new Error('Server error '+r.status); return r.json(); })
+      .then(function(r){ return r.json(); })
       .then(function(d){
         loadingEl.style.display = 'none';
         if (d.error) {

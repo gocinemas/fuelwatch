@@ -13227,7 +13227,7 @@ def api_music_gigs():
     except Exception:
         return jsonify({"error": "Could not resolve postcode"}), 400
     if not key:
-        return jsonify({"error": "Gigs feature not configured — TICKETMASTER_KEY missing"}), 503
+        return jsonify({"error": "Gigs not available yet — TICKETMASTER_KEY not configured in Railway"})
     try:
         r = requests.get(
             "https://app.ticketmaster.com/discovery/v2/events.json",
