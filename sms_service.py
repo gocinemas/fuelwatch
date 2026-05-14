@@ -13429,10 +13429,13 @@ def api_music_gigs():
     # ── Ticketmaster ─────────────────────────────────────────────
     if tm_key:
         try:
+            import datetime as _dt
+            today = _dt.date.today().isoformat()
             r = requests.get(
                 "https://app.ticketmaster.com/discovery/v2/events.json",
                 params={"apikey": tm_key, "latlong": f"{lat},{lng}", "radius": "20",
                         "unit": "miles", "classificationName": "music",
+                        "startDateTime": today + "T00:00:00Z",
                         "sort": "date,asc", "size": "15"},
                 timeout=10,
             )
@@ -13459,17 +13462,27 @@ def api_music_gigs():
     # ── Skiddle ──────────────────────────────────────────────────
     if sk_key:
         try:
+            import datetime as _dt
+            today = _dt.date.today().isoformat()
+            # eventcode=LIVE = live music only (excludes theatre/comedy/club)
             r = requests.get(
                 "https://www.skiddle.com/api/v1/events/search/",
                 params={"api_key": sk_key, "latitude": lat, "longitude": lng,
-                        "radius": 20, "order": "date", "type": "LIVE",
-                        "limit": 20, "description": 1},
+                        "radius": 20, "order": "date", "eventcode": "LIVE",
+                        "minDate": today, "limit": 20},
                 timeout=10,
             )
             r.raise_for_status()
+            _MUSIC_CODES = {"LIVE", "FEST", "CLUB"}
             for ev in r.json().get("results", []):
+                # Double-check event type in response to exclude theatre etc.
+                ev_type = (ev.get("EventCode") or ev.get("type") or "").upper()
+                if ev_type and ev_type not in _MUSIC_CODES:
+                    continue
                 name  = ev.get("eventname", "") or ev.get("EventName", "")
                 date  = ev.get("startdate", "")[:10] if ev.get("startdate") else ""
+                if date and date < today:
+                    continue
                 venue = (ev.get("venue") or {}).get("name", "")
                 city  = (ev.get("venue") or {}).get("town", "")
                 url   = ev.get("link", "") or f"https://www.skiddle.com/e/{ev.get('id','')}"
