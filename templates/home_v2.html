@@ -702,23 +702,45 @@ function renderPersonalised() {
         })
         .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
 
-      fetch(`/api/your-area?postcode=${PC}`)
-        .then(r => r.json())
-        .then(area => {
+      const _nearbyTimeout = new Promise(res => setTimeout(() => res(null), 12000));
+      Promise.race([
+        fetch(`/api/your-area?postcode=${PC}`).then(r => r.json()),
+        _nearbyTimeout
+      ]).then(area => {
+          const el = document.getElementById('nearby-list');
+          if (!el) return;
+          if (!area || area.error) {
+            el.innerHTML = `<div class="card card-place" onclick="nav('myarea')" style="opacity:.7">
+              <div class="place-icon">📍</div>
+              <div><div class="place-name">Explore nearby places</div><div class="place-dist">Tap My Area for GPs, pharmacies & more</div></div>
+              <span class="place-arrow">→</span></div>`;
+            return;
+          }
           const places = [];
           if (area.gps?.length)          places.push({ icon:'🏥', name: area.gps[0].name,          dist: area.gps[0].distance_km });
           if (area.pharmacies?.length)   places.push({ icon:'💊', name: area.pharmacies[0].name,    dist: area.pharmacies[0].distance_km });
           if (area.post_offices?.length) places.push({ icon:'📮', name: area.post_offices[0].name,  dist: area.post_offices[0].distance_km });
           if (places.length) {
-            document.getElementById('nearby-list').innerHTML = places.map(p => `
+            el.innerHTML = places.map(p => `
               <div class="card card-place">
                 <div class="place-icon">${p.icon}</div>
                 <div><div class="place-name">${p.name}</div><div class="place-dist">${p.dist ? (+p.dist*0.621).toFixed(1)+' mi' : 'nearby'}</div></div>
                 <span class="place-arrow">→</span>
               </div>`).join('');
+          } else {
+            el.innerHTML = `<div class="card card-place" onclick="nav('places')" style="opacity:.7">
+              <div class="place-icon">📍</div>
+              <div><div class="place-name">Find nearby services</div><div class="place-dist">GPs, pharmacies, post offices</div></div>
+              <span class="place-arrow">→</span></div>`;
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          const el = document.getElementById('nearby-list');
+          if (el) el.innerHTML = `<div class="card card-place" onclick="nav('places')" style="opacity:.7">
+            <div class="place-icon">📍</div>
+            <div><div class="place-name">Find nearby services</div><div class="place-dist">Tap to explore</div></div>
+            <span class="place-arrow">→</span></div>`;
+        });
     })
     .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
 }
