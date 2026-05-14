@@ -8623,7 +8623,7 @@ _FOOD_INTENTS = [
       "review_terms": ["sandwich", "sourdough", "baguette", "ciabatta", "toastie", "deli", "roll"]}),
     (re.compile(r'\b(burger|burgers|smash burger|smash)\b', re.I),
      {"type": "restaurant", "keyword": "burger", "emoji": "🍔", "label": "burgers",
-      "required_types": ["restaurant", "meal_takeaway", "food"], "always_best": True,
+      "required_types": ["restaurant", "meal_takeaway", "food"], "always_best": True, "radius": 3000,
       "review_terms": ["burger", "smash", "patty", "brioche", "beef", "cheese", "fries", "loaded"]}),
     (re.compile(r'\b(kebab|kebabs|shawarma|doner)\b', re.I),
      {"type": "restaurant", "keyword": "kebab", "emoji": "🌯", "label": "kebab",
@@ -8631,8 +8631,12 @@ _FOOD_INTENTS = [
       "review_terms": ["kebab", "doner", "shawarma", "lamb", "chicken", "wrap", "pita", "garlic sauce"]}),
     (re.compile(r'\b(steak|steakhouse|ribeye|sirloin)\b', re.I),
      {"type": "restaurant", "keyword": "steak", "emoji": "🥩", "label": "steak",
-      "required_types": ["restaurant", "food"], "always_best": True,
+      "required_types": ["restaurant", "food"], "always_best": True, "radius": 5000,
       "review_terms": ["steak", "ribeye", "sirloin", "fillet", "medium rare", "wagyu", "sauce", "sides"]}),
+    (re.compile(r'\b(chinese|china food|dim sum|chow mein|peking|cantonese|szechuan|sichuan)\b', re.I),
+     {"type": "restaurant", "keyword": "chinese restaurant", "emoji": "🥡", "label": "Chinese",
+      "required_types": ["restaurant", "meal_takeaway", "food"], "radius": 3000,
+      "review_terms": ["chinese", "dim sum", "wonton", "peking duck", "fried rice", "noodles", "spring roll", "dumpling"]}),
     (re.compile(r'\b(wine|wines|red wine|white wine|ros[eé]|house wine|bottle of wine|glass of wine)\b', re.I),
      {"type": "bar", "keyword": "wine bar", "emoji": "🍷", "label": "wine",
       "required_types": ["bar", "restaurant", "establishment"],
@@ -8764,15 +8768,19 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
                            "persian", "arabic", "bangladeshi", "pakistani", "sri lanka",
                            "vietnamese", "korean", "mexican", "tapas", "spanish")
                 if kw == "steak":
-                    if any(w in n for w in ("steak", "grill", "chophouse", "ribeye", "sirloin", "wagyu", "chop house")):
+                    if any(w in n for w in ("steak", "steakhouse", "chophouse", "chop house", "ribeye", "sirloin", "wagyu")):
                         return 1.0
-                    if any(w in n for w in ("brasserie", "steakhouse", "butcher", "prime")):
+                    if any(w in n for w in ("brasserie", "butcher", "prime", "miller", "carter")):
                         return 0.9
+                    if "grill" in n and not any(w in n for w in ("smash", "burger", "chicken", "halal", "kebab", "fried")):
+                        return 0.75  # generic grill — might have steak
+                    if any(w in n for w in ("smash", "burger", "fried chicken", "halal")):
+                        return 0.05  # burger/fast food joints, not steakhouses
                     if any(w in n for w in _ethnic):
-                        return 0.05  # Indian/Thai/etc almost certainly no steak
-                    return 0.7
+                        return 0.05
+                    return 0.65
                 if kw == "burger":
-                    if any(w in n for w in ("burger", "smash", "shack", "joint", "patty")):
+                    if any(w in n for w in ("burger", "smash", "shack", "joint", "patty", "grill")):
                         return 1.0
                     if any(w in n for w in _ethnic):
                         return 0.15
@@ -8783,6 +8791,18 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
                     if any(w in n for w in ("indian", "curry", "balti", "tandoor")):
                         return 0.5  # some crossover
                     return 0.6
+                if kw == "chinese restaurant":
+                    if any(w in n for w in ("chinese", "china", "dim sum", "peking", "canton", "hong kong",
+                                            "szechuan", "sichuan", "mandarin", "beijing", "shanghai", "wonton")):
+                        return 1.0
+                    if any(w in n for w in ("noodle", "oriental", "asian", "dragon", "golden", "jade",
+                                            "palace", "dynasty", "emperor", "bamboo", "lotus", "panda")):
+                        return 0.85  # probably Chinese
+                    if any(w in n for w in ("thai", "japanese", "korean", "vietnamese", "malaysian", "singaporean")):
+                        return 0.3  # Asian but not Chinese
+                    if any(w in n for w in ("indian", "curry", "pizza", "burger", "kebab", "pub", "italian")):
+                        return 0.05
+                    return 0.6
             if ptype == "bar":
                 if kw == "wine bar":
                     if any(w in n for w in ("wine", "vino", "cellar", "cave", "vineyard", "winery", "sommelier")):
@@ -8791,11 +8811,13 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
                         return 0.75
                     if any(w in n for w in ("pub", "inn", "arms", "tavern", "sports")):
                         return 0.3
-                if kw == "beer":
-                    if any(w in n for w in ("pub", "inn", "arms", "tavern", "brewery", "tap", "ale")):
+                if kw in ("pub", "beer"):
+                    if any(w in n for w in ("pub", "inn", "arms", "tavern", "brewery", "tap", "ale", "beer")):
                         return 1.0
-                    if any(w in n for w in ("bar", "bistro")):
+                    if any(w in n for w in ("bar", "bistro", "kitchen")):
                         return 0.8
+                    if any(w in n for w in ("wine", "cocktail", "champagne", "prosecco")):
+                        return 0.4
             return 0.75  # neutral / unknown
 
         if cheap:
