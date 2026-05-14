@@ -7929,10 +7929,9 @@ const _ts = new Date(d.timestamp);
       _sg.style.display = _statFields.length ? "grid" : "none";
     }
 
-    // Trustpilot — show/hide based on Phase 2 data (Phase 1 may have already populated it)
+    // Trustpilot — only update if Phase 2 has data; never hide what Phase 1 already showed
     const _tp = d.trustpilot || {};
     if (_tp.rating) { _renderBrandTrustpilot(_tp); }
-    else { document.getElementById("brand-tp-section").style.display = "none"; }
 
     // Ask AI — store full Phase 2 context (overwrites Phase 1 partial)
     window._brandIntelName = d.name || "";
