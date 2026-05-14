@@ -13340,10 +13340,13 @@ def api_voice_query():
             return jsonify({"answer": "I couldn't get the weather right now. Try again in a moment.", "intent": "weather"})
 
     else:
-        # General — let Groq answer
+        # General — let Groq answer with full user context
         try:
+            ctx = f"The user's postcode is {postcode}. " if postcode else ""
             answer = _groq_chat(
-                "You are Miru, a helpful UK assistant. Give a short, direct spoken answer in 1-2 sentences. No markdown, no bullet points.",
+                f"You are Miru, a helpful UK voice assistant. {ctx}"
+                "You already know the user's location — never ask for it. "
+                "Give a short, direct spoken answer in 1-2 sentences. No markdown, no bullet points, no emojis.",
                 [{"role": "user", "content": query}],
                 max_tokens=120
             )
