@@ -5462,7 +5462,7 @@ const _ts = new Date(d.timestamp);
         return;
       }
       document.getElementById("intel-result").style.display = "";
-      if (coData && !coErr) {
+      if (coData && !coErr && _intelSearchMode !== "brand") {
         try { renderCompany(coData); } catch(e) { console.warn("renderCompany error", e); }
         if (_pendingCoTab) { switchCoTab(_pendingCoTab); _pendingCoTab = null; }
       }
@@ -12647,11 +12647,11 @@ _bkBadge();
     lyricsEl.innerHTML = '';
     document.getElementById('music-result').style.display = 'block';
 
-    // Auto-play 30s iTunes preview + show mini player
+    // Load preview but don't autoplay — user taps play
     var audio = document.getElementById('music-preview-audio');
     if (t.previewUrl) {
       audio.src = t.previewUrl;
-      audio.play().catch(function(){});
+      _miniSyncBtn(true);
     } else {
       audio.src = '';
       _miniSyncBtn(true);

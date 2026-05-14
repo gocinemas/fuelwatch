@@ -13441,20 +13441,29 @@ def api_music_gigs():
     except Exception:
         return jsonify({"error": "Could not resolve postcode"}), 400
 
+    import math as _math
+    import datetime as _dt
+
+    def _haversine(lat1, lng1, lat2, lng2):
+        R = 6371
+        dlat = _math.radians(lat2 - lat1)
+        dlng = _math.radians(lng2 - lng1)
+        a = _math.sin(dlat/2)**2 + _math.cos(_math.radians(lat1)) * _math.cos(_math.radians(lat2)) * _math.sin(dlng/2)**2
+        return round(R * 2 * _math.asin(_math.sqrt(a)), 1)
+
     events = []
-    seen   = set()  # dedupe by lowercased name+date
+    seen   = set()
+    today  = _dt.date.today().isoformat()
 
     # ── Ticketmaster ─────────────────────────────────────────────
     if tm_key:
         try:
-            import datetime as _dt
-            today = _dt.date.today().isoformat()
             r = requests.get(
                 "https://app.ticketmaster.com/discovery/v2/events.json",
                 params={"apikey": tm_key, "latlong": f"{lat},{lng}", "radius": "20",
                         "unit": "miles", "classificationName": "music",
                         "startDateTime": today + "T00:00:00Z",
-                        "sort": "date,asc", "size": "15"},
+                        "sort": "date,asc", "size": "20"},
                 timeout=10,
             )
             r.raise_for_status()
@@ -13466,34 +13475,37 @@ def api_music_gigs():
                 name = ev.get("name", "")
                 date = date_inf.get("localDate", "")
                 key_ = (name.lower(), date)
-                if key_ not in seen:
-                    seen.add(key_)
-                    events.append({"name": name, "date": date,
-                                   "time": date_inf.get("localTime", ""),
-                                   "venue": venue.get("name", ""),
-                                   "city":  (venue.get("city") or {}).get("name", ""),
-                                   "url":   ev.get("url", ""), "image": image,
-                                   "source": "ticketmaster"})
+                if key_ in seen:
+                    continue
+                seen.add(key_)
+                # Venue distance
+                vloc = venue.get("location") or {}
+                try:
+                    vdist = _haversine(lat, lng, float(vloc["latitude"]), float(vloc["longitude"]))
+                except Exception:
+                    vdist = None
+                events.append({"name": name, "date": date,
+                               "time": date_inf.get("localTime", ""),
+                               "venue": venue.get("name", ""),
+                               "city":  (venue.get("city") or {}).get("name", ""),
+                               "url":   ev.get("url", ""), "image": image,
+                               "distance_km": vdist})
         except Exception as e:
             print(f"[gigs/ticketmaster] {e}")
 
     # ── Skiddle ──────────────────────────────────────────────────
     if sk_key:
         try:
-            import datetime as _dt
-            today = _dt.date.today().isoformat()
-            # eventcode=LIVE = live music only (excludes theatre/comedy/club)
             r = requests.get(
                 "https://www.skiddle.com/api/v1/events/search/",
                 params={"api_key": sk_key, "latitude": lat, "longitude": lng,
-                        "radius": 20, "order": "date", "eventcode": "LIVE",
+                        "radius": 20, "order": "distance", "eventcode": "LIVE",
                         "minDate": today, "limit": 20},
                 timeout=10,
             )
             r.raise_for_status()
             _MUSIC_CODES = {"LIVE", "FEST", "CLUB"}
             for ev in r.json().get("results", []):
-                # Double-check event type in response to exclude theatre etc.
                 ev_type = (ev.get("EventCode") or ev.get("type") or "").upper()
                 if ev_type and ev_type not in _MUSIC_CODES:
                     continue
@@ -13501,26 +13513,28 @@ def api_music_gigs():
                 date  = ev.get("startdate", "")[:10] if ev.get("startdate") else ""
                 if date and date < today:
                     continue
-                venue = (ev.get("venue") or {}).get("name", "")
-                city  = (ev.get("venue") or {}).get("town", "")
-                url   = ev.get("link", "") or f"https://www.skiddle.com/e/{ev.get('id','')}"
-                image = ev.get("largeimageurl", "") or ev.get("imageurl", "")
-                time_ = ev.get("starttime", "")
-                key_  = (name.lower(), date)
-                if key_ not in seen:
-                    seen.add(key_)
-                    events.append({"name": name, "date": date, "time": time_,
-                                   "venue": venue, "city": city,
-                                   "url": url, "image": image,
-                                   "source": "skiddle"})
+                key_ = (name.lower(), date)
+                if key_ in seen:
+                    continue
+                seen.add(key_)
+                vobj  = ev.get("venue") or {}
+                try:
+                    vdist = _haversine(lat, lng, float(vobj["latitude"]), float(vobj["longitude"]))
+                except Exception:
+                    vdist = None
+                events.append({"name": name, "date": date,
+                               "time": ev.get("starttime", ""),
+                               "venue": vobj.get("name", ""),
+                               "city":  vobj.get("town", ""),
+                               "url":   ev.get("link", "") or f"https://www.skiddle.com/e/{ev.get('id','')}",
+                               "image": ev.get("largeimageurl", "") or ev.get("imageurl", ""),
+                               "distance_km": vdist})
         except Exception as e:
             print(f"[gigs/skiddle] {e}")
 
-    events.sort(key=lambda e: e.get("date") or "9999")
-    return jsonify({"events": events[:25], "sources": {
-        "ticketmaster": bool(tm_key),
-        "skiddle":      bool(sk_key),
-    }})
+    # Sort: date first, then distance within the same day
+    events.sort(key=lambda e: (e.get("date") or "9999", e.get("distance_km") or 999))
+    return jsonify({"events": events[:25]})
 
 
 @app.route("/api/music/charts")
