@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Miru — Home V2</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface2: #ebebed;
+    --border: rgba(0,0,0,0.07);
+    --text: #111113;
+    --muted: #888890;
+    --accent: #22c55e;
+    --r: 18px;
+    --pill-bg: rgba(255,255,255,.95);
+    --saves-bg: rgba(255,255,255,.97);
+    --shadow: 0 2px 12px rgba(0,0,0,.07);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #08080a; --surface: #141416; --surface2: #1c1c20;
+      --border: rgba(255,255,255,0.06); --text: #f0f0f2; --muted: #606068;
+      --pill-bg: rgba(28,28,32,.95); --saves-bg: rgba(20,20,22,.97);
+      --shadow: 0 2px 12px rgba(0,0,0,.4);
+    }
+  }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    min-height: 100dvh;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 0 24px 200px; }
+
+  /* TOP */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 40px 0 28px; gap: 16px;
+  }
+  .topbar-left h1 { font-size: 26px; font-weight: 800; letter-spacing: -.5px; }
+  .topbar-left p  { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .topbar-right   { display: flex; align-items: center; gap: 10px; }
+  .topbar-search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px; font-size: 14px; color: var(--muted);
+    cursor: text; box-shadow: var(--shadow); min-width: 200px;
+  }
+  .topbar-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #22c55e, #3b82f6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+
+  /* SECTION LABEL */
+  .section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted);
+    margin: 28px 0 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .section-more { font-size: 12px; letter-spacing: 0; text-transform: none; font-weight: 500; cursor: pointer; }
+
+  /* CARD */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); box-shadow: var(--shadow);
+    cursor: pointer; overflow: hidden; position: relative;
+    transition: transform .15s ease, box-shadow .15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card:hover  { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+  .card:active { transform: scale(.98); }
+  @media (prefers-color-scheme: dark) { .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,.5); } }
+
+  /* MY AREA */
+  .card-myarea {
+    padding: 24px 28px;
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 60%, #0a4a38 100%);
+    border-color: rgba(34,197,94,.2);
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: center; gap: 20px; min-height: 130px;
+  }
+  .ma-location { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #4ade80; margin-bottom: 4px; }
+  .ma-title    { font-size: 22px; font-weight: 800; letter-spacing: -.4px; color: #fff; }
+  .ma-sub      { font-size: 13px; color: #86efac; margin-top: 4px; }
+  .ma-stats    { display: flex; gap: 20px; }
+  .ma-stat-val { font-size: 18px; font-weight: 800; color: #fff; }
+  .ma-stat-lbl { font-size: 10px; color: #6ee7b7; letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
+
+  /* LIVE GRID */
+  .live-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+  .card-live {
+    padding: 18px 20px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    min-height: 155px;
+  }
+  .card-fuel    { background: linear-gradient(155deg, #fffbf0, #fff8e6); border-color: rgba(245,158,11,.25); }
+  .card-trains  { background: linear-gradient(155deg, #f5f3ff, #ede9fe); border-color: rgba(99,102,241,.2); }
+  .card-weather { background: linear-gradient(155deg, #f0f7ff, #e0f0ff); border-color: rgba(56,189,248,.2); }
+  @media (prefers-color-scheme: dark) {
+    .card-fuel    { background: linear-gradient(155deg, #1c1007, #261900); border-color: rgba(245,158,11,.2); }
+    .card-trains  { background: linear-gradient(155deg, #0a0f20, #1e1b4b); border-color: rgba(99,102,241,.2); }
+    .card-weather { background: linear-gradient(155deg, #06111a, #0a1e30); border-color: rgba(56,189,248,.2); }
+  }
+
+  .lc-label { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; }
+  .lc-value { font-size: 30px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; }
+  .lc-sub   { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .lc-badge {
+    display: inline-flex; align-items: center;
+    font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; margin-top: 10px;
+  }
+  .badge-live { background: rgba(34,197,94,.12);  color: #16a34a; }
+  .badge-ok   { background: rgba(245,158,11,.12);  color: #d97706; }
+  .badge-sky  { background: rgba(56,189,248,.12);  color: #0284c7; }
+  .badge-late { background: rgba(239,68,68,.12);   color: #dc2626; }
+  @media (prefers-color-scheme: dark) {
+    .badge-live { color: #4ade80; background: rgba(34,197,94,.15); }
+    .badge-ok   { color: #fbbf24; background: rgba(245,158,11,.15); }
+    .badge-sky  { color: #7dd3fc; background: rgba(56,189,248,.15); }
+    .badge-late { color: #f87171; background: rgba(239,68,68,.15); }
+  }
+
+  .fuel-row { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; }
+  .fuel-divider { width:1px; height:34px; background: rgba(245,158,11,.25); flex-shrink:0; }
+  .fuel-type { font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 2px; }
+
+  /* skeleton shimmer */
+  .skel {
+    background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 6px; height: 1em;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* weather icon */
+  .wx { width: 44px; height: 44px; position: relative; flex-shrink: 0; }
+  .wx-sun-body {
+    position: absolute; inset: 11px;
+    background: #fbbf24; border-radius: 50%;
+    box-shadow: 0 0 8px 2px rgba(251,191,36,.4);
+    animation: sun-pulse 3s ease-in-out infinite;
+  }
+  .wx-sun-rays { position: absolute; inset: 0; animation: spin 12s linear infinite; }
+  .wx-ray {
+    position: absolute; left: 50%; top: 0; width: 2px; height: 7px;
+    background: #fbbf24; border-radius: 2px; transform-origin: 50% 22px; opacity: .7;
+  }
+  .wx-part-sun { position:absolute;top:4px;right:4px;width:20px;height:20px;background:#fbbf24;border-radius:50%;box-shadow:0 0 6px rgba(251,191,36,.4); }
+  .wx-cloud {
+    position:absolute;bottom:4px;left:2px;right:2px;height:18px;background:#94a3b8;border-radius:10px;
+  }
+  .wx-cloud::before{content:'';position:absolute;width:14px;height:14px;background:#94a3b8;border-radius:50%;top:-7px;left:6px;}
+  .wx-cloud::after{content:'';position:absolute;width:10px;height:10px;background:#94a3b8;border-radius:50%;top:-5px;left:17px;}
+  .wx-overcast { position:absolute;inset:10px;background:#9ca3af;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;box-shadow:0 0 0 6px #9ca3af; }
+  .wx-moon { position:absolute;top:8px;left:10px;width:26px;height:26px;background:#fde68a;border-radius:50%;box-shadow:0 0 10px rgba(253,230,138,.3); }
+  .wx-moon::after{content:'';position:absolute;top:-2px;right:-5px;width:20px;height:20px;background:var(--bg,#f5f5f7);border-radius:50%;}
+  .wx-rain-cloud{position:absolute;top:4px;left:2px;right:2px;height:20px;background:#6b7280;border-radius:10px;}
+  .wx-rain-cloud::before{content:'';position:absolute;width:16px;height:16px;background:#6b7280;border-radius:50%;top:-8px;left:6px;}
+  .wx-rain-cloud::after{content:'';position:absolute;width:12px;height:12px;background:#6b7280;border-radius:50%;top:-6px;left:18px;}
+  .wx-drops{position:absolute;bottom:2px;left:0;right:0;display:flex;justify-content:center;gap:5px;}
+  .wx-drop{width:2px;height:7px;background:#60a5fa;border-radius:2px;animation:fall 1.2s ease-in infinite;}
+  .wx-drop:nth-child(2){animation-delay:.3s}.wx-drop:nth-child(3){animation-delay:.6s}
+  @keyframes fall{0%{transform:translateY(-3px);opacity:.8}100%{transform:translateY(8px);opacity:0}}
+  @keyframes sun-pulse{0%,100%{box-shadow:0 0 8px 2px rgba(251,191,36,.4)}50%{box-shadow:0 0 14px 5px rgba(251,191,36,.2)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* NEARBY + TOOLS */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+  .nearby-list { display: flex; flex-direction: column; gap: 8px; }
+  .card-place  { display: flex; align-items: center; gap: 14px; padding: 14px 18px; }
+  .place-icon  { font-size: 22px; flex-shrink: 0; width: 32px; text-align: center; }
+  .place-name  { font-size: 14px; font-weight: 600; }
+  .place-dist  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .place-arrow { margin-left: auto; font-size: 14px; color: var(--muted); }
+
+  .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .card-tool  { padding: 18px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .tool-icon  { font-size: 24px; }
+  .tool-label { font-size: 14px; font-weight: 700; }
+  .tool-sub   { font-size: 11px; color: var(--muted); }
+
+  /* INTEL */
+  .card-intel {
+    display: flex; align-items: center; gap: 16px; padding: 18px 22px;
+    background: #faf5ff; border-color: rgba(139,92,246,.2);
+  }
+  @media (prefers-color-scheme: dark) { .card-intel { background: linear-gradient(135deg, #1a0a2e, #120a1e); } }
+  .intel-title { font-size: 16px; font-weight: 700; }
+  .intel-sub   { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* MOBILE */
+  @media (max-width: 640px) {
+    .page { padding: 0 0 200px; }
+    .topbar { padding: 48px 18px 16px; }
+    .section-label { padding: 0 18px; }
+    .topbar-search { display: none; }
+    .card-myarea { border-radius: 0; border-left: none; border-right: none; }
+    .live-grid {
+      display: flex; gap: 10px; overflow-x: auto;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      scroll-snap-type: x mandatory; padding: 0 18px;
+    }
+    .live-grid::-webkit-scrollbar { display: none; }
+    .card-live { width: 160px; min-height: 160px; flex-shrink: 0; scroll-snap-align: start; }
+    .two-col { grid-template-columns: 1fr; }
+    .nearby-list {
+      flex-direction: row; overflow-x: auto; scrollbar-width: none;
+      scroll-snap-type: x mandatory; padding: 0 18px; gap: 10px;
+    }
+    .nearby-list::-webkit-scrollbar { display: none; }
+    .card-place {
+      flex-direction: column; align-items: flex-start;
+      width: 120px; min-height: 110px; flex-shrink: 0;
+      padding: 14px; scroll-snap-align: start;
+    }
+    .place-arrow { display: none; }
+    .tools-grid { padding: 0 18px; }
+    .card-intel { border-radius: 0; border-left: none; border-right: none; }
+    .section-label { margin: 22px 0 10px; }
+  }
+
+  /* SAVES BAR */
+  #saves-bar {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 560px; z-index: 250;
+  }
+  #saves-pill {
+    background: var(--saves-bg); backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border); border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.15); overflow: hidden;
+  }
+  @media (prefers-color-scheme: dark) { #saves-pill { box-shadow: 0 8px 32px rgba(0,0,0,.6); } }
+  #saves-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .saves-title { font-size: 14px; font-weight: 700; flex: 1; }
+  .saves-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--surface2); color: var(--muted); }
+  .saves-chev { width:16px;height:16px;stroke:var(--muted);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s cubic-bezier(.34,1.56,.64,1); }
+  #saves-pill.open .saves-chev { transform: rotate(180deg); }
+  #saves-body { max-height: 0; overflow: hidden; transition: max-height .35s cubic-bezier(.4,0,.2,1); }
+  #saves-pill.open #saves-body { max-height: 240px; }
+  .saves-list { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .save-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 6px; border-radius: 10px; cursor: pointer; transition: background .12s;
+  }
+  .save-row:hover { background: var(--surface2); }
+  .save-ico  { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+  .save-lbl  { font-size: 13px; font-weight: 600; flex: 1; }
+  .save-meta { font-size: 11px; color: var(--muted); }
+
+  /* PILL NAV */
+  #pill-overlay { display:none; position:fixed; inset:0; z-index:200; }
+  #pill-overlay.show { display:block; }
+  #pill-nav { position:fixed; bottom:calc(20px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:300; }
+  #pill-shell {
+    display:flex;align-items:center;justify-content:center;
+    background:var(--pill-bg);backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    border:1px solid var(--border);border-radius:30px;height:46px;width:150px;
+    overflow:hidden;position:relative;cursor:pointer;
+    transition:width .38s cubic-bezier(.34,1.56,.64,1);box-shadow:var(--shadow);
+  }
+  #pill-shell.expanded { width: 264px; }
+  #pill-resting {
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:6px;
+    opacity:1;transition:opacity .2s;pointer-events:auto;padding:0 16px;white-space:nowrap;
+  }
+  #pill-shell.expanded #pill-resting { opacity:0;pointer-events:none; }
+  .pr-label { font-size:14px;font-weight:600;color:var(--text); }
+  .pr-chev { width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s;flex-shrink:0; }
+  #pill-shell.expanded .pr-chev { transform:rotate(180deg); }
+  #pill-icons {
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:space-around;
+    padding:0 8px;opacity:0;transition:opacity .18s ease .1s;pointer-events:none;
+  }
+  #pill-shell.expanded #pill-icons { opacity:1;pointer-events:auto; }
+  .pi-btn { display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;color:var(--muted);padding:6px 10px;border-radius:12px;transition:color .15s; }
+  .pi-btn.pi-active { color:var(--text); }
+  .pi-icon { font-size:20px;line-height:1; }
+  .pi-dot { width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:0;transition:opacity .2s; }
+  .pi-btn.pi-active .pi-dot { opacity:1; }
+
+  #toast {
+    position:fixed;bottom:140px;left:50%;transform:translateX(-50%) translateY(10px);
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:8px 18px;font-size:13px;font-weight:600;color:var(--text);
+    opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;z-index:400;box-shadow:var(--shadow);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1 id="greeting">Good morning</h1>
+      <p id="top-sub">Loading…</p>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-search">🔍 &nbsp;Search anything…</div>
+      <div class="topbar-avatar">S</div>
+    </div>
+  </div>
+
+  <!-- MY AREA -->
+  <div class="card card-myarea" onclick="nav('myarea')">
+    <div>
+      <div class="ma-location">📍 Your area</div>
+      <div class="ma-title" id="ma-title">Loading…</div>
+      <div class="ma-sub">Schools · Council · Transport · Crime · Air quality</div>
+    </div>
+    <div class="ma-stats" id="ma-stats" style="opacity:0"></div>
+  </div>
+
+  <!-- LIVE -->
+  <div class="section-label">Live now</div>
+  <div class="live-grid">
+
+    <!-- FUEL -->
+    <div class="card card-live card-fuel" onclick="nav('fuel')">
+      <div>
+        <div class="lc-label" style="color:#d97706">⛽ Fuel</div>
+        <div class="fuel-row" id="fuel-row">
+          <div style="width:80px"><div class="skel" style="width:60px;margin-bottom:6px"></div><div class="skel" style="width:80px;height:1.8em"></div></div>
+          <div class="fuel-divider"></div>
+          <div style="width:70px"><div class="skel" style="width:50px;margin-bottom:6px"></div><div class="skel" style="width:70px;height:1.4em"></div></div>
+        </div>
+        <div class="lc-sub" id="fuel-sub">Finding nearest station…</div>
+      </div>
+      <span class="lc-badge badge-live" id="fuel-badge">LIVE</span>
+    </div>
+
+    <!-- TRAINS -->
+    <div class="card card-live card-trains" onclick="nav('trains')">
+      <div>
+        <div class="lc-label" style="color:#818cf8">🚆 Trains</div>
+        <div class="lc-value" style="color:#a5b4fc" id="train-time"><span class="skel" style="width:90px;height:1.2em;display:block"></span></div>
+        <div class="lc-sub" id="train-dest">Finding nearest station…</div>
+      </div>
+      <span class="lc-badge badge-ok" id="train-badge">—</span>
+    </div>
+
+    <!-- WEATHER -->
+    <div class="card card-live card-weather" onclick="nav('weather')">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="wx" id="wx-icon">
+          <div class="wx-part-sun"></div>
+          <div class="wx-cloud"></div>
+        </div>
+        <div>
+          <div class="lc-label" style="color:#0284c7">☁ Weather</div>
+          <div class="lc-value" style="color:#0ea5e9" id="wx-temp"><span class="skel" style="width:60px;height:1em;display:block"></span></div>
+        </div>
+      </div>
+      <div>
+        <div class="lc-sub" id="wx-desc">Loading…</div>
+        <span class="lc-badge badge-sky" id="wx-badge">—</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- NEARBY + TOOLS -->
+  <div class="two-col">
+    <div>
+      <div class="section-label">
+        <span>Nearby</span>
+        <span class="section-more" onclick="nav('places')">See all →</span>
+      </div>
+      <div class="nearby-list" id="nearby-list">
+        <div class="card card-place"><div class="place-icon">🛒</div><div><div class="skel" style="width:120px;margin-bottom:4px"></div><div class="skel" style="width:80px;height:.8em"></div></div></div>
+        <div class="card card-place"><div class="place-icon">🏥</div><div><div class="skel" style="width:100px;margin-bottom:4px"></div><div class="skel" style="width:70px;height:.8em"></div></div></div>
+        <div class="card card-place"><div class="place-icon">🏫</div><div><div class="skel" style="width:130px;margin-bottom:4px"></div><div class="skel" style="width:60px;height:.8em"></div></div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Tools</div>
+      <div class="tools-grid">
+        <div class="card card-tool" onclick="nav('report')"><div class="tool-icon">🔍</div><div class="tool-label">Research Area</div><div class="tool-sub">Any postcode</div></div>
+        <div class="card card-tool" onclick="nav('library')"><div class="tool-icon">📚</div><div class="tool-label">Library</div><div class="tool-sub" id="lib-count">Docs</div></div>
+        <div class="card card-tool" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music ID</div><div class="tool-sub">Identify songs</div></div>
+        <div class="card card-tool" onclick="nav('whatsapp')"><div class="tool-icon">💬</div><div class="tool-label">Ask Miru</div><div class="tool-sub">WhatsApp</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTEL -->
+  <div class="section-label">Intel</div>
+  <div class="card card-intel" onclick="nav('intel')">
+    <span style="font-size:28px;flex-shrink:0">🏢</span>
+    <div style="flex:1"><div class="intel-title">Company & Brand Intelligence</div><div class="intel-sub">Track companies, brands, market moves</div></div>
+    <span style="font-size:18px;color:var(--muted);margin-left:auto">→</span>
+  </div>
+
+</div>
+
+<!-- SAVES BAR -->
+<div id="saves-bar">
+  <div id="saves-pill">
+    <div id="saves-header" onclick="_savesToggle()">
+      <span style="font-size:18px">📌</span>
+      <span class="saves-title">Saves</span>
+      <span class="saves-badge" id="saves-count">—</span>
+      <svg class="saves-chev" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+    </div>
+    <div id="saves-body">
+      <div class="saves-list" id="saves-list">
+        <div style="padding:8px 6px;font-size:13px;color:var(--muted)">Loading saves…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PILL NAV -->
+<div id="pill-overlay" onclick="_pillCollapse()"></div>
+<div id="pill-nav">
+  <div id="pill-shell" onclick="_pillTap(event)">
+    <div id="pill-resting">
+      <span style="font-size:18px" id="pill-icon">🏠</span>
+      <span class="pr-label" id="pill-label">Home</span>
+      <svg class="pr-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div id="pill-icons">
+      <button class="pi-btn pi-active" id="pi-home" onclick="_pillNav('home');event.stopPropagation()"><span class="pi-icon">🏠</span><div class="pi-dot"></div></button>
+      <button class="pi-btn" id="pi-myarea" onclick="_pillNav('myarea');event.stopPropagation()"><span class="pi-icon">📍</span><div class="pi-dot"></div></button>
+      <button class="pi-btn" id="pi-intel" onclick="_pillNav('intel');event.stopPropagation()"><span class="pi-icon">🔍</span><div class="pi-dot"></div></button>
+      <button class="pi-btn" id="pi-saves" onclick="_pillNav('saves');event.stopPropagation()"><span class="pi-icon">📌</span><div class="pi-dot"></div></button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── HELPERS ────────────────────────────────────────────────────
+const PC = (localStorage.getItem('miru_postcode') || '').replace(/\s+/g,'').toUpperCase() || 'UB79FJ';
+const PC_FMT = PC.length > 4 ? PC.slice(0,-3)+' '+PC.slice(-3) : PC;
+
+function hour() { return new Date().getHours(); }
+function greeting() {
+  const h = hour();
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+document.getElementById('greeting').textContent = greeting();
+document.getElementById('top-sub').textContent  = PC_FMT + ' · ' + new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+document.getElementById('ma-title').textContent  = PC_FMT;
+
+// ── FUEL ───────────────────────────────────────────────────────
+fetch(`/api/search?postcode=${PC}&fuel=petrol&radius=3&mode=fuel`)
+  .then(r => r.json())
+  .then(data => {
+    const stations = data.stations || data.results || [];
+    if (!stations.length) { document.getElementById('fuel-sub').textContent = 'No stations found nearby'; return; }
+    const best = stations[0];
+    const petrolP = best.price ?? best.petrol_price ?? null;
+
+    fetch(`/api/search?postcode=${PC}&fuel=diesel&radius=3&mode=fuel`)
+      .then(r => r.json())
+      .then(d2 => {
+        const s2 = d2.stations || d2.results || [];
+        const dieselP = s2.length ? (s2[0].price ?? s2[0].diesel_price ?? null) : null;
+        const name = best.name || best.brand || 'Station';
+        const dist = best.distance ? best.distance.toFixed(1)+' mi' : '';
+
+        document.getElementById('fuel-row').innerHTML = `
+          <div>
+            <div class="fuel-type" style="color:#92400e">Petrol</div>
+            <div class="lc-value" style="color:#f59e0b">${petrolP ? petrolP.toFixed(1)+'p' : '—'}</div>
+          </div>
+          ${dieselP ? `<div class="fuel-divider"></div>
+          <div>
+            <div class="fuel-type" style="color:#92400e">Diesel</div>
+            <div style="font-size:22px;font-weight:900;letter-spacing:-1px;color:#d97706">${dieselP.toFixed(1)}p</div>
+          </div>` : ''}
+        `;
+        document.getElementById('fuel-sub').textContent = name + (dist ? ' · '+dist : '');
+        document.getElementById('fuel-badge').textContent = `LIVE · ${stations.length} stations nearby →`;
+      });
+  })
+  .catch(() => { document.getElementById('fuel-sub').textContent = 'Fuel data unavailable'; });
+
+// ── TRAINS ─────────────────────────────────────────────────────
+fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
+  .then(r => r.json())
+  .then(data => {
+    const station = data.station || data;
+    if (!station || !station.crs) { document.getElementById('train-dest').textContent = 'No nearby station found'; return; }
+    const crs  = station.crs;
+    const name = station.name || crs;
+
+    fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`)
+      .then(r => r.json())
+      .then(deps => {
+        const services = deps.services || deps.departures || deps.trainServices || [];
+        if (!services.length) {
+          document.getElementById('train-time').textContent = '—';
+          document.getElementById('train-dest').textContent = name + ' · No departures';
+          return;
+        }
+        const next = services[0];
+        const time = next.std || next.aimed_departure_time || next.scheduledDeparture || '—';
+        const dest = next.destination?.locationName || next.destination?.[0]?.locationName || next.destinationName || '—';
+        const plat = next.platform ? ' · Plat '+next.platform : '';
+        const etd  = next.etd || next.expected_departure_time || '';
+        const late = etd && etd !== 'On time' && etd !== time;
+
+        document.getElementById('train-time').textContent = time;
+        document.getElementById('train-dest').textContent = '→ '+dest+' · '+name+plat;
+        const badge = document.getElementById('train-badge');
+        if (late) {
+          badge.textContent = 'Delayed · exp '+etd;
+          badge.className = 'lc-badge badge-late';
+        } else {
+          badge.textContent = 'On time';
+          badge.className = 'lc-badge badge-ok';
+        }
+      });
+  })
+  .catch(() => { document.getElementById('train-dest').textContent = 'Train data unavailable'; });
+
+// ── WEATHER (via your-area for lat/lon, then open-meteo) ───────
+const WX_CODES = {
+  0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',
+  45:'Foggy',48:'Freezing fog',
+  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',
+  71:'Light snow',73:'Snow',75:'Heavy snow',
+  80:'Showers',81:'Heavy showers',82:'Violent showers',
+  95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'
+};
+function wxIcon(code, hour) {
+  const night = hour < 6 || hour >= 20;
+  if (code === 0 || code === 1) return night
+    ? `<div class="wx-moon"></div>`
+    : `<div class="wx-sun-body"></div><div class="wx-sun-rays">${[0,45,90,135,180,225,270,315].map(d=>`<div class="wx-ray" style="transform:rotate(${d}deg) translateX(-50%)"></div>`).join('')}</div>`;
+  if (code <= 3) return `<div class="wx-part-sun"></div><div class="wx-cloud"></div>`;
+  if (code <= 67) return `<div class="wx-rain-cloud"></div><div class="wx-drops"><div class="wx-drop"></div><div class="wx-drop"></div><div class="wx-drop"></div></div>`;
+  return `<div class="wx-part-sun"></div><div class="wx-cloud"></div>`;
+}
+
+fetch(`/api/your-area?postcode=${PC}`)
+  .then(r => r.json())
+  .then(area => {
+    const lat = area.lat || area.latitude;
+    const lon = area.lon || area.longitude || area.lng;
+    if (!lat || !lon) return;
+
+    // My Area stats
+    const maStats = document.getElementById('ma-stats');
+    const school = area.schools?.ofsted_rating || area.school_rating;
+    const transport = area.transport?.score;
+    maStats.innerHTML = [
+      school ? `<div><div class="ma-stat-val">⭐ ${school}</div><div class="ma-stat-lbl">Schools</div></div>` : '',
+      transport ? `<div><div class="ma-stat-val">${transport}</div><div class="ma-stat-lbl">Transport</div></div>` : '',
+    ].join('');
+    maStats.style.opacity = '1';
+
+    // Nearby from area data
+    const places = [];
+    if (area.supermarkets?.length) places.push({ icon:'🛒', name: area.supermarkets[0].name, dist: area.supermarkets[0].distance });
+    if (area.gp?.length)          places.push({ icon:'🏥', name: area.gp[0].name,           dist: area.gp[0].distance });
+    if (area.schools?.list?.length) places.push({ icon:'🏫', name: area.schools.list[0].name, dist: area.schools.list[0].distance });
+    if (area.pubs?.length)        places.push({ icon:'🍺', name: area.pubs[0].name,          dist: area.pubs[0].distance });
+    if (places.length) {
+      document.getElementById('nearby-list').innerHTML = places.map(p => `
+        <div class="card card-place" onclick="toast('${p.name}')">
+          <div class="place-icon">${p.icon}</div>
+          <div>
+            <div class="place-name">${p.name}</div>
+            <div class="place-dist">${p.dist ? p.dist.toFixed(1)+' mi' : ''}</div>
+          </div>
+          <span class="place-arrow">→</span>
+        </div>
+      `).join('');
+    }
+
+    // Weather
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(3)}&longitude=${(+lon).toFixed(3)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`)
+      .then(r => r.json())
+      .then(wx => {
+        const cur  = wx.current || {};
+        const temp = Math.round(cur.temperature_2m ?? 0);
+        const feel = Math.round(cur.apparent_temperature ?? temp);
+        const code = cur.weather_code ?? 0;
+        const desc = WX_CODES[code] || 'Clear';
+        const h    = new Date().getHours();
+
+        document.getElementById('wx-temp').textContent = temp + '°C';
+        document.getElementById('wx-desc').textContent = desc + ' · Feels like ' + feel + '°';
+        document.getElementById('wx-badge').textContent = feel < 10 ? '🧥 Wrap up' : feel > 25 ? '☀ Warm day' : 'Comfortable';
+        document.getElementById('wx-icon').innerHTML = wxIcon(code, h);
+      });
+  })
+  .catch(() => {});
+
+// ── SAVES ──────────────────────────────────────────────────────
+const rawSaves = JSON.parse(localStorage.getItem('miru_saves') || 'null') ||
+                 JSON.parse(localStorage.getItem('saves') || '[]');
+const saves = Array.isArray(rawSaves) ? rawSaves : Object.values(rawSaves);
+document.getElementById('saves-count').textContent = saves.length || '0';
+if (saves.length) {
+  document.getElementById('saves-list').innerHTML = saves.slice(0, 5).map(s => `
+    <div class="save-row">
+      <span class="save-ico">${s.icon || '📌'}</span>
+      <span class="save-lbl">${s.label || s.title || s.name || JSON.stringify(s).slice(0,30)}</span>
+      <span class="save-meta">${s.meta || s.value || ''}</span>
+    </div>
+  `).join('');
+} else {
+  document.getElementById('saves-list').innerHTML = `<div style="padding:8px 6px;font-size:13px;color:var(--muted)">No saves yet</div>`;
+}
+
+// ── SAVES UI ───────────────────────────────────────────────────
+let _savesOpen = false;
+function _savesToggle() {
+  _savesOpen = !_savesOpen;
+  document.getElementById('saves-pill').classList.toggle('open', _savesOpen);
+}
+
+// ── PILL ───────────────────────────────────────────────────────
+let _pillOpen = false;
+function _pillTap(e) { if (!_pillOpen) _pillExpand(); }
+function _pillExpand() {
+  _pillOpen = true;
+  document.getElementById('pill-shell').classList.add('expanded');
+  document.getElementById('pill-overlay').classList.add('show');
+  if (_savesOpen) _savesToggle();
+}
+function _pillCollapse() {
+  _pillOpen = false;
+  document.getElementById('pill-shell').classList.remove('expanded');
+  document.getElementById('pill-overlay').classList.remove('show');
+}
+function _pillNav(name) {
+  _pillCollapse();
+  const labels = {home:'Home',myarea:'My Area',intel:'Intel',saves:'Saves'};
+  const icons  = {home:'🏠',myarea:'📍',intel:'🔍',saves:'📌'};
+  ['home','myarea','intel','saves'].forEach(k => document.getElementById('pi-'+k)?.classList.toggle('pi-active',k===name));
+  document.getElementById('pill-icon').textContent  = icons[name]  || '🏠';
+  document.getElementById('pill-label').textContent = labels[name] || name;
+  nav(name);
+}
+
+// ── NAV / TOAST ────────────────────────────────────────────────
+function nav(screen) {
+  // In real app this would call showScreen(screen)
+  // For now link back to the real app
+  if (screen === 'home') return;
+  window.location.href = '/?screen=' + screen;
+}
+
+let _tt;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(_tt);
+  _tt = setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 1400);
+}
+</script>
+</body>
+</html>

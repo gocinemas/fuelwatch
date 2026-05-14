@@ -788,6 +788,12 @@ def index():
     intel_mode = "intel." in request.host or request.args.get("intel") == "1"
     return render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=intel_mode)
 
+@app.route("/home-v2")
+def home_v2():
+    if request.args.get("preview") != "miru2026":
+        return "", 404
+    return render_template("home_v2.html")
+
 @app.route("/design/home")
 def design_home():
     return render_template("design_home_bento.html")
