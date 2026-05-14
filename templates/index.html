@@ -5249,6 +5249,16 @@ const _ts = new Date(d.timestamp);
 
     window._brandCurrentSpins = [];
     window._brandSpinsBrand = raw;
+    // Reset Ask AI + Trustpilot from previous search
+    window._brandIntelName = ""; window._brandIntelContext = {};
+    const _askSecI = document.getElementById("brand-ask-section");
+    if (_askSecI) _askSecI.style.display = "none";
+    const _askResI = document.getElementById("brand-ask-result");
+    if (_askResI) { _askResI.style.display = "none"; _askResI.textContent = ""; }
+    const _askInpI = document.getElementById("brand-ask-input");
+    if (_askInpI) _askInpI.value = "";
+    const _tpSecI = document.getElementById("brand-tp-section");
+    if (_tpSecI) _tpSecI.style.display = "none";
 
     let coData = null, brData = null, coErr = false, brErr = false;
     let coSettled = false, brSettled = false;
@@ -7683,6 +7693,16 @@ const _ts = new Date(d.timestamp);
     document.getElementById("brand-did-you-mean").classList.add("hidden");
     const _rcEl = document.getElementById("brand-reset-choice");
     if (_rcEl) _rcEl.style.display = "none";
+    // Reset Ask AI and Trustpilot state from previous search
+    window._brandIntelName = ""; window._brandIntelContext = {};
+    const _askSecR = document.getElementById("brand-ask-section");
+    if (_askSecR) _askSecR.style.display = "none";
+    const _askResR = document.getElementById("brand-ask-result");
+    if (_askResR) { _askResR.style.display = "none"; _askResR.textContent = ""; }
+    const _askInpR = document.getElementById("brand-ask-input");
+    if (_askInpR) _askInpR.value = "";
+    const _tpSecR = document.getElementById("brand-tp-section");
+    if (_tpSecR) _tpSecR.style.display = "none";
     try {
       const r = await fetch(`/api/brand?name=${encodeURIComponent(name)}`);
       const d = await r.json();
