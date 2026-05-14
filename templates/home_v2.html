@@ -229,7 +229,59 @@
     .section-label { margin: 22px 0 10px; }
   }
 
-  /* PILL NAV spacing — no saves bar, so less bottom padding needed */
+  /* VOICE BUTTON */
+  #voice-fab {
+    position: fixed; bottom: calc(82px + env(safe-area-inset-bottom)); right: 20px; z-index: 290;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(124,58,237,.45);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; transition: transform .15s, box-shadow .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #voice-fab:active { transform: scale(.93); box-shadow: 0 2px 10px rgba(124,58,237,.4); }
+
+  /* VOICE OVERLAY */
+  #voice-overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+    align-items: flex-end; justify-content: center;
+  }
+  #voice-overlay.show { display: flex; }
+  #voice-card {
+    background: var(--surface); border-radius: 28px 28px 0 0;
+    width: 100%; max-width: 560px; padding: 32px 28px 40px;
+    box-shadow: 0 -8px 40px rgba(0,0,0,.2);
+  }
+  #voice-orb {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; margin: 0 auto 16px; box-shadow: 0 0 0 0 rgba(124,58,237,.4);
+    transition: box-shadow .3s;
+  }
+  #voice-orb.listening {
+    animation: voice-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes voice-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,.5); }
+    50%       { box-shadow: 0 0 0 18px rgba(124,58,237,.0); }
+  }
+  #voice-status { text-align: center; font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  #voice-transcript { text-align: center; font-size: 13px; color: var(--muted); min-height: 20px; margin-bottom: 16px; font-style: italic; }
+  #voice-answer {
+    background: var(--surface2); border-radius: 16px; padding: 14px 16px;
+    font-size: 15px; line-height: 1.55; color: var(--text);
+    display: none; margin-bottom: 20px;
+  }
+  #voice-actions { display: flex; gap: 10px; }
+  .voice-btn {
+    flex: 1; padding: 13px; border-radius: 14px; border: none;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .voice-btn-primary { background: linear-gradient(135deg,#7c3aed,#4f46e5); color: #fff; }
+  .voice-btn-secondary { background: var(--surface2); color: var(--muted); }
 
   /* PILL NAV */
   #pill-overlay { display:none; position:fixed; inset:0; z-index:200; }
@@ -305,6 +357,23 @@
       <button class="pi-btn" id="pi-myarea" onclick="_pillNav('myarea');event.stopPropagation()"><span class="pi-icon">📍</span><div class="pi-dot"></div></button>
       <button class="pi-btn" id="pi-intel" onclick="_pillNav('intel');event.stopPropagation()"><span class="pi-icon">🔍</span><div class="pi-dot"></div></button>
       <button class="pi-btn" id="pi-saves" onclick="_pillNav('saves');event.stopPropagation()"><span class="pi-icon">📌</span><div class="pi-dot"></div></button>
+    </div>
+  </div>
+</div>
+
+<!-- VOICE ASSISTANT FAB -->
+<button id="voice-fab" onclick="_voiceOpen()" title="Ask Miru">🎤</button>
+
+<!-- VOICE OVERLAY -->
+<div id="voice-overlay" onclick="_voiceOverlayTap(event)">
+  <div id="voice-card">
+    <div id="voice-orb">🎤</div>
+    <div id="voice-status">Tap the mic to ask anything</div>
+    <div id="voice-transcript"></div>
+    <div id="voice-answer"></div>
+    <div id="voice-actions">
+      <button class="voice-btn voice-btn-primary" id="voice-mic-btn" onclick="_voiceListen()">🎤 Ask</button>
+      <button class="voice-btn voice-btn-secondary" onclick="_voiceClose()">Done</button>
     </div>
   </div>
 </div>
@@ -753,6 +822,123 @@ function nav(screen) {
   window.location.href = '/?screen=' + target + (_usesPc ? _pcParam : '');
 }
 
+// ── VOICE ASSISTANT ────────────────────────────────────────────
+var _voiceRec  = null;
+var _voiceSyn  = window.speechSynthesis || null;
+var _voiceBusy = false;
+
+function _voiceOpen() {
+  document.getElementById('voice-overlay').classList.add('show');
+  _voiceSetState('idle');
+}
+function _voiceClose() {
+  document.getElementById('voice-overlay').classList.remove('show');
+  if (_voiceRec) { try { _voiceRec.abort(); } catch(e) {} _voiceRec = null; }
+  if (_voiceSyn) _voiceSyn.cancel();
+  _voiceBusy = false;
+}
+function _voiceOverlayTap(e) {
+  if (e.target === document.getElementById('voice-overlay')) _voiceClose();
+}
+
+function _voiceSetState(state, extra) {
+  var orb    = document.getElementById('voice-orb');
+  var status = document.getElementById('voice-status');
+  var trans  = document.getElementById('voice-transcript');
+  var ans    = document.getElementById('voice-answer');
+  var btn    = document.getElementById('voice-mic-btn');
+
+  orb.classList.remove('listening');
+  ans.style.display = 'none';
+
+  if (state === 'idle') {
+    orb.textContent = '🎤';
+    status.textContent = 'Tap the mic to ask anything';
+    trans.textContent  = 'e.g. "When is my next train from Longcross to Reading?"';
+    btn.textContent = '🎤 Ask'; btn.disabled = false;
+  } else if (state === 'listening') {
+    orb.textContent = '🎤'; orb.classList.add('listening');
+    status.textContent = 'Listening…';
+    trans.textContent  = '';
+    btn.textContent = '⏹ Stop'; btn.disabled = false;
+  } else if (state === 'thinking') {
+    orb.textContent = '⏳';
+    status.textContent = 'Thinking…';
+    trans.textContent  = extra || '';
+    btn.textContent = '🎤 Ask'; btn.disabled = true;
+  } else if (state === 'answer') {
+    orb.textContent = '✅';
+    status.textContent = 'Here you go';
+    trans.textContent  = extra.query || '';
+    ans.textContent    = extra.answer || '';
+    ans.style.display  = 'block';
+    btn.textContent = '🎤 Ask again'; btn.disabled = false;
+  } else if (state === 'error') {
+    orb.textContent = '❌';
+    status.textContent = 'Something went wrong';
+    trans.textContent  = extra || '';
+    btn.textContent = '🎤 Try again'; btn.disabled = false;
+  }
+}
+
+function _voiceListen() {
+  if (_voiceBusy) { if (_voiceRec) { try { _voiceRec.stop(); } catch(e) {} } return; }
+
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    _voiceSetState('error', 'Your browser doesn\'t support voice input. Try Chrome or Safari.');
+    return;
+  }
+
+  _voiceBusy = true;
+  _voiceSetState('listening');
+
+  var rec = new SpeechRec();
+  _voiceRec = rec;
+  rec.lang = 'en-GB';
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+
+  rec.onresult = function(e) {
+    var transcript = e.results[0][0].transcript;
+    var isFinal    = e.results[0].isFinal;
+    document.getElementById('voice-transcript').textContent = transcript;
+    if (isFinal) { rec.stop(); _voiceSubmit(transcript); }
+  };
+  rec.onerror = function(e) {
+    _voiceBusy = false;
+    if (e.error === 'no-speech') _voiceSetState('idle');
+    else _voiceSetState('error', 'Mic error: ' + e.error);
+  };
+  rec.onend = function() { _voiceBusy = false; };
+  rec.start();
+}
+
+async function _voiceSubmit(query) {
+  _voiceSetState('thinking', '"' + query + '"');
+  try {
+    var r = await fetch('/api/voice-query', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ query: query, postcode: PC })
+    });
+    var d = await r.json();
+    if (d.error) { _voiceSetState('error', d.error); return; }
+    _voiceSetState('answer', { query: '"' + query + '"', answer: d.answer });
+    if (_voiceSyn && d.answer) {
+      _voiceSyn.cancel();
+      var utt = new SpeechSynthesisUtterance(d.answer);
+      utt.lang  = 'en-GB';
+      utt.rate  = 0.95;
+      utt.pitch = 1;
+      _voiceSyn.speak(utt);
+    }
+  } catch(e) {
+    _voiceSetState('error', 'Network error — check your connection.');
+  }
+}
+
+// ── NAV / TOAST ────────────────────────────────────────────────
 let _tt;
 function toast(msg) {
   const t = document.getElementById('toast');

@@ -13213,6 +13213,115 @@ def api_music_save_delete(save_id):
         return jsonify({"error": "could not delete"}), 500
 
 
+@app.route("/api/voice-query", methods=["POST"])
+def api_voice_query():
+    """Voice assistant: parse intent from speech transcript, return a speakable answer."""
+    data = request.json or {}
+    query    = (data.get("query") or "").strip()
+    postcode = (data.get("postcode") or "").replace(" ", "").upper()
+
+    if not query:
+        return jsonify({"error": "No query provided"})
+
+    if not os.environ.get("GROQ_API_KEY"):
+        return jsonify({"error": "Voice assistant not configured (GROQ_API_KEY missing)"})
+
+    # Step 1: parse intent
+    intent_prompt = (
+        f'Parse this voice query from a UK user and return JSON only.\n'
+        f'Query: "{query}"\n'
+        f'Return exactly: {{"intent":"train|fuel|weather|general","from_station":"name or null","to_station":"name or null"}}'
+    )
+    try:
+        raw = _groq_chat(
+            "You are a query parser. Return only valid JSON, no explanation.",
+            [{"role": "user", "content": intent_prompt}],
+            max_tokens=80, json_mode=True
+        )
+        import json as _j
+        intent = _j.loads(raw)
+    except Exception as e:
+        return jsonify({"error": f"Couldn't parse query: {e}"})
+
+    intent_type = intent.get("intent", "general")
+
+    # Step 2: execute
+    if intent_type == "train":
+        from_s = (intent.get("from_station") or "").strip()
+        to_s   = (intent.get("to_station")   or "").strip()
+        if not from_s:
+            return jsonify({"answer": "Which station would you like departures from?", "intent": "train"})
+        result = _wa_train_format(from_s, to_s)
+        if not result:
+            return jsonify({"answer": f"I couldn't find {from_s} station. Check the name and try again.", "intent": "train"})
+        # Strip WhatsApp markup for speech
+        import re as _re
+        clean = _re.sub(r'[*_`]', '', result)
+        clean = clean.replace("🚆", "").replace("⏱", "").replace("🔴", "Cancelled.") \
+                     .replace("✅", "On time.").replace("→", "to").replace("\n\n", ". ").replace("\n", ". ")
+        clean = _re.sub(r'\s{2,}', ' ', clean).strip()
+        return jsonify({"answer": clean, "intent": "train"})
+
+    elif intent_type == "fuel":
+        if not postcode:
+            return jsonify({"answer": "I need your postcode to find fuel prices. Set it in your profile first.", "intent": "fuel"})
+        try:
+            base = request.host_url.rstrip("/")
+            r = requests.get(f"{base}/api/search?postcode={postcode}&fuel=petrol&radius=3&mode=fuel", timeout=10)
+            d = r.json()
+            stations = d.get("stations") or d.get("results") or []
+            if not stations:
+                return jsonify({"answer": f"No fuel stations found near {postcode}.", "intent": "fuel"})
+            best  = stations[0]
+            price = best.get("price") or best.get("petrol_price")
+            name  = best.get("name") or best.get("brand") or "a nearby station"
+            dist  = best.get("distance")
+            dist_str = f", {dist:.1f} miles away" if dist else ""
+            answer = f"Cheapest petrol near {postcode} is {price:.1f}p at {name}{dist_str}."
+            return jsonify({"answer": answer, "intent": "fuel"})
+        except Exception as e:
+            return jsonify({"answer": "Couldn't get fuel prices right now.", "intent": "fuel"})
+
+    elif intent_type == "weather":
+        if not postcode:
+            return jsonify({"answer": "Set your postcode in My Area first, then I can give you a weather update.", "intent": "weather"})
+        try:
+            pc_r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=5)
+            pc_d = pc_r.json()
+            lat  = pc_d["result"]["latitude"]
+            lng  = pc_d["result"]["longitude"]
+            district = pc_d["result"].get("admin_district", postcode)
+            wx_r = requests.get(
+                f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}"
+                "&current=temperature_2m,weather_code,apparent_temperature&timezone=auto",
+                timeout=8
+            )
+            cur  = wx_r.json().get("current", {})
+            temp = round(cur.get("temperature_2m", 0))
+            feel = round(cur.get("apparent_temperature", temp))
+            code = cur.get("weather_code", 0)
+            descs = {0:"clear skies",1:"mostly clear",2:"partly cloudy",3:"overcast",
+                     45:"foggy",51:"light drizzle",61:"light rain",63:"rain",65:"heavy rain",
+                     80:"showers",81:"heavy showers",95:"thunderstorms"}
+            desc = descs.get(code, "cloudy")
+            answer = f"In {district} it's {temp} degrees with {desc}, feeling like {feel} degrees."
+            return jsonify({"answer": answer, "intent": "weather"})
+        except Exception as e:
+            return jsonify({"answer": "Couldn't get the weather right now.", "intent": "weather"})
+
+    else:
+        # General — let Groq answer
+        try:
+            answer = _groq_chat(
+                "You are Miru, a helpful UK assistant. Give a short, direct spoken answer in 1-2 sentences. No markdown, no bullet points.",
+                [{"role": "user", "content": query}],
+                max_tokens=120
+            )
+            return jsonify({"answer": answer.strip(), "intent": "general"})
+        except Exception:
+            return jsonify({"answer": "I couldn't answer that right now. Try again.", "intent": "general"})
+
+
 @app.route("/api/music/gigs")
 def api_music_gigs():
     key = os.environ.get("TICKETMASTER_KEY", "")
