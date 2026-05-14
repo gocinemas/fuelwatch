@@ -12728,14 +12728,87 @@ _bkBadge();
   };
 
   // ── 🎤 Mic identification ────────────────────────────────────────────────
+  // Shazam needs raw 16-bit PCM mono @ 44100Hz — not compressed webm/opus
+  // from MediaRecorder. Capture via AudioContext + ScriptProcessorNode instead.
   var _micStream = null;
+
+  function _float32ToPcmB64(samples) {
+    var int16 = new Int16Array(samples.length);
+    for (var i = 0; i < samples.length; i++) {
+      var s = Math.max(-1, Math.min(1, samples[i]));
+      int16[i] = s < 0 ? s * 32768 : s * 32767;
+    }
+    var bytes = new Uint8Array(int16.buffer);
+    var binary = '';
+    for (var j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j]);
+    return btoa(binary);
+  }
+
+  async function _submitIdentify(b64, label) {
+    try {
+      var resp = await fetch('/api/music/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: b64,
+      });
+      var data = await resp.json();
+      if (data.match) {
+        label.textContent = '🎉 Found it!';
+        var spotUrl = data.spotify
+          ? 'https://open.spotify.com/track/' + data.spotify.replace('spotify:track:','')
+          : 'https://open.spotify.com/search/' + encodeURIComponent((data.title||'') + ' ' + (data.artist||''));
+        _musicResult = {
+          title:      data.title  || '',
+          artist:     data.artist || '',
+          cover:      data.cover  || '',
+          album: '', year: '', genre: '',
+          spotify:    spotUrl,
+          url:        data.url || '',
+          previewUrl: '',
+          saved:      new Date().toISOString().slice(0,10),
+        };
+        document.getElementById('music-cover').src = _musicResult.cover;
+        document.getElementById('music-title').textContent  = _musicResult.title;
+        document.getElementById('music-artist').textContent = _musicResult.artist;
+        var metaEl = document.getElementById('music-meta');
+        if (metaEl) metaEl.textContent = '';
+        document.getElementById('music-spotify-link').href = _musicResult.spotify;
+        document.getElementById('music-saved-msg').style.display = 'none';
+        var lyricsEl = document.getElementById('music-lyrics');
+        lyricsEl.style.display = 'none';
+        lyricsEl.innerHTML = '';
+        document.getElementById('music-search-results').style.display = 'none';
+        document.getElementById('music-result').style.display = 'block';
+        _miniShow(_musicResult);
+        try {
+          var lr = await fetch('https://api.lyrics.ovh/v1/'+encodeURIComponent(_musicResult.artist)+'/'+encodeURIComponent(_musicResult.title));
+          var ld = await lr.json();
+          if (ld.lyrics) {
+            var lines = ld.lyrics.trim().split('\n').filter(function(l){ return l.trim(); });
+            if (lines.length) {
+              var esc2 = function(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+              lyricsEl.innerHTML = '<div style="white-space:pre-line">'+esc2(lines.join('\n'))+'</div>';
+              lyricsEl.style.display = 'block';
+            }
+          }
+        } catch(e) {}
+      } else {
+        label.textContent = data.error ? 'Error — try again' : 'No match — try again or search below';
+        setTimeout(function(){ label.textContent = 'Tap to identify a song'; }, 4000);
+      }
+    } catch(e) {
+      label.textContent = 'Something went wrong — try again';
+      setTimeout(function(){ label.textContent = 'Tap to identify a song'; }, 4000);
+    }
+  }
+
   window.musicListen = async function() {
     var btn   = document.getElementById('music-listen-btn');
     var label = document.getElementById('music-listen-label');
     var timer = document.getElementById('music-listen-timer');
     if (btn.dataset.rec === '1') return;
     try {
-      var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      var stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       _micStream = stream;
       btn.dataset.rec = '1';
       btn.style.background = 'linear-gradient(135deg,#dc2626,#ef4444)';
@@ -12743,19 +12816,38 @@ _bkBadge();
       btn.classList.add('music-btn-pulse');
       label.textContent = 'Listening…';
       timer.style.display = 'block';
-      var secs = 8;
+
+      var SAMPLE_RATE = 44100;
+      var DURATION    = 8;
+      var audioCtx    = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+      var source      = audioCtx.createMediaStreamSource(stream);
+      var processor   = audioCtx.createScriptProcessor(4096, 1, 1);
+      var pcmSamples  = [];
+      var maxSamples  = SAMPLE_RATE * DURATION;
+
+      processor.onaudioprocess = function(e) {
+        var input = e.inputBuffer.getChannelData(0);
+        for (var i = 0; i < input.length && pcmSamples.length < maxSamples; i++) {
+          pcmSamples.push(input[i]);
+        }
+      };
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
+
+      var secs = DURATION;
       timer.textContent = secs;
-      var chunks = [];
-      var mr = new MediaRecorder(stream);
-      mr.ondataavailable = function(e){ if(e.data && e.data.size) chunks.push(e.data); };
       var tick = setInterval(function(){
         secs--;
         timer.textContent = secs > 0 ? secs : '🔍';
-        if(secs <= 0) clearInterval(tick);
+        if (secs <= 0) clearInterval(tick);
       }, 1000);
-      mr.onstop = async function(){
+
+      setTimeout(async function() {
         clearInterval(tick);
+        processor.disconnect();
+        source.disconnect();
         stream.getTracks().forEach(function(t){ t.stop(); });
+        audioCtx.close();
         _micStream = null;
         btn.dataset.rec = '0';
         btn.classList.remove('music-btn-pulse');
@@ -12763,71 +12855,10 @@ _bkBadge();
         btn.textContent = '🎤';
         timer.style.display = 'none';
         label.textContent = 'Identifying…';
-        var blob = new Blob(chunks, { type: mr.mimeType });
-        var reader = new FileReader();
-        reader.onload = async function(){
-          var b64 = reader.result.split(',')[1];
-          try {
-            var resp = await fetch('/api/music/identify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain' },
-              body: b64,
-            });
-            var data = await resp.json();
-            if (data.match) {
-              label.textContent = '🎉 Found it!';
-              var spotUrl = data.spotify
-                ? 'https://open.spotify.com/track/' + data.spotify.replace('spotify:track:','')
-                : 'https://open.spotify.com/search/' + encodeURIComponent((data.title||'') + ' ' + (data.artist||''));
-              _musicResult = {
-                title:      data.title  || '',
-                artist:     data.artist || '',
-                cover:      data.cover  || '',
-                album: '', year: '', genre: '',
-                spotify:    spotUrl,
-                url:        data.url || '',
-                previewUrl: '',
-                saved:      new Date().toISOString().slice(0,10),
-              };
-              document.getElementById('music-cover').src = _musicResult.cover;
-              document.getElementById('music-title').textContent  = _musicResult.title;
-              document.getElementById('music-artist').textContent = _musicResult.artist;
-              var metaEl = document.getElementById('music-meta');
-              if (metaEl) metaEl.textContent = '';
-              document.getElementById('music-spotify-link').href = _musicResult.spotify;
-              document.getElementById('music-saved-msg').style.display = 'none';
-              var lyricsEl = document.getElementById('music-lyrics');
-              lyricsEl.style.display = 'none';
-              lyricsEl.innerHTML = '';
-              document.getElementById('music-search-results').style.display = 'none';
-              document.getElementById('music-result').style.display = 'block';
-              _miniShow(_musicResult);
-              // Auto-load full lyrics for singalong
-              try {
-                var lr = await fetch('https://api.lyrics.ovh/v1/'+encodeURIComponent(_musicResult.artist)+'/'+encodeURIComponent(_musicResult.title));
-                var ld = await lr.json();
-                if (ld.lyrics) {
-                  var lines = ld.lyrics.trim().split('\n').filter(function(l){ return l.trim(); });
-                  if (lines.length) {
-                    var esc = function(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
-                    lyricsEl.innerHTML = '<div style="white-space:pre-line">'+esc(lines.join('\n'))+'</div>';
-                    lyricsEl.style.display = 'block';
-                  }
-                }
-              } catch(e) {}
-            } else {
-              label.textContent = 'No match — try again or search below';
-              setTimeout(function(){ label.textContent = 'Tap to identify a song'; }, 4000);
-            }
-          } catch(e) {
-            label.textContent = 'Something went wrong — try again';
-            setTimeout(function(){ label.textContent = 'Tap to identify a song'; }, 4000);
-          }
-        };
-        reader.readAsDataURL(blob);
-      };
-      mr.start();
-      setTimeout(function(){ if(mr.state === 'recording') mr.stop(); }, 8000);
+        var b64 = _float32ToPcmB64(pcmSamples);
+        await _submitIdentify(b64, label);
+      }, DURATION * 1000);
+
     } catch(e) {
       btn.dataset.rec = '0';
       label.textContent = 'Microphone not available — check browser permissions';
