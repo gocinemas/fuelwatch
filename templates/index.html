@@ -2092,12 +2092,6 @@
     showScreen(name);
     _pillCollapse();
   }
-  // Patch showScreen to keep pill in sync
-  const _origShowScreen = showScreen;
-  showScreen = function(name) {
-    _origShowScreen(name);
-    _pillUpdate(name);
-  };
   const _INTEL_MODE = {{ 'true' if intel_mode else 'false' }};
   function showHome() {
     if (_INTEL_MODE) { showScreen("company"); return; }
@@ -2124,6 +2118,7 @@
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
     if (name === "myarea")   { _loadMyArea(); }
     if (name === "finder")   { }
+    _pillUpdate(name);
     if (name === "places")   { _placesRefreshHomeRow(); }
     setFooter(name);
   }
