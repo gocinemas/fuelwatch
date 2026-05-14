@@ -3605,8 +3605,8 @@ const _ts = new Date(d.timestamp);
       ? (area.council.website.startsWith("http") ? area.council.website : "https://" + area.council.website)
       : null;
     const links = [
-      { icon:"🕳️", label:"Report a pothole",    url:"https://www.fixmystreet.com/?pc=" + pc },
-      { icon:"🗑️", label:"Bin collection day",   url: councilSite ? councilSite + "/bins" : "https://www.gov.uk/recycling-collections" },
+      { icon:"🕳️", label:"Report a pothole",    url:"https://www.fixmystreet.com/around?pc=" + pc },
+      { icon:"🗑️", label:"Bin collection day",   url:"https://www.recyclenow.com/local-recycling?pc=" + pc },
       { icon:"💷", label:"Pay council tax",      url:"https://www.gov.uk/pay-council-tax" },
       { icon:"🗳️", label:"Register to vote",     url:"https://www.gov.uk/register-to-vote" },
       { icon:"🚮", label:"Report fly-tipping",   url:"https://www.gov.uk/report-flytipping" },
