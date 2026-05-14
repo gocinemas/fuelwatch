@@ -9055,33 +9055,42 @@ def _wa_train_format(from_name: str, to_name: str = "") -> str:
 
 
 def _wa_brand_card(brand_name: str) -> str:
-    """Fetch quick brand intel and format as a WhatsApp card."""
-    from concurrent.futures import ThreadPoolExecutor as _TPE
+    """Fetch brand intel (DB-first via fetch_brand_data cache) and format as WhatsApp card."""
     from urllib.parse import quote as _q
-    wiki, tp = {}, {}
-    with _TPE(max_workers=2) as pool:
-        wf = pool.submit(_fetch_wikipedia, brand_name)
-        tf = pool.submit(_fetch_trustpilot, brand_name, "")
-        try: wiki = wf.result(timeout=9) or {}
-        except Exception: pass
-        try: tp   = tf.result(timeout=9) or {}
-        except Exception: pass
-    if not wiki.get("name") and not wiki.get("extract"):
+    try:
+        d = fetch_brand_data(brand_name)
+    except Exception:
+        d = {}
+
+    name = d.get("name") or brand_name
+    if not name or (not d.get("description") and not d.get("founded") and not d.get("slogan")):
         return (f"🏷️ Couldn't find brand info for *{brand_name}*.\n\n"
                 f"Try the full profile: intel.humanagency.co?q={_q(brand_name)}")
-    name = wiki.get("name") or brand_name
+
     lines = [f"🏷️ *{name}*"]
+
     meta = []
-    if wiki.get("founded"): meta.append(f"Est. {wiki['founded']}")
-    if wiki.get("hq"):      meta.append(wiki["hq"])
+    if d.get("founded"):  meta.append(f"Est. {d['founded']}")
+    if d.get("hq"):       meta.append(d["hq"])
+    if d.get("industry"): meta.append(d["industry"])
     if meta: lines.append(" · ".join(meta))
-    if wiki.get("extract"):
-        desc = wiki["extract"][:220].rsplit(" ", 1)[0]
+
+    if d.get("slogan"):
+        lines.append(f'_"{d["slogan"]}"_')
+
+    if d.get("description"):
+        desc = d["description"][:220].rsplit(" ", 1)[0]
         lines.append(f"\n{desc}…")
+
+    if d.get("competitors"):
+        lines.append(f"\n🆚 vs {' · '.join(d['competitors'][:3])}")
+
+    tp = d.get("trustpilot") or {}
     if tp.get("rating"):
-        stars = round(tp["rating"])
+        stars = round(float(tp["rating"]))
         count_str = f" ({tp['count']:,} reviews)" if tp.get("count") else ""
-        lines.append(f"\n{'⭐'*stars} Trustpilot: {tp['rating']}/5{count_str}")
+        lines.append(f"{'⭐'*stars} Trustpilot: {tp['rating']}/5{count_str}")
+
     lines.append(f"\n🔍 Full profile: intel.humanagency.co?q={_q(name)}")
     return "\n".join(lines)
 
