@@ -451,6 +451,36 @@
     .main-content { padding: 16px 14px 90px; }
     .card { padding: 16px; }
   }
+
+/* ── Planet image tooltip ── */
+#planet-tooltip {
+  position:fixed; z-index:9999; pointer-events:none;
+  width:220px; border-radius:16px; overflow:hidden;
+  background:#0f0f1a; border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 16px 40px rgba(0,0,0,.6);
+  opacity:0; transform:scale(.92) translateY(6px);
+  transition:opacity .18s ease, transform .18s ease;
+}
+#planet-tooltip.visible {
+  opacity:1; transform:scale(1) translateY(0);
+}
+#planet-tooltip img {
+  width:100%; height:150px; object-fit:cover; display:block;
+}
+#planet-tooltip .pt-body {
+  padding:10px 12px 12px;
+}
+#planet-tooltip .pt-name {
+  font-size:15px; font-weight:800; color:#fff; letter-spacing:-.3px; margin-bottom:3px;
+}
+#planet-tooltip .pt-dist {
+  font-size:12px; color:#94a3b8; margin-bottom:2px;
+}
+#planet-tooltip .pt-fact {
+  font-size:11px; color:#64748b; line-height:1.45;
+}
+.planet-row { cursor:pointer; }
+.planet-row:hover { background:rgba(99,102,241,.06); border-radius:10px; margin:0 -8px; padding-left:8px !important; padding-right:8px !important; }
 </style>
 </head>
 <body>
@@ -790,6 +820,14 @@
         <div>
           <div class="section-label">Solar System — Live Distances from Earth</div>
           <div class="card" id="planets-card"><div class="loading">Computing positions…</div></div>
+          <div id="planet-tooltip">
+            <img id="pt-img" src="" alt="">
+            <div class="pt-body">
+              <div class="pt-name" id="pt-name"></div>
+              <div class="pt-dist" id="pt-dist"></div>
+              <div class="pt-fact" id="pt-fact"></div>
+            </div>
+          </div>
         </div>
         <div>
           <div class="section-label">Astronomy Picture of the Day</div>
@@ -1545,16 +1583,52 @@ function _coTab(key) {
 
 // ── Planet Distances ───────────────────────────────────────────────────────────
 var _PLANET_EMOJI = {Mercury:'☿',Venus:'♀',Mars:'♂',Jupiter:'♃',Saturn:'♄',Uranus:'⛢',Neptune:'♆'};
+var _PLANET_IMG = {
+  Mercury: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Mercury_in_true_color.jpg/800px-Mercury_in_true_color.jpg',
+  Venus:   'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Venus-real_color.jpg/800px-Venus-real_color.jpg',
+  Mars:    'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/OSIRIS_Mars_true_color.jpg/800px-OSIRIS_Mars_true_color.jpg',
+  Jupiter: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/800px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg',
+  Saturn:  'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Saturn_during_Equinox.jpg/800px-Saturn_during_Equinox.jpg',
+  Uranus:  'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Uranus2.jpg/800px-Uranus2.jpg',
+  Neptune: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Neptune_Full.jpg/800px-Neptune_Full.jpg',
+};
+
+var _ptTip = null, _ptHideTimer = null;
+function _ptShow(el, p) {
+  if (!_ptTip) _ptTip = document.getElementById('planet-tooltip');
+  clearTimeout(_ptHideTimer);
+  document.getElementById('pt-img').src = _PLANET_IMG[p.name] || '';
+  document.getElementById('pt-img').alt = p.name;
+  document.getElementById('pt-name').textContent = p.name;
+  document.getElementById('pt-dist').textContent = p.dist_M_km.toFixed(1) + ' million km · light takes ' + p.light_min.toFixed(1) + ' min';
+  document.getElementById('pt-fact').textContent = p.fact || '';
+  var rect = el.getBoundingClientRect();
+  var tipW = 220, tipH = 220;
+  var left = rect.right + 12;
+  var top  = rect.top + window.scrollY - 20;
+  if (left + tipW > window.innerWidth - 12) left = rect.left - tipW - 12;
+  if (left < 8) left = 8;
+  var topFixed = rect.top + 12;
+  if (topFixed + tipH > window.innerHeight - 12) topFixed = window.innerHeight - tipH - 12;
+  _ptTip.style.left = left + 'px';
+  _ptTip.style.top  = topFixed + 'px';
+  _ptTip.classList.add('visible');
+}
+function _ptHide() {
+  _ptHideTimer = setTimeout(function(){ if (_ptTip) _ptTip.classList.remove('visible'); }, 120);
+}
+
 function _renderPlanets(d) {
   var el = document.getElementById('planets-card');
   if (!d || d.error || !d.planets || !d.planets.length) { el.innerHTML = '<div class="error">Could not compute positions</div>'; return; }
   var html = '<div style="display:flex;flex-direction:column;gap:0">';
-  d.planets.forEach(function(p) {
+  d.planets.forEach(function(p, i) {
     var bar = Math.min(100, Math.round(p.dist_au / 32 * 100));
     var emoji = p.emoji || _PLANET_EMOJI[p.name] || '🪐';
+    var last = '';
     html +=
-      '<div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px">'+
-        '<div style="font-size:22px;width:28px;text-align:center;flex-shrink:0;margin-top:2px">'+emoji+'</div>'+
+      '<div class="planet-row" data-pi="'+i+'" style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;transition:background .15s;border-radius:8px">'+
+        '<div style="font-size:24px;width:30px;text-align:center;flex-shrink:0;margin-top:2px">'+emoji+'</div>'+
         '<div style="flex:1;min-width:0">'+
           '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">'+
             '<span style="font-size:13px;font-weight:700;color:var(--text)">'+_esc(p.name)+'</span>'+
@@ -1565,11 +1639,32 @@ function _renderPlanets(d) {
           '</div>'+
           '<div style="font-size:11px;color:var(--subtle)">Light takes '+p.light_min.toFixed(1)+' min · '+_esc(p.fact)+'</div>'+
         '</div>'+
+        '<div style="font-size:10px;color:var(--subtle);flex-shrink:0;align-self:center;opacity:.5">👁</div>'+
       '</div>';
   });
   html += '</div>';
   var ts = d.ts ? '<div style="font-size:10px;color:var(--subtle);margin-top:8px;text-align:right">Computed '+new Date(d.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' UTC</div>' : '';
   el.innerHTML = html + ts;
+
+  // Attach hover + touch events
+  var rows = el.querySelectorAll('.planet-row');
+  rows.forEach(function(row, i) {
+    var p = d.planets[i];
+    if (!p || !_PLANET_IMG[p.name]) return;
+    row.addEventListener('mouseenter', function() { _ptShow(row, p); });
+    row.addEventListener('mouseleave', _ptHide);
+    row.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      if (_ptTip && _ptTip.classList.contains('visible') && _ptTip._currentPlanet === p.name) {
+        _ptHide();
+      } else {
+        if (_ptTip) _ptTip._currentPlanet = p.name;
+        _ptShow(row, p);
+        clearTimeout(_ptHideTimer);
+        setTimeout(_ptHide, 3000);
+      }
+    }, {passive:false});
+  });
 }
 var _planetsLoaded = false;
 function _loadPlanets() {
