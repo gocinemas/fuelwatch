@@ -4580,8 +4580,10 @@ def api_brand_scan():
         raw = _groq_vision(
             img_b64, mime,
             'Identify the brand shown in this image (on packaging, label, logo, or advertisement). '
-            'Return JSON only: {"brand": "ExactBrandName", "confidence": "high/medium/low"}. '
-            'If no brand is clearly identifiable set brand to null.',
+            'Return JSON only — no markdown:\n'
+            '{"brand": "ExactBrandName or null", "confidence": "high/medium/low", '
+            '"category": "product category e.g. chocolate, beer, shampoo, trainers, phone — or null", '
+            '"search_query": "the most specific unambiguous search term e.g. \'Galaxy chocolate\' or \'Heineken beer\' or \'Nike trainers\' — combine brand + category if needed to avoid confusing it with another brand of the same name"}'
         )
         import json as _json
         parsed = _json.loads(raw.strip().strip("```json").strip("```").strip())

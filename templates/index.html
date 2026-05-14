@@ -5271,8 +5271,14 @@ const _ts = new Date(d.timestamp);
       try {
         var r = await fetch("/api/brand/scan", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({image:b64, mime:mime})});
         var d = await r.json();
-        if (d.brand) { inp.value = d.brand; inp.placeholder = ""; document.getElementById("intel-input").value = d.brand; input.value = ""; searchIntel(); }
-        else { inp.placeholder = "Couldn't identify brand — try typing it"; input.value = ""; }
+        if (d.brand) {
+          var displayName  = d.brand;
+          var searchQuery  = d.search_query || d.brand;
+          inp.value = displayName; inp.placeholder = "";
+          document.getElementById("intel-input").value = searchQuery;
+          input.value = "";
+          searchIntel();
+        } else { inp.placeholder = "Couldn't identify brand — try typing it"; input.value = ""; }
       } catch(_) { inp.placeholder = "Scan failed — try typing the brand"; input.value = ""; }
     };
     reader.readAsDataURL(file);
