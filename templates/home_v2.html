@@ -229,37 +229,7 @@
     .section-label { margin: 22px 0 10px; }
   }
 
-  /* SAVES BAR */
-  #saves-bar {
-    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-    width: calc(100% - 32px); max-width: 560px; z-index: 250;
-  }
-  #saves-pill {
-    background: var(--saves-bg); backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid var(--border); border-radius: 18px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.15); overflow: hidden;
-  }
-  @media (prefers-color-scheme: dark) { #saves-pill { box-shadow: 0 8px 32px rgba(0,0,0,.6); } }
-  #saves-header {
-    display: flex; align-items: center; gap: 8px;
-    padding: 12px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent;
-  }
-  .saves-title { font-size: 14px; font-weight: 700; flex: 1; }
-  .saves-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--surface2); color: var(--muted); }
-  .saves-chev { width:16px;height:16px;stroke:var(--muted);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s cubic-bezier(.34,1.56,.64,1); }
-  #saves-pill.open .saves-chev { transform: rotate(180deg); }
-  #saves-body { max-height: 0; overflow: hidden; transition: max-height .35s cubic-bezier(.4,0,.2,1); }
-  #saves-pill.open #saves-body { max-height: 240px; }
-  .saves-list { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 2px; }
-  .save-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 6px; border-radius: 10px; cursor: pointer; transition: background .12s;
-  }
-  .save-row:hover { background: var(--surface2); }
-  .save-ico  { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
-  .save-lbl  { font-size: 13px; font-weight: 600; flex: 1; }
-  .save-meta { font-size: 11px; color: var(--muted); }
+  /* PILL NAV spacing — no saves bar, so less bottom padding needed */
 
   /* PILL NAV */
   #pill-overlay { display:none; position:fixed; inset:0; z-index:200; }
@@ -319,23 +289,6 @@
   <!-- CONTENT — rendered by JS based on state -->
   <div id="content"></div>
 
-</div>
-
-<!-- SAVES BAR -->
-<div id="saves-bar">
-  <div id="saves-pill">
-    <div id="saves-header" onclick="_savesToggle()">
-      <span style="font-size:18px">📌</span>
-      <span class="saves-title">Saves</span>
-      <span class="saves-badge" id="saves-count">—</span>
-      <svg class="saves-chev" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
-    </div>
-    <div id="saves-body">
-      <div class="saves-list" id="saves-list">
-        <div style="padding:8px 6px;font-size:13px;color:var(--muted)">Loading saves…</div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- PILL NAV -->
@@ -645,7 +598,14 @@ function renderPersonalised() {
           document.getElementById('fuel-badge').textContent = `LIVE · ${stations.length} stations nearby →`;
         });
     })
-    .catch(() => { document.getElementById('fuel-sub').textContent = 'Fuel data unavailable'; });
+    .catch(() => {
+      const fr = document.getElementById('fuel-row');
+      if (fr) fr.innerHTML = '<div style="font-size:22px;font-weight:700;color:var(--muted)">—</div>';
+      const fs = document.getElementById('fuel-sub');
+      if (fs) fs.textContent = 'Fuel data unavailable';
+      const fb = document.getElementById('fuel-badge');
+      if (fb) fb.textContent = 'Tap to search →';
+    });
 
   // ── TRAINS ──────────────────────────────────────────────────
   fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
@@ -673,7 +633,12 @@ function renderPersonalised() {
           else { badge.textContent = 'On time'; badge.className = 'lc-badge badge-ok'; }
         });
     })
-    .catch(() => { document.getElementById('train-dest').textContent = 'Train data unavailable'; });
+    .catch(() => {
+      const tt = document.getElementById('train-time');
+      if (tt) tt.textContent = '—';
+      const td = document.getElementById('train-dest');
+      if (td) td.textContent = 'Train data unavailable';
+    });
 
   // ── WEATHER + NEARBY ────────────────────────────────────────
   fetch(`https://api.postcodes.io/postcodes/${PC}`)
@@ -700,7 +665,11 @@ function renderPersonalised() {
           document.getElementById('wx-badge').textContent = feel < 5 ? '🧥 Very cold' : feel < 12 ? '🧥 Wrap up' : feel > 25 ? '☀ Warm day' : 'Comfortable';
           document.getElementById('wx-icon').innerHTML = wxIcon(code, h);
         })
-        .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
+        .catch(() => {
+          const wt = document.getElementById('wx-temp'); if (wt) wt.textContent = '—';
+          const wd = document.getElementById('wx-desc'); if (wd) wd.textContent = 'Weather unavailable';
+          const wb = document.getElementById('wx-badge'); if (wb) wb.textContent = '';
+        });
 
       const _nearbyTimeout = new Promise(res => setTimeout(() => res(null), 12000));
       Promise.race([
@@ -745,30 +714,6 @@ function renderPersonalised() {
     .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
 }
 
-// ── SAVES ──────────────────────────────────────────────────────
-const rawSaves = JSON.parse(localStorage.getItem('miru_saves') || 'null') ||
-                 JSON.parse(localStorage.getItem('saves') || '[]');
-const saves = Array.isArray(rawSaves) ? rawSaves : Object.values(rawSaves);
-document.getElementById('saves-count').textContent = saves.length || '0';
-if (saves.length) {
-  document.getElementById('saves-list').innerHTML = saves.slice(0, 5).map(s => `
-    <div class="save-row">
-      <span class="save-ico">${s.icon || '📌'}</span>
-      <span class="save-lbl">${s.label || s.title || s.name || JSON.stringify(s).slice(0,30)}</span>
-      <span class="save-meta">${s.meta || s.value || ''}</span>
-    </div>
-  `).join('');
-} else {
-  document.getElementById('saves-list').innerHTML = `<div style="padding:8px 6px;font-size:13px;color:var(--muted)">No saves yet</div>`;
-}
-
-// ── SAVES UI ───────────────────────────────────────────────────
-let _savesOpen = false;
-function _savesToggle() {
-  _savesOpen = !_savesOpen;
-  document.getElementById('saves-pill').classList.toggle('open', _savesOpen);
-}
-
 // ── PILL ───────────────────────────────────────────────────────
 let _pillOpen = false;
 function _pillTap(e) { if (!_pillOpen) _pillExpand(); }
@@ -776,7 +721,6 @@ function _pillExpand() {
   _pillOpen = true;
   document.getElementById('pill-shell').classList.add('expanded');
   document.getElementById('pill-overlay').classList.add('show');
-  if (_savesOpen) _savesToggle();
 }
 function _pillCollapse() {
   _pillOpen = false;

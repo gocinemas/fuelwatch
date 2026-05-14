@@ -5210,6 +5210,8 @@ const _ts = new Date(d.timestamp);
     // Camera button: only on miru single-input row
     var scanBtn = document.getElementById("intel-scan-btn");
     if (scanBtn) scanBtn.style.display = mode === "brand" ? "" : "none";
+    // Reload pins filtered to this mode
+    _loadIntelPins();
   };
 
   // Show the landing cards and reset mode (intel.humanagency.co "← Switch" button)
@@ -5284,7 +5286,10 @@ const _ts = new Date(d.timestamp);
     try {
       const r = await fetch("/api/intel/pins");
       const d = await r.json();
-      const pins = d.pins || [];
+      let pins = d.pins || [];
+      // Filter pins to match the active mode so brand pins don't appear on company tab
+      if (_intelSearchMode === "brand")   pins = pins.filter(p => p.type === "brand");
+      if (_intelSearchMode === "company") pins = pins.filter(p => p.type === "company");
       if (!pins.length) { sec.style.display = "none"; return; }
       list.innerHTML = pins.map(p => {
         const logo = p.domain
