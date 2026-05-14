@@ -1623,7 +1623,7 @@
           <button onclick="_maShowTab('civic')" id="matab-btn-civic"
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏛️ Civic</button>
           <button onclick="_maShowTab('accounts')" id="matab-btn-accounts"
-            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:#065f46;color:#fff">📋 My Accounts</button>
+            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:#065f46;color:#fff">🗂️ Life Admin</button>
         </div>
       </div>
 
@@ -1662,7 +1662,7 @@
         <div id="myarea-crime"            style="display:none;margin-bottom:10px"></div>
       </div>
 
-      <!-- Tab: My Accounts — personal bills, vehicles, insurance -->
+      <!-- Tab: Life Admin — bills, vehicles, MOT, insurance, school comms -->
       <div id="matab-accounts">
 
         <!-- Gmail import card -->
@@ -3053,7 +3053,7 @@ const _ts = new Date(d.timestamp);
 
   function _maRenderCustomise() {
     const prefs = _maGetPrefs();
-    const always = ["🗳️ Representatives (Civic tab)", "🏛️ Council &amp; Utilities (Civic tab)", "📌 Saved Places", "🚗 My Vehicles", "📋 My Details"];
+    const always = ["🗳️ Representatives (Civic tab)", "🏛️ Council &amp; Utilities (Civic tab)", "📌 Saved Places", "🚗 My Vehicles", "🗂️ Life Admin"];
     const toggles = _MA_PREF_SECTIONS.map(s => {
       const on = prefs[s.key];
       return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
