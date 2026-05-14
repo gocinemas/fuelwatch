@@ -467,11 +467,12 @@ def _flag_token_error(from_number: str, profiles: list, on_error=None):
             print(f"[school] on_error callback failed: {e}")
 
 
-def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list = None, on_error=None) -> dict:
+def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list = None, on_error=None, skip_error_flag: bool = False) -> dict:
     """
     For every active school profile (optionally filtered to profile_ids),
     fetch emails from school senders using each parent's own Gmail token.
     force=True deletes existing events before re-parsing.
+    skip_error_flag=True prevents flagging the token as errored (used after fresh OAuth).
     Returns summary dict.
     """
     profiles = _get_profiles()
@@ -523,7 +524,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
             res = _gmail_get("messages", {"q": query, "maxResults": 50}, refresh_token=gmail_token)
         except Exception as e:
             print(f"[school] Gmail list error for {from_number}: {e}")
-            if "400" in str(e) or "401" in str(e):
+            if not skip_error_flag and ("400" in str(e) or "401" in str(e)):
                 _flag_token_error(from_number, parent_profiles, on_error)
             continue
 

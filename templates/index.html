@@ -11392,7 +11392,9 @@ _bkBadge();
       const r = await fetch("/api/wa-saves", {headers: _savesHeaders()});
       if (r.status === 401) { localStorage.removeItem("wa_saves_token"); sessionStorage.removeItem("wa_saves_token"); _savesShowPhone(); return; }
       const d = await r.json();
-      _savesAll = (d.saves || []).filter(function(s){ return !(s.title||"").startsWith("🎵 "); });
+      _savesAll = (d.saves || []).filter(function(s){
+        return !(s.title||"").startsWith("🎵 ") && !(s.url||"").startsWith("book:");
+      });
       savesRenderCategoryPills();
       savesRender();
     } catch(e) {

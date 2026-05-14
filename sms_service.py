@@ -11793,7 +11793,7 @@ def school_oauth_callback():
     import threading
     threading.Thread(
         target=school_service.poll_all_profiles,
-        kwargs={"days_back": 30, "force": False, "profile_ids": [profile_id]},
+        kwargs={"days_back": 30, "force": False, "profile_ids": [profile_id], "skip_error_flag": True},
         daemon=True,
     ).start()
 

@@ -769,8 +769,12 @@ document.getElementById("wa-input").addEventListener("keydown", e => {
   if (wa) {
     document.getElementById("wa-input").value = wa;
     if (params.get("oauth") === "success") {
-      // Just returned from Gmail OAuth — auto-lookup and show a success banner
+      // Just returned from Gmail OAuth — auto-lookup and show a success banner.
+      // Force-clear gmail_token_error on all profiles to prevent a race where the
+      // background poll immediately re-flags the error before this page load completes.
       lookupProfile().then(() => {
+        _profiles.forEach(p => { p.gmail_token_error = false; });
+        renderGmailSection();
         const sec = document.getElementById("gmail-section");
         if (sec) {
           const banner = document.createElement("div");
