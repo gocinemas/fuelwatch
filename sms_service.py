@@ -4568,6 +4568,74 @@ def api_intel_unpin():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/intel/compare")
+def api_intel_compare():
+    """Side-by-side brand/company comparison powered by Groq."""
+    import concurrent.futures as _cf, json as _json, re as _re
+    a = request.args.get("a", "").strip()
+    b = request.args.get("b", "").strip()
+    mode = request.args.get("mode", "brand")  # brand | company
+    if not a or not b:
+        return jsonify({"error": "a and b required"}), 400
+
+    # Fetch both in parallel using existing data functions
+    with _cf.ThreadPoolExecutor(max_workers=2) as ex:
+        if mode == "company":
+            fa = ex.submit(fetch_company_info, a)
+            fb = ex.submit(fetch_company_info, b)
+        else:
+            fa = ex.submit(fetch_brand_data, a)
+            fb = ex.submit(fetch_brand_data, b)
+        da = fa.result()
+        db = fb.result()
+
+    def _summary(d, name):
+        if mode == "company":
+            w = d.get("wiki") or {}
+            return (f"Name: {d.get('name') or name}\n"
+                    f"Industry: {w.get('industry','')}\n"
+                    f"Founded: {w.get('founded','')}\n"
+                    f"HQ: {w.get('hq','')}\n"
+                    f"Revenue: {w.get('revenue','')}\n"
+                    f"Employees: {w.get('employees','')}\n"
+                    f"Overview: {(w.get('extract') or '')[:400]}")
+        else:
+            return (f"Name: {d.get('name') or name}\n"
+                    f"Founded: {d.get('founded','')}\n"
+                    f"HQ: {d.get('hq','')}\n"
+                    f"Revenue: {d.get('revenue','')}\n"
+                    f"Slogan: {d.get('slogan','')}\n"
+                    f"Description: {(d.get('description') or '')[:300]}\n"
+                    f"Competitors: {', '.join((d.get('competitors') or [])[:5])}")
+
+    prompt = (
+        f"Compare these two {'companies' if mode == 'company' else 'brands'} head-to-head.\n\n"
+        f"--- {a} ---\n{_summary(da, a)}\n\n"
+        f"--- {b} ---\n{_summary(db, b)}\n\n"
+        "Return JSON only:\n"
+        '{"verdict": "one punchy sentence on which is stronger and why",'
+        '"dimensions": ['
+        '{"label":"Positioning","a":"value","b":"value"},'
+        '{"label":"Revenue / Scale","a":"value","b":"value"},'
+        '{"label":"Founded","a":"value","b":"value"},'
+        '{"label":"Key Markets","a":"value","b":"value"},'
+        '{"label":"Brand Strength","a":"High/Medium/Low + reason","b":"value"},'
+        '{"label":"Parent Company","a":"value","b":"value"}'
+        '],'
+        '"a_edge": "one sentence: where A wins",'
+        '"b_edge": "one sentence: where B wins"}'
+    )
+    try:
+        raw = _groq_chat("You are a brand strategy analyst. Reply with JSON only.", [{"role":"user","content":prompt}], max_tokens=600, json_mode=True)
+        raw = _re.sub(r"^```[a-z]*\n?","",raw).rstrip("`").strip()
+        result = _json.loads(raw)
+        result["a_name"] = da.get("name") or a
+        result["b_name"] = db.get("name") or b
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/scan", methods=["POST"])
 def api_brand_scan():
     """Identify a brand from a photo using Groq vision."""
