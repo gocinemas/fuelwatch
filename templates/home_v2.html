@@ -382,13 +382,13 @@
 
 <script>
 // ── HELPERS ────────────────────────────────────────────────────
-// Seed identity from URL params (e.g. ?pc=KT160HY&phone=447700900000)
+// Seed identity from URL params only if not already set in localStorage
 (function(){
   var _p = new URLSearchParams(location.search);
   var _pc = (_p.get('pc') || _p.get('postcode') || '').replace(/\s+/g,'').toUpperCase();
   var _ph = _p.get('phone') || '';
-  if (_pc) localStorage.setItem('miru_postcode', _pc);
-  if (_ph) localStorage.setItem('miru_phone', _ph);
+  if (_pc && !localStorage.getItem('miru_postcode')) localStorage.setItem('miru_postcode', _pc);
+  if (_ph && !localStorage.getItem('miru_phone'))    localStorage.setItem('miru_phone', _ph);
 })();
 
 const _rawPC = (localStorage.getItem('miru_postcode') || '').replace(/\s+/g,'').toUpperCase();
