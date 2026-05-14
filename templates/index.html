@@ -167,20 +167,54 @@
     #app-header .logo { cursor: pointer; }
 
     /* Bottom nav */
-    #bottom-nav {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      background: var(--surface); border-top: 1px solid var(--border);
-      display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom);
+    #bottom-nav { display:none; }
+
+    /* ── Morphing Pill Nav ───────────────────────────────────────── */
+    #pill-nav {
+      position: fixed;
+      bottom: calc(24px + env(safe-area-inset-bottom));
+      left: 50%; transform: translateX(-50%);
+      z-index: 300;
     }
-    .bnav-btn {
-      flex: 1; display: flex; flex-direction: column; align-items: center;
-      justify-content: center; gap: 3px; padding: 10px 4px 8px;
-      font-size: 10px; font-weight: 600; color: var(--subtle);
-      border: none; background: transparent; cursor: pointer; transition: color .15s;
-      letter-spacing: 0.02em; text-transform: uppercase;
+    #pill-shell {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.08);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      width: 150px; height: 46px;
+      transition: width .38s cubic-bezier(.34,1.56,.64,1), background .3s, border-color .3s;
+      cursor: pointer; overflow: hidden;
     }
-    .bnav-btn.active { color: var(--accent); }
-    .bnav-btn .bnav-icon { font-size: 20px; line-height: 1; }
+    #pill-shell.expanded { width: 264px; }
+    #pill-resting {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; gap: 7px; padding: 0 16px 0 13px;
+      white-space: nowrap; transition: opacity .15s;
+    }
+    #pill-shell.expanded #pill-resting { opacity: 0; pointer-events: none; }
+    .pr-icon  { font-size: 18px; line-height: 1; flex-shrink: 0; }
+    .pr-label { font-size: 14px; font-weight: 700; color: var(--text); flex: 1; }
+    .pr-chev  { color: var(--subtle); flex-shrink: 0; }
+    #pill-icons {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: space-around; padding: 0 8px;
+      opacity: 0; pointer-events: none; transition: opacity .15s .1s;
+    }
+    #pill-shell.expanded #pill-icons { opacity: 1; pointer-events: auto; }
+    .pi-btn {
+      width: 54px; height: 38px; border-radius: 99px; border: none;
+      background: transparent; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      cursor: pointer; font-family: inherit; transition: background .15s; flex-shrink: 0;
+    }
+    .pi-btn:active { background: var(--surface2); }
+    .pi-btn.pi-active { background: var(--surface2); }
+    .pi-ico { font-size: 17px; line-height: 1; }
+    .pi-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: 0; transition: opacity .2s; }
+    .pi-btn.pi-active .pi-dot { opacity: 1; }
+    #pill-overlay { display: none; position: fixed; inset: 0; z-index: 299; }
 
     /* Section label */
     .sec-label {
@@ -2027,6 +2061,43 @@
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   function setFooter(name) {}
+
+  // ── Morphing Pill Nav ────────────────────────────────────────────
+  const _PILL_SCREENS = {
+    home:    { icon:'🏠', label:'Home',     piId:'pi-home'   },
+    myarea:  { icon:'📍', label:'My Area',  piId:'pi-myarea' },
+    company: { icon:'🔍', label:'Intel',    piId:'pi-intel'  },
+    saves:   { icon:'📌', label:'Saves',    piId:'pi-saves'  },
+  };
+  function _pillUpdate(name) {
+    const s = _PILL_SCREENS[name];
+    if (!s) return;
+    document.getElementById('pill-icon').textContent  = s.icon;
+    document.getElementById('pill-label').textContent = s.label;
+    document.querySelectorAll('.pi-btn').forEach(b => b.classList.remove('pi-active'));
+    document.getElementById(s.piId).classList.add('pi-active');
+  }
+  function _pillExpand() {
+    document.getElementById('pill-shell').classList.add('expanded');
+    document.getElementById('pill-overlay').style.display = 'block';
+  }
+  function _pillCollapse() {
+    document.getElementById('pill-shell').classList.remove('expanded');
+    document.getElementById('pill-overlay').style.display = 'none';
+  }
+  function _pillTap(e) {
+    if (!document.getElementById('pill-shell').classList.contains('expanded')) _pillExpand();
+  }
+  function _pillNav(name) {
+    showScreen(name);
+    _pillCollapse();
+  }
+  // Patch showScreen to keep pill in sync
+  const _origShowScreen = showScreen;
+  showScreen = function(name) {
+    _origShowScreen(name);
+    _pillUpdate(name);
+  };
   const _INTEL_MODE = {{ 'true' if intel_mode else 'false' }};
   function showHome() {
     if (_INTEL_MODE) { showScreen("company"); return; }
@@ -10733,6 +10804,22 @@ _bkBadge();
 </div>
 
 <!-- Bottom Navigation -->
+<div id="pill-overlay" onclick="_pillCollapse()"></div>
+<div id="pill-nav">
+  <div id="pill-shell" onclick="_pillTap(event)">
+    <div id="pill-resting">
+      <span class="pr-icon" id="pill-icon">🏠</span>
+      <span class="pr-label" id="pill-label">Home</span>
+      <svg class="pr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+    </div>
+    <div id="pill-icons">
+      <button class="pi-btn pi-active" id="pi-home"   onclick="_pillNav('home');event.stopPropagation()"><span class="pi-ico">🏠</span><span class="pi-dot"></span></button>
+      <button class="pi-btn"           id="pi-myarea" onclick="_pillNav('myarea');event.stopPropagation()"><span class="pi-ico">📍</span><span class="pi-dot"></span></button>
+      <button class="pi-btn"           id="pi-intel"  onclick="_pillNav('company');event.stopPropagation()"><span class="pi-ico">🔍</span><span class="pi-dot"></span></button>
+      <button class="pi-btn"           id="pi-saves"  onclick="_pillNav('saves');event.stopPropagation()"><span class="pi-ico">📌</span><span class="pi-dot"></span></button>
+    </div>
+  </div>
+</div>
 <nav id="bottom-nav" style="display:none"></nav>
 
 <!-- Featured media modal -->
