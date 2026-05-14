@@ -3584,6 +3584,7 @@ const _ts = new Date(d.timestamp);
     if (area.council?.name) rows += _maRow("🏢","Council", area.council.name, null, area.council.website||null);
     if (area.water?.name)   rows += _maRow("💧","Water Co.", area.water.name, `Emergency: <a href="tel:${area.water.emergency}" style="color:#2563eb">${area.water.emergency}</a>`, `https://${area.water.website}`);
     if (area.gas?.name)     rows += _maRow("🔥","Gas Network", area.gas.name, `Gas leak: <a href="tel:${area.gas.emergency}" style="color:#dc2626;font-weight:700">${area.gas.emergency}</a>`, `https://${area.gas.website}`);
+    _maRenderCouncilServices(area, _maCurrentPostcode);
     if (!rows) { el.style.display = "none"; return; }
     let bodyHtml = _maCard(rows);
     const posts = (area.post_offices || []).slice(0, 3);
@@ -3594,7 +3595,6 @@ const _ts = new Date(d.timestamp);
     }
     el.innerHTML = _maSectionHtml("council", "🏛️ Council &amp; Utilities", bodyHtml);
     el.style.display = "";
-    _maRenderCouncilServices(area, _maCurrentPostcode);
   }
 
   function _maRenderCouncilServices(area, postcode) {
