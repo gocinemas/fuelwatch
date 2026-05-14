@@ -411,6 +411,7 @@
             style="flex:1;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;font-family:inherit"
             oninput="homeSearchInput()" onkeydown="homeSearchKey(event)" onfocus="homeSearchFocus()" onblur="setTimeout(homeSearchBlur,200)" />
           <button id="home-search-clear" onclick="homeSearchClear()" style="display:none;background:none;border:none;cursor:pointer;font-size:16px;color:var(--subtle);padding:0;line-height:1">✕</button>
+          <button id="home-search-go" onclick="homeSearchSubmit()" style="display:none;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;line-height:1.4">Go</button>
         </div>
         <div id="home-search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:200;overflow:hidden;max-height:340px;overflow-y:auto"></div>
       </div>
@@ -9111,9 +9112,31 @@ const _ts = new Date(d.timestamp);
       return null;
     }
 
+    window.homeSearchSubmit = function() {
+      const q = document.getElementById("home-search-input").value.trim();
+      if (!q) return;
+      const pc = _extractPostcode(q);
+      const intent = pc ? _detectIntent(q) : null;
+      if (pc && intent) { homeSearchClear(); intent.fill(pc, q); return; }
+      if (_LOCAL_SERVICE_KW.some(w => q.toLowerCase().includes(w))) {
+        const svc = q.replace(/\b(near me|nearby|local|find me?|find a?)\b/gi,"").trim();
+        homeSearchClear();
+        window._fillFinder("", svc || q);
+        return;
+      }
+      const firstBtn = document.querySelector("#home-search-results button");
+      if (firstBtn) { firstBtn.click(); return; }
+      const bco = _detectBrandOrCompany(q);
+      if (bco) {
+        document.getElementById("intel-input").value = bco.name;
+        searchIntel(); homeSearchClear();
+      }
+    };
+
     window.homeSearchInput = function() {
       const q = document.getElementById("home-search-input").value.trim();
       document.getElementById("home-search-clear").style.display = q ? "block" : "none";
+      document.getElementById("home-search-go").style.display = q ? "block" : "none";
       if (!q) { _hideResults(); return; }
 
       // Smart: brand/company intent detected (e.g. "Tesco turnover", "Nike strategy")
@@ -9259,6 +9282,7 @@ const _ts = new Date(d.timestamp);
     window.homeSearchClear = function() {
       document.getElementById("home-search-input").value = "";
       document.getElementById("home-search-clear").style.display = "none";
+      document.getElementById("home-search-go").style.display = "none";
       _hideResults();
     };
     window.homeSearchFocus = function() {
@@ -9315,34 +9339,7 @@ const _ts = new Date(d.timestamp);
     })();
     window.homeSearchKey = function(e) {
       if (e.key === "Escape") { homeSearchClear(); return; }
-      if (e.key === "Enter") {
-        const q  = document.getElementById("home-search-input").value.trim();
-        const pc = _extractPostcode(q);
-        const intent = pc ? _detectIntent(q) : null;
-        if (pc && intent) {
-          homeSearchClear();
-          intent.fill(pc, q);
-          return;
-        }
-        // Local service without postcode → finder
-        if (_LOCAL_SERVICE_KW.some(w => q.toLowerCase().includes(w))) {
-          homeSearchClear();
-          const svc = q.replace(/\b(near me|nearby|local|find me?|find a?)\b/gi,"").trim();
-          window._fillFinder("", svc || q);
-          return;
-        }
-        // Fire the first visible result button
-        const firstBtn = document.querySelector("#home-search-results button");
-        if (firstBtn) { firstBtn.click(); return; }
-        const bco = _detectBrandOrCompany(q);
-        if (bco) {
-          document.getElementById("intel-input").value = bco.name;
-          var _hvq = bco.type === "company" ? document.getElementById("company-q") : document.getElementById("brand-q");
-          if (_hvq) _hvq.value = bco.name;
-          searchIntel();
-          homeSearchClear();
-        }
-      }
+      if (e.key === "Enter") homeSearchSubmit();
     };
   })();
 </script>
