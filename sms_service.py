@@ -8756,6 +8756,45 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
                     if any(w in n for w in ("bistro", "bar", "pub", "grill", "brasserie",
                                              "restaurant", "hotel", "inn", "arms", "tavern", "kitchen")):
                         return 0.35
+            if ptype == "restaurant":
+                _ethnic = ("indian", "curry", "spice", "balti", "tandoor", "masala", "biryani",
+                           "thai", "chinese", "sushi", "japanese", "dim sum", "noodle",
+                           "pizza", "pizzeria", "pasta", "italian", "turkish", "lebanese",
+                           "persian", "arabic", "bangladeshi", "pakistani", "sri lanka",
+                           "vietnamese", "korean", "mexican", "tapas", "spanish")
+                if kw == "steak":
+                    if any(w in n for w in ("steak", "grill", "chophouse", "ribeye", "sirloin", "wagyu", "chop house")):
+                        return 1.0
+                    if any(w in n for w in ("brasserie", "steakhouse", "butcher", "prime")):
+                        return 0.9
+                    if any(w in n for w in _ethnic):
+                        return 0.05  # Indian/Thai/etc almost certainly no steak
+                    return 0.7
+                if kw == "burger":
+                    if any(w in n for w in ("burger", "smash", "shack", "joint", "patty")):
+                        return 1.0
+                    if any(w in n for w in _ethnic):
+                        return 0.15
+                    return 0.7
+                if kw == "kebab":
+                    if any(w in n for w in ("kebab", "shawarma", "doner", "turkish", "lebanese", "arabic", "persian", "grill")):
+                        return 1.0
+                    if any(w in n for w in ("indian", "curry", "balti", "tandoor")):
+                        return 0.5  # some crossover
+                    return 0.6
+            if ptype == "bar":
+                if kw == "wine bar":
+                    if any(w in n for w in ("wine", "vino", "cellar", "cave", "vineyard", "winery", "sommelier")):
+                        return 1.0
+                    if any(w in n for w in ("bar", "bistro", "brasserie", "kitchen")):
+                        return 0.75
+                    if any(w in n for w in ("pub", "inn", "arms", "tavern", "sports")):
+                        return 0.3
+                if kw == "beer":
+                    if any(w in n for w in ("pub", "inn", "arms", "tavern", "brewery", "tap", "ale")):
+                        return 1.0
+                    if any(w in n for w in ("bar", "bistro")):
+                        return 0.8
             return 0.75  # neutral / unknown
 
         if cheap:
