@@ -4043,6 +4043,7 @@ const _ts = new Date(d.timestamp);
     // your-area (GPs, council, pharmacies) — LS-cached 24h, Overpass on miss
     _maFetchCached(`your-area:${pc}`, `/api/your-area?postcode=${pc}`, 86400, _guard(area => {
       _maAreaData = area; _maRenderCouncil(area); _maRenderGPs(area); _myAreaPersonalRender();
+      _maRenderCouncilServices(area, _maCurrentPostcode);
       _maHideServicesSkeleton();
     }));
 
