@@ -8814,6 +8814,7 @@ def _places_review_snippet(place_id: str, keywords: list) -> str:
     return ""
 
 
+
 def _wa_food_find(body: str, from_number: str):
     """Return WhatsApp-formatted food/drink picks, or None if not a food query."""
     # Normalise typos: collapse 3+ repeated letters (coffeee→coffee, beeer→beer)
@@ -8856,24 +8857,38 @@ def _wa_food_find(body: str, from_number: str):
                 pc_fmt = outcode
         except Exception:
             pass
+    _wants_live = bool(re.search(r'\b(here|near me|around here|where i am|current(ly)?)\b', body_lower))
+
     if lat is None:
-        # Fall back to stored home postcode
-        stored = _get_wa_home_postcode(from_number)
-        if stored:
-            try:
-                r2 = requests.get(f"https://api.postcodes.io/postcodes/{stored}", timeout=5)
-                if r2.status_code == 200:
-                    res = r2.json().get("result", {})
-                    lat, lon = res.get("latitude"), res.get("longitude")
-                    pc_fmt = stored[:-3] + " " + stored[-3:]
-            except Exception:
-                pass
+        # Use recently shared live location if available (within 2 hours)
+        _loc = _USER_LAST_LOCATION.get(from_number)
+        if _loc and (time.time() - _loc.get("ts", 0)) < 7200:
+            lat, lon = _loc["lat"], _loc["lon"]
+            pc_fmt = "your location"
+
+    if lat is None:
+        # Fall back to stored home postcode (unless user explicitly wants live location)
+        if not _wants_live:
+            stored = _get_wa_home_postcode(from_number)
+            if stored:
+                try:
+                    r2 = requests.get(f"https://api.postcodes.io/postcodes/{stored}", timeout=5)
+                    if r2.status_code == 200:
+                        res = r2.json().get("result", {})
+                        lat, lon = res.get("latitude"), res.get("longitude")
+                        pc_fmt = stored[:-3] + " " + stored[-3:]
+                except Exception:
+                    pass
+
     if lat is None:
         _set_wa_pending_intent(from_number, {
             "type": "food", "food_type": intent["label"], "cheap": wants_cheap
         })
+        if _wants_live:
+            return (f"{intent['emoji']} Drop your location pin and I'll find the best {intent['label']} right where you are.\n\n"
+                    f"_(Tap the 📎 attachment icon → Location → Send current location)_")
         return (f"{intent['emoji']} Where are you?\n\n"
-                f"Reply with your postcode — e.g. *KT16* — and I'll find the best {intent['label']} near you.\n"
+                f"Reply with your postcode or drop your location pin — I'll find the best {intent['label']} near you.\n"
                 f"_(Or set your home postcode at miru.humanagency.co so you never need to send it)_")
 
     places = _find_food_nearby(lat, lon, intent["type"],
@@ -9556,10 +9571,22 @@ def whatsapp_reply():
     _lon = request.form.get("Longitude", "")
     if _lat and _lon:
         try:
+            _loc_lat, _loc_lon = float(_lat), float(_lon)
             _USER_LAST_LOCATION[from_number] = {
-                "lat": float(_lat), "lon": float(_lon), "ts": time.time()
+                "lat": _loc_lat, "lon": _loc_lon, "ts": time.time()
             }
-            resp.message("📍 Got your location — I'll use it to add context when you send me a photo. It expires in 2 hours.")
+            # If there's a pending food intent, serve it immediately with live location
+            _pending = _get_wa_pending_intent(from_number)
+            if _pending and _pending.get("type") == "food":
+                _clear_wa_pending_intent(from_number)
+                _ftype  = _pending.get("food_type", "food")
+                _fcheap = _pending.get("cheap", False)
+                _synthetic = f"{'cheap ' if _fcheap else ''}{_ftype}"
+                # Location is now in _USER_LAST_LOCATION — _wa_food_find will pick it up
+                _food_r = _wa_food_find(_synthetic, from_number)
+                resp.message(_food_r or f"📍 Got your location! Send *{_ftype}* again and I'll search right here.")
+            else:
+                resp.message("📍 Got your location! Send *best steak*, *good coffee* etc. and I'll find it right where you are. Resets in 2 hours.")
             return str(resp)
         except Exception:
             pass
