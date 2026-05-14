@@ -4404,6 +4404,34 @@ def api_intel_brand_choices_delete():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/intel/pins")
+def api_intel_pins():
+    try:
+        sb = lib._sb()
+        rows = sb.table("ai_cache").select("key,data").execute().data
+        pins = []
+        for row in rows:
+            d = row.get("data") or {}
+            if not d.get("_pinned"):
+                continue
+            key = row.get("key", "")
+            name = d.get("name") or ""
+            if not name:
+                part = key.split(":")[1].split("|")[0] if ":" in key else key
+                name = part.replace("-", " ").title()
+            kind = "brand" if key.startswith("brand:") else "company"
+            pins.append({
+                "name":        name,
+                "type":        kind,
+                "description": (d.get("description") or d.get("extract") or "")[:100],
+                "domain":      d.get("domain") or "",
+            })
+        pins.sort(key=lambda x: x["name"].lower())
+        return jsonify({"pins": pins})
+    except Exception as e:
+        return jsonify({"pins": [], "error": str(e)})
+
+
 @app.route("/api/intel/pin", methods=["POST"])
 def api_intel_pin():
     body = request.get_json(force=True, silent=True) or {}
