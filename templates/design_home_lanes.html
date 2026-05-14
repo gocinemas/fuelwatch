@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Miru — Lanes Concept</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #08080a;
+    --surface: #141416;
+    --surface2: #1c1c20;
+    --border: rgba(255,255,255,0.06);
+    --text: #f0f0f2;
+    --muted: #606068;
+    --accent: #22c55e;
+    --r: 20px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP ──────────────────────────────── */
+  .top {
+    flex-shrink: 0;
+    padding: 56px 22px 10px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+  .top-left h1 {
+    font-size: 28px; font-weight: 800; letter-spacing: -.6px;
+    line-height: 1;
+  }
+  .top-left p {
+    font-size: 13px; color: var(--muted); margin-top: 4px;
+  }
+  .top-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #22c55e, #3b82f6);
+    font-size: 16px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── SCROLLABLE BODY ──────────────────── */
+  .lanes {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 90px;
+    scrollbar-width: none;
+  }
+  .lanes::-webkit-scrollbar { display: none; }
+
+  /* ── LANE ─────────────────────────────── */
+  .lane { margin-top: 28px; }
+  .lane-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 0 22px 12px;
+  }
+  .lane-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .lane-more {
+    font-size: 12px; color: var(--muted); text-decoration: none;
+    font-weight: 500;
+  }
+
+  .lane-scroll {
+    display: flex;
+    gap: 12px;
+    padding: 0 22px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+  }
+  .lane-scroll::-webkit-scrollbar { display: none; }
+
+  /* ── CARD BASE ────────────────────────── */
+  .lcard {
+    flex-shrink: 0;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    scroll-snap-align: start;
+    position: relative;
+    overflow: hidden;
+    transition: transform .15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .lcard:active { transform: scale(.96); }
+
+  /* ── NOW LANE — one big card full width ─ */
+  .lane-now .lane-scroll { padding: 0; gap: 0; }
+  .lcard-now {
+    width: 100vw;
+    min-height: 190px;
+    background: linear-gradient(140deg, #0a2e18 0%, #064e3b 60%, #0d4030 100%);
+    border-radius: 0;
+    border-left: none; border-right: none;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    padding: 22px 24px;
+    scroll-snap-align: none;
+  }
+
+  .now-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: #4ade80;
+  }
+  .now-headline {
+    font-size: 26px; font-weight: 800; letter-spacing: -.6px;
+    margin-top: 6px; line-height: 1.1;
+  }
+  .now-sub { font-size: 13px; color: #86efac; margin-top: 6px; }
+  .now-stats {
+    display: flex; gap: 24px; margin-top: 16px;
+  }
+  .now-stat-val { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+  .now-stat-label { font-size: 10px; color: #6ee7b7; letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
+
+  /* ── LIVE LANE — medium tall cards ────── */
+  .lcard-live {
+    width: 160px;
+    height: 180px;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    padding: 16px;
+  }
+  .lcard-fuel {
+    background: linear-gradient(155deg, #1c1007 0%, #261900 100%);
+    border-color: rgba(245,158,11,.18);
+  }
+  .lcard-trains {
+    background: linear-gradient(155deg, #0a0f20 0%, #1e1b4b 100%);
+    border-color: rgba(99,102,241,.18);
+  }
+  .lcard-air {
+    background: linear-gradient(155deg, #050e1a 0%, #0c1a30 100%);
+    border-color: rgba(56,189,248,.18);
+  }
+  .lcard-news {
+    background: var(--surface);
+  }
+
+  .lc-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
+  .lc-value { font-size: 32px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; margin-top: 6px; }
+  .lc-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .lc-badge {
+    display: inline-flex; align-items: center;
+    font-size: 10px; font-weight: 700; letter-spacing: .3px;
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .badge-live { background: rgba(34,197,94,.15); color: #4ade80; }
+  .badge-due  { background: rgba(245,158,11,.15); color: #fbbf24; }
+  .badge-good { background: rgba(56,189,248,.15); color: #7dd3fc; }
+
+  /* ── PLACES LANE — square cards ─────── */
+  .lcard-place {
+    width: 130px;
+    height: 130px;
+    background: var(--surface);
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    padding: 14px;
+  }
+  .place-icon { font-size: 26px; }
+  .place-name { font-size: 13px; font-weight: 700; }
+  .place-dist { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── TOOLS LANE — wide short strip ──── */
+  .lcard-tool {
+    width: 150px;
+    height: 90px;
+    background: var(--surface2);
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 16px;
+  }
+  .tool-icon { font-size: 24px; flex-shrink: 0; }
+  .tool-label { font-size: 14px; font-weight: 600; }
+  .tool-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── INTEL LANE — full width strip ──── */
+  .lcard-intel {
+    width: calc(100vw - 44px);
+    height: 72px;
+    background: linear-gradient(135deg, #1a0a2e, #120a1e);
+    border-color: rgba(139,92,246,.2);
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 18px;
+  }
+  .intel-icon { font-size: 26px; flex-shrink: 0; }
+  .intel-body { flex: 1; }
+  .intel-title { font-size: 15px; font-weight: 700; }
+  .intel-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .intel-arrow { font-size: 16px; color: var(--muted); }
+
+  /* ── PILL NAV ────────────────────────── */
+  #pill-overlay { display:none; position:fixed; inset:0; z-index:200; }
+  #pill-overlay.show { display:block; }
+  #pill-nav {
+    position: fixed;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    left: 50%; transform: translateX(-50%);
+    z-index: 300;
+  }
+  #pill-shell {
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(28,28,32,.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 30px;
+    height: 46px; width: 150px;
+    overflow: hidden; position: relative; cursor: pointer;
+    transition: width .38s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  }
+  #pill-shell.expanded { width: 264px; }
+  #pill-resting {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    opacity: 1; transition: opacity .2s; pointer-events: auto;
+    padding: 0 16px; white-space: nowrap;
+  }
+  #pill-shell.expanded #pill-resting { opacity: 0; pointer-events: none; }
+  .pr-label { font-size: 14px; font-weight: 600; }
+  .pr-chev { width:14px; height:14px; stroke:var(--muted); transition: transform .3s; flex-shrink:0; }
+  #pill-shell.expanded .pr-chev { transform: rotate(180deg); }
+  #pill-icons {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 8px;
+    opacity: 0; transition: opacity .18s ease .1s; pointer-events: none;
+  }
+  #pill-shell.expanded #pill-icons { opacity: 1; pointer-events: auto; }
+  .pi-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); padding: 6px 10px; border-radius: 12px;
+    transition: color .15s; position: relative;
+  }
+  .pi-btn.pi-active { color: var(--text); }
+  .pi-icon { font-size: 20px; line-height: 1; }
+  .pi-dot { width:4px; height:4px; border-radius:50%; background:var(--accent); opacity:0; transition:opacity .2s; }
+  .pi-btn.pi-active .pi-dot { opacity:1; }
+
+  .proto-note {
+    text-align: center; font-size: 10px; color: #333;
+    padding: 12px 0 4px; flex-shrink: 0; letter-spacing: .3px;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<p class="proto-note">Concept · Lanes · miru.humanagency.co/design/lanes</p>
+
+<!-- TOP -->
+<div class="top">
+  <div class="top-left">
+    <h1>Good morning</h1>
+    <p>West Drayton · Thu 14 May</p>
+  </div>
+  <div class="top-avatar">S</div>
+</div>
+
+<!-- LANES -->
+<div class="lanes">
+
+  <!-- NOW — contextual hero, full bleed -->
+  <div class="lane lane-now">
+    <div class="lane-scroll">
+      <div class="lcard lcard-now" onclick="tap('My Area')">
+        <div>
+          <div class="now-eyebrow">📍 Your area</div>
+          <div class="now-headline">West Drayton<br>UB7 9FJ</div>
+          <div class="now-sub">Schools · Council · Transport · Crime</div>
+        </div>
+        <div class="now-stats">
+          <div>
+            <div class="now-stat-val">⭐ 7.2</div>
+            <div class="now-stat-label">Schools</div>
+          </div>
+          <div>
+            <div class="now-stat-val">💨 Good</div>
+            <div class="now-stat-label">Air</div>
+          </div>
+          <div>
+            <div class="now-stat-val">3 min</div>
+            <div class="now-stat-label">Next bus</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE — fuel, trains, air -->
+  <div class="lane">
+    <div class="lane-header">
+      <span class="lane-title">Live now</span>
+    </div>
+    <div class="lane-scroll">
+
+      <div class="lcard lcard-live lcard-fuel" onclick="tap('Fuel')">
+        <div>
+          <div class="lc-eyebrow" style="color:#d97706">⛽ Petrol</div>
+          <div class="lc-value" style="color:#fbbf24">142.9p</div>
+          <div class="lc-sub">Tesco Extra · 0.4 mi</div>
+        </div>
+        <span class="lc-badge badge-live">LIVE ↓1.2p</span>
+      </div>
+
+      <div class="lcard lcard-live lcard-trains" onclick="tap('Trains')">
+        <div>
+          <div class="lc-eyebrow" style="color:#818cf8">🚆 From WDT</div>
+          <div class="lc-value" style="color:#a5b4fc">08:42</div>
+          <div class="lc-sub">→ Paddington · Plat 1</div>
+        </div>
+        <span class="lc-badge badge-due">On time</span>
+      </div>
+
+      <div class="lcard lcard-live lcard-air" onclick="tap('Air Quality')">
+        <div>
+          <div class="lc-eyebrow" style="color:#7dd3fc">💨 Air Quality</div>
+          <div class="lc-value" style="color:#bae6fd;font-size:26px">Good</div>
+          <div class="lc-sub">Index 2 · Low pollen</div>
+        </div>
+        <span class="lc-badge badge-good">Safe</span>
+      </div>
+
+      <div class="lcard lcard-live lcard-news" onclick="tap('News')">
+        <div>
+          <div class="lc-eyebrow" style="color:#a78bfa">📰 Local</div>
+          <div class="lc-value" style="color:#c4b5fd;font-size:18px;letter-spacing:-.3px;line-height:1.2">UB7 road<br>closure lifted</div>
+        </div>
+        <span class="lc-badge" style="background:rgba(167,139,250,.1);color:#a78bfa">2h ago</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- NEARBY — places -->
+  <div class="lane">
+    <div class="lane-header">
+      <span class="lane-title">Nearby</span>
+      <a class="lane-more" onclick="tap('Find a Service')">See all →</a>
+    </div>
+    <div class="lane-scroll">
+
+      <div class="lcard lcard-place" onclick="tap('Tesco Extra')">
+        <div class="place-icon">🛒</div>
+        <div>
+          <div class="place-name">Tesco Extra</div>
+          <div class="place-dist">0.4 mi · open</div>
+        </div>
+      </div>
+
+      <div class="lcard lcard-place" onclick="tap('West Drayton GP')">
+        <div class="place-icon">🏥</div>
+        <div>
+          <div class="place-name">WD Surgery</div>
+          <div class="place-dist">0.6 mi · open</div>
+        </div>
+      </div>
+
+      <div class="lcard lcard-place" onclick="tap('School')">
+        <div class="place-icon">🏫</div>
+        <div>
+          <div class="place-name">Harmondsworth</div>
+          <div class="place-dist">0.9 mi · ⭐ 7.4</div>
+        </div>
+      </div>
+
+      <div class="lcard lcard-place" onclick="tap('Pub')">
+        <div class="place-icon">🍺</div>
+        <div>
+          <div class="place-name">The De Burgh</div>
+          <div class="place-dist">0.3 mi · open</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOOLS -->
+  <div class="lane">
+    <div class="lane-header">
+      <span class="lane-title">Tools</span>
+    </div>
+    <div class="lane-scroll">
+
+      <div class="lcard lcard-tool" onclick="tap('Research an Area')">
+        <div class="tool-icon">🔍</div>
+        <div>
+          <div class="tool-label">Research Area</div>
+          <div class="tool-sub">Any postcode</div>
+        </div>
+      </div>
+
+      <div class="lcard lcard-tool" onclick="tap('Saves')">
+        <div class="tool-icon">📌</div>
+        <div>
+          <div class="tool-label">My Saves</div>
+          <div class="tool-sub">12 saved</div>
+        </div>
+      </div>
+
+      <div class="lcard lcard-tool" onclick="tap('Library')">
+        <div class="tool-icon">📚</div>
+        <div>
+          <div class="tool-label">Library</div>
+          <div class="tool-sub">3 docs</div>
+        </div>
+      </div>
+
+      <div class="lcard lcard-tool" onclick="tap('Music ID')">
+        <div class="tool-icon">🎵</div>
+        <div>
+          <div class="tool-label">Music ID</div>
+          <div class="tool-sub">Identify songs</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- INTEL STRIP -->
+  <div class="lane">
+    <div class="lane-header">
+      <span class="lane-title">Intel</span>
+    </div>
+    <div class="lane-scroll">
+      <div class="lcard lcard-intel" onclick="tap('Intel')">
+        <div class="intel-icon">🏢</div>
+        <div class="intel-body">
+          <div class="intel-title">Company & Brand Intelligence</div>
+          <div class="intel-sub">24 companies tracked · updated daily</div>
+        </div>
+        <div class="intel-arrow">→</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PILL NAV -->
+<div id="pill-overlay" onclick="_pillCollapse()"></div>
+<div id="pill-nav">
+  <div id="pill-shell" onclick="_pillTap(event)">
+    <div id="pill-resting">
+      <span style="font-size:18px">🏠</span>
+      <span class="pr-label">Home</span>
+      <svg class="pr-chev" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </div>
+    <div id="pill-icons">
+      <button class="pi-btn pi-active" onclick="_pillNav('home');event.stopPropagation()">
+        <span class="pi-icon">🏠</span><div class="pi-dot"></div>
+      </button>
+      <button class="pi-btn" onclick="_pillNav('myarea');event.stopPropagation()">
+        <span class="pi-icon">📍</span><div class="pi-dot"></div>
+      </button>
+      <button class="pi-btn" onclick="_pillNav('intel');event.stopPropagation()">
+        <span class="pi-icon">🔍</span><div class="pi-dot"></div>
+      </button>
+      <button class="pi-btn" onclick="_pillNav('saves');event.stopPropagation()">
+        <span class="pi-icon">📌</span><div class="pi-dot"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(28,28,32,.92);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 18px;font-size:13px;font-weight:600;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;z-index:400;color:#f0f0f2;"></div>
+
+<script>
+  let _pillOpen = false;
+  function _pillTap(e) { if (!_pillOpen) _pillExpand(); }
+  function _pillExpand() {
+    _pillOpen = true;
+    document.getElementById('pill-shell').classList.add('expanded');
+    document.getElementById('pill-overlay').classList.add('show');
+  }
+  function _pillCollapse() {
+    _pillOpen = false;
+    document.getElementById('pill-shell').classList.remove('expanded');
+    document.getElementById('pill-overlay').classList.remove('show');
+  }
+  function _pillNav(name) { _pillCollapse(); toast('→ ' + name); }
+
+  function tap(label) { toast(label); }
+  let _tt;
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(_tt);
+    _tt = setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 1200);
+  }
+</script>
+</body>
+</html>

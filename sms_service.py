@@ -792,6 +792,10 @@ def index():
 def design_home():
     return render_template("design_home_bento.html")
 
+@app.route("/design/lanes")
+def design_lanes():
+    return render_template("design_home_lanes.html")
+
 @app.route("/privacy")
 def privacy_page():
     return render_template("privacy.html")
