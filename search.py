@@ -817,6 +817,55 @@ def _fetch_brand_ai(brand: str, extract: str) -> dict:
     return {"timeline": [], "campaigns": [], "competitors": [], "facts": {}}
 
 
+def _fetch_trustpilot(brand: str, domain: str = "") -> dict:
+    """Fetch Trustpilot rating via JSON-LD on their public pages. Returns {} on any failure."""
+    import re as _re, json as _json
+    hdrs = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+
+    def _parse_rating(html: str, page_url: str) -> dict:
+        for m in _re.finditer(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', html, _re.S):
+            try:
+                d = _json.loads(m.group(1))
+                if isinstance(d, list): d = d[0] if d else {}
+                ar = d.get("aggregateRating") or {}
+                rv = ar.get("ratingValue") or ar.get("ratingValue".replace("V","v"))
+                if rv:
+                    return {
+                        "rating": round(float(rv), 1),
+                        "count":  int(str(ar.get("reviewCount", 0)).replace(",", "").replace(".", "")),
+                        "url":    page_url,
+                    }
+            except Exception:
+                pass
+        return {}
+
+    # 1) Try direct domain page
+    if domain and "." in domain:
+        try:
+            r = requests.get(f"https://www.trustpilot.com/review/{domain}", headers=hdrs, timeout=7)
+            if r.status_code == 200:
+                result = _parse_rating(r.text, r.url)
+                if result: return result
+        except Exception:
+            pass
+
+    # 2) Try search → follow first review link
+    try:
+        r = requests.get(f"https://www.trustpilot.com/search?query={requests.utils.quote(brand)}", headers=hdrs, timeout=7)
+        if r.status_code == 200:
+            m = _re.search(r'href="(/review/[a-z0-9.\-]+)"', r.text)
+            if m:
+                review_url = "https://www.trustpilot.com" + m.group(1)
+                r2 = requests.get(review_url, headers=hdrs, timeout=6)
+                if r2.status_code == 200:
+                    result = _parse_rating(r2.text, r2.url)
+                    if result: return result
+    except Exception:
+        pass
+
+    return {}
+
+
 def _fetch_brand_ads(brand: str) -> list:
     """Search YouTube for brand ad videos — recent first, falling back to all-time."""
     key = os.environ.get("YOUTUBE_API_KEY", "")
@@ -1134,12 +1183,13 @@ def fetch_brand_data(brand: str) -> dict:
         wiki_query = original if original.lower() != brand.lower() else brand
         # Use qualified name for news too — "Lynx deodorant" not "Lynx" avoids sports/finance noise
         news_query = original if original.lower() != brand.lower() else brand
-        with _cf.ThreadPoolExecutor(max_workers=6) as pool:
+        with _cf.ThreadPoolExecutor(max_workers=7) as pool:
             wiki_f = pool.submit(_fetch_wikipedia, wiki_query)
             news_f = pool.submit(_fetch_news, news_query, "", 6)
             ads_f  = pool.submit(_fetch_brand_ads, brand)
             fin_f  = pool.submit(_fetch_brand_financials, brand)
             ai_f   = pool.submit(_fetch_brand_ai, brand, original)
+            tp_f   = pool.submit(_fetch_trustpilot, brand, "")  # domain patched in after wiki
 
             wiki = {}
             try: wiki = wiki_f.result(timeout=10) or {}
@@ -1175,6 +1225,14 @@ def fetch_brand_data(brand: str) -> dict:
             ads = []
             try: ads = ads_f.result(timeout=8) or []
             except Exception: pass
+
+            trustpilot = {}
+            try: trustpilot = tp_f.result(timeout=8) or {}
+            except Exception: pass
+            # Retry with domain if wiki gave us one and first attempt found nothing
+            if not trustpilot and wiki.get("domain"):
+                try: trustpilot = _fetch_trustpilot(brand, wiki["domain"]) or {}
+                except Exception: pass
 
             financials = {}
             try: financials = fin_f.result(timeout=8) or {}
@@ -1223,6 +1281,7 @@ def fetch_brand_data(brand: str) -> dict:
             "ads":          ads,
             "financials":   financials,
             "news":         news,
+            "trustpilot":   trustpilot,
         }
         # Only cache if AI data came back — never lock in empty timeline/rivals
         ai_ok = bool(result["timeline"] or result["competitors"])

@@ -38,7 +38,7 @@ from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
                     fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
                     fetch_company_info, fetch_brand_data,
-                    _fetch_wikipedia, _fetch_news)
+                    _fetch_wikipedia, _fetch_news, _fetch_trustpilot)
 import analytics
 import library as lib
 import school_service
@@ -1807,15 +1807,22 @@ def api_brand_basic():
     if not name or len(name) < 2:
         return jsonify({"error": "name required"}), 400
     import concurrent.futures as _cf
-    with _cf.ThreadPoolExecutor(max_workers=2) as pool:
+    with _cf.ThreadPoolExecutor(max_workers=3) as pool:
         wiki_f = pool.submit(_fetch_wikipedia, name)
         news_f = pool.submit(_fetch_news, name, "", 6)
+        tp_f   = pool.submit(_fetch_trustpilot, name, "")
         wiki = {}
         try: wiki = wiki_f.result(timeout=8) or {}
         except Exception: pass
         news = []
         try: news = news_f.result(timeout=8) or []
         except Exception: pass
+        trustpilot = {}
+        try: trustpilot = tp_f.result(timeout=8) or {}
+        except Exception: pass
+        if not trustpilot and wiki.get("domain"):
+            try: trustpilot = _fetch_trustpilot(name, wiki["domain"]) or {}
+            except Exception: pass
     spins = []
     try:
         spins = lib._sb().table("brand_spins").select("caption,url,created_at") \
@@ -1834,6 +1841,7 @@ def api_brand_basic():
         "wiki_url":    wiki.get("wiki_url", ""),
         "news":        news,
         "spins":       spins,
+        "trustpilot":  trustpilot,
         "_partial":    True,
     })
 
@@ -1868,6 +1876,40 @@ def api_brand():
     if data.get("timeline") or data.get("competitors"):
         _save_brand_profile(data)
     return jsonify(data)
+
+
+@app.route("/api/brand/ask", methods=["POST"])
+def api_brand_ask():
+    data = request.get_json(silent=True) or {}
+    name     = (data.get("name")     or "").strip()
+    question = (data.get("question") or "").strip()
+    ctx      = data.get("context")   or {}
+    if not name or not question:
+        return jsonify({"error": "name and question required"}), 400
+
+    desc      = (ctx.get("description") or ctx.get("extract") or "")[:300]
+    timeline  = ctx.get("timeline")   or []
+    campaigns = ctx.get("campaigns")  or []
+    rivals    = ctx.get("competitors") or []
+    tp        = ctx.get("trustpilot") or {}
+
+    ctx_lines = [f"Brand: {name}"]
+    if desc:      ctx_lines.append(f"About: {desc}")
+    if timeline:  ctx_lines.append("History: " + " | ".join(f"{e.get('year','')} {e.get('title','')}" for e in timeline[:5]))
+    if campaigns: ctx_lines.append("Famous campaigns: " + ", ".join(c.get("name","") for c in campaigns[:4]))
+    if rivals:    ctx_lines.append("Main rivals: " + ", ".join(c.get("name","") for c in rivals[:5]))
+    if tp.get("rating"): ctx_lines.append(f"Trustpilot: {tp['rating']}/5 ({tp.get('count',0):,} reviews)")
+
+    try:
+        answer = _groq_chat(
+            f"You are a brand intelligence assistant. Answer questions about {name} in 2-3 sentences max. "
+            f"Be specific and factual. Context:\n" + "\n".join(ctx_lines),
+            [{"role": "user", "content": question}],
+            max_tokens=220,
+        )
+        return jsonify({"answer": answer.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ── Elections ─────────────────────────────────────────────────────────────────

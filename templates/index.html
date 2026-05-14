@@ -1015,10 +1015,34 @@
             <div class="co-card-title">🧭 Strategy & Direction</div>
             <div id="co-strategy-list" class="divide-y divide-gray-50 text-sm"></div>
           </div>
+          <!-- Trustpilot rating -->
+          <div id="brand-tp-section" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px 14px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="brand-tp-stars" style="font-size:15px"></span>
+                <span id="brand-tp-score" style="font-size:15px;font-weight:800;color:var(--text)"></span>
+                <span id="brand-tp-count" style="font-size:11px;color:var(--muted)"></span>
+              </div>
+              <a id="brand-tp-link" href="" target="_blank" rel="noopener"
+                style="font-size:11px;font-weight:700;color:#00b67a;text-decoration:none">Trustpilot ↗</a>
+            </div>
+          </div>
           <!-- Brand news -->
           <div id="brand-news-section" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:12px">
             <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">📰 Latest News</div>
             <div id="brand-news-el"></div>
+          </div>
+          <!-- Ask AI -->
+          <div id="brand-ask-section" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">🤖 Ask about <span id="brand-ask-name" style="color:#7c3aed"></span></div>
+            <div style="display:flex;gap:8px">
+              <input id="brand-ask-input" type="text" placeholder="Who are their biggest rivals?"
+                style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:12px;font-size:13px;background:var(--bg);color:var(--text);outline:none"
+                onkeydown="if(event.key==='Enter')brandAsk()">
+              <button onclick="brandAsk()"
+                style="padding:10px 14px;border:none;border-radius:12px;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Ask</button>
+            </div>
+            <div id="brand-ask-result" style="display:none;margin-top:10px;font-size:13px;color:var(--text);line-height:1.65;background:#f5f3ff;border-radius:10px;padding:10px 12px;border-left:3px solid #7c3aed"></div>
           </div>
           <!-- Company news -->
           <div id="co-news" class="co-card hidden">
@@ -5415,6 +5439,17 @@ const _ts = new Date(d.timestamp);
                   : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:12px 0">No spins yet — be the first!</div>`;
               }
             }
+            // Trustpilot (Phase 1 fetches it fresh alongside news)
+            if (b.trustpilot && b.trustpilot.rating) {
+              _renderBrandTrustpilot(b.trustpilot);
+            }
+            // Prime Ask AI with partial context so user can ask early
+            window._brandIntelName = b.name || raw;
+            window._brandIntelContext = { name: b.name, description: b.description, trustpilot: b.trustpilot };
+            const _askNameEl = document.getElementById("brand-ask-name");
+            if (_askNameEl) _askNameEl.textContent = b.name || raw;
+            const _askSec = document.getElementById("brand-ask-section");
+            if (_askSec) _askSec.style.display = "";
           })
           .catch(function() {}); // silent — phase 2 handles it
       }
@@ -7834,6 +7869,19 @@ const _ts = new Date(d.timestamp);
       _sg.style.display = _statFields.length ? "grid" : "none";
     }
 
+    // Trustpilot — show/hide based on Phase 2 data (Phase 1 may have already populated it)
+    const _tp = d.trustpilot || {};
+    if (_tp.rating) { _renderBrandTrustpilot(_tp); }
+    else { document.getElementById("brand-tp-section").style.display = "none"; }
+
+    // Ask AI — store full Phase 2 context (overwrites Phase 1 partial)
+    window._brandIntelName = d.name || "";
+    window._brandIntelContext = d;
+    const _askN = document.getElementById("brand-ask-name");
+    if (_askN) _askN.textContent = d.name || "";
+    const _askS = document.getElementById("brand-ask-section");
+    if (_askS) _askS.style.display = "";
+
     // Timeline
     const tl = d.timeline || [];
     document.getElementById("brand-timeline-el").innerHTML = tl.length
@@ -7977,6 +8025,51 @@ const _ts = new Date(d.timestamp);
 
     document.getElementById("brand-result").classList.remove("hidden");
   }
+
+  function _renderBrandTrustpilot(tp) {
+    const score = parseFloat(tp.rating) || 0;
+    const full  = Math.floor(score), half = (score - full) >= 0.4 ? 1 : 0;
+    const starStr = "★".repeat(full) + (half ? "½" : "") + "☆".repeat(Math.max(0, 5 - full - half));
+    const col = score >= 4 ? "#00b67a" : score >= 3 ? "#ff9800" : "#e53935";
+    const starsEl = document.getElementById("brand-tp-stars");
+    const scoreEl = document.getElementById("brand-tp-score");
+    const countEl = document.getElementById("brand-tp-count");
+    const linkEl  = document.getElementById("brand-tp-link");
+    if (starsEl) { starsEl.textContent = starStr; starsEl.style.color = col; }
+    if (scoreEl)   scoreEl.textContent = score.toFixed(1) + " / 5";
+    if (countEl && tp.count) countEl.textContent = "(" + Number(tp.count).toLocaleString() + " reviews)";
+    if (linkEl && tp.url) { linkEl.href = tp.url; }
+    const sec = document.getElementById("brand-tp-section");
+    if (sec) sec.style.display = "";
+  }
+
+  window._brandIntelName    = "";
+  window._brandIntelContext = {};
+
+  window.brandAsk = async function() {
+    const q = (document.getElementById("brand-ask-input").value || "").trim();
+    if (!q) return;
+    const btn = document.querySelector("#brand-ask-section button");
+    const res = document.getElementById("brand-ask-result");
+    if (btn) { btn.textContent = "…"; btn.disabled = true; }
+    if (res) { res.style.display = ""; res.textContent = "Thinking…"; }
+    try {
+      const r = await fetch("/api/brand/ask", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          name:     window._brandIntelName || "",
+          question: q,
+          context:  window._brandIntelContext || {},
+        }),
+      });
+      const d = await r.json();
+      if (res) res.textContent = d.answer || d.error || "No answer.";
+    } catch(e) {
+      if (res) res.textContent = "Couldn't get an answer — try again.";
+    }
+    if (btn) { btn.textContent = "Ask"; btn.disabled = false; }
+  };
 
   // ── Library ─────────────────────────────────────────────────────────────────
   let _libCurrentDoc = null;
