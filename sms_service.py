@@ -1878,6 +1878,54 @@ def api_brand():
     return jsonify(data)
 
 
+@app.route("/api/brand/save-to-library", methods=["POST"])
+def api_brand_save_to_library():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    sb_key = f"brand:{name.lower()}|brandv29"
+    d = {}
+    try:
+        rows = lib._sb().table("ai_cache").select("data").eq("key", sb_key).execute().data
+        if rows:
+            d = rows[0]["data"] or {}
+    except Exception:
+        pass
+    display_name = d.get("name") or name
+    lines = [f"# 🏷️ {display_name} — Brand Profile"]
+    if d.get("description") or d.get("extract"):
+        lines.append(f"\n{(d.get('description') or d.get('extract',''))[:500]}")
+    for label, key in [("Founded", "founded"), ("HQ", "hq"), ("Industry", "industry"), ("Revenue", "revenue")]:
+        if d.get(key): lines.append(f"**{label}:** {d[key]}")
+    tl = d.get("timeline") or []
+    if tl:
+        lines.append("\n## Timeline")
+        for e in tl[:10]:
+            lines.append(f"- **{e.get('year','')}** — {e.get('title','')}: {e.get('description','')}")
+    camps = d.get("campaigns") or []
+    if camps:
+        lines.append("\n## Famous Campaigns")
+        for c in camps[:8]:
+            lines.append(f"- **{c.get('name','')}** ({c.get('year','')}): {c.get('description','')}")
+    rivals = d.get("competitors") or []
+    if rivals:
+        lines.append("\n## Main Rivals")
+        for r in rivals[:6]:
+            lines.append(f"- **{r.get('name','')}**: {r.get('description','')}")
+    news = d.get("news") or []
+    if news:
+        lines.append("\n## Recent News")
+        for n in news[:5]:
+            lines.append(f"- {n.get('title','')} ({n.get('date','')})")
+    lines.append(f"\n---\n_Source: intel.humanagency.co · {display_name}_")
+    try:
+        doc = lib.upload_document(f"🏷️ {display_name}", "\n".join(lines), doc_type="note")
+        return jsonify({"ok": True, "share_id": doc["share_id"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/ask", methods=["POST"])
 def api_brand_ask():
     data = request.get_json(silent=True) or {}
@@ -8885,6 +8933,38 @@ def _wa_train_format(from_name: str, to_name: str = "") -> str:
         return None
 
 
+def _wa_brand_card(brand_name: str) -> str:
+    """Fetch quick brand intel and format as a WhatsApp card."""
+    from concurrent.futures import ThreadPoolExecutor as _TPE
+    from urllib.parse import quote as _q
+    wiki, tp = {}, {}
+    with _TPE(max_workers=2) as pool:
+        wf = pool.submit(_fetch_wikipedia, brand_name)
+        tf = pool.submit(_fetch_trustpilot, brand_name, "")
+        try: wiki = wf.result(timeout=9) or {}
+        except Exception: pass
+        try: tp   = tf.result(timeout=9) or {}
+        except Exception: pass
+    if not wiki.get("name") and not wiki.get("extract"):
+        return (f"🏷️ Couldn't find brand info for *{brand_name}*.\n\n"
+                f"Try the full profile: intel.humanagency.co?q={_q(brand_name)}")
+    name = wiki.get("name") or brand_name
+    lines = [f"🏷️ *{name}*"]
+    meta = []
+    if wiki.get("founded"): meta.append(f"Est. {wiki['founded']}")
+    if wiki.get("hq"):      meta.append(wiki["hq"])
+    if meta: lines.append(" · ".join(meta))
+    if wiki.get("extract"):
+        desc = wiki["extract"][:220].rsplit(" ", 1)[0]
+        lines.append(f"\n{desc}…")
+    if tp.get("rating"):
+        stars = round(tp["rating"])
+        count_str = f" ({tp['count']:,} reviews)" if tp.get("count") else ""
+        lines.append(f"\n{'⭐'*stars} Trustpilot: {tp['rating']}/5{count_str}")
+    lines.append(f"\n🔍 Full profile: intel.humanagency.co?q={_q(name)}")
+    return "\n".join(lines)
+
+
 def whatsapp_product_format(product_name: str, postcode: str = None) -> str:
     """Look up a grocery product and return a WhatsApp-friendly price summary."""
     import requests as _req, json as _json
@@ -10150,6 +10230,12 @@ def whatsapp_reply():
     # ── Tube query ───────────────────────────────────────────────────────────
     if body_lower.strip().startswith("tube"):
         resp.message(handle_tube_command(body, from_number))
+        return str(resp)
+
+    # ── Brand intel: "brand Nike" / "intel Walkers" / "about Oreo" ─────────────
+    _brand_m = re.match(r'^(?:brand|intel|about)\s+(.{2,60})$', body.strip(), re.I)
+    if _brand_m:
+        resp.message(_wa_brand_card(_brand_m.group(1).strip()))
         return str(resp)
 
     # ── Food & drink discovery ───────────────────────────────────────────────

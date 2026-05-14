@@ -958,6 +958,7 @@
             <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
               <button id="intel-pin-btn" onclick="_intelTogglePin()" style="font-size:12px;font-weight:600;color:#6b7280;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">📌 Pin</button>
               <button id="brand-bookmark-btn" onclick="bookmarkIntel('brand')" style="font-size:12px;font-weight:600;color:#d97706;background:#fef3c7;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">🔖 Save</button>
+              <button id="brand-lib-btn" onclick="brandSaveToLibrary()" style="font-size:12px;font-weight:600;color:#059669;background:#d1fae5;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">📚 Library</button>
               <button id="co-share-btn" onclick="shareCompany()" style="font-size:12px;font-weight:600;color:#4f46e5;background:#eef2ff;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">Share</button>
             </div>
           </div>
@@ -5289,8 +5290,10 @@ const _ts = new Date(d.timestamp);
 
     window._brandCurrentSpins = [];
     window._brandSpinsBrand = raw;
-    // Reset Ask AI + Trustpilot from previous search
+    // Reset Ask AI, Trustpilot, and Library button from previous search
     window._brandIntelName = ""; window._brandIntelContext = {};
+    const _libBtnI = document.getElementById("brand-lib-btn");
+    if (_libBtnI) { _libBtnI.textContent = "📚 Library"; _libBtnI.disabled = false; _libBtnI.style.background = "#d1fae5"; }
     const _askSecI = document.getElementById("brand-ask-section");
     if (_askSecI) _askSecI.style.display = "none";
     const _askResI = document.getElementById("brand-ask-result");
@@ -5488,6 +5491,10 @@ const _ts = new Date(d.timestamp);
                   ? b.spins.map(_renderSpinCard).join("")
                   : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:12px 0">No spins yet — be the first!</div>`;
               }
+              const _sBtn = document.getElementById("brand-spin-add-btn");
+              if (_sBtn) _sBtn.textContent = b.spins.length
+                ? `+ Add my Spin · ${b.spins.length} ${b.spins.length === 1 ? "spin" : "spins"} shared`
+                : "+ Add my Spin";
             }
             // Trustpilot (Phase 1 fetches it fresh alongside news)
             if (b.trustpilot && b.trustpilot.rating) {
@@ -7733,8 +7740,10 @@ const _ts = new Date(d.timestamp);
     document.getElementById("brand-did-you-mean").classList.add("hidden");
     const _rcEl = document.getElementById("brand-reset-choice");
     if (_rcEl) _rcEl.style.display = "none";
-    // Reset Ask AI and Trustpilot state from previous search
+    // Reset Ask AI, Trustpilot, and Library button from previous search
     window._brandIntelName = ""; window._brandIntelContext = {};
+    const _libBtnR = document.getElementById("brand-lib-btn");
+    if (_libBtnR) { _libBtnR.textContent = "📚 Library"; _libBtnR.disabled = false; _libBtnR.style.background = "#d1fae5"; }
     const _askSecR = document.getElementById("brand-ask-section");
     if (_askSecR) _askSecR.style.display = "none";
     const _askResR = document.getElementById("brand-ask-result");
@@ -7872,9 +7881,11 @@ const _ts = new Date(d.timestamp);
         window._brandCurrentSpins.unshift(newSpin);
         const el = document.getElementById("brand-spins-el");
         if (el) el.insertAdjacentHTML("afterbegin", _renderSpinCard(newSpin));
-        // Remove empty-state placeholder if present
         const placeholder = el && el.querySelector("div[style*='No spins yet']");
         if (placeholder) placeholder.remove();
+        const _sBtn2 = document.getElementById("brand-spin-add-btn");
+        const _sc = window._brandCurrentSpins.length;
+        if (_sBtn2) _sBtn2.textContent = `+ Add my Spin · ${_sc} ${_sc === 1 ? "spin" : "spins"} shared`;
       } else {
         alert("Couldn't save — try again");
       }
@@ -7995,7 +8006,12 @@ const _ts = new Date(d.timestamp);
     const _spinForm = document.getElementById("brand-spin-form");
     const _spinAddBtn = document.getElementById("brand-spin-add-btn");
     if (_spinForm) _spinForm.style.display = "none";
-    if (_spinAddBtn) _spinAddBtn.style.display = "";
+    if (_spinAddBtn) {
+      _spinAddBtn.textContent = _spinsData.length
+        ? `+ Add my Spin · ${_spinsData.length} ${_spinsData.length === 1 ? "spin" : "spins"} shared`
+        : "+ Add my Spin";
+      _spinAddBtn.style.display = "";
+    }
 
     // Financials
     const fin = d.financials || {};
@@ -8128,6 +8144,30 @@ const _ts = new Date(d.timestamp);
       if (res) res.textContent = "Couldn't get an answer — try again.";
     }
     if (btn) { btn.textContent = "Ask"; btn.disabled = false; }
+  };
+
+  window.brandSaveToLibrary = async function() {
+    const btn = document.getElementById("brand-lib-btn");
+    const name = window._brandIntelName || "";
+    if (!name) return;
+    if (btn) { btn.textContent = "Saving…"; btn.disabled = true; }
+    try {
+      const r = await fetch("/api/brand/save-to-library", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ name }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        if (btn) { btn.textContent = "✅ Saved"; btn.style.background = "#bbf7d0"; }
+        _miruToast(`📚 ${name} saved to Library`);
+      } else {
+        if (btn) { btn.textContent = "📚 Library"; btn.disabled = false; }
+        _miruToast("Couldn't save — try again");
+      }
+    } catch(e) {
+      if (btn) { btn.textContent = "📚 Library"; btn.disabled = false; }
+    }
   };
 
   // ── Library ─────────────────────────────────────────────────────────────────
