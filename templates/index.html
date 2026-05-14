@@ -1966,7 +1966,7 @@
     if (!list.length) { el.classList.add("hidden"); return; }
     el.classList.remove("hidden");
     el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:12px;color:var(--subtle)">${{"miru_report":"Recent areas","miru_fuel":"Recent searches","miru_intel":"Recent searches"}[key]||"Recent"}</span>
+        <span style="font-size:12px;color:var(--subtle)">${({miru_report:"Recent areas",miru_fuel:"Recent searches",miru_intel:"Recent searches"})[key]||"Recent"}</span>
         <button onclick="_clearRecent('${key}','${containerId}','${inputId}','${searchFn}')"
           style="font-size:11px;font-weight:600;color:var(--subtle);background:none;border:none;cursor:pointer;padding:0;letter-spacing:0">Clear</button>
       </div>
