@@ -316,96 +316,8 @@
     </div>
   </div>
 
-  <!-- MY AREA -->
-  <div class="card card-myarea" onclick="nav('myarea')">
-    <div>
-      <div class="ma-location">📍 Your area</div>
-      <div class="ma-title" id="ma-title">Loading…</div>
-      <div class="ma-sub">Schools · Council · Transport · Crime · Air quality</div>
-    </div>
-    <div class="ma-stats" id="ma-stats" style="opacity:0"></div>
-  </div>
-
-  <!-- LIVE -->
-  <div class="section-label">Live now</div>
-  <div class="live-grid">
-
-    <!-- FUEL -->
-    <div class="card card-live card-fuel" onclick="nav('fuel')">
-      <div>
-        <div class="lc-label" style="color:#d97706">⛽ Fuel</div>
-        <div class="fuel-row" id="fuel-row">
-          <div style="width:80px"><div class="skel" style="width:60px;margin-bottom:6px"></div><div class="skel" style="width:80px;height:1.8em"></div></div>
-          <div class="fuel-divider"></div>
-          <div style="width:70px"><div class="skel" style="width:50px;margin-bottom:6px"></div><div class="skel" style="width:70px;height:1.4em"></div></div>
-        </div>
-        <div class="lc-sub" id="fuel-sub">Finding nearest station…</div>
-      </div>
-      <span class="lc-badge badge-live" id="fuel-badge">LIVE</span>
-    </div>
-
-    <!-- TRAINS -->
-    <div class="card card-live card-trains" onclick="nav('trains')">
-      <div>
-        <div class="lc-label" style="color:#818cf8">🚆 Trains</div>
-        <div class="lc-value" style="color:#a5b4fc" id="train-time"><span class="skel" style="width:90px;height:1.2em;display:block"></span></div>
-        <div class="lc-sub" id="train-dest">Finding nearest station…</div>
-      </div>
-      <span class="lc-badge badge-ok" id="train-badge">—</span>
-    </div>
-
-    <!-- WEATHER -->
-    <div class="card card-live card-weather" onclick="nav('weather')">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="wx" id="wx-icon">
-          <div class="wx-part-sun"></div>
-          <div class="wx-cloud"></div>
-        </div>
-        <div>
-          <div class="lc-label" style="color:#0284c7">☁ Weather</div>
-          <div class="lc-value" style="color:#0ea5e9" id="wx-temp"><span class="skel" style="width:60px;height:1em;display:block"></span></div>
-        </div>
-      </div>
-      <div>
-        <div class="lc-sub" id="wx-desc">Loading…</div>
-        <span class="lc-badge badge-sky" id="wx-badge">—</span>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- NEARBY + TOOLS -->
-  <div class="two-col">
-    <div>
-      <div class="section-label">
-        <span>Nearby</span>
-        <span class="section-more" onclick="nav('places')">See all →</span>
-      </div>
-      <div class="nearby-list" id="nearby-list">
-        <div class="card card-place"><div class="place-icon">🛒</div><div><div class="skel" style="width:120px;margin-bottom:4px"></div><div class="skel" style="width:80px;height:.8em"></div></div></div>
-        <div class="card card-place"><div class="place-icon">🏥</div><div><div class="skel" style="width:100px;margin-bottom:4px"></div><div class="skel" style="width:70px;height:.8em"></div></div></div>
-        <div class="card card-place"><div class="place-icon">🏫</div><div><div class="skel" style="width:130px;margin-bottom:4px"></div><div class="skel" style="width:60px;height:.8em"></div></div></div>
-      </div>
-    </div>
-
-    <div>
-      <div class="section-label">Tools</div>
-      <div class="tools-grid">
-        <div class="card card-tool" onclick="nav('report')"><div class="tool-icon">🔍</div><div class="tool-label">Research Area</div><div class="tool-sub">Any postcode</div></div>
-        <div class="card card-tool" onclick="nav('library')"><div class="tool-icon">📚</div><div class="tool-label">Library</div><div class="tool-sub" id="lib-count">Docs</div></div>
-        <div class="card card-tool" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music ID</div><div class="tool-sub">Identify songs</div></div>
-        <div class="card card-tool" onclick="nav('whatsapp')"><div class="tool-icon">💬</div><div class="tool-label">Ask Miru</div><div class="tool-sub">WhatsApp</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- INTEL -->
-  <div class="section-label">Intel</div>
-  <div class="card card-intel" onclick="nav('intel')">
-    <span style="font-size:28px;flex-shrink:0">🏢</span>
-    <div style="flex:1"><div class="intel-title">Company & Brand Intelligence</div><div class="intel-sub">Track companies, brands, market moves</div></div>
-    <span style="font-size:18px;color:var(--muted);margin-left:auto">→</span>
-  </div>
+  <!-- CONTENT — rendered by JS based on state -->
+  <div id="content"></div>
 
 </div>
 
@@ -448,8 +360,10 @@
 
 <script>
 // ── HELPERS ────────────────────────────────────────────────────
-const PC = (localStorage.getItem('miru_postcode') || '').replace(/\s+/g,'').toUpperCase() || 'UB79FJ';
+const _rawPC = (localStorage.getItem('miru_postcode') || '').replace(/\s+/g,'').toUpperCase();
+const PC     = _rawPC || '';
 const PC_FMT = PC.length > 4 ? PC.slice(0,-3)+' '+PC.slice(-3) : PC;
+const PHONE  = localStorage.getItem('miru_phone') || '';
 
 function hour() { return new Date().getHours(); }
 function greeting() {
@@ -459,8 +373,10 @@ function greeting() {
 
 // ── INIT ───────────────────────────────────────────────────────
 document.getElementById('greeting').textContent = greeting();
-document.getElementById('top-sub').textContent  = PC_FMT + ' · ' + new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-document.getElementById('ma-title').textContent  = PC_FMT;
+const dateStr = new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+document.getElementById('top-sub').textContent  = PC_FMT ? PC_FMT + ' · ' + dateStr : dateStr;
+
+PC ? renderPersonalised() : renderBlank();
 
 // ── FUEL ───────────────────────────────────────────────────────
 fetch(`/api/search?postcode=${PC}&fuel=petrol&radius=3&mode=fuel`)
@@ -556,61 +472,256 @@ function wxIcon(code, h) {
   return `<div class="wx-part-sun"></div><div class="wx-cloud"></div>`;
 }
 
-// Use postcodes.io for lat/lon (free, no auth)
-fetch(`https://api.postcodes.io/postcodes/${PC}`)
-  .then(r => r.json())
-  .then(pc => {
-    const res = pc.result || {};
-    const lat = res.latitude;
-    const lon = res.longitude;
-    const district = res.admin_district || PC_FMT;
+// ── BLANK STATE ────────────────────────────────────────────────
+function renderBlank() {
+  document.getElementById('content').innerHTML = `
+    <!-- MY AREA — prompt -->
+    <div class="card card-myarea" onclick="nav('myarea')" style="min-height:120px;align-items:center">
+      <div>
+        <div class="ma-location" style="color:#4ade80">📍 Set your area</div>
+        <div class="ma-title" style="font-size:18px;margin-top:6px">Enter a postcode to get local info</div>
+        <div class="ma-sub" style="margin-top:8px">Schools · Council · Transport · Crime · Air quality</div>
+      </div>
+      <div style="font-size:28px;opacity:.5">→</div>
+    </div>
 
-    // Update My Area title with district name
-    document.getElementById('ma-title').textContent = district + ' · ' + PC_FMT;
+    <div class="section-label" style="margin-top:28px">Explore</div>
+    <div class="live-grid">
+      <div class="card card-live card-fuel" onclick="nav('fuel')" style="justify-content:center;align-items:flex-start;gap:10px">
+        <div class="lc-label" style="color:#d97706">⛽ Fuel</div>
+        <div style="font-size:15px;font-weight:600;margin-top:4px">Find petrol &amp; diesel prices near you</div>
+        <span class="lc-badge badge-live" style="margin-top:8px">Search by postcode →</span>
+      </div>
+      <div class="card card-live card-trains" onclick="nav('trains')" style="justify-content:center;align-items:flex-start;gap:10px">
+        <div class="lc-label" style="color:#818cf8">🚆 Trains</div>
+        <div style="font-size:15px;font-weight:600;margin-top:4px">Live departures from any UK station</div>
+        <span class="lc-badge badge-ok" style="margin-top:8px">Check times →</span>
+      </div>
+      <div class="card card-live card-weather" onclick="nav('myarea')" style="justify-content:center;align-items:flex-start;gap:10px">
+        <div class="lc-label" style="color:#0284c7">☁ Weather</div>
+        <div style="font-size:15px;font-weight:600;margin-top:4px">Local forecast for your postcode</div>
+        <span class="lc-badge badge-sky" style="margin-top:8px">Set postcode →</span>
+      </div>
+    </div>
 
-    if (!lat || !lon) return;
+    <div class="two-col" style="margin-top:0">
+      <div>
+        <div class="section-label">Nearby</div>
+        <div class="nearby-list">
+          <div class="card card-place" onclick="nav('places')" style="opacity:.6">
+            <div class="place-icon">📍</div>
+            <div><div class="place-name">GPs, pharmacies, post offices</div><div class="place-dist">Set postcode to see nearby places</div></div>
+            <span class="place-arrow">→</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Tools</div>
+        <div class="tools-grid">
+          <div class="card card-tool" onclick="nav('report')"><div class="tool-icon">🔍</div><div class="tool-label">Research Area</div><div class="tool-sub">Any postcode</div></div>
+          <div class="card card-tool" onclick="nav('library')"><div class="tool-icon">📚</div><div class="tool-label">Library</div><div class="tool-sub">Your docs</div></div>
+          <div class="card card-tool" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music ID</div><div class="tool-sub">Identify songs</div></div>
+          <div class="card card-tool" onclick="nav('whatsapp')"><div class="tool-icon">💬</div><div class="tool-label">Ask Miru</div><div class="tool-sub">WhatsApp</div></div>
+        </div>
+      </div>
+    </div>
 
-    // Weather via open-meteo
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`)
-      .then(r => r.json())
-      .then(wx => {
-        const cur  = wx.current || {};
-        const temp = Math.round(cur.temperature_2m ?? 0);
-        const feel = Math.round(cur.apparent_temperature ?? temp);
-        const code = cur.weather_code ?? 0;
-        const h    = new Date().getHours();
+    <div class="section-label">Intel</div>
+    <div class="card card-intel" onclick="nav('intel')">
+      <span style="font-size:28px;flex-shrink:0">🏢</span>
+      <div style="flex:1"><div class="intel-title">Company & Brand Intelligence</div><div class="intel-sub">Track companies, brands, market moves</div></div>
+      <span style="font-size:18px;color:var(--muted);margin-left:auto">→</span>
+    </div>
+  `;
+}
 
-        document.getElementById('wx-temp').textContent = temp + '°C';
-        document.getElementById('wx-desc').textContent = (WX_CODES[code] || 'Clear') + ' · Feels like ' + feel + '°';
-        document.getElementById('wx-badge').textContent = feel < 5 ? '🧥 Very cold' : feel < 12 ? '🧥 Wrap up' : feel > 25 ? '☀ Warm day' : 'Comfortable';
-        document.getElementById('wx-icon').innerHTML = wxIcon(code, h);
-      })
-      .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
+// ── PERSONALISED STATE ─────────────────────────────────────────
+function renderPersonalised() {
+  document.getElementById('content').innerHTML = `
+    <div class="card card-myarea" onclick="nav('myarea')">
+      <div>
+        <div class="ma-location">📍 Your area</div>
+        <div class="ma-title" id="ma-title">${PC_FMT}</div>
+        <div class="ma-sub">Schools · Council · Transport · Crime · Air quality</div>
+      </div>
+      <div class="ma-stats" id="ma-stats" style="opacity:0"></div>
+    </div>
 
-    // Nearby from your-area (has gps, pharmacies, post_offices)
-    fetch(`/api/your-area?postcode=${PC}`)
-      .then(r => r.json())
-      .then(area => {
-        const places = [];
-        if (area.gps?.length)         places.push({ icon:'🏥', name: area.gps[0].name,         dist: area.gps[0].distance_km });
-        if (area.pharmacies?.length)  places.push({ icon:'💊', name: area.pharmacies[0].name,   dist: area.pharmacies[0].distance_km });
-        if (area.post_offices?.length)places.push({ icon:'📮', name: area.post_offices[0].name, dist: area.post_offices[0].distance_km });
-        if (places.length) {
-          document.getElementById('nearby-list').innerHTML = places.map(p => `
-            <div class="card card-place">
-              <div class="place-icon">${p.icon}</div>
-              <div>
-                <div class="place-name">${p.name}</div>
-                <div class="place-dist">${p.dist ? (+p.dist * 0.621).toFixed(1)+' mi' : 'nearby'}</div>
-              </div>
-              <span class="place-arrow">→</span>
+    <div class="section-label">Live now</div>
+    <div class="live-grid">
+      <div class="card card-live card-fuel" onclick="nav('fuel')">
+        <div>
+          <div class="lc-label" style="color:#d97706">⛽ Fuel</div>
+          <div class="fuel-row" id="fuel-row">
+            <div style="width:80px"><div class="skel" style="width:60px;margin-bottom:6px"></div><div class="skel" style="width:80px;height:1.8em"></div></div>
+            <div class="fuel-divider"></div>
+            <div style="width:70px"><div class="skel" style="width:50px;margin-bottom:6px"></div><div class="skel" style="width:70px;height:1.4em"></div></div>
+          </div>
+          <div class="lc-sub" id="fuel-sub">Finding nearest station…</div>
+        </div>
+        <span class="lc-badge badge-live" id="fuel-badge">LIVE</span>
+      </div>
+
+      <div class="card card-live card-trains" onclick="nav('trains')">
+        <div>
+          <div class="lc-label" style="color:#818cf8">🚆 Trains</div>
+          <div class="lc-value" style="color:#a5b4fc" id="train-time"><span class="skel" style="width:90px;height:1.2em;display:block"></span></div>
+          <div class="lc-sub" id="train-dest">Finding nearest station…</div>
+        </div>
+        <span class="lc-badge badge-ok" id="train-badge">—</span>
+      </div>
+
+      <div class="card card-live card-weather" onclick="nav('weather')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="wx" id="wx-icon"><div class="wx-part-sun"></div><div class="wx-cloud"></div></div>
+          <div>
+            <div class="lc-label" style="color:#0284c7">☁ Weather</div>
+            <div class="lc-value" style="color:#0ea5e9" id="wx-temp"><span class="skel" style="width:60px;height:1em;display:block"></span></div>
+          </div>
+        </div>
+        <div>
+          <div class="lc-sub" id="wx-desc">Loading…</div>
+          <span class="lc-badge badge-sky" id="wx-badge">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="section-label"><span>Nearby</span><span class="section-more" onclick="nav('places')">See all →</span></div>
+        <div class="nearby-list" id="nearby-list">
+          <div class="card card-place"><div class="place-icon">🏥</div><div><div class="skel" style="width:120px;margin-bottom:4px"></div><div class="skel" style="width:80px;height:.8em"></div></div></div>
+          <div class="card card-place"><div class="place-icon">💊</div><div><div class="skel" style="width:100px;margin-bottom:4px"></div><div class="skel" style="width:70px;height:.8em"></div></div></div>
+          <div class="card card-place"><div class="place-icon">📮</div><div><div class="skel" style="width:130px;margin-bottom:4px"></div><div class="skel" style="width:60px;height:.8em"></div></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Tools</div>
+        <div class="tools-grid">
+          <div class="card card-tool" onclick="nav('report')"><div class="tool-icon">🔍</div><div class="tool-label">Research Area</div><div class="tool-sub">Any postcode</div></div>
+          <div class="card card-tool" onclick="nav('library')"><div class="tool-icon">📚</div><div class="tool-label">Library</div><div class="tool-sub">Your docs</div></div>
+          <div class="card card-tool" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music ID</div><div class="tool-sub">Identify songs</div></div>
+          <div class="card card-tool" onclick="nav('whatsapp')"><div class="tool-icon">💬</div><div class="tool-label">Ask Miru</div><div class="tool-sub">WhatsApp</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Intel</div>
+    <div class="card card-intel" onclick="nav('intel')">
+      <span style="font-size:28px;flex-shrink:0">🏢</span>
+      <div style="flex:1"><div class="intel-title">Company & Brand Intelligence</div><div class="intel-sub">Track companies, brands, market moves</div></div>
+      <span style="font-size:18px;color:var(--muted);margin-left:auto">→</span>
+    </div>
+  `;
+
+  // ── FUEL ────────────────────────────────────────────────────
+  fetch(`/api/search?postcode=${PC}&fuel=petrol&radius=3&mode=fuel`)
+    .then(r => r.json())
+    .then(data => {
+      const stations = data.stations || data.results || [];
+      if (!stations.length) { document.getElementById('fuel-sub').textContent = 'No stations found nearby'; return; }
+      const best    = stations[0];
+      const petrolP = best.price ?? best.petrol_price ?? null;
+      const name    = best.name || best.brand || 'Station';
+      const dist    = best.distance ? best.distance.toFixed(1)+' mi' : '';
+
+      fetch(`/api/search?postcode=${PC}&fuel=diesel&radius=3&mode=fuel`)
+        .then(r => r.json())
+        .then(d2 => {
+          const s2      = d2.stations || d2.results || [];
+          const dieselP = s2.length ? (s2[0].price ?? s2[0].diesel_price ?? null) : null;
+          document.getElementById('fuel-row').innerHTML = `
+            <div>
+              <div class="fuel-type" style="color:#92400e">Petrol</div>
+              <div class="lc-value" style="color:#f59e0b">${petrolP ? petrolP.toFixed(1)+'p' : '—'}</div>
             </div>
-          `).join('');
-        }
-      })
-      .catch(() => {});
-  })
-  .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
+            ${dieselP ? `<div class="fuel-divider"></div>
+            <div>
+              <div class="fuel-type" style="color:#92400e">Diesel</div>
+              <div style="font-size:22px;font-weight:900;letter-spacing:-1px;color:#d97706">${dieselP.toFixed(1)}p</div>
+            </div>` : ''}
+          `;
+          document.getElementById('fuel-sub').textContent = name + (dist ? ' · '+dist : '');
+          document.getElementById('fuel-badge').textContent = `LIVE · ${stations.length} stations nearby →`;
+        });
+    })
+    .catch(() => { document.getElementById('fuel-sub').textContent = 'Fuel data unavailable'; });
+
+  // ── TRAINS ──────────────────────────────────────────────────
+  fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
+    .then(r => r.json())
+    .then(data => {
+      const crs  = data.crs;
+      const name = data.name || crs;
+      if (!crs) { document.getElementById('train-dest').textContent = 'No nearby station'; return; }
+      fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`)
+        .then(r => r.json())
+        .then(deps => {
+          const trains = deps.trains || [];
+          if (!trains.length) {
+            document.getElementById('train-time').textContent = '—';
+            document.getElementById('train-dest').textContent = name + ' · No departures';
+            return;
+          }
+          const next = trains[0];
+          const plat = next.platform ? ' · Plat ' + next.platform : '';
+          document.getElementById('train-time').textContent = next.scheduled || '—';
+          document.getElementById('train-dest').textContent = '→ ' + (next.destination || '—') + ' · ' + name + plat;
+          const badge = document.getElementById('train-badge');
+          if (next.cancelled) { badge.textContent = 'Cancelled'; badge.className = 'lc-badge badge-late'; }
+          else if (next.expected && next.expected !== 'On time') { badge.textContent = next.expected; badge.className = 'lc-badge badge-late'; }
+          else { badge.textContent = 'On time'; badge.className = 'lc-badge badge-ok'; }
+        });
+    })
+    .catch(() => { document.getElementById('train-dest').textContent = 'Train data unavailable'; });
+
+  // ── WEATHER + NEARBY ────────────────────────────────────────
+  fetch(`https://api.postcodes.io/postcodes/${PC}`)
+    .then(r => r.json())
+    .then(pc => {
+      const res      = pc.result || {};
+      const lat      = res.latitude;
+      const lon      = res.longitude;
+      const district = res.admin_district || PC_FMT;
+      if (document.getElementById('ma-title'))
+        document.getElementById('ma-title').textContent = district + ' · ' + PC_FMT;
+      if (!lat || !lon) return;
+
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`)
+        .then(r => r.json())
+        .then(wx => {
+          const cur  = wx.current || {};
+          const temp = Math.round(cur.temperature_2m ?? 0);
+          const feel = Math.round(cur.apparent_temperature ?? temp);
+          const code = cur.weather_code ?? 0;
+          const h    = new Date().getHours();
+          document.getElementById('wx-temp').textContent = temp + '°C';
+          document.getElementById('wx-desc').textContent = (WX_CODES[code]||'Clear') + ' · Feels like ' + feel + '°';
+          document.getElementById('wx-badge').textContent = feel < 5 ? '🧥 Very cold' : feel < 12 ? '🧥 Wrap up' : feel > 25 ? '☀ Warm day' : 'Comfortable';
+          document.getElementById('wx-icon').innerHTML = wxIcon(code, h);
+        })
+        .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
+
+      fetch(`/api/your-area?postcode=${PC}`)
+        .then(r => r.json())
+        .then(area => {
+          const places = [];
+          if (area.gps?.length)          places.push({ icon:'🏥', name: area.gps[0].name,          dist: area.gps[0].distance_km });
+          if (area.pharmacies?.length)   places.push({ icon:'💊', name: area.pharmacies[0].name,    dist: area.pharmacies[0].distance_km });
+          if (area.post_offices?.length) places.push({ icon:'📮', name: area.post_offices[0].name,  dist: area.post_offices[0].distance_km });
+          if (places.length) {
+            document.getElementById('nearby-list').innerHTML = places.map(p => `
+              <div class="card card-place">
+                <div class="place-icon">${p.icon}</div>
+                <div><div class="place-name">${p.name}</div><div class="place-dist">${p.dist ? (+p.dist*0.621).toFixed(1)+' mi' : 'nearby'}</div></div>
+                <span class="place-arrow">→</span>
+              </div>`).join('');
+          }
+        })
+        .catch(() => {});
+    })
+    .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
+}
 
 // ── SAVES ──────────────────────────────────────────────────────
 const rawSaves = JSON.parse(localStorage.getItem('miru_saves') || 'null') ||
