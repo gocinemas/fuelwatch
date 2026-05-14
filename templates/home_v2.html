@@ -790,15 +790,20 @@ function _pillNav(name) {
   ['home','myarea','intel','saves'].forEach(k => document.getElementById('pi-'+k)?.classList.toggle('pi-active',k===name));
   document.getElementById('pill-icon').textContent  = icons[name]  || '🏠';
   document.getElementById('pill-label').textContent = labels[name] || name;
-  nav(name);
+  if (name !== 'home') nav(name);
 }
 
 // ── NAV / TOAST ────────────────────────────────────────────────
+// map home_v2 names → real screen IDs in index.html
+const _screenMap = {
+  intel: 'company', fuel: 'fuel', trains: 'trains',
+  myarea: 'myarea', places: 'places', report: 'report',
+  library: 'scan', music: 'music', saves: 'saves', whatsapp: 'home'
+};
 function nav(screen) {
-  // In real app this would call showScreen(screen)
-  // For now link back to the real app
   if (screen === 'home') return;
-  window.location.href = '/?screen=' + screen;
+  const target = _screenMap[screen] || screen;
+  window.location.href = '/?screen=' + target;
 }
 
 let _tt;
