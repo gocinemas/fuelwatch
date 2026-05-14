@@ -500,32 +500,33 @@ fetch(`/api/search?postcode=${PC}&fuel=petrol&radius=3&mode=fuel`)
 fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
   .then(r => r.json())
   .then(data => {
-    const station = data.station || data;
-    if (!station || !station.crs) { document.getElementById('train-dest').textContent = 'No nearby station found'; return; }
-    const crs  = station.crs;
-    const name = station.name || crs;
+    // response: {name, crs, lat, lng, stations:[...]}
+    const crs  = data.crs;
+    const name = data.name || crs;
+    if (!crs) { document.getElementById('train-dest').textContent = 'No nearby station found'; return; }
 
     fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`)
       .then(r => r.json())
       .then(deps => {
-        const services = deps.services || deps.departures || deps.trainServices || [];
-        if (!services.length) {
+        // response: {station, trains:[{scheduled, expected, platform, destination, cancelled}]}
+        const trains = deps.trains || [];
+        if (!trains.length) {
           document.getElementById('train-time').textContent = '—';
           document.getElementById('train-dest').textContent = name + ' · No departures';
           return;
         }
-        const next = services[0];
-        const time = next.std || next.aimed_departure_time || next.scheduledDeparture || '—';
-        const dest = next.destination?.locationName || next.destination?.[0]?.locationName || next.destinationName || '—';
-        const plat = next.platform ? ' · Plat '+next.platform : '';
-        const etd  = next.etd || next.expected_departure_time || '';
-        const late = etd && etd !== 'On time' && etd !== time;
+        const next = trains[0];
+        const plat = next.platform ? ' · Plat ' + next.platform : '';
+        const late = next.expected && next.expected !== 'On time' && !next.cancelled;
 
-        document.getElementById('train-time').textContent = time;
-        document.getElementById('train-dest').textContent = '→ '+dest+' · '+name+plat;
+        document.getElementById('train-time').textContent = next.scheduled || '—';
+        document.getElementById('train-dest').textContent = '→ ' + (next.destination || '—') + ' · ' + name + plat;
         const badge = document.getElementById('train-badge');
-        if (late) {
-          badge.textContent = 'Delayed · exp '+etd;
+        if (next.cancelled) {
+          badge.textContent = 'Cancelled';
+          badge.className = 'lc-badge badge-late';
+        } else if (late) {
+          badge.textContent = next.expected;
           badge.className = 'lc-badge badge-late';
         } else {
           badge.textContent = 'On time';
@@ -535,7 +536,7 @@ fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
   })
   .catch(() => { document.getElementById('train-dest').textContent = 'Train data unavailable'; });
 
-// ── WEATHER (via your-area for lat/lon, then open-meteo) ───────
+// ── WEATHER + NEARBY (postcodes.io for lat/lon, then open-meteo) ──
 const WX_CODES = {
   0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',
   45:'Foggy',48:'Freezing fog',
@@ -545,9 +546,9 @@ const WX_CODES = {
   80:'Showers',81:'Heavy showers',82:'Violent showers',
   95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'
 };
-function wxIcon(code, hour) {
-  const night = hour < 6 || hour >= 20;
-  if (code === 0 || code === 1) return night
+function wxIcon(code, h) {
+  const night = h < 6 || h >= 20;
+  if (code <= 1) return night
     ? `<div class="wx-moon"></div>`
     : `<div class="wx-sun-body"></div><div class="wx-sun-rays">${[0,45,90,135,180,225,270,315].map(d=>`<div class="wx-ray" style="transform:rotate(${d}deg) translateX(-50%)"></div>`).join('')}</div>`;
   if (code <= 3) return `<div class="wx-part-sun"></div><div class="wx-cloud"></div>`;
@@ -555,60 +556,61 @@ function wxIcon(code, hour) {
   return `<div class="wx-part-sun"></div><div class="wx-cloud"></div>`;
 }
 
-fetch(`/api/your-area?postcode=${PC}`)
+// Use postcodes.io for lat/lon (free, no auth)
+fetch(`https://api.postcodes.io/postcodes/${PC}`)
   .then(r => r.json())
-  .then(area => {
-    const lat = area.lat || area.latitude;
-    const lon = area.lon || area.longitude || area.lng;
+  .then(pc => {
+    const res = pc.result || {};
+    const lat = res.latitude;
+    const lon = res.longitude;
+    const district = res.admin_district || PC_FMT;
+
+    // Update My Area title with district name
+    document.getElementById('ma-title').textContent = district + ' · ' + PC_FMT;
+
     if (!lat || !lon) return;
 
-    // My Area stats
-    const maStats = document.getElementById('ma-stats');
-    const school = area.schools?.ofsted_rating || area.school_rating;
-    const transport = area.transport?.score;
-    maStats.innerHTML = [
-      school ? `<div><div class="ma-stat-val">⭐ ${school}</div><div class="ma-stat-lbl">Schools</div></div>` : '',
-      transport ? `<div><div class="ma-stat-val">${transport}</div><div class="ma-stat-lbl">Transport</div></div>` : '',
-    ].join('');
-    maStats.style.opacity = '1';
-
-    // Nearby from area data
-    const places = [];
-    if (area.supermarkets?.length) places.push({ icon:'🛒', name: area.supermarkets[0].name, dist: area.supermarkets[0].distance });
-    if (area.gp?.length)          places.push({ icon:'🏥', name: area.gp[0].name,           dist: area.gp[0].distance });
-    if (area.schools?.list?.length) places.push({ icon:'🏫', name: area.schools.list[0].name, dist: area.schools.list[0].distance });
-    if (area.pubs?.length)        places.push({ icon:'🍺', name: area.pubs[0].name,          dist: area.pubs[0].distance });
-    if (places.length) {
-      document.getElementById('nearby-list').innerHTML = places.map(p => `
-        <div class="card card-place" onclick="toast('${p.name}')">
-          <div class="place-icon">${p.icon}</div>
-          <div>
-            <div class="place-name">${p.name}</div>
-            <div class="place-dist">${p.dist ? p.dist.toFixed(1)+' mi' : ''}</div>
-          </div>
-          <span class="place-arrow">→</span>
-        </div>
-      `).join('');
-    }
-
-    // Weather
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(3)}&longitude=${(+lon).toFixed(3)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`)
+    // Weather via open-meteo
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`)
       .then(r => r.json())
       .then(wx => {
         const cur  = wx.current || {};
         const temp = Math.round(cur.temperature_2m ?? 0);
         const feel = Math.round(cur.apparent_temperature ?? temp);
         const code = cur.weather_code ?? 0;
-        const desc = WX_CODES[code] || 'Clear';
         const h    = new Date().getHours();
 
         document.getElementById('wx-temp').textContent = temp + '°C';
-        document.getElementById('wx-desc').textContent = desc + ' · Feels like ' + feel + '°';
-        document.getElementById('wx-badge').textContent = feel < 10 ? '🧥 Wrap up' : feel > 25 ? '☀ Warm day' : 'Comfortable';
+        document.getElementById('wx-desc').textContent = (WX_CODES[code] || 'Clear') + ' · Feels like ' + feel + '°';
+        document.getElementById('wx-badge').textContent = feel < 5 ? '🧥 Very cold' : feel < 12 ? '🧥 Wrap up' : feel > 25 ? '☀ Warm day' : 'Comfortable';
         document.getElementById('wx-icon').innerHTML = wxIcon(code, h);
-      });
+      })
+      .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
+
+    // Nearby from your-area (has gps, pharmacies, post_offices)
+    fetch(`/api/your-area?postcode=${PC}`)
+      .then(r => r.json())
+      .then(area => {
+        const places = [];
+        if (area.gps?.length)         places.push({ icon:'🏥', name: area.gps[0].name,         dist: area.gps[0].distance_km });
+        if (area.pharmacies?.length)  places.push({ icon:'💊', name: area.pharmacies[0].name,   dist: area.pharmacies[0].distance_km });
+        if (area.post_offices?.length)places.push({ icon:'📮', name: area.post_offices[0].name, dist: area.post_offices[0].distance_km });
+        if (places.length) {
+          document.getElementById('nearby-list').innerHTML = places.map(p => `
+            <div class="card card-place">
+              <div class="place-icon">${p.icon}</div>
+              <div>
+                <div class="place-name">${p.name}</div>
+                <div class="place-dist">${p.dist ? (+p.dist * 0.621).toFixed(1)+' mi' : 'nearby'}</div>
+              </div>
+              <span class="place-arrow">→</span>
+            </div>
+          `).join('');
+        }
+      })
+      .catch(() => {});
   })
-  .catch(() => {});
+  .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
 
 // ── SAVES ──────────────────────────────────────────────────────
 const rawSaves = JSON.parse(localStorage.getItem('miru_saves') || 'null') ||
