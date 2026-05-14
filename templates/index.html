@@ -5368,9 +5368,9 @@ const _ts = new Date(d.timestamp);
         ((co.share && co.share.current) ||
          (br.financials && Object.values(br.financials).some(v => v)));
       _setIntelTab("finance", hasFinance);
-      // Show "privately held" note in About when Finance tab is absent
+      // Show "privately held" note only in company mode when financials are absent
       const finEmpty = document.getElementById("brand-fin-empty");
-      if (finEmpty) finEmpty.style.display = hasFinance ? "none" : "";
+      if (finEmpty) finEmpty.style.display = (!hasFinance && _intelSearchMode !== "brand") ? "" : "none";
 
       // History + Campaigns: brand-mode only
       _setIntelTab("history",   _intelSearchMode !== "company");
