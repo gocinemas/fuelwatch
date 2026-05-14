@@ -11859,6 +11859,110 @@ _bkBadge();
     setTimeout(function() { document.getElementById("saves-url-input").focus(); }, 350);
   };
 
+  // ── AI Camera Scan ──────────────────────────────────────────────────────────
+  window.savesCameraOpen = function() {
+    document.getElementById("saves-camera-input").click();
+  };
+
+  window.savesCameraProcess = async function(evt) {
+    const file = evt.target.files[0];
+    if (!file) return;
+    evt.target.value = "";
+
+    // Close the add sheet, open scan sheet
+    savesFabClose();
+    const backdrop = document.getElementById("scan-backdrop");
+    const sheet    = document.getElementById("scan-sheet");
+    backdrop.style.display = "block";
+    sheet.style.display    = "block";
+    document.getElementById("scan-loading").style.display = "block";
+    document.getElementById("scan-result").style.display  = "none";
+    document.getElementById("scan-error").style.display   = "none";
+    requestAnimationFrame(() => requestAnimationFrame(() => { sheet.style.transform = "translateY(0)"; }));
+
+    // Convert to base64
+    const b64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload  = e => res(e.target.result.split(",")[1]);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+
+    try {
+      const r = await fetch("/api/wa-saves/scan-image", {
+        method: "POST",
+        headers: { ..._savesHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ image_b64: b64, mime: file.type || "image/jpeg" }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.extracted) throw new Error(data.error || "No info found");
+
+      const ex = data.extracted;
+      window._scanExtracted = ex;
+
+      // Build preview card
+      const rows = [
+        ex.title   ? `<div><span style="font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)">Name</span><div style="font-size:15px;font-weight:700;margin-top:2px">${ex.title}</div></div>` : "",
+        ex.phone   ? `<div><span style="font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)">Phone</span><div style="font-size:15px;font-weight:600;margin-top:2px"><a href="tel:${ex.phone}" style="color:#2563eb;text-decoration:none">${ex.phone}</a></div></div>` : "",
+        ex.website ? `<div><span style="font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)">Website</span><div style="font-size:14px;margin-top:2px;color:#2563eb;word-break:break-all">${ex.website}</div></div>` : "",
+        ex.address ? `<div><span style="font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)">Address</span><div style="font-size:13px;margin-top:2px;color:var(--muted)">${ex.address}</div></div>` : "",
+        ex.notes   ? `<div><span style="font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)">Notes</span><div style="font-size:13px;margin-top:2px;color:var(--muted)">${ex.notes}</div></div>` : "",
+      ].filter(Boolean).join("");
+
+      document.getElementById("scan-preview").innerHTML = rows || "<div style='color:var(--muted);font-size:13px'>No text found in image</div>";
+
+      // Edit fields for title + notes
+      document.getElementById("scan-edit-fields").innerHTML = `
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px">Edit before saving:</div>
+        <input id="scan-edit-title" type="text" value="${ex.title || ""}" placeholder="Name / title"
+          style="border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:14px;background:var(--bg);color:var(--text);outline:none;width:100%" />
+        <textarea id="scan-edit-notes" placeholder="Add a note (optional)"
+          style="border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;background:var(--bg);color:var(--text);outline:none;width:100%;resize:none;height:60px;font-family:inherit">${ex.notes || ""}</textarea>
+      `;
+
+      document.getElementById("scan-loading").style.display = "none";
+      document.getElementById("scan-result").style.display  = "block";
+    } catch(e) {
+      document.getElementById("scan-loading").style.display = "none";
+      document.getElementById("scan-error").style.display   = "block";
+      document.getElementById("scan-error-msg").textContent = e.message || "Try a clearer photo";
+    }
+  };
+
+  window.scanClose = function() {
+    const sheet = document.getElementById("scan-sheet");
+    sheet.style.transform = "translateY(100%)";
+    setTimeout(() => {
+      sheet.style.display = "none";
+      document.getElementById("scan-backdrop").style.display = "none";
+    }, 300);
+  };
+
+  window.scanSaveCard = async function() {
+    const ex    = window._scanExtracted || {};
+    const title = document.getElementById("scan-edit-title")?.value.trim() || ex.title || "Scanned contact";
+    const notes = document.getElementById("scan-edit-notes")?.value.trim() || ex.notes || "";
+    const parts = [
+      ex.phone   ? "📞 " + ex.phone   : "",
+      ex.website ? "🌐 " + ex.website  : "",
+      ex.address ? "📍 " + ex.address  : "",
+      notes,
+    ].filter(Boolean).join("\n");
+
+    // Save as a text note via WA saves add (sending as structured text)
+    const r = await fetch("/api/wa-saves/add", {
+      method: "POST",
+      headers: { ..._savesHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ url: null, text: title + (parts ? "\n" + parts : ""), title }),
+    });
+    if (r.ok) {
+      scanClose();
+      savesLoad();
+    } else {
+      alert("Could not save — please try again");
+    }
+  };
+
   window.savesFabClose = function() {
     const sheet = document.getElementById("saves-add-sheet");
     sheet.style.transform = "translateY(100%)";
@@ -13743,6 +13847,17 @@ window.spotifyAddTrack = window.spotifyLike;
   <div style="width:36px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 20px"></div>
   <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:14px;letter-spacing:-0.4px">Save something</div>
 
+  <!-- Camera scan row -->
+  <button onclick="savesCameraOpen()" style="width:100%;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#1e1b4b,#312e81);border:1px solid rgba(139,92,246,.3);border-radius:14px;padding:13px 16px;cursor:pointer;margin-bottom:10px;text-align:left">
+    <span style="font-size:22px;flex-shrink:0">📷</span>
+    <div style="flex:1">
+      <div style="font-size:14px;font-weight:700;color:#e0e7ff">AI Scan</div>
+      <div style="font-size:11px;color:#a5b4fc;margin-top:1px">Photo a sign, van, card or ad — AI reads it</div>
+    </div>
+    <span style="font-size:13px;color:#818cf8">→</span>
+  </button>
+  <input id="saves-camera-input" type="file" accept="image/*" capture="environment" style="display:none" onchange="savesCameraProcess(event)">
+
   <div style="display:flex;gap:8px;margin-bottom:10px">
     <input id="saves-url-input" type="url" placeholder="Paste a link…"
       style="flex:1;border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:14px;outline:none;background:var(--bg);color:var(--text);-webkit-appearance:none"
@@ -13766,6 +13881,34 @@ window.spotifyAddTrack = window.spotifyLike;
       <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
       Open WhatsApp
     </a>
+  </div>
+</div>
+
+<!-- ── AI Scan result modal ──────────────────────────────────────────────── -->
+<div id="scan-backdrop" onclick="scanClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200"></div>
+<div id="scan-sheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:201;background:var(--surface);border-radius:24px 24px 0 0;padding:20px 16px 40px;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,0,.67,0);max-width:520px;margin:0 auto">
+  <div style="width:36px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 18px"></div>
+  <div id="scan-loading" style="text-align:center;padding:30px 0">
+    <div style="font-size:32px;margin-bottom:10px">📷</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text)">Reading image…</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">AI is extracting contact info</div>
+  </div>
+  <div id="scan-result" style="display:none">
+    <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:16px;letter-spacing:-.3px">✅ Found this info</div>
+    <div id="scan-preview" style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px;display:flex;flex-direction:column;gap:10px"></div>
+    <div id="scan-edit-fields" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+    <button onclick="scanSaveCard()" style="width:100%;background:#16a34a;color:#fff;border:none;border-radius:14px;padding:14px;font-size:15px;font-weight:700;cursor:pointer">
+      📌 Save this card
+    </button>
+    <button onclick="scanClose()" style="width:100%;background:none;border:none;color:var(--muted);font-size:13px;padding:10px;cursor:pointer">
+      Cancel
+    </button>
+  </div>
+  <div id="scan-error" style="display:none;text-align:center;padding:20px 0">
+    <div style="font-size:32px;margin-bottom:8px">🤔</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text)">Couldn't read that image</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px" id="scan-error-msg">Try a clearer photo</div>
+    <button onclick="savesCameraOpen()" style="margin-top:16px;background:var(--text);color:var(--bg);border:none;border-radius:14px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">Try again</button>
   </div>
 </div>
 

@@ -12564,20 +12564,72 @@ def api_wa_saves_reindex():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/wa-saves/scan-image", methods=["POST"])
+def api_wa_saves_scan_image():
+    """Accept a base64 image, extract structured info via Groq vision, return as a save card."""
+    from_number, err = _check_saves_pin()
+    if err:
+        return err
+    data   = request.json or {}
+    b64    = data.get("image_b64", "")
+    mime   = data.get("mime", "image/jpeg")
+    if not b64:
+        return jsonify({"error": "image_b64 required"}), 400
+
+    prompt = (
+        "Look at this image and extract any useful contact or business information. "
+        "Return ONLY a JSON object with these fields (use null if not found):\n"
+        '{"title": "business or person name", "phone": "phone number", '
+        '"website": "website or URL", "address": "address if visible", '
+        '"notes": "any other useful text (e.g. service offered, opening hours)", '
+        '"category": "one of: contact, business, place, product, other"}\n'
+        "Do not include any explanation outside the JSON."
+    )
+    try:
+        raw = _groq_vision(b64, mime, prompt)
+        # Parse JSON from response
+        import re as _re
+        m = _re.search(r'\{.*\}', raw, _re.DOTALL)
+        if not m:
+            return jsonify({"error": "Could not extract info from image"}), 422
+        extracted = json.loads(m.group())
+        return jsonify({"ok": True, "extracted": extracted})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/wa-saves/add", methods=["POST"])
 def api_wa_saves_add():
     """Manually save a URL from the web UI."""
     from_number, err = _check_saves_pin()
     if err:
         return err
-    data = request.json or {}
-    url = (data.get("url") or "").strip()
-    if not url or not url.startswith("http"):
-        return jsonify({"error": "Valid URL required"}), 400
-    # Use user's from_number if known, otherwise tag as "web"
+    data  = request.json or {}
+    url   = (data.get("url") or "").strip()
+    text  = (data.get("text") or "").strip()
+    title = (data.get("title") or "").strip()
     save_as = from_number or "web"
-    result = _wa_save_url(save_as, url)
-    return jsonify({"ok": True, "message": result})
+
+    if url and url.startswith("http"):
+        result = _wa_save_url(save_as, url)
+        return jsonify({"ok": True, "message": result})
+    elif text:
+        # Save plain-text card (e.g. from AI image scan)
+        try:
+            from supabase import create_client
+            sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+            sb.table("wa_saves").insert({
+                "from_number": save_as,
+                "title":       title or text[:60],
+                "summary":     text,
+                "category":    "contact",
+                "source":      "ai-scan",
+            }).execute()
+            return jsonify({"ok": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Provide url or text"}), 400
 
 
 def _normalize_gbook(item):
