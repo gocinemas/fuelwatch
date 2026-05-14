@@ -13004,14 +13004,17 @@ _bkBadge();
     }
 
     // Group by date label
-    var today    = new Date(); today.setHours(0,0,0,0);
+    var _now     = new Date();
+    var today    = new Date(_now); today.setHours(0,0,0,0);
     var tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
     var thisWeekEnd = new Date(today); thisWeekEnd.setDate(today.getDate()+7);
+    // After 6 PM it's too late to go to gigs today — skip today's events
+    var _tooLateForToday = _now.getHours() >= 18;
 
     function _dateLabel(dateStr) {
       if (!dateStr) return 'Coming up';
       var d = new Date(dateStr+'T12:00:00'); d.setHours(0,0,0,0);
-      if (d.getTime()===today.getTime())    return 'Today';
+      if (d.getTime()===today.getTime())    return _tooLateForToday ? null : 'Today';
       if (d.getTime()===tomorrow.getTime()) return 'Tomorrow';
       if (d < thisWeekEnd) return d.toLocaleDateString('en-GB',{weekday:'long'});
       return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
@@ -13028,10 +13031,11 @@ _bkBadge();
       return d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase();
     }
 
-    // Bucket events by group label
+    // Bucket events by group label (null = too late today, skip)
     var groups = [], groupMap = {};
     events.forEach(function(ev) {
       var label = _dateLabel(ev.date);
+      if (!label) return;
       if (!groupMap[label]) { groupMap[label] = []; groups.push(label); }
       groupMap[label].push(ev);
     });
