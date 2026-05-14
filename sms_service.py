@@ -8715,19 +8715,24 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
             })
 
         def _type_relevance(name, ptype, kw=""):
-            """Score 0.3–1.0 for how well the place name matches the actual query."""
+            """Score 0.1–1.0 for how well the place name matches the actual query."""
             n = name.lower()
             if ptype == "cafe":
                 if kw == "tea":
+                    # Tea search: tea rooms first, coffee shops pushed to the bottom
                     if any(w in n for w in ("tea", "tearoom", "tea room", "chai")):
                         return 1.0
-                    if any(w in n for w in ("coffee", "cafe", "café", "espresso", "barista", "bakery", "deli")):
-                        return 0.85
+                    if any(w in n for w in ("bakery", "patisserie", "deli", "garden", "house")):
+                        return 0.75
+                    if any(w in n for w in ("coffee", "cafe", "café", "espresso", "barista",
+                                             "roast", "brew", "latte")):
+                        return 0.25  # coffee shops are largely irrelevant for tea
                     if any(w in n for w in ("bistro", "bar", "pub", "grill", "brasserie",
-                                             "restaurant", "hotel", "inn", "arms", "tavern", "kitchen")):
-                        return 0.35
-                    return 0.75
+                                             "restaurant", "hotel", "inn", "arms", "tavern")):
+                        return 0.1
+                    return 0.6
                 else:
+                    # Coffee/default search
                     if any(w in n for w in ("coffee", "cafe", "café", "espresso", "barista", "roast", "brew", "latte")):
                         return 1.0
                     if any(w in n for w in ("bakery", "patisserie", "tearoom", "tea room", "deli")):
