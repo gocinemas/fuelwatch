@@ -2172,7 +2172,9 @@
       return;
     }
     const screenParam = params.get("screen") || "";
-    const target = auto || screenParam || hash;
+    const _urlScreenAlias = { intel: 'company', library: 'scan' };
+    const _rawTarget = auto || screenParam || hash;
+    const target = _urlScreenAlias[_rawTarget] || _rawTarget;
     if (target && document.getElementById("screen-" + target)) {
       showScreen(target);
     }
@@ -12005,7 +12007,10 @@ _bkBadge();
 
   // Deep-link: ?screen=X — run after full DOM ready
   const _deepScreen = new URLSearchParams(location.search).get("screen");
-  if (_deepScreen) window.showScreen(_deepScreen);
+  if (_deepScreen) {
+    const _dsAlias = { intel: 'company', library: 'scan' };
+    window.showScreen(_dsAlias[_deepScreen] || _deepScreen);
+  }
 
   // Tab helpers for merged cards
   window.blookupTab = function(tab) {
