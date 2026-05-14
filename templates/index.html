@@ -958,8 +958,8 @@
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
               <button id="intel-pin-btn" onclick="_intelTogglePin()" style="font-size:12px;font-weight:600;color:#6b7280;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">📌 Pin</button>
-              <button id="brand-bookmark-btn" onclick="bookmarkIntel('brand')" style="font-size:12px;font-weight:600;color:#d97706;background:#fef3c7;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">🔖 Save</button>
-              <button id="brand-lib-btn" onclick="brandSaveToLibrary()" style="font-size:12px;font-weight:600;color:#059669;background:#d1fae5;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">📚 Library</button>
+              <button id="brand-bookmark-btn" style="display:none"></button>
+              <button id="brand-lib-btn" style="display:none"></button>
               <button id="co-share-btn" onclick="shareCompany()" style="font-size:12px;font-weight:600;color:#4f46e5;background:#eef2ff;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">Share</button>
             </div>
           </div>
@@ -6105,25 +6105,6 @@ const _ts = new Date(d.timestamp);
     return null;
   }
 
-  // ── Intel bookmark ───────────────────────────────────────────────────────────
-  function bookmarkIntel(type) {
-    const name = type === "brand"
-      ? (document.getElementById("brand-name-el").textContent.trim())
-      : (document.getElementById("co-share-name").textContent.trim());
-    if (!name) return;
-    const bookmarks = JSON.parse(localStorage.getItem("miru_intel_bookmarks") || "[]");
-    if (!bookmarks.find(b => b.name === name && b.type === type)) {
-      bookmarks.unshift({ type, name, saved: Date.now() });
-      localStorage.setItem("miru_intel_bookmarks", JSON.stringify(bookmarks.slice(0, 50)));
-    }
-    const btnId = type === "brand" ? "brand-bookmark-btn" : "co-bookmark-btn";
-    const btn = document.getElementById(btnId);
-    const orig = btn.innerHTML;
-    btn.innerHTML = "✅ Saved";
-    btn.style.color = "#166534"; btn.style.background = "#dcfce7";
-    setTimeout(() => { btn.innerHTML = orig; btn.style.color = ""; btn.style.background = ""; }, 2000);
-  }
-
   // ── Election WhatsApp alert ───────────────────────────────────────────────────
   function elecAlertToggle() {
     const panel   = document.getElementById("elec-alert-panel");
@@ -8157,29 +8138,6 @@ const _ts = new Date(d.timestamp);
     if (btn) { btn.textContent = "Ask"; btn.disabled = false; }
   };
 
-  window.brandSaveToLibrary = async function() {
-    const btn = document.getElementById("brand-lib-btn");
-    const name = window._brandIntelName || "";
-    if (!name) return;
-    if (btn) { btn.textContent = "Saving…"; btn.disabled = true; }
-    try {
-      const r = await fetch("/api/brand/save-to-library", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ name }),
-      });
-      const d = await r.json();
-      if (d.ok) {
-        if (btn) { btn.textContent = "✅ Saved"; btn.style.background = "#bbf7d0"; }
-        _miruToast(`📚 ${name} saved to Library`);
-      } else {
-        if (btn) { btn.textContent = "📚 Library"; btn.disabled = false; }
-        _miruToast("Couldn't save — try again");
-      }
-    } catch(e) {
-      if (btn) { btn.textContent = "📚 Library"; btn.disabled = false; }
-    }
-  };
 
   // ── Library ─────────────────────────────────────────────────────────────────
   let _libCurrentDoc = null;
@@ -11223,45 +11181,6 @@ _bkBadge();
   window.savesSubmitPin     = window.savesSubmitPhone;
   window.savesSubmitPinLock = window.savesSubmitPhone;
 
-  function _renderIntelSaves() {
-    const items = JSON.parse(localStorage.getItem("miru_intel_bookmarks") || "[]");
-    const section = document.getElementById("intel-saves-section");
-    const list    = document.getElementById("intel-saves-list");
-    if (!items.length) { section.style.display = "none"; return; }
-    section.style.display = "";
-    list.innerHTML = items.map((b, i) => {
-      const icon   = b.type === "company" ? "🏢" : "🏷️";
-      const label  = b.type === "company" ? "Company Intel" : "Brand Intel";
-      const screen = "company";
-      const date   = new Date(b.saved).toLocaleDateString("en-GB", {day:"numeric", month:"short"});
-      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
-        <div style="min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${icon} ${b.name}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${label} · saved ${date}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button onclick="intelSavesView('${b.type}','${b.name.replace(/'/g,"\\'")}',${i})" style="font-size:12px;font-weight:700;color:#2563eb;background:#eff6ff;border:none;border-radius:10px;padding:6px 12px;cursor:pointer">View</button>
-          <button onclick="intelSavesRemove(${i})" style="font-size:12px;color:#9ca3af;background:var(--surface2);border:none;border-radius:10px;padding:6px 10px;cursor:pointer">✕</button>
-        </div>
-      </div>`;
-    }).join("");
-  }
-
-  window.intelSavesView = function(type, name, idx) {
-    document.getElementById("intel-input").value = name;
-    if (type === "company") setIntelMode("company"); else setIntelMode("brand");
-    var _vq = type === "company" ? document.getElementById("company-q") : document.getElementById("brand-q");
-    if (_vq) _vq.value = name;
-    showScreen("company");
-    setTimeout(() => searchIntel(), 100);
-  };
-
-  window.intelSavesRemove = function(idx) {
-    const items = JSON.parse(localStorage.getItem("miru_intel_bookmarks") || "[]");
-    items.splice(idx, 1);
-    localStorage.setItem("miru_intel_bookmarks", JSON.stringify(items));
-    _renderIntelSaves();
-  };
 
   window.savesLoad = async function() {
     document.getElementById("saves-list").innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div>Loading…</div>';
