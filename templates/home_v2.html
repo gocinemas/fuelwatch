@@ -503,18 +503,46 @@ function wxIcon(code, h) {
   return `<div class="wx-part-sun"></div><div class="wx-cloud"></div>`;
 }
 
-// ── BLANK STATE ────────────────────────────────────────────────
+// ── ONBOARDING (first visit, no postcode set) ──────────────────
 function renderBlank() {
   document.getElementById('content').innerHTML = `
-    <!-- MY AREA — prompt -->
-    <div class="card card-myarea" onclick="nav('myarea')" style="min-height:120px;align-items:center">
-      <div>
-        <div class="ma-location" style="color:#4ade80">📍 Set your area</div>
-        <div class="ma-title" style="font-size:18px;margin-top:6px">Enter a postcode to get local info</div>
-        <div class="ma-sub" style="margin-top:8px">Schools · Council · Transport · Crime · Air quality</div>
+    <div style="padding:8px 0 32px">
+      <div style="background:linear-gradient(135deg,#064e3b,#065f46);border-radius:20px;padding:28px 24px 24px;margin-bottom:20px">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#4ade80;margin-bottom:8px">Welcome to Miru</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.4px;margin-bottom:6px">Your UK life assistant</div>
+        <div style="font-size:13px;color:#86efac;line-height:1.6">Trains · Fuel prices · Local councillors · Weather · Gigs · Schools</div>
       </div>
-      <div style="font-size:28px;opacity:.5">→</div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;box-shadow:var(--shadow)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:16px">Get started in 10 seconds</div>
+
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Your postcode</label>
+        <input id="ob-postcode" type="text" placeholder="e.g. KT16 0HY" maxlength="8" autocomplete="postal-code"
+          style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:16px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:14px"
+          oninput="this.value=this.value.toUpperCase()"
+          onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='var(--border)'">
+
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Mobile number <span style="font-weight:400;text-transform:none">(optional — links your WhatsApp)</span></label>
+        <input id="ob-phone" type="tel" placeholder="+44 7911 123456" autocomplete="tel"
+          style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:16px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:20px"
+          onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border)'">
+
+        <button onclick="_obSubmit()"
+          style="width:100%;padding:14px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;border:none;border-radius:14px;cursor:pointer;letter-spacing:-.2px">
+          Get started →
+        </button>
+        <div id="ob-error" style="display:none;color:#dc2626;font-size:12px;text-align:center;margin-top:10px"></div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <div class="card card-tool" style="flex:1" onclick="nav('fuel')"><div class="tool-icon">⛽</div><div class="tool-label">Fuel</div><div class="tool-sub">Live prices</div></div>
+        <div class="card card-tool" style="flex:1" onclick="nav('trains')"><div class="tool-icon">🚆</div><div class="tool-label">Trains</div><div class="tool-sub">Departures</div></div>
+        <div class="card card-tool" style="flex:1" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music</div><div class="tool-sub">Charts & gigs</div></div>
+        <div class="card card-tool" style="flex:1" onclick="nav('intel')"><div class="tool-icon">🏢</div><div class="tool-label">Intel</div><div class="tool-sub">Companies</div></div>
+      </div>
     </div>
+  `;
+}
 
     <div class="section-label" style="margin-top:28px">Explore</div>
     <div class="live-grid">
@@ -790,6 +818,56 @@ function renderPersonalised() {
         });
     })
     .catch(() => { document.getElementById('wx-desc').textContent = 'Weather unavailable'; });
+}
+
+// ── ONBOARDING SUBMIT ──────────────────────────────────────────
+async function _obSubmit() {
+  const pcRaw = (document.getElementById('ob-postcode').value || '').trim().toUpperCase().replace(/\s+/g,'');
+  const ph    = (document.getElementById('ob-phone').value || '').trim().replace(/[\s\-\(\)]/g,'');
+  const errEl = document.getElementById('ob-error');
+
+  if (!pcRaw || pcRaw.length < 2) {
+    errEl.textContent = 'Please enter your postcode.'; errEl.style.display = 'block'; return;
+  }
+
+  // Validate postcode via postcodes.io
+  errEl.style.display = 'none';
+  const btn = document.querySelector('[onclick="_obSubmit()"]');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+
+  try {
+    const pcCheck = await fetch(`https://api.postcodes.io/postcodes/${pcRaw}`);
+    const pcData  = await pcCheck.json();
+    if (!pcData.result) {
+      errEl.textContent = 'Postcode not found — double check it.'; errEl.style.display = 'block';
+      btn.textContent = 'Get started →'; btn.disabled = false; return;
+    }
+
+    // Save postcode
+    localStorage.setItem('miru_postcode', pcRaw);
+
+    // Save phone
+    let phone = ph;
+    if (phone) {
+      if (/^07\d{9}$/.test(phone)) phone = '+44' + phone.slice(1);
+      localStorage.setItem('miru_phone', phone);
+    }
+
+    // Sync postcode to backend
+    const fromNum = phone || localStorage.getItem('miru_phone') || '';
+    if (fromNum) {
+      fetch('/api/myarea/home-postcode', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({from_number: fromNum, postcode: pcRaw})
+      }).catch(() => {});
+    }
+
+    // Re-render with live data
+    location.reload();
+  } catch(e) {
+    errEl.textContent = 'Something went wrong — try again.'; errEl.style.display = 'block';
+    btn.textContent = 'Get started →'; btn.disabled = false;
+  }
 }
 
 // ── PILL ───────────────────────────────────────────────────────

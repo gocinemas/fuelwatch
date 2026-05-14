@@ -9442,7 +9442,10 @@ def whatsapp_reply():
         if is_join or _is_new_user(from_number):
             _SEEN_NUMBERS.add(from_number)
             resp.message(_WELCOME_MSG)
-            resp.message(_HELP_MSG)
+            # Ask for postcode if they don't have one saved yet
+            if not _get_wa_home_postcode(from_number):
+                _set_wa_pending_intent(from_number, {"type": "setup_postcode"})
+                resp.message("📍 One quick thing — what's your home postcode?\n\nJust reply with it (e.g. *KT16 0HY*) and I'll remember it for trains, fuel prices, local info and more.")
         else:
             resp.message(_HELP_MSG)
         return str(resp)
@@ -9454,6 +9457,21 @@ def whatsapp_reply():
         if _pending:
             _clear_wa_pending_intent(from_number)
             _ptype = _pending.get("type", "")
+            if _ptype == "setup_postcode":
+                _pc_val = _pc_reply.group(1).upper()
+                try:
+                    sb = lib._sb()
+                    plain = from_number.replace("whatsapp:", "").strip()
+                    sb.table("my_area_places").delete().eq("from_number", plain).eq("category", "_home").execute()
+                    sb.table("my_area_places").insert({
+                        "name": "__home__", "category": "_home",
+                        "postcode": _pc_val.replace(" ", ""),
+                        "emoji": "📍", "from_number": plain, "device_id": plain
+                    }).execute()
+                except Exception as e:
+                    print(f"[setup_postcode] {e}")
+                resp.message(f"✅ Got it — *{_pc_val}* saved as your home.\n\nNow try:\n🚆 _next train_\n⛽ _petrol prices_\n🏡 _places near me_\nOr visit miru.humanagency.co 🌐")
+                return str(resp)
             if _ptype == "food":
                 _cheap_pfx = "cheap " if _pending.get("cheap") else ""
                 _food_body  = f"{_cheap_pfx}{_pending['food_type']} {_pc_reply.group(1)}"
