@@ -3998,6 +3998,9 @@ const _ts = new Date(d.timestamp);
     document.getElementById("myarea-loading").style.display = "block";
     document.getElementById("myarea-loading-label").textContent = `Loading ${raw}…`;
 
+    // Council Services renders immediately — links are mostly static GOV.UK, no API needed
+    _maRenderCouncilServices({}, pc);
+
     // Track this search generation so stale callbacks don't render over newer results
     const searchGen = ++_maSearchGen;
     function _guard(fn) { return (...args) => { if (_maSearchGen === searchGen) fn(...args); }; }
