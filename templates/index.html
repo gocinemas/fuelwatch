@@ -363,8 +363,8 @@
     </div>
   </header>
 
-  <!-- Persistent identity bar — always visible, shows phone + postcode -->
-  <div id="identity-bar" style="background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px">
+  <!-- Persistent identity bar — hidden on intel.humanagency.co -->
+  <div id="identity-bar" style="background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;{% if intel_mode %}display:none{% endif %}">
     <div class="max-w-xl mx-auto" style="display:flex;align-items:center;gap:6px;height:36px;overflow:hidden">
       <!-- Phone pill -->
       <button id="id-phone-pill" onclick="_idEdit('phone')"
