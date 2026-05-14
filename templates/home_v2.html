@@ -409,7 +409,9 @@ document.getElementById('top-sub').textContent  = PC_FMT ? PC_FMT + ' · ' + dat
 
 PC ? renderPersonalised() : renderBlank();
 
-// ── FUEL ───────────────────────────────────────────────────────
+// ── FUEL (only when postcode known) ────────────────────────────
+if (!PC) { /* skip all data fetches until user sets postcode */ }
+else
 fetch(`/api/search?postcode=${PC}&fuel=petrol&radius=3&mode=fuel`)
   .then(r => r.json())
   .then(data => {
@@ -541,8 +543,6 @@ function renderBlank() {
         <div class="card card-tool" style="flex:1" onclick="nav('intel')"><div class="tool-icon">🏢</div><div class="tool-label">Intel</div><div class="tool-sub">Companies</div></div>
       </div>
     </div>
-  `;
-}
 
     <div class="section-label" style="margin-top:28px">Explore</div>
     <div class="live-grid">
