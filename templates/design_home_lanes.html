@@ -3,313 +3,332 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Miru — Lanes V2</title>
+<title>Miru — Home</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #08080a;
-    --surface: #141416;
-    --surface2: #1c1c20;
-    --border: rgba(255,255,255,0.06);
-    --text: #f0f0f2;
-    --muted: #606068;
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface2: #ebebed;
+    --border: rgba(0,0,0,0.07);
+    --text: #111113;
+    --muted: #888890;
     --accent: #22c55e;
-    --r: 20px;
-    --pill-bg: rgba(28,28,32,.95);
-    --saves-bg: rgba(20,20,22,.95);
-    --moon-erase: #06111a;
+    --r: 18px;
+    --pill-bg: rgba(255,255,255,.95);
+    --saves-bg: rgba(255,255,255,.97);
+    --shadow: 0 2px 12px rgba(0,0,0,.07);
   }
 
-  @media (prefers-color-scheme: light) {
+  @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #f5f5f7;
-      --surface: #ffffff;
-      --surface2: #ebebed;
-      --border: rgba(0,0,0,0.07);
-      --text: #111113;
-      --muted: #888890;
-      --pill-bg: rgba(255,255,255,.92);
-      --saves-bg: rgba(255,255,255,.95);
-      --moon-erase: #f5f5f7;
+      --bg: #08080a;
+      --surface: #141416;
+      --surface2: #1c1c20;
+      --border: rgba(255,255,255,0.06);
+      --text: #f0f0f2;
+      --muted: #606068;
+      --pill-bg: rgba(28,28,32,.95);
+      --saves-bg: rgba(20,20,22,.97);
+      --shadow: 0 2px 12px rgba(0,0,0,.4);
     }
   }
 
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-    height: 100dvh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    min-height: 100dvh;
   }
 
-  /* ── TOP ──────────────────────────────── */
-  .top {
-    flex-shrink: 0;
-    padding: 52px 22px 10px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
+  /* ── PAGE WRAPPER ─────────────────────── */
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 180px;
   }
-  .top-left h1 { font-size: 26px; font-weight: 800; letter-spacing: -.6px; line-height: 1; }
-  .top-left p  { font-size: 13px; color: var(--muted); margin-top: 4px; }
-  .top-avatar {
+
+  /* ── TOP BAR ──────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 40px 0 28px;
+    gap: 16px;
+  }
+  .topbar-left h1  { font-size: 26px; font-weight: 800; letter-spacing: -.5px; }
+  .topbar-left p   { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .topbar-right    { display: flex; align-items: center; gap: 10px; }
+  .topbar-search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px;
+    font-size: 14px; color: var(--muted);
+    cursor: text; box-shadow: var(--shadow);
+    min-width: 200px;
+  }
+  .topbar-avatar {
     width: 36px; height: 36px; border-radius: 50%;
     background: linear-gradient(135deg, #22c55e, #3b82f6);
-    font-size: 16px; display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #fff;
     flex-shrink: 0;
   }
 
-  /* ── SCROLLABLE BODY ──────────────────── */
-  .lanes {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    /* bottom padding: saves bar + pill + gap */
-    padding-bottom: 160px;
-    scrollbar-width: none;
-  }
-  .lanes::-webkit-scrollbar { display: none; }
-
-  /* ── LANE ─────────────────────────────── */
-  .lane { margin-top: 24px; }
-  .lane-header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    padding: 0 22px 10px;
-  }
-  .lane-title {
+  /* ── SECTION LABEL ────────────────────── */
+  .section-label {
     font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
     text-transform: uppercase; color: var(--muted);
+    margin: 28px 0 12px;
+    display: flex; align-items: center; justify-content: space-between;
   }
-  .lane-more { font-size: 12px; color: var(--muted); font-weight: 500; cursor: pointer; }
-  .lane-scroll {
-    display: flex; gap: 12px; padding: 0 22px;
-    overflow-x: auto; -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; scroll-snap-type: x mandatory;
-  }
-  .lane-scroll::-webkit-scrollbar { display: none; }
+  .section-more { font-size: 12px; letter-spacing: 0; text-transform: none; cursor: pointer; font-weight: 500; }
 
   /* ── CARD BASE ────────────────────────── */
-  .lcard {
-    flex-shrink: 0; border-radius: var(--r);
-    border: 1px solid var(--border); cursor: pointer;
-    scroll-snap-align: start; position: relative; overflow: hidden;
-    transition: transform .15s ease;
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
     -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+    position: relative;
   }
-  .lcard:active { transform: scale(.96); }
+  .card:hover  { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+  .card:active { transform: scale(.98); }
 
-  /* ── MY AREA — full bleed ─────────────── */
-  .lane-now .lane-scroll { padding: 0; }
-  .lcard-now {
-    width: 100vw; min-height: 180px;
-    background: linear-gradient(140deg, #0a2e18 0%, #064e3b 60%, #0d4030 100%);
-    border-radius: 0; border-left: none; border-right: none;
+  @media (prefers-color-scheme: dark) {
+    .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+  }
+
+  /* ── MY AREA — hero full width ────────── */
+  .card-myarea {
+    padding: 24px 28px;
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 60%, #0a4a38 100%);
+    border-color: rgba(34,197,94,.2);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 20px;
+    min-height: 130px;
+  }
+  .ma-location { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #4ade80; margin-bottom: 4px; }
+  .ma-title    { font-size: 22px; font-weight: 800; letter-spacing: -.4px; color: #fff; }
+  .ma-sub      { font-size: 13px; color: #86efac; margin-top: 4px; }
+  .ma-stats    { display: flex; gap: 20px; }
+  .ma-stat-val { font-size: 18px; font-weight: 800; color: #fff; }
+  .ma-stat-lbl { font-size: 10px; color: #6ee7b7; letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
+
+  /* ── LIVE ROW — 3 equal cols on desktop, scroll on mobile ── */
+  .live-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .card-live {
+    padding: 18px 20px;
     display: flex; flex-direction: column; justify-content: space-between;
-    padding: 20px 24px;
+    min-height: 150px;
   }
-  .now-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #4ade80; }
-  .now-headline { font-size: 24px; font-weight: 800; letter-spacing: -.6px; margin-top: 4px; line-height: 1.1; }
-  .now-sub { font-size: 13px; color: #86efac; margin-top: 4px; }
-  .now-stats { display: flex; gap: 22px; margin-top: 14px; }
-  .now-stat-val { font-size: 20px; font-weight: 800; letter-spacing: -.4px; }
-  .now-stat-label { font-size: 10px; color: #6ee7b7; letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
+  .card-fuel    { background: linear-gradient(155deg, #1c1007, #261900); border-color: rgba(245,158,11,.2); }
+  .card-trains  { background: linear-gradient(155deg, #0a0f20, #1e1b4b); border-color: rgba(99,102,241,.2); }
+  .card-weather { background: linear-gradient(155deg, #06111a, #0a1e30); border-color: rgba(56,189,248,.2); }
 
-  /* ── LIVE CARDS ───────────────────────── */
-  .lcard-live {
-    width: 154px; height: 172px;
-    display: flex; flex-direction: column; justify-content: space-between;
-    padding: 15px;
+  @media (prefers-color-scheme: light) {
+    .card-fuel    { background: #fffbf0; border-color: rgba(245,158,11,.25); }
+    .card-trains  { background: #f5f3ff; border-color: rgba(99,102,241,.2); }
+    .card-weather { background: #f0f7ff; border-color: rgba(56,189,248,.2); }
   }
-  .lcard-fuel   { background: linear-gradient(155deg, #1c1007, #261900); border-color: rgba(245,158,11,.18); }
-  .lcard-trains { background: linear-gradient(155deg, #0a0f20, #1e1b4b); border-color: rgba(99,102,241,.18); }
-  .lcard-weather { background: linear-gradient(155deg, #06111a, #0a1e30); border-color: rgba(56,189,248,.18); }
 
-  .lc-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
-  .lc-value { font-size: 30px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; margin-top: 6px; }
-  .lc-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .lc-label { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; }
+  .lc-value { font-size: 32px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; }
+  .lc-sub   { font-size: 12px; color: var(--muted); margin-top: 5px; }
   .lc-badge {
     display: inline-flex; align-items: center;
-    font-size: 10px; font-weight: 700; letter-spacing: .3px;
-    padding: 3px 8px; border-radius: 20px;
+    font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; margin-top: 10px;
   }
-  .badge-live  { background: rgba(34,197,94,.15);  color: #4ade80; }
-  .badge-due   { background: rgba(245,158,11,.15);  color: #fbbf24; }
-  .badge-sky   { background: rgba(56,189,248,.15);  color: #7dd3fc; }
+  .badge-live  { background: rgba(34,197,94,.12);  color: #16a34a; }
+  .badge-ok    { background: rgba(245,158,11,.12);  color: #d97706; }
+  .badge-sky   { background: rgba(56,189,248,.12);  color: #0284c7; }
 
-  /* ── WEATHER ICON (inline, small) ──────── */
-  .wx { width: 46px; height: 46px; position: relative; flex-shrink: 0; }
-
-  /* sun */
-  .wx-sun-body {
-    position: absolute; inset: 11px;
-    background: #fbbf24; border-radius: 50%;
-    box-shadow: 0 0 8px 2px rgba(251,191,36,.4);
-    animation: sun-pulse 3s ease-in-out infinite;
+  @media (prefers-color-scheme: dark) {
+    .badge-live { color: #4ade80; background: rgba(34,197,94,.15); }
+    .badge-ok   { color: #fbbf24; background: rgba(245,158,11,.15); }
+    .badge-sky  { color: #7dd3fc; background: rgba(56,189,248,.15); }
   }
-  .wx-sun-rays { position: absolute; inset: 0; animation: sun-spin 12s linear infinite; }
-  .wx-ray {
-    position: absolute; left: 50%; top: 0;
-    width: 2px; height: 7px; background: #fbbf24;
-    border-radius: 2px; transform-origin: 50% 23px; opacity: .7;
-  }
-  @keyframes sun-pulse { 0%,100%{box-shadow:0 0 8px 2px rgba(251,191,36,.4)} 50%{box-shadow:0 0 14px 5px rgba(251,191,36,.2)} }
-  @keyframes sun-spin  { to{transform:rotate(360deg)} }
 
-  /* partly cloudy */
+  /* weather icon */
+  .wx { width: 44px; height: 44px; position: relative; flex-shrink: 0; }
   .wx-part-sun {
-    position: absolute; top: 5px; right: 5px;
+    position: absolute; top: 4px; right: 4px;
     width: 20px; height: 20px; background: #fbbf24; border-radius: 50%;
     box-shadow: 0 0 6px rgba(251,191,36,.4);
   }
   .wx-cloud {
-    position: absolute; bottom: 5px; left: 2px; right: 2px;
+    position: absolute; bottom: 4px; left: 2px; right: 2px;
     height: 18px; background: #94a3b8; border-radius: 10px;
   }
   .wx-cloud::before {
-    content: ''; position: absolute;
-    width: 14px; height: 14px; background: #94a3b8; border-radius: 50%;
-    top: -7px; left: 6px;
+    content:''; position:absolute;
+    width:14px;height:14px; background:#94a3b8; border-radius:50%;
+    top:-7px; left:6px;
   }
   .wx-cloud::after {
-    content: ''; position: absolute;
-    width: 10px; height: 10px; background: #94a3b8; border-radius: 50%;
-    top: -5px; left: 17px;
+    content:''; position:absolute;
+    width:10px;height:10px; background:#94a3b8; border-radius:50%;
+    top:-5px; left:17px;
   }
 
-  /* rain drops */
-  .wx-drops { position: absolute; bottom: 2px; left: 0; right: 0; display: flex; justify-content: center; gap: 5px; }
-  .wx-drop {
-    width: 2px; height: 7px; background: #60a5fa; border-radius: 2px;
-    animation: fall 1.2s ease-in infinite;
+  /* ── NEARBY + TOOLS — 2-col on desktop ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
   }
-  .wx-drop:nth-child(2){animation-delay:.3s}
-  .wx-drop:nth-child(3){animation-delay:.6s}
-  @keyframes fall { 0%{transform:translateY(-3px);opacity:.8} 100%{transform:translateY(8px);opacity:0} }
 
-  /* moon */
-  .wx-moon {
-    position: absolute; top: 8px; left: 10px;
-    width: 26px; height: 26px; background: #fde68a; border-radius: 50%;
-    box-shadow: 0 0 10px rgba(253,230,138,.3);
-    animation: moon-glow 4s ease-in-out infinite;
+  /* nearby cards — vertical list on desktop */
+  .nearby-list  { display: flex; flex-direction: column; gap: 8px; }
+  .card-place {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
   }
-  .wx-moon::after {
-    content: ''; position: absolute;
-    top: -2px; right: -5px;
-    width: 20px; height: 20px; background: var(--moon-erase); border-radius: 50%;
-  }
-  .wx-stars { position: absolute; inset: 0; }
-  .wx-star {
-    position: absolute; background: #fff; border-radius: 50%;
-    animation: twinkle 2s ease-in-out infinite;
-  }
-  .wx-star:nth-child(1){width:2px;height:2px;top:6px;right:8px;animation-delay:0s}
-  .wx-star:nth-child(2){width:2px;height:2px;top:14px;right:6px;animation-delay:.7s}
-  .wx-star:nth-child(3){width:2px;height:2px;top:4px;right:18px;animation-delay:1.2s}
-  @keyframes moon-glow { 0%,100%{box-shadow:0 0 10px rgba(253,230,138,.3)} 50%{box-shadow:0 0 18px rgba(253,230,138,.18)} }
-  @keyframes twinkle   { 0%,100%{opacity:.9;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
+  .place-icon  { font-size: 22px; flex-shrink: 0; width: 32px; text-align: center; }
+  .place-name  { font-size: 14px; font-weight: 600; }
+  .place-dist  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .place-arrow { margin-left: auto; font-size: 14px; color: var(--muted); }
 
-  /* ── NEARBY CARDS ─────────────────────── */
-  .lcard-place {
-    width: 124px; height: 124px;
-    background: var(--surface);
-    display: flex; flex-direction: column; justify-content: space-between;
-    padding: 14px;
+  /* tools — 2×2 grid within the col */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
-  .place-icon { font-size: 24px; }
-  .place-name { font-size: 13px; font-weight: 700; }
-  .place-dist { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  /* ── TOOLS CARDS ──────────────────────── */
-  .lcard-tool {
-    width: 144px; height: 86px;
-    background: var(--surface2);
-    display: flex; align-items: center; gap: 12px;
-    padding: 0 16px;
+  .card-tool {
+    padding: 18px 16px;
+    display: flex; flex-direction: column; gap: 8px;
   }
-  .tool-icon  { font-size: 22px; flex-shrink: 0; }
-  .tool-label { font-size: 14px; font-weight: 600; }
-  .tool-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .tool-icon  { font-size: 24px; }
+  .tool-label { font-size: 14px; font-weight: 700; }
+  .tool-sub   { font-size: 11px; color: var(--muted); }
 
   /* ── INTEL STRIP ──────────────────────── */
-  .lcard-intel {
-    width: calc(100vw - 44px); height: 68px;
+  .card-intel {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 22px;
     background: linear-gradient(135deg, #1a0a2e, #120a1e);
     border-color: rgba(139,92,246,.2);
-    display: flex; align-items: center; gap: 14px;
-    padding: 0 18px;
   }
-  .intel-title { font-size: 15px; font-weight: 700; }
-  .intel-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  @media (prefers-color-scheme: light) {
+    .card-intel { background: #faf5ff; border-color: rgba(139,92,246,.2); }
+  }
+  .intel-icon  { font-size: 28px; flex-shrink: 0; }
+  .intel-title { font-size: 16px; font-weight: 700; }
+  .intel-sub   { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .intel-arrow { margin-left: auto; font-size: 18px; color: var(--muted); }
+
+  /* ── MOBILE OVERRIDES (< 640px) ──────── */
+  @media (max-width: 640px) {
+    .page { padding: 0 0 200px; }
+    .topbar { padding: 48px 18px 16px; }
+    .section-label { padding: 0 18px; }
+    .topbar-search { display: none; }
+
+    /* my area */
+    .card-myarea { border-radius: 0; border-left: none; border-right: none; min-height: 160px; }
+
+    /* live — horizontal scroll */
+    .live-grid {
+      display: flex; gap: 10px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; scroll-snap-type: x mandatory;
+      padding: 0 18px;
+    }
+    .live-grid::-webkit-scrollbar { display: none; }
+    .card-live { width: 150px; min-height: 160px; flex-shrink: 0; scroll-snap-align: start; }
+
+    /* two-col → single col, nearby becomes scroll row */
+    .two-col { grid-template-columns: 1fr; }
+    .nearby-list {
+      flex-direction: row;
+      overflow-x: auto; scrollbar-width: none;
+      scroll-snap-type: x mandatory;
+      padding: 0 18px;
+      gap: 10px;
+    }
+    .nearby-list::-webkit-scrollbar { display: none; }
+    .card-place {
+      flex-direction: column; align-items: flex-start;
+      width: 120px; min-height: 110px; flex-shrink: 0;
+      padding: 14px; scroll-snap-align: start;
+    }
+    .place-arrow { display: none; }
+
+    /* tools — keep 2×2 but with mobile padding */
+    .tools-grid { padding: 0 18px; }
+
+    /* intel */
+    .card-intel { border-radius: 0; border-left: none; border-right: none; }
+
+    .section-label { margin: 22px 0 10px; }
+  }
 
   /* ── SAVES BAR ────────────────────────── */
   #saves-bar {
     position: fixed;
-    bottom: calc(80px + env(safe-area-inset-bottom));
+    bottom: 80px;
     left: 50%; transform: translateX(-50%);
-    width: calc(100% - 28px);
-    max-width: 480px;
+    width: calc(100% - 32px);
+    max-width: 560px;
     z-index: 250;
   }
   #saves-pill {
     background: var(--saves-bg);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255,255,255,.1);
+    border: 1px solid var(--border);
     border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.15);
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0,0,0,.6);
-    transition: border-radius .3s ease;
   }
-  #saves-pill.open { border-radius: 18px; }
-
+  @media (prefers-color-scheme: dark) {
+    #saves-pill { box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+  }
   #saves-header {
-    display: flex; align-items: center;
-    padding: 12px 16px; gap: 8px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  .saves-pin { font-size: 18px; }
   .saves-title { font-size: 14px; font-weight: 700; flex: 1; }
-  .saves-count-badge {
-    font-size: 11px; font-weight: 700;
-    background: rgba(255,255,255,.08);
-    color: var(--muted);
-    padding: 2px 8px; border-radius: 20px;
+  .saves-badge {
+    font-size: 11px; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; background: var(--surface2); color: var(--muted);
   }
   .saves-chev {
-    width: 16px; height: 16px;
-    stroke: var(--muted); fill: none;
+    width: 16px; height: 16px; stroke: var(--muted); fill: none;
     stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
     transition: transform .3s cubic-bezier(.34,1.56,.64,1);
-    flex-shrink: 0;
   }
   #saves-pill.open .saves-chev { transform: rotate(180deg); }
-
-  #saves-body {
-    max-height: 0; overflow: hidden;
-    transition: max-height .35s cubic-bezier(.4,0,.2,1);
-  }
-  #saves-pill.open #saves-body { max-height: 220px; }
-
-  .saves-list {
-    padding: 0 14px 14px;
-    display: flex; flex-direction: column; gap: 2px;
-  }
-  .save-item {
+  #saves-body { max-height: 0; overflow: hidden; transition: max-height .35s cubic-bezier(.4,0,.2,1); }
+  #saves-pill.open #saves-body { max-height: 240px; }
+  .saves-list { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .save-row {
     display: flex; align-items: center; gap: 10px;
     padding: 9px 6px; border-radius: 10px; cursor: pointer;
-    transition: background .15s;
-    -webkit-tap-highlight-color: transparent;
+    transition: background .12s;
   }
-  .save-item:active { background: rgba(255,255,255,.06); }
-  .save-item-icon { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
-  .save-item-label { font-size: 13px; font-weight: 600; flex: 1; }
-  .save-item-meta { font-size: 11px; color: var(--muted); }
+  .save-row:hover  { background: var(--surface2); }
+  .save-row:active { background: var(--surface2); }
+  .save-ico   { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+  .save-lbl   { font-size: 13px; font-weight: 600; flex: 1; }
+  .save-meta  { font-size: 11px; color: var(--muted); }
 
-  /* ── PILL NAV ────────────────────────── */
+  /* ── PILL NAV ─────────────────────────── */
   #pill-overlay { display:none; position:fixed; inset:0; z-index:200; }
   #pill-overlay.show { display:block; }
   #pill-nav {
@@ -327,7 +346,7 @@
     border-radius: 30px; height: 46px; width: 150px;
     overflow: hidden; position: relative; cursor: pointer;
     transition: width .38s cubic-bezier(.34,1.56,.64,1);
-    box-shadow: 0 8px 32px rgba(0,0,0,.6);
+    box-shadow: var(--shadow);
   }
   #pill-shell.expanded { width: 264px; }
   #pill-resting {
@@ -337,7 +356,7 @@
     padding: 0 16px; white-space: nowrap;
   }
   #pill-shell.expanded #pill-resting { opacity: 0; pointer-events: none; }
-  .pr-label { font-size: 14px; font-weight: 600; }
+  .pr-label { font-size: 14px; font-weight: 600; color: var(--text); }
   .pr-chev {
     width: 14px; height: 14px; stroke: var(--muted); fill: none;
     stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
@@ -354,203 +373,205 @@
     display: flex; flex-direction: column; align-items: center; gap: 4px;
     background: none; border: none; cursor: pointer;
     color: var(--muted); padding: 6px 10px; border-radius: 12px;
-    transition: color .15s; position: relative;
+    transition: color .15s;
   }
   .pi-btn.pi-active { color: var(--text); }
   .pi-icon { font-size: 20px; line-height: 1; }
   .pi-dot { width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:0;transition:opacity .2s; }
   .pi-btn.pi-active .pi-dot { opacity:1; }
 
-  /* toast */
   #toast {
-    position:fixed;bottom:150px;left:50%;transform:translateX(-50%) translateY(10px);
-    background:rgba(28,28,32,.92);backdrop-filter:blur(12px);
-    border:1px solid rgba(255,255,255,.08);border-radius:12px;
-    padding:8px 18px;font-size:13px;font-weight:600;color:#f0f0f2;
-    opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;z-index:400;
+    position:fixed; bottom:140px; left:50%; transform:translateX(-50%) translateY(10px);
+    background: var(--surface); border: 1px solid var(--border); border-radius:12px;
+    padding:8px 18px; font-size:13px; font-weight:600; color:var(--text);
+    opacity:0; transition:opacity .2s,transform .2s; pointer-events:none; white-space:nowrap; z-index:400;
+    box-shadow: var(--shadow);
   }
 </style>
 </head>
 <body>
 
-<!-- TOP -->
-<div class="top">
-  <div class="top-left">
-    <h1>Good morning</h1>
-    <p>West Drayton · Thu 14 May</p>
+<div class="page">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>Good morning, Srevi</h1>
+      <p>West Drayton · Thu 14 May 2026</p>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-search">🔍 &nbsp;Search anything…</div>
+      <div class="topbar-avatar">S</div>
+    </div>
   </div>
-  <div class="top-avatar">S</div>
-</div>
 
-<!-- LANES -->
-<div class="lanes">
-
-  <!-- MY AREA — full bleed hero -->
-  <div class="lane lane-now">
-    <div class="lane-scroll">
-      <div class="lcard lcard-now" onclick="tap('My Area')">
-        <div>
-          <div class="now-eyebrow">📍 Your area</div>
-          <div class="now-headline">West Drayton · UB7 9FJ</div>
-          <div class="now-sub">Schools · Council · Transport · Crime</div>
-        </div>
-        <div class="now-stats">
-          <div>
-            <div class="now-stat-val">⭐ 7.2</div>
-            <div class="now-stat-label">Schools</div>
-          </div>
-          <div>
-            <div class="now-stat-val">💨 Good</div>
-            <div class="now-stat-label">Air</div>
-          </div>
-          <div>
-            <div class="now-stat-val">3 min</div>
-            <div class="now-stat-label">Next bus</div>
-          </div>
-        </div>
+  <!-- MY AREA -->
+  <div class="card card-myarea" onclick="tap('My Area')">
+    <div>
+      <div class="ma-location">📍 Your area</div>
+      <div class="ma-title">West Drayton · UB7 9FJ</div>
+      <div class="ma-sub">Schools · Council · Transport · Crime · Air quality</div>
+    </div>
+    <div class="ma-stats">
+      <div>
+        <div class="ma-stat-val">⭐ 7.2</div>
+        <div class="ma-stat-lbl">Schools</div>
+      </div>
+      <div>
+        <div class="ma-stat-val">💨 Good</div>
+        <div class="ma-stat-lbl">Air</div>
+      </div>
+      <div>
+        <div class="ma-stat-val">3 min</div>
+        <div class="ma-stat-lbl">Next bus</div>
       </div>
     </div>
   </div>
 
   <!-- LIVE -->
-  <div class="lane">
-    <div class="lane-header"><span class="lane-title">Live now</span></div>
-    <div class="lane-scroll">
+  <div class="section-label">Live now</div>
+  <div class="live-grid">
 
-      <!-- Fuel -->
-      <div class="lcard lcard-live lcard-fuel" onclick="tap('Fuel')">
-        <div>
-          <div class="lc-eyebrow" style="color:#d97706">⛽ Petrol</div>
-          <div class="lc-value" style="color:#fbbf24">142.9p</div>
-          <div class="lc-sub">Tesco Extra · 0.4 mi</div>
-        </div>
-        <span class="lc-badge badge-live">LIVE ↓1.2p</span>
+    <div class="card card-live card-fuel" onclick="tap('Fuel')">
+      <div>
+        <div class="lc-label" style="color:#d97706">⛽ Petrol</div>
+        <div class="lc-value" style="color:#f59e0b">142.9p</div>
+        <div class="lc-sub">Tesco Extra · 0.4 mi</div>
       </div>
-
-      <!-- Trains -->
-      <div class="lcard lcard-live lcard-trains" onclick="tap('Trains')">
-        <div>
-          <div class="lc-eyebrow" style="color:#818cf8">🚆 From WDT</div>
-          <div class="lc-value" style="color:#a5b4fc">08:42</div>
-          <div class="lc-sub">→ Paddington · Plat 1</div>
-        </div>
-        <span class="lc-badge badge-due">On time</span>
-      </div>
-
-      <!-- Weather -->
-      <div class="lcard lcard-live lcard-weather" onclick="tap('Weather')">
-        <div style="display:flex;align-items:center;gap:10px">
-          <!-- Partly cloudy animated icon -->
-          <div class="wx">
-            <div class="wx-part-sun"></div>
-            <div class="wx-cloud"></div>
-          </div>
-          <div>
-            <div class="lc-eyebrow" style="color:#7dd3fc">☁ Weather</div>
-            <div class="lc-value" style="color:#bae6fd;font-size:26px">18°</div>
-          </div>
-        </div>
-        <div>
-          <div class="lc-sub">Partly cloudy · Low wind</div>
-          <span class="lc-badge badge-sky" style="margin-top:6px">Feels 16°</span>
-        </div>
-      </div>
-
+      <span class="lc-badge badge-live">LIVE · ↓1.2p vs yesterday</span>
     </div>
+
+    <div class="card card-live card-trains" onclick="tap('Trains')">
+      <div>
+        <div class="lc-label" style="color:#818cf8">🚆 From WDT</div>
+        <div class="lc-value" style="color:#a5b4fc">08:42</div>
+        <div class="lc-sub">→ London Paddington · Platform 1</div>
+      </div>
+      <span class="lc-badge badge-ok">On time · 18 min journey</span>
+    </div>
+
+    <div class="card card-live card-weather" onclick="tap('Weather')">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="wx">
+          <div class="wx-part-sun"></div>
+          <div class="wx-cloud"></div>
+        </div>
+        <div>
+          <div class="lc-label" style="color:#7dd3fc">☁ Weather</div>
+          <div class="lc-value" style="color:#38bdf8;font-size:28px">18°C</div>
+        </div>
+      </div>
+      <div>
+        <div class="lc-sub">Partly cloudy · Low wind</div>
+        <span class="lc-badge badge-sky">Feels like 16°</span>
+      </div>
+    </div>
+
   </div>
 
-  <!-- NEARBY -->
-  <div class="lane">
-    <div class="lane-header">
-      <span class="lane-title">Nearby</span>
-      <span class="lane-more" onclick="tap('Find a Service')">See all →</span>
-    </div>
-    <div class="lane-scroll">
-      <div class="lcard lcard-place" onclick="tap('Tesco Extra')">
-        <div class="place-icon">🛒</div>
-        <div><div class="place-name">Tesco Extra</div><div class="place-dist">0.4 mi · open</div></div>
-      </div>
-      <div class="lcard lcard-place" onclick="tap('WD Surgery')">
-        <div class="place-icon">🏥</div>
-        <div><div class="place-name">WD Surgery</div><div class="place-dist">0.6 mi · open</div></div>
-      </div>
-      <div class="lcard lcard-place" onclick="tap('School')">
-        <div class="place-icon">🏫</div>
-        <div><div class="place-name">Harmondsworth</div><div class="place-dist">0.9 mi · ⭐ 7.4</div></div>
-      </div>
-      <div class="lcard lcard-place" onclick="tap('The De Burgh')">
-        <div class="place-icon">🍺</div>
-        <div><div class="place-name">The De Burgh</div><div class="place-dist">0.3 mi · open</div></div>
-      </div>
-    </div>
-  </div>
+  <!-- NEARBY + TOOLS -->
+  <div class="two-col">
 
-  <!-- TOOLS -->
-  <div class="lane">
-    <div class="lane-header"><span class="lane-title">Tools</span></div>
-    <div class="lane-scroll">
-      <div class="lcard lcard-tool" onclick="tap('Research an Area')">
-        <div class="tool-icon">🔍</div>
-        <div><div class="tool-label">Research Area</div><div class="tool-sub">Any postcode</div></div>
+    <div>
+      <div class="section-label">
+        <span>Nearby</span>
+        <span class="section-more" onclick="tap('Find a Service')">See all →</span>
       </div>
-      <div class="lcard lcard-tool" onclick="tap('Library')">
-        <div class="tool-icon">📚</div>
-        <div><div class="tool-label">Library</div><div class="tool-sub">3 docs</div></div>
-      </div>
-      <div class="lcard lcard-tool" onclick="tap('Music ID')">
-        <div class="tool-icon">🎵</div>
-        <div><div class="tool-label">Music ID</div><div class="tool-sub">Identify songs</div></div>
+      <div class="nearby-list">
+        <div class="card card-place" onclick="tap('Tesco Extra')">
+          <div class="place-icon">🛒</div>
+          <div><div class="place-name">Tesco Extra</div><div class="place-dist">0.4 mi · open now</div></div>
+          <span class="place-arrow">→</span>
+        </div>
+        <div class="card card-place" onclick="tap('WD Surgery')">
+          <div class="place-icon">🏥</div>
+          <div><div class="place-name">WD Surgery</div><div class="place-dist">0.6 mi · open now</div></div>
+          <span class="place-arrow">→</span>
+        </div>
+        <div class="card card-place" onclick="tap('Harmondsworth Primary')">
+          <div class="place-icon">🏫</div>
+          <div><div class="place-name">Harmondsworth Primary</div><div class="place-dist">0.9 mi · ⭐ 7.4</div></div>
+          <span class="place-arrow">→</span>
+        </div>
+        <div class="card card-place" onclick="tap('The De Burgh')">
+          <div class="place-icon">🍺</div>
+          <div><div class="place-name">The De Burgh</div><div class="place-dist">0.3 mi · open now</div></div>
+          <span class="place-arrow">→</span>
+        </div>
       </div>
     </div>
+
+    <div>
+      <div class="section-label">Tools</div>
+      <div class="tools-grid">
+        <div class="card card-tool" onclick="tap('Research an Area')">
+          <div class="tool-icon">🔍</div>
+          <div class="tool-label">Research Area</div>
+          <div class="tool-sub">Any postcode</div>
+        </div>
+        <div class="card card-tool" onclick="tap('Library')">
+          <div class="tool-icon">📚</div>
+          <div class="tool-label">Library</div>
+          <div class="tool-sub">3 docs</div>
+        </div>
+        <div class="card card-tool" onclick="tap('Music ID')">
+          <div class="tool-icon">🎵</div>
+          <div class="tool-label">Music ID</div>
+          <div class="tool-sub">Identify songs</div>
+        </div>
+        <div class="card card-tool" onclick="tap('WhatsApp')">
+          <div class="tool-icon">💬</div>
+          <div class="tool-label">Ask Miru</div>
+          <div class="tool-sub">WhatsApp</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- INTEL -->
-  <div class="lane">
-    <div class="lane-header"><span class="lane-title">Intel</span></div>
-    <div class="lane-scroll">
-      <div class="lcard lcard-intel" onclick="tap('Intel')">
-        <span style="font-size:26px;flex-shrink:0">🏢</span>
-        <div style="flex:1">
-          <div class="intel-title">Company & Brand Intelligence</div>
-          <div class="intel-sub">24 companies tracked · updated daily</div>
-        </div>
-        <span style="font-size:16px;color:var(--muted)">→</span>
-      </div>
+  <div class="section-label">Intel</div>
+  <div class="card card-intel" onclick="tap('Intel')">
+    <div class="intel-icon">🏢</div>
+    <div>
+      <div class="intel-title">Company & Brand Intelligence</div>
+      <div class="intel-sub">24 companies tracked · updated daily</div>
     </div>
+    <span class="intel-arrow">→</span>
   </div>
 
-</div>
+</div><!-- /page -->
 
 <!-- SAVES BAR -->
 <div id="saves-bar">
   <div id="saves-pill">
     <div id="saves-header" onclick="_savesToggle()">
-      <span class="saves-pin">📌</span>
+      <span style="font-size:18px">📌</span>
       <span class="saves-title">Saves</span>
-      <span class="saves-count-badge">12</span>
+      <span class="saves-badge">12</span>
       <svg class="saves-chev" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
     </div>
     <div id="saves-body">
       <div class="saves-list">
-        <div class="save-item" onclick="tap('Tesco Extra UB7')">
-          <span class="save-item-icon">⛽</span>
-          <span class="save-item-label">Tesco Extra UB7</span>
-          <span class="save-item-meta">142.9p</span>
+        <div class="save-row" onclick="tap('Tesco Extra UB7')">
+          <span class="save-ico">⛽</span>
+          <span class="save-lbl">Tesco Extra UB7</span>
+          <span class="save-meta">142.9p</span>
         </div>
-        <div class="save-item" onclick="tap('WDT → Paddington')">
-          <span class="save-item-icon">🚆</span>
-          <span class="save-item-label">WDT → Paddington</span>
-          <span class="save-item-meta">08:42</span>
+        <div class="save-row" onclick="tap('WDT → Paddington')">
+          <span class="save-ico">🚆</span>
+          <span class="save-lbl">WDT → Paddington</span>
+          <span class="save-meta">08:42</span>
         </div>
-        <div class="save-item" onclick="tap('Harmondsworth Primary')">
-          <span class="save-item-icon">🏫</span>
-          <span class="save-item-label">Harmondsworth Primary</span>
-          <span class="save-item-meta">⭐ 7.4</span>
+        <div class="save-row" onclick="tap('Harmondsworth Primary')">
+          <span class="save-ico">🏫</span>
+          <span class="save-lbl">Harmondsworth Primary</span>
+          <span class="save-meta">⭐ 7.4</span>
         </div>
-        <div class="save-item" onclick="tap('UB7 9FJ area report')">
-          <span class="save-item-icon">📍</span>
-          <span class="save-item-label">UB7 9FJ area report</span>
-          <span class="save-item-meta">saved</span>
+        <div class="save-row" onclick="tap('UB7 9FJ area report')">
+          <span class="save-ico">📍</span>
+          <span class="save-lbl">UB7 9FJ area report</span>
+          <span class="save-meta">saved</span>
         </div>
       </div>
     </div>
@@ -586,21 +607,19 @@
 <div id="toast"></div>
 
 <script>
-  // saves bar
   let _savesOpen = false;
   function _savesToggle() {
     _savesOpen = !_savesOpen;
     document.getElementById('saves-pill').classList.toggle('open', _savesOpen);
   }
 
-  // pill
   let _pillOpen = false;
   function _pillTap(e) { if (!_pillOpen) _pillExpand(); }
   function _pillExpand() {
     _pillOpen = true;
     document.getElementById('pill-shell').classList.add('expanded');
     document.getElementById('pill-overlay').classList.add('show');
-    if (_savesOpen) _savesToggle(); // collapse saves when pill opens
+    if (_savesOpen) _savesToggle();
   }
   function _pillCollapse() {
     _pillOpen = false;
@@ -611,15 +630,13 @@
     _pillCollapse();
     const labels = { home:'Home', myarea:'My Area', intel:'Intel', saves:'Saves' };
     const icons  = { home:'🏠', myarea:'📍', intel:'🔍', saves:'📌' };
-    ['home','myarea','intel','saves'].forEach(k => {
-      document.getElementById('pi-'+k)?.classList.toggle('pi-active', k===name);
-    });
+    ['home','myarea','intel','saves'].forEach(k =>
+      document.getElementById('pi-'+k)?.classList.toggle('pi-active', k===name));
     document.getElementById('pill-icon').textContent  = icons[name]  || '🏠';
     document.getElementById('pill-label').textContent = labels[name] || name;
     toast('→ ' + (labels[name] || name));
   }
 
-  // toast
   let _tt;
   function tap(label) { toast(label); }
   function toast(msg) {
@@ -627,7 +644,7 @@
     t.textContent = msg;
     t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
     clearTimeout(_tt);
-    _tt = setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 1300);
+    _tt = setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; },1300);
   }
 </script>
 </body>
