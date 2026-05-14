@@ -696,10 +696,22 @@ create table if not exists pm_docs (
   // ── Init ──────────────────────────────────────────────────────────────────
   (async function init() {
     _loadTheme();
-    await _loadProjects();
+    // If a project was open last session, hide intake immediately to avoid flash
     const saved = localStorage.getItem("pm_current_project");
+    if (saved) {
+      document.getElementById("empty-view").style.display = "none";
+      document.getElementById("project-view").style.display = "";
+      document.getElementById("proj-name-heading").textContent = "Loading…";
+      document.getElementById("proj-meta-heading").textContent = "";
+    }
+    await _loadProjects();
     if (saved && _projects.find(p => p.id === saved)) {
       _selectProject(saved);
+    } else {
+      // Saved project no longer exists — show intake
+      localStorage.removeItem("pm_current_project");
+      document.getElementById("empty-view").style.display = "";
+      document.getElementById("project-view").style.display = "none";
     }
   })();
 
