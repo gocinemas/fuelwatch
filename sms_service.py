@@ -796,6 +796,10 @@ def design_home():
 def design_lanes():
     return render_template("design_home_lanes.html")
 
+@app.route("/design/weather")
+def design_weather():
+    return render_template("design_weather_icons.html")
+
 @app.route("/privacy")
 def privacy_page():
     return render_template("privacy.html")
