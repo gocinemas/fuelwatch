@@ -407,17 +407,14 @@
         </button>
       </div>
 
-      <!-- Elections — full-width live card -->
-      <button class="feat-card feat-card-election" id="elections-home-card" onclick="showScreen('elections')"
-        style="flex-direction:row;align-items:center;gap:16px;width:100%;margin-bottom:10px;min-height:auto;padding:16px 18px">
-        <div style="font-size:34px;line-height:1;flex-shrink:0">🗳️</div>
-        <div style="flex:1;text-align:left">
-          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Your Local Council Results</div>
-        </div>
-        <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:4px 10px;flex-shrink:0">
-          <span class="live-dot-green"></span>
-          <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">LIVE</span>
-        </div>
+      <!-- Elections — small chip -->
+      <button id="elections-home-card" onclick="showScreen('elections')"
+        style="display:none;width:100%;margin-bottom:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">🗳️</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text)">Local Council Results</span>
+        <span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;border-radius:99px;padding:2px 8px">
+          <span class="live-dot-green"></span>LIVE
+        </span>
       </button>
 
       <!-- My Area home tile -->
@@ -438,27 +435,19 @@
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
         <button class="tool-icon-btn" onclick="showScreen('report')">
           <span class="tool-icon-emoji">🔎</span>
-          <span class="tool-icon-label">Research an Area</span>
+          <span class="tool-icon-label">Area Report</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('places')">
           <span class="tool-icon-emoji">📍</span>
-          <span class="tool-icon-label">Local Search</span>
-        </button>
-        <button class="tool-icon-btn" onclick="showScreen('library')">
-          <span class="tool-icon-emoji">📄</span>
-          <span class="tool-icon-label">My Documents</span>
-        </button>
-        <button class="tool-icon-btn" onclick="showScreen('report');reportTabSwitch('services',document.querySelector('[data-tab=services]'))">
-          <span class="tool-icon-emoji">🚨</span>
-          <span class="tool-icon-label">Emergency</span>
+          <span class="tool-icon-label">Find a Service</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('saves')">
           <span class="tool-icon-emoji">📌</span>
           <span class="tool-icon-label">My Saves</span>
         </button>
-        <button class="tool-icon-btn" onclick="showScreen('scan')">
+        <button class="tool-icon-btn" onclick="showScreen('library')">
           <span class="tool-icon-emoji">📚</span>
-          <span class="tool-icon-label">My Books</span>
+          <span class="tool-icon-label">Library</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('music')">
           <span class="tool-icon-emoji">🎵</span>
@@ -466,24 +455,36 @@
         </button>
       </div>
 
-      <!-- WhatsApp strip — with food examples -->
+      <!-- WhatsApp strip -->
       <div style="background:linear-gradient(135deg,#064e3b,#065f46);border-radius:16px;padding:16px;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
           <div style="width:36px;height:36px;background:#25d366;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
           </div>
           <div style="flex:1">
-            <div style="font-size:14px;font-weight:800;color:#fff">Also on WhatsApp — just type naturally</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:1px">No exact commands needed</div>
+            <div style="font-size:14px;font-weight:800;color:#fff">Miru on WhatsApp</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:1px">Text, photo, or voice — works like a message to a friend</div>
           </div>
           <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
             style="flex-shrink:0;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.15);border-radius:20px;padding:7px 14px;text-decoration:none;white-space:nowrap">Join →</a>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <span style="font-size:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border-radius:20px;padding:4px 10px">☕ good coffee near KT15</span>
-          <span style="font-size:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border-radius:20px;padding:4px 10px">🚆 train waterloo to lewisham</span>
-          <span style="font-size:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border-radius:20px;padding:4px 10px">🍺 cheap beer KT16</span>
-          <span style="font-size:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border-radius:20px;padding:4px 10px">🚇 tube status</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:8px 10px">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Find services</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.85)">"cheap plumber near KT16"</div>
+          </div>
+          <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:8px 10px">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Fuel prices</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.85)">"petrol KT15" or just a postcode</div>
+          </div>
+          <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:8px 10px">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Brand intel</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.85)">"brand Nike" or photo a logo</div>
+          </div>
+          <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:8px 10px">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Save anything</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.85)">Paste a link or photo a receipt</div>
+          </div>
         </div>
       </div>
 
@@ -1815,11 +1816,14 @@
       <!-- Library list view -->
       <div id="lib-list-view">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="font-bold text-gray-800 text-base">📚 My Library</h2>
-          <button onclick="libShowUpload()" id="lib-add-btn"
-            class="flex items-center gap-1.5 text-sm font-semibold bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition">
-            + Add
-          </button>
+          <h2 class="font-bold text-gray-800 text-base">📚 Library</h2>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button onclick="showScreen('scan')" style="font-size:12px;font-weight:600;color:#6d28d9;background:#f5f3ff;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">📖 Books</button>
+            <button onclick="libShowUpload()" id="lib-add-btn"
+              class="flex items-center gap-1.5 text-sm font-semibold bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition">
+              + Add
+            </button>
+          </div>
         </div>
         <!-- Upload tip -->
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#166534;line-height:1.5">
@@ -5990,24 +5994,13 @@ const _ts = new Date(d.timestamp);
   });
   {% endif %}
 
-  // ── Elections tool card: show through election night, hide after May 8 ──────
+  // ── Elections chip: show until May 22, then hide permanently ────────────────
   (function() {
     const card = document.getElementById("elections-home-card");
-    const desc = document.getElementById("elections-home-desc");
     if (!card) return;
     const today = new Date();
-    const cutoff = new Date("2026-05-16T00:00:00");  // hide once results week is over
-    if (today >= cutoff) {
-      card.style.display = "none";
-    } else {
-      const isElectionDay = today >= new Date("2026-05-07T00:00:00") && today < new Date("2026-05-08T00:00:00");
-      const isResultsNight = today >= new Date("2026-05-07T22:00:00");
-      if (isResultsNight && desc) {
-        desc.textContent = "Results coming in — check your ward";
-      } else if (isElectionDay && desc) {
-        desc.textContent = "Polls open today until 10pm — find your polling station";
-      }
-    }
+    const cutoff = new Date("2026-05-22T00:00:00");
+    if (today < cutoff) card.style.display = "flex";
   })();
 
   // ── My Area home tile ────────────────────────────────────────────────────────
