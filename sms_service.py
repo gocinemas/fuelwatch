@@ -13696,15 +13696,16 @@ def api_music_saves():
         rows = lib._sb().table("music_saves").select("*") \
             .eq("phone", phone).order("created_at", desc=True).limit(50).execute().data or []
         songs = [{
-            "id":     r["id"],
-            "title":  r.get("title")       or "",
-            "artist": r.get("artist")      or "",
-            "cover":  r.get("cover_url")   or "",
-            "url":    r.get("spotify_url") or r.get("preview_url") or "",
-            "album":  r.get("album")       or "",
-            "year":   r.get("year")        or "",
-            "genre":  r.get("genre")       or "",
-            "saved":  (r.get("created_at") or "")[:10],
+            "id":          r["id"],
+            "title":       r.get("title")       or "",
+            "artist":      r.get("artist")      or "",
+            "cover":       r.get("cover_url")   or "",
+            "url":         r.get("spotify_url") or "",
+            "preview_url": r.get("preview_url") or "",
+            "album":       r.get("album")       or "",
+            "year":        r.get("year")        or "",
+            "genre":       r.get("genre")       or "",
+            "saved":       (r.get("created_at") or "")[:10],
         } for r in rows]
         return jsonify({"songs": songs})
     except Exception as e:

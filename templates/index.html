@@ -13457,7 +13457,7 @@ _bkBadge();
   window.musicFindUnmatched = async function(idx, btn) {
     var s = _musicSavedSongs[idx];
     if (!s) return;
-    var rawQuery = (s.spotify_url||'').startsWith('unmatched:') ? (s.spotify_url||'').slice(10) : s.title;
+    var rawQuery = (s.url||'').startsWith('unmatched:') ? (s.url||'').slice(10) : s.title;
     btn.textContent = '🔍 Searching…'; btn.disabled = true;
     var resultEl = document.getElementById('music-find-result-' + idx);
     try {
@@ -13516,7 +13516,7 @@ _bkBadge();
     if (!songs.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">No saved songs yet</div>'; _musicRenderWeekly([]); return; }
     el.innerHTML = songs.map(function(s, i) {
       var delArg = isRemote ? ("'"+s.id+"'") : i;
-      var rawQuery = (s.spotify_url||'').startsWith('unmatched:') ? (s.spotify_url||'').slice(10) : null;
+      var rawQuery = (s.url||'').startsWith('unmatched:') ? (s.url||'').slice(10) : null;
       var isUnmatched = !!rawQuery;
       var findBtns = isUnmatched
         ? '<div style="display:flex;gap:6px;margin-top:4px">'
@@ -13594,7 +13594,7 @@ _bkBadge();
       album:      s.album || '',
       year:       s.year || '',
       genre:      s.genre || '',
-      spotify:    s.spotify || s.spotify_url || ('https://open.spotify.com/search/'+encodeURIComponent((s.title||'')+' '+(s.artist||''))),
+      spotify:    s.spotify || s.spotify_url || (s.url && !s.url.startsWith('unmatched:') ? s.url : null) || ('https://open.spotify.com/search/'+encodeURIComponent((s.title||'')+' '+(s.artist||''))),
       url:        s.url || '',
       previewUrl: s.preview_url || s.previewUrl || '',
     };
