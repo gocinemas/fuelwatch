@@ -66,13 +66,21 @@ body {
 /* ── WEATHER HERO CARD ── */
 .wx-hero {
   margin: 0 20px 12px;
-  background: linear-gradient(145deg, #1a2744 0%, #0f1f3d 100%);
-  border: 1px solid rgba(56,189,248,.15);
-  border-radius: var(--r); padding: 20px 22px;
-  display: flex; align-items: center; gap: 16px;
-  cursor: pointer;
+  border-radius: var(--r); padding: 22px 22px;
+  display: flex; align-items: center; gap: 20px;
+  cursor: pointer; transition: background .6s ease;
 }
-.wx-temp-big { font-size: 52px; font-weight: 900; letter-spacing: -3px; color: #e0f2fe; line-height: 1; }
+/* sky gradients per condition */
+.wx-hero.sky-clear    { background: linear-gradient(145deg,#1a3a6c,#0f2657); border: 1px solid rgba(250,204,21,.2); }
+.wx-hero.sky-sunny    { background: linear-gradient(145deg,#1a4a2e,#0f3020); border: 1px solid rgba(250,204,21,.2); }
+.wx-hero.sky-cloud    { background: linear-gradient(145deg,#1e2a3a,#141e2d); border: 1px solid rgba(148,163,184,.15); }
+.wx-hero.sky-rain     { background: linear-gradient(145deg,#1a2236,#0f1826); border: 1px solid rgba(96,165,250,.2); }
+.wx-hero.sky-snow     { background: linear-gradient(145deg,#1e2a3a,#2a3a52); border: 1px solid rgba(186,230,253,.2); }
+.wx-hero.sky-storm    { background: linear-gradient(145deg,#1a1a2e,#0f0f1e); border: 1px solid rgba(167,139,250,.2); }
+.wx-hero.sky-night    { background: linear-gradient(145deg,#0a0a1a,#0f0f22); border: 1px solid rgba(99,102,241,.2); }
+.wx-hero.sky-fog      { background: linear-gradient(145deg,#1e2030,#161824); border: 1px solid rgba(148,163,184,.1); }
+
+.wx-temp-big { font-size: 56px; font-weight: 900; letter-spacing: -3px; color: #e0f2fe; line-height: 1; flex-shrink: 0; }
 .wx-right { flex: 1; }
 .wx-condition { font-size: 16px; font-weight: 700; color: #bae6fd; margin-bottom: 3px; }
 .wx-feels { font-size: 12px; color: #7dd3fc; }
@@ -81,6 +89,68 @@ body {
   font-size: 11px; font-weight: 700; padding: 4px 10px;
   border-radius: 20px; background: rgba(56,189,248,.15); color: #7dd3fc;
 }
+
+/* ── WEATHER ICON ── */
+.wx-icon { width: 64px; height: 64px; position: relative; flex-shrink: 0; }
+
+/* Sun */
+.wx-sun { position:absolute; width:28px; height:28px; border-radius:50%; background:#fbbf24; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 12px 4px rgba(251,191,36,.4); animation:wx-pulse 3s ease-in-out infinite; }
+.wx-rays { position:absolute; inset:0; animation:wx-spin 10s linear infinite; }
+.wx-ray  { position:absolute; left:50%; top:2px; width:2px; height:8px; background:#fbbf24; border-radius:2px; transform-origin:50% 30px; opacity:.7; }
+@keyframes wx-pulse { 0%,100%{box-shadow:0 0 12px 4px rgba(251,191,36,.4)} 50%{box-shadow:0 0 20px 8px rgba(251,191,36,.15)} }
+@keyframes wx-spin  { to{transform:rotate(360deg)} }
+
+/* Moon */
+.wx-moon { position:absolute; width:30px; height:30px; background:#fde68a; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 14px 4px rgba(253,230,138,.25); }
+.wx-moon::after { content:''; position:absolute; width:22px; height:22px; background:#0a0a1a; border-radius:50%; top:-4px; right:-6px; }
+
+/* Cloud */
+.wx-cloud-body { position:absolute; bottom:14px; left:6px; right:6px; height:20px; background:#94a3b8; border-radius:12px; }
+.wx-cloud-body::before { content:''; position:absolute; width:18px; height:18px; background:#94a3b8; border-radius:50%; top:-10px; left:8px; }
+.wx-cloud-body::after  { content:''; position:absolute; width:13px; height:13px; background:#94a3b8; border-radius:50%; top:-7px;  left:23px; }
+
+/* Part cloud: sun behind cloud */
+.wx-part-sun { position:absolute; top:4px; right:4px; width:26px; height:26px; background:#fbbf24; border-radius:50%; box-shadow:0 0 10px rgba(251,191,36,.5); }
+.wx-part-cloud { position:absolute; bottom:10px; left:4px; right:4px; height:18px; background:#94a3b8; border-radius:10px; }
+.wx-part-cloud::before { content:''; position:absolute; width:16px; height:16px; background:#94a3b8; border-radius:50%; top:-8px; left:6px; }
+.wx-part-cloud::after  { content:''; position:absolute; width:11px; height:11px; background:#94a3b8; border-radius:50%; top:-5px; left:20px; }
+
+/* Rain */
+.wx-rain-cloud { position:absolute; top:6px; left:4px; right:4px; height:22px; background:#6b7280; border-radius:12px; }
+.wx-rain-cloud::before { content:''; position:absolute; width:18px; height:18px; background:#6b7280; border-radius:50%; top:-10px; left:6px; }
+.wx-rain-cloud::after  { content:''; position:absolute; width:14px; height:14px; background:#6b7280; border-radius:50%; top:-7px; left:22px; }
+.wx-drops { position:absolute; bottom:6px; left:0; right:0; display:flex; justify-content:center; gap:6px; }
+.wx-drop  { width:2px; height:8px; background:#60a5fa; border-radius:2px; animation:wx-fall 1.1s ease-in infinite; }
+.wx-drop:nth-child(2) { animation-delay:.25s; }
+.wx-drop:nth-child(3) { animation-delay:.5s;  }
+.wx-drop:nth-child(4) { animation-delay:.75s; }
+@keyframes wx-fall { 0%{transform:translateY(-4px);opacity:.9} 100%{transform:translateY(10px);opacity:0} }
+
+/* Heavy rain */
+.wx-heavydrop { width:2px; height:10px; background:#93c5fd; border-radius:2px; animation:wx-fall .8s ease-in infinite; }
+.wx-heavydrop:nth-child(2){animation-delay:.15s} .wx-heavydrop:nth-child(3){animation-delay:.3s} .wx-heavydrop:nth-child(4){animation-delay:.45s} .wx-heavydrop:nth-child(5){animation-delay:.6s}
+
+/* Snow */
+.wx-snow-cloud { position:absolute; top:6px; left:4px; right:4px; height:22px; background:#64748b; border-radius:12px; }
+.wx-snow-cloud::before { content:''; position:absolute; width:18px; height:18px; background:#64748b; border-radius:50%; top:-10px; left:6px; }
+.wx-snow-cloud::after  { content:''; position:absolute; width:14px; height:14px; background:#64748b; border-radius:50%; top:-7px; left:22px; }
+.wx-flakes { position:absolute; bottom:4px; left:0; right:0; display:flex; justify-content:center; gap:8px; }
+.wx-flake  { font-size:12px; line-height:1; animation:wx-drift 2s ease-in-out infinite; }
+.wx-flake:nth-child(2){animation-delay:.6s} .wx-flake:nth-child(3){animation-delay:1.2s}
+@keyframes wx-drift { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(4px) rotate(20deg)} }
+
+/* Thunderstorm */
+.wx-storm-cloud { position:absolute; top:4px; left:4px; right:4px; height:24px; background:#374151; border-radius:12px; }
+.wx-storm-cloud::before { content:''; position:absolute; width:20px; height:20px; background:#374151; border-radius:50%; top:-12px; left:6px; }
+.wx-storm-cloud::after  { content:''; position:absolute; width:15px; height:15px; background:#374151; border-radius:50%; top:-8px; left:24px; }
+.wx-bolt { position:absolute; bottom:2px; left:50%; transform:translateX(-50%); font-size:20px; animation:wx-flash 2s ease-in-out infinite; }
+@keyframes wx-flash { 0%,90%,100%{opacity:1} 95%{opacity:.1} }
+
+/* Fog */
+.wx-fog-lines { position:absolute; inset:12px 6px; display:flex; flex-direction:column; justify-content:space-between; }
+.wx-fog-line  { height:4px; background:rgba(148,163,184,.5); border-radius:2px; animation:wx-fog-shift 3s ease-in-out infinite; }
+.wx-fog-line:nth-child(2){animation-delay:.5s;width:80%;margin-left:10%} .wx-fog-line:nth-child(3){animation-delay:1s;width:70%;margin-left:5%}
+@keyframes wx-fog-shift { 0%,100%{opacity:.5;transform:translateX(0)} 50%{opacity:.9;transform:translateX(4px)} }
 
 /* ── TRAIN CARD ── */
 .trains-card {
@@ -455,7 +525,8 @@ function renderPersonalised() {
   // Always: weather + trains
   html += `
     <div class="slabel">Weather<span class="slabel-more" onclick="nav('weather')">Forecast →</span></div>
-    <div class="wx-hero" onclick="nav('weather')" id="wx-card">
+    <div class="wx-hero sky-cloud" onclick="nav('weather')" id="wx-card">
+      <div class="wx-icon" id="wx-icon"></div>
       <div>
         <div class="wx-temp-big" id="wx-temp">—</div>
       </div>
@@ -531,6 +602,49 @@ function renderPersonalised() {
   _fetchNearby();
 }
 
+// ── WEATHER ICON HELPERS ──────────────────────────────────────
+function wxSkyClass(code, h) {
+  const night = h < 6 || h >= 20;
+  if (night && code <= 1)  return 'sky-night';
+  if (code <= 1)           return 'sky-sunny';
+  if (code <= 3)           return 'sky-cloud';
+  if (code <= 48)          return 'sky-fog';
+  if (code <= 67)          return 'sky-rain';
+  if (code <= 77)          return 'sky-snow';
+  if (code >= 95)          return 'sky-storm';
+  return 'sky-cloud';
+}
+
+function wxIconHtml(code, h) {
+  const night = h < 6 || h >= 20;
+  const rays   = [0,45,90,135,180,225,270,315].map(d => `<div class="wx-ray" style="transform:rotate(${d}deg) translateX(-50%)"></div>`).join('');
+
+  // Clear
+  if (code <= 1) {
+    if (night) return `<div class="wx-moon"></div>`;
+    return `<div class="wx-sun"></div><div class="wx-rays">${rays}</div>`;
+  }
+  // Partly cloudy
+  if (code <= 2) {
+    if (night) return `<div class="wx-moon" style="top:8px;right:8px;width:22px;height:22px"></div><div class="wx-part-cloud"></div>`;
+    return `<div class="wx-part-sun"></div><div class="wx-part-cloud"></div>`;
+  }
+  // Overcast
+  if (code === 3) return `<div class="wx-cloud-body"></div>`;
+  // Fog
+  if (code <= 48) return `<div class="wx-fog-lines"><div class="wx-fog-line"></div><div class="wx-fog-line"></div><div class="wx-fog-line"></div></div>`;
+  // Drizzle / light rain
+  if (code <= 57) return `<div class="wx-rain-cloud"></div><div class="wx-drops"><div class="wx-drop"></div><div class="wx-drop"></div><div class="wx-drop"></div></div>`;
+  // Rain
+  if (code <= 67) return `<div class="wx-rain-cloud"></div><div class="wx-drops"><div class="wx-heavydrop"></div><div class="wx-heavydrop"></div><div class="wx-heavydrop"></div><div class="wx-heavydrop"></div><div class="wx-heavydrop"></div></div>`;
+  // Snow
+  if (code <= 77) return `<div class="wx-snow-cloud"></div><div class="wx-flakes"><div class="wx-flake">❄</div><div class="wx-flake">❄</div><div class="wx-flake">❄</div></div>`;
+  // Showers
+  if (code <= 82) return `<div class="wx-rain-cloud"></div><div class="wx-drops"><div class="wx-drop"></div><div class="wx-drop"></div><div class="wx-drop"></div><div class="wx-drop"></div></div>`;
+  // Thunderstorm
+  return `<div class="wx-storm-cloud"></div><div class="wx-bolt">⚡</div>`;
+}
+
 // ── DATA: WEATHER ─────────────────────────────────────────────
 function _fetchWeather() {
   fetch(`https://api.postcodes.io/postcodes/${PC}`)
@@ -548,10 +662,24 @@ function _fetchWeather() {
       const temp = Math.round(cur.temperature_2m??0);
       const feel = Math.round(cur.apparent_temperature??temp);
       const code = cur.weather_code??0;
+      const h    = hour();
+
       _el('wx-temp',      temp+'°');
       _el('wx-condition', WX_CODES[code]||'Clear');
       _el('wx-feels',     'Feels like '+feel+'°');
-      _el('wx-badge',     feel < 5 ? '🧥 Very cold' : feel < 10 ? '🧥 Wrap up' : feel < 18 ? '🌤 Mild' : feel > 25 ? '☀ Warm' : '👍 Comfortable');
+      _el('wx-badge',     feel < 0 ? '🥶 Freezing' : feel < 5 ? '🧥 Very cold' : feel < 10 ? '🧥 Wrap up' : feel < 18 ? '🌤 Mild' : feel > 28 ? '🔥 Hot' : feel > 23 ? '☀ Warm' : '👍 Comfortable');
+
+      // Update icon
+      const iconEl = document.getElementById('wx-icon');
+      if (iconEl) iconEl.innerHTML = wxIconHtml(code, h);
+
+      // Update card sky gradient
+      const card = document.getElementById('wx-card');
+      if (card) {
+        card.className = 'wx-hero ' + wxSkyClass(code, h);
+        // re-add onclick (class replace removes nothing here but be safe)
+        card.onclick = ()=>nav('weather');
+      }
     })
     .catch(()=>{ _el('wx-condition','Weather unavailable'); });
 }
