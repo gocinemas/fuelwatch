@@ -13850,12 +13850,14 @@ def api_music_gigs():
                     vdist = _haversine(lat, lng, float(vloc["latitude"]), float(vloc["longitude"]))
                 except Exception:
                     vdist = None
+                price_ranges = ev.get("priceRanges") or []
+                price = f"from £{price_ranges[0]['min']:.0f}" if price_ranges else ""
                 events.append({"name": name, "date": date,
                                "time": date_inf.get("localTime", ""),
                                "venue": venue.get("name", ""),
                                "city":  (venue.get("city") or {}).get("name", ""),
                                "url":   ev.get("url", ""), "image": image,
-                               "distance_km": vdist})
+                               "distance_km": vdist, "price": price})
         except Exception as e:
             print(f"[gigs/ticketmaster] {e}")
 
