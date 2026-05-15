@@ -168,6 +168,10 @@
 
     /* Bottom nav */
     #bottom-nav { display:none; }
+    {% if intel_mode %}
+    #pill-nav { display:none !important; }
+    #back-btn { display:none !important; }
+    {% endif %}
 
     /* ── Morphing Pill Nav ───────────────────────────────────────── */
     #pill-nav {
