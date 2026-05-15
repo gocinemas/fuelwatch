@@ -3,409 +3,314 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Miru — Home V2</title>
+<title>Miru</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg: #f5f5f7;
-    --surface: #ffffff;
-    --surface2: #ebebed;
-    --border: rgba(0,0,0,0.07);
-    --text: #111113;
-    --muted: #888890;
-    --accent: #22c55e;
-    --r: 18px;
-    --pill-bg: rgba(255,255,255,.95);
-    --saves-bg: rgba(255,255,255,.97);
-    --shadow: 0 2px 12px rgba(0,0,0,.07);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #08080a; --surface: #141416; --surface2: #1c1c20;
-      --border: rgba(255,255,255,0.06); --text: #f0f0f2; --muted: #606068;
-      --pill-bg: rgba(28,28,32,.95); --saves-bg: rgba(20,20,22,.97);
-      --shadow: 0 2px 12px rgba(0,0,0,.4);
-    }
-  }
+:root {
+  --bg: #0c0c0f;
+  --surface: #16161a;
+  --surface2: #1e1e24;
+  --border: rgba(255,255,255,0.07);
+  --text: #f0f0f2;
+  --muted: #60606a;
+  --muted2: #9090a0;
+  --accent: #22c55e;
+  --accent2: #4ade80;
+  --r: 20px;
+  --shadow: 0 4px 24px rgba(0,0,0,.4);
+}
 
-  body {
-    background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
-    min-height: 100dvh;
-  }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  min-height: 100dvh; overflow-x: hidden;
+}
 
-  .page { max-width: 1100px; margin: 0 auto; padding: 0 24px 200px; }
+/* ── PAGE ── */
+.page { max-width: 480px; margin: 0 auto; padding: 0 0 160px; }
 
-  /* TOP */
-  .topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 40px 0 28px; gap: 16px;
-  }
-  .topbar-left h1 { font-size: 26px; font-weight: 800; letter-spacing: -.5px; }
-  .topbar-left p  { font-size: 13px; color: var(--muted); margin-top: 3px; }
-  .topbar-right   { display: flex; align-items: center; gap: 10px; }
-  .topbar-search {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 8px 14px; font-size: 14px; color: var(--muted);
-    cursor: text; box-shadow: var(--shadow); min-width: 200px;
-  }
-  .topbar-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: linear-gradient(135deg, #22c55e, #3b82f6);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 700; color: #fff; flex-shrink: 0;
-  }
+/* ── HERO ── */
+.hero {
+  padding: env(safe-area-inset-top, 48px) 20px 24px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 48px);
+}
+.hero-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted2); margin-bottom: 6px;
+}
+.hero-date {
+  font-size: 32px; font-weight: 900; letter-spacing: -1.5px;
+  color: var(--text); line-height: 1.1; margin-bottom: 4px;
+}
+.hero-sub { font-size: 13px; color: var(--muted); }
+.hero-right { margin-left: auto; }
+.wfh-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 30px; padding: 10px 16px; cursor: pointer;
+  font-size: 13px; font-weight: 700; color: var(--muted2);
+  -webkit-tap-highlight-color: transparent; transition: all .2s;
+}
+.wfh-pill.active { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.3); color: #4ade80; }
+.hero-row { display: flex; align-items: flex-start; gap: 12px; }
 
-  /* SECTION LABEL */
-  .section-label {
-    font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
-    text-transform: uppercase; color: var(--muted);
-    margin: 28px 0 12px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .section-more { font-size: 12px; letter-spacing: 0; text-transform: none; font-weight: 500; cursor: pointer; }
+/* ── SECTION LABEL ── */
+.slabel {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--muted);
+  padding: 24px 20px 10px; display: flex; align-items: center; justify-content: space-between;
+}
+.slabel-more { letter-spacing: 0; text-transform: none; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--muted2); }
 
-  /* CARD */
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--r); box-shadow: var(--shadow);
-    cursor: pointer; overflow: hidden; position: relative;
-    transition: transform .15s ease, box-shadow .15s ease;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .card:hover  { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
-  .card:active { transform: scale(.98); }
-  @media (prefers-color-scheme: dark) { .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,.5); } }
+/* ── WEATHER HERO CARD ── */
+.wx-hero {
+  margin: 0 20px 12px;
+  background: linear-gradient(145deg, #1a2744 0%, #0f1f3d 100%);
+  border: 1px solid rgba(56,189,248,.15);
+  border-radius: var(--r); padding: 20px 22px;
+  display: flex; align-items: center; gap: 16px;
+  cursor: pointer;
+}
+.wx-temp-big { font-size: 52px; font-weight: 900; letter-spacing: -3px; color: #e0f2fe; line-height: 1; }
+.wx-right { flex: 1; }
+.wx-condition { font-size: 16px; font-weight: 700; color: #bae6fd; margin-bottom: 3px; }
+.wx-feels { font-size: 12px; color: #7dd3fc; }
+.wx-badge {
+  margin-top: 8px; display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 700; padding: 4px 10px;
+  border-radius: 20px; background: rgba(56,189,248,.15); color: #7dd3fc;
+}
 
-  /* MY AREA */
-  .card-myarea {
-    padding: 24px 28px;
-    background: linear-gradient(135deg, #064e3b 0%, #065f46 60%, #0a4a38 100%);
-    border-color: rgba(34,197,94,.2);
-    display: grid; grid-template-columns: 1fr auto;
-    align-items: center; gap: 20px; min-height: 130px;
-  }
-  .ma-location { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #4ade80; margin-bottom: 4px; }
-  .ma-title    { font-size: 22px; font-weight: 800; letter-spacing: -.4px; color: #fff; }
-  .ma-sub      { font-size: 13px; color: #86efac; margin-top: 4px; }
-  .ma-stats    { display: flex; gap: 20px; }
-  .ma-stat-val { font-size: 18px; font-weight: 800; color: #fff; }
-  .ma-stat-lbl { font-size: 10px; color: #6ee7b7; letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
+/* ── TRAIN CARD ── */
+.trains-card {
+  margin: 0 20px 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+  cursor: pointer;
+}
+.train-header {
+  padding: 12px 18px 0; font-size: 10px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+}
+.train-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px; border-bottom: 1px solid var(--border);
+}
+.train-row:last-child { border-bottom: none; }
+.train-time { font-size: 22px; font-weight: 900; letter-spacing: -1px; color: #a5b4fc; min-width: 58px; }
+.train-dest { flex: 1; font-size: 13px; color: var(--muted2); line-height: 1.4; }
+.train-dest strong { font-weight: 700; color: var(--text); display: block; }
+.train-badge {
+  font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 12px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.tb-ok   { background: rgba(245,158,11,.12); color: #fbbf24; }
+.tb-late { background: rgba(239,68,68,.12);  color: #f87171; }
+.tb-gone { background: rgba(99,102,241,.1);  color: #818cf8; }
 
-  /* LIVE GRID */
-  .live-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+/* ── FUEL CARD ── */
+.fuel-card {
+  margin: 0 20px 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 18px 20px;
+  display: flex; align-items: center; gap: 0;
+  cursor: pointer;
+}
+.fuel-type-label { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.fuel-price { font-size: 36px; font-weight: 900; letter-spacing: -2px; line-height: 1; }
+.fuel-petrol { color: #fbbf24; }
+.fuel-diesel { color: #f97316; }
+.fuel-divider { width: 1px; background: var(--border); align-self: stretch; margin: 0 20px; }
+.fuel-station { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
-  .card-live {
-    padding: 18px 20px;
-    display: flex; flex-direction: column; justify-content: space-between;
-    min-height: 155px;
-  }
-  .card-fuel    { background: linear-gradient(155deg, #fffbf0, #fff8e6); border-color: rgba(245,158,11,.25); }
-  .card-trains  { background: linear-gradient(155deg, #f5f3ff, #ede9fe); border-color: rgba(99,102,241,.2); }
-  .card-weather { background: linear-gradient(155deg, #f0f7ff, #e0f0ff); border-color: rgba(56,189,248,.2); }
-  @media (prefers-color-scheme: dark) {
-    .card-fuel    { background: linear-gradient(155deg, #1c1007, #261900); border-color: rgba(245,158,11,.2); }
-    .card-trains  { background: linear-gradient(155deg, #0a0f20, #1e1b4b); border-color: rgba(99,102,241,.2); }
-    .card-weather { background: linear-gradient(155deg, #06111a, #0a1e30); border-color: rgba(56,189,248,.2); }
-  }
+/* ── SCHOOL MESSAGES ── */
+.school-card {
+  margin: 0 20px 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 16px;
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.school-dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; flex-shrink: 0; margin-top: 5px; }
+.school-dot.u { background: #f87171; }
+.school-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.school-body  { font-size: 12px; color: var(--muted2); margin-top: 3px; line-height: 1.5; }
+.school-meta  { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
-  .lc-label { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 4px; }
-  .lc-value { font-size: 30px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; }
-  .lc-sub   { font-size: 12px; color: var(--muted); margin-top: 5px; }
-  .lc-badge {
-    display: inline-flex; align-items: center;
-    font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; margin-top: 10px;
-  }
-  .badge-live { background: rgba(34,197,94,.12);  color: #16a34a; }
-  .badge-ok   { background: rgba(245,158,11,.12);  color: #d97706; }
-  .badge-sky  { background: rgba(56,189,248,.12);  color: #0284c7; }
-  .badge-late { background: rgba(239,68,68,.12);   color: #dc2626; }
-  @media (prefers-color-scheme: dark) {
-    .badge-live { color: #4ade80; background: rgba(34,197,94,.15); }
-    .badge-ok   { color: #fbbf24; background: rgba(245,158,11,.15); }
-    .badge-sky  { color: #7dd3fc; background: rgba(56,189,248,.15); }
-    .badge-late { color: #f87171; background: rgba(239,68,68,.15); }
-  }
+/* ── SAVES STRIP ── */
+.saves-row {
+  display: flex; gap: 8px; padding: 0 20px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; scroll-snap-type: x mandatory;
+}
+.saves-row::-webkit-scrollbar { display: none; }
+.save-chip {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 24px; padding: 9px 14px;
+  font-size: 13px; font-weight: 600; color: var(--text);
+  white-space: nowrap; flex-shrink: 0; scroll-snap-align: start;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
 
-  .fuel-row { display: flex; align-items: baseline; gap: 10px; margin-top: 4px; }
-  .fuel-divider { width:1px; height:34px; background: rgba(245,158,11,.25); flex-shrink:0; }
-  .fuel-type { font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 2px; }
+/* ── TOOL GRID ── */
+.tool-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; padding: 0 20px;
+}
+.tool-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 16px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .15s;
+}
+.tool-card:active { background: var(--surface2); }
+.tool-icon  { font-size: 24px; margin-bottom: 8px; }
+.tool-label { font-size: 14px; font-weight: 700; }
+.tool-sub   { font-size: 11px; color: var(--muted2); margin-top: 2px; }
 
-  /* skeleton shimmer */
-  .skel {
-    background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
-    border-radius: 6px; height: 1em;
-  }
-  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+/* ── NEARBY STRIP ── */
+.nearby-row {
+  display: flex; gap: 10px; padding: 0 20px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.nearby-row::-webkit-scrollbar { display: none; }
+.nearby-chip {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 12px 14px; flex-shrink: 0;
+  cursor: pointer; min-width: 120px;
+}
+.nearby-chip-icon { font-size: 20px; margin-bottom: 6px; }
+.nearby-chip-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.nearby-chip-dist { font-size: 11px; color: var(--muted2); margin-top: 2px; }
 
-  /* weather icon */
-  .wx { width: 44px; height: 44px; position: relative; flex-shrink: 0; }
-  .wx-sun-body {
-    position: absolute; inset: 11px;
-    background: #fbbf24; border-radius: 50%;
-    box-shadow: 0 0 8px 2px rgba(251,191,36,.4);
-    animation: sun-pulse 3s ease-in-out infinite;
-  }
-  .wx-sun-rays { position: absolute; inset: 0; animation: spin 12s linear infinite; }
-  .wx-ray {
-    position: absolute; left: 50%; top: 0; width: 2px; height: 7px;
-    background: #fbbf24; border-radius: 2px; transform-origin: 50% 22px; opacity: .7;
-  }
-  .wx-part-sun { position:absolute;top:4px;right:4px;width:20px;height:20px;background:#fbbf24;border-radius:50%;box-shadow:0 0 6px rgba(251,191,36,.4); }
-  .wx-cloud {
-    position:absolute;bottom:4px;left:2px;right:2px;height:18px;background:#94a3b8;border-radius:10px;
-  }
-  .wx-cloud::before{content:'';position:absolute;width:14px;height:14px;background:#94a3b8;border-radius:50%;top:-7px;left:6px;}
-  .wx-cloud::after{content:'';position:absolute;width:10px;height:10px;background:#94a3b8;border-radius:50%;top:-5px;left:17px;}
-  .wx-overcast { position:absolute;inset:10px;background:#9ca3af;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;box-shadow:0 0 0 6px #9ca3af; }
-  .wx-moon { position:absolute;top:8px;left:10px;width:26px;height:26px;background:#fde68a;border-radius:50%;box-shadow:0 0 10px rgba(253,230,138,.3); }
-  .wx-moon::after{content:'';position:absolute;top:-2px;right:-5px;width:20px;height:20px;background:var(--bg,#f5f5f7);border-radius:50%;}
-  .wx-rain-cloud{position:absolute;top:4px;left:2px;right:2px;height:20px;background:#6b7280;border-radius:10px;}
-  .wx-rain-cloud::before{content:'';position:absolute;width:16px;height:16px;background:#6b7280;border-radius:50%;top:-8px;left:6px;}
-  .wx-rain-cloud::after{content:'';position:absolute;width:12px;height:12px;background:#6b7280;border-radius:50%;top:-6px;left:18px;}
-  .wx-drops{position:absolute;bottom:2px;left:0;right:0;display:flex;justify-content:center;gap:5px;}
-  .wx-drop{width:2px;height:7px;background:#60a5fa;border-radius:2px;animation:fall 1.2s ease-in infinite;}
-  .wx-drop:nth-child(2){animation-delay:.3s}.wx-drop:nth-child(3){animation-delay:.6s}
-  @keyframes fall{0%{transform:translateY(-3px);opacity:.8}100%{transform:translateY(8px);opacity:0}}
-  @keyframes sun-pulse{0%,100%{box-shadow:0 0 8px 2px rgba(251,191,36,.4)}50%{box-shadow:0 0 14px 5px rgba(251,191,36,.2)}}
-  @keyframes spin{to{transform:rotate(360deg)}}
+/* ── ONBOARDING ── */
+.ob-wrap { padding: 24px 20px; }
+.ob-hero {
+  background: linear-gradient(135deg, #064e3b, #065f46);
+  border-radius: var(--r); padding: 26px 22px; margin-bottom: 16px;
+}
+.ob-hero h2 { font-size: 24px; font-weight: 900; color: #fff; letter-spacing: -.6px; margin-bottom: 6px; }
+.ob-hero p  { font-size: 13px; color: #86efac; line-height: 1.6; }
+.ob-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 22px; }
+.ob-label { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted2); display: block; margin-bottom: 6px; }
+.ob-input {
+  width: 100%; padding: 13px 14px; border: 1.5px solid var(--border);
+  border-radius: 12px; font-size: 16px; font-family: inherit;
+  background: var(--surface2); color: var(--text); outline: none;
+  margin-bottom: 14px;
+}
+.ob-input:focus { border-color: #22c55e; }
+.ob-btn {
+  width: 100%; padding: 15px; background: linear-gradient(135deg,#22c55e,#16a34a);
+  color: #fff; font-size: 15px; font-weight: 800; border: none;
+  border-radius: 14px; cursor: pointer; letter-spacing: -.2px;
+}
 
-  /* NEARBY + TOOLS */
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
-  .nearby-list { display: flex; flex-direction: column; gap: 8px; }
-  .card-place  { display: flex; align-items: center; gap: 14px; padding: 14px 18px; }
-  .place-icon  { font-size: 22px; flex-shrink: 0; width: 32px; text-align: center; }
-  .place-name  { font-size: 14px; font-weight: 600; }
-  .place-dist  { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .place-arrow { margin-left: auto; font-size: 14px; color: var(--muted); }
+/* ── SKELETON ── */
+.skel {
+  background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 6px; display: block;
+}
+@keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
 
-  .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .card-tool  { padding: 18px 16px; display: flex; flex-direction: column; gap: 8px; }
-  .tool-icon  { font-size: 24px; }
-  .tool-label { font-size: 14px; font-weight: 700; }
-  .tool-sub   { font-size: 11px; color: var(--muted); }
+/* ── PILL NAV ── */
+#pill-overlay { display:none; position:fixed; inset:0; z-index:200; }
+#pill-overlay.show { display:block; }
+#pill-nav { position:fixed; bottom:calc(20px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:300; }
+#pill-shell {
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(22,22,26,.96); backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid var(--border); border-radius:30px; height:46px; width:150px;
+  overflow:hidden; position:relative; cursor:pointer;
+  transition:width .38s cubic-bezier(.34,1.56,.64,1); box-shadow:var(--shadow);
+}
+#pill-shell.expanded { width: 264px; }
+#pill-resting {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  gap:6px; opacity:1; transition:opacity .2s; pointer-events:auto; padding:0 16px; white-space:nowrap;
+}
+#pill-shell.expanded #pill-resting { opacity:0; pointer-events:none; }
+.pr-label { font-size:14px; font-weight:600; color:var(--text); }
+.pr-chev { width:14px; height:14px; stroke:var(--muted); fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; transition:transform .3s; flex-shrink:0; }
+#pill-shell.expanded .pr-chev { transform:rotate(180deg); }
+#pill-icons {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:space-around;
+  padding:0 8px; opacity:0; transition:opacity .18s ease .1s; pointer-events:none;
+}
+#pill-shell.expanded #pill-icons { opacity:1; pointer-events:auto; }
+.pi-btn { display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; cursor:pointer; color:var(--muted); padding:6px 10px; border-radius:12px; transition:color .15s; }
+.pi-btn.pi-active { color:var(--text); }
+.pi-icon { font-size:20px; line-height:1; }
+.pi-dot { width:4px; height:4px; border-radius:50%; background:var(--accent); opacity:0; transition:opacity .2s; }
+.pi-btn.pi-active .pi-dot { opacity:1; }
 
-  /* INTEL */
-  .card-intel {
-    display: flex; align-items: center; gap: 16px; padding: 18px 22px;
-    background: #faf5ff; border-color: rgba(139,92,246,.2);
-  }
-  @media (prefers-color-scheme: dark) { .card-intel { background: linear-gradient(135deg, #1a0a2e, #120a1e); } }
-  .intel-title { font-size: 16px; font-weight: 700; }
-  .intel-sub   { font-size: 12px; color: var(--muted); margin-top: 3px; }
+/* ── VOICE FAB ── */
+#voice-fab {
+  position:fixed; bottom:calc(82px + env(safe-area-inset-bottom)); right:20px; z-index:290;
+  width:52px; height:52px; border-radius:50%;
+  background:linear-gradient(135deg,#7c3aed,#4f46e5);
+  border:none; cursor:pointer; box-shadow:0 4px 20px rgba(124,58,237,.45);
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; transition:transform .15s, box-shadow .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+#voice-fab:active { transform:scale(.93); }
+#voice-overlay {
+  display:none; position:fixed; inset:0; z-index:500;
+  background:rgba(0,0,0,.7); backdrop-filter:blur(4px);
+  align-items:flex-end; justify-content:center;
+}
+#voice-overlay.show { display:flex; }
+#voice-card {
+  background:var(--surface); border-radius:28px 28px 0 0;
+  width:100%; max-width:560px; padding:32px 28px 40px;
+}
+#voice-orb {
+  width:80px; height:80px; border-radius:50%;
+  background:linear-gradient(135deg,#7c3aed,#4f46e5);
+  display:flex; align-items:center; justify-content:center;
+  font-size:32px; margin:0 auto 16px; transition:box-shadow .3s;
+}
+#voice-orb.listening { animation:vpulse 1.2s ease-in-out infinite; }
+@keyframes vpulse { 0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.5)} 50%{box-shadow:0 0 0 18px rgba(124,58,237,0)} }
+#voice-status { text-align:center; font-size:16px; font-weight:700; margin-bottom:6px; }
+#voice-transcript { text-align:center; font-size:13px; color:var(--muted); min-height:20px; margin-bottom:16px; font-style:italic; }
+#voice-answer { background:var(--surface2); border-radius:16px; padding:14px 16px; font-size:15px; line-height:1.55; display:none; margin-bottom:20px; }
+#voice-actions { display:flex; gap:10px; }
+.vbtn { flex:1; padding:13px; border-radius:14px; border:none; font-size:14px; font-weight:700; cursor:pointer; }
+.vbtn-primary { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
+.vbtn-secondary { background:var(--surface2); color:var(--muted); }
 
-  /* MOBILE */
-  @media (max-width: 640px) {
-    .page { padding: 0 0 200px; }
-    .topbar { padding: 48px 18px 16px; }
-    .section-label { padding: 0 18px; }
-    .topbar-search { display: none; }
-    .card-myarea { border-radius: 0; border-left: none; border-right: none; }
-    .live-grid {
-      display: flex; gap: 10px; overflow-x: auto;
-      -webkit-overflow-scrolling: touch; scrollbar-width: none;
-      scroll-snap-type: x mandatory; padding: 0 18px;
-    }
-    .live-grid::-webkit-scrollbar { display: none; }
-    .card-live { width: 160px; min-height: 160px; flex-shrink: 0; scroll-snap-align: start; }
-    .two-col { grid-template-columns: 1fr; }
-    .nearby-list {
-      flex-direction: row; overflow-x: auto; scrollbar-width: none;
-      scroll-snap-type: x mandatory; padding: 0 18px; gap: 10px;
-    }
-    .nearby-list::-webkit-scrollbar { display: none; }
-    .card-place {
-      flex-direction: column; align-items: flex-start;
-      width: 120px; min-height: 110px; flex-shrink: 0;
-      padding: 14px; scroll-snap-align: start;
-    }
-    .place-arrow { display: none; }
-    .tools-grid { padding: 0 18px; }
-    .card-intel { border-radius: 0; border-left: none; border-right: none; }
-    .section-label { margin: 22px 0 10px; }
-  }
-
-  /* VOICE BUTTON */
-  #voice-fab {
-    position: fixed; bottom: calc(82px + env(safe-area-inset-bottom)); right: 20px; z-index: 290;
-    width: 52px; height: 52px; border-radius: 50%;
-    background: linear-gradient(135deg, #7c3aed, #4f46e5);
-    border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(124,58,237,.45);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; transition: transform .15s, box-shadow .15s;
-    -webkit-tap-highlight-color: transparent;
-  }
-  #voice-fab:active { transform: scale(.93); box-shadow: 0 2px 10px rgba(124,58,237,.4); }
-
-  /* VOICE OVERLAY */
-  #voice-overlay {
-    display: none; position: fixed; inset: 0; z-index: 500;
-    background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
-    align-items: flex-end; justify-content: center;
-  }
-  #voice-overlay.show { display: flex; }
-  #voice-card {
-    background: var(--surface); border-radius: 28px 28px 0 0;
-    width: 100%; max-width: 560px; padding: 32px 28px 40px;
-    box-shadow: 0 -8px 40px rgba(0,0,0,.2);
-  }
-  #voice-orb {
-    width: 80px; height: 80px; border-radius: 50%;
-    background: linear-gradient(135deg, #7c3aed, #4f46e5);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 32px; margin: 0 auto 16px; box-shadow: 0 0 0 0 rgba(124,58,237,.4);
-    transition: box-shadow .3s;
-  }
-  #voice-orb.listening {
-    animation: voice-pulse 1.2s ease-in-out infinite;
-  }
-  @keyframes voice-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,.5); }
-    50%       { box-shadow: 0 0 0 18px rgba(124,58,237,.0); }
-  }
-  #voice-status { text-align: center; font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-  #voice-transcript { text-align: center; font-size: 13px; color: var(--muted); min-height: 20px; margin-bottom: 16px; font-style: italic; }
-  #voice-answer {
-    background: var(--surface2); border-radius: 16px; padding: 14px 16px;
-    font-size: 15px; line-height: 1.55; color: var(--text);
-    display: none; margin-bottom: 20px;
-  }
-  #voice-actions { display: flex; gap: 10px; }
-  .voice-btn {
-    flex: 1; padding: 13px; border-radius: 14px; border: none;
-    font-size: 14px; font-weight: 700; cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .voice-btn-primary { background: linear-gradient(135deg,#7c3aed,#4f46e5); color: #fff; }
-  .voice-btn-secondary { background: var(--surface2); color: var(--muted); }
-
-  /* PILL NAV */
-  #pill-overlay { display:none; position:fixed; inset:0; z-index:200; }
-  #pill-overlay.show { display:block; }
-  #pill-nav { position:fixed; bottom:calc(20px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:300; }
-  #pill-shell {
-    display:flex;align-items:center;justify-content:center;
-    background:var(--pill-bg);backdrop-filter:blur(20px) saturate(180%);
-    -webkit-backdrop-filter:blur(20px) saturate(180%);
-    border:1px solid var(--border);border-radius:30px;height:46px;width:150px;
-    overflow:hidden;position:relative;cursor:pointer;
-    transition:width .38s cubic-bezier(.34,1.56,.64,1);box-shadow:var(--shadow);
-  }
-  #pill-shell.expanded { width: 264px; }
-  #pill-resting {
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:6px;
-    opacity:1;transition:opacity .2s;pointer-events:auto;padding:0 16px;white-space:nowrap;
-  }
-  #pill-shell.expanded #pill-resting { opacity:0;pointer-events:none; }
-  .pr-label { font-size:14px;font-weight:600;color:var(--text); }
-  .pr-chev { width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s;flex-shrink:0; }
-  #pill-shell.expanded .pr-chev { transform:rotate(180deg); }
-  #pill-icons {
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:space-around;
-    padding:0 8px;opacity:0;transition:opacity .18s ease .1s;pointer-events:none;
-  }
-  #pill-shell.expanded #pill-icons { opacity:1;pointer-events:auto; }
-  .pi-btn { display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;color:var(--muted);padding:6px 10px;border-radius:12px;transition:color .15s; }
-  .pi-btn.pi-active { color:var(--text); }
-  .pi-icon { font-size:20px;line-height:1; }
-  .pi-dot { width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:0;transition:opacity .2s; }
-  .pi-btn.pi-active .pi-dot { opacity:1; }
-
-  #toast {
-    position:fixed;bottom:140px;left:50%;transform:translateX(-50%) translateY(10px);
-    background:var(--surface);border:1px solid var(--border);border-radius:12px;
-    padding:8px 18px;font-size:13px;font-weight:600;color:var(--text);
-    opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;z-index:400;box-shadow:var(--shadow);
-  }
-
-  /* BRIEF HEADER */
-  .brief-header {
-    background: linear-gradient(135deg, #1e3a5f 0%, #1e4976 60%, #153558 100%);
-    border: 1px solid rgba(56,189,248,.2);
-    border-radius: var(--r); padding: 22px 24px; margin-bottom: 12px;
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  }
-  .brief-title { font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #7dd3fc; margin-bottom: 4px; }
-  .brief-date  { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -.4px; }
-  .brief-sub   { font-size: 12px; color: #93c5fd; margin-top: 3px; }
-  .wfh-pill {
-    display: flex; align-items: center; gap: 6px; white-space: nowrap;
-    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
-    border-radius: 24px; padding: 9px 14px; cursor: pointer;
-    font-size: 13px; font-weight: 700; color: #fff;
-    -webkit-tap-highlight-color: transparent; transition: background .2s;
-    flex-shrink: 0;
-  }
-  .wfh-pill.wfh-active { background: rgba(34,197,94,.2); border-color: rgba(34,197,94,.4); color: #4ade80; }
-
-  /* SCHOOL MESSAGES */
-  .school-msg-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; padding: 14px 18px;
-    display: flex; align-items: flex-start; gap: 12px;
-    box-shadow: var(--shadow); margin-bottom: 8px;
-  }
-  .school-dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; margin-top: 5px; }
-  .school-dot.urgent { background: #ef4444; }
-  .school-msg-title { font-size: 14px; font-weight: 700; }
-  .school-msg-body  { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
-  .school-msg-meta  { font-size: 11px; color: var(--muted); margin-top: 4px; }
-
-  /* SAVES STRIP */
-  .saves-strip {
-    display: flex; gap: 10px; overflow-x: auto;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none;
-    scroll-snap-type: x mandatory;
-  }
-  .saves-strip::-webkit-scrollbar { display: none; }
-  .save-chip {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 24px; padding: 9px 14px;
-    font-size: 13px; font-weight: 600; white-space: nowrap;
-    flex-shrink: 0; scroll-snap-align: start; cursor: pointer;
-    box-shadow: var(--shadow); -webkit-tap-highlight-color: transparent;
-  }
-
-  /* COMMUTE CARD */
-  .commute-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--r); padding: 20px 22px; box-shadow: var(--shadow);
-  }
-  .commute-label { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
-  .commute-row   { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-  .commute-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .commute-icon  { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
-  .commute-val   { font-size: 16px; font-weight: 800; }
-  .commute-sub   { font-size: 12px; color: var(--muted); }
-
-  @media (max-width: 640px) {
-    .brief-header { border-radius: 0; border-left: none; border-right: none; }
-  }
+#toast {
+  position:fixed; bottom:130px; left:50%; transform:translateX(-50%) translateY(10px);
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  padding:8px 18px; font-size:13px; font-weight:600;
+  opacity:0; transition:opacity .2s,transform .2s; pointer-events:none;
+  white-space:nowrap; z-index:400;
+}
 </style>
 </head>
 <body>
 <div class="page">
-
-  <!-- TOP BAR -->
-  <div class="topbar">
-    <div class="topbar-left">
-      <h1 id="greeting">Good morning</h1>
-      <p id="top-sub">Loading…</p>
-    </div>
-    <div class="topbar-right">
-      <div class="topbar-search">🔍 &nbsp;Search anything…</div>
-      <div class="topbar-avatar">S</div>
+  <div class="hero">
+    <div class="hero-row">
+      <div>
+        <div class="hero-eyebrow" id="hero-eyebrow">Good morning</div>
+        <div class="hero-date" id="hero-date">Friday</div>
+        <div class="hero-sub" id="hero-sub">Loading…</div>
+      </div>
+      <div class="hero-right">
+        <button class="wfh-pill" id="wfh-btn" onclick="_toggleWfh()">🏢 Office</button>
+      </div>
     </div>
   </div>
 
-  <!-- CONTENT — rendered by JS based on state -->
   <div id="content"></div>
-
 </div>
 
 <!-- PILL NAV -->
@@ -418,18 +323,16 @@
       <svg class="pr-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <div id="pill-icons">
-      <button class="pi-btn pi-active" id="pi-home" onclick="_pillNav('home');event.stopPropagation()"><span class="pi-icon">🏠</span><div class="pi-dot"></div></button>
-      <button class="pi-btn" id="pi-myarea" onclick="_pillNav('myarea');event.stopPropagation()"><span class="pi-icon">📍</span><div class="pi-dot"></div></button>
-      <button class="pi-btn" id="pi-intel" onclick="_pillNav('intel');event.stopPropagation()"><span class="pi-icon">🔍</span><div class="pi-dot"></div></button>
-      <button class="pi-btn" id="pi-saves" onclick="_pillNav('saves');event.stopPropagation()"><span class="pi-icon">📌</span><div class="pi-dot"></div></button>
+      <button class="pi-btn pi-active" id="pi-home"   onclick="_pillNav('home');event.stopPropagation()"><span class="pi-icon">🏠</span><div class="pi-dot"></div></button>
+      <button class="pi-btn"           id="pi-myarea" onclick="_pillNav('myarea');event.stopPropagation()"><span class="pi-icon">📍</span><div class="pi-dot"></div></button>
+      <button class="pi-btn"           id="pi-intel"  onclick="_pillNav('intel');event.stopPropagation()"><span class="pi-icon">🔍</span><div class="pi-dot"></div></button>
+      <button class="pi-btn"           id="pi-saves"  onclick="_pillNav('saves');event.stopPropagation()"><span class="pi-icon">📌</span><div class="pi-dot"></div></button>
     </div>
   </div>
 </div>
 
-<!-- VOICE ASSISTANT FAB -->
-<button id="voice-fab" onclick="_voiceOpen()" title="Ask Miru">🎤</button>
+<button id="voice-fab" onclick="_voiceOpen()">🎤</button>
 
-<!-- VOICE OVERLAY -->
 <div id="voice-overlay" onclick="_voiceOverlayTap(event)">
   <div id="voice-card">
     <div id="voice-orb">🎤</div>
@@ -437,703 +340,422 @@
     <div id="voice-transcript"></div>
     <div id="voice-answer"></div>
     <div id="voice-actions">
-      <button class="voice-btn voice-btn-primary" id="voice-mic-btn" onclick="_voiceListen()">🎤 Ask</button>
-      <button class="voice-btn voice-btn-secondary" onclick="_voiceClose()">Done</button>
+      <button class="vbtn vbtn-primary" id="voice-mic-btn" onclick="_voiceListen()">🎤 Ask</button>
+      <button class="vbtn vbtn-secondary" onclick="_voiceClose()">Done</button>
     </div>
   </div>
 </div>
-
 <div id="toast"></div>
 
 <script>
-// ── HELPERS ────────────────────────────────────────────────────
-// Seed identity from URL params only if not already set in localStorage
+// ── IDENTITY ──────────────────────────────────────────────────
 (function(){
-  var _p = new URLSearchParams(location.search);
-  var _pc = (_p.get('pc') || _p.get('postcode') || '').replace(/\s+/g,'').toUpperCase();
-  var _ph = _p.get('phone') || '';
-  if (_pc && !localStorage.getItem('miru_postcode')) localStorage.setItem('miru_postcode', _pc);
-  if (_ph && !localStorage.getItem('miru_phone'))    localStorage.setItem('miru_phone', _ph);
+  var p = new URLSearchParams(location.search);
+  var pc = (p.get('pc')||p.get('postcode')||'').replace(/\s+/g,'').toUpperCase();
+  var ph = p.get('phone')||'';
+  if (pc && !localStorage.getItem('miru_postcode')) localStorage.setItem('miru_postcode', pc);
+  if (ph && !localStorage.getItem('miru_phone'))    localStorage.setItem('miru_phone', ph);
 })();
 
-const _rawPC = (localStorage.getItem('miru_postcode') || '').replace(/\s+/g,'').toUpperCase();
-const PC     = _rawPC || '';
+const PC    = (localStorage.getItem('miru_postcode')||'').replace(/\s+/g,'').toUpperCase();
 const PC_FMT = PC.length > 4 ? PC.slice(0,-3)+' '+PC.slice(-3) : PC;
-const PHONE  = localStorage.getItem('miru_phone') || '';
+const PHONE  = localStorage.getItem('miru_phone')||'';
 
+// ── TIME HELPERS ──────────────────────────────────────────────
 function hour() { return new Date().getHours(); }
-function greeting() {
-  const h = hour();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
-
-// ── WEATHER CODES ──────────────────────────────────────────────
-const WX_CODES = {
-  0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',
-  45:'Foggy',48:'Freezing fog',
-  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
-  61:'Light rain',63:'Rain',65:'Heavy rain',
-  71:'Light snow',73:'Snow',75:'Heavy snow',
-  80:'Showers',81:'Heavy showers',82:'Violent showers',
-  95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm'
-};
-function wxIcon(code, h) {
-  const night = h < 6 || h >= 20;
-  if (code <= 1) return night
-    ? `<div class="wx-moon"></div>`
-    : `<div class="wx-sun-body"></div><div class="wx-sun-rays">${[0,45,90,135,180,225,270,315].map(d=>`<div class="wx-ray" style="transform:rotate(${d}deg) translateX(-50%)"></div>`).join('')}</div>`;
-  if (code <= 3) return `<div class="wx-part-sun"></div><div class="wx-cloud"></div>`;
-  if (code <= 67) return `<div class="wx-rain-cloud"></div><div class="wx-drops"><div class="wx-drop"></div><div class="wx-drop"></div><div class="wx-drop"></div></div>`;
-  return `<div class="wx-part-sun"></div><div class="wx-cloud"></div>`;
-}
-
-// ── TIME OF DAY ────────────────────────────────────────────────
 function timeOfDay() {
   const h = hour();
-  if (h >= 5 && h < 11)  return 'morning';
+  if (h >= 5  && h < 11) return 'morning';
   if (h >= 11 && h < 17) return 'afternoon';
   if (h >= 17 && h < 22) return 'evening';
   return 'night';
 }
+const _todayFmt = new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
+const _dayName  = new Date().toLocaleDateString('en-GB', {weekday:'long'});
+
+// ── WFH STATE ─────────────────────────────────────────────────
+let _wfhMode = localStorage.getItem('miru_wfh') === 'true';
+
 function _toggleWfh() {
   _wfhMode = !_wfhMode;
   localStorage.setItem('miru_wfh', _wfhMode);
+  _updateWfhBtn();
   renderPersonalised();
 }
-const _todayFmt = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-let _wfhMode = localStorage.getItem('miru_wfh') === 'true';
+function _updateWfhBtn() {
+  var btn = document.getElementById('wfh-btn');
+  if (!btn) return;
+  btn.textContent = _wfhMode ? '🏠 WFH' : '🏢 Office';
+  btn.classList.toggle('active', _wfhMode);
+}
 
-// ── INIT ───────────────────────────────────────────────────────
-document.getElementById('greeting').textContent = greeting();
-const dateStr = new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-document.getElementById('top-sub').textContent  = PC_FMT ? PC_FMT + ' · ' + dateStr : dateStr;
+// ── WEATHER DATA ──────────────────────────────────────────────
+const WX_CODES = {
+  0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',
+  45:'Foggy',48:'Freezing fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',
+  80:'Showers',81:'Heavy showers',95:'Thunderstorm',96:'Thunderstorm'
+};
+
+// ── INIT ──────────────────────────────────────────────────────
+const tod = timeOfDay();
+document.getElementById('hero-eyebrow').textContent = {morning:'Good morning', afternoon:'Good afternoon', evening:'Good evening', night:'Late night'}[tod] || 'Hello';
+document.getElementById('hero-date').textContent    = _dayName;
+document.getElementById('hero-sub').textContent     = PC_FMT ? PC_FMT + '  ·  ' + new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long'}) : new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long'});
+_updateWfhBtn();
 
 PC ? renderPersonalised() : renderBlank();
 
-// ── ONBOARDING (first visit, no postcode set) ──────────────────
+// ── ONBOARDING ────────────────────────────────────────────────
 function renderBlank() {
   document.getElementById('content').innerHTML = `
-    <div style="padding:8px 0 32px">
-      <div style="background:linear-gradient(135deg,#064e3b,#065f46);border-radius:20px;padding:28px 24px 24px;margin-bottom:20px">
-        <div style="font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#4ade80;margin-bottom:8px">Welcome to Miru</div>
-        <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.4px;margin-bottom:6px">Your UK life assistant</div>
-        <div style="font-size:13px;color:#86efac;line-height:1.6">Trains · Fuel prices · Local councillors · Weather · Gigs · Schools</div>
+    <div class="ob-wrap">
+      <div class="ob-hero">
+        <h2>Your UK life, briefed.</h2>
+        <p>Trains · Fuel · Weather · Schools · Local intel</p>
       </div>
-
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;box-shadow:var(--shadow)">
-        <div style="font-size:15px;font-weight:700;margin-bottom:16px">Get started in 10 seconds</div>
-
-        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Your postcode</label>
-        <input id="ob-postcode" type="text" placeholder="e.g. KT16 0HY" maxlength="8" autocomplete="postal-code"
-          style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:16px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:14px"
-          oninput="this.value=this.value.toUpperCase()"
-          onfocus="this.style.borderColor='#22c55e'" onblur="this.style.borderColor='var(--border)'">
-
-        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Mobile number <span style="font-weight:400;text-transform:none">(optional — links your WhatsApp)</span></label>
-        <input id="ob-phone" type="tel" placeholder="+44 7911 123456" autocomplete="tel"
-          style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:16px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:20px"
-          onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border)'">
-
-        <button onclick="_obSubmit()"
-          style="width:100%;padding:14px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:800;border:none;border-radius:14px;cursor:pointer;letter-spacing:-.2px">
-          Get started →
-        </button>
-        <div id="ob-error" style="display:none;color:#dc2626;font-size:12px;text-align:center;margin-top:10px"></div>
+      <div class="ob-form">
+        <div style="font-size:15px;font-weight:700;margin-bottom:18px">Set your postcode to get started</div>
+        <label class="ob-label">Postcode</label>
+        <input id="ob-pc" class="ob-input" type="text" placeholder="e.g. KT16 0HY" maxlength="8" autocomplete="postal-code"
+          oninput="this.value=this.value.toUpperCase()">
+        <label class="ob-label">Mobile <span style="font-weight:400;text-transform:none">(links your WhatsApp — optional)</span></label>
+        <input id="ob-ph" class="ob-input" type="tel" placeholder="+44 7911 123456" autocomplete="tel">
+        <button class="ob-btn" onclick="_obSubmit()">Get started →</button>
+        <div id="ob-err" style="display:none;color:#f87171;font-size:12px;text-align:center;margin-top:10px"></div>
       </div>
-
-      <div style="display:flex;gap:10px;margin-top:12px">
-        <div class="card card-tool" style="flex:1" onclick="nav('fuel')"><div class="tool-icon">⛽</div><div class="tool-label">Fuel</div><div class="tool-sub">Live prices</div></div>
-        <div class="card card-tool" style="flex:1" onclick="nav('trains')"><div class="tool-icon">🚆</div><div class="tool-label">Trains</div><div class="tool-sub">Departures</div></div>
-        <div class="card card-tool" style="flex:1" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music</div><div class="tool-sub">Charts & gigs</div></div>
-        <div class="card card-tool" style="flex:1" onclick="nav('intel')"><div class="tool-icon">🏢</div><div class="tool-label">Intel</div><div class="tool-sub">Companies</div></div>
-      </div>
-    </div>
-
-    <div class="section-label" style="margin-top:28px">Explore</div>
-    <div class="live-grid">
-      <div class="card card-live card-fuel" onclick="nav('fuel')" style="justify-content:center;align-items:flex-start;gap:10px">
-        <div class="lc-label" style="color:#d97706">⛽ Fuel</div>
-        <div style="font-size:15px;font-weight:600;margin-top:4px">Find petrol &amp; diesel prices near you</div>
-        <span class="lc-badge badge-live" style="margin-top:8px">Search by postcode →</span>
-      </div>
-      <div class="card card-live card-trains" onclick="nav('trains')" style="justify-content:center;align-items:flex-start;gap:10px">
-        <div class="lc-label" style="color:#818cf8">🚆 Trains</div>
-        <div style="font-size:15px;font-weight:600;margin-top:4px">Live departures from any UK station</div>
-        <span class="lc-badge badge-ok" style="margin-top:8px">Check times →</span>
-      </div>
-      <div class="card card-live card-weather" onclick="nav('myarea')" style="justify-content:center;align-items:flex-start;gap:10px">
-        <div class="lc-label" style="color:#0284c7">☁ Weather</div>
-        <div style="font-size:15px;font-weight:600;margin-top:4px">Local forecast for your postcode</div>
-        <span class="lc-badge badge-sky" style="margin-top:8px">Set postcode →</span>
-      </div>
-    </div>
-
-    <div class="two-col" style="margin-top:0">
-      <div>
-        <div class="section-label">Nearby</div>
-        <div class="nearby-list">
-          <div class="card card-place" onclick="nav('places')" style="opacity:.6">
-            <div class="place-icon">📍</div>
-            <div><div class="place-name">GPs, pharmacies, post offices</div><div class="place-dist">Set postcode to see nearby places</div></div>
-            <span class="place-arrow">→</span>
-          </div>
-        </div>
-      </div>
-      <div>
-        <div class="section-label">Tools</div>
-        <div class="tools-grid">
-          <div class="card card-tool" onclick="nav('report')"><div class="tool-icon">🔍</div><div class="tool-label">Research Area</div><div class="tool-sub">Any postcode</div></div>
-          <div class="card card-tool" onclick="nav('library')"><div class="tool-icon">📚</div><div class="tool-label">Library</div><div class="tool-sub">Your docs</div></div>
-          <div class="card card-tool" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music</div><div class="tool-sub">Charts, gigs & more</div></div>
-          <div class="card card-tool" onclick="nav('whatsapp')"><div class="tool-icon">💬</div><div class="tool-label">Ask Miru</div><div class="tool-sub">WhatsApp</div></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-label">Intel</div>
-    <div class="card card-intel" onclick="nav('intel')">
-      <span style="font-size:28px;flex-shrink:0">🏢</span>
-      <div style="flex:1"><div class="intel-title">Company & Brand Intelligence</div><div class="intel-sub">Track companies, brands, market moves</div></div>
-      <span style="font-size:18px;color:var(--muted);margin-left:auto">→</span>
-    </div>
-  `;
+    </div>`;
 }
 
-// ── PERSONALISED STATE ─────────────────────────────────────────
+async function _obSubmit() {
+  const pc  = (document.getElementById('ob-pc').value||'').trim().toUpperCase().replace(/\s/g,'');
+  const ph  = (document.getElementById('ob-ph').value||'').trim().replace(/[\s\-\(\)]/g,'');
+  const err = document.getElementById('ob-err');
+  if (!pc || pc.length < 2) { err.textContent='Enter your postcode.'; err.style.display='block'; return; }
+  err.style.display = 'none';
+  const btn = document.querySelector('.ob-btn'); btn.textContent='Saving…'; btn.disabled=true;
+  try {
+    const ok = await fetch(`https://api.postcodes.io/postcodes/${pc}`);
+    const d  = await ok.json();
+    if (!d.result) { err.textContent='Postcode not found.'; err.style.display='block'; btn.textContent='Get started →'; btn.disabled=false; return; }
+    localStorage.setItem('miru_postcode', pc);
+    let phone = ph;
+    if (/^07\d{9}$/.test(phone)) phone = '+44'+phone.slice(1);
+    if (phone) localStorage.setItem('miru_phone', phone);
+    if (phone) fetch('/api/myarea/home-postcode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from_number:phone,postcode:pc})}).catch(()=>{});
+    location.reload();
+  } catch(e) { err.textContent='Something went wrong.'; err.style.display='block'; btn.textContent='Get started →'; btn.disabled=false; }
+}
+
+// ── PERSONALISED RENDER ───────────────────────────────────────
 function renderPersonalised() {
-  const tod = timeOfDay();
   const wfh = _wfhMode;
+  let html   = '';
 
-  const _briefHeader = (label, sub) => `
-    <div class="brief-header">
+  // Always: weather + trains
+  html += `
+    <div class="slabel">Weather<span class="slabel-more" onclick="nav('weather')">Forecast →</span></div>
+    <div class="wx-hero" onclick="nav('weather')" id="wx-card">
       <div>
-        <div class="brief-title">${label}</div>
-        <div class="brief-date">${_todayFmt}</div>
-        <div class="brief-sub">${sub}</div>
+        <div class="wx-temp-big" id="wx-temp">—</div>
       </div>
-      <button class="wfh-pill${wfh ? ' wfh-active' : ''}" onclick="_toggleWfh()">
-        ${wfh ? '🏠 WFH' : '🏢 Office'}
-      </button>
+      <div class="wx-right">
+        <div class="wx-condition" id="wx-condition">Loading…</div>
+        <div class="wx-feels" id="wx-feels"></div>
+        <div class="wx-badge" id="wx-badge"></div>
+      </div>
+    </div>
+
+    <div class="slabel">Trains<span class="slabel-more" onclick="nav('trains')">All departures →</span></div>
+    <div class="trains-card" onclick="nav('trains')">
+      <div class="train-header" id="train-station">Finding nearest station…</div>
+      <div id="train-rows"><div class="train-row">
+        <div class="train-time"><span class="skel" style="width:52px;height:1.1em"></span></div>
+        <div class="train-dest"><span class="skel" style="width:140px;height:.9em;margin-bottom:4px"></span><span class="skel" style="width:90px;height:.8em"></span></div>
+      </div></div>
     </div>`;
 
-  const _liveGrid = () => `
-    <div class="section-label">Live now</div>
-    <div class="live-grid">
-      <div class="card card-live card-fuel" onclick="nav('fuel')">
-        <div>
-          <div class="lc-label" style="color:#d97706">⛽ Fuel</div>
-          <div class="fuel-row" id="fuel-row">
-            <div style="width:80px"><div class="skel" style="width:60px;margin-bottom:6px"></div><div class="skel" style="width:80px;height:1.8em"></div></div>
-          </div>
-          <div class="lc-sub" id="fuel-sub">Finding nearest station…</div>
-        </div>
-        <span class="lc-badge badge-live" id="fuel-badge">LIVE</span>
-      </div>
-      <div class="card card-live card-trains" onclick="nav('trains')">
-        <div>
-          <div class="lc-label" style="color:#818cf8">🚆 Trains</div>
-          <div class="lc-value" style="color:#a5b4fc" id="train-time"><span class="skel" style="width:90px;height:1.2em;display:block"></span></div>
-          <div class="lc-sub" id="train-dest">Finding nearest station…</div>
-        </div>
-        <span class="lc-badge badge-ok" id="train-badge">—</span>
-      </div>
-      <div class="card card-live card-weather" onclick="nav('weather')">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="wx" id="wx-icon"><div class="wx-part-sun"></div><div class="wx-cloud"></div></div>
-          <div>
-            <div class="lc-label" style="color:#0284c7">☁ Weather</div>
-            <div class="lc-value" style="color:#0ea5e9" id="wx-temp"><span class="skel" style="width:60px;height:1em;display:block"></span></div>
-          </div>
-        </div>
-        <div>
-          <div class="lc-sub" id="wx-desc">Loading…</div>
-          <span class="lc-badge badge-sky" id="wx-badge">—</span>
-        </div>
-      </div>
-    </div>`;
-
-  const _schoolSection = () => `
-    <div class="section-label"><span>🏫 School messages</span><span class="section-more" onclick="nav('saves')">All saves →</span></div>
-    <div id="school-msgs"><div class="school-msg-card" style="opacity:.5">
-      <div class="school-dot"></div>
-      <div><div class="skel" style="width:180px;margin-bottom:6px"></div><div class="skel" style="width:260px;height:.8em"></div></div>
-    </div></div>`;
-
-  const _savesSection = () => `
-    <div class="section-label"><span>📌 My saves</span><span class="section-more" onclick="nav('saves')">See all →</span></div>
-    <div class="saves-strip" id="saves-strip">
-      <div class="save-chip" style="opacity:.4"><span>Loading…</span></div>
-    </div>`;
-
-  const _nearbyTools = () => `
-    <div class="two-col">
-      <div>
-        <div class="section-label"><span>Nearby</span><span class="section-more" onclick="nav('places')">See all →</span></div>
-        <div class="nearby-list" id="nearby-list">
-          <div class="card card-place"><div class="place-icon">🏥</div><div><div class="skel" style="width:120px;margin-bottom:4px"></div><div class="skel" style="width:80px;height:.8em"></div></div></div>
-          <div class="card card-place"><div class="place-icon">💊</div><div><div class="skel" style="width:100px;margin-bottom:4px"></div><div class="skel" style="width:70px;height:.8em"></div></div></div>
-        </div>
-      </div>
-      <div>
-        <div class="section-label">Tools</div>
-        <div class="tools-grid">
-          <div class="card card-tool" onclick="nav('report')"><div class="tool-icon">🔍</div><div class="tool-label">Research Area</div><div class="tool-sub">Any postcode</div></div>
-          <div class="card card-tool" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music</div><div class="tool-sub">Charts & gigs</div></div>
-          <div class="card card-tool" onclick="nav('intel')"><div class="tool-icon">🏢</div><div class="tool-label">Intel</div><div class="tool-sub">Companies</div></div>
-          <div class="card card-tool" onclick="nav('myarea')"><div class="tool-icon">📍</div><div class="tool-label">My Area</div><div class="tool-sub">Full report</div></div>
-        </div>
-      </div>
-    </div>`;
-
-  const _commuteCard = (label) => `
-    <div class="section-label">${label}</div>
-    <div class="commute-card">
-      <div class="commute-label">Next departure</div>
-      <div class="commute-row">
-        <div class="commute-icon">🚆</div>
-        <div class="commute-info">
-          <div class="commute-val" id="train-time"><span class="skel" style="width:80px;height:1em;display:block"></span></div>
-          <div class="commute-sub" id="train-dest">Finding station…</div>
-        </div>
-        <span class="lc-badge badge-ok commute-badge" id="train-badge">—</span>
-      </div>
-      <div class="commute-row">
-        <div class="commute-icon" id="wx-icon-sm">☁</div>
-        <div class="commute-info">
-          <div class="commute-val" id="wx-temp">—</div>
-          <div class="commute-sub" id="wx-desc">Loading weather…</div>
-        </div>
-        <span class="lc-badge badge-sky commute-badge" id="wx-badge">—</span>
-      </div>
-    </div>`;
-
-  let html = '';
-
+  // Morning: fuel + school + saves
   if (tod === 'morning') {
-    html += _briefHeader('Your morning brief', wfh ? 'WFH today · Have a good one' : 'Office day · Safe commute');
-    html += _liveGrid();
-    html += _schoolSection();
-    html += _savesSection();
-    html += _nearbyTools();
-
-  } else if (tod === 'afternoon' && !wfh) {
-    html += _briefHeader('Heading home?', 'Next trains from your station');
-    html += _commuteCard('Train home');
-    html += _schoolSection();
-    html += _savesSection();
-    html += _nearbyTools();
-
-  } else if (tod === 'afternoon' && wfh) {
-    html += _briefHeader('WFH afternoon', 'School run at 3pm · ' + PC_FMT);
     html += `
-      <div class="section-label">School run weather</div>
-      <div class="card card-live card-weather" onclick="nav('weather')" style="min-height:0;padding:18px 22px;display:flex;align-items:center;gap:16px">
-        <div class="wx" id="wx-icon"><div class="wx-part-sun"></div><div class="wx-cloud"></div></div>
-        <div style="flex:1">
-          <div class="lc-label" style="color:#0284c7">3pm forecast</div>
-          <div class="lc-value" style="color:#0ea5e9" id="wx-temp"><span class="skel" style="width:60px;height:1em;display:block"></span></div>
-          <div class="lc-sub" id="wx-desc">Loading…</div>
+      <div class="slabel">Fuel<span class="slabel-more" onclick="nav('fuel')">More stations →</span></div>
+      <div class="fuel-card" onclick="nav('fuel')" id="fuel-card">
+        <div>
+          <div class="fuel-type-label">Petrol</div>
+          <div class="fuel-price fuel-petrol" id="fuel-petrol"><span class="skel" style="width:70px;height:1.1em"></span></div>
+          <div class="fuel-station" id="fuel-station">Finding station…</div>
         </div>
-        <span class="lc-badge badge-sky" id="wx-badge">—</span>
+        <div class="fuel-divider"></div>
+        <div>
+          <div class="fuel-type-label">Diesel</div>
+          <div class="fuel-price fuel-diesel" id="fuel-diesel">—</div>
+        </div>
       </div>`;
-    html += _schoolSection();
-    html += _savesSection();
-    html += _nearbyTools();
-
-  } else {
-    // evening / night
-    html += _briefHeader('Good evening', 'Tomorrow starts early · Rest well');
-    html += _liveGrid();
-    html += _savesSection();
-    html += _nearbyTools();
   }
+
+  // School messages always
+  html += `
+    <div class="slabel">School messages<span class="slabel-more" onclick="nav('saves')">All →</span></div>
+    <div id="school-wrap"></div>`;
+
+  // Saves strip
+  html += `
+    <div class="slabel">My saves<span class="slabel-more" onclick="nav('saves')">All →</span></div>
+    <div class="saves-row" id="saves-row"><div class="save-chip" style="opacity:.4">Loading…</div></div>`;
+
+  // Tools
+  html += `
+    <div class="slabel">Quick links</div>
+    <div class="tool-grid">
+      <div class="tool-card" onclick="nav('myarea')"><div class="tool-icon">📍</div><div class="tool-label">My Area</div><div class="tool-sub">Full local report</div></div>
+      <div class="tool-card" onclick="nav('intel')"><div class="tool-icon">🏢</div><div class="tool-label">Intel</div><div class="tool-sub">Company research</div></div>
+      <div class="tool-card" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music</div><div class="tool-sub">Charts & gigs</div></div>
+      <div class="tool-card" onclick="nav('report')"><div class="tool-icon">🔍</div><div class="tool-label">Research Area</div><div class="tool-sub">Any postcode</div></div>
+    </div>`;
+
+  // Nearby
+  html += `
+    <div class="slabel">Nearby<span class="slabel-more" onclick="nav('places')">See all →</span></div>
+    <div class="nearby-row" id="nearby-row">
+      <div class="nearby-chip" style="opacity:.4"><div class="nearby-chip-icon">📍</div><div class="nearby-chip-name">Loading…</div></div>
+    </div>`;
 
   document.getElementById('content').innerHTML = html;
-  _loadLiveData();
+
+  // Kick off data fetches
+  _fetchWeather();
+  _fetchTrains();
+  if (tod === 'morning') _fetchFuel();
   _fetchSchoolMsgs();
   _fetchSaves();
+  _fetchNearby();
 }
 
-// ── LIVE DATA FETCHES ──────────────────────────────────────────
-function _loadLiveData() {
-  // FUEL
-  if (document.getElementById('fuel-row')) {
-    fetch(`/api/search?postcode=${PC}&fuel=petrol&radius=3&mode=fuel`)
-      .then(r => r.json())
-      .then(data => {
-        const stations = data.stations || data.results || [];
-        if (!stations.length) { _el('fuel-sub','No stations found nearby'); return; }
-        const best = stations[0];
-        const petrolP = best.price ?? best.petrol_price ?? null;
-        const name = best.name || best.brand || 'Station';
-        const dist = best.distance ? best.distance.toFixed(1)+' mi' : '';
-        fetch(`/api/search?postcode=${PC}&fuel=diesel&radius=3&mode=fuel`)
-          .then(r => r.json())
-          .then(d2 => {
-            const s2 = d2.stations || d2.results || [];
-            const dieselP = s2.length ? (s2[0].price ?? s2[0].diesel_price ?? null) : null;
-            const fr = document.getElementById('fuel-row');
-            if (fr) fr.innerHTML = `
-              <div>
-                <div class="fuel-type" style="color:#92400e">Petrol</div>
-                <div class="lc-value" style="color:#f59e0b">${petrolP ? petrolP.toFixed(1)+'p' : '—'}</div>
-              </div>
-              ${dieselP ? `<div class="fuel-divider"></div>
-              <div>
-                <div class="fuel-type" style="color:#92400e">Diesel</div>
-                <div style="font-size:22px;font-weight:900;letter-spacing:-1px;color:#d97706">${dieselP.toFixed(1)}p</div>
-              </div>` : ''}`;
-            _el('fuel-sub', name + (dist ? ' · '+dist : ''));
-            _el('fuel-badge', `LIVE · ${stations.length} stations →`);
-          });
-      })
-      .catch(() => { _el('fuel-sub','Fuel data unavailable'); });
-  }
-
-  // TRAINS
-  if (document.getElementById('train-time')) {
-    fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
-      .then(r => r.json())
-      .then(data => {
-        const crs = data.crs, name = data.name || data.crs;
-        if (!crs) { _el('train-dest','No nearby station'); return; }
-        fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`)
-          .then(r => r.json())
-          .then(deps => {
-            const trains = deps.trains || [];
-            if (!trains.length) { _el('train-time','—'); _el('train-dest', name + ' · No departures'); return; }
-            const next = trains[0];
-            const plat = next.platform ? ' · Plat ' + next.platform : '';
-            _el('train-time', next.scheduled || '—');
-            _el('train-dest', '→ ' + (next.destination||'—') + ' · ' + name + plat);
-            const badge = document.getElementById('train-badge');
-            if (badge) {
-              if (next.cancelled) { badge.textContent='Cancelled'; badge.className='lc-badge badge-late'; }
-              else if (next.expected && next.expected !== 'On time') { badge.textContent=next.expected; badge.className='lc-badge badge-late'; }
-              else { badge.textContent='On time'; badge.className='lc-badge badge-ok'; }
-            }
-          });
-      })
-      .catch(() => { _el('train-time','—'); _el('train-dest','Train data unavailable'); });
-  }
-
-  // WEATHER + NEARBY (postcode lookup for lat/lon)
+// ── DATA: WEATHER ─────────────────────────────────────────────
+function _fetchWeather() {
   fetch(`https://api.postcodes.io/postcodes/${PC}`)
     .then(r => r.json())
-    .then(pc => {
-      const res = pc.result || {};
+    .then(d => {
+      const res = d.result||{};
       const lat = res.latitude, lon = res.longitude;
-      if (!lat || !lon) return;
-
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`)
-        .then(r => r.json())
-        .then(wx => {
-          const cur  = wx.current || {};
-          const temp = Math.round(cur.temperature_2m ?? 0);
-          const feel = Math.round(cur.apparent_temperature ?? temp);
-          const code = cur.weather_code ?? 0;
-          const h    = new Date().getHours();
-          _el('wx-temp', temp + '°C');
-          _el('wx-desc', (WX_CODES[code]||'Clear') + ' · Feels like ' + feel + '°');
-          _el('wx-badge', feel < 5 ? '🧥 Very cold' : feel < 12 ? '🧥 Wrap up' : feel > 25 ? '☀ Warm day' : 'Comfortable');
-          const wi = document.getElementById('wx-icon');
-          if (wi) wi.innerHTML = wxIcon(code, h);
-          const ws = document.getElementById('wx-icon-sm');
-          if (ws) ws.textContent = feel < 10 ? '🧥' : code >= 61 ? '🌧' : code >= 45 ? '🌫' : '☀️';
-        })
-        .catch(() => { _el('wx-temp','—'); _el('wx-desc','Weather unavailable'); });
-
-      const _nearbyTimeout = new Promise(r => setTimeout(() => r(null), 12000));
-      Promise.race([fetch(`/api/your-area?postcode=${PC}`).then(r => r.json()), _nearbyTimeout])
-        .then(area => {
-          const el = document.getElementById('nearby-list');
-          if (!el) return;
-          if (!area || area.error) { el.innerHTML = _nearbyFallback(); return; }
-          const places = [];
-          if (area.gps?.length)          places.push({icon:'🏥', name:area.gps[0].name,         dist:area.gps[0].distance_km});
-          if (area.pharmacies?.length)   places.push({icon:'💊', name:area.pharmacies[0].name,   dist:area.pharmacies[0].distance_km});
-          if (area.post_offices?.length) places.push({icon:'📮', name:area.post_offices[0].name, dist:area.post_offices[0].distance_km});
-          el.innerHTML = places.length
-            ? places.map(p => `<div class="card card-place"><div class="place-icon">${p.icon}</div><div><div class="place-name">${p.name}</div><div class="place-dist">${p.dist ? (+p.dist*0.621).toFixed(1)+' mi' : 'nearby'}</div></div><span class="place-arrow">→</span></div>`).join('')
-            : _nearbyFallback();
-        })
-        .catch(() => { const el=document.getElementById('nearby-list'); if(el) el.innerHTML=_nearbyFallback(); });
+      if (!lat) return;
+      return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`);
     })
-    .catch(() => { _el('wx-desc','Weather unavailable'); });
+    .then(r => r && r.json())
+    .then(wx => {
+      if (!wx) return;
+      const cur  = wx.current||{};
+      const temp = Math.round(cur.temperature_2m??0);
+      const feel = Math.round(cur.apparent_temperature??temp);
+      const code = cur.weather_code??0;
+      _el('wx-temp',      temp+'°');
+      _el('wx-condition', WX_CODES[code]||'Clear');
+      _el('wx-feels',     'Feels like '+feel+'°');
+      _el('wx-badge',     feel < 5 ? '🧥 Very cold' : feel < 10 ? '🧥 Wrap up' : feel < 18 ? '🌤 Mild' : feel > 25 ? '☀ Warm' : '👍 Comfortable');
+    })
+    .catch(()=>{ _el('wx-condition','Weather unavailable'); });
 }
 
-function _el(id, text) { const e = document.getElementById(id); if (e) e.textContent = text; }
-function _nearbyFallback() {
-  return `<div class="card card-place" onclick="nav('myarea')" style="opacity:.7"><div class="place-icon">📍</div><div><div class="place-name">Explore nearby places</div><div class="place-dist">GPs, pharmacies & more</div></div><span class="place-arrow">→</span></div>`;
-}
-
-// ── SCHOOL MESSAGES ────────────────────────────────────────────
-function _fetchSchoolMsgs() {
-  const el = document.getElementById('school-msgs');
+// ── DATA: TRAINS (show 2) ─────────────────────────────────────
+function _fetchTrains() {
+  const el = document.getElementById('train-rows');
+  const stnEl = document.getElementById('train-station');
   if (!el) return;
-  const phone = PHONE || localStorage.getItem('miru_phone') || '';
-  if (!phone) { el.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:4px 0">Link your WhatsApp to see school messages.</div>'; return; }
+
+  fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
+    .then(r => r.json())
+    .then(data => {
+      const crs  = data.crs;
+      const name = data.name || crs;
+      if (!crs) { if(stnEl) stnEl.textContent='No nearby station found'; el.innerHTML=''; return; }
+      if (stnEl) stnEl.textContent = '🚆 ' + name;
+
+      return fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
+    })
+    .then(r => r && r.json())
+    .then(deps => {
+      if (!deps || !el) return;
+      const trains = deps.trains || [];
+      if (!trains.length) { el.innerHTML = '<div class="train-row"><div style="font-size:13px;color:var(--muted);padding:4px 0">No departures found</div></div>'; return; }
+
+      // Show next 2 trains
+      el.innerHTML = trains.slice(0,2).map(t => {
+        const late      = t.expected && t.expected !== 'On time' && !t.cancelled;
+        const badgeCls  = t.cancelled ? 'tb-late' : late ? 'tb-late' : 'tb-ok';
+        const badgeTxt  = t.cancelled ? 'Cancelled' : late ? t.expected : 'On time';
+        const plat      = t.platform ? ' · Plat '+t.platform : '';
+        return `<div class="train-row">
+          <div class="train-time">${t.scheduled||'—'}</div>
+          <div class="train-dest"><strong>${t.destination||'—'}</strong>${plat}</div>
+          <span class="train-badge ${badgeCls}">${badgeTxt}</span>
+        </div>`;
+      }).join('');
+    })
+    .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:13px;color:var(--muted)">Train data unavailable</div>'; });
+}
+
+// ── DATA: FUEL ────────────────────────────────────────────────
+function _fetchFuel() {
+  if (!document.getElementById('fuel-petrol')) return;
+  fetch(`/api/search?postcode=${PC}&fuel=petrol&radius=3&mode=fuel`)
+    .then(r => r.json())
+    .then(d => {
+      const stations = d.stations||d.results||[];
+      if (!stations.length) { _el('fuel-station','No stations found'); return; }
+      const best = stations[0];
+      const pp   = best.price ?? best.petrol_price ?? null;
+      const name = best.name||best.brand||'Station';
+      const dist = best.distance ? best.distance.toFixed(1)+' mi' : '';
+      _el('fuel-petrol', pp ? pp.toFixed(1)+'p' : '—');
+      _el('fuel-station', name + (dist ? ' · '+dist : ''));
+      return fetch(`/api/search?postcode=${PC}&fuel=diesel&radius=3&mode=fuel`);
+    })
+    .then(r => r && r.json())
+    .then(d => {
+      if (!d) return;
+      const s = d.stations||d.results||[];
+      const dp = s.length ? (s[0].price ?? s[0].diesel_price ?? null) : null;
+      _el('fuel-diesel', dp ? dp.toFixed(1)+'p' : '—');
+    })
+    .catch(()=>{ _el('fuel-station','Fuel data unavailable'); });
+}
+
+// ── DATA: SCHOOL MESSAGES ─────────────────────────────────────
+function _fetchSchoolMsgs() {
+  const el = document.getElementById('school-wrap');
+  if (!el) return;
   fetch(`/api/school/poll?token=miru-digest-2026&days_back=7`)
     .then(r => r.json())
     .then(data => {
       const msgs = data.events || data.messages || [];
       if (!msgs.length) {
-        el.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:4px 0">No new school messages.</div>';
+        el.innerHTML = '<div style="padding:0 20px 4px;font-size:13px;color:var(--muted)">No new school messages.</div>';
         return;
       }
       el.innerHTML = msgs.slice(0,3).map(m => {
-        const urgent = /urgent|cancelled|closure|emergency/i.test(m.title||m.subject||'');
-        return `<div class="school-msg-card">
-          <div class="school-dot${urgent?' urgent':''}"></div>
-          <div style="flex:1">
-            <div class="school-msg-title">${_esc(m.title || m.subject || 'School update')}</div>
-            <div class="school-msg-body">${_esc((m.summary || m.body || '').slice(0,120))}${(m.summary||m.body||'').length>120?'…':''}</div>
-            <div class="school-msg-meta">${_esc(m.school_name||'')} · ${m.date ? new Date(m.date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) : ''}</div>
+        const urgent = /urgent|cancel|closure|emergency/i.test(m.title||m.subject||'');
+        return `<div class="school-card">
+          <div class="school-dot${urgent?' u':''}"></div>
+          <div>
+            <div class="school-title">${_esc(m.title||m.subject||'School update')}</div>
+            <div class="school-body">${_esc((m.summary||m.body||'').slice(0,120))}${(m.summary||m.body||'').length>120?'…':''}</div>
+            <div class="school-meta">${_esc(m.school_name||'')}${m.date?' · '+new Date(m.date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}):''}</div>
           </div>
         </div>`;
       }).join('');
     })
-    .catch(() => { el.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:4px 0">School messages unavailable.</div>'; });
+    .catch(()=>{ el.innerHTML='<div style="padding:0 20px;font-size:13px;color:var(--muted)">School messages unavailable.</div>'; });
 }
 
-// ── MY SAVES STRIP ─────────────────────────────────────────────
+// ── DATA: SAVES ───────────────────────────────────────────────
 function _fetchSaves() {
-  const el = document.getElementById('saves-strip');
+  const el = document.getElementById('saves-row');
   if (!el) return;
-  const phone = PHONE || localStorage.getItem('miru_phone') || '';
-  if (!phone) { el.innerHTML = '<div class="save-chip" style="opacity:.4">Link WhatsApp to see saves</div>'; return; }
+  const phone = PHONE;
+  if (!phone) { el.innerHTML='<div class="save-chip" style="opacity:.4">Link WhatsApp to see saves</div>'; return; }
   fetch(`/api/wa/saves?from_number=${encodeURIComponent(phone)}&limit=10`)
     .then(r => r.json())
     .then(data => {
-      const saves = data.saves || [];
-      if (!saves.length) { el.innerHTML = '<div class="save-chip" style="opacity:.4">No saves yet — try WhatsApp</div>'; return; }
-      const typeIcon = t => ({fuel:'⛽',train:'🚆',place:'📍',music:'🎵',note:'📝',intel:'🏢',food:'🍽'}[t] || '📌');
-      el.innerHTML = saves.slice(0,8).map(s => `
-        <div class="save-chip" onclick="nav('saves')">
-          <span>${typeIcon(s.save_type)}</span>
-          <span>${_esc((s.title||s.label||'Save').slice(0,28))}</span>
-        </div>`).join('');
+      const saves = data.saves||[];
+      if (!saves.length) { el.innerHTML='<div class="save-chip" style="opacity:.4">No saves yet</div>'; return; }
+      const icon = t => ({fuel:'⛽',train:'🚆',place:'📍',music:'🎵',note:'📝',intel:'🏢',food:'🍽'}[t]||'📌');
+      el.innerHTML = saves.slice(0,8).map(s =>
+        `<div class="save-chip" onclick="nav('saves')">${icon(s.save_type)} ${_esc((s.title||s.label||'Save').slice(0,28))}</div>`
+      ).join('');
     })
-    .catch(() => { el.innerHTML = '<div class="save-chip" style="opacity:.4">Saves unavailable</div>'; });
+    .catch(()=>{ el.innerHTML='<div class="save-chip" style="opacity:.4">Saves unavailable</div>'; });
 }
 
-function _esc(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ── DATA: NEARBY ──────────────────────────────────────────────
+function _fetchNearby() {
+  const el = document.getElementById('nearby-row');
+  if (!el) return;
+  const timeout = new Promise(r => setTimeout(()=>r(null), 10000));
+  Promise.race([fetch(`/api/your-area?postcode=${PC}`).then(r=>r.json()), timeout])
+    .then(area => {
+      if (!area||area.error) { el.innerHTML='<div class="nearby-chip" onclick="nav(\'myarea\')" style="opacity:.6"><div class="nearby-chip-icon">📍</div><div class="nearby-chip-name">Explore nearby</div></div>'; return; }
+      const places = [];
+      if (area.gps?.length)          places.push({icon:'🏥', name:area.gps[0].name,         dist:area.gps[0].distance_km});
+      if (area.pharmacies?.length)   places.push({icon:'💊', name:area.pharmacies[0].name,   dist:area.pharmacies[0].distance_km});
+      if (area.post_offices?.length) places.push({icon:'📮', name:area.post_offices[0].name, dist:area.post_offices[0].distance_km});
+      if (area.pubs?.length)         places.push({icon:'🍺', name:area.pubs[0].name,         dist:area.pubs[0].distance_km});
+      el.innerHTML = places.map(p =>
+        `<div class="nearby-chip" onclick="nav('places')">
+          <div class="nearby-chip-icon">${p.icon}</div>
+          <div class="nearby-chip-name">${_esc(p.name)}</div>
+          <div class="nearby-chip-dist">${p.dist?(+p.dist*0.621).toFixed(1)+' mi':'nearby'}</div>
+        </div>`
+      ).join('') || '<div class="nearby-chip" onclick="nav(\'myarea\')" style="opacity:.6"><div class="nearby-chip-icon">📍</div><div class="nearby-chip-name">Explore nearby</div></div>';
+    })
+    .catch(()=>{});
 }
 
-// ── ONBOARDING SUBMIT ──────────────────────────────────────────
-async function _obSubmit() {
-  const pcRaw = (document.getElementById('ob-postcode').value || '').trim().toUpperCase().replace(/\s+/g,'');
-  const ph    = (document.getElementById('ob-phone').value || '').trim().replace(/[\s\-\(\)]/g,'');
-  const errEl = document.getElementById('ob-error');
+// ── HELPERS ───────────────────────────────────────────────────
+function _el(id, text) { const e = document.getElementById(id); if (e) e.textContent = text; }
+function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  if (!pcRaw || pcRaw.length < 2) {
-    errEl.textContent = 'Please enter your postcode.'; errEl.style.display = 'block'; return;
-  }
-
-  // Validate postcode via postcodes.io
-  errEl.style.display = 'none';
-  const btn = document.querySelector('[onclick="_obSubmit()"]');
-  btn.textContent = 'Saving…'; btn.disabled = true;
-
-  try {
-    const pcCheck = await fetch(`https://api.postcodes.io/postcodes/${pcRaw}`);
-    const pcData  = await pcCheck.json();
-    if (!pcData.result) {
-      errEl.textContent = 'Postcode not found — double check it.'; errEl.style.display = 'block';
-      btn.textContent = 'Get started →'; btn.disabled = false; return;
-    }
-
-    // Save postcode
-    localStorage.setItem('miru_postcode', pcRaw);
-
-    // Save phone
-    let phone = ph;
-    if (phone) {
-      if (/^07\d{9}$/.test(phone)) phone = '+44' + phone.slice(1);
-      localStorage.setItem('miru_phone', phone);
-    }
-
-    // Sync postcode to backend
-    const fromNum = phone || localStorage.getItem('miru_phone') || '';
-    if (fromNum) {
-      fetch('/api/myarea/home-postcode', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({from_number: fromNum, postcode: pcRaw})
-      }).catch(() => {});
-    }
-
-    // Re-render with live data
-    location.reload();
-  } catch(e) {
-    errEl.textContent = 'Something went wrong — try again.'; errEl.style.display = 'block';
-    btn.textContent = 'Get started →'; btn.disabled = false;
-  }
-}
-
-// ── PILL ───────────────────────────────────────────────────────
-let _pillOpen = false;
-function _pillTap(e) { if (!_pillOpen) _pillExpand(); }
-function _pillExpand() {
-  _pillOpen = true;
-  document.getElementById('pill-shell').classList.add('expanded');
-  document.getElementById('pill-overlay').classList.add('show');
-}
-function _pillCollapse() {
-  _pillOpen = false;
-  document.getElementById('pill-shell').classList.remove('expanded');
-  document.getElementById('pill-overlay').classList.remove('show');
-}
-function _pillNav(name) {
-  _pillCollapse();
-  const labels = {home:'Home',myarea:'My Area',intel:'Intel',saves:'Saves'};
-  const icons  = {home:'🏠',myarea:'📍',intel:'🔍',saves:'📌'};
-  ['home','myarea','intel','saves'].forEach(k => document.getElementById('pi-'+k)?.classList.toggle('pi-active',k===name));
-  document.getElementById('pill-icon').textContent  = icons[name]  || '🏠';
-  document.getElementById('pill-label').textContent = labels[name] || name;
-  if (name !== 'home') nav(name);
-}
-
-// ── NAV / TOAST ────────────────────────────────────────────────
-// map home_v2 names → real screen IDs in index.html
-const _screenMap = {
-  intel: 'company', fuel: 'fuel', trains: 'trains',
-  myarea: 'myarea', places: 'places', report: 'report',
-  library: 'scan', music: 'music', saves: 'saves', whatsapp: 'home'
-};
+// ── NAV ───────────────────────────────────────────────────────
+const _screenMap = { intel:'company', fuel:'fuel', trains:'trains', myarea:'myarea', places:'places', report:'report', music:'music', saves:'saves', weather:'myarea', whatsapp:'home' };
 function nav(screen) {
   if (screen === 'home') return;
   const target = _screenMap[screen] || screen;
-  // Pass postcode for screens that need it
-  const _pcParam = PC ? '&pc=' + encodeURIComponent(PC) : '';
-  const _usesPc = ['trains','fuel','myarea','report'].includes(target);
-  window.location.href = '/?screen=' + target + (_usesPc ? _pcParam : '');
+  const pcParam = PC ? '&pc='+encodeURIComponent(PC) : '';
+  const usesPc  = ['trains','fuel','myarea','report'].includes(target);
+  window.location.href = '/?screen='+target+(usesPc ? pcParam : '');
 }
 
-// ── VOICE ASSISTANT ────────────────────────────────────────────
-var _voiceRec  = null;
-var _voiceSyn  = window.speechSynthesis || null;
-var _voiceBusy = false;
-
-function _voiceOpen() {
-  document.getElementById('voice-overlay').classList.add('show');
-  _voiceSetState('idle');
-}
-function _voiceClose() {
-  document.getElementById('voice-overlay').classList.remove('show');
-  if (_voiceRec) { try { _voiceRec.abort(); } catch(e) {} _voiceRec = null; }
-  if (_voiceSyn) _voiceSyn.cancel();
-  _voiceBusy = false;
-}
-function _voiceOverlayTap(e) {
-  if (e.target === document.getElementById('voice-overlay')) _voiceClose();
+// ── PILL NAV ──────────────────────────────────────────────────
+let _pillOpen = false;
+function _pillTap(e) { if (!_pillOpen) _pillExpand(); }
+function _pillExpand() { _pillOpen=true; document.getElementById('pill-shell').classList.add('expanded'); document.getElementById('pill-overlay').classList.add('show'); }
+function _pillCollapse() { _pillOpen=false; document.getElementById('pill-shell').classList.remove('expanded'); document.getElementById('pill-overlay').classList.remove('show'); }
+function _pillNav(name) {
+  _pillCollapse();
+  const labels={home:'Home',myarea:'My Area',intel:'Intel',saves:'Saves'}, icons={home:'🏠',myarea:'📍',intel:'🔍',saves:'📌'};
+  ['home','myarea','intel','saves'].forEach(k=>document.getElementById('pi-'+k)?.classList.toggle('pi-active',k===name));
+  document.getElementById('pill-icon').textContent  = icons[name]||'🏠';
+  document.getElementById('pill-label').textContent = labels[name]||name;
+  if (name !== 'home') nav(name);
 }
 
-function _voiceSetState(state, extra) {
-  var orb    = document.getElementById('voice-orb');
-  var status = document.getElementById('voice-status');
-  var trans  = document.getElementById('voice-transcript');
-  var ans    = document.getElementById('voice-answer');
-  var btn    = document.getElementById('voice-mic-btn');
-
-  orb.classList.remove('listening');
-  ans.style.display = 'none';
-
-  if (state === 'idle') {
-    orb.textContent = '🎤';
-    status.textContent = 'Tap the mic to ask anything';
-    trans.textContent  = 'e.g. "When is my next train from Longcross to Reading?"';
-    btn.textContent = '🎤 Ask'; btn.disabled = false;
-  } else if (state === 'listening') {
-    orb.textContent = '🎤'; orb.classList.add('listening');
-    status.textContent = 'Listening…';
-    trans.textContent  = '';
-    btn.textContent = '⏹ Stop'; btn.disabled = false;
-  } else if (state === 'thinking') {
-    orb.textContent = '⏳';
-    status.textContent = 'Thinking…';
-    trans.textContent  = extra || '';
-    btn.textContent = '🎤 Ask'; btn.disabled = true;
-  } else if (state === 'answer') {
-    orb.textContent = '✅';
-    status.textContent = 'Here you go';
-    trans.textContent  = extra.query || '';
-    ans.textContent    = extra.answer || '';
-    ans.style.display  = 'block';
-    btn.textContent = '🎤 Ask again'; btn.disabled = false;
-  } else if (state === 'error') {
-    orb.textContent = '❌';
-    status.textContent = 'Something went wrong';
-    trans.textContent  = extra || '';
-    btn.textContent = '🎤 Try again'; btn.disabled = false;
-  }
+// ── VOICE ─────────────────────────────────────────────────────
+var _vRec=null, _vSyn=window.speechSynthesis||null, _vBusy=false;
+function _voiceOpen() { document.getElementById('voice-overlay').classList.add('show'); _vState('idle'); }
+function _voiceClose() { document.getElementById('voice-overlay').classList.remove('show'); if(_vRec){try{_vRec.abort()}catch(e){} _vRec=null;} if(_vSyn)_vSyn.cancel(); _vBusy=false; }
+function _voiceOverlayTap(e) { if(e.target===document.getElementById('voice-overlay'))_voiceClose(); }
+function _vState(s,x){
+  var orb=document.getElementById('voice-orb'),st=document.getElementById('voice-status'),tr=document.getElementById('voice-transcript'),an=document.getElementById('voice-answer'),btn=document.getElementById('voice-mic-btn');
+  orb.classList.remove('listening'); an.style.display='none';
+  if(s==='idle'){orb.textContent='🎤';st.textContent='Tap to ask anything';tr.textContent='e.g. "Next train from Longcross?"';btn.textContent='🎤 Ask';btn.disabled=false;}
+  else if(s==='listening'){orb.textContent='🎤';orb.classList.add('listening');st.textContent='Listening…';tr.textContent='';btn.textContent='⏹ Stop';btn.disabled=false;}
+  else if(s==='thinking'){orb.textContent='⏳';st.textContent='Thinking…';tr.textContent=x||'';btn.textContent='🎤 Ask';btn.disabled=true;}
+  else if(s==='answer'){orb.textContent='✅';st.textContent='Here you go';tr.textContent=x.q||'';an.textContent=x.a||'';an.style.display='block';btn.textContent='🎤 Ask again';btn.disabled=false;}
+  else if(s==='error'){orb.textContent='❌';st.textContent='Something went wrong';tr.textContent=x||'';btn.textContent='🎤 Try again';btn.disabled=false;}
 }
-
-function _voiceListen() {
-  if (_voiceBusy) { if (_voiceRec) { try { _voiceRec.stop(); } catch(e) {} } return; }
-
-  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRec) {
-    _voiceSetState('error', 'Your browser doesn\'t support voice input. Try Chrome or Safari.');
-    return;
-  }
-
-  _voiceBusy = true;
-  _voiceSetState('listening');
-
-  var rec = new SpeechRec();
-  _voiceRec = rec;
-  rec.lang = 'en-GB';
-  rec.interimResults = true;
-  rec.maxAlternatives = 1;
-
-  rec.onresult = function(e) {
-    var transcript = e.results[0][0].transcript;
-    var isFinal    = e.results[0].isFinal;
-    document.getElementById('voice-transcript').textContent = transcript;
-    if (isFinal) { rec.stop(); _voiceSubmit(transcript); }
-  };
-  rec.onerror = function(e) {
-    _voiceBusy = false;
-    if (e.error === 'no-speech') _voiceSetState('idle');
-    else _voiceSetState('error', 'Mic error: ' + e.error);
-  };
-  rec.onend = function() { _voiceBusy = false; };
+function _voiceListen(){
+  if(_vBusy){if(_vRec){try{_vRec.stop()}catch(e){}} return;}
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){_vState('error','Voice not supported — try Chrome');return;}
+  _vBusy=true; _vState('listening');
+  var rec=new SR(); _vRec=rec; rec.lang='en-GB'; rec.interimResults=true; rec.maxAlternatives=1;
+  rec.onresult=function(e){var t=e.results[0][0].transcript; document.getElementById('voice-transcript').textContent=t; if(e.results[0].isFinal){rec.stop();_vSubmit(t);}};
+  rec.onerror=function(e){_vBusy=false;if(e.error==='no-speech')_vState('idle');else _vState('error','Mic error: '+e.error);};
+  rec.onend=function(){_vBusy=false;};
   rec.start();
 }
-
-async function _voiceSubmit(query) {
-  _voiceSetState('thinking', '"' + query + '"');
-  try {
-    var r = await fetch('/api/voice-query', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ query: query, postcode: PC, phone: PHONE })
-    });
-    var d = await r.json();
-    if (d.error) { _voiceSetState('error', d.error); return; }
-    _voiceSetState('answer', { query: '"' + query + '"', answer: d.answer });
-    if (_voiceSyn && d.answer) {
-      _voiceSyn.cancel();
-      var utt = new SpeechSynthesisUtterance(d.answer);
-      utt.lang  = 'en-GB';
-      utt.rate  = 0.95;
-      utt.pitch = 1;
-      _voiceSyn.speak(utt);
-    }
-  } catch(e) {
-    _voiceSetState('error', 'Network error — check your connection.');
-  }
+async function _vSubmit(q){
+  _vState('thinking','"'+q+'"');
+  try{
+    var r=await fetch('/api/voice-query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,postcode:PC,phone:PHONE})});
+    var d=await r.json();
+    if(d.error){_vState('error',d.error);return;}
+    _vState('answer',{q:'"'+q+'"',a:d.answer});
+    if(_vSyn&&d.answer){_vSyn.cancel();var u=new SpeechSynthesisUtterance(d.answer);u.lang='en-GB';u.rate=0.95;_vSyn.speak(u);}
+  }catch(e){_vState('error','Network error');}
 }
 
-// ── NAV / TOAST ────────────────────────────────────────────────
 let _tt;
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
-  clearTimeout(_tt);
-  _tt = setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 1400);
-}
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';clearTimeout(_tt);_tt=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(10px)';},1400);}
 </script>
 </body>
 </html>
