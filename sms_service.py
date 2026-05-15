@@ -4206,7 +4206,7 @@ def api_your_area():
             "pharmacies":   pharmacies,
             "post_offices": post_offices,
         }
-        if any([gps, pharmacies, post_offices]):
+        if council_name and any([gps, pharmacies, post_offices]):
             _your_area_cache[cache_key] = {"data": result, "ts": time.time()}
         return jsonify(result)
     except Exception as e:
