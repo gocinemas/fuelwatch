@@ -13383,7 +13383,9 @@ _bkBadge();
     var saved = _musicGetSaved();
     if (!saved.find(function(s){ return s.title===_musicResult.title && s.artist===_musicResult.artist; })) {
       saved.unshift({ title:_musicResult.title, artist:_musicResult.artist, cover:_musicResult.cover,
-                      spotify:_musicResult.spotify, url:_musicResult.url, saved:new Date().toISOString().slice(0,10) });
+                      spotify:_musicResult.spotify, url:_musicResult.url,
+                      preview_url: _musicResult.previewUrl || '',
+                      saved:new Date().toISOString().slice(0,10) });
       _musicSetSaved(saved);
     }
     if (msgEl) msgEl.style.display = 'block';
@@ -13483,8 +13485,19 @@ _bkBadge();
       audio.src = _musicResult.previewUrl;
       _miniSyncBtn(true);
     } else {
+      // Old localStorage saves didn't store previewUrl — look it up from iTunes
       audio.src = '';
+      var playBtn = document.getElementById('music-play-btn');
+      if (playBtn) { playBtn.textContent = '⏳ Loading…'; playBtn.disabled = true; }
+      try {
+        var ir = await fetch('https://itunes.apple.com/search?term='+encodeURIComponent(_musicResult.title+' '+_musicResult.artist)+'&entity=song&limit=1&country=gb');
+        var id = await ir.json();
+        var pu = (id.results && id.results[0] && id.results[0].previewUrl) || '';
+        if (pu) { _musicResult.previewUrl = pu; audio.src = pu; }
+      } catch(e) {}
+      if (playBtn) { playBtn.textContent = audio.src ? '▶ Play Preview' : '▶ No preview'; playBtn.disabled = !audio.src; }
     }
+    _miniSyncBtn(true);
     _miniShow(_musicResult);
 
     // Fetch lyrics
