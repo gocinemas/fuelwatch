@@ -12660,6 +12660,15 @@ _bkBadge();
       <div id="music-saved-msg" style="display:none;font-size:12px;color:#7c3aed;margin-top:10px;font-weight:600;text-align:center">✓ Saved to your list</div>
     </div>
 
+    <!-- This week's playlist -->
+    <div id="music-weekly-section" style="display:none;margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">🎶 This Week's Playlist</div>
+        <button onclick="musicPlayWeekly(0)" style="padding:5px 14px;border:none;border-radius:99px;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;cursor:pointer">▶ Play All</button>
+      </div>
+      <div id="music-weekly-list"></div>
+    </div>
+
     <!-- Saved songs -->
     <div id="music-saved-section" style="margin-top:20px">
       <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">💾 Saved Songs</div>
@@ -12706,6 +12715,9 @@ _bkBadge();
   var _musicResult = null;
   var _musicSearchResults = [];
   var _musicCurrentTab = 'identify';
+  var _musicSavedSongs = [];
+  var _musicPlaylist = [];
+  var _musicPlaylistIdx = -1;
   var _chartsCache = {};
   window._chartsCache = _chartsCache;
   Object.defineProperty(window, '_musicCurrentTab', { get: function(){ return _musicCurrentTab; } });
@@ -13278,22 +13290,143 @@ _bkBadge();
   };
 
   function _musicRenderSongs(songs, isRemote) {
+    _musicSavedSongs = songs;
     var el = document.getElementById('music-saved-list');
-    if (!songs.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">No saved songs yet</div>'; return; }
+    if (!songs.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">No saved songs yet</div>'; _musicRenderWeekly([]); return; }
     el.innerHTML = songs.map(function(s, i) {
-      var playUrl = s.spotify || s.url || '';
-      var delArg  = isRemote ? ("'"+s.id+"'") : i;
+      var delArg = isRemote ? ("'"+s.id+"'") : i;
       return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
         +(s.cover?'<img src="'+s.cover+'" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0">':'<div style="width:40px;height:40px;border-radius:8px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🎵</div>')
         +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.title+'</div>'
         +'<div style="font-size:12px;color:var(--muted)">'+s.artist+'</div>'
         +'</div>'
-        +(playUrl?'<a href="'+playUrl+'" target="_blank" rel="noopener" style="font-size:18px;text-decoration:none;flex-shrink:0">▶</a>':'')
+        +'<button onclick="musicPlaySaved('+i+')" style="border:none;background:none;font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0;color:#7c3aed" title="Play & show lyrics">▶</button>'
         +'<button onclick="musicDeleteSaved('+delArg+','+isRemote+')" style="border:none;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0">✕</button>'
         +'</div>';
     }).join('');
+    _musicRenderWeekly(songs);
   }
+
+  function _musicRenderWeekly(songs) {
+    var sec = document.getElementById('music-weekly-section');
+    if (!sec) return;
+    var weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+    var thisWeek = songs.filter(function(s) {
+      var d = s.created_at || s.saved || '';
+      return d && new Date(d) >= weekAgo;
+    });
+    if (!thisWeek.length) { sec.style.display = 'none'; return; }
+    sec.style.display = '';
+    var list = document.getElementById('music-weekly-list');
+    list.innerHTML = thisWeek.map(function(s, i) {
+      // find index in full songs array for playback
+      var fullIdx = _musicSavedSongs.indexOf(s);
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);width:16px;text-align:right;flex-shrink:0">'+(i+1)+'</div>'
+        +(s.cover?'<img src="'+s.cover+'" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0">':'<div style="width:32px;height:32px;border-radius:6px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🎵</div>')
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:12px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.title+'</div>'
+        +'<div style="font-size:11px;color:var(--muted)">'+s.artist+'</div>'
+        +'</div>'
+        +'<button onclick="musicPlayWeekly('+i+')" style="border:none;background:none;font-size:15px;cursor:pointer;padding:0 4px;flex-shrink:0;color:#7c3aed">▶</button>'
+        +'</div>';
+    }).join('');
+    // Store playlist for sequential play
+    window._weeklyPlaylistSongs = thisWeek;
+  }
+
+  window.musicPlayWeekly = function(idx) {
+    var songs = window._weeklyPlaylistSongs || [];
+    if (!songs[idx]) return;
+    // find idx in full saved list and play
+    var fullIdx = _musicSavedSongs.indexOf(songs[idx]);
+    _musicPlaylist = songs;
+    _musicPlaylistIdx = idx;
+    if (fullIdx >= 0) musicPlaySaved(fullIdx, true);
+    else _musicPlayFromData(songs[idx], true);
+  };
+
+  window.musicPlaySaved = async function(idx, fromPlaylist) {
+    var s = _musicSavedSongs[idx];
+    if (!s) return;
+    _musicPlayFromData(s, fromPlaylist);
+  };
+
+  window._musicPlayFromData = async function(s, fromPlaylist) {
+    // Switch to identify tab so result card is visible
+    musicTab('identify', document.getElementById('mtab-identify'));
+    _musicResult = {
+      title:      s.title || '',
+      artist:     s.artist || '',
+      cover:      s.cover || s.cover_url || '',
+      album:      s.album || '',
+      year:       s.year || '',
+      genre:      s.genre || '',
+      spotify:    s.spotify || s.spotify_url || ('https://open.spotify.com/search/'+encodeURIComponent((s.title||'')+' '+(s.artist||''))),
+      url:        s.url || '',
+      previewUrl: s.preview_url || s.previewUrl || '',
+    };
+    document.getElementById('music-cover').src = _musicResult.cover;
+    document.getElementById('music-title').textContent  = _musicResult.title;
+    document.getElementById('music-artist').textContent = _musicResult.artist;
+    var metaParts = [_musicResult.album, _musicResult.year, _musicResult.genre].filter(Boolean);
+    var metaEl = document.getElementById('music-meta');
+    if (metaEl) metaEl.textContent = metaParts.join(' · ');
+    document.getElementById('music-spotify-link').href = _musicResult.spotify;
+    document.getElementById('music-saved-msg').style.display = 'none';
+    var lyricsEl = document.getElementById('music-lyrics');
+    lyricsEl.style.display = 'none'; lyricsEl.innerHTML = '<div style="color:var(--muted);font-size:12px">Loading lyrics…</div>';
+    document.getElementById('music-result').style.display = 'block';
+    document.getElementById('music-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    var audio = document.getElementById('music-preview-audio');
+    if (_musicResult.previewUrl) {
+      audio.src = _musicResult.previewUrl;
+      audio.play().catch(function(){});
+    } else {
+      audio.src = '';
+    }
+    _miniShow(_musicResult);
+
+    // If playing as part of a playlist, auto-advance when preview ends
+    if (fromPlaylist) {
+      audio.onended = function() {
+        var next = _musicPlaylistIdx + 1;
+        if (next < _musicPlaylist.length) {
+          _musicPlaylistIdx = next;
+          _musicPlayFromData(_musicPlaylist[next], true);
+        } else {
+          _musicPlaylistIdx = -1;
+          audio.onended = null;
+        }
+      };
+    } else {
+      audio.onended = null;
+    }
+
+    // Fetch lyrics
+    lyricsEl.style.display = 'block';
+    try {
+      var lr = await fetch('https://api.lyrics.ovh/v1/'+encodeURIComponent(_musicResult.artist)+'/'+encodeURIComponent(_musicResult.title));
+      var ld = await lr.json();
+      if (ld.lyrics) {
+        var allLines = ld.lyrics.trim().split('\n').filter(function(l){ return l.trim(); });
+        if (allLines.length) {
+          var first6 = allLines.slice(0,6).join('\n');
+          var rest   = allLines.slice(6).join('\n');
+          var esc = function(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+          var html = '<div style="white-space:pre-line">'+esc(first6)+'</div>';
+          if (rest) {
+            html += '<div id="music-lyrics-rest" style="display:none;white-space:pre-line">'+esc(rest)+'</div>';
+            html += '<button onclick="_musicShowMoreLyrics()" id="music-lyrics-more-btn" style="margin-top:8px;background:none;border:none;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;padding:0">Show more ↓</button>';
+          }
+          lyricsEl.innerHTML = html;
+          lyricsEl.style.display = 'block';
+        } else { lyricsEl.style.display = 'none'; }
+      } else { lyricsEl.innerHTML = '<div style="color:var(--muted);font-size:12px">Lyrics not found</div>'; }
+    } catch(e) { lyricsEl.innerHTML = '<div style="color:var(--muted);font-size:12px">Lyrics unavailable</div>'; }
+  };
 
   function _musicRenderSaved() {
     var phone = _musicPhone();
