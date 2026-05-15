@@ -4502,13 +4502,19 @@ def api_intel_brand_choices_delete():
 
 @app.route("/api/intel/pins")
 def api_intel_pins():
+    did = (request.args.get("device_id") or "").strip()
     try:
         sb = lib._sb()
         rows = sb.table("ai_cache").select("key,data").execute().data
         pins = []
         for row in rows:
             d = row.get("data") or {}
-            if not d.get("_pinned"):
+            pinned_by = d.get("_pinned_by") or []
+            # Legacy: treat old global _pinned as pinned for everyone (migrates on next pin action)
+            if did and did not in pinned_by:
+                if not d.get("_pinned"):
+                    continue
+            elif not did and not (d.get("_pinned") or pinned_by):
                 continue
             key = row.get("key", "")
             name = d.get("name") or ""
@@ -4533,6 +4539,7 @@ def api_intel_pin():
     body = request.get_json(force=True, silent=True) or {}
     name = (body.get("name") or "").strip()
     kind = (body.get("type") or "").strip()
+    did  = (body.get("device_id") or "").strip()
     if not name or kind not in ("brand", "company"):
         return jsonify({"error": "name and type required"}), 400
     sb_key = f"brand:{name.lower()}|brandv29" if kind == "brand" else f"company:{name.lower()}|v17"
@@ -4542,7 +4549,11 @@ def api_intel_pin():
         if not rows:
             return jsonify({"error": "No cached result to pin — search first"}), 404
         data = dict(rows[0]["data"] or {})
-        data["_pinned"] = True
+        pinned_by = list(data.get("_pinned_by") or [])
+        if did and did not in pinned_by:
+            pinned_by.append(did)
+        data["_pinned_by"] = pinned_by
+        data.pop("_pinned", None)  # migrate legacy flag
         sb.table("ai_cache").upsert({"key": sb_key, "data": data, "cached_at": "2099-12-31T00:00:00+00:00"}).execute()
         return jsonify({"ok": True})
     except Exception as e:
@@ -4554,6 +4565,7 @@ def api_intel_unpin():
     body = request.get_json(force=True, silent=True) or {}
     name = (body.get("name") or "").strip()
     kind = (body.get("type") or "").strip()
+    did  = (body.get("device_id") or "").strip()
     if not name or kind not in ("brand", "company"):
         return jsonify({"error": "name and type required"}), 400
     sb_key = f"brand:{name.lower()}|brandv29" if kind == "brand" else f"company:{name.lower()}|v17"
@@ -4562,7 +4574,9 @@ def api_intel_unpin():
         rows = sb.table("ai_cache").select("data").eq("key", sb_key).execute().data
         if rows:
             data = dict(rows[0]["data"] or {})
-            data.pop("_pinned", None)
+            pinned_by = [x for x in (data.get("_pinned_by") or []) if x != did]
+            data["_pinned_by"] = pinned_by
+            data.pop("_pinned", None)  # migrate legacy flag
             sb.table("ai_cache").upsert({"key": sb_key, "data": data, "cached_at": "now()"}).execute()
         return jsonify({"ok": True})
     except Exception as e:
