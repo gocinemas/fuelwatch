@@ -11363,15 +11363,55 @@ _bkBadge();
       return;
     }
 
-    // All other sections — original flat card rendering
-    for (const ev of grp.items) {
+    // All other sections — flat card rendering
+    const isGeneral = grp.label === "General";
+
+    // For General tab: sort by urgency — overdue first, then due soon, then action-needed, then info
+    const items = isGeneral ? [...grp.items].sort((a, b) => {
+      const _urgency = ev => {
+        if (!ev.deadline && !ev.action_needed) return 3;
+        if (!ev.deadline) return 2;
+        const diff = Math.round((new Date(ev.deadline+"T00:00:00") - new Date()) / 86400000);
+        if (diff < 0) return -1;
+        if (diff <= 2) return 0;
+        if (diff <= 7) return 1;
+        return 2;
+      };
+      return _urgency(a) - _urgency(b);
+    }) : grp.items;
+
+    for (const ev of items) {
       const isNewsletter = ev.event_type === "newsletter";
       const isFuture = ev.event_date && ev.event_date >= todayStr;
 
-      const card = document.createElement("div");
-      card.style.cssText = isNewsletter
+      // Urgency styling for General tab
+      let cardStyle = isNewsletter
         ? "background:#faf5ff;border:1px solid #e9d5ff;border-radius:14px;padding:14px 16px;margin-bottom:10px"
         : "background:#fff;border:1px solid #f1f5f9;border-radius:14px;padding:14px 16px;margin-bottom:10px";
+
+      let urgencyBanner = "";
+      if (isGeneral && (ev.action_needed || ev.deadline || ev.event_type === "deadline")) {
+        const today0 = new Date(); today0.setHours(0,0,0,0);
+        const dlDiff = ev.deadline ? Math.round((new Date(ev.deadline+"T00:00:00") - today0) / 86400000) : null;
+        if (dlDiff !== null && dlDiff < 0) {
+          // Overdue
+          cardStyle = "background:#fff1f2;border:2px solid #fca5a5;border-radius:14px;padding:14px 16px;margin-bottom:10px";
+          urgencyBanner = `<div style="font-size:11px;font-weight:800;color:#b91c1c;background:#fee2e2;border-radius:6px;padding:4px 10px;margin-bottom:8px;display:inline-block">⚠️ OVERDUE</div>`;
+        } else if (dlDiff !== null && dlDiff <= 2) {
+          // Due very soon
+          cardStyle = "background:#fff7ed;border:2px solid #fdba74;border-radius:14px;padding:14px 16px;margin-bottom:10px";
+          urgencyBanner = `<div style="font-size:11px;font-weight:800;color:#c2410c;background:#ffedd5;border-radius:6px;padding:4px 10px;margin-bottom:8px;display:inline-block">🔴 DUE ${dlDiff===0?"TODAY":"TOMORROW"}</div>`;
+        } else if (dlDiff !== null && dlDiff <= 7) {
+          cardStyle = "background:#fffbeb;border:2px solid #fde68a;border-radius:14px;padding:14px 16px;margin-bottom:10px";
+          urgencyBanner = `<div style="font-size:11px;font-weight:800;color:#92400e;background:#fef3c7;border-radius:6px;padding:4px 10px;margin-bottom:8px;display:inline-block">🟡 DUE IN ${dlDiff}d</div>`;
+        } else if (ev.action_needed) {
+          cardStyle = "background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:14px 16px;margin-bottom:10px";
+          urgencyBanner = `<div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:6px;display:inline-block">✏️ Action needed</div>`;
+        }
+      }
+
+      const card = document.createElement("div");
+      card.style.cssText = cardStyle;
 
       const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
       const titleEl = gmailUrl
@@ -11397,10 +11437,10 @@ _bkBadge();
         style="float:right;margin-left:10px;border:none;background:none;font-size:15px;color:#d1d5db;cursor:pointer;padding:0;line-height:1"
         title="Remove this event">✕</button>`;
 
-      let html = deleteBtn + titleEl + dateChip;
+      let html = deleteBtn + urgencyBanner + titleEl + dateChip;
       if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.6">${_lk(ev.description)}</div>`;
       if (ev.action_needed) {
-        const dl = ev.deadline ? ` · <span style="color:#ef4444">by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>` : "";
+        const dl = ev.deadline ? ` · <span style="color:#ef4444;font-weight:800">by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>` : "";
         html += `<div style="font-size:12px;color:#b45309;margin-top:8px;font-weight:700;background:#fffbeb;border-radius:6px;padding:6px 10px">✏️ ${_lk(ev.action_needed)}${dl}</div>`;
       }
       card.id = `school-ev-${ev.id}`;
