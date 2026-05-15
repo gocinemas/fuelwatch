@@ -12856,7 +12856,19 @@ def api_wa_saves_ad_intel():
         else:
             new_summary = old_summary
 
-        update_fields = {"summary": new_summary}
+        # Embed compact AI result so card can be re-rendered on next visit
+        compact = {k: v for k, v in {
+            "ad_type": ad_type, "company": company, "website": website,
+            "postcode": postcode, "area": area, "address": address,
+            "price": price, "bedrooms": beds, "property_type": prop_t,
+            "wine_name": wine_name, "vintage": vintage, "grape": grape,
+            "region": region, "notes": notes, "links": links,
+        }.items() if v}
+        airesult_line = "AIRESULT:" + _json.dumps(compact, separators=(',', ':'))
+        summary_body = _re.sub(r"AIRESULT:[^\n]*\n?", "", new_summary).strip()
+        final_summary = airesult_line + ("\n" + summary_body if summary_body else "")
+
+        update_fields = {"summary": final_summary}
         if new_title and new_title != title:
             update_fields["title"] = new_title
         # Persist the company website so the save card shows a direct link permanently

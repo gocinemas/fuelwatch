@@ -11680,11 +11680,16 @@ _bkBadge();
 
   function savesCardHtml(s) {
     const rawSummary = s.summary || "";
-    let metaLine = "", bodyText = rawSummary;
-    if (rawSummary.startsWith("META:")) {
-      const nl = rawSummary.indexOf("\n");
-      metaLine = rawSummary.slice(5, nl > 0 ? nl : undefined).trim();
-      bodyText = nl > 0 ? rawSummary.slice(nl+1).trim() : "";
+    // Extract persisted AI result (AIRESULT: line) before other summary parsing
+    let _savedAiResult = null;
+    const _aiMatch = rawSummary.match(/AIRESULT:([^\n]+)/);
+    if (_aiMatch) { try { _savedAiResult = JSON.parse(_aiMatch[1]); } catch(e) {} }
+    const cleanSummary = rawSummary.replace(/AIRESULT:[^\n]*\n?/, "");
+    let metaLine = "", bodyText = cleanSummary;
+    if (cleanSummary.startsWith("META:")) {
+      const nl = cleanSummary.indexOf("\n");
+      metaLine = cleanSummary.slice(5, nl > 0 ? nl : undefined).trim();
+      bodyText = nl > 0 ? cleanSummary.slice(nl+1).trim() : "";
     }
 
     let productItems = null, shopName = "";
@@ -11810,7 +11815,7 @@ _bkBadge();
       : "";
     const isAd = isPhoto || _saveCat(s) === "ad" || _saveCat(s) === "photo" || (_saveCat(s) === "wine" && !!s.image_url);
     const adAiBtn = isAd
-      ? `<button onclick="savesAdIntel('${s.id}',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #d1fae5;background:#ecfdf5;font-size:11px;font-weight:600;cursor:pointer;color:#065f46">🤖 AI</button>`
+      ? `<button onclick="savesAdIntel('${s.id}',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #d1fae5;background:${_savedAiResult ? '#d1fae5' : '#ecfdf5'};font-size:11px;font-weight:600;cursor:pointer;color:#065f46">🤖 AI${_savedAiResult ? ' ✓' : ''}</button>`
       : "";
 
     const imageThumb = s.image_url
@@ -11850,7 +11855,7 @@ _bkBadge();
         ${brandBtn}
         ${adAiBtn}
       </div>
-      <div id="ad-intel-result-${s.id}" style="display:none;margin-top:10px"></div>
+      <div id="ad-intel-result-${s.id}" style="margin-top:10px${_savedAiResult ? '' : ';display:none'}">${_savedAiResult ? _adIntelCardHtml(_savedAiResult) : ''}</div>
     </div>`;
   }
 
@@ -11957,6 +11962,33 @@ _bkBadge();
     await savesLoad();
   };
 
+  function _adIntelCardHtml(d) {
+    const row = (icon, label, val) => val
+      ? `<div style="display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid #f0f0f0">
+           <span style="font-size:14px;width:20px;flex-shrink:0">${icon}</span>
+           <span style="font-size:11px;color:var(--muted);width:64px;flex-shrink:0">${label}</span>
+           <span style="font-size:13px;font-weight:600;color:var(--text)">${val}</span>
+         </div>`
+      : "";
+    const propStr = [d.bedrooms ? d.bedrooms + " bed" : "", d.property_type].filter(Boolean).join(" ");
+    const locStr  = [d.address, d.postcode || d.area].filter(Boolean).join(", ");
+    const noteDiv = d.notes ? `<div style="padding:7px 0 3px;font-size:12px;color:var(--muted);font-style:italic">${d.notes}</div>` : "";
+    const rows = d.ad_type === "wine"
+      ? [row("🍷","Wine",d.wine_name),row("🏭","Producer",d.company),row("📅","Vintage",d.vintage),row("🍇","Grape",d.grape),row("🗺️","Region",d.region),row("💷","Price",d.price),noteDiv].filter(Boolean).join("")
+      : d.ad_type === "vehicle" || d.registration
+      ? [row("🚗","Reg",d.registration),row("🏢","Company",d.company),row("📍","Location",locStr||null),noteDiv].filter(Boolean).join("")
+      : [row("🏢","Agent",d.company),row("🏠","Property",propStr||null),row("📍","Location",locStr||null),row("💷","Price",d.price),noteDiv].filter(Boolean).join("");
+    const linksHtml = (d.links || []).map(l =>
+      `<a href="${l.url}" target="_blank" rel="noopener"
+        style="display:inline-flex;align-items:center;gap:4px;padding:7px 14px;border-radius:10px;border:1px solid #bfdbfe;background:#eff6ff;font-size:12px;font-weight:600;color:#1d4ed8;text-decoration:none;white-space:nowrap">
+        ${l.label} ↗
+       </a>`).join("");
+    return `<div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+      ${rows || '<div style="font-size:12px;color:var(--muted)">No structured data found.</div>'}
+      ${linksHtml ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">${linksHtml}</div>` : ""}
+    </div>`;
+  }
+
   window.savesAdIntel = async function(id, btn) {
     btn.textContent = "🤖 Analysing…";
     btn.disabled = true;
@@ -11970,62 +12002,11 @@ _bkBadge();
       });
       const d = await r.json();
       if (d.error) { btn.textContent = "🤖 AI"; btn.disabled = false; alert(d.error); return; }
-
-      // Build clean info card — no broken search links, just facts + one website action
-      const row = (icon, label, val) => val
-        ? `<div style="display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid #f0f0f0">
-             <span style="font-size:14px;width:20px;flex-shrink:0">${icon}</span>
-             <span style="font-size:11px;color:var(--muted);width:64px;flex-shrink:0">${label}</span>
-             <span style="font-size:13px;font-weight:600;color:var(--text)">${val}</span>
-           </div>`
-        : "";
-
-      const propStr = [d.bedrooms ? d.bedrooms + " bed" : "", d.property_type].filter(Boolean).join(" ");
-      const locStr  = [d.address, d.postcode || d.area].filter(Boolean).join(", ");
-      const noteDiv = d.notes ? `<div style="padding:7px 0 3px;font-size:12px;color:var(--muted);font-style:italic">${d.notes}</div>` : "";
-
-      const rows = d.ad_type === "wine"
-        ? [
-            row("🍷", "Wine",     d.wine_name),
-            row("🏭", "Producer", d.company),
-            row("📅", "Vintage",  d.vintage),
-            row("🍇", "Grape",    d.grape),
-            row("🗺️", "Region",  d.region),
-            row("💷", "Price",    d.price),
-            noteDiv,
-          ].filter(Boolean).join("")
-        : d.ad_type === "vehicle" || d.registration
-        ? [
-            row("🚗", "Reg",      d.registration),
-            row("🏢", "Company",  d.company),
-            row("📍", "Location", locStr || null),
-            noteDiv,
-          ].filter(Boolean).join("")
-        : [
-            row("🏢", "Agent",    d.company),
-            row("🏠", "Property", propStr || null),
-            row("📍", "Location", locStr  || null),
-            row("💷", "Price",    d.price),
-            noteDiv,
-          ].filter(Boolean).join("");
-
-      const linksHtml = (d.links || []).map(l =>
-        `<a href="${l.url}" target="_blank" rel="noopener"
-          style="display:inline-flex;align-items:center;gap:4px;padding:7px 14px;border-radius:10px;border:1px solid #bfdbfe;background:#eff6ff;font-size:12px;font-weight:600;color:#1d4ed8;text-decoration:none;white-space:nowrap">
-          ${l.label} ↗
-         </a>`
-      ).join("");
-
-      if (resultEl) {
-        resultEl.innerHTML = `
-          <div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px 14px">
-            ${rows || '<div style="font-size:12px;color:var(--muted)">No structured data found.</div>'}
-            ${linksHtml ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">${linksHtml}</div>` : ""}
-          </div>`;
-        resultEl.style.display = "";
-      }
+      if (resultEl) { resultEl.innerHTML = _adIntelCardHtml(d); resultEl.style.display = ""; }
       btn.textContent = "🤖 AI ✓";
       btn.style.background = "#d1fae5";
+      // Refresh saves so next render has updated title/summary from DB
+      savesLoad();
     } catch(e) {
       btn.textContent = "🤖 AI";
       btn.disabled = false;
