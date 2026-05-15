@@ -319,43 +319,6 @@ body {
 .pi-dot { width:4px; height:4px; border-radius:50%; background:var(--accent); opacity:0; transition:opacity .2s; }
 .pi-btn.pi-active .pi-dot { opacity:1; }
 
-/* ── VOICE FAB ── */
-#voice-fab {
-  position:fixed; bottom:calc(82px + env(safe-area-inset-bottom)); right:20px; z-index:290;
-  width:52px; height:52px; border-radius:50%;
-  background:linear-gradient(135deg,#7c3aed,#4f46e5);
-  border:none; cursor:pointer; box-shadow:0 4px 20px rgba(124,58,237,.45);
-  display:flex; align-items:center; justify-content:center;
-  font-size:22px; transition:transform .15s, box-shadow .15s;
-  -webkit-tap-highlight-color:transparent;
-}
-#voice-fab:active { transform:scale(.93); }
-#voice-overlay {
-  display:none; position:fixed; inset:0; z-index:500;
-  background:rgba(0,0,0,.7); backdrop-filter:blur(4px);
-  align-items:flex-end; justify-content:center;
-}
-#voice-overlay.show { display:flex; }
-#voice-card {
-  background:var(--surface); border-radius:28px 28px 0 0;
-  width:100%; max-width:560px; padding:32px 28px 40px;
-}
-#voice-orb {
-  width:80px; height:80px; border-radius:50%;
-  background:linear-gradient(135deg,#7c3aed,#4f46e5);
-  display:flex; align-items:center; justify-content:center;
-  font-size:32px; margin:0 auto 16px; transition:box-shadow .3s;
-}
-#voice-orb.listening { animation:vpulse 1.2s ease-in-out infinite; }
-@keyframes vpulse { 0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.5)} 50%{box-shadow:0 0 0 18px rgba(124,58,237,0)} }
-#voice-status { text-align:center; font-size:16px; font-weight:700; margin-bottom:6px; }
-#voice-transcript { text-align:center; font-size:13px; color:var(--muted); min-height:20px; margin-bottom:16px; font-style:italic; }
-#voice-answer { background:var(--surface2); border-radius:16px; padding:14px 16px; font-size:15px; line-height:1.55; display:none; margin-bottom:20px; }
-#voice-actions { display:flex; gap:10px; }
-.vbtn { flex:1; padding:13px; border-radius:14px; border:none; font-size:14px; font-weight:700; cursor:pointer; }
-.vbtn-primary { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
-.vbtn-secondary { background:var(--surface2); color:var(--muted); }
-
 #toast {
   position:fixed; bottom:130px; left:50%; transform:translateX(-50%) translateY(10px);
   background:var(--surface); border:1px solid var(--border); border-radius:12px;
@@ -401,20 +364,6 @@ body {
   </div>
 </div>
 
-<button id="voice-fab" onclick="_voiceOpen()">🎤</button>
-
-<div id="voice-overlay" onclick="_voiceOverlayTap(event)">
-  <div id="voice-card">
-    <div id="voice-orb">🎤</div>
-    <div id="voice-status">Tap the mic to ask anything</div>
-    <div id="voice-transcript"></div>
-    <div id="voice-answer"></div>
-    <div id="voice-actions">
-      <button class="vbtn vbtn-primary" id="voice-mic-btn" onclick="_voiceListen()">🎤 Ask</button>
-      <button class="vbtn vbtn-secondary" onclick="_voiceClose()">Done</button>
-    </div>
-  </div>
-</div>
 <div id="toast"></div>
 
 <script>
@@ -646,42 +595,43 @@ function wxIconHtml(code, h) {
 }
 
 // ── DATA: WEATHER ─────────────────────────────────────────────
-function _fetchWeather() {
-  fetch(`https://api.postcodes.io/postcodes/${PC}`)
-    .then(r => r.json())
-    .then(d => {
-      const res = d.result||{};
-      const lat = res.latitude, lon = res.longitude;
-      if (!lat) return;
-      return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`);
-    })
-    .then(r => r && r.json())
-    .then(wx => {
-      if (!wx) return;
-      const cur  = wx.current||{};
-      const temp = Math.round(cur.temperature_2m??0);
-      const feel = Math.round(cur.apparent_temperature??temp);
-      const code = cur.weather_code??0;
-      const h    = hour();
+async function _fetchWeather() {
+  try {
+    const pcRes = await fetch(`https://api.postcodes.io/postcodes/${PC}`);
+    const pcData = await pcRes.json();
+    const res = pcData.result || {};
+    const lat = res.latitude, lon = res.longitude;
+    if (!lat || !lon) { _el('wx-condition', 'Set postcode to see weather'); return; }
 
-      _el('wx-temp',      temp+'°');
-      _el('wx-condition', WX_CODES[code]||'Clear');
-      _el('wx-feels',     'Feels like '+feel+'°');
-      _el('wx-badge',     feel < 0 ? '🥶 Freezing' : feel < 5 ? '🧥 Very cold' : feel < 10 ? '🧥 Wrap up' : feel < 18 ? '🌤 Mild' : feel > 28 ? '🔥 Hot' : feel > 23 ? '☀ Warm' : '👍 Comfortable');
+    const wxRes = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`
+    );
+    const wx  = await wxRes.json();
+    const cur  = wx.current || {};
+    const temp = Math.round(cur.temperature_2m ?? 0);
+    const feel = Math.round(cur.apparent_temperature ?? temp);
+    const code = cur.weather_code ?? 0;
+    const h    = hour();
 
-      // Update icon
-      const iconEl = document.getElementById('wx-icon');
-      if (iconEl) iconEl.innerHTML = wxIconHtml(code, h);
+    _el('wx-temp',      temp + '°');
+    _el('wx-condition', WX_CODES[code] || 'Clear');
+    _el('wx-feels',     'Feels like ' + feel + '°');
+    _el('wx-badge',
+      feel < 0  ? '🥶 Freezing'  :
+      feel < 5  ? '🧥 Very cold' :
+      feel < 10 ? '🧥 Wrap up'  :
+      feel < 18 ? '🌤 Mild'     :
+      feel > 28 ? '🔥 Hot'      :
+      feel > 23 ? '☀ Warm'      : '👍 Comfortable'
+    );
 
-      // Update card sky gradient
-      const card = document.getElementById('wx-card');
-      if (card) {
-        card.className = 'wx-hero ' + wxSkyClass(code, h);
-        // re-add onclick (class replace removes nothing here but be safe)
-        card.onclick = ()=>nav('weather');
-      }
-    })
-    .catch(()=>{ _el('wx-condition','Weather unavailable'); });
+    const iconEl = document.getElementById('wx-icon');
+    if (iconEl) iconEl.innerHTML = wxIconHtml(code, h);
+
+    const card = document.getElementById('wx-card');
+    if (card) { card.className = 'wx-hero ' + wxSkyClass(code, h); card.onclick = ()=>nav('weather'); }
+
+  } catch(e) { _el('wx-condition', 'Weather unavailable'); }
 }
 
 // ── DATA: TRAINS (show 2) ─────────────────────────────────────
@@ -749,30 +699,59 @@ function _fetchFuel() {
 }
 
 // ── DATA: SCHOOL MESSAGES ─────────────────────────────────────
-function _fetchSchoolMsgs() {
+async function _fetchSchoolMsgs() {
   const el = document.getElementById('school-wrap');
   if (!el) return;
-  fetch(`/api/school/poll?token=miru-digest-2026&days_back=7`)
-    .then(r => r.json())
-    .then(data => {
-      const msgs = data.events || data.messages || [];
-      if (!msgs.length) {
-        el.innerHTML = '<div style="padding:0 20px 4px;font-size:13px;color:var(--muted)">No new school messages.</div>';
-        return;
-      }
-      el.innerHTML = msgs.slice(0,3).map(m => {
-        const urgent = /urgent|cancel|closure|emergency/i.test(m.title||m.subject||'');
-        return `<div class="school-card">
-          <div class="school-dot${urgent?' u':''}"></div>
-          <div>
-            <div class="school-title">${_esc(m.title||m.subject||'School update')}</div>
-            <div class="school-body">${_esc((m.summary||m.body||'').slice(0,120))}${(m.summary||m.body||'').length>120?'…':''}</div>
-            <div class="school-meta">${_esc(m.school_name||'')}${m.date?' · '+new Date(m.date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}):''}</div>
-          </div>
-        </div>`;
-      }).join('');
-    })
-    .catch(()=>{ el.innerHTML='<div style="padding:0 20px;font-size:13px;color:var(--muted)">School messages unavailable.</div>'; });
+
+  if (!PHONE) {
+    el.innerHTML = '<div style="padding:0 20px 4px;font-size:13px;color:var(--muted)">Link your WhatsApp to see school messages.</div>';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/school/events?back=14', {
+      headers: { 'X-School-WA': PHONE }
+    });
+    const data = await r.json();
+
+    if (data.auth || data.error === 'No account found for this number') {
+      el.innerHTML = '<div style="padding:0 20px 4px;font-size:13px;color:var(--muted)">No school profile linked.</div>';
+      return;
+    }
+
+    const events = data.events || [];
+    if (!events.length) {
+      el.innerHTML = '<div style="padding:0 20px 4px;font-size:13px;color:var(--muted)">No recent school messages.</div>';
+      return;
+    }
+
+    // Sort newest first, take top 3
+    const sorted = events.slice().sort((a,b) => {
+      const da = a.event_date || a.created_at || '';
+      const db = b.event_date || b.created_at || '';
+      return db.localeCompare(da);
+    });
+
+    el.innerHTML = sorted.slice(0,3).map(m => {
+      const title  = m.event_title || m.title || m.subject || 'School update';
+      const body   = m.description || m.summary || m.body || '';
+      const school = m.school_name || '';
+      const urgent = /urgent|cancel|closure|emergency|important/i.test(title + ' ' + body);
+      const dateStr = (m.event_date || m.created_at || '');
+      const dateFmt = dateStr ? new Date(dateStr).toLocaleDateString('en-GB', {weekday:'short',day:'numeric',month:'short'}) : '';
+      return `<div class="school-card">
+        <div class="school-dot${urgent?' u':''}"></div>
+        <div>
+          <div class="school-title">${_esc(title)}</div>
+          ${body ? `<div class="school-body">${_esc(body.slice(0,120))}${body.length>120?'…':''}</div>` : ''}
+          <div class="school-meta">${_esc(school)}${dateFmt ? ' · '+dateFmt : ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    el.innerHTML = '<div style="padding:0 20px;font-size:13px;color:var(--muted)">School messages unavailable.</div>';
+  }
 }
 
 // ── DATA: SAVES ───────────────────────────────────────────────
@@ -844,42 +823,6 @@ function _pillNav(name) {
   document.getElementById('pill-icon').textContent  = icons[name]||'🏠';
   document.getElementById('pill-label').textContent = labels[name]||name;
   if (name !== 'home') nav(name);
-}
-
-// ── VOICE ─────────────────────────────────────────────────────
-var _vRec=null, _vSyn=window.speechSynthesis||null, _vBusy=false;
-function _voiceOpen() { document.getElementById('voice-overlay').classList.add('show'); _vState('idle'); }
-function _voiceClose() { document.getElementById('voice-overlay').classList.remove('show'); if(_vRec){try{_vRec.abort()}catch(e){} _vRec=null;} if(_vSyn)_vSyn.cancel(); _vBusy=false; }
-function _voiceOverlayTap(e) { if(e.target===document.getElementById('voice-overlay'))_voiceClose(); }
-function _vState(s,x){
-  var orb=document.getElementById('voice-orb'),st=document.getElementById('voice-status'),tr=document.getElementById('voice-transcript'),an=document.getElementById('voice-answer'),btn=document.getElementById('voice-mic-btn');
-  orb.classList.remove('listening'); an.style.display='none';
-  if(s==='idle'){orb.textContent='🎤';st.textContent='Tap to ask anything';tr.textContent='e.g. "Next train from Longcross?"';btn.textContent='🎤 Ask';btn.disabled=false;}
-  else if(s==='listening'){orb.textContent='🎤';orb.classList.add('listening');st.textContent='Listening…';tr.textContent='';btn.textContent='⏹ Stop';btn.disabled=false;}
-  else if(s==='thinking'){orb.textContent='⏳';st.textContent='Thinking…';tr.textContent=x||'';btn.textContent='🎤 Ask';btn.disabled=true;}
-  else if(s==='answer'){orb.textContent='✅';st.textContent='Here you go';tr.textContent=x.q||'';an.textContent=x.a||'';an.style.display='block';btn.textContent='🎤 Ask again';btn.disabled=false;}
-  else if(s==='error'){orb.textContent='❌';st.textContent='Something went wrong';tr.textContent=x||'';btn.textContent='🎤 Try again';btn.disabled=false;}
-}
-function _voiceListen(){
-  if(_vBusy){if(_vRec){try{_vRec.stop()}catch(e){}} return;}
-  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){_vState('error','Voice not supported — try Chrome');return;}
-  _vBusy=true; _vState('listening');
-  var rec=new SR(); _vRec=rec; rec.lang='en-GB'; rec.interimResults=true; rec.maxAlternatives=1;
-  rec.onresult=function(e){var t=e.results[0][0].transcript; document.getElementById('voice-transcript').textContent=t; if(e.results[0].isFinal){rec.stop();_vSubmit(t);}};
-  rec.onerror=function(e){_vBusy=false;if(e.error==='no-speech')_vState('idle');else _vState('error','Mic error: '+e.error);};
-  rec.onend=function(){_vBusy=false;};
-  rec.start();
-}
-async function _vSubmit(q){
-  _vState('thinking','"'+q+'"');
-  try{
-    var r=await fetch('/api/voice-query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q,postcode:PC,phone:PHONE})});
-    var d=await r.json();
-    if(d.error){_vState('error',d.error);return;}
-    _vState('answer',{q:'"'+q+'"',a:d.answer});
-    if(_vSyn&&d.answer){_vSyn.cancel();var u=new SpeechSynthesisUtterance(d.answer);u.lang='en-GB';u.rate=0.95;_vSyn.speak(u);}
-  }catch(e){_vState('error','Network error');}
 }
 
 let _tt;
