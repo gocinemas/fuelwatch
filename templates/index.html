@@ -1005,6 +1005,7 @@
               <button id="brand-lib-btn" style="display:none"></button>
               <button id="co-share-btn" onclick="shareCompany()" style="font-size:12px;font-weight:600;color:#4f46e5;background:#eef2ff;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">Share</button>
               <button id="intel-compare-btn" onclick="_intelCompareOpen()" style="font-size:12px;font-weight:600;color:#0f766e;background:#f0fdfa;border:1px solid #99f6e4;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">⚡ Compare</button>
+              <button id="intel-research-btn" onclick="_runResearchAgent()" style="font-size:12px;font-weight:600;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">🤖 Research</button>
             </div>
           </div>
           <div id="brand-context-bar" style="display:none;margin-top:6px;font-size:11px;color:var(--muted)"></div>
@@ -1025,6 +1026,20 @@
               <button onclick="_intelCompareRun()" style="padding:10px 16px;background:#0f766e;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Go</button>
             </div>
             <div id="intel-compare-result" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <!-- Research Agent result panel -->
+        <div id="intel-research-panel" style="display:none;margin-bottom:12px">
+          <div style="background:linear-gradient(135deg,#2d1b69 0%,#1e1057 100%);border:1px solid #4c1d95;border-radius:16px;padding:16px 18px;color:#fff">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+              <span style="font-size:18px">🤖</span>
+              <span style="font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#c4b5fd">Research Agent Brief</span>
+              <span id="research-model-badge" style="margin-left:auto;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(124,58,237,.3);color:#c4b5fd"></span>
+            </div>
+            <div id="research-steps" style="font-size:11px;color:#a78bfa;margin-bottom:12px;line-height:1.8"></div>
+            <div id="research-headline" style="font-size:18px;font-weight:800;letter-spacing:-.4px;margin-bottom:12px;color:#fff;line-height:1.3"></div>
+            <div style="display:flex;flex-direction:column;gap:10px" id="research-sections"></div>
           </div>
         </div>
 
@@ -5358,6 +5373,81 @@ const _ts = new Date(d.timestamp);
     btn.style.border   = pinned ? "1px solid #c7d2fe" : "1px solid var(--border)";
   };
   // ── Brand / Company Compare ───────────────────────────────────────────────
+  // ── Research Agent ────────────────────────────────────────────────────────
+  window._runResearchAgent = async function() {
+    var company = (document.getElementById("brand-name-el") || {}).textContent
+                  || (document.getElementById("company-q") || {}).value
+                  || (document.getElementById("intel-input") || {}).value
+                  || "";
+    company = company.trim();
+    if (!company) return;
+
+    var panel  = document.getElementById("intel-research-panel");
+    var btn    = document.getElementById("intel-research-btn");
+    var steps  = document.getElementById("research-steps");
+    var hdl    = document.getElementById("research-headline");
+    var sects  = document.getElementById("research-sections");
+    var badge  = document.getElementById("research-model-badge");
+
+    // Show panel, set loading state
+    panel.style.display = "";
+    btn.textContent = "⏳ Researching…";
+    btn.disabled = true;
+    steps.textContent  = "Agent starting…";
+    hdl.textContent    = "";
+    sects.innerHTML    = "";
+    badge.textContent  = "";
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    try {
+      var r = await fetch("/api/intel/research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company: company })
+      });
+      var d = await r.json();
+
+      if (d.error) {
+        steps.textContent = "Error: " + d.error;
+        btn.textContent = "🤖 Research"; btn.disabled = false;
+        return;
+      }
+
+      // Show which tools were called
+      if (d.steps && d.steps.length) {
+        steps.innerHTML = d.steps.map(s =>
+          "✓ " + s.tool.replace(/_/g," ") + (s.args.topic ? " · " + s.args.topic : "")
+        ).join("  ·  ");
+      }
+      if (d.model) badge.textContent = d.model.split("-")[0] + " · " + d.model.split("-").slice(1).join("-");
+
+      hdl.textContent = d.headline || "";
+
+      var _section = function(label, content) {
+        if (!content || content === "Not publicly available") return "";
+        var body = Array.isArray(content)
+          ? "<ul style='margin:6px 0 0;padding-left:0;list-style:none'>" + content.map(c => "<li style='padding:3px 0;font-size:12px;color:#c4b5fd'>· " + c + "</li>").join("") + "</ul>"
+          : "<div style='font-size:13px;color:#c4b5fd;margin-top:4px;line-height:1.6'>" + content + "</div>";
+        return "<div style='border-top:1px solid rgba(255,255,255,.08);padding-top:10px'><div style='font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#7c3aed;margin-bottom:2px'>" + label + "</div>" + body + "</div>";
+      };
+
+      sects.innerHTML = [
+        _section("Overview",          d.overview),
+        _section("Strategy",          d.strategy),
+        _section("Financials",        d.financials),
+        _section("Leadership",        d.leadership),
+        _section("Hiring signals",    d.hiring_signals),
+        _section("Risks",             d.risks),
+        _section("Opportunity angle", d.opportunity_angle),
+      ].filter(Boolean).join("");
+
+    } catch(e) {
+      steps.textContent = "Network error — check connection";
+    }
+    btn.textContent = "🤖 Research";
+    btn.disabled = false;
+  };
+
   window._intelCompareOpen = function() {
     var panel = document.getElementById("intel-compare-panel");
     if (!panel) return;

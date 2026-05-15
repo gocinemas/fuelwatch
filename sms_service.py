@@ -4587,6 +4587,18 @@ def api_intel_unpin():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/intel/research", methods=["POST"])
+def api_intel_research():
+    """Intel Research Agent — agentic multi-tool company research brief."""
+    from intel_agent import run_research_agent
+    data = request.get_json(silent=True) or {}
+    company = (data.get("company") or request.args.get("company") or "").strip()
+    if not company:
+        return jsonify({"error": "company required"}), 400
+    brief = run_research_agent(company)
+    return jsonify(brief)
+
+
 @app.route("/api/intel/compare")
 def api_intel_compare():
     """Side-by-side brand/company comparison powered by Groq."""
