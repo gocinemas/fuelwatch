@@ -10962,8 +10962,26 @@ def api_planning():
     return jsonify(data)
 
 
-_digest_last_sent: dict = {}  # from_number → last sent epoch seconds
 _DIGEST_MIN_GAP_HOURS = 20   # never send to same user more than once per 20h
+
+def _digest_last_sent_get(from_number: str) -> float:
+    """Read persisted last-sent epoch from site_config. Returns 0 if never sent."""
+    try:
+        key = f"digest_last:{from_number}"
+        row = lib._sb().table("site_config").select("value").eq("key", key).execute()
+        if row.data:
+            return float(row.data[0]["value"].get("ts", 0))
+    except Exception:
+        pass
+    return 0
+
+def _digest_last_sent_set(from_number: str, ts: float):
+    """Persist last-sent epoch to site_config so it survives Railway redeploys."""
+    try:
+        key = f"digest_last:{from_number}"
+        lib._sb().table("site_config").upsert({"key": key, "value": {"ts": ts}}).execute()
+    except Exception:
+        pass
 
 @app.route("/api/wa-digest")
 def wa_digest():
@@ -11004,17 +11022,15 @@ def wa_digest():
     sent = skipped = 0
 
     for from_number, saves in by_user.items():
-        # Rate limit: skip if sent within the last 20 hours
+        # Rate limit: skip if sent within the last 20 hours (persisted in Supabase)
         now = _time.time()
-        last = _digest_last_sent.get(from_number, 0)
+        last = _digest_last_sent_get(from_number)
         if now - last < _DIGEST_MIN_GAP_HOURS * 3600:
             skipped += 1
             continue
-        _digest_last_sent[from_number] = now
+        _digest_last_sent_set(from_number, now)
 
-        # Only include saves added since last digest (or overdue reminders).
-        # If last==0 (in-memory dict cleared by redeploy), default to 24h ago
-        # so we don't dump every save ever on restart.
+        # Only include saves added since last digest (or overdue reminders)
         cutoff = last if last else (now - 24 * 3600)
         new_saves    = [s for s in saves if s.get("status") == "remind" or
                         (s.get("created_at") or "") > _time.strftime("%Y-%m-%dT%H:%M:%S", _time.gmtime(cutoff))]
