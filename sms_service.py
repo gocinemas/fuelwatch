@@ -8652,6 +8652,22 @@ _FOOD_INTENTS = [
      {"type": "restaurant", "keyword": "steak", "emoji": "🥩", "label": "steak",
       "required_types": ["restaurant", "food"], "always_best": True, "radius": 5000,
       "review_terms": ["steak", "ribeye", "sirloin", "fillet", "medium rare", "wagyu", "sauce", "sides"]}),
+    (re.compile(r'\b(indian|india\b|curry|curries|balti|tandoor|tandoori|masala|tikka|biryani|korma|vindaloo|dal|dhal|bhaji|naan|poppadom)\b', re.I),
+     {"type": "restaurant", "keyword": "indian restaurant", "emoji": "🍛", "label": "Indian food",
+      "required_types": ["restaurant", "meal_takeaway", "food"], "radius": 3000,
+      "review_terms": ["curry", "indian", "tandoor", "tikka", "biryani", "masala", "korma", "naan", "spice", "dal"]}),
+    (re.compile(r'\b(italian|italy\b|pasta|risotto|trattoria|osteria|ristorante|lasagne|lasagna|ravioli|carbonara|amatriciana|gnocchi|tiramisu)\b', re.I),
+     {"type": "restaurant", "keyword": "italian restaurant", "emoji": "🍝", "label": "Italian",
+      "required_types": ["restaurant", "meal_takeaway", "food"], "radius": 3000,
+      "review_terms": ["italian", "pasta", "pizza", "risotto", "tiramisu", "fresh", "homemade", "authentic", "wine"]}),
+    (re.compile(r'\b(mexican|mexico\b|taco|tacos|burrito|burritos|quesadilla|enchilada|guacamole|tex.?mex|nachos|fajita|jalape[nñ]o)\b', re.I),
+     {"type": "restaurant", "keyword": "mexican restaurant", "emoji": "🌮", "label": "Mexican",
+      "required_types": ["restaurant", "meal_takeaway", "food"], "radius": 3000,
+      "review_terms": ["mexican", "taco", "burrito", "guacamole", "salsa", "spicy", "fresh", "authentic"]}),
+    (re.compile(r'\b(fish[\s_&n]+chips?|chippy|chippie|chip\s+shop|fish\s+supper|fish\s+shop|cod|haddock)\b', re.I),
+     {"type": "restaurant", "keyword": "fish and chips", "emoji": "🐟", "label": "fish & chips",
+      "required_types": ["restaurant", "meal_takeaway", "food"], "radius": 2000,
+      "review_terms": ["fish", "chips", "cod", "haddock", "batter", "crispy", "fresh", "mushy peas", "tartar"]}),
     (re.compile(r'\b(chinese|china food|dim sum|chow mein|peking|cantonese|szechuan|sichuan)\b', re.I),
      {"type": "restaurant", "keyword": "chinese restaurant", "emoji": "🥡", "label": "Chinese",
       "required_types": ["restaurant", "meal_takeaway", "food"], "radius": 3000,
@@ -8810,6 +8826,42 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
                     if any(w in n for w in ("indian", "curry", "balti", "tandoor")):
                         return 0.5  # some crossover
                     return 0.6
+                if kw == "indian restaurant":
+                    if any(w in n for w in ("indian", "india", "curry", "balti", "tandoor", "masala", "tikka",
+                                            "biryani", "korma", "spice", "saffron", "mughul", "mogul", "bengali",
+                                            "bangladeshi", "pakistani", "punjabi", "delhi", "bombay", "mumbai")):
+                        return 1.0
+                    if any(w in n for w in ("restaurant", "kitchen", "house", "palace", "raj", "maharaja")):
+                        return 0.7
+                    if any(w in n for w in ("pizza", "burger", "kebab", "chinese", "thai", "italian", "pub")):
+                        return 0.05
+                    return 0.5
+                if kw == "italian restaurant":
+                    if any(w in n for w in ("italian", "italy", "pizza", "pasta", "trattoria", "osteria",
+                                            "ristorante", "pizzeria", "napoli", "naples", "rome", "sicily",
+                                            "venice", "florence", "romano", "bella", "la dolce", "al dente")):
+                        return 1.0
+                    if any(w in n for w in ("cafe", "bistro", "kitchen")):
+                        return 0.6
+                    if any(w in n for w in ("indian", "burger", "kebab", "chinese", "thai", "pub")):
+                        return 0.05
+                    return 0.5
+                if kw == "mexican restaurant":
+                    if any(w in n for w in ("mexican", "mexico", "taco", "burrito", "quesadilla", "tex mex",
+                                            "cantina", "hacienda", "taqueria", "jalisco", "oaxaca", "tijuana")):
+                        return 1.0
+                    if any(w in n for w in ("kitchen", "grill", "bar")):
+                        return 0.6
+                    if any(w in n for w in ("indian", "burger", "kebab", "chinese", "italian", "pub")):
+                        return 0.05
+                    return 0.5
+                if kw == "fish and chips":
+                    if any(w in n for w in ("fish", "chip", "chippy", "cod", "haddock", "fryer", "frier",
+                                            "fishmonger", "seafood", "fry", "plaice", "fisherman")):
+                        return 1.0
+                    if any(w in n for w in ("burger", "kebab", "pizza", "chinese", "indian", "italian")):
+                        return 0.05
+                    return 0.4
                 if kw == "chinese restaurant":
                     if any(w in n for w in ("chinese", "china", "dim sum", "peking", "canton", "hong kong",
                                             "szechuan", "sichuan", "mandarin", "beijing", "shanghai", "wonton")):
@@ -9478,12 +9530,17 @@ def _wa_classify_intent(body: str) -> dict | None:
                 "  tube         — London tube/DLR/Overground/Elizabeth line status, journey, or line info.\n"
                 "                 Extract: from (station or null), to (station or null),\n"
                 "                 query (status | journey | line name — infer from message, default 'status').\n"
-                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea|burger|kebab|steak|wine).\n"
+                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea|burger|kebab|steak|wine|indian|italian|mexican|fish_chips|chinese).\n"
                 "                 Map latte/cappuccino/capuccino/mocha/pistachio latte/espresso/flat white/americano/cortado/coffee/cofee/coffeeee → coffee.\n"
                 "                 Map tea/english breakfast/chai/brew/cuppa → tea.\n"
                 "                 Map beer/pint/ale/lager/craft beer/cheap beer/good beer → beer.\n"
-                "                 Map burger/burgers/smash burger → burger. Map kebab/doner/shawarma → kebab. Map steak/steakhouse/ribeye/sirloin → steak.\n"
+                "                 Map burger/burgers/smash burger/best burger → burger. Map kebab/doner/shawarma → kebab. Map steak/steakhouse/ribeye/sirloin → steak.\n"
                 "                 Map wine/red wine/white wine/rosé/house wine/glass of wine → wine.\n"
+                "                 Map indian/india/curry/curries/balti/tandoori/tikka/biryani/korma/masala/best indian/indian food/indian restaurant/indian place → indian.\n"
+                "                 Map italian/italy/pasta/risotto/trattoria/best italian/italian food/italian restaurant → italian.\n"
+                "                 Map mexican/mexico/taco/tacos/burrito/tex-mex/best mexican/mexican food/mexican restaurant → mexican.\n"
+                "                 Map fish and chips/fish n chips/fish & chips/chippy/chip shop/best fish and chips → fish_chips.\n"
+                "                 Map chinese/china/dim sum/chow mein/best chinese → chinese.\n"
                 "                 postcode (UK outcode like KT16 or full postcode — extract exactly as written, or null if not present),\n"
                 "                 cheap (bool, true only if user explicitly says cheap/budget/affordable).\n"
                 "  book_lookup  — user wants to find/save/add a book. Extract: query (title/author/ISBN).\n"
