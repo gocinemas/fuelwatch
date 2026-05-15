@@ -13339,21 +13339,18 @@ _bkBadge();
   window.musicPlayWeekly = function(idx) {
     var songs = window._weeklyPlaylistSongs || [];
     if (!songs[idx]) return;
-    // find idx in full saved list and play
     var fullIdx = _musicSavedSongs.indexOf(songs[idx]);
-    _musicPlaylist = songs;
-    _musicPlaylistIdx = idx;
-    if (fullIdx >= 0) musicPlaySaved(fullIdx, true);
-    else _musicPlayFromData(songs[idx], true);
+    if (fullIdx >= 0) musicPlaySaved(fullIdx);
+    else _musicPlayFromData(songs[idx]);
   };
 
-  window.musicPlaySaved = async function(idx, fromPlaylist) {
+  window.musicPlaySaved = async function(idx) {
     var s = _musicSavedSongs[idx];
     if (!s) return;
-    _musicPlayFromData(s, fromPlaylist);
+    _musicPlayFromData(s);
   };
 
-  window._musicPlayFromData = async function(s, fromPlaylist) {
+  window._musicPlayFromData = async function(s) {
     // Switch to identify tab so result card is visible
     musicTab('identify', document.getElementById('mtab-identify'));
     _musicResult = {
@@ -13383,27 +13380,11 @@ _bkBadge();
     var audio = document.getElementById('music-preview-audio');
     if (_musicResult.previewUrl) {
       audio.src = _musicResult.previewUrl;
-      audio.play().catch(function(){});
+      _miniSyncBtn(true);
     } else {
       audio.src = '';
     }
     _miniShow(_musicResult);
-
-    // If playing as part of a playlist, auto-advance when preview ends
-    if (fromPlaylist) {
-      audio.onended = function() {
-        var next = _musicPlaylistIdx + 1;
-        if (next < _musicPlaylist.length) {
-          _musicPlaylistIdx = next;
-          _musicPlayFromData(_musicPlaylist[next], true);
-        } else {
-          _musicPlaylistIdx = -1;
-          audio.onended = null;
-        }
-      };
-    } else {
-      audio.onended = null;
-    }
 
     // Fetch lyrics
     lyricsEl.style.display = 'block';
