@@ -2131,7 +2131,7 @@
     if (bb) bb.classList.add("visible");
     if (name === "fuel")    { const _fpc = document.getElementById("fuel-postcode"); if (!_fpc.value.trim()) _fpc.value = _miruPostcode(); _fpc.focus(); _renderRecent("miru_fuel","fuel-recent","fuel-postcode","searchFuel()"); _myFuelRenderCard(); }
     if (name === "report")  { document.getElementById("report-postcode").focus(); _renderRecent("miru_report",  "report-recent",  "report-postcode", "searchReport()"); _reportRefreshHomeRow(); }
-    if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); }
+    if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); _renderRecent("miru_intel_" + (_intelSearchMode || "brand"), "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); }
     if (name === "library") { libCheckPin(); }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
@@ -5230,8 +5230,9 @@ const _ts = new Date(d.timestamp);
     // Camera button: only on miru single-input row
     var scanBtn = document.getElementById("intel-scan-btn");
     if (scanBtn) scanBtn.style.display = mode === "brand" ? "" : "none";
-    // Reload pins filtered to this mode
+    // Reload pins filtered to this mode + recents for this mode
     _loadIntelPins();
+    _renderRecent("miru_intel_" + mode, "intel-recent", "intel-input", "searchIntel()");
   };
 
   // Show the landing cards and reset mode (intel.humanagency.co "← Switch" button)
@@ -5471,8 +5472,9 @@ const _ts = new Date(d.timestamp);
     const _pinsHide = document.getElementById("intel-pins-section");
     if (_pinsHide) _pinsHide.style.display = "none";
 
-    _saveRecent("miru_intel", raw);
-    _renderRecent("miru_intel", "intel-recent", "intel-input", "searchIntel()");
+    var _iKey = "miru_intel_" + (_intelSearchMode || "brand");
+    _saveRecent(_iKey, raw);
+    _renderRecent(_iKey, "intel-recent", "intel-input", "searchIntel()");
 
     // sync to compat hidden inputs so renderCompany / _renderBrand still work
     document.getElementById("company-input").value = raw;
