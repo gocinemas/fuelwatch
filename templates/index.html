@@ -9015,20 +9015,22 @@ const _ts = new Date(d.timestamp);
   // ── Home Search (tool finder + Algolia saves) ─────────────────────────────
   (function() {
     const _TOOLS = [
-      { name:"Fuel prices",    desc:"Cheapest petrol & diesel near you",  icon:"⛽", screen:"fuel",      kw:"fuel petrol diesel gas station cheap" },
-      { name:"Train times",    desc:"Live departures & delays",            icon:"🚆", screen:"trains",    kw:"train trains rail station departure delay tfl" },
-      { name:"Research an Area",    desc:"Research an area — crime, schools, prices", icon:"🔎", screen:"report", kw:"area crime house prices school safety report local neighbourhood intel research" },
-      { name:"Local search",   desc:"Cafés, tradespeople & shops",         icon:"📍", screen:"places",    kw:"cafe coffee plumber shop restaurant pub local places nearby find electrician builder" },
+      { name:"Fuel prices",    desc:"Cheapest petrol & diesel near you",  icon:"⛽", screen:"fuel",      kw:"fuel petrol diesel gas station cheap unleaded" },
+      { name:"Train times",    desc:"Live departures & delays",            icon:"🚆", screen:"trains",    kw:"train trains rail station departure delay tfl commute" },
+      { name:"Research an Area", desc:"Crime, schools, house prices & services", icon:"🔎", screen:"report", kw:"area crime house prices school safety report local neighbourhood research postcode" },
+      { name:"Local search",   desc:"Cafés, tradespeople & shops near you", icon:"📍", screen:"places",  kw:"cafe coffee best coffee plumber shop restaurant pub local places nearby find electrician builder lunch dinner brunch food drink" },
       { name:"Emergency",      desc:"Hospitals & police stations",         icon:"🚨", screen:"report",    kw:"hospital emergency police ambulance a&e urgent nhs nearest help" },
       { name:"My saves",       desc:"Articles & links you've saved",       icon:"📌", screen:"saves",     kw:"saves saved article link bookmark read reading" },
-      { name:"Company Intel", desc:"Revenue, profit & financials · AI & tech strategy · news", icon:"🏢", screen:"company", kw:"company business financials revenue profit strategy news intel turnover" },
-      { name:"Brand Intel",   desc:"Brand identity · founding story · ads & rivals",           icon:"🏷️", screen:"company", tab:"brand", kw:"brand identity ads campaigns rivals marketing history logo slogan" },
+      { name:"Company Intel",  desc:"Revenue, profit & financials · AI & tech strategy · news", icon:"🏢", screen:"company", kw:"company business financials revenue profit strategy news intel turnover" },
+      { name:"Brand Intel",    desc:"Brand identity · founding story · ads & rivals", icon:"🏷️", screen:"company", tab:"brand", kw:"brand identity ads campaigns rivals marketing history logo slogan" },
       { name:"My documents",   desc:"Upload & chat with your files",       icon:"📄", screen:"library",   kw:"document pdf file upload library ask query" },
       { name:"Book scanner",   desc:"Scan & chat with any book",           icon:"📚", screen:"scan",      kw:"book scan barcode isbn read library chat" },
-      { name:"Music",           desc:"Find songs, see lyrics, save to list", icon:"🎵", screen:"music",     kw:"music song lyrics save artist track charts" },
-      { name:"Election Results", desc:"Candidates & results by ward",           icon:"🗳️", screen:"elections", kw:"election elections results vote voting candidates ward council local" },
+      { name:"Music",          desc:"Find songs, see lyrics, save to list", icon:"🎵", screen:"music",    kw:"music song songs lyrics save artist track charts identify shazam" },
+      { name:"Gigs & Events",  desc:"Live music & events near you",        icon:"🎭", screen:"music",    tab:"gigs", kw:"gig gigs event events concert concerts live music festival tickets tonight weekend" },
+      { name:"Election Results", desc:"Candidates & results by ward",      icon:"🗳️", screen:"elections", kw:"election elections results vote voting candidates ward council local" },
       { name:"House prices",   desc:"Property values in your area",        icon:"🏡", screen:"report",    kw:"house price property valuation sold market" },
       { name:"School updates", desc:"Events & notices from school",        icon:"🏫", screen:"school",    kw:"school parent newsletter event term homework teacher" },
+      { name:"Space",          desc:"ISS tracking, launches & UK space news", icon:"🚀", screen:"space",  kw:"space iss launch rocket satellite orbit nasa esa uk space" },
     ];
 
     let _debounce = null;
@@ -9148,7 +9150,26 @@ const _ts = new Date(d.timestamp);
       const toolHitsFirst = _TOOLS.filter(t =>
         qlFirst.split(/\s+/).some(w => w.length > 1 && (t.name + " " + t.desc + " " + t.kw).toLowerCase().includes(w))
       );
-      if (toolHitsFirst.length) {
+      if (toolHitsFirst.length === 1) {
+        // Single match — navigate directly, no dropdown needed
+        const t = toolHitsFirst[0];
+        const pc = _extractPostcode(q);
+        homeSearchClear();
+        if (t.screen === 'places') {
+          const sq = q.replace(/\b(near me|nearby|local|find me?|find a?|best|good|cheap)\b/gi,'').trim();
+          window._fillFinder(pc || '', sq || q);
+        } else if (t.screen === 'fuel' && pc) {
+          window._fillFuel(pc);
+        } else if (t.screen === 'trains' && pc) {
+          window._fillTrains(pc);
+        } else if (t.tab) {
+          blookupTab(t.tab);
+        } else {
+          showScreen(t.screen);
+        }
+        return;
+      }
+      if (toolHitsFirst.length > 1) {
         _render(toolHitsFirst, [], q, true);
         clearTimeout(_debounce);
         _debounce = setTimeout(() => _fetchSaves(q, toolHitsFirst), 380);
