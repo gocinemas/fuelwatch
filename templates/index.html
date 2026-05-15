@@ -9143,6 +9143,18 @@ const _ts = new Date(d.timestamp);
       document.getElementById("home-search-go").style.display = q ? "block" : "none";
       if (!q) { _hideResults(); return; }
 
+      // Tool matching FIRST — internal Miru features always win over brand detection
+      const qlFirst = q.toLowerCase();
+      const toolHitsFirst = _TOOLS.filter(t =>
+        qlFirst.split(/\s+/).some(w => w.length > 1 && (t.name + " " + t.desc + " " + t.kw).toLowerCase().includes(w))
+      );
+      if (toolHitsFirst.length) {
+        _render(toolHitsFirst, [], q, true);
+        clearTimeout(_debounce);
+        _debounce = setTimeout(() => _fetchSaves(q, toolHitsFirst), 380);
+        return;
+      }
+
       // Smart: brand/company intent detected (e.g. "Tesco turnover", "Nike strategy")
       const bco = _detectBrandOrCompany(q);
       if (bco) {
@@ -9221,14 +9233,9 @@ const _ts = new Date(d.timestamp);
         return;
       }
 
-      const ql = q.toLowerCase();
-      const toolHits = _TOOLS.filter(t =>
-        ql.split(/\s+/).some(w => w.length > 2 && (t.name + " " + t.desc + " " + t.kw).toLowerCase().includes(w))
-      );
-      _render(toolHits, [], q, true);
-
+      _render([], [], q, true);
       clearTimeout(_debounce);
-      _debounce = setTimeout(() => _fetchSaves(q, toolHits), 380);
+      _debounce = setTimeout(() => _fetchSaves(q, []), 380);
     };
 
     async function _fetchSaves(q, toolHits) {
