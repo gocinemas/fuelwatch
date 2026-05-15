@@ -10619,6 +10619,19 @@ _bkBadge();
     }
   };
 
+  // General ?screen=X deep link — runs after all JS is loaded so showScreen works for any screen
+  (function(){
+    const _p = new URLSearchParams(location.search);
+    const _s = _p.get("screen");
+    // scan and finder have their own dedicated handlers below; intel is auto-handled by _INTEL_MODE
+    const _handled = new Set(["scan", "finder", "intel"]);
+    if (_s && !_handled.has(_s) && document.getElementById("screen-" + _s)) {
+      showScreen(_s);
+      // strip the ?screen param from the URL so refreshing doesn't re-trigger
+      history.replaceState(null, "", location.pathname);
+    }
+  })();
+
   // Deep-link: ?screen=finder&pc=KT1+2BA&q=plumber
   (function(){
     const p = new URLSearchParams(location.search);
