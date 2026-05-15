@@ -1139,6 +1139,10 @@ def test_places():
 def doc_page(share_id):
     return render_template("index.html", prefill_company=None, prefill_doc=share_id)
 
+@app.route("/intel")
+def intel_page():
+    return render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=True)
+
 @app.route("/<company_slug>")
 def company_page(company_slug):
     return render_template("index.html", prefill_company=company_slug.replace("-", " "), prefill_doc=None)
