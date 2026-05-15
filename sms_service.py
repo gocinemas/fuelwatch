@@ -11012,8 +11012,10 @@ def wa_digest():
             continue
         _digest_last_sent[from_number] = now
 
-        # Only include saves added since last digest (or overdue reminders)
-        cutoff = last  # epoch seconds of last send (0 = never sent)
+        # Only include saves added since last digest (or overdue reminders).
+        # If last==0 (in-memory dict cleared by redeploy), default to 24h ago
+        # so we don't dump every save ever on restart.
+        cutoff = last if last else (now - 24 * 3600)
         new_saves    = [s for s in saves if s.get("status") == "remind" or
                         (s.get("created_at") or "") > _time.strftime("%Y-%m-%dT%H:%M:%S", _time.gmtime(cutoff))]
         if not new_saves:
