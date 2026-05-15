@@ -13437,20 +13437,89 @@ _bkBadge();
     _musicRenderSaved();
   };
 
+  window.musicFindUnmatched = async function(idx, btn) {
+    var s = _musicSavedSongs[idx];
+    if (!s) return;
+    var rawQuery = (s.spotify_url||'').startsWith('unmatched:') ? (s.spotify_url||'').slice(10) : s.title;
+    btn.textContent = '🔍 Searching…'; btn.disabled = true;
+    var resultEl = document.getElementById('music-find-result-' + idx);
+    try {
+      var r = await fetch('https://itunes.apple.com/search?term='+encodeURIComponent(rawQuery)+'&entity=song&limit=3&country=gb');
+      var data = await r.json();
+      var results = (data.results || []);
+      if (!results.length) {
+        btn.textContent = 'No match'; btn.disabled = false; return;
+      }
+      if (resultEl) {
+        resultEl.innerHTML = '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600">Did you mean…</div>'
+          + results.map(function(t, ri) {
+            var cover = (t.artworkUrl60||'');
+            return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border)">'
+              +(cover?'<img src="'+cover+'" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0">':'')
+              +'<div style="flex:1;min-width:0">'
+              +'<div style="font-size:12px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.trackName+'</div>'
+              +'<div style="font-size:11px;color:var(--muted)">'+t.artistName+'</div>'
+              +'</div>'
+              +'<button onclick="musicConfirmUnmatched(\''+idx+'\','+ri+',\''+encodeURIComponent(JSON.stringify({title:t.trackName,artist:t.artistName,album:t.collectionName||'',year:(t.releaseDate||'').slice(0,4),genre:t.primaryGenreName||'',cover_url:(t.artworkUrl100||'').replace(/100x100/,'300x300'),preview_url:t.previewUrl||'',spotify_url:'https://open.spotify.com/search/'+encodeURIComponent(t.trackName+' '+t.artistName),id:s.id||''}))+'\',this)" style="flex-shrink:0;padding:4px 10px;border:1.5px solid #7c3aed;border-radius:8px;font-size:11px;font-weight:700;color:#7c3aed;background:none;cursor:pointer">✓ Yes</button>'
+              +'</div>';
+          }).join('');
+        resultEl.style.display = '';
+      }
+      btn.textContent = '🔍 iTunes'; btn.disabled = false;
+    } catch(e) {
+      btn.textContent = '🔍 iTunes'; btn.disabled = false;
+    }
+  };
+
+  window.musicConfirmUnmatched = async function(listIdx, resultIdx, encodedData, btn) {
+    btn.textContent = '…'; btn.disabled = true;
+    var d;
+    try { d = JSON.parse(decodeURIComponent(encodedData)); } catch(e) { btn.textContent = '✓ Yes'; btn.disabled = false; return; }
+    var phone = _musicPhone();
+    try {
+      if (phone && d.id) {
+        await fetch('/api/music/saves/'+d.id, {
+          method: 'PATCH',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({title:d.title,artist:d.artist,album:d.album,year:d.year,genre:d.genre,cover_url:d.cover_url,preview_url:d.preview_url,spotify_url:d.spotify_url})
+        });
+      } else if (phone) {
+        // localStorage song — update in place
+        if (_musicSavedSongs[listIdx]) {
+          Object.assign(_musicSavedSongs[listIdx], d);
+        }
+      }
+    } catch(e) {}
+    _musicRenderSaved();
+  };
+
   function _musicRenderSongs(songs, isRemote) {
     _musicSavedSongs = songs;
     var el = document.getElementById('music-saved-list');
     if (!songs.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">No saved songs yet</div>'; _musicRenderWeekly([]); return; }
     el.innerHTML = songs.map(function(s, i) {
       var delArg = isRemote ? ("'"+s.id+"'") : i;
-      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-        +(s.cover?'<img src="'+s.cover+'" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0">':'<div style="width:40px;height:40px;border-radius:8px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🎵</div>')
+      var rawQuery = (s.spotify_url||'').startsWith('unmatched:') ? (s.spotify_url||'').slice(10) : null;
+      var isUnmatched = !!rawQuery;
+      var findBtns = isUnmatched
+        ? '<div style="display:flex;gap:6px;margin-top:4px">'
+          +'<a href="https://open.spotify.com/search/'+encodeURIComponent(rawQuery)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:8px;border:1.5px solid #1db954;font-size:11px;font-weight:700;color:#1db954;text-decoration:none">Spotify ↗</a>'
+          +'<a href="https://www.youtube.com/results?search_query='+encodeURIComponent(rawQuery)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:8px;border:1.5px solid #ff0000;font-size:11px;font-weight:700;color:#ff0000;text-decoration:none">YouTube ↗</a>'
+          +'<button onclick="musicFindUnmatched('+i+',this)" style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:8px;border:1.5px solid #7c3aed;font-size:11px;font-weight:700;color:#7c3aed;background:none;cursor:pointer">🔍 iTunes</button>'
+          +'</div>'
+        : '';
+      return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+        +(s.cover_url||s.cover?'<img src="'+(s.cover_url||s.cover)+'" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0">':'<div style="width:40px;height:40px;border-radius:8px;background:'+(isUnmatched?'#fef3c7;border:1.5px dashed #d97706':'var(--border)')+';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">'+(isUnmatched?'❓':'🎵')+'</div>')
         +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.title+'</div>'
-        +'<div style="font-size:12px;color:var(--muted)">'+s.artist+'</div>'
+        +(isUnmatched?'<div style="font-size:11px;color:#d97706;font-weight:600">Not matched on iTunes</div>':'<div style="font-size:12px;color:var(--muted)">'+s.artist+'</div>')
         +'</div>'
-        +'<button onclick="musicPlaySaved('+i+')" style="border:none;background:none;font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0;color:#7c3aed" title="Play & show lyrics">▶</button>'
+        +(!isUnmatched?'<button onclick="musicPlaySaved('+i+')" style="border:none;background:none;font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0;color:#7c3aed" title="Play & show lyrics">▶</button>':'')
         +'<button onclick="musicDeleteSaved('+delArg+','+isRemote+')" style="border:none;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0">✕</button>'
+        +'</div>'
+        +findBtns
+        +'<div id="music-find-result-'+i+'" style="display:none;margin-top:6px"></div>'
         +'</div>';
     }).join('');
     _musicRenderWeekly(songs);

@@ -10033,7 +10033,30 @@ def whatsapp_reply():
         except Exception:
             _track = None
         if not _track:
-            resp.message(f"🎵 Couldn't find *{sg_query}* — try the full song title and artist, e.g.\n*save song Blinding Lights The Weeknd*")
+            # Save raw query as unmatched so user doesn't lose the intent
+            _wa_phone_um = from_number.replace("whatsapp:", "")
+            try:
+                _um_exists = lib._sb().table("music_saves").select("id") \
+                    .eq("phone", _wa_phone_um).eq("title", sg_query).execute().data
+                if not _um_exists:
+                    lib._sb().table("music_saves").insert({
+                        "phone":       _wa_phone_um,
+                        "title":       sg_query,
+                        "artist":      "",
+                        "album":       "",
+                        "year":        "",
+                        "genre":       "",
+                        "cover_url":   "",
+                        "preview_url": "",
+                        "spotify_url": f"unmatched:{sg_query}",
+                    }).execute()
+            except Exception:
+                pass
+            resp.message(
+                f"💾 Saved *{sg_query}* to your list.\n"
+                f"Couldn't match it on iTunes — open My Saves to search for it.\n"
+                f"miru.humanagency.co/?screen=music"
+            )
             return str(resp)
         _sg_title   = _track.get("trackName", sg_query)
         _sg_artist  = _track.get("artistName", "")
@@ -13687,6 +13710,21 @@ def api_music_saves():
     except Exception as e:
         print(f"[music/saves] {e}")
         return jsonify({"error": "could not load"}), 500
+
+
+@app.route("/api/music/saves/<save_id>", methods=["PATCH"])
+def api_music_save_patch(save_id):
+    """Update an unmatched music save with correct iTunes metadata."""
+    data = request.json or {}
+    allowed = {"title", "artist", "album", "year", "genre", "cover_url", "preview_url", "spotify_url"}
+    updates = {k: v for k, v in data.items() if k in allowed}
+    if not updates:
+        return jsonify({"error": "nothing to update"}), 400
+    try:
+        lib._sb().table("music_saves").update(updates).eq("id", save_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/music/save/<save_id>", methods=["DELETE"])
