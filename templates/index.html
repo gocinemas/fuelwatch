@@ -11606,7 +11606,14 @@ _bkBadge();
   /* ── End school comms ──────────────────────────────────────────────────────── */
 
   function _savesPin() { return localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || ""; }
-  function _savesHeaders() { return _savesPin() ? {"X-Library-PIN": _savesPin(), "Content-Type": "application/json"} : {"Content-Type": "application/json"}; }
+  function _savesHeaders() {
+    const h = {"Content-Type": "application/json"};
+    const tok = _savesPin();
+    if (tok) h["X-Library-PIN"] = tok;
+    const phone = localStorage.getItem("miru_phone") || "";
+    if (phone) h["X-User-Phone"] = phone;
+    return h;
+  }
 
   // Load WhatsApp number for onboarding + library links (called once)
   (function _loadWaNumber() {

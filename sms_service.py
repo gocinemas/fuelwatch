@@ -1186,16 +1186,25 @@ def _check_saves_pin():
                 or request.headers.get("X-Admin-Password")
                 or request.args.get("pin", ""))
     if not admin_pw:
-        # Dev mode — open access, try to resolve user token anyway
-        from_number = _resolve_user_token(supplied) if supplied else None
+        from_number = _resolve_saves_token(supplied) if supplied else None
         return from_number, None
     if supplied == admin_pw:
         return None, None  # admin, unrestricted
     if supplied:
-        from_number = _resolve_user_token(supplied)
+        from_number = _resolve_saves_token(supplied)
         if from_number:
             return from_number, None  # valid user token
     return None, (jsonify({"error": "Password required", "auth": True}), 401)
+
+
+def _resolve_saves_token(token: str):
+    """Resolve a user token to from_number. Fast path: verify against X-User-Phone header if present."""
+    phone_hint = request.headers.get("X-User-Phone", "").strip()
+    if phone_hint:
+        expected = _wa_user_token(phone_hint)
+        if expected == token:
+            return phone_hint  # verified — no DB needed
+    return _resolve_user_token(token)
 
 
 @app.route("/api/library/documents")
@@ -12587,7 +12596,7 @@ def api_wa_saves():
     if admin_pw and pin == admin_pw:
         filter_number = None  # admin sees all
     elif pin:
-        filter_number = _resolve_user_token(pin)
+        filter_number = _resolve_saves_token(pin)
         if not filter_number:
             return jsonify({"error": "Password required", "auth": True}), 401
     elif admin_pw:
