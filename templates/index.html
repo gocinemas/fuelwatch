@@ -12398,16 +12398,14 @@ _bkBadge();
     if (name === "saves") savesCheckPin();
   };
 
-  // Read saves auth cookies set by /saves-login and sync to localStorage
+  // Read saves auth from URL params (?st=TOKEN&sp=PHONE) or cookies — set by /saves-login
   (function() {
-    function _getCookie(name) {
-      var m = document.cookie.match('(?:^|;)\\s*' + name + '=([^;]*)');
-      return m ? decodeURIComponent(m[1]) : '';
-    }
-    var ck_tok   = _getCookie('miru_saves_token');
-    var ck_phone = _getCookie('miru_saves_phone');
-    if (ck_tok)   { localStorage.setItem('wa_saves_token', ck_tok);   }
-    if (ck_phone) { localStorage.setItem('miru_phone',     ck_phone); }
+    function _getCookie(n) { var m=document.cookie.match('(?:^|;)\\s*'+n+'=([^;]*)'); return m?decodeURIComponent(m[1]):''; }
+    var p = new URLSearchParams(location.search);
+    var tok   = p.get('st')  || _getCookie('miru_saves_token');
+    var phone = p.get('sp')  || _getCookie('miru_saves_phone');
+    if (tok)   localStorage.setItem('wa_saves_token', tok);
+    if (phone) localStorage.setItem('miru_phone',     phone);
   })();
 
   // Deep-link: ?screen=X&pc=POSTCODE — run after full DOM ready

@@ -794,7 +794,7 @@ def index():
 
 @app.route("/saves-login", methods=["POST", "GET"])
 def saves_login():
-    """Server-side saves login — sets a cookie, redirects back to app. No JS needed."""
+    """Server-side saves login — embeds token in redirect URL so no JS/cookie needed."""
     phone = (request.form.get("phone") or request.args.get("phone") or "").strip()
     phone = re.sub(r'\s+', '', phone)
     if re.match(r'^0\d{10}$', phone):
@@ -810,9 +810,9 @@ def saves_login():
         }).execute()
     except Exception:
         pass
-    resp = make_response(redirect("/?screen=saves"))
-    resp.set_cookie("miru_saves_token", token, max_age=60*60*24*365, samesite="Lax", secure=True)
-    resp.set_cookie("miru_saves_phone", phone,  max_age=60*60*24*365, samesite="Lax", secure=True)
+    resp = make_response(redirect(f"/?screen=saves&st={token}&sp={phone}"))
+    resp.set_cookie("miru_saves_token", token, max_age=60*60*24*365, samesite="Lax")
+    resp.set_cookie("miru_saves_phone", phone,  max_age=60*60*24*365, samesite="Lax")
     return resp
 
 @app.route("/home-v2")
