@@ -5334,7 +5334,9 @@ const _ts = new Date(d.timestamp);
     const list = document.getElementById("intel-pins-list");
     if (!sec || !list) return;
     try {
-      const r = await fetch("/api/intel/pins?device_id=" + encodeURIComponent(_maDeviceId()));
+      const _pinParams = new URLSearchParams({device_id: _maDeviceId()});
+      if (_miruPhone()) _pinParams.set("phone", _miruPhone());
+      const r = await fetch("/api/intel/pins?" + _pinParams.toString());
       const d = await r.json();
       let pins = d.pins || [];
       // Filter pins to match the active mode so brand pins don't appear on company tab
@@ -5501,7 +5503,9 @@ const _ts = new Date(d.timestamp);
     if (!_intelPinName || !_intelPinType) return;
     var endpoint = _intelPinned ? "/api/intel/unpin" : "/api/intel/pin";
     try {
-      var r = await fetch(endpoint, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name:_intelPinName, type:_intelPinType, device_id:_maDeviceId()})});
+      var _pinBody = {name:_intelPinName, type:_intelPinType, device_id:_maDeviceId()};
+      if (_miruPhone()) _pinBody.phone = _miruPhone();
+      var r = await fetch(endpoint, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(_pinBody)});
       var d = await r.json();
       if (d.ok) { _intelSetPin(_intelPinName, _intelPinType, !_intelPinned); _loadIntelPins(); }
     } catch(_) {}
