@@ -5612,6 +5612,18 @@ const _ts = new Date(d.timestamp);
     const _tpSecI = document.getElementById("brand-tp-section");
     if (_tpSecI) _tpSecI.style.display = "none";
 
+    // Clear research brief from previous search
+    const _resPanel = document.getElementById("intel-research-panel");
+    if (_resPanel) _resPanel.style.display = "none";
+    const _resHdl = document.getElementById("research-headline");
+    if (_resHdl) _resHdl.textContent = "";
+    const _resSects = document.getElementById("research-sections");
+    if (_resSects) _resSects.innerHTML = "";
+    const _resBtnLbl = document.getElementById("intel-research-btn-label");
+    if (_resBtnLbl) _resBtnLbl.textContent = "Research brief";
+    const _resBtn = document.getElementById("intel-research-btn");
+    if (_resBtn) _resBtn.disabled = false;
+
     let coData = null, brData = null, coErr = false, brErr = false;
     let coSettled = false, brSettled = false;
 
