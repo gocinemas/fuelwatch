@@ -60,11 +60,12 @@ Your job is to surface what the profile screen does NOT show: strategic signals,
 competitive positioning, and what this company's current moment means for someone deciding to invest,
 partner, hire, or compete with them.
 
-Research process:
+Research process (all 3 calls are mandatory):
 1. Call get_news_by_topic with topic "strategy acquisition partnership restructure" — strategic moves
 2. Call get_news_by_topic with topic "CEO leadership hiring layoffs" — people signals
-3. If interesting signals appear (AI pivot, new CEO, major deal), call get_news_by_topic again
-   with a sharper topic to get detail (e.g. "AI investment product launch", "merger acquisition target")
+3. Call get_news_by_topic with topic "artificial intelligence AI machine learning automation technology" — AI signals
+   This call is ALWAYS required. Use it to populate ai_focus with specific AI bets, tool names, pilots, or investments.
+   If the news returns nothing AI-related, state "No public AI initiatives found" in ai_focus — do not say 'Not publicly available'.
 
 After gathering data, produce your final output as a JSON object with these exact fields:
 {
@@ -78,7 +79,7 @@ After gathering data, produce your final output as a JSON object with these exac
   "confidence": "high | medium | low — based on recency and quality of news data"
 }
 
-If specific data is absent, say 'Not publicly available' rather than guessing.
+If specific data is absent for most fields, say 'Not publicly available'. For ai_focus specifically, always write something based on your search — either what AI moves were found, or "No public AI initiatives found in recent news."
 Output ONLY the JSON — no preamble, no markdown fences."""
 
 # ── Tool implementations ─────────────────────────────────────────────────────
