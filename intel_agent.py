@@ -12,9 +12,11 @@ import time
 import requests
 from search import _fetch_news
 
-GROQ_API_URL    = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL      = "llama-3.3-70b-versatile"
-CLAUDE_MODEL    = "claude-haiku-4-5-20251001"
+GROQ_API_URL     = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL       = "llama-3.3-70b-versatile"
+TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
+TOGETHER_MODEL   = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+CLAUDE_MODEL     = "claude-haiku-4-5-20251001"
 GROQ_MAX_RETRIES = 3
 
 # ── Tool schemas ─────────────────────────────────────────────────────────────
@@ -130,25 +132,25 @@ def _parse_brief(content: str) -> dict:
         return {"overview": content, "raw": True}
 
 
-# ── Groq: single call with retry on 429/5xx ───────────────────────────────────
+# ── Generic OpenAI-compat call with retry ─────────────────────────────────────
 
-def _groq_call(payload: dict, groq_key: str) -> dict:
+def _openai_compat_call(url: str, key: str, payload: dict, max_retries: int = 3) -> dict:
     last_err = None
-    for attempt in range(GROQ_MAX_RETRIES):
+    for attempt in range(max_retries):
         try:
             r = requests.post(
-                GROQ_API_URL,
-                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                url,
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json=payload,
                 timeout=45,
             )
             if r.status_code == 429:
-                wait = (2 ** attempt) * 3  # 3 → 6 → 12 seconds
+                wait = (2 ** attempt) * 3
                 time.sleep(wait)
                 last_err = f"HTTP 429 (attempt {attempt + 1})"
                 continue
             if r.status_code >= 500:
-                if attempt < GROQ_MAX_RETRIES - 1:
+                if attempt < max_retries - 1:
                     time.sleep(2)
                     last_err = f"HTTP {r.status_code} (attempt {attempt + 1})"
                     continue
@@ -156,9 +158,18 @@ def _groq_call(payload: dict, groq_key: str) -> dict:
             return r.json()
         except requests.Timeout:
             last_err = f"Timeout (attempt {attempt + 1})"
-            if attempt < GROQ_MAX_RETRIES - 1:
+            if attempt < max_retries - 1:
                 continue
-    raise Exception(f"Groq failed after {GROQ_MAX_RETRIES} attempts: {last_err}")
+    raise Exception(f"API call failed after {max_retries} attempts: {last_err}")
+
+
+# ── Groq: single call with retry on 429/5xx ───────────────────────────────────
+
+def _groq_call(payload: dict, groq_key: str) -> dict:
+    try:
+        return _openai_compat_call(GROQ_API_URL, groq_key, payload, GROQ_MAX_RETRIES)
+    except Exception as e:
+        raise Exception(f"Groq failed: {e}")
 
 
 def _agent_loop_groq(company_name: str, max_iterations: int = 6) -> dict:
@@ -209,6 +220,58 @@ def _agent_loop_groq(company_name: str, max_iterations: int = 6) -> dict:
         return brief
 
     raise Exception("Groq agent: max iterations reached without completing")
+
+
+# ── Together.ai: llama fallback (same model, different host) ──────────────────
+
+def _agent_loop_together(company_name: str, max_iterations: int = 6) -> dict:
+    together_key = os.environ.get("TOGETHER_API_KEY", "")
+    if not together_key:
+        raise Exception("TOGETHER_API_KEY not set")
+
+    messages = [{"role": "user", "content": f"Research this company for me: {company_name}"}]
+    steps = []
+
+    for _ in range(max_iterations):
+        payload = {
+            "model":       TOGETHER_MODEL,
+            "messages":    [{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+            "tools":       TOOLS,
+            "tool_choice": "auto",
+            "temperature": 0.1,
+            "max_tokens":  2000,
+        }
+        response = _openai_compat_call(TOGETHER_API_URL, together_key, payload)
+
+        choice = response.get("choices", [{}])[0]
+        msg    = choice.get("message", {})
+        reason = choice.get("finish_reason", "")
+        messages.append(msg)
+
+        if reason == "tool_calls" and msg.get("tool_calls"):
+            for tc in msg["tool_calls"]:
+                fn_name = tc["function"]["name"]
+                try:
+                    fn_args = json.loads(tc["function"]["arguments"])
+                except Exception:
+                    fn_args = {}
+                step = {"tool": fn_name, "args": fn_args}
+                tool_result = _dispatch(fn_name, fn_args)
+                step["result_preview"] = tool_result[:200]
+                steps.append(step)
+                messages.append({
+                    "role":         "tool",
+                    "tool_call_id": tc["id"],
+                    "content":      tool_result,
+                })
+            continue
+
+        content = (msg.get("content") or "").strip()
+        brief = _parse_brief(content)
+        brief.update({"company": company_name, "steps": steps, "model": f"{TOGETHER_MODEL} (together fallback)"})
+        return brief
+
+    raise Exception("Together agent: max iterations reached without completing")
 
 
 # ── Claude: fallback agent loop ───────────────────────────────────────────────
@@ -267,21 +330,29 @@ def _agent_loop_claude(company_name: str, max_iterations: int = 6) -> dict:
 
 def run_research_agent(company_name: str, max_iterations: int = 6) -> dict:
     """
-    Try Groq first (with retries). If it fails, fall back to Claude.
-    Returns a structured research brief as a dict.
+    Try Groq → Together.ai → Claude haiku, returning the first success.
     """
+    errors = []
+
     try:
         return _agent_loop_groq(company_name, max_iterations)
-    except Exception as groq_err:
-        # Fall back to Claude if the key is configured
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            try:
-                result = _agent_loop_claude(company_name, max_iterations)
-                result["groq_error"] = str(groq_err)
-                return result
-            except Exception as claude_err:
-                return {
-                    "error":   f"Both providers failed. Groq: {groq_err}. Claude: {claude_err}",
-                    "company": company_name,
-                }
-        return {"error": f"Research failed: {groq_err}", "company": company_name}
+    except Exception as e:
+        errors.append(f"Groq: {e}")
+
+    if os.environ.get("TOGETHER_API_KEY"):
+        try:
+            result = _agent_loop_together(company_name, max_iterations)
+            result["groq_error"] = errors[0]
+            return result
+        except Exception as e:
+            errors.append(f"Together: {e}")
+
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        try:
+            result = _agent_loop_claude(company_name, max_iterations)
+            result["prior_errors"] = errors
+            return result
+        except Exception as e:
+            errors.append(f"Claude: {e}")
+
+    return {"error": f"All providers failed. {' | '.join(errors)}", "company": company_name}
