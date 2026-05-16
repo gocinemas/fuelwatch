@@ -229,17 +229,6 @@ function _savesShowMain() {
   savesLoad();
 }
 
-// ── Bootstrap: show phone form or load saves ─────────────────────────────────
-(function() {
-  var tok   = _savesPin();
-  var phone = _miruPhone();
-  if (tok || phone) {
-    _savesShowMain();
-  } else {
-    _savesShowPhone();
-  }
-})();
-
 // ── Load ─────────────────────────────────────────────────────────────────────
 window.savesLoad = async function() {
   document.getElementById("saves-list").innerHTML =
@@ -795,6 +784,17 @@ window.scanSaveCard = async function() {
   if (r.ok) { scanClose(); savesLoad(); }
   else alert("Could not save — please try again");
 };
+
+// ── Bootstrap (must be last — after all function definitions) ─────────────────
+(function() {
+  var tok   = _savesPin();
+  var phone = _miruPhone();
+  if (tok || phone) {
+    _savesShowMain();
+  } else {
+    _savesShowPhone();
+  }
+})();
 </script>
 </body>
 </html>
