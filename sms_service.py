@@ -7115,8 +7115,12 @@ def _resolve_user_token(token: str):
             if n and n not in seen:
                 seen.add(n)
                 _wa_user_token(n)  # populates _TOKEN_TO_NUMBER
-        return _TOKEN_TO_NUMBER.get(token)
-    except Exception:
+        resolved = _TOKEN_TO_NUMBER.get(token)
+        if not resolved:
+            print(f"[token] resolve miss — token={token[:8]}... known_count={len(_TOKEN_TO_NUMBER)}")
+        return resolved
+    except Exception as _te:
+        print(f"[token] resolve error: {_te}")
         return None
 
 
@@ -8141,6 +8145,14 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             _bg()
         except Exception as _bge:
             app.logger.error(f"[vision] background thread crashed: {_bge}", exc_info=True)
+            # Best-effort fallback: tell user it was saved even if analysis failed
+            try:
+                user_token = _wa_user_token(from_number)
+                _wa_send_proactive(from_number,
+                    f"📷 Saved your photo (analysis hit an error).\n"
+                    f"📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}")
+            except Exception:
+                pass
     threading.Thread(target=_bg_safe, daemon=True).start()
     return "📷 Got it — reading your photo now…"
 
@@ -8152,12 +8164,17 @@ def _wa_send_proactive(to: str, body: str) -> None:
         sid   = os.environ.get("TWILIO_ACCOUNT_SID", "")
         token = os.environ.get("TWILIO_AUTH_TOKEN", "")
         frm   = os.environ.get("TWILIO_WHATSAPP_FROM", "")
-        if sid and token and frm:
-            _TC(sid, token).messages.create(
-                body=body, from_=f"whatsapp:{frm}", to=to
-            )
-    except Exception:
-        pass
+        if not (sid and token and frm):
+            print(f"[proactive] skipped — missing Twilio env vars (sid={bool(sid)} token={bool(token)} frm={bool(frm)})")
+            return
+        # Normalise FROM — strip any whatsapp: prefix before adding it back
+        frm_clean = frm.replace("whatsapp:", "").strip()
+        msg = _TC(sid, token).messages.create(
+            body=body, from_=f"whatsapp:{frm_clean}", to=to
+        )
+        print(f"[proactive] sent to={to} sid={msg.sid}")
+    except Exception as _e:
+        print(f"[proactive] FAILED to={to} error={_e}")
 
 
 def _wa_doc_search(from_number: str, query: str) -> str:
