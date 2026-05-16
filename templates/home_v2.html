@@ -7,327 +7,290 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── TOKENS ── */
 :root {
-  --bg: #0c0c0f;
-  --surface: #16161a;
-  --surface2: #1e1e24;
-  --border: rgba(255,255,255,0.07);
-  --text: #f0f0f2;
-  --muted: #60606a;
-  --muted2: #9090a0;
-  --accent: #22c55e;
-  --accent2: #4ade80;
-  --r: 20px;
-  --shadow: 0 4px 24px rgba(0,0,0,.4);
+  --bg:      #060810;
+  --glass:   rgba(255,255,255,.06);
+  --glass2:  rgba(255,255,255,.03);
+  --border:  rgba(255,255,255,.08);
+  --text:    #f0f0f6;
+  --muted:   #484854;
+  --muted2:  #888898;
+  --accent:  #22c55e;
+  --r:       20px;
+  --pad:     16px;
 }
-
-/* ── LIGHT THEME ── */
 [data-theme="light"] {
-  --bg: #f4f4f0;
-  --surface: #ffffff;
-  --surface2: #eaeae6;
-  --border: rgba(0,0,0,0.08);
-  --text: #111111;
-  --muted: #888888;
-  --muted2: #555555;
-  --accent: #16a34a;
-  --accent2: #15803d;
-  --shadow: 0 4px 24px rgba(0,0,0,.1);
+  --bg:      #edeae4;
+  --glass:   rgba(255,255,255,.78);
+  --glass2:  rgba(255,255,255,.5);
+  --border:  rgba(0,0,0,.08);
+  --text:    #0e0e12;
+  --muted:   #999;
+  --muted2:  #666;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]):not([data-theme="light"]) {
-    --bg: #f4f4f0;
-    --surface: #ffffff;
-    --surface2: #eaeae6;
-    --border: rgba(0,0,0,0.08);
-    --text: #111111;
-    --muted: #888888;
-    --muted2: #555555;
-    --accent: #16a34a;
-    --accent2: #15803d;
-    --shadow: 0 4px 24px rgba(0,0,0,.1);
+    --bg:#edeae4; --glass:rgba(255,255,255,.78); --glass2:rgba(255,255,255,.5);
+    --border:rgba(0,0,0,.08); --text:#0e0e12; --muted:#999; --muted2:#666;
   }
 }
 
 body {
-  background-color: var(--bg); color: var(--text);
+  background: var(--bg);
+  background-image: radial-gradient(ellipse 900px 500px at 50% -60px, rgba(96,165,250,.08), transparent 65%);
+  color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
   min-height: 100dvh; overflow-x: hidden;
-  background-image:
-    radial-gradient(ellipse 700px 400px at 50% 0px, rgba(34,197,94,.07) 0%, transparent 70%),
-    radial-gradient(var(--border) 1px, transparent 1px);
-  background-size: 100% 100%, 28px 28px;
 }
 
-/* ── PAGE ── */
-.page { max-width: 480px; margin: 0 auto; padding: 0 0 160px; }
+.page { max-width: 480px; margin: 0 auto; padding-bottom: 110px; }
 
-/* ── HERO ── */
-.hero {
-  padding: env(safe-area-inset-top, 48px) 20px 24px;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 48px);
+/* ── TOP BAR ── */
+.top-bar {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) var(--pad) 0;
 }
-.hero-eyebrow {
-  font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
-  text-transform: uppercase; color: var(--muted2); margin-bottom: 6px;
+.theme-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--glass); border: 1px solid var(--border);
+  font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent; flex-shrink: 0;
 }
-.hero-date {
-  font-size: 32px; font-weight: 900; letter-spacing: -1.5px;
-  color: var(--text); line-height: 1.1; margin-bottom: 4px;
-}
-.hero-sub { font-size: 13px; color: var(--muted); }
-.hero-right { margin-left: auto; }
 .wfh-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 30px; padding: 10px 16px; cursor: pointer;
-  font-size: 13px; font-weight: 700; color: var(--muted2);
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: 30px; padding: 8px 14px; cursor: pointer;
+  font-size: 12px; font-weight: 700; color: var(--muted2);
   -webkit-tap-highlight-color: transparent; transition: all .2s;
 }
-.wfh-pill.active { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.3); color: #4ade80; }
-.hero-row { display: flex; align-items: flex-start; gap: 12px; }
+.wfh-pill.active { background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.25); color: #4ade80; }
 
-/* ── SECTION LABEL ── */
-.slabel {
-  font-size: 10px; font-weight: 700; letter-spacing: 1.4px;
-  text-transform: uppercase; color: var(--muted);
-  padding: 24px 20px 10px; display: flex; align-items: center; justify-content: space-between;
-}
-.slabel-more { letter-spacing: 0; text-transform: none; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--muted2); }
-
-/* ── WEATHER HERO CARD ── */
+/* ── WEATHER HERO (full-bleed) ── */
 .wx-hero {
-  margin: 0 20px 12px;
-  border-radius: var(--r); padding: 22px 22px;
-  display: flex; align-items: center; gap: 20px;
-  cursor: pointer; transition: background .6s ease;
+  position: relative; overflow: hidden;
+  min-height: 220px;
+  margin: 12px var(--pad) 0;
+  border-radius: 28px;
+  padding: 20px 22px 22px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  cursor: pointer;
+  transition: filter .4s;
 }
-/* sky gradients per condition */
-.wx-hero.sky-clear    { background: linear-gradient(145deg,#1a3a6c,#0f2657); border: 1px solid rgba(250,204,21,.2); }
-.wx-hero.sky-sunny    { background: linear-gradient(145deg,#1a4a2e,#0f3020); border: 1px solid rgba(250,204,21,.2); }
-.wx-hero.sky-cloud    { background: linear-gradient(145deg,#1e2a3a,#141e2d); border: 1px solid rgba(148,163,184,.15); }
-.wx-hero.sky-rain     { background: linear-gradient(145deg,#1a2236,#0f1826); border: 1px solid rgba(96,165,250,.2); }
-.wx-hero.sky-snow     { background: linear-gradient(145deg,#1e2a3a,#2a3a52); border: 1px solid rgba(186,230,253,.2); }
-.wx-hero.sky-storm    { background: linear-gradient(145deg,#1a1a2e,#0f0f1e); border: 1px solid rgba(167,139,250,.2); }
-.wx-hero.sky-night    { background: linear-gradient(145deg,#0a0a1a,#0f0f22); border: 1px solid rgba(99,102,241,.2); }
-.wx-hero.sky-fog      { background: linear-gradient(145deg,#1e2030,#161824); border: 1px solid rgba(148,163,184,.1); }
+/* Readability veil */
+.wx-hero::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,.08) 0%, rgba(0,0,0,.28) 100%);
+  border-radius: inherit; pointer-events: none;
+}
+/* Sky states */
+.wx-hero.sky-sunny  { background: linear-gradient(155deg,#1a5c2e,#0c3a1c,#061e0e); }
+.wx-hero.sky-clear  { background: linear-gradient(155deg,#1a3d78,#0c2554,#070e2e); }
+.wx-hero.sky-cloud  { background: linear-gradient(155deg,#1e2840,#13192e,#080c1a); }
+.wx-hero.sky-rain   { background: linear-gradient(155deg,#162030,#0c1520,#060c14); }
+.wx-hero.sky-snow   { background: linear-gradient(155deg,#1e2a40,#1a2448,#10182e); }
+.wx-hero.sky-storm  { background: linear-gradient(155deg,#14101e,#0c0818,#06040e); }
+.wx-hero.sky-night  { background: linear-gradient(155deg,#08081e,#06061a,#030310); }
+.wx-hero.sky-fog    { background: linear-gradient(155deg,#181c28,#111520,#080c14); }
 
-.wx-temp-big { font-size: 56px; font-weight: 900; letter-spacing: -3px; color: #e0f2fe; line-height: 1; flex-shrink: 0; }
-.wx-right { flex: 1; }
-.wx-condition { font-size: 16px; font-weight: 700; color: #bae6fd; margin-bottom: 3px; }
-.wx-feels { font-size: 12px; color: #7dd3fc; }
+/* Greeting eyebrow */
+.wx-eyebrow {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 10px;
+}
+.wx-greeting {
+  font-size: 10px; font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase;
+  color: rgba(255,255,255,.5);
+}
+.wx-date-str { font-size: 10px; color: rgba(255,255,255,.3); }
+
+/* Main weather content */
+.wx-body {
+  position: relative; z-index: 1;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+}
+.wx-left { display: flex; flex-direction: column; gap: 6px; }
+.wx-temp {
+  font-size: 92px; font-weight: 900; letter-spacing: -6px;
+  color: #fff; line-height: 0.88;
+  text-shadow: 0 4px 24px rgba(0,0,0,.4);
+}
+.wx-cond  { font-size: 17px; font-weight: 700; color: rgba(255,255,255,.9); }
+.wx-feels { font-size: 12px; color: rgba(255,255,255,.55); margin-top: 1px; }
 .wx-badge {
-  margin-top: 8px; display: inline-flex; align-items: center;
-  font-size: 11px; font-weight: 700; padding: 4px 10px;
-  border-radius: 20px; background: rgba(56,189,248,.15); color: #7dd3fc;
+  display: inline-flex; align-items: center; align-self: flex-start;
+  font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+  background: rgba(255,255,255,.15); color: rgba(255,255,255,.9);
+}
+.wx-icon { width: 72px; height: 72px; position: relative; flex-shrink: 0; }
+
+/* ── DATA ROW ── */
+.data-row {
+  display: grid; gap: 10px;
+  padding: 10px var(--pad) 0;
+}
+.data-row.has-fuel  { grid-template-columns: 3fr 2fr; }
+.data-row.no-fuel   { grid-template-columns: 1fr; }
+
+/* ── GLASS CARD ── */
+.g-card {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px 16px;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .15s;
+}
+.g-card:active { background: var(--glass2); }
+
+.card-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase;
+  color: var(--muted2); display: block; margin-bottom: 2px;
+}
+.card-sub {
+  font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: .3px;
+  margin-bottom: 10px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* ── WEATHER ICON ── */
-.wx-icon { width: 64px; height: 64px; position: relative; flex-shrink: 0; }
+/* ── TRAINS ── */
+.train-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.train-row:last-child { border-bottom: none; padding-bottom: 0; }
+.train-time {
+  font-size: 26px; font-weight: 900; letter-spacing: -1.5px;
+  color: #818cf8; line-height: 1; flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.train-dest { flex: 1; min-width: 0; }
+.train-dest strong { font-size: 12px; font-weight: 700; color: var(--text); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.train-dest span   { font-size: 10px; color: var(--muted2); }
+.train-badge {
+  font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 10px; flex-shrink: 0; white-space: nowrap;
+}
+.tb-ok   { background: rgba(34,197,94,.12);  color: #4ade80; }
+.tb-late { background: rgba(239,68,68,.12);  color: #f87171; }
 
-/* Sun */
-.wx-sun { position:absolute; width:28px; height:28px; border-radius:50%; background:#fbbf24; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 12px 4px rgba(251,191,36,.4); animation:wx-pulse 3s ease-in-out infinite; }
+/* ── FUEL ── */
+.fuel-cols { display: flex; flex-direction: column; gap: 10px; margin-top: 2px; }
+.fuel-col {}
+.fuel-lbl { font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 1px; }
+.fuel-num {
+  font-size: 32px; font-weight: 900; letter-spacing: -2px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.fuel-p { color: #fbbf24; }
+.fuel-d { color: #f97316; }
+.fuel-sta { font-size: 10px; color: var(--muted); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── SCHOOL ── */
+.school-wrap { padding: 10px var(--pad) 0; }
+.school-card {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: 16px; padding: 12px 14px;
+  display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px;
+}
+.school-dot { width: 7px; height: 7px; border-radius: 50%; background: #fbbf24; flex-shrink: 0; margin-top: 4px; }
+.school-dot.u { background: #f87171; }
+.school-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.school-body  { font-size: 11px; color: var(--muted2); margin-top: 2px; line-height: 1.5; }
+.school-meta  { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+/* ── QUICK ACTIONS ── */
+.action-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  padding: 10px var(--pad) 0;
+}
+.action-tile {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: 18px; padding: 16px 8px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s;
+}
+.action-tile:active { background: var(--glass2); }
+.at-icon  { font-size: 22px; line-height: 1; }
+.at-label { font-size: 10px; font-weight: 700; color: var(--muted2); text-align: center; }
+
+/* ── SAVES ── */
+.saves-wrap { padding: 12px var(--pad) 0; }
+.saves-label { font-size: 9px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted2); margin-bottom: 8px; }
+.saves-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.saves-row::-webkit-scrollbar { display: none; }
+.save-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: 22px; padding: 9px 14px;
+  font-size: 12px; font-weight: 600; color: var(--text);
+  white-space: nowrap; flex-shrink: 0; cursor: pointer;
+}
+
+/* ── ONBOARDING ── */
+.ob-wrap { padding: 28px var(--pad); }
+.ob-hero {
+  background: linear-gradient(145deg,#0d3a1e,#061e0e);
+  border: 1px solid rgba(34,197,94,.15);
+  border-radius: var(--r); padding: 28px 22px; margin-bottom: 14px;
+}
+.ob-hero h2 { font-size: 28px; font-weight: 900; color: #fff; letter-spacing: -1px; margin-bottom: 8px; }
+.ob-hero p  { font-size: 13px; color: rgba(255,255,255,.55); line-height: 1.6; }
+.ob-form { background: var(--glass); border: 1px solid var(--border); border-radius: var(--r); padding: 22px; }
+.ob-label { font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--muted2); display: block; margin-bottom: 6px; }
+.ob-input {
+  width: 100%; padding: 13px 14px; border: 1.5px solid var(--border);
+  border-radius: 12px; font-size: 16px; font-family: inherit;
+  background: var(--glass2); color: var(--text); outline: none; margin-bottom: 12px;
+}
+.ob-input:focus { border-color: var(--accent); }
+.ob-btn {
+  width: 100%; padding: 15px; background: linear-gradient(135deg,#22c55e,#16a34a);
+  color: #fff; font-size: 15px; font-weight: 800; border: none;
+  border-radius: 14px; cursor: pointer;
+}
+
+/* ── WEATHER ICON ELEMENTS ── */
+.wx-sun { position:absolute; width:28px; height:28px; border-radius:50%; background:#fbbf24; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 14px 5px rgba(251,191,36,.4); animation:wx-pulse 3s ease-in-out infinite; }
 .wx-rays { position:absolute; inset:0; animation:wx-spin 10s linear infinite; }
 .wx-ray  { position:absolute; left:50%; top:2px; width:2px; height:8px; background:#fbbf24; border-radius:2px; transform-origin:50% 30px; opacity:.7; }
-@keyframes wx-pulse { 0%,100%{box-shadow:0 0 12px 4px rgba(251,191,36,.4)} 50%{box-shadow:0 0 20px 8px rgba(251,191,36,.15)} }
+@keyframes wx-pulse { 0%,100%{box-shadow:0 0 14px 5px rgba(251,191,36,.4)} 50%{box-shadow:0 0 22px 8px rgba(251,191,36,.15)} }
 @keyframes wx-spin  { to{transform:rotate(360deg)} }
-
-/* Moon */
 .wx-moon { position:absolute; width:30px; height:30px; background:#fde68a; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 14px 4px rgba(253,230,138,.25); }
-.wx-moon::after { content:''; position:absolute; width:22px; height:22px; background:#0a0a1a; border-radius:50%; top:-4px; right:-6px; }
-
-/* Cloud */
+.wx-moon::after { content:''; position:absolute; width:22px; height:22px; background:#08081e; border-radius:50%; top:-4px; right:-6px; }
 .wx-cloud-body { position:absolute; bottom:14px; left:6px; right:6px; height:20px; background:#94a3b8; border-radius:12px; }
 .wx-cloud-body::before { content:''; position:absolute; width:18px; height:18px; background:#94a3b8; border-radius:50%; top:-10px; left:8px; }
-.wx-cloud-body::after  { content:''; position:absolute; width:13px; height:13px; background:#94a3b8; border-radius:50%; top:-7px;  left:23px; }
-
-/* Part cloud: sun behind cloud */
+.wx-cloud-body::after  { content:''; position:absolute; width:13px; height:13px; background:#94a3b8; border-radius:50%; top:-7px; left:23px; }
 .wx-part-sun { position:absolute; top:4px; right:4px; width:26px; height:26px; background:#fbbf24; border-radius:50%; box-shadow:0 0 10px rgba(251,191,36,.5); }
 .wx-part-cloud { position:absolute; bottom:10px; left:4px; right:4px; height:18px; background:#94a3b8; border-radius:10px; }
 .wx-part-cloud::before { content:''; position:absolute; width:16px; height:16px; background:#94a3b8; border-radius:50%; top:-8px; left:6px; }
 .wx-part-cloud::after  { content:''; position:absolute; width:11px; height:11px; background:#94a3b8; border-radius:50%; top:-5px; left:20px; }
-
-/* Rain */
 .wx-rain-cloud { position:absolute; top:6px; left:4px; right:4px; height:22px; background:#6b7280; border-radius:12px; }
 .wx-rain-cloud::before { content:''; position:absolute; width:18px; height:18px; background:#6b7280; border-radius:50%; top:-10px; left:6px; }
 .wx-rain-cloud::after  { content:''; position:absolute; width:14px; height:14px; background:#6b7280; border-radius:50%; top:-7px; left:22px; }
 .wx-drops { position:absolute; bottom:6px; left:0; right:0; display:flex; justify-content:center; gap:6px; }
 .wx-drop  { width:2px; height:8px; background:#60a5fa; border-radius:2px; animation:wx-fall 1.1s ease-in infinite; }
-.wx-drop:nth-child(2) { animation-delay:.25s; }
-.wx-drop:nth-child(3) { animation-delay:.5s;  }
-.wx-drop:nth-child(4) { animation-delay:.75s; }
+.wx-drop:nth-child(2){animation-delay:.25s} .wx-drop:nth-child(3){animation-delay:.5s} .wx-drop:nth-child(4){animation-delay:.75s}
 @keyframes wx-fall { 0%{transform:translateY(-4px);opacity:.9} 100%{transform:translateY(10px);opacity:0} }
-
-/* Heavy rain */
 .wx-heavydrop { width:2px; height:10px; background:#93c5fd; border-radius:2px; animation:wx-fall .8s ease-in infinite; }
 .wx-heavydrop:nth-child(2){animation-delay:.15s} .wx-heavydrop:nth-child(3){animation-delay:.3s} .wx-heavydrop:nth-child(4){animation-delay:.45s} .wx-heavydrop:nth-child(5){animation-delay:.6s}
-
-/* Snow */
 .wx-snow-cloud { position:absolute; top:6px; left:4px; right:4px; height:22px; background:#64748b; border-radius:12px; }
 .wx-snow-cloud::before { content:''; position:absolute; width:18px; height:18px; background:#64748b; border-radius:50%; top:-10px; left:6px; }
 .wx-snow-cloud::after  { content:''; position:absolute; width:14px; height:14px; background:#64748b; border-radius:50%; top:-7px; left:22px; }
 .wx-flakes { position:absolute; bottom:4px; left:0; right:0; display:flex; justify-content:center; gap:8px; }
-.wx-flake  { font-size:12px; line-height:1; animation:wx-drift 2s ease-in-out infinite; }
+.wx-flake  { font-size:12px; animation:wx-drift 2s ease-in-out infinite; }
 .wx-flake:nth-child(2){animation-delay:.6s} .wx-flake:nth-child(3){animation-delay:1.2s}
 @keyframes wx-drift { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(4px) rotate(20deg)} }
-
-/* Thunderstorm */
 .wx-storm-cloud { position:absolute; top:4px; left:4px; right:4px; height:24px; background:#374151; border-radius:12px; }
 .wx-storm-cloud::before { content:''; position:absolute; width:20px; height:20px; background:#374151; border-radius:50%; top:-12px; left:6px; }
 .wx-storm-cloud::after  { content:''; position:absolute; width:15px; height:15px; background:#374151; border-radius:50%; top:-8px; left:24px; }
 .wx-bolt { position:absolute; bottom:2px; left:50%; transform:translateX(-50%); font-size:20px; animation:wx-flash 2s ease-in-out infinite; }
 @keyframes wx-flash { 0%,90%,100%{opacity:1} 95%{opacity:.1} }
-
-/* Fog */
 .wx-fog-lines { position:absolute; inset:12px 6px; display:flex; flex-direction:column; justify-content:space-between; }
 .wx-fog-line  { height:4px; background:rgba(148,163,184,.5); border-radius:2px; animation:wx-fog-shift 3s ease-in-out infinite; }
 .wx-fog-line:nth-child(2){animation-delay:.5s;width:80%;margin-left:10%} .wx-fog-line:nth-child(3){animation-delay:1s;width:70%;margin-left:5%}
 @keyframes wx-fog-shift { 0%,100%{opacity:.5;transform:translateX(0)} 50%{opacity:.9;transform:translateX(4px)} }
 
-/* ── TRAIN CARD ── */
-.trains-card {
-  margin: 0 20px 12px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r); overflow: hidden;
-  cursor: pointer;
-}
-.train-header {
-  padding: 12px 18px 0; font-size: 10px; font-weight: 700;
-  letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
-}
-.train-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 18px; border-bottom: 1px solid var(--border);
-}
-.train-row:last-child { border-bottom: none; }
-.train-time { font-size: 22px; font-weight: 900; letter-spacing: -1px; color: #a5b4fc; min-width: 58px; }
-.train-dest { flex: 1; font-size: 13px; color: var(--muted2); line-height: 1.4; }
-.train-dest strong { font-weight: 700; color: var(--text); display: block; }
-.train-badge {
-  font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 12px;
-  white-space: nowrap; flex-shrink: 0;
-}
-.tb-ok   { background: rgba(245,158,11,.12); color: #fbbf24; }
-.tb-late { background: rgba(239,68,68,.12);  color: #f87171; }
-.tb-gone { background: rgba(99,102,241,.1);  color: #818cf8; }
-
-/* ── FUEL CARD ── */
-.fuel-card {
-  margin: 0 20px 12px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 18px 20px;
-  display: flex; align-items: center; gap: 0;
-  cursor: pointer;
-}
-.fuel-type-label { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
-.fuel-price { font-size: 36px; font-weight: 900; letter-spacing: -2px; line-height: 1; }
-.fuel-petrol { color: #fbbf24; }
-.fuel-diesel { color: #f97316; }
-.fuel-divider { width: 1px; background: var(--border); align-self: stretch; margin: 0 20px; }
-.fuel-station { font-size: 12px; color: var(--muted); margin-top: 4px; }
-
-/* ── SCHOOL MESSAGES ── */
-.school-card {
-  margin: 0 20px 8px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 14px 16px;
-  display: flex; align-items: flex-start; gap: 12px;
-}
-.school-dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; flex-shrink: 0; margin-top: 5px; }
-.school-dot.u { background: #f87171; }
-.school-title { font-size: 14px; font-weight: 700; color: var(--text); }
-.school-body  { font-size: 12px; color: var(--muted2); margin-top: 3px; line-height: 1.5; }
-.school-meta  { font-size: 11px; color: var(--muted); margin-top: 4px; }
-
-/* ── SAVES STRIP ── */
-.saves-row {
-  display: flex; gap: 8px; padding: 0 20px;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; scroll-snap-type: x mandatory;
-}
-.saves-row::-webkit-scrollbar { display: none; }
-.save-chip {
-  display: flex; align-items: center; gap: 7px;
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 24px; padding: 9px 14px;
-  font-size: 13px; font-weight: 600; color: var(--text);
-  white-space: nowrap; flex-shrink: 0; scroll-snap-align: start;
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
-}
-
-/* ── TOOL GRID ── */
-.tool-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 10px; padding: 0 20px;
-}
-.tool-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 16px; padding: 16px;
-  cursor: pointer; -webkit-tap-highlight-color: transparent;
-  transition: background .15s;
-}
-.tool-card:active { background: var(--surface2); }
-.tool-icon  { font-size: 24px; margin-bottom: 8px; }
-.tool-label { font-size: 14px; font-weight: 700; }
-.tool-sub   { font-size: 11px; color: var(--muted2); margin-top: 2px; }
-
-/* ── NEARBY STRIP ── */
-.nearby-row {
-  display: flex; gap: 10px; padding: 0 20px;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.nearby-row::-webkit-scrollbar { display: none; }
-.nearby-chip {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 12px 14px; flex-shrink: 0;
-  cursor: pointer; min-width: 120px;
-}
-.nearby-chip-icon { font-size: 20px; margin-bottom: 6px; }
-.nearby-chip-name { font-size: 12px; font-weight: 700; color: var(--text); }
-.nearby-chip-dist { font-size: 11px; color: var(--muted2); margin-top: 2px; }
-
-/* ── ONBOARDING ── */
-.ob-wrap { padding: 24px 20px; }
-.ob-hero {
-  background: linear-gradient(135deg, #064e3b, #065f46);
-  border-radius: var(--r); padding: 26px 22px; margin-bottom: 16px;
-}
-.ob-hero h2 { font-size: 24px; font-weight: 900; color: #fff; letter-spacing: -.6px; margin-bottom: 6px; }
-.ob-hero p  { font-size: 13px; color: #86efac; line-height: 1.6; }
-.ob-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 22px; }
-.ob-label { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted2); display: block; margin-bottom: 6px; }
-.ob-input {
-  width: 100%; padding: 13px 14px; border: 1.5px solid var(--border);
-  border-radius: 12px; font-size: 16px; font-family: inherit;
-  background: var(--surface2); color: var(--text); outline: none;
-  margin-bottom: 14px;
-}
-.ob-input:focus { border-color: #22c55e; }
-.ob-btn {
-  width: 100%; padding: 15px; background: linear-gradient(135deg,#22c55e,#16a34a);
-  color: #fff; font-size: 15px; font-weight: 800; border: none;
-  border-radius: 14px; cursor: pointer; letter-spacing: -.2px;
-}
-
-/* ── THEME TOGGLE ── */
-.theme-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border-radius: 50%;
-  background: var(--surface2); border: 1px solid var(--border);
-  font-size: 16px; cursor: pointer; line-height: 1;
-  -webkit-tap-highlight-color: transparent; transition: background .2s;
-  flex-shrink: 0;
-}
-
 /* ── SKELETON ── */
-.skel {
-  background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 6px; display: block;
-}
-@keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
+.skel { background:linear-gradient(90deg,var(--glass2) 25%,var(--glass) 50%,var(--glass2) 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:6px; display:block; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
 /* ── PILL NAV ── */
 #pill-overlay { display:none; position:fixed; inset:0; z-index:200; }
@@ -335,25 +298,19 @@ body {
 #pill-nav { position:fixed; bottom:calc(20px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:300; }
 #pill-shell {
   display:flex; align-items:center; justify-content:center;
-  background:rgba(22,22,26,.96); backdrop-filter:blur(20px) saturate(180%);
+  background:rgba(12,12,20,.96); backdrop-filter:blur(20px) saturate(180%);
   -webkit-backdrop-filter:blur(20px) saturate(180%);
   border:1px solid var(--border); border-radius:30px; height:46px; width:150px;
   overflow:hidden; position:relative; cursor:pointer;
-  transition:width .38s cubic-bezier(.34,1.56,.64,1); box-shadow:var(--shadow);
+  transition:width .38s cubic-bezier(.34,1.56,.64,1); box-shadow:0 8px 32px rgba(0,0,0,.5);
 }
-#pill-shell.expanded { width: 264px; }
-#pill-resting {
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  gap:6px; opacity:1; transition:opacity .2s; pointer-events:auto; padding:0 16px; white-space:nowrap;
-}
+#pill-shell.expanded { width:264px; }
+#pill-resting { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:6px; opacity:1; transition:opacity .2s; pointer-events:auto; padding:0 16px; white-space:nowrap; }
 #pill-shell.expanded #pill-resting { opacity:0; pointer-events:none; }
 .pr-label { font-size:14px; font-weight:600; color:var(--text); }
 .pr-chev { width:14px; height:14px; stroke:var(--muted); fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; transition:transform .3s; flex-shrink:0; }
 #pill-shell.expanded .pr-chev { transform:rotate(180deg); }
-#pill-icons {
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:space-around;
-  padding:0 8px; opacity:0; transition:opacity .18s ease .1s; pointer-events:none;
-}
+#pill-icons { position:absolute; inset:0; display:flex; align-items:center; justify-content:space-around; padding:0 8px; opacity:0; transition:opacity .18s ease .1s; pointer-events:none; }
 #pill-shell.expanded #pill-icons { opacity:1; pointer-events:auto; }
 .pi-btn { display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; cursor:pointer; color:var(--muted); padding:6px 10px; border-radius:12px; transition:color .15s; }
 .pi-btn.pi-active { color:var(--text); }
@@ -363,27 +320,20 @@ body {
 
 #toast {
   position:fixed; bottom:130px; left:50%; transform:translateX(-50%) translateY(10px);
-  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  background:var(--glass); border:1px solid var(--border); border-radius:12px;
   padding:8px 18px; font-size:13px; font-weight:600;
   opacity:0; transition:opacity .2s,transform .2s; pointer-events:none;
   white-space:nowrap; z-index:400;
+  backdrop-filter:blur(20px);
 }
 </style>
 </head>
 <body>
 <div class="page">
-  <div class="hero">
-    <div class="hero-row">
-      <div>
-        <div class="hero-eyebrow" id="hero-eyebrow">Good morning</div>
-        <div class="hero-date" id="hero-date">Friday</div>
-        <div class="hero-sub" id="hero-sub">Loading…</div>
-      </div>
-      <div class="hero-right" style="display:flex;align-items:center;gap:8px">
-        <button class="theme-btn" id="theme-btn" onclick="_cycleTheme()" title="Toggle theme"></button>
-        <button class="wfh-pill" id="wfh-btn" onclick="_toggleWfh()">🏢 Office</button>
-      </div>
-    </div>
+  <!-- Top controls -->
+  <div class="top-bar">
+    <button class="theme-btn" id="theme-btn" onclick="_cycleTheme()"></button>
+    <button class="wfh-pill" id="wfh-btn" onclick="_toggleWfh()">🏢 Office</button>
   </div>
 
   <div id="content"></div>
@@ -406,7 +356,6 @@ body {
     </div>
   </div>
 </div>
-
 <div id="toast"></div>
 
 <script>
@@ -417,17 +366,15 @@ body {
   var ph = p.get('phone')||'';
   if (pc && !localStorage.getItem('miru_postcode')) localStorage.setItem('miru_postcode', pc);
   if (ph && !localStorage.getItem('miru_phone'))    localStorage.setItem('miru_phone', ph);
-  // Preview mode: seed a demo postcode so personalised view always renders
-  if (p.get('preview') === 'miru2026' && !localStorage.getItem('miru_postcode')) {
+  if (p.get('preview') === 'miru2026' && !localStorage.getItem('miru_postcode'))
     localStorage.setItem('miru_postcode', 'KT160HY');
-  }
 })();
 
-const PC    = (localStorage.getItem('miru_postcode')||'').replace(/\s+/g,'').toUpperCase();
+const PC     = (localStorage.getItem('miru_postcode')||'').replace(/\s+/g,'').toUpperCase();
 const PC_FMT = PC.length > 4 ? PC.slice(0,-3)+' '+PC.slice(-3) : PC;
 const PHONE  = localStorage.getItem('miru_phone')||'';
 
-// ── TIME HELPERS ──────────────────────────────────────────────
+// ── TIME ──────────────────────────────────────────────────────
 function hour() { return new Date().getHours(); }
 function timeOfDay() {
   const h = hour();
@@ -436,12 +383,11 @@ function timeOfDay() {
   if (h >= 17 && h < 22) return 'evening';
   return 'night';
 }
-const _todayFmt = new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
-const _dayName  = new Date().toLocaleDateString('en-GB', {weekday:'long'});
+const _todayFmt = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+const _dayName  = new Date().toLocaleDateString('en-GB',{weekday:'long'});
 
-// ── WFH STATE ─────────────────────────────────────────────────
+// ── WFH ───────────────────────────────────────────────────────
 let _wfhMode = localStorage.getItem('miru_wfh') === 'true';
-
 function _toggleWfh() {
   _wfhMode = !_wfhMode;
   localStorage.setItem('miru_wfh', _wfhMode);
@@ -455,6 +401,21 @@ function _updateWfhBtn() {
   btn.classList.toggle('active', _wfhMode);
 }
 
+// ── THEME ─────────────────────────────────────────────────────
+let _themeMode = localStorage.getItem('miru_theme') || 'system';
+const _THEME_ICONS  = { dark:'🌙', light:'☀️', system:'⚙️' };
+const _THEME_CYCLE  = { system:'dark', dark:'light', light:'system' };
+function _applyTheme() {
+  const el = document.documentElement, btn = document.getElementById('theme-btn');
+  _themeMode === 'system' ? el.removeAttribute('data-theme') : el.setAttribute('data-theme', _themeMode);
+  if (btn) btn.textContent = _THEME_ICONS[_themeMode];
+}
+function _cycleTheme() {
+  _themeMode = _THEME_CYCLE[_themeMode] || 'system';
+  localStorage.setItem('miru_theme', _themeMode);
+  _applyTheme();
+}
+
 // ── WEATHER DATA ──────────────────────────────────────────────
 const WX_CODES = {
   0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',
@@ -465,12 +426,7 @@ const WX_CODES = {
 
 // ── INIT ──────────────────────────────────────────────────────
 _applyTheme();
-const tod = timeOfDay();
-document.getElementById('hero-eyebrow').textContent = {morning:'Good morning', afternoon:'Good afternoon', evening:'Good evening', night:'Late night'}[tod] || 'Hello';
-document.getElementById('hero-date').textContent    = _dayName;
-document.getElementById('hero-sub').textContent     = PC_FMT ? PC_FMT + '  ·  ' + new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long'}) : new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long'});
 _updateWfhBtn();
-
 PC ? renderPersonalised() : renderBlank();
 
 // ── ONBOARDING ────────────────────────────────────────────────
@@ -478,15 +434,14 @@ function renderBlank() {
   document.getElementById('content').innerHTML = `
     <div class="ob-wrap">
       <div class="ob-hero">
-        <h2>Your UK life, briefed.</h2>
-        <p>Trains · Fuel · Weather · Schools · Local intel</p>
+        <h2>Your UK life,<br>briefed.</h2>
+        <p>Trains · Fuel · Weather · Schools · Local intel — in one dark screen.</p>
       </div>
       <div class="ob-form">
-        <div style="font-size:15px;font-weight:700;margin-bottom:18px">Set your postcode to get started</div>
+        <div style="font-size:15px;font-weight:800;margin-bottom:16px;letter-spacing:-.3px">Set your postcode</div>
         <label class="ob-label">Postcode</label>
-        <input id="ob-pc" class="ob-input" type="text" placeholder="e.g. KT16 0HY" maxlength="8" autocomplete="postal-code"
-          oninput="this.value=this.value.toUpperCase()">
-        <label class="ob-label">Mobile <span style="font-weight:400;text-transform:none">(links your WhatsApp — optional)</span></label>
+        <input id="ob-pc" class="ob-input" type="text" placeholder="KT16 0HY" maxlength="8" autocomplete="postal-code" oninput="this.value=this.value.toUpperCase()">
+        <label class="ob-label">Mobile <span style="font-weight:400;text-transform:none">(links WhatsApp — optional)</span></label>
         <input id="ob-ph" class="ob-input" type="tel" placeholder="+44 7911 123456" autocomplete="tel">
         <button class="ob-btn" onclick="_obSubmit()">Get started →</button>
         <div id="ob-err" style="display:none;color:#f87171;font-size:12px;text-align:center;margin-top:10px"></div>
@@ -499,7 +454,7 @@ async function _obSubmit() {
   const ph  = (document.getElementById('ob-ph').value||'').trim().replace(/[\s\-\(\)]/g,'');
   const err = document.getElementById('ob-err');
   if (!pc || pc.length < 2) { err.textContent='Enter your postcode.'; err.style.display='block'; return; }
-  err.style.display = 'none';
+  err.style.display='none';
   const btn = document.querySelector('.ob-btn'); btn.textContent='Saving…'; btn.disabled=true;
   try {
     const ok = await fetch(`https://api.postcodes.io/postcodes/${pc}`);
@@ -507,7 +462,7 @@ async function _obSubmit() {
     if (!d.result) { err.textContent='Postcode not found.'; err.style.display='block'; btn.textContent='Get started →'; btn.disabled=false; return; }
     localStorage.setItem('miru_postcode', pc);
     let phone = ph;
-    if (/^07\d{9}$/.test(phone)) phone = '+44'+phone.slice(1);
+    if (/^07\d{9}$/.test(phone)) phone='+44'+phone.slice(1);
     if (phone) localStorage.setItem('miru_phone', phone);
     if (phone) fetch('/api/myarea/home-postcode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from_number:phone,postcode:pc})}).catch(()=>{});
     location.reload();
@@ -516,152 +471,115 @@ async function _obSubmit() {
 
 // ── PERSONALISED RENDER ───────────────────────────────────────
 function renderPersonalised() {
-  const wfh = _wfhMode;
-  let html   = '';
+  const tod = timeOfDay();
+  const greet = {morning:'Good morning',afternoon:'Good afternoon',evening:'Good evening',night:'Late night'}[tod]||'Hello';
+  const showFuel = tod === 'morning' && !_wfhMode;
 
-  // Always: weather + trains
-  html += `
-    <div class="slabel">Weather<span class="slabel-more" onclick="nav('weather')">Forecast →</span></div>
-    <div class="wx-hero sky-cloud" onclick="nav('weather')" id="wx-card">
-      <div class="wx-icon" id="wx-icon"></div>
-      <div>
-        <div class="wx-temp-big" id="wx-temp">—</div>
+  let html = `
+    <!-- WEATHER HERO -->
+    <div class="wx-hero sky-cloud" id="wx-card" onclick="nav('weather')">
+      <div class="wx-eyebrow">
+        <span class="wx-greeting">${greet}</span>
+        <span class="wx-date-str">${_todayFmt}</span>
       </div>
-      <div class="wx-right">
-        <div class="wx-condition" id="wx-condition">Loading…</div>
-        <div class="wx-feels" id="wx-feels"></div>
-        <div class="wx-badge" id="wx-badge"></div>
+      <div class="wx-body">
+        <div class="wx-left">
+          <div class="wx-temp" id="wx-temp">—</div>
+          <div class="wx-cond" id="wx-condition">Loading…</div>
+          <div class="wx-feels" id="wx-feels"></div>
+          <span class="wx-badge" id="wx-badge"></span>
+        </div>
+        <div class="wx-icon" id="wx-icon"></div>
       </div>
     </div>
-    <div class="slabel">Trains<span class="slabel-more" onclick="nav('trains')">All departures →</span></div>
-    <div class="trains-card" onclick="nav('trains')">
-      <div class="train-header" id="train-station">Finding nearest station…</div>
-      <div id="train-rows"><div class="train-row">
-        <div class="train-time"><span class="skel" style="width:52px;height:1.1em"></span></div>
-        <div class="train-dest"><span class="skel" style="width:140px;height:.9em;margin-bottom:4px"></span><span class="skel" style="width:90px;height:.8em"></span></div>
-      </div></div>
-    </div>`;
 
-  // Morning: fuel + school + saves
-  if (tod === 'morning') {
+    <!-- TRAINS + FUEL -->
+    <div class="data-row ${showFuel ? 'has-fuel' : 'no-fuel'}">
+      <div class="g-card" onclick="nav('trains')">
+        <span class="card-label">Trains</span>
+        <span class="card-sub" id="train-station">Finding station…</span>
+        <div id="train-rows">
+          <div class="train-row">
+            <div class="train-time"><span class="skel" style="width:54px;height:1em;display:block"></span></div>
+            <div class="train-dest"><span class="skel" style="width:100px;height:.9em;margin-bottom:4px;display:block"></span></div>
+          </div>
+          <div class="train-row">
+            <div class="train-time"><span class="skel" style="width:54px;height:1em;display:block"></span></div>
+            <div class="train-dest"><span class="skel" style="width:80px;height:.9em;margin-bottom:4px;display:block"></span></div>
+          </div>
+        </div>
+      </div>`;
+
+  if (showFuel) {
     html += `
-      <div class="slabel">Fuel<span class="slabel-more" onclick="nav('fuel')">More stations →</span></div>
-      <div class="fuel-card" onclick="nav('fuel')" id="fuel-card">
-        <div>
-          <div class="fuel-type-label">Petrol</div>
-          <div class="fuel-price fuel-petrol" id="fuel-petrol"><span class="skel" style="width:70px;height:1.1em"></span></div>
-          <div class="fuel-station" id="fuel-station">Finding station…</div>
+      <div class="g-card" onclick="nav('fuel')" id="fuel-card">
+        <span class="card-label">Fuel</span>
+        <div class="fuel-cols">
+          <div class="fuel-col">
+            <div class="fuel-lbl">Petrol</div>
+            <div class="fuel-num fuel-p" id="fuel-petrol"><span class="skel" style="width:60px;height:1em;display:block"></span></div>
+          </div>
+          <div class="fuel-col">
+            <div class="fuel-lbl">Diesel</div>
+            <div class="fuel-num fuel-d" id="fuel-diesel">—</div>
+          </div>
         </div>
-        <div class="fuel-divider"></div>
-        <div>
-          <div class="fuel-type-label">Diesel</div>
-          <div class="fuel-price fuel-diesel" id="fuel-diesel">—</div>
-        </div>
+        <div class="fuel-sta" id="fuel-station">—</div>
       </div>`;
   }
 
-  // School messages always
-  html += `
-    <div class="slabel">School messages<span class="slabel-more" onclick="nav('saves')">All →</span></div>
-    <div id="school-wrap"></div>`;
+  html += `</div>
 
-  // Saves strip
-  html += `
-    <div class="slabel">My saves<span class="slabel-more" onclick="nav('saves')">All →</span></div>
-    <div class="saves-row" id="saves-row"><div class="save-chip" style="opacity:.4">Loading…</div></div>`;
+    <!-- SCHOOL -->
+    <div class="school-wrap" id="school-wrap"></div>
 
-  // Tools
-  html += `
-    <div class="slabel">Quick links</div>
-    <div class="tool-grid">
-      <div class="tool-card" onclick="nav('myarea')"><div class="tool-icon">📍</div><div class="tool-label">My Area</div><div class="tool-sub">Full local report</div></div>
-      <div class="tool-card" onclick="nav('intel')"><div class="tool-icon">🏢</div><div class="tool-label">Intel</div><div class="tool-sub">Company research</div></div>
-      <div class="tool-card" onclick="nav('music')"><div class="tool-icon">🎵</div><div class="tool-label">Music</div><div class="tool-sub">Charts & gigs</div></div>
-      <div class="tool-card" onclick="nav('report')"><div class="tool-icon">🔍</div><div class="tool-label">Research Area</div><div class="tool-sub">Any postcode</div></div>
-    </div>`;
+    <!-- QUICK ACTIONS -->
+    <div class="action-row">
+      <div class="action-tile" onclick="nav('myarea')"><div class="at-icon">📍</div><div class="at-label">My Area</div></div>
+      <div class="action-tile" onclick="nav('intel')"><div class="at-icon">🏢</div><div class="at-label">Intel</div></div>
+      <div class="action-tile" onclick="nav('music')"><div class="at-icon">🎵</div><div class="at-label">Music</div></div>
+      <div class="action-tile" onclick="nav('report')"><div class="at-icon">🔍</div><div class="at-label">Research</div></div>
+    </div>
 
-  // Nearby
-  html += `
-    <div class="slabel">Nearby<span class="slabel-more" onclick="nav('places')">See all →</span></div>
-    <div class="nearby-row" id="nearby-row">
-      <div class="nearby-chip" style="opacity:.4"><div class="nearby-chip-icon">📍</div><div class="nearby-chip-name">Loading…</div></div>
+    <!-- SAVES -->
+    <div class="saves-wrap">
+      <div class="saves-label">Saved</div>
+      <div class="saves-row" id="saves-row"><div class="save-chip" style="opacity:.35">Loading…</div></div>
     </div>`;
 
   document.getElementById('content').innerHTML = html;
-
-  // Kick off data fetches
   _fetchWeather();
   _fetchTrains();
-  if (tod === 'morning') _fetchFuel();
+  if (showFuel) _fetchFuel();
   _fetchSchoolMsgs();
   _fetchSaves();
-  _fetchNearby();
 }
 
 // ── WEATHER ICON HELPERS ──────────────────────────────────────
 function wxSkyClass(code, h) {
   const night = h < 6 || h >= 20;
-  if (night && code <= 1)  return 'sky-night';
-  if (code <= 1)           return 'sky-sunny';
-  if (code <= 3)           return 'sky-cloud';
-  if (code <= 48)          return 'sky-fog';
-  if (code <= 67)          return 'sky-rain';
-  if (code <= 77)          return 'sky-snow';
-  if (code >= 95)          return 'sky-storm';
+  if (night && code <= 1) return 'sky-night';
+  if (code <= 1)          return 'sky-sunny';
+  if (code <= 3)          return 'sky-cloud';
+  if (code <= 48)         return 'sky-fog';
+  if (code <= 67)         return 'sky-rain';
+  if (code <= 77)         return 'sky-snow';
+  if (code >= 95)         return 'sky-storm';
   return 'sky-cloud';
 }
 
 function wxIconHtml(code, h) {
   const night = h < 6 || h >= 20;
-  const rays   = [0,45,90,135,180,225,270,315].map(d => `<div class="wx-ray" style="transform:rotate(${d}deg) translateX(-50%)"></div>`).join('');
-
-  // Clear
-  if (code <= 1) {
-    if (night) return `<div class="wx-moon"></div>`;
-    return `<div class="wx-sun"></div><div class="wx-rays">${rays}</div>`;
-  }
-  // Partly cloudy
-  if (code <= 2) {
-    if (night) return `<div class="wx-moon" style="top:8px;right:8px;width:22px;height:22px"></div><div class="wx-part-cloud"></div>`;
-    return `<div class="wx-part-sun"></div><div class="wx-part-cloud"></div>`;
-  }
-  // Overcast
+  const rays = [0,45,90,135,180,225,270,315].map(d=>`<div class="wx-ray" style="transform:rotate(${d}deg) translateX(-50%)"></div>`).join('');
+  if (code <= 1) { return night ? `<div class="wx-moon"></div>` : `<div class="wx-sun"></div><div class="wx-rays">${rays}</div>`; }
+  if (code <= 2) { return night ? `<div class="wx-moon" style="top:8px;right:8px;width:22px;height:22px"></div><div class="wx-part-cloud"></div>` : `<div class="wx-part-sun"></div><div class="wx-part-cloud"></div>`; }
   if (code === 3) return `<div class="wx-cloud-body"></div>`;
-  // Fog
   if (code <= 48) return `<div class="wx-fog-lines"><div class="wx-fog-line"></div><div class="wx-fog-line"></div><div class="wx-fog-line"></div></div>`;
-  // Drizzle / light rain
   if (code <= 57) return `<div class="wx-rain-cloud"></div><div class="wx-drops"><div class="wx-drop"></div><div class="wx-drop"></div><div class="wx-drop"></div></div>`;
-  // Rain
   if (code <= 67) return `<div class="wx-rain-cloud"></div><div class="wx-drops"><div class="wx-heavydrop"></div><div class="wx-heavydrop"></div><div class="wx-heavydrop"></div><div class="wx-heavydrop"></div><div class="wx-heavydrop"></div></div>`;
-  // Snow
   if (code <= 77) return `<div class="wx-snow-cloud"></div><div class="wx-flakes"><div class="wx-flake">❄</div><div class="wx-flake">❄</div><div class="wx-flake">❄</div></div>`;
-  // Showers
   if (code <= 82) return `<div class="wx-rain-cloud"></div><div class="wx-drops"><div class="wx-drop"></div><div class="wx-drop"></div><div class="wx-drop"></div><div class="wx-drop"></div></div>`;
-  // Thunderstorm
   return `<div class="wx-storm-cloud"></div><div class="wx-bolt">⚡</div>`;
-}
-
-// ── THEME ─────────────────────────────────────────────────────
-let _themeMode = localStorage.getItem('miru_theme') || 'system';
-
-const _THEME_ICONS = { dark: '🌙', light: '☀️', system: '⚙️' };
-const _THEME_CYCLE = { system: 'dark', dark: 'light', light: 'system' };
-
-function _applyTheme() {
-  const el  = document.documentElement;
-  const btn = document.getElementById('theme-btn');
-  if (_themeMode === 'system') {
-    el.removeAttribute('data-theme');
-  } else {
-    el.setAttribute('data-theme', _themeMode);
-  }
-  if (btn) btn.textContent = _THEME_ICONS[_themeMode];
-}
-
-function _cycleTheme() {
-  _themeMode = _THEME_CYCLE[_themeMode] || 'system';
-  localStorage.setItem('miru_theme', _themeMode);
-  _applyTheme();
 }
 
 function _wxApply(code, h, condition, feels, badge) {
@@ -681,223 +599,146 @@ async function _fetchWeather() {
     const pcData = await pcRes.json();
     const res = pcData.result || {};
     const lat = res.latitude, lon = res.longitude;
-    if (!lat || !lon) { _el('wx-condition', 'Set postcode to see weather'); return; }
-
-    const wxRes = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`
-    );
-    const wx  = await wxRes.json();
-    const cur  = wx.current || {};
-    const temp = Math.round(cur.temperature_2m ?? 0);
-    const feel = Math.round(cur.apparent_temperature ?? temp);
-    const code = cur.weather_code ?? 0;
-    const h    = hour();
-
-    const badge =
-      feel < 0  ? '🥶 Freezing'  :
-      feel < 5  ? '🧥 Very cold' :
-      feel < 10 ? '🧥 Wrap up'  :
-      feel < 18 ? '🌤 Mild'     :
-      feel > 28 ? '🔥 Hot'      :
-      feel > 23 ? '☀ Warm'      : '👍 Comfortable';
-
+    if (!lat || !lon) { _el('wx-condition','Set postcode to see weather'); return; }
+    const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`);
+    const wx    = await wxRes.json();
+    const cur   = wx.current || {};
+    const temp  = Math.round(cur.temperature_2m ?? 0);
+    const feel  = Math.round(cur.apparent_temperature ?? temp);
+    const code  = cur.weather_code ?? 0;
+    const h     = hour();
+    const badge = feel<0?'🥶 Freezing':feel<5?'🧥 Very cold':feel<10?'🧥 Wrap up':feel<18?'🌤 Mild':feel>28?'🔥 Hot':feel>23?'☀ Warm':'👍 Comfortable';
     const condition = WX_CODES[code] || 'Clear';
-
-    _el('wx-temp', temp + '°');
-    _wxApply(code, h, condition, 'Feels like ' + feel + '°', badge);
-
-  } catch(e) { _el('wx-condition', 'Weather unavailable'); }
+    _el('wx-temp', temp+'°');
+    _wxApply(code, h, condition, 'Feels like '+feel+'°', badge);
+  } catch(e) { _el('wx-condition','Weather unavailable'); }
 }
 
-// ── DATA: TRAINS (show 2) ─────────────────────────────────────
+// ── DATA: TRAINS ──────────────────────────────────────────────
 function _fetchTrains() {
   const el = document.getElementById('train-rows');
   const stnEl = document.getElementById('train-station');
   if (!el) return;
-
   fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
-    .then(r => r.json())
-    .then(data => {
-      const crs  = data.crs;
-      const name = data.name || crs;
-      if (!crs) { if(stnEl) stnEl.textContent='No nearby station found'; el.innerHTML=''; return; }
-      if (stnEl) stnEl.textContent = '🚆 ' + name;
-
+    .then(r=>r.json())
+    .then(data=>{
+      const crs=data.crs, name=data.name||crs;
+      if (!crs) { if(stnEl) stnEl.textContent='No nearby station'; el.innerHTML=''; return; }
+      if (stnEl) stnEl.textContent='🚆 '+name;
       return fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
     })
-    .then(r => r && r.json())
-    .then(deps => {
-      if (!deps || !el) return;
-      const trains = deps.trains || [];
-      if (!trains.length) { el.innerHTML = '<div class="train-row"><div style="font-size:13px;color:var(--muted);padding:4px 0">No departures found</div></div>'; return; }
-
-      // Show next 2 trains
-      el.innerHTML = trains.slice(0,2).map(t => {
-        const late      = t.expected && t.expected !== 'On time' && !t.cancelled;
-        const badgeCls  = t.cancelled ? 'tb-late' : late ? 'tb-late' : 'tb-ok';
-        const badgeTxt  = t.cancelled ? 'Cancelled' : late ? t.expected : 'On time';
-        const plat      = t.platform ? ' · Plat '+t.platform : '';
+    .then(r=>r&&r.json())
+    .then(deps=>{
+      if (!deps||!el) return;
+      const trains=deps.trains||[];
+      if (!trains.length) { el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted);padding:6px 0">No departures found</div>'; return; }
+      el.innerHTML = trains.slice(0,2).map(t=>{
+        const late=t.expected&&t.expected!=='On time'&&!t.cancelled;
+        const cls=t.cancelled?'tb-late':late?'tb-late':'tb-ok';
+        const txt=t.cancelled?'Cancelled':late?t.expected:'On time';
+        const plat=t.platform?' · Plat '+t.platform:'';
         return `<div class="train-row">
           <div class="train-time">${t.scheduled||'—'}</div>
-          <div class="train-dest"><strong>${t.destination||'—'}</strong>${plat}</div>
-          <span class="train-badge ${badgeCls}">${badgeTxt}</span>
+          <div class="train-dest"><strong>${t.destination||'—'}</strong><span>${plat}</span></div>
+          <span class="train-badge ${cls}">${txt}</span>
         </div>`;
       }).join('');
     })
-    .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:13px;color:var(--muted)">Train data unavailable</div>'; });
+    .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted)">Train data unavailable</div>'; });
 }
 
 // ── DATA: FUEL ────────────────────────────────────────────────
 function _fetchFuel() {
   if (!document.getElementById('fuel-petrol')) return;
   fetch(`/api/search?postcode=${PC}&fuel=petrol&radius=3&mode=fuel`)
-    .then(r => r.json())
-    .then(d => {
-      const stations = d.stations||d.results||[];
-      if (!stations.length) { _el('fuel-station','No stations found'); return; }
-      const best = stations[0];
-      const pp   = best.price ?? best.petrol_price ?? null;
-      const name = best.name||best.brand||'Station';
-      const dist = best.distance ? best.distance.toFixed(1)+' mi' : '';
-      _el('fuel-petrol', pp ? pp.toFixed(1)+'p' : '—');
-      _el('fuel-station', name + (dist ? ' · '+dist : ''));
+    .then(r=>r.json())
+    .then(d=>{
+      const s=d.stations||d.results||[];
+      if (!s.length) { _el('fuel-station','No stations found'); return; }
+      const best=s[0];
+      const pp=best.price??best.petrol_price??null;
+      _el('fuel-petrol', pp?pp.toFixed(1)+'p':'—');
+      _el('fuel-station', (best.name||best.brand||'Station')+(best.distance?' · '+best.distance.toFixed(1)+' mi':''));
       return fetch(`/api/search?postcode=${PC}&fuel=diesel&radius=3&mode=fuel`);
     })
-    .then(r => r && r.json())
-    .then(d => {
-      if (!d) return;
-      const s = d.stations||d.results||[];
-      const dp = s.length ? (s[0].price ?? s[0].diesel_price ?? null) : null;
-      _el('fuel-diesel', dp ? dp.toFixed(1)+'p' : '—');
-    })
+    .then(r=>r&&r.json())
+    .then(d=>{ if(!d) return; const s=d.stations||d.results||[]; const dp=s.length?(s[0].price??s[0].diesel_price??null):null; _el('fuel-diesel',dp?dp.toFixed(1)+'p':'—'); })
     .catch(()=>{ _el('fuel-station','Fuel data unavailable'); });
 }
 
-// ── DATA: SCHOOL MESSAGES ─────────────────────────────────────
+// ── DATA: SCHOOL ──────────────────────────────────────────────
 async function _fetchSchoolMsgs() {
   const el = document.getElementById('school-wrap');
   if (!el) return;
-
-  if (!PHONE) {
-    el.innerHTML = '<div style="padding:0 20px 4px;font-size:13px;color:var(--muted)">Link your WhatsApp to see school messages.</div>';
-    return;
-  }
-
+  if (!PHONE) { el.innerHTML='<div style="padding:4px 0;font-size:12px;color:var(--muted)">Link WhatsApp to see school messages.</div>'; return; }
   try {
-    const r = await fetch('/api/school/events?back=14', {
-      headers: { 'X-School-WA': PHONE }
-    });
+    const r = await fetch('/api/school/events?back=14',{headers:{'X-School-WA':PHONE}});
     const data = await r.json();
-
-    if (data.auth || data.error === 'No account found for this number') {
-      el.innerHTML = '<div style="padding:0 20px 4px;font-size:13px;color:var(--muted)">No school profile linked.</div>';
-      return;
-    }
-
-    const events = data.events || [];
-    if (!events.length) {
-      el.innerHTML = '<div style="padding:0 20px 4px;font-size:13px;color:var(--muted)">No recent school messages.</div>';
-      return;
-    }
-
-    // Sort newest first, take top 3
-    const sorted = events.slice().sort((a,b) => {
-      const da = a.event_date || a.created_at || '';
-      const db = b.event_date || b.created_at || '';
-      return db.localeCompare(da);
-    });
-
-    el.innerHTML = sorted.slice(0,3).map(m => {
-      const title  = m.event_title || m.title || m.subject || 'School update';
-      const body   = m.description || m.summary || m.body || '';
-      const school = m.school_name || '';
-      const urgent = /urgent|cancel|closure|emergency|important/i.test(title + ' ' + body);
-      const dateStr = (m.event_date || m.created_at || '');
-      const dateFmt = dateStr ? new Date(dateStr).toLocaleDateString('en-GB', {weekday:'short',day:'numeric',month:'short'}) : '';
+    if (data.auth||data.error==='No account found for this number') { el.innerHTML=''; return; }
+    const events=data.events||[];
+    if (!events.length) { el.innerHTML=''; return; }
+    const sorted=events.slice().sort((a,b)=>(b.event_date||b.created_at||'').localeCompare(a.event_date||a.created_at||''));
+    el.innerHTML = sorted.slice(0,3).map(m=>{
+      const title=m.event_title||m.title||m.subject||'School update';
+      const body=m.description||m.summary||m.body||'';
+      const school=m.school_name||'';
+      const urgent=/urgent|cancel|closure|emergency|important/i.test(title+' '+body);
+      const dateStr=m.event_date||m.created_at||'';
+      const dateFmt=dateStr?new Date(dateStr).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}):'';
       return `<div class="school-card">
         <div class="school-dot${urgent?' u':''}"></div>
-        <div>
+        <div style="min-width:0">
           <div class="school-title">${_esc(title)}</div>
-          ${body ? `<div class="school-body">${_esc(body.slice(0,120))}${body.length>120?'…':''}</div>` : ''}
-          <div class="school-meta">${_esc(school)}${dateFmt ? ' · '+dateFmt : ''}</div>
+          ${body?`<div class="school-body">${_esc(body.slice(0,110))}${body.length>110?'…':''}</div>`:''}
+          <div class="school-meta">${_esc(school)}${dateFmt?' · '+dateFmt:''}</div>
         </div>
       </div>`;
     }).join('');
-
-  } catch(e) {
-    el.innerHTML = '<div style="padding:0 20px;font-size:13px;color:var(--muted)">School messages unavailable.</div>';
-  }
+  } catch(e) {}
 }
 
 // ── DATA: SAVES ───────────────────────────────────────────────
 function _fetchSaves() {
   const el = document.getElementById('saves-row');
   if (!el) return;
-  const phone = PHONE;
-  if (!phone) { el.innerHTML='<div class="save-chip" style="opacity:.4">Link WhatsApp to see saves</div>'; return; }
-  fetch(`/api/wa/saves?from_number=${encodeURIComponent(phone)}&limit=10`)
-    .then(r => r.json())
-    .then(data => {
-      const saves = data.saves||[];
-      if (!saves.length) { el.innerHTML='<div class="save-chip" style="opacity:.4">No saves yet</div>'; return; }
-      const icon = t => ({fuel:'⛽',train:'🚆',place:'📍',music:'🎵',note:'📝',intel:'🏢',food:'🍽'}[t]||'📌');
-      el.innerHTML = saves.slice(0,8).map(s =>
-        `<div class="save-chip" onclick="nav('saves')">${icon(s.save_type)} ${_esc((s.title||s.label||'Save').slice(0,28))}</div>`
-      ).join('');
+  if (!PHONE) { el.innerHTML='<div class="save-chip" style="opacity:.35">Link WhatsApp to see saves</div>'; return; }
+  fetch(`/api/wa/saves?from_number=${encodeURIComponent(PHONE)}&limit=10`)
+    .then(r=>r.json())
+    .then(data=>{
+      const saves=data.saves||[];
+      if (!saves.length) { el.innerHTML='<div class="save-chip" style="opacity:.35">No saves yet</div>'; return; }
+      const icon=t=>({fuel:'⛽',train:'🚆',place:'📍',music:'🎵',note:'📝',intel:'🏢',food:'🍽'}[t]||'📌');
+      el.innerHTML=saves.slice(0,8).map(s=>`<div class="save-chip" onclick="nav('saves')">${icon(s.save_type)} ${_esc((s.title||s.label||'Save').slice(0,28))}</div>`).join('');
     })
-    .catch(()=>{ el.innerHTML='<div class="save-chip" style="opacity:.4">Saves unavailable</div>'; });
-}
-
-// ── DATA: NEARBY ──────────────────────────────────────────────
-function _fetchNearby() {
-  const el = document.getElementById('nearby-row');
-  if (!el) return;
-  const timeout = new Promise(r => setTimeout(()=>r(null), 10000));
-  Promise.race([fetch(`/api/your-area?postcode=${PC}`).then(r=>r.json()), timeout])
-    .then(area => {
-      if (!area||area.error) { el.innerHTML='<div class="nearby-chip" onclick="nav(\'myarea\')" style="opacity:.6"><div class="nearby-chip-icon">📍</div><div class="nearby-chip-name">Explore nearby</div></div>'; return; }
-      const places = [];
-      if (area.gps?.length)          places.push({icon:'🏥', name:area.gps[0].name,         dist:area.gps[0].distance_km});
-      if (area.pharmacies?.length)   places.push({icon:'💊', name:area.pharmacies[0].name,   dist:area.pharmacies[0].distance_km});
-      if (area.post_offices?.length) places.push({icon:'📮', name:area.post_offices[0].name, dist:area.post_offices[0].distance_km});
-      if (area.pubs?.length)         places.push({icon:'🍺', name:area.pubs[0].name,         dist:area.pubs[0].distance_km});
-      el.innerHTML = places.map(p =>
-        `<div class="nearby-chip" onclick="nav('places')">
-          <div class="nearby-chip-icon">${p.icon}</div>
-          <div class="nearby-chip-name">${_esc(p.name)}</div>
-          <div class="nearby-chip-dist">${p.dist?(+p.dist*0.621).toFixed(1)+' mi':'nearby'}</div>
-        </div>`
-      ).join('') || '<div class="nearby-chip" onclick="nav(\'myarea\')" style="opacity:.6"><div class="nearby-chip-icon">📍</div><div class="nearby-chip-name">Explore nearby</div></div>';
-    })
-    .catch(()=>{});
+    .catch(()=>{ el.innerHTML='<div class="save-chip" style="opacity:.35">Saves unavailable</div>'; });
 }
 
 // ── HELPERS ───────────────────────────────────────────────────
-function _el(id, text) { const e = document.getElementById(id); if (e) e.textContent = text; }
-function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _el(id,text){const e=document.getElementById(id);if(e)e.textContent=text;}
+function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ── NAV ───────────────────────────────────────────────────────
-const _screenMap = { intel:'company', fuel:'fuel', trains:'trains', myarea:'myarea', places:'places', report:'report', music:'music', saves:'saves', weather:'myarea', whatsapp:'home' };
-function nav(screen) {
-  if (screen === 'home') return;
-  const target = _screenMap[screen] || screen;
-  const pcParam = PC ? '&pc='+encodeURIComponent(PC) : '';
-  const usesPc  = ['trains','fuel','myarea','report'].includes(target);
-  window.location.href = '/?screen='+target+(usesPc ? pcParam : '');
+const _screenMap={intel:'company',fuel:'fuel',trains:'trains',myarea:'myarea',places:'places',report:'report',music:'music',saves:'saves',weather:'myarea',whatsapp:'home'};
+function nav(screen){
+  if(screen==='home') return;
+  const target=_screenMap[screen]||screen;
+  const pcParam=PC?'&pc='+encodeURIComponent(PC):'';
+  const usesPc=['trains','fuel','myarea','report'].includes(target);
+  window.location.href='/?screen='+target+(usesPc?pcParam:'');
 }
 
 // ── PILL NAV ──────────────────────────────────────────────────
-let _pillOpen = false;
-function _pillTap(e) { if (!_pillOpen) _pillExpand(); }
-function _pillExpand() { _pillOpen=true; document.getElementById('pill-shell').classList.add('expanded'); document.getElementById('pill-overlay').classList.add('show'); }
-function _pillCollapse() { _pillOpen=false; document.getElementById('pill-shell').classList.remove('expanded'); document.getElementById('pill-overlay').classList.remove('show'); }
-function _pillNav(name) {
+let _pillOpen=false;
+function _pillTap(e){if(!_pillOpen)_pillExpand();}
+function _pillExpand(){_pillOpen=true;document.getElementById('pill-shell').classList.add('expanded');document.getElementById('pill-overlay').classList.add('show');}
+function _pillCollapse(){_pillOpen=false;document.getElementById('pill-shell').classList.remove('expanded');document.getElementById('pill-overlay').classList.remove('show');}
+function _pillNav(name){
   _pillCollapse();
-  const labels={home:'Home',myarea:'My Area',intel:'Intel',saves:'Saves'}, icons={home:'🏠',myarea:'📍',intel:'🔍',saves:'📌'};
+  const labels={home:'Home',myarea:'My Area',intel:'Intel',saves:'Saves'},icons={home:'🏠',myarea:'📍',intel:'🔍',saves:'📌'};
   ['home','myarea','intel','saves'].forEach(k=>document.getElementById('pi-'+k)?.classList.toggle('pi-active',k===name));
-  document.getElementById('pill-icon').textContent  = icons[name]||'🏠';
-  document.getElementById('pill-label').textContent = labels[name]||name;
-  if (name !== 'home') nav(name);
+  document.getElementById('pill-icon').textContent=icons[name]||'🏠';
+  document.getElementById('pill-label').textContent=labels[name]||name;
+  if(name!=='home') nav(name);
 }
 
 let _tt;
