@@ -1233,7 +1233,9 @@ def _resolve_saves_token(token: str):
     if phone_hint:
         expected = _wa_user_token(phone_hint)
         if expected == token:
-            return phone_hint  # verified — no DB needed
+            # Return in whatsapp: format to match how Twilio stores from_number in DB
+            clean = phone_hint.replace("whatsapp:", "").strip()
+            return f"whatsapp:{clean}"
     return _resolve_user_token(token)
 
 
