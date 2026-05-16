@@ -10727,6 +10727,14 @@ _bkBadge();
     const _handled = new Set(["scan", "finder", "intel"]);
     if (_s && !_handled.has(_s) && document.getElementById("screen-" + _s)) {
       showScreen(_s);
+      // If arriving at company screen with ?bq= (brand query from My Saves), pre-fill brand input
+      if (_s === "company") {
+        const _bq = _p.get("bq");
+        if (_bq) {
+          const _bi = document.getElementById("brand-input");
+          if (_bi) { _bi.value = _bq; setTimeout(function(){ if(typeof searchBrand==="function") searchBrand(); }, 400); }
+        }
+      }
       // strip only the screen param — preserve token and other params so downstream handlers can read them
       _p.delete("screen");
       const _qs = _p.toString();
