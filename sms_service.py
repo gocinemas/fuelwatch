@@ -810,10 +810,14 @@ def saves_login():
         }).execute()
     except Exception:
         pass
-    resp = make_response(redirect(f"/?screen=saves&st={token}&sp={phone}"))
+    resp = make_response(redirect(f"/my-saves?st={token}&sp={phone}"))
     resp.set_cookie("miru_saves_token", token, max_age=60*60*24*365, samesite="Lax")
     resp.set_cookie("miru_saves_phone", phone,  max_age=60*60*24*365, samesite="Lax")
     return resp
+
+@app.route("/my-saves")
+def my_saves():
+    return render_template("my_saves.html")
 
 @app.route("/home-v2")
 def home_v2():
