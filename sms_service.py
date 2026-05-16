@@ -8835,6 +8835,11 @@ _FOOD_INTENTS = [
       "required_types": ["bar", "restaurant", "establishment"],
       "radius": 5000,
       "review_terms": ["wine", "red", "white", "rosé", "bottle", "glass", "selection", "sommelier", "natural wine"]}),
+    (re.compile(r'\b(cocktail|cocktails|cocktail bar|best cocktail|negroni|martini|spritz|espresso martini)\b', re.I),
+     {"type": "bar", "keyword": "cocktail bar", "emoji": "🍸", "label": "cocktails",
+      "required_types": ["bar", "night_club", "establishment"],
+      "radius": 5000,
+      "review_terms": ["cocktail", "negroni", "martini", "spritz", "mixologist", "bar", "shaken", "stirred", "signature drink"]}),
     (re.compile(r'\b(lunch|what.{0,25}(eat|have).{0,10}lunch)\b', re.I),
      {"type": "restaurant", "keyword": "", "emoji": "🥗", "label": "lunch",
       "required_types": ["restaurant", "cafe", "food"],
@@ -9040,6 +9045,13 @@ def _find_food_nearby(lat: float, lon: float, place_type: str,
                         return 0.75
                     if any(w in n for w in ("pub", "inn", "arms", "tavern", "sports")):
                         return 0.3
+                if kw == "cocktail bar":
+                    if any(w in n for w in ("cocktail", "mixology", "speakeasy", "negroni", "martini", "lounge")):
+                        return 1.0
+                    if any(w in n for w in ("bar", "club", "social", "house")):
+                        return 0.8
+                    if any(w in n for w in ("pub", "inn", "arms", "sports")):
+                        return 0.2
                 if kw in ("pub", "beer"):
                     if any(w in n for w in ("pub", "inn", "arms", "tavern", "brewery", "tap", "ale", "beer")):
                         return 1.0
@@ -9688,12 +9700,13 @@ def _wa_classify_intent(body: str) -> dict | None:
                 "  tube         — London tube/DLR/Overground/Elizabeth line status, journey, or line info.\n"
                 "                 Extract: from (station or null), to (station or null),\n"
                 "                 query (status | journey | line name — infer from message, default 'status').\n"
-                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea|burger|kebab|steak|wine|indian|italian|mexican|fish_chips|chinese).\n"
+                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea|burger|kebab|steak|wine|cocktail|indian|italian|mexican|fish_chips|chinese).\n"
                 "                 Map latte/cappuccino/capuccino/mocha/pistachio latte/espresso/flat white/americano/cortado/coffee/cofee/coffeeee → coffee.\n"
                 "                 Map tea/english breakfast/chai/brew/cuppa → tea.\n"
                 "                 Map beer/pint/ale/lager/craft beer/cheap beer/good beer → beer.\n"
                 "                 Map burger/burgers/smash burger/best burger → burger. Map kebab/doner/shawarma → kebab. Map steak/steakhouse/ribeye/sirloin → steak.\n"
                 "                 Map wine/red wine/white wine/rosé/house wine/glass of wine → wine.\n"
+                "                 Map cocktail/cocktails/cocktail bar/negroni/martini/espresso martini/spritz/best cocktail → cocktail.\n"
                 "                 Map indian/india/curry/curries/balti/tandoori/tikka/biryani/korma/masala/best indian/indian food/indian restaurant/indian place → indian.\n"
                 "                 Map italian/italy/pasta/risotto/trattoria/best italian/italian food/italian restaurant → italian.\n"
                 "                 Map mexican/mexico/taco/tacos/burrito/tex-mex/best mexican/mexican food/mexican restaurant → mexican.\n"
