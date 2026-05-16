@@ -11651,34 +11651,34 @@ _bkBadge();
   }
 
   function savesCheckPin() {
-    if (_savesPin()) { _savesShowMain(); return; }
-    const globalPhone = _miruPhone();
-    if (globalPhone) {
-      _autoFetchToken(globalPhone).then(tok => {
-        localStorage.setItem("wa_saves_token", tok);
-        _savesShowMain();
-      }).catch(() => _savesShowPhone());
-      return;
+    const tok = _savesPin();
+    const phone = _miruPhone();
+    if (tok && phone) { _savesShowMain(); return; }
+    if (tok || phone) {
+      // Have partial auth — try to load; if 401, phone screen will show with error
+      _savesShowMain(); return;
     }
     _savesShowPhone();
   }
 
   window.savesSubmitPhone = async function() {
-    const raw = document.getElementById("saves-phone-input").value.trim();
-    if (!raw) return;
+    let raw = (document.getElementById("saves-phone-input").value || "").trim();
+    if (!raw) { alert("Please enter your WhatsApp number e.g. +447911123456"); return; }
+    let p = raw.replace(/\s+/g,'');
+    if (/^0\d{10}$/.test(p)) p = '+44' + p.slice(1);
     const btn = document.querySelector('#saves-phone-screen button');
-    const errEl = document.getElementById("saves-phone-error");
-    if (btn) { btn.textContent = 'Checking…'; btn.disabled = true; }
-    errEl.style.display = "none";
+    if (btn) { btn.textContent = 'Opening…'; btn.disabled = true; }
     try {
-      const tok = await _autoFetchToken(raw);
-      localStorage.setItem("wa_saves_token", tok);
-      localStorage.setItem("miru_phone", raw.replace(/\s+/g,'').replace(/^0(\d{10})$/,'+44$1'));
-      _savesShowMain();
+      const r = await fetch('/api/user-token?phone=' + encodeURIComponent(p));
+      const d = await r.json();
+      if (!d.token) throw new Error('no token');
+      localStorage.setItem("wa_saves_token", d.token);
+      localStorage.setItem("miru_phone", p);
+      // Reload the page so the fresh saves session loads cleanly
+      window.location.href = window.location.origin + '/?screen=saves';
     } catch(e) {
-      errEl.textContent = 'Could not verify — use format +44 7xxx xxxxxx';
-      errEl.style.display = "block";
       if (btn) { btn.textContent = 'Access My Saves'; btn.disabled = false; }
+      alert("Couldn't connect — check your number format and try again.");
     }
   };
 
