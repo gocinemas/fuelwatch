@@ -792,6 +792,29 @@ def index():
     resp.headers["Pragma"] = "no-cache"
     return resp
 
+@app.route("/saves-login", methods=["POST", "GET"])
+def saves_login():
+    """Server-side saves login — sets a cookie, redirects back to app. No JS needed."""
+    phone = (request.form.get("phone") or request.args.get("phone") or "").strip()
+    phone = re.sub(r'\s+', '', phone)
+    if re.match(r'^0\d{10}$', phone):
+        phone = '+44' + phone[1:]
+    if not phone:
+        return redirect("/?screen=saves")
+    token = _wa_user_token(phone)
+    try:
+        lib._sb().table("ai_cache").upsert({
+            "key": f"user_token:{token}",
+            "data": {"phone": phone},
+            "cached_at": datetime.utcnow().isoformat(),
+        }).execute()
+    except Exception:
+        pass
+    resp = make_response(redirect("/?screen=saves"))
+    resp.set_cookie("miru_saves_token", token, max_age=60*60*24*365, samesite="Lax", secure=True)
+    resp.set_cookie("miru_saves_phone", phone,  max_age=60*60*24*365, samesite="Lax", secure=True)
+    return resp
+
 @app.route("/home-v2")
 def home_v2():
     if request.args.get("preview") != "miru2026":
