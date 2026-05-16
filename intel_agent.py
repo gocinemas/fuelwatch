@@ -1,20 +1,23 @@
 """
 Intel Research Agent
 Agentic company research using LLM tool_use.
-Uses Groq (llama-3.3-70b-versatile) by default.
-Upgrade: set ANTHROPIC_API_KEY to use Claude instead.
+Primary: Groq (llama-3.3-70b-versatile) with up to 3 retries on 429/5xx.
+Fallback: Claude (claude-haiku-4-5-20251001) when ANTHROPIC_API_KEY is set.
 """
 
 import os
 import json
 import re
+import time
 import requests
 from search import _fetch_news
 
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL   = "llama-3.3-70b-versatile"
+GROQ_API_URL    = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL      = "llama-3.3-70b-versatile"
+CLAUDE_MODEL    = "claude-haiku-4-5-20251001"
+GROQ_MAX_RETRIES = 3
 
-# ── Tool schemas (OpenAI-compatible, works with both Groq and Claude) ────────
+# ── Tool schemas ─────────────────────────────────────────────────────────────
 
 TOOLS = [
     {
@@ -50,7 +53,17 @@ TOOLS = [
     }
 ]
 
-# ── System prompt ────────────────────────────────────────────────────────────
+# Claude uses input_schema instead of parameters
+CLAUDE_TOOLS = [
+    {
+        "name": t["function"]["name"],
+        "description": t["function"]["description"],
+        "input_schema": t["function"]["parameters"],
+    }
+    for t in TOOLS
+]
+
+# ── System prompt ─────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """You are an expert company research analyst producing briefs for a strategic audience:
 investors, potential partners, and senior hires. Be specific, direct, and commercially sharp.
@@ -82,7 +95,7 @@ After gathering data, produce your final output as a JSON object with these exac
 If specific data is absent for most fields, say 'Not publicly available'. For ai_focus specifically, always write something based on your search — either what AI moves were found, or "No public AI initiatives found in recent news."
 Output ONLY the JSON — no preamble, no markdown fences."""
 
-# ── Tool implementations ─────────────────────────────────────────────────────
+# ── Tool implementations ──────────────────────────────────────────────────────
 
 def _tool_get_news_by_topic(company_name: str, topic: str, limit: int = 5) -> str:
     try:
@@ -99,8 +112,6 @@ def _tool_get_news_by_topic(company_name: str, topic: str, limit: int = 5) -> st
         return json.dumps({"error": str(e)})
 
 
-# ── Tool dispatcher ──────────────────────────────────────────────────────────
-
 def _dispatch(tool_name: str, args: dict) -> str:
     if tool_name == "get_news_by_topic":
         return _tool_get_news_by_topic(
@@ -111,24 +122,54 @@ def _dispatch(tool_name: str, args: dict) -> str:
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 
-# ── Agent loop ───────────────────────────────────────────────────────────────
+def _parse_brief(content: str) -> dict:
+    clean = re.sub(r"```(?:json)?\s*", "", content).strip().rstrip("`").strip()
+    try:
+        return json.loads(clean)
+    except Exception:
+        return {"overview": content, "raw": True}
 
-def run_research_agent(company_name: str, max_iterations: int = 6) -> dict:
-    """
-    Run the Intel Research Agent for a given company.
-    Returns a structured research brief as a dict.
-    Logs each tool call to 'steps' for transparency.
-    """
+
+# ── Groq: single call with retry on 429/5xx ───────────────────────────────────
+
+def _groq_call(payload: dict, groq_key: str) -> dict:
+    last_err = None
+    for attempt in range(GROQ_MAX_RETRIES):
+        try:
+            r = requests.post(
+                GROQ_API_URL,
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json=payload,
+                timeout=45,
+            )
+            if r.status_code == 429:
+                wait = (2 ** attempt) * 3  # 3 → 6 → 12 seconds
+                time.sleep(wait)
+                last_err = f"HTTP 429 (attempt {attempt + 1})"
+                continue
+            if r.status_code >= 500:
+                if attempt < GROQ_MAX_RETRIES - 1:
+                    time.sleep(2)
+                    last_err = f"HTTP {r.status_code} (attempt {attempt + 1})"
+                    continue
+            r.raise_for_status()
+            return r.json()
+        except requests.Timeout:
+            last_err = f"Timeout (attempt {attempt + 1})"
+            if attempt < GROQ_MAX_RETRIES - 1:
+                continue
+    raise Exception(f"Groq failed after {GROQ_MAX_RETRIES} attempts: {last_err}")
+
+
+def _agent_loop_groq(company_name: str, max_iterations: int = 6) -> dict:
     groq_key = os.environ.get("GROQ_API_KEY", "")
     if not groq_key:
-        return {"error": "GROQ_API_KEY not set", "company": company_name}
+        raise Exception("GROQ_API_KEY not set")
 
-    messages = [
-        {"role": "user", "content": f"Research this company for me: {company_name}"}
-    ]
-    steps = []  # what the agent did — returned to caller for UI
+    messages = [{"role": "user", "content": f"Research this company for me: {company_name}"}]
+    steps = []
 
-    for iteration in range(max_iterations):
+    for _ in range(max_iterations):
         payload = {
             "model":       GROQ_MODEL,
             "messages":    [{"role": "system", "content": SYSTEM_PROMPT}] + messages,
@@ -137,29 +178,13 @@ def run_research_agent(company_name: str, max_iterations: int = 6) -> dict:
             "temperature": 0.1,
             "max_tokens":  2000,
         }
-
-        try:
-            r = requests.post(
-                GROQ_API_URL,
-                headers={
-                    "Authorization": f"Bearer {groq_key}",
-                    "Content-Type":  "application/json"
-                },
-                json=payload,
-                timeout=40,
-            )
-            r.raise_for_status()
-            response = r.json()
-        except Exception as e:
-            return {"error": f"LLM call failed: {e}", "company": company_name, "steps": steps}
+        response = _groq_call(payload, groq_key)
 
         choice = response.get("choices", [{}])[0]
         msg    = choice.get("message", {})
         reason = choice.get("finish_reason", "")
-
         messages.append(msg)
 
-        # Agent wants to call tools
         if reason == "tool_calls" and msg.get("tool_calls"):
             for tc in msg["tool_calls"]:
                 fn_name = tc["function"]["name"]
@@ -167,35 +192,96 @@ def run_research_agent(company_name: str, max_iterations: int = 6) -> dict:
                     fn_args = json.loads(tc["function"]["arguments"])
                 except Exception:
                     fn_args = {}
-
                 step = {"tool": fn_name, "args": fn_args}
                 tool_result = _dispatch(fn_name, fn_args)
-                step["result_preview"] = tool_result[:200]  # truncate for logging
+                step["result_preview"] = tool_result[:200]
                 steps.append(step)
-
                 messages.append({
-                    "role":        "tool",
+                    "role":         "tool",
                     "tool_call_id": tc["id"],
-                    "content":     tool_result,
+                    "content":      tool_result,
                 })
-            continue  # next iteration
+            continue
 
-        # Agent finished — parse JSON brief
         content = (msg.get("content") or "").strip()
-        try:
-            clean = re.sub(r"```(?:json)?\s*", "", content).strip().rstrip("`").strip()
-            brief = json.loads(clean)
-        except Exception:
-            # Couldn't parse JSON — return raw
-            brief = {"overview": content, "raw": True}
-
-        brief["company"]  = company_name
-        brief["steps"]    = steps
-        brief["model"]    = GROQ_MODEL
+        brief = _parse_brief(content)
+        brief.update({"company": company_name, "steps": steps, "model": GROQ_MODEL})
         return brief
 
-    return {
-        "error":   "Agent reached max iterations without completing",
-        "company": company_name,
-        "steps":   steps
-    }
+    raise Exception("Groq agent: max iterations reached without completing")
+
+
+# ── Claude: fallback agent loop ───────────────────────────────────────────────
+
+def _agent_loop_claude(company_name: str, max_iterations: int = 6) -> dict:
+    try:
+        import anthropic as _anthropic
+    except ImportError:
+        raise Exception("anthropic package not installed — add it to requirements.txt")
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise Exception("ANTHROPIC_API_KEY not set in environment")
+
+    client = _anthropic.Anthropic(api_key=api_key)
+    messages = [{"role": "user", "content": f"Research this company for me: {company_name}"}]
+    steps = []
+
+    for _ in range(max_iterations):
+        response = client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=2000,
+            system=SYSTEM_PROMPT,
+            tools=CLAUDE_TOOLS,
+            messages=messages,
+        )
+
+        if response.stop_reason == "tool_use":
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in response.content:
+                if block.type == "tool_use":
+                    step = {"tool": block.name, "args": block.input}
+                    tool_result = _dispatch(block.name, block.input)
+                    step["result_preview"] = tool_result[:200]
+                    steps.append(step)
+                    tool_results.append({
+                        "type":         "tool_result",
+                        "tool_use_id":  block.id,
+                        "content":      tool_result,
+                    })
+            messages.append({"role": "user", "content": tool_results})
+            continue
+
+        content = "".join(
+            getattr(block, "text", "") for block in response.content
+        ).strip()
+        brief = _parse_brief(content)
+        brief.update({"company": company_name, "steps": steps, "model": f"{CLAUDE_MODEL} (fallback)"})
+        return brief
+
+    raise Exception("Claude agent: max iterations reached without completing")
+
+
+# ── Main entry point ──────────────────────────────────────────────────────────
+
+def run_research_agent(company_name: str, max_iterations: int = 6) -> dict:
+    """
+    Try Groq first (with retries). If it fails, fall back to Claude.
+    Returns a structured research brief as a dict.
+    """
+    try:
+        return _agent_loop_groq(company_name, max_iterations)
+    except Exception as groq_err:
+        # Fall back to Claude if the key is configured
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            try:
+                result = _agent_loop_claude(company_name, max_iterations)
+                result["groq_error"] = str(groq_err)
+                return result
+            except Exception as claude_err:
+                return {
+                    "error":   f"Both providers failed. Groq: {groq_err}. Claude: {claude_err}",
+                    "company": company_name,
+                }
+        return {"error": f"Research failed: {groq_err}", "company": company_name}

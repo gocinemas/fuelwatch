@@ -10727,8 +10727,10 @@ _bkBadge();
     const _handled = new Set(["scan", "finder", "intel"]);
     if (_s && !_handled.has(_s) && document.getElementById("screen-" + _s)) {
       showScreen(_s);
-      // strip the ?screen param from the URL so refreshing doesn't re-trigger
-      history.replaceState(null, "", location.pathname);
+      // strip only the screen param — preserve token and other params so downstream handlers can read them
+      _p.delete("screen");
+      const _qs = _p.toString();
+      history.replaceState(null, "", location.pathname + (_qs ? "?" + _qs : ""));
     }
   })();
 
@@ -11119,6 +11121,25 @@ _bkBadge();
 (function() {
   let _savesAll = [];
   let _savesActiveFilter = "all";
+  let _savesHighlightTerm = "";
+
+  function _hlHtml(html, term) {
+    if (!term || !html) return html;
+    const esc = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(esc, "gi");
+    // Process text nodes only (skip content inside HTML tags)
+    return html.replace(/(<[^>]*>)|([^<]+)/g, function(m, tag, text) {
+      if (tag) return tag;
+      return text.replace(re, '<mark style="background:#fef08a;color:#111;border-radius:2px;padding:0 2px">$&</mark>');
+    });
+  }
+  function _hl(text, term) {
+    if (!term || !text) return text;
+    const safe = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const esc = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return safe.replace(new RegExp(`(${esc})`, "gi"),
+      '<mark style="background:#fef08a;color:#111;border-radius:2px;padding:0 2px">$1</mark>');
+  }
 
   // Auto-login from ?token= in URL (sent by WhatsApp bot)
   (function() {
@@ -11877,10 +11898,12 @@ _bkBadge();
     function _fmtMenu(t) {
       return t.replace(/\*([^*\n]+)\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>").trim();
     }
+    const _menuAutoExpand = isMenu && _savesHighlightTerm && bodyText.toLowerCase().includes(_savesHighlightTerm.toLowerCase());
+    const _menuFormattedHtml = isMenu && bodyText ? _hlHtml(_fmtMenu(bodyText), _savesHighlightTerm) : "";
     const menuHtml = isMenu && bodyText ? `
       <div style="margin-bottom:10px">
-        <div id="${menuExpandId}" style="display:none;font-size:12px;color:var(--text);line-height:1.7;background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border);margin-bottom:8px">${_fmtMenu(bodyText)}</div>
-        <button onclick="(function(btn){var el=document.getElementById('${menuExpandId}');var show=el.style.display==='none';el.style.display=show?'block':'none';btn.textContent=show?'▲ Hide menu':'▼ View menu';})(this)" style="font-size:12px;color:#4f46e5;font-weight:600;background:none;border:none;cursor:pointer;padding:0;margin-bottom:6px">▼ View menu</button>
+        <div id="${menuExpandId}" style="${_menuAutoExpand ? "display:block" : "display:none"};font-size:12px;color:var(--text);line-height:1.7;background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border);margin-bottom:8px">${_menuFormattedHtml}</div>
+        <button onclick="(function(btn){var el=document.getElementById('${menuExpandId}');var show=el.style.display==='none';el.style.display=show?'block':'none';btn.textContent=show?'▲ Hide menu':'▼ View menu';})(this)" style="font-size:12px;color:#4f46e5;font-weight:600;background:none;border:none;cursor:pointer;padding:0;margin-bottom:6px">${_menuAutoExpand ? "▲ Hide menu" : "▼ View menu"}</button>
       </div>` : "";
 
     // If bodyText is raw JSON, render it as a structured card instead of dumping the string
@@ -11912,7 +11935,7 @@ _bkBadge();
       : jsonCardHtml
       ? jsonCardHtml
       : cleanSummary
-      ? `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${cleanSummary}</div>`
+      ? `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${_hl(cleanSummary, _savesHighlightTerm)}</div>`
       : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>`;
 
     let sourceDomain = "";
@@ -12011,6 +12034,7 @@ _bkBadge();
     document.getElementById("saves-search-clear").style.display = q ? "block" : "none";
     clearTimeout(_savesSearchTimer);
     if (!q) {
+      _savesHighlightTerm = "";
       const pills = document.getElementById("saves-cat-pills");
       pills.style.display = "flex";
       pills.style.marginBottom = "4px";
@@ -12023,6 +12047,7 @@ _bkBadge();
   };
 
   window.savesSearchClear = function() {
+    _savesHighlightTerm = "";
     document.getElementById("saves-search-input").value = "";
     document.getElementById("saves-search-clear").style.display = "none";
     const pills = document.getElementById("saves-cat-pills");
@@ -12032,6 +12057,7 @@ _bkBadge();
   };
 
   window.savesSearchQuery = async function(q) {
+    _savesHighlightTerm = q;
     const ql = q.toLowerCase();
     const words = ql.split(/\s+/).filter(Boolean);
 
