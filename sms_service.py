@@ -7643,6 +7643,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         ]
         _loc_hint = (f"\nContext: this photo was taken at or near {_loc_context}." if _loc_context else "")
         prompt_text = (
+            "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
             "Identify what this image is. Pick ONE type from: "
             "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, wine, sign, document, product, photo.\n"
             "IMPORTANT type rules:\n"
