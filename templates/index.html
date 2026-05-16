@@ -1005,7 +1005,6 @@
               <button id="brand-lib-btn" style="display:none"></button>
               <button id="co-share-btn" onclick="shareCompany()" style="font-size:12px;font-weight:600;color:#4f46e5;background:#eef2ff;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">Share</button>
               <button id="intel-compare-btn" onclick="_intelCompareOpen()" style="font-size:12px;font-weight:600;color:#0f766e;background:#f0fdfa;border:1px solid #99f6e4;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">⚡ Compare</button>
-              <button id="intel-research-btn" onclick="_runResearchAgent()" style="font-size:12px;font-weight:600;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">🤖 Research</button>
             </div>
           </div>
           <div id="brand-context-bar" style="display:none;margin-top:6px;font-size:11px;color:var(--muted)"></div>
@@ -1029,19 +1028,6 @@
           </div>
         </div>
 
-        <!-- Research Agent result panel -->
-        <div id="intel-research-panel" style="display:none;margin-bottom:12px">
-          <div style="background:linear-gradient(135deg,#2d1b69 0%,#1e1057 100%);border:1px solid #4c1d95;border-radius:16px;padding:16px 18px;color:#fff">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-              <span style="font-size:18px">🤖</span>
-              <span style="font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#c4b5fd">Research Agent Brief</span>
-              <span id="research-model-badge" style="margin-left:auto;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(124,58,237,.3);color:#c4b5fd"></span>
-            </div>
-            <div id="research-steps" style="font-size:11px;color:#a78bfa;margin-bottom:12px;line-height:1.8"></div>
-            <div id="research-headline" style="font-size:18px;font-weight:800;letter-spacing:-.4px;margin-bottom:12px;color:#fff;line-height:1.3"></div>
-            <div style="display:flex;flex-direction:column;gap:10px" id="research-sections"></div>
-          </div>
-        </div>
 
         <!-- Unified 5-tab bar -->
         <div id="intel-tab-bar" style="display:flex;gap:4px;background:var(--border);padding:4px;border-radius:14px;margin-bottom:14px;overflow-x:auto">
@@ -1253,6 +1239,24 @@
 
         <!-- ── Intel tab ── -->
         <div id="intel-tab-intel" style="display:none">
+
+          <!-- Research Brief trigger -->
+          <div style="margin-bottom:12px">
+            <button id="intel-research-btn" onclick="_runResearchAgent()"
+              style="width:100%;padding:11px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;
+                     font-size:13px;font-weight:700;color:var(--text);cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px">🤖</span>
+              <span id="intel-research-btn-label">Run Research Brief</span>
+              <span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:400">~15 sec</span>
+            </button>
+          </div>
+
+          <!-- Research result (hidden until run) -->
+          <div id="intel-research-panel" style="display:none;margin-bottom:16px">
+            <div id="research-headline" style="font-size:16px;font-weight:800;letter-spacing:-.3px;color:var(--text);line-height:1.35;margin-bottom:10px;padding:0 2px"></div>
+            <div style="display:flex;flex-direction:column;gap:8px" id="research-sections"></div>
+          </div>
+
           <!-- Featured watch/listen (company admin) -->
           <div id="co-featured-wrap" class="hidden co-card" style="padding:14px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -5375,29 +5379,24 @@ const _ts = new Date(d.timestamp);
   // ── Brand / Company Compare ───────────────────────────────────────────────
   // ── Research Agent ────────────────────────────────────────────────────────
   window._runResearchAgent = async function() {
-    var company = (document.getElementById("brand-name-el") || {}).textContent
-                  || (document.getElementById("company-q") || {}).value
-                  || (document.getElementById("intel-input") || {}).value
-                  || "";
-    company = company.trim();
+    var company = ((document.getElementById("brand-name-el")||{}).textContent||"").trim()
+                  || ((document.getElementById("intel-input")||{}).value||"").trim();
     if (!company) return;
+
+    // Switch to Intel tab so result is in the right place
+    if (typeof switchIntelTab === "function") switchIntelTab("intel");
 
     var panel  = document.getElementById("intel-research-panel");
     var btn    = document.getElementById("intel-research-btn");
-    var steps  = document.getElementById("research-steps");
+    var lbl    = document.getElementById("intel-research-btn-label");
     var hdl    = document.getElementById("research-headline");
     var sects  = document.getElementById("research-sections");
-    var badge  = document.getElementById("research-model-badge");
 
-    // Show panel, set loading state
-    panel.style.display = "";
-    btn.textContent = "⏳ Researching…";
+    panel.style.display = "none";
+    if (lbl) lbl.textContent = "Researching…";
     btn.disabled = true;
-    steps.textContent  = "Agent starting…";
-    hdl.textContent    = "";
-    sects.innerHTML    = "";
-    badge.textContent  = "";
-    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    hdl.textContent = "";
+    sects.innerHTML = "";
 
     try {
       var r = await fetch("/api/intel/research", {
@@ -5408,41 +5407,38 @@ const _ts = new Date(d.timestamp);
       var d = await r.json();
 
       if (d.error) {
-        steps.textContent = "Error: " + d.error;
-        btn.textContent = "🤖 Research"; btn.disabled = false;
+        if (lbl) lbl.textContent = "Research failed — try again";
+        btn.disabled = false;
         return;
       }
 
-      // Show which tools were called
-      if (d.steps && d.steps.length) {
-        steps.innerHTML = d.steps.map(s =>
-          "✓ " + s.tool.replace(/_/g," ") + (s.args.topic ? " · " + s.args.topic : "")
-        ).join("  ·  ");
-      }
-      if (d.model) badge.textContent = d.model.split("-")[0] + " · " + d.model.split("-").slice(1).join("-");
-
       hdl.textContent = d.headline || "";
 
-      var _section = function(label, content) {
+      var _sec = function(label, content) {
         if (!content || content === "Not publicly available") return "";
         var body = Array.isArray(content)
-          ? "<ul style='margin:6px 0 0;padding-left:0;list-style:none'>" + content.map(c => "<li style='padding:3px 0;font-size:12px;color:#c4b5fd'>· " + c + "</li>").join("") + "</ul>"
-          : "<div style='font-size:13px;color:#c4b5fd;margin-top:4px;line-height:1.6'>" + content + "</div>";
-        return "<div style='border-top:1px solid rgba(255,255,255,.08);padding-top:10px'><div style='font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#7c3aed;margin-bottom:2px'>" + label + "</div>" + body + "</div>";
+          ? content.map(c => "<div style='display:flex;gap:6px;padding:3px 0'><span style='color:var(--muted)'>·</span><span style='font-size:12px;color:var(--text);line-height:1.5'>" + c + "</span></div>").join("")
+          : "<div style='font-size:13px;color:var(--text);line-height:1.55;margin-top:3px'>" + content + "</div>";
+        return "<div style='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px'>"
+          + "<div style='font-size:9px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px'>" + label + "</div>"
+          + body + "</div>";
       };
 
       sects.innerHTML = [
-        _section("Strategy",          d.strategy),
-        _section("Leadership",        d.leadership),
-        _section("Hiring signals",    d.hiring_signals),
-        _section("Risks",             d.risks),
-        _section("Opportunity angle", d.opportunity_angle),
+        _sec("Strategy",          d.strategy),
+        _sec("Leadership",        d.leadership),
+        _sec("Hiring signals",    d.hiring_signals),
+        _sec("Risks",             d.risks),
+        _sec("Opportunity",       d.opportunity_angle),
       ].filter(Boolean).join("");
 
+      panel.style.display = "";
+      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
     } catch(e) {
-      steps.textContent = "Network error — check connection";
+      if (lbl) lbl.textContent = "Network error — try again";
     }
-    btn.textContent = "🤖 Research";
+    if (lbl) lbl.textContent = "Refresh Research Brief";
     btn.disabled = false;
   };
 
