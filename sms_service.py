@@ -14487,13 +14487,16 @@ def api_train_departures():
     if not crs:
         return jsonify({"error": "crs required"}), 400
 
+    # origin_crs: filter services by their true starting station (e.g. WAT)
+    # calling_at: RTT param — plain CRS, no gb-nr: prefix
+    origin_crs = request.args.get("origin_crs", "").strip().upper()[:3]
     calling_at = request.args.get("calling_at", "").strip().upper()[:3]
 
     if not os.environ.get("RTT_TOKEN"):
         return jsonify({"error": "Train API not configured — set RTT_TOKEN environment variable (free at api-portal.rtt.io)"}), 503
 
-    # 30-second departures cache — include calling_at in key
-    cache_key = (crs, calling_at)
+    # 30-second departures cache — include filters in key
+    cache_key = (crs, calling_at, origin_crs)
     cached = _rtt_departures_cache.get(cache_key)
     if cached and time.time() - cached[1] < _RTT_DEPARTURES_TTL:
         return jsonify(cached[0])
@@ -14503,7 +14506,7 @@ def api_train_departures():
 
         rtt_params = {"code": f"gb-nr:{crs}"}
         if calling_at:
-            rtt_params["calling_at"] = f"gb-nr:{calling_at}"
+            rtt_params["calling_at"] = calling_at  # plain CRS, not gb-nr: prefixed
         r = requests.get(
             "https://data.rtt.io/rtt/location",
             headers={"Authorization": f"Bearer {access}"},
@@ -14541,6 +14544,13 @@ def api_train_departures():
 
         trains = []
         for s in services:
+            # Filter by origin station if requested (e.g. office mode: only WAT-origin trains)
+            if origin_crs:
+                orig_list = s.get("origin") or []
+                orig_crss = [(o.get("location") or {}).get("crs", "").upper() for o in orig_list]
+                if origin_crs not in orig_crss:
+                    continue
+
             td  = s.get("temporalData", {})
             dep = td.get("departure", {})
             dest_list = s.get("destination") or [{}]
