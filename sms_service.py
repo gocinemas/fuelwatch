@@ -4692,24 +4692,28 @@ def api_intel_compare():
     a_label = da.get("name") or a
     b_label = db.get("name") or b
     prompt = (
-        f"Compare these two {'companies' if mode == 'company' else 'brands'} head-to-head.\n\n"
-        f"--- BRAND A: {a_label} ---\n{_summary(da, a)}\n\n"
-        f"--- BRAND B: {b_label} ---\n{_summary(db, b)}\n\n"
-        f"IMPORTANT: In every 'a' field put data about {a_label}. In every 'b' field put data about {b_label}.\n"
-        f"a_edge = one sentence on {a_label}'s unique advantage over {b_label}.\n"
-        f"b_edge = one sentence on {b_label}'s unique advantage over {a_label}.\n"
-        "Return JSON only:\n"
-        '{"verdict": "one punchy sentence on which is stronger and why",'
-        '"dimensions": ['
-        '{"label":"Positioning","a":"value","b":"value"},'
-        '{"label":"Revenue / Scale","a":"value","b":"value"},'
-        '{"label":"Founded","a":"value","b":"value"},'
-        '{"label":"Key Markets","a":"value","b":"value"},'
-        '{"label":"Brand Strength","a":"High/Medium/Low + reason","b":"value"},'
-        '{"label":"Parent Company","a":"value","b":"value"}'
+        f"Compare {a_label} vs {b_label} for a sharp business intelligence card.\n\n"
+        f"--- {a_label} ---\n{_summary(da, a)}\n\n"
+        f"--- {b_label} ---\n{_summary(db, b)}\n\n"
+        "Instructions:\n"
+        "1. Pick 5 dimensions that reveal the most MEANINGFUL strategic differences between these specific companies. "
+        "Avoid generic labels like 'Founded' or 'Parent Company'. "
+        "Good dimensions: Market Leadership, Customer Loyalty, Profit Margin, Innovation Pace, Brand Recognition, "
+        "Pricing Power, Digital Presence, Operational Scale, Geographic Reach, Category Ownership.\n"
+        "2. If they operate in different sectors, call it out — the comparison is then about business strength, not direct competition.\n"
+        "3. Verdict must be opinionated: state who is strategically stronger IN THEIR OWN CONTEXT, not just who has higher revenue.\n"
+        f"4. In every 'a' field put data about {a_label}. In every 'b' field put data about {b_label}.\n"
+        "Return JSON only — exactly 5 dimensions:\n"
+        '{"verdict":"one punchy sentence — clear winner in context, note if different sectors",'
+        '"dimensions":['
+        '{"label":"<dimension 1>","a":"<concise value>","b":"<concise value>"},'
+        '{"label":"<dimension 2>","a":"<concise value>","b":"<concise value>"},'
+        '{"label":"<dimension 3>","a":"<concise value>","b":"<concise value>"},'
+        '{"label":"<dimension 4>","a":"<concise value>","b":"<concise value>"},'
+        '{"label":"<dimension 5>","a":"<concise value>","b":"<concise value>"}'
         '],'
-        f'"a_edge": "one sentence: where {a_label} wins",'
-        f'"b_edge": "one sentence: where {b_label} wins"'
+        f'"a_edge":"one sentence: where {a_label} wins",'
+        f'"b_edge":"one sentence: where {b_label} wins"'
         '}'
     )
     try:
