@@ -433,10 +433,15 @@ function savesCardHtml(s) {
   }
 
   var cleanSummary2 = bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
+  // Linkify phone numbers in summary (UK landlines, mobiles, international)
+  var cleanSummary2Linked = cleanSummary2.replace(/(📞\s*)?((?:\+44|0)[\d\s]{9,13})/g, function(m, icon, num) {
+    var digits = num.replace(/\s/g,"");
+    return (icon||"") + '<a href="tel:' + digits + '" style="color:#2563eb;text-decoration:none;font-weight:600">' + num + '</a>';
+  });
   var summaryHtml = isMenu ? menuHtml
     : jsonCardHtml ? jsonCardHtml
-    : cleanSummary2
-    ? '<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">' + cleanSummary2 + '</div>'
+    : cleanSummary2Linked
+    ? '<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">' + cleanSummary2Linked + '</div>'
     : '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>';
 
   var sourceDomain = "";
@@ -681,9 +686,10 @@ function _adIntelCardHtml(d) {
   var propStr = [d.bedrooms ? d.bedrooms + " bed" : "", d.property_type].filter(Boolean).join(" ");
   var locStr  = [d.address, d.postcode || d.area].filter(Boolean).join(", ");
   var noteDiv = d.notes ? '<div style="padding:7px 0 3px;font-size:12px;color:var(--muted);font-style:italic">' + d.notes + '</div>' : "";
+  var phoneRow = d.phone ? row("📞","Phone",'<a href="tel:' + d.phone.replace(/\s/g,'') + '" style="color:#2563eb;text-decoration:none">' + d.phone + '</a>') : "";
   var rows = d.ad_type === "wine"
-    ? [row("🍷","Wine",d.wine_name),row("🏭","Producer",d.company),row("📅","Vintage",d.vintage),row("🍇","Grape",d.grape),row("🗺️","Region",d.region),row("💷","Price",d.price),noteDiv].filter(Boolean).join("")
-    : [row("🏢","Agent",d.company),row("🏠","Property",propStr||null),row("📍","Location",locStr||null),row("💷","Price",d.price),noteDiv].filter(Boolean).join("");
+    ? [row("🍷","Wine",d.wine_name),row("🏭","Producer",d.company),row("📅","Vintage",d.vintage),row("🍇","Grape",d.grape),row("🗺️","Region",d.region),row("💷","Price",d.price),phoneRow,noteDiv].filter(Boolean).join("")
+    : [row("🏢","Company",d.company),phoneRow,row("🏠","Property",propStr||null),row("📍","Location",locStr||null),row("💷","Price",d.price),noteDiv].filter(Boolean).join("");
   var linksHtml = (d.links || []).map(function(l) {
     return '<a href="' + l.url + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;padding:7px 14px;border-radius:10px;border:1px solid #bfdbfe;background:#eff6ff;font-size:12px;font-weight:600;color:#1d4ed8;text-decoration:none;white-space:nowrap">' + l.label + ' ↗</a>';
   }).join("");

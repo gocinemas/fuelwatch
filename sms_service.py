@@ -7701,6 +7701,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "  e.g. PRODUCT: Simple Moisturiser 125ml | Simple | n/a\n"
             "Also add: SHOP: [retailer name if identifiable — e.g. 'Tesco' — or leave blank]\n"
             "If you can identify a city or area from signage — add: LOCATION: [city or area name]\n"
+            "If a phone number is visible on the sign, van, or ad — add: PHONE: [number]\n"
             "Always add: SEARCH: [2-5 word search term]"
             + _loc_hint
         )
@@ -7762,6 +7763,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         venue_tag = ""
         location_tag = ""
         search_tag = ""
+        phone_tag = ""
         product_items = []   # list of {name, brand, price} dicts
         shop_tag = ""
         _BLANK = {"", "n/a", "not visible", "unknown", "none", "-"}
@@ -7773,6 +7775,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 location_tag = _line.split(":", 1)[1].strip()
             elif _up.startswith("SEARCH:"):
                 search_tag = _line.split(":", 1)[1].strip()
+            elif _up.startswith("PHONE:"):
+                _ph = _line.split(":", 1)[1].strip()
+                if _ph.lower() not in _BLANK:
+                    phone_tag = _ph
             elif _up.startswith("PRODUCT:"):
                 _raw = _line.split(":", 1)[1].strip()
                 _parts = [p.strip() for p in _raw.split("|")]
@@ -7800,11 +7806,14 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         print(f"[vision] products={product_items} shop_tag={shop_tag!r}")
 
         # Strip metadata lines from summary
-        _meta_prefixes = ("TYPE:", "VENUE:", "LOCATION:", "SEARCH:", "PRODUCT:", "SHOP:")
+        _meta_prefixes = ("TYPE:", "VENUE:", "LOCATION:", "SEARCH:", "PRODUCT:", "SHOP:", "PHONE:")
         summary = "\n".join(
             l for l in analysis.split("\n")
             if not any(l.strip().upper().startswith(p) for p in _meta_prefixes)
         ).strip()
+        # Prepend phone to summary as a bullet so it's visible on the card
+        if phone_tag:
+            summary = f"• 📞 {phone_tag}\n" + summary
 
         # Build a meaningful search URL — strip filler, keep key object + venue
         import urllib.parse, re as _re
@@ -12960,6 +12969,7 @@ def api_wa_saves_ad_intel():
     json_schema = (
         '{"company":"company/brand name exactly as written, or null","ad_type":"real_estate|wine|car|vehicle|product|job|other",'
         '"website":"website domain if inferable e.g. rightmove.co.uk, else null",'
+        '"phone":"phone number visible on the ad, sign, or van — exactly as shown e.g. 07700 900123, else null",'
         '"postcode":"UK postcode if visible else null","area":"area or town if no postcode",'
         '"address":"full street address if visible else null",'
         '"price":"price with £ symbol e.g. £2785pcm or £450000 or £18.99, else null","bedrooms":null,'
