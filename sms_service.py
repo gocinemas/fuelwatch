@@ -7108,6 +7108,7 @@ def _resolve_user_token(token: str):
     if token in _TOKEN_TO_NUMBER:
         return _TOKEN_TO_NUMBER[token]
     try:
+        # Primary: rebuild from wa_saves (all users who have saves)
         rows = lib._sb().table("wa_saves").select("from_number").execute().data
         seen = set()
         for row in rows:
@@ -7116,9 +7117,17 @@ def _resolve_user_token(token: str):
                 seen.add(n)
                 _wa_user_token(n)  # populates _TOKEN_TO_NUMBER
         resolved = _TOKEN_TO_NUMBER.get(token)
-        if not resolved:
-            print(f"[token] resolve miss — token={token[:8]}... known_count={len(_TOKEN_TO_NUMBER)}")
-        return resolved
+        if resolved:
+            return resolved
+        # Fallback: check ai_cache for persisted token→phone (survives zero-saves case)
+        cache_rows = lib._sb().table("ai_cache").select("data").eq("key", f"user_token:{token}").execute().data
+        if cache_rows:
+            phone = (cache_rows[0].get("data") or {}).get("phone")
+            if phone:
+                _wa_user_token(phone)  # populates _TOKEN_TO_NUMBER
+                return _TOKEN_TO_NUMBER.get(token)
+        print(f"[token] resolve miss — token={token[:8]}... known_count={len(_TOKEN_TO_NUMBER)}")
+        return None
     except Exception as _te:
         print(f"[token] resolve error: {_te}")
         return None
@@ -12501,6 +12510,16 @@ def api_user_token():
     if re.match(r'^0\d{10}$', phone):
         phone = '+44' + phone[1:]
     token = _wa_user_token(phone)
+    # Persist token→phone so _resolve_user_token survives Railway restarts
+    # and works for users who have zero wa_saves rows
+    try:
+        lib._sb().table("ai_cache").upsert({
+            "key": f"user_token:{token}",
+            "data": {"phone": phone},
+            "cached_at": datetime.utcnow().isoformat(),
+        }).execute()
+    except Exception as _pe:
+        print(f"[user-token] persist error: {_pe}")
     return jsonify({"token": token, "phone": phone})
 
 
