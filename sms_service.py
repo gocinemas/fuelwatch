@@ -4749,6 +4749,30 @@ def api_admin_clear_brand_cache():
     return jsonify({"ok": True, "cleared": name})
 
 
+@app.route("/api/admin/fix-currency", methods=["POST"])
+def api_admin_fix_currency():
+    """Replace $ with £ in all wa_saves summaries. Admin-only."""
+    if request.headers.get("X-Admin-Token") != "miru-digest-2026":
+        return jsonify({"error": "Forbidden"}), 403
+    phone = (request.json or {}).get("phone", "").strip() if request.is_json else ""
+    try:
+        q = lib._sb().table("wa_saves").select("id,summary")
+        if phone:
+            q = q.eq("from_number", phone)
+        rows = q.execute().data
+        fixed = 0
+        for row in rows:
+            summary = row.get("summary") or ""
+            if "$" not in summary:
+                continue
+            new_summary = summary.replace("$", "£")
+            lib._sb().table("wa_saves").update({"summary": new_summary}).eq("id", row["id"]).execute()
+            fixed += 1
+        return jsonify({"ok": True, "checked": len(rows), "fixed": fixed})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/scan", methods=["POST"])
 def api_brand_scan():
     """Identify a brand from a photo using Groq vision."""
