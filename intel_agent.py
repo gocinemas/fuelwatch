@@ -72,6 +72,7 @@ After gathering data, produce your final output as a JSON object with these exac
   "strategy": "Key strategic moves from news — acquisitions, pivots, partnerships, new markets",
   "leadership": "CEO and key leadership signals, recent changes, what they signal",
   "hiring_signals": "What the direction of hiring reveals — which teams are growing, what capabilities they're building",
+  "ai_focus": "What AI bets this company is making — pilots, investments, named tools, stated ambitions, or absence of AI signals",
   "risks": ["Risk 1", "Risk 2", "Risk 3"],
   "opportunity_angle": "Why this company is interesting right now — the outsider's take for an investor or partner",
   "confidence": "high | medium | low — based on recency and quality of news data"
