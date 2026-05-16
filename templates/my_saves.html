@@ -44,9 +44,6 @@
 <div class="topbar">
   <a href="/">← Miru</a>
   <div class="topbar-title">My Saves</div>
-  <div id="topbar-logout" style="display:none">
-    <button onclick="_savesSignOut()" style="font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;font-weight:600">Sign out</button>
-  </div>
 </div>
 
 <div class="wrap">
@@ -219,13 +216,11 @@ var _savesActiveFilter = "all";
 function _savesShowPhone() {
   document.getElementById("saves-phone-screen").style.display = "flex";
   document.getElementById("saves-main").style.display = "none";
-  document.getElementById("topbar-logout").style.display = "none";
 }
 
 function _savesShowMain() {
   document.getElementById("saves-phone-screen").style.display = "none";
   document.getElementById("saves-main").style.display = "block";
-  document.getElementById("topbar-logout").style.display = "block";
   savesLoad();
 }
 
