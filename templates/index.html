@@ -10972,14 +10972,15 @@ _bkBadge();
       <div style="font-size:20px">💬</div>
       <div style="font-size:12px;color:#065f46;line-height:1.4">Send a photo or link to <strong>Miru on WhatsApp</strong>, then view and search everything here.</div>
     </div>
-    <input id="saves-phone-input" type="tel" placeholder="+44 7911 123456"
-      style="border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-size:15px;width:100%;max-width:240px;text-align:center;outline:none;background:var(--surface);color:var(--text);margin-bottom:10px"
-      onkeydown="if(event.key==='Enter')savesSubmitPhone()" />
-    <div id="saves-phone-error" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px">Something went wrong — try again.</div>
-    <button onclick="savesSubmitPhone()"
-      style="background:#1f2937;color:#fff;border:none;border-radius:12px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer;width:100%;max-width:240px">
-      Access My Saves
-    </button>
+    <form id="saves-phone-form" onsubmit="event.preventDefault(); savesSubmitPhone()" style="width:100%;max-width:240px;display:flex;flex-direction:column;align-items:stretch">
+      <input id="saves-phone-input" type="tel" placeholder="+44 7911 123456" autocomplete="tel"
+        style="border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-size:15px;width:100%;box-sizing:border-box;text-align:center;outline:none;background:var(--surface);color:var(--text);margin-bottom:10px" />
+      <div id="saves-phone-error" style="display:none;color:#ef4444;font-size:12px;margin-bottom:8px;text-align:center">Something went wrong — try again.</div>
+      <button type="submit" id="saves-phone-btn"
+        style="background:#1f2937;color:#fff;border:none;border-radius:12px;padding:14px 28px;font-size:15px;font-weight:700;cursor:pointer;width:100%">
+        Access My Saves
+      </button>
+    </form>
   </div>
   <!-- kept for compat (hidden, unused) -->
   <div id="saves-onboard-screen" style="display:none"></div>
@@ -11662,40 +11663,39 @@ _bkBadge();
   }
 
   window.savesSubmitPhone = async function() {
-    let raw = (document.getElementById("saves-phone-input").value || "").trim();
-    const errEl = document.getElementById("saves-phone-error");
+    var inp = document.getElementById("saves-phone-input");
+    var errEl = document.getElementById("saves-phone-error");
+    var btn = document.getElementById("saves-phone-btn");
+    var raw = inp ? inp.value.trim() : "";
     if (!raw) {
-      errEl.textContent = "Enter your WhatsApp number e.g. +44 7xxx xxxxxx";
-      errEl.style.display = "block"; return;
+      if (errEl) { errEl.textContent = "Enter your WhatsApp number"; errEl.style.display = "block"; }
+      return;
     }
-    let p = raw.replace(/\s+/g, '');
-    if (/^0\d{10}$/.test(p)) p = '+44' + p.slice(1);
-    const btn = document.querySelector('#saves-phone-screen button');
-    if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
-    errEl.style.display = "none";
+    var p = raw.replace(/\s+/g, "");
+    if (/^0\d{10}$/.test(p)) p = "+44" + p.slice(1);
+    if (btn) { btn.textContent = "Loading…"; btn.disabled = true; }
+    if (errEl) errEl.style.display = "none";
     try {
-      // Step 1: get token
-      const tr = await fetch('/api/user-token?phone=' + encodeURIComponent(p));
-      const td = await tr.json();
-      if (!td.token) throw new Error('no token');
+      var tr = await fetch("/api/user-token?phone=" + encodeURIComponent(p));
+      var td = await tr.json();
+      if (!td.token) throw new Error("no token");
       localStorage.setItem("wa_saves_token", td.token);
       localStorage.setItem("miru_phone", p);
-      // Step 2: fetch saves directly with both token + phone (bypasses worker sync issue)
-      const sr = await fetch('/api/wa-saves', { headers: {
+      var sr = await fetch("/api/wa-saves", { headers: {
         "X-Library-PIN": td.token, "X-User-Phone": p, "Content-Type": "application/json"
       }});
-      if (!sr.ok) throw new Error('auth');
-      const sd = await sr.json();
-      // Step 3: show saves directly
+      if (!sr.ok) throw new Error("auth " + sr.status);
+      var sd = await sr.json();
       document.getElementById("saves-phone-screen").style.display = "none";
       document.getElementById("saves-main").style.display = "block";
-      _savesAll = (sd.saves || []).filter(s => !(s.title||'').startsWith("🎵 ") && !(s.url||'').startsWith("book:"));
+      _savesAll = (sd.saves || []).filter(function(s) {
+        return !(s.title||"").startsWith("🎵 ") && !(s.url||"").startsWith("book:");
+      });
       if (typeof savesRenderCategoryPills === "function") savesRenderCategoryPills();
       if (typeof savesRender === "function") savesRender();
     } catch(e) {
-      if (btn) { btn.textContent = 'Access My Saves'; btn.disabled = false; }
-      errEl.textContent = 'Something went wrong — try again or check your number format.';
-      errEl.style.display = "block";
+      if (btn) { btn.textContent = "Access My Saves"; btn.disabled = false; }
+      if (errEl) { errEl.textContent = "Error: " + e.message + ". Check number format."; errEl.style.display = "block"; }
     }
   };
 

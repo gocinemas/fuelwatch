@@ -787,7 +787,10 @@ def index():
     if "space." in request.host:
         return render_template("space.html")
     intel_mode = "intel." in request.host or request.args.get("intel") == "1" or request.args.get("screen") == "intel"
-    return render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=intel_mode)
+    resp = make_response(render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=intel_mode))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
 
 @app.route("/home-v2")
 def home_v2():
