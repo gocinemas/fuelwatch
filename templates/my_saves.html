@@ -614,8 +614,11 @@ window.savesEnrich = async function(id, venue, btn) {
     } catch(_) {}
     var r = await fetch("/api/wa-saves/enrich", {method:"POST", headers:{..._savesHeaders(),"Content-Type":"application/json"}, body:JSON.stringify({id,venue,lat,lon})});
     var d = await r.json();
-    if (d.ok) await savesLoad();
-    else if (btn) { btn.textContent = "⚠️ Not found"; btn.disabled = false; }
+    if (d.ok) {
+      var scrollY = window.scrollY;
+      await savesLoad();
+      window.scrollTo(0, scrollY);
+    } else if (btn) { btn.textContent = "⚠️ Not found"; btn.disabled = false; }
   } catch(e) { if (btn) { btn.textContent = "✨ Update details"; btn.disabled = false; } }
 };
 window.savesEditTitle = function(id, currentTitle, prefix) {
@@ -707,9 +710,8 @@ window.savesAdIntel = async function(id, btn) {
     var r = await fetch("/api/wa-saves/ad-intel", {method:"POST", headers:_savesHeaders(), body:JSON.stringify({id})});
     var d = await r.json();
     if (d.error) { btn.textContent = "🤖 AI"; btn.disabled = false; alert(d.error); return; }
-    if (resultEl) { resultEl.innerHTML = _adIntelCardHtml(d); resultEl.style.display = ""; }
-    btn.textContent = "🤖 AI ✓"; btn.style.background = "#d1fae5";
-    savesLoad();
+    if (resultEl) { resultEl.innerHTML = _adIntelCardHtml(d); resultEl.style.display = "block"; resultEl.scrollIntoView({behavior:"smooth",block:"nearest"}); }
+    btn.textContent = "🤖 AI ✓"; btn.style.background = "#d1fae5"; btn.disabled = false;
   } catch(e) { btn.textContent = "🤖 AI"; btn.disabled = false; }
 };
 

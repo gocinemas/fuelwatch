@@ -987,7 +987,7 @@ Career highlights:
 
 Products he has built (all live):
 - Miru (miru.humanagency.co): WhatsApp-first AI assistant for everyday UK life — school comms, fuel prices, train times, local area reports, music ID, company intel, saves library.
-- Intel (mekalav.com/intel and intel.humanagency.co): Company research tool — type any company name and get a live AI-generated brief in ~20 seconds. The brief covers: current strategic direction, leadership signals, hiring trends, key risks, and an opportunity angle. Works on any public company or major brand — Unilever, HSBC, Tesco, Mars, Diageo, Vodafone, etc. Built to give someone walking into a meeting instant, structured intelligence on a company. Try it live at mekalav.com/intel — no login needed.
+- Intel (mekalav.com/intel and intel.humanagency.co): Company research tool — type any company name and get a live AI-generated brief in ~20 seconds. The brief covers: current strategic direction, leadership signals, hiring trends, key risks, and an opportunity angle. Works on any public company or major brand — Unilever, HSBC, Tesco, Mars, Diageo, Vodafone, etc. Built to give someone walking into a meeting instant, structured intelligence on a company. Try it live at intel.humanagency.co — no login needed.
 - AI literacy (ai.humanagency.co): Plain-language AI education for people outside tech.
 - Space Intelligence: UK space tracking — ISS, launches, tonight's sky. Passion project.
 
@@ -13030,35 +13030,79 @@ def api_wa_saves_ad_intel():
     )
 
     import json as _json, re as _re
-    try:
-        if image_url:
-            # Vision model — send image URL directly
-            groq_key = os.environ.get("GROQ_API_KEY", "")
-            vision_messages = [{"role": "user", "content": [
-                {"type": "image_url", "image_url": {"url": image_url}},
-                {"type": "text", "text": (
-                    f"Extract structured info from this image. Additional context — title: {title or 'none'}, summary: {summary[:400] or 'none'}.\n"
-                    f"Reply with JSON only:\n{json_schema}"
-                )},
-            ]}]
-            vr = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                json={"model": "meta-llama/llama-4-scout-17b-16e-instruct", "messages": vision_messages, "max_tokens": 500},
-                timeout=20,
-            )
-            vr.raise_for_status()
-            raw = vr.json()["choices"][0]["message"]["content"].strip()
-        else:
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    raw = None
+    _last_err = None
+
+    if image_url:
+        _vision_msgs = [{"role": "user", "content": [
+            {"type": "image_url", "image_url": {"url": image_url}},
+            {"type": "text", "text": (
+                f"Extract structured info from this image. Additional context — title: {title or 'none'}, summary: {summary[:400] or 'none'}.\n"
+                f"Reply with JSON only:\n{json_schema}"
+            )},
+        ]}]
+        # Groq vision with up to 3 retries on 429/5xx
+        for _att in range(3):
+            try:
+                vr = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                    json={"model": "meta-llama/llama-4-scout-17b-16e-instruct", "messages": _vision_msgs, "max_tokens": 500},
+                    timeout=20,
+                )
+                if vr.status_code == 429:
+                    _last_err = f"HTTP 429 (attempt {_att+1})"
+                    time.sleep((2 ** _att) * 2)
+                    continue
+                if vr.status_code >= 500 and _att < 2:
+                    _last_err = f"HTTP {vr.status_code}"
+                    time.sleep(1)
+                    continue
+                vr.raise_for_status()
+                raw = vr.json()["choices"][0]["message"]["content"].strip()
+                break
+            except requests.Timeout:
+                _last_err = f"Timeout (attempt {_att+1})"
+                continue
+
+        # Fallback to Claude vision if Groq failed and key is available
+        if raw is None and os.environ.get("ANTHROPIC_API_KEY"):
+            try:
+                import anthropic as _ant
+                _ac = _ant.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+                _cr = _ac.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=500,
+                    messages=[{"role": "user", "content": [
+                        {"type": "image", "source": {"type": "url", "url": image_url}},
+                        {"type": "text", "text": (
+                            f"Extract structured info from this image. Context — title: {title or 'none'}, summary: {summary[:400] or 'none'}.\n"
+                            f"Reply with JSON only:\n{json_schema}"
+                        )},
+                    ]}],
+                )
+                raw = _cr.content[0].text.strip()
+            except Exception as _ce:
+                _last_err = f"Claude vision: {_ce}"
+
+        if raw is None:
+            return jsonify({"error": f"AI failed: {_last_err}"}), 500
+    else:
+        try:
             prompt = (
                 "Extract structured info from this saved ad or listing.\n"
                 f"Title: {title}\nContent: {summary[:1200]}\n\nReply with JSON only:\n{json_schema}"
             )
             raw = _groq_chat("You are a data extraction assistant. Reply with JSON only.", [{"role": "user", "content": prompt}], max_tokens=500, json_mode=True)
+        except Exception as e:
+            return jsonify({"error": f"AI failed: {e}"}), 500
+
+    try:
         raw = _re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
         result = _json.loads(raw)
     except Exception as e:
-        return jsonify({"error": f"AI failed: {e}"}), 500
+        return jsonify({"error": f"AI parse failed: {e}"}), 500
 
     ad_type   = result.get("ad_type", "other")
     company   = (result.get("company")   or "").strip()

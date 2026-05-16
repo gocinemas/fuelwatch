@@ -12182,11 +12182,10 @@ _bkBadge();
       });
       const d = await r.json();
       if (d.error) { btn.textContent = "🤖 AI"; btn.disabled = false; alert(d.error); return; }
-      if (resultEl) { resultEl.innerHTML = _adIntelCardHtml(d); resultEl.style.display = ""; }
+      if (resultEl) { resultEl.innerHTML = _adIntelCardHtml(d); resultEl.style.display = "block"; resultEl.scrollIntoView({behavior:"smooth",block:"nearest"}); }
       btn.textContent = "🤖 AI ✓";
       btn.style.background = "#d1fae5";
-      // Refresh saves so next render has updated title/summary from DB
-      savesLoad();
+      btn.disabled = false;
     } catch(e) {
       btn.textContent = "🤖 AI";
       btn.disabled = false;
@@ -12208,8 +12207,11 @@ _bkBadge();
         body: JSON.stringify({id, venue, lat, lon}),
       });
       const d = await r.json();
-      if(d.ok) await savesLoad();
-      else if(btn) { btn.textContent = "⚠️ Not found"; btn.disabled = false; }
+      if(d.ok) {
+        const _sy = window.scrollY;
+        await savesLoad();
+        window.scrollTo(0, _sy);
+      } else if(btn) { btn.textContent = "⚠️ Not found"; btn.disabled = false; }
     } catch(e) {
       if(btn) { btn.textContent = "✨ Update details"; btn.disabled = false; }
     }
