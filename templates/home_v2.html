@@ -728,19 +728,37 @@ function _fetchFuel() {
 // ── DATA: SCHOOL ──────────────────────────────────────────────
 async function _fetchSchoolMsgs() {
   const el = document.getElementById('school-wrap');
-  if (!el) return;
-  if (!PHONE) {
-    el.innerHTML = `<div class="school-section-label">School messages</div>
-      <div style="font-size:12px;color:var(--muted);padding:2px 0">Link your WhatsApp to see school messages.</div>`;
-    return;
-  }
+  if (!el || !PHONE) return; // hide entirely if no phone — school is opt-in
   try {
     const r = await fetch('/api/school/events?back=14',{headers:{'X-School-WA':PHONE}});
     const data = await r.json();
-    if (data.auth||data.error==='No account found for this number') { el.innerHTML=''; return; }
-    const events=data.events||[];
+
+    // No school profile set up at all — hide section silently
+    const profiles = data.profiles || [];
+    if (!profiles.length || data.auth || data.error) { el.innerHTML=''; return; }
+
+    // Profile exists but Gmail not connected → show reconnect nudge
+    const needsConnect = profiles.some(p => !p.gmail_connected && p.oauth_url);
+    if (needsConnect) {
+      const oauthUrl = profiles.find(p=>p.oauth_url)?.oauth_url || '';
+      el.innerHTML = `
+        <div class="school-section-label">School messages</div>
+        <div class="school-card" onclick="window.open('${oauthUrl}','_blank')" style="cursor:pointer">
+          <div class="school-left"><div class="school-dot" style="background:#818cf8"></div></div>
+          <div style="min-width:0;flex:1">
+            <div class="school-title">Connect Gmail to sync school emails</div>
+            <div class="school-body">Tap to connect — takes 30 seconds. Once linked, school messages appear here automatically.</div>
+            <div class="school-meta"><span class="school-tag" style="background:rgba(129,140,248,.12);color:#818cf8">Connect →</span></div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    // Gmail connected — show events if any, hide if none yet (still syncing)
+    const events = data.events || [];
     if (!events.length) { el.innerHTML=''; return; }
-    const sorted=events.slice().sort((a,b)=>(b.event_date||b.created_at||'').localeCompare(a.event_date||a.created_at||''));
+
+    const sorted = events.slice().sort((a,b)=>(b.event_date||b.created_at||'').localeCompare(a.event_date||a.created_at||''));
     const cards = sorted.slice(0,3).map(m=>{
       const title=m.event_title||m.title||m.subject||'School update';
       const body=m.description||m.summary||m.body||'';
@@ -760,8 +778,8 @@ async function _fetchSchoolMsgs() {
         </div>
       </div>`;
     }).join('');
-    el.innerHTML = `<div class="school-section-label">School messages<span onclick="nav('saves')">All →</span></div>${cards}`;
-  } catch(e) {}
+    el.innerHTML = `<div class="school-section-label">School messages<span onclick="nav('myarea')">All →</span></div>${cards}`;
+  } catch(e) { el.innerHTML=''; }
 }
 
 // ── DATA: SAVES ───────────────────────────────────────────────
