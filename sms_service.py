@@ -12686,6 +12686,18 @@ def api_whatsapp_number():
     return jsonify({"number": number})
 
 
+@app.route("/api/saves-token")
+def api_saves_token():
+    """Return the HMAC saves token for a phone number (used by V2 home to auto-auth saves)."""
+    phone = (request.args.get("phone") or request.headers.get("X-User-Phone", "")).strip()
+    phone = re.sub(r'\s+', '', phone)
+    if not phone:
+        return jsonify({"error": "phone required"}), 400
+    if re.match(r'^0\d{10}$', phone):
+        phone = '+44' + phone[1:]
+    return jsonify({"token": _wa_user_token(phone)})
+
+
 @app.route("/api/wa-saves")
 def api_wa_saves():
     """List saves. Admin PIN → all saves. User token → only their saves."""

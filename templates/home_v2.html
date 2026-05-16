@@ -835,12 +835,20 @@ async function _fetchSchoolMsgs() {
 }
 
 // ── DATA: SAVES ───────────────────────────────────────────────
-function _fetchSaves() {
+async function _fetchSaves() {
   const el = document.getElementById('saves-row');
   if (!el) return;
-  const pin   = localStorage.getItem('miru_library_pin') || '';
+  let pin   = localStorage.getItem('miru_library_pin') || '';
   const phone = PHONE;
   if (!pin && !phone) { el.innerHTML='<div class="save-chip" style="opacity:.35">Link WhatsApp to see saves</div>'; return; }
+  // Auto-get HMAC token if phone is known but PIN not yet stored
+  if (!pin && phone) {
+    try {
+      const tr = await fetch(`/api/saves-token?phone=${encodeURIComponent(phone)}`);
+      const td = await tr.json();
+      if (td.token) { pin = td.token; localStorage.setItem('miru_library_pin', pin); }
+    } catch(e) {}
+  }
   const hdrs = {};
   if (pin)   hdrs['X-Library-PIN'] = pin;
   if (phone) hdrs['X-User-Phone']  = phone;
