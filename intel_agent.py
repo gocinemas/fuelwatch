@@ -9,7 +9,7 @@ import os
 import json
 import re
 import requests
-from search import fetch_company_info, _fetch_news
+from search import _fetch_news
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL   = "llama-3.3-70b-versatile"
@@ -20,30 +20,10 @@ TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "get_company_profile",
-            "description": (
-                "Fetch a comprehensive profile for a company: Wikipedia summary, recent news, "
-                "share price, job listings, and hiring signals. Call this first for any company."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "company_name": {
-                        "type": "string",
-                        "description": "The company name, e.g. 'Gymshark' or 'Unilever'"
-                    }
-                },
-                "required": ["company_name"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "get_news_by_topic",
             "description": (
                 "Search recent news for a company filtered by a specific topic. "
-                "Use after get_company_profile to dig into strategy, leadership, financials, or AI moves."
+                "Call this 2-3 times with different topics to build a complete picture."
             ),
             "parameters": {
                 "type": "object",
@@ -54,7 +34,8 @@ TOOLS = [
                         "description": (
                             "Topic to filter news by, e.g. "
                             "'CEO leadership change', 'AI strategy', 'acquisition merger', "
-                            "'layoffs redundancy', 'earnings results'"
+                            "'layoffs redundancy', 'earnings results', 'new product launch', "
+                            "'campaign marketing', 'partnership deal'"
                         )
                     },
                     "limit": {
@@ -66,27 +47,6 @@ TOOLS = [
                 "required": ["company_name", "topic"]
             }
         }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_companies_house",
-            "description": (
-                "Look up a UK company on Companies House: registered name, company number, "
-                "status (active/dissolved), type, SIC codes, incorporation date. "
-                "Use for any UK company to verify legal standing."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "company_name": {
-                        "type": "string",
-                        "description": "The company name to search on Companies House"
-                    }
-                },
-                "required": ["company_name"]
-            }
-        }
     }
 ]
 
@@ -95,60 +55,32 @@ TOOLS = [
 SYSTEM_PROMPT = """You are an expert company research analyst producing briefs for a strategic audience:
 investors, potential partners, and senior hires. Be specific, direct, and commercially sharp.
 
-Research process (always follow this order):
-1. Call get_company_profile — baseline data: description, financials, hiring signals, news
-2. Call get_news_by_topic with topic "strategy OR leadership OR acquisition OR partnership"
-3. If company appears UK-based, call get_companies_house to verify legal status
-4. If there are interesting signals (AI moves, restructure, new CEO), call get_news_by_topic again
-   with a more specific topic to get detail
+The user is already looking at a full company profile on screen (description, financials, news feed, job listings).
+Your job is to surface what the profile screen does NOT show: strategic signals, leadership moves,
+competitive positioning, and what this company's current moment means for someone deciding to invest,
+partner, hire, or compete with them.
+
+Research process:
+1. Call get_news_by_topic with topic "strategy acquisition partnership restructure" — strategic moves
+2. Call get_news_by_topic with topic "CEO leadership hiring layoffs" — people signals
+3. If interesting signals appear (AI pivot, new CEO, major deal), call get_news_by_topic again
+   with a sharper topic to get detail (e.g. "AI investment product launch", "merger acquisition target")
 
 After gathering data, produce your final output as a JSON object with these exact fields:
 {
   "headline": "One sharp sentence capturing the company's current moment",
-  "overview": "2-3 sentences: what they do, market position, current momentum",
-  "financials": "Revenue, market cap, share price, profitability — only what is known",
-  "strategy": "Key strategic moves, direction, acquisitions, partnerships from news",
-  "leadership": "CEO and key leadership signals, recent changes",
-  "hiring_signals": "What their open roles reveal about their direction (use job data)",
+  "strategy": "Key strategic moves from news — acquisitions, pivots, partnerships, new markets",
+  "leadership": "CEO and key leadership signals, recent changes, what they signal",
+  "hiring_signals": "What the direction of hiring reveals — which teams are growing, what capabilities they're building",
   "risks": ["Risk 1", "Risk 2", "Risk 3"],
-  "opportunity_angle": "Why this company is interesting right now — the outsider's take",
-  "confidence": "high | medium | low — based on data quality available"
+  "opportunity_angle": "Why this company is interesting right now — the outsider's take for an investor or partner",
+  "confidence": "high | medium | low — based on recency and quality of news data"
 }
 
 If specific data is absent, say 'Not publicly available' rather than guessing.
 Output ONLY the JSON — no preamble, no markdown fences."""
 
 # ── Tool implementations ─────────────────────────────────────────────────────
-
-def _tool_get_company_profile(company_name: str) -> str:
-    try:
-        data = fetch_company_info(company_name)
-        if not data:
-            return json.dumps({"error": f"No profile found for {company_name}"})
-        out = {
-            "company":         data.get("name") or company_name,
-            "description":     data.get("description", ""),
-            "founded":         data.get("founded", ""),
-            "headquarters":    data.get("headquarters") or data.get("country", ""),
-            "employees":       data.get("employees", ""),
-            "revenue":         data.get("revenue", ""),
-            "share_price":     data.get("share_price", ""),
-            "market_cap":      data.get("market_cap", ""),
-            "industry":        data.get("industry") or data.get("sector", ""),
-            "parent_company":  data.get("parent", ""),
-            "recent_news":     [
-                {"title": n.get("title"), "date": n.get("date"), "source": n.get("source")}
-                for n in (data.get("news") or [])[:6]
-            ],
-            "job_count":       len(data.get("jobs") or []),
-            "hiring_signals":  data.get("hiring_signals", {}),
-            "top_jobs":        [j.get("title") for j in (data.get("jobs") or [])[:8] if j.get("title")],
-            "wikipedia_url":   data.get("wikipedia_url", ""),
-        }
-        return json.dumps(out, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"error": str(e)})
-
 
 def _tool_get_news_by_topic(company_name: str, topic: str, limit: int = 5) -> str:
     try:
@@ -165,83 +97,15 @@ def _tool_get_news_by_topic(company_name: str, topic: str, limit: int = 5) -> st
         return json.dumps({"error": str(e)})
 
 
-def _tool_get_companies_house(company_name: str) -> str:
-    ch_key = os.environ.get("COMPANIES_HOUSE_API_KEY", "")
-    if ch_key:
-        try:
-            r = requests.get(
-                "https://api.company-information.service.gov.uk/search/companies",
-                params={"q": company_name, "items_per_page": 3},
-                auth=(ch_key, ""),
-                timeout=8
-            )
-            if r.status_code == 200:
-                items = r.json().get("items") or []
-                if items:
-                    best = items[0]
-                    cn   = best.get("company_number", "")
-                    # Fetch full detail
-                    detail = {}
-                    if cn:
-                        dr = requests.get(
-                            f"https://api.company-information.service.gov.uk/company/{cn}",
-                            auth=(ch_key, ""), timeout=8
-                        )
-                        if dr.status_code == 200:
-                            detail = dr.json()
-                    return json.dumps({
-                        "company_name":       detail.get("company_name") or best.get("title", ""),
-                        "company_number":     cn,
-                        "status":             detail.get("company_status") or best.get("company_status", ""),
-                        "company_type":       detail.get("type") or best.get("company_type", ""),
-                        "incorporated":       detail.get("date_of_creation", ""),
-                        "registered_address": detail.get("registered_office_address", {}),
-                        "sic_codes":          detail.get("sic_codes", []),
-                        "accounts_next_due":  (detail.get("accounts") or {}).get("next_due", ""),
-                        "ch_url": f"https://find-and-update.company-information.service.gov.uk/company/{cn}",
-                    }, ensure_ascii=False)
-        except Exception as e:
-            return json.dumps({"error": str(e)})
-
-    # No key — use public autocomplete (name + number + status only)
-    try:
-        r = requests.get(
-            "https://autocomplete.companieshouse.gov.uk/autocompletion",
-            params={"term": company_name, "type": "companies", "datarestrictions": "active"},
-            timeout=8,
-            headers={"User-Agent": "MiruIntelAgent/1.0"}
-        )
-        if r.status_code == 200:
-            items = r.json().get("Items") or []
-            if items:
-                best = items[0]
-                cn   = best.get("ID", "")
-                return json.dumps({
-                    "company_name":   best.get("Title", ""),
-                    "company_number": cn,
-                    "company_type":   best.get("Type", ""),
-                    "status":         "Active",
-                    "ch_url": f"https://find-and-update.company-information.service.gov.uk/company/{cn}",
-                    "note": "Basic lookup (set COMPANIES_HOUSE_API_KEY for full filings data)"
-                })
-        return json.dumps({"note": "Company not found on Companies House — may not be UK-registered"})
-    except Exception as e:
-        return json.dumps({"error": str(e)})
-
-
 # ── Tool dispatcher ──────────────────────────────────────────────────────────
 
 def _dispatch(tool_name: str, args: dict) -> str:
-    if tool_name == "get_company_profile":
-        return _tool_get_company_profile(args.get("company_name", ""))
     if tool_name == "get_news_by_topic":
         return _tool_get_news_by_topic(
             args.get("company_name", ""),
             args.get("topic", ""),
             int(args.get("limit", 5))
         )
-    if tool_name == "get_companies_house":
-        return _tool_get_companies_house(args.get("company_name", ""))
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 
