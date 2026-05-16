@@ -987,7 +987,7 @@ Career highlights:
 
 Products he has built (all live):
 - Miru (miru.humanagency.co): WhatsApp-first AI assistant for everyday UK life — school comms, fuel prices, train times, local area reports, music ID, company intel, saves library.
-- Intel (mekalav.com/intel and intel.humanagency.co): Company research tool — type any company name and get a live AI-generated brief in ~20 seconds. The brief covers: current strategic direction, leadership signals, hiring trends, key risks, and an opportunity angle. Works on any public company or major brand — Unilever, HSBC, Tesco, Mars, Diageo, Vodafone, etc. Built to give someone walking into a meeting instant, structured intelligence on a company. Try it live at intel.humanagency.co — no login needed.
+- Intel (mekalav.com/intel): Company research tool — type any company name and get a live AI-generated brief in ~20 seconds. The brief covers: current strategic direction, leadership signals, hiring trends, key risks, and an opportunity angle. Works on any public company or major brand — Unilever, HSBC, Tesco, Mars, Diageo, Vodafone, etc. Built to give someone walking into a meeting instant, structured intelligence on a company. Try it live at mekalav.com/intel — no login needed.
 - AI literacy (ai.humanagency.co): Plain-language AI education for people outside tech.
 - Space Intelligence: UK space tracking — ISS, launches, tonight's sky. Passion project.
 

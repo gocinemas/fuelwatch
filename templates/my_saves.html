@@ -484,16 +484,16 @@ function savesCardHtml(s) {
       : '<div id="save-meta-' + s.id + '"></div>');
 
   var enrichBtn = isPlace && editableTitle
-    ? '<button onclick="savesEnrich(\'' + s.id + '\',\'' + editableTitle.replace(/'/g,"\\'") + '\',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #e0e7ff;background:#f5f3ff;font-size:11px;font-weight:600;cursor:pointer;color:#4f46e5">✨ Details</button>'
+    ? '<button type="button" onclick="savesEnrich(\'' + s.id + '\',\'' + editableTitle.replace(/'/g,"\\'") + '\',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #e0e7ff;background:#f5f3ff;font-size:11px;font-weight:600;cursor:pointer;color:#4f46e5">✨ Details</button>'
     : "";
   var brandGuess = (s.title||"").replace(/^🏷️\s*/,"").trim();
   var brandBtn = _saveCat(s) === "brand" && brandGuess
-    ? '<button onclick="location.href=\'/?screen=company&bq=' + encodeURIComponent(brandGuess) + '\'" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;cursor:pointer;color:#92400e">🔍 Intel →</button>'
+    ? '<button type="button" onclick="window.open(\'/?screen=company&bq=' + encodeURIComponent(brandGuess) + '\',\'_blank\')" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;cursor:pointer;color:#92400e">🔍 Intel →</button>'
     : "";
   var isAd = isPhoto || _saveCat(s) === "ad" || _saveCat(s) === "photo" || _saveCat(s) === "wine";
   var _aiLabel = _saveCat(s) === "wine" ? "🍷 Wine Intel" : "🤖 AI";
   var adAiBtn = isAd
-    ? '<button onclick="savesAdIntel(\'' + s.id + '\',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #d1fae5;background:' + (_savedAiResult ? '#d1fae5' : '#ecfdf5') + ';font-size:11px;font-weight:600;cursor:pointer;color:#065f46">' + _aiLabel + (_savedAiResult ? ' ✓' : '') + '</button>'
+    ? '<button type="button" onclick="savesAdIntel(\'' + s.id + '\',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #d1fae5;background:' + (_savedAiResult ? '#d1fae5' : '#ecfdf5') + ';font-size:11px;font-weight:600;cursor:pointer;color:#065f46">' + _aiLabel + (_savedAiResult ? ' ✓' : '') + '</button>'
     : "";
 
   var imageThumb = s.image_url
