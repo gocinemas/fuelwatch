@@ -674,15 +674,15 @@ function _fetchTrains() {
   if (!el) return;
 
   if (!_wfhMode) {
-    // Office mode → home station departures, filtered to Waterloo-origin services only
+    // Office mode → departures FROM Waterloo that call at home station
     fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
       .then(r=>r.json())
       .then(data=>{
         const homeCrs = data.crs || '';
         const homeName = data.name || homeCrs;
-        if (stnEl) stnEl.textContent = '🚆 '+homeName+' ← Waterloo';
+        if (stnEl) stnEl.textContent = '🚆 Waterloo → '+homeName;
         const url = homeCrs
-          ? `/api/train/departures?crs=${encodeURIComponent(homeCrs)}&origin_crs=WAT`
+          ? `/api/train/departures?crs=WAT&calling_at=${encodeURIComponent(homeCrs)}`
           : '/api/train/departures?crs=WAT';
         return fetch(url);
       })
