@@ -10954,7 +10954,7 @@ _bkBadge();
 <div id="screen-saves" class="screen pt-5">
   <!-- Onboarding: shown when no token exists (first visit, no WhatsApp link yet) -->
   <!-- Phone number sign-in (replaces both onboard + lock screens) -->
-  <div id="saves-phone-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center">
+  <div id="saves-phone-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center">
     <div style="font-size:40px;margin-bottom:12px">💾</div>
     <div style="font-weight:800;font-size:20px;margin-bottom:6px;color:var(--text)">My Saves</div>
     <div style="color:var(--subtle);font-size:13px;margin-bottom:16px;max-width:280px;line-height:1.5">
@@ -12365,7 +12365,7 @@ _bkBadge();
   // Hook into showScreen
   const _origShowSaves = window.showScreen;
   window.showScreen = function(name) {
-    _origShowSaves(name);
+    if (typeof _origShowSaves === "function") _origShowSaves(name);
     if (name === "saves") savesCheckPin();
   };
 
