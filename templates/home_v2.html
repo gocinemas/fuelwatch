@@ -246,16 +246,23 @@ html:not([data-theme="light"]) .wfh-pill.active { color: #4ade80; }
 
 /* ── SAVES ── */
 .saves-wrap { padding: 12px var(--pad) 0; }
-.saves-label { font-size: 9px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted2); margin-bottom: 8px; }
-.saves-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-.saves-row::-webkit-scrollbar { display: none; }
-.save-chip {
-  display: inline-flex; align-items: center; gap: 6px;
+.saves-label { font-size: 9px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted2); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.saves-label span { font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); cursor: pointer; }
+.saves-list { display: flex; flex-direction: column; gap: 10px; }
+.sv-card {
   background: var(--glass); border: 1px solid var(--border);
-  border-radius: 22px; padding: 9px 14px;
-  font-size: 12px; font-weight: 600; color: var(--text);
-  white-space: nowrap; flex-shrink: 0; cursor: pointer;
+  border-radius: 18px; padding: 14px 16px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: background .15s;
+  display: flex; gap: 12px; align-items: flex-start;
 }
+.sv-card:active { background: var(--glass2); }
+.sv-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+.sv-body { flex: 1; min-width: 0; }
+.sv-cat { font-size: 10px; font-weight: 700; color: var(--muted2); letter-spacing: .4px; margin-bottom: 4px; }
+.sv-title { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.35; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sv-snippet { font-size: 12px; color: var(--muted2); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sv-foot { font-size: 10px; color: var(--muted); margin-top: 6px; }
+.sv-empty { font-size: 13px; color: var(--muted); opacity: .6; padding: 8px 0; }
 
 /* ── ONBOARDING ── */
 .ob-wrap { padding: 28px var(--pad); }
@@ -616,11 +623,11 @@ function renderPersonalised() {
 
     <!-- SAVES -->
     <div class="saves-wrap">
-      <div class="saves-label" style="display:flex;justify-content:space-between;align-items:center">
+      <div class="saves-label">
         <span>Saved</span>
-        <span style="font-size:11px;font-weight:500;color:var(--muted);letter-spacing:0;text-transform:none;cursor:pointer" onclick="nav('saves')">All →</span>
+        <span onclick="nav('saves')">All →</span>
       </div>
-      <div class="saves-row" id="saves-row"><div class="save-chip" style="opacity:.35">Loading…</div></div>
+      <div class="saves-list" id="saves-row"><div class="sv-empty">Loading…</div></div>
     </div>`;
 
   document.getElementById('content').innerHTML = html;
@@ -835,13 +842,53 @@ async function _fetchSchoolMsgs() {
 }
 
 // ── DATA: SAVES ───────────────────────────────────────────────
+function _svCat(s) {
+  const t = s.title || '';
+  if ((s.url||'').startsWith('book:'))       return {icon:'📚', label:'Book'};
+  if (t.startsWith('🍳'))                    return {icon:'🍳', label:'Recipe'};
+  if (t.startsWith('🍷'))                    return {icon:'🍷', label:'Wine'};
+  if (t.startsWith('📺'))                    return {icon:'📺', label:'Video'};
+  if (t.startsWith('📦'))                    return {icon:'📦', label:'Product'};
+  if (t.startsWith('🏷️'))                   return {icon:'🏷️', label:'Brand'};
+  if (t.startsWith('🏪') || t.startsWith('🍽️')) return {icon:'📍', label:'Place'};
+  if (t.startsWith('📢'))                    return {icon:'📢', label:'Ad'};
+  if (t.startsWith('🎫'))                    return {icon:'🎫', label:'Event'};
+  if (t.startsWith('🧾'))                    return {icon:'🧾', label:'Receipt'};
+  if (t.startsWith('📷') || t.startsWith('🪧')) return {icon:'📷', label:'Photo'};
+  if (!s.url || s.url.includes('twilio'))    return {icon:'📷', label:'Photo'};
+  return {icon:'📄', label:'Article'};
+}
+function _svSnippet(s) {
+  let txt = (s.summary || '').replace(/AIRESULT:[^\n]*\n?/,'');
+  if (txt.startsWith('META:')) { const nl = txt.indexOf('\n'); txt = nl>0 ? txt.slice(nl+1) : ''; }
+  return txt.replace(/^•\s*/gm,'').replace(/\n+/g,' ').replace(/PRODUCTS:[^\n]*/,'').trim();
+}
+function _svCardHtml(s) {
+  const {icon, label} = _svCat(s);
+  const title   = s.title || 'Untitled';
+  const snippet = _svSnippet(s);
+  const date    = s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '';
+  const domain  = (() => { try { return s.url && !s.url.includes('twilio') ? new URL(s.url).hostname.replace(/^www\./,'') : ''; } catch(e){ return ''; } })();
+  const thumb   = s.image_url ? `<img class="sv-thumb" src="${s.image_url}" loading="lazy" onerror="this.remove()">` : '';
+  const href    = s.url && !s.url.startsWith('book:') && !s.url.includes('twilio') ? s.url : '/my-saves';
+  const target  = href === '/my-saves' ? '_self' : '_blank';
+  return `<a class="sv-card" href="${href}" target="${target}" style="text-decoration:none">
+    <div class="sv-body">
+      <div class="sv-cat">${icon} ${label}${domain?' · '+domain:''}</div>
+      <div class="sv-title">${_esc(title)}</div>
+      ${snippet ? `<div class="sv-snippet">${_esc(snippet.slice(0,120))}</div>` : ''}
+      <div class="sv-foot">${date}${s.remind_day?' · 🔔':''}</div>
+    </div>
+    ${thumb}
+  </a>`;
+}
+
 async function _fetchSaves() {
   const el = document.getElementById('saves-row');
   if (!el) return;
   let pin   = localStorage.getItem('miru_library_pin') || '';
   const phone = PHONE;
-  if (!pin && !phone) { el.innerHTML='<div class="save-chip" style="opacity:.35">Link WhatsApp to see saves</div>'; return; }
-  // Auto-get HMAC token if phone is known but PIN not yet stored
+  if (!pin && !phone) { el.innerHTML='<div class="sv-empty">Link WhatsApp to see saves</div>'; return; }
   if (!pin && phone) {
     try {
       const tr = await fetch(`/api/saves-token?phone=${encodeURIComponent(phone)}`);
@@ -855,12 +902,11 @@ async function _fetchSaves() {
   fetch('/api/wa-saves', {headers: hdrs})
     .then(r=>r.json())
     .then(data=>{
-      const saves=data.saves||[];
-      if (!saves.length) { el.innerHTML='<div class="save-chip" style="opacity:.35">No saves yet</div>'; return; }
-      const icon=t=>({fuel:'⛽',train:'🚆',place:'📍',music:'🎵',note:'📝',intel:'🏢',food:'🍽'}[t]||'📌');
-      el.innerHTML=saves.slice(0,8).map(s=>`<div class="save-chip" onclick="nav('saves')">${icon(s.save_type)} ${_esc((s.title||s.label||'Save').slice(0,28))}</div>`).join('');
+      const saves = data.saves || [];
+      if (!saves.length) { el.innerHTML='<div class="sv-empty">No saves yet</div>'; return; }
+      el.innerHTML = saves.slice(0,6).map(_svCardHtml).join('');
     })
-    .catch(()=>{ el.innerHTML='<div class="save-chip" style="opacity:.35">Saves unavailable</div>'; });
+    .catch(()=>{ el.innerHTML='<div class="sv-empty">Saves unavailable</div>'; });
 }
 
 // ── HELPERS ───────────────────────────────────────────────────
