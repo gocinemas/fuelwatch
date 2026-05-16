@@ -17,7 +17,7 @@ GROQ_MODEL       = "llama-3.3-70b-versatile"
 TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
 TOGETHER_MODEL   = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
 CLAUDE_MODEL     = "claude-haiku-4-5-20251001"
-GROQ_MAX_RETRIES = 3
+GROQ_MAX_RETRIES = 2
 
 # ── Tool schemas ─────────────────────────────────────────────────────────────
 
@@ -145,7 +145,7 @@ def _openai_compat_call(url: str, key: str, payload: dict, max_retries: int = 3)
                 timeout=45,
             )
             if r.status_code == 429:
-                wait = (2 ** attempt) * 3
+                wait = (2 ** attempt) * 1
                 time.sleep(wait)
                 last_err = f"HTTP 429 (attempt {attempt + 1})"
                 continue
