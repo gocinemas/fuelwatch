@@ -557,9 +557,9 @@ function renderPersonalised() {
     <!-- QUICK ACTIONS -->
     <div class="action-row">
       <div class="action-tile" onclick="nav('myarea')"><div class="at-icon">📍</div><div class="at-label">My Area</div></div>
-      <div class="action-tile" onclick="nav('intel')"><div class="at-icon">🏢</div><div class="at-label">Intel</div></div>
+      <div class="action-tile" onclick="nav('intel')"><div class="at-icon">🏢</div><div class="at-label">Company Intel</div></div>
       <div class="action-tile" onclick="nav('music')"><div class="at-icon">🎵</div><div class="at-label">Music</div></div>
-      <div class="action-tile" onclick="nav('report')"><div class="at-icon">🔍</div><div class="at-label">Research</div></div>
+      <div class="action-tile" onclick="nav('saves')"><div class="at-icon">📌</div><div class="at-label">My Saves</div></div>
     </div>
 
     <!-- SAVES -->
@@ -785,9 +785,10 @@ function _el(id,text){const e=document.getElementById(id);if(e)e.textContent=tex
 function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ── NAV ───────────────────────────────────────────────────────
-const _screenMap={intel:'company',fuel:'fuel',trains:'trains',myarea:'myarea',places:'places',report:'report',music:'music',saves:'saves',weather:'myarea',whatsapp:'home'};
+const _screenMap={intel:'company',fuel:'fuel',trains:'trains',myarea:'myarea',places:'places',report:'report',music:'music',weather:'myarea',whatsapp:'home'};
 function nav(screen){
   if(screen==='home') return;
+  if(screen==='saves') { window.location.href='/my-saves'; return; }
   const target=_screenMap[screen]||screen;
   const pcParam=PC?'&pc='+encodeURIComponent(PC):'';
   const usesPc=['trains','fuel','myarea','report'].includes(target);
