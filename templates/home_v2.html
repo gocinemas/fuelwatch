@@ -607,7 +607,9 @@ function renderPersonalised() {
     <!-- QUICK ACTIONS -->
     <div class="action-row">
       <div class="action-tile" onclick="nav('myarea')"><div class="at-icon">📍</div><div class="at-label">My Area</div></div>
-      <div class="action-tile" onclick="nav('intel')"><div class="at-icon">🏢</div><div class="at-label">Company Intel</div></div>
+      ${isWeekend
+        ? `<div class="action-tile" onclick="nav('fuel')"><div class="at-icon">⛽</div><div class="at-label">Fuel</div></div>`
+        : `<div class="action-tile" onclick="nav('intel')"><div class="at-icon">🏢</div><div class="at-label">Company Intel</div></div>`}
       <div class="action-tile" onclick="nav('music')"><div class="at-icon">🎵</div><div class="at-label">Music</div></div>
       <div class="action-tile" onclick="nav('saves')"><div class="at-icon">📌</div><div class="at-label">My Saves</div></div>
     </div>
