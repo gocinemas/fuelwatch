@@ -512,7 +512,7 @@ function savesCardHtml(s) {
 
   var aiResultHtml = _savedAiResult ? _adIntelCardHtml(_savedAiResult) : '';
 
-  return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px 15px;margin-bottom:10px">'
+  return '<div id="save-card-' + s.id + '" style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px 15px;margin-bottom:10px">'
     + imageThumb
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;gap:8px">'
       + '<div id="save-title-' + s.id + '" style="flex:1;min-width:0">' + titleHtml + '</div>'
@@ -616,9 +616,11 @@ window.savesEnrich = async function(id, venue, btn) {
     var d = await r.json();
     if (d.ok) {
       if (btn) { btn.textContent = "✓ Updated"; btn.style.background = "#d1fae5"; btn.style.color = "#065f46"; }
-      var scrollY = window.scrollY;
-      await savesLoad();
-      window.scrollTo(0, scrollY);
+      var _patch = {};
+      if (d.summary !== undefined) _patch.summary = d.summary;
+      if (d.title) _patch.title = d.title;
+      if (d.url) _patch.url = d.url;
+      setTimeout(function() { _savesRefreshCard(id, _patch); }, 1200);
     } else if (btn) { btn.textContent = "⚠️ Not found"; btn.disabled = false; }
   } catch(e) { if (btn) { btn.textContent = "✨ Details"; btn.disabled = false; } }
 };
@@ -678,6 +680,19 @@ window.savesLocationSave = async function(id) {
   } catch(e) { savesLoad(); }
 };
 
+// ── In-place card refresh (avoids full list reload) ──────────────────────────
+function _savesRefreshCard(id, patch) {
+  var idx = _savesAll.findIndex(function(s) { return s.id === id; });
+  if (idx === -1) return;
+  Object.assign(_savesAll[idx], patch);
+  var cardEl = document.getElementById("save-card-" + id);
+  if (cardEl) {
+    var tmp = document.createElement("div");
+    tmp.innerHTML = savesCardHtml(_savesAll[idx]);
+    cardEl.replaceWith(tmp.firstElementChild);
+  }
+}
+
 // ── Ad Intel ─────────────────────────────────────────────────────────────────
 function _adIntelCardHtml(d) {
   function row(icon, label, val) {
@@ -710,7 +725,11 @@ window.savesAdIntel = async function(id, btn) {
   try {
     var r = await fetch("/api/wa-saves/ad-intel", {method:"POST", headers:_savesHeaders(), body:JSON.stringify({id})});
     var d = await r.json();
-    if (d.error) { btn.textContent = "🤖 AI"; btn.disabled = false; alert(d.error); return; }
+    if (d.error) {
+      btn.textContent = "🤖 AI"; btn.disabled = false;
+      if (resultEl) { resultEl.innerHTML = '<div style="color:#dc2626;font-size:12px;padding:8px;background:#fff5f5;border-radius:8px">⚠️ ' + d.error + '</div>'; resultEl.style.display = "block"; }
+      return;
+    }
     if (resultEl) { resultEl.innerHTML = _adIntelCardHtml(d); resultEl.style.display = "block"; resultEl.scrollIntoView({behavior:"smooth",block:"nearest"}); }
     btn.textContent = "🤖 AI ✓"; btn.style.background = "#d1fae5"; btn.disabled = false;
   } catch(e) { btn.textContent = "🤖 AI"; btn.disabled = false; }
