@@ -16034,6 +16034,37 @@ def api_pm_intake():
         return jsonify({"error": str(e)}), 500
 
 
+# ── Me: last seen location ────────────────────────────────────────────────────
+
+@app.route("/api/me/location", methods=["GET"])
+def api_me_location_get():
+    try:
+        rows = lib._sb().table("me_status").select("location,city,updated_at").eq("id", "vikram").execute().data
+        if rows:
+            return jsonify(rows[0])
+    except Exception:
+        pass
+    return jsonify({"location": None, "city": None, "updated_at": None})
+
+@app.route("/api/me/location", methods=["POST"])
+def api_me_location_post():
+    if request.headers.get("X-Admin-Token") != "miru-digest-2026":
+        return jsonify({"error": "Forbidden"}), 403
+    data = request.get_json(force=True, silent=True) or {}
+    location = (data.get("location") or "").strip()
+    city = (data.get("city") or "").strip()
+    if not location:
+        return jsonify({"error": "location required"}), 400
+    from datetime import datetime as _dt
+    lib._sb().table("me_status").upsert({
+        "id": "vikram",
+        "location": location,
+        "city": city,
+        "updated_at": _dt.utcnow().isoformat()
+    }).execute()
+    return jsonify({"ok": True})
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
