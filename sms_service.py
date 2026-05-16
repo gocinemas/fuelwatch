@@ -8810,6 +8810,10 @@ _FOOD_INTENTS = [
      {"type": "restaurant", "keyword": "steak", "emoji": "🥩", "label": "steak",
       "required_types": ["restaurant", "food"], "always_best": True, "radius": 5000,
       "review_terms": ["steak", "ribeye", "sirloin", "fillet", "medium rare", "wagyu", "sauce", "sides"]}),
+    (re.compile(r'\b(chaat|chat\s+house|pani\s*puri|panipuri|bhel\s*puri|bhelpuri|samosa\s*chaat|indian\s+street\s+food|dahi\s*puri|sev\s*puri|papdi\s*chaat)\b', re.I),
+     {"type": "restaurant", "keyword": "chaat indian street food", "emoji": "🥙", "label": "chaat",
+      "required_types": ["restaurant", "meal_takeaway", "food"], "radius": 4000,
+      "review_terms": ["chaat", "pani puri", "bhel puri", "samosa", "dahi", "street food", "indian", "crispy", "tangy", "spicy"]}),
     (re.compile(r'\b(indian|india\b|curry|curries|balti|tandoor|tandoori|masala|tikka|biryani|korma|vindaloo|dal|dhal|bhaji|naan|poppadom)\b', re.I),
      {"type": "restaurant", "keyword": "indian restaurant", "emoji": "🍛", "label": "Indian food",
       "required_types": ["restaurant", "meal_takeaway", "food"], "radius": 3000,
@@ -8856,6 +8860,10 @@ _FOOD_INTENTS = [
      {"type": "bar", "keyword": "pub", "emoji": "🍺", "label": "a pub",
       "required_types": ["bar", "night_club", "pub"],
       "review_terms": ["beer", "pint", "ale", "lager", "craft", "tap", "cask", "atmosphere", "garden"]}),
+    (re.compile(r'\b(masala chai|chai latte|cutting chai|adrak chai|ginger chai|indian chai|indian tea|chai house|chai cafe|best chai)\b', re.I),
+     {"type": "cafe", "keyword": "chai indian tea", "emoji": "🫖", "label": "masala chai",
+      "required_types": ["cafe", "restaurant", "food"], "radius": 4000,
+      "review_terms": ["chai", "masala", "indian tea", "spiced", "ginger", "cardamom", "cutting chai", "adrak"]}),
     (re.compile(r'\b(tea|english breakfast tea|chai|cuppa|brew)\b', re.I),
      {"type": "cafe", "keyword": "", "emoji": "🍵", "label": "tea",
       "required_types": ["cafe", "bakery", "restaurant"],
@@ -9700,13 +9708,15 @@ def _wa_classify_intent(body: str) -> dict | None:
                 "  tube         — London tube/DLR/Overground/Elizabeth line status, journey, or line info.\n"
                 "                 Extract: from (station or null), to (station or null),\n"
                 "                 query (status | journey | line name — infer from message, default 'status').\n"
-                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea|burger|kebab|steak|wine|cocktail|indian|italian|mexican|fish_chips|chinese).\n"
+                "  food         — food or drink discovery nearby. Extract: food_type — normalise to one of (coffee|breakfast|sandwiches|lunch|pizza|dinner|beer|pub|tea|masala_chai|burger|kebab|steak|wine|cocktail|chaat|indian|italian|mexican|fish_chips|chinese).\n"
                 "                 Map latte/cappuccino/capuccino/mocha/pistachio latte/espresso/flat white/americano/cortado/coffee/cofee/coffeeee → coffee.\n"
                 "                 Map tea/english breakfast/chai/brew/cuppa → tea.\n"
                 "                 Map beer/pint/ale/lager/craft beer/cheap beer/good beer → beer.\n"
                 "                 Map burger/burgers/smash burger/best burger → burger. Map kebab/doner/shawarma → kebab. Map steak/steakhouse/ribeye/sirloin → steak.\n"
                 "                 Map wine/red wine/white wine/rosé/house wine/glass of wine → wine.\n"
                 "                 Map cocktail/cocktails/cocktail bar/negroni/martini/espresso martini/spritz/best cocktail → cocktail.\n"
+                "                 Map chaat/pani puri/bhel puri/samosa chaat/indian street food → chaat.\n"
+                "                 Map masala chai/chai latte/cutting chai/indian chai/best chai/ginger chai → masala_chai.\n"
                 "                 Map indian/india/curry/curries/balti/tandoori/tikka/biryani/korma/masala/best indian/indian food/indian restaurant/indian place → indian.\n"
                 "                 Map italian/italy/pasta/risotto/trattoria/best italian/italian food/italian restaurant → italian.\n"
                 "                 Map mexican/mexico/taco/tacos/burrito/tex-mex/best mexican/mexican food/mexican restaurant → mexican.\n"
