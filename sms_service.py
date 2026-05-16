@@ -4639,10 +4639,15 @@ def api_intel_compare():
                     f"Description: {(d.get('description') or '')[:300]}\n"
                     f"Competitors: {', '.join((d.get('competitors') or [])[:5])}")
 
+    a_label = da.get("name") or a
+    b_label = db.get("name") or b
     prompt = (
         f"Compare these two {'companies' if mode == 'company' else 'brands'} head-to-head.\n\n"
-        f"--- {a} ---\n{_summary(da, a)}\n\n"
-        f"--- {b} ---\n{_summary(db, b)}\n\n"
+        f"--- BRAND A: {a_label} ---\n{_summary(da, a)}\n\n"
+        f"--- BRAND B: {b_label} ---\n{_summary(db, b)}\n\n"
+        f"IMPORTANT: In every 'a' field put data about {a_label}. In every 'b' field put data about {b_label}.\n"
+        f"a_edge = one sentence on {a_label}'s unique advantage over {b_label}.\n"
+        f"b_edge = one sentence on {b_label}'s unique advantage over {a_label}.\n"
         "Return JSON only:\n"
         '{"verdict": "one punchy sentence on which is stronger and why",'
         '"dimensions": ['
@@ -4653,8 +4658,9 @@ def api_intel_compare():
         '{"label":"Brand Strength","a":"High/Medium/Low + reason","b":"value"},'
         '{"label":"Parent Company","a":"value","b":"value"}'
         '],'
-        '"a_edge": "one sentence: where A wins",'
-        '"b_edge": "one sentence: where B wins"}'
+        f'"a_edge": "one sentence: where {a_label} wins",'
+        f'"b_edge": "one sentence: where {b_label} wins"'
+        '}'
     )
     try:
         raw = _groq_chat("You are a brand strategy analyst. Reply with JSON only.", [{"role":"user","content":prompt}], max_tokens=600, json_mode=True)
