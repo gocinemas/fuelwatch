@@ -639,6 +639,17 @@ async function _fetchWeather() {
 }
 
 // ── DATA: TRAINS ──────────────────────────────────────────────
+function _minsTo(timeStr) {
+  if (!timeStr || timeStr === '—') return null;
+  const [h, m] = timeStr.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  const now = new Date(), dep = new Date(now);
+  dep.setHours(h, m, 0, 0);
+  if (dep <= now) dep.setDate(dep.getDate() + 1);
+  const diff = Math.round((dep - now) / 60000);
+  return diff <= 0 ? 'Now' : diff + ' min';
+}
+
 function _renderTrainDeps(deps, el) {
   if (!deps || !el) return;
   const trains = deps.trains || [];
@@ -648,8 +659,10 @@ function _renderTrainDeps(deps, el) {
     const cls=t.cancelled?'tb-late':late?'tb-late':'tb-ok';
     const txt=t.cancelled?'Cancelled':late?t.expected:'On time';
     const plat=t.platform?' · Plat '+t.platform:'';
+    const mins=_minsTo(t.scheduled);
+    const minsHtml=mins?`<span style="font-size:11px;font-weight:600;color:var(--muted2);margin-left:4px">${mins}</span>`:'';
     return `<div class="train-row">
-      <div class="train-time">${t.scheduled||'—'}</div>
+      <div class="train-time">${t.scheduled||'—'}${minsHtml}</div>
       <div class="train-dest"><strong>${t.destination||'—'}</strong><span>${plat}</span></div>
       <span class="train-badge ${cls}">${txt}</span>
     </div>`;
@@ -662,10 +675,19 @@ function _fetchTrains() {
   if (!el) return;
 
   if (!_wfhMode) {
-    // Office mode → departures from London Waterloo
-    if (stnEl) stnEl.textContent = '🚆 London Waterloo';
-    fetch('/api/train/departures?crs=WAT')
+    // Office mode → Waterloo departures filtered to trains calling at home station
+    fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
       .then(r=>r.json())
+      .then(data=>{
+        const homeCrs = data.crs || '';
+        const homeName = data.name || homeCrs;
+        if (stnEl) stnEl.textContent = '🚆 London Waterloo → '+homeName;
+        const url = homeCrs
+          ? `/api/train/departures?crs=WAT&calling_at=${encodeURIComponent(homeCrs)}`
+          : '/api/train/departures?crs=WAT';
+        return fetch(url);
+      })
+      .then(r=>r&&r.json())
       .then(deps=>_renderTrainDeps(deps, el))
       .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted)">Train data unavailable</div>'; });
   } else {

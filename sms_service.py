@@ -14455,21 +14455,27 @@ def api_train_departures():
     if not crs:
         return jsonify({"error": "crs required"}), 400
 
+    calling_at = request.args.get("calling_at", "").strip().upper()[:3]
+
     if not os.environ.get("RTT_TOKEN"):
         return jsonify({"error": "Train API not configured — set RTT_TOKEN environment variable (free at api-portal.rtt.io)"}), 503
 
-    # 30-second departures cache — train data doesn't change faster than this
-    cached = _rtt_departures_cache.get(crs)
+    # 30-second departures cache — include calling_at in key
+    cache_key = (crs, calling_at)
+    cached = _rtt_departures_cache.get(cache_key)
     if cached and time.time() - cached[1] < _RTT_DEPARTURES_TTL:
         return jsonify(cached[0])
 
     try:
         access = _get_rtt_token()
 
+        rtt_params = {"code": f"gb-nr:{crs}"}
+        if calling_at:
+            rtt_params["calling_at"] = f"gb-nr:{calling_at}"
         r = requests.get(
             "https://data.rtt.io/rtt/location",
             headers={"Authorization": f"Bearer {access}"},
-            params={"code": f"gb-nr:{crs}"},
+            params=rtt_params,
             timeout=12,
         )
         if not r.text.strip():
@@ -14536,7 +14542,7 @@ def api_train_departures():
             })
         station_name = (data.get("location") or {}).get("description", crs)
         payload = {"station": station_name, "trains": trains}
-        _rtt_departures_cache[crs] = (payload, time.time())
+        _rtt_departures_cache[cache_key] = (payload, time.time())
         return jsonify(payload)
     except Exception as e:
         print(f"[train/departures] error: {e}")
