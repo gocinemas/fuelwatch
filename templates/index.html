@@ -13017,9 +13017,12 @@ _bkBadge();
   window.musicTogglePlay = function() {
     var audio = document.getElementById('music-preview-audio');
     if (!audio || !audio.src) return;
-    if (audio.paused) { audio.play().catch(function(){}); }
-    else              { audio.pause(); }
-    // btn state updated via audio event listeners
+    if (audio.paused) {
+      audio.play().then(function(){ _miniSyncBtn(false); }).catch(function(){});
+    } else {
+      audio.pause();
+      _miniSyncBtn(true);
+    }
   };
 
   window._musicShowMoreLyrics = function() {
@@ -13737,7 +13740,7 @@ _bkBadge();
     var audio = document.getElementById('music-preview-audio');
     if (_musicResult.previewUrl) {
       audio.src = _musicResult.previewUrl;
-      _miniSyncBtn(true);
+      audio.play().then(function(){ _miniSyncBtn(false); }).catch(function(){ _miniSyncBtn(true); });
     } else {
       // Old localStorage saves didn't store previewUrl — look it up from iTunes
       audio.src = '';
@@ -13747,11 +13750,13 @@ _bkBadge();
         var ir = await fetch('https://itunes.apple.com/search?term='+encodeURIComponent(_musicResult.title+' '+_musicResult.artist)+'&entity=song&limit=1&country=gb');
         var id = await ir.json();
         var pu = (id.results && id.results[0] && id.results[0].previewUrl) || '';
-        if (pu) { _musicResult.previewUrl = pu; audio.src = pu; }
+        if (pu) {
+          _musicResult.previewUrl = pu; audio.src = pu;
+          audio.play().then(function(){ _miniSyncBtn(false); }).catch(function(){ _miniSyncBtn(true); });
+        }
       } catch(e) {}
-      if (playBtn) { playBtn.textContent = audio.src ? '▶ Play Preview' : '▶ No preview'; playBtn.disabled = !audio.src; }
+      if (playBtn) { playBtn.textContent = audio.src ? '⏸ Pause' : '▶ No preview'; playBtn.disabled = !audio.src; }
     }
-    _miniSyncBtn(true);
     _miniShow(_musicResult);
 
     // Fetch lyrics
