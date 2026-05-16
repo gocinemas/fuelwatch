@@ -11659,13 +11659,19 @@ _bkBadge();
   window.savesSubmitPhone = async function() {
     const raw = document.getElementById("saves-phone-input").value.trim();
     if (!raw) return;
+    const btn = document.querySelector('#saves-phone-screen button');
+    const errEl = document.getElementById("saves-phone-error");
+    if (btn) { btn.textContent = 'Checking…'; btn.disabled = true; }
+    errEl.style.display = "none";
     try {
       const tok = await _autoFetchToken(raw);
       localStorage.setItem("wa_saves_token", tok);
-      document.getElementById("saves-phone-error").style.display = "none";
+      localStorage.setItem("miru_phone", raw.replace(/\s+/g,'').replace(/^0(\d{10})$/,'+44$1'));
       _savesShowMain();
     } catch(e) {
-      document.getElementById("saves-phone-error").style.display = "block";
+      errEl.textContent = 'Could not verify — use format +44 7xxx xxxxxx';
+      errEl.style.display = "block";
+      if (btn) { btn.textContent = 'Access My Saves'; btn.disabled = false; }
     }
   };
 
@@ -11678,7 +11684,7 @@ _bkBadge();
     document.getElementById("saves-list").innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div>Loading…</div>';
     try {
       const r = await fetch("/api/wa-saves", {headers: _savesHeaders()});
-      if (r.status === 401) { localStorage.removeItem("wa_saves_token"); sessionStorage.removeItem("wa_saves_token"); _savesShowPhone(); return; }
+      if (r.status === 401) { localStorage.removeItem("wa_saves_token"); sessionStorage.removeItem("wa_saves_token"); const errEl=document.getElementById("saves-phone-error"); if(errEl){errEl.textContent="Session expired — please enter your number again.";errEl.style.display="block";} _savesShowPhone(); return; }
       const d = await r.json();
       _savesAll = (d.saves || []).filter(function(s){
         return !(s.title||"").startsWith("🎵 ") && !(s.url||"").startsWith("book:");

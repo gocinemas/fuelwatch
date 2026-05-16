@@ -673,38 +673,37 @@ function _fetchTrains() {
   const stnEl = document.getElementById('train-station');
   if (!el) return;
 
-  if (!_wfhMode) {
-    // Office mode → departures FROM home station going to London Waterloo
-    fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
-      .then(r=>r.json())
-      .then(data=>{
-        const homeCrs = data.crs || '';
-        const homeName = data.name || homeCrs;
-        if (stnEl) stnEl.textContent = '🚆 '+homeName+' → Waterloo';
-        return homeCrs ? fetch(`/api/train/departures?crs=${encodeURIComponent(homeCrs)}`) : null;
-      })
-      .then(r=>r&&r.json())
-      .then(deps=>{
-        if (deps && deps.trains) {
+  // Both modes fetch from home station — direction filter changes per mode
+  fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
+    .then(r=>r.json())
+    .then(data=>{
+      const crs = data.crs || '';
+      const name = data.name || crs;
+      if (!crs) { if(stnEl) stnEl.textContent='No nearby station'; el.innerHTML=''; return null; }
+      if (!_wfhMode) {
+        // Office mode: at Waterloo, want trains home → show Reading-bound trains at LNG (from WAT)
+        if (stnEl) stnEl.textContent = '🚆 Waterloo → '+name;
+      } else {
+        // WFH mode: at home, want trains to Waterloo → show Waterloo-bound trains at LNG
+        if (stnEl) stnEl.textContent = '🚆 '+name+' → Waterloo';
+      }
+      return fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
+    })
+    .then(r=>r&&r.json())
+    .then(deps=>{
+      if (!deps) return;
+      if (deps.trains) {
+        if (!_wfhMode) {
+          // Office: trains from Waterloo direction = those NOT going to Waterloo (heading to Reading)
+          deps.trains = deps.trains.filter(t=>!(t.destination||'').toLowerCase().includes('waterloo'));
+        } else {
+          // WFH: trains going to Waterloo
           deps.trains = deps.trains.filter(t=>(t.destination||'').toLowerCase().includes('waterloo'));
         }
-        _renderTrainDeps(deps, el);
-      })
-      .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted)">Train data unavailable</div>'; });
-  } else {
-    // WFH mode → nearest station to home (Longcross)
-    fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
-      .then(r=>r.json())
-      .then(data=>{
-        const crs=data.crs, name=data.name||crs;
-        if (!crs) { if(stnEl) stnEl.textContent='No nearby station'; el.innerHTML=''; return; }
-        if (stnEl) stnEl.textContent='🚆 '+name;
-        return fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
-      })
-      .then(r=>r&&r.json())
-      .then(deps=>_renderTrainDeps(deps, el))
-      .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted)">Train data unavailable</div>'; });
-  }
+      }
+      _renderTrainDeps(deps, el);
+    })
+    .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted)">Train data unavailable</div>'; });
 }
 
 // ── DATA: FUEL ────────────────────────────────────────────────
