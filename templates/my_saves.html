@@ -609,17 +609,18 @@ window.savesEnrich = async function(id, venue, btn) {
   try {
     var lat = null, lon = null;
     try {
-      var pos = await new Promise(function(res,rej){ navigator.geolocation.getCurrentPosition(res,rej,{maximumAge:300000,timeout:5000}); });
+      var pos = await new Promise(function(res,rej){ navigator.geolocation.getCurrentPosition(res,rej,{maximumAge:300000,timeout:1500}); });
       lat = pos.coords.latitude; lon = pos.coords.longitude;
     } catch(_) {}
     var r = await fetch("/api/wa-saves/enrich", {method:"POST", headers:{..._savesHeaders(),"Content-Type":"application/json"}, body:JSON.stringify({id,venue,lat,lon})});
     var d = await r.json();
     if (d.ok) {
+      if (btn) { btn.textContent = "✓ Updated"; btn.style.background = "#d1fae5"; btn.style.color = "#065f46"; }
       var scrollY = window.scrollY;
       await savesLoad();
       window.scrollTo(0, scrollY);
     } else if (btn) { btn.textContent = "⚠️ Not found"; btn.disabled = false; }
-  } catch(e) { if (btn) { btn.textContent = "✨ Update details"; btn.disabled = false; } }
+  } catch(e) { if (btn) { btn.textContent = "✨ Details"; btn.disabled = false; } }
 };
 window.savesEditTitle = function(id, currentTitle, prefix) {
   var el = document.getElementById("save-title-" + id);

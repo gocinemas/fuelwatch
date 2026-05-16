@@ -12198,7 +12198,7 @@ _bkBadge();
       let lat = null, lon = null;
       try {
         const pos = await new Promise((res, rej) =>
-          navigator.geolocation.getCurrentPosition(res, rej, {maximumAge: 300000, timeout: 5000}));
+          navigator.geolocation.getCurrentPosition(res, rej, {maximumAge: 300000, timeout: 1500}));
         lat = pos.coords.latitude; lon = pos.coords.longitude;
       } catch(_) {}
       const r = await fetch("/api/wa-saves/enrich", {
@@ -12208,6 +12208,7 @@ _bkBadge();
       });
       const d = await r.json();
       if(d.ok) {
+        if(btn) { btn.textContent = "✓ Updated"; btn.style.background = "#d1fae5"; btn.style.color = "#065f46"; }
         const _sy = window.scrollY;
         await savesLoad();
         window.scrollTo(0, _sy);
