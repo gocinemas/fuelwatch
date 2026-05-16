@@ -66,7 +66,12 @@ body {
   font-size: 11px; font-weight: 600; color: var(--muted);
   -webkit-tap-highlight-color: transparent; transition: all .2s; letter-spacing: .2px;
 }
-.wfh-pill.active { border-color: rgba(34,197,94,.3); color: #4ade80; }
+.wfh-pill.active { border-color: rgba(34,197,94,.35); color: #16a34a; }
+[data-theme="dark"] .wfh-pill.active,
+html:not([data-theme="light"]) .wfh-pill.active { color: #4ade80; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .wfh-pill.active { color: #4ade80; }
+}
 
 /* ── WEATHER HERO (full-bleed) ── */
 .wx-hero {
@@ -634,36 +639,49 @@ async function _fetchWeather() {
 }
 
 // ── DATA: TRAINS ──────────────────────────────────────────────
+function _renderTrainDeps(deps, el) {
+  if (!deps || !el) return;
+  const trains = deps.trains || [];
+  if (!trains.length) { el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted);padding:6px 0">No departures found</div>'; return; }
+  el.innerHTML = trains.slice(0,2).map(t=>{
+    const late=t.expected&&t.expected!=='On time'&&!t.cancelled;
+    const cls=t.cancelled?'tb-late':late?'tb-late':'tb-ok';
+    const txt=t.cancelled?'Cancelled':late?t.expected:'On time';
+    const plat=t.platform?' · Plat '+t.platform:'';
+    return `<div class="train-row">
+      <div class="train-time">${t.scheduled||'—'}</div>
+      <div class="train-dest"><strong>${t.destination||'—'}</strong><span>${plat}</span></div>
+      <span class="train-badge ${cls}">${txt}</span>
+    </div>`;
+  }).join('');
+}
+
 function _fetchTrains() {
   const el = document.getElementById('train-rows');
   const stnEl = document.getElementById('train-station');
   if (!el) return;
-  fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
-    .then(r=>r.json())
-    .then(data=>{
-      const crs=data.crs, name=data.name||crs;
-      if (!crs) { if(stnEl) stnEl.textContent='No nearby station'; el.innerHTML=''; return; }
-      if (stnEl) stnEl.textContent='🚆 '+name;
-      return fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
-    })
-    .then(r=>r&&r.json())
-    .then(deps=>{
-      if (!deps||!el) return;
-      const trains=deps.trains||[];
-      if (!trains.length) { el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted);padding:6px 0">No departures found</div>'; return; }
-      el.innerHTML = trains.slice(0,2).map(t=>{
-        const late=t.expected&&t.expected!=='On time'&&!t.cancelled;
-        const cls=t.cancelled?'tb-late':late?'tb-late':'tb-ok';
-        const txt=t.cancelled?'Cancelled':late?t.expected:'On time';
-        const plat=t.platform?' · Plat '+t.platform:'';
-        return `<div class="train-row">
-          <div class="train-time">${t.scheduled||'—'}</div>
-          <div class="train-dest"><strong>${t.destination||'—'}</strong><span>${plat}</span></div>
-          <span class="train-badge ${cls}">${txt}</span>
-        </div>`;
-      }).join('');
-    })
-    .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted)">Train data unavailable</div>'; });
+
+  if (!_wfhMode) {
+    // Office mode → departures from London Waterloo
+    if (stnEl) stnEl.textContent = '🚆 London Waterloo';
+    fetch('/api/train/departures?crs=WAT')
+      .then(r=>r.json())
+      .then(deps=>_renderTrainDeps(deps, el))
+      .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted)">Train data unavailable</div>'; });
+  } else {
+    // WFH mode → nearest station to home (Longcross)
+    fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
+      .then(r=>r.json())
+      .then(data=>{
+        const crs=data.crs, name=data.name||crs;
+        if (!crs) { if(stnEl) stnEl.textContent='No nearby station'; el.innerHTML=''; return; }
+        if (stnEl) stnEl.textContent='🚆 '+name;
+        return fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
+      })
+      .then(r=>r&&r.json())
+      .then(deps=>_renderTrainDeps(deps, el))
+      .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted)">Train data unavailable</div>'; });
+  }
 }
 
 // ── DATA: FUEL ────────────────────────────────────────────────
