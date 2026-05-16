@@ -768,8 +768,13 @@ async function _fetchSchoolMsgs() {
 function _fetchSaves() {
   const el = document.getElementById('saves-row');
   if (!el) return;
-  if (!PHONE) { el.innerHTML='<div class="save-chip" style="opacity:.35">Link WhatsApp to see saves</div>'; return; }
-  fetch(`/api/wa/saves?from_number=${encodeURIComponent(PHONE)}&limit=10`)
+  const pin   = localStorage.getItem('miru_library_pin') || '';
+  const phone = PHONE;
+  if (!pin && !phone) { el.innerHTML='<div class="save-chip" style="opacity:.35">Link WhatsApp to see saves</div>'; return; }
+  const hdrs = {};
+  if (pin)   hdrs['X-Library-PIN'] = pin;
+  if (phone) hdrs['X-User-Phone']  = phone;
+  fetch('/api/wa-saves', {headers: hdrs})
     .then(r=>r.json())
     .then(data=>{
       const saves=data.saves||[];
