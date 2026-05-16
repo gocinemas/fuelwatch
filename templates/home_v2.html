@@ -190,6 +190,22 @@ html:not([data-theme="light"]) .wfh-pill.active { color: #4ade80; }
 .fuel-d { color: #f97316; }
 .fuel-sta { font-size: 10px; color: var(--muted); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* ── WEEKEND GRID ── */
+.wk-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+  padding: 10px var(--pad) 0;
+}
+.wk-pill {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: 18px; padding: 16px 10px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .15s; text-decoration: none;
+}
+.wk-pill:active { background: var(--glass2); }
+.wk-pill-icon { font-size: 26px; line-height: 1; }
+.wk-pill-label { font-size: 11px; font-weight: 700; color: var(--muted2); }
+
 /* ── SCHOOL ── */
 .school-wrap { padding: 10px var(--pad) 0; }
 .school-section-label {
@@ -350,7 +366,7 @@ html:not([data-theme="light"]) .wfh-pill.active { color: #4ade80; }
   <!-- Top controls -->
   <div class="top-bar">
     <button class="theme-btn" id="theme-btn" onclick="_cycleTheme()">⚙️</button>
-    <button class="wfh-pill" id="wfh-btn" onclick="_toggleWfh()">🏢 Office</button>
+    <button class="wfh-pill" id="wfh-btn" onclick="_toggleWfh()" style="${isWeekend?'display:none':''}">🏢 Office</button>
   </div>
 
   <div id="content"></div>
@@ -400,8 +416,10 @@ function timeOfDay() {
   if (h >= 17 && h < 22) return 'evening';
   return 'night';
 }
-const _todayFmt = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-const _dayName  = new Date().toLocaleDateString('en-GB',{weekday:'long'});
+const _todayFmt  = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+const _dayName   = new Date().toLocaleDateString('en-GB',{weekday:'long'});
+const isWeekend  = [0,6].includes(new Date().getDay()); // 0=Sun,6=Sat
+const _MIRU_WA   = '14155238886';
 
 // ── WFH ───────────────────────────────────────────────────────
 let _wfhMode = localStorage.getItem('miru_wfh') === 'true';
@@ -486,11 +504,23 @@ async function _obSubmit() {
   } catch(e) { err.textContent='Something went wrong.'; err.style.display='block'; btn.textContent='Get started →'; btn.disabled=false; }
 }
 
+// ── WEEKEND FOOD PILL HELPER ──────────────────────────────────
+function _wkPill(icon, label, msg) {
+  const url = `https://wa.me/${_MIRU_WA}?text=${encodeURIComponent(msg)}`;
+  return `<a href="${url}" target="_blank" class="wk-pill">
+    <span class="wk-pill-icon">${icon}</span>
+    <span class="wk-pill-label">${label}</span>
+  </a>`;
+}
+
 // ── PERSONALISED RENDER ───────────────────────────────────────
 function renderPersonalised() {
   const tod = timeOfDay();
-  const greet = {morning:'Good morning',afternoon:'Good afternoon',evening:'Good evening',night:'Late night'}[tod]||'Hello';
-  const showFuel = tod === 'morning' && !_wfhMode;
+  const greetMap = {morning:'Good morning',afternoon:'Good afternoon',evening:'Good evening',night:'Late night'};
+  const greet = isWeekend
+    ? (_dayName === 'Saturday' ? 'Happy Saturday' : 'Happy Sunday')
+    : (greetMap[tod] || 'Hello');
+  const showFuel = !_wfhMode && !isWeekend; // fuel visible any time when commuting
 
   let html = `
     <!-- WEATHER HERO -->
@@ -508,9 +538,29 @@ function renderPersonalised() {
         </div>
         <div class="wx-icon" id="wx-icon"></div>
       </div>
-    </div>
+    </div>`;
 
-    <!-- TRAINS + FUEL -->
+  if (isWeekend) {
+    // Weekend: food & events explorer instead of trains/fuel
+    html += `
+    <div style="padding:12px var(--pad) 0;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:9px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted2)">Weekend Explorer</span>
+      <span style="font-size:11px;font-weight:500;color:var(--muted)">via WhatsApp ↗</span>
+    </div>
+    <div class="wk-grid">
+      ${_wkPill('🍛','Indian','best indian food near me')}
+      ${_wkPill('🍔','Burger','best burger near me')}
+      ${_wkPill('🍸','Cocktails','best cocktail bar near me')}
+      ${_wkPill('🥡','Chinese','best chinese food near me')}
+      ${_wkPill('🥙','Chaat','best chaat near me')}
+      <div class="wk-pill" onclick="nav('myarea')">
+        <span class="wk-pill-icon">📅</span>
+        <span class="wk-pill-label">Events</span>
+      </div>
+    </div>`;
+  } else {
+    // Weekday: trains + fuel (fuel shown whenever not WFH)
+    html += `
     <div style="padding:12px var(--pad) 0;display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:9px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted2)">Departures</span>
       <span style="font-size:11px;font-weight:500;color:var(--muted);cursor:pointer" onclick="nav('trains')">All →</span>
@@ -530,9 +580,8 @@ function renderPersonalised() {
           </div>
         </div>
       </div>`;
-
-  if (showFuel) {
-    html += `
+    if (showFuel) {
+      html += `
       <div class="g-card" onclick="nav('fuel')" id="fuel-card">
         <span class="card-label">Fuel</span>
         <div class="fuel-cols">
@@ -547,10 +596,11 @@ function renderPersonalised() {
         </div>
         <div class="fuel-sta" id="fuel-station">—</div>
       </div>`;
+    }
+    html += `</div>`;
   }
 
-  html += `</div>
-
+  html += `
     <!-- SCHOOL -->
     <div class="school-wrap" id="school-wrap"></div>
 
@@ -573,7 +623,7 @@ function renderPersonalised() {
 
   document.getElementById('content').innerHTML = html;
   _fetchWeather();
-  _fetchTrains();
+  if (!isWeekend) _fetchTrains();
   if (showFuel) _fetchFuel();
   _fetchSchoolMsgs();
   _fetchSaves();
@@ -730,7 +780,7 @@ async function _fetchSchoolMsgs() {
   const el = document.getElementById('school-wrap');
   if (!el || !PHONE) return; // hide entirely if no phone — school is opt-in
   try {
-    const r = await fetch('/api/school/events?back=14',{headers:{'X-School-WA':PHONE}});
+    const r = await fetch('/api/school/events?back=21',{headers:{'X-School-WA':PHONE}});
     const data = await r.json();
 
     // No school profile set up at all — hide section silently

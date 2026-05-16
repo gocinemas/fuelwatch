@@ -11232,7 +11232,7 @@ _bkBadge();
     document.getElementById("school-section-tabs").style.display = "none";
     document.getElementById("school-list").innerHTML = "";
     try {
-      const r = await fetch("/api/school/events?days=30&back=30", { headers: _schoolHeaders() });
+      const r = await fetch("/api/school/events?days=30&back=21", { headers: _schoolHeaders() });
       if (r.status === 401) { _schoolShowLock(); return; }
       const data = await r.json();
       _schoolProfiles  = data.profiles || [];
@@ -11376,7 +11376,7 @@ _bkBadge();
     if (!deduped.length) { document.getElementById("school-empty").style.display = "block"; return; }
 
     const todayStr = new Date().toISOString().slice(0,10);
-    const cutoff14 = new Date(Date.now() - 14*24*60*60*1000).toISOString().slice(0,10);
+    const cutoff14 = new Date(Date.now() - 21*24*60*60*1000).toISOString().slice(0,10);
 
     // Newsletters: filtered to active child (same as other events)
     const _seenNL = {};
@@ -11396,7 +11396,7 @@ _bkBadge();
     const past = nonNews
       .filter(e => e.event_date && e.event_date < todayStr)
       .sort((a,b) => b.event_date.localeCompare(a.event_date))
-      .slice(0, 3);
+      .slice(0, 5);
 
     _schoolGroups = [
       {icon:"📰", label:"Newsletters", items: newsletters},

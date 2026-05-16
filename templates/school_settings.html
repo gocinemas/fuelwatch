@@ -411,7 +411,10 @@ function renderGmailSection() {
               <div style="font-size:13px;color:#b91c1c">Miru can't reach your Gmail — school comms are paused.</div>
             </div>
           </div>
-          <div>${reconnectBtns}</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div>${reconnectBtns}</div>
+            <button onclick="lookupProfile().then(()=>renderGmailSection())" style="font-size:12px;color:#059669;background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">Already reconnected? Refresh ↻</button>
+          </div>
         </div>`;
     } else {
       el.innerHTML = `
