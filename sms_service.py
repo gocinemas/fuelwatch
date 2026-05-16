@@ -4673,6 +4673,32 @@ def api_intel_compare():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/admin/clear-brand-cache", methods=["POST"])
+def api_admin_clear_brand_cache():
+    """Clear cached brand/company data so it re-fetches fresh. Token-protected."""
+    if request.headers.get("X-Admin-Token") != "miru-digest-2026":
+        return jsonify({"error": "Forbidden"}), 403
+    body = request.get_json(force=True, silent=True) or {}
+    name = (body.get("name") or "").strip().lower()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    from search import _sb_cache_delete, _BRAND_CACHE
+    sb_key_brand   = f"brand:{name}|brandv29"
+    sb_key_company = f"company:{name}|v17"
+    _sb_cache_delete(sb_key_brand)
+    _sb_cache_delete(sb_key_company)
+    # Also bust brand_profiles table
+    try:
+        lib._sb().table("brand_profiles").delete().ilike("name", name).execute()
+    except Exception:
+        pass
+    # Bust in-memory cache
+    for k in list(_BRAND_CACHE.keys()):
+        if k.startswith(name + "|"):
+            del _BRAND_CACHE[k]
+    return jsonify({"ok": True, "cleared": name})
+
+
 @app.route("/api/brand/scan", methods=["POST"])
 def api_brand_scan():
     """Identify a brand from a photo using Groq vision."""

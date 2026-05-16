@@ -740,6 +740,14 @@ def _sb_cache_set(key: str, data: dict) -> None:
     except Exception:
         pass
 
+def _sb_cache_delete(key: str) -> None:
+    try:
+        from supabase import create_client
+        sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        sb.table("ai_cache").delete().eq("key", key).execute()
+    except Exception:
+        pass
+
 
 # ── Brand research ────────────────────────────────────────────────────────────
 _BRAND_CACHE: dict = {}

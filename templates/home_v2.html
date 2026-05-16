@@ -657,12 +657,11 @@ function _renderTrainDeps(deps, el) {
   el.innerHTML = trains.slice(0,2).map(t=>{
     const late=t.expected&&t.expected!=='On time'&&!t.cancelled;
     const cls=t.cancelled?'tb-late':late?'tb-late':'tb-ok';
-    const txt=t.cancelled?'Cancelled':late?t.expected:'On time';
-    const plat=t.platform?' · Plat '+t.platform:'';
     const mins=_minsTo(t.scheduled);
-    const minsHtml=mins?`<span style="font-size:11px;font-weight:600;color:var(--muted2);margin-left:4px">${mins}</span>`:'';
+    const txt=t.cancelled?'Cancelled':late?t.expected:(mins||'On time');
+    const plat=t.platform?' · Plat '+t.platform:'';
     return `<div class="train-row">
-      <div class="train-time">${t.scheduled||'—'}${minsHtml}</div>
+      <div class="train-time">${t.scheduled||'—'}</div>
       <div class="train-dest"><strong>${t.destination||'—'}</strong><span>${plat}</span></div>
       <span class="train-badge ${cls}">${txt}</span>
     </div>`;
