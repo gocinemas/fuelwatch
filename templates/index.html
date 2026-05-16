@@ -11663,22 +11663,39 @@ _bkBadge();
 
   window.savesSubmitPhone = async function() {
     let raw = (document.getElementById("saves-phone-input").value || "").trim();
-    if (!raw) { alert("Please enter your WhatsApp number e.g. +447911123456"); return; }
-    let p = raw.replace(/\s+/g,'');
+    const errEl = document.getElementById("saves-phone-error");
+    if (!raw) {
+      errEl.textContent = "Enter your WhatsApp number e.g. +44 7xxx xxxxxx";
+      errEl.style.display = "block"; return;
+    }
+    let p = raw.replace(/\s+/g, '');
     if (/^0\d{10}$/.test(p)) p = '+44' + p.slice(1);
     const btn = document.querySelector('#saves-phone-screen button');
-    if (btn) { btn.textContent = 'Opening…'; btn.disabled = true; }
+    if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
+    errEl.style.display = "none";
     try {
-      const r = await fetch('/api/user-token?phone=' + encodeURIComponent(p));
-      const d = await r.json();
-      if (!d.token) throw new Error('no token');
-      localStorage.setItem("wa_saves_token", d.token);
+      // Step 1: get token
+      const tr = await fetch('/api/user-token?phone=' + encodeURIComponent(p));
+      const td = await tr.json();
+      if (!td.token) throw new Error('no token');
+      localStorage.setItem("wa_saves_token", td.token);
       localStorage.setItem("miru_phone", p);
-      // Reload the page so the fresh saves session loads cleanly
-      window.location.href = window.location.origin + '/?screen=saves';
+      // Step 2: fetch saves directly with both token + phone (bypasses worker sync issue)
+      const sr = await fetch('/api/wa-saves', { headers: {
+        "X-Library-PIN": td.token, "X-User-Phone": p, "Content-Type": "application/json"
+      }});
+      if (!sr.ok) throw new Error('auth');
+      const sd = await sr.json();
+      // Step 3: show saves directly
+      document.getElementById("saves-phone-screen").style.display = "none";
+      document.getElementById("saves-main").style.display = "block";
+      _savesAll = (sd.saves || []).filter(s => !(s.title||'').startsWith("🎵 ") && !(s.url||'').startsWith("book:"));
+      if (typeof savesRenderCategoryPills === "function") savesRenderCategoryPills();
+      if (typeof savesRender === "function") savesRender();
     } catch(e) {
       if (btn) { btn.textContent = 'Access My Saves'; btn.disabled = false; }
-      alert("Couldn't connect — check your number format and try again.");
+      errEl.textContent = 'Something went wrong — try again or check your number format.';
+      errEl.style.display = "block";
     }
   };
 
