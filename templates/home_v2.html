@@ -674,20 +674,22 @@ function _fetchTrains() {
   if (!el) return;
 
   if (!_wfhMode) {
-    // Office mode → departures FROM Waterloo that call at home station
+    // Office mode → departures FROM home station going to London Waterloo
     fetch(`/api/train/nearest-by-postcode?postcode=${PC}`)
       .then(r=>r.json())
       .then(data=>{
         const homeCrs = data.crs || '';
         const homeName = data.name || homeCrs;
-        if (stnEl) stnEl.textContent = '🚆 Waterloo → '+homeName;
-        const url = homeCrs
-          ? `/api/train/departures?crs=WAT&calling_at=${encodeURIComponent(homeCrs)}`
-          : '/api/train/departures?crs=WAT';
-        return fetch(url);
+        if (stnEl) stnEl.textContent = '🚆 '+homeName+' → Waterloo';
+        return homeCrs ? fetch(`/api/train/departures?crs=${encodeURIComponent(homeCrs)}`) : null;
       })
       .then(r=>r&&r.json())
-      .then(deps=>_renderTrainDeps(deps, el))
+      .then(deps=>{
+        if (deps && deps.trains) {
+          deps.trains = deps.trains.filter(t=>(t.destination||'').toLowerCase().includes('waterloo'));
+        }
+        _renderTrainDeps(deps, el);
+      })
       .catch(()=>{ if(el) el.innerHTML='<div class="train-row" style="font-size:12px;color:var(--muted)">Train data unavailable</div>'; });
   } else {
     // WFH mode → nearest station to home (Longcross)
