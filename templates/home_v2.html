@@ -278,6 +278,21 @@ body {
   border-radius: 14px; cursor: pointer; letter-spacing: -.2px;
 }
 
+/* ── WEATHER PREVIEW STRIP ── */
+.wx-preview-strip {
+  display: flex; gap: 6px; padding: 10px 20px 0;
+  overflow-x: auto; scrollbar-width: none;
+}
+.wx-preview-strip::-webkit-scrollbar { display: none; }
+.wx-prev-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 12px;
+  font-size: 12px; cursor: pointer; white-space: nowrap;
+  color: var(--muted2); -webkit-tap-highlight-color: transparent;
+  transition: all .15s; flex-shrink: 0;
+}
+.wx-prev-btn.active { background: rgba(56,189,248,.15); border-color: rgba(56,189,248,.3); color: #7dd3fc; }
+
 /* ── SKELETON ── */
 .skel {
   background: linear-gradient(90deg, var(--surface2) 25%, var(--surface) 50%, var(--surface2) 75%);
@@ -374,6 +389,10 @@ body {
   var ph = p.get('phone')||'';
   if (pc && !localStorage.getItem('miru_postcode')) localStorage.setItem('miru_postcode', pc);
   if (ph && !localStorage.getItem('miru_phone'))    localStorage.setItem('miru_phone', ph);
+  // Preview mode: seed a demo postcode so personalised view always renders
+  if (p.get('preview') === 'miru2026' && !localStorage.getItem('miru_postcode')) {
+    localStorage.setItem('miru_postcode', 'KT160HY');
+  }
 })();
 
 const PC    = (localStorage.getItem('miru_postcode')||'').replace(/\s+/g,'').toUpperCase();
@@ -485,6 +504,17 @@ function renderPersonalised() {
         <div class="wx-badge" id="wx-badge"></div>
       </div>
     </div>
+    <div class="wx-preview-strip" id="wx-strip">
+      <button class="wx-prev-btn" onclick="_wxPreview(0)"  >☀️ Sunny</button>
+      <button class="wx-prev-btn" onclick="_wxPreview(1)"  >🌙 Night</button>
+      <button class="wx-prev-btn" onclick="_wxPreview(2)"  >⛅ Partly cloudy</button>
+      <button class="wx-prev-btn" onclick="_wxPreview(3)"  >☁️ Overcast</button>
+      <button class="wx-prev-btn" onclick="_wxPreview(4)"  >🌫️ Fog</button>
+      <button class="wx-prev-btn" onclick="_wxPreview(5)"  >🌧️ Rain</button>
+      <button class="wx-prev-btn" onclick="_wxPreview(6)"  >❄️ Snow</button>
+      <button class="wx-prev-btn" onclick="_wxPreview(7)"  >⚡ Storm</button>
+      <button class="wx-prev-btn" id="wx-live-btn" onclick="_wxLive()">🔄 Live</button>
+    </div>
 
     <div class="slabel">Trains<span class="slabel-more" onclick="nav('trains')">All departures →</span></div>
     <div class="trains-card" onclick="nav('trains')">
@@ -594,6 +624,49 @@ function wxIconHtml(code, h) {
   return `<div class="wx-storm-cloud"></div><div class="wx-bolt">⚡</div>`;
 }
 
+// ── WEATHER PREVIEW ───────────────────────────────────────────
+// [code, hour, label, condition, feels, badge]
+const _WX_PREVIEWS = [
+  [0,  12, 'Clear sky',       'Feels like 22°', '☀ Warm'],
+  [0,  22, 'Clear night',     'Feels like 14°', '🌤 Mild'],
+  [2,  10, 'Partly cloudy',   'Feels like 16°', '🌤 Mild'],
+  [3,  14, 'Overcast',        'Feels like 13°', '🌤 Mild'],
+  [45, 8,  'Foggy morning',   'Feels like 9°',  '🧥 Wrap up'],
+  [63, 15, 'Rain',            'Feels like 11°', '🧥 Wrap up'],
+  [73, 9,  'Snow',            'Feels like -2°', '🥶 Freezing'],
+  [95, 18, 'Thunderstorm',    'Feels like 17°', '🌤 Mild'],
+];
+let _wxLiveTemp = null, _wxLiveData = null;
+
+function _wxApply(code, h, condition, feels, badge) {
+  const iconEl = document.getElementById('wx-icon');
+  const card   = document.getElementById('wx-card');
+  if (iconEl) iconEl.innerHTML = wxIconHtml(code, h);
+  if (card)   { card.className = 'wx-hero ' + wxSkyClass(code, h); card.onclick = ()=>nav('weather'); }
+  _el('wx-condition', condition);
+  _el('wx-feels',     feels);
+  _el('wx-badge',     badge);
+}
+
+function _wxPreview(idx) {
+  const [code, h, condition, feels, badge] = _WX_PREVIEWS[idx];
+  _wxApply(code, h, condition, feels, badge);
+  // Highlight active button
+  document.querySelectorAll('.wx-prev-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
+}
+
+function _wxLive() {
+  document.querySelectorAll('.wx-prev-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('wx-live-btn').classList.add('active');
+  if (_wxLiveData) {
+    const {code, h, temp, feel, condition, badge} = _wxLiveData;
+    _el('wx-temp', temp + '°');
+    _wxApply(code, h, condition, 'Feels like ' + feel + '°', badge);
+  } else {
+    _fetchWeather();
+  }
+}
+
 // ── DATA: WEATHER ─────────────────────────────────────────────
 async function _fetchWeather() {
   try {
@@ -613,23 +686,26 @@ async function _fetchWeather() {
     const code = cur.weather_code ?? 0;
     const h    = hour();
 
-    _el('wx-temp',      temp + '°');
-    _el('wx-condition', WX_CODES[code] || 'Clear');
-    _el('wx-feels',     'Feels like ' + feel + '°');
-    _el('wx-badge',
+    const badge =
       feel < 0  ? '🥶 Freezing'  :
       feel < 5  ? '🧥 Very cold' :
       feel < 10 ? '🧥 Wrap up'  :
       feel < 18 ? '🌤 Mild'     :
       feel > 28 ? '🔥 Hot'      :
-      feel > 23 ? '☀ Warm'      : '👍 Comfortable'
-    );
+      feel > 23 ? '☀ Warm'      : '👍 Comfortable';
 
-    const iconEl = document.getElementById('wx-icon');
-    if (iconEl) iconEl.innerHTML = wxIconHtml(code, h);
+    const condition = WX_CODES[code] || 'Clear';
 
-    const card = document.getElementById('wx-card');
-    if (card) { card.className = 'wx-hero ' + wxSkyClass(code, h); card.onclick = ()=>nav('weather'); }
+    // Cache live data so 🔄 Live button can restore it
+    _wxLiveData = { code, h, temp, feel, condition, badge };
+
+    _el('wx-temp', temp + '°');
+    _wxApply(code, h, condition, 'Feels like ' + feel + '°', badge);
+
+    // Mark Live button active
+    document.querySelectorAll('.wx-prev-btn').forEach(b => b.classList.remove('active'));
+    const liveBtn = document.getElementById('wx-live-btn');
+    if (liveBtn) liveBtn.classList.add('active');
 
   } catch(e) { _el('wx-condition', 'Weather unavailable'); }
 }
