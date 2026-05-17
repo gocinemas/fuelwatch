@@ -12009,12 +12009,12 @@ _bkBadge();
       } catch(e) {}
     }
 
-    const cleanSummary = bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
+    const displaySummary = bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
     const summaryHtml = isMenu ? menuHtml
       : jsonCardHtml
       ? jsonCardHtml
-      : cleanSummary
-      ? `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${_hl(cleanSummary, _savesHighlightTerm)}</div>`
+      : displaySummary
+      ? `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${_hl(displaySummary, _savesHighlightTerm)}</div>`
       : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>`;
 
     let sourceDomain = "";
