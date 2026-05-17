@@ -4308,8 +4308,8 @@ const _ts = new Date(d.timestamp);
       _maHideServicesSkeleton();
     }));
 
-    // Pubs + schools — LS-cached 24h (v2 key forces refresh after Google Places phone enrichment)
-    _maFetchCached(`localv4:${pc}`, `/api/local?postcode=${pc}`, 14400, _guard(data => {
+    // Pubs + schools — LS-cached 24h (schools don't move daily)
+    _maFetchCached(`localv5:${pc}`, `/api/local?postcode=${pc}`, 86400, _guard(data => {
       _maLocalData = data; _maRenderPubs(data); _maRenderSchools(data);
       _maHideServicesSkeleton();
     }));

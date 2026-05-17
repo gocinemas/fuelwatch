@@ -1663,10 +1663,10 @@ def api_local():
     schools_data = schools_f.result()
     local        = local_f.result()
 
-    # Fill missing phone numbers from Google Places for top pubs, cafes, and schools
+    # Enrich pubs + cafes phone numbers (not schools — Nearby Search is fast enough without enrichment)
     pubs    = local.get("pubs",  [])[:5]
     cafes   = local.get("cafes", [])[:5]
-    schools = (schools_data.get("schools") or [])[:5]
+    schools = (schools_data.get("schools") or [])[:8]
     if _GOOGLE_PLACES_KEY:
         def _enrich(entry):
             if entry.get("phone"):
@@ -1677,13 +1677,12 @@ def api_local():
                 entry["phone"] = d["phone"]
             return entry
         try:
-            combined = pubs + cafes + schools
-            with ThreadPoolExecutor(max_workers=6) as ex:
+            combined = pubs + cafes
+            with ThreadPoolExecutor(max_workers=4) as ex:
                 combined = list(ex.map(_enrich, combined))
-            n_pubs = len(pubs); n_cafes = len(cafes)
-            pubs    = combined[:n_pubs]
-            cafes   = combined[n_pubs:n_pubs + n_cafes]
-            schools = combined[n_pubs + n_cafes:]
+            n_pubs = len(pubs)
+            pubs  = combined[:n_pubs]
+            cafes = combined[n_pubs:]
         except Exception:
             pass
     schools_data = {**schools_data, "schools": schools}
