@@ -11986,8 +11986,9 @@ _bkBadge();
     const enrichBtn = isPlace && editableTitle
       ? `<button onclick="savesEnrich('${s.id}','${editableTitle.replace(/'/g,"\\'")}',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #e0e7ff;background:#f5f3ff;font-size:11px;font-weight:600;cursor:pointer;color:#4f46e5">✨ Details</button>`
       : "";
-    const brandGuess = (s.title||"").replace(/^🏷️\s*/,"").trim();
-    const brandBtn = _saveCat(s) === "brand" && brandGuess
+    const _productBrand = productItems && productItems.length ? (productItems.find(p => p.brand) || {}).brand || "" : "";
+    const brandGuess = _productBrand || (s.title||"").replace(/^🏷️\s*/,"").trim();
+    const brandBtn = (_saveCat(s) === "brand" || (_saveCat(s) === "product" && _productBrand)) && brandGuess
       ? `<button onclick="saveOpenBrandIntel('${brandGuess.replace(/'/g,"\\'")}')\" style=\"flex:1;padding:8px 6px;border-radius:10px;border:1px solid #fde68a;background:#fffbeb;font-size:11px;font-weight:600;cursor:pointer;color:#92400e\">🔍 Intel →</button>`
       : "";
     const isAd = isPhoto || _saveCat(s) === "ad" || _saveCat(s) === "photo" || (_saveCat(s) === "wine" && !!s.image_url);
@@ -12118,6 +12119,10 @@ _bkBadge();
 
   window.saveOpenBrandIntel = function(brandName) {
     document.getElementById("brand-input").value = brandName;
+    const _ii = document.getElementById("intel-input");
+    if (_ii) _ii.value = brandName;
+    const _bq = document.getElementById("brand-q");
+    if (_bq) _bq.value = brandName;
     blookupTab("brand");
     searchBrand();
   };
