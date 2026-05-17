@@ -6379,7 +6379,8 @@ def api_debug_places_search():
 
 @app.route("/api/places/nearby")
 def api_places_nearby():
-    """Google Places Nearby Search — used by 'What can I do here?' feature."""
+    """Google Places Nearby Search — used by 'What can I do here?' feature.
+    Accepts ?cat= for targeted category searches with quality filtering."""
     try:
         lat = float(request.args.get("lat", ""))
         lon = float(request.args.get("lon", ""))
@@ -6389,38 +6390,48 @@ def api_places_nearby():
     if not _GOOGLE_PLACES_KEY:
         return jsonify({"error": "Places not configured"}), 503
 
-    _CATEGORY_MAP = {
-        "restaurant":      {"label": "Restaurant",  "emoji": "🍽️"},
-        "cafe":            {"label": "Café",         "emoji": "☕"},
-        "bar":             {"label": "Bar",          "emoji": "🍹"},
-        "bakery":          {"label": "Bakery",       "emoji": "🥐"},
-        "meal_takeaway":   {"label": "Takeaway",     "emoji": "🥡"},
-        "park":            {"label": "Park",         "emoji": "🌳"},
-        "playground":      {"label": "Playground",  "emoji": "🛝"},
-        "museum":          {"label": "Museum",       "emoji": "🏛️"},
-        "art_gallery":     {"label": "Gallery",      "emoji": "🎨"},
-        "tourist_attraction": {"label": "Attraction","emoji": "🎡"},
-        "amusement_park":  {"label": "Attraction",  "emoji": "🎢"},
-        "movie_theater":   {"label": "Cinema",       "emoji": "🎬"},
-        "library":         {"label": "Library",      "emoji": "📚"},
-        "gym":             {"label": "Gym",          "emoji": "💪"},
-        "shopping_mall":   {"label": "Shopping",     "emoji": "🛍️"},
-        "supermarket":     {"label": "Supermarket",  "emoji": "🛒"},
+    cat = request.args.get("cat", "all").lower()
+
+    # Per-category config: keyword, quality thresholds, radius
+    _CAT_CONFIG = {
+        "all":      {"keyword": "restaurant cafe pub bar garden park",  "min_rating": 4.0, "min_reviews": 30, "radius": 5000},
+        "food":     {"keyword": "restaurant",                           "min_rating": 3.8, "min_reviews": 20, "radius": 5000},
+        "coffee":   {"keyword": "specialty coffee espresso artisan café","min_rating": 4.1, "min_reviews": 15, "radius": 5000},
+        "beer":     {"keyword": "craft beer real ale pub",              "min_rating": 4.0, "min_reviews": 25, "radius": 5000},
+        "cocktail": {"keyword": "cocktail bar mixology",                "min_rating": 4.1, "min_reviews": 15, "radius": 8000},
+        "wine":     {"keyword": "wine bar",                             "min_rating": 4.0, "min_reviews": 15, "radius": 8000},
+        "steak":    {"keyword": "steakhouse steak",                     "min_rating": 4.0, "min_reviews": 25, "radius": 8000},
+        "park":     {"keyword": "park garden nature reserve",           "min_rating": 3.5, "min_reviews":  5, "radius": 8000},
     }
-    _EXPLORE_TYPES = "restaurant|cafe|bar|park|tourist_attraction|museum|art_gallery|movie_theater|gym|library|shopping_mall|amusement_park|bakery|playground"
+    cfg = _CAT_CONFIG.get(cat, _CAT_CONFIG["all"])
+
+    _GTYPE_MAP = {
+        "restaurant":        {"label": "Restaurant",  "emoji": "🍽️"},
+        "cafe":              {"label": "Café",         "emoji": "☕"},
+        "bar":               {"label": "Bar",          "emoji": "🍹"},
+        "bakery":            {"label": "Bakery",       "emoji": "🥐"},
+        "meal_takeaway":     {"label": "Takeaway",     "emoji": "🥡"},
+        "park":              {"label": "Park",         "emoji": "🌳"},
+        "museum":            {"label": "Museum",       "emoji": "🏛️"},
+        "art_gallery":       {"label": "Gallery",      "emoji": "🎨"},
+        "tourist_attraction":{"label": "Attraction",   "emoji": "🎡"},
+        "movie_theater":     {"label": "Cinema",       "emoji": "🎬"},
+        "night_club":        {"label": "Club",         "emoji": "🎵"},
+        "liquor_store":      {"label": "Off Licence",  "emoji": "🍾"},
+    }
 
     try:
         r = requests.get(
             "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
             params={
-                "location": f"{lat},{lon}",
-                "radius": 5000,
-                "key": _GOOGLE_PLACES_KEY,
-                "rankby": "prominence",
-                "language": "en-GB",
-                "keyword": "restaurant cafe pub bar park",
+                "location":  f"{lat},{lon}",
+                "radius":    cfg["radius"],
+                "keyword":   cfg["keyword"],
+                "key":       _GOOGLE_PLACES_KEY,
+                "rankby":    "prominence",
+                "language":  "en-GB",
             },
-            timeout=8,
+            timeout=10,
         )
         data = r.json()
     except Exception as e:
@@ -6430,27 +6441,29 @@ def api_places_nearby():
     results = []
     seen = set()
     for p in (data.get("results") or []):
-        name = p.get("name", "").strip()
+        name         = p.get("name", "").strip()
+        rating       = p.get("rating") or 0
+        rating_count = p.get("user_ratings_total") or 0
+
         if not name or name.lower() in seen:
             continue
+        # Quality gate — skip low-rated or barely-reviewed places
+        if rating < cfg["min_rating"] or rating_count < cfg["min_reviews"]:
+            continue
+
         seen.add(name.lower())
 
         types = p.get("types", [])
-        cat = None
-        for t in types:
-            if t in _CATEGORY_MAP:
-                cat = _CATEGORY_MAP[t]
-                break
-        if not cat:
-            cat = {"label": types[0].replace("_", " ").title() if types else "Place", "emoji": "📍"}
+        gcat = next(({"label": v["label"], "emoji": v["emoji"]}
+                     for t in types if (v := _GTYPE_MAP.get(t))), None)
+        if not gcat:
+            gcat = {"label": types[0].replace("_", " ").title() if types else "Place", "emoji": "📍"}
 
         geo = p.get("geometry", {}).get("location", {})
-        rating       = p.get("rating")
-        rating_count = p.get("user_ratings_total", 0)
         results.append({
             "name":         name,
-            "category":     cat["label"],
-            "emoji":        cat["emoji"],
+            "category":     gcat["label"],
+            "emoji":        gcat["emoji"],
             "address":      p.get("vicinity", ""),
             "rating":       rating,
             "rating_count": rating_count,
@@ -6460,11 +6473,71 @@ def api_places_nearby():
         })
 
     if not results:
-        return jsonify({"error": "No places found nearby"}), 404
+        # Relax quality gate — halve the thresholds and retry in same call
+        for p in (data.get("results") or []):
+            name         = p.get("name", "").strip()
+            rating       = p.get("rating") or 0
+            rating_count = p.get("user_ratings_total") or 0
+            if not name or name.lower() in seen:
+                continue
+            if rating < max(cfg["min_rating"] - 0.4, 3.5) or rating_count < max(cfg["min_reviews"] // 2, 5):
+                continue
+            seen.add(name.lower())
+            types = p.get("types", [])
+            gcat = next(({"label": v["label"], "emoji": v["emoji"]}
+                         for t in types if (v := _GTYPE_MAP.get(t))), None)
+            if not gcat:
+                gcat = {"label": types[0].replace("_", " ").title() if types else "Place", "emoji": "📍"}
+            geo = p.get("geometry", {}).get("location", {})
+            results.append({
+                "name": name, "category": gcat["label"], "emoji": gcat["emoji"],
+                "address": p.get("vicinity", ""), "rating": rating,
+                "rating_count": rating_count,
+                "lat": geo.get("lat"), "lon": geo.get("lng"),
+                "place_id": p.get("place_id", ""),
+            })
 
-    # Sort by rating desc (nulls last), then rating_count desc for tiebreak
-    results.sort(key=lambda x: (-(x["rating"] or 0), -(x["rating_count"] or 0)))
-    return jsonify({"places": results})
+    if not results:
+        return jsonify({"error": "No quality places found nearby — try a different category"}), 404
+
+    # Sort: rating desc, then review count desc
+    results.sort(key=lambda x: (-(x["rating"]), -(x["rating_count"])))
+    return jsonify({"places": results, "cat": cat})
+
+
+@app.route("/api/places/save", methods=["POST"])
+def api_places_save():
+    """Save a place from 'What can I do here?' to My Saves."""
+    from_number, err = _check_saves_pin()
+    if err:
+        return err
+    data    = request.json or {}
+    name    = (data.get("name") or "").strip()
+    address = (data.get("address") or "").strip()
+    rating  = data.get("rating")
+    maps_url = (data.get("maps_url") or "").strip()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    lines = [name]
+    if address:  lines.append(f"📍 {address}")
+    if rating:   lines.append(f"⭐ {rating}")
+    if maps_url: lines.append(f"🗺️ {maps_url}")
+    summary = "\n".join(lines)
+    save_as = from_number or "web"
+    try:
+        from supabase import create_client
+        sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        sb.table("wa_saves").insert({
+            "from_number": save_as,
+            "title":       name,
+            "summary":     summary,
+            "category":    "place",
+            "source":      "explore-here",
+        }).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"[api/places/save] error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/places")

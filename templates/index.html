@@ -474,7 +474,7 @@
         <div style="font-size:28px;line-height:1;flex-shrink:0">🗺️</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">What can I do here?</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:3px">Food · Coffee · Parks · Kids — top 3 nearby</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:3px">Food · Beer · Coffee · Parks & more — top places nearby</div>
         </div>
         <div style="color:rgba(255,255,255,.4);font-size:18px">›</div>
       </button>
@@ -489,13 +489,17 @@
           <div id="explore-here-loc" style="font-size:12px;color:var(--muted)">Getting your location…</div>
         </div>
 
-        <!-- Category pills — centred -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px">
-          <button class="eh-cat-btn eh-cat-active" data-cat="all"    onclick="_ehSetCat('all',this)"    style="padding:8px 16px;border-radius:99px;border:1.5px solid #4f46e5;background:#eef2ff;color:#4338ca;font-size:13px;font-weight:700;cursor:pointer">✨ Best picks</button>
-          <button class="eh-cat-btn"               data-cat="food"   onclick="_ehSetCat('food',this)"   style="padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">🍽️ Eat</button>
-          <button class="eh-cat-btn"               data-cat="coffee" onclick="_ehSetCat('coffee',this)" style="padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">☕ Coffee</button>
-          <button class="eh-cat-btn"               data-cat="park"   onclick="_ehSetCat('park',this)"   style="padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">🌳 Parks</button>
-          <button class="eh-cat-btn"               data-cat="kids"   onclick="_ehSetCat('kids',this)"   style="padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">👶 Kids</button>
+        <!-- Category pills — horizontally scrollable -->
+        <div style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;margin-bottom:16px;scrollbar-width:none;-ms-overflow-style:none">
+          <button class="eh-cat-btn eh-cat-active" data-cat="all"      onclick="_ehSetCat('all',this)"      style="flex-shrink:0;padding:8px 16px;border-radius:99px;border:1.5px solid #4f46e5;background:#eef2ff;color:#4338ca;font-size:13px;font-weight:700;cursor:pointer">✨ Best picks</button>
+          <button class="eh-cat-btn"               data-cat="food"     onclick="_ehSetCat('food',this)"     style="flex-shrink:0;padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">🍽️ Eat</button>
+          <button class="eh-cat-btn"               data-cat="beer"     onclick="_ehSetCat('beer',this)"     style="flex-shrink:0;padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">🍺 Beer</button>
+          <button class="eh-cat-btn"               data-cat="cocktail" onclick="_ehSetCat('cocktail',this)" style="flex-shrink:0;padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">🍸 Cocktails</button>
+          <button class="eh-cat-btn"               data-cat="wine"     onclick="_ehSetCat('wine',this)"     style="flex-shrink:0;padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">🍷 Wine</button>
+          <button class="eh-cat-btn"               data-cat="steak"    onclick="_ehSetCat('steak',this)"    style="flex-shrink:0;padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">🥩 Steak</button>
+          <button class="eh-cat-btn"               data-cat="coffee"   onclick="_ehSetCat('coffee',this)"   style="flex-shrink:0;padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">☕ Coffee</button>
+          <button class="eh-cat-btn"               data-cat="park"     onclick="_ehSetCat('park',this)"     style="flex-shrink:0;padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">🌳 Parks</button>
+          <button class="eh-cat-btn"               data-cat="kids"     onclick="_ehSetCat('kids',this)"     style="flex-shrink:0;padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">👶 Kids</button>
         </div>
 
         <!-- Results -->
@@ -12343,14 +12347,22 @@ _bkBadge();
   };
 
   // ── What can I do here? ───────────────────────────────────────────────────
+  // Cats that filter locally from the "all" fetch vs cats that need their own backend fetch
   const _EH_CATS = {
-    all:    null, // null = show all, no filter
-    food:   ["Restaurant","Pub","Bar","Takeaway","Bakery","Café"],
-    coffee: ["Café","Bakery"],
-    park:   ["Park","Playground","Attraction","Museum","Gallery","Cinema"],
-    kids:   ["Park","Playground","Attraction","Library","Museum","Gym"],
+    all:      null, // null = show all results
+    food:     ["Restaurant","Pub","Bar","Takeaway","Bakery","Café"],
+    coffee:   ["Café","Bakery"],
+    park:     ["Park","Playground","Attraction","Museum","Gallery","Cinema"],
+    kids:     ["Park","Playground","Attraction","Library","Museum","Gym"],
+    beer:     null, // backend keyword fetch
+    cocktail: null,
+    wine:     null,
+    steak:    null,
   };
+  const _EH_NEEDS_FETCH = new Set(["beer","cocktail","wine","steak"]);
   let _ehPlaces = [], _ehActiveCat = "all";
+  let _ehLat = null, _ehLon = null;
+  const _ehCache = {};
 
   window._exploreHereOpen = async function() {
     document.getElementById("explore-here-overlay").style.display = "";
@@ -12412,14 +12424,20 @@ _bkBadge();
     } catch(_) {}
     document.getElementById("explore-here-loc").textContent = areaName ? `📍 Near ${areaName}` : "📍 Near you";
 
-    // Fetch places via Google Places Nearby (more reliable than Overpass from Railway)
+    // Store coords for subsequent tab fetches
+    _ehLat = lat; _ehLon = lon;
+    // Clear cache so new location gets fresh results
+    Object.keys(_ehCache).forEach(k => delete _ehCache[k]);
+
+    // Fetch best-picks (cat=all) via Google Places Nearby
     try {
-      const r = await fetch(`/api/places/nearby?lat=${lat}&lon=${lon}`);
+      const r = await fetch(`/api/places/nearby?lat=${lat}&lon=${lon}&cat=all`);
       const d = await r.json();
       _ehPlaces = (d.places || []).map(function(p) {
         return Object.assign({}, p, { _dist: (p.lat && p.lon) ? _distKm(lat, lon, p.lat, p.lon) : 999 });
       });
       _ehPlaces.sort(function(a,b) { return a._dist - b._dist; });
+      _ehCache["all"] = _ehPlaces;
     } catch(_) { _ehPlaces = []; }
 
     document.getElementById("explore-here-loading").style.display = "none";
@@ -12431,12 +12449,28 @@ _bkBadge();
     document.getElementById("explore-here-sheet").style.display = "none";
   };
 
-  window._ehSetCat = function(cat, btn) {
+  window._ehSetCat = async function(cat, btn) {
     _ehActiveCat = cat;
     document.querySelectorAll(".eh-cat-btn").forEach(b => {
       b.style.borderColor = "var(--border)"; b.style.background = "var(--surface)"; b.style.color = "var(--text)";
     });
     btn.style.borderColor = "#4f46e5"; btn.style.background = "#eef2ff"; btn.style.color = "#4338ca";
+
+    if (_EH_NEEDS_FETCH.has(cat) && !_ehCache[cat]) {
+      // This category needs its own backend keyword search
+      const el = document.getElementById("explore-here-results");
+      el.innerHTML = '<div style="text-align:center;padding:28px 0;color:var(--muted);font-size:13px">Finding the best nearby…</div>';
+      try {
+        const r = await fetch(`/api/places/nearby?lat=${_ehLat}&lon=${_ehLon}&cat=${cat}`);
+        const d = await r.json();
+        _ehCache[cat] = (d.places || []).map(function(p) {
+          return Object.assign({}, p, { _dist: (p.lat && p.lon) ? _distKm(_ehLat, _ehLon, p.lat, p.lon) : 999 });
+        });
+        _ehCache[cat].sort(function(a,b) { return a._dist - b._dist; });
+      } catch(_) { _ehCache[cat] = []; }
+    }
+
+    _ehPlaces = _ehCache[cat] || _ehCache["all"] || [];
     _ehRender();
   };
 
@@ -12474,17 +12508,52 @@ _bkBadge();
       ? `<span style="color:#f59e0b;font-size:11px;letter-spacing:-1px">${stars}</span><span style="color:var(--muted);font-size:10px;margin-left:3px">${p.rating.toFixed(1)}${p.rating_count ? " ("+p.rating_count+")" : ""}</span>`
       : "";
     const meta = [p.category, dist].filter(Boolean).join(" · ");
-    return `<a href="${mapsUrl}" target="_blank" rel="noopener" style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:8px;text-decoration:none;cursor:pointer">
-      <div style="font-size:26px;line-height:1;flex-shrink:0;margin-top:2px">${p.emoji || "📍"}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-        ${ratingHtml ? `<div style="margin-top:2px">${ratingHtml}</div>` : ""}
-        ${p.address ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.address}</div>` : ""}
-        <div style="font-size:11px;font-weight:600;color:#4f46e5;margin-top:4px">${meta}</div>
-      </div>
-      <div style="font-size:16px;color:var(--muted);flex-shrink:0;align-self:center">›</div>
-    </a>`;
+    const safeData = encodeURIComponent(JSON.stringify({name:p.name,address:p.address,rating:p.rating,maps_url:mapsUrl}));
+    return `<div style="position:relative;margin-bottom:8px">
+      <a href="${mapsUrl}" target="_blank" rel="noopener" style="display:flex;align-items:flex-start;gap:12px;padding:14px;padding-right:52px;background:var(--surface);border:1px solid var(--border);border-radius:16px;text-decoration:none;cursor:pointer">
+        <div style="font-size:26px;line-height:1;flex-shrink:0;margin-top:2px">${p.emoji || "📍"}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+          ${ratingHtml ? `<div style="margin-top:2px">${ratingHtml}</div>` : ""}
+          ${p.address ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.address}</div>` : ""}
+          <div style="font-size:11px;font-weight:600;color:#4f46e5;margin-top:4px">${meta}</div>
+        </div>
+      </a>
+      <button onclick="event.stopPropagation();_ehSavePlace(this,'${safeData}')" style="position:absolute;top:10px;right:10px;padding:5px 9px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);line-height:1.2">💾</button>
+    </div>`;
   }
+
+  window._ehSavePlace = async function(btn, encoded) {
+    const p = JSON.parse(decodeURIComponent(encoded));
+    const tok = _savesPin ? _savesPin() : (localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || "");
+    if (!tok) {
+      btn.textContent = "Log in to Saves first";
+      btn.style.color = "#dc2626";
+      setTimeout(function() { btn.textContent = "💾"; btn.style.color = "var(--muted)"; }, 2500);
+      return;
+    }
+    btn.textContent = "…";
+    btn.disabled = true;
+    try {
+      const r = await fetch("/api/places/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Library-PIN": tok },
+        body: JSON.stringify(p),
+      });
+      if (r.ok) {
+        btn.textContent = "✓";
+        btn.style.color = "#059669";
+        btn.style.borderColor = "#059669";
+      } else {
+        btn.textContent = "✗";
+        btn.style.color = "#dc2626";
+        setTimeout(function() { btn.textContent = "💾"; btn.style.color = "var(--muted)"; btn.style.borderColor = "var(--border)"; btn.disabled = false; }, 2000);
+      }
+    } catch(_) {
+      btn.textContent = "✗"; btn.style.color = "#dc2626";
+      setTimeout(function() { btn.textContent = "💾"; btn.style.color = "var(--muted)"; btn.style.borderColor = "var(--border)"; btn.disabled = false; }, 2000);
+    }
+  };
 
   function _adIntelCardHtml(d) {
     const row = (icon, label, val) => val
