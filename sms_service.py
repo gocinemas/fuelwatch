@@ -6392,17 +6392,17 @@ def api_places_nearby():
 
     cat = request.args.get("cat", "all").lower()
 
-    # Per-category config: keyword, quality thresholds, radius
+    # Per-category config: keyword + optional Google type (strict filter), thresholds, radius
     _CAT_CONFIG = {
-        "all":      {"keyword": "restaurant cafe pub bar garden park",   "min_rating": 4.0, "min_reviews": 30, "radius":  5000},
-        "food":     {"keyword": "restaurant",                            "min_rating": 3.8, "min_reviews": 20, "radius":  5000},
-        "coffee":   {"keyword": "specialty coffee espresso artisan café","min_rating": 4.1, "min_reviews": 15, "radius":  5000},
-        "beer":     {"keyword": "craft beer real ale pub",               "min_rating": 4.0, "min_reviews": 15, "radius":  8000},
-        "cocktail": {"keyword": "cocktail bar lounge rooftop bar mixology wine bar","min_rating": 3.9, "min_reviews": 10, "radius": 12000},
-        "wine":     {"keyword": "wine bar",                              "min_rating": 4.0, "min_reviews": 10, "radius":  8000},
-        "steak":    {"keyword": "steakhouse steak grill",                "min_rating": 4.0, "min_reviews": 20, "radius":  8000},
-        "park":     {"keyword": "park garden nature reserve",            "min_rating": 3.5, "min_reviews":  5, "radius":  8000},
-        "kids":     {"keyword": "kids activities adventure park theme park soft play playground skating indoor play", "min_rating": 3.8, "min_reviews": 10, "radius": 20000},
+        "all":      {"keyword": "restaurant cafe pub bar park",         "type": None,         "min_rating": 4.0, "min_reviews": 20, "radius":  5000},
+        "food":     {"keyword": "restaurant",                           "type": "restaurant", "min_rating": 3.8, "min_reviews": 10, "radius":  5000},
+        "coffee":   {"keyword": "coffee cafe",                          "type": "cafe",       "min_rating": 3.5, "min_reviews":  5, "radius":  5000},
+        "beer":     {"keyword": "pub craft beer real ale",              "type": "bar",        "min_rating": 3.8, "min_reviews": 10, "radius":  8000},
+        "cocktail": {"keyword": "cocktail bar lounge",                  "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius": 12000},
+        "wine":     {"keyword": "wine bar",                             "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius":  8000},
+        "steak":    {"keyword": "steakhouse steak grill",               "type": "restaurant", "min_rating": 3.8, "min_reviews": 15, "radius":  8000},
+        "park":     {"keyword": "park",                                 "type": "park",       "min_rating": 0,   "min_reviews":  0, "radius":  8000},
+        "kids":     {"keyword": "theme park adventure soft play playground skating", "type": None, "min_rating": 3.5, "min_reviews": 5, "radius": 20000},
     }
     cfg = _CAT_CONFIG.get(cat, _CAT_CONFIG["all"])
 
@@ -6429,16 +6429,18 @@ def api_places_nearby():
     }
 
     try:
+        params = {
+            "location":  f"{lat},{lon}",
+            "radius":    cfg["radius"],
+            "keyword":   cfg["keyword"],
+            "key":       _GOOGLE_PLACES_KEY,
+            "language":  "en-GB",
+        }
+        if cfg.get("type"):
+            params["type"] = cfg["type"]
         r = requests.get(
             "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
-            params={
-                "location":  f"{lat},{lon}",
-                "radius":    cfg["radius"],
-                "keyword":   cfg["keyword"],
-                "key":       _GOOGLE_PLACES_KEY,
-                "rankby":    "prominence",
-                "language":  "en-GB",
-            },
+            params=params,
             timeout=10,
         )
         data = r.json()
