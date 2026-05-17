@@ -13081,7 +13081,7 @@ def api_wa_saves():
 
     try:
         q = lib._sb().table("wa_saves").select(
-            "id,title,url,summary,status,remind_day,created_at,image_url"
+            "id,title,url,summary,status,remind_day,created_at,image_url,category,source"
         )
         if filter_number:
             # DB stores "whatsapp:+44..." but web login resolves to "+44..." — match both

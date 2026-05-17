@@ -500,11 +500,11 @@
         </span>
       </button>
 
-      <!-- What can I do here? -->
+      <!-- Nearby -->
       <button onclick="_exploreHereOpen()" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#1e1b4b,#312e81);border:none;border-radius:20px;padding:16px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px">
         <div style="font-size:28px;line-height:1;flex-shrink:0">🗺️</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">What can I do here?</div>
+          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Nearby</div>
           <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:3px">Food · Beer · Coffee · Parks & more — top places nearby</div>
         </div>
         <div style="color:rgba(255,255,255,.4);font-size:18px">›</div>
@@ -519,7 +519,7 @@
         <!-- Header: title + location + close -->
         <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px 18px 0">
           <div>
-            <div style="font-size:20px;font-weight:900;color:var(--text);letter-spacing:-0.5px;line-height:1.1">What's nearby?</div>
+            <div style="font-size:20px;font-weight:900;color:var(--text);letter-spacing:-0.5px;line-height:1.1">Nearby</div>
             <div id="explore-here-loc" style="font-size:12px;color:var(--muted);margin-top:3px">Getting your location…</div>
           </div>
           <button onclick="_exploreHereClose()" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;line-height:1">×</button>
@@ -12028,6 +12028,7 @@ _bkBadge();
     if (t.startsWith("🍽️")) return "place";
     if (t.startsWith("📄")) return "doc";
     if (t.startsWith("📷") || t.startsWith("🪧")) return "photo";
+    if (s.category && s.category !== "general") return s.category;
     return "article";
   }
 
@@ -12378,7 +12379,7 @@ _bkBadge();
     await savesLoad();
   };
 
-  // ── What can I do here? ───────────────────────────────────────────────────
+  // ── Nearby ───────────────────────────────────────────────────
   // All categories except "all" get their own per-category backend fetch
   // (local filtering removed — backend Google Places type param handles it)
   const _EH_NEEDS_FETCH = new Set(["food","coffee","park","kids","beer","cocktail","wine","steak"]);
