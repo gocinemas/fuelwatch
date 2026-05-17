@@ -10514,31 +10514,8 @@ def whatsapp_reply():
                 return str(resp)
 
             elif _nl_intent == "library_check":
-                cat_url     = "https://surrey.spydus.co.uk/cgi-bin/spydus.exe/SRCH/WPAC/BIBENQ"
-                search_link = f"{cat_url}?ENTRY={requests.utils.quote(_nl_title)}&ENTRY_NAME=BS&ENTRY_TYPE=K&NRECS=5"
-                avail_msg   = None
-                try:
-                    r = requests.get(cat_url,
-                        params={"ENTRY": _nl_title, "ENTRY_NAME": "BS", "ENTRY_TYPE": "K", "NRECS": "5"},
-                        headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0)"},
-                        timeout=8, allow_redirects=True)
-                    html     = r.text
-                    hits_m   = re.search(r'(\d+)\s+(?:result|record|item|hit)', html, re.I)
-                    n_hits   = int(hits_m.group(1)) if hits_m else 0
-                    avail_m  = re.search(r'(\d+)\s+(?:of\s+\d+\s+)?(?:cop(?:y|ies)\s+)?available', html, re.I)
-                    avail_copies = avail_m.group(0) if avail_m else None
-                    branches = re.findall(r'(?:Branch|Location|Library)[^>]*>\s*([A-Z][^<]{3,40})', html)
-                    branches = list(dict.fromkeys(b.strip() for b in branches if len(b.strip()) > 3))[:3]
-                    if n_hits > 0 or avail_copies:
-                        avail_msg = f"📚 *{_nl_title}*\n"
-                        avail_msg += f"✅ {avail_copies}\n" if avail_copies else f"Found in Surrey Libraries ({n_hits} result{'s' if n_hits!=1 else ''})\n"
-                        if branches: avail_msg += "📍 " + " · ".join(branches) + "\n"
-                        avail_msg += f"\n🔗 Reserve: {search_link}"
-                    elif r.status_code == 200:
-                        avail_msg = f"📚 *{_nl_title}* — not found in Surrey Libraries.\n\n🔗 Search: {search_link}"
-                except Exception:
-                    avail_msg = None
-                resp.message(avail_msg or f"📚 Surrey Libraries:\n🔗 {search_link}")
+                lib_url = "https://libraries.surreycc.gov.uk/bookshelf"
+                resp.message(f"📚 Search Surrey Libraries for *{_nl_title}*:\n\n🔗 {lib_url}\n\nSearch by title or author once you're there.")
                 return str(resp)
 
     # ── FIND SAVE command: search wa_saves ───────────────────────────────────
@@ -13791,45 +13768,8 @@ def api_book_library():
     if not query:
         return jsonify({"error": "title or isbn required"}), 400
 
-    cat_url     = "https://surrey.spydus.co.uk/cgi-bin/spydus.exe/SRCH/WPAC/BIBENQ"
-    search_link = f"{cat_url}?ENTRY={requests.utils.quote(title or isbn)}&ENTRY_NAME=BS&ENTRY_TYPE=K&NRECS=10"
-
-    try:
-        r = requests.get(
-            cat_url,
-            params={"ENTRY": query, "ENTRY_NAME": "BS" if not isbn else "ISBN", "ENTRY_TYPE": "K", "NRECS": "10"},
-            headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
-            timeout=10, allow_redirects=True,
-        )
-        html = r.text
-
-        # Number of results
-        hits_m = re.search(r'(\d+)\s+(?:result|record|item|hit)', html, re.I)
-        n_hits = int(hits_m.group(1)) if hits_m else 0
-
-        # Available copies
-        avail_m = re.search(r'(\d[\d,]*)\s+(?:of\s+\d+\s+)?(?:cop(?:y|ies)\s+)?available', html, re.I)
-        copies_text = avail_m.group(0).strip() if avail_m else None
-
-        # Branch / location names
-        branches = re.findall(r'(?:Branch|Location|Library)[^>]*>\s*([A-Z][^<]{3,50}?)(?:\s*<)', html)
-        branches = list(dict.fromkeys(b.strip() for b in branches if 3 < len(b.strip()) < 50))[:4]
-
-        if n_hits > 0 or copies_text:
-            return jsonify({
-                "available":       True,
-                "found":           True,
-                "copies_available": copies_text or f"{n_hits} copy{'s' if n_hits != 1 else ''} found",
-                "branches":        branches,
-                "reserve_url":     search_link,
-            })
-        elif r.status_code == 200:
-            return jsonify({"available": False, "found": False, "reserve_url": search_link})
-        else:
-            return jsonify({"available": None, "reserve_url": search_link})
-    except Exception as e:
-        print(f"[api/book/library] error: {e}")
-        return jsonify({"available": None, "reserve_url": search_link})
+    catalogue_url = "https://libraries.surreycc.gov.uk/bookshelf"
+    return jsonify({"available": None, "found": None, "catalogue_url": catalogue_url, "title": title or isbn})
 
 
 @app.route("/api/book/summary")
