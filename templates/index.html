@@ -599,27 +599,7 @@
         </div>
       </div>
 
-      <!-- Slow living card -->
-      <div id="bored-card" style="margin-bottom:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:20px">🌿</span>
-            <div>
-              <div style="font-size:13px;font-weight:800;color:var(--text);letter-spacing:-0.2px">Not sure what to do?</div>
-              <div id="bored-sub" style="font-size:11px;color:var(--muted);margin-top:1px">One idea, right now</div>
-            </div>
-          </div>
-          <button onclick="_boredSuggest()" style="font-size:12px;font-weight:700;color:#fff;background:#4f46e5;border:none;border-radius:12px;padding:7px 14px;cursor:pointer;white-space:nowrap">Suggest</button>
-        </div>
-        <div id="bored-result" style="display:none;border-top:1px solid var(--border);padding:14px 16px">
-          <div id="bored-suggestion" style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px"></div>
-          <div id="bored-detail" style="font-size:12px;color:var(--muted)"></div>
-          <div style="display:flex;gap:8px;margin-top:12px">
-            <a id="bored-action-btn" href="#" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:#fff;background:#4f46e5;border-radius:10px;padding:7px 14px;text-decoration:none;display:inline-block">Go →</a>
-            <button onclick="_boredSuggest()" style="font-size:12px;font-weight:600;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 14px;cursor:pointer">Something else</button>
-          </div>
-        </div>
-      </div>
+
 
       <!-- Tools — 3-column icon grid -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
@@ -11441,80 +11421,6 @@ _bkBadge();
     } catch(_) { btn.textContent = "✗ Error"; btn.style.color = "#dc2626"; btn.disabled = false; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 2000); }
   };
 
-  /* ── Slow living / boredom card ───────────────────────────────────────────── */
-  var _boredPlaces = [], _boredIdx = 0, _boredLat = null, _boredLon = null;
-  function _bDistKm(a, b, c, d) { var R=6371,dL=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)**2; return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)); }
-  function _bDistLabel(km) { return km < 1 ? Math.round(km*1000)+"m" : km.toFixed(1)+"km"; }
-  function _boredRender(cat) {
-    var catLabels = { coffee:"a coffee", park:"a walk", beer:"a drink" };
-    var catEmoji  = { coffee:"☕", park:"🌳", beer:"🍺" };
-    if (!_boredPlaces.length) { document.getElementById("bored-sub").textContent = "Nothing found — try again"; return; }
-    var p = _boredPlaces[_boredIdx];
-    var dist = (p._dist && p._dist < 999) ? _bDistLabel(p._dist) + " away" : "";
-    var stars = p.rating ? " · " + p.rating.toFixed(1) + "★" : "";
-    document.getElementById("bored-suggestion").textContent = catEmoji[cat] + " " + p.name;
-    document.getElementById("bored-detail").textContent = [p.address, dist + stars].filter(Boolean).join(" · ");
-    var mapsUrl = p.lat && p.lon ? "https://maps.google.com/?q="+p.lat+","+p.lon : "https://maps.google.com/?q="+encodeURIComponent(p.name);
-    document.getElementById("bored-action-btn").href = mapsUrl;
-    document.getElementById("bored-action-btn").textContent = "Get directions →";
-    document.getElementById("bored-result").style.display = "";
-    document.getElementById("bored-sub").textContent = "Go for " + catLabels[cat];
-  }
-  window._boredSuggest = async function() {
-    var h = new Date().getHours();
-    var cat = h < 11 ? "coffee" : h < 17 ? "park" : h < 22 ? "beer" : "book";
-    var subEl = document.getElementById("bored-sub");
-
-    if (cat === "book") {
-      document.getElementById("bored-suggestion").textContent = "📚 Read something tonight";
-      document.getElementById("bored-detail").textContent = "Browse what Surrey Libraries has on OverDrive — free with your library card.";
-      document.getElementById("bored-action-btn").href = "https://surreycountyuk.overdrive.com";
-      document.getElementById("bored-action-btn").textContent = "Browse →";
-      document.getElementById("bored-result").style.display = "";
-      subEl.textContent = "One idea, right now";
-      return;
-    }
-
-    // Already have places for this category — just cycle
-    if (_boredPlaces.length && _boredPlaces[0]._cat === cat) {
-      _boredIdx = (_boredIdx + 1) % _boredPlaces.length;
-      _boredRender(cat);
-      return;
-    }
-
-    // Need to fetch — get location first
-    subEl.textContent = "Finding something…";
-    _boredPlaces = []; _boredIdx = 0;
-    var lat = _boredLat, lon = _boredLon;
-    if (!lat) {
-      if (navigator.geolocation) {
-        try {
-          var pos = await new Promise(function(res,rej){ navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000,maximumAge:300000}); });
-          lat = pos.coords.latitude; lon = pos.coords.longitude;
-        } catch(e) {}
-      }
-      if (!lat) {
-        var pc = localStorage.getItem("miru_postcode") || localStorage.getItem("miru_home_pc");
-        if (pc) {
-          try {
-            var g = await fetch("https://api.postcodes.io/postcodes/"+pc.replace(/\s/g,""), {signal:AbortSignal.timeout(5000)});
-            var gd = await g.json();
-            if (gd.result) { lat = gd.result.latitude; lon = gd.result.longitude; }
-          } catch(e) {}
-        }
-      }
-    }
-    if (!lat) { subEl.textContent = "Allow location access and try again"; return; }
-    _boredLat = lat; _boredLon = lon;
-    try {
-      var r = await fetch("/api/places/nearby?lat="+lat+"&lon="+lon+"&cat="+cat);
-      var d = await r.json();
-      _boredPlaces = (d.places||[]).slice(0,5).map(function(p){
-        return Object.assign({},p,{_cat:cat, _dist:(p.lat&&p.lon)?_bDistKm(lat,lon,p.lat,p.lon):999});
-      });
-    } catch(e) {}
-    _boredRender(cat);
-  };
 
   /* ── School comms ─────────────────────────────────────────────────────────── */
   const _SCHOOL_SECTIONS = [
