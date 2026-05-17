@@ -11389,13 +11389,11 @@ _bkBadge();
     } catch(e) {}
   }
 
-  function _schoolHomeOpen() {
+  window._schoolHomeOpen = function() {
     const phone = _miruPhone();
-    const profiles = [];
-    // If we have a phone, set it as school WA and skip PIN
     if (phone) sessionStorage.setItem("school_wa", phone);
     showScreen("school");
-  }
+  };
 
   document.addEventListener("DOMContentLoaded", function() {
     if (_miruPhone()) _schoolHomeLoad();
