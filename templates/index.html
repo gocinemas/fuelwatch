@@ -11442,69 +11442,78 @@ _bkBadge();
   };
 
   /* ── Slow living / boredom card ───────────────────────────────────────────── */
-  var _boredPlaces = [], _boredIdx = 0;
+  var _boredPlaces = [], _boredIdx = 0, _boredLat = null, _boredLon = null;
+  function _bDistKm(a, b, c, d) { var R=6371,dL=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dl/2)**2; return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)); }
+  function _bDistLabel(km) { return km < 1 ? Math.round(km*1000)+"m" : km.toFixed(1)+"km"; }
+  function _boredRender(cat) {
+    var catLabels = { coffee:"a coffee", park:"a walk", beer:"a drink" };
+    var catEmoji  = { coffee:"☕", park:"🌳", beer:"🍺" };
+    if (!_boredPlaces.length) { document.getElementById("bored-sub").textContent = "Nothing found — try again"; return; }
+    var p = _boredPlaces[_boredIdx];
+    var dist = (p._dist && p._dist < 999) ? _bDistLabel(p._dist) + " away" : "";
+    var stars = p.rating ? " · " + p.rating.toFixed(1) + "★" : "";
+    document.getElementById("bored-suggestion").textContent = catEmoji[cat] + " " + p.name;
+    document.getElementById("bored-detail").textContent = [p.address, dist + stars].filter(Boolean).join(" · ");
+    var mapsUrl = p.lat && p.lon ? "https://maps.google.com/?q="+p.lat+","+p.lon : "https://maps.google.com/?q="+encodeURIComponent(p.name);
+    document.getElementById("bored-action-btn").href = mapsUrl;
+    document.getElementById("bored-action-btn").textContent = "Get directions →";
+    document.getElementById("bored-result").style.display = "";
+    document.getElementById("bored-sub").textContent = "Go for " + catLabels[cat];
+  }
   window._boredSuggest = async function() {
-    const h = new Date().getHours();
-    const cat = h < 11 ? "coffee" : h < 17 ? "park" : h < 22 ? "beer" : "book";
-    const resultEl = document.getElementById("bored-result");
-    const subEl = document.getElementById("bored-sub");
-    subEl.textContent = "Finding something…";
+    var h = new Date().getHours();
+    var cat = h < 11 ? "coffee" : h < 17 ? "park" : h < 22 ? "beer" : "book";
+    var subEl = document.getElementById("bored-sub");
 
     if (cat === "book") {
       document.getElementById("bored-suggestion").textContent = "📚 Read something tonight";
       document.getElementById("bored-detail").textContent = "Browse what Surrey Libraries has on OverDrive — free with your library card.";
       document.getElementById("bored-action-btn").href = "https://surreycountyuk.overdrive.com";
       document.getElementById("bored-action-btn").textContent = "Browse →";
-      resultEl.style.display = "";
+      document.getElementById("bored-result").style.display = "";
       subEl.textContent = "One idea, right now";
       return;
     }
 
-    const catLabels = { coffee:"a coffee", park:"a walk", beer:"a drink" };
-    const catEmoji  = { coffee:"☕", park:"🌳", beer:"🍺" };
-
+    // Already have places for this category — just cycle
     if (_boredPlaces.length && _boredPlaces[0]._cat === cat) {
-      _boredIdx = (_boredIdx + 1) % Math.min(_boredPlaces.length, 5);
-    } else {
-      _boredPlaces = []; _boredIdx = 0;
-      let lat = _ehLat, lon = _ehLon;
-      if (!lat) {
-        if (navigator.geolocation) {
-          try {
-            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout:8000, maximumAge:300000}));
-            lat = pos.coords.latitude; lon = pos.coords.longitude;
-          } catch(_) {}
-        }
-        if (!lat) {
-          const pc = localStorage.getItem("miru_home_pc");
-          if (pc) {
-            try {
-              const g = await fetch("https://api.postcodes.io/postcodes/" + pc.replace(/\s/g,""), {signal:AbortSignal.timeout(5000)});
-              const gd = await g.json();
-              if (gd.result) { lat = gd.result.latitude; lon = gd.result.longitude; }
-            } catch(_) {}
-          }
-        }
-      }
-      if (!lat) { subEl.textContent = "Couldn't get location"; return; }
-      try {
-        const r = await fetch("/api/places/nearby?lat=" + lat + "&lon=" + lon + "&cat=" + cat);
-        const d = await r.json();
-        _boredPlaces = (d.places || []).slice(0, 5).map(p => Object.assign({}, p, { _cat: cat, _dist: (p.lat && p.lon) ? _distKm(lat, lon, p.lat, p.lon) : 999 }));
-      } catch(_) {}
+      _boredIdx = (_boredIdx + 1) % _boredPlaces.length;
+      _boredRender(cat);
+      return;
     }
 
-    if (!_boredPlaces.length) { subEl.textContent = "Nothing found nearby — try again"; return; }
-    const p = _boredPlaces[_boredIdx];
-    const dist = p._dist < 999 ? _distLabel(p._dist) + " away" : "";
-    const stars = p.rating ? " · " + p.rating.toFixed(1) + "★" : "";
-    document.getElementById("bored-suggestion").textContent = catEmoji[cat] + " " + p.name;
-    document.getElementById("bored-detail").textContent = [p.address, dist + stars].filter(Boolean).join(" · ");
-    const mapsUrl = p.lat && p.lon ? "https://maps.google.com/?q=" + p.lat + "," + p.lon : "https://maps.google.com/?q=" + encodeURIComponent(p.name);
-    document.getElementById("bored-action-btn").href = mapsUrl;
-    document.getElementById("bored-action-btn").textContent = "Get directions →";
-    resultEl.style.display = "";
-    subEl.textContent = "Go for " + catLabels[cat];
+    // Need to fetch — get location first
+    subEl.textContent = "Finding something…";
+    _boredPlaces = []; _boredIdx = 0;
+    var lat = _boredLat, lon = _boredLon;
+    if (!lat) {
+      if (navigator.geolocation) {
+        try {
+          var pos = await new Promise(function(res,rej){ navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000,maximumAge:300000}); });
+          lat = pos.coords.latitude; lon = pos.coords.longitude;
+        } catch(e) {}
+      }
+      if (!lat) {
+        var pc = localStorage.getItem("miru_postcode") || localStorage.getItem("miru_home_pc");
+        if (pc) {
+          try {
+            var g = await fetch("https://api.postcodes.io/postcodes/"+pc.replace(/\s/g,""), {signal:AbortSignal.timeout(5000)});
+            var gd = await g.json();
+            if (gd.result) { lat = gd.result.latitude; lon = gd.result.longitude; }
+          } catch(e) {}
+        }
+      }
+    }
+    if (!lat) { subEl.textContent = "Allow location access and try again"; return; }
+    _boredLat = lat; _boredLon = lon;
+    try {
+      var r = await fetch("/api/places/nearby?lat="+lat+"&lon="+lon+"&cat="+cat);
+      var d = await r.json();
+      _boredPlaces = (d.places||[]).slice(0,5).map(function(p){
+        return Object.assign({},p,{_cat:cat, _dist:(p.lat&&p.lon)?_bDistKm(lat,lon,p.lat,p.lon):999});
+      });
+    } catch(e) {}
+    _boredRender(cat);
   };
 
   /* ── School comms ─────────────────────────────────────────────────────────── */
