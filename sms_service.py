@@ -6377,6 +6377,93 @@ def api_debug_places_search():
     })
 
 
+@app.route("/api/places/nearby")
+def api_places_nearby():
+    """Google Places Nearby Search — used by 'What can I do here?' feature."""
+    try:
+        lat = float(request.args.get("lat", ""))
+        lon = float(request.args.get("lon", ""))
+    except (ValueError, TypeError):
+        return jsonify({"error": "lat and lon required"}), 400
+
+    if not _GOOGLE_PLACES_KEY:
+        return jsonify({"error": "Places not configured"}), 503
+
+    _CATEGORY_MAP = {
+        "restaurant":      {"label": "Restaurant",  "emoji": "🍽️"},
+        "cafe":            {"label": "Café",         "emoji": "☕"},
+        "bar":             {"label": "Bar",          "emoji": "🍹"},
+        "bakery":          {"label": "Bakery",       "emoji": "🥐"},
+        "meal_takeaway":   {"label": "Takeaway",     "emoji": "🥡"},
+        "park":            {"label": "Park",         "emoji": "🌳"},
+        "playground":      {"label": "Playground",  "emoji": "🛝"},
+        "museum":          {"label": "Museum",       "emoji": "🏛️"},
+        "art_gallery":     {"label": "Gallery",      "emoji": "🎨"},
+        "tourist_attraction": {"label": "Attraction","emoji": "🎡"},
+        "amusement_park":  {"label": "Attraction",  "emoji": "🎢"},
+        "movie_theater":   {"label": "Cinema",       "emoji": "🎬"},
+        "library":         {"label": "Library",      "emoji": "📚"},
+        "gym":             {"label": "Gym",          "emoji": "💪"},
+        "shopping_mall":   {"label": "Shopping",     "emoji": "🛍️"},
+        "supermarket":     {"label": "Supermarket",  "emoji": "🛒"},
+    }
+    _EXPLORE_TYPES = "restaurant|cafe|bar|park|tourist_attraction|museum|art_gallery|movie_theater|gym|library|shopping_mall|amusement_park|bakery|playground"
+
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params={
+                "location": f"{lat},{lon}",
+                "radius": 3000,
+                "type": "point_of_interest",
+                "keyword": "restaurant cafe pub bar park garden",
+                "key": _GOOGLE_PLACES_KEY,
+                "rankby": "prominence",
+                "language": "en-GB",
+            },
+            timeout=8,
+        )
+        data = r.json()
+    except Exception as e:
+        print(f"[api/places/nearby] error: {e}")
+        return jsonify({"error": "Places unavailable"}), 503
+
+    results = []
+    seen = set()
+    for p in (data.get("results") or []):
+        name = p.get("name", "").strip()
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+
+        # Pick best category
+        types = p.get("types", [])
+        cat = None
+        for t in types:
+            if t in _CATEGORY_MAP:
+                cat = _CATEGORY_MAP[t]
+                break
+        if not cat:
+            cat = {"label": types[0].replace("_", " ").title() if types else "Place", "emoji": "📍"}
+
+        geo = p.get("geometry", {}).get("location", {})
+        results.append({
+            "name":     name,
+            "category": cat["label"],
+            "emoji":    cat["emoji"],
+            "address":  p.get("vicinity", ""),
+            "rating":   p.get("rating"),
+            "lat":      geo.get("lat"),
+            "lon":      geo.get("lng"),
+            "place_id": p.get("place_id", ""),
+        })
+
+    if not results:
+        return jsonify({"error": "No places found nearby"}), 404
+
+    return jsonify({"places": results})
+
+
 @app.route("/api/places")
 def api_places():
     # Accepts either lat/lon directly (from candidate selection) or q= for legacy

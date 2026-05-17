@@ -12341,11 +12341,11 @@ _bkBadge();
 
   // ── What can I do here? ───────────────────────────────────────────────────
   const _EH_CATS = {
-    all:    ["Café","Restaurant","Fast Food","Pub","Bar","Park","Playground","Attraction"],
-    food:   ["Restaurant","Fast Food","Pub","Bar"],
-    coffee: ["Café"],
-    park:   ["Park","Playground","Attraction","Sports Centre","Leisure Centre"],
-    kids:   ["Park","Playground","Attraction","Library","Swimming Pool","Sports Centre","Leisure Centre","Arts Centre"],
+    all:    null, // null = show all, no filter
+    food:   ["Restaurant","Pub","Bar","Takeaway","Bakery","Café"],
+    coffee: ["Café","Bakery"],
+    park:   ["Park","Playground","Attraction","Museum","Gallery","Cinema"],
+    kids:   ["Park","Playground","Attraction","Library","Museum","Gym"],
   };
   let _ehPlaces = [], _ehActiveCat = "all";
 
@@ -12409,11 +12409,11 @@ _bkBadge();
     } catch(_) {}
     document.getElementById("explore-here-loc").textContent = areaName ? `📍 Near ${areaName}` : "📍 Near you";
 
-    // Fetch places
+    // Fetch places via Google Places Nearby (more reliable than Overpass from Railway)
     try {
-      const r = await fetch(`/api/places?lat=${lat}&lon=${lon}`);
+      const r = await fetch(`/api/places/nearby?lat=${lat}&lon=${lon}`);
       const d = await r.json();
-      _ehPlaces = (d.places || []).filter(function(p) { return !p.is_featured; }).map(function(p) {
+      _ehPlaces = (d.places || []).map(function(p) {
         return Object.assign({}, p, { _dist: (p.lat && p.lon) ? _distKm(lat, lon, p.lat, p.lon) : 999 });
       });
       _ehPlaces.sort(function(a,b) { return a._dist - b._dist; });
@@ -12440,11 +12440,11 @@ _bkBadge();
   function _ehRender() {
     const el = document.getElementById("explore-here-results");
     let filtered;
-    if (_ehActiveCat === "all") {
-      // Best picks: nearest 3 from any category — no filter
+    const allowed = _EH_CATS[_ehActiveCat];
+    if (!allowed) {
+      // Best picks: show all, sorted by distance
       filtered = _ehPlaces;
     } else {
-      const allowed = _EH_CATS[_ehActiveCat];
       filtered = _ehPlaces.filter(p => allowed.includes(p.category));
     }
     const top3 = filtered.slice(0, 3);
