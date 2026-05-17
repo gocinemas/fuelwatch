@@ -6377,6 +6377,18 @@ def api_debug_places_search():
     })
 
 
+@app.route("/api/geocode")
+def api_geocode():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"error": "q required"}), 400
+    result = _geocode_place(q)
+    if not result:
+        return jsonify({"error": "not found"}), 404
+    lat, lon, name = result[0], result[1], result[2]
+    return jsonify({"lat": lat, "lon": lon, "name": name})
+
+
 @app.route("/api/places/nearby")
 def api_places_nearby():
     """Google Places Nearby Search — used by 'What can I do here?' feature.

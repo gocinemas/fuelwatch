@@ -520,7 +520,12 @@
         <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px 18px 0">
           <div>
             <div style="font-size:20px;font-weight:900;color:var(--text);letter-spacing:-0.5px;line-height:1.1">Nearby</div>
-            <div id="explore-here-loc" style="font-size:12px;color:var(--muted);margin-top:3px">Getting your location…</div>
+            <div id="explore-here-loc" onclick="_ehLocEdit()" style="font-size:12px;color:var(--muted);margin-top:3px;cursor:pointer">Getting your location…</div>
+            <div id="explore-here-loc-edit" style="display:none;margin-top:5px;align-items:center;gap:6px">
+              <input id="explore-here-loc-input" placeholder="Town, place or postcode…" onkeydown="if(event.key==='Enter')_ehLocSubmit()" style="font-size:13px;padding:5px 10px;border-radius:10px;border:1.5px solid #4f46e5;background:var(--bg);color:var(--text);width:170px;outline:none">
+              <button onclick="_ehLocSubmit()" style="font-size:12px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;padding:0">Go</button>
+              <button onclick="_ehLocCancel()" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">✕</button>
+            </div>
           </div>
           <button onclick="_exploreHereClose()" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;line-height:1">×</button>
         </div>
@@ -12470,6 +12475,54 @@ _bkBadge();
   window._exploreHereClose = function() {
     document.getElementById("explore-here-overlay").style.display = "none";
     document.getElementById("explore-here-sheet").style.display = "none";
+  };
+
+  window._ehLocEdit = function() {
+    document.getElementById("explore-here-loc").style.display = "none";
+    const edit = document.getElementById("explore-here-loc-edit");
+    edit.style.display = "flex";
+    document.getElementById("explore-here-loc-input").focus();
+  };
+  window._ehLocCancel = function() {
+    document.getElementById("explore-here-loc").style.display = "";
+    document.getElementById("explore-here-loc-edit").style.display = "none";
+  };
+  window._ehLocSubmit = async function() {
+    const q = document.getElementById("explore-here-loc-input").value.trim();
+    if (!q) return;
+    const locEl = document.getElementById("explore-here-loc");
+    document.getElementById("explore-here-loc-edit").style.display = "none";
+    locEl.style.display = "";
+    locEl.textContent = "Searching…";
+    try {
+      const r = await fetch("/api/geocode?q=" + encodeURIComponent(q));
+      if (!r.ok) { locEl.textContent = "📍 Place not found — try again"; locEl.style.cursor = "pointer"; return; }
+      const d = await r.json();
+      _ehLat = d.lat; _ehLon = d.lon;
+      Object.keys(_ehCache).forEach(k => delete _ehCache[k]);
+      locEl.textContent = "📍 Near " + d.name;
+      // Reset category to best picks
+      _ehActiveCat = "all";
+      document.querySelectorAll(".eh-cat-btn").forEach(b => {
+        b.style.borderColor = "var(--border)"; b.style.background = "var(--surface)";
+        b.querySelector("div:last-child").style.color = "var(--muted)";
+      });
+      const allBtn = document.querySelector('.eh-cat-btn[data-cat="all"]');
+      if (allBtn) { allBtn.style.borderColor = "#4f46e5"; allBtn.style.background = "#eef2ff"; allBtn.querySelector("div:last-child").style.color = "#4338ca"; }
+      document.getElementById("explore-here-loading").style.display = "";
+      document.getElementById("explore-here-results").innerHTML = "";
+      const r2 = await fetch("/api/places/nearby?lat=" + _ehLat + "&lon=" + _ehLon + "&cat=all");
+      const d2 = await r2.json();
+      _ehPlaces = (d2.places || []).map(function(p) {
+        return Object.assign({}, p, { _dist: (p.lat && p.lon) ? _distKm(_ehLat, _ehLon, p.lat, p.lon) : 999 });
+      });
+      _ehPlaces.sort(function(a,b) { return a._dist - b._dist; });
+      _ehCache["all"] = _ehPlaces;
+      document.getElementById("explore-here-loading").style.display = "none";
+      _ehRender();
+    } catch(e) {
+      locEl.textContent = "📍 Error — please try again";
+    }
   };
 
   window._ehSetCat = async function(cat, btn) {
