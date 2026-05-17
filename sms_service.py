@@ -13782,6 +13782,56 @@ def api_book_isbn(isbn):
         return jsonify({"error": str(e), "found": False})
 
 
+@app.route("/api/book/library")
+def api_book_library():
+    """Check Surrey Libraries catalogue for a book by title/ISBN."""
+    title = request.args.get("title", "").strip()
+    isbn  = request.args.get("isbn",  "").strip()
+    query = isbn or title
+    if not query:
+        return jsonify({"error": "title or isbn required"}), 400
+
+    cat_url     = "https://surrey.spydus.co.uk/cgi-bin/spydus.exe/SRCH/WPAC/BIBENQ"
+    search_link = f"{cat_url}?ENTRY={requests.utils.quote(title or isbn)}&ENTRY_NAME=BS&ENTRY_TYPE=K&NRECS=10"
+
+    try:
+        r = requests.get(
+            cat_url,
+            params={"ENTRY": query, "ENTRY_NAME": "BS" if not isbn else "ISBN", "ENTRY_TYPE": "K", "NRECS": "10"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
+            timeout=10, allow_redirects=True,
+        )
+        html = r.text
+
+        # Number of results
+        hits_m = re.search(r'(\d+)\s+(?:result|record|item|hit)', html, re.I)
+        n_hits = int(hits_m.group(1)) if hits_m else 0
+
+        # Available copies
+        avail_m = re.search(r'(\d[\d,]*)\s+(?:of\s+\d+\s+)?(?:cop(?:y|ies)\s+)?available', html, re.I)
+        copies_text = avail_m.group(0).strip() if avail_m else None
+
+        # Branch / location names
+        branches = re.findall(r'(?:Branch|Location|Library)[^>]*>\s*([A-Z][^<]{3,50}?)(?:\s*<)', html)
+        branches = list(dict.fromkeys(b.strip() for b in branches if 3 < len(b.strip()) < 50))[:4]
+
+        if n_hits > 0 or copies_text:
+            return jsonify({
+                "available":       True,
+                "found":           True,
+                "copies_available": copies_text or f"{n_hits} copy{'s' if n_hits != 1 else ''} found",
+                "branches":        branches,
+                "reserve_url":     search_link,
+            })
+        elif r.status_code == 200:
+            return jsonify({"available": False, "found": False, "reserve_url": search_link})
+        else:
+            return jsonify({"available": None, "reserve_url": search_link})
+    except Exception as e:
+        print(f"[api/book/library] error: {e}")
+        return jsonify({"available": None, "reserve_url": search_link})
+
+
 @app.route("/api/book/summary")
 def api_book_summary():
     """Generate AI summary + reader perspectives for a book."""
