@@ -13091,18 +13091,22 @@ def api_wa_saves():
         return jsonify({"error": "Password required", "auth": True}), 401
     # no ADMIN_PASSWORD set and no pin → open (dev mode)
 
-    try:
-        q = lib._sb().table("wa_saves").select(
-            "id,title,url,summary,status,remind_day,created_at,image_url,category,source"
-        )
+    sb = lib._sb()
+    def _run_select(fields):
+        q = sb.table("wa_saves").select(fields)
         if filter_number:
-            # DB stores "whatsapp:+44..." but web login resolves to "+44..." — match both
             clean = filter_number.replace("whatsapp:", "")
             q = q.in_("from_number", [clean, "whatsapp:" + clean])
-        rows = q.order("created_at", desc=True).execute().data
-        return jsonify({"saves": rows})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return q.order("created_at", desc=True).execute().data
+
+    try:
+        rows = _run_select("id,title,url,summary,status,remind_day,created_at,image_url,category,source")
+    except Exception:
+        try:
+            rows = _run_select("id,title,url,summary,status,remind_day,created_at,image_url")
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"saves": rows})
 
 
 @app.route("/api/wa-saves/update", methods=["POST"])
