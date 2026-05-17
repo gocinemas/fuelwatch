@@ -481,13 +481,16 @@
 
       <!-- What can I do here — bottom sheet overlay -->
       <div id="explore-here-overlay" onclick="_exploreHereClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500"></div>
-      <div id="explore-here-sheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:501;background:var(--bg);border-radius:24px 24px 0 0;padding:20px 16px calc(32px + env(safe-area-inset-bottom));max-height:85dvh;overflow-y:auto">
-        <div style="width:36px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 20px"></div>
-        <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">What can I do here?</div>
-        <div id="explore-here-loc" style="font-size:12px;color:var(--muted);margin-bottom:16px">Getting your location…</div>
+      <div id="explore-here-sheet" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:501;background:var(--bg);border-radius:24px 24px 0 0;padding:20px 16px calc(32px + env(safe-area-inset-bottom));max-height:88dvh;overflow-y:auto">
+        <div style="width:36px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 18px"></div>
+        <!-- Centred header -->
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:19px;font-weight:900;color:var(--text);letter-spacing:-0.4px;margin-bottom:4px">What can I do here?</div>
+          <div id="explore-here-loc" style="font-size:12px;color:var(--muted)">Getting your location…</div>
+        </div>
 
-        <!-- Category quick-pick pills -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+        <!-- Category pills — centred -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px">
           <button class="eh-cat-btn eh-cat-active" data-cat="all"    onclick="_ehSetCat('all',this)"    style="padding:8px 16px;border-radius:99px;border:1.5px solid #4f46e5;background:#eef2ff;color:#4338ca;font-size:13px;font-weight:700;cursor:pointer">✨ Best picks</button>
           <button class="eh-cat-btn"               data-cat="food"   onclick="_ehSetCat('food',this)"   style="padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">🍽️ Eat</button>
           <button class="eh-cat-btn"               data-cat="coffee" onclick="_ehSetCat('coffee',this)" style="padding:8px 16px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;cursor:pointer">☕ Coffee</button>
@@ -12447,9 +12450,9 @@ _bkBadge();
     } else {
       filtered = _ehPlaces.filter(p => allowed.includes(p.category));
     }
-    const top3 = filtered.slice(0, 3);
+    const top3 = filtered.slice(0, 7);
     if (!top3.length) {
-      const fallback = _ehPlaces.slice(0, 3);
+      const fallback = _ehPlaces.slice(0, 7);
       if (fallback.length) {
         el.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center">No exact matches — showing nearest places</div>` +
           fallback.map(_ehPlaceCard).join("");
@@ -12463,13 +12466,21 @@ _bkBadge();
 
   function _ehPlaceCard(p) {
     const dist    = p._dist < 999 ? `${_distLabel(p._dist)} away` : "";
-    const mapsUrl = p.lat && p.lon ? `https://maps.google.com/?q=${p.lat},${p.lon}` : `https://maps.google.com/?q=${encodeURIComponent((p.name||"")+" "+(p.address||""))}`;
-    return `<a href="${mapsUrl}" target="_blank" rel="noopener" style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;text-decoration:none;cursor:pointer">
+    const mapsUrl = p.lat && p.lon
+      ? `https://maps.google.com/?q=${p.lat},${p.lon}`
+      : `https://maps.google.com/?q=${encodeURIComponent((p.name||"")+" "+(p.address||""))}`;
+    const stars   = p.rating ? "★".repeat(Math.round(p.rating)) + "☆".repeat(5 - Math.round(p.rating)) : "";
+    const ratingHtml = p.rating
+      ? `<span style="color:#f59e0b;font-size:11px;letter-spacing:-1px">${stars}</span><span style="color:var(--muted);font-size:10px;margin-left:3px">${p.rating.toFixed(1)}${p.rating_count ? " ("+p.rating_count+")" : ""}</span>`
+      : "";
+    const meta = [p.category, dist].filter(Boolean).join(" · ");
+    return `<a href="${mapsUrl}" target="_blank" rel="noopener" style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:8px;text-decoration:none;cursor:pointer">
       <div style="font-size:26px;line-height:1;flex-shrink:0;margin-top:2px">${p.emoji || "📍"}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+        ${ratingHtml ? `<div style="margin-top:2px">${ratingHtml}</div>` : ""}
         ${p.address ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.address}</div>` : ""}
-        <div style="font-size:11px;font-weight:600;color:#4f46e5;margin-top:4px">${[p.category, dist].filter(Boolean).join(" · ")}</div>
+        <div style="font-size:11px;font-weight:600;color:#4f46e5;margin-top:4px">${meta}</div>
       </div>
       <div style="font-size:16px;color:var(--muted);flex-shrink:0;align-self:center">›</div>
     </a>`;

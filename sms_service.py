@@ -6414,12 +6414,11 @@ def api_places_nearby():
             "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
             params={
                 "location": f"{lat},{lon}",
-                "radius": 3000,
-                "type": "point_of_interest",
-                "keyword": "restaurant cafe pub bar park garden",
+                "radius": 5000,
                 "key": _GOOGLE_PLACES_KEY,
                 "rankby": "prominence",
                 "language": "en-GB",
+                "keyword": "restaurant cafe pub bar park",
             },
             timeout=8,
         )
@@ -6436,7 +6435,6 @@ def api_places_nearby():
             continue
         seen.add(name.lower())
 
-        # Pick best category
         types = p.get("types", [])
         cat = None
         for t in types:
@@ -6447,20 +6445,25 @@ def api_places_nearby():
             cat = {"label": types[0].replace("_", " ").title() if types else "Place", "emoji": "📍"}
 
         geo = p.get("geometry", {}).get("location", {})
+        rating       = p.get("rating")
+        rating_count = p.get("user_ratings_total", 0)
         results.append({
-            "name":     name,
-            "category": cat["label"],
-            "emoji":    cat["emoji"],
-            "address":  p.get("vicinity", ""),
-            "rating":   p.get("rating"),
-            "lat":      geo.get("lat"),
-            "lon":      geo.get("lng"),
-            "place_id": p.get("place_id", ""),
+            "name":         name,
+            "category":     cat["label"],
+            "emoji":        cat["emoji"],
+            "address":      p.get("vicinity", ""),
+            "rating":       rating,
+            "rating_count": rating_count,
+            "lat":          geo.get("lat"),
+            "lon":          geo.get("lng"),
+            "place_id":     p.get("place_id", ""),
         })
 
     if not results:
         return jsonify({"error": "No places found nearby"}), 404
 
+    # Sort by rating desc (nulls last), then rating_count desc for tiebreak
+    results.sort(key=lambda x: (-(x["rating"] or 0), -(x["rating_count"] or 0)))
     return jsonify({"places": results})
 
 
