@@ -432,9 +432,8 @@
 
       <!-- Greeting -->
       <div style="padding:28px 0 20px">
-        <div id="home-greeting" style="font-size:36px;font-weight:900;letter-spacing:-1.4px;color:var(--text);line-height:1.05;margin-bottom:4px">Good morning.</div>
-        <div style="font-size:12px;color:var(--subtle);font-weight:500;margin-bottom:4px">🇬🇧 Built for life in the UK</div>
-        <div id="home-miru-tip" style="font-size:14px;color:var(--muted);line-height:1.6"></div>
+        <div id="home-greeting" style="font-size:36px;font-weight:900;letter-spacing:-1.4px;color:var(--text);line-height:1.05;margin-bottom:10px">Good morning.</div>
+        <div style="display:inline-block;background:#eef2ff;color:#4338ca;font-size:13px;font-weight:700;border-radius:99px;padding:5px 14px;letter-spacing:-0.1px">🇬🇧 Built for life in the UK</div>
       </div>
 
       <!-- Search bar -->
@@ -9208,33 +9207,6 @@ const _ts = new Date(d.timestamp);
       h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
 
     // Miru tips — rotate every 8 seconds, fade between them
-    const _tips = [
-      "💡 Try: search 'cheap fuel near KT1' to find the lowest prices nearby.",
-      "🚆 Ask about train times — type your station and Miru finds the next departure.",
-      "☕ Looking for a café, plumber or GP? Local search works for almost anything.",
-      "📌 Save any article or link from WhatsApp — it'll appear in your Saves here.",
-      "🏠 Enter your postcode to see crime stats, house prices and school ratings for your area.",
-      "🏢 Try: type 'Tesco strategy' — Miru opens Company Intel and shows their strategic direction.",
-      "🏷️ Try: type 'Nike turnover' — Miru pulls up Brand Intel with revenue, history and competitors.",
-      "🤖 Company Intel covers AI & tech focus, strategy, latest financial results and news.",
-      "⚔️ Brand Intel shows turnover, founding story, evolution timeline, iconic ads and rivals.",
-      "📚 Scan a book barcode to get a summary and start a conversation about it.",
-      "📄 Upload a PDF and ask it questions — useful for contracts, reports, manuals.",
-      "🎵 Heard a song you can't name? Use Music ID to identify it instantly.",
-      "💬 Everything on Miru also works on WhatsApp — just send a message.",
-    ];
-    let _tIdx = Math.floor(Math.random() * _tips.length);
-    const _tEl = document.getElementById("home-miru-tip");
-    _tEl.style.transition = "opacity 0.4s";
-    _tEl.textContent = _tips[_tIdx];
-    setInterval(() => {
-      _tEl.style.opacity = "0";
-      setTimeout(() => {
-        _tIdx = (_tIdx + 1) % _tips.length;
-        _tEl.textContent = _tips[_tIdx];
-        _tEl.style.opacity = "1";
-      }, 400);
-    }, 8000);
 
     // Weather via Open-Meteo (free, no key)
     function _wCode(code) {
@@ -9617,22 +9589,6 @@ const _ts = new Date(d.timestamp);
     // ── Rotating placeholder (cycles when idle) ───────────────────
     (function(){
       var pc = (localStorage.getItem("miru_postcode") || "").replace(/\s+/g,"").toUpperCase();
-      var pcFmt = pc.length > 4 ? pc.slice(0,-3)+" "+pc.slice(-3) : "KT16";
-      var examples = [
-        "Try: best steak near me…",
-        "Try: "+pcFmt+" trains…",
-        "Try: Tesco strategy…",
-        "Try: best coffee near me…",
-        "Try: cheap fuel "+pcFmt+"…",
-        "Try: Nike brand…",
-      ];
-      var idx = 0;
-      setInterval(function(){
-        var el = document.getElementById("home-search-input");
-        if (!el || document.activeElement === el || el.value) return;
-        idx = (idx + 1) % examples.length;
-        el.placeholder = examples[idx];
-      }, 2500);
     })();
     window.homeSearchKey = function(e) {
       if (e.key === "Escape") { homeSearchClear(); return; }
