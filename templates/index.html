@@ -558,17 +558,17 @@
             <div style="flex-shrink:0;background:#f59e0b;color:#fff;font-size:12px;font-weight:700;border-radius:99px;padding:5px 12px">Set up</div>
           </div>
         </div>
-        <!-- Events state: show next 1-2 upcoming -->
-        <div id="shc-events" style="display:none">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:18px">🏫</span>
-              <span style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px">School</span>
-              <span id="shc-child-name" style="font-size:12px;color:var(--muted);font-weight:500"></span>
+        <!-- Events state: slim single-row strip -->
+        <div id="shc-events" style="display:none;padding:12px 16px;cursor:pointer" onclick="_schoolHomeOpen()">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px;flex-shrink:0">🏫</span>
+            <div style="flex:1;min-width:0">
+              <div id="shc-event-strip" style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+              <div id="shc-event-sub" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
             </div>
-            <button onclick="_schoolHomeOpen()" style="font-size:12px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;padding:0">View all →</button>
+            <div id="shc-more-badge" style="display:none;flex-shrink:0;background:#eef2ff;color:#4338ca;font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap"></div>
+            <span style="flex-shrink:0;color:var(--muted);font-size:16px">›</span>
           </div>
-          <div id="shc-event-list" style="padding:10px 18px 14px"></div>
         </div>
         <!-- No events state -->
         <div id="shc-clear" style="display:none;padding:14px 18px;display:none;cursor:pointer" onclick="_schoolHomeOpen()">
@@ -11360,31 +11360,29 @@ _bkBadge();
       }
 
       const childName = profiles.length === 1 && profiles[0].child_name ? profiles[0].child_name : "";
-      document.getElementById("shc-child-name").textContent = childName ? "· " + childName : "";
 
       if (!events.length) {
         document.getElementById("shc-clear").style.display = "";
         return;
       }
 
-      // Show next 5 upcoming events
-      const upcoming = events.slice(0, 5);
       const fmt = d => {
         const dt = new Date(d + "T00:00:00");
         return dt.toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short" });
       };
       const typeEmoji = { reminder:"⏰", activity:"🎨", event:"📅", trip:"🚌", club:"⚽", dinner:"🍽️", newsletter:"📰", deadline:"🔴", payment:"💳" };
-      document.getElementById("shc-event-list").innerHTML = upcoming.map(ev => {
-        const emoji = typeEmoji[ev.event_type] || "📌";
-        const title = ev.event_title || ev.title || "School event";
-        return `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 0;cursor:pointer" onclick="_schoolHomeOpen()">
-          <span style="font-size:16px;flex-shrink:0;line-height:1.4">${emoji}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">${title}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmt(ev.event_date)}</div>
-          </div>
-        </div>`;
-      }).join(`<div style="height:1px;background:var(--border);margin:2px 0"></div>`);
+      const ev = events[0];
+      const emoji = typeEmoji[ev.event_type] || "📌";
+      const title = ev.event_title || ev.title || "School event";
+      document.getElementById("shc-event-strip").textContent = emoji + " " + title;
+      document.getElementById("shc-event-sub").textContent = [childName || "School", fmt(ev.event_date)].filter(Boolean).join(" · ");
+      const moreBadge = document.getElementById("shc-more-badge");
+      if (events.length > 1) {
+        moreBadge.textContent = "+" + (events.length - 1) + " more";
+        moreBadge.style.display = "";
+      } else {
+        moreBadge.style.display = "none";
+      }
       document.getElementById("shc-events").style.display = "";
     } catch(e) {}
   }
