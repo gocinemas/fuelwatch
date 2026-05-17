@@ -599,7 +599,20 @@
         </div>
       </div>
 
-
+      <!-- Fuel prices home card (hidden until loaded) -->
+      <div id="fuel-home-card" style="display:none;margin-bottom:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;cursor:pointer" onclick="showScreen('fuel')">
+        <div style="padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px;flex-shrink:0">⛽</span>
+            <div style="flex:1;min-width:0">
+              <div id="fhc-strip" style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+              <div id="fhc-sub" style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+            </div>
+            <div id="fhc-price" style="flex-shrink:0;font-size:16px;font-weight:900;color:var(--text);margin-right:2px"></div>
+            <span style="flex-shrink:0;color:var(--muted);font-size:16px">›</span>
+          </div>
+        </div>
+      </div>
 
       <!-- Tools — 3-column icon grid -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
@@ -11375,6 +11388,44 @@ _bkBadge();
 
   document.addEventListener("DOMContentLoaded", function() {
     if (_miruPhone()) _schoolHomeLoad();
+  });
+
+  /* ── Fuel prices home card ───────────────────────────────────────────────── */
+  async function _fuelHomeLoad() {
+    const pc = _miruPostcode();
+    if (!pc) return;
+    const card = document.getElementById("fuel-home-card");
+    if (!card) return;
+    const CACHE_KEY = "miru_fuel_home_" + pc.toUpperCase().replace(/\s/g,"");
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (cached && (Date.now() - cached.ts) < 30 * 60 * 1000) { _fuelHomeRender(cached.data); return; }
+    } catch {}
+    try {
+      const r = await fetch(`/api/search?postcode=${encodeURIComponent(pc)}&fuel=petrol&radius=5&mode=fuel`);
+      if (!r.ok) return;
+      const data = await r.json();
+      if (!data.stations || !data.stations.length) return;
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
+      _fuelHomeRender(data);
+    } catch {}
+  }
+
+  function _fuelHomeRender(data) {
+    if (!data || !data.stations || !data.stations.length) return;
+    const card = document.getElementById("fuel-home-card");
+    if (!card) return;
+    const best = data.stations[0];
+    const second = data.stations[1];
+    const strip = best.brand + (second ? " · " + second.brand + " " + second.price.toFixed(1) + "p" : "");
+    document.getElementById("fhc-strip").textContent = "Cheapest petrol · " + strip;
+    document.getElementById("fhc-sub").textContent = (best.address || "") + (best.dist_mi ? " · " + best.dist_mi.toFixed(1) + " mi" : "");
+    document.getElementById("fhc-price").textContent = best.price.toFixed(1) + "p";
+    card.style.display = "";
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    if (_miruPostcode()) _fuelHomeLoad();
   });
 
   /* ── Save Intel to Saves ──────────────────────────────────────────────────── */
