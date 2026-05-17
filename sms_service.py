@@ -3960,12 +3960,12 @@ out center tags;"""
         return []
 
 def _fetch_hospitals(lat, lon):
-    results = _fetch_hospitals_overpass(lat, lon)
-    if not results:
-        # Google Places fallback for areas with sparse OSM hospital tagging
-        gp = places_nearby(lat, lon, "hospital", radius_m=20000, max_results=5)
-        results = [{"name": p["name"], "address": p.get("address",""), "distance_km": p.get("distance_km",0), "phone": ""} for p in gp]
-    return results
+    # Google Places first — fast and reliable from Railway
+    gp = _places_nearby(lat, lon, "hospital", radius_m=20000, max_results=5)
+    if gp:
+        return [{"name": p["name"], "address": p.get("address",""), "distance_km": p.get("distance_km",0), "phone": ""} for p in gp]
+    # Overpass fallback
+    return _fetch_hospitals_overpass(lat, lon)
 
 _UK_SUPERMARKET_CHAINS = {
     "sainsbury", "tesco", "asda", "lidl", "aldi", "waitrose", "morrisons",
@@ -4008,8 +4008,13 @@ out center tags;
         return []
 
 def _fetch_supermarkets(lat, lon):
-    # Overpass-only: Google Places returns incorrect UK supermarket results
-    return _fetch_supermarkets_overpass(lat, lon, radius_m=5000)  # ~3 miles, fast query
+    # Google Places first — reliable from Railway; filter to known UK chains
+    gp = _places_nearby(lat, lon, "supermarket", radius_m=5000, max_results=15)
+    items = [{"name": p["name"], "address": p.get("address",""), "distance_km": p.get("distance_km",0), "opening_hours": ""}
+             for p in gp if _is_major_supermarket(p["name"])]
+    if items:
+        return sorted(items, key=lambda x: x["distance_km"])[:10]
+    return _fetch_supermarkets_overpass(lat, lon, radius_m=5000)
 
 
 _UK_CONVENIENCE_CHAINS = {
@@ -4351,11 +4356,13 @@ relation["shop"="supermarket"](around:5000,{lat},{lon});
             return jsonify(dbg)
         with ThreadPoolExecutor(max_workers=3) as ex:
             sm_f   = ex.submit(_fetch_supermarkets, lat, lon)
-            offl_f = ex.submit(_fetch_off_licences_overpass, lat, lon)
-            conv_f = ex.submit(_fetch_convenience_overpass, lat, lon)
-            supermarkets  = sm_f.result(timeout=15)
-            off_licences  = offl_f.result(timeout=15)
-            convenience   = conv_f.result(timeout=15)
+            offl_f = ex.submit(_places_nearby, lat, lon, "liquor_store", 5000, 5)
+            conv_f = ex.submit(_places_nearby, lat, lon, "convenience_store", 3000, 5)
+            supermarkets = sm_f.result(timeout=12)
+            off_licences_raw = offl_f.result(timeout=12)
+            convenience_raw  = conv_f.result(timeout=12)
+        off_licences = [{"name": p["name"], "address": p.get("address",""), "distance_km": p.get("distance_km",0), "phone": "", "opening_hours": ""} for p in off_licences_raw]
+        convenience  = [{"name": p["name"], "address": p.get("address",""), "distance_km": p.get("distance_km",0), "phone": "", "opening_hours": ""} for p in convenience_raw]
         result = {"supermarkets": supermarkets, "off_licences": off_licences,
                   "convenience": convenience}
         if supermarkets or off_licences or convenience:
