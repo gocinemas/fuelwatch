@@ -420,8 +420,7 @@
         <div id="home-search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:200;overflow:hidden;max-height:340px;overflow-y:auto"></div>
       </div>
 
-      <!-- Hidden chips kept for school/elections JS refs -->
-      <span id="school-home-card" style="display:none"></span>
+      <!-- Hidden chips kept for elections JS refs -->
       <span id="elections-tool-card" style="display:none"><span id="elections-tool-desc"></span></span>
 
       <!-- Featured tools — dark hero cards -->
@@ -499,6 +498,53 @@
         <!-- Results -->
         <div id="explore-here-loading" style="display:none;text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Finding the best nearby…</div>
         <div id="explore-here-results"></div>
+      </div>
+
+      <!-- School comms home card (hidden until loaded) -->
+      <div id="school-home-card" style="display:none;margin-bottom:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;overflow:hidden">
+        <!-- CTA state: no profile set up -->
+        <div id="shc-cta" style="display:none;padding:18px 18px 16px;cursor:pointer" onclick="_schoolHomeOpen()">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="font-size:28px;flex-shrink:0">🏫</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px;line-height:1.2">School updates</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:3px">Connect Gmail to get letters &amp; events from school</div>
+            </div>
+            <div style="flex-shrink:0;background:#f59e0b;color:#fff;font-size:12px;font-weight:700;border-radius:99px;padding:5px 12px">Set up</div>
+          </div>
+        </div>
+        <!-- Events state: show next 1-2 upcoming -->
+        <div id="shc-events" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:18px">🏫</span>
+              <span style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.3px">School</span>
+              <span id="shc-child-name" style="font-size:12px;color:var(--muted);font-weight:500"></span>
+            </div>
+            <button onclick="_schoolHomeOpen()" style="font-size:12px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;padding:0">View all →</button>
+          </div>
+          <div id="shc-event-list" style="padding:10px 18px 14px"></div>
+        </div>
+        <!-- No events state -->
+        <div id="shc-clear" style="display:none;padding:14px 18px;display:none;cursor:pointer" onclick="_schoolHomeOpen()">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">🏫</span>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:700;color:var(--text)">School</div>
+              <div style="font-size:12px;color:var(--muted)">✅ All clear — nothing coming up in the next 2 weeks</div>
+            </div>
+          </div>
+        </div>
+        <!-- Reconnect Gmail state -->
+        <div id="shc-reconnect" style="display:none;padding:14px 18px;cursor:pointer" onclick="_schoolHomeOpen()">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">⚠️</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:#92400e">School emails disconnected</div>
+              <div style="font-size:12px;color:#b45309;margin-top:2px">Tap to reconnect Gmail</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Tools — 3-column icon grid -->
@@ -11242,6 +11288,76 @@ _bkBadge();
     }
   })();
 
+  /* ── School home card ────────────────────────────────────────────────────── */
+  async function _schoolHomeLoad() {
+    const phone = _miruPhone();
+    if (!phone) return;
+    const card = document.getElementById("school-home-card");
+    if (!card) return;
+    try {
+      const r = await fetch("/api/school/events?days=14&back=0", {
+        headers: { "X-School-WA": phone }
+      });
+      if (!r.ok) return;
+      const data = await r.json();
+      const profiles = data.profiles || [];
+      const events   = (data.events || []).filter(e => e.event_date);
+
+      card.style.display = "";
+
+      if (!profiles.length) {
+        // No profile — show CTA
+        document.getElementById("shc-cta").style.display = "";
+        return;
+      }
+
+      const needsReconnect = profiles.some(p => !p.gmail_connected);
+      if (needsReconnect) {
+        document.getElementById("shc-reconnect").style.display = "";
+        return;
+      }
+
+      const childName = profiles.length === 1 && profiles[0].child_name ? profiles[0].child_name : "";
+      document.getElementById("shc-child-name").textContent = childName ? "· " + childName : "";
+
+      if (!events.length) {
+        document.getElementById("shc-clear").style.display = "";
+        return;
+      }
+
+      // Show next 2 upcoming events
+      const upcoming = events.slice(0, 2);
+      const fmt = d => {
+        const dt = new Date(d + "T00:00:00");
+        return dt.toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short" });
+      };
+      const typeEmoji = { reminder:"⏰", activity:"📅", event:"📅", trip:"🚌", club:"⚽", dinner:"🍽️", newsletter:"📰" };
+      document.getElementById("shc-event-list").innerHTML = upcoming.map(ev => {
+        const emoji = typeEmoji[ev.event_type] || "📌";
+        return `<div style="display:flex;align-items:flex-start;gap:10px;padding:5px 0;cursor:pointer" onclick="_schoolHomeOpen()">
+          <span style="font-size:16px;flex-shrink:0;line-height:1.4">${emoji}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.title || "Event"}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px">${fmt(ev.event_date)}</div>
+          </div>
+        </div>`;
+      }).join(`<div style="height:1px;background:var(--border);margin:4px 0"></div>`);
+      document.getElementById("shc-events").style.display = "";
+    } catch(e) {}
+  }
+
+  function _schoolHomeOpen() {
+    const phone = _miruPhone();
+    const profiles = [];
+    // If we have a phone, set it as school WA and skip PIN
+    if (phone) sessionStorage.setItem("school_wa", phone);
+    showScreen("school");
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    if (_miruPhone()) _schoolHomeLoad();
+  });
+
   /* ── School comms ─────────────────────────────────────────────────────────── */
   const _SCHOOL_SECTIONS = [
     { types: ["reminder"],              header: "⏰ Reminders & Actions",  color: "#fef3c7", border: "#fbbf24", pastOk: false },
@@ -11268,8 +11384,13 @@ _bkBadge();
     schoolLoad();
   }
   function schoolCheckPin() {
-    if (_schoolWA()) _schoolShowMain();
-    else _schoolShowLock();
+    var wa = _schoolWA() || _miruPhone();
+    if (wa) {
+      if (!_schoolWA()) sessionStorage.setItem("school_wa", wa);
+      _schoolShowMain();
+    } else {
+      _schoolShowLock();
+    }
   }
   window.schoolSubmitPin = async function() {
     const wa = document.getElementById("school-pin-input").value.trim();
@@ -12317,27 +12438,41 @@ _bkBadge();
   };
 
   function _ehRender() {
-    const allowed = _EH_CATS[_ehActiveCat];
-    const filtered = _ehPlaces.filter(p => allowed.includes(p.category));
-    const top3 = filtered.slice(0, 3);
     const el = document.getElementById("explore-here-results");
+    let filtered;
+    if (_ehActiveCat === "all") {
+      // Best picks: nearest 3 from any category — no filter
+      filtered = _ehPlaces;
+    } else {
+      const allowed = _EH_CATS[_ehActiveCat];
+      filtered = _ehPlaces.filter(p => allowed.includes(p.category));
+    }
+    const top3 = filtered.slice(0, 3);
     if (!top3.length) {
-      el.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Nothing found nearby for this category.</div>`;
+      const fallback = _ehPlaces.slice(0, 3);
+      if (fallback.length) {
+        el.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center">No exact matches — showing nearest places</div>` +
+          fallback.map(_ehPlaceCard).join("");
+      } else {
+        el.innerHTML = `<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">No places found nearby.<br><span style="font-size:12px">Try opening in a different location.</span></div>`;
+      }
       return;
     }
-    el.innerHTML = top3.map(p => {
-      const dist  = p._dist < 999 ? `${_distLabel(p._dist)} away` : "";
-      const mapsUrl = p.lat && p.lon ? `https://maps.google.com/?q=${p.lat},${p.lon}` : `https://maps.google.com/?q=${encodeURIComponent((p.name||"")+" "+(p.address||""))}`;
-      return `<a href="${mapsUrl}" target="_blank" rel="noopener" style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;text-decoration:none;cursor:pointer">
-        <div style="font-size:26px;line-height:1;flex-shrink:0;margin-top:2px">${p.emoji || "📍"}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-          ${p.address ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.address}</div>` : ""}
-          <div style="font-size:11px;font-weight:600;color:#4f46e5;margin-top:4px">${[p.category, dist].filter(Boolean).join(" · ")}</div>
-        </div>
-        <div style="font-size:16px;color:var(--muted);flex-shrink:0;align-self:center">›</div>
-      </a>`;
-    }).join("");
+    el.innerHTML = top3.map(_ehPlaceCard).join("");
+  }
+
+  function _ehPlaceCard(p) {
+    const dist    = p._dist < 999 ? `${_distLabel(p._dist)} away` : "";
+    const mapsUrl = p.lat && p.lon ? `https://maps.google.com/?q=${p.lat},${p.lon}` : `https://maps.google.com/?q=${encodeURIComponent((p.name||"")+" "+(p.address||""))}`;
+    return `<a href="${mapsUrl}" target="_blank" rel="noopener" style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;text-decoration:none;cursor:pointer">
+      <div style="font-size:26px;line-height:1;flex-shrink:0;margin-top:2px">${p.emoji || "📍"}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+        ${p.address ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.address}</div>` : ""}
+        <div style="font-size:11px;font-weight:600;color:#4f46e5;margin-top:4px">${[p.category, dist].filter(Boolean).join(" · ")}</div>
+      </div>
+      <div style="font-size:16px;color:var(--muted);flex-shrink:0;align-self:center">›</div>
+    </a>`;
   }
 
   function _adIntelCardHtml(d) {
