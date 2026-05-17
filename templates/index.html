@@ -12247,13 +12247,15 @@ _bkBadge();
   };
   let _ehPlaces = [], _ehActiveCat = "all";
 
-  window._exploreHereOpen = function() {
+  window._exploreHereOpen = async function() {
     document.getElementById("explore-here-overlay").style.display = "";
     document.getElementById("explore-here-sheet").style.display = "";
     document.getElementById("explore-here-results").innerHTML = "";
     document.getElementById("explore-here-loading").style.display = "";
     document.getElementById("explore-here-loc").textContent = "Getting your location…";
-    MiruLocation.request(null, async loc => {
+    try {
+      const loc = await MiruLocation.get();
+      if (!loc) throw new Error("no location");
       let lat = loc.lat, lon = loc.lon;
       if ((!lat || !lon) && loc.postcode) {
         try {
@@ -12262,11 +12264,7 @@ _bkBadge();
           if (d.result) { lat = d.result.latitude; lon = d.result.longitude; }
         } catch(_) {}
       }
-      if (!lat || !lon) {
-        document.getElementById("explore-here-loading").style.display = "none";
-        document.getElementById("explore-here-loc").textContent = "Couldn't get location.";
-        return;
-      }
+      if (!lat || !lon) throw new Error("no coords");
       // Reverse geocode for area name
       let areaName = loc.postcode || "your location";
       try {
@@ -12287,10 +12285,10 @@ _bkBadge();
       } catch(_) { _ehPlaces = []; }
       document.getElementById("explore-here-loading").style.display = "none";
       _ehRender();
-    }, msg => {
+    } catch(_) {
       document.getElementById("explore-here-loading").style.display = "none";
-      document.getElementById("explore-here-loc").textContent = msg || "Location unavailable.";
-    });
+      document.getElementById("explore-here-loc").textContent = "Couldn't get location — check browser permissions.";
+    }
   };
 
   window._exploreHereClose = function() {
