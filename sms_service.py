@@ -13786,13 +13786,20 @@ def api_wa_saves_save_text():
     try:
         from supabase import create_client
         sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
-        sb.table("wa_saves").insert({
+        row = {
             "from_number": save_as,
             "title":       title or summary[:60],
             "summary":     summary,
             "category":    category,
             "source":      source,
-        }).execute()
+        }
+        try:
+            sb.table("wa_saves").insert(row).execute()
+        except Exception:
+            # category/source columns may not exist yet — retry without them
+            row.pop("category", None)
+            row.pop("source", None)
+            sb.table("wa_saves").insert(row).execute()
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
