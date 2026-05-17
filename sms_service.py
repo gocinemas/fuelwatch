@@ -10144,6 +10144,7 @@ def whatsapp_reply():
         return str(resp)
 
     # ── WORTH IT / BOOK REVIEW command ────────────────────────────────────────
+    # "worth it" alone = review last scanned; handled here. "review [title]" is handled below.
     if cmd_up in ("WORTH IT", "WORTH IT?", "REVIEWS", "BOOK REVIEW", "THOUGHTS"):
         # Books saved via app use plain number; WhatsApp scans use "whatsapp:+..." prefix
         plain_number = from_number.replace("whatsapp:", "").strip()
@@ -10341,6 +10342,199 @@ def whatsapp_reply():
         else:
             msg += f"\n\n📚 Saved to My Books: miru.humanagency.co/?screen=scan&token={user_token}"
         resp.message(msg)
+        return str(resp)
+
+    # ── HAVE I READ? command ──────────────────────────────────────────────────
+    _read_check_re = re.compile(
+        r'^(?:have\s+i\s+read|did\s+i\s+read|read\??)\s+(.+)$', re.I
+    )
+    _rc_match = _read_check_re.match(body.strip())
+    if _rc_match:
+        rc_query = _rc_match.group(1).strip().rstrip("?")
+        plain_number = from_number.replace("whatsapp:", "").strip()
+        wa_number    = f"whatsapp:{plain_number}"
+        # Search Algolia books index first
+        hits = lib.books_search(plain_number, rc_query, hits_per_page=5)
+        if not hits:
+            hits = lib.books_search(wa_number, rc_query, hits_per_page=5)
+        if hits:
+            b = hits[0]
+            status_label = {"read": "✅ Yes, you've read it", "reading": "📖 You're currently reading it",
+                            "wishlist": "📌 It's on your want-to-read list"}.get(b.get("status",""), "📚 It's in your library")
+            msg = f"{status_label}\n\n*{b.get('title','')}*"
+            if b.get("author"): msg += f"\nby {b['author']}"
+            if b.get("rating"): msg += f"\nYour rating: {'⭐'*int(b['rating'])}"
+            if b.get("status") != "read":
+                msg += "\n\nReply *finished " + b.get("title","that book") + "* to mark as read"
+        else:
+            # Fall back to wa_saves
+            try:
+                rows = (lib._sb().table("wa_saves")
+                        .select("title,url,status,summary")
+                        .in_("from_number", [from_number, plain_number, wa_number])
+                        .like("url", "book:%")
+                        .ilike("title", f"%{rc_query}%")
+                        .limit(3).execute().data)
+            except Exception:
+                rows = []
+            if rows:
+                r = rows[0]
+                status_label = {"read": "✅ Yes, you've read it", "reading": "📖 You're currently reading it",
+                                "wishlist": "📌 On your want-to-read list"}.get(r.get("status",""), "📚 In your library")
+                msg = f"{status_label}\n\n*{r.get('title','').replace('📚 ','')}*"
+                msg += "\n\nReply *finished [title]* to mark as read"
+            else:
+                msg = f"📚 I don't have *{rc_query}* in your library.\n\nSend *book {rc_query}* to add it."
+        resp.message(msg)
+        return str(resp)
+
+    # ── REVIEW <title> command (any named book) ───────────────────────────────
+    _review_re = re.compile(r'^(?:review|thoughts\s+on|is\s+it\s+worth(?:\s+reading)?|worth\s+reading)\s+(.+)$', re.I)
+    _rv_match = _review_re.match(body.strip())
+    if _rv_match:
+        rv_query = _rv_match.group(1).strip().rstrip("?")
+        bk = _lookup_book_by_title(rv_query)
+        if not bk or not bk.get("title"):
+            resp.message(f"📚 Couldn't find *{rv_query}* — try the exact title.")
+            return str(resp)
+        book_label = f"*{bk['title']}*" + (f" by {bk['author']}" if bk.get("author") else "")
+        context_lines = [f"Title: {bk['title']}"]
+        if bk.get("author"):      context_lines.append(f"Author: {bk['author']}")
+        if bk.get("subjects"):    context_lines.append(f"Genre: {bk['subjects']}")
+        if bk.get("description"): context_lines.append(f"Description: {bk['description'][:500]}")
+        cr = bk.get("communityRating") or {}
+        if cr.get("avg"):         context_lines.append(f"Google Books rating: {cr['avg']}/5")
+        try:
+            verdict = _groq_chat(
+                system=(
+                    "You are a concise book critic. Using ONLY the provided book information, "
+                    "write exactly 4 lines:\n"
+                    "Line 1: ✅ Fans say: [what readers love — max 15 words]\n"
+                    "Line 2: ⚠️ Critics say: [likely criticism — max 15 words]\n"
+                    "Line 3: 🎯 Best for: [who this suits — max 10 words]\n"
+                    "Line 4: 📖 Verdict: Worth it / Skip it / Depends on taste — one sentence reason\n"
+                    "No other text."
+                ),
+                messages=[{"role": "user", "content": "\n".join(context_lines)}],
+                max_tokens=220,
+            ).strip()
+        except Exception:
+            verdict = ""
+        rating_line = f"\n⭐ {cr['avg']}/5 on Google Books" if cr.get("avg") else ""
+        resp.message(f"📚 {book_label}{rating_line}\n\n{verdict}")
+        return str(resp)
+
+    # ── STATUS UPDATE commands: finished / reading / want ─────────────────────
+    _status_re = re.compile(
+        r'^(?:(finished|done\s+reading|completed)\s+(.+)'
+        r'|(currently\s+reading|started\s+reading|reading)\s+(.+)'
+        r'|(want\s+to\s+read|want|wishlist)\s+(.+))$', re.I
+    )
+    _st_match = _status_re.match(body.strip())
+    if _st_match:
+        if _st_match.group(1):   new_status, bk_query = "read",     _st_match.group(2).strip()
+        elif _st_match.group(3): new_status, bk_query = "reading",  _st_match.group(4).strip()
+        else:                    new_status, bk_query = "wishlist",  _st_match.group(6).strip()
+
+        plain_number = from_number.replace("whatsapp:", "").strip()
+        wa_number    = f"whatsapp:{plain_number}"
+        status_emoji = {"read": "✅", "reading": "📖", "wishlist": "📌"}[new_status]
+        status_word  = {"read": "marked as read", "reading": "marked as reading", "wishlist": "added to want-to-read"}[new_status]
+
+        # Find matching book in wa_saves
+        try:
+            rows = (lib._sb().table("wa_saves")
+                    .select("id,title,url,summary")
+                    .in_("from_number", [from_number, plain_number, wa_number])
+                    .like("url", "book:%")
+                    .ilike("title", f"%{bk_query}%")
+                    .limit(3).execute().data)
+        except Exception:
+            rows = []
+
+        if not rows:
+            # Book not in library — look it up and add it
+            bk_info = _lookup_book_by_title(bk_query)
+            if not bk_info or not bk_info.get("title"):
+                resp.message(f"📚 Couldn't find *{bk_query}* in your library or online. Try *book {bk_query}* first.")
+                return str(resp)
+            bk_isbn = bk_info.get("isbn", "")
+            try:
+                lib._sb().table("wa_saves").insert({
+                    "from_number": plain_number,
+                    "url":         f"book:{bk_isbn}",
+                    "title":       bk_info["title"],
+                    "summary":     json.dumps(bk_info),
+                    "status":      new_status,
+                }).execute()
+                lib.books_upsert(plain_number, {**bk_info, "isbn": bk_isbn, "status": new_status, "source": "whatsapp_status"})
+            except Exception:
+                pass
+            resp.message(f"{status_emoji} *{bk_info['title']}* {status_word} and added to your library.")
+            return str(resp)
+
+        # Update existing row(s)
+        row = rows[0]
+        try:
+            lib._sb().table("wa_saves").update({"status": new_status}).eq("id", row["id"]).execute()
+            bk_isbn = (row.get("url") or "").replace("book:", "")
+            if bk_isbn:
+                bk_meta = {}
+                try: bk_meta = json.loads(row.get("summary") or "{}")
+                except Exception: pass
+                lib.books_upsert(plain_number, {**bk_meta, "isbn": bk_isbn, "status": new_status})
+        except Exception:
+            pass
+        title_clean = (row.get("title") or bk_query).replace("📚 ", "")
+        resp.message(f"{status_emoji} *{title_clean}* {status_word}.")
+        return str(resp)
+
+    # ── SURREY LIBRARY command ────────────────────────────────────────────────
+    _lib_re = re.compile(r'^(?:(?:surrey\s+)?library|available|check\s+library)\s+(.+)$', re.I)
+    _lib_match = _lib_re.match(body.strip())
+    if _lib_match:
+        lib_query = _lib_match.group(1).strip().rstrip("?")
+        # Try Surrey Spydus catalogue
+        catalogue_url = "https://surrey.spydus.co.uk/cgi-bin/spydus.exe/SRCH/WPAC/BIBENQ"
+        search_link   = f"https://surrey.spydus.co.uk/cgi-bin/spydus.exe/SRCH/WPAC/BIBENQ?ENTRY={requests.utils.quote(lib_query)}&ENTRY_NAME=BS&ENTRY_TYPE=K&NRECS=5"
+        avail_msg = None
+        try:
+            r = requests.get(
+                catalogue_url,
+                params={"ENTRY": lib_query, "ENTRY_NAME": "BS", "ENTRY_TYPE": "K", "NRECS": "5"},
+                headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0)"},
+                timeout=8, allow_redirects=True
+            )
+            html = r.text
+            # Parse number of results
+            import re as _re2
+            hits_m = _re2.search(r'(\d+)\s+(?:result|record|item|hit)', html, _re2.I)
+            n_hits = int(hits_m.group(1)) if hits_m else 0
+            # Parse available copies
+            avail_m = _re2.search(r'(\d+)\s+(?:of\s+\d+\s+)?(?:cop(?:y|ies)\s+)?available', html, _re2.I)
+            avail_copies = avail_m.group(0) if avail_m else None
+            # Parse branch names
+            branches = _re2.findall(r'(?:Branch|Location|Library)[^>]*>\s*([A-Z][^<]{3,40})', html)
+            branches = list(dict.fromkeys(b.strip() for b in branches if len(b.strip()) > 3))[:4]
+
+            if n_hits > 0 or avail_copies:
+                avail_msg = f"📚 *{lib_query}*\n"
+                if avail_copies: avail_msg += f"✅ {avail_copies}\n"
+                else:            avail_msg += f"Found in Surrey Libraries ({n_hits} result{'s' if n_hits != 1 else ''})\n"
+                if branches:     avail_msg += "📍 " + " · ".join(branches[:3]) + "\n"
+                avail_msg += f"\n🔗 Reserve: {search_link}"
+            elif n_hits == 0 and r.status_code == 200:
+                avail_msg = f"📚 *{lib_query}* — not found in Surrey Libraries.\n\n🔗 Search yourself: {search_link}"
+        except Exception:
+            avail_msg = None
+
+        if not avail_msg:
+            avail_msg = (
+                f"📚 *{lib_query}*\n"
+                f"Surrey Libraries catalogue (Spydus):\n"
+                f"🔗 {search_link}"
+            )
+        resp.message(avail_msg)
         return str(resp)
 
     # ── FIND SAVE command: search wa_saves ───────────────────────────────────
