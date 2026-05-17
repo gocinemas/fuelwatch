@@ -456,22 +456,26 @@
       <!-- Featured tools — dark hero cards -->
       <div style="display:flex;gap:10px;margin-bottom:10px">
         <button class="feat-card feat-card-fuel" onclick="showScreen('fuel')">
-          <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px;margin-bottom:16px;width:fit-content">
+          <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px;margin-bottom:12px;width:fit-content">
             <span class="live-dot-green"></span>
             <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">LIVE</span>
           </div>
-          <div style="font-size:30px;line-height:1;margin-bottom:12px">⛽</div>
-          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Fuel Prices</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Cheapest near you</div>
+          <div style="font-size:26px;line-height:1;margin-bottom:8px">⛽</div>
+          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Fuel Prices</div>
+          <div id="home-fuel-price" style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-1px;margin-top:6px;line-height:1;display:none"></div>
+          <div id="home-fuel-sub" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.3;display:none"></div>
+          <div id="home-fuel-placeholder" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Cheapest near you</div>
         </button>
         <button class="feat-card feat-card-train" onclick="showScreen('trains')">
-          <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px;margin-bottom:16px;width:fit-content">
+          <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px;margin-bottom:12px;width:fit-content">
             <span class="live-dot-green"></span>
             <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">LIVE</span>
           </div>
-          <div style="font-size:30px;line-height:1;margin-bottom:12px">🚆</div>
-          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Train Times</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Departures & delays</div>
+          <div style="font-size:26px;line-height:1;margin-bottom:8px">🚆</div>
+          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Train Times</div>
+          <div id="home-train-next" style="font-size:16px;font-weight:900;color:#fff;letter-spacing:-0.5px;margin-top:6px;line-height:1.2;display:none"></div>
+          <div id="home-train-sub" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.3;display:none"></div>
+          <div id="home-train-placeholder" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Departures &amp; delays</div>
         </button>
       </div>
 
@@ -595,21 +599,6 @@
               <div style="font-size:13px;font-weight:700;color:#92400e">School emails disconnected</div>
               <div style="font-size:12px;color:#b45309;margin-top:2px">Tap to reconnect Gmail</div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Fuel prices home card (hidden until loaded) -->
-      <div id="fuel-home-card" style="display:none;margin-bottom:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;overflow:hidden;cursor:pointer" onclick="showScreen('fuel')">
-        <div style="padding:12px 16px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:18px;flex-shrink:0">⛽</span>
-            <div style="flex:1;min-width:0">
-              <div id="fhc-strip" style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-              <div id="fhc-sub" style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-            </div>
-            <div id="fhc-price" style="flex-shrink:0;font-size:16px;font-weight:900;color:var(--text);margin-right:2px"></div>
-            <span style="flex-shrink:0;color:var(--muted);font-size:16px">›</span>
           </div>
         </div>
       </div>
@@ -11390,42 +11379,80 @@ _bkBadge();
     if (_miruPhone()) _schoolHomeLoad();
   });
 
-  /* ── Fuel prices home card ───────────────────────────────────────────────── */
+  /* ── Home hero card live data ────────────────────────────────────────────── */
   async function _fuelHomeLoad() {
     const pc = _miruPostcode();
     if (!pc) return;
-    const card = document.getElementById("fuel-home-card");
-    if (!card) return;
-    const CACHE_KEY = "miru_fuel_home_" + pc.toUpperCase().replace(/\s/g,"");
+    const CACHE_KEY = "miru_fuel_home2_" + pc.toUpperCase().replace(/\s/g,"");
+    let data = null;
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
-      if (cached && (Date.now() - cached.ts) < 30 * 60 * 1000) { _fuelHomeRender(cached.data); return; }
+      if (cached && (Date.now() - cached.ts) < 30 * 60 * 1000) { data = cached.data; }
     } catch {}
-    try {
-      const r = await fetch(`/api/search?postcode=${encodeURIComponent(pc)}&fuel=petrol&radius=5&mode=fuel`);
-      if (!r.ok) return;
-      const data = await r.json();
-      if (!data.stations || !data.stations.length) return;
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
-      _fuelHomeRender(data);
-    } catch {}
+    if (!data) {
+      try {
+        const r = await fetch(`/api/search?postcode=${encodeURIComponent(pc)}&fuel=petrol&radius=5&mode=fuel`);
+        if (r.ok) {
+          data = await r.json();
+          if (data && data.stations && data.stations.length)
+            try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
+        }
+      } catch {}
+    }
+    if (!data || !data.stations || !data.stations.length) return;
+    const best = data.stations[0];
+    document.getElementById("home-fuel-price").textContent = best.price.toFixed(1) + "p";
+    document.getElementById("home-fuel-sub").textContent = best.brand + " · " + (best.dist_mi ? best.dist_mi.toFixed(1) + " mi" : "");
+    document.getElementById("home-fuel-price").style.display = "";
+    document.getElementById("home-fuel-sub").style.display = "";
+    document.getElementById("home-fuel-placeholder").style.display = "none";
   }
 
-  function _fuelHomeRender(data) {
-    if (!data || !data.stations || !data.stations.length) return;
-    const card = document.getElementById("fuel-home-card");
-    if (!card) return;
-    const best = data.stations[0];
-    const second = data.stations[1];
-    const strip = best.brand + (second ? " · " + second.brand + " " + second.price.toFixed(1) + "p" : "");
-    document.getElementById("fhc-strip").textContent = "Cheapest petrol · " + strip;
-    document.getElementById("fhc-sub").textContent = (best.address || "") + (best.dist_mi ? " · " + best.dist_mi.toFixed(1) + " mi" : "");
-    document.getElementById("fhc-price").textContent = best.price.toFixed(1) + "p";
-    card.style.display = "";
+  async function _trainHomeLoad() {
+    const pc = _miruPostcode();
+    // Prefer saved home station bookmark
+    const bm = _getBm ? _getBm("home") : null;
+    let crs = bm ? bm.crs : null;
+    let stationName = bm ? (bm.name || bm.crs) : null;
+    if (!crs && pc) {
+      try {
+        const r = await fetch(`/api/train/nearest-by-postcode?postcode=${encodeURIComponent(pc.replace(/\s/g,"").toUpperCase())}`);
+        if (r.ok) { const d = await r.json(); crs = d.crs; stationName = d.name; }
+      } catch {}
+    }
+    if (!crs) return;
+    const CACHE_KEY = "miru_train_home_" + crs;
+    let trains = null;
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (cached && (Date.now() - cached.ts) < 5 * 60 * 1000) { trains = cached.trains; }
+    } catch {}
+    if (!trains) {
+      try {
+        const r = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
+        if (r.ok) {
+          const d = await r.json();
+          trains = d.trains || d.services || [];
+          if (trains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains })); } catch {}
+        }
+      } catch {}
+    }
+    if (!trains || !trains.length) return;
+    const next = trains[0];
+    const dest = (next.destination || "").replace(/^London /i, "");
+    document.getElementById("home-train-next").textContent = next.scheduled + " → " + dest;
+    const status = next.expected && next.expected !== "On time" ? next.expected : "On time";
+    document.getElementById("home-train-sub").textContent = (stationName || crs) + (next.platform ? " · Plat " + next.platform : "") + " · " + status;
+    document.getElementById("home-train-next").style.display = "";
+    document.getElementById("home-train-sub").style.display = "";
+    document.getElementById("home-train-placeholder").style.display = "none";
   }
 
   document.addEventListener("DOMContentLoaded", function() {
-    if (_miruPostcode()) _fuelHomeLoad();
+    if (_miruPostcode() || (_getBm && _getBm("home"))) {
+      _fuelHomeLoad();
+      _trainHomeLoad();
+    }
   });
 
   /* ── Save Intel to Saves ──────────────────────────────────────────────────── */
