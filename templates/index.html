@@ -1420,7 +1420,7 @@
         <!-- Surrey Library check -->
         <div style="margin-bottom:12px">
           <button id="book-library-btn" onclick="_checkSurreyLibrary()" style="width:100%;padding:11px 14px;border-radius:12px;border:1.5px solid #c7d2fe;background:#eef2ff;color:#4338ca;font-size:13px;font-weight:700;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
-            <span>📚</span><span>Search Surrey Libraries →</span>
+            <span>📚</span><span>Borrow ebook / audiobook — Surrey Libraries →</span>
           </button>
           <div id="book-library-result" style="display:none;margin-top:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.6"></div>
         </div>
@@ -5299,18 +5299,28 @@ const _ts = new Date(d.timestamp);
     // Reset library check state
     var btn = document.getElementById("book-library-btn");
     var res = document.getElementById("book-library-result");
-    if (btn) { btn.disabled = false; btn.querySelector("span:last-child").textContent = "Search Surrey Libraries →"; }
+    if (btn) { btn.disabled = false; btn.querySelector("span:last-child").textContent = "Borrow ebook / audiobook — Surrey Libraries →"; }
     if (res) { res.style.display = "none"; res.innerHTML = ""; }
   };
 
-  var _SURREY_LIB_URL = "https://libraries.surreycc.gov.uk/bookshelf";
+  // Surrey County Council OverDrive — search pre-fills the title
+  var _SURREY_OVERDRIVE = "https://surreycountyuk.overdrive.com/search?query=";
+  var _SURREY_PHYSICAL  = "https://libraries.surreycc.gov.uk/bookshelf";
+
+  function _ehOpenLibrary(title, isbn) {
+    var q = title || isbn || "";
+    var url = q ? _SURREY_OVERDRIVE + encodeURIComponent(q) : _SURREY_OVERDRIVE;
+    window.open(url, "_blank", "noopener");
+  }
 
   window._checkSurreyLibrary = function() {
-    window.open(_SURREY_LIB_URL, "_blank", "noopener");
+    var bk = _bookCurrentDetail;
+    _ehOpenLibrary(bk ? bk.title : "", bk ? bk.isbn : "");
   };
 
   window._checkSurreyLibraryBd = function() {
-    window.open(_SURREY_LIB_URL, "_blank", "noopener");
+    var bk = _bookCurrentDetail;
+    _ehOpenLibrary(bk ? bk.title : "", bk ? bk.isbn : "");
   };
 
   async function _tryBookFallback(query) {
@@ -9817,7 +9827,7 @@ const _ts = new Date(d.timestamp);
     <!-- Surrey Library -->
     <div style="margin-bottom:16px">
       <button id="bd-library-btn" onclick="_checkSurreyLibraryBd()" style="width:100%;padding:11px 14px;border-radius:12px;border:1.5px solid #c7d2fe;background:#eef2ff;color:#4338ca;font-size:13px;font-weight:700;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
-        <span>📚</span><span>Search Surrey Libraries →</span>
+        <span>📚</span><span>Borrow ebook / audiobook — Surrey Libraries →</span>
       </button>
       <div id="bd-library-result" style="display:none;margin-top:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.6"></div>
     </div>

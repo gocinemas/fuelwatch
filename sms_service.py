@@ -10687,8 +10687,14 @@ def whatsapp_reply():
                 return str(resp)
 
             elif _nl_intent == "library_check":
-                lib_url = "https://libraries.surreycc.gov.uk/bookshelf"
-                resp.message(f"📚 Search Surrey Libraries for *{_nl_title}*:\n\n🔗 {lib_url}\n\nSearch by title or author once you're there.")
+                import urllib.parse
+                q = urllib.parse.quote(_nl_title or "")
+                ebook_url = f"https://surreycountyuk.overdrive.com/search?query={q}"
+                resp.message(
+                    f"📚 *{_nl_title}* — Surrey Libraries\n\n"
+                    f"📱 *Borrow ebook/audiobook (OverDrive):*\n{ebook_url}\n\n"
+                    f"🏛️ *Physical copy — search the catalogue:*\nhttps://libraries.surreycc.gov.uk/bookshelf"
+                )
                 return str(resp)
 
     # ── FIND SAVE command: search wa_saves ───────────────────────────────────
