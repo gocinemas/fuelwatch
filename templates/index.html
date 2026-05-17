@@ -12246,11 +12246,11 @@ _bkBadge();
          style="font-size:13px;font-weight:600;border:1.5px solid #c7d2fe;border-radius:8px;padding:5px 8px;width:100%;outline:none;color:#111827;box-sizing:border-box"
          onkeydown="if(event.key==='Enter')savesTitleSave('${id}',false);if(event.key==='Escape')savesLoad()" />
        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-         <button onclick="savesTitleSave('${id}',false)"
-           style="padding:4px 12px;border-radius:6px;border:none;background:#111827;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Save</button>
-         <button onclick="savesTitleSave('${id}',true)"
-           style="padding:4px 12px;border-radius:6px;border:1px solid #c7d2fe;background:#f5f3ff;color:#4f46e5;font-size:12px;font-weight:600;cursor:pointer">Save & Search</button>
-         <button onclick="savesLoad()"
+         <button type="button" onclick="savesTitleSave('${id}',false)"
+           style="padding:4px 12px;border-radius:6px;border:none;background:#111827;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Save name</button>
+         <button type="button" onclick="savesTitleFind('${id}')"
+           style="padding:4px 12px;border-radius:6px;border:none;background:#4f46e5;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🔍 Find place</button>
+         <button type="button" onclick="savesLoad()"
            style="padding:4px 10px;border-radius:6px;border:1px solid #e5e7eb;background:#f9fafb;font-size:12px;font-weight:600;cursor:pointer;color:#6b7280">Cancel</button>
        </div>`;
     const inp = document.getElementById("save-title-input-" + id);
@@ -12278,6 +12278,43 @@ _bkBadge();
         await savesLoad();
       }
     } catch(e) { savesLoad(); }
+  };
+
+  window.savesTitleFind = async function(id) {
+    const inp = document.getElementById("save-title-input-" + id);
+    if (!inp) return;
+    const searchName = inp.value.trim();
+    if (!searchName) return;
+    inp.disabled = true;
+    const btns = inp.parentElement ? inp.parentElement.querySelectorAll("button") : [];
+    btns.forEach(b => b.disabled = true);
+    const statusEl = document.createElement("div");
+    statusEl.style.cssText = "font-size:11px;color:#6b7280;margin-top:4px";
+    statusEl.textContent = `🔍 Looking up ${searchName}…`;
+    if (inp.parentElement) inp.parentElement.appendChild(statusEl);
+    try {
+      const r = await fetch("/api/wa-saves/enrich", {
+        method: "POST",
+        headers: {..._savesHeaders(), "Content-Type": "application/json"},
+        body: JSON.stringify({id, venue: searchName, force_title: true}),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        const patch = {};
+        if (d.summary !== undefined) patch.summary = d.summary;
+        if (d.title) patch.title = d.title;
+        if (d.url) patch.url = d.url;
+        _savesRefreshCard(id, patch);
+      } else {
+        statusEl.textContent = "⚠️ Place not found — try a different name";
+        btns.forEach(b => b.disabled = false);
+        inp.disabled = false;
+      }
+    } catch(e) {
+      statusEl.textContent = "⚠️ Error — try again";
+      btns.forEach(b => b.disabled = false);
+      inp.disabled = false;
+    }
   };
 
   window.savesEditLocation = function(id, currentLoc) {

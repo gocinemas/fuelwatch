@@ -12890,10 +12890,11 @@ def api_wa_saves_enrich():
     if err:
         return err
     data = request.json or {}
-    save_id    = data.get("id", "")
-    venue_name = data.get("venue", "").strip()
-    lat        = data.get("lat")
-    lon        = data.get("lon")
+    save_id     = data.get("id", "")
+    venue_name  = data.get("venue", "").strip()
+    lat         = data.get("lat")
+    lon         = data.get("lon")
+    force_title = data.get("force_title", False)  # only update title when user explicitly searches
     if not save_id or not venue_name:
         return jsonify({"error": "id and venue required"}), 400
     fn = from_number
@@ -12925,7 +12926,7 @@ def api_wa_saves_enrich():
         update = {"summary": new_summary}
         if info.get("maps_url"):
             update["url"] = info["maps_url"]
-        if info.get("name") and info["name"] != venue_name:
+        if force_title and info.get("name") and info["name"] != venue_name:
             update["title"] = f"🏪 {info['name']}"
         lib._sb().table("wa_saves").update(update).eq("id", save_id).execute()
         rows = lib._sb().table("wa_saves").select("*").eq("id", save_id).execute().data
