@@ -521,10 +521,13 @@
           <div>
             <div style="font-size:20px;font-weight:900;color:var(--text);letter-spacing:-0.5px;line-height:1.1">Nearby</div>
             <div id="explore-here-loc" onclick="_ehLocEdit()" style="font-size:12px;color:var(--muted);margin-top:3px;cursor:pointer">Getting your location…</div>
-            <div id="explore-here-loc-edit" style="display:none;margin-top:5px;align-items:center;gap:6px">
-              <input id="explore-here-loc-input" placeholder="Town, place or postcode…" onkeydown="if(event.key==='Enter')_ehLocSubmit()" style="font-size:13px;padding:5px 10px;border-radius:10px;border:1.5px solid #4f46e5;background:var(--bg);color:var(--text);width:170px;outline:none">
-              <button onclick="_ehLocSubmit()" style="font-size:12px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;padding:0">Go</button>
-              <button onclick="_ehLocCancel()" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">✕</button>
+            <div id="explore-here-loc-edit" style="display:none;margin-top:5px;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <input id="explore-here-loc-input" placeholder="Town, place or postcode…" onkeydown="if(event.key==='Enter')_ehLocSubmit()" style="font-size:13px;padding:5px 10px;border-radius:10px;border:1.5px solid #4f46e5;background:var(--bg);color:var(--text);width:170px;outline:none">
+                <button onclick="_ehLocSubmit()" style="font-size:12px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;padding:0">Go</button>
+                <button onclick="_ehLocCancel()" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0">✕</button>
+              </div>
+              <button onclick="_ehLocGPS()" style="font-size:11px;color:#4f46e5;background:none;border:none;cursor:pointer;padding:0;text-align:left">📍 Use my current location</button>
             </div>
           </div>
           <button onclick="_exploreHereClose()" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;line-height:1">×</button>
@@ -12481,7 +12484,60 @@ _bkBadge();
     document.getElementById("explore-here-loc").style.display = "none";
     const edit = document.getElementById("explore-here-loc-edit");
     edit.style.display = "flex";
+    document.getElementById("explore-here-loc-input").value = "";
     document.getElementById("explore-here-loc-input").focus();
+  };
+  window._ehLocGPS = async function() {
+    document.getElementById("explore-here-loc-edit").style.display = "none";
+    const locEl = document.getElementById("explore-here-loc");
+    locEl.style.display = "";
+    locEl.textContent = "Getting your location…";
+    document.getElementById("explore-here-loading").style.display = "";
+    document.getElementById("explore-here-results").innerHTML = "";
+    let lat = null, lon = null;
+    if (navigator.geolocation) {
+      try {
+        const pos = await new Promise(function(res, rej) {
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 });
+        });
+        lat = pos.coords.latitude; lon = pos.coords.longitude;
+      } catch(_) {}
+    }
+    if (!lat) {
+      try {
+        const r = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(5000) });
+        const d = await r.json();
+        if (d.latitude) { lat = +d.latitude; lon = +d.longitude; }
+      } catch(_) {}
+    }
+    if (!lat) { locEl.textContent = "📍 Couldn't detect location — try typing it"; return; }
+    let areaName = "";
+    try {
+      const rev = await fetch("https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lon, { headers: {"Accept-Language":"en"}, signal: AbortSignal.timeout(5000) });
+      const rj = await rev.json(); const a = rj.address || {};
+      areaName = a.suburb || a.village || a.hamlet || a.town || a.city_district || a.city || "";
+    } catch(_) {}
+    _ehLat = lat; _ehLon = lon;
+    Object.keys(_ehCache).forEach(k => delete _ehCache[k]);
+    locEl.textContent = areaName ? "📍 Near " + areaName : "📍 Near you";
+    _ehActiveCat = "all";
+    document.querySelectorAll(".eh-cat-btn").forEach(b => {
+      b.style.borderColor = "var(--border)"; b.style.background = "var(--surface)";
+      b.querySelector("div:last-child").style.color = "var(--muted)";
+    });
+    const allBtn = document.querySelector('.eh-cat-btn[data-cat="all"]');
+    if (allBtn) { allBtn.style.borderColor = "#4f46e5"; allBtn.style.background = "#eef2ff"; allBtn.querySelector("div:last-child").style.color = "#4338ca"; }
+    try {
+      const r2 = await fetch("/api/places/nearby?lat=" + lat + "&lon=" + lon + "&cat=all");
+      const d2 = await r2.json();
+      _ehPlaces = (d2.places || []).map(function(p) {
+        return Object.assign({}, p, { _dist: (p.lat && p.lon) ? _distKm(lat, lon, p.lat, p.lon) : 999 });
+      });
+      _ehPlaces.sort(function(a,b) { return a._dist - b._dist; });
+      _ehCache["all"] = _ehPlaces;
+    } catch(_) { _ehPlaces = []; }
+    document.getElementById("explore-here-loading").style.display = "none";
+    _ehRender();
   };
   window._ehLocCancel = function() {
     document.getElementById("explore-here-loc").style.display = "";
