@@ -13758,6 +13758,35 @@ def api_wa_saves_add():
         return jsonify({"error": "Provide url or text"}), 400
 
 
+@app.route("/api/wa-saves/save-text", methods=["POST"])
+def api_wa_saves_save_text():
+    """Save a plain-text card with explicit title, summary, category and source."""
+    from_number, err = _check_saves_pin()
+    if err:
+        return err
+    data     = request.json or {}
+    title    = (data.get("title") or "").strip()
+    summary  = (data.get("summary") or "").strip()
+    category = (data.get("category") or "article").strip()
+    source   = (data.get("source") or "web").strip()
+    if not title and not summary:
+        return jsonify({"error": "title or summary required"}), 400
+    save_as = from_number or "web"
+    try:
+        from supabase import create_client
+        sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        sb.table("wa_saves").insert({
+            "from_number": save_as,
+            "title":       title or summary[:60],
+            "summary":     summary,
+            "category":    category,
+            "source":      source,
+        }).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _normalize_gbook(item):
     vi = item.get("volumeInfo", {})
     isbns = [x["identifier"] for x in vi.get("industryIdentifiers", []) if x.get("type") in ("ISBN_13", "ISBN_10")]

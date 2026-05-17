@@ -599,6 +599,28 @@
         </div>
       </div>
 
+      <!-- Slow living card -->
+      <div id="bored-card" style="margin-bottom:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:20px">🌿</span>
+            <div>
+              <div style="font-size:13px;font-weight:800;color:var(--text);letter-spacing:-0.2px">Not sure what to do?</div>
+              <div id="bored-sub" style="font-size:11px;color:var(--muted);margin-top:1px">One idea, right now</div>
+            </div>
+          </div>
+          <button onclick="_boredSuggest()" style="font-size:12px;font-weight:700;color:#fff;background:#4f46e5;border:none;border-radius:12px;padding:7px 14px;cursor:pointer;white-space:nowrap">Suggest</button>
+        </div>
+        <div id="bored-result" style="display:none;border-top:1px solid var(--border);padding:14px 16px">
+          <div id="bored-suggestion" style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px"></div>
+          <div id="bored-detail" style="font-size:12px;color:var(--muted)"></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <a id="bored-action-btn" href="#" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:#fff;background:#4f46e5;border-radius:10px;padding:7px 14px;text-decoration:none;display:inline-block">Go →</a>
+            <button onclick="_boredSuggest()" style="font-size:12px;font-weight:600;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 14px;cursor:pointer">Something else</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Tools — 3-column icon grid -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
         <button class="tool-icon-btn" onclick="showScreen('report')">
@@ -1128,6 +1150,7 @@
               <button id="intel-pin-btn" onclick="_intelTogglePin()" style="font-size:12px;font-weight:600;color:#6b7280;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">📌 Pin</button>
               <button id="brand-bookmark-btn" style="display:none"></button>
               <button id="brand-lib-btn" style="display:none"></button>
+              <button id="intel-save-btn" onclick="_intelSaveToSaves(this)" style="font-size:12px;font-weight:600;color:#059669;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">💾 Save</button>
               <button id="co-share-btn" onclick="shareCompany()" style="font-size:12px;font-weight:600;color:#4f46e5;background:#eef2ff;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">Share</button>
               <button id="intel-compare-btn" onclick="_intelCompareOpen()" style="font-size:12px;font-weight:600;color:#0f766e;background:#f0fdfa;border:1px solid #99f6e4;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">⚡ Compare</button>
             </div>
@@ -1727,6 +1750,7 @@
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <button id="myarea-home-btn" onclick="_maGoHome()" style="display:none;font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">← Home</button>
+          <button id="myarea-save-btn" onclick="_maSaveReport(this)" style="font-size:12px;font-weight:600;color:#059669;background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">💾 Save</button>
           <button onclick="_maOpenLocationPicker()" style="font-size:12px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">Change →</button>
         </div>
       </div>
@@ -11356,6 +11380,116 @@ _bkBadge();
   document.addEventListener("DOMContentLoaded", function() {
     if (_miruPhone()) _schoolHomeLoad();
   });
+
+  /* ── Save Intel to Saves ──────────────────────────────────────────────────── */
+  window._intelSaveToSaves = async function(btn) {
+    const name = (document.getElementById("brand-name-el") || {}).textContent || "";
+    const desc = (document.getElementById("brand-desc-el") || {}).textContent || "";
+    const type = typeof _intelSearchMode !== "undefined" ? (_intelSearchMode || "brand") : "brand";
+    if (!name) return;
+    const tok = _savesPin ? _savesPin() : (localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || "");
+    if (!tok) { btn.textContent = "Log in to Saves first"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
+    btn.textContent = "…"; btn.disabled = true;
+    const summary = [name, desc, type === "company" ? "Company Intel" : "Brand Intel", "via Miru Intel"].filter(Boolean).join("\n");
+    try {
+      const r = await fetch("/api/wa-saves/save-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Library-PIN": tok },
+        body: JSON.stringify({ title: name, summary, category: type === "company" ? "brand" : "brand", source: "intel" })
+      });
+      if (r.ok) { btn.textContent = "✓ Saved"; btn.style.color = "#059669"; }
+      else { btn.textContent = "✗ Error"; btn.style.color = "#dc2626"; btn.disabled = false; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 2000); }
+    } catch(_) { btn.textContent = "✗ Error"; btn.style.color = "#dc2626"; btn.disabled = false; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 2000); }
+  };
+
+  /* ── Save Area Report to Saves ────────────────────────────────────────────── */
+  window._maSaveReport = async function(btn) {
+    const pc = (typeof _maCurrentPostcode !== "undefined" ? _maCurrentPostcode : "") || "";
+    const areaLabel = (document.getElementById("myarea-location-label") || {}).textContent || pc || "My Area";
+    if (!pc && !areaLabel) return;
+    const tok = _savesPin ? _savesPin() : (localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || "");
+    if (!tok) { btn.textContent = "Log in to Saves"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
+    btn.textContent = "…"; btn.disabled = true;
+    const lines = ["📍 " + areaLabel + (pc ? " (" + pc + ")" : ""), "Area report saved from Miru My Area"];
+    const weatherEl = document.getElementById("ma-weather-summary");
+    if (weatherEl && weatherEl.textContent) lines.push("🌤 " + weatherEl.textContent.trim());
+    const summary = lines.join("\n");
+    try {
+      const r = await fetch("/api/wa-saves/save-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Library-PIN": tok },
+        body: JSON.stringify({ title: "📍 " + areaLabel, summary, category: "place", source: "my-area" })
+      });
+      if (r.ok) { btn.textContent = "✓ Saved"; btn.style.color = "#059669"; }
+      else { btn.textContent = "✗ Error"; btn.style.color = "#dc2626"; btn.disabled = false; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 2000); }
+    } catch(_) { btn.textContent = "✗ Error"; btn.style.color = "#dc2626"; btn.disabled = false; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 2000); }
+  };
+
+  /* ── Slow living / boredom card ───────────────────────────────────────────── */
+  var _boredPlaces = [], _boredIdx = 0;
+  window._boredSuggest = async function() {
+    const h = new Date().getHours();
+    const cat = h < 11 ? "coffee" : h < 17 ? "park" : h < 22 ? "beer" : "book";
+    const resultEl = document.getElementById("bored-result");
+    const subEl = document.getElementById("bored-sub");
+    subEl.textContent = "Finding something…";
+
+    if (cat === "book") {
+      document.getElementById("bored-suggestion").textContent = "📚 Read something tonight";
+      document.getElementById("bored-detail").textContent = "Browse what Surrey Libraries has on OverDrive — free with your library card.";
+      document.getElementById("bored-action-btn").href = "https://surreycountyuk.overdrive.com";
+      document.getElementById("bored-action-btn").textContent = "Browse →";
+      resultEl.style.display = "";
+      subEl.textContent = "One idea, right now";
+      return;
+    }
+
+    const catLabels = { coffee:"a coffee", park:"a walk", beer:"a drink" };
+    const catEmoji  = { coffee:"☕", park:"🌳", beer:"🍺" };
+
+    if (_boredPlaces.length && _boredPlaces[0]._cat === cat) {
+      _boredIdx = (_boredIdx + 1) % Math.min(_boredPlaces.length, 5);
+    } else {
+      _boredPlaces = []; _boredIdx = 0;
+      let lat = _ehLat, lon = _ehLon;
+      if (!lat) {
+        if (navigator.geolocation) {
+          try {
+            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout:8000, maximumAge:300000}));
+            lat = pos.coords.latitude; lon = pos.coords.longitude;
+          } catch(_) {}
+        }
+        if (!lat) {
+          const pc = localStorage.getItem("miru_home_pc");
+          if (pc) {
+            try {
+              const g = await fetch("https://api.postcodes.io/postcodes/" + pc.replace(/\s/g,""), {signal:AbortSignal.timeout(5000)});
+              const gd = await g.json();
+              if (gd.result) { lat = gd.result.latitude; lon = gd.result.longitude; }
+            } catch(_) {}
+          }
+        }
+      }
+      if (!lat) { subEl.textContent = "Couldn't get location"; return; }
+      try {
+        const r = await fetch("/api/places/nearby?lat=" + lat + "&lon=" + lon + "&cat=" + cat);
+        const d = await r.json();
+        _boredPlaces = (d.places || []).slice(0, 5).map(p => Object.assign({}, p, { _cat: cat, _dist: (p.lat && p.lon) ? _distKm(lat, lon, p.lat, p.lon) : 999 }));
+      } catch(_) {}
+    }
+
+    if (!_boredPlaces.length) { subEl.textContent = "Nothing found nearby — try again"; return; }
+    const p = _boredPlaces[_boredIdx];
+    const dist = p._dist < 999 ? _distLabel(p._dist) + " away" : "";
+    const stars = p.rating ? " · " + p.rating.toFixed(1) + "★" : "";
+    document.getElementById("bored-suggestion").textContent = catEmoji[cat] + " " + p.name;
+    document.getElementById("bored-detail").textContent = [p.address, dist + stars].filter(Boolean).join(" · ");
+    const mapsUrl = p.lat && p.lon ? "https://maps.google.com/?q=" + p.lat + "," + p.lon : "https://maps.google.com/?q=" + encodeURIComponent(p.name);
+    document.getElementById("bored-action-btn").href = mapsUrl;
+    document.getElementById("bored-action-btn").textContent = "Get directions →";
+    resultEl.style.display = "";
+    subEl.textContent = "Go for " + catLabels[cat];
+  };
 
   /* ── School comms ─────────────────────────────────────────────────────────── */
   const _SCHOOL_SECTIONS = [
