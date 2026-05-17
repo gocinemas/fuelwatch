@@ -173,52 +173,66 @@
     #back-btn { display:none !important; }
     {% endif %}
 
-    /* ── Morphing Pill Nav ───────────────────────────────────────── */
+    /* ── Bottom Tab Bar ─────────────────────────────────────────────── */
     #pill-nav {
       position: fixed;
-      bottom: calc(24px + env(safe-area-inset-bottom));
-      left: 50%; transform: translateX(-50%);
+      bottom: 0; left: 0; right: 0;
       z-index: 300;
     }
     #pill-shell {
-      position: relative;
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 99px;
-      box-shadow: 0 8px 32px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.08);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      width: 150px; height: 46px;
-      transition: width .38s cubic-bezier(.34,1.56,.64,1), background .3s, border-color .3s;
-      cursor: pointer; overflow: hidden;
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -1px 0 var(--border), 0 -4px 20px rgba(0,0,0,.07);
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      height: calc(56px + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      display: flex;
+      align-items: stretch;
+      cursor: default;
+      overflow: visible;
+      border-radius: 0;
+      transition: none;
     }
-    #pill-shell.expanded { width: 264px; }
-    #pill-resting {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; gap: 7px; padding: 0 16px 0 13px;
-      white-space: nowrap; transition: opacity .15s;
-    }
-    #pill-shell.expanded #pill-resting { opacity: 0; pointer-events: none; }
-    .pr-icon  { font-size: 18px; line-height: 1; flex-shrink: 0; }
-    .pr-label { font-size: 14px; font-weight: 700; color: var(--text); flex: 1; }
-    .pr-chev  { color: var(--subtle); flex-shrink: 0; }
+    #pill-resting { display: none; }
     #pill-icons {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: space-around; padding: 0 8px;
-      opacity: 0; pointer-events: none; transition: opacity .15s .1s;
+      position: static;
+      opacity: 1;
+      pointer-events: auto;
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+      padding: 0;
+      transition: none;
     }
-    #pill-shell.expanded #pill-icons { opacity: 1; pointer-events: auto; }
     .pi-btn {
-      width: 54px; height: 38px; border-radius: 99px; border: none;
-      background: transparent; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 4px;
-      cursor: pointer; font-family: inherit; transition: background .15s; flex-shrink: 0;
+      flex: 1;
+      height: 56px;
+      border-radius: 0;
+      border: none;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .1s;
+      flex-shrink: 0;
+      padding: 0;
     }
     .pi-btn:active { background: var(--surface2); }
-    .pi-btn.pi-active { background: var(--surface2); }
-    .pi-ico { font-size: 17px; line-height: 1; }
-    .pi-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: 0; transition: opacity .2s; }
+    .pi-btn.pi-active { background: transparent; }
+    .pi-ico { font-size: 20px; line-height: 1; }
+    .pi-lbl { font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 0.1px; }
+    .pi-btn.pi-active .pi-lbl { color: var(--accent); }
+    .pi-dot { width: 18px; height: 2px; border-radius: 99px; background: var(--accent); opacity: 0; transition: opacity .2s; margin-top: 1px; }
     .pi-btn.pi-active .pi-dot { opacity: 1; }
-    #pill-overlay { display: none; position: fixed; inset: 0; z-index: 299; }
+    #pill-overlay { display: none !important; }
+    /* Add bottom padding so content clears the tab bar */
+    .screen.active { padding-bottom: calc(68px + env(safe-area-inset-bottom)) !important; }
 
     /* Section label */
     .sec-label {
@@ -2206,25 +2220,16 @@
   function _pillUpdate(name) {
     const s = _PILL_SCREENS[name];
     if (!s) return;
-    document.getElementById('pill-icon').textContent  = s.icon;
-    document.getElementById('pill-label').textContent = s.label;
     document.querySelectorAll('.pi-btn').forEach(b => b.classList.remove('pi-active'));
-    document.getElementById(s.piId).classList.add('pi-active');
+    const el = document.getElementById(s.piId);
+    if (el) el.classList.add('pi-active');
   }
-  function _pillExpand() {
-    document.getElementById('pill-shell').classList.add('expanded');
-    document.getElementById('pill-overlay').style.display = 'block';
-  }
-  function _pillCollapse() {
-    document.getElementById('pill-shell').classList.remove('expanded');
-    document.getElementById('pill-overlay').style.display = 'none';
-  }
-  function _pillTap(e) {
-    if (!document.getElementById('pill-shell').classList.contains('expanded')) _pillExpand();
-  }
+  function _pillExpand() {}
+  function _pillCollapse() {}
+  function _pillTap(e) {}
   function _pillNav(name) {
+    if (name === 'saves') { showScreen('saves'); savesLoad(); return; }
     showScreen(name);
-    _pillCollapse();
   }
   const _INTEL_MODE = {{ 'true' if intel_mode else 'false' }};
   function showHome() {
@@ -11216,17 +11221,13 @@ _bkBadge();
 <!-- Bottom Navigation -->
 <div id="pill-overlay" onclick="_pillCollapse()"></div>
 <div id="pill-nav">
-  <div id="pill-shell" onclick="_pillTap(event)">
-    <div id="pill-resting">
-      <span class="pr-icon" id="pill-icon">🏠</span>
-      <span class="pr-label" id="pill-label">Home</span>
-      <svg class="pr-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-    </div>
+  <div id="pill-shell">
+    <div id="pill-resting"></div>
     <div id="pill-icons">
-      <button class="pi-btn pi-active" id="pi-home"   onclick="_pillNav('home');event.stopPropagation()"><span class="pi-ico">🏠</span><span class="pi-dot"></span></button>
-      <button class="pi-btn"           id="pi-myarea" onclick="_pillNav('myarea');event.stopPropagation()"><span class="pi-ico">📍</span><span class="pi-dot"></span></button>
-      <button class="pi-btn"           id="pi-intel"  onclick="_pillNav('company');event.stopPropagation()"><span class="pi-ico">🔍</span><span class="pi-dot"></span></button>
-      <button class="pi-btn"           id="pi-saves"  onclick="location.href='/my-saves';event.stopPropagation()"><span class="pi-ico">📌</span><span class="pi-dot"></span></button>
+      <button class="pi-btn pi-active" id="pi-home"   onclick="_pillNav('home')"  ><span class="pi-ico">🏠</span><span class="pi-lbl">Home</span><span class="pi-dot"></span></button>
+      <button class="pi-btn"           id="pi-myarea" onclick="_pillNav('myarea')" ><span class="pi-ico">📍</span><span class="pi-lbl">My Area</span><span class="pi-dot"></span></button>
+      <button class="pi-btn"           id="pi-intel"  onclick="_pillNav('company')"><span class="pi-ico">🔍</span><span class="pi-lbl">Intel</span><span class="pi-dot"></span></button>
+      <button class="pi-btn"           id="pi-saves"  onclick="_pillNav('saves')"  ><span class="pi-ico">💾</span><span class="pi-lbl">Saves</span><span class="pi-dot"></span></button>
     </div>
   </div>
 </div>
@@ -12353,13 +12354,13 @@ _bkBadge();
     food:     ["Restaurant","Pub","Bar","Takeaway","Bakery","Café"],
     coffee:   ["Café","Bakery"],
     park:     ["Park","Playground","Attraction","Museum","Gallery","Cinema"],
-    kids:     ["Park","Playground","Attraction","Library","Museum","Gym"],
-    beer:     null, // backend keyword fetch
+    kids:     null, // backend fetch — theme parks, adventure, soft play, skate parks etc.
+    beer:     null,
     cocktail: null,
     wine:     null,
     steak:    null,
   };
-  const _EH_NEEDS_FETCH = new Set(["beer","cocktail","wine","steak"]);
+  const _EH_NEEDS_FETCH = new Set(["kids","beer","cocktail","wine","steak"]);
   let _ehPlaces = [], _ehActiveCat = "all";
   let _ehLat = null, _ehLon = null;
   const _ehCache = {};

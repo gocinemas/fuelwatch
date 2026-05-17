@@ -6394,30 +6394,38 @@ def api_places_nearby():
 
     # Per-category config: keyword, quality thresholds, radius
     _CAT_CONFIG = {
-        "all":      {"keyword": "restaurant cafe pub bar garden park",  "min_rating": 4.0, "min_reviews": 30, "radius": 5000},
-        "food":     {"keyword": "restaurant",                           "min_rating": 3.8, "min_reviews": 20, "radius": 5000},
-        "coffee":   {"keyword": "specialty coffee espresso artisan café","min_rating": 4.1, "min_reviews": 15, "radius": 5000},
-        "beer":     {"keyword": "craft beer real ale pub",              "min_rating": 4.0, "min_reviews": 25, "radius": 5000},
-        "cocktail": {"keyword": "cocktail bar mixology",                "min_rating": 4.1, "min_reviews": 15, "radius": 8000},
-        "wine":     {"keyword": "wine bar",                             "min_rating": 4.0, "min_reviews": 15, "radius": 8000},
-        "steak":    {"keyword": "steakhouse steak",                     "min_rating": 4.0, "min_reviews": 25, "radius": 8000},
-        "park":     {"keyword": "park garden nature reserve",           "min_rating": 3.5, "min_reviews":  5, "radius": 8000},
+        "all":      {"keyword": "restaurant cafe pub bar garden park",   "min_rating": 4.0, "min_reviews": 30, "radius":  5000},
+        "food":     {"keyword": "restaurant",                            "min_rating": 3.8, "min_reviews": 20, "radius":  5000},
+        "coffee":   {"keyword": "specialty coffee espresso artisan café","min_rating": 4.1, "min_reviews": 15, "radius":  5000},
+        "beer":     {"keyword": "craft beer real ale pub",               "min_rating": 4.0, "min_reviews": 15, "radius":  8000},
+        "cocktail": {"keyword": "cocktail bar lounge rooftop bar mixology wine bar","min_rating": 3.9, "min_reviews": 10, "radius": 12000},
+        "wine":     {"keyword": "wine bar",                              "min_rating": 4.0, "min_reviews": 10, "radius":  8000},
+        "steak":    {"keyword": "steakhouse steak grill",                "min_rating": 4.0, "min_reviews": 20, "radius":  8000},
+        "park":     {"keyword": "park garden nature reserve",            "min_rating": 3.5, "min_reviews":  5, "radius":  8000},
+        "kids":     {"keyword": "kids activities adventure park theme park soft play playground skating indoor play", "min_rating": 3.8, "min_reviews": 10, "radius": 20000},
     }
     cfg = _CAT_CONFIG.get(cat, _CAT_CONFIG["all"])
 
     _GTYPE_MAP = {
-        "restaurant":        {"label": "Restaurant",  "emoji": "🍽️"},
-        "cafe":              {"label": "Café",         "emoji": "☕"},
-        "bar":               {"label": "Bar",          "emoji": "🍹"},
-        "bakery":            {"label": "Bakery",       "emoji": "🥐"},
-        "meal_takeaway":     {"label": "Takeaway",     "emoji": "🥡"},
-        "park":              {"label": "Park",         "emoji": "🌳"},
-        "museum":            {"label": "Museum",       "emoji": "🏛️"},
-        "art_gallery":       {"label": "Gallery",      "emoji": "🎨"},
-        "tourist_attraction":{"label": "Attraction",   "emoji": "🎡"},
-        "movie_theater":     {"label": "Cinema",       "emoji": "🎬"},
-        "night_club":        {"label": "Club",         "emoji": "🎵"},
-        "liquor_store":      {"label": "Off Licence",  "emoji": "🍾"},
+        "restaurant":        {"label": "Restaurant",   "emoji": "🍽️"},
+        "cafe":              {"label": "Café",          "emoji": "☕"},
+        "bar":               {"label": "Bar",           "emoji": "🍹"},
+        "bakery":            {"label": "Bakery",        "emoji": "🥐"},
+        "meal_takeaway":     {"label": "Takeaway",      "emoji": "🥡"},
+        "park":              {"label": "Park",          "emoji": "🌳"},
+        "museum":            {"label": "Museum",        "emoji": "🏛️"},
+        "art_gallery":       {"label": "Gallery",       "emoji": "🎨"},
+        "tourist_attraction":{"label": "Attraction",    "emoji": "🎡"},
+        "amusement_park":    {"label": "Theme Park",    "emoji": "🎢"},
+        "aquarium":          {"label": "Aquarium",      "emoji": "🐠"},
+        "zoo":               {"label": "Zoo",           "emoji": "🦁"},
+        "movie_theater":     {"label": "Cinema",        "emoji": "🎬"},
+        "night_club":        {"label": "Club",          "emoji": "🎵"},
+        "liquor_store":      {"label": "Off Licence",   "emoji": "🍾"},
+        "bowling_alley":     {"label": "Bowling",       "emoji": "🎳"},
+        "gym":               {"label": "Gym",           "emoji": "💪"},
+        "library":           {"label": "Library",       "emoji": "📚"},
+        "spa":               {"label": "Spa",           "emoji": "🧖"},
     }
 
     try:
