@@ -3414,7 +3414,13 @@ const _ts = new Date(d.timestamp);
     if (pc) localStorage.setItem("miru_postcode", pc);
     else    localStorage.removeItem("miru_postcode");
 
-    // Reload — picks up new postcode/phone from localStorage, refreshes everything
+    // Bust train + fuel home card caches so reload fetches fresh data
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith("miru_fuel_home") || k.startsWith("miru_train_home")) {
+        localStorage.removeItem(k);
+      }
+    });
+
     window.location.reload();
   }
 
