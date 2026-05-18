@@ -2929,6 +2929,7 @@ const _ts = new Date(d.timestamp);
     window._rptHouseData = null;
     window._rptLocalData = null;
     window._rptCrimeData = null;
+    window._rptShpData   = null;
 
     // Fire both requests in parallel — render each section as it arrives
     const houseP = fetchWithTimeout(`/api/house?postcode=${postcode}`, 15000)
@@ -3001,6 +3002,7 @@ const _ts = new Date(d.timestamp);
     }
 
     if (_shpCached) {
+      window._rptShpData = _shpCached;
       renderShopsData(_shpCached);
       document.getElementById("rptab-loading-shops").style.display = "none";
     } else {
@@ -3009,6 +3011,7 @@ const _ts = new Date(d.timestamp);
           const d = await r.json();
           if (!r.ok) throw new Error(d.error || "Shops lookup failed");
           try { localStorage.setItem(_shpKey, JSON.stringify({ts: Date.now(), data: d})); } catch{}
+          window._rptShpData = d;
           renderShopsData(d);
         })
         .catch(err => {
@@ -11883,6 +11886,17 @@ _bkBadge();
     if (cafes && cafes.length) {
       lines.push("☕ Cafes nearby");
       cafes.slice(0,4).forEach(c => lines.push(`  ${c.name} (${c.dist_mi.toFixed(1)}mi)`));
+      lines.push("");
+    }
+
+    // Supermarkets
+    const shops = window._rptShpData && window._rptShpData.supermarkets;
+    if (shops && shops.length) {
+      lines.push("🛒 Supermarkets nearby");
+      shops.slice(0,5).forEach(s => {
+        const dist = s.distance_km ? ` (${(s.distance_km*0.621371).toFixed(1)}mi)` : "";
+        lines.push(`  ${s.name}${dist}${s.address ? " · " + s.address : ""}`);
+      });
       lines.push("");
     }
 
