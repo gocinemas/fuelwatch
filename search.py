@@ -76,9 +76,9 @@ def postcode_to_latlon(postcode: str) -> Optional[tuple]:
                 _postcode_cache[postcode] = result
                 return result
             # Full postcode not found — try as outcode (e.g. "GU22", "TW3")
-            # Inward code is always 3 chars, so only strip if postcode is 5+ chars
+            # Inward code is always 3 chars; if input is ≤4 chars it IS the outcode
             outcode = postcode[:-3] if len(postcode) > 4 else postcode
-            if outcode != postcode:
+            try:
                 oc_resp = requests.get(
                     f"https://api.postcodes.io/outcodes/{outcode}",
                     timeout=6, headers=HEADERS
@@ -89,6 +89,8 @@ def postcode_to_latlon(postcode: str) -> Optional[tuple]:
                     result = (r["latitude"], r["longitude"])
                     _postcode_cache[postcode] = result
                     return result
+            except Exception:
+                pass
             print(f"Postcode not found: {postcode}")
             return None
         except Exception as e:
