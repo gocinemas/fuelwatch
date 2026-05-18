@@ -12708,12 +12708,17 @@ _bkBadge();
       } catch(e) {}
     }
 
-    const displaySummary = bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
+    const isAreaReport = s.source === "area-report" || s.source === "my-area";
+    const displaySummary = isAreaReport
+      ? bodyText.trim()
+      : bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
     const summaryHtml = isMenu ? menuHtml
       : jsonCardHtml
       ? jsonCardHtml
       : displaySummary
-      ? `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${_hl(displaySummary, _savesHighlightTerm)}</div>`
+      ? isAreaReport
+        ? `<div style="font-size:12px;color:var(--text);line-height:1.7;margin-bottom:10px;opacity:0.85;white-space:pre-wrap">${_hl(displaySummary, _savesHighlightTerm)}</div>`
+        : `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${_hl(displaySummary, _savesHighlightTerm)}</div>`
       : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>`;
 
     let sourceDomain = "";
