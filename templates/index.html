@@ -438,8 +438,9 @@
         <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:7px">📍 Home postcode</label>
         <input id="id-modal-pc" type="text" placeholder="e.g. GU22 9JP"
           style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:13px 14px;font-size:15px;font-weight:500;color:var(--text);background:var(--bg);outline:none;font-family:inherit;text-transform:uppercase"
-          oninput="this.value=this.value.toUpperCase()"
+          oninput="this.value=this.value.toUpperCase();document.getElementById('id-modal-pc-err').style.display='none';this.style.borderColor=''"
           onkeydown="if(event.key==='Enter')_idModalSave();if(event.key==='Escape')_idModalClose()">
+        <div id="id-modal-pc-err" style="display:none;font-size:11px;color:#ef4444;margin-top:5px;padding-left:2px"></div>
       </div>
       <!-- Save -->
       <button id="id-modal-save-btn" onclick="this.textContent='Saving…';this.disabled=true;_idModalSave()"
@@ -2646,6 +2647,11 @@
     const fuel     = document.getElementById("fuel-type").value;
     const radius   = document.getElementById("fuel-radius").value;
     if (!postcode) return;
+    if (!/^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i.test(postcode)) {
+      setLoading("fuel", false);
+      document.getElementById("fuel-results").innerHTML = `<p style="color:#ef4444;font-size:13px;padding:12px 0">⚠️ "${postcode}" doesn't look like a valid UK postcode — try e.g. KT16 0DA</p>`;
+      return;
+    }
     // Sync postcode back to global identity bar
     localStorage.setItem("miru_postcode", postcode);
     _idBarRefresh && _idBarRefresh();
@@ -2870,6 +2876,12 @@ const _ts = new Date(d.timestamp);
   async function searchReport() {
     const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"");
     if (!postcode) return;
+    if (!/^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i.test(postcode)) {
+      document.getElementById("report-error").textContent = `⚠️ "${postcode}" doesn't look like a valid UK postcode — try e.g. KT16 0DA`;
+      document.getElementById("report-error").classList.remove("hidden");
+      document.getElementById("report-results").classList.add("hidden");
+      return;
+    }
     _saveRecent("miru_report", postcode);
 
     // Reset panels and badges
@@ -3409,19 +3421,50 @@ const _ts = new Date(d.timestamp);
     document.getElementById("id-modal-overlay").style.display = "none";
   }
 
-  function _idModalSave() {
+  async function _idModalSave() {
+    const btn    = document.getElementById("id-modal-save-btn");
+    const pcInput  = document.getElementById("id-modal-pc");
+    const pcErr    = document.getElementById("id-modal-pc-err");
+
     // ── Phone — normalise, never block ──
     const rawPhone = (document.getElementById("id-modal-phone").value || "").trim();
     let phone = rawPhone.replace(/[\s\-\(\)\.]/g, "");
     if (/^07\d{9}$/.test(phone))       phone = "+44" + phone.slice(1);
     else if (/^447\d{9}$/.test(phone)) phone = "+" + phone;
     else if (/^0044\d+$/.test(phone))  phone = "+" + phone.slice(2);
+
+    // ── Postcode — validate before saving ──
+    const rawPc = (pcInput.value || "").trim();
+    const pc    = rawPc.toUpperCase().replace(/\s+/g, "");
+
+    function _pcErr(msg) {
+      pcInput.style.borderColor = "#ef4444";
+      pcErr.textContent = msg;
+      pcErr.style.display = "";
+      if (btn) { btn.textContent = "Save & reload"; btn.disabled = false; }
+    }
+
+    if (pc) {
+      // 1. Quick format check
+      if (!/^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i.test(rawPc)) {
+        _pcErr("That doesn't look like a UK postcode — try e.g. KT16 0DA");
+        return;
+      }
+      // 2. Confirm it exists via postcodes.io
+      try {
+        const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`, { signal: AbortSignal.timeout(5000) });
+        if (!r.ok) {
+          _pcErr("Postcode not found — double check it and try again");
+          return;
+        }
+      } catch(_) {
+        // Network error — allow save anyway so offline users aren't blocked
+      }
+    }
+
+    // ── All valid — save ──
     if (phone) localStorage.setItem("miru_phone", phone);
     else       localStorage.removeItem("miru_phone");
-
-    // ── Postcode ──
-    const rawPc = (document.getElementById("id-modal-pc").value || "").trim();
-    const pc = rawPc.toUpperCase().replace(/\s+/g, "");
     if (pc) localStorage.setItem("miru_postcode", pc);
     else    localStorage.removeItem("miru_postcode");
 
@@ -3436,16 +3479,13 @@ const _ts = new Date(d.timestamp);
     // Reload home train + fuel cards using nearest-by-postcode logic
     if (typeof _onPostcodeChange === "function") _onPostcodeChange(pc);
     else {
-      // Fallback: bust caches and reload functions directly
       Object.keys(localStorage).forEach(k => {
         if (k.startsWith("miru_fuel_home") || k.startsWith("miru_train_home")) localStorage.removeItem(k);
       });
-      if (typeof _fuelHomeLoad === "function")  _fuelHomeLoad();
-      if (typeof _trainHomeLoad === "function") _trainHomeLoad();
+      if (typeof window._fuelHomeLoad === "function")  window._fuelHomeLoad();
+      if (typeof window._trainHomeLoad === "function") window._trainHomeLoad();
     }
 
-    // Re-enable save button
-    const btn = document.getElementById("id-modal-save-btn");
     if (btn) { btn.textContent = "Save & reload"; btn.disabled = false; }
   }
 
@@ -4382,6 +4422,12 @@ const _ts = new Date(d.timestamp);
     const raw = document.getElementById("myarea-postcode-input").value.trim().toUpperCase();
     if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
+    // Basic format check — catch obvious typos before hitting the backend
+    if (!/^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i.test(raw)) {
+      const hint = document.getElementById("myarea-search-hint");
+      if (hint) { hint.textContent = "⚠️ That doesn't look like a valid UK postcode"; hint.style.display = ""; hint.style.color = "#ef4444"; }
+      return;
+    }
     _maCurrentPostcode = pc;
     // Persist to identity bar so home screen and other screens stay in sync
     if (!_miruPostcode()) {
