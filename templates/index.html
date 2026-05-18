@@ -5,23 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="{% if intel_mode %}Intel{% else %}Miru{% endif %}">
-  <meta name="theme-color" content="{% if intel_mode %}#4f46e5{% else %}#dc2626{% endif %}">
-  <title>{% if intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}</title>
-  <meta name="description" content="{% if intel_mode %}Brand &amp; Company intelligence — financials, strategy, news, campaigns and more.{% else %}Fuel prices, research an area, area research, book scanner, company intel and more — all in one place. Also works on WhatsApp.{% endif %}">
+  <meta name="apple-mobile-web-app-title" content="{% if brand_meta and brand_meta.name %}{{ brand_meta.name }}{% elif intel_mode %}Intel{% else %}Miru{% endif %}">
+  <meta name="theme-color" content="{% if intel_mode or (brand_meta and brand_meta.name) %}#4f46e5{% else %}#dc2626{% endif %}">
+  <title>{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Brand Intel{% elif intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}</title>
+  <meta name="description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% elif brand_meta and brand_meta.name %}{{ brand_meta.name }} — brand intelligence, social strategy, campaigns and financials on Intel.{% elif intel_mode %}Brand &amp; Company intelligence — financials, strategy, news, campaigns and more.{% else %}Fuel prices, research an area, area research, book scanner, company intel and more — all in one place. Also works on WhatsApp.{% endif %}">
 
   <!-- Open Graph -->
   <meta property="og:type"        content="website">
-  <meta property="og:url"         content="{% if intel_mode %}https://intel.humanagency.co/{% else %}https://miru.humanagency.co/{% endif %}">
-  <meta property="og:title"       content="{% if intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
-  <meta property="og:description" content="{% if intel_mode %}Brand &amp; Company intelligence — financials, strategy, news and more.{% else %}Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.{% endif %}">
-  <meta property="og:image"       content="https://miru.humanagency.co/static/miru-preview.png">
+  <meta property="og:url"         content="{% if brand_meta and brand_meta.name %}https://intel.humanagency.co/{{ brand_meta.name | lower | replace(' ', '-') }}{% elif intel_mode %}https://intel.humanagency.co/{% else %}https://miru.humanagency.co/{% endif %}">
+  <meta property="og:title"       content="{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Brand Intel | intel.humanagency.co{% elif intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
+  <meta property="og:description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% elif brand_meta and brand_meta.name %}{{ brand_meta.name }} brand intelligence — social strategy, campaigns, financials and more.{% elif intel_mode %}Brand &amp; Company intelligence — financials, strategy, news and more.{% else %}Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.{% endif %}">
+  <meta property="og:image"       content="{% if brand_meta and brand_meta.logo %}{{ brand_meta.logo }}{% else %}https://miru.humanagency.co/static/miru-preview.png{% endif %}">
 
   <!-- Twitter / X card -->
   <meta name="twitter:card"        content="summary_large_image">
-  <meta name="twitter:title"       content="{% if intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
-  <meta name="twitter:description" content="{% if intel_mode %}Brand &amp; Company intelligence — financials, strategy, news and more.{% else %}Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.{% endif %}">
-  <meta name="twitter:image"       content="https://miru.humanagency.co/static/miru-preview.png">
+  <meta name="twitter:title"       content="{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Brand Intel | intel.humanagency.co{% elif intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
+  <meta name="twitter:description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% elif brand_meta and brand_meta.name %}{{ brand_meta.name }} brand intelligence — social strategy, campaigns, financials and more.{% elif intel_mode %}Brand &amp; Company intelligence — financials, strategy, news and more.{% else %}Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.{% endif %}">
+  <meta name="twitter:image"       content="{% if brand_meta and brand_meta.logo %}{{ brand_meta.logo }}{% else %}https://miru.humanagency.co/static/miru-preview.png{% endif %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&display=swap" rel="stylesheet">
@@ -6263,6 +6263,13 @@ const _ts = new Date(d.timestamp);
       // Pin state — set from cached result if present
       const pinned = !!(br._pinned || co._pinned);
       _intelSetPin(raw, _intelSearchMode || "brand", pinned);
+
+      // Update URL to brand slug so the page is shareable (intel.humanagency.co only)
+      if (_INTEL_MODE) {
+        const _bSlug = raw.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        history.replaceState(null, "", "/" + _bSlug);
+        document.title = raw + " — Brand Intel";
+      }
 
       // Book intel fallback: if no brand/company data, try book lookup
       const hasUsefulData = (br.name && (br.description || br.timeline?.length)) || (co.name && co.overview);

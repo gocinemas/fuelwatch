@@ -1187,7 +1187,20 @@ def school_root():
 
 @app.route("/<company_slug>")
 def company_page(company_slug):
-    return render_template("index.html", prefill_company=company_slug.replace("-", " "), prefill_doc=None)
+    brand_name = company_slug.replace("-", " ").title()
+    # Quick cache lookup for richer meta tags — don't block if slow
+    brand_meta = {"name": brand_name, "description": None, "logo": None}
+    try:
+        cache_key = f"brand:{brand_name.lower()}"
+        rows = lib._sb().table("ai_cache").select("data").eq("key", cache_key).limit(1).execute().data or []
+        if rows:
+            d = rows[0].get("data") or {}
+            brand_meta["description"] = d.get("tagline") or d.get("description") or d.get("overview")
+            brand_meta["logo"] = d.get("logo")
+    except Exception:
+        pass
+    return render_template("index.html", prefill_company=brand_name,
+                           prefill_doc=None, brand_meta=brand_meta)
 
 
 # ── Library API ───────────────────────────────────────────────────────────────
