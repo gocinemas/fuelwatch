@@ -4280,6 +4280,13 @@ const _ts = new Date(d.timestamp);
     if (!raw) return;
     const pc = raw.replace(/\s+/g, "");
     _maCurrentPostcode = pc;
+    // Persist to identity bar so home screen and other screens stay in sync
+    if (!_miruPostcode()) {
+      localStorage.setItem("miru_postcode", pc);
+      _idBarRefresh && _idBarRefresh();
+      setTimeout(_setupBannerRender, 100);
+      setTimeout(() => { _fuelHomeLoad(); _trainHomeLoad(); }, 200);
+    }
     // Show location bar with current postcode
     const locBar = document.getElementById("myarea-location-bar");
     const locLabel = document.getElementById("myarea-location-label");
