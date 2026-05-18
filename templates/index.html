@@ -11453,8 +11453,8 @@ _bkBadge();
       <div style="margin-top:14px;font-size:12px;color:#9ca3af">Using a different number? <button onclick="_schoolShowPhoneEntry()" style="color:#4338ca;font-weight:600;background:none;border:none;cursor:pointer;font-size:12px;padding:0">Enter it here</button></div>
     </div>
 
-    <!-- State B: enter phone number -->
-    <div id="school-phone-entry" style="display:none">
+    <!-- State B: enter phone number (default visible fallback) -->
+    <div id="school-phone-entry" style="display:block">
       <div style="color:#9ca3af;font-size:13px;margin-bottom:20px">Enter your WhatsApp number to view your children's school updates</div>
       <input id="school-pin-input" type="tel" placeholder="+447700900000"
         style="border:1px solid #e5e7eb;border-radius:12px;padding:12px 16px;font-size:15px;width:220px;text-align:center;outline:none;margin-bottom:10px"
@@ -12213,16 +12213,21 @@ _bkBadge();
     setTimeout(() => document.getElementById("school-pin-input").focus(), 100);
   }
   function _schoolShowLock() {
-    document.getElementById("school-pin-screen").style.display = "flex";
-    document.getElementById("school-main").style.display = "none";
-    // If phone already known, show "no account" prompt rather than asking for the number again
-    if (_miruPhone()) {
-      document.getElementById("school-no-account").style.display = "block";
-      document.getElementById("school-phone-entry").style.display = "none";
-    } else {
-      document.getElementById("school-no-account").style.display = "none";
-      document.getElementById("school-phone-entry").style.display = "block";
-      setTimeout(() => document.getElementById("school-pin-input").focus(), 100);
+    var pinScreen = document.getElementById("school-pin-screen");
+    var noAccEl   = document.getElementById("school-no-account");
+    var phoneEl   = document.getElementById("school-phone-entry");
+    if (pinScreen) pinScreen.style.display = "flex";
+    var mainEl = document.getElementById("school-main");
+    if (mainEl) mainEl.style.display = "none";
+    var phone = _miruPhone();
+    if (phone && noAccEl && phoneEl) {
+      noAccEl.style.display  = "block";
+      phoneEl.style.display  = "none";
+    } else if (phoneEl) {
+      if (noAccEl) noAccEl.style.display = "none";
+      phoneEl.style.display = "block";
+      var inp = document.getElementById("school-pin-input");
+      if (inp) setTimeout(function(){ inp.focus(); }, 100);
     }
   }
   function _schoolShowMain() {
