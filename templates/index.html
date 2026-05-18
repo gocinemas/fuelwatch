@@ -1198,6 +1198,7 @@
           <button id="itab-btn-history"   onclick="switchIntelTab('history')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">📖 Story</button>
           <button id="itab-btn-campaigns" onclick="switchIntelTab('campaigns')" class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">🎯 Campaigns</button>
           <button id="itab-btn-intel"     onclick="switchIntelTab('intel')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Intel</button>
+          <button id="itab-btn-social"    onclick="switchIntelTab('social')"    class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">📱 Social</button>
         </div>
 
         <!-- ── About tab ── -->
@@ -1441,6 +1442,67 @@
           <div id="brand-rivals-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-top:12px">
             <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">⚔️ Closest Competitors</div>
             <div id="brand-competitors-el"></div>
+          </div>
+        </div>
+
+        <!-- ── Social & Media tab ── -->
+        <div id="intel-tab-social" style="display:none">
+          <!-- Loading state -->
+          <div id="social-loading" style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">
+            <div style="font-size:24px;margin-bottom:8px">📱</div>
+            Fetching social signals…
+          </div>
+          <!-- Content (hidden until loaded) -->
+          <div id="social-content" style="display:none">
+
+            <!-- Direction signal -->
+            <div id="social-direction-wrap" style="background:linear-gradient(135deg,#0f172a,#1e1b4b);border-radius:16px;padding:14px 16px;margin-bottom:12px;display:none">
+              <div style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:rgba(165,180,252,.7);margin-bottom:6px">Where they're heading</div>
+              <div id="social-direction" style="font-size:14px;font-weight:600;color:#fff;line-height:1.5"></div>
+            </div>
+
+            <!-- Platform badges + approach -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+              <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Platform focus</div>
+              <div id="social-platforms" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+              <div id="social-approach-row" style="display:none;font-size:12px;color:var(--muted)">
+                Influencer approach: <span id="social-approach" style="font-weight:700;color:var(--text)"></span>
+              </div>
+              <div id="social-content-dir-row" style="font-size:12px;color:var(--muted);margin-top:6px;display:none">
+                Content: <span id="social-content-dir" style="font-weight:600;color:var(--text)"></span>
+              </div>
+            </div>
+
+            <!-- YouTube channel -->
+            <div id="social-yt-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+              <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">YouTube</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:36px;height:36px;background:#ff0000;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <svg width="16" height="12" viewBox="0 0 24 17" fill="#fff"><path d="M23.5 2.7S23.2.9 22.4.1C21.4-.9 20.3-.9 19.8-.8 16.5 0 12 0 12 0s-4.5 0-7.8-.8C3.7-.9 2.6-.9 1.6.1.8.9.5 2.7.5 2.7S.2 4.8.2 7v2.1c0 2.1.3 4.3.3 4.3s.3 1.8 1.1 2.6c1 1 2.4.9 3 1C6.7 17.1 12 17.1 12 17.1s4.5 0 7.8-.8c.5-.1 1.6-.1 2.6-1.1.8-.8 1.1-2.6 1.1-2.6s.3-2.1.3-4.3V7c0-2.2-.3-4.3-.3-4.3zM9.5 11.6V4.9l7 3.4-7 3.3z"/></svg>
+                </div>
+                <div style="flex:1;min-width:0">
+                  <a id="social-yt-name" href="#" target="_blank" rel="noopener" style="font-size:14px;font-weight:700;color:var(--text);text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></a>
+                  <div id="social-yt-stats" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent campaigns -->
+            <div id="social-campaigns-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+              <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Recent campaigns</div>
+              <div id="social-campaigns-list" style="display:flex;flex-direction:column;gap:6px"></div>
+            </div>
+
+            <!-- News -->
+            <div id="social-news-wrap" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+              <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Social media news</div>
+              <div id="social-news-list" style="display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+
+            <!-- Low confidence notice -->
+            <div id="social-low-conf" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:12px 14px;font-size:12px;color:#92400e;text-align:center">
+              Limited public data found for this brand's social presence.
+            </div>
           </div>
         </div>
 
@@ -5583,7 +5645,7 @@ const _ts = new Date(d.timestamp);
 
   // ── Company search ───────────────────────────────────────────────────────────
   // ── Intel mode toggle ────────────────────────────────────────────────────────
-  const _INTEL_TABS = ["about","finance","history","campaigns","intel"];
+  const _INTEL_TABS = ["about","finance","history","campaigns","intel","social"];
 
   window.switchIntelMode = function() {}; // no-op kept for any lingering callers
 
@@ -5905,7 +5967,98 @@ const _ts = new Date(d.timestamp);
         btn.style.color      = t === tab ? "#fff"    : "var(--muted)";
       }
     });
+    if (tab === "social") _loadSocialTab();
   };
+
+  let _socialTabBrand = "";
+  async function _loadSocialTab() {
+    const brand = document.getElementById("intel-input").value.trim();
+    if (!brand || brand === _socialTabBrand) return;
+    _socialTabBrand = brand;
+    document.getElementById("social-loading").style.display = "block";
+    document.getElementById("social-content").style.display = "none";
+    try {
+      const r = await fetch("/api/brand/social?name=" + encodeURIComponent(brand));
+      const d = await r.json();
+      _renderSocialTab(d);
+    } catch(e) {
+      document.getElementById("social-loading").innerHTML = '<div style="color:#dc2626;font-size:13px;text-align:center;padding:24px">Could not load social data.</div>';
+    }
+  }
+
+  function _renderSocialTab(d) {
+    document.getElementById("social-loading").style.display = "none";
+    document.getElementById("social-content").style.display = "block";
+
+    // Direction
+    const dirWrap = document.getElementById("social-direction-wrap");
+    if (d.direction) {
+      document.getElementById("social-direction").textContent = d.direction;
+      dirWrap.style.display = "";
+    } else { dirWrap.style.display = "none"; }
+
+    // Platform badges
+    const PLAT_STYLE = {
+      tiktok:    "background:#010101;color:#fff",
+      instagram: "background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff",
+      youtube:   "background:#ff0000;color:#fff",
+      x:         "background:#000;color:#fff",
+      facebook:  "background:#1877f2;color:#fff",
+      linkedin:  "background:#0077b5;color:#fff",
+      pinterest: "background:#e60023;color:#fff",
+      snapchat:  "background:#fffc00;color:#000",
+    };
+    const platEl = document.getElementById("social-platforms");
+    const plats = d.platforms || [];
+    platEl.innerHTML = plats.length
+      ? plats.map(p => `<span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;${PLAT_STYLE[p.toLowerCase()] || 'background:var(--surface2);color:var(--text)'}">${p.charAt(0).toUpperCase()+p.slice(1)}</span>`).join("")
+      : '<span style="font-size:12px;color:var(--muted)">No platform data found</span>';
+
+    const approachRow = document.getElementById("social-approach-row");
+    if (d.influencer_approach && d.influencer_approach !== "none") {
+      document.getElementById("social-approach").textContent = d.influencer_approach;
+      approachRow.style.display = "";
+    } else { approachRow.style.display = "none"; }
+
+    const contentDirRow = document.getElementById("social-content-dir-row");
+    if (d.content_direction) {
+      document.getElementById("social-content-dir").textContent = d.content_direction;
+      contentDirRow.style.display = "";
+    } else { contentDirRow.style.display = "none"; }
+
+    // YouTube
+    const yt = d.youtube || {};
+    const ytWrap = document.getElementById("social-yt-wrap");
+    if (yt.channel) {
+      document.getElementById("social-yt-name").textContent = yt.channel;
+      document.getElementById("social-yt-name").href = yt.url || "#";
+      document.getElementById("social-yt-stats").textContent =
+        [yt.subscribers && yt.subscribers + " subscribers",
+         yt.video_count && yt.video_count + " videos"].filter(Boolean).join(" · ");
+      ytWrap.style.display = "";
+    } else { ytWrap.style.display = "none"; }
+
+    // Recent campaigns
+    const camps = d.recent_campaigns || [];
+    const campWrap = document.getElementById("social-campaigns-wrap");
+    if (camps.length) {
+      document.getElementById("social-campaigns-list").innerHTML =
+        camps.map(c => `<div style="font-size:13px;color:var(--text);padding:6px 0;border-bottom:1px solid var(--border)">🎯 ${c}</div>`).join("");
+      campWrap.style.display = "";
+    } else { campWrap.style.display = "none"; }
+
+    // News
+    const news = d.news || [];
+    const newsWrap = document.getElementById("social-news-wrap");
+    if (news.length) {
+      document.getElementById("social-news-list").innerHTML =
+        news.map(n => `<div><a href="${n.url}" target="_blank" rel="noopener" style="font-size:13px;color:var(--text);text-decoration:none;font-weight:500;line-height:1.4;display:block">${n.title}</a><div style="font-size:11px;color:var(--muted);margin-top:2px">${n.source || ""} ${n.date ? "· " + n.date : ""}</div></div>`).join("");
+      newsWrap.style.display = "";
+    } else { newsWrap.style.display = "none"; }
+
+    // Confidence
+    document.getElementById("social-low-conf").style.display = d.confidence === "low" ? "" : "none";
+  }
 
   // ── Non-brand local-service detection ────────────────────────────────────────
   const _LOCAL_SVC = /\b(plumber|builder|electrician|electricians|dentist|dentists|hairdresser|barber|mechanic|locksmith|cleaner|painter|decorator|carpenter|roofer|tiler|gardener|handyman|solicitor|accountant|physio|therapist|optician|vet|gp|pharmacist|pharmacy|restaurant|cafe|coffee shop|pub|bar|hotel|gym|salon|spa|nursery|supermarket|takeaway|pizza|curry|chinese|indian|thai|italian|sushi|kebab|fish and chips)\b/i;
@@ -5965,6 +6118,7 @@ const _ts = new Date(d.timestamp);
     document.getElementById("co-did-you-mean").classList.add("hidden");
     document.getElementById("brand-did-you-mean").classList.add("hidden");
     switchIntelTab("about");
+    _socialTabBrand = ""; // reset so social tab refetches for new brand
     const bookPanel = document.getElementById("book-result-panel");
     if (bookPanel) bookPanel.style.display = "none";
     const tabBar = document.getElementById("intel-tab-bar");

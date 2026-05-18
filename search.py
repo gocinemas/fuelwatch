@@ -1309,6 +1309,120 @@ def fetch_brand_data(brand: str) -> dict:
             ev.set()
 
 
+# ── Brand social & media intelligence ────────────────────────────────────────
+
+def fetch_brand_social(brand: str) -> dict:
+    """Fetch social & media intelligence for a brand.
+    Returns platforms, content direction, influencer approach, YouTube stats, recent campaigns."""
+    import json as _json
+
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    yt_key   = os.environ.get("YOUTUBE_API_KEY", "")
+
+    def _social_news():
+        return _fetch_news(brand, "TikTok OR Instagram OR influencer OR creator OR social media OR YouTube", limit=8)
+
+    def _yt_channel():
+        if not yt_key:
+            return {}
+        try:
+            # Search for official channel
+            r = requests.get(
+                "https://www.googleapis.com/youtube/v3/search",
+                params={"q": f"{brand} official", "part": "snippet", "type": "channel",
+                        "maxResults": 3, "key": yt_key},
+                timeout=8,
+            )
+            if r.status_code != 200:
+                return {}
+            items = r.json().get("items", [])
+            if not items:
+                return {}
+            ch_id    = items[0].get("id", {}).get("channelId", "")
+            ch_title = items[0].get("snippet", {}).get("title", "")
+            if not ch_id:
+                return {}
+            # Fetch channel statistics
+            rs = requests.get(
+                "https://www.googleapis.com/youtube/v3/channels",
+                params={"id": ch_id, "part": "statistics", "key": yt_key},
+                timeout=8,
+            )
+            if rs.status_code != 200:
+                return {"channel": ch_title, "url": f"https://www.youtube.com/channel/{ch_id}"}
+            stats = rs.json().get("items", [{}])[0].get("statistics", {})
+            subs  = int(stats.get("subscriberCount", 0) or 0)
+            vids  = int(stats.get("videoCount", 0) or 0)
+            subs_fmt = (f"{subs/1_000_000:.1f}M" if subs >= 1_000_000
+                        else f"{subs//1_000}K" if subs >= 1_000 else str(subs))
+            return {
+                "channel":     ch_title,
+                "channel_id":  ch_id,
+                "subscribers": subs_fmt,
+                "video_count": vids,
+                "url":         f"https://www.youtube.com/channel/{ch_id}",
+            }
+        except Exception as e:
+            print(f"[brand_social_yt] {e}")
+            return {}
+
+    with _cf.ThreadPoolExecutor(max_workers=2) as pool:
+        news_f = pool.submit(_social_news)
+        yt_f   = pool.submit(_yt_channel)
+        social_news = []
+        try: social_news = news_f.result(timeout=8) or []
+        except Exception: pass
+        yt_channel = {}
+        try: yt_channel = yt_f.result(timeout=10) or {}
+        except Exception: pass
+
+    # Groq synthesis
+    if not groq_key:
+        return {"platforms": [], "direction": "", "confidence": "low",
+                "youtube": yt_channel, "news": social_news[:5]}
+
+    news_lines = "\n".join(f"- {n['title']} ({n.get('date','')})" for n in social_news[:6])
+    yt_line    = (f"YouTube channel '{yt_channel['channel']}' with {yt_channel['subscribers']} subscribers"
+                  if yt_channel.get("channel") else "No YouTube channel found")
+    prompt = (
+        f'Brand: "{brand}"\n'
+        f'Recent social media news:\n{news_lines or "None found"}\n'
+        f'YouTube: {yt_line}\n\n'
+        'Based only on this evidence, return ONLY this JSON — no markdown:\n'
+        '{\n'
+        '  "platforms": ["active platforms e.g. tiktok, instagram, youtube, x — only with evidence"],\n'
+        '  "content_direction": "one sentence — e.g. creator-led UGC, broadcast-first, influencer-heavy",\n'
+        '  "influencer_approach": "micro / macro / celebrity / mixed / none — pick one",\n'
+        '  "recent_campaigns": ["up to 3 recent social campaigns from the news, else empty list"],\n'
+        '  "direction": "one sentence — where they appear to be heading on social",\n'
+        '  "confidence": "high / medium / low — based on evidence available"\n'
+        '}\n'
+        'Only include platforms with clear evidence. If little/no social news, set confidence low. Return ONLY the JSON.'
+    )
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant",
+                  "messages": [{"role": "user", "content": prompt}],
+                  "temperature": 0.1, "max_tokens": 400},
+            timeout=12,
+        )
+        if r.status_code == 200:
+            content = r.json()["choices"][0]["message"]["content"].strip()
+            m = _re.search(r'\{.*\}', content, _re.DOTALL)
+            if m:
+                parsed = _json.loads(m.group(0))
+                parsed["youtube"] = yt_channel
+                parsed["news"]    = social_news[:5]
+                return parsed
+    except Exception as e:
+        print(f"[brand_social] groq error: {e}")
+
+    return {"platforms": [], "direction": "", "confidence": "low",
+            "youtube": yt_channel, "news": social_news[:5]}
+
+
 # ── Company research ──────────────────────────────────────────────────────────
 _COMPANY_CACHE: dict = {}
 _COMPANY_TTL = 3600

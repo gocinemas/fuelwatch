@@ -1965,6 +1965,27 @@ def api_brand():
     return jsonify(data)
 
 
+@app.route("/api/brand/social")
+def api_brand_social():
+    name = request.args.get("name", "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "Brand name required"}), 400
+    cache_key = f"brand_social:{name.lower()}|v1"
+    try:
+        cached = lib._sb().table("ai_cache").select("data").eq("key", cache_key).execute().data
+        if cached and cached[0].get("data"):
+            return jsonify(cached[0]["data"])
+    except Exception:
+        pass
+    data = search.fetch_brand_social(name)
+    if data.get("confidence") in ("high", "medium"):
+        try:
+            lib._sb().table("ai_cache").upsert({"key": cache_key, "data": data}).execute()
+        except Exception:
+            pass
+    return jsonify(data)
+
+
 @app.route("/api/brand/save-to-library", methods=["POST"])
 def api_brand_save_to_library():
     data = request.get_json(silent=True) or {}
