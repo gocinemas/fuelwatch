@@ -12868,9 +12868,12 @@ _bkBadge();
       ? `<a href="${s.url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">↗ Open</a>`
       : "";
 
-    const exportBtns = isAreaReport && displaySummary ? `
-      <button onclick="savesCopyText(${JSON.stringify(s.title + '\n\n' + displaySummary)},this)" style="padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:600;cursor:pointer;color:var(--text)">📋 Copy</button>
-      <button onclick="savesPrintArea(${JSON.stringify(s.title)},${JSON.stringify(displaySummary)},${JSON.stringify(s.url||'')})" style="padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:600;cursor:pointer;color:var(--text)">${navigator && navigator.share ? "↗ Share" : "🖨️ PDF"}</button>` : "";
+    const _arPostcode = (() => {
+      try { return new URL(s.url || "").searchParams.get("report") || ""; } catch(_) {}
+      return (s.title || "").replace(/^📍\s*/,"").replace(/\s+/g,"").toUpperCase();
+    })();
+    const exportBtns = isAreaReport ? `
+      <button onclick="showScreen('report');document.getElementById('report-postcode').value=${JSON.stringify(_arPostcode)};searchReport();" style="padding:8px 14px;border-radius:10px;border:1px solid #c7d2fe;background:#eef2ff;font-size:12px;font-weight:600;cursor:pointer;color:#4338ca">🔎 View report →</button>` : "";
 
     const deleteBtn = `<button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>`;
 
