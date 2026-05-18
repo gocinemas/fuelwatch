@@ -11353,17 +11353,32 @@ _bkBadge();
         return dt.toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short" });
       };
       const typeEmoji = { reminder:"⏰", activity:"🎨", event:"📅", trip:"🚌", club:"⚽", dinner:"🍽️", newsletter:"📰", deadline:"🔴", payment:"💳" };
-      const ev = events[0];
-      const emoji = typeEmoji[ev.event_type] || "📌";
-      const title = ev.event_title || ev.title || "School event";
-      document.getElementById("shc-event-strip").textContent = emoji + " " + title;
-      document.getElementById("shc-event-sub").textContent = [childName || "School", fmt(ev.event_date)].filter(Boolean).join(" · ");
       const moreBadge = document.getElementById("shc-more-badge");
-      if (events.length > 1) {
-        moreBadge.textContent = "+" + (events.length - 1) + " more";
-        moreBadge.style.display = "";
-      } else {
-        moreBadge.style.display = "none";
+      moreBadge.style.display = "none";
+
+      // Build rotation list with child name per event if multiple profiles
+      const profileMap = {};
+      profiles.forEach(p => { if (p.child_name) profileMap[p.id] = p.child_name; });
+      const items = events.slice(0, 6).map(ev => {
+        const emoji = typeEmoji[ev.event_type] || "📌";
+        const title = ev.event_title || ev.title || "School event";
+        const kid = ev.profile_id && profileMap[ev.profile_id] ? profileMap[ev.profile_id] : (childName || "School");
+        return { strip: emoji + " " + title, sub: [kid, fmt(ev.event_date)].filter(Boolean).join(" · ") };
+      });
+
+      let _shcIdx = 0;
+      const _shcRender = () => {
+        const it = items[_shcIdx];
+        document.getElementById("shc-event-strip").textContent = it.strip;
+        document.getElementById("shc-event-sub").textContent = it.sub;
+      };
+      _shcRender();
+      if (items.length > 1) {
+        if (window._shcTimer) clearInterval(window._shcTimer);
+        window._shcTimer = setInterval(() => {
+          _shcIdx = (_shcIdx + 1) % items.length;
+          _shcRender();
+        }, 4000);
       }
       document.getElementById("shc-events").style.display = "";
     } catch(e) {}
@@ -11410,14 +11425,15 @@ _bkBadge();
 
   async function _trainHomeLoad() {
     const pc = _miruPostcode();
-    // Prefer saved home station bookmark
-    const bm = _getBm ? _getBm("home") : null;
+    // Read home bookmark directly from localStorage (_getBm is IIFE-scoped in trains block)
+    let bm = null;
+    try { bm = JSON.parse(localStorage.getItem("miru_train_bm_home") || "null"); } catch {}
     let crs = bm ? bm.crs : null;
     let stationName = bm ? (bm.name || bm.crs) : null;
     if (!crs && pc) {
       try {
         const r = await fetch(`/api/train/nearest-by-postcode?postcode=${encodeURIComponent(pc.replace(/\s/g,"").toUpperCase())}`);
-        if (r.ok) { const d = await r.json(); crs = d.crs; stationName = d.name; }
+        if (r.ok) { const d = await r.json(); crs = d.crs; stationName = d.name || d.station; }
       } catch {}
     }
     if (!crs) return;
@@ -11432,7 +11448,8 @@ _bkBadge();
         const r = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
         if (r.ok) {
           const d = await r.json();
-          trains = d.trains || d.services || [];
+          trains = d.trains || [];
+          stationName = d.station || stationName;
           if (trains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains })); } catch {}
         }
       } catch {}
@@ -11449,7 +11466,7 @@ _bkBadge();
   }
 
   document.addEventListener("DOMContentLoaded", function() {
-    if (_miruPostcode() || (_getBm && _getBm("home"))) {
+    if (_miruPostcode() || localStorage.getItem("miru_train_bm_home")) {
       _fuelHomeLoad();
       _trainHomeLoad();
     }
