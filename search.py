@@ -1408,14 +1408,20 @@ def fetch_brand_social(brand: str) -> dict:
                   "temperature": 0.1, "max_tokens": 400},
             timeout=12,
         )
+        print(f"[brand_social] groq status={r.status_code}")
         if r.status_code == 200:
             content = r.json()["choices"][0]["message"]["content"].strip()
+            print(f"[brand_social] groq raw: {content[:300]}")
             m = _re.search(r'\{.*\}', content, _re.DOTALL)
             if m:
                 parsed = _json.loads(m.group(0))
                 parsed["youtube"] = yt_channel
                 parsed["news"]    = social_news[:5]
                 return parsed
+            else:
+                print(f"[brand_social] no JSON found in response")
+        else:
+            print(f"[brand_social] groq error body: {r.text[:200]}")
     except Exception as e:
         print(f"[brand_social] groq error: {e}")
 
