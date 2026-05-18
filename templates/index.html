@@ -12876,7 +12876,7 @@ _bkBadge();
 
     const exportBtns = isAreaReport && displaySummary ? `
       <button onclick="savesCopyText(${JSON.stringify(s.title + '\n\n' + displaySummary)},this)" style="padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:600;cursor:pointer;color:var(--text)">📋 Copy</button>
-      <button onclick="savesPrintArea(${JSON.stringify(s.title)},${JSON.stringify(displaySummary)},${JSON.stringify(s.url||'')})" style="padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:600;cursor:pointer;color:var(--text)">🖨️ PDF</button>` : "";
+      <button onclick="savesPrintArea(${JSON.stringify(s.title)},${JSON.stringify(displaySummary)},${JSON.stringify(s.url||'')})" style="padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:600;cursor:pointer;color:var(--text)">${navigator && navigator.share ? "↗ Share" : "🖨️ PDF"}</button>` : "";
 
     const deleteBtn = `<button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>`;
 
@@ -12925,6 +12925,13 @@ _bkBadge();
   };
 
   window.savesPrintArea = function(title, summary, url) {
+    // On mobile use native Share sheet (Works in iOS/Android, no popup needed)
+    if (navigator.share) {
+      const shareText = title + "\n\n" + summary + (url ? "\n\n" + url : "");
+      navigator.share({ title, text: shareText }).catch(() => {});
+      return;
+    }
+    // Desktop: open print window
     const lines = summary.split("\n").map(l => {
       if (!l.trim()) return "<br>";
       if (/^[🏠🏫🍺☕🛒🚔]/.test(l)) return `<h3 style="margin:16px 0 6px;font-size:15px;color:#111">${l}</h3>`;
@@ -12932,6 +12939,7 @@ _bkBadge();
       return `<p style="margin:4px 0;font-size:13px;color:#666">${l}</p>`;
     }).join("");
     const w = window.open("", "_blank");
+    if (!w) { alert("Allow pop-ups for this site to save as PDF, or use the 📋 Copy button instead."); return; }
     w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
       <style>body{font-family:-apple-system,sans-serif;max-width:600px;margin:40px auto;padding:0 20px;color:#111}
       h1{font-size:22px;font-weight:800;margin-bottom:4px}
