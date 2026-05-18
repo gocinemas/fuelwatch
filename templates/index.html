@@ -442,9 +442,9 @@
           onkeydown="if(event.key==='Enter')_idModalSave();if(event.key==='Escape')_idModalClose()">
       </div>
       <!-- Save -->
-      <button id="id-modal-save-btn" onclick="_idModalSave()"
+      <button id="id-modal-save-btn" onclick="this.textContent='Saving…';this.disabled=true;_idModalSave()"
         style="width:100%;background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:-.1px">
-        Save &amp; refresh
+        Save &amp; reload
       </button>
     </div>
   </div>
@@ -3399,52 +3399,23 @@ const _ts = new Date(d.timestamp);
   }
 
   function _idModalSave() {
-    try {
-      // ── Phone — normalise but never block ──
-      const rawPhone = (document.getElementById("id-modal-phone").value || "").trim();
-      let phone = rawPhone.replace(/[\s\-\(\)\.]/g, "");
-      if (/^07\d{9}$/.test(phone))  phone = "+44" + phone.slice(1);
-      else if (/^447\d{9}$/.test(phone)) phone = "+" + phone;
-      else if (/^0044\d+$/.test(phone))  phone = "+" + phone.slice(2);
+    // ── Phone — normalise, never block ──
+    const rawPhone = (document.getElementById("id-modal-phone").value || "").trim();
+    let phone = rawPhone.replace(/[\s\-\(\)\.]/g, "");
+    if (/^07\d{9}$/.test(phone))       phone = "+44" + phone.slice(1);
+    else if (/^447\d{9}$/.test(phone)) phone = "+" + phone;
+    else if (/^0044\d+$/.test(phone))  phone = "+" + phone.slice(2);
+    if (phone) localStorage.setItem("miru_phone", phone);
+    else       localStorage.removeItem("miru_phone");
 
-      // ── Postcode ──
-      const rawPc = (document.getElementById("id-modal-pc").value || "").trim();
-      const oldPc = _miruPostcode();
-      const pc = rawPc.toUpperCase().replace(/\s+/g, "");
+    // ── Postcode ──
+    const rawPc = (document.getElementById("id-modal-pc").value || "").trim();
+    const pc = rawPc.toUpperCase().replace(/\s+/g, "");
+    if (pc) localStorage.setItem("miru_postcode", pc);
+    else    localStorage.removeItem("miru_postcode");
 
-      // Persist phone
-      if (phone) {
-        localStorage.setItem("miru_phone", phone);
-        _autoFetchToken(phone).then(tok => {
-          localStorage.setItem("wa_saves_token", tok);
-          localStorage.setItem("lib_pin", tok);
-        }).catch(() => {});
-      } else {
-        localStorage.removeItem("miru_phone");
-      }
-
-      // Persist postcode
-      if (pc) {
-        localStorage.setItem("miru_postcode", pc);
-        MiruLocation.setHome(pc);
-      } else {
-        localStorage.removeItem("miru_postcode");
-      }
-
-      _idPushPostcode(pc);
-      _idBarRefresh();
-      _maShowLinkedPhone && _maShowLinkedPhone();
-      _maLoadSavedPlaces && _maLoadSavedPlaces();
-      _idModalClose();
-
-      // Refresh home cards
-      if (pc && pc !== oldPc) _onPostcodeChange(pc);
-      else { _fuelHomeLoad && _fuelHomeLoad(); _trainHomeLoad && _trainHomeLoad(); }
-    } catch(e) {
-      console.error("_idModalSave error:", e);
-      // Still close the modal so user isn't stuck
-      _idModalClose();
-    }
+    // Reload — picks up new postcode/phone from localStorage, refreshes everything
+    window.location.reload();
   }
 
   // Legacy aliases kept for any other call sites
