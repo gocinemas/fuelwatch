@@ -1324,7 +1324,7 @@ def _fetch_news(company: str, extra: str = "", limit: int = 6) -> list:
         r = requests.get(
             "https://news.google.com/rss/search",
             params={"q": q, "hl": "en-GB", "gl": "GB", "ceid": "GB:en"},
-            timeout=8, headers={"User-Agent": "Mozilla/5.0"},
+            timeout=5, headers={"User-Agent": "Mozilla/5.0"},
         )
         if r.status_code != 200:
             return []

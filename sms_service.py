@@ -4668,12 +4668,20 @@ def api_intel_unpin():
 @app.route("/api/intel/research", methods=["POST"])
 def api_intel_research():
     """Intel Research Agent — agentic multi-tool company research brief."""
+    import concurrent.futures as _cf
     from intel_agent import run_research_agent
     data = request.get_json(silent=True) or {}
     company = (data.get("company") or request.args.get("company") or "").strip()
     if not company:
         return jsonify({"error": "company required"}), 400
-    brief = run_research_agent(company)
+    try:
+        with _cf.ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(run_research_agent, company)
+            brief = future.result(timeout=55)
+    except _cf.TimeoutError:
+        return jsonify({"error": "Research timed out — try again in a moment.", "company": company}), 504
+    except Exception as e:
+        return jsonify({"error": str(e), "company": company}), 500
     return jsonify(brief)
 
 
