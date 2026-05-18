@@ -38,7 +38,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
                     fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
-                    fetch_company_info, fetch_brand_data,
+                    fetch_company_info, fetch_brand_data, fetch_brand_social,
                     _fetch_wikipedia, _fetch_news, _fetch_trustpilot)
 import analytics
 import library as lib
@@ -1977,7 +1977,7 @@ def api_brand_social():
             return jsonify(cached[0]["data"])
     except Exception:
         pass
-    data = search.fetch_brand_social(name)
+    data = fetch_brand_social(name)
     if data.get("confidence") in ("high", "medium"):
         try:
             lib._sb().table("ai_cache").upsert({"key": cache_key, "data": data}).execute()
