@@ -13787,6 +13787,7 @@ def api_wa_saves_save_text():
         sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
         row = {
             "from_number": save_as,
+            "url":         "",
             "title":       title or summary[:60],
             "summary":     summary,
             "category":    category,
