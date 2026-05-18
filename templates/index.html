@@ -400,28 +400,52 @@
 
   <!-- Persistent identity bar — hidden on intel.humanagency.co -->
   <div id="identity-bar" style="background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;{% if intel_mode %}display:none{% endif %}">
-    <div class="max-w-xl mx-auto" style="display:flex;align-items:center;gap:6px;height:36px;overflow:hidden">
+    <div class="max-w-xl mx-auto" style="display:flex;align-items:center;gap:6px;height:36px">
       <!-- Phone pill -->
-      <button id="id-phone-pill" onclick="_idEdit('phone')"
+      <button id="id-phone-pill" onclick="_idOpenModal('phone')"
         style="display:flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600;color:var(--muted);transition:background .15s;white-space:nowrap"
         onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">
         <span>📱</span><span id="id-phone-label">Add phone</span>
       </button>
       <span style="color:var(--border);font-size:14px;flex-shrink:0">·</span>
       <!-- Postcode pill -->
-      <button id="id-postcode-pill" onclick="_idEdit('postcode')"
+      <button id="id-postcode-pill" onclick="_idOpenModal('postcode')"
         style="display:flex;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600;color:var(--muted);transition:background .15s;white-space:nowrap"
         onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">
         <span>📍</span><span id="id-postcode-label">Add postcode</span>
       </button>
-      <!-- Inline edit form (hidden until triggered) -->
-      <div id="id-edit-form" style="display:none;flex:1;display:none;align-items:center;gap:6px;margin-left:4px">
-        <input id="id-edit-input" type="text"
-          style="flex:1;min-width:0;border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:12px;background:var(--bg);color:var(--text);outline:none;font-family:inherit"
-          onkeydown="if(event.key==='Enter')_idSave();if(event.key==='Escape')_idCancel()">
-        <button onclick="_idSave()" style="flex-shrink:0;background:var(--text);color:var(--bg);border:none;border-radius:7px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer">Save</button>
-        <button onclick="_idCancel()" style="flex-shrink:0;background:none;border:none;font-size:14px;color:var(--muted);cursor:pointer;padding:0 2px">✕</button>
+    </div>
+  </div>
+
+  <!-- Details modal (phone + postcode) -->
+  <div id="id-modal-overlay" onclick="if(event.target===this)_idModalClose()"
+    style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.5);align-items:flex-end;justify-content:center">
+    <div style="background:var(--surface);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:24px 20px 44px;box-shadow:0 -8px 40px rgba(0,0,0,.15)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <div style="font-size:17px;font-weight:800;letter-spacing:-.4px;color:var(--text)">Your details</div>
+        <button onclick="_idModalClose()" style="background:var(--surface2);border:none;border-radius:99px;width:28px;height:28px;font-size:14px;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
       </div>
+      <!-- Phone -->
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:7px">📱 Phone number</label>
+        <input id="id-modal-phone" type="tel" placeholder="07911 123456 or +44 7911 123456"
+          style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:13px 14px;font-size:15px;font-weight:500;color:var(--text);background:var(--bg);outline:none;font-family:inherit"
+          onkeydown="if(event.key==='Enter')_idModalSave();if(event.key==='Escape')_idModalClose()">
+        <div id="id-modal-phone-err" style="display:none;font-size:11px;color:#ef4444;margin-top:5px;padding-left:2px">Enter a valid UK number, e.g. 07911 123456</div>
+      </div>
+      <!-- Postcode -->
+      <div style="margin-bottom:28px">
+        <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:7px">📍 Home postcode</label>
+        <input id="id-modal-pc" type="text" placeholder="e.g. GU22 9JP"
+          style="width:100%;border:1.5px solid var(--border);border-radius:12px;padding:13px 14px;font-size:15px;font-weight:500;color:var(--text);background:var(--bg);outline:none;font-family:inherit;text-transform:uppercase"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter')_idModalSave();if(event.key==='Escape')_idModalClose()">
+      </div>
+      <!-- Save -->
+      <button id="id-modal-save-btn" onclick="_idModalSave()"
+        style="width:100%;background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:-.1px">
+        Save &amp; refresh
+      </button>
     </div>
   </div>
 
@@ -3346,7 +3370,6 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── Identity bar (persistent phone + postcode) ─────────────────────────────
-  let _idEditField = null;
 
   function _idBarRefresh() {
     const phone = _miruPhone();
@@ -3361,75 +3384,76 @@ const _ts = new Date(d.timestamp);
     if (pcPill)    pcPill.style.color    = pc    ? "var(--text)" : "var(--muted)";
   }
 
-  function _idEdit(field) {
-    _idEditField = field;
-    const form  = document.getElementById("id-edit-form");
-    const input = document.getElementById("id-edit-input");
-    const pills = document.querySelectorAll("#id-phone-pill, #id-postcode-pill, #identity-bar > div > span");
-    pills.forEach(el => el.style.display = "none");
-    if (field === "phone") {
-      input.type        = "tel";
-      input.placeholder = "+44 7911 123456";
-      input.value       = _miruPhone();
-    } else {
-      input.type        = "text";
-      input.placeholder = "e.g. KT1 2BA";
-      input.value       = _miruPostcode();
-    }
-    form.style.display = "flex";
-    setTimeout(() => { input.focus(); input.select(); }, 50);
+  function _idOpenModal(focusField) {
+    document.getElementById("id-modal-phone").value = _miruPhone();
+    document.getElementById("id-modal-pc").value    = _miruPostcode();
+    document.getElementById("id-modal-phone-err").style.display = "none";
+    document.getElementById("id-modal-phone").style.borderColor = "";
+    document.getElementById("id-modal-overlay").style.display = "flex";
+    setTimeout(() => {
+      const el = document.getElementById(focusField === "phone" ? "id-modal-phone" : "id-modal-pc");
+      if (el) { el.focus(); el.select(); }
+    }, 80);
   }
 
-  function _idSave() {
-    const input = document.getElementById("id-edit-input");
-    let val = (input.value || "").trim();
-    if (_idEditField === "phone") {
-      let phone = val.replace(/[\s\-\(\)\.]/g, "");
-      if (/^07\d{9}$/.test(phone)) phone = "+44" + phone.slice(1);
-      else if (/^447\d{9}$/.test(phone)) phone = "+" + phone;
-      else if (/^0044\d+$/.test(phone)) phone = "+" + phone.slice(2);
-      if (phone && !/^\+\d{7,15}$/.test(phone)) {
-        input.style.outline = "2px solid #ef4444";
-        input.title = "Enter a valid number e.g. 07911 123456 or +44 7911 123456";
-        return;
-      }
-      input.style.outline = "";
-      if (phone) localStorage.setItem("miru_phone", phone);
-      else localStorage.removeItem("miru_phone");
-      _maShowLinkedPhone && _maShowLinkedPhone();
-      _maLoadSavedPlaces && _maLoadSavedPlaces();
-      // Auto-login Saves and Library with the new phone
-      if (phone) {
-        _autoFetchToken(phone).then(tok => {
-          localStorage.setItem("wa_saves_token", tok);
-          localStorage.setItem("lib_pin", tok);
-        }).catch(() => {});
-      }
-    } else {
-      const oldPc = _miruPostcode();
-      const pc = val.toUpperCase().replace(/\s+/g, "");
-      if (pc) {
-        localStorage.setItem("miru_postcode", pc);
-        MiruLocation.setHome(pc);  // sync to backend so WhatsApp can use it
-      } else {
-        localStorage.removeItem("miru_postcode");
-      }
-      // Push postcode into all postcode inputs
-      _idPushPostcode(pc);
-      // Refresh everything if postcode actually changed
-      if (pc && pc !== oldPc) _onPostcodeChange(pc);
+  function _idModalClose() {
+    document.getElementById("id-modal-overlay").style.display = "none";
+  }
+
+  function _idModalSave() {
+    // ── Phone ──
+    const rawPhone = (document.getElementById("id-modal-phone").value || "").trim();
+    let phone = rawPhone.replace(/[\s\-\(\)\.]/g, "");
+    if (/^07\d{9}$/.test(phone)) phone = "+44" + phone.slice(1);
+    else if (/^447\d{9}$/.test(phone)) phone = "+" + phone;
+    else if (/^0044\d+$/.test(phone)) phone = "+" + phone.slice(2);
+    if (phone && !/^\+\d{7,15}$/.test(phone)) {
+      document.getElementById("id-modal-phone-err").style.display = "";
+      document.getElementById("id-modal-phone").style.borderColor = "#ef4444";
+      return;
     }
-    _idCancel();
+    document.getElementById("id-modal-phone-err").style.display = "none";
+    document.getElementById("id-modal-phone").style.borderColor = "";
+
+    // ── Postcode ──
+    const rawPc = (document.getElementById("id-modal-pc").value || "").trim();
+    const oldPc = _miruPostcode();
+    const pc = rawPc.toUpperCase().replace(/\s+/g, "");
+
+    // Persist phone
+    if (phone) {
+      localStorage.setItem("miru_phone", phone);
+      _autoFetchToken(phone).then(tok => {
+        localStorage.setItem("wa_saves_token", tok);
+        localStorage.setItem("lib_pin", tok);
+      }).catch(() => {});
+    } else {
+      localStorage.removeItem("miru_phone");
+    }
+
+    // Persist postcode
+    if (pc) {
+      localStorage.setItem("miru_postcode", pc);
+      MiruLocation.setHome(pc);
+    } else {
+      localStorage.removeItem("miru_postcode");
+    }
+
+    _idPushPostcode(pc);
     _idBarRefresh();
+    _maShowLinkedPhone && _maShowLinkedPhone();
+    _maLoadSavedPlaces && _maLoadSavedPlaces();
+    _idModalClose();
+
+    // Refresh home cards
+    if (pc && pc !== oldPc) _onPostcodeChange(pc);
+    else { _fuelHomeLoad && _fuelHomeLoad(); _trainHomeLoad && _trainHomeLoad(); }
   }
 
-  function _idCancel() {
-    const form  = document.getElementById("id-edit-form");
-    const pills = document.querySelectorAll("#id-phone-pill, #id-postcode-pill, #identity-bar > div > span");
-    form.style.display = "none";
-    pills.forEach(el => el.style.display = "");
-    _idEditField = null;
-  }
+  // Legacy aliases kept for any other call sites
+  function _idEdit(field) { _idOpenModal(field); }
+  function _idCancel()    { _idModalClose(); }
+  function _idSave()      { _idModalSave(); }
 
   function _idPushPostcode(pc) {
     if (!pc) return;
