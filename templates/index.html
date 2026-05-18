@@ -11534,24 +11534,42 @@ _bkBadge();
 
   async function _trainHomeLoad() {
     const pc = _miruPostcode();
-    // Read home bookmark directly from localStorage (_getBm is IIFE-scoped in trains block)
+    const ph = document.getElementById("home-train-placeholder");
+
     let bm = null;
     try { bm = JSON.parse(localStorage.getItem("miru_train_bm_home") || "null"); } catch {}
     let crs = bm ? bm.crs : null;
     let stationName = bm ? (bm.name || bm.crs) : null;
+
+    if (!crs && !pc) return;
+
     if (!crs && pc) {
+      if (ph) ph.textContent = "Finding nearest station…";
       try {
         const r = await fetch(`/api/train/nearest-by-postcode?postcode=${encodeURIComponent(pc.replace(/\s/g,"").toUpperCase())}`);
-        if (r.ok) { const d = await r.json(); crs = d.crs; stationName = d.name || d.station; }
-      } catch {}
+        if (r.ok) {
+          const d = await r.json();
+          crs = d.crs; stationName = d.name || d.station;
+        } else {
+          if (ph) ph.textContent = "Station lookup failed";
+          return;
+        }
+      } catch(e) {
+        if (ph) ph.textContent = "Network error";
+        return;
+      }
     }
-    if (!crs) return;
+
+    if (!crs) { if (ph) ph.textContent = "No station found"; return; }
+    if (ph) ph.textContent = (stationName || crs) + "…";
+
     const CACHE_KEY = "miru_train_home_" + crs;
     let trains = null;
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
       if (cached && (Date.now() - cached.ts) < 5 * 60 * 1000) { trains = cached.trains; }
     } catch {}
+
     if (!trains) {
       try {
         const r = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
@@ -11560,10 +11578,19 @@ _bkBadge();
           trains = d.trains || [];
           stationName = d.station || stationName;
           if (trains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains })); } catch {}
+        } else {
+          const err = await r.json().catch(() => ({}));
+          if (ph) ph.textContent = err.error || "Departures unavailable";
+          return;
         }
-      } catch {}
+      } catch(e) {
+        if (ph) ph.textContent = "Network error";
+        return;
+      }
     }
-    if (!trains || !trains.length) return;
+
+    if (!trains.length) { if (ph) ph.textContent = (stationName || crs) + " · No departures"; return; }
+
     const next = trains[0];
     const dest = (next.destination || "").replace(/^London /i, "");
     document.getElementById("home-train-next").textContent = next.scheduled + " → " + dest;
@@ -11571,7 +11598,7 @@ _bkBadge();
     document.getElementById("home-train-sub").textContent = (stationName || crs) + (next.platform ? " · Plat " + next.platform : "") + " · " + status;
     document.getElementById("home-train-next").style.display = "";
     document.getElementById("home-train-sub").style.display = "";
-    document.getElementById("home-train-placeholder").style.display = "none";
+    if (ph) ph.style.display = "none";
   }
 
   document.addEventListener("DOMContentLoaded", function() {
@@ -12776,7 +12803,7 @@ _bkBadge();
 
     // 3. Last resort: home postcode
     if (!lat) {
-      const home = localStorage.getItem("miru_home_pc");
+      const home = _miruPostcode ? _miruPostcode() : (localStorage.getItem("miru_postcode") || "");
       if (home) {
         try {
           const r = await fetch(`https://api.postcodes.io/postcodes/${home.replace(/\s/g,"")}`,
