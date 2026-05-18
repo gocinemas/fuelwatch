@@ -3384,9 +3384,15 @@ const _ts = new Date(d.timestamp);
     const input = document.getElementById("id-edit-input");
     let val = (input.value || "").trim();
     if (_idEditField === "phone") {
-      let phone = val.replace(/[\s\-\(\)]/g, "");
+      let phone = val.replace(/[\s\-\(\)\.]/g, "");
       if (/^07\d{9}$/.test(phone)) phone = "+44" + phone.slice(1);
-      if (phone && !/^\+\d{7,15}$/.test(phone)) { input.style.outline = "2px solid #ef4444"; return; }
+      else if (/^447\d{9}$/.test(phone)) phone = "+" + phone;
+      else if (/^0044\d+$/.test(phone)) phone = "+" + phone.slice(2);
+      if (phone && !/^\+\d{7,15}$/.test(phone)) {
+        input.style.outline = "2px solid #ef4444";
+        input.title = "Enter a valid number e.g. 07911 123456 or +44 7911 123456";
+        return;
+      }
       input.style.outline = "";
       if (phone) localStorage.setItem("miru_phone", phone);
       else localStorage.removeItem("miru_phone");
@@ -11432,7 +11438,7 @@ _bkBadge();
     const card = document.getElementById("school-home-card");
     if (!card) return;
     try {
-      const r = await fetch("/api/school/events?days=14&back=7", {
+      const r = await fetch("/api/school/events?days=14&back=0", {
         headers: { "X-School-WA": phone }
       });
       if (!r.ok) return;
@@ -11733,12 +11739,18 @@ _bkBadge();
   window._setupSavePhone = function() {
     const raw = (document.getElementById("setup-ph-input").value || "").trim();
     if (!raw) return;
-    const clean = raw.replace(/\s+/g, "").replace(/^00/, "+");
+    let clean = raw.replace(/[\s\-\(\)\.]/g, "").replace(/^0044/, "+44").replace(/^00/, "+");
+    if (/^07\d{9}$/.test(clean)) clean = "+44" + clean.slice(1);
+    else if (/^447\d{9}$/.test(clean)) clean = "+" + clean;
     localStorage.setItem("miru_phone", clean);
     _idBarRefresh && _idBarRefresh();
     document.getElementById("setup-ph-input-wrap").style.display = "none";
     document.getElementById("setup-ph-static").style.display     = "";
     _setupBannerRender();
+    if (clean) _autoFetchToken(clean).then(tok => {
+      localStorage.setItem("wa_saves_token", tok);
+      localStorage.setItem("lib_pin", tok);
+    }).catch(() => {});
   };
 
   window._setupPhoneSkip = function() {
