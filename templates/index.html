@@ -12851,8 +12851,8 @@ _bkBadge();
             { signal: AbortSignal.timeout(5000) });
           const d = await r.json();
           if (d.result) { lat = d.result.latitude; lon = d.result.longitude; }
-          else if (homeClean.length > 3) {
-            // Try as outcode (e.g. GU22, TW3)
+          else if (homeClean.length > 4) {
+            // Full postcode — strip inward code (last 3 chars) to get outcode
             const outcode = homeClean.slice(0, -3);
             const r2 = await fetch(`https://api.postcodes.io/outcodes/${outcode}`,
               { signal: AbortSignal.timeout(5000) });
