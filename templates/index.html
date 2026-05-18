@@ -3439,6 +3439,21 @@ const _ts = new Date(d.timestamp);
     // Bust home card caches for old postcode
     Object.keys(localStorage).filter(k => k.startsWith("miru_fuel_home") || k.startsWith("miru_train_home")).forEach(k => localStorage.removeItem(k));
 
+    // Reset cards so user sees loading state immediately
+    const trainPh = document.getElementById("home-train-placeholder");
+    const trainNext = document.getElementById("home-train-next");
+    const trainSub  = document.getElementById("home-train-sub");
+    if (trainNext) { trainNext.style.display = "none"; }
+    if (trainSub)  { trainSub.style.display  = "none"; }
+    if (trainPh)   { trainPh.style.display = ""; trainPh.textContent = "Loading trains…"; }
+
+    const fuelPh = document.getElementById("home-fuel-placeholder");
+    const fuelPr = document.getElementById("home-fuel-price");
+    const fuelSb = document.getElementById("home-fuel-sub");
+    if (fuelPr) { fuelPr.style.display = "none"; }
+    if (fuelSb) { fuelSb.style.display = "none"; }
+    if (fuelPh) { fuelPh.style.display = ""; fuelPh.textContent = "Loading…"; }
+
     // Reload home hero cards
     if (typeof _fuelHomeLoad === "function")  _fuelHomeLoad();
     if (typeof _trainHomeLoad === "function") _trainHomeLoad();
@@ -11697,7 +11712,7 @@ _bkBadge();
     document.getElementById("setup-pc-input").focus();
   };
   window._setupSavePostcode = function() {
-    const val = (document.getElementById("setup-pc-input").value || "").trim().toUpperCase().replace(/\s+/g, " ");
+    const val = (document.getElementById("setup-pc-input").value || "").trim().toUpperCase().replace(/\s+/g, "");
     if (!val) return;
     localStorage.setItem("miru_postcode", val);
     _idBarRefresh && _idBarRefresh();
@@ -12826,15 +12841,24 @@ _bkBadge();
       } catch(_) {}
     }
 
-    // 3. Last resort: home postcode
+    // 3. Last resort: home postcode (try full postcode then outcode)
     if (!lat) {
       const home = _miruPostcode ? _miruPostcode() : (localStorage.getItem("miru_postcode") || "");
       if (home) {
+        const homeClean = home.replace(/\s/g,"").toUpperCase();
         try {
-          const r = await fetch(`https://api.postcodes.io/postcodes/${home.replace(/\s/g,"")}`,
+          const r = await fetch(`https://api.postcodes.io/postcodes/${homeClean}`,
             { signal: AbortSignal.timeout(5000) });
           const d = await r.json();
           if (d.result) { lat = d.result.latitude; lon = d.result.longitude; }
+          else if (homeClean.length > 3) {
+            // Try as outcode (e.g. GU22, TW3)
+            const outcode = homeClean.slice(0, -3);
+            const r2 = await fetch(`https://api.postcodes.io/outcodes/${outcode}`,
+              { signal: AbortSignal.timeout(5000) });
+            const d2 = await r2.json();
+            if (d2.result) { lat = d2.result.latitude; lon = d2.result.longitude; }
+          }
         } catch(_) {}
       }
     }
