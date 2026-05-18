@@ -461,19 +461,8 @@
         <div style="font-size:13px;color:var(--muted);line-height:1.5">Fuel prices · Train times · Local services · Brand intel</div>
       </div>
 
-      <!-- Search bar -->
-      <div style="position:relative;margin-bottom:16px">
-        <div id="home-search-wrap" style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:13px 16px;transition:border-color .2s,box-shadow .2s">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--subtle)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="home-search-input" type="search" autocomplete="off" spellcheck="false"
-            placeholder="Try: cheapest petrol KT16, trains from Waterloo…"
-            style="flex:1;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;font-family:inherit"
-            oninput="homeSearchInput()" onkeydown="homeSearchKey(event)" onfocus="homeSearchFocus()" onblur="setTimeout(homeSearchBlur,200)" />
-          <button id="home-search-clear" onclick="homeSearchClear()" style="display:none;background:none;border:none;cursor:pointer;font-size:16px;color:var(--subtle);padding:0;line-height:1">✕</button>
-          <button id="home-search-go" onclick="homeSearchSubmit()" style="display:none;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;line-height:1.4">Go</button>
-        </div>
-        <div id="home-search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:200;overflow:hidden;max-height:340px;overflow-y:auto"></div>
-      </div>
+      <!-- Search widget mount point — injected by _mountHomeSearch() when needed -->
+      <div id="home-search-mount" style="margin-bottom:16px"></div>
 
       <!-- WhatsApp CTA -->
       <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
@@ -9486,7 +9475,23 @@ const _ts = new Date(d.timestamp);
     MiruLocation.get().then(loc => { if (loc) _showWeather(loc.lat, loc.lon); }).catch(() => {});
   })();
 
-  // ── Home Search (tool finder + Algolia saves) ─────────────────────────────
+  // ── Home Search (tool finder + saves) ────────────────────────────────────
+  // Mount anywhere: _mountHomeSearch('container-id')
+  // The container gets the search input + dropdown injected into it.
+  window._mountHomeSearch = function(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el || el.dataset.searchMounted) return;
+    el.dataset.searchMounted = "1";
+    el.style.position = "relative";
+    el.innerHTML =
+      '<div id="home-search-wrap" style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:13px 16px;transition:border-color .2s,box-shadow .2s">' +
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--subtle)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+        '<input id="home-search-input" type="search" autocomplete="off" spellcheck="false" placeholder="Try: cheapest petrol KT16, trains from Waterloo…" style="flex:1;border:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);outline:none;font-family:inherit" oninput="homeSearchInput()" onkeydown="homeSearchKey(event)" onfocus="homeSearchFocus()" onblur="setTimeout(homeSearchBlur,200)" />' +
+        '<button id="home-search-clear" onclick="homeSearchClear()" style="display:none;background:none;border:none;cursor:pointer;font-size:16px;color:var(--subtle);padding:0;line-height:1">✕</button>' +
+        '<button id="home-search-go" onclick="homeSearchSubmit()" style="display:none;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;line-height:1.4">Go</button>' +
+      '</div>' +
+      '<div id="home-search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:200;overflow:hidden;max-height:340px;overflow-y:auto"></div>';
+  };
   (function() {
     const _TOOLS = [
       { name:"Fuel prices",    desc:"Cheapest petrol & diesel near you",  icon:"⛽", screen:"fuel",      kw:"fuel petrol diesel gas station cheap unleaded" },
