@@ -2925,6 +2925,11 @@ const _ts = new Date(d.timestamp);
       return _fetchWithTimeout(url, ms);
     }
 
+    // Store fetched data globally so _reportSave can build a real summary
+    window._rptHouseData = null;
+    window._rptLocalData = null;
+    window._rptCrimeData = null;
+
     // Fire both requests in parallel — render each section as it arrives
     const houseP = fetchWithTimeout(`/api/house?postcode=${postcode}`, 15000)
       .then(async r => {
@@ -2932,6 +2937,7 @@ const _ts = new Date(d.timestamp);
         let data;
         try { data = JSON.parse(text); } catch { throw new Error("Server error — redeploy may be in progress."); }
         if (!r.ok) throw new Error(data.error || "House price lookup failed");
+        window._rptHouseData = data;
         renderHousePrices(data, postcode);
       })
       .catch(err => {
@@ -2945,6 +2951,7 @@ const _ts = new Date(d.timestamp);
         let data;
         try { data = JSON.parse(text); } catch { throw new Error("Server error — redeploy may be in progress."); }
         if (!r.ok) throw new Error(data.error || "Local data lookup failed");
+        window._rptLocalData = data;
         renderLocalData(data);
       })
       .catch(err => {
@@ -2958,6 +2965,7 @@ const _ts = new Date(d.timestamp);
         let data;
         try { data = JSON.parse(text); } catch { throw new Error("Server error"); }
         if (!r.ok) throw new Error(data.error || "Crime data lookup failed");
+        window._rptCrimeData = data;
         renderCrimeData(data);
       })
       .catch(err => {
@@ -11836,8 +11844,60 @@ _bkBadge();
     btn.textContent = "Saving…"; btn.disabled = true;
     const phone = _miruPhone ? _miruPhone() : (localStorage.getItem("miru_phone") || "");
     const areaLabel = (document.getElementById("report-share-label") || {}).textContent || clean;
-    const summary = ["📍 " + areaLabel, "Area report saved from Miru Area Report"].join("\n");
     const reportUrl = "https://miru.humanagency.co/?report=" + clean;
+
+    // Build a real summary from loaded report data
+    const lines = ["📍 " + areaLabel, ""];
+
+    // House prices
+    const hp = window._rptHouseData && window._rptHouseData.house_prices;
+    if (hp && Object.keys(hp).length) {
+      lines.push("🏠 House prices (last 3 years)");
+      Object.entries(hp).forEach(([type, v]) => {
+        lines.push(`  ${type}: £${v.avg.toLocaleString()} avg (${v.count} sales)`);
+      });
+      lines.push("");
+    }
+
+    // Schools
+    const schools = window._rptLocalData && ((window._rptLocalData.schools && window._rptLocalData.schools.schools) || []);
+    if (schools && schools.length) {
+      lines.push("🏫 Nearby schools");
+      schools.slice(0,5).forEach(s => {
+        const rating = s.ofsted ? ` · ${s.ofsted}` : "";
+        lines.push(`  ${s.name} (${s.dist_mi.toFixed(1)}mi${rating})`);
+      });
+      lines.push("");
+    }
+
+    // Pubs
+    const pubs = window._rptLocalData && window._rptLocalData.pubs;
+    if (pubs && pubs.length) {
+      lines.push("🍺 Pubs nearby");
+      pubs.slice(0,4).forEach(p => lines.push(`  ${p.name} (${p.dist_mi.toFixed(1)}mi)`));
+      lines.push("");
+    }
+
+    // Cafes
+    const cafes = window._rptLocalData && window._rptLocalData.cafes;
+    if (cafes && cafes.length) {
+      lines.push("☕ Cafes nearby");
+      cafes.slice(0,4).forEach(c => lines.push(`  ${c.name} (${c.dist_mi.toFixed(1)}mi)`));
+      lines.push("");
+    }
+
+    // Crime
+    const crime = window._rptCrimeData;
+    if (crime && crime.total) {
+      lines.push(`🚔 Crime: ${crime.total} incidents last month`);
+      const top = (crime.breakdown || []).slice(0,3);
+      top.forEach(b => lines.push(`  ${b.category}: ${b.count}`));
+      lines.push("");
+    }
+
+    if (lines.length <= 2) lines.push("Report still loading — re-save once data appears.");
+
+    const summary = lines.join("\n").trim();
     const hdrs = { "Content-Type": "application/json", "X-Library-PIN": tok };
     if (phone) hdrs["X-User-Phone"] = phone;
     try {
