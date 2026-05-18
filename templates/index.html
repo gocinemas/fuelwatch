@@ -11824,25 +11824,27 @@ _bkBadge();
 
     if (!crs && !pc) return;
 
+    const _phShow = (txt) => { if (ph) { ph.textContent = txt; ph.style.display = ""; ph.style.color = "rgba(255,255,255,0.6)"; ph.style.fontSize = "12px"; ph.style.marginTop = "6px"; } };
+
     if (!crs && pc) {
-      if (ph) ph.textContent = "Finding nearest station…";
+      _phShow("Finding nearest station…");
       try {
         const r = await fetch(`/api/train/nearest-by-postcode?postcode=${encodeURIComponent(pc.replace(/\s/g,"").toUpperCase())}`);
         if (r.ok) {
           const d = await r.json();
           crs = d.crs; stationName = d.name || d.station;
         } else {
-          if (ph) ph.textContent = "Station lookup failed";
+          _phShow("Station lookup failed");
           return;
         }
       } catch(e) {
-        if (ph) ph.textContent = "Network error";
+        _phShow("Network error");
         return;
       }
     }
 
-    if (!crs) { if (ph) ph.textContent = "No station found"; return; }
-    if (ph) ph.textContent = (stationName || crs) + "…";
+    if (!crs) { _phShow("No station found"); return; }
+    _phShow((stationName || crs) + "…");
 
     const CACHE_KEY = "miru_train_home_" + crs;
     let trains = null;
@@ -11861,16 +11863,19 @@ _bkBadge();
           if (trains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains })); } catch {}
         } else {
           const err = await r.json().catch(() => ({}));
-          if (ph) ph.textContent = err.error || "Departures unavailable";
+          _phShow(err.error || "Departures unavailable");
           return;
         }
       } catch(e) {
-        if (ph) ph.textContent = "Network error";
+        _phShow("Network error");
         return;
       }
     }
 
-    if (!trains.length) { if (ph) ph.textContent = (stationName || crs) + " · No departures"; return; }
+    if (!trains.length) {
+      if (ph) { ph.textContent = "No trains right now · tap to check times"; ph.style.display = ""; ph.style.color = "rgba(255,255,255,0.6)"; ph.style.fontSize = "12px"; ph.style.marginTop = "6px"; }
+      return;
+    }
 
     const next = trains[0];
     const dest = (next.destination || "").replace(/^London /i, "");
