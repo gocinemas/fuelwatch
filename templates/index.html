@@ -11698,9 +11698,12 @@ _bkBadge();
       if (!r.ok) return;
       const data = await r.json();
       const profiles = data.profiles || [];
-      // Home card: today and future only
-      const todayStr = new Date().toISOString().slice(0,10);
-      const events = (data.events || []).filter(e => !e.event_date || e.event_date >= todayStr);
+      // Home card: today and future — but after 6pm treat tomorrow as the cutoff
+      const _now = new Date();
+      const _cutoff = new Date(_now);
+      if (_now.getHours() >= 18) _cutoff.setDate(_cutoff.getDate() + 1);
+      const cutoffStr = _cutoff.toISOString().slice(0, 10);
+      const events = (data.events || []).filter(e => !e.event_date || e.event_date >= cutoffStr);
 
       card.style.display = "";
 
