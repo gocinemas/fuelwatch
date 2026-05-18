@@ -11814,11 +11814,12 @@ _bkBadge();
     const weatherEl = document.getElementById("ma-weather-summary");
     if (weatherEl && weatherEl.textContent) lines.push("🌤 " + weatherEl.textContent.trim());
     const summary = lines.join("\n");
+    const areaReportUrl = "https://miru.humanagency.co/?report=" + pc.replace(/\s/g,"").toUpperCase();
     try {
       const r = await fetch("/api/wa-saves/save-text", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Library-PIN": tok },
-        body: JSON.stringify({ title: "📍 " + areaLabel, summary, category: "place", source: "my-area" })
+        body: JSON.stringify({ title: "📍 " + areaLabel, summary, url: areaReportUrl, category: "place", source: "my-area" })
       });
       if (r.ok) { btn.textContent = "✓ Saved"; btn.style.color = "#059669"; }
       else { btn.textContent = "✗ Error"; btn.style.color = "#dc2626"; btn.disabled = false; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 2000); }
@@ -11836,13 +11837,14 @@ _bkBadge();
     const phone = _miruPhone ? _miruPhone() : (localStorage.getItem("miru_phone") || "");
     const areaLabel = (document.getElementById("report-share-label") || {}).textContent || clean;
     const summary = ["📍 " + areaLabel, "Area report saved from Miru Area Report"].join("\n");
+    const reportUrl = "https://miru.humanagency.co/?report=" + clean;
     const hdrs = { "Content-Type": "application/json", "X-Library-PIN": tok };
     if (phone) hdrs["X-User-Phone"] = phone;
     try {
       const r = await fetch("/api/wa-saves/save-text", {
         method: "POST",
         headers: hdrs,
-        body: JSON.stringify({ title: "📍 " + (areaLabel || clean), summary, category: "place", source: "area-report" })
+        body: JSON.stringify({ title: "📍 " + (areaLabel || clean), summary, url: reportUrl, category: "place", source: "area-report" })
       });
       if (r.ok) {
         btn.textContent = "✓ Saved"; btn.style.color = "#059669";
