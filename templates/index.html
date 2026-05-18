@@ -488,14 +488,51 @@
         <div style="flex-shrink:0;background:rgba(255,255,255,.25);border-radius:20px;padding:7px 14px;font-size:13px;font-weight:700;color:#fff;white-space:nowrap">Join →</div>
       </div>
 
-      <!-- Hidden JS refs kept for elections + setup -->
+      <!-- Hidden JS refs -->
       <span id="elections-tool-card" style="display:none"><span id="elections-tool-desc"></span></span>
-      <div id="home-setup-banner" style="display:none"></div>
-      <div id="setup-pc-row" style="display:none"><input id="setup-pc-input" style="display:none" onkeydown="if(event.key==='Enter')_setupSavePostcode()"><span id="setup-pc-tick" style="display:none"></span><button id="setup-pc-btn" onclick="_setupEditPostcode()" style="display:none"></button><div id="setup-pc-static" style="display:none"></div><div id="setup-pc-input-wrap" style="display:none"></div></div>
-      <div id="setup-ph-row" style="display:none"><input id="setup-ph-input" type="tel" style="display:none" onkeydown="if(event.key==='Enter')_setupSavePhone()"><span id="setup-ph-tick" style="display:none"></span><button id="setup-ph-btn" onclick="_setupEditPhone()" style="display:none"></button><div id="setup-ph-static" style="display:none"></div><div id="setup-ph-input-wrap" style="display:none"></div></div>
-      <div id="setup-ph-skip" style="display:none"><button onclick="_setupPhoneSkip()" style="display:none"></button></div>
       <div id="home-greeting" style="display:none"></div>
       <div id="home-miru-desc" style="display:none"></div>
+
+      <!-- First-visit setup banner — shown by JS when no postcode/phone set -->
+      <div id="home-setup-banner" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:18px;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;letter-spacing:-0.3px">Personalise Miru</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Two quick details and everything updates to your location and life.</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div id="setup-pc-row" style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:11px 14px;transition:border-color .2s">
+            <span style="font-size:20px;flex-shrink:0">📍</span>
+            <div style="flex:1;min-width:0" id="setup-pc-static">
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Your postcode</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">Fuel prices, trains &amp; local info</div>
+            </div>
+            <div id="setup-pc-input-wrap" style="display:none;flex:1;min-width:0">
+              <input id="setup-pc-input" type="text" placeholder="e.g. KT16 0DA" maxlength="8"
+                style="width:100%;border:none;background:transparent;font-size:14px;font-weight:600;color:var(--text);outline:none;font-family:inherit"
+                onkeydown="if(event.key==='Enter')_setupSavePostcode()">
+            </div>
+            <span id="setup-pc-tick" style="display:none;font-size:16px;flex-shrink:0">✅</span>
+            <button id="setup-pc-btn" onclick="_setupEditPostcode()"
+              style="flex-shrink:0;background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">Add</button>
+          </div>
+          <div id="setup-ph-row" style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:11px 14px;transition:border-color .2s">
+            <span style="font-size:20px;flex-shrink:0">📱</span>
+            <div style="flex:1;min-width:0" id="setup-ph-static">
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Your phone number</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">WhatsApp saves &amp; school updates</div>
+            </div>
+            <div id="setup-ph-input-wrap" style="display:none;flex:1;min-width:0">
+              <input id="setup-ph-input" type="tel" placeholder="+44 7911 123456"
+                style="width:100%;border:none;background:transparent;font-size:14px;font-weight:600;color:var(--text);outline:none;font-family:inherit"
+                onkeydown="if(event.key==='Enter')_setupSavePhone()">
+            </div>
+            <span id="setup-ph-tick" style="display:none;font-size:16px;flex-shrink:0">✅</span>
+            <button id="setup-ph-btn" onclick="_setupEditPhone()"
+              style="flex-shrink:0;background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">Add</button>
+          </div>
+          <div id="setup-ph-skip" style="display:none;text-align:center">
+            <button onclick="_setupPhoneSkip()" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 0">Maybe later →</button>
+          </div>
+        </div>
+      </div>
 
       <!-- LIVE NOW -->
       <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Live Now</div>
