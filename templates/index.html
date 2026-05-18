@@ -3414,14 +3414,28 @@ const _ts = new Date(d.timestamp);
     if (pc) localStorage.setItem("miru_postcode", pc);
     else    localStorage.removeItem("miru_postcode");
 
-    // Bust train + fuel home card caches so reload fetches fresh data
-    Object.keys(localStorage).forEach(k => {
-      if (k.startsWith("miru_fuel_home") || k.startsWith("miru_train_home")) {
-        localStorage.removeItem(k);
-      }
-    });
+    // Close modal and refresh identity bar immediately
+    _idModalClose();
+    if (typeof _idBarRefresh === "function") _idBarRefresh();
+    if (typeof _setupBannerRender === "function") _setupBannerRender();
 
-    window.location.reload();
+    // Push new postcode into any other inputs on the page
+    if (pc) _idPushPostcode(pc);
+
+    // Reload home train + fuel cards using nearest-by-postcode logic
+    if (typeof _onPostcodeChange === "function") _onPostcodeChange(pc);
+    else {
+      // Fallback: bust caches and reload functions directly
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith("miru_fuel_home") || k.startsWith("miru_train_home")) localStorage.removeItem(k);
+      });
+      if (typeof _fuelHomeLoad === "function")  _fuelHomeLoad();
+      if (typeof _trainHomeLoad === "function") _trainHomeLoad();
+    }
+
+    // Re-enable save button
+    const btn = document.getElementById("id-modal-save-btn");
+    if (btn) { btn.textContent = "Save & reload"; btn.disabled = false; }
   }
 
   // Legacy aliases kept for any other call sites
