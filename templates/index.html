@@ -12878,7 +12878,7 @@ _bkBadge();
       return (s.title || "").replace(/^📍\s*/,"").replace(/\s+/g,"").toUpperCase();
     })();
     const exportBtns = isAreaReport ? `
-      <button onclick="showScreen('report');document.getElementById('report-postcode').value=${JSON.stringify(_arPostcode)};searchReport();" style="padding:8px 14px;border-radius:10px;border:1px solid #c7d2fe;background:#eef2ff;font-size:12px;font-weight:600;cursor:pointer;color:#4338ca">🔎 View report →</button>` : "";
+      <button onclick="_viewAreaReport('${_arPostcode}')" style="padding:8px 14px;border-radius:10px;border:1px solid #c7d2fe;background:#eef2ff;font-size:12px;font-weight:600;cursor:pointer;color:#4338ca">🔎 View report →</button>` : "";
 
     const deleteBtn = `<button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>`;
 
@@ -12908,6 +12908,14 @@ _bkBadge();
       <div id="ad-intel-result-${s.id}" style="margin-top:10px${_savedAiResult ? '' : ';display:none'}">${_savedAiResult ? _adIntelCardHtml(_savedAiResult) : ''}</div>
     </div>`;
   }
+
+  window._viewAreaReport = function(pc) {
+    showScreen("report");
+    setTimeout(function() {
+      var el = document.getElementById("report-postcode");
+      if (el) { el.value = pc; searchReport(); }
+    }, 50);
+  };
 
   window.savesCopyText = function(text, btn) {
     navigator.clipboard.writeText(text).then(() => {
