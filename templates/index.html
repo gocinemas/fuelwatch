@@ -11415,17 +11415,32 @@ _bkBadge();
       });
 
       let _shcIdx = 0;
-      const _shcRender = () => {
+      const _stripEl = document.getElementById("shc-event-strip");
+      const _subEl   = document.getElementById("shc-event-sub");
+      const _shcRender = (fade) => {
         const it = items[_shcIdx];
-        document.getElementById("shc-event-strip").textContent = it.strip;
-        document.getElementById("shc-event-sub").textContent = it.sub;
+        if (fade) {
+          _stripEl.style.transition = "opacity .3s";
+          _subEl.style.transition   = "opacity .3s";
+          _stripEl.style.opacity = "0";
+          _subEl.style.opacity   = "0";
+          setTimeout(() => {
+            _stripEl.textContent = it.strip;
+            _subEl.textContent   = it.sub;
+            _stripEl.style.opacity = "1";
+            _subEl.style.opacity   = "1";
+          }, 300);
+        } else {
+          _stripEl.textContent = it.strip;
+          _subEl.textContent   = it.sub;
+        }
       };
-      _shcRender();
+      _shcRender(false);
       if (items.length > 1) {
         if (window._shcTimer) clearInterval(window._shcTimer);
         window._shcTimer = setInterval(() => {
           _shcIdx = (_shcIdx + 1) % items.length;
-          _shcRender();
+          _shcRender(true);
         }, 4000);
       }
       document.getElementById("shc-events").style.display = "";
