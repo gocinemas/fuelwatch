@@ -3469,6 +3469,15 @@ const _ts = new Date(d.timestamp);
     Object.keys(localStorage).filter(k => k.startsWith("miru_fuel_home") || k.startsWith("miru_train_home")).forEach(k => localStorage.removeItem(k));
     localStorage.removeItem("miru_train_bm_home"); // clear bookmarked station so nearest-by-postcode runs
 
+    // Sync MiruLocation home postcode (miru_home_pc) with identity bar postcode
+    if (pc && typeof MiruLocation !== "undefined") {
+      MiruLocation.setHome(pc);
+      _myAreaTilePC = null; // force tile to re-fetch MP/council detail
+      if (typeof _myAreaRefreshTile === "function") _myAreaRefreshTile();
+    } else if (!pc && typeof MiruLocation !== "undefined") {
+      MiruLocation.clearHome();
+    }
+
     // Clear My Area state so it re-runs with new postcode on next visit
     _maCurrentPostcode = "";
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
@@ -6652,7 +6661,7 @@ const _ts = new Date(d.timestamp);
   // ── My Area home tile ────────────────────────────────────────────────────────
   let _myAreaTilePC = null;
   function _myAreaRefreshTile() {
-    const pc    = MiruLocation.getHome();
+    const pc    = MiruLocation.getHome() || _miruPostcode() || null;
     const pcEl  = document.getElementById("myarea-home-pc");
     const sub   = document.getElementById("myarea-home-subtitle");
     const detail= document.getElementById("myarea-home-detail");
