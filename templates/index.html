@@ -2914,22 +2914,39 @@ const _ts = new Date(d.timestamp);
         }
       }).catch(() => {});
     reportTabSwitch("house", document.querySelector('.rptab[data-tab="house"]'));
-    document.getElementById("report-house-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading house prices…</div>';
-    document.getElementById("report-schools-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading schools…</div>';
-    document.getElementById("report-pubs-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading pubs…</div>';
-    document.getElementById("report-cafes-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading cafes…</div>';
-    document.getElementById("report-crime-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading crime data…</div>';
-    document.getElementById("report-services-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading hospitals & police…</div>';
-    document.getElementById("report-shops-list").innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Loading supermarkets…</div>';
-    document.getElementById("rptab-loading-services").style.display = "inline-block";
-    document.getElementById("rptab-loading-shops").style.display = "inline-block";
+
+    // Client-side cache — compute BEFORE skeleton HTML so we skip spinners for cached panels
+    const _houseKey = `rpt_house_${postcode}`;
+    const _localKey = `rpt_local_${postcode}`;
+    const _crimeKey = `rpt_crime_${postcode}`;
+    const _svcKeyE  = `rpt_services_${postcode}`;
+    const _shpKeyE  = `rpt_shops_${postcode}`;
+    const _lsGet = (key, ttlMs) => { try { const c = JSON.parse(localStorage.getItem(key)||"null"); return c && (Date.now()-c.ts < ttlMs) ? c.data : null; } catch{return null;} };
+    const _lsSet = (key, data) => { try { localStorage.setItem(key, JSON.stringify({ts: Date.now(), data})); } catch{} };
+    const _houseCached = _lsGet(_houseKey, 6*3600*1000);
+    const _localCached = _lsGet(_localKey, 6*3600*1000);
+    const _crimeCached = _lsGet(_crimeKey, 60*60*1000);
+    const _svcCachedE  = _lsGet(_svcKeyE,  24*3600*1000);
+    const _shpCachedE  = _lsGet(_shpKeyE,  6*3600*1000);
+
+    // Only show spinners for panels that aren't cached
+    const _spin = (msg) => `<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> ${msg}</div>`;
+    if (!_houseCached) document.getElementById("report-house-list").innerHTML = _spin("Loading house prices…");
+    if (!_localCached) {
+      document.getElementById("report-schools-list").innerHTML = _spin("Loading schools…");
+      document.getElementById("report-pubs-list").innerHTML    = _spin("Loading pubs…");
+      document.getElementById("report-cafes-list").innerHTML   = _spin("Loading cafes…");
+    }
+    if (!_crimeCached) document.getElementById("report-crime-list").innerHTML = _spin("Loading crime data…");
+    if (!_svcCachedE)  { document.getElementById("report-services-list").innerHTML = _spin("Loading hospitals & police…"); document.getElementById("rptab-loading-services").style.display = "inline-block"; }
+    if (!_shpCachedE)  { document.getElementById("report-shops-list").innerHTML    = _spin("Loading supermarkets…");      document.getElementById("rptab-loading-shops").style.display    = "inline-block"; }
     document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
 
     const slowTimer = setTimeout(() => {
       ["report-schools-list","report-pubs-list","report-cafes-list"].forEach(id => {
         const el = document.getElementById(id);
         if (el && el.querySelector(".spinner"))
-          el.innerHTML = '<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> Fetching from OpenStreetMap — first load for this postcode can take 15–20s…</div>';
+          el.innerHTML = _spin("Fetching from OpenStreetMap — first load for this postcode can take 15–20s…");
       });
     }, 5000);
 
@@ -2942,17 +2959,6 @@ const _ts = new Date(d.timestamp);
     window._rptLocalData = null;
     window._rptCrimeData = null;
     window._rptShpData   = null;
-
-    // Client-side cache keys (same pattern as services/shops)
-    const _houseKey = `rpt_house_${postcode}`;
-    const _localKey = `rpt_local_${postcode}`;
-    const _crimeKey = `rpt_crime_${postcode}`;
-    const _lsGet = (key, ttlMs) => { try { const c = JSON.parse(localStorage.getItem(key)||"null"); return c && (Date.now()-c.ts < ttlMs) ? c.data : null; } catch{return null;} };
-    const _lsSet = (key, data) => { try { localStorage.setItem(key, JSON.stringify({ts: Date.now(), data})); } catch{} };
-
-    const _houseCached = _lsGet(_houseKey, 6*3600*1000);   // 6h
-    const _localCached = _lsGet(_localKey, 6*3600*1000);   // 6h
-    const _crimeCached = _lsGet(_crimeKey, 60*60*1000);    // 1h
 
     // House prices
     const houseP = _houseCached
@@ -3008,22 +3014,16 @@ const _ts = new Date(d.timestamp);
               `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
           });
 
-    // Services and shops load in the background — don't block the main allSettled
-    // Hospitals/GPs are cached 24h; shops 6h (they rarely change)
-    const _svcKey = `rpt_services_${postcode}`;
-    const _shpKey = `rpt_shops_${postcode}`;
-    const _svcCached = (() => { try { const c = JSON.parse(localStorage.getItem(_svcKey)||"null"); return c && (Date.now()-c.ts < 86400000) ? c.data : null; } catch{return null;} })();
-    const _shpCached = (() => { try { const c = JSON.parse(localStorage.getItem(_shpKey)||"null"); return c && (Date.now()-c.ts < 21600000) ? c.data : null; } catch{return null;} })();
-
-    if (_svcCached) {
-      renderServicesData(_svcCached);
+    // Services and shops — use the cache vars already computed above
+    if (_svcCachedE) {
+      renderServicesData(_svcCachedE);
       document.getElementById("rptab-loading-services").style.display = "none";
     } else {
       fetchWithTimeout(`/api/services?postcode=${postcode}`, 35000)
         .then(async r => {
           const d = await r.json();
           if (!r.ok) throw new Error(d.error || "Services lookup failed");
-          try { localStorage.setItem(_svcKey, JSON.stringify({ts: Date.now(), data: d})); } catch{}
+          _lsSet(_svcKeyE, d);
           renderServicesData(d);
         })
         .catch(err => {
@@ -3035,16 +3035,16 @@ const _ts = new Date(d.timestamp);
         });
     }
 
-    if (_shpCached) {
-      window._rptShpData = _shpCached;
-      renderShopsData(_shpCached);
+    if (_shpCachedE) {
+      window._rptShpData = _shpCachedE;
+      renderShopsData(_shpCachedE);
       document.getElementById("rptab-loading-shops").style.display = "none";
     } else {
       fetchWithTimeout(`/api/shops?postcode=${postcode}`, 35000)
         .then(async r => {
           const d = await r.json();
           if (!r.ok) throw new Error(d.error || "Shops lookup failed");
-          try { localStorage.setItem(_shpKey, JSON.stringify({ts: Date.now(), data: d})); } catch{}
+          _lsSet(_shpKeyE, d);
           window._rptShpData = d;
           renderShopsData(d);
         })
@@ -3059,6 +3059,29 @@ const _ts = new Date(d.timestamp);
 
     await Promise.allSettled([houseP, localP, crimeP]);
     clearTimeout(slowTimer);
+    _rptCheckSaved(postcode);
+  }
+
+  function _rptCheckSaved(postcode) {
+    if (!postcode) return;
+    const clean = postcode.replace(/\s+/g,"").toUpperCase();
+    const btn = document.getElementById("report-save-btn");
+    if (!btn) return;
+    const already = (_savesAll || []).some(s =>
+      (s.source === "area-report" || s.source === "my-area" || (s.title||"").startsWith("📍")) &&
+      (s.title||"").toUpperCase().replace(/\s+/g,"").includes(clean)
+    );
+    if (already) {
+      btn.textContent = "✓ Saved";
+      btn.style.color = "#6b7280";
+      btn.disabled = true;
+      btn.onclick = null;
+    } else {
+      btn.textContent = "💾 Save";
+      btn.style.color = "#059669";
+      btn.disabled = false;
+      btn.onclick = function() { _reportSave(this); };
+    }
   }
 
   function renderHousePrices(d, postcode) {
@@ -12592,6 +12615,9 @@ _bkBadge();
       });
       if (typeof savesRenderCategoryPills === "function") savesRenderCategoryPills();
       if (typeof savesRender === "function") savesRender();
+      // Update save button if report screen is active
+      const _rptPc = (document.getElementById("report-postcode")||{}).value||"";
+      if (_rptPc && typeof _rptCheckSaved === "function") _rptCheckSaved(_rptPc.trim().replace(/\s+/g,""));
     } catch(e) {
       if (btn) { btn.textContent = "Access My Saves"; btn.disabled = false; }
       if (errEl) { errEl.textContent = "Error: " + e.message + ". Check number format."; errEl.style.display = "block"; }
@@ -12614,6 +12640,8 @@ _bkBadge();
       });
       savesRenderCategoryPills();
       savesRender();
+      const _rptPc2 = (document.getElementById("report-postcode")||{}).value||"";
+      if (_rptPc2 && typeof _rptCheckSaved === "function") _rptCheckSaved(_rptPc2.trim().replace(/\s+/g,""));
     } catch(e) {
       document.getElementById("saves-list").innerHTML = '<p style="color:#ef4444;font-size:13px">Failed to load saves.</p>';
     }
