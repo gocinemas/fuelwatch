@@ -3469,9 +3469,11 @@ const _ts = new Date(d.timestamp);
     Object.keys(localStorage).filter(k => k.startsWith("miru_fuel_home") || k.startsWith("miru_train_home")).forEach(k => localStorage.removeItem(k));
     localStorage.removeItem("miru_train_bm_home"); // clear bookmarked station so nearest-by-postcode runs
 
-    // Clear My Area in-memory postcode so it re-runs on next visit
-    if (typeof _maCurrentPostcode !== "undefined") window._maCurrentPostcode = null;
-    if (typeof _maAreaData !== "undefined") window._maAreaData = null;
+    // Clear My Area state so it re-runs with new postcode on next visit
+    _maCurrentPostcode = "";
+    _maAreaData = null; _maShopsData = null; _maLocalData = null;
+    const _maInput = document.getElementById("myarea-postcode-input");
+    if (_maInput) _maInput.value = pc || "";
 
     // Reset cards so user sees loading state immediately
     const trainPh = document.getElementById("home-train-placeholder");

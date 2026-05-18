@@ -1905,8 +1905,19 @@ def _get_postcode_info(postcode: str) -> dict:
         return {"admin_district": "", "outward": pc[:-3]}
 
 
-def _fetch_house_prices_sparql(district: str, cutoff_iso: str) -> dict:
-    """Query Land Registry SPARQL endpoint for average sold prices by property type."""
+def _fetch_house_prices_sparql(district: str, cutoff_iso: str, outcode: str = None) -> dict:
+    """Query Land Registry SPARQL endpoint for average sold prices by property type.
+    If outcode is given, filters by postcode prefix (e.g. KT16) for a tighter area.
+    Falls back to district-wide query if too few results."""
+    if outcode:
+        filter_clause = f'FILTER(STRSTARTS(STR(?pc), "{outcode.upper()}"))'
+        addr_clause   = f'?addr lrcommon:postcode ?pc .'
+        scope_label   = outcode.upper()
+    else:
+        filter_clause = ""
+        addr_clause   = f'?addr lrcommon:district "{district}" .'
+        scope_label   = district.title()
+
     query = f"""
 PREFIX lrppi: <http://landregistry.data.gov.uk/def/ppi/>
 PREFIX lrcommon: <http://landregistry.data.gov.uk/def/common/>
@@ -1917,9 +1928,10 @@ WHERE {{
      lrppi:transactionDate ?date ;
      lrppi:propertyType ?type ;
      lrppi:propertyAddress ?addr .
-  ?addr lrcommon:district "{district}" .
+  {addr_clause}
   FILTER(?date >= "{cutoff_iso}"^^<http://www.w3.org/2001/XMLSchema#date>)
   FILTER(?type != <http://landregistry.data.gov.uk/def/common/otherPropertyType>)
+  {filter_clause}
 }}
 GROUP BY ?type
 """
@@ -1950,12 +1962,13 @@ GROUP BY ?type
             latest = _dt.strptime(raw_date, "%Y-%m-%d").strftime("%b %Y")
         except Exception:
             latest = raw_date
-        summary[label] = {"avg": avg, "count": cnt, "latest": latest, "scope": district.title()}
+        summary[label] = {"avg": avg, "count": cnt, "latest": latest, "scope": scope_label}
     return summary
 
 
 def fetch_house_prices(postcode: str) -> dict:
-    """Fetch last 3 years of sold prices from Land Registry SPARQL endpoint."""
+    """Fetch last 3 years of sold prices from Land Registry SPARQL endpoint.
+    Tries outcode (e.g. KT16) first for a tight local result; falls back to district."""
     from datetime import date, timedelta
     cache_key = postcode.strip().upper().replace(" ", "")
     cached = _house_cache.get(cache_key)
@@ -1965,17 +1978,20 @@ def fetch_house_prices(postcode: str) -> dict:
     cutoff_iso = (date.today() - timedelta(days=3 * 365)).strftime("%Y-%m-%d")
     info = _get_postcode_info(postcode)
     district = info["admin_district"]
-    if not district:
-        _house_cache[cache_key] = {"ts": time.time(), "data": {}}
-        return {}
+    outcode  = info.get("outward") or postcode.strip().upper().replace(" ", "")[:-3] or postcode.strip().upper().replace(" ", "")
 
-    summary = _fetch_house_prices_sparql(district, cutoff_iso)
-    # Some councils are stored as "CITY OF X" in Land Registry but postcodes.io omits "CITY OF"
-    if not summary and not district.startswith("CITY OF"):
-        summary = _fetch_house_prices_sparql("CITY OF " + district, cutoff_iso)
-        if summary:
-            for v in summary.values():
-                v["scope"] = ("CITY OF " + district).title()
+    # 1. Try by outcode — most accurate (e.g. KT16, SW1A)
+    summary = _fetch_house_prices_sparql(district or "", cutoff_iso, outcode=outcode)
+
+    # 2. If too sparse (<20 total sales), widen to district
+    total_sales = sum(v["count"] for v in summary.values()) if summary else 0
+    if total_sales < 20 and district:
+        summary = _fetch_house_prices_sparql(district, cutoff_iso)
+        if not summary and not district.startswith("CITY OF"):
+            summary = _fetch_house_prices_sparql("CITY OF " + district, cutoff_iso)
+            if summary:
+                for v in summary.values():
+                    v["scope"] = ("CITY OF " + district).title()
 
     _house_cache[cache_key] = {"ts": time.time(), "data": summary}
     return summary
