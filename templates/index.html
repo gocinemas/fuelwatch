@@ -578,12 +578,64 @@
         </div>
       </button>
 
-      <!-- Elections — hidden chip, shown by JS when active -->
+      <!-- School comms home card -->
+      <div id="school-home-card" style="display:none;margin-bottom:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;overflow:hidden">
+        <!-- CTA state: no profile set up -->
+        <div id="shc-cta" style="display:none;padding:18px 18px 16px;cursor:pointer" onclick="_schoolHomeOpen()">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="font-size:28px;flex-shrink:0">🏫</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px;line-height:1.2">School updates</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:3px">Connect Gmail to get letters &amp; events from school</div>
+            </div>
+            <div style="flex-shrink:0;background:#f59e0b;color:#fff;font-size:12px;font-weight:700;border-radius:99px;padding:5px 12px">Set up</div>
+          </div>
+        </div>
+        <!-- Events state: cycling strip -->
+        <div id="shc-events" style="display:none;padding:12px 16px;cursor:pointer" onclick="_schoolHomeOpen()">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px;flex-shrink:0">🏫</span>
+            <div style="flex:1;min-width:0">
+              <div id="shc-event-strip" style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+              <div id="shc-event-sub" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
+            </div>
+            <div id="shc-more-badge" style="display:none;flex-shrink:0;background:#eef2ff;color:#4338ca;font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap"></div>
+            <span style="flex-shrink:0;color:var(--muted);font-size:16px">›</span>
+          </div>
+        </div>
+        <!-- No events state -->
+        <div id="shc-clear" style="display:none;padding:14px 18px;cursor:pointer" onclick="_schoolHomeOpen()">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">🏫</span>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:700;color:var(--text)">School</div>
+              <div style="font-size:12px;color:var(--muted)">✅ All clear — nothing coming up in the next 2 weeks</div>
+            </div>
+          </div>
+        </div>
+        <!-- Reconnect Gmail state -->
+        <div id="shc-reconnect" style="display:none;padding:14px 18px;cursor:pointer" onclick="_schoolHomeOpen()">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">⚠️</span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:#92400e">School emails disconnected</div>
+              <div style="font-size:12px;color:#b45309;margin-top:2px">Tap to reconnect Gmail</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Elections — tile, shown by JS when results active -->
       <button id="elections-home-card" onclick="showScreen('elections')"
-        style="display:none;width:100%;margin-bottom:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;cursor:pointer;text-align:left;align-items:center;gap:10px">
-        <span style="font-size:18px">🗳️</span>
-        <span style="font-size:13px;font-weight:700;color:var(--text)">Local Council Results</span>
-        <span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#6b7280;background:#f3f4f6;border-radius:99px;padding:2px 8px">Results</span>
+        style="display:none;width:100%;margin-bottom:10px;background:var(--surface);border:1.5px solid #86efac;border-radius:20px;padding:16px 18px;cursor:pointer;text-align:left;align-items:center;gap:14px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="font-size:28px;flex-shrink:0">🗳️</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px;line-height:1.2">Local Council Results</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">2026 local elections · See results for your area</div>
+          </div>
+          <span style="flex-shrink:0;background:#dcfce7;color:#166534;font-size:11px;font-weight:700;border-radius:99px;padding:4px 10px">Results →</span>
+        </div>
       </button>
 
       <!-- MORE TOOLS -->
@@ -608,6 +660,10 @@
         <button class="tool-icon-btn" onclick="showScreen('music')">
           <span class="tool-icon-emoji">🎵</span>
           <span class="tool-icon-label">Music</span>
+        </button>
+        <button class="tool-icon-btn" onclick="_exploreHereOpen()">
+          <span class="tool-icon-emoji">🗺️</span>
+          <span class="tool-icon-label">Nearby</span>
         </button>
       </div>
 
@@ -652,18 +708,6 @@
           <div id="explore-here-loading" style="display:none;text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Finding the best nearby…</div>
           <div id="explore-here-results"></div>
         </div>
-      </div>
-
-      <!-- Hidden school home card elements — JS still updates them but they're off home screen -->
-      <div id="school-home-card" style="display:none">
-        <div id="shc-cta" style="display:none" onclick="_schoolHomeOpen()"></div>
-        <div id="shc-events" style="display:none" onclick="_schoolHomeOpen()">
-          <div id="shc-event-strip" style="display:none"></div>
-          <div id="shc-event-sub" style="display:none"></div>
-          <div id="shc-more-badge" style="display:none"></div>
-        </div>
-        <div id="shc-clear" style="display:none" onclick="_schoolHomeOpen()"></div>
-        <div id="shc-reconnect" style="display:none" onclick="_schoolHomeOpen()"></div>
       </div>
 
       <!-- Hidden news feed elements — JS refs kept alive -->
