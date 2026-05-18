@@ -1192,9 +1192,8 @@
         <div id="intel-tab-bar" style="display:flex;gap:4px;background:var(--border);padding:4px;border-radius:14px;margin-bottom:14px;overflow-x:auto">
           <button id="itab-btn-about"     onclick="switchIntelTab('about')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:#4f46e5;color:#fff">About</button>
           <button id="itab-btn-finance"   onclick="switchIntelTab('finance')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Finance</button>
-          <button id="itab-btn-history"   onclick="switchIntelTab('history')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">📖 Story</button>
           <button id="itab-btn-campaigns" onclick="switchIntelTab('campaigns')" class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">🎯 Campaigns</button>
-          <button id="itab-btn-intel"     onclick="switchIntelTab('intel')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Intel</button>
+          <button id="itab-btn-intel"     onclick="switchIntelTab('intel')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">🔍 Research</button>
           <button id="itab-btn-social"    onclick="switchIntelTab('social')"    class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">📱 Social</button>
         </div>
 
@@ -1285,7 +1284,17 @@
             <div id="co-ext-links-body" class="flex flex-wrap gap-2"></div>
           </div>
           <div id="co-overview-empty" class="hidden co-card text-sm text-gray-400 text-center py-4">
-            No overview data found. Try the <strong>Intel</strong> tab for news.
+            No overview data found. Try the <strong>Research</strong> tab for news.
+          </div>
+          <!-- Brand Story collapsible (moved from Story tab) -->
+          <div id="brand-story-collapsible" style="display:none;margin-top:4px">
+            <button onclick="_toggleBrandStory()" style="width:100%;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 14px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text)">
+              <span>📖 Brand Story &amp; Milestones</span>
+              <span id="brand-story-chevron" style="font-size:11px;color:var(--muted)">▼</span>
+            </button>
+            <div id="brand-story-body" style="display:none;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 14px 14px;padding:14px 16px">
+              <div id="brand-timeline-el-about"></div>
+            </div>
           </div>
         </div>
 
@@ -1374,26 +1383,6 @@
           <div id="brand-ads-section" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
             <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">📺 Watch Ads</div>
             <div id="brand-ads-el" style="display:flex;flex-direction:column;gap:10px"></div>
-          </div>
-          <!-- Community Spins -->
-          <div id="brand-spins-section" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px;margin-top:12px">
-            <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">🎙️ Community Spins</div>
-            <div id="brand-spins-el"><div style="font-size:13px;color:#9ca3af;text-align:center;padding:12px 0">No spins yet — be the first!</div></div>
-            <div id="brand-spin-form" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-              <input id="brand-spin-url" type="url" placeholder="YouTube / podcast URL (optional)"
-                style="width:100%;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;margin-bottom:8px;box-sizing:border-box">
-              <textarea id="brand-spin-caption" placeholder="Your take — a great ad, podcast, insight…" rows="2"
-                style="width:100%;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;resize:none;box-sizing:border-box;margin-bottom:8px"></textarea>
-              <div style="display:flex;gap:8px">
-                <button id="brand-spin-submit-btn" onclick="brandSpinSubmit()" style="flex:1;background:var(--text);color:var(--bg);border:none;border-radius:12px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">Share Spin</button>
-                <button onclick="document.getElementById('brand-spin-form').style.display='none';document.getElementById('brand-spin-add-btn').style.display=''"
-                  style="background:none;border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--muted);cursor:pointer">Cancel</button>
-              </div>
-            </div>
-            <button id="brand-spin-add-btn" onclick="document.getElementById('brand-spin-form').style.display='';document.getElementById('brand-spin-add-btn').style.display='none'"
-              style="width:100%;margin-top:10px;padding:10px;border-radius:12px;border:1px dashed var(--border);background:none;color:var(--muted);font-size:13px;cursor:pointer">
-              + Add your Spin
-            </button>
           </div>
         </div>
 
@@ -5642,7 +5631,7 @@ const _ts = new Date(d.timestamp);
 
   // ── Company search ───────────────────────────────────────────────────────────
   // ── Intel mode toggle ────────────────────────────────────────────────────────
-  const _INTEL_TABS = ["about","finance","history","campaigns","intel","social"];
+  const _INTEL_TABS = ["about","finance","campaigns","intel","social"];
 
   window.switchIntelMode = function() {}; // no-op kept for any lingering callers
 
@@ -5965,6 +5954,20 @@ const _ts = new Date(d.timestamp);
       }
     });
     if (tab === "social") _loadSocialTab();
+  };
+
+  window._toggleBrandStory = function() {
+    var body = document.getElementById("brand-story-body");
+    var chev = document.getElementById("brand-story-chevron");
+    if (!body) return;
+    var open = body.style.display === "block";
+    body.style.display = open ? "none" : "block";
+    if (chev) chev.textContent = open ? "▼" : "▲";
+    if (!open) {
+      var dest = document.getElementById("brand-timeline-el-about");
+      var src  = document.getElementById("brand-timeline-el");
+      if (dest && src && !dest.innerHTML) dest.innerHTML = src.innerHTML;
+    }
   };
 
   let _socialTabBrand = "";
@@ -8794,6 +8797,9 @@ const _ts = new Date(d.timestamp);
             </div>`).join("")}
         </div>`
       : `<div style="font-size:13px;color:#9ca3af;text-align:center;padding:24px 0">No timeline available.</div>`;
+    // Show/hide brand story collapsible in About tab
+    var storyWrap = document.getElementById("brand-story-collapsible");
+    if (storyWrap) storyWrap.style.display = tl.length ? "" : "none";
 
     // Campaigns
     const camps = d.campaigns || [];
