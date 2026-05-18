@@ -2943,48 +2943,70 @@ const _ts = new Date(d.timestamp);
     window._rptCrimeData = null;
     window._rptShpData   = null;
 
-    // Fire both requests in parallel — render each section as it arrives
-    const houseP = fetchWithTimeout(`/api/house?postcode=${postcode}`, 15000)
-      .then(async r => {
-        const text = await r.text();
-        let data;
-        try { data = JSON.parse(text); } catch { throw new Error("Server error — redeploy may be in progress."); }
-        if (!r.ok) throw new Error(data.error || "House price lookup failed");
-        window._rptHouseData = data;
-        renderHousePrices(data, postcode);
-      })
-      .catch(err => {
-        document.getElementById("report-house-list").innerHTML =
-          `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
-      });
+    // Client-side cache keys (same pattern as services/shops)
+    const _houseKey = `rpt_house_${postcode}`;
+    const _localKey = `rpt_local_${postcode}`;
+    const _crimeKey = `rpt_crime_${postcode}`;
+    const _lsGet = (key, ttlMs) => { try { const c = JSON.parse(localStorage.getItem(key)||"null"); return c && (Date.now()-c.ts < ttlMs) ? c.data : null; } catch{return null;} };
+    const _lsSet = (key, data) => { try { localStorage.setItem(key, JSON.stringify({ts: Date.now(), data})); } catch{} };
 
-    const localP = fetchWithTimeout(`/api/local?postcode=${postcode}`, 45000)
-      .then(async r => {
-        const text = await r.text();
-        let data;
-        try { data = JSON.parse(text); } catch { throw new Error("Server error — redeploy may be in progress."); }
-        if (!r.ok) throw new Error(data.error || "Local data lookup failed");
-        window._rptLocalData = data;
-        renderLocalData(data);
-      })
-      .catch(err => {
-        document.getElementById("report-schools-list").innerHTML =
-          `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
-      });
+    const _houseCached = _lsGet(_houseKey, 6*3600*1000);   // 6h
+    const _localCached = _lsGet(_localKey, 6*3600*1000);   // 6h
+    const _crimeCached = _lsGet(_crimeKey, 60*60*1000);    // 1h
 
-    const crimeP = fetchWithTimeout(`/api/crime?postcode=${postcode}`, 20000)
-      .then(async r => {
-        const text = await r.text();
-        let data;
-        try { data = JSON.parse(text); } catch { throw new Error("Server error"); }
-        if (!r.ok) throw new Error(data.error || "Crime data lookup failed");
-        window._rptCrimeData = data;
-        renderCrimeData(data);
-      })
-      .catch(err => {
-        document.getElementById("report-crime-list").innerHTML =
-          `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
-      });
+    // House prices
+    const houseP = _houseCached
+      ? Promise.resolve().then(() => { window._rptHouseData = _houseCached; renderHousePrices(_houseCached, postcode); })
+      : fetchWithTimeout(`/api/house?postcode=${postcode}`, 20000)
+          .then(async r => {
+            const text = await r.text();
+            let data;
+            try { data = JSON.parse(text); } catch { throw new Error("Server error — redeploy may be in progress."); }
+            if (!r.ok) throw new Error(data.error || "House price lookup failed");
+            _lsSet(_houseKey, data);
+            window._rptHouseData = data;
+            renderHousePrices(data, postcode);
+          })
+          .catch(err => {
+            document.getElementById("report-house-list").innerHTML =
+              `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+          });
+
+    // Schools / pubs / cafes
+    const localP = _localCached
+      ? Promise.resolve().then(() => { window._rptLocalData = _localCached; renderLocalData(_localCached); })
+      : fetchWithTimeout(`/api/local?postcode=${postcode}`, 45000)
+          .then(async r => {
+            const text = await r.text();
+            let data;
+            try { data = JSON.parse(text); } catch { throw new Error("Server error — redeploy may be in progress."); }
+            if (!r.ok) throw new Error(data.error || "Local data lookup failed");
+            _lsSet(_localKey, data);
+            window._rptLocalData = data;
+            renderLocalData(data);
+          })
+          .catch(err => {
+            document.getElementById("report-schools-list").innerHTML =
+              `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+          });
+
+    // Crime
+    const crimeP = _crimeCached
+      ? Promise.resolve().then(() => { window._rptCrimeData = _crimeCached; renderCrimeData(_crimeCached); })
+      : fetchWithTimeout(`/api/crime?postcode=${postcode}`, 20000)
+          .then(async r => {
+            const text = await r.text();
+            let data;
+            try { data = JSON.parse(text); } catch { throw new Error("Server error"); }
+            if (!r.ok) throw new Error(data.error || "Crime data lookup failed");
+            _lsSet(_crimeKey, data);
+            window._rptCrimeData = data;
+            renderCrimeData(data);
+          })
+          .catch(err => {
+            document.getElementById("report-crime-list").innerHTML =
+              `<p class="text-red-500 text-sm py-2">${err.message}</p>`;
+          });
 
     // Services and shops load in the background — don't block the main allSettled
     // Hospitals/GPs are cached 24h; shops 6h (they rarely change)
@@ -12600,6 +12622,7 @@ _bkBadge();
   // ── Category system ─────────────────────────────────────────────────────────
   var _SAVE_CATS = [
     {key:"all",      label:"All"},
+    {key:"area",     label:"📍 Areas"},
     {key:"book",     label:"📚 Books"},
     {key:"recipe",   label:"🍳 Recipes"},
     {key:"wine",     label:"🍷 Wine"},
@@ -12618,13 +12641,15 @@ _bkBadge();
   function _saveCat(s) {
     if ((s.url || "").startsWith("book:")) return "book";
     const t = s.title || "";
+    // Area reports: source field (new saves) or 📍 prefix (all area report saves)
+    if (s.source === "area-report" || s.source === "my-area") return "area";
+    if (t.startsWith("📍")) return "area";
     if (t.startsWith("🍳")) return "recipe";
     if (t.startsWith("🍷")) return "wine";
     if (t.startsWith("📺")) return "video";
     if (t.startsWith("📦")) return "product";
     if (t.startsWith("🏷️")) return "brand";
     if (t.startsWith("🏪")) return "place";
-    if (t.startsWith("📍")) return "place";
     if (t.startsWith("📢")) return "ad";
     if (t.startsWith("🎫")) return "event";
     if (t.startsWith("🧾")) return "receipt";
@@ -12773,7 +12798,7 @@ _bkBadge();
       } catch(e) {}
     }
 
-    const isAreaReport = s.source === "area-report" || s.source === "my-area";
+    const isAreaReport = s.source === "area-report" || s.source === "my-area" || (s.title || "").startsWith("📍");
     const displaySummary = isAreaReport
       ? bodyText.trim()
       : bodyText.replace(/^•\s*/gm,"").replace(/\n+/g," ").trim();
