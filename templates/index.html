@@ -433,7 +433,35 @@
       <!-- Greeting -->
       <div style="padding:28px 0 20px">
         <div id="home-greeting" style="font-size:36px;font-weight:900;letter-spacing:-1.4px;color:var(--text);line-height:1.05;margin-bottom:10px">Good morning.</div>
+        <div id="home-miru-desc" style="display:none;font-size:15px;color:var(--muted);line-height:1.6;margin-bottom:12px;max-width:340px">Fuel prices · Train times · Local services · School updates — your everyday toolkit for life in the UK.</div>
         <div style="display:inline-block;background:#eef2ff;color:#4338ca;font-size:13px;font-weight:700;border-radius:99px;padding:5px 14px;letter-spacing:-0.1px">🇬🇧 Built for life in the UK</div>
+      </div>
+
+      <!-- First-visit setup banner -->
+      <div id="home-setup-banner" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:18px;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;letter-spacing:-0.3px">Get started in two steps</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Miru personalises to you — fuel prices near you, your train times, your area, your school updates.</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button id="setup-postcode-btn" onclick="_idEdit('postcode')"
+            style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:11px 14px;cursor:pointer;text-align:left;width:100%;transition:border-color .15s">
+            <span style="font-size:20px;flex-shrink:0">📍</span>
+            <div style="flex:1;min-width:0">
+              <div id="setup-postcode-label" style="font-size:13px;font-weight:700;color:var(--text)">Add your postcode</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">Unlocks fuel prices, trains &amp; area info</div>
+            </div>
+            <span id="setup-postcode-tick" style="display:none;font-size:16px">✅</span>
+          </button>
+          <button id="setup-phone-btn" onclick="_idEdit('phone')"
+            style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;padding:11px 14px;cursor:pointer;text-align:left;width:100%;transition:border-color .15s">
+            <span style="font-size:20px;flex-shrink:0">📱</span>
+            <div style="flex:1;min-width:0">
+              <div id="setup-phone-label" style="font-size:13px;font-weight:700;color:var(--text)">Add your phone number</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">Connects WhatsApp saves &amp; school comms</div>
+            </div>
+            <span id="setup-phone-tick" style="display:none;font-size:16px">✅</span>
+          </button>
+          <button onclick="_setupBannerDismiss()" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 0;text-align:center;width:100%">Skip for now →</button>
+        </div>
       </div>
 
       <!-- Search bar -->
@@ -11469,6 +11497,76 @@ _bkBadge();
     if (_miruPostcode() || localStorage.getItem("miru_train_bm_home")) {
       _fuelHomeLoad();
       _trainHomeLoad();
+    }
+    _setupBannerInit();
+  });
+
+  /* ── First-visit setup banner ────────────────────────────────────────────── */
+  function _setupBannerInit() {
+    const hasPc    = !!_miruPostcode();
+    const hasPhone = !!_miruPhone();
+    const dismissed = localStorage.getItem("miru_setup_dismissed") === "1";
+
+    // Show "what is Miru" desc only for new users
+    if (!hasPc && !hasPhone) {
+      const desc = document.getElementById("home-miru-desc");
+      if (desc) desc.style.display = "";
+    }
+
+    // Show banner if dismissed flag not set and at least one thing missing
+    if (!dismissed && (!hasPc || !hasPhone)) {
+      _setupBannerRender();
+    }
+  }
+
+  function _setupBannerRender() {
+    const hasPc    = !!_miruPostcode();
+    const hasPhone = !!_miruPhone();
+    const banner = document.getElementById("home-setup-banner");
+    if (!banner) return;
+
+    // Tick completed steps
+    const pcTick    = document.getElementById("setup-postcode-tick");
+    const phoneTick = document.getElementById("setup-phone-tick");
+    const pcLabel   = document.getElementById("setup-postcode-label");
+    const phoneLabel = document.getElementById("setup-phone-label");
+
+    if (hasPc) {
+      if (pcTick) pcTick.style.display = "";
+      if (pcLabel) { pcLabel.textContent = _miruPostcode(); pcLabel.style.color = "var(--muted)"; }
+      document.getElementById("setup-postcode-btn").style.borderColor = "#86efac";
+    }
+    if (hasPhone) {
+      if (phoneTick) phoneTick.style.display = "";
+      if (phoneLabel) { phoneLabel.textContent = _miruPhone(); phoneLabel.style.color = "var(--muted)"; }
+      document.getElementById("setup-phone-btn").style.borderColor = "#86efac";
+    }
+
+    // Auto-hide when both done
+    if (hasPc && hasPhone) {
+      banner.style.display = "none";
+      document.getElementById("home-miru-desc").style.display = "none";
+      return;
+    }
+    banner.style.display = "";
+  }
+
+  window._setupBannerDismiss = function() {
+    localStorage.setItem("miru_setup_dismissed", "1");
+    const banner = document.getElementById("home-setup-banner");
+    if (banner) banner.style.display = "none";
+    document.getElementById("home-miru-desc").style.display = "none";
+  };
+
+  // Re-render banner whenever identity bar saves (postcode or phone updated)
+  const _origIdSave = window._idSave;
+  document.addEventListener("DOMContentLoaded", function() {
+    const orig = window._idSave;
+    if (orig) {
+      window._idSave = function() {
+        orig.apply(this, arguments);
+        setTimeout(_setupBannerRender, 100);
+      };
     }
   });
 
