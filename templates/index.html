@@ -477,7 +477,10 @@
               style="flex-shrink:0;background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">Add</button>
           </div>
 
-          <button onclick="_setupBannerDismiss()" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 0;text-align:center;width:100%">Skip for now →</button>
+          <!-- Phone optional note — only visible once postcode is done -->
+          <div id="setup-ph-skip" style="display:none;text-align:center">
+            <button onclick="_setupPhoneSkip()" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 0">Maybe later →</button>
+          </div>
         </div>
       </div>
 
@@ -509,7 +512,7 @@
           <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Fuel Prices</div>
           <div id="home-fuel-price" style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-1px;margin-top:6px;line-height:1;display:none"></div>
           <div id="home-fuel-sub" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.3;display:none"></div>
-          <div id="home-fuel-placeholder" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Cheapest near you</div>
+          <div id="home-fuel-placeholder" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Add postcode to see prices</div>
         </button>
         <button class="feat-card feat-card-train" onclick="showScreen('trains')">
           <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px;margin-bottom:12px;width:fit-content">
@@ -520,7 +523,7 @@
           <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Train Times</div>
           <div id="home-train-next" style="font-size:16px;font-weight:900;color:#fff;letter-spacing:-0.5px;margin-top:6px;line-height:1.2;display:none"></div>
           <div id="home-train-sub" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.3;display:none"></div>
-          <div id="home-train-placeholder" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Departures &amp; delays</div>
+          <div id="home-train-placeholder" style="font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;line-height:1.4">Add postcode to see trains</div>
         </button>
       </div>
 
@@ -11548,36 +11551,50 @@ _bkBadge();
   function _setupBannerRender() {
     const hasPc    = !!_miruPostcode();
     const hasPhone = !!_miruPhone();
+    const phoneSkipped = localStorage.getItem("miru_phone_skipped") === "1";
     const banner   = document.getElementById("home-setup-banner");
     if (!banner) return;
 
-    // Postcode row state
-    if (hasPc) {
-      document.getElementById("setup-pc-static").querySelector("div").textContent = _miruPostcode();
-      document.getElementById("setup-pc-tick").style.display = "";
-      document.getElementById("setup-pc-btn").style.display  = "none";
-      document.getElementById("setup-pc-row").style.borderColor = "#86efac";
+    // Both done (or phone skipped after postcode set) — hide everything
+    if (hasPc && (hasPhone || phoneSkipped)) {
+      banner.style.display = "none";
+      const desc = document.getElementById("home-miru-desc");
+      if (desc) desc.style.display = "none";
+      localStorage.setItem("miru_setup_dismissed", "1");
+      _restoreIdBarPills();
+      return;
     }
+
+    banner.style.display = "";
+
+    // Postcode row: hide once done, show "Maybe later" for phone
+    const pcRow = document.getElementById("setup-pc-row");
+    if (hasPc) {
+      pcRow.style.display = "none";
+      document.getElementById("setup-ph-skip").style.display = "";
+      // Update banner heading to reflect progress
+      banner.querySelector("div").textContent = "One more thing";
+      banner.querySelectorAll("div")[1].textContent = "Add your phone to unlock WhatsApp saves and school updates.";
+      document.getElementById("id-postcode-pill").style.display = "";
+    } else {
+      pcRow.style.display = "flex";
+    }
+
     // Phone row state
     if (hasPhone) {
       document.getElementById("setup-ph-static").querySelector("div").textContent = _miruPhone();
       document.getElementById("setup-ph-tick").style.display = "";
       document.getElementById("setup-ph-btn").style.display  = "none";
       document.getElementById("setup-ph-row").style.borderColor = "#86efac";
+      document.getElementById("id-phone-pill").style.display = "";
     }
+  }
 
-    // Restore identity bar pills once set
-    if (hasPc)    { const el = document.getElementById("id-postcode-pill"); if (el) el.style.display = ""; }
-    if (hasPhone) { const el = document.getElementById("id-phone-pill");    if (el) el.style.display = ""; }
-
-    // Auto-hide when both done; restore greeting
-    if (hasPc && hasPhone) {
-      banner.style.display = "none";
-      document.getElementById("home-miru-desc").style.display = "none";
-      localStorage.setItem("miru_setup_dismissed", "1");
-      return;
-    }
-    banner.style.display = "";
+  function _restoreIdBarPills() {
+    const pp = document.getElementById("id-phone-pill");
+    const pc = document.getElementById("id-postcode-pill");
+    if (pp) pp.style.display = "";
+    if (pc) pc.style.display = "";
   }
 
   window._setupEditPostcode = function() {
@@ -11617,15 +11634,18 @@ _bkBadge();
     _setupBannerRender();
   };
 
+  window._setupPhoneSkip = function() {
+    localStorage.setItem("miru_phone_skipped", "1");
+    _setupBannerRender();
+  };
+
   window._setupBannerDismiss = function() {
+    // Only callable programmatically (no button), kept for safety
     localStorage.setItem("miru_setup_dismissed", "1");
     document.getElementById("home-setup-banner").style.display = "none";
-    document.getElementById("home-miru-desc").style.display    = "none";
-    // Restore identity bar pills
-    const pp = document.getElementById("id-phone-pill");
-    const pc = document.getElementById("id-postcode-pill");
-    if (pp) pp.style.display = "";
-    if (pc) pc.style.display = "";
+    const desc = document.getElementById("home-miru-desc");
+    if (desc) desc.style.display = "none";
+    _restoreIdBarPills();
   };
 
   /* ── Save Intel to Saves ──────────────────────────────────────────────────── */
