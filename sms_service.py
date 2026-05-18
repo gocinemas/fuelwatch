@@ -13792,13 +13792,7 @@ def api_wa_saves_save_text():
             "category":    category,
             "source":      source,
         }
-        try:
-            sb.table("wa_saves").insert(row).execute()
-        except Exception:
-            # category/source columns may not exist yet — retry without them
-            row.pop("category", None)
-            row.pop("source", None)
-            sb.table("wa_saves").insert(row).execute()
+        sb.table("wa_saves").insert(row).execute()
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
