@@ -11432,7 +11432,7 @@ _bkBadge();
     const card = document.getElementById("school-home-card");
     if (!card) return;
     try {
-      const r = await fetch("/api/school/events?days=14&back=0", {
+      const r = await fetch("/api/school/events?days=14&back=7", {
         headers: { "X-School-WA": phone }
       });
       if (!r.ok) return;
@@ -11714,13 +11714,13 @@ _bkBadge();
   window._setupSavePostcode = function() {
     const val = (document.getElementById("setup-pc-input").value || "").trim().toUpperCase().replace(/\s+/g, "");
     if (!val) return;
+    const oldPc = _miruPostcode();
     localStorage.setItem("miru_postcode", val);
     _idBarRefresh && _idBarRefresh();
     document.getElementById("setup-pc-input-wrap").style.display = "none";
     document.getElementById("setup-pc-static").style.display     = "";
     _setupBannerRender();
-    _fuelHomeLoad();
-    _trainHomeLoad();
+    if (val !== oldPc) _onPostcodeChange(val); else { _fuelHomeLoad(); _trainHomeLoad(); }
   };
 
   window._setupEditPhone = function() {
