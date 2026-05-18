@@ -11817,19 +11817,31 @@ _bkBadge();
     const clean = pc.trim().replace(/\s+/g,"").toUpperCase();
     if (!clean) { btn.textContent = "Enter postcode first"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2000); return; }
     const tok = _savesPin ? _savesPin() : (localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || "");
-    if (!tok) { btn.textContent = "Log in to Saves"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
-    btn.textContent = "…"; btn.disabled = true;
+    if (!tok) { btn.textContent = "Log in to Saves first"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
+    btn.textContent = "Saving…"; btn.disabled = true;
+    const phone = _miruPhone ? _miruPhone() : (localStorage.getItem("miru_phone") || "");
     const areaLabel = (document.getElementById("report-share-label") || {}).textContent || clean;
     const summary = ["📍 " + areaLabel, "Area report saved from Miru Area Report"].join("\n");
+    const hdrs = { "Content-Type": "application/json", "X-Library-PIN": tok };
+    if (phone) hdrs["X-User-Phone"] = phone;
     try {
       const r = await fetch("/api/wa-saves/save-text", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Library-PIN": tok },
+        headers: hdrs,
         body: JSON.stringify({ title: "📍 " + (areaLabel || clean), summary, category: "place", source: "area-report" })
       });
-      if (r.ok) { btn.textContent = "✓ Saved"; btn.style.color = "#059669"; setTimeout(() => { btn.textContent = "💾 Save"; btn.disabled = false; }, 3000); }
-      else { btn.textContent = "✗ Error"; btn.style.color = "#dc2626"; btn.disabled = false; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 2000); }
-    } catch(_) { btn.textContent = "✗ Error"; btn.style.color = "#dc2626"; btn.disabled = false; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 2000); }
+      if (r.ok) {
+        btn.textContent = "✓ Saved"; btn.style.color = "#059669";
+      } else {
+        const body = await r.json().catch(() => ({}));
+        btn.textContent = body.auth ? "Log in to Saves first" : "✗ Save failed";
+        btn.style.color = "#dc2626"; btn.disabled = false;
+        setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 3000);
+      }
+    } catch(_) {
+      btn.textContent = "✗ No connection"; btn.style.color = "#dc2626"; btn.disabled = false;
+      setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 3000);
+    }
   };
 
   /* ── School comms ─────────────────────────────────────────────────────────── */
