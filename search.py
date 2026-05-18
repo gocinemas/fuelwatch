@@ -1390,7 +1390,7 @@ def fetch_brand_social(brand: str) -> dict:
         f'YouTube: {yt_line}\n\n'
         'Use your knowledge about this brand AND the news above. Return ONLY this JSON — no markdown:\n'
         '{\n'
-        '  "platforms": ["platforms this brand is known to be active on e.g. tiktok, instagram, youtube, x, facebook"],\n'
+        '  "platforms": ["platforms this brand is active on, ranked by estimated marketing investment highest first — e.g. tiktok, instagram, youtube, x, facebook"],\n'
         '  "content_direction": "one sentence — e.g. creator-led UGC, broadcast-first, influencer-heavy",\n'
         '  "influencer_approach": "micro / macro / celebrity / mixed / none — pick one",\n'
         '  "recent_campaigns": ["up to 3 recent social/influencer campaigns — from news if available, else from your knowledge"],\n'

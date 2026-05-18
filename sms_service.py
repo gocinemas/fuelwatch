@@ -1974,7 +1974,7 @@ def api_brand_social():
     name = request.args.get("name", "").strip()
     if not name or len(name) < 2:
         return jsonify({"error": "Brand name required"}), 400
-    cache_key = f"brand_social:{name.lower()}|v2"
+    cache_key = f"brand_social:{name.lower()}|v3"
     try:
         cached = lib._sb().table("ai_cache").select("data").eq("key", cache_key).execute().data
         if cached and cached[0].get("data"):
