@@ -3465,8 +3465,13 @@ const _ts = new Date(d.timestamp);
   }
 
   function _onPostcodeChange(pc) {
-    // Bust home card caches for old postcode
+    // Bust home card caches for old postcode (fuel, train, and train bookmark)
     Object.keys(localStorage).filter(k => k.startsWith("miru_fuel_home") || k.startsWith("miru_train_home")).forEach(k => localStorage.removeItem(k));
+    localStorage.removeItem("miru_train_bm_home"); // clear bookmarked station so nearest-by-postcode runs
+
+    // Clear My Area in-memory postcode so it re-runs on next visit
+    if (typeof _maCurrentPostcode !== "undefined") window._maCurrentPostcode = null;
+    if (typeof _maAreaData !== "undefined") window._maAreaData = null;
 
     // Reset cards so user sees loading state immediately
     const trainPh = document.getElementById("home-train-placeholder");
@@ -3483,9 +3488,9 @@ const _ts = new Date(d.timestamp);
     if (fuelSb) { fuelSb.style.display = "none"; }
     if (fuelPh) { fuelPh.style.display = ""; fuelPh.textContent = "Loading…"; }
 
-    // Reload home hero cards
-    if (typeof _fuelHomeLoad === "function")  _fuelHomeLoad();
-    if (typeof _trainHomeLoad === "function") _trainHomeLoad();
+    // Reload home hero cards (window._ because they live in a different IIFE)
+    if (typeof window._fuelHomeLoad === "function")  window._fuelHomeLoad();
+    if (typeof window._trainHomeLoad === "function") window._trainHomeLoad();
 
     // Update setup banner
     if (typeof _setupBannerRender === "function") _setupBannerRender();
@@ -11650,6 +11655,10 @@ _bkBadge();
     document.getElementById("home-train-sub").style.display = "";
     if (ph) ph.style.display = "none";
   }
+
+  // Expose to global scope so _onPostcodeChange (different script block) can call them
+  window._fuelHomeLoad  = _fuelHomeLoad;
+  window._trainHomeLoad = _trainHomeLoad;
 
   document.addEventListener("DOMContentLoaded", function() {
     if (_miruPostcode() || localStorage.getItem("miru_train_bm_home")) {
