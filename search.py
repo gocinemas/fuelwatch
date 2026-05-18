@@ -59,7 +59,7 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleW
 _postcode_cache: dict = {}
 
 def postcode_to_latlon(postcode: str) -> Optional[tuple]:
-    """Convert a UK postcode to (lat, lon) using postcodes.io. Cached indefinitely."""
+    """Convert a UK postcode or outcode to (lat, lon) using postcodes.io. Cached indefinitely."""
     postcode = postcode.strip().replace(" ", "").upper()
     if postcode in _postcode_cache:
         return _postcode_cache[postcode]
@@ -75,6 +75,19 @@ def postcode_to_latlon(postcode: str) -> Optional[tuple]:
                 result = (r["latitude"], r["longitude"])
                 _postcode_cache[postcode] = result
                 return result
+            # Full postcode not found — try as outcode (e.g. "GU22", "TW3")
+            outcode = postcode[:-3] if len(postcode) > 3 else postcode
+            if outcode != postcode:
+                oc_resp = requests.get(
+                    f"https://api.postcodes.io/outcodes/{outcode}",
+                    timeout=6, headers=HEADERS
+                )
+                oc_data = oc_resp.json()
+                if oc_data.get("status") == 200:
+                    r = oc_data["result"]
+                    result = (r["latitude"], r["longitude"])
+                    _postcode_cache[postcode] = result
+                    return result
             print(f"Postcode not found: {postcode}")
             return None
         except Exception as e:
