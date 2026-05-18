@@ -1698,9 +1698,9 @@ def api_local():
     schools_data = schools_f.result()
     local        = local_f.result()
 
-    pubs    = local.get("pubs",  [])[:5]
-    cafes   = local.get("cafes", [])[:5]
-    schools = (schools_data.get("schools") or [])[:8]
+    pubs    = local.get("pubs",  [])[:12]
+    cafes   = local.get("cafes", [])[:12]
+    schools = (schools_data.get("schools") or [])[:12]
     schools_data = {**schools_data, "schools": schools}
 
     payload = {"schools": schools_data, "pubs": pubs, "cafes": cafes}

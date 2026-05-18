@@ -11932,7 +11932,7 @@ _bkBadge();
     const schools = window._rptLocalData && ((window._rptLocalData.schools && window._rptLocalData.schools.schools) || []);
     if (schools && schools.length) {
       lines.push("🏫 Nearby schools");
-      schools.slice(0,5).forEach(s => {
+      schools.forEach(s => {
         const rating = s.ofsted ? ` · ${s.ofsted}` : "";
         lines.push(`  ${s.name} (${s.dist_mi.toFixed(1)}mi${rating})`);
       });
@@ -11943,7 +11943,7 @@ _bkBadge();
     const pubs = window._rptLocalData && window._rptLocalData.pubs;
     if (pubs && pubs.length) {
       lines.push("🍺 Pubs nearby");
-      pubs.slice(0,4).forEach(p => lines.push(`  ${p.name} (${p.dist_mi.toFixed(1)}mi)`));
+      pubs.forEach(p => lines.push(`  ${p.name} (${p.dist_mi.toFixed(1)}mi)`));
       lines.push("");
     }
 
@@ -11951,7 +11951,7 @@ _bkBadge();
     const cafes = window._rptLocalData && window._rptLocalData.cafes;
     if (cafes && cafes.length) {
       lines.push("☕ Cafes nearby");
-      cafes.slice(0,4).forEach(c => lines.push(`  ${c.name} (${c.dist_mi.toFixed(1)}mi)`));
+      cafes.forEach(c => lines.push(`  ${c.name} (${c.dist_mi.toFixed(1)}mi)`));
       lines.push("");
     }
 
@@ -11959,7 +11959,7 @@ _bkBadge();
     const shops = window._rptShpData && window._rptShpData.supermarkets;
     if (shops && shops.length) {
       lines.push("🛒 Supermarkets nearby");
-      shops.slice(0,5).forEach(s => {
+      shops.forEach(s => {
         const dist = s.distance_km ? ` (${(s.distance_km*0.621371).toFixed(1)}mi)` : "";
         lines.push(`  ${s.name}${dist}${s.address ? " · " + s.address : ""}`);
       });
@@ -11970,8 +11970,7 @@ _bkBadge();
     const crime = window._rptCrimeData;
     if (crime && crime.total) {
       lines.push(`🚔 Crime: ${crime.total} incidents last month`);
-      const top = (crime.breakdown || []).slice(0,3);
-      top.forEach(b => lines.push(`  ${b.category}: ${b.count}`));
+      (crime.breakdown || []).forEach(b => lines.push(`  ${b.category}: ${b.count}`));
       lines.push("");
     }
 
@@ -12847,8 +12846,12 @@ _bkBadge();
     const openBtn = s.image_url
       ? `<a href="${s.image_url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">🖼 View</a>`
       : s.url && !isBook
-      ? `<a href="${s.url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">↗</a>`
+      ? `<a href="${s.url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">↗ Open</a>`
       : "";
+
+    const exportBtns = isAreaReport && displaySummary ? `
+      <button onclick="savesCopyText(${JSON.stringify(s.title + '\n\n' + displaySummary)},this)" style="padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:600;cursor:pointer;color:var(--text)">📋 Copy</button>
+      <button onclick="savesPrintArea(${JSON.stringify(s.title)},${JSON.stringify(displaySummary)},${JSON.stringify(s.url||'')})" style="padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:600;cursor:pointer;color:var(--text)">🖨️ PDF</button>` : "";
 
     const deleteBtn = `<button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>`;
 
@@ -12869,6 +12872,7 @@ _bkBadge();
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${date}${s.remind_day ? " · 🔔 " + s.remind_day : ""}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         ${openBtn}
+        ${exportBtns}
         ${deleteBtn}
         ${enrichBtn}
         ${brandBtn}
@@ -12877,6 +12881,47 @@ _bkBadge();
       <div id="ad-intel-result-${s.id}" style="margin-top:10px${_savedAiResult ? '' : ';display:none'}">${_savedAiResult ? _adIntelCardHtml(_savedAiResult) : ''}</div>
     </div>`;
   }
+
+  window.savesCopyText = function(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = "✓ Copied";
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }).catch(() => {
+      // Fallback for browsers without clipboard API
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      btn.textContent = "✓ Copied";
+      setTimeout(() => { btn.textContent = "📋 Copy"; }, 2000);
+    });
+  };
+
+  window.savesPrintArea = function(title, summary, url) {
+    const lines = summary.split("\n").map(l => {
+      if (!l.trim()) return "<br>";
+      if (/^[🏠🏫🍺☕🛒🚔]/.test(l)) return `<h3 style="margin:16px 0 6px;font-size:15px;color:#111">${l}</h3>`;
+      if (l.startsWith("  ")) return `<div style="padding:2px 0 2px 16px;font-size:13px;color:#444;border-left:2px solid #e5e7eb">${l.trim()}</div>`;
+      return `<p style="margin:4px 0;font-size:13px;color:#666">${l}</p>`;
+    }).join("");
+    const w = window.open("", "_blank");
+    w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+      <style>body{font-family:-apple-system,sans-serif;max-width:600px;margin:40px auto;padding:0 20px;color:#111}
+      h1{font-size:22px;font-weight:800;margin-bottom:4px}
+      .meta{font-size:12px;color:#999;margin-bottom:24px}
+      @media print{.no-print{display:none}}</style></head><body>
+      <h1>${title}</h1>
+      <div class="meta">Saved from Miru · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"})}${url ? ` · <a href="${url}">${url}</a>` : ""}</div>
+      ${lines}
+      <div class="no-print" style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb">
+        <button onclick="window.print()" style="background:#111;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:600">🖨️ Save as PDF</button>
+      </div>
+      <script>setTimeout(()=>window.print(),400);<\/script>
+      </body></html>`);
+    w.document.close();
+  };
 
   let _savesSearchTimer = null;
   window.savesSearchInput = function() {
