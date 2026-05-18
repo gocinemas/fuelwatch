@@ -11430,20 +11430,15 @@ _bkBadge();
     const card = document.getElementById("school-home-card");
     if (!card) return;
     try {
-      const r = await fetch("/api/school/events?days=14&back=7", {
+      const r = await fetch("/api/school/events?days=14&back=0", {
         headers: { "X-School-WA": phone }
       });
       if (!r.ok) return;
       const data = await r.json();
       const profiles = data.profiles || [];
-      // Past-ok types (newsletters/info) can appear even if dated before today
-      const _pastOkTypes = new Set(["newsletter","info","other","meeting"]);
+      // Home card: today and future only
       const todayStr = new Date().toISOString().slice(0,10);
-      const events = (data.events || []).filter(e => {
-        if (!e.event_date) return true; // undated always show
-        if (e.event_date >= todayStr) return true; // future always show
-        return _pastOkTypes.has(e.event_type); // past only if pastOk type
-      });
+      const events = (data.events || []).filter(e => !e.event_date || e.event_date >= todayStr);
 
       card.style.display = "";
 
