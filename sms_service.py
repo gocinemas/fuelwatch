@@ -1646,16 +1646,51 @@ def api_house():
     return jsonify({"house_prices": house, "rightmove_url": rightmove_url})
 
 
+_LOCAL_SB_CACHE_TTL = 6 * 3600  # 6 hours
+
+def _local_sb_get(postcode: str):
+    """Read cached local data from Supabase (survives redeploys)."""
+    try:
+        from supabase import create_client as _sc
+        sb = _sc(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        row = sb.table("area_local_cache").select("data,cached_at").eq("postcode", postcode).maybe_single().execute()
+        if row and row.data:
+            import datetime as _dt
+            cached_at = row.data.get("cached_at", "")
+            if cached_at:
+                age = (datetime.utcnow() - _dt.datetime.fromisoformat(cached_at.replace("Z",""))).total_seconds()
+                if age < _LOCAL_SB_CACHE_TTL:
+                    return row.data.get("data")
+    except Exception:
+        pass
+    return None
+
+def _local_sb_set(postcode: str, data: dict):
+    """Write local data to Supabase cache."""
+    try:
+        from supabase import create_client as _sc
+        sb = _sc(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        sb.table("area_local_cache").upsert({
+            "postcode":  postcode,
+            "data":      data,
+            "cached_at": datetime.utcnow().isoformat() + "Z",
+        }, on_conflict="postcode").execute()
+    except Exception:
+        pass
+
 @app.route("/api/local")
 def api_local():
-    """Slower endpoint: schools (Google Places), pubs, cafes from Overpass + Google Places phone enrichment."""
+    """Schools, pubs, cafes — Supabase-cached so redeploys don't bust the cache."""
     result = _resolve_postcode(request.args.get("postcode", ""))
     if not result:
         return jsonify({"error": "Postcode not found."}), 404
     postcode, lat, lon, pc_fmt = result
     analytics.log_search("area", postcode, request.remote_addr, request.user_agent.string)
 
-    # Schools via Google Places (more complete than OSM); pubs/cafes still from Overpass
+    cached = _local_sb_get(postcode)
+    if cached:
+        return jsonify(cached)
+
     from concurrent.futures import ThreadPoolExecutor as _TPE
     with _TPE(max_workers=2) as ex:
         schools_f = ex.submit(fetch_nearby_schools, lat, lon, 5.0)
@@ -1663,35 +1698,14 @@ def api_local():
     schools_data = schools_f.result()
     local        = local_f.result()
 
-    # Enrich pubs + cafes phone numbers (not schools — Nearby Search is fast enough without enrichment)
     pubs    = local.get("pubs",  [])[:5]
     cafes   = local.get("cafes", [])[:5]
     schools = (schools_data.get("schools") or [])[:8]
-    if _GOOGLE_PLACES_KEY:
-        def _enrich(entry):
-            if entry.get("phone"):
-                return entry
-            d = _lookup_venue(entry["name"], entry.get("lat"), entry.get("lon"))
-            if d.get("phone"):
-                entry = dict(entry)
-                entry["phone"] = d["phone"]
-            return entry
-        try:
-            combined = pubs + cafes
-            with ThreadPoolExecutor(max_workers=4) as ex:
-                combined = list(ex.map(_enrich, combined))
-            n_pubs = len(pubs)
-            pubs  = combined[:n_pubs]
-            cafes = combined[n_pubs:]
-        except Exception:
-            pass
     schools_data = {**schools_data, "schools": schools}
 
-    return jsonify({
-        "schools": schools_data,
-        "pubs":    pubs,
-        "cafes":   cafes,
-    })
+    payload = {"schools": schools_data, "pubs": pubs, "cafes": cafes}
+    _local_sb_set(postcode, payload)
+    return jsonify(payload)
 
 
 
