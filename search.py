@@ -1388,16 +1388,16 @@ def fetch_brand_social(brand: str) -> dict:
         f'Brand: "{brand}"\n'
         f'Recent social media news:\n{news_lines or "None found"}\n'
         f'YouTube: {yt_line}\n\n'
-        'Based only on this evidence, return ONLY this JSON — no markdown:\n'
+        'Use your knowledge about this brand AND the news above. Return ONLY this JSON — no markdown:\n'
         '{\n'
-        '  "platforms": ["active platforms e.g. tiktok, instagram, youtube, x — only with evidence"],\n'
+        '  "platforms": ["platforms this brand is known to be active on e.g. tiktok, instagram, youtube, x, facebook"],\n'
         '  "content_direction": "one sentence — e.g. creator-led UGC, broadcast-first, influencer-heavy",\n'
         '  "influencer_approach": "micro / macro / celebrity / mixed / none — pick one",\n'
-        '  "recent_campaigns": ["up to 3 recent social campaigns from the news, else empty list"],\n'
+        '  "recent_campaigns": ["up to 3 recent social/influencer campaigns — from news if available, else from your knowledge"],\n'
         '  "direction": "one sentence — where they appear to be heading on social",\n'
-        '  "confidence": "high / medium / low — based on evidence available"\n'
+        '  "confidence": "high / medium / low — based on how well-known this brand\'s social strategy is"\n'
         '}\n'
-        'Only include platforms with clear evidence. If little/no social news, set confidence low. Return ONLY the JSON.'
+        'Return ONLY the JSON.'
     )
     try:
         r = requests.post(
