@@ -362,7 +362,8 @@ def _get_profiles(from_number: str = None) -> list[dict]:
     return q.execute().data or []
 
 
-def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_date: str = ""):
+def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_date: str = "") -> list[dict]:
+    """Insert new events; return list of newly inserted rows (skipping duplicates)."""
     # Check which (gmail_msg_id, event_title) pairs already exist
     try:
         existing = lib._sb().table("school_events") \
@@ -374,6 +375,7 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
         existing_titles = set()
 
     _stale_types = {"reminder", "activity", "club", "dinner"}
+    newly_inserted = []
     for ev in events:
         title = (ev.get("event_title") or "").strip()
         if not title:
@@ -398,7 +400,7 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
             ev_date = ev.get("event_date") or None
             if not ev_date and raw_type == "newsletter" and sent_date:
                 ev_date = sent_date
-            lib._sb().table("school_events").insert({
+            row = {
                 "profile_id":    profile["id"],
                 "from_number":   profile["from_number"],
                 "event_title":   title[:200],
@@ -408,11 +410,72 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
                 "action_needed": ev.get("action_needed", "")[:300],
                 "deadline":      ev.get("deadline") or None,
                 "gmail_msg_id":  gmail_msg_id,
-            }).execute()
+            }
+            lib._sb().table("school_events").insert(row).execute()
             existing_titles.add(title.lower())
+            newly_inserted.append({**row, "child_name": profile.get("child_name", ""), "school_name": profile.get("school_name", "")})
         except Exception as e:
             if "unique" not in str(e).lower():
                 print(f"[school] insert error: {e}")
+    return newly_inserted
+
+
+# Action-needed types that warrant an immediate WhatsApp alert
+_ALERT_TYPES = {"reminder", "activity", "trip", "deadline", "payment", "event"}
+
+def _notify_new_school_events(from_number: str, new_events: list[dict]) -> None:
+    """Send a WhatsApp push for newly found action-needed school events."""
+    actionable = [e for e in new_events if (e.get("event_type") or "").lower() in _ALERT_TYPES]
+    if not actionable:
+        return
+
+    def _fmt_date(d):
+        if not d:
+            return ""
+        try:
+            from datetime import date as _date
+            dt = _date.fromisoformat(d)
+            return dt.strftime("%-d %b")
+        except Exception:
+            return d
+
+    _TYPE_EMOJI = {
+        "reminder": "⏰", "activity": "🎨", "event": "📅",
+        "trip": "🚌", "deadline": "🔴", "payment": "💳",
+    }
+
+    lines = ["🏫 *New from school — action needed*\n"]
+    for ev in actionable[:6]:
+        emoji = _TYPE_EMOJI.get(ev.get("event_type", ""), "📌")
+        title = ev.get("event_title", "")
+        child = ev.get("child_name", "")
+        dt    = _fmt_date(ev.get("event_date"))
+        action = ev.get("action_needed", "")
+        line = f"{emoji} *{title}*"
+        if dt:     line += f" — {dt}"
+        if child:  line += f" ({child})"
+        if action: line += f"\n   ↳ {action}"
+        lines.append(line)
+
+    lines.append("\nmiru.humanagency.co/?screen=school")
+    msg = "\n".join(lines)
+
+    account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
+    auth_token  = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    from_wa     = os.environ.get("TWILIO_WHATSAPP_FROM", "")
+    if not all([account_sid, auth_token, from_wa]):
+        print("[school] notify: Twilio env vars missing")
+        return
+    try:
+        from twilio.rest import Client
+        Client(account_sid, auth_token).messages.create(
+            body=msg,
+            from_=f"whatsapp:{from_wa}",
+            to=from_number,
+        )
+        print(f"[school] alert sent to {from_number}: {len(actionable)} new events")
+    except Exception as e:
+        print(f"[school] alert send error for {from_number}: {e}")
 
 
 def _get_events(from_number: str, days_ahead: int = 30, days_back: int = 14) -> list[dict]:
@@ -497,6 +560,8 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
         by_parent.setdefault(p["from_number"], []).append(p)
 
     total_emails = total_events = 0
+    # Collect newly inserted events per parent for WhatsApp alerts
+    new_by_parent: dict[str, list[dict]] = {}
 
     for from_number, parent_profiles in by_parent.items():
         # Per-profile token (issued by web client OAuth) takes priority.
@@ -578,8 +643,14 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
             )
             print(f"[school] {msg_id} subject={subject!r} sent={sent_date} → {len(events)} events")
             if events:
-                _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
+                inserted = _store_events(matched_profile, events, gmail_msg_id=msg_id, sent_date=sent_date)
                 total_events += len(events)
+                if inserted:
+                    new_by_parent.setdefault(from_number, []).extend(inserted)
+
+    # Send WhatsApp alerts for action-needed new events
+    for from_number, new_events in new_by_parent.items():
+        _notify_new_school_events(from_number, new_events)
 
     return {"profiles": len(profiles), "emails": total_emails, "events": total_events}
 
