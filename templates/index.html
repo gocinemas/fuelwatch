@@ -3396,6 +3396,7 @@ const _ts = new Date(d.timestamp);
         }).catch(() => {});
       }
     } else {
+      const oldPc = _miruPostcode();
       const pc = val.toUpperCase().replace(/\s+/g, "");
       if (pc) {
         localStorage.setItem("miru_postcode", pc);
@@ -3405,6 +3406,8 @@ const _ts = new Date(d.timestamp);
       }
       // Push postcode into all postcode inputs
       _idPushPostcode(pc);
+      // Refresh everything if postcode actually changed
+      if (pc && pc !== oldPc) _onPostcodeChange(pc);
     }
     _idCancel();
     _idBarRefresh();
@@ -3421,9 +3424,45 @@ const _ts = new Date(d.timestamp);
   function _idPushPostcode(pc) {
     if (!pc) return;
     const fuel = document.getElementById("fuel-postcode");
-    if (fuel && !fuel.value.trim()) fuel.value = pc;
+    if (fuel) fuel.value = pc;
+    const rpt = document.getElementById("report-postcode");
+    if (rpt) rpt.value = pc;
     const ma = document.getElementById("myarea-postcode-input");
-    if (ma && !ma.value.trim()) ma.value = pc;
+    if (ma) ma.value = pc;
+  }
+
+  function _onPostcodeChange(pc) {
+    // Bust home card caches for old postcode
+    Object.keys(localStorage).filter(k => k.startsWith("miru_fuel_home") || k.startsWith("miru_train_home")).forEach(k => localStorage.removeItem(k));
+
+    // Reload home hero cards
+    if (typeof _fuelHomeLoad === "function")  _fuelHomeLoad();
+    if (typeof _trainHomeLoad === "function") _trainHomeLoad();
+
+    // Update setup banner
+    if (typeof _setupBannerRender === "function") _setupBannerRender();
+
+    // Re-run fuel search if currently on fuel screen with results showing
+    const fuelScreen = document.getElementById("screen-fuel");
+    if (fuelScreen && fuelScreen.classList.contains("active") && typeof searchFuel === "function") {
+      searchFuel();
+    }
+
+    // Re-run area report if on report screen
+    const rptScreen = document.getElementById("screen-report");
+    if (rptScreen && rptScreen.classList.contains("active") && typeof searchReport === "function") {
+      searchReport();
+    }
+
+    // Re-run My Area if it was previously searched
+    if (_maCurrentPostcode && typeof myAreaSearch === "function") {
+      const maInput = document.getElementById("myarea-postcode-input");
+      if (maInput) maInput.value = pc.replace(/^([A-Z]{1,2}\d{1,2}[A-Z]?)(\d[A-Z]{2})$/, "$1 $2");
+      _maCurrentPostcode = "";
+      _maAreaData = null; _maShopsData = null; _maLocalData = null;
+      const maScreen = document.getElementById("screen-myarea");
+      if (maScreen && maScreen.classList.contains("active")) myAreaSearch();
+    }
   }
 
   // Legacy compat
