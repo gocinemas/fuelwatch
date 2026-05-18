@@ -12870,16 +12870,7 @@ _bkBadge();
       } catch(_) {}
     }
 
-    // 2. Fall back to IP geolocation
-    if (!lat) {
-      try {
-        const r = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(5000) });
-        const d = await r.json();
-        if (d.latitude && d.longitude) { lat = +d.latitude; lon = +d.longitude; }
-      } catch(_) {}
-    }
-
-    // 3. Last resort: home postcode (try full postcode then outcode)
+    // 2. Fall back to saved postcode (more reliable than IP geo)
     if (!lat) {
       const home = _miruPostcode ? _miruPostcode() : (localStorage.getItem("miru_postcode") || "");
       if (home) {
@@ -12890,7 +12881,6 @@ _bkBadge();
           const d = await r.json();
           if (d.result) { lat = d.result.latitude; lon = d.result.longitude; }
           else if (homeClean.length > 4) {
-            // Full postcode — strip inward code (last 3 chars) to get outcode
             const outcode = homeClean.slice(0, -3);
             const r2 = await fetch(`https://api.postcodes.io/outcodes/${outcode}`,
               { signal: AbortSignal.timeout(5000) });
@@ -12899,6 +12889,15 @@ _bkBadge();
           }
         } catch(_) {}
       }
+    }
+
+    // 3. Last resort: IP geolocation
+    if (!lat) {
+      try {
+        const r = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(5000) });
+        const d = await r.json();
+        if (d.latitude && d.longitude) { lat = +d.latitude; lon = +d.longitude; }
+      } catch(_) {}
     }
 
     if (!lat || !lon) {
@@ -15901,25 +15900,7 @@ window.spotifyAddTrack = window.spotifyLike;
       </div>
     </div>
 
-    <!-- Quick setup -->
-    <div style="background:var(--bg);border-radius:16px;padding:16px;margin-bottom:14px">
-      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">⚡ Quick setup — takes 10 seconds</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px;flex-shrink:0">📍</span>
-          <input id="story-postcode-input" type="text" placeholder="Your postcode (e.g. KT15 3RL)"
-            style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--surface);color:var(--text);outline:none;font-family:inherit"
-            oninput="this.value=this.value.toUpperCase()" maxlength="8">
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px;flex-shrink:0">📱</span>
-          <input id="story-phone-input" type="tel" placeholder="Mobile number (optional)"
-            style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--surface);color:var(--text);outline:none;font-family:inherit">
-        </div>
-      </div>
-    </div>
-
-    <button onclick="_storySetup()"
+    <button onclick="closeMiruStory()"
       style="width:100%;padding:15px;border-radius:16px;border:none;background:var(--text);color:var(--bg);font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:-0.2px">
       Get started →
     </button>
@@ -15946,29 +15927,6 @@ window.spotifyAddTrack = window.spotifyLike;
       document.getElementById('miru-story-backdrop').style.display = 'none';
     }, 350);
     localStorage.setItem('miru-story-seen', '1');
-  }
-  function _storySetup() {
-    var pc    = (document.getElementById('story-postcode-input').value || '').trim().replace(/\s+/g,'').toUpperCase();
-    var phone = (document.getElementById('story-phone-input').value || '').trim().replace(/[\s\-()]/g,'');
-    // Save postcode to identity bar / localStorage
-    if (pc) {
-      localStorage.setItem('miru_postcode', pc);
-      var lbl = document.getElementById('id-postcode-label');
-      if (lbl) lbl.textContent = pc;
-      // Also pre-fill My Area
-      if (window._miruPostcode) { /* identity bar handles this */ }
-    }
-    // Save phone
-    if (phone) {
-      localStorage.setItem('miru_phone', phone);
-      var plbl = document.getElementById('id-phone-label');
-      if (plbl) plbl.textContent = phone;
-    }
-    closeMiruStory();
-    // If postcode saved, immediately open My Area
-    if (pc && window.showScreen) {
-      setTimeout(function() { showScreen('myarea'); }, 400);
-    }
   }
   // Auto-show once for first-time visitors
   if (!localStorage.getItem('miru-story-seen')) {
