@@ -4324,14 +4324,32 @@ def api_your_area():
 _env_cache: dict = {}
 _ENV_TTL = 24 * 3600
 
+import math as _math
+
+def _env_dist_m(lat, lon, clat, clon):
+    dlat = _math.radians(clat - lat)
+    dlon = _math.radians(clon - lon)
+    a = _math.sin(dlat/2)**2 + _math.cos(_math.radians(lat))*_math.cos(_math.radians(clat))*_math.sin(dlon/2)**2
+    return int(6371000 * 2 * _math.asin(_math.sqrt(a)))
+
 @app.route("/api/environment")
 def api_environment():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
+
+    # Check Supabase cache first (shared across all users)
+    try:
+        row = lib._sb().table("env_cache").select("data").eq("postcode", postcode).maybe_single().execute()
+        if row and row.data:
+            return jsonify(row.data["data"])
+    except Exception:
+        pass
+
     hit = _env_cache.get(postcode)
     if hit and time.time() - hit["ts"] < _ENV_TTL:
         return jsonify(hit["data"])
+
     try:
         lat, lon = _latlon_for_postcode(postcode)
         if lat is None:
@@ -4354,39 +4372,52 @@ def api_environment():
             except Exception:
                 return {"level": "unknown", "label": "Flood data unavailable", "areas": []}
 
-        def _landuse_overpass(tag_key, tag_val, radius, limit):
-            q = f'[out:json][timeout:15];(way["{tag_key}"="{tag_val}"](around:{radius},{lat},{lon});relation["{tag_key}"="{tag_val}"](around:{radius},{lat},{lon}););out center tags {limit};'
-            els = _overpass_query(q, timeout=15)
-            results = []
+        def _osm_combined():
+            # Single Overpass query for all three types — 3x faster than separate calls
+            q = (
+                f'[out:json][timeout:20];('
+                f'way["landuse"="industrial"](around:1000,{lat},{lon});'
+                f'relation["landuse"="industrial"](around:1000,{lat},{lon});'
+                f'way["natural"="water"](around:600,{lat},{lon});'
+                f'relation["natural"="water"](around:600,{lat},{lon});'
+                f'way["leisure"="park"](around:1000,{lat},{lon});'
+                f'relation["leisure"="park"](around:1000,{lat},{lon});'
+                f');out center tags 20;'
+            )
+            els = _overpass_query(q, timeout=20)
+            industrial, water, green = [], [], []
             for e in els:
-                name = e.get("tags", {}).get("name") or e.get("tags", {}).get("operator") or ""
+                tags = e.get("tags", {})
+                name = tags.get("name") or tags.get("operator") or ""
                 c = e.get("center") or {}
-                if c.get("lat"):
-                    import math
-                    dlat = math.radians(c["lat"] - lat)
-                    dlon = math.radians(c["lon"] - lon)
-                    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat))*math.cos(math.radians(c["lat"]))*math.sin(dlon/2)**2
-                    dist_m = int(6371000 * 2 * math.asin(math.sqrt(a)))
-                else:
-                    dist_m = None
-                if name or dist_m:
-                    results.append({"name": name, "dist_m": dist_m})
-            results.sort(key=lambda x: x.get("dist_m") or 9999)
-            return results
+                dist_m = _env_dist_m(lat, lon, c["lat"], c["lon"]) if c.get("lat") else None
+                item = {"name": name, "dist_m": dist_m}
+                if tags.get("landuse") == "industrial":
+                    industrial.append(item)
+                elif tags.get("natural") == "water":
+                    water.append(item)
+                elif tags.get("leisure") == "park":
+                    green.append(item)
+            _sort = lambda lst: sorted(lst, key=lambda x: x.get("dist_m") or 9999)[:5]
+            return _sort(industrial), _sort(water), _sort(green)
 
-        with ThreadPoolExecutor(max_workers=4) as ex:
-            flood_f      = ex.submit(_flood_risk)
-            industrial_f = ex.submit(_landuse_overpass, "landuse", "industrial", 1000, 5)
-            water_f      = ex.submit(_landuse_overpass, "natural", "water", 600, 5)
-            green_f      = ex.submit(_landuse_overpass, "leisure", "park", 1000, 5)
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            flood_f = ex.submit(_flood_risk)
+            osm_f   = ex.submit(_osm_combined)
 
+        industrial, water, green = osm_f.result(timeout=25)
         result = {
             "flood":      flood_f.result(timeout=12),
-            "industrial": industrial_f.result(timeout=18),
-            "water":      water_f.result(timeout=18),
-            "green":      green_f.result(timeout=18),
+            "industrial": industrial,
+            "water":      water,
+            "green":      green,
         }
         _env_cache[postcode] = {"data": result, "ts": time.time()}
+        # Persist to Supabase so next user gets it instantly
+        try:
+            lib._sb().table("env_cache").upsert({"postcode": postcode, "data": result}).execute()
+        except Exception:
+            pass
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
