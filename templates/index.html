@@ -1759,8 +1759,8 @@
       <!-- Customise panel -->
       <div id="myarea-customise" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px"></div>
 
-      <!-- Renewals / reminders banner -->
-      <div id="myarea-renewals" style="display:none;margin-bottom:10px"></div>
+      <!-- Renewals moved to Life Admin screen -->
+      <div id="myarea-renewals" style="display:none"></div>
 
       <!-- Hidden postcode input — used by all search JS, not shown directly -->
       <input id="myarea-postcode-input" type="text" style="display:none" maxlength="10" autocomplete="off">
@@ -1774,7 +1774,6 @@
         <div style="display:flex;align-items:center;gap:10px">
           <button id="myarea-home-btn" onclick="_maGoHome()" style="display:none;font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">← Home</button>
           <button id="myarea-save-btn" onclick="_maSaveReport(this)" style="font-size:12px;font-weight:600;color:#059669;background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">💾 Save</button>
-          <button onclick="_maOpenLocationPicker()" style="font-size:12px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">Change →</button>
         </div>
       </div>
 
@@ -1854,14 +1853,12 @@
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏥 Services</button>
           <button onclick="_maShowTab('civic')" id="matab-btn-civic"
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏛️ Civic</button>
-          <button onclick="_maShowTab('accounts')" id="matab-btn-accounts"
-            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:#065f46;color:#fff">🗂️ Life Admin</button>
         </div>
       </div>
 
-      <!-- Tab: My Places (weather, train) -->
+      <!-- Tab: My Places (train) — weather now shown at top of screen -->
       <div id="matab-places" style="display:none">
-        <div id="myarea-weather" style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-weather" style="display:none"></div>
         <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
         <div id="myarea-tube"    style="display:none;margin-bottom:10px"></div>
       </div>
