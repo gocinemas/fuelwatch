@@ -6111,20 +6111,16 @@ def _google_place_details(name: str, lat: float, lon: float) -> dict | None:
         return None
 
 
-def _overpass_query(query: str, timeout: int = 30) -> list:
-    """POST a query to Overpass and return elements list, or [] on any failure."""
-    try:
-        r = requests.post(
-            "https://overpass-api.de/api/interpreter",
-            data={"data": query},
-            timeout=timeout,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; Miru/1.0; +https://miru.humanagency.co)"},
-        )
-        if r.status_code == 200:
-            return r.json().get("elements", [])
-        print(f"[overpass] HTTP {r.status_code}: {r.text[:200]}")
-    except Exception as e:
-        print(f"[overpass] error: {e}")
+def _overpass_query(query: str, timeout: int = 20) -> list:
+    """POST a query to Overpass mirrors in order, return elements list or [] on failure."""
+    hdrs = {"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"}
+    for url in _OVERPASS_URLS:
+        try:
+            r = requests.post(url, data={"data": query}, timeout=timeout, headers=hdrs)
+            if r.status_code == 200 and r.text.strip().startswith("{"):
+                return r.json().get("elements", [])
+        except Exception:
+            continue
     return []
 
 
@@ -17119,25 +17115,7 @@ def api_ev_nearby():
 
     try:
         query = f"""[out:json][timeout:12];node["amenity"="charging_station"](around:1500,{lat},{lon});out body;"""
-        mirrors = [
-            ("POST", "https://overpass-api.de/api/interpreter"),
-            ("GET",  "https://overpass-api.de/api/interpreter"),
-            ("POST", "https://overpass.kumi.systems/api/interpreter"),
-            ("GET",  "https://overpass.kumi.systems/api/interpreter"),
-            ("POST", "https://overpass.private.coffee/api/interpreter"),
-        ]
-        elements = []
-        for method, url in mirrors:
-            try:
-                if method == "POST":
-                    r = requests.post(url, data={"data": query}, timeout=14)
-                else:
-                    r = requests.get(url, params={"data": query}, timeout=14)
-                if r.status_code == 200 and r.text.strip():
-                    elements = r.json().get("elements", [])
-                    break
-            except Exception:
-                continue
+        elements = _overpass_query(query)
 
         chargers = []
         for el in elements:
@@ -17204,25 +17182,7 @@ def api_bus_stops():
 
     try:
         query = f"""[out:json][timeout:12];(node["highway"="bus_stop"](around:600,{lat},{lon});node["public_transport"="stop_position"]["bus"="yes"](around:600,{lat},{lon}););out body;"""
-        mirrors = [
-            ("POST", "https://overpass-api.de/api/interpreter"),
-            ("GET",  "https://overpass-api.de/api/interpreter"),
-            ("POST", "https://overpass.kumi.systems/api/interpreter"),
-            ("GET",  "https://overpass.kumi.systems/api/interpreter"),
-            ("POST", "https://overpass.private.coffee/api/interpreter"),
-        ]
-        elements = []
-        for method, url in mirrors:
-            try:
-                if method == "POST":
-                    r = requests.post(url, data={"data": query}, timeout=14)
-                else:
-                    r = requests.get(url, params={"data": query}, timeout=14)
-                if r.status_code == 200 and r.text.strip():
-                    elements = r.json().get("elements", [])
-                    break
-            except Exception:
-                continue
+        elements = _overpass_query(query)
 
         seen_names = set()
         stops = []
