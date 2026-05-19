@@ -4342,15 +4342,18 @@ def api_environment():
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
 
+    # Cache key versioned so query expansions invalidate stale entries
+    _cache_key = postcode + "_v2"
+
     # Check Supabase cache first (shared across all users)
     try:
-        row = lib._sb().table("env_cache").select("data").eq("postcode", postcode).maybe_single().execute()
+        row = lib._sb().table("env_cache").select("data").eq("postcode", _cache_key).maybe_single().execute()
         if row and row.data:
             return jsonify(row.data["data"])
     except Exception:
         pass
 
-    hit = _env_cache.get(postcode)
+    hit = _env_cache.get(_cache_key)
     if hit and time.time() - hit["ts"] < _ENV_TTL:
         return jsonify(hit["data"])
 
@@ -4378,18 +4381,36 @@ def api_environment():
 
         def _osm_combined():
             # Single Overpass query for all three types — 3x faster than separate calls
+            # Green space radius 1500m to catch large parks whose centre may be farther out
             q = (
-                f'[out:json][timeout:20];('
+                f'[out:json][timeout:25];('
                 f'way["landuse"="industrial"](around:1000,{lat},{lon});'
                 f'relation["landuse"="industrial"](around:1000,{lat},{lon});'
                 f'way["natural"="water"](around:600,{lat},{lon});'
                 f'relation["natural"="water"](around:600,{lat},{lon});'
-                f'way["leisure"="park"](around:1000,{lat},{lon});'
-                f'relation["leisure"="park"](around:1000,{lat},{lon});'
-                f');out center tags 20;'
+                f'way["leisure"="park"](around:1500,{lat},{lon});'
+                f'relation["leisure"="park"](around:1500,{lat},{lon});'
+                f'way["leisure"="nature_reserve"](around:1500,{lat},{lon});'
+                f'relation["leisure"="nature_reserve"](around:1500,{lat},{lon});'
+                f'way["leisure"="recreation_ground"](around:1500,{lat},{lon});'
+                f'relation["leisure"="recreation_ground"](around:1500,{lat},{lon});'
+                f'way["leisure"="common"](around:1500,{lat},{lon});'
+                f'relation["leisure"="common"](around:1500,{lat},{lon});'
+                f'way["landuse"="forest"](around:1500,{lat},{lon});'
+                f'relation["landuse"="forest"](around:1500,{lat},{lon});'
+                f'way["natural"="wood"](around:1500,{lat},{lon});'
+                f'relation["natural"="wood"](around:1500,{lat},{lon});'
+                f');out center tags 60;'
             )
-            els = _overpass_query(q, timeout=20)
+            els = _overpass_query(q, timeout=25)
             industrial, water, green = [], [], []
+            _green_seen = set()
+            _GREEN_TAGS = {"park", "nature_reserve", "recreation_ground", "common"}
+            _GREEN_FALLBACK = {
+                "park": "Park", "nature_reserve": "Nature Reserve",
+                "recreation_ground": "Recreation Ground", "common": "Common",
+                "forest": "Forest", "wood": "Woodland",
+            }
             for e in els:
                 tags = e.get("tags", {})
                 name = tags.get("name") or tags.get("operator") or ""
@@ -4400,8 +4421,22 @@ def api_environment():
                     industrial.append(item)
                 elif tags.get("natural") == "water" and name:
                     water.append(item)
-                elif tags.get("leisure") == "park":
-                    green.append(item)
+                else:
+                    leisure = tags.get("leisure", "")
+                    landuse = tags.get("landuse", "")
+                    natural = tags.get("natural", "")
+                    is_green = (
+                        leisure in _GREEN_TAGS or
+                        landuse == "forest" or
+                        natural == "wood"
+                    )
+                    if is_green:
+                        kind = leisure or landuse or natural
+                        display = name or _GREEN_FALLBACK.get(kind, "Green Space")
+                        key = display.lower()
+                        if key not in _green_seen:
+                            _green_seen.add(key)
+                            green.append({"name": display, "dist_m": dist_m})
             _sort = lambda lst: sorted(lst, key=lambda x: x.get("dist_m") or 9999)[:5]
             return _sort(industrial), _sort(water), _sort(green)
 
@@ -4416,10 +4451,10 @@ def api_environment():
             "water":      water,
             "green":      green,
         }
-        _env_cache[postcode] = {"data": result, "ts": time.time()}
+        _env_cache[_cache_key] = {"data": result, "ts": time.time()}
         # Persist to Supabase so next user gets it instantly
         try:
-            lib._sb().table("env_cache").upsert({"postcode": postcode, "data": result}).execute()
+            lib._sb().table("env_cache").upsert({"postcode": _cache_key, "data": result}).execute()
         except Exception:
             pass
         return jsonify(result)
