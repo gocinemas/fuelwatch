@@ -300,14 +300,8 @@
 <!-- Main content -->
 <main class="main">
 
-  <!-- Greeting hero -->
-  <div class="greeting-hero">
-    <div class="greeting-line">Good evening ☀️<br>Vikram</div>
-    <div class="greeting-sub">
-      <span class="greeting-pc">KT16 0DA</span>
-      <span>Chertsey · Mon 19 May</span>
-    </div>
-  </div>
+  <!-- Hero: swaps between tagline (new user) and greeting (returning) -->
+  <div class="greeting-hero" id="hero-block"></div>
 
   <!-- WhatsApp CTA: NEW USER position (top) -->
   <div id="wa-cta-top" style="display:none;margin-bottom:16px"></div>
@@ -525,12 +519,28 @@
 
   let isNewUser = true;
 
+  const HERO_NEW = `
+    <div style="font-size:30px;font-weight:900;letter-spacing:-1.2px;color:var(--text);line-height:1.1;margin-bottom:6px">
+      Your everyday toolkit<br>for life in the UK.
+    </div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.5">
+      Fuel prices · Train times · Local services · Brand intel
+    </div>`;
+
+  const HERO_RETURNING = `
+    <div class="greeting-line">Good evening ☀️<br>Vikram</div>
+    <div class="greeting-sub" style="margin-top:4px">
+      <span class="greeting-pc">KT16 0DA</span>
+      <span style="font-size:13px;color:var(--muted)">Chertsey · Mon 19 May</span>
+    </div>`;
+
   function applyUserState() {
     const top = document.getElementById('wa-cta-top');
     const bottom = document.getElementById('wa-cta-bottom');
+    const hero = document.getElementById('hero-block');
     const btn = document.getElementById('user-toggle');
     if (isNewUser) {
-      // CTA at top, prominent
+      hero.innerHTML = HERO_NEW;
       top.innerHTML = WA_CTA_HTML;
       top.style.display = 'block';
       bottom.style.display = 'none';
@@ -538,7 +548,7 @@
       btn.style.background = '#1d4ed8';
       btn.style.color = '#bfdbfe';
     } else {
-      // CTA at bottom, quiet
+      hero.innerHTML = HERO_RETURNING;
       top.innerHTML = '';
       top.style.display = 'none';
       bottom.style.display = 'block';
