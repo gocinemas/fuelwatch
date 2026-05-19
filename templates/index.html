@@ -536,6 +536,19 @@
         </div>
       </button>
 
+      <!-- Life Admin home card -->
+      <button onclick="showScreen('lifeadmin')"
+        style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 60%,#4338ca 100%);border:none;border-radius:20px;padding:18px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px">
+        <div style="font-size:32px;line-height:1;flex-shrink:0">🗂️</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Life Admin</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.4">MOT · bills · renewals · insurance</div>
+        </div>
+        <div id="lifeadmin-home-badge" style="flex-shrink:0;text-align:right;display:none">
+          <div id="lifeadmin-home-alert" style="font-size:11px;font-weight:800;color:#fca5a5;background:rgba(239,68,68,.2);border-radius:8px;padding:4px 10px;display:inline-block"></div>
+        </div>
+      </button>
+
       <!-- School comms home card -->
       <div id="school-home-card" style="display:none;margin-bottom:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;overflow:hidden">
         <!-- CTA state: no profile set up -->
@@ -1892,10 +1905,10 @@
       </div>
 
       <!-- Tab: Life Admin — bills, vehicles, MOT, insurance, school comms -->
-      <div id="matab-accounts">
+      <div id="matab-accounts" style="display:none">
 
-        <!-- Gmail import card -->
-        <div id="ma-gmail-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:16px">
+        <!-- Gmail import card — kept for data mirroring into Life Admin screen -->
+        <div id="ma-gmail-card" style="display:none" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:16px">
           <div id="ma-gmail-state-connect" style="display:flex;align-items:center;justify-content:space-between">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--text)">📧 Gmail scan</div>
@@ -2352,7 +2365,8 @@
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
-    if (name === "myarea")   { _loadMyArea(); }
+    if (name === "myarea")     { _loadMyArea(); }
+    if (name === "lifeadmin")  { _loadLifeAdmin(); }
     if (name === "finder")   { }
     _pillUpdate(name);
     if (name === "places")   { _placesRefreshHomeRow(); }
@@ -6868,6 +6882,70 @@ const _ts = new Date(d.timestamp);
     }
   }
   document.addEventListener("DOMContentLoaded", _myAreaRefreshTile);
+
+  // ── Life Admin ───────────────────────────────────────────────────────────────
+  function _loadLifeAdmin() {
+    // Mirror vehicle list from My Area into Life Admin screen
+    const maList  = document.getElementById("myarea-vehicles-list");
+    const laList  = document.getElementById("la-vehicles-list");
+    if (maList && laList) laList.innerHTML = maList.innerHTML;
+
+    // Mirror bill cards
+    [["home","Home"],["mobile","Mobile"],["insurance","Insurance"]].forEach(([key]) => {
+      const maSrc = document.getElementById(`ma-cards-${key}`);
+      const laDst = document.getElementById(`la-cards-${key}`);
+      const laSec = document.getElementById(`la-section-${key}`);
+      const maSec = document.getElementById(`ma-section-${key}`);
+      if (maSrc && laDst) {
+        laDst.innerHTML = maSrc.innerHTML;
+        if (laSec && maSec) laSec.style.display = maSec.style.display;
+      }
+    });
+
+    // Mirror Gmail state
+    const gmailDone = document.getElementById("ma-gmail-state-done");
+    const laDone    = document.getElementById("la-gmail-state-done");
+    const laConnect = document.getElementById("la-gmail-state-connect");
+    if (gmailDone && laDone && laConnect) {
+      const connected = gmailDone.style.display !== "none";
+      laDone.style.display    = connected ? "flex" : "none";
+      laConnect.style.display = connected ? "none" : "flex";
+    }
+
+    // Renewals
+    const maRenewals = document.getElementById("myarea-renewals");
+    const laRenewals = document.getElementById("lifeadmin-renewals");
+    if (maRenewals && laRenewals) {
+      laRenewals.innerHTML    = maRenewals.innerHTML;
+      laRenewals.style.display = maRenewals.innerHTML.trim() ? "" : "none";
+    }
+
+    // Update home card badge with upcoming renewal count
+    _lifeAdminRefreshBadge();
+  }
+
+  function _lifeAdminRefreshBadge() {
+    const maRenewals = document.getElementById("myarea-renewals");
+    if (!maRenewals) return;
+    const items = maRenewals.querySelectorAll("[data-days]");
+    const badge  = document.getElementById("lifeadmin-home-badge");
+    const alert  = document.getElementById("lifeadmin-home-alert");
+    if (!badge || !alert) return;
+    // Find soonest renewal
+    let soonest = null;
+    maRenewals.querySelectorAll("[data-days]").forEach(el => {
+      const d = parseInt(el.dataset.days, 10);
+      if (!isNaN(d) && (soonest === null || d < soonest)) soonest = d;
+    });
+    if (soonest !== null && soonest <= 90) {
+      alert.textContent   = soonest <= 14 ? `⚠️ ${soonest}d` : `${soonest}d`;
+      badge.style.display = "";
+    } else {
+      badge.style.display = "none";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", _lifeAdminRefreshBadge);
 
   // ── Elections ────────────────────────────────────────────────────────────────
   const _partyColour = {
@@ -11428,6 +11506,92 @@ _bkBadge();
 
 <!-- ── MY SAVES SCREEN ── -->
 <!-- ═══════════════════════════════════════════════════════ SCHOOL SCREEN -->
+<div id="screen-lifeadmin" class="screen" style="padding:16px 16px 48px;max-width:600px;margin:0 auto">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div>
+      <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px">🗂️ Life Admin</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:1px">MOT · bills · renewals · insurance</div>
+    </div>
+  </div>
+
+  <!-- Upcoming Renewals -->
+  <div id="lifeadmin-renewals" style="display:none;margin-bottom:14px"></div>
+
+  <!-- Gmail scan -->
+  <div id="la-gmail-card" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:16px">
+    <div id="la-gmail-state-connect" style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">📧 Gmail scan</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Auto-detect energy, mobile, insurance &amp; more</div>
+      </div>
+      <a href="#" onclick="_maGmailConnect();return false;" style="display:flex;align-items:center;gap:5px;padding:8px 13px;border-radius:20px;border:1.5px solid #4285f4;background:#fff;font-size:12px;font-weight:700;color:#4285f4;cursor:pointer;text-decoration:none;flex-shrink:0">
+        <svg width="13" height="13" viewBox="0 0 24 24"><path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Connect
+      </a>
+    </div>
+    <div id="la-gmail-state-done" style="display:none;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:7px">
+        <span style="font-size:15px">✅</span>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Gmail connected</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
+        <button onclick="_maGmailDisconnect()" style="font-size:12px;color:#9ca3af;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 10px;cursor:pointer">Disconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Motoring -->
+  <div style="margin-bottom:18px">
+    <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🚗 Motoring</div>
+    <div id="la-vehicles-list"></div>
+    <button onclick="_maAddVehicle()" style="width:100%;margin-top:4px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add vehicle by registration</button>
+    <div id="la-cards-motoring"></div>
+  </div>
+
+  <!-- Home & Bills -->
+  <div id="la-section-home" style="display:none;margin-bottom:18px">
+    <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🏠 Home &amp; Bills</div>
+    <div id="la-cards-home"></div>
+  </div>
+
+  <!-- Mobile -->
+  <div id="la-section-mobile" style="display:none;margin-bottom:18px">
+    <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📱 Mobile</div>
+    <div id="la-cards-mobile"></div>
+  </div>
+
+  <!-- Insurance & Health -->
+  <div id="la-section-insurance" style="display:none;margin-bottom:18px">
+    <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🛡️ Insurance &amp; Health</div>
+    <div id="la-cards-insurance"></div>
+  </div>
+
+  <!-- Actions -->
+  <div style="display:flex;gap:6px;margin-bottom:24px">
+    <button onclick="myAreaAddDetail()" style="flex:1;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add manually</button>
+    <button onclick="_maPdfUploadTap()" title="Upload a bill PDF" style="padding:10px 13px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer">📄</button>
+    <button onclick="_maClearAllDetails()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:#dc2626;cursor:pointer" title="Delete all details">🗑️</button>
+  </div>
+
+  <!-- School comms -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font-size:18px">🏫</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">School Comms</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Events, newsletters &amp; term dates</div>
+        </div>
+      </div>
+      <button onclick="showScreen('school')" style="font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:8px 14px;cursor:pointer;flex-shrink:0">Open →</button>
+    </div>
+  </div>
+
+</div><!-- /screen-lifeadmin -->
+
 <div id="screen-school" class="screen pt-5">
   <!-- WA number login -->
   <div id="school-pin-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
