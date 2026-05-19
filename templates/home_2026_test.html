@@ -200,6 +200,45 @@
     .wa-chips { display: flex; flex-wrap: wrap; gap: 5px; }
     .wa-chip { background: #f0fdf4; color: #166534; font-size: 10px; font-weight: 600; border-radius: 99px; padding: 2px 8px; }
 
+    /* ── Dark mode overrides for hardcoded colours ── */
+    [data-theme="dark"] .wa-cta {
+      background: var(--surface);
+      border-color: #1a7a41;
+    }
+    [data-theme="dark"] .wa-chip {
+      background: #052e16;
+      color: #4ade80;
+    }
+    [data-theme="dark"] .card-nearby-badge {
+      background: #1e1b4b;
+      color: #a5b4fc;
+    }
+    [data-theme="dark"] .card-school-badge {
+      background: #451a03;
+      color: #fcd34d;
+    }
+    [data-theme="dark"] .card-school-sub {
+      color: var(--muted);
+    }
+    [data-theme="dark"] .greeting-pc {
+      background: var(--surface);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    [data-theme="dark"] .tool-btn {
+      background: var(--surface);
+      border-color: var(--border);
+    }
+    [data-theme="dark"] .tool-label {
+      color: var(--muted);
+    }
+    [data-theme="dark"] .section-divider-label {
+      color: var(--subtle);
+    }
+    [data-theme="dark"] .section-divider-line {
+      background: var(--border);
+    }
+
     /* Bottom tab bar mockup */
     .bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
@@ -235,9 +274,12 @@
 
 <!-- Preview banner -->
 <div class="preview-banner">
-  🧪 2026 DESIGN PREVIEW — <a href="/">back to live site</a>
-  <button onclick="toggleTheme()" class="theme-toggle" style="margin-left:8px;font-size:10px;padding:3px 10px">
-    <span id="theme-icon">🌙</span> Dark
+  🧪 2026 PREVIEW — <a href="/">live site</a>
+  <button onclick="toggleUser()" id="user-toggle" style="margin-left:4px;background:#1d4ed8;border:none;color:#bfdbfe;border-radius:99px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.04em">
+    👋 NEW USER
+  </button>
+  <button onclick="toggleTheme()" class="theme-toggle" style="margin-left:4px;font-size:10px;padding:3px 10px">
+    <span id="theme-icon">🌙</span>
   </button>
 </div>
 
@@ -266,6 +308,9 @@
       <span>Chertsey · Mon 19 May</span>
     </div>
   </div>
+
+  <!-- WhatsApp CTA: NEW USER position (top) -->
+  <div id="wa-cta-top" style="display:none;margin-bottom:16px"></div>
 
   <!-- LIVE NOW section -->
   <div class="section-label">Live Now</div>
@@ -396,7 +441,8 @@
     </button>
   </div>
 
-  <!-- WhatsApp CTA — shown to non-WhatsApp users only -->
+  <!-- WhatsApp CTA: RETURNING USER position (bottom) -->
+  <div id="wa-cta-bottom">
   <div class="section-divider" style="margin-top:4px">
     <div class="section-divider-label">Also on WhatsApp</div>
     <div class="section-divider-line"></div>
@@ -422,6 +468,7 @@
       <span class="wa-chip">🔍 Brand intel</span>
     </div>
   </a>
+  </div><!-- /wa-cta-bottom -->
 
 </main>
 
@@ -452,12 +499,65 @@
 </nav>
 
 <script>
+  // WhatsApp CTA HTML — single source of truth
+  const WA_CTA_HTML = `
+    <a class="wa-cta" href="#">
+      <div class="wa-cta-header">
+        <div class="wa-icon">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="wa-cta-title">Miru on WhatsApp</div>
+          <div class="wa-cta-sub">Tap Join · send the message · type <strong>hi</strong></div>
+        </div>
+        <div class="wa-join-btn">Join →</div>
+      </div>
+      <div class="wa-chips">
+        <span class="wa-chip">☕ Coffee</span>
+        <span class="wa-chip">🚆 Trains</span>
+        <span class="wa-chip">⛽ Fuel</span>
+        <span class="wa-chip">🧾 Receipts</span>
+        <span class="wa-chip">📚 Books</span>
+        <span class="wa-chip">🏫 School</span>
+        <span class="wa-chip">🔍 Brand intel</span>
+      </div>
+    </a>`;
+
+  let isNewUser = true;
+
+  function applyUserState() {
+    const top = document.getElementById('wa-cta-top');
+    const bottom = document.getElementById('wa-cta-bottom');
+    const btn = document.getElementById('user-toggle');
+    if (isNewUser) {
+      // CTA at top, prominent
+      top.innerHTML = WA_CTA_HTML;
+      top.style.display = 'block';
+      bottom.style.display = 'none';
+      btn.textContent = '👋 NEW USER';
+      btn.style.background = '#1d4ed8';
+      btn.style.color = '#bfdbfe';
+    } else {
+      // CTA at bottom, quiet
+      top.innerHTML = '';
+      top.style.display = 'none';
+      bottom.style.display = 'block';
+      btn.textContent = '🔁 RETURNING';
+      btn.style.background = '#065f46';
+      btn.style.color = '#6ee7b7';
+    }
+  }
+
+  function toggleUser() {
+    isNewUser = !isNewUser;
+    applyUserState();
+  }
+
   function toggleTheme() {
     const html = document.documentElement;
     const isDark = html.dataset.theme === 'dark';
     html.dataset.theme = isDark ? 'light' : 'dark';
     document.getElementById('theme-icon').textContent = isDark ? '🌙' : '☀️';
-    document.querySelector('.theme-toggle').lastChild.textContent = isDark ? ' Dark' : ' Light';
   }
 
   let wfh = true;
@@ -468,6 +568,9 @@
     document.getElementById('pill-office').className = 'wfh-pill' + (!wfh ? ' active' : '');
     document.getElementById('train-sub').textContent = wfh ? 'To Waterloo' : 'To Chertsey';
   }
+
+  // Init: start as new user
+  applyUserState();
 </script>
 </body>
 </html>
