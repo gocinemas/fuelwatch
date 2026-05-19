@@ -1782,7 +1782,10 @@
       <div id="myarea-location-bar" style="display:none;align-items:center;justify-content:space-between;margin-bottom:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 14px">
         <div style="display:flex;align-items:center;gap:7px">
           <span style="font-size:15px">📍</span>
-          <span id="myarea-location-label" style="font-size:14px;font-weight:700;color:var(--text)"></span>
+          <div>
+            <span id="myarea-location-label" style="font-size:14px;font-weight:700;color:var(--text)"></span>
+            <div id="myarea-location-area" style="font-size:11px;color:var(--muted);margin-top:1px;display:none"></div>
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <button id="myarea-home-btn" onclick="_maGoHome()" style="display:none;font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap">← Home</button>
@@ -4527,10 +4530,15 @@ const _ts = new Date(d.timestamp);
       setTimeout(_setupBannerRender, 100);
       setTimeout(() => { _fuelHomeLoad(); _trainHomeLoad(); }, 200);
     }
-    // Show location bar with current postcode
+    // Show location bar with postcode + area name
     const locBar = document.getElementById("myarea-location-bar");
     const locLabel = document.getElementById("myarea-location-label");
+    const locArea  = document.getElementById("myarea-location-area");
     if (locBar && locLabel) { locLabel.textContent = raw; locBar.style.display = "flex"; }
+    if (locArea) { locArea.textContent = ""; locArea.style.display = "none"; }
+    _fetchAreaName(pc, label => {
+      if (locArea) { locArea.textContent = label; locArea.style.display = label ? "" : "none"; }
+    });
     _maUpdateHomeBtn(pc);
     // Clear cached data for new search
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
@@ -5376,7 +5384,11 @@ const _ts = new Date(d.timestamp);
     if (_maCurrentPostcode) {
       const locBar = document.getElementById("myarea-location-bar");
       const locLabel = document.getElementById("myarea-location-label");
+      const locArea  = document.getElementById("myarea-location-area");
       if (locBar && locLabel) { locLabel.textContent = _maCurrentPostcode; locBar.style.display = "flex"; }
+      _fetchAreaName(_maCurrentPostcode, label => {
+        if (locArea) { locArea.textContent = label; locArea.style.display = label ? "" : "none"; }
+      });
       // Ensure correct tab is showing
       const savedTab = localStorage.getItem("miru_ma_tab") || "places";
       _maShowTab(savedTab !== "accounts" ? savedTab : "places");
@@ -6931,6 +6943,22 @@ const _ts = new Date(d.timestamp);
     if (today < cutoff) card.style.display = "flex";
   })();
 
+  // ── Area name lookup (cached in backend Supabase table) ─────────────────────
+  const _areaNameCache = {};
+  function _fetchAreaName(pc, onResult) {
+    if (!pc) return;
+    const key = pc.replace(/\s+/g,"").toUpperCase();
+    if (_areaNameCache[key]) { onResult(_areaNameCache[key]); return; }
+    fetch(`/api/place-name?postcode=${encodeURIComponent(key)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.display_label) {
+          _areaNameCache[key] = d.display_label;
+          onResult(d.display_label);
+        }
+      }).catch(() => {});
+  }
+
   // ── My Area home tile ────────────────────────────────────────────────────────
   let _myAreaTilePC = null;
   function _myAreaRefreshTile() {
@@ -6943,11 +6971,11 @@ const _ts = new Date(d.timestamp);
     if (pc) {
       pcEl.textContent = pc;
       badge.style.display = "";
-      sub.textContent = "Your MP · Council · GP · More";
       if (_myAreaTilePC !== pc) {
         _myAreaTilePC = pc;
         if (detail) detail.textContent = "";
         if (typeof _fetchWeatherByPostcode === "function") _fetchWeatherByPostcode(pc);
+        _fetchAreaName(pc, label => { if (sub) sub.textContent = label; });
       }
     } else {
       pcEl.textContent = "";

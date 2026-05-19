@@ -16977,6 +16977,122 @@ def api_me_location_post():
     return jsonify({"ok": True})
 
 
+def _resolve_place_name(postcode: str) -> dict:
+    """
+    Look up human-readable place name for a UK postcode.
+    Uses postcodes.io for lat/lon + county, then Nominatim for local name.
+    Returns {"postcode", "place_name", "county", "display_label"}.
+    """
+    postcode = postcode.strip().replace(" ", "").upper()
+    # 1. postcodes.io — lat/lon + county
+    pc_data = {}
+    try:
+        r = requests.get(f"https://api.postcodes.io/postcodes/{postcode}", timeout=8,
+                         headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"})
+        j = r.json()
+        if j.get("status") == 200:
+            pc_data = j["result"]
+    except Exception:
+        pass
+
+    lat = pc_data.get("latitude")
+    lon = pc_data.get("longitude")
+    county = pc_data.get("admin_county") or ""  # None for London boroughs
+
+    # 2. Nominatim reverse geocode — local place name
+    place_name = ""
+    if lat and lon:
+        try:
+            nr = requests.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                params={"lat": lat, "lon": lon, "format": "json", "zoom": 14, "addressdetails": 1},
+                timeout=8,
+                headers={"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"},
+            )
+            addr = nr.json().get("address", {})
+            # Pick the most local recognisable name
+            place_name = (addr.get("suburb") or addr.get("town") or
+                          addr.get("village") or addr.get("hamlet") or
+                          addr.get("city_district") or addr.get("city") or "")
+        except Exception:
+            pass
+
+    # 3. Build display label
+    if place_name and county:
+        display_label = f"{place_name} · {county}"
+    elif place_name:
+        display_label = place_name
+    elif county:
+        display_label = county
+    else:
+        display_label = ""
+
+    return {"postcode": postcode, "place_name": place_name, "county": county, "display_label": display_label}
+
+
+@app.route("/api/place-name")
+def api_place_name():
+    """Return human-readable area name for a postcode, cached in Supabase."""
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "postcode required"}), 400
+
+    sb = lib._sb()
+    # Check cache
+    try:
+        row = sb.table("postcode_place_names").select("*").eq("postcode", postcode).maybe_single().execute()
+        if row and row.data:
+            return jsonify(row.data)
+    except Exception:
+        pass
+
+    # Cache miss — resolve and store
+    result = _resolve_place_name(postcode)
+    try:
+        sb.table("postcode_place_names").upsert(result).execute()
+    except Exception:
+        pass
+    return jsonify(result)
+
+
+@app.route("/api/place-name/seed", methods=["POST"])
+def api_place_name_seed():
+    """One-time seeder: resolve place names for all saved home postcodes."""
+    if request.headers.get("X-Admin-Token") != "miru-digest-2026":
+        return jsonify({"error": "Forbidden"}), 403
+
+    sb = lib._sb()
+    # Get all distinct home postcodes
+    try:
+        rows = sb.table("my_area_places").select("postcode").eq("category", "_home").execute()
+        postcodes = list({r["postcode"].strip().replace(" ", "").upper()
+                          for r in (rows.data or []) if r.get("postcode")})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    results = []
+    import time
+    for pc in postcodes:
+        # Skip if already cached
+        try:
+            existing = sb.table("postcode_place_names").select("postcode").eq("postcode", pc).maybe_single().execute()
+            if existing and existing.data:
+                results.append({"postcode": pc, "status": "cached"})
+                continue
+        except Exception:
+            pass
+
+        result = _resolve_place_name(pc)
+        try:
+            sb.table("postcode_place_names").upsert(result).execute()
+        except Exception as e:
+            result["error"] = str(e)
+        results.append({**result, "status": "resolved"})
+        time.sleep(1.1)  # Nominatim rate limit: 1 req/sec
+
+    return jsonify({"seeded": len(results), "results": results})
+
+
 @app.route("/api/ev/nearby")
 def api_ev_nearby():
     """Nearest EV charging stations via OpenStreetMap Overpass (free, no key)."""
