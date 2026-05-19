@@ -4321,6 +4321,77 @@ def api_your_area():
         return jsonify({"error": str(e)}), 500
 
 
+_env_cache: dict = {}
+_ENV_TTL = 24 * 3600
+
+@app.route("/api/environment")
+def api_environment():
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+    hit = _env_cache.get(postcode)
+    if hit and time.time() - hit["ts"] < _ENV_TTL:
+        return jsonify(hit["data"])
+    try:
+        lat, lon = _latlon_for_postcode(postcode)
+        if lat is None:
+            return jsonify({"error": "Postcode not found"}), 404
+
+        def _flood_risk():
+            try:
+                r = requests.get(
+                    "https://environment.data.gov.uk/flood-monitoring/id/floodAreas",
+                    params={"lat": lat, "long": lon, "dist": 2},
+                    timeout=8, headers={"User-Agent": "MiruApp/1.0"}
+                )
+                items = r.json().get("items", [])
+                if not items:
+                    return {"level": "low", "label": "Low flood risk", "areas": []}
+                labels = [a.get("description") or a.get("label") or "" for a in items[:3]]
+                severity = max((a.get("currentWarning", {}).get("severityLevel", 4) for a in items), default=4)
+                level = "high" if severity <= 2 else "medium"
+                return {"level": level, "label": f"Flood risk area ({len(items)} zone{'s' if len(items)>1 else ''})", "areas": labels}
+            except Exception:
+                return {"level": "unknown", "label": "Flood data unavailable", "areas": []}
+
+        def _landuse_overpass(tag_key, tag_val, radius, limit):
+            q = f'[out:json][timeout:15];(way["{tag_key}"="{tag_val}"](around:{radius},{lat},{lon});relation["{tag_key}"="{tag_val}"](around:{radius},{lat},{lon}););out center tags {limit};'
+            els = _overpass_query(q, timeout=15)
+            results = []
+            for e in els:
+                name = e.get("tags", {}).get("name") or e.get("tags", {}).get("operator") or ""
+                c = e.get("center") or {}
+                if c.get("lat"):
+                    import math
+                    dlat = math.radians(c["lat"] - lat)
+                    dlon = math.radians(c["lon"] - lon)
+                    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat))*math.cos(math.radians(c["lat"]))*math.sin(dlon/2)**2
+                    dist_m = int(6371000 * 2 * math.asin(math.sqrt(a)))
+                else:
+                    dist_m = None
+                if name or dist_m:
+                    results.append({"name": name, "dist_m": dist_m})
+            results.sort(key=lambda x: x.get("dist_m") or 9999)
+            return results
+
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            flood_f      = ex.submit(_flood_risk)
+            industrial_f = ex.submit(_landuse_overpass, "landuse", "industrial", 1000, 5)
+            water_f      = ex.submit(_landuse_overpass, "natural", "water", 600, 5)
+            green_f      = ex.submit(_landuse_overpass, "leisure", "park", 1000, 5)
+
+        result = {
+            "flood":      flood_f.result(timeout=12),
+            "industrial": industrial_f.result(timeout=18),
+            "water":      water_f.result(timeout=18),
+            "green":      green_f.result(timeout=18),
+        }
+        _env_cache[postcode] = {"data": result, "ts": time.time()}
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/services")
 def api_services():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
