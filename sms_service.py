@@ -4464,6 +4464,24 @@ def api_environment():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/area/watch", methods=["POST"])
+def api_area_watch():
+    data = request.get_json() or {}
+    postcode = data.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+    phone = (data.get("phone") or "").strip() or None
+    device_id = (data.get("device_id") or "").strip() or None
+    try:
+        lib._sb().table("watched_postcodes").upsert(
+            {"postcode": postcode, "phone": phone, "device_id": device_id},
+            on_conflict="postcode,phone" if phone else "postcode,device_id"
+        ).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 _summary_cache: dict = {}
 _SUMMARY_TTL = 24 * 3600
 

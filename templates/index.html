@@ -910,6 +910,10 @@
               style="display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">
               ⚖️ Compare
             </button>
+            <button id="report-watch-btn" onclick="_reportWatch(this)"
+              style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:#7c3aed;font-size:12px;font-weight:600;cursor:pointer">
+              👁 Watch
+            </button>
             <button id="report-save-btn" onclick="_reportSave(this)"
               style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:#059669;font-size:12px;font-weight:600;cursor:pointer">
               💾 Save
@@ -1213,7 +1217,7 @@
               <div id="brand-slogan-el" style="display:none;font-size:11px;font-style:italic;font-weight:700;color:#7c3aed;margin-top:3px"></div>
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-              <button id="intel-pin-btn" onclick="_intelTogglePin()" style="font-size:12px;font-weight:600;color:#6b7280;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">📌 Pin</button>
+              <button id="intel-pin-btn" onclick="_intelTogglePin()" style="font-size:12px;font-weight:600;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">🔔 Follow</button>
               <button id="brand-bookmark-btn" style="display:none"></button>
               <button id="brand-lib-btn" style="display:none"></button>
               <button id="intel-save-btn" onclick="_intelSaveToSaves(this)" style="font-size:12px;font-weight:600;color:#059669;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:6px 12px;cursor:pointer;white-space:nowrap">💾 Save</button>
@@ -2346,12 +2350,14 @@
   }
 
   // ── Common share utility ──────────────────────────────────────────────────────
-  function _miruToast(msg) {
+  function _miruToast(msg, type, onTap) {
+    const bg = type === "error" ? "#dc2626" : type === "success" ? "#059669" : "#111827";
     const t = document.createElement("div");
     t.textContent = msg;
-    t.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:8px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none;opacity:1;transition:opacity .3s";
+    t.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:${bg};color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:1;transition:opacity .3s;max-width:80vw;text-align:center;${onTap ? "cursor:pointer;" : "pointer-events:none;"}`;
+    if (onTap) t.addEventListener("click", () => { onTap(); t.remove(); });
     document.body.appendChild(t);
-    setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 1800);
+    setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, onTap ? 3500 : 2000);
   }
 
   function miruShare({ title, text, url, btn }) {
@@ -2974,6 +2980,7 @@ const _ts = new Date(d.timestamp);
     const pcFmt = postcode.replace(/^([A-Z]{1,2}\d{1,2}[A-Z]?)(\d[A-Z]{2})$/i, "$1 $2").toUpperCase();
     const _rLabel = document.getElementById("report-share-label");
     _rLabel.textContent = "Research an Area · " + pcFmt;
+    if (typeof _reportWatchRefresh === "function") _reportWatchRefresh(postcode.replace(/\s+/g,"").toUpperCase());
     // Async: append ward/area name from postcodes.io once it resolves
     fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`)
       .then(r => r.json())
@@ -6292,12 +6299,22 @@ const _ts = new Date(d.timestamp);
   window._intelTogglePin = async function() {
     if (!_intelPinName || !_intelPinType) return;
     var endpoint = _intelPinned ? "/api/intel/unpin" : "/api/intel/pin";
+    var willFollow = !_intelPinned;
     try {
       var _pinBody = {name:_intelPinName, type:_intelPinType, device_id:_maDeviceId()};
       if (_miruPhone()) _pinBody.phone = _miruPhone();
       var r = await fetch(endpoint, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(_pinBody)});
       var d = await r.json();
-      if (d.ok) { _intelSetPin(_intelPinName, _intelPinType, !_intelPinned); _loadIntelPins(); }
+      if (d.ok) {
+        _intelSetPin(_intelPinName, _intelPinType, !_intelPinned);
+        _loadIntelPins();
+        if (willFollow) {
+          const msg = _miruPhone()
+            ? `Following ${_intelPinName} — you'll get updates on WhatsApp`
+            : `Following ${_intelPinName} — link WhatsApp to get brand updates`;
+          _miruToast(msg, "success");
+        }
+      }
     } catch(_) {}
   };
 
@@ -12772,6 +12789,64 @@ _bkBadge();
     }
   };
 
+  /* ── Area Watch ───────────────────────────────────────────────────────────── */
+  window._reportWatch = async function(btn) {
+    const pc = (document.getElementById("report-postcode") || {}).value || "";
+    const clean = pc.trim().replace(/\s+/g,"").toUpperCase();
+    if (!clean) { _miruToast("Enter a postcode first", "error"); return; }
+
+    const phone = _miruPhone ? _miruPhone() : "";
+    const deviceId = typeof _maDeviceId === "function" ? _maDeviceId() : "";
+
+    // Check if already watching (localStorage)
+    const watchKey = "miru_watch_" + clean;
+    if (localStorage.getItem(watchKey)) {
+      _miruToast("Already watching " + clean, "success"); return;
+    }
+
+    btn.textContent = "…"; btn.disabled = true;
+    try {
+      const r = await fetch("/api/area/watch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postcode: clean, phone: phone || null, device_id: deviceId || null })
+      });
+      if (r.ok) {
+        localStorage.setItem(watchKey, "1");
+        btn.textContent = "👁 Watching";
+        btn.style.background = "#f5f3ff";
+        btn.style.borderColor = "#ddd6fe";
+        const msg = phone
+          ? `Watching ${clean} — you'll get monthly updates on WhatsApp`
+          : `Watching ${clean} — link WhatsApp to receive monthly updates`;
+        _miruToast(msg, "success");
+      } else {
+        btn.textContent = "👁 Watch"; btn.disabled = false;
+        _miruToast("Couldn't save — try again", "error");
+      }
+    } catch(_) {
+      btn.textContent = "👁 Watch"; btn.disabled = false;
+      _miruToast("Couldn't save — try again", "error");
+    }
+  };
+
+  // Restore watch button state when report loads
+  window._reportWatchRefresh = function(postcode) {
+    const btn = document.getElementById("report-watch-btn");
+    if (!btn) return;
+    if (localStorage.getItem("miru_watch_" + postcode)) {
+      btn.textContent = "👁 Watching";
+      btn.style.background = "#f5f3ff";
+      btn.style.borderColor = "#ddd6fe";
+      btn.disabled = true;
+    } else {
+      btn.textContent = "👁 Watch";
+      btn.style.background = "var(--surface)";
+      btn.style.borderColor = "var(--border)";
+      btn.disabled = false;
+    }
+  };
+
   /* ── School comms ─────────────────────────────────────────────────────────── */
   const _SCHOOL_SECTIONS = [
     { types: ["reminder"],              header: "⏰ Reminders & Actions",  color: "#fef3c7", border: "#fbbf24", pastOk: false },
@@ -14120,7 +14195,7 @@ _bkBadge();
         </a>
       </div>
       <!-- Save button -->
-      <button onclick="_ehSavePlace(this,'${safeData}')" style="flex-shrink:0;padding:7px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:700;cursor:pointer;color:var(--muted)">💾</button>
+      <button onclick="_ehSavePlace(this,'${safeData}')" style="flex-shrink:0;padding:7px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;color:#7c3aed;display:flex;align-items:center;gap:4px;white-space:nowrap">💾 Save</button>
     </div>`;
   }
 
@@ -14128,13 +14203,10 @@ _bkBadge();
     const p = JSON.parse(decodeURIComponent(encoded));
     const tok = _savesPin ? _savesPin() : (localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || "");
     if (!tok) {
-      btn.textContent = "Log in to Saves first";
-      btn.style.color = "#dc2626";
-      setTimeout(function() { btn.textContent = "💾"; btn.style.color = "var(--muted)"; }, 2500);
+      _miruToast("Link WhatsApp to save places", "error");
       return;
     }
-    btn.textContent = "…";
-    btn.disabled = true;
+    btn.innerHTML = "…"; btn.disabled = true;
     try {
       const r = await fetch("/api/places/save", {
         method: "POST",
@@ -14142,17 +14214,18 @@ _bkBadge();
         body: JSON.stringify(p),
       });
       if (r.ok) {
-        btn.textContent = "✓";
+        btn.innerHTML = "✓ Saved";
         btn.style.color = "#059669";
         btn.style.borderColor = "#059669";
+        btn.style.background = "#f0fdf4";
+        _miruToast(`${p.name} saved — find it in Saves →`, "success", () => _pillNav("saves"));
       } else {
-        btn.textContent = "✗";
-        btn.style.color = "#dc2626";
-        setTimeout(function() { btn.textContent = "💾"; btn.style.color = "var(--muted)"; btn.style.borderColor = "var(--border)"; btn.disabled = false; }, 2000);
+        btn.innerHTML = "✗"; btn.style.color = "#dc2626";
+        setTimeout(function() { btn.innerHTML = "💾 Save"; btn.style.color = "#7c3aed"; btn.style.borderColor = "var(--border)"; btn.style.background = "var(--surface)"; btn.disabled = false; }, 2000);
       }
     } catch(_) {
-      btn.textContent = "✗"; btn.style.color = "#dc2626";
-      setTimeout(function() { btn.textContent = "💾"; btn.style.color = "var(--muted)"; btn.style.borderColor = "var(--border)"; btn.disabled = false; }, 2000);
+      btn.innerHTML = "✗"; btn.style.color = "#dc2626";
+      setTimeout(function() { btn.innerHTML = "💾 Save"; btn.style.color = "#7c3aed"; btn.style.borderColor = "var(--border)"; btn.style.background = "var(--surface)"; btn.disabled = false; }, 2000);
     }
   };
 
