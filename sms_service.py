@@ -4891,16 +4891,17 @@ def api_morning_brief():
             latlon = postcode_to_latlon(postcode)
             if not latlon:
                 return None
-            stations = fetch_all_stations(latlon[0], latlon[1], 5, "E10")
+            stations = _nearby_stations(latlon[0], latlon[1], "E10", 8)
             if not stations:
                 return None
             best = min(stations, key=lambda s: s.get("price", 9999))
             price = best.get("price")
-            name  = best.get("name", "")
+            name  = (best.get("brand") or best.get("name", "")).split()[0]
             if not price:
                 return None
             return f"{price}p {name}"
-        except Exception:
+        except Exception as e:
+            print(f"[morning-brief] fuel error: {e}")
             return None
 
     def _school_brief(phone_number, today):
@@ -4936,7 +4937,8 @@ def api_morning_brief():
                         pass
                 lines.append(f"• {child}: {title}{date_str}")
             return lines
-        except Exception:
+        except Exception as e:
+            print(f"[morning-brief] school error: {e}")
             return []
 
     try:
