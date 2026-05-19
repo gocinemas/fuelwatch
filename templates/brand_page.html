@@ -3,474 +3,582 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Brand Intel{% else %}Brand Intel{% endif %}</title>
-<meta name="description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% else %}{{ brand_name }} brand intelligence — social strategy, campaigns, history and more.{% endif %}">
+<title>{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Brand Intel{% else %}{{ brand_name }} — Brand Intel{% endif %}</title>
+<meta name="description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% else %}{{ brand_name }} — origin story, social strategy, financials and deep Intel research.{% endif %}">
 <meta property="og:type"        content="website">
 <meta property="og:url"         content="https://miru.humanagency.co/{{ brand_name | lower | replace(' ', '-') }}">
-<meta property="og:title"       content="{{ brand_name }} — Brand Intel | intel.humanagency.co">
-<meta property="og:description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% else %}{{ brand_name }} brand intelligence — social strategy, campaigns, history and more.{% endif %}">
+<meta property="og:title"       content="{{ brand_name }} — Brand Intel">
+<meta property="og:description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% else %}{{ brand_name }} brand profile — origin story, financials, social strategy and research.{% endif %}">
 <meta property="og:image"       content="{% if brand_meta and brand_meta.logo %}{{ brand_meta.logo }}{% else %}https://miru.humanagency.co/static/miru-preview.png{% endif %}">
 <meta name="twitter:card"       content="summary_large_image">
 <meta name="twitter:title"      content="{{ brand_name }} — Brand Intel">
 <meta name="twitter:image"      content="{% if brand_meta and brand_meta.logo %}{{ brand_meta.logo }}{% else %}https://miru.humanagency.co/static/miru-preview.png{% endif %}">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg: #faf9f7; --surface: #ffffff; --border: #e8e4df;
-  --text: #1a1714; --muted: #7a7168; --accent: #d97706;
-  --indigo: #4f46e5; --radius: 16px;
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#faf9f7;--surface:#fff;--border:#e8e4df;
+  --text:#1a1714;--muted:#7a7168;--accent:#d97706;
+  --indigo:#4f46e5;--radius:16px;
 }
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #181614; --surface: #211f1c; --border: #332f2b; --text: #f0ece6; --muted: #8a8078; --accent: #f59e0b; }
+@media(prefers-color-scheme:dark){
+  :root{--bg:#181614;--surface:#211f1c;--border:#332f2b;--text:#f0ece6;--muted:#8a8078;--accent:#f59e0b}
 }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
-  background: var(--bg); color: var(--text); min-height: 100vh;
-}
-.page { max-width: 680px; margin: 0 auto; padding: 0 20px 80px; }
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:680px;margin:0 auto;padding:0 20px 80px}
 
-/* top bar */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 0 16px; margin-bottom: 28px;
-  border-bottom: 1px solid var(--border);
-}
-.topbar-logo {
-  font-size: 15px; font-weight: 900; color: var(--text);
-  text-decoration: none; letter-spacing: -0.3px;
-}
-.topbar-logo span { color: var(--accent); }
-.topbar-link {
-  font-size: 13px; font-weight: 600; color: var(--muted);
-  text-decoration: none; transition: color .15s;
-}
-.topbar-link:hover { color: var(--accent); }
+/* topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 0 16px;border-bottom:1px solid var(--border);margin-bottom:32px}
+.logo{font-size:15px;font-weight:900;color:var(--text);text-decoration:none;letter-spacing:-.3px}
+.logo span{color:var(--accent)}
+.topbar-link{font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;transition:color .15s}
+.topbar-link:hover{color:var(--accent)}
 
-/* brand hero */
-.brand-hero { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
-.brand-logo-wrap {
-  width: 68px; height: 68px; border-radius: 16px;
-  border: 1px solid var(--border); background: var(--surface);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; overflow: hidden;
-}
-.brand-logo-wrap img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
-.brand-logo-placeholder { font-size: 30px; }
-.brand-hero-info { flex: 1; min-width: 0; padding-top: 4px; }
-.brand-name { font-size: 28px; font-weight: 900; letter-spacing: -1px; margin-bottom: 4px; line-height: 1.1; }
-.brand-slogan { font-size: 14px; color: var(--muted); font-style: italic; margin-bottom: 10px; }
-.brand-meta-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-.brand-meta-pill {
-  font-size: 11px; font-weight: 600; color: var(--muted);
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 20px; padding: 3px 10px;
-}
+/* hero */
+.hero{display:flex;align-items:flex-start;gap:18px;margin-bottom:24px}
+.brand-logo-wrap{width:72px;height:72px;border-radius:18px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.brand-logo-wrap img{width:100%;height:100%;object-fit:contain;padding:8px}
+.brand-logo-fb{font-size:32px}
+.hero-info{flex:1;min-width:0;padding-top:4px}
+.brand-name{font-size:30px;font-weight:900;letter-spacing:-1.2px;line-height:1.05;margin-bottom:5px}
+.brand-slogan{font-size:14px;color:var(--muted);font-style:italic;margin-bottom:10px}
+.meta-pills{display:flex;gap:6px;flex-wrap:wrap}
+.meta-pill{font-size:11px;font-weight:600;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
 
-/* did you know */
-.dyk {
-  background: var(--surface); border: 1px solid var(--border);
-  border-left: 4px solid var(--accent); border-radius: var(--radius);
-  padding: 14px 16px; margin-bottom: 20px;
-  font-size: 13px; color: var(--muted); line-height: 1.65; display: none;
-}
-.dyk strong { color: var(--text); }
-
-/* tabs */
-.tab-bar {
-  display: flex; gap: 2px;
-  border-bottom: 1px solid var(--border); margin-bottom: 20px;
-}
-.tab-btn {
-  font-size: 13px; font-weight: 700; color: var(--muted);
-  background: none; border: none; border-bottom: 2px solid transparent;
-  padding: 10px 16px; cursor: pointer; margin-bottom: -1px;
-  transition: color .15s, border-color .15s; font-family: inherit;
-}
-.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
+/* section */
+.section{margin-bottom:32px}
+.section-label{font-size:10px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
 
 /* cards */
-.cards { display: flex; flex-direction: column; gap: 12px; }
-.card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 18px 20px;
-}
-.card-accent { border-left: 4px solid var(--accent); }
-.card-label {
-  font-size: 10px; font-weight: 800; letter-spacing: 1.2px;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
-}
-.card-body { font-size: 14px; line-height: 1.65; color: var(--text); }
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+.card+.card{margin-top:10px}
+.card-accent{border-left:4px solid var(--accent)}
+.card-indigo{border-left:4px solid var(--indigo)}
+.card-label{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.card-body{font-size:14px;line-height:1.7;color:var(--text)}
+
+/* did you know */
+.dyk{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:var(--radius);padding:14px 16px;margin-bottom:28px;font-size:13px;color:var(--muted);line-height:1.65;display:none}
+.dyk strong{color:var(--text)}
+
+/* read more */
+.read-more-btn{display:inline-block;margin-top:10px;font-size:13px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;font-family:inherit}
 
 /* stats grid */
-.stats-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 10px; margin-top: 12px; display: none;
-}
-.stat-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 14px 16px;
-}
-.stat-label {
-  font-size: 10px; font-weight: 800; letter-spacing: 1px;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
-}
-.stat-value { font-size: 15px; font-weight: 700; color: var(--text); }
-
-/* timeline */
-.timeline { display: flex; flex-direction: column; }
-.tl-item {
-  display: flex; gap: 14px; padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-}
-.tl-item:last-child { border-bottom: none; }
-.tl-year { font-size: 12px; font-weight: 800; color: var(--accent); min-width: 40px; padding-top: 2px; }
-.tl-text { font-size: 13px; color: var(--muted); line-height: 1.55; flex: 1; }
-
-/* rivals */
-.rivals-wrap { display: flex; gap: 8px; flex-wrap: wrap; }
-.rival-chip {
-  background: var(--bg); border: 1px solid var(--border);
-  border-radius: 20px; padding: 6px 14px;
-  font-size: 13px; font-weight: 600; color: var(--muted);
-  cursor: pointer; transition: border-color .15s, color .15s; text-decoration: none; display: inline-block;
-}
-.rival-chip:hover { border-color: var(--accent); color: var(--accent); }
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:400px){.stats-grid{grid-template-columns:1fr}}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.stat-label{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.stat-value{font-size:15px;font-weight:700;color:var(--text)}
 
 /* platforms */
-.platforms-wrap { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-.platform-chip {
-  display: flex; align-items: center; gap: 6px;
-  background: var(--bg); border: 1px solid var(--border);
-  border-radius: 20px; padding: 7px 14px;
-  font-size: 13px; font-weight: 600; color: var(--text);
-}
-.platform-rank {
-  font-size: 10px; font-weight: 800; color: var(--muted);
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 99px; padding: 1px 6px;
-}
+.platform-list{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.platform-chip{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600}
+.platform-rank{font-size:10px;font-weight:800;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:1px 6px}
+
+/* youtube scroll */
+.yt-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.yt-scroll::-webkit-scrollbar{display:none}
+.yt-card{flex-shrink:0;width:200px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color .15s;text-decoration:none;display:block}
+.yt-card:hover{border-color:var(--accent)}
+.yt-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;background:#e8e4df}
+.yt-info{padding:10px 12px}
+.yt-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.yt-channel{font-size:11px;color:var(--muted);margin-top:4px}
 
 /* campaigns */
-.campaign-list { display: flex; flex-direction: column; gap: 10px; }
-.campaign-item {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 14px 16px;
-  font-size: 14px; line-height: 1.55; color: var(--text);
-  display: flex; gap: 10px; align-items: flex-start;
-}
-.campaign-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.campaign-item{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border)}
+.campaign-item:last-child{border-bottom:none}
+.campaign-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+.campaign-text{font-size:14px;line-height:1.55;color:var(--text)}
 
-/* loading */
-.loading-wrap { padding: 56px 0; text-align: center; }
-.spinner {
-  width: 32px; height: 32px;
-  border: 2.5px solid var(--border); border-top-color: var(--indigo);
-  border-radius: 50%; animation: spin .8s linear infinite;
-  margin: 0 auto 16px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-label { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-.loading-sub { font-size: 13px; color: var(--muted); }
+/* timeline */
+.tl-item{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid var(--border)}
+.tl-item:last-child{border-bottom:none}
+.tl-year{font-size:12px;font-weight:800;color:var(--accent);min-width:42px;padding-top:2px;flex-shrink:0}
+.tl-text{font-size:13px;color:var(--muted);line-height:1.55}
+
+/* rivals */
+.rivals-wrap{display:flex;gap:8px;flex-wrap:wrap}
+.rival-chip{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;display:inline-block;transition:border-color .15s,color .15s}
+.rival-chip:hover{border-color:var(--accent);color:var(--accent)}
+
+/* research */
+.research-btn{display:flex;align-items:center;gap:10px;padding:15px 20px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;width:100%;transition:border-color .15s}
+.research-btn:hover{border-color:var(--indigo)}
+.research-btn-icon{font-size:18px}
+.research-btn-sub{font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
+.research-spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--indigo);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.research-section{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.research-step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:border-color .2s,color .2s}
+.research-step.active{border-color:var(--indigo);color:var(--text)}
+.research-step.done{border-color:#16a34a;color:#16a34a}
+.research-step-check{margin-left:auto;opacity:0;transition:opacity .2s}
+.research-step.done .research-step-check{opacity:1}
+
+/* news */
+.news-item{padding:12px 0;border-bottom:1px solid var(--border)}
+.news-item:last-child{border-bottom:none}
+.news-title{font-size:14px;font-weight:600;color:var(--text);text-decoration:none;line-height:1.4;display:block;margin-bottom:4px}
+.news-title:hover{color:var(--accent)}
+.news-meta{font-size:11px;color:var(--muted)}
+
+/* claim page */
+.claim-section{margin-top:40px;background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:var(--radius);padding:28px 24px}
+.claim-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:10px}
+.claim-section h3{font-size:18px;font-weight:900;color:#fff;margin-bottom:8px}
+.claim-section p{font-size:13px;color:rgba(255,255,255,.65);line-height:1.65;margin-bottom:18px}
+.claim-features{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
+.claim-feature{font-size:13px;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:8px}
+.claim-feature::before{content:"✓";color:#a5b4fc;font-weight:800;flex-shrink:0}
+.claim-links{display:flex;gap:10px;flex-wrap:wrap}
+.claim-btn{font-size:13px;font-weight:700;padding:11px 20px;border-radius:10px;text-decoration:none;transition:opacity .15s}
+.claim-btn:hover{opacity:.85}
+.claim-btn.primary{background:#f59e0b;color:#fff}
+.claim-btn.secondary{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85)}
 
 /* bottom search */
-.bottom-search {
-  margin-top: 40px; padding: 24px;
-  background: linear-gradient(135deg, #1e1b4b, #312e81);
-  border-radius: var(--radius);
-}
-.bottom-eyebrow {
-  font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
-  text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 8px;
-}
-.bottom-search h3 { font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 14px; }
-.bottom-row { display: flex; gap: 8px; }
-.bottom-input {
-  flex: 1; border: 1.5px solid rgba(255,255,255,.15); border-radius: 10px;
-  padding: 13px 14px; font-size: 15px; font-family: inherit;
-  background: rgba(255,255,255,.08); color: #fff; outline: none;
-}
-.bottom-input::placeholder { color: rgba(255,255,255,.35); }
-.bottom-input:focus { border-color: rgba(255,255,255,.4); }
-.bottom-btn {
-  padding: 13px 20px; background: var(--accent); color: #fff;
-  border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
-  cursor: pointer; font-family: inherit; white-space: nowrap;
-}
-.bottom-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.bottom-chip {
-  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
-  border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600;
-  color: rgba(255,255,255,.7); cursor: pointer; transition: background .15s;
-}
-.bottom-chip:hover { background: rgba(255,255,255,.15); }
+.bottom-search{margin-top:40px;padding:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.bottom-label{font-size:10px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.bottom-row{display:flex;gap:8px}
+.bottom-input{flex:1;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-size:15px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;transition:border-color .15s}
+.bottom-input:focus{border-color:var(--accent)}
+.bottom-input::placeholder{color:var(--muted)}
+.bottom-btn{padding:12px 20px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.bottom-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.bottom-chip{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s}
+.bottom-chip:hover{border-color:var(--accent);color:var(--accent)}
 
-/* error */
-.error-wrap {
-  background: #fef2f2; border: 1px solid #fca5a5;
-  border-radius: var(--radius); padding: 18px 20px;
-  font-size: 14px; color: #dc2626; margin-top: 20px; display: none;
-}
+/* skeleton pulse */
+.skel{background:linear-gradient(90deg,var(--border) 25%,var(--bg) 50%,var(--border) 75%);background-size:200% 100%;animation:skel 1.6s ease-in-out infinite;border-radius:8px}
+@keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-line{height:14px;margin-bottom:8px}
+.skel-line.wide{width:80%}
+.skel-line.med{width:60%}
+.skel-line.short{width:40%}
 
-/* empty state */
-.empty { text-align: center; padding: 32px 0; font-size: 14px; color: var(--muted); }
+/* loading hero */
+.loading-hero{display:flex;gap:18px;align-items:flex-start;margin-bottom:28px}
+.loading-logo{width:72px;height:72px;border-radius:18px;flex-shrink:0}
+.loading-info{flex:1;padding-top:4px}
+
+/* empty */
+.empty{padding:24px 0;font-size:14px;color:var(--muted);text-align:center}
 </style>
 </head>
 <body>
 <div class="page">
 
   <div class="topbar">
-    <a href="https://intel.humanagency.co" class="topbar-logo">in<span>tel</span></a>
-    <a href="https://intel.humanagency.co" class="topbar-link">All brands →</a>
+    <a href="https://intel.humanagency.co" class="logo">in<span>tel</span></a>
+    <a href="https://intel.humanagency.co" class="topbar-link">Search brands →</a>
   </div>
 
-  <!-- Loading -->
-  <div class="loading-wrap" id="loading-wrap">
-    <div class="spinner"></div>
-    <div class="loading-label">Loading {{ brand_name }}</div>
-    <div class="loading-sub">Fetching brand intelligence…</div>
+  <!-- Loading skeleton -->
+  <div id="skeleton">
+    <div class="loading-hero">
+      <div class="skel loading-logo"></div>
+      <div class="loading-info">
+        <div class="skel skel-line wide" style="height:22px;margin-bottom:10px"></div>
+        <div class="skel skel-line med"></div>
+        <div class="skel skel-line short"></div>
+      </div>
+    </div>
+    <div class="skel skel-line wide" style="height:80px;border-radius:16px;margin-bottom:16px"></div>
+    <div class="skel skel-line wide" style="height:120px;border-radius:16px"></div>
   </div>
 
   <!-- Error -->
-  <div class="error-wrap" id="error-wrap"></div>
+  <div id="error-wrap" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--radius);padding:18px 20px;font-size:14px;color:#dc2626"></div>
 
-  <!-- Brand content -->
-  <div id="brand-content" style="display:none">
+  <!-- Main content -->
+  <div id="main" style="display:none">
 
-    <div class="brand-hero">
-      <div class="brand-logo-wrap" id="logo-wrap">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="brand-logo-wrap">
         <img id="brand-logo" src="" alt="" onerror="this.style.display='none';document.getElementById('logo-fb').style.display='block'">
-        <span id="logo-fb" class="brand-logo-placeholder" style="display:none">🏷</span>
+        <span id="logo-fb" class="brand-logo-fb" style="display:none">🏷</span>
       </div>
-      <div class="brand-hero-info">
+      <div class="hero-info">
         <div class="brand-name" id="brand-name-el">{{ brand_name }}</div>
         <div class="brand-slogan" id="brand-slogan-el" style="display:none"></div>
-        <div class="brand-meta-pills" id="brand-pills-el"></div>
+        <div class="meta-pills" id="meta-pills-el"></div>
       </div>
     </div>
 
-    <div class="dyk" id="brand-dyk">
-      <strong>Did you know?</strong> <span id="brand-dyk-text"></span>
+    <!-- Did you know -->
+    <div class="dyk" id="dyk-el">
+      <strong>Did you know?</strong> <span id="dyk-text"></span>
     </div>
 
-    <div class="tab-bar">
-      <button class="tab-btn active" onclick="switchTab('about')">About</button>
-      <button class="tab-btn"        onclick="switchTab('social')">Social</button>
-      <button class="tab-btn"        onclick="switchTab('campaigns')">Campaigns</button>
+    <!-- Origin Story -->
+    <div class="section" id="origin-section" style="display:none">
+      <div class="section-label">Origin Story</div>
+      <div class="card card-accent">
+        <div class="card-body" id="origin-text"></div>
+        <button class="read-more-btn" id="read-more-btn" style="display:none" onclick="expandOrigin()">Read more ↓</button>
+      </div>
     </div>
 
-    <!-- About -->
-    <div class="tab-panel active" id="tab-about">
-      <div class="cards">
-        <div class="card card-accent">
-          <div class="card-label">About</div>
-          <div class="card-body" id="about-desc"></div>
+    <!-- What they're into -->
+    <div class="section" id="identity-section" style="display:none">
+      <div class="section-label">What they're into</div>
+      <div class="stats-grid" id="identity-grid"></div>
+    </div>
+
+    <!-- Financials -->
+    <div class="section" id="fin-section" style="display:none">
+      <div class="section-label">Financials</div>
+      <div class="stats-grid" id="fin-grid"></div>
+      <div id="fin-extra" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Social Strategy -->
+    <div class="section" id="social-section">
+      <div class="section-label">Social Strategy</div>
+      <div id="social-inner">
+        <div class="card">
+          <div class="skel skel-line wide" style="margin-bottom:8px"></div>
+          <div class="skel skel-line med"></div>
         </div>
       </div>
-      <div class="stats-grid" id="stats-grid"></div>
-      <div class="card" id="timeline-card" style="display:none;margin-top:12px">
-        <div class="card-label">History</div>
-        <div class="timeline" id="brand-timeline"></div>
+    </div>
+
+    <!-- YouTube -->
+    <div class="section" id="yt-section" style="display:none">
+      <div class="section-label">Latest from YouTube</div>
+      <div class="yt-scroll" id="yt-scroll"></div>
+    </div>
+
+    <!-- Recent News -->
+    <div class="section" id="news-section" style="display:none">
+      <div class="section-label">Recent News</div>
+      <div class="card" id="news-inner"></div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="section" id="timeline-section" style="display:none">
+      <div class="section-label">History</div>
+      <div class="card" id="timeline-inner"></div>
+    </div>
+
+    <!-- Competitors -->
+    <div class="section" id="rivals-section" style="display:none">
+      <div class="section-label">Competitors</div>
+      <div class="rivals-wrap" id="rivals-inner"></div>
+    </div>
+
+    <!-- Intel Research Brief -->
+    <div class="section">
+      <div class="section-label">Intel Research Brief</div>
+      <button class="research-btn" id="research-btn" onclick="runResearch()">
+        <span class="research-btn-icon">🔍</span>
+        <span>
+          <div>Run deep research</div>
+          <div class="research-btn-sub">Strategy · Leadership · Hiring · AI signals — takes ~30s</div>
+        </span>
+      </button>
+      <div id="research-output" style="display:none"></div>
+    </div>
+
+    <!-- Claim this page -->
+    <div class="claim-section">
+      <div class="claim-eyebrow">⚡ Intel · humanagency.co</div>
+      <h3>Is this your brand?</h3>
+      <p>Claim this page to shape how your brand appears to analysts, investors and partners. Add your own narrative, highlight campaigns and feature executive content.</p>
+      <div class="claim-features">
+        <div class="claim-feature">Verified brand badge</div>
+        <div class="claim-feature">Add your own story and campaigns</div>
+        <div class="claim-feature">Featured content slot for executives</div>
+        <div class="claim-feature">Analytics on who's researching you</div>
       </div>
-      <div class="card" id="rivals-card" style="display:none;margin-top:12px">
-        <div class="card-label">Competitors</div>
-        <div class="rivals-wrap" id="rivals-wrap"></div>
+      <div class="claim-links">
+        <a class="claim-btn primary" href="mailto:mekala@gmail.com?subject=Intel brand page — {{ brand_name }}">Claim this page →</a>
+        <a class="claim-btn secondary" href="https://intel.humanagency.co">Explore Intel</a>
       </div>
     </div>
 
-    <!-- Social -->
-    <div class="tab-panel" id="tab-social">
-      <div id="social-inner"><div class="empty">Loading social data…</div></div>
-    </div>
-
-    <!-- Campaigns -->
-    <div class="tab-panel" id="tab-campaigns">
-      <div class="campaign-list" id="campaigns-list">
-        <div class="empty">No campaign data yet.</div>
+    <!-- Search another brand -->
+    <div class="bottom-search">
+      <div class="bottom-label">Search another brand</div>
+      <div class="bottom-row">
+        <input class="bottom-input" id="bottom-q" type="text" placeholder="e.g. Nike, Diageo, Tesco…" autocomplete="off">
+        <button class="bottom-btn" onclick="goToBrand()">Go →</button>
       </div>
+      <div class="bottom-chips" id="bottom-chips"></div>
     </div>
 
-  </div>
-
-  <!-- Bottom search -->
-  <div class="bottom-search" id="bottom-search" style="display:none">
-    <div class="bottom-eyebrow">⚡ intel · humanagency.co</div>
-    <h3>Search another brand</h3>
-    <div class="bottom-row">
-      <input class="bottom-input" id="bottom-q" type="text" placeholder="e.g. Nike, Diageo, HSBC…" autocomplete="off">
-      <button class="bottom-btn" onclick="goToBrand()">Go →</button>
-    </div>
-    <div class="bottom-chips">
-      <span class="bottom-chip" onclick="goToSlug('nike')">Nike</span>
-      <span class="bottom-chip" onclick="goToSlug('coca-cola')">Coca-Cola</span>
-      <span class="bottom-chip" onclick="goToSlug('monster-energy')">Monster</span>
-      <span class="bottom-chip" onclick="goToSlug('diageo')">Diageo</span>
-      <span class="bottom-chip" onclick="goToSlug('apple')">Apple</span>
-    </div>
-  </div>
+  </div><!-- /main -->
 
 </div>
+
 <script>
-const BRAND   = {{ brand_name | tojson }};
-const _PF_MAP = {
-  tiktok:'🎵', instagram:'📸', youtube:'▶️', x:'𝕏', twitter:'𝕏',
-  facebook:'👤', linkedin:'💼', snapchat:'👻', pinterest:'📌', spotify:'🎧',
-};
-let _socialLoaded = false;
+const BRAND = {{ brand_name | tojson }};
+const _PF   = {tiktok:'🎵',instagram:'📸',youtube:'▶️',x:'𝕏',twitter:'𝕏',facebook:'👤',linkedin:'💼',snapchat:'👻',pinterest:'📌',spotify:'🎧'};
 
-const _tabBtns = document.querySelectorAll('.tab-btn');
-function switchTab(name) {
-  _tabBtns.forEach((b, i) => {
-    const t = ['about','social','campaigns'][i];
-    b.classList.toggle('active', t === name);
-    document.getElementById('tab-' + t).classList.toggle('active', t === name);
-  });
-  if (name === 'social' && !_socialLoaded) { _socialLoaded = true; loadSocial(); }
+let _fullExtract = '';
+let _researchRunning = false;
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function _str(v){ return typeof v === 'string' ? v : (v && typeof v === 'object' ? (v.name||v.title||v.value||'') : String(v||'')); }
+function goToBrand(){
+  const q = document.getElementById('bottom-q').value.trim();
+  if(!q) return;
+  window.location.href = '/' + q.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 }
+function goToSlug(s){ window.location.href = '/' + s; }
+document.getElementById('bottom-q').addEventListener('keydown', e=>{ if(e.key==='Enter') goToBrand(); });
 
-async function loadBrand() {
-  let d;
-  try {
-    const r = await fetch('/api/brand?name=' + encodeURIComponent(BRAND));
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    d = await r.json();
-    if (d.error) throw new Error(d.error);
-  } catch(e) {
-    document.getElementById('loading-wrap').style.display = 'none';
+// ── init: load brand + social in parallel ─────────────────────────────────────
+async function init(){
+  const [brandRes, socialRes] = await Promise.allSettled([
+    fetch('/api/brand?name=' + encodeURIComponent(BRAND)).then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }),
+    fetch('/api/brand/social?name=' + encodeURIComponent(BRAND)).then(r=>{ if(!r.ok) throw new Error(); return r.json(); }),
+  ]);
+
+  document.getElementById('skeleton').style.display = 'none';
+
+  if(brandRes.status === 'rejected'){
     const err = document.getElementById('error-wrap');
-    err.textContent = 'Could not load brand data — ' + (e.message || 'try again.');
+    err.textContent = 'Could not load brand data — try refreshing.';
     err.style.display = 'block';
     return;
   }
-  renderBrand(d);
+
+  document.getElementById('main').style.display = 'block';
+  renderBrand(brandRes.value);
+  if(socialRes.status === 'fulfilled') renderSocial(socialRes.value);
+  else document.getElementById('social-inner').innerHTML = '<div class="empty">Social data unavailable.</div>';
 }
 
-function renderBrand(d) {
-  document.getElementById('loading-wrap').style.display = 'none';
-  document.getElementById('brand-content').style.display = 'block';
-  document.getElementById('bottom-search').style.display = 'block';
-
+// ── render brand ──────────────────────────────────────────────────────────────
+function renderBrand(d){
   const name = d.name || BRAND;
   document.getElementById('brand-name-el').textContent = name;
   document.title = name + ' — Brand Intel';
 
   const domain = d.domain || (name.toLowerCase().replace(/[^a-z0-9]/g,'') + '.com');
-  document.getElementById('brand-logo').src = 'https://logo.clearbit.com/' + domain;
-  document.getElementById('brand-logo').alt = name;
+  const logo = document.getElementById('brand-logo');
+  logo.src = 'https://logo.clearbit.com/' + domain;
+  logo.alt = name;
 
-  if (d.slogan) {
-    const sl = document.getElementById('brand-slogan-el');
-    sl.textContent = '“' + d.slogan + '”';
-    sl.style.display = 'block';
+  if(d.slogan){ const sl=document.getElementById('brand-slogan-el'); sl.textContent='"'+d.slogan+'"'; sl.style.display='block'; }
+
+  const pills = [d.industry, d.founded?'Est. '+d.founded:null, d.hq].filter(Boolean);
+  document.getElementById('meta-pills-el').innerHTML = pills.map(p=>`<span class="meta-pill">${p}</span>`).join('');
+
+  if(d.did_you_know){ document.getElementById('dyk-text').textContent=d.did_you_know; document.getElementById('dyk-el').style.display='block'; }
+
+  // Origin story — use extract (Wikipedia full text), fall back to description
+  const extract = (d.extract||'').trim();
+  const desc    = (d.description||'').trim();
+  const story   = extract || desc;
+  if(story){
+    _fullExtract = story;
+    const SHORT = 280;
+    const el = document.getElementById('origin-text');
+    if(story.length > SHORT){
+      el.textContent = story.slice(0, SHORT) + '…';
+      document.getElementById('read-more-btn').style.display = 'inline-block';
+    } else {
+      el.textContent = story;
+    }
+    document.getElementById('origin-section').style.display = 'block';
   }
 
-  const pills = [d.industry, d.founded ? 'Est. ' + d.founded : null, d.hq].filter(Boolean);
-  document.getElementById('brand-pills-el').innerHTML = pills.map(p =>
-    `<span class="brand-meta-pill">${p}</span>`).join('');
-
-  if (d.did_you_know) {
-    document.getElementById('brand-dyk-text').textContent = d.did_you_know;
-    document.getElementById('brand-dyk').style.display = 'block';
-  }
-
-  document.getElementById('about-desc').textContent = d.description || d.overview || 'No description available.';
-
-  const stats = [
-    d.founded  && { label: 'Founded',  value: d.founded },
-    d.hq       && { label: 'HQ',       value: d.hq },
-    d.revenue  && { label: 'Revenue',  value: d.revenue },
-    d.industry && { label: 'Industry', value: d.industry },
+  // What they're into — identity grid
+  const idStats = [
+    d.industry  && {label:'Industry',   value: d.industry},
+    d.slogan    && {label:'Slogan',      value: '"' + d.slogan + '"'},
+    d.hq        && {label:'Headquarters',value: d.hq},
+    d.founded   && {label:'Founded',     value: d.founded},
+    d.employees && {label:'Employees',   value: d.employees},
   ].filter(Boolean);
-  const grid = document.getElementById('stats-grid');
-  if (stats.length) {
-    grid.innerHTML = stats.map(s =>
+  if(idStats.length){
+    document.getElementById('identity-grid').innerHTML = idStats.map(s=>
       `<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div></div>`
     ).join('');
-    grid.style.display = 'grid';
+    document.getElementById('identity-section').style.display = 'block';
   }
 
+  // Financials
+  const fin = d.financials || {};
+  const finStats = [
+    d.revenue           && {label:'Revenue',    value: d.revenue},
+    fin.market_cap      && {label:'Market cap', value: fin.market_cap},
+    fin.share           && fin.share.current && {label:'Share price', value: fin.share.currency+' '+fin.share.current},
+    fin.pe_ratio        && {label:'P/E ratio',  value: fin.pe_ratio},
+    fin.dividend_yield  && {label:'Div. yield', value: fin.dividend_yield},
+  ].filter(Boolean);
+  if(finStats.length){
+    document.getElementById('fin-grid').innerHTML = finStats.map(s=>
+      `<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div></div>`
+    ).join('');
+    document.getElementById('fin-section').style.display = 'block';
+  }
+
+  // YouTube videos
+  const ads = d.ads || [];
+  if(ads.length){
+    document.getElementById('yt-scroll').innerHTML = ads.map(v=>`
+      <a class="yt-card" href="${v.url}" target="_blank" rel="noopener">
+        <img class="yt-thumb" src="${v.thumbnail}" alt="${v.title}" loading="lazy">
+        <div class="yt-info">
+          <div class="yt-title">${v.title}</div>
+          <div class="yt-channel">${v.channel}${v.year?' · '+v.year:''}</div>
+        </div>
+      </a>`).join('');
+    document.getElementById('yt-section').style.display = 'block';
+  }
+
+  // Recent news
+  const news = d.news || [];
+  if(news.length){
+    document.getElementById('news-inner').innerHTML = news.slice(0,5).map(n=>`
+      <div class="news-item">
+        <a class="news-title" href="${n.url||'#'}" target="_blank" rel="noopener">${n.title||''}</a>
+        <div class="news-meta">${n.source||''} ${n.date?'· '+n.date:''}</div>
+      </div>`).join('');
+    document.getElementById('news-section').style.display = 'block';
+  }
+
+  // Timeline
   const tl = d.timeline || [];
-  if (tl.length) {
-    document.getElementById('brand-timeline').innerHTML = tl.map(t => {
-      const yr  = typeof t === 'object' ? (t.year||'') : '';
-      const txt = typeof t === 'object' ? (t.event||t.text||t.description||'') : String(t);
+  if(tl.length){
+    document.getElementById('timeline-inner').innerHTML = tl.map(t=>{
+      const yr  = typeof t==='object' ? (t.year||'') : '';
+      const txt = typeof t==='object' ? (t.event||t.text||t.description||'') : String(t);
       return `<div class="tl-item"><div class="tl-year">${yr}</div><div class="tl-text">${txt}</div></div>`;
     }).join('');
-    document.getElementById('timeline-card').style.display = 'block';
+    document.getElementById('timeline-section').style.display = 'block';
   }
 
-  const rivals = (d.competitors || []).map(r => typeof r === 'string' ? r : (r.name || r.brand || String(r))).filter(Boolean);
-  if (rivals.length) {
-    document.getElementById('rivals-wrap').innerHTML = rivals.map(r =>
+  // Competitors
+  const rivals = (d.competitors||[]).map(r=>_str(r)).filter(Boolean);
+  if(rivals.length){
+    document.getElementById('rivals-inner').innerHTML = rivals.map(r=>
       `<a class="rival-chip" href="/${r.toLowerCase().replace(/[^a-z0-9]+/g,'-')}">${r}</a>`
     ).join('');
-    document.getElementById('rivals-card').style.display = 'block';
+    document.getElementById('rivals-section').style.display = 'block';
   }
 
-  const camps = (d.campaigns || []).map(c => typeof c === 'string' ? c : (c.name||c.title||c.description||'')).filter(Boolean);
-  if (camps.length) {
-    document.getElementById('campaigns-list').innerHTML = camps.map(c =>
-      `<div class="campaign-item"><span class="campaign-icon">📢</span>${c}</div>`
-    ).join('');
-  }
+  // Bottom chips — suggest competitors or popular brands
+  const chips = rivals.slice(0,4).length ? rivals.slice(0,4) : ['Nike','Coca-Cola','Apple','Diageo'];
+  document.getElementById('bottom-chips').innerHTML = chips.map(c=>
+    `<span class="bottom-chip" onclick="goToSlug('${c.toLowerCase().replace(/[^a-z0-9]+/g,'-')}')">${c}</span>`
+  ).join('');
 }
 
-async function loadSocial() {
-  const el = document.getElementById('social-inner');
-  el.innerHTML = '<div class="empty">Loading social strategy…</div>';
-  try {
-    const r = await fetch('/api/brand/social?name=' + encodeURIComponent(BRAND));
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
-    renderSocial(d);
-  } catch(e) {
-    el.innerHTML = '<div class="empty">Could not load social data.</div>';
-  }
+function expandOrigin(){
+  document.getElementById('origin-text').textContent = _fullExtract;
+  document.getElementById('read-more-btn').style.display = 'none';
 }
 
-function renderSocial(d) {
+// ── render social ──────────────────────────────────────────────────────────────
+function renderSocial(d){
   const platforms = d.platforms || [];
   const pHtml = platforms.length ? `
-    <div class="card">
+    <div class="card" style="margin-bottom:10px">
       <div class="card-label">Active on · ranked by investment</div>
-      <div class="platforms-wrap">${platforms.map((p, i) =>
-        `<div class="platform-chip">${_PF_MAP[p.toLowerCase()]||'📱'} ${p}<span class="platform-rank">#${i+1}</span></div>`
+      <div class="platform-list">${platforms.map((p,i)=>
+        `<div class="platform-chip">${_PF[p.toLowerCase()]||'📱'} ${p}<span class="platform-rank">#${i+1}</span></div>`
       ).join('')}</div>
     </div>` : '';
 
-  const soCamps = d.recent_campaigns || [];
-  const scHtml = soCamps.length ? `
-    <div class="card">
+  const camps = d.recent_campaigns || [];
+  const campsHtml = camps.length ? `
+    <div class="card" style="margin-top:10px">
       <div class="card-label">Recent campaigns</div>
-      <div class="campaign-list" style="margin-top:6px">${soCamps.map(c =>
-        `<div class="campaign-item"><span class="campaign-icon">📢</span>${c}</div>`
-      ).join('')}</div>
+      ${camps.map(c=>`<div class="campaign-item"><span class="campaign-icon">📢</span><span class="campaign-text">${c}</span></div>`).join('')}
     </div>` : '';
 
   const parts = [
     pHtml,
-    d.content_direction ? `<div class="card card-accent"><div class="card-label">Content direction</div><div class="card-body">${d.content_direction}</div></div>` : '',
-    d.influencer_approach ? `<div class="card"><div class="card-label">Influencer approach</div><div class="card-body">${d.influencer_approach}</div></div>` : '',
-    scHtml,
-    d.direction ? `<div class="card"><div class="card-label">Where they're heading</div><div class="card-body">${d.direction}</div></div>` : '',
+    d.content_direction ? `<div class="card card-accent" style="margin-bottom:10px"><div class="card-label">Content direction</div><div class="card-body">${d.content_direction}</div></div>` : '',
+    d.influencer_approach ? `<div class="card" style="margin-bottom:10px"><div class="card-label">Influencer approach</div><div class="card-body">${d.influencer_approach}</div></div>` : '',
+    campsHtml,
+    d.direction ? `<div class="card" style="margin-top:10px"><div class="card-label">Where they're heading</div><div class="card-body">${d.direction}</div></div>` : '',
   ].filter(Boolean).join('');
 
   document.getElementById('social-inner').innerHTML = parts || '<div class="empty">No social data available.</div>';
 }
 
-function goToBrand() {
-  const q = document.getElementById('bottom-q').value.trim();
-  if (!q) return;
-  goToSlug(q.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''));
+// ── research brief ────────────────────────────────────────────────────────────
+const _STEPS = ['Scanning news','Checking leadership','Reading hiring trends','Analysing strategy','Compiling brief'];
+let _stepTimer = null;
+let _stepIdx   = 0;
+
+async function runResearch(){
+  if(_researchRunning) return;
+  _researchRunning = true;
+  const btn = document.getElementById('research-btn');
+  const out  = document.getElementById('research-output');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="research-spinner"></span><span><div>Agent running on ${BRAND}…</div><div class="research-btn-sub">This takes about 30 seconds</div></span>`;
+
+  // Animated steps
+  out.style.display = 'block';
+  out.innerHTML = '<div class="research-section">' + _STEPS.map((s,i)=>
+    `<div class="research-step" id="rs-${i}"><span>${s}</span><span class="research-step-check">✓</span></div>`
+  ).join('') + '</div>';
+
+  _stepIdx = 0;
+  _animStep(0);
+  _stepTimer = setInterval(()=>{ _stepIdx = Math.min(_stepIdx+1, _STEPS.length-1); _animStep(_stepIdx); }, 5500);
+
+  try{
+    const r = await fetch('/api/intel/research',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({company: BRAND})
+    });
+    clearInterval(_stepTimer);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    if(d.error) throw new Error(d.error);
+    renderResearch(d);
+  } catch(e){
+    clearInterval(_stepTimer);
+    out.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:14px 16px;font-size:13px;color:#dc2626">Research failed — ${e.message||'try again'}.</div>`;
+    btn.disabled = false;
+    btn.innerHTML = `<span class="research-btn-icon">🔍</span><span><div>Retry research</div><div class="research-btn-sub">Strategy · Leadership · Hiring · AI signals</div></span>`;
+    _researchRunning = false;
+  }
 }
-function goToSlug(slug) { window.location.href = '/' + slug; }
 
-document.getElementById('bottom-q').addEventListener('keydown', e => {
-  if (e.key === 'Enter') goToBrand();
-});
+function _animStep(i){
+  _STEPS.forEach((_,j)=>{
+    const el = document.getElementById('rs-'+j);
+    if(!el) return;
+    el.classList.toggle('done',   j < i);
+    el.classList.toggle('active', j === i);
+  });
+}
 
-loadBrand();
+function renderResearch(d){
+  const btn = document.getElementById('research-btn');
+  btn.style.display = 'none';
+
+  const conf = (d.confidence||'medium').toLowerCase();
+  const confColor = conf==='high'?'#16a34a':conf==='low'?'#dc2626':'#d97706';
+
+  const cards = [
+    d.headline && `<div class="card card-accent"><div class="card-body" style="font-size:16px;font-weight:700;line-height:1.4">${d.headline}</div></div>`,
+    d.strategy && `<div class="card"><div class="card-label">Strategy</div><div class="card-body">${d.strategy}</div></div>`,
+    d.leadership && `<div class="card"><div class="card-label">Leadership</div><div class="card-body">${d.leadership}</div></div>`,
+    d.hiring_signals && `<div class="card"><div class="card-label">Hiring signals</div><div class="card-body">${d.hiring_signals}</div></div>`,
+    d.ai_focus && `<div class="card card-indigo"><div class="card-label">AI focus</div><div class="card-body">${d.ai_focus}</div></div>`,
+    d.opportunity_angle && `<div class="card card-accent"><div class="card-label">Opportunity</div><div class="card-body">${d.opportunity_angle}</div></div>`,
+    d.risks && d.risks.length && `<div class="card"><div class="card-label">Risks</div>${(Array.isArray(d.risks)?d.risks:[d.risks]).map(r=>`<div style="font-size:14px;color:var(--text);padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px"><span>⚠</span><span>${r}</span></div>`).join('')}</div>`,
+  ].filter(Boolean).join('');
+
+  document.getElementById('research-output').innerHTML =
+    `<div style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:${confColor}22;color:${confColor};margin-bottom:12px;letter-spacing:.3px;text-transform:uppercase">${conf} confidence</div>
+     <div style="display:flex;flex-direction:column;gap:10px">${cards}</div>`;
+}
+
+init();
 </script>
 </body>
 </html>
