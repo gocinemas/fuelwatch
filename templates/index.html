@@ -6882,14 +6882,6 @@ const _ts = new Date(d.timestamp);
       if (_myAreaTilePC !== pc) {
         _myAreaTilePC = pc;
         if (detail) detail.textContent = "";
-        Promise.all([
-          fetch(`/api/mp?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).catch(()=>({})),
-          fetch(`/api/your-area?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).catch(()=>({})),
-        ]).then(([mp, area]) => {
-          if (!detail) return;
-          if (mp && mp.name && !mp.error) detail.textContent = "MP: " + mp.name;
-          else if (area && area.council && area.council.name) detail.textContent = area.council.name;
-        }).catch(()=>{});
       }
     } else {
       pcEl.textContent = "";
@@ -9624,6 +9616,17 @@ const _ts = new Date(d.timestamp);
       if (code <= 82)  return "Showery - Grab an umbrella if you head out ☂️";
       return "Stormy out there - Best day to stay in and relax 🛋️";
     }
+    function _wLabel(code) {
+      if (code === 0)  return "Sunny";
+      if (code <= 2)   return "Partly cloudy";
+      if (code <= 3)   return "Cloudy";
+      if (code <= 48)  return "Misty";
+      if (code <= 57)  return "Drizzle";
+      if (code <= 67)  return "Rain";
+      if (code <= 77)  return "Snow";
+      if (code <= 82)  return "Showers";
+      return "Stormy";
+    }
     function _showWeather(lat, lon) {
       fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(3)}&longitude=${(+lon).toFixed(3)}&current=temperature_2m,weather_code&timezone=auto`)
         .then(r => r.json())
@@ -9635,6 +9638,8 @@ const _ts = new Date(d.timestamp);
           const h = new Date().getHours();
           const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
           document.getElementById("home-greeting").textContent = `${greet} · ${_wCode(code)} ${temp}°C`;
+          const detail = document.getElementById("myarea-home-detail");
+          if (detail) detail.textContent = `${_wCode(code)} ${temp}°C · ${_wLabel(code)}`;
         }).catch(() => {});
     }
     MiruLocation.get().then(loc => { if (loc) _showWeather(loc.lat, loc.lon); }).catch(() => {});
