@@ -4513,8 +4513,9 @@ const _ts = new Date(d.timestamp);
     _maAreaData = null; _maShopsData = null; _maLocalData = null;
     // Hide empty state
     document.getElementById("myarea-empty-state").style.display = "none";
-    // Reset sections
+    // Reset sections + un-collapse transport so fresh results always show
     const wxBar = document.getElementById("myarea-weather-bar"); if (wxBar) wxBar.style.display = "none";
+    ["train","tube","bus"].forEach(id => localStorage.removeItem(`miru_mac_${id}`));
     ["myarea-reps","myarea-council","myarea-council-services","myarea-weather","myarea-train","myarea-tube","myarea-bus","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
@@ -4562,11 +4563,16 @@ const _ts = new Date(d.timestamp);
       })).catch(() => { _maHideSpinner(); });
     }
 
-    // Nearest train station (fast — uses in-memory station cache)
-    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_guard(_maRenderTrain)).catch(()=>{});
-
-    // Nearest tube station (TfL API)
-    fetch(`/api/tube/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_guard(_maRenderTube)).catch(()=>{});
+    // Train first (in-memory, ~instant), tube after — guarantees _maTrainNames is populated before dedup
+    fetch(`/api/train/nearest-by-postcode?postcode=${pc}`)
+      .then(r=>r.json())
+      .then(_guard(d => {
+        _maRenderTrain(d);
+        fetch(`/api/tube/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_guard(_maRenderTube)).catch(()=>{});
+      }))
+      .catch(() => {
+        fetch(`/api/tube/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_guard(_maRenderTube)).catch(()=>{});
+      });
 
     // Nearest bus stops (Overpass, free)
     fetch(`/api/bus/stops?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).then(_guard(_maRenderBus)).catch(()=>{});
