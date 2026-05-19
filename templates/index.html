@@ -1895,7 +1895,6 @@
             <div style="height:11px;background:var(--border);border-radius:4px;width:45%"></div>
           </div>
         </div>
-        <div id="myarea-tgtg" style="margin-bottom:10px"></div>
         <div id="myarea-gp"      style="display:none;margin-bottom:10px"></div>
         <div id="myarea-shops"   style="display:none;margin-bottom:10px"></div>
         <div id="myarea-pubs"    style="display:none;margin-bottom:10px"></div>
@@ -4440,28 +4439,6 @@ const _ts = new Date(d.timestamp);
     el.style.display = "";
   }
 
-  function _maRenderTGTG(pc) {
-    const el = document.getElementById("myarea-tgtg");
-    if (!el || !pc) return;
-    const area = encodeURIComponent(pc.replace(/\s+/g,"").toUpperCase());
-    const webUrl = `https://toogoodtogo.com/en-gb/discover?search=${area}`;
-    const iosUrl = "https://apps.apple.com/gb/app/too-good-to-go/id1060683704";
-    const androidUrl = "https://play.google.com/store/apps/details?id=com.app.tgtg";
-    el.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:2px">🍱 Too Good To Go</div>
-          <div style="font-size:11px;color:var(--muted)">Discounted food bags near ${pc}</div>
-        </div>
-        <button onclick="_tgtgOpen('${webUrl}','${iosUrl}','${androidUrl}')" style="background:#1b9c66;color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Browse bags</button>
-      </div>
-    </div>`;
-  }
-
-  function _tgtgOpen(webUrl, iosUrl, androidUrl) {
-    window.open(webUrl, "_blank");
-  }
-
   function _maRenderShops(data) {
     const el = document.getElementById("myarea-shops");
     if (!_maGetPrefs().shops) { el.style.display = "none"; return; }
@@ -4651,9 +4628,6 @@ const _ts = new Date(d.timestamp);
       _maRenderCouncilServices(area, raw);
       _maHideServicesSkeleton();
     }));
-
-    // TGTG link card — no API needed, just renders instantly
-    _maRenderTGTG(pc);
 
     // Shops — slowest Overpass call, LS-cached 24h
     _maFetchCached(`shops:${pc}`, `/api/shops?postcode=${pc}`, 86400, _guard(data => {
