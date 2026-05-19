@@ -4760,7 +4760,7 @@ def api_intel_compare():
                     f"Revenue: {d.get('revenue','')}\n"
                     f"Slogan: {d.get('slogan','')}\n"
                     f"Description: {(d.get('description') or '')[:300]}\n"
-                    f"Competitors: {', '.join((d.get('competitors') or [])[:5])}")
+                    f"Competitors: {', '.join(c.get('name', str(c)) if isinstance(c, dict) else str(c) for c in (d.get('competitors') or [])[:5])}")
 
     a_label = da.get("name") or a
     b_label = db.get("name") or b
