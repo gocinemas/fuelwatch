@@ -2440,16 +2440,26 @@
     if (egg) { setTimeout(() => { _miruToast(egg.msg, "success"); _confetti(egg.emoji); }, 800); }
   };
 
-  // ── 5. "miru" typed in Intel search ─────────────────────────────────────
-  (function _selfAwareHook() {
+  // ── 5. "miru" typed in Intel search + postcode field listeners ──────────
+  document.addEventListener("DOMContentLoaded", function() {
+    // Self-aware hook
     const inp = document.getElementById("intel-input");
-    if (!inp) return;
-    inp.addEventListener("input", () => {
-      if (inp.value.trim().toLowerCase() === "miru") {
-        setTimeout(() => _miruToast("That's me 👋 — try searching a real brand!", "success"), 300);
-      }
+    if (inp) {
+      inp.addEventListener("input", () => {
+        if (inp.value.trim().toLowerCase() === "miru")
+          setTimeout(() => _miruToast("That's me 👋 — try searching a real brand!", "success"), 300);
+      });
+    }
+    // Fire postcode eggs as you type (no need to press search)
+    ["fuel-postcode", "report-postcode"].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("input", () => {
+        const v = el.value.trim().replace(/\s+/g,"").toUpperCase();
+        if (v.length >= 6) _checkPostcodeEgg(v);
+      });
     });
-  })();
+  });
 
   /* ══════════════════════════════════════════════════════════════════════════
      end easter eggs
@@ -2820,6 +2830,7 @@
     const fuel     = document.getElementById("fuel-type").value;
     const radius   = document.getElementById("fuel-radius").value;
     if (!postcode) return;
+    if (typeof _checkPostcodeEgg === "function") _checkPostcodeEgg(postcode);
     if (!/^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i.test(postcode)) {
       setLoading("fuel", false);
       document.getElementById("fuel-results").innerHTML = `<p style="color:#ef4444;font-size:13px;padding:12px 0">⚠️ "${postcode}" doesn't look like a valid UK postcode — try e.g. KT16 0DA</p>`;
@@ -2829,7 +2840,6 @@
     localStorage.setItem("miru_postcode", postcode);
     _idBarRefresh && _idBarRefresh();
     _saveRecent("miru_fuel", postcode);
-    if (typeof _checkPostcodeEgg === "function") _checkPostcodeEgg(postcode);
     // Pre-fill alert postcode and fuel type to match search
     const alertType = document.getElementById("fuel-alert-type");
     if (alertType) alertType.value = fuel;
@@ -3050,6 +3060,7 @@ const _ts = new Date(d.timestamp);
   async function searchReport() {
     const postcode = document.getElementById("report-postcode").value.trim().replace(/\s+/g,"");
     if (!postcode) return;
+    if (typeof _checkPostcodeEgg === "function") _checkPostcodeEgg(postcode);
     if (!/^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i.test(postcode)) {
       document.getElementById("report-error").textContent = `⚠️ "${postcode}" doesn't look like a valid UK postcode — try e.g. KT16 0DA`;
       document.getElementById("report-error").classList.remove("hidden");
@@ -3057,7 +3068,6 @@ const _ts = new Date(d.timestamp);
       return;
     }
     _saveRecent("miru_report", postcode);
-    if (typeof _checkPostcodeEgg === "function") _checkPostcodeEgg(postcode);
 
     // Reset panels and badges
     document.getElementById("report-rightmove").classList.add("hidden");
