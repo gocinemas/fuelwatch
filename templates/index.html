@@ -516,12 +516,15 @@
           <div style="font-size:26px;line-height:1;margin-bottom:8px">🚆</div>
           <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Train Times</div>
           <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px;line-height:1.3">Departures &amp; delays</div>
-          <div id="home-train-next" style="font-size:16px;font-weight:900;color:#fff;letter-spacing:-0.5px;margin-top:6px;line-height:1.2;display:none"></div>
+          <div id="home-train-wfh-row" style="display:none;margin-bottom:10px">
+            <div onclick="event.stopPropagation();_trainToggleWFH()" style="display:inline-flex;background:rgba(0,0,0,.25);border-radius:99px;padding:3px;gap:3px;cursor:pointer">
+              <span id="home-train-pill-wfh" style="border-radius:99px;padding:4px 11px;font-size:11px;font-weight:700;letter-spacing:.02em;transition:all .15s">🏠 WFH</span>
+              <span id="home-train-pill-office" style="border-radius:99px;padding:4px 11px;font-size:11px;font-weight:700;letter-spacing:.02em;transition:all .15s">🏢 Office</span>
+            </div>
+          </div>
+          <div id="home-train-next" style="font-size:16px;font-weight:900;color:#fff;letter-spacing:-0.5px;margin-top:2px;line-height:1.2;display:none"></div>
           <div id="home-train-sub" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.3;display:none"></div>
           <div id="home-train-placeholder" style="display:none"></div>
-          <div id="home-train-wfh-row" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,.12);padding-top:7px">
-            <button id="home-train-wfh-btn" onclick="event.stopPropagation();_trainToggleWFH()" style="background:none;border:none;padding:0;cursor:pointer;font-size:11px;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.02em"></button>
-          </div>
         </button>
       </div>
 
@@ -12125,6 +12128,16 @@ _bkBadge();
     return localStorage.getItem("miru_wfh") !== "office";
   }
 
+  function _trainUpdatePills(isWFH) {
+    const wfhPill    = document.getElementById("home-train-pill-wfh");
+    const officePill = document.getElementById("home-train-pill-office");
+    if (!wfhPill || !officePill) return;
+    const activeStyle = "background:rgba(255,255,255,.2);color:#fff";
+    const inactiveStyle = "background:transparent;color:rgba(255,255,255,.4)";
+    wfhPill.style.cssText    = (isWFH  ? activeStyle : inactiveStyle) + ";border-radius:99px;padding:4px 11px;font-size:11px;font-weight:700;letter-spacing:.02em;transition:all .15s";
+    officePill.style.cssText = (!isWFH ? activeStyle : inactiveStyle) + ";border-radius:99px;padding:4px 11px;font-size:11px;font-weight:700;letter-spacing:.02em;transition:all .15s";
+  }
+
   window._trainToggleWFH = function() {
     localStorage.setItem("miru_wfh", _trainIsWFH() ? "office" : "wfh");
     _trainHomeLoad();
@@ -12213,10 +12226,10 @@ _bkBadge();
     document.getElementById("home-train-sub").style.display = "";
     if (ph) ph.style.display = "none";
 
-    // Show WFH/Office toggle only when both home + work stations are set
+    // Show WFH/Office pill toggle only when both home + work stations are set
     if (wfhRow && workBm) {
       wfhRow.style.display = "";
-      if (wfhBtn) wfhBtn.textContent = isWFH ? "🏢 At the office today?" : "🏠 WFH today?";
+      _trainUpdatePills(isWFH);
     }
   }
 
