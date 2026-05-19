@@ -4364,9 +4364,11 @@ def api_environment():
 
         def _flood_risk():
             try:
+                # 0.5km radius — only flag if the postcode itself is genuinely in or adjacent to a flood zone.
+                # Wider radii pick up river floodplains that don't affect the street at all.
                 r = requests.get(
                     "https://environment.data.gov.uk/flood-monitoring/id/floodAreas",
-                    params={"lat": lat, "long": lon, "dist": 2},
+                    params={"lat": lat, "long": lon, "dist": 0.5},
                     timeout=8, headers={"User-Agent": "MiruApp/1.0"}
                 )
                 items = r.json().get("items", [])
@@ -4375,7 +4377,7 @@ def api_environment():
                 labels = [a.get("description") or a.get("label") or "" for a in items[:3]]
                 severity = max((a.get("currentWarning", {}).get("severityLevel", 4) for a in items), default=4)
                 level = "high" if severity <= 2 else "medium"
-                return {"level": level, "label": f"Flood risk area ({len(items)} zone{'s' if len(items)>1 else ''})", "areas": labels}
+                return {"level": level, "label": f"Flood alert zone within 500m ({len(items)} zone{'s' if len(items)>1 else ''})", "areas": labels}
             except Exception:
                 return {"level": "unknown", "label": "Flood data unavailable", "areas": []}
 
@@ -4471,11 +4473,11 @@ def api_area_summary():
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
 
-    hit = _summary_cache.get(postcode)
+    hit = _summary_cache.get(postcode + "_v2")
     if hit and time.time() - hit["ts"] < _SUMMARY_TTL:
         return jsonify(hit["data"])
     try:
-        row = lib._sb().table("area_summary_cache").select("summary").eq("postcode", postcode).maybe_single().execute()
+        row = lib._sb().table("area_summary_cache").select("summary").eq("postcode", postcode + "_v2").maybe_single().execute()
         if row and row.data:
             return jsonify({"summary": row.data["summary"]})
     except Exception:
@@ -4497,7 +4499,7 @@ def api_area_summary():
         house = house_f.result(timeout=15) or {}
         env_row = None
         try:
-            er = lib._sb().table("env_cache").select("data").eq("postcode", postcode).maybe_single().execute()
+            er = lib._sb().table("env_cache").select("data").eq("postcode", postcode + "_v2").maybe_single().execute()
             env_row = er.data["data"] if er and er.data else None
         except Exception:
             pass
@@ -4520,10 +4522,17 @@ def api_area_summary():
         green_count = len((env_row or {}).get("green", []))
         industrial_count = len((env_row or {}).get("industrial", []))
 
+        flood_label = flood.get("label", "")
+        flood_sentence = (
+            f"Flood risk: {flood_level} ({flood_label}). "
+            if flood_level not in ("low", "unknown")
+            else "Flood risk: low — no flood alert zones within 500m. "
+        )
+
         facts = (
             f"Postcode: {postcode}. "
             f"Crime level: {crime_level} ({total_crime} incidents/month{', top type: ' + top_crime if top_crime else ''}). "
-            f"Flood risk: {flood_level}. "
+            f"{flood_sentence}"
             f"{'Average property price: £' + f'{avg_price:,.0f}' + '. ' if avg_price else ''}"
             f"{'Green spaces nearby: ' + str(green_count) + '. ' if green_count else 'No named parks nearby. '}"
             f"{'Industrial sites nearby: ' + str(industrial_count) + '. ' if industrial_count else 'No industrial land nearby. '}"
@@ -4539,19 +4548,24 @@ def api_area_summary():
             json={
                 "model": "llama-3.1-8b-instant",
                 "messages": [
-                    {"role": "system", "content": "You are a UK property and area analyst. Write a 2-3 sentence plain English verdict on whether an area is good to live in. Be honest and specific. No bullet points, no headers, just flowing sentences. End with one key thing to watch out for."},
+                    {"role": "system", "content": (
+                        "You are a UK property and area analyst. Write a balanced 2-3 sentence plain English verdict on whether an area is good to live in. "
+                        "Be honest and proportionate — only flag concerns that the data clearly supports. "
+                        "Do not invent negatives or amplify weak signals. If most signals are positive, say so. "
+                        "No bullet points, no headers. Plain flowing sentences only."
+                    )},
                     {"role": "user", "content": f"Give a verdict on {postcode} as a place to live based on these facts: {facts}"}
                 ],
                 "max_tokens": 150,
-                "temperature": 0.5,
+                "temperature": 0.4,
             },
             timeout=10,
         )
         summary = r.json()["choices"][0]["message"]["content"].strip()
         result = {"summary": summary, "facts": facts}
-        _summary_cache[postcode] = {"data": result, "ts": time.time()}
+        _summary_cache[postcode + "_v2"] = {"data": result, "ts": time.time()}
         try:
-            lib._sb().table("area_summary_cache").upsert({"postcode": postcode, "summary": summary}).execute()
+            lib._sb().table("area_summary_cache").upsert({"postcode": postcode + "_v2", "summary": summary}).execute()
         except Exception:
             pass
         return jsonify(result)
