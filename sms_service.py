@@ -10956,6 +10956,20 @@ def whatsapp_reply():
             resp.message(_HELP_MSG)
         return str(resp)
 
+    # 🥚 Easter egg: bored → suggest something nearby ────────────────────────
+    if body_lower in ("bored", "i'm bored", "im bored", "so bored", "what should i do", "entertain me"):
+        home_pc = _get_wa_home_postcode(from_number)
+        bored_msgs = [
+            "🎲 Challenge accepted! Here's what to do:\n\n"
+            "1. 🍺 Find a pub and start a tab\n"
+            "2. 🎵 Shazam a song you don't know\n"
+            "3. 🗺️ Walk somewhere you've never been\n\n"
+            + (f"Reply *nearby {home_pc}* for actual places near you!" if home_pc else "Reply *nearby [your postcode]* for ideas near you!"),
+        ]
+        import random
+        resp.message(random.choice(bored_msgs))
+        return str(resp)
+
     # ── Morning brief opt-out ────────────────────────────────────────────────────
     if body_lower in ("stop brief", "pause brief", "stop morning brief", "no brief"):
         try:

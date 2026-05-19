@@ -2360,6 +2360,101 @@
     setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, onTap ? 3500 : 2000);
   }
 
+  /* ══════════════════════════════════════════════════════════════════════════
+     🥚 EASTER EGGS
+  ══════════════════════════════════════════════════════════════════════════ */
+
+  // ── 1. Confetti burst ────────────────────────────────────────────────────
+  function _confetti(emoji) {
+    const chars = (emoji || "🎉🎊✨💥🌟").split("");
+    for (let i = 0; i < 40; i++) {
+      const el = document.createElement("div");
+      el.textContent = chars[Math.floor(Math.random() * chars.length)];
+      const x = Math.random() * 100, delay = Math.random() * 600, dur = 900 + Math.random() * 600;
+      el.style.cssText = `position:fixed;top:-30px;left:${x}vw;font-size:${18+Math.random()*14}px;z-index:99999;pointer-events:none;animation:confettiFall ${dur}ms ${delay}ms linear forwards`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), dur + delay + 100);
+    }
+    if (!document.getElementById("confetti-style")) {
+      const s = document.createElement("style"); s.id = "confetti-style";
+      s.textContent = `@keyframes confettiFall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}`;
+      document.head.appendChild(s);
+    }
+  }
+
+  // ── 2. Disco mode (Konami) ───────────────────────────────────────────────
+  let _konamiSeq = [], _discoOn = false;
+  const _KONAMI = [38,38,40,40,37,39,37,39,66,65];
+  function _discoToggle() {
+    _discoOn = !_discoOn;
+    let sty = document.getElementById("disco-style");
+    if (_discoOn) {
+      if (!sty) {
+        sty = document.createElement("style"); sty.id = "disco-style";
+        sty.textContent = `
+          @keyframes discoHue{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)}}
+          @keyframes discoPulse{0%,100%{opacity:1}50%{opacity:.7}}
+          body.disco-mode .feat-card,.disco-mode .big-card{animation:discoHue 1.5s linear infinite!important}
+          body.disco-mode #app-header{animation:discoPulse .4s ease infinite!important}
+          body.disco-mode .logo-dot{animation:discoHue .8s linear infinite!important}
+        `;
+        document.head.appendChild(sty);
+      }
+      document.body.classList.add("disco-mode");
+      _miruToast("🕺 Disco mode activated — tap again to turn off", "success");
+      _confetti("🎵🎶🕺💃🌈");
+    } else {
+      document.body.classList.remove("disco-mode");
+      _miruToast("Disco over 🙁", "");
+    }
+  }
+  document.addEventListener("keydown", e => {
+    _konamiSeq.push(e.keyCode);
+    if (_konamiSeq.length > 10) _konamiSeq.shift();
+    if (JSON.stringify(_konamiSeq) === JSON.stringify(_KONAMI)) _discoToggle();
+  });
+
+  // ── 3. Midnight greeting ─────────────────────────────────────────────────
+  (function _midnightCheck() {
+    const h = new Date().getHours(), m = new Date().getMinutes();
+    if (h === 0 && m < 5) {
+      setTimeout(() => {
+        _miruToast("🦉 Still up? Here's what's happening near you tonight…", "success",
+          () => typeof _exploreHereOpen === "function" && _exploreHereOpen());
+      }, 1500);
+    }
+  })();
+
+  // ── 4. Famous postcode easter eggs ──────────────────────────────────────
+  const _POSTCODE_EGGS = {
+    "SW1A2AA": { msg: "🏛️ Interesting choice… Moving into No. 10?", emoji: "🇬🇧🎩✨" },
+    "SW1A1AA": { msg: "👑 Your Majesty — welcome to Miru", emoji: "👑💎🌟" },
+    "EC4M8AD": { msg: "💷 Going to print some money? Bold strategy.", emoji: "💷💰🏦" },
+    "EC2V8RT": { msg: "💷 Bank of England spotted. No inside tips please.", emoji: "💷🏦📊" },
+    "WC2N5DU":{ msg: "🎭 Trafalgar Square! Don't feed the pigeons.", emoji: "🐦🎨🇬🇧" },
+    "E20":     { msg: "⚽ Wembley? No, Stratford — close enough.", emoji: "⚽🏟️🎽" },
+  };
+  window._checkPostcodeEgg = function(postcode) {
+    const clean = (postcode || "").replace(/\s+/g,"").toUpperCase();
+    const egg = _POSTCODE_EGGS[clean] || Object.entries(_POSTCODE_EGGS).find(([k]) => clean.startsWith(k))?.[1];
+    if (egg) { setTimeout(() => { _miruToast(egg.msg, "success"); _confetti(egg.emoji); }, 800); }
+  };
+
+  // ── 5. "miru" typed in Intel search ─────────────────────────────────────
+  (function _selfAwareHook() {
+    const inp = document.getElementById("intel-input");
+    if (!inp) return;
+    inp.addEventListener("input", () => {
+      if (inp.value.trim().toLowerCase() === "miru") {
+        setTimeout(() => _miruToast("That's me 👋 — try searching a real brand!", "success"), 300);
+      }
+    });
+  })();
+
+  /* ══════════════════════════════════════════════════════════════════════════
+     end easter eggs
+  ══════════════════════════════════════════════════════════════════════════ */
+
   function miruShare({ title, text, url, btn }) {
     const shareUrl = url || location.href;
     if (navigator.share) {
@@ -2734,6 +2829,7 @@
     localStorage.setItem("miru_postcode", postcode);
     _idBarRefresh && _idBarRefresh();
     _saveRecent("miru_fuel", postcode);
+    if (typeof _checkPostcodeEgg === "function") _checkPostcodeEgg(postcode);
     // Pre-fill alert postcode and fuel type to match search
     const alertType = document.getElementById("fuel-alert-type");
     if (alertType) alertType.value = fuel;
@@ -2961,6 +3057,7 @@ const _ts = new Date(d.timestamp);
       return;
     }
     _saveRecent("miru_report", postcode);
+    if (typeof _checkPostcodeEgg === "function") _checkPostcodeEgg(postcode);
 
     // Reset panels and badges
     document.getElementById("report-rightmove").classList.add("hidden");
@@ -12397,6 +12494,13 @@ _bkBadge();
     document.getElementById("home-fuel-price").style.display = "";
     document.getElementById("home-fuel-sub").style.display = "";
     document.getElementById("home-fuel-placeholder").style.display = "none";
+    // 🥚 Fuel price easter egg — celebrate a great price
+    if (best.price < 125) {
+      setTimeout(() => {
+        _confetti("⛽💸🎉🥳✨");
+        _miruToast(`⛽ ${best.price.toFixed(1)}p — fill up now, that's a steal!`, "success");
+      }, 600);
+    }
   }
 
   // WFH = at home, want trains TO work. Office = at work, want trains TO home.
