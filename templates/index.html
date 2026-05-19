@@ -1875,6 +1875,7 @@
         <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
         <div id="myarea-tube"    style="display:none;margin-bottom:10px"></div>
         <div id="myarea-bus"     style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-ev"      style="display:none;margin-bottom:10px"></div>
       </div>
 
       <!-- Tab: Services -->
@@ -4273,7 +4274,7 @@ const _ts = new Date(d.timestamp);
     }).join("");
     const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">${rows}</div>`;
     el.innerHTML = _maSectionHtml("train", stations.length > 1 ? "🚆 Nearest Stations" : "🚆 Nearest Station", bodyHtml);
-    if (_maGetPrefs().train) el.style.display = "";
+    el.style.display = "";
   }
 
   function _maTubeRenderArrivals(panel, data) {
@@ -4361,6 +4362,28 @@ const _ts = new Date(d.timestamp);
     const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
     el.innerHTML = _maSectionHtml("bus", "🚌 Nearest Bus Stops", bodyHtml);
     if (_maGetPrefs().bus !== false) el.style.display = "";
+  }
+
+  function _maRenderEV(data) {
+    const el = document.getElementById("myarea-ev");
+    if (!el) return;
+    if (!data || data.error || !data.chargers || !data.chargers.length) { el.style.display = "none"; return; }
+    const rows = data.chargers.map(c => {
+      const dist = c.dist_m < 1000 ? `${c.dist_m}m` : `${(c.dist_m/1000).toFixed(1)}km`;
+      const sockets = c.sockets.length ? `<div style="font-size:10px;color:#10b981;margin-top:1px">${c.sockets.join(" · ")}</div>` : "";
+      const capacity = c.capacity ? `<span style="font-size:10px;color:var(--muted);margin-left:6px">${c.capacity} point${c.capacity>1?"s":""}</span>` : "";
+      const free = c.fee === "no" ? `<span style="font-size:10px;color:#10b981;margin-left:6px;font-weight:600">Free</span>` : "";
+      return `<div style="padding:7px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:13px;font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}${capacity}${free}</div>
+          <div style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:8px">${dist}</div>
+        </div>
+        ${sockets}
+      </div>`;
+    }).join("");
+    const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
+    el.innerHTML = _maSectionHtml("ev", "⚡ EV Charging Nearby", bodyHtml);
+    el.style.display = "";
   }
 
   function _maRenderGPs(area) {
@@ -4515,8 +4538,8 @@ const _ts = new Date(d.timestamp);
     document.getElementById("myarea-empty-state").style.display = "none";
     // Reset sections + un-collapse transport so fresh results always show
     const wxBar = document.getElementById("myarea-weather-bar"); if (wxBar) wxBar.style.display = "none";
-    ["train","tube","bus"].forEach(id => localStorage.removeItem(`miru_mac_${id}`));
-    ["myarea-reps","myarea-council","myarea-council-services","myarea-weather","myarea-train","myarea-tube","myarea-bus","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
+    ["train","tube","bus","ev"].forEach(id => localStorage.removeItem(`miru_mac_${id}`));
+    ["myarea-reps","myarea-council","myarea-council-services","myarea-weather","myarea-train","myarea-tube","myarea-bus","myarea-ev","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
     const activeTab = localStorage.getItem("miru_ma_tab") || "places";
@@ -4574,8 +4597,9 @@ const _ts = new Date(d.timestamp);
         fetch(`/api/tube/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_guard(_maRenderTube)).catch(()=>{});
       });
 
-    // Nearest bus stops (Overpass, free)
+    // Nearest bus stops + EV chargers (Overpass, free)
     fetch(`/api/bus/stops?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).then(_guard(_maRenderBus)).catch(()=>{});
+    fetch(`/api/ev/nearby?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).then(_guard(_maRenderEV)).catch(()=>{});
 
     // your-area (GPs, council, pharmacies) — LS-cached 24h, Overpass on miss
     _maFetchCached(`your-area:${pc}`, `/api/your-area?postcode=${pc}`, 86400, _guard(area => {

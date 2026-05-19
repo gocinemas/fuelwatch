@@ -16977,6 +16977,91 @@ def api_me_location_post():
     return jsonify({"ok": True})
 
 
+@app.route("/api/ev/nearby")
+def api_ev_nearby():
+    """Nearest EV charging stations via OpenStreetMap Overpass (free, no key)."""
+    postcode = request.args.get("postcode", "").strip().upper()
+    lat_s = request.args.get("lat", "").strip()
+    lon_s = request.args.get("lon", "").strip()
+
+    lat, lon = None, None
+    if lat_s and lon_s:
+        try: lat, lon = float(lat_s), float(lon_s)
+        except ValueError: pass
+    if lat is None and postcode:
+        ll = postcode_to_latlon(postcode)
+        if ll: lat, lon = ll
+
+    if lat is None:
+        return jsonify({"error": "postcode or lat/lon required"}), 400
+
+    from search import _sb_cache_get, _sb_cache_set
+    cache_key = f"ev:{round(lat,3)},{round(lon,3)}"
+    cached = _sb_cache_get(cache_key)
+    if cached:
+        return jsonify(cached)
+
+    try:
+        query = f"""[out:json][timeout:12];node["amenity"="charging_station"](around:1500,{lat},{lon});out body;"""
+        mirrors = [
+            ("POST", "https://overpass-api.de/api/interpreter"),
+            ("GET",  "https://overpass-api.de/api/interpreter"),
+            ("POST", "https://overpass.kumi.systems/api/interpreter"),
+            ("GET",  "https://overpass.kumi.systems/api/interpreter"),
+            ("POST", "https://overpass.private.coffee/api/interpreter"),
+        ]
+        elements = []
+        for method, url in mirrors:
+            try:
+                if method == "POST":
+                    r = requests.post(url, data={"data": query}, timeout=14)
+                else:
+                    r = requests.get(url, params={"data": query}, timeout=14)
+                if r.status_code == 200 and r.text.strip():
+                    elements = r.json().get("elements", [])
+                    break
+            except Exception:
+                continue
+
+        chargers = []
+        for el in elements:
+            tags = el.get("tags", {})
+            name = tags.get("name") or tags.get("operator") or tags.get("network") or "Charging Point"
+            # Count sockets
+            sockets = []
+            for tag, label in [("socket:type2","Type 2"), ("socket:type2_combo","CCS"), ("socket:chademo","CHAdeMO"), ("socket:type1","Type 1")]:
+                if tags.get(tag):
+                    try:
+                        n = int(tags[tag])
+                        sockets.append(f"{n}× {label}" if n > 1 else label)
+                    except (ValueError, TypeError):
+                        sockets.append(label)
+            capacity = tags.get("capacity", "")
+            try: capacity = int(capacity)
+            except (ValueError, TypeError): capacity = None
+            operator = tags.get("operator") or tags.get("network") or ""
+            fee = tags.get("fee", "")
+            dist_m = round(haversine_km(lat, lon, el["lat"], el["lon"]) * 1000)
+            chargers.append({
+                "name": name,
+                "operator": operator,
+                "sockets": sockets,
+                "capacity": capacity,
+                "fee": fee,
+                "dist_m": dist_m,
+                "lat": el["lat"],
+                "lon": el["lon"],
+            })
+
+        chargers.sort(key=lambda c: c["dist_m"])
+        chargers = chargers[:6]
+        result = {"chargers": chargers, "lat": lat, "lon": lon}
+        _sb_cache_set(cache_key, result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/bus/stops")
 def api_bus_stops():
     """Nearest bus stops + routes via OpenStreetMap Overpass (free, no key)."""
@@ -17003,11 +17088,21 @@ def api_bus_stops():
 
     try:
         query = f"""[out:json][timeout:12];(node["highway"="bus_stop"](around:600,{lat},{lon});node["public_transport"="stop_position"]["bus"="yes"](around:600,{lat},{lon}););out body;"""
+        mirrors = [
+            ("POST", "https://overpass-api.de/api/interpreter"),
+            ("GET",  "https://overpass-api.de/api/interpreter"),
+            ("POST", "https://overpass.kumi.systems/api/interpreter"),
+            ("GET",  "https://overpass.kumi.systems/api/interpreter"),
+            ("POST", "https://overpass.private.coffee/api/interpreter"),
+        ]
         elements = []
-        for overpass_url in ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]:
+        for method, url in mirrors:
             try:
-                r = requests.post(overpass_url, data={"data": query}, timeout=14)
-                if r.status_code == 200:
+                if method == "POST":
+                    r = requests.post(url, data={"data": query}, timeout=14)
+                else:
+                    r = requests.get(url, params={"data": query}, timeout=14)
+                if r.status_code == 200 and r.text.strip():
                     elements = r.json().get("elements", [])
                     break
             except Exception:
