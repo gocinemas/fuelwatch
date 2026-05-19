@@ -17150,7 +17150,8 @@ def api_ev_nearby():
         chargers.sort(key=lambda c: c["dist_m"])
         chargers = chargers[:6]
         result = {"chargers": chargers, "lat": lat, "lon": lon}
-        _sb_cache_set(cache_key, result)
+        if chargers:  # don't cache empty — retry next time
+            _sb_cache_set(cache_key, result)
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -17203,7 +17204,8 @@ def api_bus_stops():
         stops.sort(key=lambda s: s["dist_m"])
         stops = stops[:6]
         result = {"stops": stops, "lat": lat, "lon": lon}
-        _sb_cache_set(cache_key, result)
+        if stops:  # don't cache empty — retry next time
+            _sb_cache_set(cache_key, result)
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -3440,6 +3440,12 @@ const _ts = new Date(d.timestamp);
     const pcPill    = document.getElementById("id-postcode-pill");
     if (phonePill) phonePill.style.color = phone ? "var(--text)" : "var(--muted)";
     if (pcPill)    pcPill.style.color    = pc    ? "var(--text)" : "var(--muted)";
+    // Append area name to postcode pill once resolved
+    if (pc && pcLbl) {
+      _fetchAreaName(pc, label => {
+        if (pcLbl && label) pcLbl.textContent = `${pc} · ${label}`;
+      });
+    }
   }
 
   function _idOpenModal(focusField) {
