@@ -4423,6 +4423,103 @@ def api_environment():
         return jsonify({"error": str(e)}), 500
 
 
+_summary_cache: dict = {}
+_SUMMARY_TTL = 24 * 3600
+
+@app.route("/api/area-summary")
+def api_area_summary():
+    postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
+    if not postcode:
+        return jsonify({"error": "Postcode required"}), 400
+
+    hit = _summary_cache.get(postcode)
+    if hit and time.time() - hit["ts"] < _SUMMARY_TTL:
+        return jsonify(hit["data"])
+    try:
+        row = lib._sb().table("area_summary_cache").select("summary").eq("postcode", postcode).maybe_single().execute()
+        if row and row.data:
+            return jsonify({"summary": row.data["summary"]})
+    except Exception:
+        pass
+
+    try:
+        lat, lon = _latlon_for_postcode(postcode)
+        if lat is None:
+            return jsonify({"error": "Postcode not found"}), 404
+
+        # Collect data in parallel
+        from search import fetch_crime_data, fetch_house_prices
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            crime_f  = ex.submit(fetch_crime_data, lat, lon)
+            house_f  = ex.submit(fetch_house_prices, postcode)
+            env_f    = ex.submit(lambda: _summary_cache.get(f"_env_{postcode}"))
+
+        crime = crime_f.result(timeout=15) or {}
+        house = house_f.result(timeout=15) or {}
+        env_row = None
+        try:
+            er = lib._sb().table("env_cache").select("data").eq("postcode", postcode).maybe_single().execute()
+            env_row = er.data["data"] if er and er.data else None
+        except Exception:
+            pass
+
+        # Build facts string
+        total_crime = crime.get("total_crimes", 0)
+        crime_level = "low" if total_crime < 20 else "moderate" if total_crime < 60 else "high"
+        top_crime = (crime.get("categories") or [{}])[0].get("category", "") if crime.get("categories") else ""
+
+        hp = house.get("house_prices") or house
+        avg_price = None
+        for pt in ["detached", "semi_detached", "terraced", "flat"]:
+            v = (hp.get(pt) or {}).get("avg")
+            if v:
+                avg_price = v
+                break
+
+        flood = (env_row or {}).get("flood", {})
+        flood_level = flood.get("level", "unknown")
+        green_count = len((env_row or {}).get("green", []))
+        industrial_count = len((env_row or {}).get("industrial", []))
+
+        facts = (
+            f"Postcode: {postcode}. "
+            f"Crime level: {crime_level} ({total_crime} incidents/month{', top type: ' + top_crime if top_crime else ''}). "
+            f"Flood risk: {flood_level}. "
+            f"{'Average property price: £' + f'{avg_price:,.0f}' + '. ' if avg_price else ''}"
+            f"{'Green spaces nearby: ' + str(green_count) + '. ' if green_count else 'No named parks nearby. '}"
+            f"{'Industrial sites nearby: ' + str(industrial_count) + '. ' if industrial_count else 'No industrial land nearby. '}"
+        )
+
+        groq_key = os.environ.get("GROQ_API_KEY", "")
+        if not groq_key:
+            return jsonify({"error": "AI not configured"}), 503
+
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [
+                    {"role": "system", "content": "You are a UK property and area analyst. Write a 2-3 sentence plain English verdict on whether an area is good to live in. Be honest and specific. No bullet points, no headers, just flowing sentences. End with one key thing to watch out for."},
+                    {"role": "user", "content": f"Give a verdict on {postcode} as a place to live based on these facts: {facts}"}
+                ],
+                "max_tokens": 150,
+                "temperature": 0.5,
+            },
+            timeout=10,
+        )
+        summary = r.json()["choices"][0]["message"]["content"].strip()
+        result = {"summary": summary, "facts": facts}
+        _summary_cache[postcode] = {"data": result, "ts": time.time()}
+        try:
+            lib._sb().table("area_summary_cache").upsert({"postcode": postcode, "summary": summary}).execute()
+        except Exception:
+            pass
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/services")
 def api_services():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()

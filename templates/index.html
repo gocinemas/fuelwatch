@@ -884,6 +884,15 @@
             </button>
           </div>
         </div>
+        <!-- AI Summary card -->
+        <div id="report-summary-card" style="display:none;background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 100%);border-radius:16px;padding:14px 16px;margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">🤖 Area Verdict</div>
+          <div id="report-summary-text" style="font-size:13px;color:#fff;line-height:1.55"></div>
+        </div>
+        <div id="report-summary-loading" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px">
+          <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:8px"><div class="spinner"></div> Generating area verdict…</div>
+        </div>
+
         <!-- Vertical tab layout -->
         <div style="display:flex;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:8px">
 
@@ -930,6 +939,11 @@
               <span class="rptab-lbl">Environ</span>
               <span id="rptab-loading-environment" style="display:none;width:7px;height:7px;border-radius:50%;border:2px solid #aaa;border-top-color:var(--accent);animation:spin .7s linear infinite"></span>
             </button>
+            <button class="rptab" data-tab="transport" onclick="reportTabSwitch('transport',this)">
+              <span style="font-size:22px">🚆</span>
+              <span class="rptab-lbl">Transport</span>
+              <span id="rptab-loading-transport" style="display:none;width:7px;height:7px;border-radius:50%;border:2px solid #aaa;border-top-color:var(--accent);animation:spin .7s linear infinite"></span>
+            </button>
           </div>
 
           <!-- Content panels -->
@@ -964,6 +978,9 @@
             </div>
             <div id="rp-panel-environment" style="display:none">
               <div id="report-environment-list" class="text-sm"></div>
+            </div>
+            <div id="rp-panel-transport" style="display:none">
+              <div id="report-transport-list" class="text-sm"></div>
             </div>
           </div>
         </div>
@@ -2873,7 +2890,7 @@ const _ts = new Date(d.timestamp);
   window.reportTabSwitch = function(tab, btn) {
     document.querySelectorAll(".rptab").forEach(b => b.classList.remove("rptab-on"));
     if (btn) btn.classList.add("rptab-on");
-    ["house","schools","pubs","cafes","crime","services","shops","environment"].forEach(t => {
+    ["house","schools","pubs","cafes","crime","services","shops","environment","transport"].forEach(t => {
       const p = document.getElementById("rp-panel-" + t);
       if (p) p.style.display = t === tab ? "block" : "none";
     });
@@ -2922,6 +2939,8 @@ const _ts = new Date(d.timestamp);
     reportTabSwitch("house", document.querySelector('.rptab[data-tab="house"]'));
 
     // Client-side cache — compute BEFORE skeleton HTML so we skip spinners for cached panels
+    const _summaryKey  = `rpt_summary_${postcode}`;
+    const _transportKey = `rpt_transport_${postcode}`;
     const _houseKey = `rpt_house_${postcode}`;
     const _localKey = `rpt_local_${postcode}`;
     const _crimeKey = `rpt_crime_${postcode}`;
@@ -2935,7 +2954,9 @@ const _ts = new Date(d.timestamp);
     const _crimeCached = _lsGet(_crimeKey, 60*60*1000);
     const _svcCachedE  = _lsGet(_svcKeyE,  24*3600*1000);
     const _shpCachedE  = _lsGet(_shpKeyE,  6*3600*1000);
-    const _envCached   = _lsGet(_envKey,   24*3600*1000);
+    const _envCached      = _lsGet(_envKey,       24*3600*1000);
+    const _summaryCached  = _lsGet(_summaryKey,   24*3600*1000);
+    const _transportCached = _lsGet(_transportKey, 6*3600*1000);
 
     // Only show spinners for panels that aren't cached
     const _spin = (msg) => `<div class="flex items-center gap-2 py-3 text-gray-400 text-sm"><div class="spinner text-gray-400"></div> ${msg}</div>`;
@@ -2948,7 +2969,10 @@ const _ts = new Date(d.timestamp);
     if (!_crimeCached) document.getElementById("report-crime-list").innerHTML = _spin("Loading crime data…");
     if (!_svcCachedE)  { document.getElementById("report-services-list").innerHTML = _spin("Loading hospitals & police…"); document.getElementById("rptab-loading-services").style.display = "inline-block"; }
     if (!_shpCachedE)  { document.getElementById("report-shops-list").innerHTML    = _spin("Loading supermarkets…");      document.getElementById("rptab-loading-shops").style.display    = "inline-block"; }
-    if (!_envCached)   { document.getElementById("report-environment-list").innerHTML = _spin("Loading environment data…"); document.getElementById("rptab-loading-environment").style.display = "inline-block"; }
+    if (!_envCached)       { document.getElementById("report-environment-list").innerHTML = _spin("Loading environment data…"); document.getElementById("rptab-loading-environment").style.display = "inline-block"; }
+    if (!_transportCached) { document.getElementById("report-transport-list").innerHTML = _spin("Finding nearest stations…"); document.getElementById("rptab-loading-transport").style.display = "inline-block"; }
+    if (!_summaryCached)   { document.getElementById("report-summary-loading").style.display = ""; document.getElementById("report-summary-card").style.display = "none"; }
+    else                   { _renderAreaSummary(_summaryCached); }
     document.getElementById("report-results").scrollIntoView({behavior:"smooth"});
 
     const slowTimer = setTimeout(() => {
@@ -3086,6 +3110,39 @@ const _ts = new Date(d.timestamp);
           document.getElementById("rptab-loading-environment").style.display = "none";
         });
     }
+
+    // Transport — train + tube for the searched postcode
+    if (_transportCached) {
+      _renderReportTransport(_transportCached);
+      document.getElementById("rptab-loading-transport").style.display = "none";
+    } else {
+      Promise.all([
+        fetch(`/api/train/nearest-by-postcode?postcode=${postcode}`).then(r=>r.json()).catch(()=>({})),
+        fetch(`/api/tube/nearest-by-postcode?postcode=${postcode}`).then(r=>r.json()).catch(()=>({})),
+        fetch(`/api/bus/stops?postcode=${postcode}`).then(r=>r.json()).catch(()=>({})),
+      ]).then(([train, tube, bus]) => {
+        const d = {train, tube, bus};
+        _lsSet(_transportKey, d);
+        _renderReportTransport(d);
+      }).finally(() => {
+        document.getElementById("rptab-loading-transport").style.display = "none";
+      });
+    }
+
+    // AI Area Summary — fire after crime+house are done so Groq has data
+    Promise.allSettled([houseP, crimeP]).then(() => {
+      if (_summaryCached) return;
+      fetchWithTimeout(`/api/area-summary?postcode=${postcode}`, 20000)
+        .then(async r => {
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error);
+          _lsSet(_summaryKey, d);
+          _renderAreaSummary(d);
+        })
+        .catch(() => {
+          document.getElementById("report-summary-loading").style.display = "none";
+        });
+    });
 
     await Promise.allSettled([houseP, localP, crimeP]);
     clearTimeout(slowTimer);
@@ -3337,6 +3394,54 @@ const _ts = new Date(d.timestamp);
         ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">${sub}</div>` : ""}
       </div>
     </div>`;
+  }
+
+  function _renderAreaSummary(d) {
+    const card = document.getElementById("report-summary-card");
+    const loading = document.getElementById("report-summary-loading");
+    const text = document.getElementById("report-summary-text");
+    if (!card || !text) return;
+    if (loading) loading.style.display = "none";
+    if (d && d.summary) {
+      text.textContent = d.summary;
+      card.style.display = "";
+    }
+  }
+
+  function _renderReportTransport(d) {
+    const el = document.getElementById("report-transport-list");
+    if (!el) return;
+    const _row = (emoji, label, sub, link) => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:20px;flex-shrink:0">${emoji}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${label}</div>
+          ${sub ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${sub}</div>` : ""}
+        </div>
+        ${link ? `<a href="${link}" target="_blank" style="font-size:11px;color:var(--accent);font-weight:600;white-space:nowrap;text-decoration:none">Map →</a>` : ""}
+      </div>`;
+
+    let html = "";
+    const train = d.train || {};
+    if (train.name && !train.error) {
+      const dist = train.distance_miles ? `${train.distance_miles} mi` : train.distance_m ? `${train.distance_m}m` : "";
+      html += _row("🚂", train.name.replace(/ Station$/i,""), dist ? `National Rail · ${dist}` : "National Rail", null);
+    }
+    const tube = d.tube || {};
+    if (tube.name && !tube.error && tube.name !== train.name) {
+      html += _row("🚇", tube.name.replace(/ Underground Station$/i,"").replace(/ Station$/i,""), "London Underground", null);
+    }
+    const bus = d.bus || {};
+    const stops = bus.stops || [];
+    if (stops.length) {
+      const stopNames = [...new Set(stops.slice(0,3).map(s => s.name).filter(Boolean))];
+      html += _row("🚌", `${stops.length} bus stop${stops.length>1?"s":""} nearby`, stopNames.join(" · ") || "", null);
+    }
+    if (!html) {
+      el.innerHTML = `<div style="padding:16px 0;text-align:center;color:var(--muted);font-size:13px">No public transport data found for this postcode.</div>`;
+      return;
+    }
+    el.innerHTML = `<div style="padding:0 2px">${html}</div>`;
   }
 
   function renderEnvironmentData(d) {
