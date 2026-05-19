@@ -12120,23 +12120,13 @@ _bkBadge();
     document.getElementById("home-fuel-placeholder").style.display = "none";
   }
 
+  // WFH = at home, want trains TO work. Office = at work, want trains TO home.
   function _trainIsWFH() {
-    try {
-      const w = JSON.parse(localStorage.getItem("miru_wfh") || "null");
-      if (!w) return false;
-      // Reset at midnight
-      if (w.date !== new Date().toDateString()) { localStorage.removeItem("miru_wfh"); return false; }
-      return w.on === true;
-    } catch { return false; }
+    return localStorage.getItem("miru_wfh") !== "office";
   }
 
   window._trainToggleWFH = function() {
-    const isWFH = _trainIsWFH();
-    if (isWFH) {
-      localStorage.removeItem("miru_wfh");
-    } else {
-      localStorage.setItem("miru_wfh", JSON.stringify({ on: true, date: new Date().toDateString() }));
-    }
+    localStorage.setItem("miru_wfh", _trainIsWFH() ? "office" : "wfh");
     _trainHomeLoad();
   };
 
@@ -12146,23 +12136,13 @@ _bkBadge();
     const wfhRow = document.getElementById("home-train-wfh-row");
     const wfhBtn = document.getElementById("home-train-wfh-btn");
 
-    let workBm = null;
+    let homeBm = null, workBm = null;
+    try { homeBm = JSON.parse(localStorage.getItem("miru_train_bm_home") || "null"); } catch {}
     try { workBm = JSON.parse(localStorage.getItem("miru_train_bm_work") || "null"); } catch {}
 
-    // WFH mode — show collapsed state
-    if (_trainIsWFH()) {
-      document.getElementById("home-train-next").style.display = "none";
-      document.getElementById("home-train-sub").style.display = "none";
-      if (ph) { ph.innerHTML = "🏠 Working from home today"; ph.style.display = ""; ph.style.color = "rgba(255,255,255,0.7)"; ph.style.fontSize = "13px"; ph.style.marginTop = "6px"; }
-      if (wfhRow) wfhRow.style.display = "";
-      if (wfhBtn) wfhBtn.textContent = "↩ Commuting today?";
-      return;
-    }
-
-    let bm = null;
-    try { bm = JSON.parse(localStorage.getItem("miru_train_bm_home") || "null"); } catch {}
-    let crs = bm ? bm.crs : null;
-    let stationName = bm ? (bm.name || bm.crs) : null;
+    const isWFH = _trainIsWFH();
+    let crs = homeBm ? homeBm.crs : null;
+    let stationName = homeBm ? (homeBm.name || homeBm.crs) : null;
 
     if (!crs && !pc) {
       if (ph) { ph.style.display = ""; ph.innerHTML = '<span onclick="_idOpenModal(\'postcode\')" style="font-size:11px;color:rgba(255,255,255,.5);cursor:pointer;text-decoration:underline;text-underline-offset:2px">📍 Add postcode</span>'; }
@@ -12175,62 +12155,68 @@ _bkBadge();
       _phShow("Finding nearest station…");
       try {
         const r = await fetch(`/api/train/nearest-by-postcode?postcode=${encodeURIComponent(pc.replace(/\s/g,"").toUpperCase())}`);
-        if (r.ok) {
-          const d = await r.json();
-          crs = d.crs; stationName = d.name || d.station;
-        } else { _phShow("Station lookup failed"); return; }
+        if (r.ok) { const d = await r.json(); crs = d.crs; stationName = d.name || d.station; }
+        else { _phShow("Station lookup failed"); return; }
       } catch(e) { _phShow("Network error"); return; }
     }
 
     if (!crs) { _phShow("No station found"); return; }
     _phShow((stationName || crs) + "…");
 
-    // Build fetch URL — filter by work station if set
-    const workCrs = workBm ? workBm.crs : null;
-    const CACHE_KEY = "miru_train_home_" + crs + (workCrs ? "_to_" + workCrs : "");
-    let trains = null;
+    // Always fetch from home station; filter destination client-side
+    const CACHE_KEY = "miru_train_home2_" + crs;
+    let allTrains = null;
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
-      if (cached && (Date.now() - cached.ts) < 5 * 60 * 1000) { trains = cached.trains; }
+      if (cached && (Date.now() - cached.ts) < 5 * 60 * 1000) allTrains = cached.trains;
     } catch {}
 
-    if (!trains) {
+    if (!allTrains) {
       try {
-        let url = `/api/train/departures?crs=${encodeURIComponent(crs)}`;
-        if (workCrs) url += `&calling_at=${encodeURIComponent(workCrs)}`;
-        const r = await fetch(url);
+        const r = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
         if (r.ok) {
           const d = await r.json();
-          trains = d.trains || [];
+          allTrains = d.trains || [];
           if (!stationName) stationName = d.station || crs;
-          if (trains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains })); } catch {}
-        } else {
-          const err = await r.json().catch(() => ({}));
-          _phShow(err.error || "Departures unavailable");
-          return;
-        }
+          if (allTrains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains: allTrains })); } catch {}
+        } else { const err = await r.json().catch(()=>({})); _phShow(err.error || "Departures unavailable"); return; }
       } catch(e) { _phShow("Network error"); return; }
     }
 
+    // Filter by direction if work station is set
+    let trains = allTrains;
+    const workName = workBm ? (workBm.name || workBm.crs || "") : "";
+    if (workBm && workName) {
+      const wn = workName.replace(/ station$/i,"").toLowerCase();
+      if (isWFH) {
+        // At home → filter to trains going TO work
+        trains = allTrains.filter(t => (t.destination||"").toLowerCase().includes(wn));
+      } else {
+        // At work → filter to trains going AWAY from work (towards home)
+        trains = allTrains.filter(t => !(t.destination||"").toLowerCase().includes(wn));
+      }
+      if (!trains.length) trains = allTrains; // fallback: show all if filter returns nothing
+    }
+
     if (!trains.length) {
-      if (ph) { ph.textContent = "No trains right now · tap to check times"; ph.style.display = ""; ph.style.color = "rgba(255,255,255,0.6)"; ph.style.fontSize = "12px"; ph.style.marginTop = "6px"; }
+      _phShow("No trains right now · tap to check times");
       return;
     }
 
     const next = trains[0];
     const dest = (next.destination || "").replace(/^London /i, "");
+    const dirLabel = workBm ? (isWFH ? `${stationName} → ${workName}` : `${workName} → ${stationName}`) : stationName;
     document.getElementById("home-train-next").textContent = next.scheduled + " → " + dest;
     const status = next.expected && next.expected !== "On time" ? next.expected : "On time";
-    const toWork = workBm ? ` → ${workBm.name || workBm.crs}` : "";
-    document.getElementById("home-train-sub").textContent = (stationName || crs) + toWork + (next.platform ? " · Plat " + next.platform : "") + " · " + status;
+    document.getElementById("home-train-sub").textContent = dirLabel + (next.platform ? " · Plat " + next.platform : "") + " · " + status;
     document.getElementById("home-train-next").style.display = "";
     document.getElementById("home-train-sub").style.display = "";
     if (ph) ph.style.display = "none";
 
-    // Show WFH toggle if work station is set
+    // Show WFH/Office toggle only when both home + work stations are set
     if (wfhRow && workBm) {
       wfhRow.style.display = "";
-      if (wfhBtn) wfhBtn.textContent = "🏠 WFH today?";
+      if (wfhBtn) wfhBtn.textContent = isWFH ? "🏢 At the office today?" : "🏠 WFH today?";
     }
   }
 
