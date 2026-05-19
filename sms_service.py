@@ -17002,17 +17002,16 @@ def api_bus_stops():
         return jsonify(cached)
 
     try:
-        overpass_url = "https://overpass-api.de/api/interpreter"
-        query = f"""
-[out:json][timeout:12];
-(
-  node["highway"="bus_stop"](around:600,{lat},{lon});
-  node["public_transport"="stop_position"]["bus"="yes"](around:600,{lat},{lon});
-);
-out body;
-"""
-        r = requests.post(overpass_url, data={"data": query}, timeout=14)
-        elements = r.json().get("elements", [])
+        query = f"""[out:json][timeout:12];(node["highway"="bus_stop"](around:600,{lat},{lon});node["public_transport"="stop_position"]["bus"="yes"](around:600,{lat},{lon}););out body;"""
+        elements = []
+        for overpass_url in ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]:
+            try:
+                r = requests.post(overpass_url, data={"data": query}, timeout=14)
+                if r.status_code == 200:
+                    elements = r.json().get("elements", [])
+                    break
+            except Exception:
+                continue
 
         seen_names = set()
         stops = []
