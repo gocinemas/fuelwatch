@@ -1199,8 +1199,7 @@ def company_page(company_slug):
             brand_meta["logo"] = d.get("logo")
     except Exception:
         pass
-    return render_template("index.html", prefill_company=brand_name,
-                           prefill_doc=None, brand_meta=brand_meta)
+    return render_template("brand_page.html", brand_name=brand_name, brand_meta=brand_meta)
 
 
 # ── Library API ───────────────────────────────────────────────────────────────

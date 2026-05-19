@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Brand Intel{% else %}Brand Intel{% endif %}</title>
+<meta name="description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% else %}{{ brand_name }} brand intelligence — social strategy, campaigns, history and more.{% endif %}">
+<meta property="og:type"        content="website">
+<meta property="og:url"         content="https://miru.humanagency.co/{{ brand_name | lower | replace(' ', '-') }}">
+<meta property="og:title"       content="{{ brand_name }} — Brand Intel | intel.humanagency.co">
+<meta property="og:description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% else %}{{ brand_name }} brand intelligence — social strategy, campaigns, history and more.{% endif %}">
+<meta property="og:image"       content="{% if brand_meta and brand_meta.logo %}{{ brand_meta.logo }}{% else %}https://miru.humanagency.co/static/miru-preview.png{% endif %}">
+<meta name="twitter:card"       content="summary_large_image">
+<meta name="twitter:title"      content="{{ brand_name }} — Brand Intel">
+<meta name="twitter:image"      content="{% if brand_meta and brand_meta.logo %}{{ brand_meta.logo }}{% else %}https://miru.humanagency.co/static/miru-preview.png{% endif %}">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #faf9f7; --surface: #ffffff; --border: #e8e4df;
+  --text: #1a1714; --muted: #7a7168; --accent: #d97706;
+  --indigo: #4f46e5; --radius: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #181614; --surface: #211f1c; --border: #332f2b; --text: #f0ece6; --muted: #8a8078; --accent: #f59e0b; }
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+}
+.page { max-width: 680px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* top bar */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 0 16px; margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+.topbar-logo {
+  font-size: 15px; font-weight: 900; color: var(--text);
+  text-decoration: none; letter-spacing: -0.3px;
+}
+.topbar-logo span { color: var(--accent); }
+.topbar-link {
+  font-size: 13px; font-weight: 600; color: var(--muted);
+  text-decoration: none; transition: color .15s;
+}
+.topbar-link:hover { color: var(--accent); }
+
+/* brand hero */
+.brand-hero { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+.brand-logo-wrap {
+  width: 68px; height: 68px; border-radius: 16px;
+  border: 1px solid var(--border); background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; overflow: hidden;
+}
+.brand-logo-wrap img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
+.brand-logo-placeholder { font-size: 30px; }
+.brand-hero-info { flex: 1; min-width: 0; padding-top: 4px; }
+.brand-name { font-size: 28px; font-weight: 900; letter-spacing: -1px; margin-bottom: 4px; line-height: 1.1; }
+.brand-slogan { font-size: 14px; color: var(--muted); font-style: italic; margin-bottom: 10px; }
+.brand-meta-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.brand-meta-pill {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 10px;
+}
+
+/* did you know */
+.dyk {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--accent); border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 20px;
+  font-size: 13px; color: var(--muted); line-height: 1.65; display: none;
+}
+.dyk strong { color: var(--text); }
+
+/* tabs */
+.tab-bar {
+  display: flex; gap: 2px;
+  border-bottom: 1px solid var(--border); margin-bottom: 20px;
+}
+.tab-btn {
+  font-size: 13px; font-weight: 700; color: var(--muted);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  padding: 10px 16px; cursor: pointer; margin-bottom: -1px;
+  transition: color .15s, border-color .15s; font-family: inherit;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* cards */
+.cards { display: flex; flex-direction: column; gap: 12px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+}
+.card-accent { border-left: 4px solid var(--accent); }
+.card-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+.card-body { font-size: 14px; line-height: 1.65; color: var(--text); }
+
+/* stats grid */
+.stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-top: 12px; display: none;
+}
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+}
+.stat-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+}
+.stat-value { font-size: 15px; font-weight: 700; color: var(--text); }
+
+/* timeline */
+.timeline { display: flex; flex-direction: column; }
+.tl-item {
+  display: flex; gap: 14px; padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tl-item:last-child { border-bottom: none; }
+.tl-year { font-size: 12px; font-weight: 800; color: var(--accent); min-width: 40px; padding-top: 2px; }
+.tl-text { font-size: 13px; color: var(--muted); line-height: 1.55; flex: 1; }
+
+/* rivals */
+.rivals-wrap { display: flex; gap: 8px; flex-wrap: wrap; }
+.rival-chip {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 14px;
+  font-size: 13px; font-weight: 600; color: var(--muted);
+  cursor: pointer; transition: border-color .15s, color .15s; text-decoration: none; display: inline-block;
+}
+.rival-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* platforms */
+.platforms-wrap { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.platform-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 20px; padding: 7px 14px;
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+.platform-rank {
+  font-size: 10px; font-weight: 800; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 99px; padding: 1px 6px;
+}
+
+/* campaigns */
+.campaign-list { display: flex; flex-direction: column; gap: 10px; }
+.campaign-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+  font-size: 14px; line-height: 1.55; color: var(--text);
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.campaign-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+/* loading */
+.loading-wrap { padding: 56px 0; text-align: center; }
+.spinner {
+  width: 32px; height: 32px;
+  border: 2.5px solid var(--border); border-top-color: var(--indigo);
+  border-radius: 50%; animation: spin .8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-label { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.loading-sub { font-size: 13px; color: var(--muted); }
+
+/* bottom search */
+.bottom-search {
+  margin-top: 40px; padding: 24px;
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  border-radius: var(--radius);
+}
+.bottom-eyebrow {
+  font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 8px;
+}
+.bottom-search h3 { font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 14px; }
+.bottom-row { display: flex; gap: 8px; }
+.bottom-input {
+  flex: 1; border: 1.5px solid rgba(255,255,255,.15); border-radius: 10px;
+  padding: 13px 14px; font-size: 15px; font-family: inherit;
+  background: rgba(255,255,255,.08); color: #fff; outline: none;
+}
+.bottom-input::placeholder { color: rgba(255,255,255,.35); }
+.bottom-input:focus { border-color: rgba(255,255,255,.4); }
+.bottom-btn {
+  padding: 13px 20px; background: var(--accent); color: #fff;
+  border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.bottom-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.bottom-chip {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+  border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600;
+  color: rgba(255,255,255,.7); cursor: pointer; transition: background .15s;
+}
+.bottom-chip:hover { background: rgba(255,255,255,.15); }
+
+/* error */
+.error-wrap {
+  background: #fef2f2; border: 1px solid #fca5a5;
+  border-radius: var(--radius); padding: 18px 20px;
+  font-size: 14px; color: #dc2626; margin-top: 20px; display: none;
+}
+
+/* empty state */
+.empty { text-align: center; padding: 32px 0; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <a href="https://intel.humanagency.co" class="topbar-logo">in<span>tel</span></a>
+    <a href="https://intel.humanagency.co" class="topbar-link">All brands →</a>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-wrap" id="loading-wrap">
+    <div class="spinner"></div>
+    <div class="loading-label">Loading {{ brand_name }}</div>
+    <div class="loading-sub">Fetching brand intelligence…</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-wrap" id="error-wrap"></div>
+
+  <!-- Brand content -->
+  <div id="brand-content" style="display:none">
+
+    <div class="brand-hero">
+      <div class="brand-logo-wrap" id="logo-wrap">
+        <img id="brand-logo" src="" alt="" onerror="this.style.display='none';document.getElementById('logo-fb').style.display='block'">
+        <span id="logo-fb" class="brand-logo-placeholder" style="display:none">🏷</span>
+      </div>
+      <div class="brand-hero-info">
+        <div class="brand-name" id="brand-name-el">{{ brand_name }}</div>
+        <div class="brand-slogan" id="brand-slogan-el" style="display:none"></div>
+        <div class="brand-meta-pills" id="brand-pills-el"></div>
+      </div>
+    </div>
+
+    <div class="dyk" id="brand-dyk">
+      <strong>Did you know?</strong> <span id="brand-dyk-text"></span>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('about')">About</button>
+      <button class="tab-btn"        onclick="switchTab('social')">Social</button>
+      <button class="tab-btn"        onclick="switchTab('campaigns')">Campaigns</button>
+    </div>
+
+    <!-- About -->
+    <div class="tab-panel active" id="tab-about">
+      <div class="cards">
+        <div class="card card-accent">
+          <div class="card-label">About</div>
+          <div class="card-body" id="about-desc"></div>
+        </div>
+      </div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="card" id="timeline-card" style="display:none;margin-top:12px">
+        <div class="card-label">History</div>
+        <div class="timeline" id="brand-timeline"></div>
+      </div>
+      <div class="card" id="rivals-card" style="display:none;margin-top:12px">
+        <div class="card-label">Competitors</div>
+        <div class="rivals-wrap" id="rivals-wrap"></div>
+      </div>
+    </div>
+
+    <!-- Social -->
+    <div class="tab-panel" id="tab-social">
+      <div id="social-inner"><div class="empty">Loading social data…</div></div>
+    </div>
+
+    <!-- Campaigns -->
+    <div class="tab-panel" id="tab-campaigns">
+      <div class="campaign-list" id="campaigns-list">
+        <div class="empty">No campaign data yet.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom search -->
+  <div class="bottom-search" id="bottom-search" style="display:none">
+    <div class="bottom-eyebrow">⚡ intel · humanagency.co</div>
+    <h3>Search another brand</h3>
+    <div class="bottom-row">
+      <input class="bottom-input" id="bottom-q" type="text" placeholder="e.g. Nike, Diageo, HSBC…" autocomplete="off">
+      <button class="bottom-btn" onclick="goToBrand()">Go →</button>
+    </div>
+    <div class="bottom-chips">
+      <span class="bottom-chip" onclick="goToSlug('nike')">Nike</span>
+      <span class="bottom-chip" onclick="goToSlug('coca-cola')">Coca-Cola</span>
+      <span class="bottom-chip" onclick="goToSlug('monster-energy')">Monster</span>
+      <span class="bottom-chip" onclick="goToSlug('diageo')">Diageo</span>
+      <span class="bottom-chip" onclick="goToSlug('apple')">Apple</span>
+    </div>
+  </div>
+
+</div>
+<script>
+const BRAND   = {{ brand_name | tojson }};
+const _PF_MAP = {
+  tiktok:'🎵', instagram:'📸', youtube:'▶️', x:'𝕏', twitter:'𝕏',
+  facebook:'👤', linkedin:'💼', snapchat:'👻', pinterest:'📌', spotify:'🎧',
+};
+let _socialLoaded = false;
+
+const _tabBtns = document.querySelectorAll('.tab-btn');
+function switchTab(name) {
+  _tabBtns.forEach((b, i) => {
+    const t = ['about','social','campaigns'][i];
+    b.classList.toggle('active', t === name);
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+  });
+  if (name === 'social' && !_socialLoaded) { _socialLoaded = true; loadSocial(); }
+}
+
+async function loadBrand() {
+  try {
+    const r = await fetch('/api/brand?name=' + encodeURIComponent(BRAND));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    renderBrand(d);
+  } catch(e) {
+    document.getElementById('loading-wrap').style.display = 'none';
+    const err = document.getElementById('error-wrap');
+    err.textContent = 'Could not load brand data — ' + (e.message || 'try again.');
+    err.style.display = 'block';
+  }
+}
+
+function renderBrand(d) {
+  document.getElementById('loading-wrap').style.display = 'none';
+  document.getElementById('brand-content').style.display = 'block';
+  document.getElementById('bottom-search').style.display = 'block';
+
+  const name = d.name || BRAND;
+  document.getElementById('brand-name-el').textContent = name;
+  document.title = name + ' — Brand Intel';
+
+  const domain = d.domain || (name.toLowerCase().replace(/[^a-z0-9]/g,'') + '.com');
+  document.getElementById('brand-logo').src = 'https://logo.clearbit.com/' + domain;
+  document.getElementById('brand-logo').alt = name;
+
+  if (d.slogan) {
+    const sl = document.getElementById('brand-slogan-el');
+    sl.textContent = '“' + d.slogan + '”';
+    sl.style.display = 'block';
+  }
+
+  const pills = [d.industry, d.founded ? 'Est. ' + d.founded : null, d.hq].filter(Boolean);
+  document.getElementById('brand-pills-el').innerHTML = pills.map(p =>
+    `<span class="brand-meta-pill">${p}</span>`).join('');
+
+  if (d.did_you_know) {
+    document.getElementById('brand-dyk-text').textContent = d.did_you_know;
+    document.getElementById('brand-dyk').style.display = 'block';
+  }
+
+  document.getElementById('about-desc').textContent = d.description || d.overview || 'No description available.';
+
+  const stats = [
+    d.founded  && { label: 'Founded',  value: d.founded },
+    d.hq       && { label: 'HQ',       value: d.hq },
+    d.revenue  && { label: 'Revenue',  value: d.revenue },
+    d.industry && { label: 'Industry', value: d.industry },
+  ].filter(Boolean);
+  const grid = document.getElementById('stats-grid');
+  if (stats.length) {
+    grid.innerHTML = stats.map(s =>
+      `<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div></div>`
+    ).join('');
+    grid.style.display = 'grid';
+  }
+
+  const tl = d.timeline || [];
+  if (tl.length) {
+    document.getElementById('brand-timeline').innerHTML = tl.map(t =>
+      `<div class="tl-item"><div class="tl-year">${t.year||''}</div><div class="tl-text">${t.event||t.text||t}</div></div>`
+    ).join('');
+    document.getElementById('timeline-card').style.display = 'block';
+  }
+
+  const rivals = d.competitors || [];
+  if (rivals.length) {
+    document.getElementById('rivals-wrap').innerHTML = rivals.map(r =>
+      `<a class="rival-chip" href="/${r.toLowerCase().replace(/[^a-z0-9]+/g,'-')}">${r}</a>`
+    ).join('');
+    document.getElementById('rivals-card').style.display = 'block';
+  }
+
+  const camps = d.campaigns || [];
+  if (camps.length) {
+    document.getElementById('campaigns-list').innerHTML = camps.map(c =>
+      `<div class="campaign-item"><span class="campaign-icon">📢</span>${typeof c === 'string' ? c : (c.name||c.title||'')}</div>`
+    ).join('');
+  }
+}
+
+async function loadSocial() {
+  const el = document.getElementById('social-inner');
+  el.innerHTML = '<div class="empty">Loading social strategy…</div>';
+  try {
+    const r = await fetch('/api/brand/social?name=' + encodeURIComponent(BRAND));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    renderSocial(d);
+  } catch(e) {
+    el.innerHTML = '<div class="empty">Could not load social data.</div>';
+  }
+}
+
+function renderSocial(d) {
+  const platforms = d.platforms || [];
+  const pHtml = platforms.length ? `
+    <div class="card">
+      <div class="card-label">Active on · ranked by investment</div>
+      <div class="platforms-wrap">${platforms.map((p, i) =>
+        `<div class="platform-chip">${_PF_MAP[p.toLowerCase()]||'📱'} ${p}<span class="platform-rank">#${i+1}</span></div>`
+      ).join('')}</div>
+    </div>` : '';
+
+  const soCamps = d.recent_campaigns || [];
+  const scHtml = soCamps.length ? `
+    <div class="card">
+      <div class="card-label">Recent campaigns</div>
+      <div class="campaign-list" style="margin-top:6px">${soCamps.map(c =>
+        `<div class="campaign-item"><span class="campaign-icon">📢</span>${c}</div>`
+      ).join('')}</div>
+    </div>` : '';
+
+  const parts = [
+    pHtml,
+    d.content_direction ? `<div class="card card-accent"><div class="card-label">Content direction</div><div class="card-body">${d.content_direction}</div></div>` : '',
+    d.influencer_approach ? `<div class="card"><div class="card-label">Influencer approach</div><div class="card-body">${d.influencer_approach}</div></div>` : '',
+    scHtml,
+    d.direction ? `<div class="card"><div class="card-label">Where they're heading</div><div class="card-body">${d.direction}</div></div>` : '',
+  ].filter(Boolean).join('');
+
+  document.getElementById('social-inner').innerHTML = parts || '<div class="empty">No social data available.</div>';
+}
+
+function goToBrand() {
+  const q = document.getElementById('bottom-q').value.trim();
+  if (!q) return;
+  goToSlug(q.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''));
+}
+function goToSlug(slug) { window.location.href = '/' + slug; }
+
+document.getElementById('bottom-q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') goToBrand();
+});
+
+loadBrand();
+</script>
+</body>
+</html>
