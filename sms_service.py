@@ -4343,7 +4343,7 @@ def api_environment():
         return jsonify({"error": "Postcode required"}), 400
 
     # Cache key versioned so query expansions invalidate stale entries
-    _cache_key = postcode + "_v2"
+    _cache_key = postcode + "_v3"
 
     # Check Supabase cache first (shared across all users)
     try:
@@ -4491,11 +4491,11 @@ def api_area_summary():
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
 
-    hit = _summary_cache.get(postcode + "_v2")
+    hit = _summary_cache.get(postcode + "_v3")
     if hit and time.time() - hit["ts"] < _SUMMARY_TTL:
         return jsonify(hit["data"])
     try:
-        row = lib._sb().table("area_summary_cache").select("summary").eq("postcode", postcode + "_v2").maybe_single().execute()
+        row = lib._sb().table("area_summary_cache").select("summary").eq("postcode", postcode + "_v3").maybe_single().execute()
         if row and row.data:
             return jsonify({"summary": row.data["summary"]})
     except Exception:
@@ -4517,7 +4517,7 @@ def api_area_summary():
         house = house_f.result(timeout=15) or {}
         env_row = None
         try:
-            er = lib._sb().table("env_cache").select("data").eq("postcode", postcode + "_v2").maybe_single().execute()
+            er = lib._sb().table("env_cache").select("data").eq("postcode", postcode + "_v3").maybe_single().execute()
             env_row = er.data["data"] if er and er.data else None
         except Exception:
             pass
@@ -4567,23 +4567,25 @@ def api_area_summary():
                 "model": "llama-3.1-8b-instant",
                 "messages": [
                     {"role": "system", "content": (
-                        "You are a UK property and area analyst. Write a balanced 2-3 sentence plain English verdict on whether an area is good to live in. "
-                        "Be honest and proportionate — only flag concerns that the data clearly supports. "
-                        "Do not invent negatives or amplify weak signals. If most signals are positive, say so. "
+                        "You are a UK property analyst. Write a 2-3 sentence plain English verdict based SOLELY on the facts provided. "
+                        "CRITICAL: Do NOT use your own knowledge about the location, geography, or flood plains. "
+                        "If the facts say flood risk is low, it is low — do not contradict this. "
+                        "Only mention flood risk if the facts explicitly say medium or high. "
+                        "Be proportionate: if crime is low and flood risk is low, lead with that positively. "
                         "No bullet points, no headers. Plain flowing sentences only."
                     )},
-                    {"role": "user", "content": f"Give a verdict on {postcode} as a place to live based on these facts: {facts}"}
+                    {"role": "user", "content": f"Give a verdict on {postcode} based only on these facts (ignore any geographic knowledge you have): {facts}"}
                 ],
                 "max_tokens": 150,
-                "temperature": 0.4,
+                "temperature": 0.3,
             },
             timeout=10,
         )
         summary = r.json()["choices"][0]["message"]["content"].strip()
         result = {"summary": summary, "facts": facts}
-        _summary_cache[postcode + "_v2"] = {"data": result, "ts": time.time()}
+        _summary_cache[postcode + "_v3"] = {"data": result, "ts": time.time()}
         try:
-            lib._sb().table("area_summary_cache").upsert({"postcode": postcode + "_v2", "summary": summary}).execute()
+            lib._sb().table("area_summary_cache").upsert({"postcode": postcode + "_v3", "summary": summary}).execute()
         except Exception:
             pass
         return jsonify(result)
