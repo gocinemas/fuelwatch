@@ -4241,6 +4241,12 @@ const _ts = new Date(d.timestamp);
     const stations = data.stations || (data.name ? [data] : []);
     if (!stations.length) { el.style.display = "none"; return; }
     stations.forEach(s => _maTrainNames.add(s.name.replace(/ Station$/i, "").toLowerCase()));
+    // Retroactively hide tube card if it already rendered and matches a train station
+    const tubeEl = document.getElementById("myarea-tube");
+    if (tubeEl && tubeEl.style.display !== "none") {
+      const tubeNameEl = tubeEl.querySelector("[data-tube-name]");
+      if (tubeNameEl && _maTrainNames.has(tubeNameEl.dataset.tubeName)) tubeEl.style.display = "none";
+    }
     const rows = stations.map((st, idx) => {
       const dist = st.distance_km ? `${(st.distance_km * 0.621371).toFixed(1)} mi away` : "";
       const nameEsc = st.name.replace(/"/g,"&quot;");
@@ -4335,7 +4341,7 @@ const _ts = new Date(d.timestamp);
       </div>
       <div id="tube-arr-${data.id}" data-tube-panel data-nid="${data.id}" style="display:none;margin-top:8px"></div>
     </div>`;
-    const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">${row}</div>`;
+    const bodyHtml = `<div data-tube-name="${shortName.toLowerCase()}" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">${row}</div>`;
     el.innerHTML = _maSectionHtml("tube", "🚇 Nearest Tube", bodyHtml);
     el.style.display = "";
   }
