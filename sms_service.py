@@ -8313,6 +8313,79 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             except Exception as _we:
                 print(f"[vision] wine extraction failed: {_we}")
 
+        # ── Receipt: structured extraction + Supabase storage ───────────────────
+        receipt_data = {}
+        if img_type == "receipt":
+            try:
+                _rcpt_prompt = (
+                    "This is a shopping receipt. Extract every field you can read clearly.\n"
+                    "Output ONLY these lines:\n"
+                    "MERCHANT: [store name, e.g. Tesco, Waitrose, Sainsbury's]\n"
+                    "DATE: [date in YYYY-MM-DD format, or leave blank]\n"
+                    "TOTAL: [final total paid, numbers only, e.g. 34.72]\n"
+                    "ITEM: [item name] | [qty] | [price e.g. 1.50]\n"
+                    "...one ITEM: line per product. Skip items you cannot read clearly."
+                )
+                _rcpt_resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
+                             "Content-Type": "application/json"},
+                    json={
+                        "model": _vision_models[0],
+                        "max_tokens": 600,
+                        "messages": [{"role": "user", "content": [
+                            {"type": "image_url", "image_url": {"url": f"data:{m};base64,{b64}"}},
+                            {"type": "text", "text": _rcpt_prompt},
+                        ]}],
+                    },
+                    timeout=20,
+                )
+                if _rcpt_resp.status_code == 200:
+                    _raw_rcpt = _rcpt_resp.json()["choices"][0]["message"]["content"].strip()
+                    _rcpt_items = []
+                    for _rl in _raw_rcpt.split("\n"):
+                        _ru = _rl.strip().upper()
+                        if _ru.startswith("MERCHANT:"):
+                            receipt_data["merchant"] = _rl.split(":", 1)[1].strip()
+                        elif _ru.startswith("DATE:"):
+                            _d = _rl.split(":", 1)[1].strip()
+                            if _d and _d != "":
+                                receipt_data["shop_date"] = _d
+                        elif _ru.startswith("TOTAL:"):
+                            try:
+                                receipt_data["total"] = float(_rl.split(":", 1)[1].strip().replace("£","").replace(",",""))
+                            except Exception:
+                                pass
+                        elif _ru.startswith("ITEM:"):
+                            _parts = [p.strip() for p in _rl.split(":", 1)[1].split("|")]
+                            _item = {"name": _parts[0] if _parts else ""}
+                            if len(_parts) > 1: _item["qty"] = _parts[1]
+                            if len(_parts) > 2:
+                                try: _item["price"] = float(_parts[2].replace("£","").replace(",",""))
+                                except Exception: _item["price_str"] = _parts[2]
+                            if _item["name"]:
+                                _rcpt_items.append(_item)
+                    receipt_data["items"] = _rcpt_items
+                    if receipt_data.get("merchant"):
+                        title = f"🧾 {receipt_data['merchant']}"
+                    # Store in receipts table
+                    try:
+                        import json as _rjson
+                        _rcpt_row = {
+                            "phone":       fn.replace("whatsapp:","").strip(),
+                            "merchant":    receipt_data.get("merchant",""),
+                            "items":       _rjson.dumps(_rcpt_items),
+                            "raw_summary": summary,
+                        }
+                        if receipt_data.get("total"):    _rcpt_row["total"]     = receipt_data["total"]
+                        if receipt_data.get("shop_date"): _rcpt_row["shop_date"] = receipt_data["shop_date"]
+                        lib._sb().table("receipts").insert(_rcpt_row).execute()
+                        print(f"[receipt] saved: merchant={receipt_data.get('merchant')} total={receipt_data.get('total')} items={len(_rcpt_items)}")
+                    except Exception as _re:
+                        print(f"[receipt] Supabase save failed: {_re}")
+            except Exception as _rcpte:
+                print(f"[vision] receipt extraction failed: {_rcpte}")
+
         # ── Reverse-geocode stored GPS to UK postcode ────────────────────────────
         gps_location = ""
         if _loc and (time.time() - _loc.get("ts", 0)) < 7200:
@@ -8364,6 +8437,20 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             _MENU_SESSION[fn] = {"save_id": sid, "expires": time.time() + 900, "page_count": 1}
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
+        if img_type == "receipt" and receipt_data:
+            _r_merchant = receipt_data.get("merchant", "Unknown store")
+            _r_total    = receipt_data.get("total")
+            _r_items    = receipt_data.get("items", [])
+            _r_date     = receipt_data.get("shop_date", "")
+            _r_total_str = f"£{_r_total:.2f}" if _r_total else "total not readable"
+            _r_date_str  = f" on {_r_date}" if _r_date else ""
+            msg = f"🧾 *{_r_merchant}*{_r_date_str}\n"
+            msg += f"💰 Total: {_r_total_str}\n"
+            if _r_items:
+                msg += f"🛒 {len(_r_items)} items scanned\n"
+            msg += "\nAsk me: _how much at Tesco this month?_ or _spending this week?_"
+            _wa_send_proactive(fn, msg)
+            return
         if product_items or bullets or venue_info or brand_intel or menu_text:
             msg = f"{title}\n"
             if img_type == "product" and product_items:
@@ -8510,6 +8597,76 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 pass
     threading.Thread(target=_bg_safe, daemon=True).start()
     return "📷 Got it — reading your photo now…"
+
+
+def _wa_spending_query(from_number: str, body: str) -> str:
+    """Answer spending questions from scanned receipts."""
+    import datetime as _dt, re as _re, json as _json
+    phone = from_number.replace("whatsapp:", "").strip()
+    body_lower = body.lower()
+
+    # Determine time window
+    today = _dt.date.today()
+    if "today" in body_lower:
+        date_from = today.isoformat()
+        period = "today"
+    elif "yesterday" in body_lower:
+        date_from = (today - _dt.timedelta(days=1)).isoformat()
+        period = "yesterday"
+    elif "week" in body_lower:
+        date_from = (today - _dt.timedelta(days=7)).isoformat()
+        period = "this week"
+    elif "year" in body_lower:
+        date_from = today.replace(month=1, day=1).isoformat()
+        period = "this year"
+    else:
+        # Default: this month
+        date_from = today.replace(day=1).isoformat()
+        period = "this month"
+
+    # Detect specific merchant filter
+    merchant_filter = None
+    for store in ["tesco", "sainsbury", "waitrose", "asda", "aldi", "lidl", "marks", "m&s",
+                  "morrisons", "co-op", "coop", "costco", "boots", "amazon", "argos"]:
+        if store in body_lower:
+            merchant_filter = store
+            break
+
+    try:
+        sb = lib._sb()
+        query = sb.table("receipts").select("merchant,total,shop_date,items,created_at").eq("phone", phone)
+        if date_from:
+            query = query.gte("created_at", date_from + "T00:00:00")
+        rows = query.execute().data or []
+    except Exception as e:
+        print(f"[spending] DB error: {e}")
+        return "⚠️ Couldn't fetch your receipts — try again in a moment."
+
+    if not rows:
+        return f"📭 No receipts scanned {period}. Send me a photo of a receipt and I'll track it for you!"
+
+    # Filter by merchant if requested
+    if merchant_filter:
+        rows = [r for r in rows if merchant_filter in (r.get("merchant") or "").lower()]
+        if not rows:
+            return f"📭 No {merchant_filter.title()} receipts found {period}."
+
+    # Aggregate
+    total_spent = sum(r.get("total") or 0 for r in rows if r.get("total"))
+    merchants = {}
+    for r in rows:
+        m = (r.get("merchant") or "Unknown").strip()
+        merchants[m] = merchants.get(m, 0) + (r.get("total") or 0)
+
+    # Build reply
+    if merchant_filter:
+        reply = f"🛒 *{merchant_filter.title()}* spend {period}: *£{total_spent:.2f}*\n({len(rows)} receipt{'s' if len(rows)!=1 else ''})"
+    else:
+        reply = f"💰 *Total spent {period}: £{total_spent:.2f}*\n"
+        reply += f"🧾 {len(rows)} receipt{'s' if len(rows)!=1 else ''} scanned\n\n"
+        by_store = sorted(merchants.items(), key=lambda x: x[1], reverse=True)
+        reply += "\n".join(f"• {m}: £{v:.2f}" for m, v in by_store[:6])
+    return reply
 
 
 def _wa_send_proactive(to: str, body: str) -> None:
@@ -10308,6 +10465,14 @@ def whatsapp_reply():
             return str(resp)
 
     # ── NEW command: clear menu session so next photo starts a fresh save ───────
+    # ── SPENDING / RECEIPTS query ─────────────────────────────────────────────
+    _SPEND_TRIGGERS = ("spent", "spending", "spend", "receipts", "my receipts",
+                       "how much did i", "how much have i", "grocery spend",
+                       "tesco spend", "waitrose spend", "sainsbury")
+    if any(body_lower.startswith(t) or t in body_lower for t in _SPEND_TRIGGERS):
+        resp.message(_wa_spending_query(from_number, body_lower))
+        return str(resp)
+
     if body_lower in ("new", "new save", "new session"):
         _MENU_SESSION.pop(from_number, None)
         resp.message("✅ Started fresh — send your next photo to begin a new save.")
