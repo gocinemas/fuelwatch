@@ -4459,21 +4459,7 @@ const _ts = new Date(d.timestamp);
   }
 
   function _tgtgOpen(webUrl, iosUrl, androidUrl) {
-    const ua = navigator.userAgent;
-    const isIOS = /iPhone|iPad|iPod/.test(ua);
-    const isAndroid = /Android/.test(ua);
-    if (isIOS) {
-      // Try deep link, fall back to App Store after 1.5s
-      const t = setTimeout(() => window.location = iosUrl, 1500);
-      window.location = "toogoodtogo://";
-      window.addEventListener("blur", () => clearTimeout(t), {once: true});
-    } else if (isAndroid) {
-      const t = setTimeout(() => window.location = androidUrl, 1500);
-      window.location = "toogoodtogo://";
-      window.addEventListener("blur", () => clearTimeout(t), {once: true});
-    } else {
-      window.open(webUrl, "_blank");
-    }
+    window.open(webUrl, "_blank");
   }
 
   function _maRenderShops(data) {
