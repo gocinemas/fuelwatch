@@ -1861,7 +1861,7 @@
       <div id="myarea-tab-bar" style="margin-bottom:10px">
         <div style="display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px">
           <button onclick="_maShowTab('places')" id="matab-btn-places"
-            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏡 Places</button>
+            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🚌 Transport</button>
           <button onclick="_maShowTab('services')" id="matab-btn-services"
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏥 Services</button>
           <button onclick="_maShowTab('civic')" id="matab-btn-civic"
@@ -1869,11 +1869,12 @@
         </div>
       </div>
 
-      <!-- Tab: My Places (train) — weather now shown at top of screen -->
+      <!-- Tab: Transport (train, tube, bus) -->
       <div id="matab-places" style="display:none">
         <div id="myarea-weather" style="display:none"></div>
         <div id="myarea-train"   style="display:none;margin-bottom:10px"></div>
         <div id="myarea-tube"    style="display:none;margin-bottom:10px"></div>
+        <div id="myarea-bus"     style="display:none;margin-bottom:10px"></div>
       </div>
 
       <!-- Tab: Services -->
@@ -4333,6 +4334,23 @@ const _ts = new Date(d.timestamp);
     el.style.display = "";
   }
 
+  function _maRenderBus(data) {
+    const el = document.getElementById("myarea-bus");
+    if (!el) return;
+    if (!data || data.error || !data.stops || !data.stops.length) { el.style.display = "none"; return; }
+    const rows = data.stops.map(s => {
+      const dist = s.dist_m < 1000 ? `${s.dist_m}m` : `${(s.dist_m/1000).toFixed(1)}km`;
+      const routes = s.routes.length ? `<span style="font-size:10px;color:var(--muted);margin-left:6px">${s.routes.slice(0,6).join(" · ")}</span>` : "";
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}${routes}</div>
+        <div style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:8px">${dist}</div>
+      </div>`;
+    }).join("");
+    const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px 14px">${rows}</div>`;
+    el.innerHTML = _maSectionHtml("bus", "🚌 Nearest Bus Stops", bodyHtml);
+    if (_maGetPrefs().bus !== false) el.style.display = "";
+  }
+
   function _maRenderGPs(area) {
     const el = document.getElementById("myarea-gp");
     if (!_maGetPrefs().gp) { el.style.display = "none"; return; }
@@ -4485,7 +4503,7 @@ const _ts = new Date(d.timestamp);
     document.getElementById("myarea-empty-state").style.display = "none";
     // Reset sections
     const wxBar = document.getElementById("myarea-weather-bar"); if (wxBar) wxBar.style.display = "none";
-    ["myarea-reps","myarea-council","myarea-council-services","myarea-weather","myarea-train","myarea-tube","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
+    ["myarea-reps","myarea-council","myarea-council-services","myarea-weather","myarea-train","myarea-tube","myarea-bus","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
     const activeTab = localStorage.getItem("miru_ma_tab") || "places";
@@ -4537,6 +4555,9 @@ const _ts = new Date(d.timestamp);
 
     // Nearest tube station (TfL API)
     fetch(`/api/tube/nearest-by-postcode?postcode=${pc}`).then(r=>r.json()).then(_guard(_maRenderTube)).catch(()=>{});
+
+    // Nearest bus stops (Overpass, free)
+    fetch(`/api/bus/stops?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).then(_guard(_maRenderBus)).catch(()=>{});
 
     // your-area (GPs, council, pharmacies) — LS-cached 24h, Overpass on miss
     _maFetchCached(`your-area:${pc}`, `/api/your-area?postcode=${pc}`, 86400, _guard(area => {
@@ -6885,25 +6906,35 @@ const _ts = new Date(d.timestamp);
   document.addEventListener("DOMContentLoaded", _myAreaRefreshTile);
 
   // ── Life Admin ───────────────────────────────────────────────────────────────
-  function _loadLifeAdmin() {
-    // Mirror vehicle list from My Area into Life Admin screen
-    const maList  = document.getElementById("myarea-vehicles-list");
-    const laList  = document.getElementById("la-vehicles-list");
+  async function _loadLifeAdmin() {
+    // Ensure details are loaded
+    if (!_maDetailsCache) await _maDetailsFetch();
+    const records = _maDetailsCache || [];
+
+    const groups = {
+      motoring:  records.filter(r => r.type === "car_ins"),
+      home:      records.filter(r => ["energy","broadband","council_tax","home_ins","other"].includes(r.type)),
+      mobile:    records.filter(r => r.type === "mobile"),
+      insurance: records.filter(r => ["health","life_ins"].includes(r.type)),
+    };
+
+    const set  = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    const show = (id, v)    => { const el = document.getElementById(id); if (el) el.style.display = v ? "" : "none"; };
+
+    set("la-cards-motoring",  groups.motoring.map(_maRenderCard).join(""));
+    set("la-cards-home",      groups.home.map(_maRenderCard).join(""));
+    set("la-cards-mobile",    groups.mobile.map(_maRenderCard).join(""));
+    set("la-cards-insurance", groups.insurance.map(_maRenderCard).join(""));
+    show("la-section-home",      groups.home.length > 0);
+    show("la-section-mobile",    groups.mobile.length > 0);
+    show("la-section-insurance", groups.insurance.length > 0);
+
+    // Vehicles
+    const maList = document.getElementById("myarea-vehicles-list");
+    const laList = document.getElementById("la-vehicles-list");
     if (maList && laList) laList.innerHTML = maList.innerHTML;
 
-    // Mirror bill cards
-    [["home","Home"],["mobile","Mobile"],["insurance","Insurance"]].forEach(([key]) => {
-      const maSrc = document.getElementById(`ma-cards-${key}`);
-      const laDst = document.getElementById(`la-cards-${key}`);
-      const laSec = document.getElementById(`la-section-${key}`);
-      const maSec = document.getElementById(`ma-section-${key}`);
-      if (maSrc && laDst) {
-        laDst.innerHTML = maSrc.innerHTML;
-        if (laSec && maSec) laSec.style.display = maSec.style.display;
-      }
-    });
-
-    // Mirror Gmail state
+    // Gmail state
     const gmailDone = document.getElementById("ma-gmail-state-done");
     const laDone    = document.getElementById("la-gmail-state-done");
     const laConnect = document.getElementById("la-gmail-state-connect");
@@ -6917,11 +6948,10 @@ const _ts = new Date(d.timestamp);
     const maRenewals = document.getElementById("myarea-renewals");
     const laRenewals = document.getElementById("lifeadmin-renewals");
     if (maRenewals && laRenewals) {
-      laRenewals.innerHTML    = maRenewals.innerHTML;
+      laRenewals.innerHTML     = maRenewals.innerHTML;
       laRenewals.style.display = maRenewals.innerHTML.trim() ? "" : "none";
     }
 
-    // Update home card badge with upcoming renewal count
     _lifeAdminRefreshBadge();
   }
 
@@ -11577,19 +11607,6 @@ _bkBadge();
     <button onclick="_maClearAllDetails()" style="padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:#dc2626;cursor:pointer" title="Delete all details">🗑️</button>
   </div>
 
-  <!-- School comms -->
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="display:flex;align-items:center;gap:9px">
-        <span style="font-size:18px">🏫</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">School Comms</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Events, newsletters &amp; term dates</div>
-        </div>
-      </div>
-      <button onclick="showScreen('school')" style="font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:8px 14px;cursor:pointer;flex-shrink:0">Open →</button>
-    </div>
-  </div>
 
 </div><!-- /screen-lifeadmin -->
 

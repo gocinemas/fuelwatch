@@ -16977,6 +16977,68 @@ def api_me_location_post():
     return jsonify({"ok": True})
 
 
+@app.route("/api/bus/stops")
+def api_bus_stops():
+    """Nearest bus stops + routes via OpenStreetMap Overpass (free, no key)."""
+    postcode = request.args.get("postcode", "").strip().upper()
+    lat_s = request.args.get("lat", "").strip()
+    lon_s = request.args.get("lon", "").strip()
+
+    lat, lon = None, None
+    if lat_s and lon_s:
+        try: lat, lon = float(lat_s), float(lon_s)
+        except ValueError: pass
+    if (lat is None) and postcode:
+        ll = postcode_to_latlon(postcode)
+        if ll: lat, lon = ll
+
+    if lat is None:
+        return jsonify({"error": "postcode or lat/lon required"}), 400
+
+    from search import _sb_cache_get, _sb_cache_set
+    cache_key = f"bus:{round(lat,3)},{round(lon,3)}"
+    cached = _sb_cache_get(cache_key)
+    if cached:
+        return jsonify(cached)
+
+    try:
+        overpass_url = "https://overpass-api.de/api/interpreter"
+        query = f"""
+[out:json][timeout:12];
+(
+  node["highway"="bus_stop"](around:600,{lat},{lon});
+  node["public_transport"="stop_position"]["bus"="yes"](around:600,{lat},{lon});
+);
+out body;
+"""
+        r = requests.post(overpass_url, data={"data": query}, timeout=14)
+        elements = r.json().get("elements", [])
+
+        seen_names = set()
+        stops = []
+        for el in elements:
+            tags = el.get("tags", {})
+            name = tags.get("name") or tags.get("ref") or ""
+            if not name or name in seen_names:
+                continue
+            seen_names.add(name)
+            routes = []
+            for k, v in tags.items():
+                if k.startswith("route_ref") or k == "routes":
+                    routes = [x.strip() for x in v.replace(";", ",").split(",") if x.strip()]
+            dist_m = round(haversine_km(lat, lon, el["lat"], el["lon"]) * 1000)
+            stops.append({"name": name, "routes": routes, "dist_m": dist_m,
+                          "lat": el["lat"], "lon": el["lon"]})
+
+        stops.sort(key=lambda s: s["dist_m"])
+        stops = stops[:6]
+        result = {"stops": stops, "lat": lat, "lon": lon}
+        _sb_cache_set(cache_key, result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
