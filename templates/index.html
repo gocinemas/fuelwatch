@@ -4838,11 +4838,19 @@ const _ts = new Date(d.timestamp);
   let _maGmailPendingCache = null;
 
   function _maGmailSetState(state, data) {
-    // state: "connect" | "scanning" | "done" | "pending"
+    // Update hidden My Area card (data source)
     ["connect","scanning","done","pending"].forEach(s => {
       const el = document.getElementById(`ma-gmail-state-${s}`);
       if (el) el.style.display = (s === state) ? "flex" : "none";
     });
+    // Sync Life Admin card
+    const laConnect  = document.getElementById("la-gmail-state-connect");
+    const laScanning = document.getElementById("la-gmail-state-scanning");
+    const laDone     = document.getElementById("la-gmail-state-done");
+    if (laConnect)  laConnect.style.display  = state === "connect"   ? "flex" : "none";
+    if (laScanning) laScanning.style.display = state === "scanning"  ? "flex" : "none";
+    if (laDone)     laDone.style.display     = (state === "done" || state === "pending") ? "flex" : "none";
+
     if (state === "done" && data?.email) {
       const lbl = document.getElementById("ma-gmail-email-label");
       if (lbl) lbl.textContent = data.email;
@@ -4851,6 +4859,9 @@ const _ts = new Date(d.timestamp);
       _maGmailPendingCache = { records: data.pending, email: data.email };
       const lbl = document.getElementById("ma-gmail-pending-label");
       if (lbl) lbl.textContent = `${data.pending.length} account${data.pending.length !== 1 ? "s" : ""} found`;
+      // Show review button in Life Admin card too
+      const laReview = document.getElementById("la-gmail-review-btn");
+      if (laReview) laReview.style.display = "";
     }
     const hintsSection = document.getElementById("ma-gmail-hints-section");
     if (hintsSection) hintsSection.style.display = (state === "done" || state === "pending") ? "" : "none";
@@ -5049,13 +5060,13 @@ const _ts = new Date(d.timestamp);
     const params = new URLSearchParams(window.location.search);
     if (params.get("gmail_scan") === "1") {
       history.replaceState({}, "", window.location.pathname);
-      showScreen("myarea");
+      showScreen("lifeadmin");
       _maGmailSetState("scanning");
       _maGmailScanOverlay(true);
       setTimeout(_maGmailCheckStatus, 2000);
     } else if (params.get("gmail_error")) {
       history.replaceState({}, "", window.location.pathname);
-      showScreen("myarea");
+      showScreen("lifeadmin");
     } else {
       setTimeout(_maGmailCheckStatus, 2000);
     }
@@ -11562,12 +11573,22 @@ _bkBadge();
         Connect
       </a>
     </div>
+    <!-- Scanning state -->
+    <div id="la-gmail-state-scanning" style="display:none;align-items:center;gap:10px">
+      <span style="width:16px;height:16px;border:2px solid #d1d5db;border-top-color:#4285f4;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Scanning your inbox…</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Running in background — carry on, we'll update this when done</div>
+      </div>
+    </div>
+    <!-- Done / pending state -->
     <div id="la-gmail-state-done" style="display:none;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:7px">
         <span style="font-size:15px">✅</span>
         <div style="font-size:13px;font-weight:700;color:var(--text)">Gmail connected</div>
       </div>
       <div style="display:flex;gap:6px">
+        <button id="la-gmail-review-btn" onclick="_maGmailReviewPending()" style="display:none;font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:6px 12px;cursor:pointer">Review →</button>
         <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
         <button onclick="_maGmailDisconnect()" style="font-size:12px;color:#9ca3af;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 10px;cursor:pointer">Disconnect</button>
       </div>
