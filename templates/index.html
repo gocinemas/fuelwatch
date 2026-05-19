@@ -454,16 +454,14 @@
     <!-- ── HOME SCREEN ── -->
     <div id="screen-home" class="screen active">
 
-      <!-- Hero: value prop -->
-      <div style="padding:24px 0 18px">
-        <div style="font-size:30px;font-weight:900;letter-spacing:-1.2px;color:var(--text);line-height:1.1;margin-bottom:6px">Your everyday toolkit<br>for life in the UK.</div>
-        <div style="font-size:13px;color:var(--muted);line-height:1.5">Fuel prices · Train times · Local services · Brand intel</div>
-      </div>
+      <!-- Hero: tagline (new user) or greeting (returning) — populated by _homeHeroInit() -->
+      <div id="home-hero-block" style="padding:24px 0 18px"></div>
 
       <!-- Search widget mount point — injected by _mountHomeSearch() when needed -->
       <div id="home-search-mount" style="margin-bottom:16px"></div>
 
-      <!-- WhatsApp CTA -->
+      <!-- WhatsApp CTA: top (new users) / bottom (returning) — toggled by _homeHeroInit() -->
+      <div id="home-wa-cta-top">
       <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
         style="display:block;background:#fff;border:2px solid #25d366;border-radius:16px;padding:14px 16px;margin-bottom:20px;text-decoration:none">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
@@ -486,6 +484,7 @@
           <span style="background:#f0fdf4;color:#166534;font-size:10px;font-weight:600;border-radius:99px;padding:2px 8px;white-space:nowrap">🔍 Brand intel</span>
         </div>
       </a>
+      </div><!-- /home-wa-cta-top -->
 
       <!-- Hidden JS refs -->
       <span id="elections-tool-card" style="display:none"><span id="elections-tool-desc"></span></span>
@@ -530,13 +529,19 @@
         </button>
       </div>
 
-      <!-- My Area -->
+      <!-- MY WORLD divider -->
+      <div style="display:flex;align-items:center;gap:10px;margin:4px 0 10px">
+        <div style="font-size:10px;font-weight:800;color:var(--subtle);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">My World</div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+
+      <!-- My Local (was: My Area) -->
       <button id="myarea-home-card" onclick="showScreen('myarea')"
         style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#064e3b 0%,#065f46 60%,#047857 100%);border:none;border-radius:20px;padding:18px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px">
         <div style="font-size:32px;line-height:1;flex-shrink:0">🏡</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">My Area</div>
-          <div id="myarea-home-subtitle" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.4">Your postcode · MP · schools · services</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">My Local</div>
+          <div id="myarea-home-subtitle" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.4">Your postcode · MP · transport · schools</div>
         </div>
         <div id="myarea-home-badge" style="flex-shrink:0;text-align:right">
           <div id="myarea-home-pc" style="font-size:13px;font-weight:800;color:#fff;background:rgba(255,255,255,.15);border-radius:8px;padding:4px 10px;display:inline-block"></div>
@@ -544,12 +549,18 @@
         </div>
       </button>
 
-      <!-- Area Report home card -->
+      <!-- EXPLORE divider -->
+      <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
+        <div style="font-size:10px;font-weight:800;color:var(--subtle);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">Explore</div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+
+      <!-- Research an Area (was: Area Report) -->
       <button onclick="showScreen('report')"
         style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 60%,#2563eb 100%);border:none;border-radius:20px;padding:18px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px">
         <div style="font-size:32px;line-height:1;flex-shrink:0">🔎</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Area Report</div>
+          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Research an Area</div>
           <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.4">Crime · schools · flood risk · transport · AI verdict</div>
         </div>
         <div style="flex-shrink:0;font-size:11px;font-weight:700;color:rgba(255,255,255,.5);background:rgba(255,255,255,.1);border-radius:8px;padding:4px 10px">Any postcode</div>
@@ -626,17 +637,12 @@
         <span style="flex-shrink:0;background:#eef2ff;color:#4338ca;font-size:11px;font-weight:700;border-radius:99px;padding:4px 10px;white-space:nowrap">Explore →</span>
       </button>
 
-      <!-- MORE TOOLS -->
-      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">More Tools</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px">
-        <button class="tool-icon-btn" onclick="showScreen('report')">
-          <span class="tool-icon-emoji">🔎</span>
-          <span class="tool-icon-label">Area Report</span>
-        </button>
-        <button class="tool-icon-btn" onclick="showScreen('places')">
-          <span class="tool-icon-emoji">📍</span>
-          <span class="tool-icon-label">Local</span>
-        </button>
+      <!-- MORE -->
+      <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
+        <div style="font-size:10px;font-weight:800;color:var(--subtle);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">More</div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
         <button class="tool-icon-btn" onclick="_pillNav('saves')">
           <span class="tool-icon-emoji">💾</span>
           <span class="tool-icon-label">Saves</span>
@@ -649,10 +655,29 @@
           <span class="tool-icon-emoji">🎵</span>
           <span class="tool-icon-label">Music</span>
         </button>
+        <button class="tool-icon-btn" onclick="showScreen('places')">
+          <span class="tool-icon-emoji">📍</span>
+          <span class="tool-icon-label">Local</span>
+        </button>
         <button class="tool-icon-btn" onclick="_schoolHomeOpen()">
           <span class="tool-icon-emoji">🏫</span>
           <span class="tool-icon-label">School</span>
         </button>
+      </div>
+
+      <!-- WhatsApp CTA bottom slot — shown for returning users by _homeHeroInit() -->
+      <div id="home-wa-cta-bottom" style="display:none;margin-bottom:16px">
+        <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
+          style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid #25d366;border-radius:14px;padding:12px 14px;text-decoration:none">
+          <div style="width:28px;height:28px;background:#25d366;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">Also on WhatsApp</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px">☕ Trains · Fuel · Receipts · School · Intel</div>
+          </div>
+          <span style="flex-shrink:0;font-size:16px;color:var(--muted)">›</span>
+        </a>
       </div>
 
       <!-- What can I do here — sheet (bottom on mobile, centred modal on desktop) -->
@@ -2426,6 +2451,7 @@
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
+    if (name === "home")       { if (typeof _homeHeroInit === 'function') _homeHeroInit(); }
     if (name === "myarea")     { _loadMyArea(); }
     if (name === "lifeadmin")  { _loadLifeAdmin(); }
     if (name === "finder")   { }
@@ -12476,7 +12502,41 @@ _bkBadge();
       _trainHomeLoad();
     }
     _setupBannerInit();
+    _homeHeroInit();
   });
+
+  /* ── Home hero: tagline for new users, greeting for returning ──────────── */
+  function _homeHeroInit() {
+    const hero = document.getElementById("home-hero-block");
+    const waTop = document.getElementById("home-wa-cta-top");
+    const waBot = document.getElementById("home-wa-cta-bottom");
+    if (!hero) return;
+    const isReturning = !!(_miruPhone() || _miruPostcode());
+    if (isReturning) {
+      const pc = _miruPostcode() || "";
+      const now = new Date();
+      const h = now.getHours();
+      const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+      const dow = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][now.getDay()];
+      const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()];
+      hero.innerHTML = `
+        <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:var(--text);line-height:1.1;margin-bottom:4px">${greet} ☀️</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+          ${pc ? `<span style="background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800;color:var(--text)">${pc}</span>` : ""}
+          <span style="font-size:13px;color:var(--muted)">${dow} ${now.getDate()} ${mon}</span>
+        </div>
+        <div style="font-size:11px;color:var(--subtle);margin-top:8px;line-height:1.5">⛽ Fuel &middot; 🚆 Trains &middot; 🏡 My Local &middot; 🔎 Research &middot; 🗂️ Admin</div>`;
+      if (waTop) waTop.style.display = "none";
+      if (waBot) waBot.style.display = "block";
+    } else {
+      hero.innerHTML = `
+        <div style="font-size:30px;font-weight:900;letter-spacing:-1.2px;color:var(--text);line-height:1.1;margin-bottom:6px">Your everyday toolkit<br>for life in the UK.</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">Fuel prices &middot; Train times &middot; Local services &middot; Brand intel</div>`;
+      if (waTop) waTop.style.display = "block";
+      if (waBot) waBot.style.display = "none";
+    }
+  }
+  window._homeHeroInit = _homeHeroInit;
 
   /* ── First-visit setup banner ────────────────────────────────────────────── */
   function _setupBannerInit() {
