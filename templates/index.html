@@ -4335,25 +4335,30 @@ const _ts = new Date(d.timestamp);
 
   function _maRenderTube(data) {
     const el = document.getElementById("myarea-tube");
-    if (!data || data.error || !data.id) { el.style.display = "none"; return; }
-    const dist = data.distance_km ? `${(data.distance_km * 0.621371).toFixed(1)} mi away` : "";
+    if (el) el.style.display = "none";  // tube section never shown standalone
+    if (!data || data.error || !data.id) return;
     const shortName = data.name.replace(/ Underground Station$/i, "").replace(/ Station$/i, "");
-    // Hide if a national rail card already shows the same station
-    if (_maTrainNames.has(shortName.toLowerCase())) { el.style.display = "none"; return; }
-    const row = `<div style="padding:10px 14px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${shortName}</div>
-          ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
-          <button onclick="_maTubeToggleArrivals('${data.id}',this)"
-            style="margin-top:3px;font-size:11px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0">▾ Next trains</button>
-        </div>
+    // Already in the train list — skip
+    if (_maTrainNames.has(shortName.toLowerCase())) return;
+    // Not a duplicate — inject into the train section list
+    const trainBody = document.getElementById("ma-body-train");
+    if (!trainBody) return;
+    const container = trainBody.querySelector("div");
+    if (!container) return;
+    const dist = data.distance_km ? `${(data.distance_km * 0.621371).toFixed(1)} mi away` : "";
+    const row = document.createElement("div");
+    row.style.cssText = "border-top:1px solid var(--border);padding:10px 14px";
+    row.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${shortName}</div>
+        ${dist ? `<div style="font-size:12px;color:var(--muted)">${dist}</div>` : ""}
+        <button onclick="_maTubeToggleArrivals('${data.id}',this)"
+          style="margin-top:3px;font-size:11px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0">▾ Next trains</button>
       </div>
-      <div id="tube-arr-${data.id}" data-tube-panel data-nid="${data.id}" style="display:none;margin-top:8px"></div>
-    </div>`;
-    const bodyHtml = `<div data-tube-name="${shortName.toLowerCase()}" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">${row}</div>`;
-    el.innerHTML = _maSectionHtml("tube", "🚇 Nearest Tube", bodyHtml);
-    el.style.display = "";
+    </div>
+    <div id="tube-arr-${data.id}" data-tube-panel data-nid="${data.id}" style="display:none;margin-top:8px"></div>`;
+    container.appendChild(row);
+    _maTrainNames.add(shortName.toLowerCase());
   }
 
   function _maRenderBus(data) {
@@ -4554,7 +4559,7 @@ const _ts = new Date(d.timestamp);
     document.getElementById("myarea-empty-state").style.display = "none";
     // Reset sections + un-collapse transport so fresh results always show
     const wxBar = document.getElementById("myarea-weather-bar"); if (wxBar) wxBar.style.display = "none";
-    ["train","tube","bus","ev"].forEach(id => localStorage.removeItem(`miru_mac_${id}`));
+    ["train","bus","ev"].forEach(id => localStorage.removeItem(`miru_mac_${id}`));
     ["myarea-reps","myarea-council","myarea-council-services","myarea-weather","myarea-train","myarea-tube","myarea-bus","myarea-ev","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
     });
