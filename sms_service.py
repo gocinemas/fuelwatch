@@ -4392,9 +4392,9 @@ def api_environment():
                 c = e.get("center") or {}
                 dist_m = _env_dist_m(lat, lon, c["lat"], c["lon"]) if c.get("lat") else None
                 item = {"name": name, "dist_m": dist_m}
-                if tags.get("landuse") == "industrial":
+                if tags.get("landuse") == "industrial" and name:
                     industrial.append(item)
-                elif tags.get("natural") == "water":
+                elif tags.get("natural") == "water" and name:
                     water.append(item)
                 elif tags.get("leisure") == "park":
                     green.append(item)
