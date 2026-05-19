@@ -3874,8 +3874,8 @@ def api_elections_debug():
 
 
 _OVERPASS_URLS = [
-    "https://overpass.kumi.systems/api/interpreter",  # confirmed working on Railway
-    "https://overpass-api.de/api/interpreter",        # returns 406 from Railway
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ]
 
@@ -4405,7 +4405,7 @@ def api_environment():
             flood_f = ex.submit(_flood_risk)
             osm_f   = ex.submit(_osm_combined)
 
-        industrial, water, green = osm_f.result(timeout=25)
+        industrial, water, green = osm_f.result(timeout=40)
         result = {
             "flood":      flood_f.result(timeout=12),
             "industrial": industrial,
@@ -6377,12 +6377,16 @@ def _google_place_details(name: str, lat: float, lon: float) -> dict | None:
 def _overpass_query(query: str, timeout: int = 20) -> list:
     """POST a query to Overpass mirrors in order, return elements list or [] on failure."""
     hdrs = {"User-Agent": "MiruApp/1.0 (miru.humanagency.co)"}
+    per_mirror = min(timeout, 12)  # cap per-mirror so we fail fast to next
     for url in _OVERPASS_URLS:
         try:
-            r = requests.post(url, data={"data": query}, timeout=timeout, headers=hdrs)
+            r = requests.post(url, data={"data": query}, timeout=per_mirror, headers=hdrs)
             if r.status_code == 200 and r.text.strip().startswith("{"):
+                print(f"Overpass OK ({url}): {len(r.json().get('elements',[]))} elements")
                 return r.json().get("elements", [])
-        except Exception:
+            print(f"Overpass bad status {r.status_code} ({url})")
+        except Exception as e:
+            print(f"Overpass error {url}: {e}")
             continue
     return []
 
