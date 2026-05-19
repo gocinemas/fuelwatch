@@ -5025,8 +5025,10 @@ def _tgtg_start_login(email: str) -> str | None:
             json={"device_type": "ANDROID", "email": email},
             headers=_TGTG_HDRS, timeout=10,
         )
+        print(f"[tgtg_start_login] status={r.status_code} body={r.text[:300]}")
         return r.json().get("polling_id")
-    except Exception:
+    except Exception as e:
+        print(f"[tgtg_start_login] exception={e}")
         return None
 
 def _tgtg_poll_login(email: str, polling_id: str) -> dict | None:
