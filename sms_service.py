@@ -5006,6 +5006,165 @@ def api_morning_brief():
         return jsonify({"error": str(e)}), 500
 
 
+# ── Too Good To Go ────────────────────────────────────────────────────────────
+
+_TGTG_BASE = "https://apptoogoodtogo.com/api"
+_TGTG_HDRS = {
+    "accept": "application/json",
+    "accept-language": "en-GB",
+    "content-type": "application/json",
+    "user-agent": "TGTG/24.1.11 Dalvik/2.1.0 (Linux; U; Android 14)",
+    "x-version": "24.1.11",
+}
+
+def _tgtg_start_login(email: str) -> str | None:
+    """Send TGTG magic link. Returns polling_id or None on failure."""
+    try:
+        r = requests.post(
+            f"{_TGTG_BASE}/auth/v3/authByEmail",
+            json={"device_type": "ANDROID", "email": email},
+            headers=_TGTG_HDRS, timeout=10,
+        )
+        return r.json().get("polling_id")
+    except Exception:
+        return None
+
+def _tgtg_poll_login(email: str, polling_id: str) -> dict | None:
+    """Poll for credentials after user clicks magic link. Returns creds dict or None."""
+    try:
+        r = requests.post(
+            f"{_TGTG_BASE}/auth/v3/authByRequestPollingId",
+            json={"device_type": "ANDROID", "email": email, "request_polling_id": polling_id},
+            headers=_TGTG_HDRS, timeout=10,
+        )
+        if r.status_code != 200:
+            return None
+        d = r.json()
+        return {
+            "access_token":  d.get("access_token"),
+            "refresh_token": d.get("refresh_token"),
+            "user_id":       d.get("startup_data", {}).get("user", {}).get("user_id", ""),
+            "cookie":        r.headers.get("set-cookie", ""),
+        }
+    except Exception:
+        return None
+
+def _tgtg_refresh(account: dict) -> dict | None:
+    """Refresh access token using refresh token. Returns updated account or None."""
+    try:
+        r = requests.post(
+            f"{_TGTG_BASE}/auth/v3/token/refresh",
+            json={"refresh_token": account["refresh_token"]},
+            headers={**_TGTG_HDRS, "authorization": f"Bearer {account['access_token']}"},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return None
+        d = r.json()
+        account["access_token"] = d.get("access_token", account["access_token"])
+        account["refresh_token"] = d.get("refresh_token", account["refresh_token"])
+        return account
+    except Exception:
+        return None
+
+def _tgtg_get_items(account: dict, lat: float, lon: float, radius: int = 3) -> list:
+    """Fetch available bags near lat/lon. Auto-refreshes token on 401."""
+    def _fetch(acct):
+        r = requests.post(
+            f"{_TGTG_BASE}/item/v8/",
+            json={
+                "favorites_only": False,
+                "origin": {"latitude": lat, "longitude": lon},
+                "radius": radius,
+                "page": 1,
+                "page_size": 20,
+            },
+            headers={**_TGTG_HDRS, "authorization": f"Bearer {acct['access_token']}",
+                     "cookie": acct.get("cookie", "")},
+            timeout=12,
+        )
+        return r
+
+    r = _fetch(account)
+    if r.status_code == 401:
+        refreshed = _tgtg_refresh(account)
+        if not refreshed:
+            return []
+        account.update(refreshed)
+        r = _fetch(account)
+    if r.status_code != 200:
+        return []
+    return [item for item in r.json().get("items", [])
+            if item.get("items_available", 0) > 0]
+
+
+@app.route("/api/tgtg/check-all", methods=["POST"])
+def api_tgtg_check_all():
+    """Cron: check TGTG bags for all active accounts and send WhatsApp alerts."""
+    if request.headers.get("X-Admin-Token") != "miru-digest-2026":
+        return jsonify({"error": "Forbidden"}), 403
+
+    sb = lib._sb()
+    rows = sb.table("tgtg_accounts").select("*").eq("status", "active").execute().data or []
+    sent, skipped = 0, 0
+
+    for row in rows:
+        phone = row["phone"]
+        lat, lon = row.get("lat"), row.get("lon")
+        if not lat or not lon:
+            # Try to get from home postcode
+            pc = sb.table("my_area_places").select("postcode").eq("from_number", phone).eq("category", "_home").maybe_single().execute()
+            if pc and pc.data:
+                ll = postcode_to_latlon(pc.data["postcode"])
+                if ll and ll[0]:
+                    lat, lon = ll
+                    sb.table("tgtg_accounts").update({"lat": lat, "lon": lon}).eq("phone", phone).execute()
+
+        if not lat:
+            skipped += 1
+            continue
+
+        account = {k: row[k] for k in ("access_token", "refresh_token", "user_id", "cookie") if row.get(k)}
+        items = _tgtg_get_items(account, lat, lon, row.get("radius_km", 3))
+
+        # Update tokens if refreshed
+        if account.get("access_token") != row.get("access_token"):
+            sb.table("tgtg_accounts").update({
+                "access_token": account["access_token"],
+                "refresh_token": account["refresh_token"],
+            }).eq("phone", phone).execute()
+
+        if not items:
+            sb.table("tgtg_accounts").update({"last_checked_at": "now()"}).eq("phone", phone).execute()
+            continue
+
+        # Only alert on items not seen in the last 2 hours
+        import datetime as _dt
+        last = row.get("last_notified_at")
+        if last:
+            age = (_dt.datetime.now(_dt.timezone.utc) - _dt.datetime.fromisoformat(last.replace("Z", "+00:00"))).total_seconds()
+            if age < 7200:
+                skipped += 1
+                continue
+
+        lines = []
+        for item in items[:3]:
+            store = item.get("store", {}).get("store_name", "Unknown")
+            price = item.get("item", {}).get("price_including_taxes", {})
+            amount = price.get("minor_units", 0) / (10 ** price.get("decimals", 2))
+            avail = item.get("items_available", 0)
+            pickup = item.get("pickup_interval", {})
+            pickup_end = (pickup.get("end") or "")[:16].replace("T", " ")
+            lines.append(f"🍱 *{store}* — £{amount:.2f} · {avail} left · pickup by {pickup_end}")
+
+        msg = "✨ *Magic Bags near you!*\n\n" + "\n".join(lines) + "\n\nReply *tgtg stop* to pause alerts."
+        _wa_send_proactive(phone, msg)
+        sb.table("tgtg_accounts").update({"last_checked_at": "now()", "last_notified_at": "now()"}).eq("phone", phone).execute()
+        sent += 1
+
+    return jsonify({"ok": True, "sent": sent, "skipped": skipped, "total": len(rows)})
+
+
 @app.route("/api/brand/scan", methods=["POST"])
 def api_brand_scan():
     """Identify a brand from a photo using Groq vision."""
@@ -10538,6 +10697,102 @@ def whatsapp_reply():
             pass
         resp.message("✅ Morning brief is back on — you'll get it each morning.")
         return str(resp)
+
+    # ── Too Good To Go ────────────────────────────────────────────────────────────
+    if body_lower in ("magic bags", "tgtg", "too good to go", "tgtg setup"):
+        existing = None
+        try:
+            r = lib._sb().table("tgtg_accounts").select("status,email").eq("phone", from_number).maybe_single().execute()
+            existing = r.data if r else None
+        except Exception:
+            pass
+        if existing and existing.get("status") == "active":
+            resp.message(f"✅ You already have Magic Bag alerts set up ({existing.get('email','')}).\n\nReply *tgtg stop* to pause or *tgtg check* to check now.")
+        else:
+            resp.message("🍱 *Too Good To Go Magic Bag Alerts*\n\nI'll ping you whenever a discounted bag becomes available near your home postcode.\n\nWhat's your Too Good To Go email address?")
+            _set_wa_pending_intent(from_number, {"type": "tgtg_email"})
+        return str(resp)
+
+    if body_lower in ("tgtg stop", "stop tgtg", "stop magic bags", "pause tgtg"):
+        try:
+            lib._sb().table("tgtg_accounts").update({"status": "paused"}).eq("phone", from_number).execute()
+        except Exception:
+            pass
+        resp.message("⏸ Magic Bag alerts paused. Reply *magic bags* anytime to restart.")
+        return str(resp)
+
+    if body_lower in ("tgtg done", "tgtg ready", "done tgtg", "clicked"):
+        try:
+            row = lib._sb().table("tgtg_accounts").select("email,polling_id").eq("phone", from_number).eq("status", "pending").maybe_single().execute()
+            if not row or not row.data:
+                resp.message("I don't have a pending TGTG login for you. Reply *magic bags* to start again.")
+                return str(resp)
+            creds = _tgtg_poll_login(row.data["email"], row.data["polling_id"])
+            if not creds or not creds.get("access_token"):
+                resp.message("❌ Couldn't verify the login yet — have you clicked the link in your email? Try again in a moment.")
+                return str(resp)
+            lib._sb().table("tgtg_accounts").update({**creds, "status": "active"}).eq("phone", from_number).execute()
+            resp.message("✅ *Magic Bag alerts are on!*\n\nI'll WhatsApp you whenever a bag appears near your home postcode. Usually checking every hour.\n\nReply *tgtg stop* anytime to pause.")
+        except Exception as e:
+            resp.message(f"Something went wrong: {e}")
+        return str(resp)
+
+    if body_lower in ("tgtg check", "check tgtg", "check magic bags"):
+        try:
+            row = lib._sb().table("tgtg_accounts").select("*").eq("phone", from_number).eq("status", "active").maybe_single().execute()
+            if not row or not row.data:
+                resp.message("No active Magic Bag alerts. Reply *magic bags* to set up.")
+                return str(resp)
+            r = row.data
+            lat, lon = r.get("lat"), r.get("lon")
+            if not lat:
+                pc = lib._sb().table("my_area_places").select("postcode").eq("from_number", from_number).eq("category", "_home").maybe_single().execute()
+                if pc and pc.data:
+                    ll = postcode_to_latlon(pc.data["postcode"])
+                    if ll and ll[0]: lat, lon = ll
+            if not lat:
+                resp.message("I need your home postcode first. Reply with your postcode.")
+                return str(resp)
+            account = {k: r[k] for k in ("access_token","refresh_token","user_id","cookie") if r.get(k)}
+            items = _tgtg_get_items(account, lat, lon, r.get("radius_km", 3))
+            if not items:
+                resp.message("🍱 No Magic Bags available near you right now. I'll ping you when one appears!")
+            else:
+                lines = []
+                for item in items[:5]:
+                    store = item.get("store", {}).get("store_name", "Unknown")
+                    price = item.get("item", {}).get("price_including_taxes", {})
+                    amount = price.get("minor_units", 0) / (10 ** price.get("decimals", 2))
+                    avail = item.get("items_available", 0)
+                    lines.append(f"🍱 *{store}* — £{amount:.2f} · {avail} left")
+                resp.message("*Magic Bags near you right now:*\n\n" + "\n".join(lines))
+        except Exception as e:
+            resp.message(f"Error checking: {e}")
+        return str(resp)
+
+    # ── Pending intent: email reply for TGTG setup ────────────────────────────
+    _email_m = re.match(r'^[\w.+\-]+@[\w.\-]+\.[a-z]{2,}$', body.strip(), re.I)
+    if _email_m:
+        _tgtg_pending = _get_wa_pending_intent(from_number)
+        if _tgtg_pending and _tgtg_pending.get("type") == "tgtg_email":
+            _clear_wa_pending_intent(from_number)
+            _email_addr = body.strip().lower()
+            try:
+                polling_id = _tgtg_start_login(_email_addr)
+                if not polling_id:
+                    resp.message("❌ Couldn't reach Too Good To Go — try again in a minute.")
+                    return str(resp)
+                lib._sb().table("tgtg_accounts").upsert({
+                    "phone": from_number.replace("whatsapp:", "").strip(),
+                    "email": _email_addr,
+                    "polling_id": polling_id,
+                    "status": "pending"
+                }).execute()
+                resp.message(f"✅ Magic link sent to *{_email_addr}*!\n\nClick the link in your email (check spam too), then reply *tgtg done* and I'll activate your alerts.")
+            except Exception as e:
+                print(f"[tgtg_email] {e}")
+                resp.message("Something went wrong setting up TGTG. Try replying *magic bags* to start again.")
+            return str(resp)
 
     # ── Pending intent: postcode reply resolves a stored intent ─────────────────
     _pc_reply = re.match(r'^([A-Z]{1,2}\d{1,2}[A-Z]?(?:\s*\d[A-Z]{2})?)\s*$', body.upper().strip())
