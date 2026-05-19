@@ -4850,6 +4850,160 @@ def api_admin_fix_currency():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/morning-brief", methods=["POST"])
+def api_morning_brief():
+    """Send a personalised morning WhatsApp brief to all users with a home postcode.
+    Called daily at 7:30am UK time via cron-job.org.
+    Token: X-Admin-Token: miru-digest-2026
+    """
+    if request.headers.get("X-Admin-Token") != "miru-digest-2026":
+        return jsonify({"error": "Forbidden"}), 403
+
+    import datetime as _dt
+
+    def _weather_brief(lat, lon):
+        """Returns (emoji, temp_str, label) or None."""
+        try:
+            r = requests.get(
+                "https://api.open-meteo.com/v1/forecast",
+                params={"latitude": round(lat, 3), "longitude": round(lon, 3),
+                        "current": "temperature_2m,weather_code", "timezone": "Europe/London"},
+                timeout=5
+            )
+            c = r.json().get("current", {})
+            temp = round(c.get("temperature_2m", 0))
+            code = c.get("weather_code", 0)
+            emoji = ("☀️" if code == 0 else "⛅" if code <= 3 else
+                     "🌫️" if code <= 48 else "🌦️" if code <= 57 else
+                     "🌧️" if code <= 67 else "❄️" if code <= 77 else
+                     "🌧️" if code <= 82 else "⛈️")
+            label = ("Sunny" if code == 0 else "Partly cloudy" if code <= 2 else
+                     "Cloudy" if code <= 3 else "Misty" if code <= 48 else
+                     "Drizzle" if code <= 57 else "Rain" if code <= 67 else
+                     "Snow" if code <= 77 else "Showers" if code <= 82 else "Stormy")
+            return emoji, f"{temp}°C", label
+        except Exception:
+            return None
+
+    def _fuel_brief(postcode):
+        """Returns cheapest fuel string near postcode or None."""
+        try:
+            latlon = postcode_to_latlon(postcode)
+            if not latlon:
+                return None
+            stations = fetch_all_stations(latlon[0], latlon[1], 5, "E10")
+            if not stations:
+                return None
+            best = min(stations, key=lambda s: s.get("price", 9999))
+            price = best.get("price")
+            name  = best.get("name", "")
+            if not price:
+                return None
+            return f"{price}p {name}"
+        except Exception:
+            return None
+
+    def _school_brief(phone_number, today):
+        """Returns list of upcoming school event strings for this week."""
+        try:
+            week_end = (today + _dt.timedelta(days=7)).isoformat()
+            variants = _wa_number_variants(phone_number)
+            profiles = (lib._sb().table("school_profiles")
+                        .select("id,child_name,school_name")
+                        .in_("wa_number", variants).eq("active", True)
+                        .execute().data or [])
+            if not profiles:
+                return []
+            profile_ids = [p["id"] for p in profiles]
+            profile_map = {p["id"]: p.get("child_name") or p.get("school_name", "School") for p in profiles}
+            events = (lib._sb().table("school_events")
+                      .select("event_title,event_date,profile_id")
+                      .in_("profile_id", profile_ids)
+                      .gte("event_date", today.isoformat())
+                      .lte("event_date", week_end)
+                      .order("event_date").limit(4).execute().data or [])
+            lines = []
+            for e in events:
+                child = profile_map.get(e["profile_id"], "School")
+                date  = e.get("event_date", "")
+                title = e.get("event_title", "")
+                date_str = ""
+                if date:
+                    try:
+                        d = _dt.date.fromisoformat(date)
+                        date_str = " · " + d.strftime("%-d %b")
+                    except Exception:
+                        pass
+                lines.append(f"• {child}: {title}{date_str}")
+            return lines
+        except Exception:
+            return []
+
+    try:
+        today = _dt.date.today()
+        # Get all users with a stored home postcode
+        users = (lib._sb().table("my_area_places")
+                 .select("from_number,postcode")
+                 .eq("category", "_home")
+                 .not_.is_("from_number", "null")
+                 .not_.is_("postcode", "null")
+                 .neq("brief_paused", True)
+                 .execute().data or [])
+
+        sent = 0
+        errors = 0
+        for user in users:
+            phone    = user.get("from_number", "").strip()
+            postcode = (user.get("postcode") or "").strip().upper()
+            if not phone or not postcode:
+                continue
+            try:
+                latlon = postcode_to_latlon(postcode)
+                if not latlon:
+                    continue
+
+                # Weather
+                wx = _weather_brief(latlon[0], latlon[1])
+                wx_line = f"{wx[0]} {wx[1]} · {wx[2]}" if wx else ""
+
+                # School events this week
+                school_lines = _school_brief(phone, today)
+
+                # Cheapest fuel nearby
+                fuel_line = _fuel_brief(postcode)
+
+                # Build message — skip if nothing useful to say
+                if not wx_line and not school_lines and not fuel_line:
+                    continue
+
+                h = _dt.datetime.now().hour
+                greet = "Good morning" if h < 12 else "Good afternoon" if h < 17 else "Good evening"
+                parts = [f"*{greet}* — {wx_line}" if wx_line else f"*{greet}*"]
+
+                if school_lines:
+                    parts.append("\n🏫 *School this week*")
+                    parts.extend(school_lines)
+
+                if fuel_line:
+                    parts.append(f"\n⛽ Cheapest near {postcode}: {fuel_line}")
+
+                parts.append("\n_Reply STOP BRIEF to pause daily updates_")
+
+                msg = "\n".join(parts)
+
+                # Ensure phone has whatsapp: prefix
+                to = phone if phone.startswith("whatsapp:") else f"whatsapp:{phone}"
+                _wa_send_proactive(to, msg)
+                sent += 1
+            except Exception as e:
+                print(f"[morning-brief] error for {phone}: {e}")
+                errors += 1
+
+        return jsonify({"ok": True, "sent": sent, "errors": errors, "total_users": len(users)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/scan", methods=["POST"])
 def api_brand_scan():
     """Identify a brand from a photo using Groq vision."""
@@ -10367,6 +10521,24 @@ def whatsapp_reply():
                 resp.message("📍 One quick thing — what's your home postcode?\n\nJust reply with it (e.g. *KT16 0HY*) and I'll remember it for trains, fuel prices, local info and more.")
         else:
             resp.message(_HELP_MSG)
+        return str(resp)
+
+    # ── Morning brief opt-out ────────────────────────────────────────────────────
+    if body_lower in ("stop brief", "pause brief", "stop morning brief", "no brief"):
+        try:
+            lib._sb().table("my_area_places").update({"brief_paused": True}) \
+                .eq("from_number", from_number).eq("category", "_home").execute()
+        except Exception:
+            pass
+        resp.message("✅ Morning brief paused. Reply *START BRIEF* anytime to resume.")
+        return str(resp)
+    if body_lower in ("start brief", "resume brief", "start morning brief"):
+        try:
+            lib._sb().table("my_area_places").update({"brief_paused": False}) \
+                .eq("from_number", from_number).eq("category", "_home").execute()
+        except Exception:
+            pass
+        resp.message("✅ Morning brief is back on — you'll get it each morning.")
         return str(resp)
 
     # ── Pending intent: postcode reply resolves a stored intent ─────────────────
