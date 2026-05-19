@@ -330,18 +330,20 @@ function switchTab(name) {
 }
 
 async function loadBrand() {
+  let d;
   try {
     const r = await fetch('/api/brand?name=' + encodeURIComponent(BRAND));
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
+    d = await r.json();
     if (d.error) throw new Error(d.error);
-    renderBrand(d);
   } catch(e) {
     document.getElementById('loading-wrap').style.display = 'none';
     const err = document.getElementById('error-wrap');
     err.textContent = 'Could not load brand data — ' + (e.message || 'try again.');
     err.style.display = 'block';
+    return;
   }
+  renderBrand(d);
 }
 
 function renderBrand(d) {
@@ -390,13 +392,15 @@ function renderBrand(d) {
 
   const tl = d.timeline || [];
   if (tl.length) {
-    document.getElementById('brand-timeline').innerHTML = tl.map(t =>
-      `<div class="tl-item"><div class="tl-year">${t.year||''}</div><div class="tl-text">${t.event||t.text||t}</div></div>`
-    ).join('');
+    document.getElementById('brand-timeline').innerHTML = tl.map(t => {
+      const yr  = typeof t === 'object' ? (t.year||'') : '';
+      const txt = typeof t === 'object' ? (t.event||t.text||t.description||'') : String(t);
+      return `<div class="tl-item"><div class="tl-year">${yr}</div><div class="tl-text">${txt}</div></div>`;
+    }).join('');
     document.getElementById('timeline-card').style.display = 'block';
   }
 
-  const rivals = d.competitors || [];
+  const rivals = (d.competitors || []).map(r => typeof r === 'string' ? r : (r.name || r.brand || String(r))).filter(Boolean);
   if (rivals.length) {
     document.getElementById('rivals-wrap').innerHTML = rivals.map(r =>
       `<a class="rival-chip" href="/${r.toLowerCase().replace(/[^a-z0-9]+/g,'-')}">${r}</a>`
@@ -404,10 +408,10 @@ function renderBrand(d) {
     document.getElementById('rivals-card').style.display = 'block';
   }
 
-  const camps = d.campaigns || [];
+  const camps = (d.campaigns || []).map(c => typeof c === 'string' ? c : (c.name||c.title||c.description||'')).filter(Boolean);
   if (camps.length) {
     document.getElementById('campaigns-list').innerHTML = camps.map(c =>
-      `<div class="campaign-item"><span class="campaign-icon">📢</span>${typeof c === 'string' ? c : (c.name||c.title||'')}</div>`
+      `<div class="campaign-item"><span class="campaign-icon">📢</span>${c}</div>`
     ).join('');
   }
 }
