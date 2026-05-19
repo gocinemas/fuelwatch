@@ -825,6 +825,10 @@ def home_v2():
         return "", 404
     return render_template("home_v2.html")
 
+@app.route("/home-2026")
+def home_2026():
+    return render_template("home_2026_test.html")
+
 @app.route("/design/home")
 def design_home():
     return render_template("design_home_bento.html")
