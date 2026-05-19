@@ -4994,6 +4994,117 @@ def api_intel_research():
     return jsonify(brief)
 
 
+@app.route("/api/intel/email-report", methods=["POST", "OPTIONS"])
+def api_intel_email_report():
+    """Send an Intel brief by email via Resend. FROM reports@mekalav.com, BCC mekala@gmail.com."""
+    if request.method == "OPTIONS":
+        return jsonify({})
+    data = request.get_json(silent=True) or {}
+    to_email = (data.get("email") or "").strip().lower()
+    company  = (data.get("company") or "").strip()
+    brief    = data.get("brief") or {}
+
+    if not to_email or "@" not in to_email:
+        return jsonify({"error": "Valid email required"}), 400
+    if not company:
+        return jsonify({"error": "Company required"}), 400
+
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "Email service not configured — contact mekala@gmail.com"}), 503
+
+    risks_items = "".join(
+        f'<li style="margin-bottom:6px">{r}</li>'
+        for r in (brief.get("risks") or ["None identified"])
+    )
+    conf = (brief.get("confidence") or "medium").lower()
+    conf_color = {"high": "#16a34a", "low": "#dc2626"}.get(conf, "#d97706")
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e8e4df">
+
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);padding:28px 32px">
+    <div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px">Intel Brief · mekalav.com/intel</div>
+    <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.5px">{company}</div>
+    <div style="display:inline-block;margin-top:10px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:{conf_color};color:#fff;text-transform:uppercase;letter-spacing:.3px">{conf} confidence</div>
+  </div>
+
+  <!-- Headline -->
+  <div style="margin:24px 32px 0;padding:18px 20px;background:#faf9f7;border-left:4px solid #d97706;border-radius:8px;font-size:17px;font-weight:700;line-height:1.45;color:#1a1714">
+    {brief.get("headline") or "No headline available"}
+  </div>
+
+  <!-- Cards -->
+  <div style="padding:0 32px">
+
+    <div style="margin-top:16px;padding:18px 20px;border:1px solid #e8e4df;border-radius:12px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#7a7168;margin-bottom:8px">Strategy</div>
+      <div style="font-size:14px;line-height:1.6;color:#1a1714">{brief.get("strategy") or "Not available"}</div>
+    </div>
+
+    <div style="margin-top:12px;padding:18px 20px;border:1px solid #e8e4df;border-radius:12px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#7a7168;margin-bottom:8px">Leadership</div>
+      <div style="font-size:14px;line-height:1.6;color:#1a1714">{brief.get("leadership") or "Not available"}</div>
+    </div>
+
+    <div style="margin-top:12px;padding:18px 20px;border:1px solid #e8e4df;border-radius:12px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#7a7168;margin-bottom:8px">Hiring Signals</div>
+      <div style="font-size:14px;line-height:1.6;color:#1a1714">{brief.get("hiring_signals") or "Not available"}</div>
+    </div>
+
+    <div style="margin-top:12px;padding:18px 20px;border:1px solid #e8e4df;border-radius:12px;border-left:3px solid #2563eb">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#2563eb;margin-bottom:8px">AI Focus</div>
+      <div style="font-size:14px;line-height:1.6;color:#1a1714">{brief.get("ai_focus") or "Not publicly available"}</div>
+    </div>
+
+    <div style="margin-top:12px;padding:18px 20px;border:1px solid #e8e4df;border-radius:12px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#7a7168;margin-bottom:8px">Risks</div>
+      <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6;color:#1a1714">{risks_items}</ul>
+    </div>
+
+    <div style="margin-top:12px;padding:18px 20px;border:1px solid #e8e4df;border-radius:12px;border-left:3px solid #d97706">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#7a7168;margin-bottom:8px">Opportunity Angle</div>
+      <div style="font-size:14px;line-height:1.6;color:#1a1714">{brief.get("opportunity_angle") or "Not available"}</div>
+    </div>
+
+  </div>
+
+  <!-- Footer pitch -->
+  <div style="margin:24px 32px 32px;padding:22px 24px;background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:12px">
+    <div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px">Built by</div>
+    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:8px">Vikram Mekala — AI &amp; Transformation</div>
+    <div style="font-size:13px;line-height:1.6;color:rgba(255,255,255,.7);margin-bottom:14px">Intel shows what agentic AI looks like in production. If you're thinking about what agents could do for your business, let's talk.</div>
+    <a href="https://mekalav.com" style="display:inline-block;padding:9px 18px;background:#f59e0b;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;margin-right:8px">mekalav.com →</a>
+    <a href="mailto:mekala@gmail.com" style="display:inline-block;padding:9px 18px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">Let's talk</a>
+  </div>
+
+</div>
+</body></html>"""
+
+    try:
+        r = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "from": "Intel Reports <reports@mekalav.com>",
+                "to": [to_email],
+                "bcc": ["mekala@gmail.com"],
+                "subject": f"Intel Brief: {company}",
+                "html": html_body,
+            },
+            timeout=12,
+        )
+        if r.status_code in (200, 201):
+            return jsonify({"ok": True})
+        return jsonify({"error": f"Send failed ({r.status_code})"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/intel/compare")
 def api_intel_compare():
     """Side-by-side brand/company comparison powered by Groq."""

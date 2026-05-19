@@ -2836,9 +2836,6 @@
       document.getElementById("fuel-results").innerHTML = `<p style="color:#ef4444;font-size:13px;padding:12px 0">⚠️ "${postcode}" doesn't look like a valid UK postcode — try e.g. KT16 0DA</p>`;
       return;
     }
-    // Sync postcode back to global identity bar
-    localStorage.setItem("miru_postcode", postcode);
-    _idBarRefresh && _idBarRefresh();
     _saveRecent("miru_fuel", postcode);
     // Pre-fill alert postcode and fuel type to match search
     const alertType = document.getElementById("fuel-alert-type");
@@ -10187,6 +10184,8 @@ const _ts = new Date(d.timestamp);
         const h = new Date().getHours();
         const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
         document.getElementById("home-greeting").textContent = `${greet} · ${_wCode(code)} ${temp}°C`;
+        const heroDL = document.getElementById("home-hero-dateline");
+        if (heroDL) heroDL.textContent = `${heroDL.textContent} · ${_wCode(code)} ${temp}°C`;
         const detail = document.getElementById("myarea-home-detail");
         if (detail) detail.textContent = `${_wCode(code)} ${temp}°C · ${_wLabel(code)}`;
       }).catch(() => {});
@@ -12652,10 +12651,7 @@ _bkBadge();
       const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()];
       hero.innerHTML = `
         <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:var(--text);line-height:1.1;margin-bottom:4px">${greet} ☀️</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-          ${pc ? `<span style="background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800;color:var(--text)">${pc}</span>` : ""}
-          <span style="font-size:13px;color:var(--muted)">${dow} ${now.getDate()} ${mon}</span>
-        </div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px" id="home-hero-dateline">${dow} ${now.getDate()} ${mon}</div>
         <div style="font-size:11px;color:var(--subtle);margin-top:8px;line-height:1.5">⛽ Fuel &middot; 🚆 Trains &middot; 🏡 My Local &middot; 🔎 Research &middot; 🗂️ Admin</div>`;
       if (waTop) waTop.style.display = "none";
       if (waBot) waBot.style.display = "block";
