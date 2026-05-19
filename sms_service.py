@@ -17110,7 +17110,7 @@ def api_ev_nearby():
     from search import _sb_cache_get, _sb_cache_set
     cache_key = f"ev:{round(lat,3)},{round(lon,3)}"
     cached = _sb_cache_get(cache_key)
-    if cached:
+    if cached and cached.get("chargers"):
         return jsonify(cached)
 
     try:
@@ -17178,7 +17178,7 @@ def api_bus_stops():
     from search import _sb_cache_get, _sb_cache_set
     cache_key = f"bus:{round(lat,3)},{round(lon,3)}"
     cached = _sb_cache_get(cache_key)
-    if cached:
+    if cached and cached.get("stops"):
         return jsonify(cached)
 
     try:
