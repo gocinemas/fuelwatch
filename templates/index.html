@@ -519,6 +519,9 @@
           <div id="home-train-next" style="font-size:16px;font-weight:900;color:#fff;letter-spacing:-0.5px;margin-top:6px;line-height:1.2;display:none"></div>
           <div id="home-train-sub" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.3;display:none"></div>
           <div id="home-train-placeholder" style="display:none"></div>
+          <div id="home-train-wfh-row" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,.12);padding-top:7px">
+            <button id="home-train-wfh-btn" onclick="event.stopPropagation();_trainToggleWFH()" style="background:none;border:none;padding:0;cursor:pointer;font-size:11px;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.02em"></button>
+          </div>
         </button>
       </div>
 
@@ -12117,9 +12120,44 @@ _bkBadge();
     document.getElementById("home-fuel-placeholder").style.display = "none";
   }
 
+  function _trainIsWFH() {
+    try {
+      const w = JSON.parse(localStorage.getItem("miru_wfh") || "null");
+      if (!w) return false;
+      // Reset at midnight
+      if (w.date !== new Date().toDateString()) { localStorage.removeItem("miru_wfh"); return false; }
+      return w.on === true;
+    } catch { return false; }
+  }
+
+  window._trainToggleWFH = function() {
+    const isWFH = _trainIsWFH();
+    if (isWFH) {
+      localStorage.removeItem("miru_wfh");
+    } else {
+      localStorage.setItem("miru_wfh", JSON.stringify({ on: true, date: new Date().toDateString() }));
+    }
+    _trainHomeLoad();
+  };
+
   async function _trainHomeLoad() {
     const pc = _miruPostcode();
     const ph = document.getElementById("home-train-placeholder");
+    const wfhRow = document.getElementById("home-train-wfh-row");
+    const wfhBtn = document.getElementById("home-train-wfh-btn");
+
+    let workBm = null;
+    try { workBm = JSON.parse(localStorage.getItem("miru_train_bm_work") || "null"); } catch {}
+
+    // WFH mode — show collapsed state
+    if (_trainIsWFH()) {
+      document.getElementById("home-train-next").style.display = "none";
+      document.getElementById("home-train-sub").style.display = "none";
+      if (ph) { ph.innerHTML = "🏠 Working from home today"; ph.style.display = ""; ph.style.color = "rgba(255,255,255,0.7)"; ph.style.fontSize = "13px"; ph.style.marginTop = "6px"; }
+      if (wfhRow) wfhRow.style.display = "";
+      if (wfhBtn) wfhBtn.textContent = "↩ Commuting today?";
+      return;
+    }
 
     let bm = null;
     try { bm = JSON.parse(localStorage.getItem("miru_train_bm_home") || "null"); } catch {}
@@ -12140,20 +12178,16 @@ _bkBadge();
         if (r.ok) {
           const d = await r.json();
           crs = d.crs; stationName = d.name || d.station;
-        } else {
-          _phShow("Station lookup failed");
-          return;
-        }
-      } catch(e) {
-        _phShow("Network error");
-        return;
-      }
+        } else { _phShow("Station lookup failed"); return; }
+      } catch(e) { _phShow("Network error"); return; }
     }
 
     if (!crs) { _phShow("No station found"); return; }
     _phShow((stationName || crs) + "…");
 
-    const CACHE_KEY = "miru_train_home_" + crs;
+    // Build fetch URL — filter by work station if set
+    const workCrs = workBm ? workBm.crs : null;
+    const CACHE_KEY = "miru_train_home_" + crs + (workCrs ? "_to_" + workCrs : "");
     let trains = null;
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
@@ -12162,7 +12196,9 @@ _bkBadge();
 
     if (!trains) {
       try {
-        const r = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
+        let url = `/api/train/departures?crs=${encodeURIComponent(crs)}`;
+        if (workCrs) url += `&calling_at=${encodeURIComponent(workCrs)}`;
+        const r = await fetch(url);
         if (r.ok) {
           const d = await r.json();
           trains = d.trains || [];
@@ -12173,10 +12209,7 @@ _bkBadge();
           _phShow(err.error || "Departures unavailable");
           return;
         }
-      } catch(e) {
-        _phShow("Network error");
-        return;
-      }
+      } catch(e) { _phShow("Network error"); return; }
     }
 
     if (!trains.length) {
@@ -12188,10 +12221,17 @@ _bkBadge();
     const dest = (next.destination || "").replace(/^London /i, "");
     document.getElementById("home-train-next").textContent = next.scheduled + " → " + dest;
     const status = next.expected && next.expected !== "On time" ? next.expected : "On time";
-    document.getElementById("home-train-sub").textContent = (stationName || crs) + (next.platform ? " · Plat " + next.platform : "") + " · " + status;
+    const toWork = workBm ? ` → ${workBm.name || workBm.crs}` : "";
+    document.getElementById("home-train-sub").textContent = (stationName || crs) + toWork + (next.platform ? " · Plat " + next.platform : "") + " · " + status;
     document.getElementById("home-train-next").style.display = "";
     document.getElementById("home-train-sub").style.display = "";
     if (ph) ph.style.display = "none";
+
+    // Show WFH toggle if work station is set
+    if (wfhRow && workBm) {
+      wfhRow.style.display = "";
+      if (wfhBtn) wfhBtn.textContent = "🏠 WFH today?";
+    }
   }
 
   // Expose to global scope so _onPostcodeChange (different script block) can call them
