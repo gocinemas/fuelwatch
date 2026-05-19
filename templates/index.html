@@ -4152,8 +4152,7 @@ const _ts = new Date(d.timestamp);
         <div style="font-size:11px;color:var(--muted)">↑${w.high}° ↓${w.low}° · Wind ${w.wind} km/h</div>
       </div>
     </div>`;
-    el.innerHTML = _maSectionHtml("weather", `${w.emoji} Weather`, bodyHtml);
-    if (_maGetPrefs().weather) el.style.display = "";
+    el.style.display = "none"; // weather shown in top bar instead
   }
 
   function _maRenderCrime(c) {
@@ -4613,10 +4612,12 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maUpdateHomeBtn(currentPc) {
-    const btn = document.getElementById("myarea-home-btn");
-    if (!btn) return;
     const home = (_miruPostcode() || "").replace(/\s+/g, "");
-    btn.style.display = (home && home !== currentPc) ? "" : "none";
+    const isAway = home && home !== currentPc;
+    const homeBtn = document.getElementById("myarea-home-btn");
+    const saveBtn = document.getElementById("myarea-save-btn");
+    if (homeBtn) homeBtn.style.display = isAway ? "" : "none";
+    if (saveBtn) saveBtn.style.display = isAway ? "" : "none";
   }
 
   function myAreaSearchBars() {
