@@ -2873,7 +2873,7 @@ const _ts = new Date(d.timestamp);
   window.reportTabSwitch = function(tab, btn) {
     document.querySelectorAll(".rptab").forEach(b => b.classList.remove("rptab-on"));
     if (btn) btn.classList.add("rptab-on");
-    ["house","schools","pubs","cafes","crime","services","shops"].forEach(t => {
+    ["house","schools","pubs","cafes","crime","services","shops","environment"].forEach(t => {
       const p = document.getElementById("rp-panel-" + t);
       if (p) p.style.display = t === tab ? "block" : "none";
     });
