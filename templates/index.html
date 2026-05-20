@@ -529,19 +529,25 @@
         </button>
       </div>
 
-      <!-- My Places card -->
+      <!-- My Places card (collapsed by default) -->
       <div id="home-commute-card" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px 16px;margin-bottom:10px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div onclick="_hcToggle()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">
           <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.04em">🚗 MY PLACES</div>
-          <button onclick="_hcAdd()" style="font-size:11px;font-weight:700;color:#065f46;background:none;border:none;cursor:pointer;padding:2px 6px">+ Add</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div id="hc-preview" style="font-size:11px;color:var(--muted)"></div>
+            <span id="hc-chevron" style="font-size:11px;color:var(--muted);transition:transform .2s">▼</span>
+          </div>
         </div>
-        <div id="hc-list"></div>
-        <div id="hc-add-form" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-          <input id="hc-add-name" placeholder="Label (e.g. Work, Tesco, Gym)" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:6px;box-sizing:border-box">
-          <input id="hc-add-dest" placeholder="Address or place name" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:8px;box-sizing:border-box">
-          <div style="display:flex;gap:6px">
-            <button onclick="_hcSave()" style="flex:1;padding:7px;background:#065f46;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
-            <button onclick="document.getElementById('hc-add-form').style.display='none'" style="padding:7px 12px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
+        <div id="hc-body" style="display:none;margin-top:10px">
+          <div id="hc-list"></div>
+          <button onclick="event.stopPropagation();_hcAdd()" style="margin-top:8px;font-size:11px;font-weight:700;color:#065f46;background:none;border:none;cursor:pointer;padding:2px 0">+ Add place</button>
+          <div id="hc-add-form" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <input id="hc-add-name" placeholder="Label (e.g. Work, Tesco, Gym)" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:6px;box-sizing:border-box">
+            <input id="hc-add-dest" placeholder="Address or place name" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:8px;box-sizing:border-box">
+            <div style="display:flex;gap:6px">
+              <button onclick="_hcSave()" style="flex:1;padding:7px;background:#065f46;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
+              <button onclick="document.getElementById('hc-add-form').style.display='none'" style="padding:7px 12px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
+            </div>
           </div>
         </div>
       </div>
@@ -4808,6 +4814,17 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── My Places card (home screen) ─────────────────────────────────────────────
+  function _hcToggle() {
+    const body = document.getElementById("hc-body");
+    const chev = document.getElementById("hc-chevron");
+    if (!body) return;
+    const open = body.style.display !== "none";
+    body.style.display = open ? "none" : "";
+    if (chev) chev.style.transform = open ? "" : "rotate(180deg)";
+    if (!open) _hcRender();
+    localStorage.setItem("miru_places_open", open ? "0" : "1");
+  }
+
   function _hcAdd() {
     const f = document.getElementById("hc-add-form");
     if (!f) return;
@@ -4837,6 +4854,9 @@ const _ts = new Date(d.timestamp);
     const el = document.getElementById("hc-list");
     if (!el) return;
     const arr = _commuteLoad();
+    // Update collapsed preview
+    const prev = document.getElementById("hc-preview");
+    if (prev) prev.textContent = arr.length ? `${arr.length} place${arr.length > 1 ? "s" : ""}` : "tap to add";
     if (!arr.length) {
       el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:2px 0">No places saved yet — tap + Add for Work, school, Tesco…</div>`;
       return;
@@ -4866,7 +4886,15 @@ const _ts = new Date(d.timestamp);
     });
   }
 
-  setTimeout(_hcRender, 400);
+  setTimeout(() => {
+    _hcRender();
+    if (localStorage.getItem("miru_places_open") === "1") {
+      const body = document.getElementById("hc-body");
+      const chev = document.getElementById("hc-chevron");
+      if (body) body.style.display = "";
+      if (chev) chev.style.transform = "rotate(180deg)";
+    }
+  }, 400);
 
   // ── My Commutes ──────────────────────────────────────────────────────────────
   const _COMMUTES_KEY = "miru_commutes";
