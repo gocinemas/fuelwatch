@@ -874,10 +874,9 @@
         <h2 class="font-bold text-gray-800 mb-1">🔎 Research an Area</h2>
         <p class="text-xs text-gray-400 mb-3">Research an area — crime, schools, house prices &amp; services</p>
         <!-- Home postcode banner -->
-        <div id="report-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:13px;font-weight:600;color:#166534">📍 Home: <span id="report-home-pc-label"></span></span>
-          <button onclick="reportUseHome()" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;cursor:pointer">Use</button>
-          <button onclick="reportClearHome()" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer;margin-left:6px">Clear</button>
+        <div id="report-home-row" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="reportUseHome()">
+          <span style="font-size:13px;font-weight:600;color:#166534">📍 Tap to search your home: <span id="report-home-pc-label"></span></span>
+          <button onclick="event.stopPropagation();reportClearHome()" style="font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer;margin-left:6px">Clear</button>
         </div>
         <div class="flex gap-2 mb-4">
           <input id="report-postcode" type="text" placeholder="Postcode e.g. TW3 3SF"
