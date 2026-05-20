@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+*.png
+price_history_national.json
+price_history_postcodes.json
+design_*.html
+.git/
+elections_candidates.csv
