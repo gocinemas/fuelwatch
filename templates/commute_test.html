@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commute Test · Miru</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f5f5f4; --surface: #ffffff; --border: #e4e0db;
+  --text: #1a1714; --muted: #7a7168; --radius: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #181614; --surface: #211f1c; --border: #332f2b; --text: #f0ece6; --muted: #8a8078; }
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.page { max-width: 640px; margin: 0 auto; padding: 28px 16px 60px; }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; background: #111827; color: #9ca3af; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 12px; border-radius: 99px; margin-bottom: 14px; }
+.badge-dot { width: 6px; height: 6px; background: #4ade80; border-radius: 50%; animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+
+h1 { font-size: 26px; font-weight: 900; letter-spacing: -1px; margin-bottom: 4px; }
+.sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 12px; }
+.card-label { font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+.input-row { display: flex; gap: 10px; }
+.input-wrap { display: flex; flex-direction: column; gap: 6px; }
+.input-wrap.grow { flex: 1; }
+.field-label { font-size: 11px; font-weight: 700; color: var(--muted); }
+input[type=text] {
+  border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 11px 14px; font-size: 15px; font-family: inherit;
+  background: var(--bg); color: var(--text); outline: none; width: 100%;
+  text-transform: uppercase;
+}
+input[type=text]:focus { border-color: #6366f1; }
+input[type=text]::placeholder { text-transform: none; color: var(--muted); }
+
+.run-btn {
+  width: 100%; padding: 15px; margin-top: 4px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff; border: none; border-radius: 12px;
+  font-size: 16px; font-weight: 700; font-family: inherit;
+  cursor: pointer; letter-spacing: -.2px;
+}
+.run-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Results */
+.results { display: none; margin-top: 8px; }
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+@media (max-width: 480px) { .result-grid { grid-template-columns: 1fr; } }
+
+.result-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 20px 18px;
+  position: relative; overflow: hidden;
+}
+.result-card.winner { border-color: #4ade80; }
+.result-card.winner::before {
+  content: "FASTER";
+  position: absolute; top: 10px; right: 12px;
+  font-size: 9px; font-weight: 800; letter-spacing: 1px;
+  color: #16a34a; background: #f0fdf4; padding: 2px 7px; border-radius: 99px;
+}
+.mode-icon { font-size: 28px; margin-bottom: 10px; line-height: 1; }
+.mode-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
+.big-time { font-size: 38px; font-weight: 900; letter-spacing: -2px; line-height: 1; color: var(--text); }
+.big-time .unit { font-size: 18px; font-weight: 600; letter-spacing: 0; color: var(--muted); }
+.time-sub { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.traffic-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+.traffic-ok  { background: #f0fdf4; color: #16a34a; }
+.traffic-bad { background: #fef9ee; color: #d97706; }
+
+/* Train departures */
+.dep-list { display: flex; flex-direction: column; gap: 0; }
+.dep-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.dep-row:last-child { border-bottom: none; }
+.dep-time { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); min-width: 48px; }
+.dep-time.late { color: #d97706; }
+.dep-time.cancelled { color: #dc2626; text-decoration: line-through; }
+.dep-meta { flex: 1; min-width: 0; }
+.dep-rt { font-size: 11px; color: var(--muted); }
+.dep-rt.on-time { color: #16a34a; }
+.dep-plat { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.dep-plat span { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-size: 11px; font-weight: 700; }
+
+.summary-bar {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 18px;
+  font-size: 14px; color: var(--text); line-height: 1.6;
+}
+.summary-bar strong { color: var(--text); }
+
+.error-state { padding: 14px; background: #fef2f2; border-radius: 12px; font-size: 13px; color: #dc2626; }
+.nc-state { padding: 14px; background: #fafaf9; border: 1px dashed var(--border); border-radius: 12px; font-size: 13px; color: var(--muted); text-align: center; }
+
+.spinner-wrap { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 32px 0; }
+.spinner { width: 22px; height: 22px; border: 2.5px solid var(--border); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.back { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; margin-bottom: 22px; }
+.back:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <a class="back" href="/">← Miru</a>
+
+  <div class="badge"><span class="badge-dot"></span>Prototype · Not shipped</div>
+  <h1>🚦 Commute Compare</h1>
+  <p class="sub">Train vs drive, side by side. Enter your home and work details below.</p>
+
+  <!-- Inputs -->
+  <div class="card">
+    <div class="card-label">🏠 Home</div>
+    <div class="input-row" style="margin-bottom:12px">
+      <div class="input-wrap grow">
+        <div class="field-label">Postcode</div>
+        <input type="text" id="from-pc" placeholder="e.g. KT16 0DA" maxlength="8">
+      </div>
+      <div class="input-wrap" style="width:90px">
+        <div class="field-label">Station CRS</div>
+        <input type="text" id="from-crs" placeholder="e.g. VIR" maxlength="3">
+      </div>
+    </div>
+
+    <div class="card-label" style="margin-top:4px">🏢 Work</div>
+    <div class="input-row">
+      <div class="input-wrap grow">
+        <div class="field-label">Postcode</div>
+        <input type="text" id="to-pc" placeholder="e.g. EC2A 1NT" maxlength="8">
+      </div>
+      <div class="input-wrap" style="width:90px">
+        <div class="field-label">Station CRS</div>
+        <input type="text" id="to-crs" placeholder="e.g. WAT" maxlength="3">
+      </div>
+    </div>
+  </div>
+
+  <button class="run-btn" id="run-btn" onclick="runCommute()">Compare commute →</button>
+
+  <!-- Loading -->
+  <div id="loading" style="display:none">
+    <div class="spinner-wrap">
+      <div class="spinner"></div>
+      <span style="font-size:14px;color:var(--muted)">Checking trains and traffic…</span>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <div class="result-grid">
+      <div class="result-card" id="train-card">
+        <div class="mode-icon">🚆</div>
+        <div class="mode-label">Train</div>
+        <div id="train-body"></div>
+      </div>
+      <div class="result-card" id="drive-card">
+        <div class="mode-icon">🚗</div>
+        <div class="mode-label">Drive</div>
+        <div id="drive-body"></div>
+      </div>
+    </div>
+    <div class="summary-bar" id="summary-bar"></div>
+  </div>
+
+</div>
+<script>
+function fmt3(s) {
+  s = s.trim().replace(/\s+/g, "");
+  if (s.length > 3) s = s.slice(0, 3);
+  return s.toUpperCase();
+}
+
+// Auto-uppercase + trim inputs
+["from-pc","to-pc","from-crs","to-crs"].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener("input", () => { el.value = el.value.toUpperCase(); });
+  el.addEventListener("keydown", e => { if (e.key === "Enter") runCommute(); });
+});
+
+async function runCommute() {
+  const fromPc  = document.getElementById("from-pc").value.trim().replace(/\s+/g, "").toUpperCase();
+  const toPc    = document.getElementById("to-pc").value.trim().replace(/\s+/g, "").toUpperCase();
+  const fromCrs = fmt3(document.getElementById("from-crs").value);
+  const toCrs   = fmt3(document.getElementById("to-crs").value);
+
+  if (!fromPc || !toPc) {
+    alert("Enter both home and work postcodes.");
+    return;
+  }
+
+  const btn = document.getElementById("run-btn");
+  btn.disabled = true; btn.textContent = "Checking…";
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("results").style.display = "none";
+
+  try {
+    const params = new URLSearchParams({ from_pc: fromPc, to_pc: toPc, from_crs: fromCrs, to_crs: toCrs });
+    const r = await fetch(`/api/commute?${params}`);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    renderResults(d);
+  } catch (e) {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("results").style.display = "block";
+    document.getElementById("train-card").style.display = "none";
+    document.getElementById("drive-card").style.display = "none";
+    document.getElementById("summary-bar").innerHTML = `<div class="error-state">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Compare commute →";
+  }
+}
+
+function renderResults(d) {
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("results").style.display = "block";
+
+  const train = d.train || {};
+  const drive = d.drive || {};
+
+  // ── Train ──
+  const tc = document.getElementById("train-card");
+  const tb = document.getElementById("train-body");
+  tc.style.display = "";
+  if (train.error === "no_stations") {
+    tb.innerHTML = `<div class="nc-state">Enter station CRS codes<br>to see train times</div>`;
+  } else if (train.error) {
+    tb.innerHTML = `<div class="error-state">${train.error}</div>`;
+  } else {
+    const deps = train.departures || [];
+    if (!deps.length) {
+      tb.innerHTML = `<div class="nc-state">No services found</div>`;
+    } else {
+      const toName = train.to_name || "";
+      tb.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Next trains → ${toName}</div>
+        <div class="dep-list">` +
+        deps.map(dep => {
+          const late = dep.late_min || 0;
+          const onTime = late <= 1;
+          const timeClass = dep.cancelled ? "cancelled" : late > 2 ? "late" : "";
+          const rtLabel = dep.cancelled ? "Cancelled" : onTime ? "On time" : `+${late} min`;
+          const rtClass = dep.cancelled ? "" : onTime ? "on-time" : "";
+          return `<div class="dep-row">
+            <div class="dep-time ${timeClass}">${dep.dep}</div>
+            <div class="dep-meta">
+              <div class="dep-rt ${rtClass}">${rtLabel}</div>
+              <div style="font-size:11px;color:var(--muted)">${dep.operator || ""}</div>
+            </div>
+            ${dep.platform ? `<div class="dep-plat">Plat <span>${dep.platform}</span></div>` : ""}
+          </div>`;
+        }).join("") + `</div>`;
+    }
+  }
+
+  // ── Drive ──
+  const dc = document.getElementById("drive-card");
+  const db = document.getElementById("drive-body");
+  dc.style.display = "";
+  if (drive.error === "not_configured") {
+    db.innerHTML = `<div class="nc-state" style="text-align:left">
+      <div style="font-weight:700;margin-bottom:4px">HERE API not configured</div>
+      <div>Add <code style="background:var(--bg);padding:1px 5px;border-radius:4px">HERE_API_KEY</code> to Railway env vars to enable live traffic.</div>
+    </div>`;
+  } else if (drive.error) {
+    db.innerHTML = `<div class="error-state">${drive.error}</div>`;
+  } else {
+    const delayLabel = drive.delay_min > 0 ? `+${drive.delay_min} min delay` : "No delay";
+    const badgeClass = drive.traffic_ok ? "traffic-ok" : "traffic-bad";
+    const badgeIcon  = drive.traffic_ok ? "🟢" : "🟡";
+    db.innerHTML = `
+      <div class="big-time">${drive.duration_min}<span class="unit"> min</span></div>
+      <div class="time-sub">Typical ${drive.typical_min} min · ${drive.distance_km} km</div>
+      <div class="traffic-badge ${badgeClass}">${badgeIcon} ${delayLabel}</div>`;
+  }
+
+  // ── Winner + summary ──
+  const trainOk = !train.error && (train.departures || []).length > 0;
+  const driveOk = !drive.error && drive.error !== "not_configured";
+
+  tc.classList.remove("winner"); dc.classList.remove("winner");
+  let summaryHtml = "";
+
+  if (trainOk && driveOk) {
+    const nextDep = train.departures.find(dep => !dep.cancelled);
+    if (nextDep && drive.duration_min) {
+      if (drive.duration_min < (nextDep.late_min || 0) + 10) {
+        dc.classList.add("winner");
+        summaryHtml = `🚗 <strong>Drive looks quicker today</strong> — ${drive.duration_min} min with traffic vs train at ${nextDep.dep}${drive.delay_min > 0 ? ". But traffic is building." : "."}`;
+      } else {
+        tc.classList.add("winner");
+        summaryHtml = `🚆 <strong>Train wins today</strong> — next at ${nextDep.dep}${drive.delay_min > 0 ? ` and there's ${drive.delay_min} min traffic delay on the drive` : ", drive looking clear too"}.`;
+      }
+    }
+  } else if (trainOk) {
+    const next = (train.departures || []).find(d => !d.cancelled);
+    summaryHtml = next ? `🚆 Next train at <strong>${next.dep}</strong>${next.late_min > 1 ? ` (running ${next.late_min} min late)` : " (on time)"}.` : "";
+  } else if (driveOk) {
+    summaryHtml = `🚗 Drive is <strong>${drive.duration_min} min</strong> with current traffic.`;
+  }
+
+  document.getElementById("summary-bar").innerHTML = summaryHtml;
+}
+</script>
+</body>
+</html>

@@ -829,6 +829,110 @@ def home_v2():
 def home_2026():
     return render_template("home_2026_test.html")
 
+@app.route("/commute-test")
+def commute_test():
+    return render_template("commute_test.html")
+
+@app.route("/api/commute")
+def api_commute():
+    """Compare train vs drive for a commute. Returns train departures + HERE drive time."""
+    from_pc  = request.args.get("from_pc", "").strip().replace(" ", "").upper()
+    to_pc    = request.args.get("to_pc",   "").strip().replace(" ", "").upper()
+    from_crs = request.args.get("from_crs", "").strip().upper()[:3]
+    to_crs   = request.args.get("to_crs",   "").strip().upper()[:3]
+
+    from_res = _resolve_postcode(from_pc)
+    to_res   = _resolve_postcode(to_pc)
+    if not from_res or not to_res:
+        return jsonify({"error": "Could not resolve one or both postcodes"}), 400
+
+    _, from_lat, from_lon, _ = from_res
+    _, to_lat,   to_lon,   _ = to_res
+
+    import concurrent.futures as _cf_cm
+
+    def _get_drive():
+        here_key = os.environ.get("HERE_API_KEY", "")
+        if not here_key:
+            return {"error": "not_configured"}
+        try:
+            r = requests.get(
+                "https://router.hereapi.com/v8/routes",
+                params={
+                    "transportMode": "car",
+                    "origin": f"{from_lat},{from_lon}",
+                    "destination": f"{to_lat},{to_lon}",
+                    "return": "summary,typicalDuration",
+                    "apikey": here_key,
+                },
+                timeout=12,
+            )
+            d = r.json()
+            sec = d["routes"][0]["sections"][0]["summary"]
+            duration_s  = sec.get("duration", 0)
+            typical_s   = sec.get("typicalDuration", duration_s)
+            length_m    = sec.get("length", 0)
+            delay_s     = max(0, duration_s - typical_s)
+            traffic_ok  = delay_s < 120
+            return {
+                "duration_min": round(duration_s / 60),
+                "typical_min":  round(typical_s  / 60),
+                "delay_min":    round(delay_s    / 60),
+                "distance_km":  round(length_m   / 1000, 1),
+                "traffic_ok":   traffic_ok,
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _get_train():
+        if not from_crs or not to_crs:
+            return {"error": "no_stations"}
+        try:
+            access = _get_rtt_token()
+            r = requests.get(
+                "https://data.rtt.io/rtt/location",
+                headers={"Authorization": f"Bearer {access}"},
+                params={"code": f"gb-nr:{from_crs}", "calling_at": to_crs},
+                timeout=12,
+            )
+            data = r.json()
+            services = data.get("services") or []
+            departures = []
+            for s in services[:6]:
+                loc = s.get("locationDetail", {})
+                dep_b = loc.get("gbttBookedDeparture", "")
+                dep_r = loc.get("realtimeDeparture", dep_b)
+                plat  = loc.get("platform", "")
+                cancelled = loc.get("cancelledDeparture", False) or loc.get("cancelledCall", False)
+                def _fmt(t):
+                    t = str(t).strip()
+                    if len(t) == 4 and t.isdigit(): return t[:2] + ":" + t[2:]
+                    return t[:5] if len(t) >= 5 else t
+                dep_b = _fmt(dep_b); dep_r = _fmt(dep_r)
+                late = 0
+                try:
+                    bh, bm = int(dep_b[:2]), int(dep_b[3:])
+                    rh, rm = int(dep_r[:2]), int(dep_r[3:])
+                    late = (rh*60+rm) - (bh*60+bm)
+                except Exception: pass
+                departures.append({
+                    "dep": dep_b, "dep_rt": dep_r,
+                    "late_min": late, "platform": plat,
+                    "cancelled": bool(cancelled),
+                    "operator": s.get("atocName", ""),
+                })
+            return {"departures": departures[:4], "from_name": data.get("location", {}).get("name", from_crs), "to_name": to_crs}
+        except Exception as e:
+            return {"error": str(e)}
+
+    with _cf_cm.ThreadPoolExecutor(max_workers=2) as ex:
+        fd = ex.submit(_get_drive)
+        ft = ex.submit(_get_train)
+        drive = fd.result()
+        train = ft.result()
+
+    return jsonify({"drive": drive, "train": train, "from_pc": from_pc, "to_pc": to_pc})
+
 @app.route("/design/home")
 def design_home():
     return render_template("design_home_bento.html")
