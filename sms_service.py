@@ -4529,6 +4529,10 @@ def api_environment():
                 f'relation["natural"="water"](around:600,{lat},{lon});'
                 f'way["leisure"="park"](around:1500,{lat},{lon});'
                 f'relation["leisure"="park"](around:1500,{lat},{lon});'
+                f'way["landuse"="park"](around:1500,{lat},{lon});'
+                f'relation["landuse"="park"](around:1500,{lat},{lon});'
+                f'way["leisure"="garden"]["access"!="private"](around:1500,{lat},{lon});'
+                f'relation["leisure"="garden"]["access"!="private"](around:1500,{lat},{lon});'
                 f'way["leisure"="nature_reserve"](around:1500,{lat},{lon});'
                 f'relation["leisure"="nature_reserve"](around:1500,{lat},{lon});'
                 f'way["leisure"="recreation_ground"](around:1500,{lat},{lon});'
@@ -4544,11 +4548,11 @@ def api_environment():
             els = _overpass_query(q, timeout=25)
             industrial, water, green = [], [], []
             _green_seen = set()
-            _GREEN_TAGS = {"park", "nature_reserve", "recreation_ground", "common"}
+            _GREEN_TAGS = {"park", "nature_reserve", "recreation_ground", "common", "garden"}
             _GREEN_FALLBACK = {
                 "park": "Park", "nature_reserve": "Nature Reserve",
                 "recreation_ground": "Recreation Ground", "common": "Common",
-                "forest": "Forest", "wood": "Woodland",
+                "forest": "Forest", "wood": "Woodland", "garden": "Public Garden",
             }
             for e in els:
                 tags = e.get("tags", {})
@@ -4576,7 +4580,7 @@ def api_environment():
                     natural = tags.get("natural", "")
                     is_green = (
                         leisure in _GREEN_TAGS or
-                        landuse == "forest" or
+                        landuse in {"forest", "park"} or
                         natural == "wood"
                     )
                     if is_green:
