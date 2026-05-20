@@ -2554,8 +2554,7 @@
       if (!_rpc.value.trim()) _rpc.value = _rpc_pc;
       _renderRecent("miru_report","report-recent","report-postcode","searchReport()");
       _reportRefreshHomeRow();
-      if (_rpc_pc && document.getElementById("report-results").classList.contains("hidden")) { searchReport(); }
-      else { _rpc.focus(); }
+      _rpc.focus();
     }
     if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); _renderRecent("miru_intel_" + (_intelSearchMode || "brand"), "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); }
     if (name === "library") { libCheckPin(); }
@@ -3654,14 +3653,16 @@ const _ts = new Date(d.timestamp);
     const water = d.water || [];
     html += `<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">💧 Water Bodies (within 600m)</div>`;
     html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0 14px">`;
-    if (water.length) {
-      html += water.map(w => _row(w.name || "Water body", w.dist_m)).join("");
+    const namedWater = water.filter(w => w.name);
+    if (namedWater.length) {
+      html += namedWater.map(w => _row(w.name, w.dist_m)).join("");
     } else {
       html += `<div style="padding:10px 0;font-size:13px;color:var(--muted)">None found nearby</div>`;
     }
     html += `</div></div>`;
 
     // Green space
+
     const green = d.green || [];
     html += `<div style="margin-bottom:6px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🌳 Parks & Green Space (within 1km)</div>`;
     html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0 14px">`;

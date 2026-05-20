@@ -4343,7 +4343,7 @@ def api_environment():
         return jsonify({"error": "Postcode required"}), 400
 
     # Cache key versioned so query expansions invalidate stale entries
-    _cache_key = postcode + "_v3"
+    _cache_key = postcode + "_v4"
 
     # Check Supabase cache first (shared across all users)
     try:
@@ -4421,8 +4421,18 @@ def api_environment():
                 item = {"name": name, "dist_m": dist_m}
                 if tags.get("landuse") == "industrial" and name:
                     industrial.append(item)
-                elif tags.get("natural") == "water" and name:
-                    water.append(item)
+                elif tags.get("natural") == "water":
+                    # Use OSM water type as descriptive fallback (canal, river, lake, pond, reservoir, drain)
+                    _WATER_TYPES = {
+                        "canal": "Canal", "river": "River", "lake": "Lake",
+                        "pond": "Pond", "reservoir": "Reservoir", "drain": "Drain",
+                        "ditch": "Ditch", "stream": "Stream", "lagoon": "Lagoon",
+                        "moat": "Moat", "oxbow": "Oxbow Lake",
+                    }
+                    water_type = tags.get("water", "")
+                    display_name = name or _WATER_TYPES.get(water_type, "")
+                    if display_name:
+                        water.append({"name": display_name, "dist_m": dist_m})
                 else:
                     leisure = tags.get("leisure", "")
                     landuse = tags.get("landuse", "")
@@ -4439,8 +4449,18 @@ def api_environment():
                         if key not in _green_seen:
                             _green_seen.add(key)
                             green.append({"name": display, "dist_m": dist_m})
-            _sort = lambda lst: sorted(lst, key=lambda x: x.get("dist_m") or 9999)[:5]
-            return _sort(industrial), _sort(water), _sort(green)
+            def _sort_dedup(lst):
+                seen = set()
+                out = []
+                for item in sorted(lst, key=lambda x: x.get("dist_m") or 9999):
+                    key = item["name"].lower()
+                    if key not in seen:
+                        seen.add(key)
+                        out.append(item)
+                    if len(out) >= 5:
+                        break
+                return out
+            return _sort_dedup(industrial), _sort_dedup(water), _sort_dedup(green)
 
         with ThreadPoolExecutor(max_workers=2) as ex:
             flood_f = ex.submit(_flood_risk)
