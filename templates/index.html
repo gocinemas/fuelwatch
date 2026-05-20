@@ -2651,6 +2651,8 @@
     }
     // General ?screen=X is handled later by the deepscreen block (after all JS is initialised).
     // Only handle autoscreen/hash here as a fallback.
+    // Skip if gmail OAuth callback — _maGmailInit handles navigation instead.
+    if (params.get("gmail_scan") || params.get("gmail_error")) return;
     const _earlyTarget = auto || hash;
     if (_earlyTarget && document.getElementById("screen-" + _earlyTarget)) {
       showScreen(_earlyTarget);
