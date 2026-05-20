@@ -860,6 +860,61 @@ def api_geocode():
     except Exception as e:
         return jsonify({"results": [], "error": str(e)})
 
+@app.route("/api/commute/live")
+def api_commute_live():
+    """Drive time + traffic for a named destination. Uses Google Maps with live traffic."""
+    from_q = request.args.get("from", "").strip()
+    to_q   = request.args.get("to",   "").strip()
+    if not from_q or not to_q:
+        return jsonify({"error": "from and to required"}), 400
+
+    from_geo = _geocode_place(from_q)
+    to_geo   = _geocode_place(to_q)
+    if not from_geo or not to_geo:
+        return jsonify({"error": "Could not resolve one or both locations"}), 404
+
+    key = os.environ.get("GOOGLE_API_KEY", "")
+    if not key:
+        return jsonify({"error": "not configured"}), 503
+
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/directions/json",
+            params={
+                "origin":        f"{from_geo[0]},{from_geo[1]}",
+                "destination":   f"{to_geo[0]},{to_geo[1]}",
+                "mode":          "driving",
+                "departure_time":"now",
+                "traffic_model": "best_guess",
+                "key":           key,
+            },
+            timeout=10,
+        )
+        d = r.json()
+        if d.get("status") != "OK":
+            return jsonify({"error": f"Route not found: {d.get('status')}"}), 404
+
+        leg = d["routes"][0]["legs"][0]
+        dur_traffic = leg.get("duration_in_traffic", leg["duration"])["value"]
+        dur_normal  = leg["duration"]["value"]
+        delay       = max(0, dur_traffic - dur_normal)
+        traffic     = "heavy" if delay > 600 else "moderate" if delay > 180 else "clear"
+        traffic_emoji = "🔴" if traffic == "heavy" else "🟡" if traffic == "moderate" else "🟢"
+
+        return jsonify({
+            "duration_min":  dur_traffic // 60,
+            "normal_min":    dur_normal  // 60,
+            "delay_min":     delay       // 60,
+            "traffic":       traffic,
+            "traffic_emoji": traffic_emoji,
+            "distance":      leg["distance"]["text"],
+            "via":           d["routes"][0].get("summary", ""),
+            "to_name":       to_geo[2],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/commute")
 def api_commute():
     """Compare train vs drive for a commute. Returns train departures + HERE drive time."""

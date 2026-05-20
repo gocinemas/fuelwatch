@@ -1975,6 +1975,24 @@
         <div id="myarea-tube"    style="display:none;margin-bottom:10px"></div>
         <div id="myarea-bus"     style="display:none;margin-bottom:10px"></div>
         <div id="myarea-ev"      style="display:none;margin-bottom:10px"></div>
+
+        <!-- My Commutes -->
+        <div id="myarea-commutes" style="margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:800;color:var(--text)">🚗 My Commutes</div>
+            <button onclick="_commuteAdd()" style="font-size:11px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;padding:4px 8px">+ Add</button>
+          </div>
+          <div id="commute-list"></div>
+          <div id="commute-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:8px">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">Add a destination</div>
+            <input id="commute-add-name" placeholder="Label (e.g. Work, Inaaya's School)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:6px">
+            <input id="commute-add-dest" placeholder="Address or school name (e.g. New Haw Junior School)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:8px">
+            <div style="display:flex;gap:6px">
+              <button onclick="_commuteSave()" style="flex:1;padding:8px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
+              <button onclick="document.getElementById('commute-add-form').style.display='none'" style="padding:8px 14px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Tab: Services -->
@@ -4788,6 +4806,72 @@ const _ts = new Date(d.timestamp);
     el.style.display = "";
   }
 
+  // ── My Commutes ──────────────────────────────────────────────────────────────
+  const _COMMUTES_KEY = "miru_commutes";
+
+  function _commuteLoad() { try { return JSON.parse(localStorage.getItem(_COMMUTES_KEY) || "[]"); } catch(e) { return []; } }
+  function _commuteSave2(arr) { localStorage.setItem(_COMMUTES_KEY, JSON.stringify(arr)); }
+
+  function _commuteAdd() {
+    document.getElementById("commute-add-form").style.display = "";
+    document.getElementById("commute-add-name").value = "";
+    document.getElementById("commute-add-dest").value = "";
+    document.getElementById("commute-add-name").focus();
+  }
+
+  function _commuteSave() {
+    const name = document.getElementById("commute-add-name").value.trim();
+    const dest = document.getElementById("commute-add-dest").value.trim();
+    if (!name || !dest) return;
+    const arr = _commuteLoad();
+    arr.push({ id: Date.now(), name, dest });
+    _commuteSave2(arr);
+    document.getElementById("commute-add-form").style.display = "none";
+    _commuteRender();
+  }
+
+  function _commuteDelete(id) {
+    _commuteSave2(_commuteLoad().filter(c => c.id !== id));
+    _commuteRender();
+  }
+
+  function _commuteRender() {
+    const el = document.getElementById("commute-list");
+    if (!el) return;
+    const arr = _commuteLoad();
+    if (!arr.length) {
+      el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:8px 0">No commutes saved yet — tap + Add to set up Work, school, etc.</div>`;
+      return;
+    }
+    el.innerHTML = arr.map(c => `
+      <div id="commute-card-${c.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:13px;font-weight:800;color:var(--text)">🚗 ${c.name}</div>
+          <button onclick="_commuteDelete(${c.id})" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer">✕</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">${c.dest}</div>
+        <div id="commute-status-${c.id}" style="font-size:13px;color:var(--muted)">Loading…</div>
+      </div>`).join("");
+    const pc = _miruPostcode();
+    if (!pc) return;
+    arr.forEach(c => _commuteFetch(c, pc));
+  }
+
+  function _commuteFetch(c, fromPc) {
+    const el = document.getElementById(`commute-status-${c.id}`);
+    if (!el) return;
+    fetch(`/api/commute/live?from=${encodeURIComponent(fromPc)}&to=${encodeURIComponent(c.dest)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!el) return;
+        if (d.error) { el.textContent = "Couldn't load route"; return; }
+        const delay = d.delay_min > 0 ? `<span style="color:#f59e0b;font-size:11px"> +${d.delay_min} min delay</span>` : "";
+        el.innerHTML = `<span style="font-weight:800;color:var(--text)">${d.duration_min} min</span> ${d.traffic_emoji} ${d.traffic}${delay}
+          <span style="color:var(--muted);font-size:11px;margin-left:6px">${d.distance}${d.via ? " via " + d.via : ""}</span>`;
+      })
+      .catch(() => { if (el) el.textContent = "Couldn't load route"; });
+  }
+
   function _maRenderGPs(area) {
     const el = document.getElementById("myarea-gp");
     if (!_maGetPrefs().gp) { el.style.display = "none"; return; }
@@ -5009,6 +5093,7 @@ const _ts = new Date(d.timestamp);
     // Nearest bus stops + EV chargers (Overpass, free)
     fetch(`/api/bus/stops?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).then(_guard(_maRenderBus)).catch(()=>{});
     fetch(`/api/ev/nearby?postcode=${encodeURIComponent(pc)}`).then(r=>r.json()).then(_guard(_maRenderEV)).catch(()=>{});
+    _commuteRender();
 
     // your-area (GPs, council, pharmacies) — LS-cached 24h, Overpass on miss
     _maFetchCached(`your-area:${pc}`, `/api/your-area?postcode=${pc}`, 86400, _guard(area => {
