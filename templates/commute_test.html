@@ -6,383 +6,230 @@
 <title>Commute Test · Miru</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg: #f5f5f4; --surface: #ffffff; --border: #e4e0db;
-  --text: #1a1714; --muted: #7a7168; --radius: 16px;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #181614; --surface: #211f1c; --border: #332f2b; --text: #f0ece6; --muted: #8a8078; }
-}
-body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-.page { max-width: 620px; margin: 0 auto; padding: 28px 16px 60px; }
+:root { --bg: #f5f5f4; --surface: #fff; --border: #e4e0db; --text: #1a1714; --muted: #7a7168; --r: 16px; }
+@media (prefers-color-scheme: dark) { :root { --bg: #181614; --surface: #211f1c; --border: #332f2b; --text: #f0ece6; --muted: #8a8078; } }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.page { max-width: 600px; margin: 0 auto; padding: 28px 16px 60px; }
+a.back { font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; display: inline-block; margin-bottom: 22px; }
 .badge { display: inline-flex; align-items: center; gap: 6px; background: #111827; color: #9ca3af; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 12px; border-radius: 99px; margin-bottom: 14px; }
-.badge-dot { width: 6px; height: 6px; background: #4ade80; border-radius: 50%; animation: pulse 1.8s ease-in-out infinite; }
-@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+.dot { width: 6px; height: 6px; background: #4ade80; border-radius: 50%; animation: p 1.8s ease-in-out infinite; }
+@keyframes p { 0%,100%{opacity:1}50%{opacity:.3} }
 h1 { font-size: 26px; font-weight: 900; letter-spacing: -1px; margin-bottom: 4px; }
-.sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
-.back { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; margin-bottom: 22px; }
+.sub { font-size: 13px; color: var(--muted); margin-bottom: 22px; line-height: 1.5; }
 
-/* Cards */
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 10px; }
-.section-label { font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
-
-/* Input + autocomplete */
-.field { position: relative; margin-bottom: 10px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; margin-bottom: 10px; }
+.sec-label { font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.field { margin-bottom: 10px; }
 .field:last-child { margin-bottom: 0; }
-.field-label { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
+.field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
 .field input {
   width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
   padding: 12px 14px; font-size: 15px; font-family: inherit;
   background: var(--bg); color: var(--text); outline: none;
 }
 .field input:focus { border-color: #6366f1; }
-.field input.resolved { border-color: #16a34a; background: #f0fdf4; }
-@media (prefers-color-scheme: dark) { .field input.resolved { background: #052e16; } }
-.field input.resolved::placeholder { color: transparent; }
+.hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
-.resolved-badge {
-  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-  font-size: 11px; font-weight: 700; color: #16a34a;
-  background: #dcfce7; border-radius: 99px; padding: 2px 8px; pointer-events: none;
-}
-.clear-btn {
-  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-  font-size: 16px; color: var(--muted); background: none; border: none;
-  cursor: pointer; padding: 4px; line-height: 1;
-}
-
-.dropdown {
-  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-  background: var(--surface); border: 1.5px solid var(--border);
-  border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
-  z-index: 100; overflow: hidden; display: none;
-}
-.dropdown.open { display: block; }
-.dd-item {
-  padding: 11px 14px; font-size: 14px; cursor: pointer;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 10px;
-}
-.dd-item:last-child { border-bottom: none; }
-.dd-item:hover, .dd-item.focused { background: var(--bg); }
-.dd-icon { font-size: 16px; flex-shrink: 0; }
-.dd-name { font-weight: 600; color: var(--text); }
-.dd-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
-
-/* Run button */
-.run-btn {
-  width: 100%; padding: 15px; margin-top: 4px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  color: #fff; border: none; border-radius: 12px;
-  font-size: 16px; font-weight: 700; font-family: inherit;
-  cursor: pointer;
-}
+.run-btn { width: 100%; padding: 15px; background: linear-gradient(135deg,#4f46e5,#7c3aed); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 4px; }
 .run-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-/* Results */
-.results { display: none; margin-top: 8px; }
-.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-@media (max-width: 460px) { .result-grid { grid-template-columns: 1fr; } }
+.results { display: none; margin-top: 10px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+@media (max-width: 440px) { .grid { grid-template-columns: 1fr; } }
 
-.result-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 20px 18px; position: relative; }
-.result-card.winner { border-color: #4ade80; }
-.result-card.winner::after { content: "FASTER"; position: absolute; top: 10px; right: 12px; font-size: 9px; font-weight: 800; letter-spacing: 1px; color: #16a34a; background: #f0fdf4; padding: 2px 7px; border-radius: 99px; }
-.mode-icon { font-size: 28px; margin-bottom: 8px; line-height: 1; }
-.mode-label { font-size: 10px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-.big-time { font-size: 38px; font-weight: 900; letter-spacing: -2px; line-height: 1; }
-.big-time .unit { font-size: 17px; font-weight: 600; letter-spacing: 0; color: var(--muted); }
-.time-sub { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
-.traffic-pill { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+.rc { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r); padding: 20px 18px; position: relative; }
+.rc.winner { border-color: #4ade80; }
+.rc.winner::after { content: "FASTER"; position: absolute; top: 10px; right: 12px; font-size: 9px; font-weight: 800; letter-spacing: 1px; color: #16a34a; background: #f0fdf4; padding: 2px 7px; border-radius: 99px; }
+.mode-ico { font-size: 28px; line-height: 1; margin-bottom: 8px; }
+.mode-lbl { font-size: 10px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.big { font-size: 38px; font-weight: 900; letter-spacing: -2px; line-height: 1; }
+.big .u { font-size: 17px; font-weight: 600; letter-spacing: 0; color: var(--muted); }
+.tsub { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+.pill { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
 .ok  { background: #f0fdf4; color: #16a34a; }
 .bad { background: #fefce8; color: #ca8a04; }
 
-.dep-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
-.dep-row:last-child { border-bottom: none; }
-.dep-time { font-size: 19px; font-weight: 800; letter-spacing: -.5px; min-width: 44px; }
-.dep-time.late { color: #d97706; }
-.dep-time.cancelled { color: #dc2626; text-decoration: line-through; }
-.dep-rt { font-size: 11px; color: var(--muted); }
-.dep-rt.green { color: #16a34a; }
-.dep-plat { font-size: 11px; color: var(--muted); white-space: nowrap; }
-.dep-plat span { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-weight: 700; }
+.dep { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.dep:last-child { border-bottom: none; }
+.dt { font-size: 19px; font-weight: 800; letter-spacing: -.5px; min-width: 44px; }
+.dt.late { color: #d97706; }
+.dt.cx { color: #dc2626; text-decoration: line-through; }
+.drt { font-size: 11px; color: var(--muted); }
+.drt.g { color: #16a34a; }
+.dpl { font-size: 11px; color: var(--muted); }
+.dpl span { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-weight: 700; }
 
 .summary { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; font-size: 14px; line-height: 1.6; }
-.nc { padding: 14px; background: var(--bg); border: 1px dashed var(--border); border-radius: 12px; font-size: 13px; color: var(--muted); text-align: center; line-height: 1.5; }
-.err { padding: 12px 14px; background: #fef2f2; border-radius: 12px; font-size: 13px; color: #dc2626; }
-
-.spinner-wrap { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 36px 0; }
-.spinner { width: 22px; height: 22px; border: 2.5px solid var(--border); border-top-color: #6366f1; border-radius: 50%; animation: spin .7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.nc { padding: 16px; text-align: center; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.err { padding: 12px; background: #fef2f2; border-radius: 10px; font-size: 13px; color: #dc2626; }
+.loading-wrap { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 36px 0; }
+.spin { width: 22px; height: 22px; border: 2.5px solid var(--border); border-top-color: #6366f1; border-radius: 50%; animation: s .7s linear infinite; }
+@keyframes s { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 <div class="page">
 
   <a class="back" href="/">← Miru</a>
-  <div class="badge"><span class="badge-dot"></span>Prototype</div>
+  <div class="badge"><span class="dot"></span>Prototype</div>
   <h1>🚦 Commute Compare</h1>
-  <p class="sub">Train vs drive, side by side. Type names — no postcodes or codes needed.</p>
+  <p class="sub">Train vs drive, side by side. Just type — no codes needed.</p>
 
-  <!-- Home -->
   <div class="card">
-    <div class="section-label">🏠 Where you're leaving from</div>
-    <div class="field" id="field-home">
-      <div class="field-label">Home postcode or address</div>
-      <input type="text" id="home-input" placeholder="e.g. KT16 0DA or Longcross, Surrey" autocomplete="off">
-      <div class="dropdown" id="home-dd"></div>
+    <div class="sec-label">🏠 From</div>
+    <div class="field">
+      <label>Your postcode</label>
+      <input type="text" id="from-pc" placeholder="e.g. KT16 0DA">
     </div>
-    <div class="field" id="field-from-station">
-      <div class="field-label">Your nearest train station (optional)</div>
-      <input type="text" id="from-station-input" placeholder="e.g. Longcross, Virginia Water…" autocomplete="off">
-      <div class="dropdown" id="from-station-dd"></div>
+    <div class="field">
+      <label>Your nearest station (optional)</label>
+      <input type="text" id="from-station" placeholder="e.g. Longcross, Virginia Water, Egham">
+      <div class="hint">Type a station name — we'll find it</div>
     </div>
   </div>
 
-  <!-- Destination -->
   <div class="card">
-    <div class="section-label">📍 Where you're going</div>
-    <div class="field" id="field-dest">
-      <div class="field-label">School, office, or address</div>
-      <input type="text" id="dest-input" placeholder="e.g. St Anne's Heath Junior School" autocomplete="off">
-      <div class="dropdown" id="dest-dd"></div>
+    <div class="sec-label">📍 To</div>
+    <div class="field">
+      <label>School, office, or address</label>
+      <input type="text" id="to-place" placeholder="e.g. St Anne's Heath Junior School">
+      <div class="hint">Or enter a postcode if you know it</div>
     </div>
-    <div class="field" id="field-to-station">
-      <div class="field-label">Nearest train station to destination (optional)</div>
-      <input type="text" id="to-station-input" placeholder="e.g. London Waterloo, Paddington…" autocomplete="off">
-      <div class="dropdown" id="to-station-dd"></div>
+    <div class="field">
+      <label>Destination station (optional)</label>
+      <input type="text" id="to-station" placeholder="e.g. London Waterloo, Paddington">
     </div>
   </div>
 
   <button class="run-btn" id="run-btn" onclick="runCommute()">Compare commute →</button>
 
   <div id="loading" style="display:none">
-    <div class="spinner-wrap"><div class="spinner"></div><span style="font-size:14px;color:var(--muted)">Checking trains and traffic…</span></div>
+    <div class="loading-wrap"><div class="spin"></div><span style="font-size:14px;color:var(--muted)">Resolving locations and checking live data…</span></div>
   </div>
 
   <div class="results" id="results">
-    <div class="result-grid">
-      <div class="result-card" id="train-card"><div class="mode-icon">🚆</div><div class="mode-label">Train</div><div id="train-body"></div></div>
-      <div class="result-card" id="drive-card"><div class="mode-icon">🚗</div><div class="mode-label">Drive</div><div id="drive-body"></div></div>
+    <div class="grid">
+      <div class="rc" id="train-card"><div class="mode-ico">🚆</div><div class="mode-lbl">Train</div><div id="train-body"></div></div>
+      <div class="rc" id="drive-card"><div class="mode-ico">🚗</div><div class="mode-lbl">Drive</div><div id="drive-body"></div></div>
     </div>
     <div class="summary" id="summary"></div>
   </div>
 
 </div>
 <script>
-// ── Stored resolved values ──────────────────────────────────────────────────
-const resolved = { home: null, dest: null, fromStation: null, toStation: null };
-
-// ── Debounce ────────────────────────────────────────────────────────────────
-function debounce(fn, ms) {
-  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-}
-
-// ── Station autocomplete ─────────────────────────────────────────────────────
-async function stationSearch(q) {
-  if (q.length < 2) return [];
+// Resolve station name → CRS
+async function resolveStation(name) {
+  if (!name.trim()) return null;
   try {
-    const r = await fetch(`/api/train/search?q=${encodeURIComponent(q)}`);
+    const r = await fetch(`/api/train/search?q=${encodeURIComponent(name.trim())}`);
     const d = await r.json();
-    return (d.results || d.suggestions || []).slice(0, 6);
-  } catch { return []; }
+    const hits = d.results || d.suggestions || [];
+    return hits[0] || null;  // best match
+  } catch { return null; }
 }
 
-// ── Place/postcode geocoder via backend proxy ────────────────────────────────
-async function placeSearch(q) {
-  if (q.length < 3) return [];
+// Resolve place name or postcode → lat/lon
+async function resolvePlace(q) {
+  if (!q.trim()) return null;
+  // Try postcode first
+  const pcClean = q.trim().replace(/\s+/g, "").toUpperCase();
+  if (/^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i.test(q.trim())) {
+    try {
+      const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pcClean)}`);
+      const d = await r.json();
+      if (d.result) return { lat: d.result.latitude, lon: d.result.longitude, label: pcClean };
+    } catch {}
+  }
+  // Fall back to geocoder
   try {
-    const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+    const r = await fetch(`/api/geocode?q=${encodeURIComponent(q.trim())}`);
     const d = await r.json();
-    return (d.results || []).map(p => ({
-      display: p.display, lat: p.lat, lon: p.lon, type: p.type,
-    }));
-  } catch { return []; }
-}
-
-// ── Postcode check ───────────────────────────────────────────────────────────
-function looksLikePostcode(s) {
-  return /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i.test(s.trim());
-}
-async function resolvePostcode(pc) {
-  try {
-    const r = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc.trim())}`);
-    const d = await r.json();
-    if (d.result) return { lat: d.result.latitude, lon: d.result.longitude, label: pc.trim().toUpperCase() };
+    if (d.results && d.results[0]) return d.results[0];
   } catch {}
   return null;
 }
 
-// ── Generic field setup ──────────────────────────────────────────────────────
-function setupField({ inputId, ddId, resolvedKey, icon, searchFn, onResolve }) {
-  const input = document.getElementById(inputId);
-  const dd    = document.getElementById(ddId);
-  let items = [], focusIdx = -1;
-
-  function showDrop(results) {
-    items = results; focusIdx = -1;
-    if (!results.length) { dd.classList.remove("open"); return; }
-    dd.innerHTML = results.map((r, i) => `
-      <div class="dd-item" data-i="${i}">
-        <span class="dd-icon">${icon}</span>
-        <div><div class="dd-name">${r.name || r.display}</div>
-        ${r.sub || r.type ? `<div class="dd-sub">${r.sub || r.type}</div>` : ""}</div>
-      </div>`).join("");
-    dd.classList.add("open");
-    dd.querySelectorAll(".dd-item").forEach(el => {
-      el.addEventListener("mousedown", e => { e.preventDefault(); pick(parseInt(el.dataset.i)); });
-    });
-  }
-
-  function pick(i) {
-    const item = items[i];
-    if (!item) return;
-    resolved[resolvedKey] = item;
-    input.value = item.name || item.display;
-    input.classList.add("resolved");
-    dd.classList.remove("open");
-    if (onResolve) onResolve(item);
-  }
-
-  function clear() {
-    resolved[resolvedKey] = null;
-    input.value = "";
-    input.classList.remove("resolved");
-    dd.classList.remove("open");
-    input.focus();
-  }
-
-  const debouncedSearch = debounce(async (val) => {
-    if (!val || resolved[resolvedKey]) return;
-    const results = await searchFn(val);
-    showDrop(results);
-  }, 280);
-
-  input.addEventListener("input", () => {
-    resolved[resolvedKey] = null;
-    input.classList.remove("resolved");
-    debouncedSearch(input.value.trim());
-  });
-
-  input.addEventListener("keydown", e => {
-    const ddItems = dd.querySelectorAll(".dd-item");
-    if (e.key === "ArrowDown") { focusIdx = Math.min(focusIdx + 1, ddItems.length - 1); ddItems.forEach((el,i) => el.classList.toggle("focused", i===focusIdx)); e.preventDefault(); }
-    else if (e.key === "ArrowUp") { focusIdx = Math.max(focusIdx - 1, 0); ddItems.forEach((el,i) => el.classList.toggle("focused", i===focusIdx)); e.preventDefault(); }
-    else if (e.key === "Enter") { if (focusIdx >= 0) { pick(focusIdx); } else { dd.classList.remove("open"); runCommute(); } }
-    else if (e.key === "Escape") { dd.classList.remove("open"); }
-  });
-
-  document.addEventListener("click", e => { if (!input.contains(e.target) && !dd.contains(e.target)) dd.classList.remove("open"); });
-}
-
-// ── Home field: postcode OR place name ──────────────────────────────────────
-setupField({
-  inputId: "home-input", ddId: "home-dd", resolvedKey: "home", icon: "📍",
-  searchFn: async (q) => {
-    if (looksLikePostcode(q)) {
-      const r = await resolvePostcode(q);
-      if (r) return [{ name: r.label, display: r.label, lat: r.lat, lon: r.lon, sub: "Postcode" }];
-    }
-    const places = await placeSearch(q);
-    return places.map(p => ({ name: p.display, display: p.display, lat: p.lat, lon: p.lon, sub: p.type }));
-  },
+document.querySelectorAll("input").forEach(el => {
+  el.addEventListener("keydown", e => { if (e.key === "Enter") runCommute(); });
 });
 
-// ── Destination field ────────────────────────────────────────────────────────
-setupField({
-  inputId: "dest-input", ddId: "dest-dd", resolvedKey: "dest", icon: "📍",
-  searchFn: async (q) => {
-    if (looksLikePostcode(q)) {
-      const r = await resolvePostcode(q);
-      if (r) return [{ name: r.label, display: r.label, lat: r.lat, lon: r.lon, sub: "Postcode" }];
-    }
-    const places = await placeSearch(q);
-    return places.map(p => ({ name: p.display, display: p.display, lat: p.lat, lon: p.lon, sub: p.type }));
-  },
-});
-
-// ── Station fields ───────────────────────────────────────────────────────────
-setupField({
-  inputId: "from-station-input", ddId: "from-station-dd", resolvedKey: "fromStation", icon: "🚉",
-  searchFn: async (q) => {
-    const r = await stationSearch(q);
-    return r.map(s => ({ name: s.name, display: s.name, crs: s.crs, sub: `CRS: ${s.crs}` }));
-  },
-});
-
-setupField({
-  inputId: "to-station-input", ddId: "to-station-dd", resolvedKey: "toStation", icon: "🚉",
-  searchFn: async (q) => {
-    const r = await stationSearch(q);
-    return r.map(s => ({ name: s.name, display: s.name, crs: s.crs, sub: `CRS: ${s.crs}` }));
-  },
-});
-
-// ── Also handle plain postcode typed in home field without picking ────────────
-document.getElementById("home-input").addEventListener("blur", async () => {
-  const v = document.getElementById("home-input").value.trim();
-  if (!resolved.home && looksLikePostcode(v)) {
-    const r = await resolvePostcode(v);
-    if (r) { resolved.home = { name: r.label, lat: r.lat, lon: r.lon }; document.getElementById("home-input").classList.add("resolved"); }
-  }
-});
-
-// ── Run ─────────────────────────────────────────────────────────────────────
 async function runCommute() {
-  if (!resolved.home) { alert("Pick your home location from the suggestions."); document.getElementById("home-input").focus(); return; }
-  if (!resolved.dest) { alert("Pick your destination from the suggestions."); document.getElementById("dest-input").focus(); return; }
+  const fromPcRaw    = document.getElementById("from-pc").value.trim();
+  const toPlaceRaw   = document.getElementById("to-place").value.trim();
+  const fromStRaw    = document.getElementById("from-station").value.trim();
+  const toStRaw      = document.getElementById("to-station").value.trim();
+
+  if (!fromPcRaw) { alert("Enter your home postcode."); document.getElementById("from-pc").focus(); return; }
+  if (!toPlaceRaw) { alert("Enter where you're going."); document.getElementById("to-place").focus(); return; }
 
   const btn = document.getElementById("run-btn");
-  btn.disabled = true; btn.textContent = "Checking…";
+  btn.disabled = true; btn.textContent = "Working…";
   document.getElementById("loading").style.display = "block";
   document.getElementById("results").style.display = "none";
 
   try {
+    // Resolve all four in parallel
+    const [fromLoc, toLoc, fromSt, toSt] = await Promise.all([
+      resolvePlace(fromPcRaw),
+      resolvePlace(toPlaceRaw),
+      fromStRaw ? resolveStation(fromStRaw) : Promise.resolve(null),
+      toStRaw   ? resolveStation(toStRaw)   : Promise.resolve(null),
+    ]);
+
+    if (!fromLoc) throw new Error(`Couldn't find "${fromPcRaw}" — try a postcode instead.`);
+    if (!toLoc)   throw new Error(`Couldn't find "${toPlaceRaw}" — try a postcode instead.`);
+
     const params = new URLSearchParams({
-      from_lat: resolved.home.lat, from_lon: resolved.home.lon,
-      to_lat:   resolved.dest.lat, to_lon:   resolved.dest.lon,
-      from_crs: resolved.fromStation?.crs || "",
-      to_crs:   resolved.toStation?.crs   || "",
+      from_lat: fromLoc.lat, from_lon: fromLoc.lon,
+      to_lat:   toLoc.lat,   to_lon:   toLoc.lon,
+      from_crs: fromSt?.crs || "",
+      to_crs:   toSt?.crs   || "",
     });
+
     const r = await fetch(`/api/commute?${params}`);
     const d = await r.json();
     if (d.error) throw new Error(d.error);
-    render(d);
+
+    render(d, fromSt, toSt);
   } catch(e) {
     document.getElementById("loading").style.display = "none";
     document.getElementById("results").style.display = "block";
-    document.getElementById("summary").innerHTML = `<div class="err">Error: ${e.message}</div>`;
+    document.getElementById("train-card").style.display = "none";
+    document.getElementById("drive-card").style.display = "none";
+    document.getElementById("summary").innerHTML = `<div class="err">⚠️ ${e.message}</div>`;
   } finally {
     btn.disabled = false; btn.textContent = "Compare commute →";
   }
 }
 
-function render(d) {
+function render(d, fromSt, toSt) {
   document.getElementById("loading").style.display = "none";
   document.getElementById("results").style.display = "block";
+  document.getElementById("train-card").style.display = "";
+  document.getElementById("drive-card").style.display = "";
 
   const train = d.train || {}, drive = d.drive || {};
 
   // Train
   const tb = document.getElementById("train-body");
-  if (!resolved.fromStation || !resolved.toStation) {
-    tb.innerHTML = `<div class="nc">Add stations above<br>to see train times</div>`;
+  if (!fromSt || !toSt) {
+    tb.innerHTML = `<div class="nc">Add station names above to see train times</div>`;
   } else if (train.error) {
     tb.innerHTML = `<div class="err">${train.error}</div>`;
   } else {
     const deps = train.departures || [];
-    if (!deps.length) { tb.innerHTML = `<div class="nc">No services found</div>`; }
+    if (!deps.length) { tb.innerHTML = `<div class="nc">No services found<br>${fromSt.name} → ${toSt.name}</div>`; }
     else {
-      const to = resolved.toStation?.name || "";
-      tb.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">→ ${to}</div>` +
+      tb.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">${fromSt.name} → ${toSt.name}</div>` +
         deps.map(dep => {
           const late = dep.late_min || 0, onTime = late <= 1;
-          const tc = dep.cancelled ? "cancelled" : late > 2 ? "late" : "";
+          const tc2 = dep.cancelled ? "cx" : late > 2 ? "late" : "";
           const rt = dep.cancelled ? "Cancelled" : onTime ? "On time" : `+${late} min`;
-          const rc = dep.cancelled ? "" : onTime ? "green" : "";
-          return `<div class="dep-row">
-            <div class="dep-time ${tc}">${dep.dep}</div>
-            <div style="flex:1"><div class="dep-rt ${rc}">${rt}</div><div style="font-size:11px;color:var(--muted)">${dep.operator||""}</div></div>
-            ${dep.platform ? `<div class="dep-plat">Plt <span>${dep.platform}</span></div>` : ""}
+          const rc = dep.cancelled ? "" : onTime ? "g" : "";
+          return `<div class="dep">
+            <div class="dt ${tc2}">${dep.dep}</div>
+            <div style="flex:1"><div class="drt ${rc}">${rt}</div><div style="font-size:11px;color:var(--muted)">${dep.operator||""}</div></div>
+            ${dep.platform ? `<div class="dpl">Plt <span>${dep.platform}</span></div>` : ""}
           </div>`;
         }).join("");
     }
@@ -391,36 +238,33 @@ function render(d) {
   // Drive
   const db = document.getElementById("drive-body");
   if (drive.error === "not_configured") {
-    db.innerHTML = `<div class="nc">Drive times need HERE API key<br><span style="font-size:11px">Add HERE_API_KEY to Railway</span></div>`;
+    db.innerHTML = `<div class="nc">Add HERE_API_KEY to Railway to enable live traffic</div>`;
   } else if (drive.error) {
     db.innerHTML = `<div class="err">${drive.error}</div>`;
   } else {
     const delay = drive.delay_min > 0 ? `+${drive.delay_min} min delay` : "No delay";
-    db.innerHTML = `
-      <div class="big-time">${drive.duration_min}<span class="unit"> min</span></div>
-      <div class="time-sub">Typical ${drive.typical_min} min · ${drive.distance_km} km</div>
-      <div class="traffic-pill ${drive.traffic_ok ? "ok" : "bad"}">${drive.traffic_ok ? "🟢" : "🟡"} ${delay}</div>`;
+    db.innerHTML = `<div class="big">${drive.duration_min}<span class="u"> min</span></div>
+      <div class="tsub">Typical ${drive.typical_min} min · ${drive.distance_km} km</div>
+      <div class="pill ${drive.traffic_ok ? "ok" : "bad"}">${drive.traffic_ok ? "🟢" : "🟡"} ${delay}</div>`;
   }
 
-  // Winner
+  // Winner + summary
   const tc = document.getElementById("train-card"), dc = document.getElementById("drive-card");
   tc.classList.remove("winner"); dc.classList.remove("winner");
   const trainOk = !train.error && (train.departures||[]).length;
-  const driveOk = drive.duration_min;
-  let summary = "";
+  const driveOk = !drive.error && drive.error !== "not_configured" && drive.duration_min;
+  let sum = "";
   if (trainOk && driveOk) {
     const next = (train.departures||[]).find(dep => !dep.cancelled);
-    if (next) {
-      if (drive.duration_min < drive.typical_min + 10 && drive.duration_min < 40) { dc.classList.add("winner"); summary = `🚗 <strong>Drive today</strong> — ${drive.duration_min} min${drive.delay_min > 0 ? `, +${drive.delay_min} min traffic` : ", clear roads"}.`; }
-      else { tc.classList.add("winner"); summary = `🚆 <strong>Take the train</strong> — next at ${next.dep}${next.late_min > 1 ? ` (${next.late_min} min late)` : " (on time)"}${drive.delay_min > 0 ? `. Drive has ${drive.delay_min} min delay.` : "."}`; }
-    }
+    if (drive.duration_min <= drive.typical_min + 5) { dc.classList.add("winner"); sum = `🚗 <strong>Drive today</strong> — ${drive.duration_min} min${drive.delay_min > 0 ? `, +${drive.delay_min} min traffic` : ", roads clear"}.`; }
+    else { tc.classList.add("winner"); sum = next ? `🚆 <strong>Train today</strong> — next at ${next.dep}${next.late_min > 1 ? ` (${next.late_min} min late)` : " (on time)"}${drive.delay_min > 0 ? `. Drive has ${drive.delay_min} min extra.` : "."}` : ""; }
   } else if (trainOk) {
     const next = (train.departures||[]).find(dep => !dep.cancelled);
-    summary = next ? `🚆 Next train at <strong>${next.dep}</strong>${next.late_min > 1 ? ` — running ${next.late_min} min late` : " — on time"}.` : "";
+    sum = next ? `🚆 Next at <strong>${next.dep}</strong>${next.late_min > 1 ? ` — ${next.late_min} min late` : " — on time"}.` : "";
   } else if (driveOk) {
-    summary = `🚗 Drive is <strong>${drive.duration_min} min</strong> with current traffic.`;
+    sum = `🚗 <strong>${drive.duration_min} min</strong> drive with current traffic.`;
   }
-  document.getElementById("summary").innerHTML = summary;
+  document.getElementById("summary").innerHTML = sum;
 }
 </script>
 </body>
