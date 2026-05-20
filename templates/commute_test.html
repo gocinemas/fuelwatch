@@ -187,19 +187,14 @@ async function stationSearch(q) {
   } catch { return []; }
 }
 
-// ── Place/postcode geocoder via Nominatim ────────────────────────────────────
+// ── Place/postcode geocoder via backend proxy ────────────────────────────────
 async function placeSearch(q) {
   if (q.length < 3) return [];
   try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ' UK')}&format=json&limit=5&countrycodes=gb&addressdetails=1`,
-      { headers: { "Accept-Language": "en" } }
-    );
+    const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
     const d = await r.json();
-    return d.map(p => ({
-      display: p.display_name.split(",").slice(0, 3).join(", "),
-      lat: parseFloat(p.lat), lon: parseFloat(p.lon),
-      type: p.type,
+    return (d.results || []).map(p => ({
+      display: p.display, lat: p.lat, lon: p.lon, type: p.type,
     }));
   } catch { return []; }
 }

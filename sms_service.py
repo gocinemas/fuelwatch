@@ -833,6 +833,33 @@ def home_2026():
 def commute_test():
     return render_template("commute_test.html")
 
+@app.route("/api/geocode")
+def api_geocode():
+    """Proxy Nominatim place search — avoids browser User-Agent blocks."""
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"results": []})
+    try:
+        r = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": q + " UK", "format": "json", "limit": 5, "countrycodes": "gb", "addressdetails": 1},
+            headers={"User-Agent": "Miru/1.0 (miru.humanagency.co)"},
+            timeout=8,
+        )
+        places = r.json()
+        results = [
+            {
+                "display": ", ".join(p["display_name"].split(",")[:3]),
+                "lat": float(p["lat"]),
+                "lon": float(p["lon"]),
+                "type": p.get("type", ""),
+            }
+            for p in places
+        ]
+        return jsonify({"results": results})
+    except Exception as e:
+        return jsonify({"results": [], "error": str(e)})
+
 @app.route("/api/commute")
 def api_commute():
     """Compare train vs drive for a commute. Returns train departures + HERE drive time."""
