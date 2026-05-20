@@ -4684,9 +4684,9 @@ def api_area_summary():
             pass
 
         # Build facts string
-        total_crime = crime.get("total_crimes", 0)
-        crime_level = "low" if total_crime < 20 else "moderate" if total_crime < 60 else "high"
-        top_crime = (crime.get("categories") or [{}])[0].get("category", "") if crime.get("categories") else ""
+        total_crime = crime.get("per_month") or crime.get("total_crimes") or crime.get("total") or 0
+        crime_level = crime.get("level") or ("low" if total_crime < 50 else "moderate" if total_crime < 150 else "high")
+        top_crime = (crime.get("breakdown") or crime.get("categories") or [{}])[0].get("category", "") if (crime.get("breakdown") or crime.get("categories")) else ""
 
         hp = house.get("house_prices") or house
         avg_price = None
