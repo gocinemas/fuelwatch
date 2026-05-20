@@ -529,29 +529,6 @@
         </button>
       </div>
 
-      <!-- My Places card (collapsed by default) -->
-      <div id="home-commute-card" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px 16px;margin-bottom:10px">
-        <div onclick="_hcToggle()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">
-          <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.04em">🚗 MY PLACES</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div id="hc-preview" style="font-size:11px;color:var(--muted)"></div>
-            <span id="hc-chevron" style="font-size:11px;color:var(--muted);transition:transform .2s">▼</span>
-          </div>
-        </div>
-        <div id="hc-body" style="display:none;margin-top:10px">
-          <div id="hc-list"></div>
-          <button onclick="event.stopPropagation();_hcAdd()" style="margin-top:8px;font-size:11px;font-weight:700;color:#065f46;background:none;border:none;cursor:pointer;padding:2px 0">+ Add place</button>
-          <div id="hc-add-form" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-            <input id="hc-add-name" placeholder="Label (e.g. Work, Tesco, Gym)" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:6px;box-sizing:border-box">
-            <input id="hc-add-dest" placeholder="Address or place name" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:8px;box-sizing:border-box">
-            <div style="display:flex;gap:6px">
-              <button onclick="_hcSave()" style="flex:1;padding:7px;background:#065f46;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
-              <button onclick="document.getElementById('hc-add-form').style.display='none'" style="padding:7px 12px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- MY WORLD divider -->
       <div style="display:flex;align-items:center;gap:10px;margin:4px 0 10px">
         <div style="font-size:10px;font-weight:800;color:var(--subtle);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">My World</div>
@@ -559,18 +536,22 @@
       </div>
 
       <!-- My Local (was: My Area) -->
-      <button id="myarea-home-card" onclick="showScreen('myarea')"
-        style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#064e3b 0%,#065f46 60%,#047857 100%);border:none;border-radius:20px;padding:18px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px">
-        <div style="font-size:32px;line-height:1;flex-shrink:0">🏡</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">My Local</div>
-          <div id="myarea-home-subtitle" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.4">Your postcode · MP · transport · schools</div>
-        </div>
-        <div id="myarea-home-badge" style="flex-shrink:0;text-align:right">
-          <div id="myarea-home-pc" style="font-size:13px;font-weight:800;color:#fff;background:rgba(255,255,255,.15);border-radius:8px;padding:4px 10px;display:inline-block"></div>
-          <div id="myarea-home-detail" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-        </div>
-      </button>
+      <div style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#064e3b 0%,#065f46 60%,#047857 100%);border:none;border-radius:20px;overflow:hidden">
+        <button id="myarea-home-card" onclick="showScreen('myarea')"
+          style="width:100%;background:none;border:none;padding:18px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px">
+          <div style="font-size:32px;line-height:1;flex-shrink:0">🏡</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">My Local</div>
+            <div id="myarea-home-subtitle" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.4">Your postcode · MP · transport · schools</div>
+          </div>
+          <div id="myarea-home-badge" style="flex-shrink:0;text-align:right">
+            <div id="myarea-home-pc" style="font-size:13px;font-weight:800;color:#fff;background:rgba(255,255,255,.15);border-radius:8px;padding:4px 10px;display:inline-block"></div>
+            <div id="myarea-home-detail" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+          </div>
+        </button>
+        <!-- Drive times teaser -->
+        <div id="hc-local-strip" style="display:none;border-top:1px solid rgba(255,255,255,.1);padding:10px 18px;display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
+      </div>
 
       <!-- EXPLORE divider -->
       <div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px">
@@ -4814,18 +4795,7 @@ const _ts = new Date(d.timestamp);
   }
 
   // ── My Places card (home screen) ─────────────────────────────────────────────
-  function _hcToggle() {
-    const body = document.getElementById("hc-body");
-    const chev = document.getElementById("hc-chevron");
-    if (!body) return;
-    const open = body.style.display !== "none";
-    body.style.display = open ? "none" : "";
-    if (chev) chev.style.transform = open ? "" : "rotate(180deg)";
-    if (!open) _hcRender();
-    localStorage.setItem("miru_places_open", open ? "0" : "1");
-  }
-
-  function _hcAdd() {
+function _hcAdd() {
     const f = document.getElementById("hc-add-form");
     if (!f) return;
     f.style.display = "";
@@ -4851,50 +4821,32 @@ const _ts = new Date(d.timestamp);
   }
 
   function _hcRender() {
-    const el = document.getElementById("hc-list");
-    if (!el) return;
+    const strip = document.getElementById("hc-local-strip");
+    if (!strip) return;
     const arr = _commuteLoad();
-    // Update collapsed preview
-    const prev = document.getElementById("hc-preview");
-    if (prev) prev.textContent = arr.length ? `${arr.length} place${arr.length > 1 ? "s" : ""}` : "tap to add";
-    if (!arr.length) {
-      el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:2px 0">No places saved yet — tap + Add for Work, school, Tesco…</div>`;
-      return;
-    }
+    if (!arr.length) { strip.style.display = "none"; return; }
+    strip.style.display = "flex";
     const pc = _miruPostcode ? _miruPostcode() : "";
-    el.innerHTML = arr.map(c => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">${c.name}</div>
-          <div style="font-size:10px;color:var(--muted)">${c.dest}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div id="hcp-${c.id}" style="font-size:12px;color:var(--muted);text-align:right">${pc ? "Loading…" : "—"}</div>
-          <button onclick="_hcDelete(${c.id})" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 4px">✕</button>
-        </div>
+    strip.innerHTML = arr.map(c => `
+      <div id="hcp-${c.id}" style="flex-shrink:0;background:rgba(255,255,255,.1);border-radius:10px;padding:6px 12px;text-align:center;min-width:70px">
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">${c.name}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:1px">${pc ? "…" : "—"}</div>
       </div>`).join("");
     if (!pc) return;
     arr.forEach(c => {
       fetch(`/api/commute/live?from=${encodeURIComponent(pc)}&to=${encodeURIComponent(c.dest)}`)
         .then(r => r.json()).then(d => {
-          const el2 = document.getElementById("hcp-" + c.id);
-          if (!el2) return;
-          if (d.error) { el2.textContent = "—"; return; }
-          const delay = d.delay_min > 0 ? ` <span style="color:#f59e0b">+${d.delay_min}m</span>` : "";
-          el2.innerHTML = `<span style="font-weight:800;color:var(--text)">${d.duration_min} min</span> ${d.traffic_emoji}${delay}`;
+          const pill = document.getElementById("hcp-" + c.id);
+          if (!pill) return;
+          const inner = pill.querySelector("div:last-child");
+          if (!inner) return;
+          if (d.error) { inner.textContent = "—"; return; }
+          inner.innerHTML = `<span style="font-weight:800;color:#fff">${d.duration_min}m</span> ${d.traffic_emoji}`;
         }).catch(() => {});
     });
   }
 
-  setTimeout(() => {
-    _hcRender();
-    if (localStorage.getItem("miru_places_open") === "1") {
-      const body = document.getElementById("hc-body");
-      const chev = document.getElementById("hc-chevron");
-      if (body) body.style.display = "";
-      if (chev) chev.style.transform = "rotate(180deg)";
-    }
-  }, 400);
+  setTimeout(_hcRender, 500);
 
   // ── My Commutes ──────────────────────────────────────────────────────────────
   const _COMMUTES_KEY = "miru_commutes";
