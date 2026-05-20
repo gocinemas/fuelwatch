@@ -4778,12 +4778,14 @@ def api_area_watch():
     phone = (data.get("phone") or "").strip() or None
     device_id = (data.get("device_id") or "").strip() or None
     try:
-        lib._sb().table("watched_postcodes").upsert(
-            {"postcode": postcode, "phone": phone, "device_id": device_id},
-            on_conflict="postcode,phone" if phone else "postcode,device_id"
+        lib._sb().table("watched_postcodes").insert(
+            {"postcode": postcode, "phone": phone, "device_id": device_id}
         ).execute()
         return jsonify({"ok": True})
     except Exception as e:
+        # Duplicate is fine — already watching
+        if "duplicate" in str(e).lower() or "unique" in str(e).lower():
+            return jsonify({"ok": True})
         return jsonify({"error": str(e)}), 500
 
 
