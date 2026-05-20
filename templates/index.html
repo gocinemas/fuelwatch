@@ -529,15 +529,21 @@
         </button>
       </div>
 
-      <!-- My Commute card -->
+      <!-- My Places card -->
       <div id="home-commute-card" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px 16px;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.04em;margin-bottom:10px">HOW ARE YOU GETTING THERE?</div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <button id="hc-btn-drive" onclick="_hcMode('drive')" style="flex:1;padding:9px 4px;border-radius:12px;border:2px solid var(--border);background:var(--bg);font-size:13px;font-weight:700;color:var(--muted);cursor:pointer">🚗 Drive</button>
-          <button id="hc-btn-train" onclick="_hcMode('train')" style="flex:1;padding:9px 4px;border-radius:12px;border:2px solid var(--border);background:var(--bg);font-size:13px;font-weight:700;color:var(--muted);cursor:pointer">🚆 Train</button>
-          <button id="hc-btn-wfh"   onclick="_hcMode('wfh')"   style="flex:1;padding:9px 4px;border-radius:12px;border:2px solid var(--border);background:var(--bg);font-size:13px;font-weight:700;color:var(--muted);cursor:pointer">🏠 WFH</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.04em">🚗 MY PLACES</div>
+          <button onclick="_hcAdd()" style="font-size:11px;font-weight:700;color:#065f46;background:none;border:none;cursor:pointer;padding:2px 6px">+ Add</button>
         </div>
-        <div id="hc-content"></div>
+        <div id="hc-list"></div>
+        <div id="hc-add-form" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+          <input id="hc-add-name" placeholder="Label (e.g. Work, Tesco, Gym)" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:6px;box-sizing:border-box">
+          <input id="hc-add-dest" placeholder="Address or place name" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:8px;box-sizing:border-box">
+          <div style="display:flex;gap:6px">
+            <button onclick="_hcSave()" style="flex:1;padding:7px;background:#065f46;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
+            <button onclick="document.getElementById('hc-add-form').style.display='none'" style="padding:7px 12px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
+          </div>
+        </div>
       </div>
 
       <!-- MY WORLD divider -->
@@ -4801,53 +4807,66 @@ const _ts = new Date(d.timestamp);
     el.style.display = "";
   }
 
-  // ── Home Commute Card ────────────────────────────────────────────────────────
-  function _hcMode(mode) {
-    ["drive","train","wfh"].forEach(m => {
-      const btn = document.getElementById("hc-btn-" + m);
-      if (!btn) return;
-      const active = m === mode;
-      btn.style.background  = active ? "#065f46" : "var(--bg)";
-      btn.style.color       = active ? "#fff" : "var(--muted)";
-      btn.style.borderColor = active ? "#065f46" : "var(--border)";
-    });
-    localStorage.setItem("miru_commute_mode", mode);
-    const el = document.getElementById("hc-content");
+  // ── My Places card (home screen) ─────────────────────────────────────────────
+  function _hcAdd() {
+    const f = document.getElementById("hc-add-form");
+    if (!f) return;
+    f.style.display = "";
+    document.getElementById("hc-add-name").value = "";
+    document.getElementById("hc-add-dest").value = "";
+    document.getElementById("hc-add-name").focus();
+  }
+
+  function _hcSave() {
+    const dest = document.getElementById("hc-add-dest").value.trim();
+    if (!dest) { document.getElementById("hc-add-dest").focus(); return; }
+    const name = document.getElementById("hc-add-name").value.trim() || dest;
+    const arr = _commuteLoad();
+    arr.push({ id: Date.now(), name, dest });
+    _commuteSave2(arr);
+    document.getElementById("hc-add-form").style.display = "none";
+    _hcRender();
+  }
+
+  function _hcDelete(id) {
+    _commuteSave2(_commuteLoad().filter(c => c.id !== id));
+    _hcRender();
+  }
+
+  function _hcRender() {
+    const el = document.getElementById("hc-list");
     if (!el) return;
-    if (mode === "train") { showScreen("trains"); return; }
-    if (mode === "wfh") {
-      el.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:4px 0">Working from home today ☕ Enjoy!</div>`;
-      return;
-    }
-    // Drive — show saved commutes inline
     const arr = _commuteLoad();
     if (!arr.length) {
-      el.innerHTML = `<div style="font-size:12px;color:var(--muted)">No commutes saved — <span onclick="showScreen('myarea');_maShowTab('places')" style="color:#065f46;font-weight:700;cursor:pointer">add one in My Local → Transport</span></div>`;
+      el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:2px 0">No places saved yet — tap + Add for Work, school, Tesco…</div>`;
       return;
     }
     const pc = _miruPostcode ? _miruPostcode() : "";
     el.innerHTML = arr.map(c => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-        <div style="font-size:13px;font-weight:700;color:var(--text)">${c.name}</div>
-        <div id="hc-status-${c.id}" style="font-size:12px;color:var(--muted)">Loading…</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${c.name}</div>
+          <div style="font-size:10px;color:var(--muted)">${c.dest}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="hcp-${c.id}" style="font-size:12px;color:var(--muted);text-align:right">${pc ? "Loading…" : "—"}</div>
+          <button onclick="_hcDelete(${c.id})" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 4px">✕</button>
+        </div>
       </div>`).join("");
-    if (pc) arr.forEach(c => {
+    if (!pc) return;
+    arr.forEach(c => {
       fetch(`/api/commute/live?from=${encodeURIComponent(pc)}&to=${encodeURIComponent(c.dest)}`)
         .then(r => r.json()).then(d => {
-          const el2 = document.getElementById("hc-status-" + c.id);
+          const el2 = document.getElementById("hcp-" + c.id);
           if (!el2) return;
           if (d.error) { el2.textContent = "—"; return; }
-          const delay = d.delay_min > 0 ? ` +${d.delay_min}m` : "";
+          const delay = d.delay_min > 0 ? ` <span style="color:#f59e0b">+${d.delay_min}m</span>` : "";
           el2.innerHTML = `<span style="font-weight:800;color:var(--text)">${d.duration_min} min</span> ${d.traffic_emoji}${delay}`;
         }).catch(() => {});
     });
   }
 
-  // Restore commute mode on home load
-  (function() {
-    const saved = localStorage.getItem("miru_commute_mode");
-    if (saved) setTimeout(() => _hcMode(saved), 300);
-  })();
+  setTimeout(_hcRender, 400);
 
   // ── My Commutes ──────────────────────────────────────────────────────────────
   const _COMMUTES_KEY = "miru_commutes";
