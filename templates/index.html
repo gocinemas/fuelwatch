@@ -10184,8 +10184,11 @@ const _ts = new Date(d.timestamp);
         const h = new Date().getHours();
         const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
         document.getElementById("home-greeting").textContent = `${greet} · ${_wCode(code)} ${temp}°C`;
-        const heroDL = document.getElementById("home-hero-dateline");
-        if (heroDL && !heroDL.textContent.includes("°C")) heroDL.textContent = `${heroDL.textContent} · ${_wCode(code)} ${temp}°C`;
+        if (!window._heroWeatherSet) {
+          window._heroWeatherSet = true;
+          const heroDL = document.getElementById("home-hero-dateline");
+          if (heroDL) heroDL.textContent = `${heroDL.textContent} · ${_wCode(code)} ${temp}°C`;
+        }
         const detail = document.getElementById("myarea-home-detail");
         if (detail) detail.textContent = `${_wCode(code)} ${temp}°C · ${_wLabel(code)}`;
       }).catch(() => {});
@@ -12649,6 +12652,7 @@ _bkBadge();
       const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
       const dow = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][now.getDay()];
       const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()];
+      window._heroWeatherSet = false;
       hero.innerHTML = `
         <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:var(--text);line-height:1.1;margin-bottom:4px">${greet} ☀️</div>
         <div style="font-size:13px;color:var(--muted);margin-top:2px" id="home-hero-dateline">${dow} ${now.getDate()} ${mon}</div>
