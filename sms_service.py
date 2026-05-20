@@ -9724,8 +9724,11 @@ def _wa_triage_respond(from_number: str, cmd: str) -> str:
 
 _FUEL_WORDS = {"petrol", "diesel", "unleaded", "fuel", "gas", "price", "prices", "cheapest", "nearest", "mile", "miles", "mi"} | {r.lower() for r in KNOWN_RETAILERS}
 _ELECTION_WORDS = {"vote", "voting", "election", "elections", "candidate", "candidates",
-                   "polling", "ballot", "stand", "standing", "mp"}
-_COUNCILLOR_WORDS = {"councillor", "councilor", "council rep", "my councillor", "contact councillor"}
+                   "polling", "ballot", "stand", "standing"}
+_MP_WORDS = {"mp", "my mp", "who is my mp", "who represents me", "contact mp",
+             "mp contact", "member of parliament", "my member of parliament"}
+_COUNCILLOR_WORDS = {"councillor", "councilor", "council rep", "my councillor",
+                     "contact councillor", "who is my councillor", "local councillor"}
 _RESULTS_WORDS  = {"results", "result", "winner", "won", "elected", "who won"}
 _PLACES_WORDS = {"places", "services", "local", "near", "nearby", "around",
                  "library", "gp", "doctor", "pharmacy", "dentist", "leisure",
@@ -9902,6 +9905,35 @@ def whatsapp_elections_format(postcode: str) -> str:
     except Exception as e:
         return f"Sorry, couldn't load election info. Try miru.app instead."
 
+def _wa_mp_lookup(postcode: str) -> str:
+    """Return MP contact info for a postcode via WhatsApp."""
+    try:
+        pc = postcode.replace(" ", "").upper()
+        pc_r = requests.get(f"https://api.postcodes.io/postcodes/{pc}", timeout=8)
+        if not pc_r.ok:
+            return "⚠️ Couldn't find that postcode. Try e.g. *my mp KT16 0DA*"
+        constituency = (pc_r.json().get("result") or {}).get("parliamentary_constituency_2024") or ""
+        if not constituency:
+            return "⚠️ No constituency found for that postcode."
+        mem = _get_mp_mem()
+        row = mem.get(constituency.lower())
+        if not row:
+            return f"⚠️ No MP data found for {constituency}. Try again shortly."
+        col = _partyColourEmoji(row.get("party", ""))
+        lines = [f"🏛️ *Your MP — {constituency}*\n"]
+        lines.append(f"{col} *{row['name']}* — {row.get('party', '')}")
+        if row.get("email"):    lines.append(f"📧 {row['email']}")
+        if row.get("phone"):    lines.append(f"📞 {row['phone']}")
+        if row.get("twitter"):  lines.append(f"𝕏 @{row['twitter']}")
+        if row.get("office_address"): lines.append(f"📍 {row['office_address']}")
+        if row.get("parliament_url"): lines.append(f"🔗 {row['parliament_url']}")
+        lines.append(f"\n💡 See your full local profile at miru.humanagency.co")
+        return "\n".join(lines).strip()
+    except Exception as e:
+        app.logger.warning(f"[mp-wa] {e}")
+        return "⚠️ Couldn't load MP info. Try again shortly."
+
+
 def _wa_councillor_lookup(postcode: str) -> str:
     """Return councillor contact info for a postcode via WhatsApp."""
     try:
@@ -9933,7 +9965,7 @@ def _wa_councillor_lookup(postcode: str) -> str:
                 lines.append(f"🔗 {c['council_profile_url']}")
             lines.append("")
 
-        lines.append(f"📱 miru.humanagency.co/?screen=elections&postcode={postcode}")
+        lines.append(f"\n💡 See your full local profile at miru.humanagency.co")
         return "\n".join(lines).strip()
     except Exception as e:
         app.logger.warning(f"[councillor-wa] {e}")
@@ -12122,6 +12154,25 @@ def whatsapp_reply():
             return str(resp)
 
     # ── Councillor contact query ───────────────────────────────────────────────
+    # ── MP lookup ─────────────────────────────────────────────────────────────
+    _MP_NATURAL = re.compile(r'\b(who is my mp|my mp|contact mp|mp contact|who represents me|member of parliament)\b', re.I)
+    if body_words & _MP_WORDS or _MP_NATURAL.search(body):
+        pc_m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
+        mp_postcode = pc_m.group(1).replace(" ", "") if pc_m else postcode
+        if mp_postcode:
+            cache_key = f"mp:{mp_postcode}"
+            cached = _WA_CACHE.get(cache_key)
+            if cached and (time.time() - cached[0]) < 3600:
+                resp.message(cached[1])
+                return str(resp)
+            reply = _wa_mp_lookup(mp_postcode)
+            _WA_CACHE[cache_key] = (time.time(), reply)
+            resp.message(reply)
+            return str(resp)
+        else:
+            resp.message("Include your postcode to find your MP, e.g.:\n*my mp KT16 0DA*")
+            return str(resp)
+
     if body_words & _COUNCILLOR_WORDS or body.lower().startswith("councillor"):
         pc_m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
         cllr_postcode = pc_m.group(1).replace(" ", "") if pc_m else postcode
