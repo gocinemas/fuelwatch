@@ -18267,13 +18267,13 @@ def api_bus_stops():
         return jsonify({"error": "postcode or lat/lon required"}), 400
 
     from search import _sb_cache_get, _sb_cache_set
-    cache_key = f"bus:{round(lat,3)},{round(lon,3)}"
+    cache_key = f"bus2:{round(lat,3)},{round(lon,3)}"
     cached = _sb_cache_get(cache_key)
     if cached and cached.get("stops"):
         return jsonify(cached)
 
     try:
-        query = f"""[out:json][timeout:12];(node["highway"="bus_stop"](around:600,{lat},{lon});node["public_transport"="stop_position"]["bus"="yes"](around:600,{lat},{lon}););out body;"""
+        query = f"""[out:json][timeout:15];(node["highway"="bus_stop"](around:1200,{lat},{lon});node["public_transport"="stop_position"]["bus"="yes"](around:1200,{lat},{lon});node["public_transport"="platform"]["bus"="yes"](around:1200,{lat},{lon}););out body;"""
         elements = _overpass_query(query)
 
         seen_names = set()
