@@ -4804,9 +4804,10 @@ const _ts = new Date(d.timestamp);
   function _commuteSave() {
     const name = document.getElementById("commute-add-name").value.trim();
     const dest = document.getElementById("commute-add-dest").value.trim();
-    if (!name || !dest) return;
+    if (!dest) { document.getElementById("commute-add-dest").focus(); return; }
+    const label = name || dest;
     const arr = _commuteLoad();
-    arr.push({ id: Date.now(), name, dest });
+    arr.push({ id: Date.now(), name: label, dest });
     _commuteSave2(arr);
     document.getElementById("commute-add-form").style.display = "none";
     _commuteRender();
