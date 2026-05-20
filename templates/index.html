@@ -6770,6 +6770,12 @@ function _hcAdd() {
     const _tpSecI = document.getElementById("brand-tp-section");
     if (_tpSecI) _tpSecI.style.display = "none";
 
+    // Clear brand story from previous search
+    const _storyWrap = document.getElementById("brand-story-collapsible");
+    if (_storyWrap) _storyWrap.style.display = "none";
+    const _storyBody = document.getElementById("brand-story-body");
+    if (_storyBody) { _storyBody.style.display = "none"; _storyBody.innerHTML = ""; }
+
     // Clear research brief from previous search
     const _resPanel = document.getElementById("intel-research-panel");
     if (_resPanel) _resPanel.style.display = "none";
