@@ -2354,7 +2354,7 @@
     const bg = type === "error" ? "#dc2626" : type === "success" ? "#059669" : "#111827";
     const t = document.createElement("div");
     t.textContent = msg;
-    t.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:${bg};color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:1;transition:opacity .3s;max-width:80vw;text-align:center;${onTap ? "cursor:pointer;" : "pointer-events:none;"}`;
+    t.style.cssText = `position:fixed;bottom:calc(70px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:${bg};color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:1;transition:opacity .3s;max-width:80vw;text-align:center;${onTap ? "cursor:pointer;" : "pointer-events:none;"}`;
     if (onTap) t.addEventListener("click", () => { onTap(); t.remove(); });
     document.body.appendChild(t);
     setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, onTap ? 3500 : 2000);
@@ -10174,20 +10174,26 @@ const _ts = new Date(d.timestamp);
     return "Stormy";
   }
   function _showWeather(lat, lon) {
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(3)}&longitude=${(+lon).toFixed(3)}&current=temperature_2m,weather_code&timezone=auto`)
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(3)}&longitude=${(+lon).toFixed(3)}&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto`)
       .then(r => r.json())
       .then(d => {
         const cur = d && (d.current || d.current_weather);
         if (!cur) return;
         const temp = Math.round(cur.temperature_2m ?? cur.temperature ?? 0);
         const code = cur.weather_code ?? cur.weathercode ?? 0;
+        const wind = Math.round(cur.wind_speed_10m ?? 0);
         const h = new Date().getHours();
         const greet = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
         document.getElementById("home-greeting").textContent = `${greet} · ${_wCode(code)} ${temp}°C`;
         if (!window._heroWeatherSet) {
           window._heroWeatherSet = true;
           const heroDL = document.getElementById("home-hero-dateline");
-          if (heroDL) heroDL.textContent = `${heroDL.textContent} · ${_wCode(code)} ${temp}°C`;
+          if (heroDL) {
+            const windStr = wind ? ` · 💨 ${wind} km/h` : "";
+            heroDL.textContent = `${heroDL.textContent} · ${_wCode(code)} ${temp}°C${windStr}`;
+          }
+          const wxEmoji = document.getElementById("home-hero-wx-emoji");
+          if (wxEmoji) wxEmoji.textContent = _wCode(code);
         }
         const detail = document.getElementById("myarea-home-detail");
         if (detail) detail.textContent = `${_wCode(code)} ${temp}°C · ${_wLabel(code)}`;
@@ -12654,7 +12660,7 @@ _bkBadge();
       const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()];
       window._heroWeatherSet = false;
       hero.innerHTML = `
-        <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:var(--text);line-height:1.1;margin-bottom:4px">${greet} ☀️</div>
+        <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:var(--text);line-height:1.1;margin-bottom:4px" id="home-hero-greeting">${greet} <span id="home-hero-wx-emoji">☀️</span></div>
         <div style="font-size:13px;color:var(--muted);margin-top:2px" id="home-hero-dateline">${dow} ${now.getDate()} ${mon}</div>
         <div style="font-size:11px;color:var(--subtle);margin-top:8px;line-height:1.5">⛽ Fuel &middot; 🚆 Trains &middot; 🏡 My Local &middot; 🔎 Research &middot; 🗂️ Admin</div>`;
       if (waTop) waTop.style.display = "none";
