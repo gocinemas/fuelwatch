@@ -4798,11 +4798,11 @@ def api_area_summary():
     if not postcode:
         return jsonify({"error": "Postcode required"}), 400
 
-    hit = _summary_cache.get(postcode + "_v3")
+    hit = _summary_cache.get(postcode + "_v4")
     if hit and time.time() - hit["ts"] < _SUMMARY_TTL:
         return jsonify(hit["data"])
     try:
-        row = lib._sb().table("area_summary_cache").select("summary").eq("postcode", postcode + "_v3").maybe_single().execute()
+        row = lib._sb().table("area_summary_cache").select("summary").eq("postcode", postcode + "_v4").maybe_single().execute()
         if row and row.data:
             return jsonify({"summary": row.data["summary"]})
     except Exception:
@@ -4824,7 +4824,7 @@ def api_area_summary():
         house = house_f.result(timeout=15) or {}
         env_row = None
         try:
-            er = lib._sb().table("env_cache").select("data").eq("postcode", postcode + "_v3").maybe_single().execute()
+            er = lib._sb().table("env_cache").select("data").eq("postcode", postcode + "_v4").maybe_single().execute()
             env_row = er.data["data"] if er and er.data else None
         except Exception:
             pass
@@ -4890,9 +4890,9 @@ def api_area_summary():
         )
         summary = r.json()["choices"][0]["message"]["content"].strip()
         result = {"summary": summary, "facts": facts}
-        _summary_cache[postcode + "_v3"] = {"data": result, "ts": time.time()}
+        _summary_cache[postcode + "_v4"] = {"data": result, "ts": time.time()}
         try:
-            lib._sb().table("area_summary_cache").upsert({"postcode": postcode + "_v3", "summary": summary}).execute()
+            lib._sb().table("area_summary_cache").upsert({"postcode": postcode + "_v4", "summary": summary}).execute()
         except Exception:
             pass
         return jsonify(result)
