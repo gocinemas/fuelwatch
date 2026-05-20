@@ -529,6 +529,17 @@
         </button>
       </div>
 
+      <!-- My Commute card -->
+      <div id="home-commute-card" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:14px 16px;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.04em;margin-bottom:10px">HOW ARE YOU GETTING THERE?</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button id="hc-btn-drive" onclick="_hcMode('drive')" style="flex:1;padding:9px 4px;border-radius:12px;border:2px solid var(--border);background:var(--bg);font-size:13px;font-weight:700;color:var(--muted);cursor:pointer">🚗 Drive</button>
+          <button id="hc-btn-train" onclick="_hcMode('train')" style="flex:1;padding:9px 4px;border-radius:12px;border:2px solid var(--border);background:var(--bg);font-size:13px;font-weight:700;color:var(--muted);cursor:pointer">🚆 Train</button>
+          <button id="hc-btn-wfh"   onclick="_hcMode('wfh')"   style="flex:1;padding:9px 4px;border-radius:12px;border:2px solid var(--border);background:var(--bg);font-size:13px;font-weight:700;color:var(--muted);cursor:pointer">🏠 WFH</button>
+        </div>
+        <div id="hc-content"></div>
+      </div>
+
       <!-- MY WORLD divider -->
       <div style="display:flex;align-items:center;gap:10px;margin:4px 0 10px">
         <div style="font-size:10px;font-weight:800;color:var(--subtle);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">My World</div>
@@ -4787,6 +4798,54 @@ const _ts = new Date(d.timestamp);
     el.innerHTML = _maSectionHtml("ev", "⚡ EV Charging Nearby", bodyHtml);
     el.style.display = "";
   }
+
+  // ── Home Commute Card ────────────────────────────────────────────────────────
+  function _hcMode(mode) {
+    ["drive","train","wfh"].forEach(m => {
+      const btn = document.getElementById("hc-btn-" + m);
+      if (!btn) return;
+      const active = m === mode;
+      btn.style.background  = active ? "#065f46" : "var(--bg)";
+      btn.style.color       = active ? "#fff" : "var(--muted)";
+      btn.style.borderColor = active ? "#065f46" : "var(--border)";
+    });
+    localStorage.setItem("miru_commute_mode", mode);
+    const el = document.getElementById("hc-content");
+    if (!el) return;
+    if (mode === "train") { showScreen("trains"); return; }
+    if (mode === "wfh") {
+      el.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:4px 0">Working from home today ☕ Enjoy!</div>`;
+      return;
+    }
+    // Drive — show saved commutes inline
+    const arr = _commuteLoad();
+    if (!arr.length) {
+      el.innerHTML = `<div style="font-size:12px;color:var(--muted)">No commutes saved — <span onclick="showScreen('myarea');_maShowTab('places')" style="color:#065f46;font-weight:700;cursor:pointer">add one in My Local → Transport</span></div>`;
+      return;
+    }
+    const pc = _miruPostcode ? _miruPostcode() : "";
+    el.innerHTML = arr.map(c => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${c.name}</div>
+        <div id="hc-status-${c.id}" style="font-size:12px;color:var(--muted)">Loading…</div>
+      </div>`).join("");
+    if (pc) arr.forEach(c => {
+      fetch(`/api/commute/live?from=${encodeURIComponent(pc)}&to=${encodeURIComponent(c.dest)}`)
+        .then(r => r.json()).then(d => {
+          const el2 = document.getElementById("hc-status-" + c.id);
+          if (!el2) return;
+          if (d.error) { el2.textContent = "—"; return; }
+          const delay = d.delay_min > 0 ? ` +${d.delay_min}m` : "";
+          el2.innerHTML = `<span style="font-weight:800;color:var(--text)">${d.duration_min} min</span> ${d.traffic_emoji}${delay}`;
+        }).catch(() => {});
+    });
+  }
+
+  // Restore commute mode on home load
+  (function() {
+    const saved = localStorage.getItem("miru_commute_mode");
+    if (saved) setTimeout(() => _hcMode(saved), 300);
+  })();
 
   // ── My Commutes ──────────────────────────────────────────────────────────────
   const _COMMUTES_KEY = "miru_commutes";
