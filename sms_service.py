@@ -12594,6 +12594,88 @@ def health():
     return {"status": "ok", "stations_loaded": len(stations)}
 
 
+@app.route("/updates")
+def updates():
+    import subprocess, collections, re
+    try:
+        out = subprocess.check_output(
+            ["git", "log", "--format=%ad|%s", "--date=format:%Y-%m-%d", "--max-count=120"],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL
+        ).decode()
+    except Exception:
+        out = ""
+
+    # Skip noisy infra commits
+    _SKIP = re.compile(r"trigger redeploy|force railway|duplicate.*route|gunicorn boot|debug logging|"
+                       r"bump cache|\.pyc|railwayignore|preview page|user toggle|dark mode fix|"
+                       r"revert tgtg|tgtg login|tgtg button|login debug", re.I)
+
+    by_date = collections.OrderedDict()
+    for line in out.strip().splitlines():
+        if "|" not in line:
+            continue
+        date, msg = line.split("|", 1)
+        if _SKIP.search(msg):
+            continue
+        if date not in by_date:
+            by_date[date] = []
+        by_date[date].append(msg.strip())
+
+    def categorise(msg):
+        m = msg.lower()
+        if m.startswith(("add ", "ship ", "new ")):
+            return "new", "✨"
+        if m.startswith(("fix ", "revert ")):
+            return "fix", "🔧"
+        return "update", "🔄"
+
+    # Build HTML
+    days_html = ""
+    for date, msgs in by_date.items():
+        from datetime import datetime
+        try:
+            label = datetime.strptime(date, "%Y-%m-%d").strftime("%d %B %Y")
+        except Exception:
+            label = date
+        items = ""
+        for msg in msgs:
+            kind, icon = categorise(msg)
+            items += f'<li class="item item-{kind}"><span class="icon">{icon}</span><span>{msg}</span></li>'
+        days_html += f'<div class="day"><div class="date">{label}</div><ul>{items}</ul></div>'
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Miru — What's New</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e5e5e5;padding:24px 16px 60px}}
+  .header{{max-width:600px;margin:0 auto 32px}}
+  .header h1{{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px}}
+  .header p{{font-size:13px;color:#666;margin-top:6px}}
+  .day{{max-width:600px;margin:0 auto 28px}}
+  .date{{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}}
+  ul{{list-style:none;display:flex;flex-direction:column;gap:6px}}
+  .item{{display:flex;gap:10px;align-items:flex-start;background:#141414;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.45;border:1px solid #1f1f1f}}
+  .item-new{{border-color:#1a3a1a}}
+  .item-fix{{border-color:#1a1a2e}}
+  .icon{{font-size:14px;flex-shrink:0;margin-top:1px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>What's New</h1>
+  <p>Updates to Miru — most recent first</p>
+</div>
+{days_html}
+</body>
+</html>"""
+    return html
+
+
 # ── Admin: Gmail import test ──────────────────────────────────────────────────
 
 _ADMIN_KEY = os.environ.get("ADMIN_KEY", "miru-admin-2026")
