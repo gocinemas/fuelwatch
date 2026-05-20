@@ -1889,15 +1889,6 @@
         </div>
       </div>
 
-      <!-- Weather bar — shown once postcode is resolved -->
-      <div id="myarea-weather-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:10px;display:none;align-items:center;gap:10px">
-        <span id="myarea-wx-emoji" style="font-size:22px;line-height:1"></span>
-        <div style="flex:1;min-width:0">
-          <div id="myarea-wx-temp" style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.3px"></div>
-          <div id="myarea-wx-label" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
-        </div>
-        <div id="myarea-wx-hilo" style="font-size:11px;color:var(--muted);text-align:right;line-height:1.5"></div>
-      </div>
 
       <!-- Empty state: shown before first search -->
       <div id="myarea-empty-state" style="display:none;text-align:center;padding:32px 0 20px">
@@ -4553,15 +4544,6 @@ const _ts = new Date(d.timestamp);
   function _maRenderWeather(w) {
     const el = document.getElementById("myarea-weather");
     if (!w || !el) { if(el) el.style.display="none"; return; }
-    // Populate top weather bar
-    const bar = document.getElementById("myarea-weather-bar");
-    if (bar) {
-      document.getElementById("myarea-wx-emoji").textContent = w.emoji || "🌤";
-      document.getElementById("myarea-wx-temp").textContent  = w.temp + "°C";
-      document.getElementById("myarea-wx-label").textContent = w.desc || "";
-      document.getElementById("myarea-wx-hilo").innerHTML    = `↑${w.high}° ↓${w.low}°<br>Wind ${w.wind} km/h`;
-      bar.style.display = "flex";
-    }
     const bodyHtml = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:14px">
       <div style="font-size:36px;font-weight:800;color:var(--text)">${w.temp}°</div>
       <div style="flex:1;min-width:0">
@@ -5030,7 +5012,7 @@ const _ts = new Date(d.timestamp);
     // Hide empty state
     document.getElementById("myarea-empty-state").style.display = "none";
     // Reset sections + un-collapse transport so fresh results always show
-    const wxBar = document.getElementById("myarea-weather-bar"); if (wxBar) wxBar.style.display = "none";
+
     ["train","bus","ev"].forEach(id => localStorage.removeItem(`miru_mac_${id}`));
     ["myarea-reps","myarea-council","myarea-council-services","myarea-weather","myarea-train","myarea-tube","myarea-bus","myarea-ev","myarea-crime","myarea-gp","myarea-schools","myarea-shops","myarea-pubs"].forEach(id => {
       const el = document.getElementById(id); if (el) el.style.display = "none";
