@@ -836,18 +836,24 @@ def commute_test():
 @app.route("/api/commute")
 def api_commute():
     """Compare train vs drive for a commute. Returns train departures + HERE drive time."""
-    from_pc  = request.args.get("from_pc", "").strip().replace(" ", "").upper()
-    to_pc    = request.args.get("to_pc",   "").strip().replace(" ", "").upper()
     from_crs = request.args.get("from_crs", "").strip().upper()[:3]
     to_crs   = request.args.get("to_crs",   "").strip().upper()[:3]
 
-    from_res = _resolve_postcode(from_pc)
-    to_res   = _resolve_postcode(to_pc)
-    if not from_res or not to_res:
-        return jsonify({"error": "Could not resolve one or both postcodes"}), 400
-
-    _, from_lat, from_lon, _ = from_res
-    _, to_lat,   to_lon,   _ = to_res
+    # Accept lat/lon directly (from frontend geocoding) or fallback to postcodes
+    try:
+        from_lat = float(request.args.get("from_lat", ""))
+        from_lon = float(request.args.get("from_lon", ""))
+        to_lat   = float(request.args.get("to_lat",   ""))
+        to_lon   = float(request.args.get("to_lon",   ""))
+    except (ValueError, TypeError):
+        from_pc = request.args.get("from_pc", "").strip().replace(" ", "").upper()
+        to_pc   = request.args.get("to_pc",   "").strip().replace(" ", "").upper()
+        from_res = _resolve_postcode(from_pc)
+        to_res   = _resolve_postcode(to_pc)
+        if not from_res or not to_res:
+            return jsonify({"error": "Could not resolve locations"}), 400
+        _, from_lat, from_lon, _ = from_res
+        _, to_lat,   to_lon,   _ = to_res
 
     import concurrent.futures as _cf_cm
 
