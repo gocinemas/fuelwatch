@@ -10758,12 +10758,12 @@ function _hcAdd() {
 
   <!-- Tab strip -->
   <div style="display:flex;gap:6px;margin-bottom:18px">
-    <button id="btab-search"  class="btab btab-on" onclick="bookTab('search',this)">🔍 Find Books</button>
-    <button id="btab-library" class="btab"         onclick="bookTab('library',this)">📚 My Library <span id="books-count-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;margin-left:4px"></span></button>
+    <button id="btab-search"  class="btab"         onclick="bookTab('search',this)">🔍 Find Books</button>
+    <button id="btab-library" class="btab btab-on" onclick="bookTab('library',this)">📚 My Library <span id="books-count-badge" style="display:none;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;margin-left:4px"></span></button>
   </div>
 
   <!-- ── SEARCH PANEL ── -->
-  <div id="books-search-panel">
+  <div id="books-search-panel" style="display:none">
     <div style="display:flex;gap:8px;margin-bottom:10px">
       <input id="book-input" type="text" placeholder="Title, author or ISBN…" autocomplete="off"
         style="flex:1;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:15px"
@@ -10803,7 +10803,7 @@ function _hcAdd() {
   </div>
 
   <!-- ── MY LIBRARY PANEL ── -->
-  <div id="books-library-panel" style="display:none">
+  <div id="books-library-panel">
 
     <!-- Sub-tabs: Scanned Books / Books I Own -->
     <div style="display:flex;gap:6px;margin-bottom:12px">
