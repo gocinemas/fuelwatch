@@ -1247,6 +1247,17 @@
         </div>
 
 
+        <!-- Brand Standing card -->
+        <div id="brand-standing-card" style="display:none;margin-bottom:12px;background:linear-gradient(135deg,#0f172a,#1e1b4b);border-radius:16px;padding:14px 16px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div id="brand-standing-verdict" style="font-size:14px;font-weight:600;color:#fff;line-height:1.5"></div>
+            </div>
+            <div id="brand-standing-badge" style="flex-shrink:0"></div>
+          </div>
+          <div id="brand-standing-source" style="font-size:10px;color:rgba(165,180,252,.5);margin-top:6px"></div>
+        </div>
+
         <!-- Unified 5-tab bar -->
         <div id="intel-tab-bar" style="display:flex;gap:4px;background:var(--border);padding:4px;border-radius:14px;margin-bottom:14px;overflow-x:auto">
           <button id="itab-btn-about"     onclick="switchIntelTab('about')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:#4f46e5;color:#fff">About</button>
@@ -6597,6 +6608,7 @@ const _ts = new Date(d.timestamp);
     document.getElementById("intel-result").style.display = "none";
     document.getElementById("co-did-you-mean").classList.add("hidden");
     document.getElementById("brand-did-you-mean").classList.add("hidden");
+    const _sc = document.getElementById("brand-standing-card"); if (_sc) _sc.style.display = "none";
     switchIntelTab("about");
     _socialTabBrand = ""; // reset so social tab refetches for new brand
     const bookPanel = document.getElementById("book-result-panel");
@@ -6793,6 +6805,25 @@ const _ts = new Date(d.timestamp);
             // Header
             if (b.name) document.getElementById("brand-name-el").textContent = b.name;
             if (b.description) document.getElementById("brand-desc-el").textContent = b.description;
+            // Brand standing card
+            const _standingName = b.name || raw;
+            fetch(`/api/brand/standing?name=${encodeURIComponent(_standingName)}`)
+              .then(r => r.json()).then(s => {
+                const card = document.getElementById("brand-standing-card");
+                const verdictEl = document.getElementById("brand-standing-verdict");
+                const badgeEl = document.getElementById("brand-standing-badge");
+                const sourceEl = document.getElementById("brand-standing-source");
+                if (!card) return;
+                if (s.verdict) verdictEl.textContent = s.verdict;
+                if (s.dcg) {
+                  const moveColor = s.dcg.move > 0 ? "#4ade80" : s.dcg.move < 0 ? "#f87171" : "#a5b4fc";
+                  const badgeText = s.dcg.badge === "NEW" ? "🆕 New entry" : s.dcg.badge === "HELD" ? "▶ Held" : (s.dcg.move > 0 ? "▲" : "▼") + " " + Math.abs(s.dcg.move);
+                  badgeEl.innerHTML = `<div style="text-align:center"><div style="font-size:20px;font-weight:900;color:#fff">#${s.dcg.rank}</div><div style="font-size:10px;font-weight:700;color:${moveColor}">${badgeText}</div></div>`;
+                  sourceEl.textContent = "DCG Most Admired Brands · Digital Commerce 2026";
+                }
+                if (s.verdict || s.dcg) card.style.display = "";
+              }).catch(() => {});
+
             // Logo
             const lu = b.domain
               ? `https://logo.clearbit.com/${b.domain}`

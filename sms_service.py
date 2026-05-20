@@ -2191,6 +2191,95 @@ def api_brand_save_to_library():
         return jsonify({"error": str(e)}), 500
 
 
+# DCG Most Admired Brands in Digital Commerce 2026
+_DCG_2026 = {
+    "l'oreal": {"rank": 1, "move": 0, "badge": "HELD"},
+    "loreal":  {"rank": 1, "move": 0, "badge": "HELD"},
+    "nestle":  {"rank": 2, "move": 0, "badge": "HELD"},
+    "nestlé":  {"rank": 2, "move": 0, "badge": "HELD"},
+    "coca-cola":   {"rank": 3, "move": 2,  "badge": "+2"},
+    "coca cola":   {"rank": 3, "move": 2,  "badge": "+2"},
+    "p&g":         {"rank": 4, "move": -1, "badge": "-1"},
+    "procter & gamble": {"rank": 4, "move": -1, "badge": "-1"},
+    "unilever":    {"rank": 5, "move": -1, "badge": "-1"},
+    "mars":        {"rank": 6, "move": 1,  "badge": "+1"},
+    "mondelez":    {"rank": 7, "move": -1, "badge": "-1"},
+    "mondelēz":    {"rank": 7, "move": -1, "badge": "-1"},
+    "amika":       {"rank": 8, "move": None, "badge": "NEW"},
+    "danone":      {"rank": 8, "move": 2,  "badge": "+2"},
+    "red bull":    {"rank": 10, "move": 2, "badge": "+2"},
+    "redbull":     {"rank": 10, "move": 2, "badge": "+2"},
+    "ab inbev":    {"rank": 10, "move": -3, "badge": "-3"},
+    "lvmh":        {"rank": 12, "move": None, "badge": "NEW"},
+    "pepsico":     {"rank": 12, "move": 9,  "badge": "+9"},
+    "pepsi":       {"rank": 12, "move": 9,  "badge": "+9"},
+    "lego":        {"rank": 12, "move": 3,  "badge": "+3"},
+    "kellanova":   {"rank": 15, "move": 16, "badge": "+16"},
+    "henkel":      {"rank": 16, "move": 21, "badge": "+21"},
+    "magnum":      {"rank": 17, "move": None, "badge": "NEW"},
+    "arla":        {"rank": 18, "move": 44, "badge": "+44"},
+    "moroccanoil": {"rank": 18, "move": None, "badge": "NEW"},
+    "olaplex":     {"rank": 18, "move": None, "badge": "NEW"},
+    "huel":        {"rank": 18, "move": 16, "badge": "+16"},
+    "kraft heinz": {"rank": 22, "move": -1, "badge": "-1"},
+    "kraftheinz":  {"rank": 22, "move": -1, "badge": "-1"},
+    "oatly":       {"rank": 23, "move": -5, "badge": "-5"},
+    "barilla":     {"rank": 24, "move": -7, "badge": "-7"},
+    "reckitt":     {"rank": 25, "move": -15, "badge": "-15"},
+    "lavazza":     {"rank": 25, "move": 46, "badge": "+46"},
+    "dyson":       {"rank": 27, "move": 18, "badge": "+18"},
+    "beiersdorf":  {"rank": 28, "move": -11, "badge": "-11"},
+    "colgate-palmolive": {"rank": 28, "move": -14, "badge": "-14"},
+    "colgate palmolive": {"rank": 28, "move": -14, "badge": "-14"},
+    "rare beauty": {"rank": 28, "move": None, "badge": "NEW"},
+}
+
+
+@app.route("/api/brand/standing")
+def api_brand_standing():
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+
+    key = name.lower().strip()
+    dcg = _DCG_2026.get(key)
+
+    # Build context for AI verdict
+    ranking_context = ""
+    if dcg:
+        move_label = f", {dcg['badge']} vs last year" if dcg["badge"] not in ("HELD", "NEW") else (", position held" if dcg["badge"] == "HELD" else ", new entry this year")
+        ranking_context = f"Ranked #{dcg['rank']} in DCG Most Admired Brands in Digital Commerce 2026{move_label}. "
+
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    verdict = ""
+    if groq_key:
+        try:
+            prompt = (
+                f"{ranking_context}Brand: {name}. "
+                f"Write one punchy sentence (max 15 words) on this brand's market standing. "
+                f"Be specific and direct. No fluff. Examples: "
+                f"'Global #1 in beauty with dominant digital shelf presence.' "
+                f"'Rising challenger brand with strong Gen Z loyalty.' "
+                f"'Household staple under pressure from private label competition.'"
+            )
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 60,
+                    "temperature": 0.4,
+                },
+                timeout=8,
+            )
+            verdict = r.json()["choices"][0]["message"]["content"].strip().strip('"')
+        except Exception:
+            pass
+
+    return jsonify({"name": name, "dcg": dcg, "verdict": verdict})
+
+
 @app.route("/api/brand/ask", methods=["POST"])
 def api_brand_ask():
     data = request.get_json(silent=True) or {}
