@@ -873,7 +873,7 @@ def api_commute_live():
     if not from_geo or not to_geo:
         return jsonify({"error": "Could not resolve one or both locations"}), 404
 
-    key = os.environ.get("GOOGLE_API_KEY", "")
+    key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     if not key:
         return jsonify({"error": "not configured"}), 503
 
