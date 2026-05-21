@@ -1313,6 +1313,14 @@ def api_newsletter_subscribe():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/brief")
+def brief_page():
+    resp = app.make_response(
+        render_template("index.html", prefill_company=None, prefill_doc=None, autoscreen="brief")
+    )
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return resp
+
 @app.route("/elections")
 def elections_page():
     resp = app.make_response(
@@ -5874,6 +5882,226 @@ def api_intel_news():
 
     _ai_news_cache[vertical] = {"ts": _time.time(), "items": items}
     return jsonify({"items": items, "vertical": vertical})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# V2 — Agentic Architecture
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/v2/prefs", methods=["GET"])
+def api_v2_prefs_get():
+    """Return V2 preferences for the user identified by token."""
+    token = request.args.get("token", "").strip()
+    from_number = _resolve_user_token(token) if token else ""
+    if not from_number:
+        return jsonify({"prefs": {}, "has_prefs": False})
+    try:
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+        prefs = rows[0]["data"] if rows else {}
+        return jsonify({"prefs": prefs, "has_prefs": bool(prefs)})
+    except Exception as e:
+        return jsonify({"prefs": {}, "has_prefs": False, "error": str(e)})
+
+
+@app.route("/api/v2/prefs", methods=["POST"])
+def api_v2_prefs_post():
+    """Save V2 preferences. Merges with existing — send only changed keys."""
+    token = (request.get_json(force=True, silent=True) or {}).get("token", "") or \
+            request.args.get("token", "")
+    token = (token or "").strip()
+    from_number = _resolve_user_token(token) if token else ""
+    if not from_number:
+        return jsonify({"error": "token required"}), 401
+    body = request.get_json(force=True, silent=True) or {}
+    new_prefs = body.get("prefs", {})
+    if not isinstance(new_prefs, dict):
+        return jsonify({"error": "prefs must be object"}), 400
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_details").select("id,data") \
+            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+        if rows:
+            merged = {**(rows[0].get("data") or {}), **new_prefs}
+            sb.table("ma_details").update({"data": merged}).eq("id", rows[0]["id"]).execute()
+        else:
+            sb.table("ma_details").insert({
+                "device_id": from_number, "type": "v2_prefs",
+                "label": "home_brief", "data": new_prefs,
+            }).execute()
+        return jsonify({"ok": True, "prefs": new_prefs})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def _v2_fetch_school(from_number: str) -> list:
+    """Next 7 days of school events for this user."""
+    from datetime import date, timedelta
+    try:
+        today     = date.today().isoformat()
+        horizon   = (date.today() + timedelta(days=7)).isoformat()
+        profiles  = lib._sb().table("school_profiles").select("id") \
+                        .eq("wa_number", from_number).execute().data or []
+        if not profiles:
+            return []
+        pids = [p["id"] for p in profiles]
+        rows = lib._sb().table("school_events").select(
+            "event_title,event_date,child_name,school_name"
+        ).in_("profile_id", pids).gte("event_date", today).lte("event_date", horizon) \
+         .order("event_date").execute().data or []
+        return rows
+    except Exception:
+        return []
+
+
+def _v2_fetch_spend(from_number: str) -> dict:
+    """Sum receipt clippings this calendar month."""
+    import re as _re
+    from datetime import date
+    try:
+        month_start = date.today().replace(day=1).isoformat()
+        rows = lib._sb().table("wa_saves").select("summary,title") \
+            .eq("from_number", from_number) \
+            .gte("created_at", month_start) \
+            .ilike("title", "🧾%") \
+            .execute().data or []
+        total = 0.0; count = 0
+        for r in rows:
+            m = _re.search(r'£([\d,]+\.?\d*)', r.get("summary", "") + r.get("title", ""))
+            if m:
+                try: total += float(m.group(1).replace(",", "")); count += 1
+                except ValueError: pass
+        return {"total": round(total, 2), "count": count, "month": date.today().strftime("%B")}
+    except Exception:
+        return {}
+
+
+def _v2_fetch_fuel(postcode: str) -> dict:
+    """Cheapest fuel near postcode — reuses existing search logic."""
+    try:
+        from search import _fetch_fuel_prices
+        prices = _fetch_fuel_prices(postcode, fuel_type="E10") or []
+        if not prices:
+            return {}
+        cheapest = prices[0]
+        return {
+            "price":  cheapest.get("price"),
+            "name":   cheapest.get("name", ""),
+            "change": cheapest.get("change", ""),
+        }
+    except Exception:
+        return {}
+
+
+def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
+    """Next 3 departures on the saved route."""
+    try:
+        from search import _fetch_trains
+        deps = _fetch_trains(train_from, train_to) or []
+        return {"departures": deps[:3], "from": train_from, "to": train_to}
+    except Exception:
+        return {}
+
+
+_v2_brief_cache: dict = {}   # from_number -> {ts, brief}
+
+@app.route("/api/home/brief")
+def api_home_brief():
+    """V2 context engine — returns personalised brief text + raw context."""
+    import concurrent.futures as _cf
+    from datetime import datetime as _dt
+
+    token    = request.args.get("token", "").strip()
+    postcode = request.args.get("pc", "").strip().upper().replace(" ", "")
+    from_number = _resolve_user_token(token) if token else ""
+
+    # Check 15-min cache
+    cached = _v2_brief_cache.get(from_number or postcode)
+    if cached and time.time() - cached["ts"] < 900:
+        return jsonify(cached["data"])
+
+    # Load prefs
+    prefs: dict = {}
+    if from_number:
+        try:
+            rows = lib._sb().table("ma_details").select("data") \
+                .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+            prefs = rows[0]["data"] if rows else {}
+        except Exception:
+            pass
+
+    now  = _dt.now()
+    ctx: dict = {}
+
+    with _cf.ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {}
+        if prefs.get("train_from") and prefs.get("train_to"):
+            futures["trains"] = pool.submit(_v2_fetch_trains, prefs["train_from"], prefs["train_to"])
+        fuel_pc = prefs.get("fuel_postcode") or postcode
+        if fuel_pc:
+            futures["fuel"] = pool.submit(_v2_fetch_fuel, fuel_pc)
+        if from_number:
+            futures["school"] = pool.submit(_v2_fetch_school, from_number)
+            futures["spend"]  = pool.submit(_v2_fetch_spend, from_number)
+        for k, f in futures.items():
+            try: ctx[k] = f.result(timeout=8)
+            except Exception as ex: app.logger.warning(f"[brief] {k}: {ex}")
+
+    # Build Groq prompt
+    hour = now.hour
+    tod  = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
+    dow  = now.strftime("%A")
+    facts = []
+    trains = ctx.get("trains", {})
+    if trains.get("departures"):
+        deps = trains["departures"]
+        times = " · ".join(d.get("departs", d.get("time", "")) for d in deps[:3] if d.get("departs") or d.get("time"))
+        if times:
+            facts.append(f"Next trains {trains['from']} → {trains['to']}: {times}")
+    fuel = ctx.get("fuel", {})
+    if fuel.get("price"):
+        change = f" ({fuel['change']})" if fuel.get("change") else ""
+        facts.append(f"Fuel near {fuel_pc}: {fuel['name']} {fuel['price']}p{change}")
+    school_ev = ctx.get("school", [])
+    for ev in school_ev[:2]:
+        facts.append(f"School: {ev.get('child_name','')}'s {ev.get('event_title','')} on {ev.get('event_date','')}")
+    spend = ctx.get("spend", {})
+    if spend.get("count", 0) > 0:
+        facts.append(f"Receipts this {spend['month']}: £{spend['total']} across {spend['count']} shops")
+
+    if facts:
+        prompt = (
+            f"Write a warm, natural 2-3 sentence home screen brief for a UK user on {dow} {tod}. "
+            f"Use these facts: {'; '.join(facts)}. "
+            "Be concise and conversational — no bullet points, no greetings, just the information flowing naturally. "
+            "Use British English. Keep it under 60 words."
+        )
+        brief_text = ""
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                         "Content-Type": "application/json"},
+                json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
+                      "messages": [{"role": "user", "content": prompt}]},
+                timeout=10,
+            )
+            brief_text = r.json()["choices"][0]["message"]["content"].strip()
+        except Exception as be:
+            app.logger.warning(f"[brief] groq: {be}")
+            brief_text = " ".join(facts[:2]) if facts else ""
+    else:
+        brief_text = ""
+
+    result = {
+        "brief":    brief_text,
+        "context":  ctx,
+        "prefs":    prefs,
+        "has_prefs": bool(prefs),
+        "tod":      tod,
+    }
+    _v2_brief_cache[from_number or postcode] = {"ts": time.time(), "data": result}
+    return jsonify(result)
 
 
 @app.route("/api/admin/clear-brand-cache", methods=["POST"])
