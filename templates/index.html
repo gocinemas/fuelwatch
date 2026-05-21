@@ -648,8 +648,8 @@
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
         <button class="tool-icon-btn" onclick="_pillNav('saves')">
-          <span class="tool-icon-emoji">💾</span>
-          <span class="tool-icon-label">Saves</span>
+          <span class="tool-icon-emoji">📌</span>
+          <span class="tool-icon-label">Clippings</span>
         </button>
         <button class="tool-icon-btn" onclick="showScreen('library')">
           <span class="tool-icon-emoji">📚</span>
@@ -2219,7 +2219,7 @@
         <!-- Upload tip -->
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#166534;line-height:1.5">
           📁 Tap <strong>+ Add</strong> to upload PDFs, photos, or text directly from this screen.<br>
-          <span style="color:#15803d;font-size:11px;margin-top:4px;display:block">💡 Receipt photos sent via WhatsApp appear in <strong>My Saves</strong>, not here.</span>
+          <span style="color:#15803d;font-size:11px;margin-top:4px;display:block">💡 Receipt photos sent via WhatsApp appear in <strong>My Clippings</strong>, not here.</span>
         </div>
 
         <!-- Search bar -->
@@ -2530,7 +2530,7 @@
     home:    { icon:'🏠', label:'Home',     piId:'pi-home'   },
     myarea:  { icon:'📍', label:'My Area',  piId:'pi-myarea' },
     company: { icon:'🔍', label:'Intel',    piId:'pi-intel'  },
-    saves:   { icon:'📌', label:'Saves',    piId:'pi-saves'  },
+    saves:   { icon:'📌', label:'Clippings', piId:'pi-saves'  },
   };
   function _pillUpdate(name) {
     const s = _PILL_SCREENS[name];
@@ -10464,7 +10464,7 @@ function _hcAdd() {
       { name:"Research an Area", desc:"Crime, schools, house prices & services", icon:"🔎", screen:"report", kw:"area crime house prices school safety report local neighbourhood research postcode" },
       { name:"Local search",   desc:"Cafés, tradespeople & shops near you", icon:"📍", screen:"places",  kw:"cafe coffee best coffee plumber shop restaurant pub local places nearby find electrician builder lunch dinner brunch food drink" },
       { name:"Emergency",      desc:"Hospitals & police stations",         icon:"🚨", screen:"report",    kw:"hospital emergency police ambulance a&e urgent nhs nearest help" },
-      { name:"My saves",       desc:"Articles & links you've saved",       icon:"📌", screen:"saves",     kw:"saves saved article link bookmark read reading" },
+      { name:"My Clippings",   desc:"Links, menus, receipts & more you've clipped", icon:"📌", screen:"saves", kw:"clippings saves saved article link bookmark read reading menu receipt" },
       { name:"Company Intel",  desc:"Revenue, profit & financials · AI & tech strategy · news", icon:"🏢", screen:"company", kw:"company business financials revenue profit strategy news intel turnover" },
       { name:"Brand Intel",    desc:"Brand identity · founding story · ads & rivals", icon:"🏷️", screen:"company", tab:"brand", kw:"brand identity ads campaigns rivals marketing history logo slogan" },
       { name:"My documents",   desc:"Upload & chat with your files",       icon:"📄", screen:"library",   kw:"document pdf file upload library ask query" },
@@ -12408,10 +12408,10 @@ _bkBadge();
   <!-- Onboarding: shown when no token exists (first visit, no WhatsApp link yet) -->
   <!-- Phone number sign-in (replaces both onboard + lock screens) -->
   <div id="saves-phone-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 16px;text-align:center">
-    <div style="font-size:40px;margin-bottom:12px">💾</div>
-    <div style="font-weight:800;font-size:20px;margin-bottom:6px;color:var(--text)">My Saves</div>
+    <div style="font-size:40px;margin-bottom:12px">📌</div>
+    <div style="font-weight:800;font-size:20px;margin-bottom:6px;color:var(--text)">My Clippings</div>
     <div style="color:var(--subtle);font-size:13px;margin-bottom:16px;max-width:280px;line-height:1.5">
-      Save anything from WhatsApp — menus, places, wine labels, receipts, ads, or links — and find them here instantly.
+      Clip anything from WhatsApp — menus, places, wine labels, receipts, ads, or links — and find them here instantly.
     </div>
     <!-- Example chips -->
     <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:20px;max-width:280px">
@@ -12430,7 +12430,7 @@ _bkBadge();
         style="border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-size:15px;width:100%;box-sizing:border-box;text-align:center;outline:none;background:var(--surface);color:var(--text);margin-bottom:10px" />
       <button type="submit"
         style="background:#1f2937;color:#fff;border:none;border-radius:12px;padding:14px 28px;font-size:15px;font-weight:700;cursor:pointer;width:100%">
-        Access My Saves
+        Access My Clippings
       </button>
     </form>
   </div>
@@ -12444,7 +12444,7 @@ _bkBadge();
     <!-- Header -->
     <div style="display:flex;align-items:flex-start;margin-bottom:16px;gap:10px">
       <div style="flex:1">
-        <div style="font-size:24px;font-weight:900;color:var(--text);letter-spacing:-0.6px;line-height:1">My Saves</div>
+        <div style="font-size:24px;font-weight:900;color:var(--text);letter-spacing:-0.6px;line-height:1">My Clippings</div>
         <div id="saves-count-label" style="font-size:12px;color:var(--muted);margin-top:4px">Menus · places · wine · receipts · links — all from WhatsApp</div>
       </div>
       <button onclick="savesFabOpen()" title="Add save"
@@ -12456,7 +12456,7 @@ _bkBadge();
 
     <!-- Search -->
     <div style="position:relative;margin-bottom:16px">
-      <input id="saves-search-input" type="search" placeholder="Search saves…"
+      <input id="saves-search-input" type="search" placeholder="Search clippings…"
         style="width:100%;border:1px solid var(--border);border-radius:14px;padding:11px 36px 11px 40px;font-size:14px;outline:none;background:var(--surface);color:var(--text)"
         oninput="savesSearchInput()" />
       <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔍</span>
@@ -12525,7 +12525,7 @@ _bkBadge();
       <button class="pi-btn pi-active" id="pi-home"   onclick="_pillNav('home')"  ><span class="pi-ico">🏠</span><span class="pi-lbl">Home</span><span class="pi-dot"></span></button>
       <button class="pi-btn"           id="pi-myarea" onclick="_pillNav('myarea')" ><span class="pi-ico">📍</span><span class="pi-lbl">My Area</span><span class="pi-dot"></span></button>
       <button class="pi-btn"           id="pi-intel"  onclick="_pillNav('company')"><span class="pi-ico">🔍</span><span class="pi-lbl">Brand Intel</span><span class="pi-dot"></span></button>
-      <button class="pi-btn"           id="pi-saves"  onclick="_pillNav('saves')"  ><span class="pi-ico">💾</span><span class="pi-lbl">Saves</span><span class="pi-dot"></span></button>
+      <button class="pi-btn"           id="pi-saves"  onclick="_pillNav('saves')"  ><span class="pi-ico">📌</span><span class="pi-lbl">Clippings</span><span class="pi-dot"></span></button>
     </div>
   </div>
 </div>
@@ -12986,7 +12986,7 @@ _bkBadge();
     const type = typeof _intelSearchMode !== "undefined" ? (_intelSearchMode || "brand") : "brand";
     if (!name) return;
     const tok = _savesPin ? _savesPin() : (localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || "");
-    if (!tok) { btn.textContent = "Log in to Saves first"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
+    if (!tok) { btn.textContent = "Log in to Clippings first"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
     btn.textContent = "…"; btn.disabled = true;
     const summary = [name, desc, type === "company" ? "Company Intel" : "Brand Intel", "via Miru Intel"].filter(Boolean).join("\n");
     try {
@@ -13006,7 +13006,7 @@ _bkBadge();
     const areaLabel = (document.getElementById("myarea-location-label") || {}).textContent || pc || "My Area";
     if (!pc && !areaLabel) return;
     const tok = _savesPin ? _savesPin() : (localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || "");
-    if (!tok) { btn.textContent = "Log in to Saves"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
+    if (!tok) { btn.textContent = "Log in to Clippings"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
     btn.textContent = "…"; btn.disabled = true;
     const lines = ["📍 " + areaLabel + (pc ? " (" + pc + ")" : ""), "Area report saved from Miru My Area"];
     const weatherEl = document.getElementById("ma-weather-summary");
@@ -13030,7 +13030,7 @@ _bkBadge();
     const clean = pc.trim().replace(/\s+/g,"").toUpperCase();
     if (!clean) { btn.textContent = "Enter postcode first"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2000); return; }
     const tok = _savesPin ? _savesPin() : (localStorage.getItem("wa_saves_token") || sessionStorage.getItem("wa_saves_token") || "");
-    if (!tok) { btn.textContent = "Log in to Saves first"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
+    if (!tok) { btn.textContent = "Log in to Clippings first"; btn.style.color = "#dc2626"; setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; }, 2500); return; }
     btn.textContent = "Saving…"; btn.disabled = true;
     const phone = _miruPhone ? _miruPhone() : (localStorage.getItem("miru_phone") || "");
     const areaLabel = (document.getElementById("report-share-label") || {}).textContent || clean;
@@ -13110,7 +13110,7 @@ _bkBadge();
         btn.textContent = "✓ Saved"; btn.style.color = "#059669";
       } else {
         const body = await r.json().catch(() => ({}));
-        btn.textContent = body.auth ? "Log in to Saves first" : "✗ Save failed";
+        btn.textContent = body.auth ? "Log in to Clippings first" : "✗ Save failed";
         btn.style.color = "#dc2626"; btn.disabled = false;
         setTimeout(() => { btn.textContent = "💾 Save"; btn.style.color = "#059669"; btn.disabled = false; }, 3000);
       }
@@ -13771,7 +13771,7 @@ _bkBadge();
       const _rptPc = (document.getElementById("report-postcode")||{}).value||"";
       if (_rptPc && typeof _rptCheckSaved === "function") _rptCheckSaved(_rptPc.trim().replace(/\s+/g,""));
     } catch(e) {
-      if (btn) { btn.textContent = "Access My Saves"; btn.disabled = false; }
+      if (btn) { btn.textContent = "Access My Clippings"; btn.disabled = false; }
       if (errEl) { errEl.textContent = "Error: " + e.message + ". Check number format."; errEl.style.display = "block"; }
     }
   };

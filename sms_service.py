@@ -9091,7 +9091,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             app.logger.warning(f"[vision] image download failed status={r.status_code}")
             user_token = _wa_user_token(from_number)
             _wa_send_proactive(from_number,
-                f"⚠️ Couldn't read your photo — saved anyway.\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}")
+                f"⚠️ Couldn't read your photo — clipped anyway.\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}")
             return "⚠️ Had trouble reading the image — saved it anyway. Try resending for a better result."
         img_b64 = base64.b64encode(r.content).decode()
         mime = media_type or "image/jpeg"
@@ -9099,7 +9099,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         app.logger.warning(f"[vision] image download exception: {e}")
         user_token = _wa_user_token(from_number)
         _wa_send_proactive(from_number,
-            f"⚠️ Couldn't download your photo — saved anyway.\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}")
+            f"⚠️ Couldn't download your photo — clipped anyway.\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}")
         return "⚠️ Had trouble downloading — saved it anyway."
 
     def _bg(sid=save_id, fn=from_number, b64=img_b64, m=mime, raw=r.content,
@@ -9495,7 +9495,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 except Exception as _me2:
                     print(f"[menu-session] append failed: {_me2}")
                 user_token = _wa_user_token(fn)
-                _wa_send_proactive(fn, f"🍽️ Added page {page_num} to your menu. Send more pages or just keep chatting!\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}")
+                _wa_send_proactive(fn, f"🍽️ Added page {page_num} to your menu. Send more pages or just keep chatting!\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}")
                 return
 
         # ── Wine: label extraction + Vivino rating ───────────────────────────────
@@ -9779,13 +9779,13 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             msg = f"{title}\n(couldn't read — saved anyway)"
         user_token = _wa_user_token(fn)
         if img_type == "menu":
-            msg += f"\n\n📸 *Got page 1!* Send more menu photos and I'll stitch them together into one save.\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
+            msg += f"\n\n📸 *Got page 1!* Send more menu photos and I'll stitch them together into one clipping.\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}"
         elif img_type == "wine":
             _WINE_RATING_STATE[fn] = {"save_id": sid, "wine_name": title.replace("🍷 ", ""), "expires": time.time() + 3600}
-            msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
+            msg += f"\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}"
             msg += f"\n\n⭐ *Rate it?* Reply with score + notes, e.g.\n*4 Great with pasta, slightly dry*"
         else:
-            msg += f"\n\n📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}"
+            msg += f"\n\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}"
         _wa_send_proactive(fn, msg)
 
     # ── ISBN barcode detection — short-circuit vision pipeline for books ────────
@@ -9832,8 +9832,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             try:
                 user_token = _wa_user_token(from_number)
                 _wa_send_proactive(from_number,
-                    f"📷 Saved your photo (analysis hit an error).\n"
-                    f"📂 My Saves: miru.humanagency.co/?screen=saves&token={user_token}")
+                    f"📷 Clipped your photo (analysis hit an error).\n"
+                    f"📌 My Clippings: miru.humanagency.co/?screen=saves&token={user_token}")
             except Exception:
                 pass
     threading.Thread(target=_bg_safe, daemon=True).start()
@@ -10077,7 +10077,7 @@ def _wa_save_url(from_number: str, url: str) -> str:
 
     threading.Thread(target=_bg, daemon=True).start()
     token = _wa_user_token(from_number)
-    return f"📌 Saved — summary on its way ✨\n📂 My Saves: miru.humanagency.co/?screen=saves&token={token}"
+    return f"📌 Clipped — summary on its way ✨\n📌 My Clippings: miru.humanagency.co/?screen=saves&token={token}"
 
 
 def _wa_triage_respond(from_number: str, cmd: str) -> str:
@@ -11325,10 +11325,10 @@ _HELP_MSG = (
     "  book The Alchemist  |  my books\n"
     "  _(or send a photo of a barcode — I'll look it up)_\n"
     "\n"
-    "🔖 *Saves*\n"
-    "  Send any URL — I'll save it\n"
-    "  my saves  |  restaurants saved last week  |  books saved\n"
-    "  _find save dosa_  |  _search saves receipt_\n"
+    "📌 *Clippings*\n"
+    "  Send any URL — I'll clip it\n"
+    "  my clippings  |  restaurants clipped last week  |  books clipped\n"
+    "  _find clipping dosa_  |  _search clippings receipt_\n"
     "\n"
     "🔗 *Your Miru link*\n"
     "  Reply *MY LINK* — get your personal web app link\n"
@@ -11900,7 +11900,7 @@ def whatsapp_reply():
         resp.message(
             f"🔗 Your personal Miru link:\n"
             f"miru.humanagency.co/?screen=saves&token={user_token}\n\n"
-            f"Tap it to open My Saves on any browser. Your saves are private to you."
+            f"Tap it to open My Clippings on any browser. Your clippings are private to you."
         )
         return str(resp)
 
@@ -12088,7 +12088,7 @@ def whatsapp_reply():
                 pass
             resp.message(
                 f"💾 Saved *{sg_query}* to your list.\n"
-                f"Couldn't match it on iTunes — open My Saves to search for it.\n"
+                f"Couldn't match it on iTunes — open My Clippings to search for it.\n"
                 f"miru.humanagency.co/?screen=music"
             )
             return str(resp)
@@ -13471,7 +13471,7 @@ def wa_digest():
             if url:
                 lines.append(f"   {url}")
         if len(saves) > 9:
-            lines.append(f"\n+{len(saves) - 9} more in My Saves.")
+            lines.append(f"\n+{len(saves) - 9} more in My Clippings.")
         user_token = _wa_user_token(from_number)
         lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday*")
         lines.append(f"🔗 miru.humanagency.co/?screen=saves&token={user_token}")
