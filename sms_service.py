@@ -2109,10 +2109,11 @@ def api_brand_debug():
                   "messages": [{"role": "user", "content":
                       f'The user searched for brand/company: "{name}".\n'
                       'Return ONLY the canonical brand or company name. Rules:\n'
-                      '1. Fix clear spelling errors only.\n'
-                      '2. Expand obvious abbreviations.\n'
-                      '3. If you do not recognise the brand, return the original UNCHANGED.\n'
-                      '4. NEVER substitute a different brand — if unsure, return the input as-is.\n'
+                      '1. Fix clear spelling errors only (e.g. "Niike" → "Nike", "Tescoo" → "Tesco").\n'
+                      '2. Expand obvious abbreviations (e.g. "McD" → "McDonald\'s").\n'
+                      '3. CRITICAL: If the input is a generic word (e.g. "coffee", "bank", "shop", "food") with no clear brand match, return it UNCHANGED.\n'
+                      '4. CRITICAL: NEVER invent or substitute a specific brand that was not implied by the input. If unsure, return the input exactly as typed.\n'
+                      '5. Only correct if you are highly confident the user meant a specific well-known brand.\n'
                       'Return ONLY the name, nothing else.'}],
                   "max_tokens": 40, "temperature": 0.0},
             timeout=6)

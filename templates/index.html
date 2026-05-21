@@ -532,30 +532,6 @@
         </button>
       </div>
 
-      <!-- Intel card -->
-      <div style="width:100%;margin-bottom:10px;background:linear-gradient(145deg,#1e1b4b 0%,#312e81 60%,#4c1d95 100%);border-radius:20px;overflow:hidden;padding:18px 18px 16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px">
-            <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">INTEL</span>
-          </div>
-          <button onclick="_intelScan()" title="Scan brand from photo"
-            style="background:rgba(255,255,255,.12);border:none;border-radius:12px;padding:7px 12px;font-size:17px;cursor:pointer;color:#fff;line-height:1">📷</button>
-        </div>
-        <div style="font-size:26px;line-height:1;margin-bottom:8px">🔍</div>
-        <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15;margin-bottom:4px">Brand &amp; Company Intel</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:14px;line-height:1.4">Scan a logo · search a brand · deep research</div>
-        <div style="display:flex;gap:8px">
-          <input id="home-intel-input" type="text" placeholder="Nike, Tesco, Unilever…"
-            autocomplete="off"
-            onkeydown="if(event.key==='Enter'){document.getElementById('intel-input').value=this.value;_pillNav('company');setTimeout(searchIntel,150)}"
-            style="flex:1;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 14px;font-size:14px;color:#fff;outline:none;font-family:inherit"
-            onfocus="this.style.borderColor='rgba(255,255,255,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.2)'"
-            placeholder-color="rgba(255,255,255,.4)">
-          <button onclick="document.getElementById('intel-input').value=document.getElementById('home-intel-input').value;_pillNav('company');setTimeout(searchIntel,150)"
-            style="background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:700;padding:10px 16px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0">Search →</button>
-        </div>
-      </div>
-
       <!-- MY WORLD divider -->
       <div style="display:flex;align-items:center;gap:10px;margin:4px 0 10px">
         <div style="font-size:10px;font-weight:800;color:var(--subtle);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">My World</div>
@@ -1248,6 +1224,11 @@
             </div>
           </div>
           <div id="brand-context-bar" style="display:none;margin-top:6px;font-size:11px;color:var(--muted)"></div>
+          <!-- Wrong result nudge -->
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:11px;color:var(--muted)">Not what you meant?</span>
+            <button onclick="_intelWrongResult()" style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:99px;padding:4px 12px;cursor:pointer">Wrong brand →</button>
+          </div>
         </div>
 
         <!-- Hidden compat elements renderCompany needs -->
@@ -6551,6 +6532,14 @@ function _hcAdd() {
     }
     if (lbl) lbl.textContent = "Refresh Research Brief";
     btn.disabled = false;
+  };
+
+  window._intelWrongResult = function() {
+    document.getElementById("intel-result").style.display = "none";
+    var inp = document.getElementById("intel-input") || document.getElementById("brand-q");
+    if (inp) { inp.focus(); inp.select(); }
+    var row = document.getElementById("brand-search-row");
+    if (row) row.style.display = "";
   };
 
   window._intelCompareOpen = function() {
