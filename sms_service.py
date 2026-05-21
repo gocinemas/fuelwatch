@@ -9636,6 +9636,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "Also add: SHOP: [retailer name if identifiable — e.g. 'Tesco' — or leave blank]\n"
             "If you can identify a city or area from signage — add: LOCATION: [city or area name]\n"
             "If a phone number is visible on the sign, van, or ad — add: PHONE: [number]\n"
+            "If a website URL is clearly printed in the image — add: URL: [the full URL, starting with http]\n"
             "Always add: SEARCH: [2-5 word search term]"
             + _loc_hint
         )
@@ -9698,6 +9699,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         location_tag = ""
         search_tag = ""
         phone_tag = ""
+        url_tag = ""
         product_items = []   # list of {name, brand, price} dicts
         shop_tag = ""
         _BLANK = {"", "n/a", "not visible", "unknown", "none", "-"}
@@ -9713,6 +9715,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 _ph = _line.split(":", 1)[1].strip()
                 if _ph.lower() not in _BLANK:
                     phone_tag = _ph
+            elif _up.startswith("URL:"):
+                _u = _line.split(":", 1)[1].strip()
+                if _u.lower() not in _BLANK and ("http" in _u.lower() or "www." in _u.lower()):
+                    url_tag = _u if _u.startswith("http") else "https://" + _u
             elif _up.startswith("PRODUCT:"):
                 _raw = _line.split(":", 1)[1].strip()
                 _parts = [p.strip() for p in _raw.split("|")]
@@ -9742,7 +9748,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         print(f"[vision] products={product_items} shop_tag={shop_tag!r}")
 
         # Strip metadata lines from summary
-        _meta_prefixes = ("TYPE:", "VENUE:", "LOCATION:", "SEARCH:", "PRODUCT:", "SHOP:", "PHONE:")
+        _meta_prefixes = ("TYPE:", "VENUE:", "LOCATION:", "SEARCH:", "PRODUCT:", "SHOP:", "PHONE:", "URL:")
         summary = "\n".join(
             l for l in analysis.split("\n")
             if not any(l.strip().upper().startswith(p) for p in _meta_prefixes)
@@ -9805,6 +9811,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             except Exception as exc:
                 print(f"[vision] DDG lookup failed: {exc}")
 
+        # URL visible in image takes priority over search result
+        if url_tag:
+            direct_url = url_tag
         search_url = direct_url or (f"https://www.google.com/search?q={search_terms}" if search_terms else "")
 
         # Look up venue/place details
@@ -10201,7 +10210,12 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 if venue_info.get("website"):
                     details.append(f"🌐 {venue_info['website']}")
                 if search_url and search_url != qr_url:
-                    link_label = "🎟️ Book/search" if img_type == "event" else "🔍 Search"
+                    if url_tag and search_url == url_tag:
+                        link_label = "🌐 Website"
+                    elif img_type == "event":
+                        link_label = "🎟️ Book/search"
+                    else:
+                        link_label = "🔍 Search"
                     details.append(f"{link_label}: {search_url}")
                 if venue_info.get("maps_url"):
                     details.append(f"📍 Directions: {venue_info['maps_url']}")
