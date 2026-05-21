@@ -6393,8 +6393,8 @@ function _hcAdd() {
     _loadIntelPins();
   };
 
-  // Auto-select brand mode on intel.humanagency.co (called here after setIntelMode is defined)
-  if (_INTEL_MODE) { setIntelMode("brand"); }
+  // On intel.humanagency.co show the landing (Brand + Company picker) first
+  if (_INTEL_MODE) { _intelShowLanding(); }
 
   // ── Brand scan via camera ──────────────────────────────────────────────────
   window._intelScan = function() {
