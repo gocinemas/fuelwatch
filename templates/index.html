@@ -12790,10 +12790,7 @@ _bkBadge();
     _phShow((stationName || crs) + "…");
 
     // Always fetch from home station; filter destination client-side
-    // Use RTT calling_at for accurate filtering — destination-name matching breaks for
-    // through-services (e.g. HHE→ZFD trains terminate at Bedford, not Blackfriars)
-    const callingAt = (isWFH && workBm && workBm.crs) ? workBm.crs : "";
-    const CACHE_KEY = "miru_train_home3_" + crs + (callingAt ? "_" + callingAt : "");
+    const CACHE_KEY = "miru_train_home2_" + crs;
     let allTrains = null;
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
@@ -12802,23 +12799,28 @@ _bkBadge();
 
     if (!allTrains) {
       try {
-        const url = `/api/train/departures?crs=${encodeURIComponent(crs)}${callingAt ? `&calling_at=${encodeURIComponent(callingAt)}` : ""}`;
-        const r = await fetch(url);
+        const r = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
         if (r.ok) {
           const d = await r.json();
           allTrains = d.trains || [];
           if (!stationName) stationName = d.station || crs;
-          // If calling_at filter returned nothing, fall back to all departures
-          if (!allTrains.length && callingAt) {
-            const r2 = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
-            if (r2.ok) { const d2 = await r2.json(); allTrains = d2.trains || []; }
-          }
           if (allTrains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains: allTrains })); } catch {}
         } else { const err = await r.json().catch(()=>({})); _phShow(err.error || "Departures unavailable"); return; }
       } catch(e) { _phShow("Network error"); return; }
     }
 
+    // Filter by direction if work station is set
     let trains = allTrains;
+    const workName = workBm ? (workBm.name || workBm.crs || "") : "";
+    if (workBm && workName) {
+      const wn = workName.replace(/ station$/i,"").toLowerCase();
+      if (isWFH) {
+        trains = allTrains.filter(t => (t.destination||"").toLowerCase().includes(wn));
+      } else {
+        trains = allTrains.filter(t => !(t.destination||"").toLowerCase().includes(wn));
+      }
+      if (!trains.length) trains = allTrains;
+    }
 
     if (!trains.length) {
       _phShow("No trains right now · tap to check times");
