@@ -12790,13 +12790,7 @@ _bkBadge();
     _phShow((stationName || crs) + "…");
 
     // Always fetch from home station; filter destination client-side
-    // When at home with a work station set, use RTT calling_at for accurate filtering.
-    // Destination-name matching fails for through-services (e.g. HHE→ZFD trains
-    // terminate at Bedford, not Blackfriars). calling_at is server-side and correct.
-    const callingAt = (isWFH && workBm && workBm.crs) ? workBm.crs : "";
-    const CACHE_KEY    = "miru_train_home2_" + crs + (callingAt ? "_" + callingAt : "");
-    const FALLBACK_KEY = "miru_train_home2_" + crs;
-
+    const CACHE_KEY = "miru_train_home2_" + crs;
     let allTrains = null;
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
@@ -12805,30 +12799,26 @@ _bkBadge();
 
     if (!allTrains) {
       try {
-        const url = `/api/train/departures?crs=${encodeURIComponent(crs)}${callingAt ? `&calling_at=${encodeURIComponent(callingAt)}` : ""}`;
-        const r = await fetch(url);
+        const r = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
         if (r.ok) {
           const d = await r.json();
           allTrains = d.trains || [];
           if (!stationName) stationName = d.station || crs;
-          // calling_at returned empty — different networks (e.g. SWR home, TL work)
-          // Try local unfiltered cache first, then fetch without filter
-          if (!allTrains.length && callingAt) {
-            try {
-              const fb = JSON.parse(localStorage.getItem(FALLBACK_KEY) || "null");
-              if (fb && (Date.now() - fb.ts) < 5 * 60 * 1000) allTrains = fb.trains;
-            } catch {}
-            if (!allTrains || !allTrains.length) {
-              const r2 = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
-              if (r2.ok) { const d2 = await r2.json(); allTrains = d2.trains || []; }
-            }
-          }
-          if (allTrains && allTrains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains: allTrains })); } catch {}
+          if (allTrains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains: allTrains })); } catch {}
         } else { const err = await r.json().catch(()=>({})); _phShow(err.error || "Departures unavailable"); return; }
       } catch(e) { _phShow("Network error"); return; }
     }
 
+    // Filter by direction if work station is set
     let trains = allTrains || [];
+    const workName = workBm ? (workBm.name || workBm.crs || "") : "";
+    if (workBm && workName && trains.length) {
+      const wn = workName.replace(/ station$/i,"").toLowerCase();
+      const filtered = isWFH
+        ? trains.filter(t => (t.destination||"").toLowerCase().includes(wn))
+        : trains.filter(t => !(t.destination||"").toLowerCase().includes(wn));
+      if (filtered.length) trains = filtered;
+    }
 
     if (!trains.length) {
       _phShow("No trains right now · tap to check times");
