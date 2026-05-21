@@ -12881,8 +12881,17 @@ _bkBadge();
       if (waBot) waBot.style.display = "block";
     } else {
       hero.innerHTML = `
-        <div style="font-size:30px;font-weight:900;letter-spacing:-1.2px;color:var(--text);line-height:1.1;margin-bottom:6px">Your everyday toolkit<br>for life in the UK.</div>
-        <div style="font-size:13px;color:var(--muted);line-height:1.5">Fuel prices &middot; Train times &middot; Local services &middot; Brand intel</div>`;
+        <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--subtle);margin-bottom:10px">Miru · miru.humanagency.co</div>
+        <div style="font-size:32px;font-weight:900;letter-spacing:-1.4px;color:var(--text);line-height:1.05;margin-bottom:10px">Local intelligence,<br>live.</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px">Your WhatsApp AI for everyday UK life — train times, fuel prices, school updates, local area reports, brand research and more.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;border-radius:99px;padding:4px 10px">🚆 Trains</span>
+          <span style="background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;border-radius:99px;padding:4px 10px">⛽ Fuel</span>
+          <span style="background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;border-radius:99px;padding:4px 10px">🏫 School</span>
+          <span style="background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;border-radius:99px;padding:4px 10px">📍 Local</span>
+          <span style="background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;border-radius:99px;padding:4px 10px">🔍 Brand intel</span>
+          <span style="background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;border-radius:99px;padding:4px 10px">📌 Clippings</span>
+        </div>`;
       if (waTop) waTop.style.display = "block";
       if (waBot) waBot.style.display = "none";
     }
