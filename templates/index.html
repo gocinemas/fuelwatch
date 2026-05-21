@@ -539,6 +539,51 @@
                 </div>
               </div>
 
+              <div class="wa-slide-r" id="wa-slide-4">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#25d366;margin-bottom:6px">🚆 Next train home</div>
+                <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+                  <div style="background:#dcf8c6;border-radius:14px 14px 4px 14px;padding:7px 11px;font-size:13px;max-width:75%">Next train Guildford to Waterloo?</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:flex-end">
+                  <div style="width:20px;height:20px;background:#111;border-radius:99px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff">M</div>
+                  <div style="background:#fff;border:1px solid #ebebeb;border-radius:14px 14px 14px 4px;padding:7px 11px;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);max-width:80%">
+                    🚆 <strong>Guildford → London Waterloo</strong><br>
+                    <span style="color:#111">14:32 · 14:47 · 15:02</span><br>
+                    <span style="color:#6b7280;font-size:11px">Platform 2 · 35 min · South Western</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="wa-slide-r" id="wa-slide-5">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#25d366;margin-bottom:6px">⛽ Cheapest fuel nearby</div>
+                <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+                  <div style="background:#dcf8c6;border-radius:14px 14px 4px 14px;padding:7px 11px;font-size:13px;max-width:75%">Cheapest petrol near GU1?</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:flex-end">
+                  <div style="width:20px;height:20px;background:#111;border-radius:99px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff">M</div>
+                  <div style="background:#fff;border:1px solid #ebebeb;border-radius:14px 14px 14px 4px;padding:7px 11px;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);max-width:80%">
+                    ⛽ <strong>Cheapest near GU1</strong><br>
+                    <span style="color:#059669">ASDA Guildford 139.7p 🥇</span><br>
+                    <span style="color:#111">Tesco Extra 140.9p · Shell 142.3p</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="wa-slide-r" id="wa-slide-6">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#25d366;margin-bottom:6px">🔍 Company intel</div>
+                <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+                  <div style="background:#dcf8c6;border-radius:14px 14px 4px 14px;padding:7px 11px;font-size:13px;max-width:75%">Tell me about Monzo</div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:flex-end">
+                  <div style="width:20px;height:20px;background:#111;border-radius:99px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff">M</div>
+                  <div style="background:#fff;border:1px solid #ebebeb;border-radius:14px 14px 14px 4px;padding:7px 11px;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);max-width:80%">
+                    🏦 <strong>Monzo Bank</strong> · UK challenger bank<br>
+                    <span style="color:#555">8M+ customers · £5B valuation</span><br>
+                    <span style="color:#6b7280;font-size:11px">📊 Revenue £880M · Profitable 2023</span>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <!-- Dots -->
@@ -547,6 +592,9 @@
               <div class="wa-dot-r" onclick="_waGoSlide(1)"></div>
               <div class="wa-dot-r" onclick="_waGoSlide(2)"></div>
               <div class="wa-dot-r" onclick="_waGoSlide(3)"></div>
+              <div class="wa-dot-r" onclick="_waGoSlide(4)"></div>
+              <div class="wa-dot-r" onclick="_waGoSlide(5)"></div>
+              <div class="wa-dot-r" onclick="_waGoSlide(6)"></div>
             </div>
 
             <!-- Join CTA -->
@@ -13098,7 +13146,7 @@ _bkBadge();
   function _waStartTimer() {
     clearInterval(_waSlideTimer);
     _waSlideTimer = setInterval(function() {
-      _waSlideIdx = (_waSlideIdx + 1) % 4; _waRenderSlide();
+      _waSlideIdx = (_waSlideIdx + 1) % 7; _waRenderSlide();
     }, 3000);
   }
 
