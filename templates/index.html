@@ -14072,12 +14072,12 @@ _bkBadge();
     function _fmtMenu(t) {
       return t.replace(/\*([^*\n]+)\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>").trim();
     }
-    const _menuAutoExpand = isMenu && _savesHighlightTerm && bodyText.toLowerCase().includes(_savesHighlightTerm.toLowerCase());
+    const _menuAutoExpand = true;
     const _menuFormattedHtml = isMenu && bodyText ? _hlHtml(_fmtMenu(bodyText), _savesHighlightTerm) : "";
     const menuHtml = isMenu && bodyText ? `
       <div style="margin-bottom:10px">
-        <div id="${menuExpandId}" style="${_menuAutoExpand ? "display:block" : "display:none"};font-size:12px;color:var(--text);line-height:1.7;background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border);margin-bottom:8px">${_menuFormattedHtml}</div>
-        <button onclick="(function(btn){var el=document.getElementById('${menuExpandId}');var show=el.style.display==='none';el.style.display=show?'block':'none';btn.textContent=show?'▲ Hide menu':'▼ View menu';})(this)" style="font-size:12px;color:#4f46e5;font-weight:600;background:none;border:none;cursor:pointer;padding:0;margin-bottom:6px">${_menuAutoExpand ? "▲ Hide menu" : "▼ View menu"}</button>
+        <div id="${menuExpandId}" style="display:block;font-size:12px;color:var(--text);line-height:1.7;background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border);margin-bottom:8px">${_menuFormattedHtml}</div>
+        <button onclick="(function(btn){var el=document.getElementById('${menuExpandId}');var show=el.style.display==='none';el.style.display=show?'block':'none';btn.textContent=show?'▲ Hide':'▼ Show full menu';})(this)" style="font-size:12px;color:#4f46e5;font-weight:600;background:none;border:none;cursor:pointer;padding:0;margin-bottom:6px">▲ Hide</button>
       </div>` : "";
 
     // If bodyText is raw JSON, render it as a structured card instead of dumping the string
@@ -14175,7 +14175,9 @@ _bkBadge();
       : "";
 
     const openBtn = s.image_url
-      ? `<a href="${s.image_url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">🖼 View</a>`
+      ? `<a href="${s.image_url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">🖼 View photo</a>`
+      : isMenu
+      ? `<span style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:11px;color:var(--muted)">📄 Text extracted above</span>`
       : s.url && !isBook
       ? `<a href="${s.url}" target="_blank" rel="noopener" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:#2563eb;text-decoration:none">↗ Open</a>`
       : "";
