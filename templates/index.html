@@ -17239,7 +17239,8 @@ window.spotifyAddTrack = window.spotifyLike;
 
   function _showActive(name, id, mode) {
     var isTube = (mode === "tube");
-    var label  = isTube ? "🚇 " + name : name + " (" + id + ")";
+    var routeLabel = _trainToName ? name + " → " + _trainToName : name + " (" + id + ")";
+    var label  = isTube ? "🚇 " + name : routeLabel;
     document.getElementById("train-station-name").textContent = label;
     document.getElementById("train-idle").style.display   = "none";
     document.getElementById("train-active").style.display = "block";
@@ -17401,8 +17402,10 @@ window.spotifyAddTrack = window.spotifyLike;
       : _trainData;
     var el = document.getElementById("train-results");
     if (!trains.length) {
-      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No departures'+(
-        _trainDest ? ' to '+_trainDest : '')+' found</div>';
+      var emptyMsg = _trainToCrs
+        ? "No trains available to " + _trainToName
+        : "No departures" + (_trainDest ? " to " + _trainDest : "") + " found";
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">' + emptyMsg + '</div>';
       return;
     }
     el.innerHTML = trains.map(function(t){
