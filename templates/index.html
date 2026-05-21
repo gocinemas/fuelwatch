@@ -1737,13 +1737,13 @@
 
     <!-- ── AI WATCH SCREEN ── -->
     <div id="screen-ai-watch" class="screen pt-5">
-      <div style="margin-bottom:16px">
+      <div style="margin-bottom:14px">
         <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">AI Watch</div>
-        <div style="font-size:13px;color:var(--muted);margin-top:3px">Companies shaping AI — by sector</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:3px">Companies &amp; news — by sector</div>
       </div>
 
       <!-- Vertical pill tabs -->
-      <div id="aiw-tabs" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px;scrollbar-width:none">
+      <div id="aiw-tabs" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none">
         <button onclick="_aiwTab('healthcare')" id="aiw-tab-healthcare" class="aiw-tab aiw-tab-active">🏥 Healthcare</button>
         <button onclick="_aiwTab('fintech')"    id="aiw-tab-fintech"    class="aiw-tab">💰 Fintech</button>
         <button onclick="_aiwTab('legal')"      id="aiw-tab-legal"      class="aiw-tab">⚖️ Legal</button>
@@ -1751,22 +1751,23 @@
         <button onclick="_aiwTab('edtech')"     id="aiw-tab-edtech"     class="aiw-tab">📚 EdTech</button>
       </div>
 
-      <!-- Company cards -->
-      <div id="aiw-cards" style="display:flex;flex-direction:column;gap:10px">
-        <div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>
+      <!-- Companies / News toggle -->
+      <div style="display:flex;gap:0;background:var(--border);border-radius:10px;padding:3px;margin-bottom:14px;width:fit-content">
+        <button id="aiw-mode-companies" onclick="_aiwMode('companies')"
+          style="padding:6px 18px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:var(--text);color:var(--bg);transition:all .15s">Companies</button>
+        <button id="aiw-mode-news" onclick="_aiwMode('news')"
+          style="padding:6px 18px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s">News</button>
       </div>
 
-      <!-- Follow CTA -->
-      <div style="margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 15px;display:flex;align-items:center;gap:12px">
-        <div style="font-size:22px">💬</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">Get weekly alerts on WhatsApp</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">Send <strong>follow healthcare ai</strong> to Miru</div>
-        </div>
-        <a id="aiw-wa-follow" href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
-          style="flex-shrink:0;background:#25d366;color:#fff;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;text-decoration:none">
-          Open →
-        </a>
+      <!-- Bookmarked strip (shown when bookmarks exist) -->
+      <div id="aiw-bookmarks-strip" style="display:none;margin-bottom:14px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:14px;padding:12px 14px">
+        <div style="font-size:11px;font-weight:800;color:#7c3aed;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">⭐ Saved</div>
+        <div id="aiw-bookmarks-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <!-- Cards area -->
+      <div id="aiw-cards" style="display:flex;flex-direction:column;gap:10px">
+        <div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>
       </div>
     </div><!-- /screen-ai-watch -->
 
@@ -13069,53 +13070,135 @@ _bkBadge();
   window._homeHeroInit = _homeHeroInit;
 
   /* ── AI Watch ───────────────────────────────────────────────────────────── */
-  var _aiwCurrentVertical = "healthcare", _aiwCache = {};
-  function _aiwInit() {
-    if (_aiwCache[_aiwCurrentVertical]) { _aiwRender(_aiwCache[_aiwCurrentVertical]); return; }
-    _aiwLoad(_aiwCurrentVertical);
+  var _aiwV = "healthcare", _aiwViewMode = "companies";
+  var _aiwCoCache = {}, _aiwNewsCache = {};
+
+  function _aiwBookmarks() {
+    try { return JSON.parse(localStorage.getItem("aiw_bookmarks") || "[]"); } catch(_) { return []; }
   }
+  function _aiwSaveBookmarks(arr) { localStorage.setItem("aiw_bookmarks", JSON.stringify(arr)); }
+  window._aiwToggleBookmark = function(name) {
+    var bm = _aiwBookmarks();
+    var idx = bm.indexOf(name);
+    if (idx >= 0) bm.splice(idx, 1); else bm.push(name);
+    _aiwSaveBookmarks(bm);
+    _aiwRenderBookmarks();
+    // re-render cards so star state updates
+    if (_aiwViewMode === "companies" && _aiwCoCache[_aiwV]) _aiwRenderCo(_aiwCoCache[_aiwV]);
+  };
+
+  function _aiwRenderBookmarks() {
+    var bm = _aiwBookmarks();
+    var strip = document.getElementById("aiw-bookmarks-strip");
+    var list  = document.getElementById("aiw-bookmarks-list");
+    if (!strip || !list) return;
+    strip.style.display = bm.length ? "block" : "none";
+    list.innerHTML = bm.map(function(name) {
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+        '<span style="font-size:13px;font-weight:700;color:var(--text)">' + name + '</span>' +
+        '<div style="display:flex;gap:6px">' +
+          '<button onclick="saveOpenBrandIntel(\'' + name.replace(/'/g, "\\'") + '\')" ' +
+            'style="font-size:11px;font-weight:700;color:#4f46e5;background:#eef2ff;border:1px solid #c7d2fe;border-radius:99px;padding:4px 10px;cursor:pointer">Research →</button>' +
+          '<button onclick="_aiwToggleBookmark(\'' + name.replace(/'/g, "\\'") + '\')" ' +
+            'style="font-size:11px;color:#7c3aed;background:none;border:none;cursor:pointer;padding:2px 4px">✕</button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  function _aiwInit() {
+    _aiwRenderBookmarks();
+    if (_aiwCoCache[_aiwV]) { _aiwRenderCo(_aiwCoCache[_aiwV]); return; }
+    _aiwLoadCo(_aiwV);
+  }
+
   window._aiwTab = function(v) {
-    _aiwCurrentVertical = v;
+    _aiwV = v;
     document.querySelectorAll(".aiw-tab").forEach(function(b) { b.classList.remove("aiw-tab-active"); });
     var btn = document.getElementById("aiw-tab-" + v);
     if (btn) btn.classList.add("aiw-tab-active");
-    var waA = document.getElementById("aiw-wa-follow");
-    if (waA) waA.closest("div").querySelector("strong") && (waA.closest("div").querySelector("strong").textContent = "follow " + v + " ai");
-    if (_aiwCache[v]) { _aiwRender(_aiwCache[v]); return; }
-    _aiwLoad(v);
+    _aiwMode(_aiwViewMode, true);
   };
-  function _aiwLoad(v) {
+
+  window._aiwMode = function(mode, forceReload) {
+    _aiwViewMode = mode;
+    var cm = document.getElementById("aiw-mode-companies");
+    var nm = document.getElementById("aiw-mode-news");
+    if (cm) { cm.style.background = mode === "companies" ? "var(--text)" : "transparent"; cm.style.color = mode === "companies" ? "var(--bg)" : "var(--muted)"; }
+    if (nm) { nm.style.background = mode === "news"      ? "var(--text)" : "transparent"; nm.style.color = mode === "news"      ? "var(--bg)" : "var(--muted)"; }
+    if (mode === "companies") {
+      if (!forceReload && _aiwCoCache[_aiwV]) { _aiwRenderCo(_aiwCoCache[_aiwV]); return; }
+      _aiwLoadCo(_aiwV);
+    } else {
+      if (!forceReload && _aiwNewsCache[_aiwV]) { _aiwRenderNews(_aiwNewsCache[_aiwV]); return; }
+      _aiwLoadNews(_aiwV);
+    }
+  };
+
+  function _aiwLoadCo(v) {
     var el = document.getElementById("aiw-cards");
     if (el) el.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>';
     fetch("/api/intel/verticals?v=" + v)
       .then(function(r) { return r.json(); })
-      .then(function(d) { _aiwCache[v] = d.companies || []; _aiwRender(_aiwCache[v]); })
-      .catch(function() { if (el) el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Could not load — try again</div>'; });
+      .then(function(d) { _aiwCoCache[v] = d.companies || []; _aiwRenderCo(_aiwCoCache[v]); })
+      .catch(function() { var el = document.getElementById("aiw-cards"); if (el) el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Could not load</div>'; });
   }
-  function _aiwRender(companies) {
+
+  function _aiwLoadNews(v) {
+    var el = document.getElementById("aiw-cards");
+    if (el) el.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Fetching latest news…</div>';
+    fetch("/api/intel/news?v=" + v)
+      .then(function(r) { return r.json(); })
+      .then(function(d) { _aiwNewsCache[v] = d.items || []; _aiwRenderNews(_aiwNewsCache[v]); })
+      .catch(function() { var el = document.getElementById("aiw-cards"); if (el) el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Could not load news</div>'; });
+  }
+
+  function _aiwRenderCo(companies) {
     var el = document.getElementById("aiw-cards");
     if (!el) return;
-    if (!companies.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No companies yet — check back soon</div>'; return; }
+    var bm = _aiwBookmarks();
+    if (!companies.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No companies yet</div>'; return; }
     el.innerHTML = companies.map(function(c) {
-      var newBadge = c.new ? '<span style="font-size:10px;font-weight:800;background:#d1fae5;color:#065f46;border-radius:99px;padding:2px 8px;letter-spacing:.04em">NEW TO WATCH</span>' : '';
+      var saved = bm.indexOf(c.name) >= 0;
+      var newBadge = c.new ? '<span style="font-size:10px;font-weight:800;background:#d1fae5;color:#065f46;border-radius:99px;padding:2px 8px;letter-spacing:.04em;margin-right:4px">NEW</span>' : '';
       return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 15px">' +
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">' +
+        '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">' +
           '<div style="flex:1;min-width:0">' +
-            '<div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px">' + c.name + '</div>' +
-            '<div style="font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4">' + c.tagline + '</div>' +
+            '<div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px">' + (c.country || '') + ' ' + c.name + '</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45">' + c.tagline + '</div>' +
           '</div>' +
-          '<div style="flex-shrink:0;font-size:18px">' + (c.country || '') + '</div>' +
+          '<button onclick="_aiwToggleBookmark(\'' + c.name.replace(/'/g, "\\'") + '\')" title="Save" ' +
+            'style="flex-shrink:0;font-size:18px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;opacity:' + (saved ? '1' : '0.35') + '">' + (saved ? '⭐' : '☆') + '</button>' +
         '</div>' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px">' +
-          '<div style="display:flex;align-items:center;gap:6px">' +
-            newBadge +
-            '<span style="font-size:10px;color:var(--muted);background:var(--border);border-radius:99px;padding:2px 8px">' + (c.stage || '') + '</span>' +
-          '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px">' +
+          newBadge +
+          '<span style="font-size:10px;color:var(--muted);background:var(--border);border-radius:99px;padding:2px 8px">' + (c.stage || '') + '</span>' +
           '<button onclick="saveOpenBrandIntel(\'' + c.name.replace(/'/g, "\\'") + '\')" ' +
-            'style="flex-shrink:0;font-size:12px;font-weight:700;color:#4f46e5;background:#eef2ff;border:1px solid #c7d2fe;border-radius:99px;padding:6px 12px;cursor:pointer">Research →</button>' +
+            'style="margin-left:auto;font-size:12px;font-weight:700;color:#4f46e5;background:#eef2ff;border:1px solid #c7d2fe;border-radius:99px;padding:5px 12px;cursor:pointer">Research →</button>' +
         '</div>' +
       '</div>';
     }).join("");
+  }
+
+  function _aiwRenderNews(items) {
+    var el = document.getElementById("aiw-cards");
+    if (!el) return;
+    if (!items.length) {
+      el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;line-height:1.7">No news found in the last 7 days for this sector.<br><span style="font-size:11px">Check back tomorrow — we refresh every hour.</span></div>';
+      return;
+    }
+    el.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Last 7 days</div>' +
+      items.map(function(n) {
+        return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px">' +
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px">' +
+            '<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.4;flex:1">' + n.title + '</div>' +
+            '<a href="' + n.url + '" target="_blank" rel="noopener" ' +
+              'style="flex-shrink:0;font-size:11px;font-weight:700;color:#4f46e5;background:#eef2ff;border:1px solid #c7d2fe;border-radius:99px;padding:4px 10px;text-decoration:none;white-space:nowrap">Read →</a>' +
+          '</div>' +
+          (n.desc ? '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:7px">' + n.desc + '</div>' : '') +
+          '<div style="font-size:11px;color:var(--subtle)">' + n.source + ' · ' + n.date + '</div>' +
+        '</div>';
+      }).join("");
   }
 
   /* ── WhatsApp showcase carousel ─────────────────────────────────────────── */

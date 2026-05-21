@@ -5793,6 +5793,89 @@ def api_intel_verticals():
     })
 
 
+_AI_WATCH_KEYWORDS = {
+    "healthcare": ["health", "medical", "clinical", "hospital", "drug", "pharma", "patient",
+                   "diagnostic", "biotech", "genomic", "nhs", "surgery", "radiology", "therapy"],
+    "fintech":    ["fintech", "bank", "payment", "fraud", "credit", "lending", "insurance",
+                   "trading", "wealth", "crypto", "mortgage", "underwriting", "kyc"],
+    "legal":      ["legal", "law firm", "court", "contract", "lawyer", "attorney", "compliance",
+                   "regulation", "litigation", "paralegal", "legaltech"],
+    "climate":    ["climate", "carbon", "energy", "renewable", "sustainability", "net zero",
+                   "emissions", "clean tech", "solar", "wind power", "grid", "ev charging"],
+    "edtech":     ["education", "learning", "student", "teacher", "school", "university",
+                   "tutoring", "curriculum", "edtech", "classroom", "literacy", "upskilling"],
+}
+
+_AI_NEWS_FEEDS = [
+    ("TechCrunch",   "https://techcrunch.com/category/artificial-intelligence/feed/"),
+    ("VentureBeat",  "https://venturebeat.com/ai/feed/"),
+    ("The Verge",    "https://www.theverge.com/ai-artificial-intelligence/rss/index.xml"),
+    ("MIT Tech Review", "https://www.technologyreview.com/feed/"),
+]
+
+_ai_news_cache: dict = {}   # vertical -> {"ts": float, "items": list}
+
+@app.route("/api/intel/news")
+def api_intel_news():
+    import xml.etree.ElementTree as _ET, time as _time, re as _re
+    from email.utils import parsedate_to_datetime as _pdt
+
+    vertical = request.args.get("v", "healthcare").lower().strip()
+    keywords  = _AI_WATCH_KEYWORDS.get(vertical, [])
+
+    cached = _ai_news_cache.get(vertical)
+    if cached and _time.time() - cached["ts"] < 3600:
+        return jsonify({"items": cached["items"], "vertical": vertical})
+
+    seven_days_ago = _time.time() - 7 * 86400
+    items = []
+
+    for source_name, feed_url in _AI_NEWS_FEEDS:
+        try:
+            resp = requests.get(feed_url, timeout=10,
+                                headers={"User-Agent": "Mozilla/5.0 (compatible; MiruBot/1.0)"})
+            root = _ET.fromstring(resp.content)
+            for item in root.findall(".//item"):
+                title   = (item.findtext("title") or "").strip()
+                link    = (item.findtext("link") or "").strip()
+                pub_raw = (item.findtext("pubDate") or "").strip()
+                desc_raw = (item.findtext("description") or item.findtext("{http://purl.org/rss/1.0/modules/content/}encoded") or "").strip()
+
+                try:
+                    dt = _pdt(pub_raw)
+                    ts = dt.timestamp()
+                    date_str = dt.strftime("%-d %b")
+                except Exception:
+                    ts = _time.time(); date_str = "Recent"
+
+                if ts < seven_days_ago:
+                    continue
+
+                text = (title + " " + _re.sub(r"<[^>]+>", "", desc_raw)).lower()
+                if not any(kw in text for kw in keywords):
+                    continue
+
+                clean_desc = _re.sub(r"<[^>]+>", "", desc_raw).strip()
+                clean_desc = _re.sub(r"\s+", " ", clean_desc)[:180]
+
+                items.append({
+                    "title":  title,
+                    "url":    link,
+                    "desc":   clean_desc,
+                    "date":   date_str,
+                    "source": source_name,
+                    "_ts":    ts,
+                })
+        except Exception as _e:
+            app.logger.warning(f"[ai-news] feed error {source_name}: {_e}")
+
+    items.sort(key=lambda x: x.pop("_ts", 0), reverse=True)
+    items = items[:12]
+
+    _ai_news_cache[vertical] = {"ts": _time.time(), "items": items}
+    return jsonify({"items": items, "vertical": vertical})
+
+
 @app.route("/api/admin/clear-brand-cache", methods=["POST"])
 def api_admin_clear_brand_cache():
     """Clear cached brand/company data so it re-fetches fresh. Token-protected."""
