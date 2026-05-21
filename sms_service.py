@@ -6006,12 +6006,63 @@ def _v2_fetch_fuel(postcode: str) -> dict:
 
 
 def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
-    """Next 3 departures on the saved route."""
+    """Next 3 departures on the saved route using RTT calling_at filter."""
+    def _crs_for(name: str) -> str:
+        """Look up CRS for a station name or return as-is if already a 3-letter code."""
+        if name and len(name) == 3 and name.isupper():
+            return name
+        n = _STATION_QUALIFIER_RE.sub('', name.lower()).strip()
+        import difflib as _dl
+        exact = [v for k, v in _STATION_CACHE.items() if k == n]
+        if exact: return exact[0].get("crs", "")
+        prefix = [v for k, v in _STATION_CACHE.items() if k.startswith(n)]
+        if prefix: return prefix[0].get("crs", "")
+        close = _dl.get_close_matches(n, list(_STATION_CACHE.keys()), n=1, cutoff=0.6)
+        if close: return _STATION_CACHE[close[0]].get("crs", "")
+        return ""
+
     try:
-        from search import _fetch_trains
-        deps = _fetch_trains(train_from, train_to) or []
-        return {"departures": deps[:3], "from": train_from, "to": train_to}
-    except Exception:
+        from_crs = _crs_for(train_from)
+        to_crs   = _crs_for(train_to)
+        if not from_crs or not to_crs:
+            return {}
+
+        access = _get_rtt_token()
+        r = requests.get(
+            "https://data.rtt.io/rtt/location",
+            headers={"Authorization": f"Bearer {access}"},
+            params={"code": f"gb-nr:{from_crs}", "calling_at": to_crs},
+            timeout=10,
+        )
+        services = (r.json().get("services") or []) if r.ok else []
+
+        def _fmt(dt):
+            if not dt: return ""
+            s = str(dt).strip()
+            if len(s) >= 16: return s[11:16]
+            if len(s) == 5 and s[2] == ":": return s
+            if len(s) == 4 and s.isdigit(): return s[:2] + ":" + s[2:]
+            return s[:5]
+
+        deps = []
+        for svc in services:
+            td = svc.get("temporalData", {})
+            dep = td.get("departure", {})
+            sched = _fmt(dep.get("scheduleAdvertised") or dep.get("scheduled") or "")
+            if not sched:
+                continue
+            real = _fmt(dep.get("realtimeForecast") or dep.get("forecast") or dep.get("realtimeActual") or "")
+            cancelled = dep.get("isCancelled", False) or dep.get("cancelled", False)
+            status = "Cancelled" if cancelled else (f"Exp {real}" if real and real != sched else "On time")
+            p_raw = (svc.get("locationMetadata") or {}).get("platform")
+            platform = str(p_raw.get("display") or "") if isinstance(p_raw, dict) else (str(p_raw) if p_raw else "")
+            deps.append({"departs": sched, "status": status, "platform": platform})
+            if len(deps) >= 3:
+                break
+
+        return {"departures": deps, "from": train_from, "to": train_to}
+    except Exception as ex:
+        app.logger.warning(f"[v2 trains] {ex}")
         return {}
 
 
@@ -11402,12 +11453,15 @@ def _wa_train_format(from_name: str, to_name: str = "") -> str:
 
         to_crs, to_display = _find_crs(to_lower) if to_lower else (None, None)
 
-        # Fetch departures
+        # Fetch departures — use calling_at so RTT filters by intermediate stop, not just final dest
         access = _get_rtt_token()
+        rtt_params: dict = {"code": f"gb-nr:{crs}"}
+        if to_crs:
+            rtt_params["calling_at"] = to_crs  # RTT returns services that call AT this stop
         r = requests.get(
             "https://data.rtt.io/rtt/location",
             headers={"Authorization": f"Bearer {access}"},
-            params={"code": f"gb-nr:{crs}"},
+            params=rtt_params,
             timeout=12,
         )
         if r.status_code != 200:
@@ -11434,12 +11488,7 @@ def _wa_train_format(from_name: str, to_name: str = "") -> str:
             dest = (dest_list[0].get("location") or {}).get("description", "") if dest_list else ""
             if not dest:
                 continue
-            # Filter by destination if given
-            if to_crs:
-                dest_crs = (dest_list[0].get("location") or {}).get("crs", "")
-                # Try to match by name or CRS
-                if to_crs.upper() != dest_crs.upper() and to_lower not in dest.lower():
-                    continue
+            # calling_at param already filtered by RTT — no Python-side destination filter needed
             sched = fmt_time(dep.get("scheduleAdvertised") or dep.get("scheduled") or "")
             real_raw = (dep.get("realtimeForecast") or dep.get("forecast") or
                         dep.get("realtimeActual") or dep.get("actual") or "")
