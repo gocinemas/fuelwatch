@@ -1143,6 +1143,7 @@
         <div style="display:flex;gap:4px">
           <button id="intel-mode-btn-brand"   onclick="setIntelMode('brand')"   style="flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s">🏷️ Brand</button>
           <button id="intel-mode-btn-company" onclick="setIntelMode('company')" style="flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s">🏢 Company</button>
+          <button id="intel-mode-btn-watch"   onclick="showScreen('ai-watch')"  style="flex:1;padding:8px 4px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s">🔭 AI Watch</button>
         </div>
       </div>
       <!-- Hidden landing div (JS compat) -->
@@ -1685,6 +1686,41 @@
       <div id="brand-result" style="display:none;position:absolute;width:0;height:0;overflow:hidden"></div>
 
     </div><!-- /screen-company -->
+
+    <!-- ── AI WATCH SCREEN ── -->
+    <div id="screen-ai-watch" class="screen pt-5">
+      <div style="margin-bottom:16px">
+        <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">AI Watch</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:3px">Companies shaping AI — by sector</div>
+      </div>
+
+      <!-- Vertical pill tabs -->
+      <div id="aiw-tabs" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px;scrollbar-width:none">
+        <button onclick="_aiwTab('healthcare')" id="aiw-tab-healthcare" class="aiw-tab aiw-tab-active">🏥 Healthcare</button>
+        <button onclick="_aiwTab('fintech')"    id="aiw-tab-fintech"    class="aiw-tab">💰 Fintech</button>
+        <button onclick="_aiwTab('legal')"      id="aiw-tab-legal"      class="aiw-tab">⚖️ Legal</button>
+        <button onclick="_aiwTab('climate')"    id="aiw-tab-climate"    class="aiw-tab">🌱 Climate</button>
+        <button onclick="_aiwTab('edtech')"     id="aiw-tab-edtech"     class="aiw-tab">📚 EdTech</button>
+      </div>
+
+      <!-- Company cards -->
+      <div id="aiw-cards" style="display:flex;flex-direction:column;gap:10px">
+        <div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>
+      </div>
+
+      <!-- Follow CTA -->
+      <div style="margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 15px;display:flex;align-items:center;gap:12px">
+        <div style="font-size:22px">💬</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Get weekly alerts on WhatsApp</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Send <strong>follow healthcare ai</strong> to Miru</div>
+        </div>
+        <a id="aiw-wa-follow" href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
+          style="flex-shrink:0;background:#25d366;color:#fff;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;text-decoration:none">
+          Open →
+        </a>
+      </div>
+    </div><!-- /screen-ai-watch -->
 
     <!-- ── ELECTIONS SCREEN ── -->
     <div id="screen-elections" class="screen pt-5">
@@ -2655,6 +2691,7 @@
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
+    if (name === "ai-watch")  { _aiwInit(); }
     if (name === "home")       { if (typeof _homeHeroInit === 'function') _homeHeroInit(); }
     if (name === "myarea")     { _loadMyArea(); }
     if (name === "lifeadmin")  { _loadLifeAdmin(); }
@@ -10545,6 +10582,7 @@ function _hcAdd() {
       { name:"My Clippings",   desc:"Links, menus, receipts & more you've clipped", icon:"📌", screen:"saves", kw:"clippings saves saved article link bookmark read reading menu receipt" },
       { name:"Company Intel",  desc:"Revenue, profit & financials · AI & tech strategy · news", icon:"🏢", screen:"company", kw:"company business financials revenue profit strategy news intel turnover" },
       { name:"Intel",          desc:"Brand & company research — identity, financials, campaigns, rivals", icon:"🔍", screen:"company", tab:"brand", kw:"intel brand company identity ads campaigns rivals marketing history financials strategy" },
+      { name:"AI Watch",       desc:"Companies shaping AI by sector — healthcare, fintech, legal, climate", icon:"🔭", screen:"ai-watch", kw:"ai watch companies sector healthcare fintech legal climate edtech startups discover" },
       { name:"My documents",   desc:"Upload & chat with your files",       icon:"📄", screen:"library",   kw:"document pdf file upload library ask query" },
       { name:"Book scanner",   desc:"Scan & chat with any book",           icon:"📚", screen:"scan",      kw:"book scan barcode isbn read library chat" },
       { name:"Music",          desc:"Find songs, see lyrics, save to list", icon:"🎵", screen:"music",    kw:"music song songs lyrics save artist track charts identify shazam" },
@@ -11111,6 +11149,9 @@ function _hcAdd() {
 .bk-sort-btn.bk-sort-on{background:var(--text);color:var(--bg);border-color:var(--text)}
 .bk-src-btn{padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .12s}
 .bk-src-btn.bk-src-on{background:#0ea5e9;color:#fff;border-color:#0ea5e9}
+.aiw-tab{flex-shrink:0;padding:7px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.aiw-tab-active{background:var(--text);color:var(--bg);border-color:var(--text)}
+#aiw-tabs::-webkit-scrollbar{display:none}
 .wa-slide-r{display:none}.wa-slide-r.active{display:block}
 .wa-dot-r{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.35);cursor:pointer;transition:background .2s}
 .wa-dot-r.active{background:#fff}
@@ -12979,6 +13020,56 @@ _bkBadge();
     }
   }
   window._homeHeroInit = _homeHeroInit;
+
+  /* ── AI Watch ───────────────────────────────────────────────────────────── */
+  var _aiwCurrentVertical = "healthcare", _aiwCache = {};
+  function _aiwInit() {
+    if (_aiwCache[_aiwCurrentVertical]) { _aiwRender(_aiwCache[_aiwCurrentVertical]); return; }
+    _aiwLoad(_aiwCurrentVertical);
+  }
+  window._aiwTab = function(v) {
+    _aiwCurrentVertical = v;
+    document.querySelectorAll(".aiw-tab").forEach(function(b) { b.classList.remove("aiw-tab-active"); });
+    var btn = document.getElementById("aiw-tab-" + v);
+    if (btn) btn.classList.add("aiw-tab-active");
+    var waA = document.getElementById("aiw-wa-follow");
+    if (waA) waA.closest("div").querySelector("strong") && (waA.closest("div").querySelector("strong").textContent = "follow " + v + " ai");
+    if (_aiwCache[v]) { _aiwRender(_aiwCache[v]); return; }
+    _aiwLoad(v);
+  };
+  function _aiwLoad(v) {
+    var el = document.getElementById("aiw-cards");
+    if (el) el.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>';
+    fetch("/api/intel/verticals?v=" + v)
+      .then(function(r) { return r.json(); })
+      .then(function(d) { _aiwCache[v] = d.companies || []; _aiwRender(_aiwCache[v]); })
+      .catch(function() { if (el) el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Could not load — try again</div>'; });
+  }
+  function _aiwRender(companies) {
+    var el = document.getElementById("aiw-cards");
+    if (!el) return;
+    if (!companies.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No companies yet — check back soon</div>'; return; }
+    el.innerHTML = companies.map(function(c) {
+      var newBadge = c.new ? '<span style="font-size:10px;font-weight:800;background:#d1fae5;color:#065f46;border-radius:99px;padding:2px 8px;letter-spacing:.04em">NEW TO WATCH</span>' : '';
+      return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 15px">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px">' + c.name + '</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4">' + c.tagline + '</div>' +
+          '</div>' +
+          '<div style="flex-shrink:0;font-size:18px">' + (c.country || '') + '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px">' +
+          '<div style="display:flex;align-items:center;gap:6px">' +
+            newBadge +
+            '<span style="font-size:10px;color:var(--muted);background:var(--border);border-radius:99px;padding:2px 8px">' + (c.stage || '') + '</span>' +
+          '</div>' +
+          '<button onclick="saveOpenBrandIntel(\'' + c.name.replace(/'/g, "\\'") + '\')" ' +
+            'style="flex-shrink:0;font-size:12px;font-weight:700;color:#4f46e5;background:#eef2ff;border:1px solid #c7d2fe;border-radius:99px;padding:6px 12px;cursor:pointer">Research →</button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
 
   /* ── WhatsApp showcase carousel ─────────────────────────────────────────── */
   var _waSlideIdx = 0, _waSlideTimer = null;

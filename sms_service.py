@@ -5741,6 +5741,58 @@ def api_intel_compare():
         return jsonify({"error": str(e)}), 500
 
 
+# ── AI Watch — vertical company discovery ─────────────────────────────────────
+_AI_WATCH_COMPANIES = {
+    "healthcare": [
+        {"name": "Neko Health",        "tagline": "Full-body preventive health scans powered by AI",         "country": "🇸🇪", "stage": "Scale-up",    "new": True},
+        {"name": "Suki AI",            "tagline": "Voice assistant for clinical documentation",               "country": "🇺🇸", "stage": "Scale-up",    "new": False},
+        {"name": "Viz.ai",             "tagline": "AI-powered stroke and cardiac care coordination",          "country": "🇺🇸", "stage": "Scale-up",    "new": False},
+        {"name": "BenevolentAI",       "tagline": "Drug discovery and development platform",                 "country": "🇬🇧", "stage": "Listed",       "new": False},
+        {"name": "Recursion",          "tagline": "Drug discovery at machine scale",                         "country": "🇺🇸", "stage": "Listed",       "new": False},
+        {"name": "Waymark",            "tagline": "AI for community health workers — Medicaid focus",        "country": "🇺🇸", "stage": "Startup",      "new": True},
+    ],
+    "fintech": [
+        {"name": "Ramp",               "tagline": "AI-powered corporate cards and expense management",       "country": "🇺🇸", "stage": "Scale-up",    "new": False},
+        {"name": "Sardine",            "tagline": "AI fraud prevention for fintech and crypto",              "country": "🇺🇸", "stage": "Scale-up",    "new": False},
+        {"name": "Hyperplane",         "tagline": "Banking AI personalisation at scale",                    "country": "🇺🇸", "stage": "Startup",      "new": True},
+        {"name": "Cleo",               "tagline": "AI money coach — Gen Z banking alternative",             "country": "🇬🇧", "stage": "Scale-up",    "new": False},
+        {"name": "Zest AI",            "tagline": "AI credit underwriting for inclusive lending",            "country": "🇺🇸", "stage": "Scale-up",    "new": False},
+        {"name": "Taktile",            "tagline": "Decision automation for fintech risk teams",              "country": "🇩🇪", "stage": "Startup",      "new": True},
+    ],
+    "legal": [
+        {"name": "Harvey",             "tagline": "AI for law firms — backed by OpenAI",                    "country": "🇺🇸", "stage": "Scale-up",    "new": True},
+        {"name": "Luminance",          "tagline": "AI contract analysis and due diligence",                  "country": "🇬🇧", "stage": "Scale-up",    "new": False},
+        {"name": "Robin AI",           "tagline": "AI contract review for legal teams",                     "country": "🇬🇧", "stage": "Startup",      "new": False},
+        {"name": "Clio",               "tagline": "Cloud legal practice management with AI workflows",       "country": "🇨🇦", "stage": "Scale-up",    "new": False},
+        {"name": "Spellbook",          "tagline": "GPT-4 contract drafting inside Word",                    "country": "🇨🇦", "stage": "Startup",      "new": True},
+    ],
+    "climate": [
+        {"name": "Cervest",            "tagline": "Climate intelligence platform for physical risk",         "country": "🇬🇧", "stage": "Scale-up",    "new": True},
+        {"name": "Pachama",            "tagline": "AI carbon credit verification via satellite",             "country": "🇺🇸", "stage": "Scale-up",    "new": False},
+        {"name": "Watershed",          "tagline": "Enterprise carbon management and reporting",              "country": "🇺🇸", "stage": "Scale-up",    "new": False},
+        {"name": "Tomorrow.io",        "tagline": "Weather and climate intelligence API",                    "country": "🇺🇸", "stage": "Scale-up",    "new": False},
+        {"name": "Sylvera",            "tagline": "Carbon market ratings and analytics",                    "country": "🇬🇧", "stage": "Startup",      "new": True},
+    ],
+    "edtech": [
+        {"name": "Khanmigo",           "tagline": "Khan Academy's AI tutor — Socratic, not answer-giving",  "country": "🇺🇸", "stage": "Non-profit",  "new": False},
+        {"name": "Synthesis",          "tagline": "AI-powered learning for kids — born at SpaceX",          "country": "🇺🇸", "stage": "Scale-up",    "new": False},
+        {"name": "Sana Labs",          "tagline": "AI learning platform for enterprise teams",               "country": "🇸🇪", "stage": "Scale-up",    "new": True},
+        {"name": "Cognii",             "tagline": "AI writing assessment and virtual tutoring",              "country": "🇺🇸", "stage": "Startup",      "new": False},
+        {"name": "Ello",               "tagline": "AI reading companion for children",                      "country": "🇺🇸", "stage": "Startup",      "new": True},
+    ],
+}
+
+@app.route("/api/intel/verticals")
+def api_intel_verticals():
+    vertical = request.args.get("v", "healthcare").lower().strip()
+    companies = _AI_WATCH_COMPANIES.get(vertical, [])
+    return jsonify({
+        "vertical": vertical,
+        "companies": companies,
+        "verticals": list(_AI_WATCH_COMPANIES.keys()),
+    })
+
+
 @app.route("/api/admin/clear-brand-cache", methods=["POST"])
 def api_admin_clear_brand_cache():
     """Clear cached brand/company data so it re-fetches fresh. Token-protected."""
