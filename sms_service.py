@@ -5888,11 +5888,22 @@ def api_intel_news():
 # V2 — Agentic Architecture
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _v2_resolve(token: str) -> str:
+    """Accept either a raw phone number (+44...) or an HMAC token → returns from_number.
+    Normalises to whatsapp: prefix to match Twilio DB format used by wa_saves/school_profiles."""
+    if not token:
+        return ""
+    if token.startswith("+"):
+        return "whatsapp:" + token   # raw phone → Twilio format
+    if token.startswith("whatsapp:"):
+        return token
+    return _resolve_user_token(token) or ""
+
 @app.route("/api/v2/prefs", methods=["GET"])
 def api_v2_prefs_get():
     """Return V2 preferences for the user identified by token."""
     token = request.args.get("token", "").strip()
-    from_number = _resolve_user_token(token) if token else ""
+    from_number = _v2_resolve(token)
     if not from_number:
         return jsonify({"prefs": {}, "has_prefs": False})
     try:
@@ -5907,14 +5918,15 @@ def api_v2_prefs_get():
 @app.route("/api/v2/prefs", methods=["POST"])
 def api_v2_prefs_post():
     """Save V2 preferences. Merges with existing — send only changed keys."""
-    token = (request.get_json(force=True, silent=True) or {}).get("token", "") or \
-            request.args.get("token", "")
+    body = request.get_json(force=True, silent=True) or {}
+    token = body.get("token", "") or request.args.get("token", "")
     token = (token or "").strip()
-    from_number = _resolve_user_token(token) if token else ""
+    from_number = _v2_resolve(token)
     if not from_number:
         return jsonify({"error": "token required"}), 401
-    body = request.get_json(force=True, silent=True) or {}
-    new_prefs = body.get("prefs", {})
+    # Accept prefs as nested {"prefs":{...}} or top-level keys in the same body
+    PREF_KEYS = {"train_from", "train_to", "fuel_postcode", "commute_mode"}
+    new_prefs = body.get("prefs") or {k: v for k, v in body.items() if k in PREF_KEYS}
     if not isinstance(new_prefs, dict):
         return jsonify({"error": "prefs must be object"}), 400
     try:
@@ -6013,7 +6025,7 @@ def api_home_brief():
 
     token    = request.args.get("token", "").strip()
     postcode = request.args.get("pc", "").strip().upper().replace(" ", "")
-    from_number = _resolve_user_token(token) if token else ""
+    from_number = _v2_resolve(token)
 
     # Check 15-min cache
     cached = _v2_brief_cache.get(from_number or postcode)
