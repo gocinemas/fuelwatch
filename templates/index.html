@@ -12788,7 +12788,10 @@ _bkBadge();
     _phShow((stationName || crs) + "…");
 
     // Always fetch from home station; filter destination client-side
-    const CACHE_KEY = "miru_train_home2_" + crs;
+    // Use RTT calling_at for accurate filtering — destination-name matching breaks for
+    // through-services (e.g. HHE→ZFD trains terminate at Bedford, not Blackfriars)
+    const callingAt = (isWFH && workBm && workBm.crs) ? workBm.crs : "";
+    const CACHE_KEY = "miru_train_home3_" + crs + (callingAt ? "_" + callingAt : "");
     let allTrains = null;
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
@@ -12797,7 +12800,8 @@ _bkBadge();
 
     if (!allTrains) {
       try {
-        const r = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
+        const url = `/api/train/departures?crs=${encodeURIComponent(crs)}${callingAt ? `&calling_at=${encodeURIComponent(callingAt)}` : ""}`;
+        const r = await fetch(url);
         if (r.ok) {
           const d = await r.json();
           allTrains = d.trains || [];
@@ -12807,20 +12811,7 @@ _bkBadge();
       } catch(e) { _phShow("Network error"); return; }
     }
 
-    // Filter by direction if work station is set
     let trains = allTrains;
-    const workName = workBm ? (workBm.name || workBm.crs || "") : "";
-    if (workBm && workName) {
-      const wn = workName.replace(/ station$/i,"").toLowerCase();
-      if (isWFH) {
-        // At home → filter to trains going TO work
-        trains = allTrains.filter(t => (t.destination||"").toLowerCase().includes(wn));
-      } else {
-        // At work → filter to trains going AWAY from work (towards home)
-        trains = allTrains.filter(t => !(t.destination||"").toLowerCase().includes(wn));
-      }
-      if (!trains.length) trains = allTrains; // fallback: show all if filter returns nothing
-    }
 
     if (!trains.length) {
       _phShow("No trains right now · tap to check times");
