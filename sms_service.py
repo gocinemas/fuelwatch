@@ -17349,9 +17349,48 @@ def api_train_departures():
             return jsonify({"error": f"RTT location API returned empty response (HTTP {r.status_code})"}), 500
         data = r.json()
         if request.args.get("debug"):
-            svc = (data.get("services") or [{}])[0]
-            return jsonify({"raw_service": svc, "location": data.get("location")})
+            svcs = data.get("services") or [{}]
+            return jsonify({
+                "rtt_params": rtt_params,
+                "service_count": len(svcs),
+                "raw_service_0": svcs[0] if svcs else None,
+                "raw_service_0_keys": list(svcs[0].keys()) if svcs else [],
+                "location": data.get("location"),
+            })
         services = data.get("services") or []
+
+        # Python-side calling_at filter via service detail API (RTT board calling_at is unreliable)
+        if calling_at and services:
+            import concurrent.futures as _cf2, datetime as _dt2
+            today_str = _dt2.date.today().strftime("%Y/%m/%d")
+
+            def _service_stops_at(svc):
+                uid = (svc.get("serviceUid") or svc.get("trainUid") or
+                       svc.get("uid") or svc.get("id") or "")
+                if not uid:
+                    return True  # can't verify — include it
+                try:
+                    det = requests.get(
+                        f"https://data.rtt.io/rtt/service/{uid}/{today_str}",
+                        headers={"Authorization": f"Bearer {access}"},
+                        timeout=5,
+                    )
+                    if det.status_code != 200:
+                        return True  # unknown — include
+                    d2 = det.json()
+                    locations = d2.get("locations") or d2.get("callingPoints") or []
+                    for loc in locations:
+                        loc_obj = loc.get("location") or loc
+                        crs_val = (loc_obj.get("crs") or loc_obj.get("crsCode") or "").upper()
+                        if crs_val == calling_at:
+                            return True
+                    return False  # confirmed does not stop here
+                except Exception:
+                    return True  # on error — include
+
+            with _cf2.ThreadPoolExecutor(max_workers=8) as pool2:
+                keep = list(pool2.map(_service_stops_at, services[:20]))
+            services = [s for s, k in zip(services[:20], keep) if k]
 
         def fmt_time(dt):
             """Parse HH:MM from ISO datetime, HH:MM, or HHMM."""
