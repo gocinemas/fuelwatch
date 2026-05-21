@@ -17517,6 +17517,15 @@ window.spotifyAddTrack = window.spotifyLike;
     var bm = _getBm(slot);
     if (!bm) return;
     _trainSetMode = null;
+    // Auto-set calling_at to the OTHER bookmark so only route-relevant trains show
+    var otherSlot = slot === "home" ? "work" : "home";
+    var other = _getBm(otherSlot);
+    if (other) {
+      _trainToCrs  = other.crs;
+      _trainToName = other.name;
+    } else {
+      _trainToCrs = ""; _trainToName = "";
+    }
     _showActive(bm.name, bm.crs, "rail");
     _loadDeps(bm.crs);
   };
