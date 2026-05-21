@@ -12955,8 +12955,12 @@ _bkBadge();
         <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:var(--text);line-height:1.1;margin-bottom:4px" id="home-hero-greeting">${greet} <span id="home-hero-wx-emoji">☀️</span></div>
         <div style="font-size:13px;color:var(--muted);margin-top:2px" id="home-hero-dateline">${dow} ${now.getDate()} ${mon}</div>
         <div style="font-size:11px;color:var(--subtle);margin-top:8px;line-height:1.5">⛽ Fuel &middot; 🚆 Trains &middot; 🏡 My Local &middot; 🔎 Research &middot; 🗂️ Admin</div>`;
-      if (waTop) waTop.style.display = "none";
-      if (waBot) waBot.style.display = "block";
+      if (waTop) {
+        waTop.style.display = "block";
+        var waSubEl = document.getElementById("wa-showcase-sub");
+        if (waSubEl) waSubEl.textContent = "Tap to discover what else you can do";
+      }
+      if (waBot) waBot.style.display = "none";
     } else {
       hero.innerHTML = `
         <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--subtle);margin-bottom:10px">Miru · miru.humanagency.co</div>
