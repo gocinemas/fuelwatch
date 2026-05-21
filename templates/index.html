@@ -613,6 +613,18 @@
       <div id="home-miru-desc" style="display:none"></div>
 
 
+      <!-- V2 Morning Brief tile — shown for returning users by _homeHeroInit() -->
+      <div id="home-brief-tile" style="display:none;margin-bottom:16px">
+        <button onclick="showScreen('brief')" style="width:100%;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#2563eb 100%);border:none;border-radius:20px;padding:18px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px">
+          <div style="font-size:32px;line-height:1;flex-shrink:0">✨</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:16px;font-weight:800;color:#fff;letter-spacing:-0.3px;line-height:1.2">Your Morning Brief</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px;line-height:1.4">Trains · fuel · school &amp; spend — all in one</div>
+          </div>
+          <div style="flex-shrink:0;font-size:10px;font-weight:800;color:#a5b4fc;background:rgba(165,180,252,.15);border-radius:6px;padding:4px 8px;letter-spacing:.06em">V2 ✦</div>
+        </button>
+      </div>
+
       <!-- LIVE NOW -->
       <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Live Now</div>
       <div style="display:flex;gap:10px;margin-bottom:10px">
@@ -1771,6 +1783,59 @@
       </div>
     </div><!-- /screen-ai-watch -->
 
+    <!-- ── V2 MORNING BRIEF SCREEN ── -->
+    <div id="screen-brief" class="screen pt-5">
+      <!-- Header -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Your Brief</div>
+        <div id="brief-dateline" style="font-size:13px;color:var(--muted);margin-top:3px"></div>
+      </div>
+
+      <!-- Narrative card — shimmer while loading -->
+      <div id="brief-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:20px;padding:20px;margin-bottom:14px;min-height:88px">
+        <div id="brief-shimmer">
+          <div style="height:13px;border-radius:6px;background:rgba(255,255,255,.18);margin-bottom:10px;width:80%"></div>
+          <div style="height:13px;border-radius:6px;background:rgba(255,255,255,.12);margin-bottom:10px;width:95%"></div>
+          <div style="height:13px;border-radius:6px;background:rgba(255,255,255,.08);width:55%"></div>
+        </div>
+        <div id="brief-text" style="display:none;font-size:15px;font-weight:500;color:#fff;line-height:1.65;letter-spacing:-0.1px"></div>
+      </div>
+
+      <!-- Context chips row -->
+      <div id="brief-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+
+      <!-- Prefs setup CTA (shown when has_prefs=false) -->
+      <div id="brief-setup-cta" style="display:none;background:var(--surface);border:1.5px dashed var(--border);border-radius:16px;padding:16px;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px">Personalise your brief</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Set your regular commute and fuel postcode for a daily context update.</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">From station</div>
+            <input id="brief-pref-from" type="text" placeholder="e.g. Haywards Heath"
+              style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">To station</div>
+            <input id="brief-pref-to" type="text" placeholder="e.g. London Bridge"
+              style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Fuel postcode</div>
+            <input id="brief-pref-pc" type="text" placeholder="e.g. KT15"
+              style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+          </div>
+          <button id="brief-save-btn" onclick="_briefSavePrefs()"
+            style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:-0.2px">
+            Save &amp; generate brief
+          </button>
+          <div id="brief-pref-err" style="display:none;font-size:12px;color:#ef4444;text-align:center"></div>
+        </div>
+      </div>
+
+      <!-- Detailed context cards -->
+      <div id="brief-context-cards" style="display:none;flex-direction:column;gap:10px"></div>
+    </div><!-- /screen-brief -->
+
     <!-- ── ELECTIONS SCREEN ── -->
     <div id="screen-elections" class="screen pt-5">
       <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">🗳️ Your Local Council</div>
@@ -2741,6 +2806,7 @@
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
     if (name === "ai-watch")  { _aiwInit(); }
+    if (name === "brief")     { _briefInit(); }
     if (name === "home")       { if (typeof _homeHeroInit === 'function') _homeHeroInit(); }
     if (name === "myarea")     { _loadMyArea(); }
     if (name === "lifeadmin")  { _loadLifeAdmin(); }
@@ -13048,6 +13114,8 @@ _bkBadge();
         <div style="font-size:28px;font-weight:900;letter-spacing:-1px;color:var(--text);line-height:1.1;margin-bottom:4px" id="home-hero-greeting">${greet} <span id="home-hero-wx-emoji">☀️</span></div>
         <div style="font-size:13px;color:var(--muted);margin-top:2px" id="home-hero-dateline">${dow} ${now.getDate()} ${mon}</div>
         <div style="font-size:11px;color:var(--subtle);margin-top:8px;line-height:1.5">⛽ Fuel &middot; 🚆 Trains &middot; 🏡 My Local &middot; 🔎 Research &middot; 🗂️ Admin</div>`;
+      var briefTile = document.getElementById("home-brief-tile");
+      if (briefTile) briefTile.style.display = "block";
       if (waTop) {
         waTop.style.display = "block";
         var waSubEl = document.getElementById("wa-showcase-sub");
@@ -13072,6 +13140,189 @@ _bkBadge();
     }
   }
   window._homeHeroInit = _homeHeroInit;
+
+  /* ── V2 Morning Brief ───────────────────────────────────────────────────── */
+  var _briefData = null;
+
+  function _briefInit() {
+    var now = new Date();
+    var days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    var dl = document.getElementById("brief-dateline");
+    if (dl) dl.textContent = days[now.getDay()] + ", " + now.getDate() + " " + months[now.getMonth()];
+
+    // Reset to shimmer state
+    var shimmer = document.getElementById("brief-shimmer");
+    var briefText = document.getElementById("brief-text");
+    var chips = document.getElementById("brief-chips");
+    var setupCta = document.getElementById("brief-setup-cta");
+    var ctxCards = document.getElementById("brief-context-cards");
+    if (shimmer)    { shimmer.style.display = "block"; }
+    if (briefText)  { briefText.style.display = "none"; briefText.textContent = ""; }
+    if (chips)      { chips.innerHTML = ""; }
+    if (setupCta)   { setupCta.style.display = "none"; }
+    if (ctxCards)   { ctxCards.style.display = "none"; ctxCards.innerHTML = ""; }
+
+    // Pre-fill fuel postcode from identity
+    var pcInput = document.getElementById("brief-pref-pc");
+    if (pcInput && !pcInput.value && _miruPostcode()) pcInput.value = _miruPostcode();
+
+    var token = localStorage.getItem("miru_phone") || "";
+    var pc = _miruPostcode() || "";
+    var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc);
+
+    fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        _briefData = d;
+        if (shimmer) shimmer.style.display = "none";
+
+        if (!d.has_prefs) {
+          if (briefText) { briefText.textContent = "Set up your brief below to get a personalised daily update."; briefText.style.display = "block"; }
+          if (setupCta)  setupCta.style.display = "block";
+          return;
+        }
+
+        // Narrative
+        if (briefText) {
+          briefText.textContent = d.brief || "Your brief is ready.";
+          briefText.style.display = "block";
+        }
+
+        // Chips
+        _briefRenderChips(d.context, chips);
+
+        // Context cards
+        _briefRenderContextCards(d.context, ctxCards);
+      })
+      .catch(function() {
+        if (shimmer) shimmer.style.display = "none";
+        if (briefText) { briefText.textContent = "Couldn't load your brief — check your connection."; briefText.style.display = "block"; }
+      });
+  }
+
+  function _briefRenderChips(ctx, container) {
+    if (!container) return;
+    var chips = [];
+    var trains = ctx && ctx.trains;
+    if (trains && trains.departures && trains.departures.length) {
+      var t = trains.departures[0];
+      chips.push("🚆 " + (t.departs || t.time || "") + "  " + (trains.from || "") + " → " + (trains.to || ""));
+    }
+    var fuel = ctx && ctx.fuel;
+    if (fuel && fuel.price) chips.push("⛽ " + fuel.name + "  " + fuel.price + "p");
+    var school = ctx && ctx.school;
+    if (school && school.length) chips.push("🏫 " + school.length + " school event" + (school.length > 1 ? "s" : ""));
+    var spend = ctx && ctx.spend;
+    if (spend && spend.count > 0) chips.push("💳 £" + spend.total + " · " + spend.month);
+    container.innerHTML = chips.map(function(c) {
+      return '<span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text)">' + c + '</span>';
+    }).join("");
+  }
+
+  function _briefRenderContextCards(ctx, container) {
+    if (!container) return;
+    var html = "";
+
+    var trains = ctx && ctx.trains;
+    if (trains && trains.departures && trains.departures.length) {
+      var deps = trains.departures.slice(0, 3).map(function(d) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
+          + '<span style="font-size:14px;font-weight:700;color:var(--text)">' + (d.departs || d.time || "") + '</span>'
+          + '<span style="font-size:12px;color:var(--muted)">' + (d.platform ? "Plat " + d.platform : (d.status || "")) + '</span>'
+          + '</div>';
+      }).join("");
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🚆 ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
+        + deps + '</div>';
+    }
+
+    var fuel = ctx && ctx.fuel;
+    if (fuel && fuel.price) {
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⛽ Fuel</div>'
+        + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">' + fuel.price + 'p</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + fuel.name + (fuel.change ? " · " + fuel.change : "") + '</div>'
+        + '</div>';
+    }
+
+    var school = ctx && ctx.school;
+    if (school && school.length) {
+      var evHtml = school.slice(0, 3).map(function(ev) {
+        return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
+          + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (ev.child_name || "") + ': ' + (ev.event_title || "") + '</div>'
+          + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (ev.event_date || "") + '</div>'
+          + '</div>';
+      }).join("");
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🏫 School</div>'
+        + evHtml + '</div>';
+    }
+
+    var spend = ctx && ctx.spend;
+    if (spend && spend.count > 0) {
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">💳 Spend · ' + (spend.month || "") + '</div>'
+        + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
+        + '</div>';
+    }
+
+    if (html) {
+      container.innerHTML = html
+        + '<button onclick="_briefShowPrefs()" style="width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:11px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-top:4px">✏️ Update preferences</button>';
+      container.style.display = "flex";
+    }
+  }
+
+  window._briefSavePrefs = function() {
+    var fromEl = document.getElementById("brief-pref-from");
+    var toEl   = document.getElementById("brief-pref-to");
+    var pcEl   = document.getElementById("brief-pref-pc");
+    var errEl  = document.getElementById("brief-pref-err");
+    var from = fromEl ? fromEl.value.trim() : "";
+    var to   = toEl   ? toEl.value.trim()   : "";
+    var pc   = pcEl   ? pcEl.value.trim().toUpperCase() : "";
+    if (!from || !to) {
+      if (errEl) { errEl.textContent = "Please enter both From and To stations."; errEl.style.display = "block"; }
+      return;
+    }
+    var token = localStorage.getItem("miru_phone") || "";
+    if (!token) {
+      if (errEl) { errEl.textContent = "Link your WhatsApp first — go to My Area → Accounts."; errEl.style.display = "block"; }
+      return;
+    }
+    var btn = document.getElementById("brief-save-btn");
+    if (btn) { btn.textContent = "Saving…"; btn.disabled = true; }
+    fetch("/api/v2/prefs", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({token: token, train_from: from, train_to: to, fuel_postcode: pc})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function() {
+      if (btn) { btn.textContent = "Save & generate brief"; btn.disabled = false; }
+      _briefInit();
+    })
+    .catch(function() {
+      if (btn) { btn.textContent = "Save & generate brief"; btn.disabled = false; }
+      if (errEl) { errEl.textContent = "Save failed — please try again."; errEl.style.display = "block"; }
+    });
+  };
+
+  window._briefShowPrefs = function() {
+    var setupCta = document.getElementById("brief-setup-cta");
+    if (!setupCta) return;
+    var prefs = (_briefData && _briefData.prefs) || {};
+    var fromEl = document.getElementById("brief-pref-from");
+    var toEl   = document.getElementById("brief-pref-to");
+    var pcEl   = document.getElementById("brief-pref-pc");
+    if (fromEl && prefs.train_from)    fromEl.value = prefs.train_from;
+    if (toEl   && prefs.train_to)      toEl.value   = prefs.train_to;
+    if (pcEl   && prefs.fuel_postcode) pcEl.value   = prefs.fuel_postcode;
+    setupCta.style.display = "block";
+    setupCta.scrollIntoView({behavior: "smooth"});
+  };
 
   /* ── AI Watch ───────────────────────────────────────────────────────────── */
   var _aiwV = "healthcare", _aiwViewMode = "companies";
