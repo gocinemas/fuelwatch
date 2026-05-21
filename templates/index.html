@@ -13271,12 +13271,10 @@ _bkBadge();
               '<a href="' + n.url + '" target="_blank" rel="noopener" style="flex-shrink:0;font-size:11px;color:#4f46e5;font-weight:700;text-decoration:none">↗</a>' +
             '</div>';
           }).join("") : '') +
-        '<div style="margin-top:12px;display:flex;gap:8px;align-items:center">' +
+        '<div style="margin-top:12px">' +
           '<button onclick="_aiwToggleBookmark(\'' + name.replace(/'/g, "\\'") + '\')" id="aiw-panel-bm-' + key + '" ' +
-            'style="flex:1;padding:9px;border-radius:10px;border:' + (saved ? '1.5px solid #7c3aed' : '1.5px dashed #c4b5fd') + ';background:' + (saved ? '#f5f3ff' : 'transparent') + ';font-size:13px;font-weight:700;color:#7c3aed;cursor:pointer;transition:all .2s">' +
-            (saved ? '⭐ Saved' : '☆ Save') + '</button>' +
-          '<button onclick="saveOpenBrandIntel(\'' + name.replace(/'/g, "\\'") + '\')" ' +
-            'style="flex:1;padding:9px;border-radius:10px;border:1px solid #c7d2fe;background:#eef2ff;font-size:13px;font-weight:700;color:#4f46e5;cursor:pointer">Full Intel →</button>' +
+            'style="width:100%;padding:10px;border-radius:10px;border:' + (saved ? '1.5px solid #7c3aed' : '1.5px dashed #c4b5fd') + ';background:' + (saved ? '#f5f3ff' : 'transparent') + ';font-size:13px;font-weight:700;color:#7c3aed;cursor:pointer;transition:all .2s">' +
+            (saved ? '⭐ Saved' : '☆ Save this company') + '</button>' +
         '</div>' +
       '</div>';
 
