@@ -9337,7 +9337,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "If product: list EVERY product visible. Look at all price tags, shelf-edge labels, and packaging.\n"
             "If receipt: total and main items.\n"
             "Start your reply with: TYPE: [your choice]\n"
-            "If type is event/ticket, store/restaurant, ad/billboard, or product — add: VENUE: [brand or business name only]\n"
+            "If type is event/ticket, store/restaurant, ad/billboard, menu, or product — add: VENUE: [brand or business name only, e.g. 'Southbank Centre' or 'Nando's']\n"
             "If type is product OR ad/billboard — list every product on a separate PRODUCT: line:\n"
             "  PRODUCT: [full product name incl. variant & size] | [brand] | [price or n/a]\n"
             "  e.g. PRODUCT: Heinz Baked Beans 415g | Heinz | £0.89\n"
@@ -9436,9 +9436,11 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 shop_tag = _line.split(":", 1)[1].strip()
                 if shop_tag.lower() in _BLANK:
                     shop_tag = ""
-        # Use VENUE: brand name in ad/billboard title now that tags are parsed
+        # Use VENUE: brand name in title where relevant
         if img_type == "ad" and venue_tag:
             title = f"📢 {venue_tag[:60]}"
+        if img_type == "menu" and venue_tag and venue_tag.lower() not in _BLANK:
+            title = f"🍽️ {venue_tag[:60]}"
 
         # Upgrade to product type if model returned PRODUCT: lines regardless of classified type
         if product_items and img_type not in ("product",):
