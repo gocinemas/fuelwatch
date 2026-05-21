@@ -17126,12 +17126,30 @@ window.spotifyAddTrack = window.spotifyLike;
     </div>
 
     <!-- Last updated -->
-    <div id="train-updated-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div id="train-updated-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <span id="train-updated-label" style="font-size:12px;color:var(--muted)"></span>
       <button onclick="trainRefresh()" style="font-size:12px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0">↻ Refresh</button>
     </div>
 
-    <!-- Destination chips -->
+    <!-- Calling-at filter -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em">Stopping at</span>
+      <div id="train-cat-active" style="display:none;flex:1;display:flex;align-items:center;gap:6px">
+        <span id="train-cat-name" style="font-size:13px;font-weight:700;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:99px;padding:4px 11px"></span>
+        <button onclick="_trainClearCat()" style="font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;line-height:1;padding:2px">✕</button>
+      </div>
+      <div id="train-cat-empty" style="flex:1">
+        <button onclick="_trainOpenCat()" style="font-size:12px;color:var(--muted);background:var(--surface);border:1px dashed var(--border);border-radius:99px;padding:4px 12px;cursor:pointer;white-space:nowrap">All stops ↓</button>
+      </div>
+    </div>
+    <div id="train-cat-search" style="display:none;margin-bottom:10px">
+      <input id="train-cat-input" type="text" placeholder="Type destination station…"
+        style="width:100%;border:1px solid #2563eb;border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box"
+        oninput="_trainCatSearch(this.value)" onkeydown="if(event.key==='Escape')_trainCloseCat()">
+      <div id="train-cat-results" style="margin-top:6px;display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+
+    <!-- Destination chips (for final-dest grouping when no calling-at filter) -->
     <div id="train-dest-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;scrollbar-width:none"></div>
 
     <div id="train-loading" style="display:none;text-align:center;padding:24px;color:var(--muted);font-size:13px">Loading trains…</div>
@@ -17147,6 +17165,8 @@ window.spotifyAddTrack = window.spotifyLike;
   var _trainCrs    = "";
   var _trainName   = "";
   var _trainDest    = "";
+  var _trainToCrs  = "";   // calling_at filter CRS
+  var _trainToName = "";   // calling_at filter display name
   var _trainSetMode = null;   // "home" | "work" | null — slot being configured
   var _trainLoadedAt  = 0;
   var _trainRefreshTm = null;
@@ -17210,6 +17230,7 @@ window.spotifyAddTrack = window.spotifyLike;
     document.getElementById("train-nearest-list").style.display = "none";
     document.getElementById("train-locate-hint").style.display  = "none";
     _trainCrs = ""; _trainName = ""; _trainDest = "";
+    _trainToCrs = ""; _trainToName = "";
     _tubeMode = false; _tubeNaptanId = "";
     if (!keepMode) _trainSetMode = null;
     _renderSaved();
@@ -17226,9 +17247,12 @@ window.spotifyAddTrack = window.spotifyLike;
     _tubeMode = isTube;
     if (isTube) {
       _tubeNaptanId = id; _trainCrs = ""; _trainName = name; _trainDest = "";
+      _trainToCrs = ""; _trainToName = "";
     } else {
       _trainCrs = id; _trainName = name; _trainDest = ""; _tubeNaptanId = "";
+      // preserve existing calling-at filter when changing to a new FROM station
     }
+    _updateCatUI();
     if (!isTube) _updateSlotLabel();
   }
 
@@ -17268,6 +17292,66 @@ window.spotifyAddTrack = window.spotifyLike;
     if (_trainRefreshTm) { clearInterval(_trainRefreshTm); _trainRefreshTm = null; }
     if (_trainTickTm)    { clearInterval(_trainTickTm);    _trainTickTm    = null; }
   }
+
+  // ── Calling-at filter ─────────────────────────────────────────────────────
+  function _updateCatUI() {
+    var active = document.getElementById("train-cat-active");
+    var empty  = document.getElementById("train-cat-empty");
+    var nameEl = document.getElementById("train-cat-name");
+    if (_trainToCrs) {
+      if (active) active.style.display = "flex";
+      if (empty)  empty.style.display  = "none";
+      if (nameEl) nameEl.textContent   = _trainToName;
+    } else {
+      if (active) active.style.display = "none";
+      if (empty)  empty.style.display  = "";
+    }
+  }
+
+  window._trainOpenCat = function() {
+    var s = document.getElementById("train-cat-search");
+    var i = document.getElementById("train-cat-input");
+    if (s) { s.style.display = "block"; if (i) { i.value = ""; i.focus(); } }
+  };
+
+  window._trainCloseCat = function() {
+    var s = document.getElementById("train-cat-search");
+    if (s) s.style.display = "none";
+    var r = document.getElementById("train-cat-results");
+    if (r) r.innerHTML = "";
+  };
+
+  window._trainClearCat = function() {
+    _trainToCrs = ""; _trainToName = "";
+    _trainCloseCat();
+    _updateCatUI();
+    if (_trainCrs) _loadDeps(_trainCrs);
+  };
+
+  window._trainCatSearch = function(q) {
+    var r = document.getElementById("train-cat-results");
+    if (!r) return;
+    if (!q || q.length < 2) { r.innerHTML = ""; return; }
+    fetch("/api/train/search?q=" + encodeURIComponent(q))
+      .then(function(res){ return res.json(); })
+      .then(function(d){
+        var results = (d.results || []).slice(0, 5);
+        r.innerHTML = results.map(function(s) {
+          var safe = s.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          return '<button onclick="_trainPickCat(\''+s.crs+'\',\''+safe+'\')" '
+            + 'style="display:block;width:100%;text-align:left;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:2px">'
+            + '🚆 ' + s.name + '</button>';
+        }).join("");
+      })
+      .catch(function(){});
+  };
+
+  window._trainPickCat = function(crs, name) {
+    _trainToCrs = crs; _trainToName = name;
+    _trainCloseCat();
+    _updateCatUI();
+    if (_trainCrs) _loadDeps(_trainCrs);
+  };
 
   // ── Nearest station picker (rail + tube merged) ───────────────────────────
   function _showNearestPicker(railStations, tubeStations) {
@@ -17401,7 +17485,9 @@ window.spotifyAddTrack = window.spotifyLike;
       return;
     }
 
-    fetch("/api/train/departures?crs=" + id)
+    var depsUrl = "/api/train/departures?crs=" + id
+      + (_trainToCrs ? "&calling_at=" + encodeURIComponent(_trainToCrs) : "");
+    fetch(depsUrl)
       .then(function(r){ return r.json(); })
       .then(function(d){
         el.style.display = "none";
@@ -17409,8 +17495,14 @@ window.spotifyAddTrack = window.spotifyLike;
         _trainData = d.trains || [];
         _trainLoadedAt = Date.now();
         _updateAgoLabel();
-        _renderChips();
-        _renderResults();
+        // When calling_at active, hide dest chips (all shown trains already call at dest)
+        if (_trainToCrs) {
+          document.getElementById("train-dest-chips").innerHTML = "";
+          _renderResults();
+        } else {
+          _renderChips();
+          _renderResults();
+        }
         _startTimers(id);
       })
       .catch(function(){
