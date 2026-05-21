@@ -5355,6 +5355,81 @@ def api_intel_unpin():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/readiness/email-report", methods=["POST", "OPTIONS"])
+def api_readiness_email_report():
+    if request.method == "OPTIONS":
+        return jsonify({})
+    data     = request.get_json(silent=True) or {}
+    to_email = (data.get("email") or "").strip().lower()
+    report   = data.get("report") or {}
+    if not to_email or "@" not in to_email:
+        return jsonify({"error": "Valid email required"}), 400
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "Email not configured"}), 503
+
+    rtype    = report.get("type", "Readiness Check")
+    rag      = report.get("rag", "amber")
+    label    = report.get("label", "")
+    headline = report.get("headline", "")
+    sub      = report.get("sub", "")
+    state    = report.get("state", "")
+    gaps     = report.get("gaps") or []
+    actions  = report.get("actions") or []
+
+    rag_color = {"green": "#16a34a", "red": "#dc2626"}.get(rag, "#d97706")
+    gaps_html    = "".join(f'<li style="margin-bottom:6px;padding-left:20px;position:relative"><span style="position:absolute;left:0">⚠</span>{g}</li>' for g in gaps) or "<li>No significant gaps identified</li>"
+    actions_html = "".join(f'<li style="margin-bottom:6px;padding-left:20px;position:relative"><span style="position:absolute;left:0;color:#d97706;font-weight:800">→</span>{a}</li>' for a in actions)
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e8e4df">
+  <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);padding:28px 32px">
+    <div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px">{rtype} · mekalav.com</div>
+    <div style="display:inline-block;margin-bottom:12px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;background:{rag_color};color:#fff;text-transform:uppercase;letter-spacing:.3px">{label}</div>
+    <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1.25">{headline}</div>
+  </div>
+  <div style="padding:0 32px">
+    <div style="margin:24px 0 0;padding:16px 20px;background:#faf9f7;border-radius:12px;font-size:14px;line-height:1.6;color:#1a1714">{sub}</div>
+    <div style="margin-top:16px;padding:18px 20px;border:1px solid #e8e4df;border-radius:12px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#7a7168;margin-bottom:8px">Current State</div>
+      <div style="font-size:14px;line-height:1.6;color:#1a1714">{state}</div>
+    </div>
+    {f'''<div style="margin-top:12px;padding:18px 20px;border:1px solid #e8e4df;border-radius:12px;border-left:3px solid #dc2626">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#dc2626;margin-bottom:8px">Gaps Identified</div>
+      <ul style="margin:0;padding:0;list-style:none;font-size:14px;line-height:1.6;color:#1a1714">{gaps_html}</ul>
+    </div>''' if gaps else ''}
+    <div style="margin-top:12px;padding:18px 20px;border:1px solid #e8e4df;border-radius:12px;border-left:3px solid #d97706">
+      <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#7a7168;margin-bottom:8px">Next Phase — Priorities</div>
+      <ul style="margin:0;padding:0;list-style:none;font-size:14px;line-height:1.6;color:#1a1714">{actions_html}</ul>
+    </div>
+  </div>
+  <div style="margin:24px 32px 32px;padding:22px 24px;background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:12px">
+    <div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px">Built by</div>
+    <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:8px">Vikram Mekala — AI &amp; Transformation</div>
+    <div style="font-size:13px;line-height:1.6;color:rgba(255,255,255,.7);margin-bottom:14px">I ran Day 0 operations for the Magnum Ice Cream separation from Unilever — 14 production systems, 100+ concurrent incidents, zero outages. If you want an honest read on your programme, let's talk.</div>
+    <a href="https://mekalav.com" style="display:inline-block;padding:9px 18px;background:#f59e0b;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;margin-right:8px">mekalav.com →</a>
+    <a href="mailto:mekala@gmail.com" style="display:inline-block;padding:9px 18px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">Let's talk</a>
+  </div>
+</div></body></html>"""
+
+    try:
+        r = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"from": "Intel Reports <reports@mekalav.com>", "to": [to_email],
+                  "bcc": ["mekala@gmail.com"], "subject": f"{rtype} — {label}", "html": html_body},
+            timeout=12,
+        )
+        d = r.json()
+        if r.status_code in (200, 201) and d.get("id"):
+            return jsonify({"ok": True})
+        return jsonify({"error": d.get("message", "Send failed")}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/intel/snapshot")
 def api_intel_snapshot():
     """Fast company snapshot: Wikipedia basics + top 3 news + stock price. Returns in ~3s."""
