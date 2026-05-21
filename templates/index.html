@@ -13,13 +13,13 @@
   <!-- Open Graph -->
   <meta property="og:type"        content="website">
   <meta property="og:url"         content="{% if brand_meta and brand_meta.name %}https://intel.humanagency.co/{{ brand_meta.name | lower | replace(' ', '-') }}{% elif intel_mode %}https://intel.humanagency.co/{% else %}https://miru.humanagency.co/{% endif %}">
-  <meta property="og:title"       content="{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Brand Intel | intel.humanagency.co{% elif intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
+  <meta property="og:title"       content="{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Intel | intel.humanagency.co{% elif intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
   <meta property="og:description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% elif brand_meta and brand_meta.name %}{{ brand_meta.name }} brand intelligence — social strategy, campaigns, financials and more.{% elif intel_mode %}Brand &amp; Company intelligence — financials, strategy, news and more.{% else %}Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.{% endif %}">
   <meta property="og:image"       content="{% if brand_meta and brand_meta.logo %}{{ brand_meta.logo }}{% else %}https://miru.humanagency.co/static/miru-preview.png{% endif %}">
 
   <!-- Twitter / X card -->
   <meta name="twitter:card"        content="summary_large_image">
-  <meta name="twitter:title"       content="{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Brand Intel | intel.humanagency.co{% elif intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
+  <meta name="twitter:title"       content="{% if brand_meta and brand_meta.name %}{{ brand_meta.name }} — Intel | intel.humanagency.co{% elif intel_mode %}Intel — humanagency{% else %}Miru — Your everyday UK companion{% endif %}">
   <meta name="twitter:description" content="{% if brand_meta and brand_meta.description %}{{ brand_meta.description }}{% elif brand_meta and brand_meta.name %}{{ brand_meta.name }} brand intelligence — social strategy, campaigns, financials and more.{% elif intel_mode %}Brand &amp; Company intelligence — financials, strategy, news and more.{% else %}Find cheap fuel, explore your area, discover local services, save articles and more — even on WhatsApp.{% endif %}">
   <meta name="twitter:image"       content="{% if brand_meta and brand_meta.logo %}{{ brand_meta.logo }}{% else %}https://miru.humanagency.co/static/miru-preview.png{% endif %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1098,7 +1098,7 @@
         <!-- Brand mode header -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <div>
-            <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#6d28d9">🏷️ Brand Intel</div>
+            <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#6d28d9">🏷️ Brand</div>
             <div style="font-size:12px;color:#7c3aed;margin-top:2px;opacity:.8">Story · campaigns · identity · rivals</div>
           </div>
           <button onclick="_intelShowLanding()" style="font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer">← Switch</button>
@@ -6951,7 +6951,7 @@ function _hcAdd() {
       if (_INTEL_MODE) {
         const _bSlug = raw.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
         history.replaceState(null, "", "/" + _bSlug);
-        document.title = raw + " — Brand Intel";
+        document.title = raw + " — Intel";
       }
 
       // Book intel fallback: if no brand/company data, try book lookup
@@ -10474,7 +10474,7 @@ function _hcAdd() {
       { name:"Emergency",      desc:"Hospitals & police stations",         icon:"🚨", screen:"report",    kw:"hospital emergency police ambulance a&e urgent nhs nearest help" },
       { name:"My Clippings",   desc:"Links, menus, receipts & more you've clipped", icon:"📌", screen:"saves", kw:"clippings saves saved article link bookmark read reading menu receipt" },
       { name:"Company Intel",  desc:"Revenue, profit & financials · AI & tech strategy · news", icon:"🏢", screen:"company", kw:"company business financials revenue profit strategy news intel turnover" },
-      { name:"Brand Intel",    desc:"Brand identity · founding story · ads & rivals", icon:"🏷️", screen:"company", tab:"brand", kw:"brand identity ads campaigns rivals marketing history logo slogan" },
+      { name:"Intel",          desc:"Brand & company research — identity, financials, campaigns, rivals", icon:"🔍", screen:"company", tab:"brand", kw:"intel brand company identity ads campaigns rivals marketing history financials strategy" },
       { name:"My documents",   desc:"Upload & chat with your files",       icon:"📄", screen:"library",   kw:"document pdf file upload library ask query" },
       { name:"Book scanner",   desc:"Scan & chat with any book",           icon:"📚", screen:"scan",      kw:"book scan barcode isbn read library chat" },
       { name:"Music",          desc:"Find songs, see lyrics, save to list", icon:"🎵", screen:"music",    kw:"music song songs lyrics save artist track charts identify shazam" },
@@ -12532,7 +12532,7 @@ _bkBadge();
     <div id="pill-icons">
       <button class="pi-btn pi-active" id="pi-home"   onclick="_pillNav('home')"  ><span class="pi-ico">🏠</span><span class="pi-lbl">Home</span><span class="pi-dot"></span></button>
       <button class="pi-btn"           id="pi-myarea" onclick="_pillNav('myarea')" ><span class="pi-ico">📍</span><span class="pi-lbl">My Area</span><span class="pi-dot"></span></button>
-      <button class="pi-btn"           id="pi-intel"  onclick="_pillNav('company')"><span class="pi-ico">🔍</span><span class="pi-lbl">Brand Intel</span><span class="pi-dot"></span></button>
+      <button class="pi-btn"           id="pi-intel"  onclick="_pillNav('company')"><span class="pi-ico">🔍</span><span class="pi-lbl">Intel</span><span class="pi-dot"></span></button>
       <button class="pi-btn"           id="pi-saves"  onclick="_pillNav('saves')"  ><span class="pi-ico">📌</span><span class="pi-lbl">Clippings</span><span class="pi-dot"></span></button>
     </div>
   </div>
