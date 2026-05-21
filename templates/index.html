@@ -4879,6 +4879,8 @@ function _hcAdd() {
   async function _hcRender() {
     const strip = document.getElementById("hc-local-strip");
     if (!strip) return;
+    const h = new Date().getHours();
+    if (h < 7 || h >= 22) { strip.style.display = "none"; return; }
     const arr = await _commuteLoad();
     if (!arr.length) { strip.style.display = "none"; return; }
     strip.style.display = "flex";
