@@ -12808,6 +12808,11 @@ _bkBadge();
           const d = await r.json();
           allTrains = d.trains || [];
           if (!stationName) stationName = d.station || crs;
+          // If calling_at filter returned nothing, fall back to all departures
+          if (!allTrains.length && callingAt) {
+            const r2 = await fetch(`/api/train/departures?crs=${encodeURIComponent(crs)}`);
+            if (r2.ok) { const d2 = await r2.json(); allTrains = d2.trains || []; }
+          }
           if (allTrains.length) try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), trains: allTrains })); } catch {}
         } else { const err = await r.json().catch(()=>({})); _phShow(err.error || "Departures unavailable"); return; }
       } catch(e) { _phShow("Network error"); return; }
