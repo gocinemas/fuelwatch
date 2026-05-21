@@ -4804,33 +4804,87 @@ function _hcAdd() {
     document.getElementById("hc-add-name").focus();
   }
 
-  function _hcSave() {
+  // ── My Commutes (cloud storage) ──────────────────────────────────────────────
+  let _commuteCache = null;
+
+  function _commuteApiParams() {
+    const phone = typeof _miruPhone === "function" ? _miruPhone() : null;
+    return phone ? { phone } : { device_id: _maDeviceId() };
+  }
+
+  async function _commuteLoad() {
+    if (_commuteCache !== null) return _commuteCache;
+    try {
+      const p  = _commuteApiParams();
+      const qs = new URLSearchParams(p);
+      const r  = await fetch(`/api/commute/list?${qs}`);
+      const d  = await r.json();
+      let rows = d.commutes || [];
+      // Migrate localStorage → API on first cloud load
+      if (!rows.length) {
+        const local = JSON.parse(localStorage.getItem("miru_commutes") || "[]");
+        if (local.length) {
+          for (const c of local) {
+            await fetch("/api/commute/save", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ label: c.name || c.dest, dest: c.dest, ...p })
+            });
+          }
+          localStorage.removeItem("miru_commutes");
+          const r2 = await fetch(`/api/commute/list?${qs}`);
+          rows = (await r2.json()).commutes || [];
+        }
+      }
+      _commuteCache = rows;
+      return rows;
+    } catch(e) {
+      return JSON.parse(localStorage.getItem("miru_commutes") || "[]");
+    }
+  }
+
+  async function _commuteSaveToApi(label, dest) {
+    const p = _commuteApiParams();
+    await fetch("/api/commute/save", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label, dest, ...p })
+    });
+    _commuteCache = null;
+  }
+
+  async function _commuteDeleteFromApi(id) {
+    const p = _commuteApiParams();
+    await fetch("/api/commute/delete", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...p })
+    });
+    _commuteCache = null;
+  }
+
+  async function _hcSave() {
     const dest = document.getElementById("hc-add-dest").value.trim();
     if (!dest) { document.getElementById("hc-add-dest").focus(); return; }
     const name = document.getElementById("hc-add-name").value.trim() || dest;
-    const arr = _commuteLoad();
-    arr.push({ id: Date.now(), name, dest });
-    _commuteSave2(arr);
+    await _commuteSaveToApi(name, dest);
     document.getElementById("hc-add-form").style.display = "none";
     _hcRender();
   }
 
-  function _hcDelete(id) {
-    _commuteSave2(_commuteLoad().filter(c => c.id !== id));
+  async function _hcDelete(id) {
+    await _commuteDeleteFromApi(id);
     _hcRender();
   }
 
-  function _hcRender() {
+  async function _hcRender() {
     const strip = document.getElementById("hc-local-strip");
     if (!strip) return;
-    const arr = _commuteLoad();
+    const arr = await _commuteLoad();
     if (!arr.length) { strip.style.display = "none"; return; }
     strip.style.display = "flex";
     const pc = _miruPostcode ? _miruPostcode() : "";
     strip.innerHTML = arr.map(c => `
       <a id="hcp-${c.id}" href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pc)}&destination=${encodeURIComponent(c.dest)}" target="_blank" onclick="event.stopPropagation()"
         style="flex-shrink:0;background:rgba(255,255,255,.1);border-radius:10px;padding:6px 12px;text-align:center;min-width:70px;text-decoration:none;display:block">
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">${c.name}</div>
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">${c.label}</div>
         <div class="hcp-time-${c.id}" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:1px">${pc ? "…" : "—"}</div>
       </a>`).join("");
     if (!pc) return;
@@ -4847,12 +4901,6 @@ function _hcAdd() {
 
   setTimeout(_hcRender, 500);
 
-  // ── My Commutes ──────────────────────────────────────────────────────────────
-  const _COMMUTES_KEY = "miru_commutes";
-
-  function _commuteLoad() { try { return JSON.parse(localStorage.getItem(_COMMUTES_KEY) || "[]"); } catch(e) { return []; } }
-  function _commuteSave2(arr) { localStorage.setItem(_COMMUTES_KEY, JSON.stringify(arr)); }
-
   function _commuteAdd() {
     document.getElementById("commute-add-form").style.display = "";
     document.getElementById("commute-add-name").value = "";
@@ -4860,27 +4908,25 @@ function _hcAdd() {
     document.getElementById("commute-add-name").focus();
   }
 
-  function _commuteSave() {
+  async function _commuteSave() {
     const name = document.getElementById("commute-add-name").value.trim();
     const dest = document.getElementById("commute-add-dest").value.trim();
     if (!dest) { document.getElementById("commute-add-dest").focus(); return; }
     const label = name || dest;
-    const arr = _commuteLoad();
-    arr.push({ id: Date.now(), name: label, dest });
-    _commuteSave2(arr);
+    await _commuteSaveToApi(label, dest);
     document.getElementById("commute-add-form").style.display = "none";
     _commuteRender();
   }
 
-  function _commuteDelete(id) {
-    _commuteSave2(_commuteLoad().filter(c => c.id !== id));
+  async function _commuteDelete(id) {
+    await _commuteDeleteFromApi(id);
     _commuteRender();
   }
 
-  function _commuteRender() {
+  async function _commuteRender() {
     const el = document.getElementById("commute-list");
     if (!el) return;
-    const arr = _commuteLoad();
+    const arr = await _commuteLoad();
     if (!arr.length) {
       el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:8px 0">No commutes saved yet — tap + Add to set up Work, school, etc.</div>`;
       return;
@@ -4888,13 +4934,13 @@ function _hcAdd() {
     el.innerHTML = arr.map(c => `
       <div id="commute-card-${c.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <div style="font-size:13px;font-weight:800;color:var(--text)">🚗 ${c.name}</div>
-          <button onclick="_commuteDelete(${c.id})" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer">✕</button>
+          <div style="font-size:13px;font-weight:800;color:var(--text)">🚗 ${c.label}</div>
+          <button onclick="_commuteDelete('${c.id}')" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer">✕</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:6px">${c.dest}</div>
         <div id="commute-status-${c.id}" style="font-size:13px;color:var(--muted)">Loading…</div>
       </div>`).join("");
-    const pc = _miruPostcode();
+    const pc = _miruPostcode ? _miruPostcode() : "";
     if (!pc) return;
     arr.forEach(c => _commuteFetch(c, pc));
   }

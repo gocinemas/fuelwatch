@@ -1021,6 +1021,72 @@ def api_commute():
 
     return jsonify({"drive": drive, "train": train, "from_pc": from_pc, "to_pc": to_pc})
 
+
+@app.route("/api/commute/save", methods=["POST"])
+def api_commute_save():
+    body      = request.get_json(force=True, silent=True) or {}
+    device_id = (body.get("device_id") or "").strip()
+    phone     = (body.get("phone") or "").strip()
+    label     = (body.get("label") or "").strip()
+    dest      = (body.get("dest") or "").strip()
+    if not device_id and not phone:
+        return jsonify({"error": "device_id or phone required"}), 400
+    if not dest:
+        return jsonify({"error": "dest required"}), 400
+    if not label:
+        label = dest
+    try:
+        row = lib._sb().table("user_commutes").insert({
+            "device_id": device_id or phone,
+            "phone":     phone or None,
+            "label":     label,
+            "dest":      dest,
+        }).execute().data[0]
+        return jsonify({"ok": True, "id": row["id"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/commute/list")
+def api_commute_list():
+    device_id = request.args.get("device_id", "").strip()
+    phone     = request.args.get("phone", "").strip()
+    if not device_id and not phone:
+        return jsonify({"error": "device_id or phone required"}), 400
+    try:
+        sb = lib._sb()
+        q  = sb.table("user_commutes").select("id,label,dest,created_at").order("created_at")
+        if phone:
+            q = q.eq("phone", phone)
+        else:
+            q = q.eq("device_id", device_id)
+        rows = q.execute().data
+        return jsonify({"commutes": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/commute/delete", methods=["POST"])
+def api_commute_delete():
+    body      = request.get_json(force=True, silent=True) or {}
+    device_id = (body.get("device_id") or "").strip()
+    phone     = (body.get("phone") or "").strip()
+    cid       = body.get("id")
+    if not cid:
+        return jsonify({"error": "id required"}), 400
+    try:
+        sb = lib._sb()
+        q  = sb.table("user_commutes").delete().eq("id", str(cid))
+        if phone:
+            q = q.eq("phone", phone)
+        elif device_id:
+            q = q.eq("device_id", device_id)
+        q.execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/design/home")
 def design_home():
     return render_template("design_home_bento.html")
