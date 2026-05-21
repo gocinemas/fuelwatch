@@ -5355,6 +5355,68 @@ def api_intel_unpin():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/intel/snapshot")
+def api_intel_snapshot():
+    """Fast company snapshot: Wikipedia basics + top 3 news + stock price. Returns in ~3s."""
+    import concurrent.futures as _cf
+    from search import _fetch_wikipedia, _fetch_news
+    name = request.args.get("company", "").strip()
+    if not name:
+        return jsonify({"error": "company required"}), 400
+
+    def _get_stock(company_name):
+        try:
+            s = requests.get(
+                "https://query1.finance.yahoo.com/v1/finance/search",
+                params={"q": company_name, "quotesCount": 1, "newsCount": 0},
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=5,
+            )
+            quotes = s.json().get("quotes", [])
+            ticker = next((q["symbol"] for q in quotes if q.get("quoteType") in ("EQUITY", "ETF")), None)
+            if not ticker:
+                return {}
+            r = requests.get(
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+                params={"interval": "1d", "range": "1d"},
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=5,
+            )
+            meta = r.json().get("chart", {}).get("result", [{}])[0].get("meta", {})
+            price = meta.get("regularMarketPrice")
+            prev  = meta.get("chartPreviousClose") or meta.get("previousClose")
+            if price is None:
+                return {}
+            change     = round(price - prev, 2) if prev else 0
+            change_pct = round(change / prev * 100, 2) if prev else 0
+            return {"ticker": ticker, "price": round(price, 2), "change": change,
+                    "change_pct": change_pct, "currency": meta.get("currency", "")}
+        except Exception:
+            return {}
+
+    with _cf.ThreadPoolExecutor(max_workers=3) as pool:
+        wiki_f  = pool.submit(_fetch_wikipedia, name)
+        news_f  = pool.submit(_fetch_news, name, "", 3)
+        stock_f = pool.submit(_get_stock, name)
+        wiki = {};  news = [];  stock = {}
+        try: wiki  = wiki_f.result(timeout=8)  or {}
+        except Exception: pass
+        try: news  = news_f.result(timeout=6)  or []
+        except Exception: pass
+        try: stock = stock_f.result(timeout=6) or {}
+        except Exception: pass
+
+    return jsonify({
+        "name":        name,
+        "description": wiki.get("description") or (wiki.get("extract") or "")[:200],
+        "founded":     wiki.get("founded", ""),
+        "hq":          wiki.get("hq", ""),
+        "industry":    wiki.get("industry", ""),
+        "news":        news[:3],
+        "stock":       stock,
+    })
+
+
 @app.route("/api/intel/research", methods=["POST"])
 def api_intel_research():
     """Intel Research Agent — agentic multi-tool company research brief."""
@@ -5384,6 +5446,7 @@ def api_intel_email_report():
     to_email = (data.get("email") or "").strip().lower()
     company  = (data.get("company") or "").strip()
     brief    = data.get("brief") or {}
+    snap     = data.get("snapshot") or {}
 
     if not to_email or "@" not in to_email:
         return jsonify({"error": "Valid email required"}), 400
@@ -5393,6 +5456,38 @@ def api_intel_email_report():
     api_key = os.environ.get("RESEND_API_KEY", "")
     if not api_key:
         return jsonify({"error": "Email service not configured — contact mekala@gmail.com"}), 503
+
+    # Snapshot section (company at a glance)
+    snap_pills = " &nbsp;·&nbsp; ".join(filter(None, [
+        f"Est. {snap.get('founded')}" if snap.get("founded") else "",
+        snap.get("hq") or "",
+        snap.get("industry") or "",
+    ]))
+    stock = snap.get("stock") or {}
+    stock_html = ""
+    if stock.get("price"):
+        sym = "p" if stock.get("currency") == "GBp" else ("£" if stock.get("currency") == "GBP" else stock.get("currency", "") + " ")
+        price_str = f"{stock['price']}p" if stock.get("currency") == "GBp" else f"{sym}{stock['price']}"
+        arrow = "▲" if stock.get("change", 0) >= 0 else "▼"
+        color = "#16a34a" if stock.get("change", 0) >= 0 else "#dc2626"
+        stock_html = f'<span style="color:{color};font-weight:700">{stock["ticker"]} {price_str} {arrow} {abs(stock.get("change_pct", 0)):.1f}%</span>'
+    news_items = snap.get("news") or []
+    news_html = "".join(
+        f'<div style="padding:6px 0;border-bottom:1px solid #f0ece8;font-size:13px;color:#1a1714">'
+        f'<a href="{n.get("url","")}" style="color:#1a1714;text-decoration:none">{n.get("title","")}</a>'
+        f'<span style="color:#9d9490;font-size:11px;margin-left:6px">{n.get("source","")}</span></div>'
+        for n in news_items
+    )
+    snapshot_section = ""
+    if snap.get("description") or snap_pills or news_html:
+        snapshot_section = f"""
+  <div style="margin:0 32px 0;padding:18px 20px;background:#faf9f7;border-radius:12px;border:1px solid #e8e4df">
+    <div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#7a7168;margin-bottom:8px">Company at a Glance</div>
+    {f'<div style="font-size:12px;color:#7a7168;margin-bottom:6px">{snap_pills}</div>' if snap_pills else ''}
+    {f'<div style="font-size:12px;color:#7a7168;margin-bottom:8px">{stock_html}</div>' if stock_html else ''}
+    {f'<div style="font-size:14px;line-height:1.6;color:#1a1714;margin-bottom:12px">{snap.get("description","")}</div>' if snap.get("description") else ''}
+    {f'<div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#7a7168;margin-bottom:6px">Recent News</div>{news_html}' if news_html else ''}
+  </div>"""
 
     risks_items = "".join(
         f'<li style="margin-bottom:6px">{r}</li>'
@@ -5413,6 +5508,8 @@ def api_intel_email_report():
     <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.5px">{company}</div>
     <div style="display:inline-block;margin-top:10px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:{conf_color};color:#fff;text-transform:uppercase;letter-spacing:.3px">{conf} confidence</div>
   </div>
+
+  {snapshot_section}
 
   <!-- Headline -->
   <div style="margin:24px 32px 0;padding:18px 20px;background:#faf9f7;border-left:4px solid #d97706;border-radius:8px;font-size:17px;font-weight:700;line-height:1.45;color:#1a1714">
