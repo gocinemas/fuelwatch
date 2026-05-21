@@ -5505,9 +5505,11 @@ def api_intel_snapshot():
     })
 
 
-@app.route("/api/intel/research", methods=["POST"])
+@app.route("/api/intel/research", methods=["POST", "OPTIONS"])
 def api_intel_research():
     """Intel Research Agent — agentic multi-tool company research brief."""
+    if request.method == "OPTIONS":
+        return jsonify({})
     import concurrent.futures as _cf
     from intel_agent import run_research_agent
     data = request.get_json(silent=True) or {}
