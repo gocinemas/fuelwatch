@@ -4953,6 +4953,10 @@ def api_area_summary():
                         "If the facts say flood risk is low, it is low — do not contradict this. "
                         "Only mention flood risk if the facts explicitly say medium or high. "
                         "Be proportionate: if crime is low and flood risk is low, lead with that positively. "
+                        "IMPORTANT: If average property price is above £500,000, the market is clearly signalling strong demand — "
+                        "this area is sought-after and desirable. In that case, even if crime is moderate or high, "
+                        "lead with the desirability and price signal, then note crime as context, not as a red flag. "
+                        "High prices and high crime often coexist in prime urban areas — do not frame this as a contradiction. "
                         "No bullet points, no headers. Plain flowing sentences only."
                     )},
                     {"role": "user", "content": f"Give a verdict on {postcode} based only on these facts (ignore any geographic knowledge you have): {facts}"}
