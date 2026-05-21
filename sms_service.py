@@ -5410,7 +5410,7 @@ def api_readiness_email_report():
     <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:8px">Vikram Mekala — AI &amp; Transformation</div>
     <div style="font-size:13px;line-height:1.6;color:rgba(255,255,255,.7);margin-bottom:14px">I ran Day 0 operations for the Magnum Ice Cream separation from Unilever — 14 production systems, 100+ concurrent incidents, zero outages. If you want an honest read on your programme, let's talk.</div>
     <a href="https://mekalav.com" style="display:inline-block;padding:9px 18px;background:#f59e0b;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;margin-right:8px">mekalav.com →</a>
-    <a href="mailto:mekala@gmail.com" style="display:inline-block;padding:9px 18px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">Let's talk</a>
+    <a href="https://calendly.com/mekala/15min" style="display:inline-block;padding:9px 18px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">📅 Book 15 min</a>
   </div>
 </div></body></html>"""
 
@@ -5632,7 +5632,7 @@ def api_intel_email_report():
     <div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:8px">Vikram Mekala — AI &amp; Transformation</div>
     <div style="font-size:13px;line-height:1.6;color:rgba(255,255,255,.7);margin-bottom:14px">Intel shows what agentic AI looks like in production. If you're thinking about what agents could do for your business, let's talk.</div>
     <a href="https://mekalav.com" style="display:inline-block;padding:9px 18px;background:#f59e0b;color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;margin-right:8px">mekalav.com →</a>
-    <a href="mailto:mekala@gmail.com" style="display:inline-block;padding:9px 18px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">Let's talk</a>
+    <a href="https://calendly.com/mekala/15min" style="display:inline-block;padding:9px 18px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">📅 Book 15 min</a>
   </div>
 
 </div>
