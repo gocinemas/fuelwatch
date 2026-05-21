@@ -4808,8 +4808,10 @@ function _hcAdd() {
   let _commuteCache = null;
 
   function _commuteApiParams() {
-    const phone = typeof _miruPhone === "function" ? _miruPhone() : null;
-    return phone ? { phone } : { device_id: _maDeviceId() };
+    const p  = { device_id: _maDeviceId() };
+    const ph = typeof _miruPhone === "function" ? _miruPhone() : null;
+    if (ph) p.phone = ph;
+    return p;
   }
 
   async function _commuteLoad() {

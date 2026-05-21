@@ -1042,6 +1042,10 @@ def api_commute_save():
             "label":     label,
             "dest":      dest,
         }).execute().data[0]
+        # If phone now known, also claim any earlier device_id-only records
+        if phone and device_id:
+            lib._sb().table("user_commutes").update({"phone": phone}) \
+              .eq("device_id", device_id).is_("phone", "null").execute()
         return jsonify({"ok": True, "id": row["id"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1055,12 +1059,16 @@ def api_commute_list():
         return jsonify({"error": "device_id or phone required"}), 400
     try:
         sb = lib._sb()
-        q  = sb.table("user_commutes").select("id,label,dest,created_at").order("created_at")
         if phone:
-            q = q.eq("phone", phone)
+            # Claim any device_id-only records saved on this same device before phone was linked
+            if device_id:
+                sb.table("user_commutes").update({"phone": phone}) \
+                  .eq("device_id", device_id).is_("phone", "null").execute()
+            rows = sb.table("user_commutes").select("id,label,dest,created_at") \
+                     .eq("phone", phone).order("created_at").execute().data
         else:
-            q = q.eq("device_id", device_id)
-        rows = q.execute().data
+            rows = sb.table("user_commutes").select("id,label,dest,created_at") \
+                     .eq("device_id", device_id).order("created_at").execute().data
         return jsonify({"commutes": rows})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
