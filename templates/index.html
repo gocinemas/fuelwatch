@@ -13486,6 +13486,32 @@ _bkBadge();
         + '</div>';
     }
 
+    // Saves — recent clippings (places, articles, things saved via WhatsApp)
+    var saves = ctx && ctx.saves;
+    if (saves && saves.length) {
+      var savesRows = saves.slice(0, 5).map(function(s) {
+        var t = s.title || "";
+        var sm = s.summary || "";
+        var url = s.url || "";
+        var icon = s.category === "place" ? "📍" : "📌";
+        var row = '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+          + '<span style="font-size:15px;flex-shrink:0;margin-top:1px">' + icon + '</span>'
+          + '<div style="flex:1;min-width:0">'
+            + '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t + '</div>'
+            + (sm ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + sm + '</div>' : '')
+          + '</div>';
+        if (url && url.startsWith("http")) {
+          row += '<a href="' + url + '" target="_blank" rel="noopener" style="flex-shrink:0;font-size:11px;font-weight:700;color:var(--accent);background:#eef2ff;border-radius:99px;padding:3px 9px;white-space:nowrap;align-self:center">Open →</a>';
+        }
+        row += '</div>';
+        return row;
+      }).join("");
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">📌 Your saves</div>'
+        + savesRows
+        + '</div>';
+    }
+
     // Always clear and re-render, even if html is empty — prevents stale cards showing
     container.innerHTML = html
       + (html ? '<button onclick="_briefShowPrefs()" style="width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:11px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-top:4px">✏️ Update preferences</button>' : '');
@@ -13519,6 +13545,19 @@ _bkBadge();
     if (ctx.spend && ctx.spend.count > 0) {
       facts.push("£" + ctx.spend.total + " spent this month across " + ctx.spend.count + " receipts");
     }
+    // Pass kids' names from school profiles
+    var sRaw2 = ctx.school;
+    var sKids2 = (sRaw2 && sRaw2.schools) ? sRaw2.schools : [];
+    var kidsNames = sKids2.map(function(s){ return s.child_name || ""; }).filter(Boolean);
+
+    // Pass saves titles
+    var savesCtx = ctx.saves || [];
+    var savesTitles = savesCtx.slice(0, 4).map(function(s){ return s.title || ""; }).filter(Boolean);
+
+    // Weekend mode: Fri=5, Sat=6, Sun=0 in JS getDay()
+    var _day = new Date().getDay();
+    var isWeekend = (_day === 0 || _day === 5 || _day === 6);
+
     // Always regenerate when mode changes — even with no facts, generate a mode-appropriate line
     var dow = new Date().toLocaleDateString("en-GB", {weekday:"long"});
     var tod = (function(){ var h = new Date().getHours(); return h<12?"morning":h<17?"afternoon":"evening"; })();
@@ -13530,7 +13569,8 @@ _bkBadge();
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({mode: mode, facts: facts, token: token, pc: pc,
-                            dow: dow, tod: tod, mode_note: modeNote})
+                            dow: dow, tod: tod, mode_note: modeNote,
+                            kids: kidsNames, saves: savesTitles, is_weekend: isWeekend})
     }).then(function(r){ return r.json(); })
       .then(function(resp){
         if (resp.text) {

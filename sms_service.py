@@ -6067,6 +6067,34 @@ def _v2_fetch_spend(from_number: str) -> dict:
         return {}
 
 
+def _v2_fetch_saves(from_number: str) -> list:
+    """Recent non-receipt saves (places, articles, clips) for surfacing in the brief."""
+    from datetime import date, timedelta
+    try:
+        since = (date.today() - timedelta(days=30)).isoformat()
+        rows = lib._sb().table("wa_saves").select(
+            "title,summary,url,category,created_at"
+        ).eq("from_number", from_number) \
+         .not_.ilike("title", "🧾%") \
+         .not_.ilike("title", "Pending intent%") \
+         .neq("status", "pending_intent") \
+         .gte("created_at", since) \
+         .order("created_at", desc=True) \
+         .limit(8).execute().data or []
+        return [
+            {
+                "title":    r.get("title", "").strip(),
+                "summary":  (r.get("summary") or "").strip()[:120],
+                "url":      r.get("url", ""),
+                "category": r.get("category", ""),
+            }
+            for r in rows
+            if r.get("title", "").strip()
+        ]
+    except Exception:
+        return []
+
+
 def _v2_fetch_fuel(postcode: str) -> dict:
     """Cheapest fuel near postcode — reuses existing search logic."""
     try:
@@ -6298,7 +6326,7 @@ def api_home_brief():
     if fresh_trains:
         ctx["trains"] = fresh_trains
 
-    with _cf.ThreadPoolExecutor(max_workers=3) as pool:
+    with _cf.ThreadPoolExecutor(max_workers=4) as pool:
         futures = {}
         fuel_pc = prefs.get("fuel_postcode") or postcode
         if fuel_pc:
@@ -6306,56 +6334,79 @@ def api_home_brief():
         if from_number:
             futures["school"] = pool.submit(_v2_fetch_school, from_number)
             futures["spend"]  = pool.submit(_v2_fetch_spend, from_number)
+            futures["saves"]  = pool.submit(_v2_fetch_saves, from_number)
         for k, f in futures.items():
             try: ctx[k] = f.result(timeout=8)
             except Exception as ex: app.logger.warning(f"[brief] {k}: {ex}")
 
-    # Build Groq prompt
+    # Build Groq prompt — personalised with kids, saves, day context
     hour = now.hour
     tod  = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
     dow  = now.strftime("%A")
+    is_weekend_mode = now.weekday() >= 4  # Friday=4, Saturday=5, Sunday=6
+
+    # Kids from school profiles
+    school_data = ctx.get("school", {})
+    school_ev   = school_data.get("events", []) if isinstance(school_data, dict) else school_data
+    kids = [s.get("child_name", "") for s in school_data.get("schools", [])] if isinstance(school_data, dict) else []
+    kids = [k for k in kids if k]
+
+    # Saves (non-receipts)
+    saves_list   = ctx.get("saves", [])
+    saves_titles = [s.get("title", "") for s in saves_list[:4] if s.get("title")]
+
     facts = []
     trains = ctx.get("trains", {})
     if trains.get("departures"):
         deps = trains["departures"]
-        times = " · ".join(d.get("departs", d.get("time", "")) for d in deps[:3] if d.get("departs") or d.get("time"))
+        times = " · ".join(d.get("departs", d.get("time", "")) for d in deps[:2] if d.get("departs") or d.get("time"))
         if times:
-            facts.append(f"Next trains {trains['from']} → {trains['to']}: {times}")
+            facts.append(f"Next trains {trains.get('from','')} → {trains.get('to','')}: {times}")
     fuel = ctx.get("fuel", {})
     if fuel.get("price"):
         change = f" ({fuel['change']})" if fuel.get("change") else ""
-        facts.append(f"Fuel near {fuel_pc}: {fuel['name']} {fuel['price']}p{change}")
-    school_data = ctx.get("school", {})
-    school_ev = school_data.get("events", []) if isinstance(school_data, dict) else school_data
+        facts.append(f"Nearest fuel: {fuel['name']} {fuel['price']}p{change}")
     for ev in school_ev[:2]:
-        facts.append(f"School: {ev.get('child_name','')}'s {ev.get('event_title','')} on {ev.get('event_date','')}")
+        facts.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}")
     spend = ctx.get("spend", {})
     if spend.get("count", 0) > 0:
-        facts.append(f"Receipts this {spend['month']}: £{spend['total']} across {spend['count']} shops")
+        facts.append(f"£{spend['total']} spent this month across {spend['count']} receipts")
 
-    if facts:
-        prompt = (
-            f"Write a warm, natural 2-3 sentence home screen brief for a UK user on {dow} {tod}. "
-            f"Use these facts: {'; '.join(facts)}. "
-            "Be concise and conversational — no bullet points, no greetings, just the information flowing naturally. "
-            "Use British English. Keep it under 60 words."
+    # Build personal prompt
+    prompt_parts = [
+        f"Write a warm, natural 2-3 sentence home screen brief for a UK user on {dow} {tod}."
+    ]
+    if kids:
+        prompt_parts.append(f"Their children: {' and '.join(kids)}.")
+    if is_weekend_mode:
+        prompt_parts.append("It's nearly the weekend — lean into that.")
+    if saves_titles:
+        prompt_parts.append(
+            f"They've recently saved these items (places, articles, bookmarks): {'; '.join(saves_titles)}. "
+            "Weave in 1-2 if they're relevant to the day (weather, weekend, etc) — but only if natural."
         )
-        brief_text = ""
-        try:
-            r = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
-                         "Content-Type": "application/json"},
-                json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
-                      "messages": [{"role": "user", "content": prompt}]},
-                timeout=10,
-            )
-            brief_text = r.json()["choices"][0]["message"]["content"].strip()
-        except Exception as be:
-            app.logger.warning(f"[brief] groq: {be}")
-            brief_text = " ".join(facts[:2]) if facts else ""
-    else:
-        brief_text = ""
+    if facts:
+        prompt_parts.append(f"Key facts: {'; '.join(facts)}.")
+    prompt_parts.append(
+        "Sound like a smart personal assistant who genuinely knows this person. "
+        "No greetings, no bullet points, conversational British English. Under 60 words."
+    )
+    prompt = " ".join(prompt_parts)
+
+    brief_text = ""
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=10,
+        )
+        brief_text = r.json()["choices"][0]["message"]["content"].strip()
+    except Exception as be:
+        app.logger.warning(f"[brief] groq: {be}")
+        brief_text = " ".join(facts[:2]) if facts else ""
 
     result = {
         "brief":    brief_text,
@@ -6376,17 +6427,29 @@ def api_home_brief_narrative():
     body  = request.get_json(silent=True) or {}
     mode  = body.get("mode", "")
     facts = body.get("facts", [])
+    kids  = body.get("kids", [])
+    saves = body.get("saves", [])
+    is_weekend = body.get("is_weekend", False)
     from datetime import datetime as _dt
     now  = _dt.now()
     dow  = body.get("dow") or now.strftime("%A")
     tod  = body.get("tod") or ("morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening")
     mode_note = body.get("mode_note") or ("working from home" if mode == "wfh" else "going into the office" if mode == "office" else "at work")
     facts_text = "; ".join(str(f) for f in facts[:6]) if facts else "no specific updates today"
-    prompt = (
-        f"Write a warm, natural 1-2 sentence brief for a UK user on {dow} {tod} who is {mode_note}. "
-        f"Facts: {facts_text}. "
-        "Be concise and conversational, British English, under 40 words. No bullet points, no greetings."
+    prompt_parts = [
+        f"Write a warm, natural 1-2 sentence brief for a UK user on {dow} {tod} who is {mode_note}."
+    ]
+    if kids:
+        prompt_parts.append(f"Their children: {' and '.join(kids)}.")
+    if is_weekend and saves:
+        prompt_parts.append(f"Nearly the weekend. They've saved: {'; '.join(saves[:3])}. Mention one if natural.")
+    elif saves:
+        prompt_parts.append(f"They've recently saved: {'; '.join(saves[:3])}.")
+    prompt_parts.append(f"Facts: {facts_text}.")
+    prompt_parts.append(
+        "Sound like a smart PA who knows them. Concise, British English, under 40 words. No greetings, no bullet points."
     )
+    prompt = " ".join(prompt_parts)
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
