@@ -6263,10 +6263,9 @@ def api_home_brief():
     postcode = request.args.get("pc", "").strip().upper().replace(" ", "")
     from_number = _v2_resolve(token)
 
-    # Check 15-min cache
+    # Check cache — trains are always fetched fresh (real-time), rest cached 15 min
     cached = _v2_brief_cache.get(from_number or postcode)
-    if cached and time.time() - cached["ts"] < 900:
-        return jsonify(cached["data"])
+    cache_hit = cached and time.time() - cached["ts"] < 900
 
     # Load prefs
     prefs: dict = {}
@@ -6279,12 +6278,28 @@ def api_home_brief():
             pass
 
     now  = _dt.now()
-    ctx: dict = {}
 
-    with _cf.ThreadPoolExecutor(max_workers=4) as pool:
+    # Always fetch fresh trains — they change minute-to-minute
+    fresh_trains = {}
+    if prefs.get("train_from") and prefs.get("train_to"):
+        try:
+            fresh_trains = _v2_fetch_trains(prefs["train_from"], prefs["train_to"]) or {}
+        except Exception as ex:
+            app.logger.warning(f"[brief] trains fresh: {ex}")
+
+    if cache_hit:
+        result = dict(cached["data"])
+        ctx = dict(result.get("context", {}))
+        ctx["trains"] = fresh_trains
+        result["context"] = ctx
+        return jsonify(result)
+
+    ctx: dict = {}
+    if fresh_trains:
+        ctx["trains"] = fresh_trains
+
+    with _cf.ThreadPoolExecutor(max_workers=3) as pool:
         futures = {}
-        if prefs.get("train_from") and prefs.get("train_to"):
-            futures["trains"] = pool.submit(_v2_fetch_trains, prefs["train_from"], prefs["train_to"])
         fuel_pc = prefs.get("fuel_postcode") or postcode
         if fuel_pc:
             futures["fuel"] = pool.submit(_v2_fetch_fuel, fuel_pc)
