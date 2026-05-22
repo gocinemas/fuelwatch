@@ -13163,10 +13163,16 @@ _bkBadge();
     localStorage.setItem(_briefModeKey, mode);
     var ob = document.getElementById("brief-btn-office");
     var wb = document.getElementById("brief-btn-wfh");
-    var active = "border:2px solid #2563eb;background:#eff6ff;color:#1d4ed8";
-    var inactive = "border:2px solid var(--border);background:var(--surface);color:var(--muted)";
-    if (ob) ob.style.cssText = ob.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/, mode==="office" ? active : inactive);
-    if (wb) wb.style.cssText = wb.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/, mode==="wfh"    ? active : inactive);
+    if (ob) {
+      ob.style.border = mode === "office" ? "2px solid #2563eb" : "2px solid var(--border)";
+      ob.style.background = mode === "office" ? "#eff6ff" : "var(--surface)";
+      ob.style.color = mode === "office" ? "#1d4ed8" : "var(--muted)";
+    }
+    if (wb) {
+      wb.style.border = mode === "wfh" ? "2px solid #2563eb" : "2px solid var(--border)";
+      wb.style.background = mode === "wfh" ? "#eff6ff" : "var(--surface)";
+      wb.style.color = mode === "wfh" ? "#1d4ed8" : "var(--muted)";
+    }
     // Re-render brief context with new mode awareness
     if (_briefData && _briefData.context) {
       var ctxCards = document.getElementById("brief-context-cards");
