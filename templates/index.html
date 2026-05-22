@@ -13477,10 +13477,22 @@ _bkBadge();
     // Spend — always show
     var spend = ctx && ctx.spend;
     if (spend && spend.count > 0) {
+      var breakdownHtml = "";
+      var bd = spend.breakdown || {};
+      var bdKeys = Object.keys(bd).sort(function(a, b) { return bd[b].total - bd[a].total; });
+      if (bdKeys.length > 1) {
+        breakdownHtml = '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">'
+          + bdKeys.map(function(cat) {
+              return '<span style="font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 9px;color:var(--text)">'
+                + cat + ' <b>£' + bd[cat].total.toFixed(2) + '</b></span>';
+            }).join("")
+          + '</div>';
+      }
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
         + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">💳 Spend · ' + (spend.month || "") + '</div>'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
+        + breakdownHtml
         + '</div>';
     }
 

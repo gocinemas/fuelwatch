@@ -6045,24 +6045,111 @@ def _v2_fetch_school(from_number: str) -> dict:
         return {"schools": [], "events": []}
 
 
+def _receipt_category(merchant: str) -> str:
+    """Map a merchant name to a spend category based on UK merchant patterns."""
+    m = (merchant or "").lower().strip()
+    if not m:
+        return "Other"
+
+    # Parking — check first (e.g. "NCP Parking", "Q-Park", "RingGo")
+    if any(k in m for k in ["parking", "ncp", "q-park", "qpark", "apcoa", "saba park",
+                              "justpark", "ringgo", "ringo", "paybyphone", "mipermit",
+                              "car park", "parkingeye", "ukpc"]):
+        return "Parking"
+
+    # Groceries — supermarkets only (as specified)
+    if any(k in m for k in ["tesco", "sainsbury", "asda", "morrisons", "waitrose",
+                              "aldi", "lidl", "marks & spencer", "m&s food", "co-op", "coop",
+                              "co op", "booths", "iceland food", "budgens", "costco",
+                              "whole foods", "ocado", "spar"]):
+        return "Groceries"
+
+    # Coffee & Lunch (cafes, quick-service, bakeries)
+    if any(k in m for k in ["pret", "starbucks", "costa", "caffe nero", "nero",
+                              "greggs", "leon", "itsu", "wasabi", "coffee",
+                              "paul bakery", "boston tea", "eat."]):
+        return "Coffee & Lunch"
+
+    # Lunch & Dining (sit-down restaurants, pubs)
+    if any(k in m for k in ["kokorro", "nando", "wagamama", "pizza express", "pizzaexpress",
+                              "zizzi", "ask italian", "bella italia", "prezzo", "frankie",
+                              "harvester", "tgi", "gourmet burger", "byron", "five guys",
+                              "shake shack", "honest burger", "turtle bay", "bills", "bill's",
+                              "restaurant", "brasserie", "bistro", "tavern", "kitchen",
+                              "grill", "smokehouse", "pub ", " inn ", "the crown", "the swan",
+                              "the bull", "the fox", "the anchor", "the white"]):
+        return "Dining"
+
+    # Fast Food
+    if any(k in m for k in ["mcdonald", "kfc", "burger king", "subway", "papa john",
+                              "domino", "pizza hut", "kebab", "chippy", "fish & chip",
+                              "fish and chip"]):
+        return "Fast Food"
+
+    # Fuel / Petrol
+    if any(k in m for k in ["shell", "bp petrol", "esso", "texaco", "total petrol",
+                              "applegreen", "murco", "petrol", "fuel station", "service station"]):
+        return "Fuel"
+
+    # Transport
+    if any(k in m for k in ["trainline", "national rail", "gwr", "swr", "southern rail",
+                              "southeastern", "thameslink", "chiltern", "crosscountry",
+                              "tfl", "transport for london", "oyster", "uber", "lyft",
+                              "bolt ride", "national express", "megabus", "easyjet",
+                              "british airways", "ryanair", "ba.com", "heathrow express"]):
+        return "Transport"
+
+    # Shopping (non-grocery retail)
+    if any(k in m for k in ["amazon", "asos", "zara", "h&m", "next ", "john lewis",
+                              "primark", "tk maxx", "tkmaxx", "boots pharmacy", "superdrug",
+                              "argos", "currys", "jd sport", "sports direct", "waterstones"]):
+        return "Shopping"
+
+    # Subscriptions / Digital
+    if any(k in m for k in ["netflix", "spotify", "apple.com", "amazon prime", "disney",
+                              "youtube premium", "sky ", "now tv", "bt sport", "google one"]):
+        return "Subscriptions"
+
+    return "Other"
+
+
 def _v2_fetch_spend(from_number: str) -> dict:
-    """Sum receipt clippings this calendar month."""
+    """Sum receipt clippings this calendar month, broken down by category."""
     import re as _re
     from datetime import date
     try:
         month_start = date.today().replace(day=1).isoformat()
-        rows = lib._sb().table("wa_saves").select("summary,title") \
+        rows = lib._sb().table("wa_saves").select("summary,title,category") \
             .eq("from_number", from_number) \
             .gte("created_at", month_start) \
             .ilike("title", "🧾%") \
             .execute().data or []
         total = 0.0; count = 0
+        breakdown: dict = {}
         for r in rows:
             m = _re.search(r'£([\d,]+\.?\d*)', r.get("summary", "") + r.get("title", ""))
-            if m:
-                try: total += float(m.group(1).replace(",", "")); count += 1
-                except ValueError: pass
-        return {"total": round(total, 2), "count": count, "month": date.today().strftime("%B")}
+            if not m:
+                continue
+            try:
+                amt = float(m.group(1).replace(",", ""))
+            except ValueError:
+                continue
+            total += amt; count += 1
+            # Determine category — use stored value or derive from title
+            cat = r.get("category") or ""
+            if not cat:
+                merchant = (r.get("title") or "").replace("🧾", "").strip()
+                cat = _receipt_category(merchant)
+            if cat not in breakdown:
+                breakdown[cat] = {"total": 0.0, "count": 0}
+            breakdown[cat]["total"] = round(breakdown[cat]["total"] + amt, 2)
+            breakdown[cat]["count"] += 1
+        return {
+            "total":     round(total, 2),
+            "count":     count,
+            "month":     date.today().strftime("%B"),
+            "breakdown": breakdown,
+        }
     except Exception:
         return {}
 
@@ -10410,6 +10497,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 update_data = {"title": title, "summary": summary_with_meta}
                 if search_url:
                     update_data["url"] = search_url
+                if img_type == "receipt" and receipt_data.get("merchant"):
+                    update_data["category"] = _receipt_category(receipt_data["merchant"])
                 lib._sb().table("wa_saves").update(update_data).eq("id", sid).execute()
             except Exception:
                 pass
@@ -19331,6 +19420,33 @@ def api_bus_stops():
         if stops:  # don't cache empty — retry next time
             _sb_cache_set(cache_key, result)
         return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/recategorise-receipts", methods=["POST"])
+def api_admin_recategorise_receipts():
+    """Backfill category on all existing receipt saves using merchant name from title."""
+    key = request.headers.get("X-Admin-Key", "") or request.args.get("key", "")
+    if not key or key != os.environ.get("ADMIN_KEY", "miru-admin-2026"):
+        return jsonify({"error": "unauthorized"}), 401
+    try:
+        rows = lib._sb().table("wa_saves").select("id,title,category") \
+            .ilike("title", "🧾%").execute().data or []
+        updated = 0; skipped = 0
+        for row in rows:
+            if row.get("category"):
+                skipped += 1; continue
+            merchant = (row.get("title") or "").replace("🧾", "").strip()
+            if not merchant:
+                skipped += 1; continue
+            cat = _receipt_category(merchant)
+            try:
+                lib._sb().table("wa_saves").update({"category": cat}).eq("id", row["id"]).execute()
+                updated += 1
+            except Exception:
+                skipped += 1
+        return jsonify({"updated": updated, "skipped": skipped})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
