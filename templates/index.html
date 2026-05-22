@@ -1743,12 +1743,27 @@
       </div>
 
       <!-- Vertical pill tabs -->
-      <div id="aiw-tabs" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none">
+      <div id="aiw-tabs" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none">
+        <button onclick="_aiwTab('foundation')" id="aiw-tab-foundation" class="aiw-tab">🧠 Foundation</button>
+        <button onclick="_aiwTab('agents')"     id="aiw-tab-agents"     class="aiw-tab">🤖 Agents</button>
         <button onclick="_aiwTab('healthcare')" id="aiw-tab-healthcare" class="aiw-tab aiw-tab-active">🏥 Healthcare</button>
         <button onclick="_aiwTab('fintech')"    id="aiw-tab-fintech"    class="aiw-tab">💰 Fintech</button>
         <button onclick="_aiwTab('legal')"      id="aiw-tab-legal"      class="aiw-tab">⚖️ Legal</button>
         <button onclick="_aiwTab('climate')"    id="aiw-tab-climate"    class="aiw-tab">🌱 Climate</button>
         <button onclick="_aiwTab('edtech')"     id="aiw-tab-edtech"     class="aiw-tab">📚 EdTech</button>
+        <button onclick="_aiwTab('retail')"     id="aiw-tab-retail"     class="aiw-tab">🛒 Retail</button>
+        <button onclick="_aiwTab('hr')"         id="aiw-tab-hr"         class="aiw-tab">👥 HR</button>
+        <button onclick="_aiwTab('security')"   id="aiw-tab-security"   class="aiw-tab">🔐 Security</button>
+        <button onclick="_aiwTab('creative')"   id="aiw-tab-creative"   class="aiw-tab">🎨 Creative</button>
+      </div>
+
+      <!-- Country filter -->
+      <div id="aiw-countries" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none">
+        <button onclick="_aiwCountry('')"     id="aiw-cc-all" class="aiw-cc aiw-cc-active">🌍 All</button>
+        <button onclick="_aiwCountry('GB')"   id="aiw-cc-GB"  class="aiw-cc">🇬🇧 UK</button>
+        <button onclick="_aiwCountry('US')"   id="aiw-cc-US"  class="aiw-cc">🇺🇸 US</button>
+        <button onclick="_aiwCountry('EU')"   id="aiw-cc-EU"  class="aiw-cc">🇪🇺 Europe</button>
+        <button onclick="_aiwCountry('OTHER')" id="aiw-cc-OTHER" class="aiw-cc">🌐 Other</button>
       </div>
 
       <!-- Companies / News toggle -->
@@ -11297,6 +11312,8 @@ function _hcAdd() {
 .bk-src-btn.bk-src-on{background:#0ea5e9;color:#fff;border-color:#0ea5e9}
 .aiw-tab{flex-shrink:0;padding:7px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
 .aiw-tab-active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.aiw-cc{flex-shrink:0;padding:5px 12px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.aiw-cc-active{background:#4f46e5;color:#fff;border-color:#4f46e5}
 #aiw-tabs::-webkit-scrollbar{display:none}
 .aiw-expand{max-height:0;overflow:hidden;opacity:0;transition:max-height .45s cubic-bezier(.4,0,.2,1),opacity .3s ease .1s}
 .aiw-expand.aiw-open{max-height:600px;opacity:1}
@@ -13734,7 +13751,7 @@ _bkBadge();
   })();
 
   /* ── AI Watch ───────────────────────────────────────────────────────────── */
-  var _aiwV = "healthcare", _aiwViewMode = "companies";
+  var _aiwV = "healthcare", _aiwViewMode = "companies", _aiwCC = "";
   var _aiwCoCache = {}, _aiwNewsCache = {};
 
   function _aiwBookmarks() {
@@ -13814,10 +13831,20 @@ _bkBadge();
     }
   };
 
+  window._aiwCountry = function(cc) {
+    _aiwCC = cc;
+    document.querySelectorAll(".aiw-cc").forEach(function(b) { b.classList.remove("aiw-cc-active"); });
+    var btn = document.getElementById("aiw-cc-" + (cc || "all"));
+    if (btn) btn.classList.add("aiw-cc-active");
+    _aiwCoCache = {};  // bust cache so country filter reloads
+    _aiwLoadCo(_aiwV);
+  };
+
   function _aiwLoadCo(v) {
     var el = document.getElementById("aiw-cards");
     if (el) el.innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>';
-    fetch("/api/intel/verticals?v=" + v)
+    var url = "/api/intel/verticals?v=" + v + (_aiwCC ? "&country=" + _aiwCC : "");
+    fetch(url)
       .then(function(r) { return r.json(); })
       .then(function(d) { _aiwCoCache[v] = d.companies || []; _aiwRenderCo(_aiwCoCache[v]); })
       .catch(function() { var el = document.getElementById("aiw-cards"); if (el) el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Could not load</div>'; });
