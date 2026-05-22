@@ -6140,6 +6140,112 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
         return {}
 
 
+@app.route("/api/brief/location")
+def api_brief_location():
+    """Location-aware brief: weather + nearest fuel + nearest rail departures from lat/lng."""
+    import concurrent.futures as _cf2
+    try:
+        lat = float(request.args.get("lat", ""))
+        lng = float(request.args.get("lng", ""))
+    except (TypeError, ValueError):
+        return jsonify({"error": "lat/lng required"}), 400
+
+    def _weather():
+        try:
+            r = requests.get(
+                f"https://api.open-meteo.com/v1/forecast"
+                f"?latitude={lat}&longitude={lng}"
+                f"&current=temperature_2m,weathercode,windspeed_10m,precipitation"
+                f"&timezone=Europe/London",
+                timeout=4,
+            )
+            c = r.json()["current"]
+            code = c["weathercode"]
+            rain = c.get("precipitation", 0) > 0
+            return {
+                "temp":  round(c["temperature_2m"]),
+                "desc":  WEATHER_CODES.get(code, ""),
+                "wind":  round(c["windspeed_10m"]),
+                "code":  code,
+                "rain":  rain,
+            }
+        except Exception:
+            return {}
+
+    def _fuel():
+        try:
+            stations = get_stations()
+            if not stations:
+                return {}
+            best = min(stations, key=lambda s: haversine_km(lat, lng, s["lat"], s["lon"]))
+            dist = haversine_km(lat, lng, best["lat"], best["lon"])
+            if dist > 3:
+                return {}
+            return {
+                "name":     best.get("brand") or best.get("name", ""),
+                "address":  best.get("address", ""),
+                "price_e5": best.get("E5") or best.get("price"),
+                "price_e10":best.get("E10"),
+                "dist_km":  round(dist, 1),
+            }
+        except Exception:
+            return {}
+
+    def _trains():
+        try:
+            scored = sorted(
+                [(haversine_km(lat, lng, s["lat"], s["lon"]), s)
+                 for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
+                key=lambda x: x[0],
+            )
+            if not scored:
+                return {}
+            dist, stn = scored[0]
+            if dist > 5:
+                return {}
+            crs = stn["crs"]
+            access = _get_rtt_token()
+            r = requests.get(
+                "https://data.rtt.io/rtt/location",
+                headers={"Authorization": f"Bearer {access}"},
+                params={"code": f"gb-nr:{crs}"},
+                timeout=8,
+            )
+            if r.status_code != 200:
+                return {"station": stn["name"], "crs": crs, "dist_km": round(dist, 1), "departures": []}
+            svcs = (r.json().get("services") or [])[:4]
+            def _fmt(dt):
+                s = str(dt).strip()
+                if len(s) >= 16: return s[11:16]
+                if len(s) == 4 and s.isdigit(): return s[:2]+":"+s[2:]
+                return s[:5] if len(s) >= 5 else s
+            deps = []
+            for s in svcs:
+                td  = s.get("temporalData", {})
+                dep = td.get("departure", {})
+                dest = ((s.get("destination") or [{}])[0].get("location") or {}).get("description", "")
+                sched = _fmt(dep.get("scheduleAdvertised") or dep.get("scheduled") or "")
+                real_raw = dep.get("realtimeForecast") or dep.get("forecast") or ""
+                real  = _fmt(real_raw)
+                cancelled = dep.get("isCancelled", False) or dep.get("cancelled", False)
+                status = "Cancelled" if cancelled else ("On time" if (not real or real == sched) else f"Exp {real}")
+                if sched and dest:
+                    deps.append({"time": sched, "destination": dest, "status": status})
+            return {"station": stn["name"], "crs": crs, "dist_km": round(dist, 1), "departures": deps}
+        except Exception:
+            return {}
+
+    with _cf2.ThreadPoolExecutor(max_workers=3) as pool:
+        wf = pool.submit(_weather)
+        ff = pool.submit(_fuel)
+        tf = pool.submit(_trains)
+        weather = wf.result(timeout=6) or {}
+        fuel    = ff.result(timeout=6) or {}
+        trains  = tf.result(timeout=12) or {}
+
+    return jsonify({"weather": weather, "fuel": fuel, "trains": trains})
+
+
 _v2_brief_cache: dict = {}   # from_number -> {ts, brief}
 
 @app.route("/api/home/brief")

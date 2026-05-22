@@ -1,5 +1,18 @@
 # Miru / fuelwatch
 
+## V2 — Agentic Architecture (started May 2026)
+**Shift:** from ask-and-receive tiles → context-aware surface that knows what matters *now*
+
+**Core concept:** Context Engine → Brief Card on home (replaces static greeting for returning users)
+
+**V2 building blocks:**
+- `/api/home/brief` — parallel-fetches trains + fuel + school events + spend → Groq writes 2-3 line narrative
+- `/api/v2/prefs` GET/POST — user preference store (usual train route, fuel postcode, commute mode)
+- Prefs stored in `ma_details` as `type="v2_prefs"` — single JSON blob per user
+- Home brief card — shimmer while loading, narrative text replaces greeting, "Personalise" CTA
+- WhatsApp morning push (Phase 2) — proactive brief at 7:30am for opted-in users
+- Pattern learning (Phase 3) — detect repeated queries → offer to make default
+
 **Deployed:** miru.humanagency.co (Railway, auto-deploys on `git push main`)
 **Repo:** github.com/gocinemas/fuelwatch
 

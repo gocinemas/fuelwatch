@@ -1774,9 +1774,21 @@
     <!-- ── V2 MORNING BRIEF SCREEN ── -->
     <div id="screen-brief" class="screen pt-5">
       <!-- Header -->
-      <div style="margin-bottom:18px">
+      <div style="margin-bottom:14px">
         <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Your Brief</div>
         <div id="brief-dateline" style="font-size:13px;color:var(--muted);margin-top:3px"></div>
+      </div>
+
+      <!-- WFH / Office toggle (weekdays only) -->
+      <div id="brief-mode-row" style="display:none;gap:8px;margin-bottom:14px">
+        <button id="brief-btn-office" onclick="_briefSetMode('office')"
+          style="flex:1;padding:11px;border-radius:14px;border:2px solid var(--border);background:var(--surface);font-size:14px;font-weight:800;cursor:pointer;color:var(--muted);transition:all .15s">
+          🏢 In office
+        </button>
+        <button id="brief-btn-wfh" onclick="_briefSetMode('wfh')"
+          style="flex:1;padding:11px;border-radius:14px;border:2px solid var(--border);background:var(--surface);font-size:14px;font-weight:800;cursor:pointer;color:var(--muted);transition:all .15s">
+          🏠 WFH
+        </button>
       </div>
 
       <!-- Narrative card — shimmer while loading -->
@@ -1822,6 +1834,17 @@
 
       <!-- Detailed context cards -->
       <div id="brief-context-cards" style="display:none;flex-direction:column;gap:10px"></div>
+
+      <!-- Location-aware section -->
+      <div id="brief-location-section" style="display:none;margin-top:18px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">📍 Near you right now</div>
+        <div id="brief-location-shimmer" style="display:flex;flex-direction:column;gap:10px">
+          <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
+          <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
+        </div>
+        <div id="brief-location-cards" style="display:none;flex-direction:column;gap:10px"></div>
+        <div id="brief-location-err" style="display:none;font-size:13px;color:var(--muted);padding:12px 0"></div>
+      </div>
     </div><!-- /screen-brief -->
 
     <!-- ── ELECTIONS SCREEN ── -->
@@ -13130,12 +13153,130 @@ _bkBadge();
   /* ── V2 Morning Brief ───────────────────────────────────────────────────── */
   var _briefData = null;
 
+  // ── WFH / Office mode ────────────────────────────────────────────────────
+  var _briefData = null;
+  var _briefModeKey = "brief_mode_" + new Date().toISOString().slice(0,10);
+  var _briefCurrentMode = localStorage.getItem(_briefModeKey) || "";
+
+  window._briefSetMode = function(mode) {
+    _briefCurrentMode = mode;
+    localStorage.setItem(_briefModeKey, mode);
+    var ob = document.getElementById("brief-btn-office");
+    var wb = document.getElementById("brief-btn-wfh");
+    var active = "border:2px solid #2563eb;background:#eff6ff;color:#1d4ed8";
+    var inactive = "border:2px solid var(--border);background:var(--surface);color:var(--muted)";
+    if (ob) ob.style.cssText = ob.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/, mode==="office" ? active : inactive);
+    if (wb) wb.style.cssText = wb.style.cssText.replace(/border:[^;]+;background:[^;]+;color:[^;]+/, mode==="wfh"    ? active : inactive);
+    // Re-render brief context with new mode awareness
+    if (_briefData && _briefData.context) {
+      var ctxCards = document.getElementById("brief-context-cards");
+      _briefRenderContextCards(_briefData.context, ctxCards);
+    }
+  };
+
+  function _briefInitModeToggle() {
+    var now = new Date();
+    var dow = now.getDay(); // 0=Sun, 6=Sat
+    var row = document.getElementById("brief-mode-row");
+    if (!row) return;
+    if (dow === 0 || dow === 6) return; // hide on weekends
+    row.style.display = "flex";
+    if (_briefCurrentMode) _briefSetMode(_briefCurrentMode);
+  }
+
+  // ── Location context ──────────────────────────────────────────────────────
+  function _briefRequestLocation() {
+    var sec = document.getElementById("brief-location-section");
+    if (!sec) return;
+    if (!navigator.geolocation) return;
+    sec.style.display = "block";
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        fetch("/api/brief/location?lat=" + lat + "&lng=" + lng)
+          .then(function(r) { return r.json(); })
+          .then(function(d) { _briefRenderLocation(d); })
+          .catch(function() {
+            var err = document.getElementById("brief-location-err");
+            if (err) { err.textContent = "Couldn't load local info."; err.style.display = "block"; }
+            var sh = document.getElementById("brief-location-shimmer");
+            if (sh) sh.style.display = "none";
+          });
+      },
+      function() {
+        // Permission denied or unavailable — hide section
+        if (sec) sec.style.display = "none";
+      },
+      { timeout: 8000, maximumAge: 300000 }
+    );
+  }
+
+  function _briefRenderLocation(d) {
+    var sh = document.getElementById("brief-location-shimmer");
+    var cards = document.getElementById("brief-location-cards");
+    if (sh) sh.style.display = "none";
+    if (!cards) return;
+    var html = "";
+
+    var w = d.weather || {};
+    if (w.temp !== undefined) {
+      var rain = w.rain ? " · 🌧️ Rain" : "";
+      var emoji = w.code <= 1 ? "☀️" : w.code <= 3 ? "⛅" : w.code <= 67 ? "🌧️" : w.code <= 77 ? "❄️" : "🌩️";
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:14px">'
+        + '<div style="font-size:32px;line-height:1">' + emoji + '</div>'
+        + '<div>'
+        +   '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">' + w.temp + '°C</div>'
+        +   '<div style="font-size:12px;color:var(--muted);margin-top:2px">' + (w.desc || "") + rain + ' · Wind ' + (w.wind || 0) + ' km/h</div>'
+        + '</div>'
+        + '</div>';
+    }
+
+    var f = d.fuel || {};
+    if (f.name) {
+      var price = f.price_e5 ? f.price_e5 + "p" : (f.price_e10 ? f.price_e10 + "p E10" : "");
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⛽ Nearest fuel · ' + f.dist_km + 'km</div>'
+        + '<div style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-0.5px;line-height:1">' + (price || "—") + '</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + f.name + (f.address ? ' · ' + f.address : '') + '</div>'
+        + '</div>';
+    }
+
+    var t = d.trains || {};
+    if (t.station) {
+      var deps = (t.departures || []).slice(0, 3).map(function(dep) {
+        var onTime = dep.status === "On time";
+        var col = onTime ? "#16a34a" : "#d97706";
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">'
+          + '<div>'
+          +   '<span style="font-size:14px;font-weight:800;color:var(--text)">' + dep.time + '</span>'
+          +   '<span style="font-size:12px;color:var(--muted);margin-left:8px">' + dep.destination + '</span>'
+          + '</div>'
+          + '<span style="font-size:11px;font-weight:700;color:' + col + '">' + dep.status + '</span>'
+          + '</div>';
+      }).join("");
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🚆 ' + t.station + ' · ' + t.dist_km + 'km</div>'
+        + (deps || '<div style="font-size:13px;color:var(--muted);padding:6px 0">No departures right now</div>')
+        + '</div>';
+    }
+
+    if (html) {
+      cards.innerHTML = html;
+      cards.style.display = "flex";
+    } else {
+      var sec = document.getElementById("brief-location-section");
+      if (sec) sec.style.display = "none";
+    }
+  }
+
   function _briefInit() {
     var now = new Date();
     var days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
     var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     var dl = document.getElementById("brief-dateline");
     if (dl) dl.textContent = days[now.getDay()] + ", " + now.getDate() + " " + months[now.getMonth()];
+
+    _briefInitModeToggle();
 
     // Reset to shimmer state
     var shimmer = document.getElementById("brief-shimmer");
@@ -13166,6 +13307,7 @@ _bkBadge();
         if (!d.has_prefs) {
           if (briefText) { briefText.textContent = "Set up your brief below to get a personalised daily update."; briefText.style.display = "block"; }
           if (setupCta)  setupCta.style.display = "block";
+          _briefRequestLocation();
           return;
         }
 
@@ -13180,10 +13322,14 @@ _bkBadge();
 
         // Context cards
         _briefRenderContextCards(d.context, ctxCards);
+
+        // Location section (runs in parallel — doesn't block brief)
+        _briefRequestLocation();
       })
       .catch(function() {
         if (shimmer) shimmer.style.display = "none";
         if (briefText) { briefText.textContent = "Couldn't load your brief — check your connection."; briefText.style.display = "block"; }
+        _briefRequestLocation();
       });
   }
 
