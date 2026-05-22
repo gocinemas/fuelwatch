@@ -13407,10 +13407,30 @@ _bkBadge();
     if (!container) return;
     var wfh = (mode || _briefCurrentMode) === "wfh";
     var html = "";
+    var _hour = new Date().getHours();
+    var _isEvening = _hour >= 17 && _hour < 21;
+    var _isMorning = _hour >= 5  && _hour < 10;
 
-    // Trains — WFH = going to work (home→office), office mode = going home (office→home)
+    // ── Weather card (always first in evening, after trains in morning) ──────
+    var weather = ctx && ctx.weather;
+    var weatherHtml = "";
+    if (weather && weather.temp !== undefined) {
+      var wIcon = weather.sunny ? "☀️" : weather.outdoor_ok ? "🌤️" : "🌧️";
+      var wMood = weather.sunny && weather.warm ? "Good evening for outdoors"
+                : weather.outdoor_ok            ? "Passable for a walk"
+                : "One for staying in";
+      weatherHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">' + wIcon + ' Weather</div>'
+        + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">' + weather.temp + '°C</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + weather.desc + (weather.wind ? ' · ' + weather.wind + ' km/h wind' : '') + '</div>'
+        + (_isEvening ? '<div style="font-size:11px;font-weight:600;color:var(--accent);margin-top:5px">' + wMood + '</div>' : '')
+        + '</div>';
+      if (_isEvening) html += weatherHtml;  // weather leads in evening
+    }
+
+    // ── Trains — only show during commute window (5–17h) ─────────────────────
     var trains = wfh ? (ctx && ctx.trains) : (ctx && ctx.trains_home || ctx && ctx.trains);
-    if (trains && trains.departures && trains.departures.length) {
+    if (!_isEvening && trains && trains.departures && trains.departures.length) {
       // Filter out past departures (safety net in case data is slightly stale)
       var _nowMins = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
       var futureDeps = trains.departures.filter(function(d) {
@@ -13433,6 +13453,9 @@ _bkBadge();
       } // end futureDeps.length > 0
     }
 
+    // Weather in non-evening slots (after trains)
+    if (!_isEvening && weatherHtml) html += weatherHtml;
+
     // School — show profiles + upcoming + recent comms
     var schoolRaw      = ctx && ctx.school;
     var schoolRoutes   = (schoolRaw && schoolRaw.schools)  ? schoolRaw.schools  : [];
@@ -13442,18 +13465,16 @@ _bkBadge();
     if (schoolRoutes.length || schoolUpcoming.length || schoolRecent.length) {
       var schoolHtml = "";
 
-      // One row per child — school name + Maps button
+      // One row per child — in morning show Drive button, in evening kids are home
       schoolRoutes.forEach(function(s) {
         var dest    = encodeURIComponent((s.school_name || "") + " " + (s.address || ""));
         var mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + dest + "&travelmode=driving";
         schoolHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
           + '<div>'
             + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (s.child_name || "") + '</div>'
-            + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (s.school_name || "") + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (s.school_name || "") + (_isEvening ? ' · home' : '') + '</div>'
           + '</div>'
-          + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" '
-            + 'style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:99px;padding:5px 12px;text-decoration:none;flex-shrink:0;white-space:nowrap">'
-            + '🗺️ Drive →</a>'
+          + (!_isEvening ? '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:99px;padding:5px 12px;text-decoration:none;flex-shrink:0;white-space:nowrap">🗺️ Drive →</a>' : '')
         + '</div>';
       });
 

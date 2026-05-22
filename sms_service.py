@@ -6316,6 +6316,39 @@ def _v2_fetch_fuel(postcode: str) -> dict:
         return {}
 
 
+def _v2_fetch_weather(postcode: str) -> dict:
+    """Current weather for postcode — structured for time-aware Groq prompt."""
+    try:
+        ll = postcode_to_latlon(postcode)
+        if not ll:
+            return {}
+        lat, lon = ll
+        r = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat, "longitude": lon,
+                "current": "temperature_2m,weathercode,windspeed_10m",
+                "timezone": "Europe/London",
+            },
+            timeout=5,
+        )
+        c = r.json()["current"]
+        temp = round(c["temperature_2m"])
+        code = c["weathercode"]
+        wind = round(c["windspeed_10m"])
+        desc = WEATHER_CODES.get(code, "")
+        sunny     = code <= 1               # clear sky / mainly clear
+        outdoor_ok = code <= 3 and temp >= 11  # not raining, not freezing
+        warm      = temp >= 16
+        return {
+            "temp": temp, "desc": desc, "wind": wind,
+            "sunny": sunny, "outdoor_ok": outdoor_ok, "warm": warm,
+            "summary": f"{temp}°C, {desc}",
+        }
+    except Exception:
+        return {}
+
+
 def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
     """Next 3 departures on the saved route using RTT calling_at filter."""
     def _crs_for(name: str) -> str:
@@ -6543,11 +6576,12 @@ def api_home_brief():
     if fresh_trains_home:
         ctx["trains_home"] = fresh_trains_home
 
-    with _cf.ThreadPoolExecutor(max_workers=4) as pool:
+    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
         futures = {}
         fuel_pc = prefs.get("fuel_postcode") or postcode
         if fuel_pc:
-            futures["fuel"] = pool.submit(_v2_fetch_fuel, fuel_pc)
+            futures["fuel"]    = pool.submit(_v2_fetch_fuel, fuel_pc)
+            futures["weather"] = pool.submit(_v2_fetch_weather, fuel_pc)
         if from_number:
             futures["school"] = pool.submit(_v2_fetch_school, from_number)
             futures["spend"]  = pool.submit(_v2_fetch_spend, from_number)
@@ -6558,9 +6592,24 @@ def api_home_brief():
 
     # Build Groq prompt — personalised with kids, saves, day context
     hour = now.hour
-    tod  = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
     dow  = now.strftime("%A")
-    is_weekend_mode = now.weekday() >= 4  # Friday=4, Saturday=5, Sunday=6
+    wday = now.weekday()  # Mon=0 … Sun=6
+
+    # Time-of-day mode
+    if 5 <= hour < 10:
+        time_mode = "morning_commute"
+    elif 10 <= hour < 17:
+        time_mode = "daytime"
+    elif 17 <= hour < 21:
+        time_mode = "evening_leisure"
+    else:
+        time_mode = "night"
+
+    # Day type
+    if wday == 4:    day_type = "thursday_pre_weekend"
+    elif wday == 5:  day_type = "friday"
+    elif wday >= 5:  day_type = "weekend"
+    else:            day_type = "midweek"
 
     # Kids + school comms
     school_data = ctx.get("school", {})
@@ -6569,62 +6618,94 @@ def api_home_brief():
     kids = [s.get("child_name", "") for s in school_data.get("schools", [])] if isinstance(school_data, dict) else []
     kids = [k for k in kids if k]
 
-    # Saves (non-receipts) — with category context
+    # Weather
+    weather = ctx.get("weather", {})
+
+    # Saves — split by type for time-aware ordering
     saves_list = ctx.get("saves", [])
-    saves_context = []
-    for s in saves_list[:5]:
-        t = (s.get("title") or "").strip()
+    place_saves   = [s for s in saves_list if s.get("source") == "receipt" or s.get("category") in
+                     ("Dining", "Coffee & Lunch", "Groceries", "place")]
+    content_saves = [s for s in saves_list if s not in place_saves]
+
+    def _save_label(s):
+        t   = (s.get("title") or "").strip()
         cat = (s.get("category") or "").strip()
-        if t:
-            saves_context.append(f"{t} ({cat})" if cat else t)
+        return f"{t} ({cat})" if cat else t
+
+    # In evening mode surface place/dining saves first; else content first
+    if time_mode == "evening_leisure":
+        saves_for_prompt = place_saves[:3] + content_saves[:2]
+    else:
+        saves_for_prompt = content_saves[:3] + place_saves[:2]
+    saves_context = [_save_label(s) for s in saves_for_prompt if s.get("title")]
 
     # Spend breakdown
     spend = ctx.get("spend", {})
     spend_breakdown = spend.get("breakdown", {})
 
     facts = []
-    trains = ctx.get("trains", {})
-    if trains.get("departures"):
-        deps = trains["departures"]
-        times = " · ".join(d.get("departs", d.get("time", "")) for d in deps[:2] if d.get("departs") or d.get("time"))
-        if times:
-            facts.append(f"Next trains {trains.get('from','')} → {trains.get('to','')}: {times}")
+    # Trains only relevant in commute window
+    if time_mode == "morning_commute":
+        trains = ctx.get("trains", {})
+        if trains.get("departures"):
+            deps = trains["departures"]
+            times = " · ".join(d.get("departs", d.get("time", "")) for d in deps[:2] if d.get("departs") or d.get("time"))
+            if times:
+                facts.append(f"Next trains {trains.get('from','')} → {trains.get('to','')}: {times}")
     fuel = ctx.get("fuel", {})
-    if fuel.get("price"):
+    if fuel.get("price") and time_mode in ("morning_commute", "daytime"):
         change = f" ({fuel['change']})" if fuel.get("change") else ""
         facts.append(f"Nearest fuel: {fuel['name']} {fuel['price']}p{change}")
     for ev in school_upcoming[:2]:
         facts.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}")
     for ev in school_recent[:1]:
-        facts.append(f"Recent school comms: {ev.get('child_name','')} — {ev.get('event_title','')}")
-    if spend.get("count", 0) > 0:
-        if spend_breakdown:
-            bd_str = " · ".join(
-                f"{cat} £{v['total']:.2f}"
-                for cat, v in sorted(spend_breakdown.items(), key=lambda x: -x[1]["total"])
-            )
-            facts.append(f"£{spend['total']} spent this month — {bd_str}")
-        else:
-            facts.append(f"£{spend['total']} spent this month across {spend['count']} receipts")
-
-    # Build personal prompt
-    prompt_parts = [
-        f"Write a warm, natural 2-3 sentence home screen brief for a UK user on {dow} {tod}."
-    ]
-    if kids:
-        prompt_parts.append(f"Their children: {' and '.join(kids)}.")
-    if is_weekend_mode:
-        prompt_parts.append("It's nearly the weekend — lean into that.")
-    if saves_context:
-        prompt_parts.append(
-            f"They've recently saved these items: {'; '.join(saves_context)}. "
-            "Weave in 1-2 if relevant to the day or weekend — but only if natural."
+        facts.append(f"Recent school note: {ev.get('child_name','')} — {ev.get('event_title','')}")
+    if spend.get("count", 0) > 0 and spend_breakdown:
+        bd_str = " · ".join(
+            f"{cat} £{v['total']:.2f}"
+            for cat, v in sorted(spend_breakdown.items(), key=lambda x: -x[1]["total"])
         )
+        facts.append(f"£{spend['total']} this month — {bd_str}")
+
+    # Build time-aware Groq prompt
+    prompt_parts = []
+
+    if time_mode == "morning_commute":
+        prompt_parts.append(f"Write a sharp, practical 2-sentence morning brief for a UK commuter. It's {dow} morning.")
+    elif time_mode == "evening_leisure":
+        outdoor_note = ""
+        if weather:
+            if weather.get("sunny") and weather.get("warm"):
+                outdoor_note = f"It's {weather['temp']}°C and sunny — a great evening to be outside."
+            elif weather.get("outdoor_ok"):
+                outdoor_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — decent enough to be out."
+            else:
+                outdoor_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — more of a cosy-in evening."
+        prompt_parts.append(
+            f"Write a warm, relaxed 2-sentence evening brief. It's {dow} evening, {hour}:{now.minute:02d}. "
+            + (outdoor_note + " " if outdoor_note else "")
+            + ("It's a Thursday — pre-weekend energy. " if day_type == "thursday_pre_weekend" else
+               "It's Friday — weekend starts now. " if day_type == "friday" else
+               "It's the weekend. " if day_type == "weekend" else "")
+        )
+    else:
+        prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} {('afternoon' if hour >= 12 else 'morning')}.")
+
+    if kids:
+        prompt_parts.append(f"Their kids: {' and '.join(kids)} — school day done.")
+    if saves_context:
+        if time_mode == "evening_leisure":
+            prompt_parts.append(
+                f"They've recently been to / saved: {'; '.join(saves_context)}. "
+                "Subtly weave in one if it fits the evening — a place they like, something to do. Don't force it."
+            )
+        else:
+            prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
     if facts:
-        prompt_parts.append(f"Key facts: {'; '.join(facts)}.")
+        prompt_parts.append(f"Facts: {'; '.join(facts)}.")
     prompt_parts.append(
-        "Sound like a smart personal assistant who genuinely knows this person. "
-        "No greetings, no bullet points, conversational British English. Under 60 words."
+        "Subtle, personal, British English. Sound like you know them. "
+        "No greetings, no bullet points, no 'Great news'. Under 55 words."
     )
     prompt = " ".join(prompt_parts)
 
