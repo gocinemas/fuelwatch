@@ -6438,9 +6438,18 @@ def api_home_brief():
     kids = [s.get("child_name", "") for s in school_data.get("schools", [])] if isinstance(school_data, dict) else []
     kids = [k for k in kids if k]
 
-    # Saves (non-receipts)
-    saves_list   = ctx.get("saves", [])
-    saves_titles = [s.get("title", "") for s in saves_list[:4] if s.get("title")]
+    # Saves (non-receipts) — with category context
+    saves_list = ctx.get("saves", [])
+    saves_context = []
+    for s in saves_list[:5]:
+        t = (s.get("title") or "").strip()
+        cat = (s.get("category") or "").strip()
+        if t:
+            saves_context.append(f"{t} ({cat})" if cat else t)
+
+    # Spend breakdown
+    spend = ctx.get("spend", {})
+    spend_breakdown = spend.get("breakdown", {})
 
     facts = []
     trains = ctx.get("trains", {})
@@ -6455,9 +6464,15 @@ def api_home_brief():
         facts.append(f"Nearest fuel: {fuel['name']} {fuel['price']}p{change}")
     for ev in school_ev[:2]:
         facts.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}")
-    spend = ctx.get("spend", {})
     if spend.get("count", 0) > 0:
-        facts.append(f"£{spend['total']} spent this month across {spend['count']} receipts")
+        if spend_breakdown:
+            bd_str = " · ".join(
+                f"{cat} £{v['total']:.2f}"
+                for cat, v in sorted(spend_breakdown.items(), key=lambda x: -x[1]["total"])
+            )
+            facts.append(f"£{spend['total']} spent this month — {bd_str}")
+        else:
+            facts.append(f"£{spend['total']} spent this month across {spend['count']} receipts")
 
     # Build personal prompt
     prompt_parts = [
@@ -6467,10 +6482,10 @@ def api_home_brief():
         prompt_parts.append(f"Their children: {' and '.join(kids)}.")
     if is_weekend_mode:
         prompt_parts.append("It's nearly the weekend — lean into that.")
-    if saves_titles:
+    if saves_context:
         prompt_parts.append(
-            f"They've recently saved these items (places, articles, bookmarks): {'; '.join(saves_titles)}. "
-            "Weave in 1-2 if they're relevant to the day (weather, weekend, etc) — but only if natural."
+            f"They've recently saved these items: {'; '.join(saves_context)}. "
+            "Weave in 1-2 if relevant to the day or weekend — but only if natural."
         )
     if facts:
         prompt_parts.append(f"Key facts: {'; '.join(facts)}.")
@@ -6515,23 +6530,48 @@ def api_home_brief_narrative():
     mode  = body.get("mode", "")
     facts = body.get("facts", [])
     kids  = body.get("kids", [])
-    saves = body.get("saves", [])
-    is_weekend = body.get("is_weekend", False)
+    saves_raw   = body.get("saves", [])   # list of {title, category} dicts OR plain strings
+    spend       = body.get("spend", {})   # full spend object with breakdown
+    is_weekend  = body.get("is_weekend", False)
     from datetime import datetime as _dt
     now  = _dt.now()
     dow  = body.get("dow") or now.strftime("%A")
     tod  = body.get("tod") or ("morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening")
     mode_note = body.get("mode_note") or ("working from home" if mode == "wfh" else "going into the office" if mode == "office" else "at work")
+
+    # Normalise saves to "Title (Category)" strings
+    saves_ctx = []
+    for s in saves_raw[:4]:
+        if isinstance(s, dict):
+            t   = (s.get("title") or "").strip()
+            cat = (s.get("category") or "").strip()
+            if t:
+                saves_ctx.append(f"{t} ({cat})" if cat else t)
+        elif s:
+            saves_ctx.append(str(s))
+
+    # Enrich facts with spend breakdown if available
+    bd = spend.get("breakdown", {})
+    spend_total = spend.get("total")
+    if spend_total and bd:
+        bd_str = " · ".join(
+            f"{cat} £{v['total']:.2f}"
+            for cat, v in sorted(bd.items(), key=lambda x: -x[1]["total"])
+        )
+        facts = [f for f in facts if not str(f).startswith("£")]  # drop plain spend fact
+        facts.append(f"£{spend_total} this month — {bd_str}")
+
     facts_text = "; ".join(str(f) for f in facts[:6]) if facts else "no specific updates today"
     prompt_parts = [
         f"Write a warm, natural 1-2 sentence brief for a UK user on {dow} {tod} who is {mode_note}."
     ]
     if kids:
         prompt_parts.append(f"Their children: {' and '.join(kids)}.")
-    if is_weekend and saves:
-        prompt_parts.append(f"Nearly the weekend. They've saved: {'; '.join(saves[:3])}. Mention one if natural.")
-    elif saves:
-        prompt_parts.append(f"They've recently saved: {'; '.join(saves[:3])}.")
+    if saves_ctx:
+        if is_weekend:
+            prompt_parts.append(f"Nearly the weekend. They've saved: {'; '.join(saves_ctx)}. Mention one if natural.")
+        else:
+            prompt_parts.append(f"They've recently saved: {'; '.join(saves_ctx)}.")
     prompt_parts.append(f"Facts: {facts_text}.")
     prompt_parts.append(
         "Sound like a smart PA who knows them. Concise, British English, under 40 words. No greetings, no bullet points."

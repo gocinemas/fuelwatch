@@ -13552,17 +13552,19 @@ _bkBadge();
     if (ctx.fuel && ctx.fuel.price) {
       facts.push("Fuel near you: " + ctx.fuel.name + " at " + ctx.fuel.price + "p");
     }
-    if (ctx.spend && ctx.spend.count > 0) {
-      facts.push("£" + ctx.spend.total + " spent this month across " + ctx.spend.count + " receipts");
-    }
     // Pass kids' names from school profiles
     var sRaw2 = ctx.school;
     var sKids2 = (sRaw2 && sRaw2.schools) ? sRaw2.schools : [];
     var kidsNames = sKids2.map(function(s){ return s.child_name || ""; }).filter(Boolean);
 
-    // Pass saves titles
+    // Pass saves as {title, category} objects for richer Groq context
     var savesCtx = ctx.saves || [];
-    var savesTitles = savesCtx.slice(0, 4).map(function(s){ return s.title || ""; }).filter(Boolean);
+    var savesObjs = savesCtx.slice(0, 4).map(function(s){
+      return {title: s.title || "", category: s.category || ""};
+    }).filter(function(s){ return s.title; });
+
+    // Pass full spend object (includes breakdown by category)
+    var spendCtx = ctx.spend || {};
 
     // Weekend mode: Fri=5, Sat=6, Sun=0 in JS getDay()
     var _day = new Date().getDay();
@@ -13580,7 +13582,8 @@ _bkBadge();
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({mode: mode, facts: facts, token: token, pc: pc,
                             dow: dow, tod: tod, mode_note: modeNote,
-                            kids: kidsNames, saves: savesTitles, is_weekend: isWeekend})
+                            kids: kidsNames, saves: savesObjs, spend: spendCtx,
+                            is_weekend: isWeekend})
     }).then(function(r){ return r.json(); })
       .then(function(resp){
         if (resp.text) {
