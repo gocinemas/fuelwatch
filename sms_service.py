@@ -6027,7 +6027,7 @@ def _v2_fetch_school(from_number: str) -> list:
         today     = date.today().isoformat()
         horizon   = (date.today() + timedelta(days=7)).isoformat()
         profiles  = lib._sb().table("school_profiles").select("id") \
-                        .eq("wa_number", from_number).execute().data or []
+                        .eq("from_number", from_number).execute().data or []
         if not profiles:
             return []
         pids = [p["id"] for p in profiles]
