@@ -6442,15 +6442,79 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
         return {}
 
 
+_VENUE_SHOP_MAP = {
+    "supermarket": ("Supermarket", "Groceries"),
+    "convenience": ("Convenience store", "Groceries"),
+    "greengrocer": ("Greengrocer", "Groceries"),
+    "bakery":      ("Bakery", "Dining"),
+    "butcher":     ("Butcher", "Groceries"),
+    "deli":        ("Deli", "Dining"),
+    "cafe":        ("Café", "Coffee & Lunch"),
+    "coffee":      ("Café", "Coffee & Lunch"),
+    "restaurant":  ("Restaurant", "Dining"),
+    "fast_food":   ("Fast food", "Dining"),
+    "food_court":  ("Food court", "Dining"),
+    "pub":         ("Pub", "Dining"),
+    "bar":         ("Bar", "Dining"),
+    "pharmacy":    ("Pharmacy", ""),
+    "gym":         ("Gym", ""),
+    "fitness_centre": ("Gym", ""),
+    "sports_centre":  ("Gym", ""),
+    "clothes":     ("Fashion", ""),
+    "fashion":     ("Fashion", ""),
+    "department_store": ("Department store", ""),
+    "electronics": ("Electronics", ""),
+    "hardware":    ("Hardware", ""),
+    "hairdresser": ("Hairdresser", ""),
+    "cinema":      ("Cinema", ""),
+    "theatre":     ("Theatre", ""),
+    "museum":      ("Museum", ""),
+    "library":     ("Library", ""),
+    "bank":        ("Bank", ""),
+    "atm":         ("ATM", ""),
+}
+
+def _venue_from_latlon(lat: float, lng: float) -> dict:
+    """Identify the named place at these coords using Overpass OSM."""
+    try:
+        query = (
+            f"[out:json][timeout:6];"
+            f"("
+            f"node(around:80,{lat},{lng})[name][shop];"
+            f"node(around:80,{lat},{lng})[name][amenity];"
+            f"way(around:80,{lat},{lng})[name][shop];"
+            f"way(around:80,{lat},{lng})[name][amenity];"
+            f");"
+            f"out center 3;"
+        )
+        r = requests.post("https://overpass-api.de/api/interpreter",
+                          data={"data": query}, timeout=7)
+        elements = r.json().get("elements", [])
+        if not elements:
+            return {}
+        el = elements[0]
+        tags = el.get("tags", {})
+        name = tags.get("name", "").strip()
+        if not name:
+            return {}
+        raw_type = (tags.get("shop") or tags.get("amenity") or "").lower()
+        category, spend_cat = _VENUE_SHOP_MAP.get(raw_type, (raw_type.replace("_", " ").title(), ""))
+        return {"name": name, "type": raw_type, "category": category, "spend_cat": spend_cat}
+    except Exception:
+        return {}
+
 @app.route("/api/brief/location")
 def api_brief_location():
-    """Location-aware brief: weather + nearest fuel + nearest rail departures from lat/lng."""
+    """Location-aware brief: venue recognition + weather + nearest fuel + rail departures."""
     import concurrent.futures as _cf2
     try:
         lat = float(request.args.get("lat", ""))
         lng = float(request.args.get("lng", ""))
     except (TypeError, ValueError):
         return jsonify({"error": "lat/lng required"}), 400
+
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token) if token else ""
 
     def _weather():
         try:
@@ -6537,15 +6601,47 @@ def api_brief_location():
         except Exception:
             return {}
 
-    with _cf2.ThreadPoolExecutor(max_workers=3) as pool:
+    with _cf2.ThreadPoolExecutor(max_workers=4) as pool:
         wf = pool.submit(_weather)
         ff = pool.submit(_fuel)
         tf = pool.submit(_trains)
+        vf = pool.submit(_venue_from_latlon, lat, lng)
         weather = wf.result(timeout=6) or {}
         fuel    = ff.result(timeout=6) or {}
         trains  = tf.result(timeout=12) or {}
+        venue   = vf.result(timeout=9) or {}
 
-    return jsonify({"weather": weather, "fuel": fuel, "trains": trains})
+    # If we know the venue and the user is logged in, add spend + saves context
+    if venue and from_number:
+        spend_cat = venue.get("spend_cat", "")
+        try:
+            from datetime import date
+            since = date.today().replace(day=1).isoformat()
+            sb = lib._sb()
+            # Spend in this category this month
+            if spend_cat:
+                rows = sb.table("wa_saves").select("title,amount") \
+                    .eq("from_number", from_number).eq("category", spend_cat) \
+                    .gte("created_at", since).execute().data or []
+                amounts = [float(r.get("amount") or 0) for r in rows if r.get("amount")]
+                if amounts:
+                    venue["spend_this_month"] = round(sum(amounts), 2)
+                    venue["spend_count"] = len(amounts)
+
+            # Any saves matching this place name or category
+            place_rows = sb.table("wa_saves").select("title,summary,url") \
+                .eq("from_number", from_number) \
+                .ilike("title", f"%{venue['name'].split()[0]}%") \
+                .limit(3).execute().data or []
+            if not place_rows and spend_cat:
+                place_rows = sb.table("wa_saves").select("title,summary,url") \
+                    .eq("from_number", from_number).eq("category", spend_cat) \
+                    .order("created_at", desc=True).limit(3).execute().data or []
+            venue["saves"] = [{"title": r.get("title", ""), "url": r.get("url", "")} for r in place_rows]
+        except Exception:
+            pass
+
+    return jsonify({"weather": weather, "fuel": fuel, "trains": trains, "venue": venue})
 
 
 _v2_brief_cache: dict = {}   # from_number -> {ts, brief}
@@ -10962,73 +11058,154 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
     return "📷 Got it — reading your photo now…"
 
 
+_SPEND_CATEGORY_MAP = {
+    # Grocery keywords → Groceries
+    "grocery": "Groceries", "groceries": "Groceries", "supermarket": "Groceries",
+    "food shop": "Groceries", "food shopping": "Groceries",
+    # Coffee keywords
+    "coffee": "Coffee & Lunch", "cafe": "Coffee & Lunch", "café": "Coffee & Lunch",
+    "lunch": "Coffee & Lunch", "costa": "Coffee & Lunch", "starbucks": "Coffee & Lunch",
+    # Dining keywords
+    "dining": "Dining", "dinner": "Dining", "restaurant": "Dining",
+    "eating out": "Dining", "takeaway": "Dining", "pub": "Dining",
+    "eating": "Dining",
+    # Shopping keywords
+    "shopping": "Shopping", "clothes": "Shopping", "clothing": "Shopping",
+    # Transport
+    "transport": "Transport", "travel": "Transport", "train": "Transport",
+    "tube": "Transport", "uber": "Transport",
+    # Fuel
+    "petrol": "Fuel", "fuel": "Fuel", "diesel": "Fuel",
+}
+
+_SPEND_MERCHANT_MAP = {
+    "tesco": "Tesco", "waitrose": "Waitrose", "sainsbury": "Sainsbury's",
+    "sainsburys": "Sainsbury's", "asda": "Asda", "aldi": "Aldi", "lidl": "Lidl",
+    "marks": "M&S", "m&s": "M&S", "morrisons": "Morrisons", "co-op": "Co-op",
+    "coop": "Co-op", "costco": "Costco", "boots": "Boots", "amazon": "Amazon",
+    "argos": "Argos", "ikea": "IKEA", "kokorro": "Kokorro", "pret": "Pret",
+    "nero": "Caffè Nero", "starbucks": "Starbucks", "costa": "Costa",
+}
+
+def _is_spend_query(text: str) -> bool:
+    """Detect natural-language spending queries regardless of word order."""
+    t = text.lower()
+    _SPEND_WORDS = {"spend", "spent", "spending", "total", "much", "cost", "paid",
+                    "receipt", "receipts", "expense", "expenses", "expenditure", "outgoing"}
+    _CATEGORY_WORDS = set(_SPEND_CATEGORY_MAP.keys())
+    _STORE_WORDS = set(_SPEND_MERCHANT_MAP.keys())
+    _TIME_WORDS = {"today", "yesterday", "week", "month", "year", "this", "last"}
+
+    words = set(t.split())
+    has_spend  = bool(words & _SPEND_WORDS)
+    has_cat    = bool(words & _CATEGORY_WORDS) or any(k in t for k in _CATEGORY_WORDS if " " in k)
+    has_store  = bool(words & _STORE_WORDS)
+    has_time   = bool(words & _TIME_WORDS)
+
+    if has_spend: return True                         # "my spend", "total spent"
+    if has_cat and has_time: return True              # "grocery this month", "coffee this week"
+    if has_cat and has_store: return True             # "tesco grocery"
+    if has_store and has_time: return True            # "tesco this month"
+    if "how much" in t: return True                  # "how much at waitrose"
+    if "what did i" in t and any(w in t for w in ("buy", "pay", "spend")): return True
+    return False
+
 def _wa_spending_query(from_number: str, body: str) -> str:
-    """Answer spending questions from scanned receipts."""
-    import datetime as _dt, re as _re, json as _json
-    phone = from_number.replace("whatsapp:", "").strip()
-    body_lower = body.lower()
+    """Answer natural-language spending questions from scanned receipts in wa_saves."""
+    import datetime as _dt, re as _re
+    t = body.lower()
 
-    # Determine time window
+    # Time window
     today = _dt.date.today()
-    if "today" in body_lower:
-        date_from = today.isoformat()
-        period = "today"
-    elif "yesterday" in body_lower:
-        date_from = (today - _dt.timedelta(days=1)).isoformat()
-        period = "yesterday"
-    elif "week" in body_lower:
-        date_from = (today - _dt.timedelta(days=7)).isoformat()
-        period = "this week"
-    elif "year" in body_lower:
-        date_from = today.replace(month=1, day=1).isoformat()
-        period = "this year"
+    if "today" in t:
+        date_from, period = today.isoformat(), "today"
+    elif "yesterday" in t:
+        date_from, period = (today - _dt.timedelta(days=1)).isoformat(), "yesterday"
+    elif "week" in t or "7 day" in t:
+        date_from, period = (today - _dt.timedelta(days=7)).isoformat(), "this week"
+    elif "year" in t:
+        date_from, period = today.replace(month=1, day=1).isoformat(), "this year"
     else:
-        # Default: this month
-        date_from = today.replace(day=1).isoformat()
-        period = "this month"
+        date_from, period = today.replace(day=1).isoformat(), "this month"
 
-    # Detect specific merchant filter
+    # Category intent
+    category_filter = None
+    for kw, cat in _SPEND_CATEGORY_MAP.items():
+        if kw in t:
+            category_filter = cat
+            break
+
+    # Merchant intent
     merchant_filter = None
-    for store in ["tesco", "sainsbury", "waitrose", "asda", "aldi", "lidl", "marks", "m&s",
-                  "morrisons", "co-op", "coop", "costco", "boots", "amazon", "argos"]:
-        if store in body_lower:
-            merchant_filter = store
+    merchant_label  = None
+    for kw, label in _SPEND_MERCHANT_MAP.items():
+        if kw in t:
+            merchant_filter = kw
+            merchant_label  = label
             break
 
     try:
-        sb = lib._sb()
-        query = sb.table("receipts").select("merchant,total,shop_date,items,created_at").eq("phone", phone)
-        if date_from:
-            query = query.gte("created_at", date_from + "T00:00:00")
-        rows = query.execute().data or []
+        sb   = lib._sb()
+        rows = sb.table("wa_saves").select("title,summary,category,created_at") \
+            .eq("from_number", from_number) \
+            .ilike("title", "🧾%") \
+            .gte("created_at", date_from + "T00:00:00") \
+            .order("created_at", desc=True) \
+            .execute().data or []
     except Exception as e:
-        print(f"[spending] DB error: {e}")
-        return "⚠️ Couldn't fetch your receipts — try again in a moment."
+        return "⚠️ Couldn't fetch your receipts right now — try again in a moment."
 
     if not rows:
-        return f"📭 No receipts scanned {period}. Send me a photo of a receipt and I'll track it for you!"
+        return (f"📭 No receipts scanned {period}.\n"
+                f"Send me a photo of a receipt and I'll track your spending!")
 
-    # Filter by merchant if requested
+    # Apply filters
     if merchant_filter:
-        rows = [r for r in rows if merchant_filter in (r.get("merchant") or "").lower()]
-        if not rows:
-            return f"📭 No {merchant_filter.title()} receipts found {period}."
+        rows = [r for r in rows if merchant_filter in (r.get("title") or "").lower()]
+    if category_filter:
+        rows = [r for r in rows if (r.get("category") or "") == category_filter
+                or _receipt_category((r.get("title") or "").replace("🧾","").strip()) == category_filter]
 
-    # Aggregate
-    total_spent = sum(r.get("total") or 0 for r in rows if r.get("total"))
-    merchants = {}
+    if not rows:
+        label = merchant_label or category_filter or "matching"
+        return f"📭 No {label} receipts found {period}."
+
+    # Extract amounts from summary text
+    total  = 0.0
+    stores: dict = {}
     for r in rows:
-        m = (r.get("merchant") or "Unknown").strip()
-        merchants[m] = merchants.get(m, 0) + (r.get("total") or 0)
+        m = _re.search(r'£([\d,]+\.?\d*)', (r.get("summary") or "") + " " + (r.get("title") or ""))
+        amt = 0.0
+        if m:
+            try: amt = float(m.group(1).replace(",", ""))
+            except ValueError: pass
+        merchant = (r.get("title") or "Receipt").replace("🧾", "").strip() or "Receipt"
+        stores[merchant] = stores.get(merchant, 0.0) + amt
+        total += amt
 
     # Build reply
-    if merchant_filter:
-        reply = f"🛒 *{merchant_filter.title()}* spend {period}: *£{total_spent:.2f}*\n({len(rows)} receipt{'s' if len(rows)!=1 else ''})"
+    has_amounts = total > 0
+    if merchant_label:
+        spend_str = f"£{total:.2f}" if has_amounts else f"{len(rows)} receipt{'s' if len(rows)!=1 else ''}"
+        reply = f"🛒 *{merchant_label}* {period}: *{spend_str}*"
+        if has_amounts and len(stores) > 1:
+            reply += "\n" + "\n".join(f"• {s}: £{v:.2f}" for s, v in sorted(stores.items(), key=lambda x: -x[1])[:4])
+    elif category_filter:
+        spend_str = f"£{total:.2f}" if has_amounts else f"{len(rows)} receipt{'s' if len(rows)!=1 else ''}"
+        reply = f"{'🛒' if category_filter=='Groceries' else '☕' if 'Coffee' in category_filter else '🍽️'} *{category_filter}* {period}: *{spend_str}*"
+        if has_amounts:
+            top = sorted(stores.items(), key=lambda x: -x[1])[:4]
+            reply += "\n" + "\n".join(f"• {s}: £{v:.2f}" for s, v in top if v > 0)
     else:
-        reply = f"💰 *Total spent {period}: £{total_spent:.2f}*\n"
-        reply += f"🧾 {len(rows)} receipt{'s' if len(rows)!=1 else ''} scanned\n\n"
-        by_store = sorted(merchants.items(), key=lambda x: x[1], reverse=True)
-        reply += "\n".join(f"• {m}: £{v:.2f}" for m, v in by_store[:6])
+        spend_str = f"£{total:.2f}" if has_amounts else f"{len(rows)} receipts"
+        reply = f"💰 *Total {period}: {spend_str}*\n🧾 {len(rows)} receipt{'s' if len(rows)!=1 else ''} scanned"
+        if has_amounts:
+            top = sorted(stores.items(), key=lambda x: -x[1])[:6]
+            reply += "\n\n" + "\n".join(f"• {s}: £{v:.2f}" for s, v in top if v > 0)
+        elif stores:
+            top = list(stores.keys())[:6]
+            reply += "\n\n" + "\n".join(f"• {s}" for s in top)
+
     return reply
 
 
@@ -13000,12 +13177,8 @@ def whatsapp_reply():
                 resp.message("✅ Rating saved!")
             return str(resp)
 
-    # ── NEW command: clear menu session so next photo starts a fresh save ───────
-    # ── SPENDING / RECEIPTS query ─────────────────────────────────────────────
-    _SPEND_TRIGGERS = ("spent", "spending", "spend", "receipts", "my receipts",
-                       "how much did i", "how much have i", "grocery spend",
-                       "tesco spend", "waitrose spend", "sainsbury")
-    if any(body_lower.startswith(t) or t in body_lower for t in _SPEND_TRIGGERS):
+    # ── SPENDING / RECEIPTS query — natural language intent detection ─────────
+    if _is_spend_query(body_lower):
         resp.message(_wa_spending_query(from_number, body_lower))
         return str(resp)
 
