@@ -6761,8 +6761,8 @@ def api_home_brief():
         cat = (s.get("category") or "").strip()
         return f"{t} ({cat})" if cat else t
 
-    # In evening mode surface place/dining saves first; else content first
-    if time_mode == "evening_leisure":
+    # In evening/night surface food + entertainment saves first; daytime = content first
+    if time_mode in ("evening_leisure", "night"):
         saves_for_prompt = place_saves[:3] + content_saves[:2]
     else:
         saves_for_prompt = content_saves[:3] + place_saves[:2]
@@ -6789,7 +6789,8 @@ def api_home_brief():
         facts.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}")
     for ev in school_recent[:1]:
         facts.append(f"Recent school note: {ev.get('child_name','')} — {ev.get('event_title','')}")
-    if spend.get("count", 0) > 0 and spend_breakdown:
+    # Spend only relevant during the day
+    if time_mode not in ("evening_leisure", "night") and spend.get("count", 0) > 0 and spend_breakdown:
         bd_str = " · ".join(
             f"{cat} £{v['total']:.2f}"
             for cat, v in sorted(spend_breakdown.items(), key=lambda x: -x[1]["total"])
@@ -6805,23 +6806,53 @@ def api_home_brief():
         outdoor_note = ""
         if weather:
             if weather.get("sunny") and weather.get("warm"):
-                outdoor_note = f"It's {weather['temp']}°C and sunny — a great evening to be outside."
+                outdoor_note = f"It's {weather['temp']}°C and sunny — still good to be outside."
             elif weather.get("outdoor_ok"):
                 outdoor_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — decent enough to be out."
             else:
-                outdoor_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — more of a cosy-in evening."
+                outdoor_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — cosy-in evening."
         prompt_parts.append(
-            f"Write a warm, relaxed 2-sentence evening brief. It's {dow} evening, {hour}:{now.minute:02d}. "
+            f"Write a warm, relaxed 2-sentence early-evening brief. It's {dow} evening, {hour}:{now.minute:02d}. "
             + (outdoor_note + " " if outdoor_note else "")
             + ("It's a Thursday — pre-weekend energy. " if day_type == "thursday_pre_weekend" else
                "It's Friday — weekend starts now. " if day_type == "friday" else
                "It's the weekend. " if day_type == "weekend" else "")
         )
+    elif time_mode == "night":
+        weather_note = ""
+        if weather:
+            weather_note = f"It's {weather['temp']}°C outside. "
+        day_note = (
+            "It's a Friday night — weekend is here. "   if day_type == "friday" else
+            "It's Saturday night. "                      if day_type == "weekend" else
+            "It's a Thursday night. "                    if day_type == "thursday_pre_weekend" else
+            f"It's {dow} night. "
+        )
+        prompt_parts.append(
+            f"Write a chilled, late-night 2-sentence brief. {day_note}{weather_note}"
+            "Think: late food, what to watch, winding down. No work, no commute, no spend. "
+            "Subtle, personal, British. Mention something from their saves if it fits the night vibe. "
+        )
     else:
-        prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} {('afternoon' if hour >= 12 else 'morning')}.")
+        prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon.")
 
     if kids:
-        prompt_parts.append(f"Their kids: {' and '.join(kids)} — school day done.")
+        if time_mode == "night":
+            # Surface weekend events for kids at night
+            from datetime import timedelta
+            weekend_evs = [ev for ev in school_upcoming
+                           if ev.get("event_date") and
+                           (date.fromisoformat(ev["event_date"]) - date.today()).days <= 3]
+            if weekend_evs:
+                ev_str = "; ".join(
+                    f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}"
+                    for ev in weekend_evs[:2]
+                )
+                prompt_parts.append(f"Kids this weekend: {ev_str}.")
+            else:
+                prompt_parts.append(f"Kids: {' and '.join(kids)}.")
+        else:
+            prompt_parts.append(f"Their kids: {' and '.join(kids)} — school day done.")
     if saves_context:
         if time_mode == "evening_leisure":
             prompt_parts.append(

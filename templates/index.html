@@ -13465,9 +13465,15 @@ _bkBadge();
     if (!container) return;
     var wfh = (mode || _briefCurrentMode) === "wfh";
     var html = "";
-    var _hour = new Date().getHours();
-    var _isEvening = _hour >= 17 && _hour < 21;
-    var _isMorning = _hour >= 5  && _hour < 10;
+    var _hour    = new Date().getHours();
+    var _dow     = new Date().getDay(); // 0=Sun, 6=Sat
+    var _isEvening   = _hour >= 17 && _hour < 21;
+    var _isNight     = _hour >= 21 || _hour < 5;  // 9pm+
+    var _isOffHours  = _hour >= 17 || _hour < 5;  // evening + night (no work/commute context)
+    var _isMorning   = _hour >= 5  && _hour < 10;
+    var _isFriday    = _dow === 5;
+    var _isWeekend   = _dow === 0 || _dow === 6;
+    var _isPreWeekend = _isFriday && _isNight; // Friday night — weekend planning mode
 
     // ── Weather card (always first in evening, after trains in morning) ──────
     var weather = ctx && ctx.weather;
@@ -13483,12 +13489,12 @@ _bkBadge();
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + weather.desc + (weather.wind ? ' · ' + weather.wind + ' km/h wind' : '') + '</div>'
         + (_isEvening ? '<div style="font-size:11px;font-weight:600;color:var(--accent);margin-top:5px">' + wMood + '</div>' : '')
         + '</div>';
-      if (_isEvening) html += weatherHtml;  // weather leads in evening
+      if (_isOffHours) html += weatherHtml;  // weather leads in evening/night
     }
 
     // ── Trains — only show during commute window (5–17h) ─────────────────────
     var trains = wfh ? (ctx && ctx.trains) : (ctx && ctx.trains_home || ctx && ctx.trains);
-    if (!_isEvening && trains && trains.departures && trains.departures.length) {
+    if (!_isOffHours && trains && trains.departures && trains.departures.length) {
       // Filter out past departures (safety net in case data is slightly stale)
       var _nowMins = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
       var futureDeps = trains.departures.filter(function(d) {
@@ -13512,7 +13518,7 @@ _bkBadge();
     }
 
     // Weather in non-evening slots (after trains)
-    if (!_isEvening && weatherHtml) html += weatherHtml;
+    if (!_isOffHours && weatherHtml) html += weatherHtml;
 
     // School — show profiles + upcoming + recent comms
     var schoolRaw      = ctx && ctx.school;
@@ -13523,57 +13529,84 @@ _bkBadge();
     if (schoolRoutes.length || schoolUpcoming.length || schoolRecent.length) {
       var schoolHtml = "";
 
-      // One row per child — in morning show Drive button, in evening kids are home
-      schoolRoutes.forEach(function(s) {
-        var dest    = encodeURIComponent((s.school_name || "") + " " + (s.address || ""));
-        var mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + dest + "&travelmode=driving";
-        schoolHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
-          + '<div>'
-            + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (s.child_name || "") + '</div>'
-            + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (s.school_name || "") + (_isEvening ? ' · home' : '') + '</div>'
-          + '</div>'
-          + (!_isEvening ? '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:99px;padding:5px 12px;text-decoration:none;flex-shrink:0;white-space:nowrap">🗺️ Drive →</a>' : '')
-        + '</div>';
-      });
-
-      // Upcoming events — next 7 days
-      if (schoolUpcoming.length) {
-        schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 4px">📅 Coming up</div>';
-        schoolUpcoming.slice(0, 4).forEach(function(ev) {
-          var d = (ev.event_date || "").slice(5); // MM-DD
-          schoolHtml += '<div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
-            + '<div style="flex:1;min-width:0">'
-              + '<span style="font-weight:600">' + (ev.child_name || "") + '</span>'
-              + '<span style="color:var(--muted)"> · ' + (ev.event_title || "") + '</span>'
-            + '</div>'
-            + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">' + d + '</span>'
+      if (_isOffHours) {
+        // Evening/night: skip drive rows — show weekend events + recent comms only
+        // Filter upcoming to this weekend (next 3 days) for pre-weekend context
+        var weekendEvs = schoolUpcoming.filter(function(ev) {
+          var d = new Date(ev.event_date || "");
+          var diff = Math.round((d - new Date()) / 86400000);
+          return diff >= 0 && diff <= 3;
+        });
+        var allUpcoming = weekendEvs.length ? weekendEvs : schoolUpcoming.slice(0, 3);
+        if (allUpcoming.length) {
+          var secLabel = (_isPreWeekend || _isWeekend) ? "📅 This weekend" : "📅 Coming up";
+          schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">' + secLabel + '</div>';
+          allUpcoming.forEach(function(ev) {
+            var d = (ev.event_date || "").slice(5);
+            schoolHtml += '<div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+              + '<div style="flex:1;min-width:0"><span style="font-weight:600">' + (ev.child_name || "") + '</span>'
+              + '<span style="color:var(--muted)"> · ' + (ev.event_title || "") + '</span></div>'
+              + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">' + d + '</span>'
+              + '</div>';
+          });
+        }
+        if (schoolRecent.length) {
+          schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 4px">📨 Latest from school</div>';
+          schoolRecent.slice(0, 2).forEach(function(ev) {
+            var d = (ev.event_date || "").slice(5);
+            schoolHtml += '<div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+              + '<div style="flex:1;min-width:0"><span style="font-weight:600">' + (ev.child_name || "") + '</span>'
+              + '<span style="color:var(--muted)"> · ' + (ev.event_title || "") + '</span></div>'
+              + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">' + d + '</span>'
+              + '</div>';
+          });
+        }
+      } else {
+        // Daytime/morning: show route rows with Drive button
+        schoolRoutes.forEach(function(s) {
+          var dest    = encodeURIComponent((s.school_name || "") + " " + (s.address || ""));
+          var mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + dest + "&travelmode=driving";
+          schoolHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
+            + '<div><div style="font-size:13px;font-weight:700;color:var(--text)">' + (s.child_name || "") + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (s.school_name || "") + '</div></div>'
+            + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:99px;padding:5px 12px;text-decoration:none;flex-shrink:0;white-space:nowrap">🗺️ Drive →</a>'
           + '</div>';
         });
+        if (schoolUpcoming.length) {
+          schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 4px">📅 Coming up</div>';
+          schoolUpcoming.slice(0, 4).forEach(function(ev) {
+            var d = (ev.event_date || "").slice(5);
+            schoolHtml += '<div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+              + '<div style="flex:1;min-width:0"><span style="font-weight:600">' + (ev.child_name || "") + '</span>'
+              + '<span style="color:var(--muted)"> · ' + (ev.event_title || "") + '</span></div>'
+              + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">' + d + '</span>'
+              + '</div>';
+          });
+        }
+        if (schoolRecent.length) {
+          schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 4px">📨 Recent comms</div>';
+          schoolRecent.slice(0, 3).forEach(function(ev) {
+            var d = (ev.event_date || "").slice(5);
+            schoolHtml += '<div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+              + '<div style="flex:1;min-width:0"><span style="font-weight:600">' + (ev.child_name || "") + '</span>'
+              + '<span style="color:var(--muted)"> · ' + (ev.event_title || "") + '</span></div>'
+              + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">' + d + '</span>'
+              + '</div>';
+          });
+        }
       }
 
-      // Recent school comms — past 14 days
-      if (schoolRecent.length) {
-        schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 4px">📨 Recent comms</div>';
-        schoolRecent.slice(0, 3).forEach(function(ev) {
-          var d = (ev.event_date || "").slice(5);
-          schoolHtml += '<div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
-            + '<div style="flex:1;min-width:0">'
-              + '<span style="font-weight:600">' + (ev.child_name || "") + '</span>'
-              + '<span style="color:var(--muted)"> · ' + (ev.event_title || "") + '</span>'
-            + '</div>'
-            + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">' + d + '</span>'
-          + '</div>';
-        });
+      if (schoolHtml) {
+        var schoolLabel = (_isOffHours && (_isPreWeekend || _isWeekend)) ? "👨‍👧 Kids this weekend" : "🏫 School";
+        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">' + schoolLabel + '</div>'
+          + schoolHtml + '</div>';
       }
-
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🏫 School</div>'
-        + schoolHtml + '</div>';
     }
 
-    // Fuel — always show
+    // Fuel — only relevant during the day
     var fuel = ctx && ctx.fuel;
-    if (fuel && fuel.price) {
+    if (!_isOffHours && fuel && fuel.price) {
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
         + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⛽ Fuel</div>'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">' + fuel.price + 'p</div>'
@@ -13581,9 +13614,9 @@ _bkBadge();
         + '</div>';
     }
 
-    // Spend — always show
+    // Spend — only relevant during the day
     var spend = ctx && ctx.spend;
-    if (spend && spend.count > 0) {
+    if (!_isOffHours && spend && spend.count > 0) {
       var breakdownHtml = "";
       var bd = spend.breakdown || {};
       var bdKeys = Object.keys(bd).sort(function(a, b) { return bd[b].total - bd[a].total; });
@@ -13603,9 +13636,16 @@ _bkBadge();
         + '</div>';
     }
 
-    // Saves — recent clippings (places, articles, things saved via WhatsApp)
+    // Saves — in evening/night surface food + entertainment first
     var saves = ctx && ctx.saves;
     if (saves && saves.length) {
+      if (_isOffHours) {
+        var _foodCats   = ["Dining", "Coffee & Lunch", "Groceries"];
+        var _entCats    = ["Entertainment", "Events", "Culture"];
+        var _foodSaves  = saves.filter(function(s){ return _foodCats.indexOf(s.category) >= 0 || s.source === "receipt"; });
+        var _restSaves  = saves.filter(function(s){ return _foodSaves.indexOf(s) < 0; });
+        saves = _foodSaves.concat(_restSaves);
+      }
       var savesRows = saves.slice(0, 5).map(function(s) {
         var rawTitle = (s.title || "").trim();
         // Extract leading emoji robustly via codePointAt (handles surrogate pairs + variation selectors)
@@ -13647,8 +13687,11 @@ _bkBadge();
           + '</div>';
         return row;
       }).join("");
+      var savesLabel = _isNight     ? "🌙 Tonight's picks"
+                     : _isEvening  ? "🌆 This evening"
+                     : "📌 Clippings";
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">📌 Clippings</div>'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">' + savesLabel + '</div>'
         + savesRows
         + '</div>';
     }
