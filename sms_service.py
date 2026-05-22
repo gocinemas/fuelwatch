@@ -7035,17 +7035,19 @@ def api_home_brief():
         )
     elif time_mode == "goodnight":
         tomorrow_note = (
-            "Weekend starts tomorrow." if day_type in ("thursday_pre_weekend", "friday") else
-            "Sunday tomorrow — one more day of weekend." if day_type == "weekend" and wday == 6 else
-            "Back to the week tomorrow." if day_type == "weekend" and wday == 0 else
+            "Weekend starts tomorrow — nothing to worry about till Monday." if day_type in ("thursday_pre_weekend", "friday") else
+            "One more day of weekend left." if day_type == "weekend" and wday == 6 else
+            "Fresh week starts tomorrow." if day_type == "weekend" and wday == 0 else
             f"{(now.date() + __import__('datetime').timedelta(days=1)).strftime('%A')} tomorrow."
         )
-        bh_note = " Bank holiday Monday — long weekend." if is_long_weekend else ""
+        bh_note = " Long weekend — bank holiday Monday, so no rush." if is_long_weekend else ""
         prompt_parts.append(
-            f"Write a warm, brief good-night message. It's past 11 PM on {dow}.{bh_note} {tomorrow_note} "
-            "One sentence wishing them a good rest. One sentence: a thoughtful, uplifting closing thought — "
-            "could be about something in their saves, their kids, or just something quietly wise. "
-            "British, understated, genuine. No clichés. Under 40 words."
+            f"Write a warm, genuine good-night message. It's gone 11 PM on {dow}.{bh_note} {tomorrow_note} "
+            "Two sentences max. First: wish them a good rest — warm but not cheesy. "
+            "Second: a positive, uplifting closing thought — draw from something nice that happened today "
+            "(school events, kids, something saved, or just a quietly optimistic observation about the week/weekend ahead). "
+            "Alternatively use an external positive thought — something about the season, the weekend, rest, or being present. "
+            "British, understated, thoughtful. No clichés like 'sweet dreams' or 'tomorrow is a new day'. Under 45 words."
         )
     else:
         prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon.")
@@ -7075,9 +7077,19 @@ def api_home_brief():
             )
         else:
             prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
-    if saves_context and time_mode == "goodnight":
-        # Goodnight: one content save only, as a closing thought
-        prompt_parts.append(f"Something from their saves if it makes for a good closing thought: {saves_context[0]}.")
+    if time_mode == "goodnight":
+        # Feed today's positive context: school notes, kids' events, a content save
+        gn_context = []
+        for ev in school_recent[:1]:
+            gn_context.append(f"School today: {ev.get('child_name','')} — {ev.get('event_title','')}")
+        for ev in school_upcoming[:1]:
+            gn_context.append(f"Coming up for {ev.get('child_name','')}: {ev.get('event_title','')} on {ev.get('event_date','')}")
+        if saves_context:
+            gn_context.append(f"Something they saved: {saves_context[0]}")
+        if weather and weather.get("temp"):
+            gn_context.append(f"Weather today: {weather['temp']}°C, {weather.get('desc','').lower()}")
+        if gn_context:
+            prompt_parts.append(f"Today's context (pick the nicest angle for the closing thought): {'; '.join(gn_context)}.")
     if facts and time_mode != "goodnight":
         prompt_parts.append(f"Facts: {'; '.join(facts)}.")
     prompt_parts.append(
