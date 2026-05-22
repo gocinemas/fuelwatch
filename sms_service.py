@@ -6067,7 +6067,8 @@ def api_v2_prefs_post():
     if not from_number:
         return jsonify({"error": "token required"}), 401
     # Accept prefs as nested {"prefs":{...}} or top-level keys in the same body
-    PREF_KEYS = {"train_from", "train_to", "fuel_postcode", "commute_mode"}
+    PREF_KEYS = {"train_from", "train_to", "fuel_postcode", "commute_mode",
+                 "bin_collection_day", "bin_types", "bin_rotation", "bin_rotation_week"}
     new_prefs = body.get("prefs") or {k: v for k, v in body.items() if k in PREF_KEYS}
     if not isinstance(new_prefs, dict):
         return jsonify({"error": "prefs must be object"}), 400
@@ -6365,6 +6366,112 @@ def _v2_fetch_saves(from_number: str) -> list:
         return result[:10]
     except Exception:
         return []
+
+
+def _v2_fetch_deliveries(from_number: str) -> list:
+    """Scan Gmail for recent parcel delivery emails. Returns up to 3 items."""
+    import re as _re
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_gmail_tokens").select(
+            "device_id,access_token,refresh_token"
+        ).eq("from_number", from_number).limit(1).execute().data or []
+        if not rows:
+            rows = sb.table("ma_gmail_tokens").select(
+                "device_id,access_token,refresh_token"
+            ).eq("device_id", from_number).limit(1).execute().data or []
+        if not rows:
+            return []
+        token_row = rows[0]
+        at = _ma_gmail_get_token(token_row)
+        if not at:
+            return []
+        query = 'subject:(dispatched OR "out for delivery" OR "your order" OR "delivery update" OR tracking) newer_than:3d'
+        r = requests.get(
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+            headers={"Authorization": f"Bearer {at}"},
+            params={"q": query, "maxResults": 5},
+            timeout=10,
+        )
+        msg_list = r.json().get("messages", [])
+        if not msg_list:
+            return []
+        _CARRIERS = ["amazon", "royal mail", "evri", "dpd", "hermes", "dhl", "ups", "yodel"]
+        _STATUSES = [
+            ("out for delivery", "out for delivery"),
+            ("arriving today",   "arriving today"),
+            ("arriving tomorrow","arriving tomorrow"),
+            ("delivered",        "delivered"),
+            ("dispatched",       "dispatched"),
+        ]
+        results = []
+        for msg_ref in msg_list[:5]:
+            if len(results) >= 3:
+                break
+            try:
+                msg_r = requests.get(
+                    f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_ref['id']}",
+                    headers={"Authorization": f"Bearer {at}"},
+                    params={"format": "metadata", "metadataHeaders": ["Subject"]},
+                    timeout=10,
+                )
+                msg_data = msg_r.json()
+                headers = {h["name"].lower(): h["value"] for h in msg_data.get("payload", {}).get("headers", [])}
+                subject  = headers.get("subject", "").lower()
+                snippet  = msg_data.get("snippet", "").lower()
+                combined = subject + " " + snippet
+                carrier = next((c.title() for c in _CARRIERS if c in combined), "")
+                status  = next((label for kw, label in _STATUSES if kw in combined), "")
+                if not status:
+                    continue
+                eta = "today" if "today" in combined or "out for delivery" in combined else (
+                      "tomorrow" if "tomorrow" in combined else "")
+                results.append({"carrier": carrier, "status": status, "eta": eta})
+            except Exception:
+                continue
+        return results
+    except Exception:
+        return []
+
+
+def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
+    """Compute whether bins are due tonight or tomorrow based on prefs."""
+    day = prefs.get("bin_collection_day")
+    if day is None:
+        return None
+    try:
+        day = int(day)
+    except (TypeError, ValueError):
+        return None
+    rotation    = prefs.get("bin_rotation", "weekly")
+    rot_week    = int(prefs.get("bin_rotation_week", 0))
+    bin_types   = prefs.get("bin_types", ["general", "recycling"])
+    today_dow   = now.weekday()  # Mon=0 … Sun=6
+    # Check today (tonight) and tomorrow
+    for offset, label in ((0, "tonight"), (1, "tomorrow")):
+        check_dow = (today_dow + offset) % 7
+        if check_dow != day:
+            continue
+        if rotation == "fortnightly":
+            from datetime import datetime as _ddt
+            iso_week = now.isocalendar()[1]
+            if offset == 1:
+                iso_week = (now + __import__("datetime").timedelta(days=1)).isocalendar()[1]
+            if (iso_week + rot_week) % 2 != 0:
+                continue
+            # Alternate general/recycling by week parity
+            bin_type = bin_types[iso_week % 2] if len(bin_types) > 1 else (bin_types[0] if bin_types else "general")
+        else:
+            bin_type = bin_types[0] if bin_types else "general"
+        day_names = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+        check_date = now if offset == 0 else now + __import__("datetime").timedelta(days=1)
+        return {
+            "tonight":  offset == 0,
+            "tomorrow": offset == 1,
+            "bin_type": bin_type,
+            "day_name": day_names[day],
+        }
+    return None
 
 
 def _v2_fetch_fuel(postcode: str) -> dict:
@@ -6740,19 +6847,23 @@ def api_home_brief():
     if fresh_trains_home:
         ctx["trains_home"] = fresh_trains_home
 
-    with _cf.ThreadPoolExecutor(max_workers=5) as pool:
+    with _cf.ThreadPoolExecutor(max_workers=6) as pool:
         futures = {}
         fuel_pc = prefs.get("fuel_postcode") or postcode
         if fuel_pc:
             futures["fuel"]    = pool.submit(_v2_fetch_fuel, fuel_pc)
             futures["weather"] = pool.submit(_v2_fetch_weather, fuel_pc)
         if from_number:
-            futures["school"] = pool.submit(_v2_fetch_school, from_number)
-            futures["spend"]  = pool.submit(_v2_fetch_spend, from_number)
-            futures["saves"]  = pool.submit(_v2_fetch_saves, from_number)
+            futures["school"]     = pool.submit(_v2_fetch_school, from_number)
+            futures["spend"]      = pool.submit(_v2_fetch_spend, from_number)
+            futures["saves"]      = pool.submit(_v2_fetch_saves, from_number)
+            futures["deliveries"] = pool.submit(_v2_fetch_deliveries, from_number)
         for k, f in futures.items():
             try: ctx[k] = f.result(timeout=8)
             except Exception as ex: app.logger.warning(f"[brief] {k}: {ex}")
+
+    # Bin day — cheap compute from prefs, no network call needed
+    ctx["bin_day"] = _v2_fetch_bin_day(prefs, now)
 
     # Build Groq prompt — personalised with kids, saves, day context
     hour = now.hour
@@ -6826,9 +6937,12 @@ def api_home_brief():
         cat = (s.get("category") or "").strip()
         return f"{t} ({cat})" if cat else t
 
-    # In evening/night surface food + entertainment saves first; daytime = content first
-    # Never include receipts in saves_context — they're past transactions, not recommendations
-    if time_mode in ("evening_leisure", "night"):
+    # Night: only content saves — user is home, not going anywhere
+    # Evening: place/food saves first (still reasonable to head out)
+    # Daytime: content first
+    if time_mode == "night":
+        saves_for_prompt = content_saves[:3]
+    elif time_mode == "evening_leisure":
         saves_for_prompt = place_saves[:3] + content_saves[:2]
     else:
         saves_for_prompt = content_saves[:3] + place_saves[:2]
@@ -6862,6 +6976,18 @@ def api_home_brief():
             for cat, v in sorted(spend_breakdown.items(), key=lambda x: -x[1]["total"])
         )
         facts.append(f"£{spend['total']} this month — {bd_str}")
+    for dlv in ctx.get("deliveries", []):
+        if dlv.get("status") in ("out for delivery", "arriving today"):
+            carrier = dlv.get("carrier", "")
+            facts.append(f"📦 Parcel out for delivery today{' (' + carrier + ')' if carrier else ''}")
+            break
+    bin_day = ctx.get("bin_day")
+    if bin_day:
+        bt = (bin_day.get("bin_type") or "").capitalize()
+        if bin_day.get("tonight"):
+            facts.append(f"♻️ {bt} bins out tonight")
+        elif bin_day.get("tomorrow") and time_mode == "morning_commute":
+            facts.append(f"🗑️ Put bins out tonight — collection tomorrow")
 
     # Build time-aware Groq prompt
     prompt_parts = []
@@ -6900,9 +7026,10 @@ def api_home_brief():
             f"It's {dow} night. "
         )
         prompt_parts.append(
-            f"Write a chilled, late-night 2-sentence brief. {day_note}{bh_note}{weather_note}"
-            "Think: late food, what to watch, winding down. No work, no commute, no spend. "
-            "Subtle, personal, British. Mention something from their saves if it fits the night vibe. "
+            f"Write a chilled, winding-down 2-sentence brief. {day_note}{bh_note}{weather_note}"
+            "Sun is down, they are home. Think: what to watch, what to read, unwinding. "
+            "Do NOT suggest going out, buying food, or visiting any place. No work, no commute, no spend. "
+            "Subtle, personal, British. Only mention a save if it is content (show, article, music) — never a food place. "
         )
     else:
         prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon.")
