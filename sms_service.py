@@ -6804,7 +6804,10 @@ def api_home_brief():
     from_number = _v2_resolve(token)
 
     # Check cache — trains always fresh; rest cached 15 min; ?refresh=1 busts it
-    force_refresh = request.args.get("refresh", "") == "1"
+    # Goodnight hours (23:00–05:00) are never served from cache
+    _cur_hour = _dt.now().hour
+    _is_goodnight_hour = _cur_hour >= 23 or _cur_hour < 5
+    force_refresh = request.args.get("refresh", "") == "1" or _is_goodnight_hour
     cached = _v2_brief_cache.get(from_number or postcode)
     cache_hit = (not force_refresh) and cached and time.time() - cached["ts"] < 900
 
@@ -7130,7 +7133,8 @@ def api_home_brief():
         "bank_holiday_monday":  bank_holiday_monday,
         "is_long_weekend":      is_long_weekend,
     }
-    _v2_brief_cache[from_number or postcode] = {"ts": time.time(), "data": result}
+    if time_mode != "goodnight":  # goodnight brief is never cached — always fresh
+        _v2_brief_cache[from_number or postcode] = {"ts": time.time(), "data": result}
     return jsonify(result)
 
 
