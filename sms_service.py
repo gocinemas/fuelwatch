@@ -6256,12 +6256,45 @@ def _v2_fetch_saves(from_number: str) -> list:
             if title in _ALL_GENERIC and not summary:
                 continue
             result.append({
-                "title":    title,
-                "summary":  summary,
-                "url":      r.get("url", ""),
-                "category": r.get("category", ""),
+                "title":      title,
+                "summary":    summary,
+                "url":        r.get("url", ""),
+                "category":   r.get("category", ""),
+                "source":     "clip",
+                "created_at": r.get("created_at", ""),
             })
-        return result
+
+        # Also include recent receipt saves as "visited" places (last 30 days, newest first)
+        receipt_rows = lib._sb().table("wa_saves").select(
+            "title,category,created_at"
+        ).eq("from_number", from_number) \
+         .ilike("title", "🧾%") \
+         .gte("created_at", since) \
+         .order("created_at", desc=True) \
+         .limit(6).execute().data or []
+
+        seen_merchants = set()
+        for r in receipt_rows:
+            merchant = (r.get("title") or "").replace("🧾", "").strip()
+            if not merchant or merchant in seen_merchants:
+                continue
+            seen_merchants.add(merchant)
+            result.append({
+                "title":      merchant,
+                "summary":    "",
+                "url":        "",
+                "category":   r.get("category", ""),
+                "source":     "receipt",
+                "created_at": r.get("created_at", ""),
+            })
+
+        # Sort all by created_at desc (receipts and clips interleaved)
+        result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        # Strip internal created_at before returning
+        for item in result:
+            item.pop("created_at", None)
+
+        return result[:10]
     except Exception:
         return []
 
