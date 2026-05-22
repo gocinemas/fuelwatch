@@ -6942,11 +6942,11 @@ def api_home_brief():
         cat = (s.get("category") or "").strip()
         return f"{t} ({cat})" if cat else t
 
-    # Night/goodnight: only content saves — user is home, not going anywhere
+    # Night/goodnight: NO saves at all — model hallucrinates from them
     # Evening: place/food saves first (still reasonable to head out)
     # Daytime: content first
     if time_mode in ("night", "goodnight"):
-        saves_for_prompt = content_saves[:3]
+        saves_for_prompt = []
     elif time_mode == "evening_leisure":
         saves_for_prompt = place_saves[:3] + content_saves[:2]
     else:
@@ -7032,9 +7032,9 @@ def api_home_brief():
         )
         prompt_parts.append(
             f"Write a chilled, winding-down 2-sentence brief. {day_note}{bh_note}{weather_note}"
-            "Sun is down, they are home. Think: what to watch, what to read, unwinding. "
-            "Do NOT suggest going out, buying food, or visiting any place. No work, no commute, no spend. "
-            "Subtle, personal, British. Only mention a save if it is content (show, article, music) — never a food place. "
+            "Sun is down, they are home. Reflect on the day or the week — something quiet and grounding. "
+            "Do NOT suggest activities, purchases, places, shows, books, or apps. No recommendations of any kind. "
+            "Just a warm, present-moment observation. British, understated. Under 40 words."
         )
     elif time_mode == "goodnight":
         tomorrow_note = (
