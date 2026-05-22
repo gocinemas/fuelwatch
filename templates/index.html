@@ -14484,12 +14484,18 @@ _bkBadge();
     const tabsEl = document.getElementById("school-child-tabs");
     if (_schoolProfiles.length <= 1) { tabsEl.style.display = "none"; return; }
     tabsEl.style.display = "flex";
+    // Auto-disambiguate duplicate child names by appending short school name
+    const nameCounts = {};
+    _schoolProfiles.forEach(p => { nameCounts[p.child_name] = (nameCounts[p.child_name] || 0) + 1; });
     tabsEl.innerHTML = _schoolProfiles.map(p => {
       const active = p.id === _schoolActiveProfileId;
+      const isDup = nameCounts[p.child_name] > 1;
+      const shortSchool = isDup && p.school_name ? p.school_name.split(' ').slice(0, 2).join(' ') : '';
+      const tabLabel = isDup && shortSchool ? `${p.child_name} · ${shortSchool}` : p.child_name;
       return `<button onclick="schoolSelectProfile('${p.id}')"
         style="flex-shrink:0;padding:10px 22px;border-radius:24px;border:2px solid ${active?"#1f2937":"#e2e8f0"};
                background:${active?"#1f2937":"#fff"};color:${active?"#fff":"#374151"};
-               font-size:15px;font-weight:700;cursor:pointer;transition:all .15s">${p.child_name}</button>`;
+               font-size:15px;font-weight:700;cursor:pointer;transition:all .15s">${tabLabel}</button>`;
     }).join("");
   }
 

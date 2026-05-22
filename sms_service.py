@@ -2894,7 +2894,7 @@ def school_settings_profile():
                 break
         if not verified:
             return _cors(jsonify({"error": "profile not found or wa mismatch"})), 403
-        allowed = {"child_name", "class_name", "teacher_name"}
+        allowed = {"child_name", "class_name", "teacher_name", "school_name"}
         updates = {k: v.strip() for k, v in data.items() if k in allowed and isinstance(v, str)}
         if not updates:
             return _cors(jsonify({"error": "nothing to update"})), 400
@@ -6735,10 +6735,37 @@ def api_home_brief():
     tod = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
 
     # Day type
-    if wday == 4:    day_type = "thursday_pre_weekend"
-    elif wday == 5:  day_type = "friday"
+    # Weekday: Mon=0 Tue=1 Wed=2 Thu=3 Fri=4 Sat=5 Sun=6
+    if wday == 3:    day_type = "thursday_pre_weekend"
+    elif wday == 4:  day_type = "friday"
     elif wday >= 5:  day_type = "weekend"
     else:            day_type = "midweek"
+
+    # UK bank holiday check — gov.uk free API, cached 24h
+    _bh_cache_key = "uk_bank_holidays"
+    _bh_cached    = _v2_brief_cache.get(_bh_cache_key, {})
+    bank_holiday_today    = False
+    bank_holiday_tomorrow = False
+    bank_holiday_monday   = False
+    try:
+        if not _bh_cached or time.time() - _bh_cached.get("ts", 0) > 86400:
+            _bh_r = requests.get("https://www.gov.uk/bank-holidays.json", timeout=5)
+            _bh_dates = {e["date"] for e in _bh_r.json().get("england-and-wales", {}).get("events", [])}
+            _v2_brief_cache[_bh_cache_key] = {"ts": time.time(), "dates": _bh_dates}
+        else:
+            _bh_dates = _bh_cached.get("dates", set())
+        _today_s    = now.date().isoformat()
+        _tom_s      = (now.date() + __import__("datetime").timedelta(days=1)).isoformat()
+        _mon_delta  = (7 - wday) % 7 or 7  # days until next Monday
+        _mon_s      = (now.date() + __import__("datetime").timedelta(days=_mon_delta)).isoformat()
+        bank_holiday_today    = _today_s in _bh_dates
+        bank_holiday_tomorrow = _tom_s   in _bh_dates
+        bank_holiday_monday   = _mon_s   in _bh_dates
+    except Exception:
+        pass
+
+    # Extend day_type with bank holiday context
+    is_long_weekend = bank_holiday_monday and wday >= 4  # Fri/Sat/Sun before BH Monday
 
     # Kids + school comms
     school_data = ctx.get("school", {})
@@ -6751,10 +6778,12 @@ def api_home_brief():
     weather = ctx.get("weather", {})
 
     # Saves — split by type for time-aware ordering
+    # Receipts (past purchases) are excluded from the narrative — they're history, not suggestions
     saves_list = ctx.get("saves", [])
-    place_saves   = [s for s in saves_list if s.get("source") == "receipt" or s.get("category") in
+    receipt_saves  = [s for s in saves_list if s.get("source") == "receipt" or (s.get("title") or "").startswith("🧾")]
+    place_saves    = [s for s in saves_list if s not in receipt_saves and s.get("category") in
                      ("Dining", "Coffee & Lunch", "Groceries", "place")]
-    content_saves = [s for s in saves_list if s not in place_saves]
+    content_saves  = [s for s in saves_list if s not in receipt_saves and s not in place_saves]
 
     def _save_label(s):
         t   = (s.get("title") or "").strip()
@@ -6762,6 +6791,7 @@ def api_home_brief():
         return f"{t} ({cat})" if cat else t
 
     # In evening/night surface food + entertainment saves first; daytime = content first
+    # Never include receipts in saves_context — they're past transactions, not recommendations
     if time_mode in ("evening_leisure", "night"):
         saves_for_prompt = place_saves[:3] + content_saves[:2]
     else:
@@ -6811,17 +6841,22 @@ def api_home_brief():
                 outdoor_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — decent enough to be out."
             else:
                 outdoor_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — cosy-in evening."
+        bh_note = " It's a long weekend — bank holiday Monday." if is_long_weekend else (
+                  " Bank holiday today." if bank_holiday_today else "")
         prompt_parts.append(
             f"Write a warm, relaxed 2-sentence early-evening brief. It's {dow} evening, {hour}:{now.minute:02d}. "
             + (outdoor_note + " " if outdoor_note else "")
-            + ("It's a Thursday — pre-weekend energy. " if day_type == "thursday_pre_weekend" else
-               "It's Friday — weekend starts now. " if day_type == "friday" else
-               "It's the weekend. " if day_type == "weekend" else "")
+            + ("It's a Thursday — pre-weekend energy." if day_type == "thursday_pre_weekend" else
+               "It's Friday — weekend starts now." if day_type == "friday" else
+               "It's the weekend." if day_type == "weekend" else "")
+            + bh_note + " "
         )
     elif time_mode == "night":
         weather_note = ""
         if weather:
             weather_note = f"It's {weather['temp']}°C outside. "
+        bh_note = " It's a long weekend — bank holiday Monday, so no rush." if is_long_weekend else (
+                  " Bank holiday today." if bank_holiday_today else "")
         day_note = (
             "It's a Friday night — weekend is here. "   if day_type == "friday" else
             "It's Saturday night. "                      if day_type == "weekend" else
@@ -6829,7 +6864,7 @@ def api_home_brief():
             f"It's {dow} night. "
         )
         prompt_parts.append(
-            f"Write a chilled, late-night 2-sentence brief. {day_note}{weather_note}"
+            f"Write a chilled, late-night 2-sentence brief. {day_note}{bh_note}{weather_note}"
             "Think: late food, what to watch, winding down. No work, no commute, no spend. "
             "Subtle, personal, British. Mention something from their saves if it fits the night vibe. "
         )
@@ -6856,8 +6891,9 @@ def api_home_brief():
     if saves_context:
         if time_mode == "evening_leisure":
             prompt_parts.append(
-                f"They've recently been to / saved: {'; '.join(saves_context)}. "
-                "Subtly weave in one if it fits the evening — a place they like, something to do. Don't force it."
+                f"Their saved picks: {'; '.join(saves_context)}. "
+                "Mention one only if it genuinely fits the evening mood — a place they like or something to do tonight. "
+                "Do NOT invent locations, geography, or nearby places. Do NOT suggest receipt/purchase history as recommendations."
             )
         else:
             prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
@@ -6865,7 +6901,8 @@ def api_home_brief():
         prompt_parts.append(f"Facts: {'; '.join(facts)}.")
     prompt_parts.append(
         "Subtle, personal, British English. Sound like you know them. "
-        "No greetings, no bullet points, no 'Great news'. Under 55 words."
+        "No greetings, no bullet points, no 'Great news'. Under 55 words. "
+        "NEVER invent a location, nearby landmark, or geographic setting — only use places from their saves."
     )
     prompt = " ".join(prompt_parts)
 
@@ -6885,11 +6922,15 @@ def api_home_brief():
         brief_text = " ".join(facts[:2]) if facts else ""
 
     result = {
-        "brief":    brief_text,
-        "context":  ctx,
-        "prefs":    prefs,
+        "brief":     brief_text,
+        "context":   ctx,
+        "prefs":     prefs,
         "has_prefs": bool(prefs),
-        "tod":      tod,
+        "tod":       tod,
+        "day_type":  day_type,
+        "bank_holiday_today":   bank_holiday_today,
+        "bank_holiday_monday":  bank_holiday_monday,
+        "is_long_weekend":      is_long_weekend,
     }
     _v2_brief_cache[from_number or postcode] = {"ts": time.time(), "data": result}
     return jsonify(result)

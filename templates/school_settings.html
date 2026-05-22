@@ -480,6 +480,7 @@ function _profileCard(p, pi) {
       <div id="profile-edit-${pi}" style="display:none">
         <div class="edit-row">
           <div class="edit-field"><label>Child's name</label><input id="edit-child-${pi}" type="text" value="${_esc(p.child_name)}" /></div>
+          <div class="edit-field"><label>School / institution</label><input id="edit-school-${pi}" type="text" value="${_esc(p.school_name)}" placeholder="e.g. Wentworth Dance Centre" /></div>
           <div class="edit-field"><label>Class / year group</label><input id="edit-class-${pi}" type="text" value="${_esc(p.class_name)}" /></div>
           <div class="edit-field"><label>Class teacher</label><input id="edit-teacher-${pi}" type="text" value="${_esc(p.teacher_name)}" /></div>
         </div>
@@ -538,6 +539,7 @@ function cancelEdit(pi) {
 async function saveProfile(pi) {
   const p          = _profiles[pi];
   const child_name   = document.getElementById("edit-child-"   + pi).value.trim();
+  const school_name  = document.getElementById("edit-school-"  + pi).value.trim();
   const class_name   = document.getElementById("edit-class-"   + pi).value.trim();
   const teacher_name = document.getElementById("edit-teacher-" + pi).value.trim();
   const errEl = document.getElementById("profile-save-error-" + pi);
@@ -549,7 +551,7 @@ async function saveProfile(pi) {
     const r = await fetch("/api/school/settings/profile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile_id: p.id, wa: _waNumber, child_name, class_name, teacher_name })
+      body: JSON.stringify({ profile_id: p.id, wa: _waNumber, child_name, school_name, class_name, teacher_name })
     });
     if (!r.ok) throw new Error();
     _profiles[pi].child_name   = child_name;
