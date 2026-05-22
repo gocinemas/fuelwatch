@@ -7044,16 +7044,21 @@ def api_home_brief():
         prompt_parts.append(
             f"Write a warm, genuine good-night message. It's gone 11 PM on {dow}.{bh_note} {tomorrow_note} "
             "Two sentences max. First: wish them a good rest — warm but not cheesy. "
-            "Second: a positive closing thought. STRICT RULE: only use facts explicitly listed in 'Today's context' below. "
-            "If no context is provided, use ONLY the day/tomorrow — e.g. the weekend ahead, the long weekend, rest. "
-            "Do NOT invent, assume, or embellish anything about their day, family, or life. "
+            "Second: one positive, uplifting closing thought. Choose the BEST option from: "
+            "(a) a verified fact from 'Verified facts only' below, if one fits naturally; "
+            "(b) an uplifting real-world thought you are CERTAIN is true — a scientific fact about sleep or rest, "
+            "a well-known positive news story from recent months, a true seasonal observation, "
+            "or a short well-known quote from a real person (include their name). "
+            "NEVER invent facts about the user, their day, their purchases, or their family. "
             "British, understated. No clichés. Under 45 words."
         )
     else:
         prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon.")
 
     if kids:
-        if time_mode in ("night", "goodnight"):
+        if time_mode == "goodnight":
+            pass  # kids handled in gn_context block below, with verified upcoming events only
+        elif time_mode == "night":
             from datetime import timedelta
             weekend_evs = [ev for ev in school_upcoming
                            if ev.get("event_date") and
@@ -7078,18 +7083,18 @@ def api_home_brief():
         else:
             prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
     if time_mode == "goodnight":
-        # Feed today's positive context: school notes, kids' events, a content save
+        # Goodnight gets NO saves, NO receipts, NO food — only hard facts we know are true
         gn_context = []
-        for ev in school_recent[:1]:
-            gn_context.append(f"School today: {ev.get('child_name','')} — {ev.get('event_title','')}")
+        if kids:
+            gn_context.append(f"Their kids: {' and '.join(kids)}")
         for ev in school_upcoming[:1]:
-            gn_context.append(f"Coming up for {ev.get('child_name','')}: {ev.get('event_title','')} on {ev.get('event_date','')}")
-        if saves_context:
-            gn_context.append(f"Something they saved: {saves_context[0]}")
-        if weather and weather.get("temp"):
-            gn_context.append(f"Weather today: {weather['temp']}°C, {weather.get('desc','').lower()}")
+            d = ev.get("event_date", "")
+            if d:
+                days_away = (date.fromisoformat(d) - date.today()).days
+                if days_away <= 3:
+                    gn_context.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {d}")
         if gn_context:
-            prompt_parts.append(f"Today's context (pick the nicest angle for the closing thought): {'; '.join(gn_context)}.")
+            prompt_parts.append(f"Verified facts only — use these if relevant: {'; '.join(gn_context)}.")
     if facts and time_mode != "goodnight":
         prompt_parts.append(f"Facts: {'; '.join(facts)}.")
     prompt_parts.append(
