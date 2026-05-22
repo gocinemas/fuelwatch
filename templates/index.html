@@ -1845,6 +1845,11 @@
       <!-- Detailed context cards -->
       <div id="brief-context-cards" style="display:none;flex-direction:column;gap:10px"></div>
 
+      <!-- Refresh button -->
+      <div id="brief-refresh-row" style="display:none;text-align:right;margin-top:2px">
+        <button onclick="_briefRefresh()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;padding:4px 0">↻ Refresh</button>
+      </div>
+
       <!-- Location-aware section -->
       <div id="brief-location-section" style="display:none;margin-top:18px">
         <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">📍 Near you right now</div>
@@ -4067,7 +4072,13 @@ const _ts = new Date(d.timestamp);
   }
 
   function _miruPhone() {
-    return localStorage.getItem("miru_phone") || "";
+    var stored = localStorage.getItem("miru_phone") || "";
+    if (stored) return stored;
+    // Fallback: saves-login cookie (set when user clicks the WhatsApp saves link)
+    var m = document.cookie.match(/(?:^|;\s*)miru_saves_phone=([^;]+)/);
+    var cookiePhone = m ? decodeURIComponent(m[1]) : "";
+    if (cookiePhone) { localStorage.setItem("miru_phone", cookiePhone); return cookiePhone; }
+    return "";
   }
   function _miruPostcode() {
     return localStorage.getItem("miru_postcode") || "";
@@ -13312,9 +13323,10 @@ _bkBadge();
     var pcInput = document.getElementById("brief-pref-pc");
     if (pcInput && !pcInput.value && _miruPostcode()) pcInput.value = _miruPostcode();
 
-    var token = localStorage.getItem("miru_phone") || "";
+    var token = _miruPhone();
     var pc = _miruPostcode() || "";
-    var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc);
+    // Always fetch fresh on load — server caches for 15 min anyway, but first visit per session is always live
+    var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc) + "&refresh=1";
 
     fetch(url)
       .then(function(r) { return r.json(); })
@@ -13562,6 +13574,14 @@ _bkBadge();
     container.innerHTML = html
       + (html ? '<button onclick="_briefShowPrefs()" style="width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:11px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-top:4px">✏️ Update preferences</button>' : '');
     container.style.display = html ? "flex" : "none";
+    var rr = document.getElementById("brief-refresh-row");
+    if (rr) rr.style.display = html ? "block" : "none";
+  }
+
+  function _briefRefresh() {
+    var rr = document.getElementById("brief-refresh-row");
+    if (rr) rr.style.display = "none";
+    _briefInit();
   }
 
   function _briefUpdateNarrative(d, mode) {

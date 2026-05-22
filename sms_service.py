@@ -6430,6 +6430,10 @@ def api_home_brief():
 
     token    = request.args.get("token", "").strip()
     postcode = request.args.get("pc", "").strip().upper().replace(" ", "")
+    # Fallback identity: saves-login cookies set by /saves-login flow
+    if not token:
+        token = (request.cookies.get("miru_saves_token") or
+                 request.cookies.get("miru_saves_phone") or "").strip()
     from_number = _v2_resolve(token)
 
     # Check cache — trains always fresh; rest cached 15 min; ?refresh=1 busts it
