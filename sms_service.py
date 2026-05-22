@@ -7044,10 +7044,10 @@ def api_home_brief():
         prompt_parts.append(
             f"Write a warm, genuine good-night message. It's gone 11 PM on {dow}.{bh_note} {tomorrow_note} "
             "Two sentences max. First: wish them a good rest — warm but not cheesy. "
-            "Second: a positive, uplifting closing thought — draw from something nice that happened today "
-            "(school events, kids, something saved, or just a quietly optimistic observation about the week/weekend ahead). "
-            "Alternatively use an external positive thought — something about the season, the weekend, rest, or being present. "
-            "British, understated, thoughtful. No clichés like 'sweet dreams' or 'tomorrow is a new day'. Under 45 words."
+            "Second: a positive closing thought. STRICT RULE: only use facts explicitly listed in 'Today's context' below. "
+            "If no context is provided, use ONLY the day/tomorrow — e.g. the weekend ahead, the long weekend, rest. "
+            "Do NOT invent, assume, or embellish anything about their day, family, or life. "
+            "British, understated. No clichés. Under 45 words."
         )
     else:
         prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon.")
