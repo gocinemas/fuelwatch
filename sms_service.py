@@ -6168,10 +6168,24 @@ def _v2_fetch_saves(from_number: str) -> list:
          .gte("created_at", since) \
          .order("created_at", desc=True) \
          .limit(8).execute().data or []
+        import re as _sre
+        def _clean_summary(raw: str) -> str:
+            """Strip internal META/PRODUCTS lines and return first useful sentence."""
+            lines = (raw or "").splitlines()
+            clean = []
+            for ln in lines:
+                ln = ln.strip()
+                if not ln or ln.startswith("META:") or ln.startswith("PRODUCTS:"):
+                    continue
+                ln = _sre.sub(r'^[•\-]\s*', '', ln)
+                if len(ln) > 8:
+                    clean.append(ln)
+            return clean[0][:100] if clean else ""
+
         return [
             {
                 "title":    r.get("title", "").strip(),
-                "summary":  (r.get("summary") or "").strip()[:120],
+                "summary":  _clean_summary(r.get("summary") or ""),
                 "url":      r.get("url", ""),
                 "category": r.get("category", ""),
             }

@@ -13499,16 +13499,33 @@ _bkBadge();
     // Saves — recent clippings (places, articles, things saved via WhatsApp)
     var saves = ctx && ctx.saves;
     if (saves && saves.length) {
+      var _saveIcon = function(cat) {
+        var c = (cat || "").toLowerCase();
+        if (c === "place" || c === "restaurant" || c === "pub") return "📍";
+        if (c === "dining" || c === "coffee & lunch" || c === "fast food") return "🍽️";
+        if (c === "groceries") return "🛒";
+        if (c === "parking") return "🅿️";
+        if (c === "transport") return "🚆";
+        if (c === "shopping") return "🛍️";
+        if (c === "fuel") return "⛽";
+        if (c === "article" || c === "news") return "📰";
+        return "📌";
+      };
       var savesRows = saves.slice(0, 5).map(function(s) {
-        var t = s.title || "";
-        var sm = s.summary || "";
+        var t   = (s.title || "").replace(/^🧾\s*/, "").trim();
+        var sm  = (s.summary || "").replace(/^PRODUCTS:.*\n?/m, "").replace(/^META:.*\n?/gm, "").trim();
+        // Strip down summary to first meaningful line
+        var smFirst = sm.split("\n").map(function(l){ return l.replace(/^[•\-]\s*/, "").trim(); })
+                        .filter(function(l){ return l && l.length > 5; })[0] || "";
         var url = s.url || "";
-        var icon = s.category === "place" ? "📍" : "📌";
+        var cat = s.category || "";
+        var icon = _saveIcon(cat);
         var row = '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-          + '<span style="font-size:15px;flex-shrink:0;margin-top:1px">' + icon + '</span>'
+          + '<span style="font-size:15px;flex-shrink:0;margin-top:2px">' + icon + '</span>'
           + '<div style="flex:1;min-width:0">'
-            + '<div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t + '</div>'
-            + (sm ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + sm + '</div>' : '')
+            + '<div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + t + '</div>'
+            + (cat ? '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-top:1px">' + cat + '</div>' : '')
+            + (smFirst ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + smFirst + '</div>' : '')
           + '</div>';
         if (url && url.startsWith("http")) {
           row += '<a href="' + url + '" target="_blank" rel="noopener" style="flex-shrink:0;font-size:11px;font-weight:700;color:var(--accent);background:#eef2ff;border-radius:99px;padding:3px 9px;white-space:nowrap;align-self:center">Open →</a>';
@@ -13517,7 +13534,7 @@ _bkBadge();
         return row;
       }).join("");
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">📌 Your saves</div>'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px">📌 Your saves</div>'
         + savesRows
         + '</div>';
     }
