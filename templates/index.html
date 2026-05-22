@@ -13408,9 +13408,9 @@ _bkBadge();
     var wfh = (mode || _briefCurrentMode) === "wfh";
     var html = "";
 
-    // Trains — hide when WFH (not commuting)
-    var trains = ctx && ctx.trains;
-    if (!wfh && trains && trains.departures && trains.departures.length) {
+    // Trains — WFH = going to work (home→office), office mode = going home (office→home)
+    var trains = wfh ? (ctx && ctx.trains) : (ctx && ctx.trains_home || ctx && ctx.trains);
+    if (trains && trains.departures && trains.departures.length) {
       // Filter out past departures (safety net in case data is slightly stale)
       var _nowMins = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
       var futureDeps = trains.departures.filter(function(d) {

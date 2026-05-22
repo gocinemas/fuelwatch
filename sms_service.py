@@ -6177,53 +6177,83 @@ def _v2_fetch_saves(from_number: str) -> list:
          .order("created_at", desc=True) \
          .limit(8).execute().data or []
         import re as _sre
-        _GENERIC_TITLES = {
-            "📷 Photo", "🏪 Place", "📢 Billboard/Ad", "🏷️ Brand",
-            "🪧 Sign", "📄 Document", "🎫 Event/Ticket", "🍷 Wine",
-            "🍽️ Menu", "📦 Product",
-        }
+        import json as _j
+
+        # Always drop — unclassifiable image scans with no named content
+        _ALWAYS_DROP = {"📷 Photo", "📢 Billboard/Ad", "🪧 Sign", "📄 Document"}
+        # Generic titles where we try to extract a real name from the summary
+        _TRY_EXTRACT = {"🎫 Event/Ticket", "🍷 Wine", "🍽️ Menu", "🏪 Place", "🏷️ Brand"}
+        _ALL_GENERIC  = _ALWAYS_DROP | _TRY_EXTRACT | {"📦 Product"}
         _SKIP_PREFIXES = ("AIRESULT:", "META:", "PRODUCTS:", "SHOP:")
+        # AI image-description phrases that add no value to the user
+        _AI_DESC = ("the image", "this image", "the photo", "the picture",
+                    "the poster", "the sign", "the advertisement", "the ticket",
+                    "the screenshot", "it appears", "it shows")
+
+        def _is_ai_noise(s: str) -> bool:
+            return s.lower().startswith(_AI_DESC)
 
         def _clean_summary(raw: str) -> str:
             lines = (raw or "").splitlines()
-            clean = []
             for ln in lines:
                 ln = ln.strip()
                 if not ln or any(ln.startswith(p) for p in _SKIP_PREFIXES):
                     continue
                 ln = _sre.sub(r'^[•\-]\s*', '', ln).strip()
-                if len(ln) > 8:
-                    clean.append(ln)
-            return clean[0][:100] if clean else ""
+                # Strip common AI boilerplate prefixes that aren't caught by _is_ai_noise
+                ln = _sre.sub(r'^(?:the event listing includes?|this listing (?:is for|includes?)|listing includes?)\s*', '', ln, flags=_sre.I).strip()
+                if len(ln) > 8 and not _is_ai_noise(ln):
+                    return ln[:100]
+            return ""
 
-        def _extract_title(r) -> str:
-            """For generic-titled saves, try to pull a real name from summary."""
-            t = (r.get("title") or "").strip()
-            if t not in _GENERIC_TITLES:
+        def _extract_title(raw_title: str, raw_summary: str) -> str:
+            """For generic-titled saves, pull a real name from the summary."""
+            t = raw_title.strip()
+            if t not in _TRY_EXTRACT:
                 return t
-            # Try to find a better label in the summary (e.g. event name, shop name)
-            raw = r.get("summary") or ""
-            for ln in raw.splitlines():
+            emoji = t.split(" ")[0]  # e.g. "🎫"
+            for ln in raw_summary.splitlines():
                 ln = ln.strip()
                 if ln.startswith("SHOP:"):
-                    return ln[5:].strip()
+                    name = ln[5:].strip()
+                    if name: return f"{emoji} {name}"
                 if ln.startswith("AIRESULT:"):
                     try:
-                        import json as _j
                         obj = _j.loads(ln[9:])
-                        name = obj.get("event_name") or obj.get("company") or obj.get("brand") or ""
+                        name = (obj.get("event_name") or obj.get("company") or
+                                obj.get("brand") or obj.get("venue") or "")
                         if name and len(name) > 2:
-                            return t.split(" ")[0] + " " + name  # keep emoji prefix
+                            return f"{emoji} {name}"
                     except Exception:
                         pass
-            return t  # keep generic title — filtered below if summary is also empty
+                # Event: "includes X on Day DD Mon" → extract X
+                m = _sre.search(r'includes (.+?) on (?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|\d)', ln, _sre.I)
+                if m:
+                    return f"{emoji} {m.group(1).strip()}"
+                # Plain short title line (not AI boilerplate)
+                if not _is_ai_noise(ln) and len(ln.split()) <= 7 and not any(ln.startswith(p) for p in _SKIP_PREFIXES):
+                    return f"{emoji} {ln}"
+            return t  # keep generic — will be dropped if summary also empty
 
         result = []
         for r in rows:
-            title = _extract_title(r)
-            summary = _clean_summary(r.get("summary") or "")
-            # Drop saves that are both generic-titled and have no readable summary
-            if title in _GENERIC_TITLES and not summary:
+            raw_title   = (r.get("title") or "").strip()
+            raw_summary = r.get("summary") or ""
+            # Hard-drop always-useless image scans
+            if raw_title in _ALWAYS_DROP:
+                continue
+            # Drop anything whose best summary line is pure AI image description
+            first_line = next(
+                (ln.strip() for ln in raw_summary.splitlines()
+                 if ln.strip() and not any(ln.strip().startswith(p) for p in _SKIP_PREFIXES)),
+                ""
+            )
+            if _is_ai_noise(first_line):
+                continue
+            title   = _extract_title(raw_title, raw_summary)
+            summary = _clean_summary(raw_summary)
+            # Drop if still generic and no real content surfaced
+            if title in _ALL_GENERIC and not summary:
                 continue
             result.append({
                 "title":    title,
@@ -6453,24 +6483,32 @@ def api_home_brief():
 
     now  = _dt.now()
 
-    # Always fetch fresh trains — they change minute-to-minute
-    fresh_trains = {}
+    # Always fetch fresh trains in BOTH directions — frontend picks based on WFH/office mode
+    fresh_trains = {}; fresh_trains_home = {}
     if prefs.get("train_from") and prefs.get("train_to"):
+        tf, tt = prefs["train_from"], prefs["train_to"]
         try:
-            fresh_trains = _v2_fetch_trains(prefs["train_from"], prefs["train_to"]) or {}
+            fresh_trains      = _v2_fetch_trains(tf, tt) or {}  # home → work
         except Exception as ex:
-            app.logger.warning(f"[brief] trains fresh: {ex}")
+            app.logger.warning(f"[brief] trains to-work: {ex}")
+        try:
+            fresh_trains_home = _v2_fetch_trains(tt, tf) or {}  # work → home
+        except Exception as ex:
+            app.logger.warning(f"[brief] trains to-home: {ex}")
 
     if cache_hit:
         result = dict(cached["data"])
         ctx = dict(result.get("context", {}))
-        ctx["trains"] = fresh_trains
+        ctx["trains"]      = fresh_trains
+        ctx["trains_home"] = fresh_trains_home
         result["context"] = ctx
         return jsonify(result)
 
     ctx: dict = {}
     if fresh_trains:
-        ctx["trains"] = fresh_trains
+        ctx["trains"]      = fresh_trains
+    if fresh_trains_home:
+        ctx["trains_home"] = fresh_trains_home
 
     with _cf.ThreadPoolExecutor(max_workers=4) as pool:
         futures = {}
