@@ -13421,47 +13421,62 @@ _bkBadge();
       } // end futureDeps.length > 0
     }
 
-    // School — always show; handle both old (array) and new (dict) shapes
-    var schoolRaw = ctx && ctx.school;
-    var schoolEvents  = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events  ? schoolRaw.events  : []);
-    var schoolRoutes  = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
+    // School — show profiles + upcoming + recent comms
+    var schoolRaw      = ctx && ctx.school;
+    var schoolRoutes   = (schoolRaw && schoolRaw.schools)  ? schoolRaw.schools  : [];
+    var schoolUpcoming = (schoolRaw && schoolRaw.upcoming) ? schoolRaw.upcoming : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
+    var schoolRecent   = (schoolRaw && schoolRaw.recent)   ? schoolRaw.recent   : [];
 
-    if (schoolRoutes.length || schoolEvents.length) {
+    if (schoolRoutes.length || schoolUpcoming.length || schoolRecent.length) {
       var schoolHtml = "";
 
-      // Daily school run — one row per child with Maps tap
-      if (schoolRoutes.length) {
-        schoolHtml += '<div style="margin-bottom:8px">';
-        schoolRoutes.forEach(function(s) {
-          var dest = encodeURIComponent((s.school_name || "") + " " + (s.address || ""));
-          var mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + dest + "&travelmode=driving";
-          schoolHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
-            + '<div>'
-              + '<div style="font-size:13px;font-weight:700;color:var(--text)">🚗 ' + (s.child_name || "") + '</div>'
-              + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (s.school_name || "") + '</div>'
+      // One row per child — school name + Maps button
+      schoolRoutes.forEach(function(s) {
+        var dest    = encodeURIComponent((s.school_name || "") + " " + (s.address || ""));
+        var mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + dest + "&travelmode=driving";
+        schoolHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
+          + '<div>'
+            + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (s.child_name || "") + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (s.school_name || "") + '</div>'
+          + '</div>'
+          + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" '
+            + 'style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:99px;padding:5px 12px;text-decoration:none;flex-shrink:0;white-space:nowrap">'
+            + '🗺️ Drive →</a>'
+        + '</div>';
+      });
+
+      // Upcoming events — next 7 days
+      if (schoolUpcoming.length) {
+        schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 4px">📅 Coming up</div>';
+        schoolUpcoming.slice(0, 4).forEach(function(ev) {
+          var d = (ev.event_date || "").slice(5); // MM-DD
+          schoolHtml += '<div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+            + '<div style="flex:1;min-width:0">'
+              + '<span style="font-weight:600">' + (ev.child_name || "") + '</span>'
+              + '<span style="color:var(--muted)"> · ' + (ev.event_title || "") + '</span>'
             + '</div>'
-            + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" '
-              + 'style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:99px;padding:5px 12px;text-decoration:none;flex-shrink:0;white-space:nowrap">'
-              + '🗺️ Drive →</a>'
+            + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">' + d + '</span>'
           + '</div>';
         });
-        schoolHtml += '</div>';
       }
 
-      // Upcoming events this week
-      if (schoolEvents.length) {
-        schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:6px 0 5px">📅 This week</div>';
-        schoolEvents.slice(0, 3).forEach(function(ev) {
-          schoolHtml += '<div style="font-size:12px;color:var(--text);padding:4px 0;border-bottom:1px solid var(--border)">'
-            + '<span style="font-weight:600">' + (ev.child_name || "") + '</span>: '
-            + (ev.event_title || "")
-            + '<span style="color:var(--muted);float:right">' + (ev.event_date || "") + '</span>'
-            + '</div>';
+      // Recent school comms — past 14 days
+      if (schoolRecent.length) {
+        schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 4px">📨 Recent comms</div>';
+        schoolRecent.slice(0, 3).forEach(function(ev) {
+          var d = (ev.event_date || "").slice(5);
+          schoolHtml += '<div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+            + '<div style="flex:1;min-width:0">'
+              + '<span style="font-weight:600">' + (ev.child_name || "") + '</span>'
+              + '<span style="color:var(--muted)"> · ' + (ev.event_title || "") + '</span>'
+            + '</div>'
+            + '<span style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0">' + d + '</span>'
+          + '</div>';
         });
       }
 
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🏫 School</div>'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🏫 School</div>'
         + schoolHtml + '</div>';
     }
 

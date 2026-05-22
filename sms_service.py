@@ -6021,28 +6021,36 @@ def api_v2_prefs_post():
 
 
 def _v2_fetch_school(from_number: str) -> dict:
-    """School profiles (for daily run) + next 7 days of events."""
+    """School profiles (daily run) + upcoming events (7 days) + recent comms (14 days)."""
     from datetime import date, timedelta
     try:
-        today   = date.today().isoformat()
-        horizon = (date.today() + timedelta(days=7)).isoformat()
+        today    = date.today()
+        horizon  = (today + timedelta(days=7)).isoformat()
+        recent   = (today - timedelta(days=14)).isoformat()
+        today_s  = today.isoformat()
         profiles = lib._sb().table("school_profiles") \
                        .select("id,child_name,school_name,address") \
                        .eq("from_number", from_number).eq("active", True).execute().data or []
         if not profiles:
-            return {"schools": [], "events": []}
+            return {"schools": [], "upcoming": [], "recent": []}
         pids = [p["id"] for p in profiles]
-        events = lib._sb().table("school_events").select(
-            "event_title,event_date,child_name,school_name"
-        ).in_("profile_id", pids).gte("event_date", today).lte("event_date", horizon) \
+        # Upcoming events — next 7 days
+        upcoming = lib._sb().table("school_events").select(
+            "event_title,event_date,child_name,school_name,notes"
+        ).in_("profile_id", pids).gte("event_date", today_s).lte("event_date", horizon) \
          .order("event_date").execute().data or []
+        # Recent comms — past 14 days (emails extracted from Gmail)
+        recent_rows = lib._sb().table("school_events").select(
+            "event_title,event_date,child_name,school_name,notes"
+        ).in_("profile_id", pids).gte("event_date", recent).lt("event_date", today_s) \
+         .order("event_date", desc=True).limit(5).execute().data or []
         schools = [
             {"child_name": p.get("child_name",""), "school_name": p.get("school_name",""), "address": p.get("address","")}
             for p in profiles
         ]
-        return {"schools": schools, "events": events}
+        return {"schools": schools, "upcoming": upcoming, "recent": recent_rows, "events": upcoming}
     except Exception:
-        return {"schools": [], "events": []}
+        return {"schools": [], "upcoming": [], "recent": [], "events": []}
 
 
 def _receipt_category(merchant: str) -> str:
@@ -6424,9 +6432,10 @@ def api_home_brief():
     postcode = request.args.get("pc", "").strip().upper().replace(" ", "")
     from_number = _v2_resolve(token)
 
-    # Check cache — trains are always fetched fresh (real-time), rest cached 15 min
+    # Check cache — trains always fresh; rest cached 15 min; ?refresh=1 busts it
+    force_refresh = request.args.get("refresh", "") == "1"
     cached = _v2_brief_cache.get(from_number or postcode)
-    cache_hit = cached and time.time() - cached["ts"] < 900
+    cache_hit = (not force_refresh) and cached and time.time() - cached["ts"] < 900
 
     # Load prefs
     prefs: dict = {}
@@ -6478,9 +6487,10 @@ def api_home_brief():
     dow  = now.strftime("%A")
     is_weekend_mode = now.weekday() >= 4  # Friday=4, Saturday=5, Sunday=6
 
-    # Kids from school profiles
+    # Kids + school comms
     school_data = ctx.get("school", {})
-    school_ev   = school_data.get("events", []) if isinstance(school_data, dict) else school_data
+    school_upcoming = school_data.get("upcoming", school_data.get("events", [])) if isinstance(school_data, dict) else []
+    school_recent   = school_data.get("recent", []) if isinstance(school_data, dict) else []
     kids = [s.get("child_name", "") for s in school_data.get("schools", [])] if isinstance(school_data, dict) else []
     kids = [k for k in kids if k]
 
@@ -6508,8 +6518,10 @@ def api_home_brief():
     if fuel.get("price"):
         change = f" ({fuel['change']})" if fuel.get("change") else ""
         facts.append(f"Nearest fuel: {fuel['name']} {fuel['price']}p{change}")
-    for ev in school_ev[:2]:
+    for ev in school_upcoming[:2]:
         facts.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}")
+    for ev in school_recent[:1]:
+        facts.append(f"Recent school comms: {ev.get('child_name','')} — {ev.get('event_title','')}")
     if spend.get("count", 0) > 0:
         if spend_breakdown:
             bd_str = " · ".join(
