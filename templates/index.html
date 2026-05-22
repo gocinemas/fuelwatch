@@ -1766,9 +1766,7 @@
       </div>
 
       <!-- Cards area -->
-      <div id="aiw-cards" style="display:flex;flex-direction:column;gap:10px">
-        <div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>
-      </div>
+      <div id="aiw-cards" style="display:flex;flex-direction:column;gap:10px"></div>
     </div><!-- /screen-ai-watch -->
 
     <!-- ── V2 MORNING BRIEF SCREEN ── -->
@@ -2828,7 +2826,7 @@
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
-    if (name === "ai-watch")  { _aiwInit(); }
+    if (name === "ai-watch")  { try { _aiwRenderBookmarks(); } catch(e){} _aiwLoadCo(_aiwV); }
     if (name === "brief")     { if (typeof _briefInit === 'function') _briefInit(); }
     if (name === "home")       { if (typeof _homeHeroInit === 'function') _homeHeroInit(); }
     if (name === "myarea")     { _loadMyArea(); }
