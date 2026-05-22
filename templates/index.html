@@ -13500,18 +13500,20 @@ _bkBadge();
     // Saves — recent clippings (places, articles, things saved via WhatsApp)
     var saves = ctx && ctx.saves;
     if (saves && saves.length) {
-      // Known leading-emoji prefixes used in save titles — extract as icon, strip from display text
-      var _SAVE_EMOJIS = ["🧾","📍","🏪","🍽️","🎫","🏷️","📢","🍷","🪧","📄","📷","🏠","🎵","🎬","📦"];
       var savesRows = saves.slice(0, 5).map(function(s) {
         var rawTitle = (s.title || "").trim();
-        // Extract leading emoji — becomes the row icon
+        // Extract leading emoji robustly via codePointAt (handles surrogate pairs + variation selectors)
         var icon = "📌";
         var displayTitle = rawTitle;
-        for (var ei = 0; ei < _SAVE_EMOJIS.length; ei++) {
-          if (rawTitle.startsWith(_SAVE_EMOJIS[ei])) {
-            icon = _SAVE_EMOJIS[ei];
-            displayTitle = rawTitle.slice(_SAVE_EMOJIS[ei].length).trim();
-            break;
+        if (rawTitle.length > 0) {
+          var cp = rawTitle.codePointAt(0);
+          if (cp && cp > 0x2300) { // emoji/symbol range
+            var emojiLen = cp > 0xFFFF ? 2 : 1; // 4-byte emoji uses 2 JS chars
+            if (rawTitle.charCodeAt(emojiLen) === 0xFE0F) emojiLen++; // variation selector
+            if (rawTitle[emojiLen] === ' ' || emojiLen === rawTitle.length) {
+              icon = rawTitle.slice(0, emojiLen);
+              displayTitle = rawTitle.slice(emojiLen).trim();
+            }
           }
         }
         var cat = s.category || "";

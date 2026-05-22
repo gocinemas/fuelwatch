@@ -6169,29 +6169,61 @@ def _v2_fetch_saves(from_number: str) -> list:
          .order("created_at", desc=True) \
          .limit(8).execute().data or []
         import re as _sre
+        _GENERIC_TITLES = {
+            "📷 Photo", "🏪 Place", "📢 Billboard/Ad", "🏷️ Brand",
+            "🪧 Sign", "📄 Document", "🎫 Event/Ticket", "🍷 Wine",
+            "🍽️ Menu", "📦 Product",
+        }
+        _SKIP_PREFIXES = ("AIRESULT:", "META:", "PRODUCTS:", "SHOP:")
+
         def _clean_summary(raw: str) -> str:
-            """Strip internal META/PRODUCTS lines and return first useful sentence."""
             lines = (raw or "").splitlines()
             clean = []
             for ln in lines:
                 ln = ln.strip()
-                if not ln or ln.startswith("META:") or ln.startswith("PRODUCTS:"):
+                if not ln or any(ln.startswith(p) for p in _SKIP_PREFIXES):
                     continue
-                ln = _sre.sub(r'^[•\-]\s*', '', ln)
+                ln = _sre.sub(r'^[•\-]\s*', '', ln).strip()
                 if len(ln) > 8:
                     clean.append(ln)
             return clean[0][:100] if clean else ""
 
-        return [
-            {
-                "title":    r.get("title", "").strip(),
-                "summary":  _clean_summary(r.get("summary") or ""),
+        def _extract_title(r) -> str:
+            """For generic-titled saves, try to pull a real name from summary."""
+            t = (r.get("title") or "").strip()
+            if t not in _GENERIC_TITLES:
+                return t
+            # Try to find a better label in the summary (e.g. event name, shop name)
+            raw = r.get("summary") or ""
+            for ln in raw.splitlines():
+                ln = ln.strip()
+                if ln.startswith("SHOP:"):
+                    return ln[5:].strip()
+                if ln.startswith("AIRESULT:"):
+                    try:
+                        import json as _j
+                        obj = _j.loads(ln[9:])
+                        name = obj.get("event_name") or obj.get("company") or obj.get("brand") or ""
+                        if name and len(name) > 2:
+                            return t.split(" ")[0] + " " + name  # keep emoji prefix
+                    except Exception:
+                        pass
+            return t  # keep generic title — filtered below if summary is also empty
+
+        result = []
+        for r in rows:
+            title = _extract_title(r)
+            summary = _clean_summary(r.get("summary") or "")
+            # Drop saves that are both generic-titled and have no readable summary
+            if title in _GENERIC_TITLES and not summary:
+                continue
+            result.append({
+                "title":    title,
+                "summary":  summary,
                 "url":      r.get("url", ""),
                 "category": r.get("category", ""),
-            }
-            for r in rows
-            if r.get("title", "").strip()
-        ]
+            })
+        return result
     except Exception:
         return []
 
