@@ -1849,6 +1849,25 @@
             <input id="brief-pref-pc" type="text" placeholder="e.g. KT15"
               style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
           </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Bin collection day</div>
+            <div id="brief-bin-days" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" data-bin-day="0" onclick="_briefBinDay(0)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Mon</button>
+              <button type="button" data-bin-day="1" onclick="_briefBinDay(1)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Tue</button>
+              <button type="button" data-bin-day="2" onclick="_briefBinDay(2)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Wed</button>
+              <button type="button" data-bin-day="3" onclick="_briefBinDay(3)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Thu</button>
+              <button type="button" data-bin-day="4" onclick="_briefBinDay(4)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Fri</button>
+              <button type="button" data-bin-day="5" onclick="_briefBinDay(5)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Sat</button>
+              <button type="button" data-bin-day="6" onclick="_briefBinDay(6)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Sun</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">How often?</div>
+            <div style="display:flex;gap:8px">
+              <button type="button" id="brief-bin-weekly" onclick="_briefBinRotation('weekly')" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;color:var(--text)">Weekly</button>
+              <button type="button" id="brief-bin-fortnightly" onclick="_briefBinRotation('fortnightly')" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;color:var(--text)">Fortnightly</button>
+            </div>
+          </div>
           <button id="brief-save-btn" onclick="_briefSavePrefs()"
             style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:-0.2px">
             Save &amp; generate brief
@@ -13604,6 +13623,35 @@ _bkBadge();
       }
     }
 
+    // Bin day pill — show if tonight or tomorrow morning
+    var binDay = ctx && ctx.bin_day;
+    if (binDay && (binDay.tonight || (binDay.tomorrow && _isMorning))) {
+      var _binLabel = (binDay.bin_type || "").charAt(0).toUpperCase() + (binDay.bin_type || "").slice(1);
+      var _binIcon  = binDay.bin_type === "recycling" ? "♻️" : "🗑️";
+      var _binNote  = binDay.tonight ? "out tonight" : "out tonight — collection tomorrow";
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px">'
+        + '<span style="font-size:15px">' + _binIcon + '</span>'
+        + '<span style="font-size:13px;font-weight:600;color:var(--text)">' + _binLabel + ' bins ' + _binNote + '</span>'
+        + '<span style="font-size:11px;color:var(--muted);margin-left:auto">' + binDay.day_name + '</span>'
+        + '</div>';
+    }
+
+    // Deliveries pill — show if any parcel out for delivery today
+    var deliveries = ctx && ctx.deliveries;
+    if (deliveries && deliveries.length) {
+      var activeDeliveries = deliveries.filter(function(d) {
+        return d.status === "out for delivery" || d.status === "arriving today";
+      });
+      activeDeliveries.forEach(function(dlv) {
+        var _dlvCarrier = dlv.carrier || "";
+        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px">'
+          + '<span style="font-size:15px">📦</span>'
+          + '<span style="font-size:13px;font-weight:600;color:var(--text)">'
+          + (_dlvCarrier ? _dlvCarrier + ' parcel' : 'Parcel') + ' out for delivery today</span>'
+          + '</div>';
+      });
+    }
+
     // Fuel — only relevant during the day
     var fuel = ctx && ctx.fuel;
     if (!_isOffHours && fuel && fuel.price) {
@@ -13779,6 +13827,27 @@ _bkBadge();
       });
   }
 
+  var _briefBinDaySelected = null;
+  var _briefBinRotationSelected = null;
+
+  window._briefBinDay = function(day) {
+    _briefBinDaySelected = day;
+    document.querySelectorAll("#brief-bin-days button").forEach(function(b) {
+      var active = parseInt(b.getAttribute("data-bin-day"), 10) === day;
+      b.style.background  = active ? "#2563eb" : "var(--bg)";
+      b.style.color       = active ? "#fff"    : "var(--text)";
+      b.style.borderColor = active ? "#2563eb" : "var(--border)";
+    });
+  };
+
+  window._briefBinRotation = function(rot) {
+    _briefBinRotationSelected = rot;
+    var w = document.getElementById("brief-bin-weekly");
+    var f = document.getElementById("brief-bin-fortnightly");
+    if (w) { w.style.background = rot === "weekly" ? "#2563eb" : "var(--bg)"; w.style.color = rot === "weekly" ? "#fff" : "var(--text)"; w.style.borderColor = rot === "weekly" ? "#2563eb" : "var(--border)"; }
+    if (f) { f.style.background = rot === "fortnightly" ? "#2563eb" : "var(--bg)"; f.style.color = rot === "fortnightly" ? "#fff" : "var(--text)"; f.style.borderColor = rot === "fortnightly" ? "#2563eb" : "var(--border)"; }
+  };
+
   window._briefSavePrefs = function() {
     var fromEl = document.getElementById("brief-pref-from");
     var toEl   = document.getElementById("brief-pref-to");
@@ -13798,10 +13867,13 @@ _bkBadge();
     }
     var btn = document.getElementById("brief-save-btn");
     if (btn) { btn.textContent = "Saving…"; btn.disabled = true; }
+    var payload = {token: token, train_from: from, train_to: to, fuel_postcode: pc};
+    if (_briefBinDaySelected !== null) payload.bin_collection_day = _briefBinDaySelected;
+    if (_briefBinRotationSelected) payload.bin_rotation = _briefBinRotationSelected;
     fetch("/api/v2/prefs", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({token: token, train_from: from, train_to: to, fuel_postcode: pc})
+      body: JSON.stringify(payload)
     })
     .then(function(r) { return r.json(); })
     .then(function() {
@@ -13824,6 +13896,8 @@ _bkBadge();
     if (fromEl && prefs.train_from)    fromEl.value = prefs.train_from;
     if (toEl   && prefs.train_to)      toEl.value   = prefs.train_to;
     if (pcEl   && prefs.fuel_postcode) pcEl.value   = prefs.fuel_postcode;
+    if (prefs.bin_collection_day !== undefined) _briefBinDay(prefs.bin_collection_day);
+    if (prefs.bin_rotation) _briefBinRotation(prefs.bin_rotation);
     setupCta.style.display = "block";
     setupCta.scrollIntoView({behavior: "smooth"});
   };
