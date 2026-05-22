@@ -15327,8 +15327,13 @@ _bkBadge();
          </div>`
       : (isPlace ? `<div id="save-meta-${s.id}" style="margin-bottom:8px"><button onclick="savesEditLocation('${s.id}','')" style="background:none;border:1px dashed #c4b5fd;border-radius:8px;cursor:pointer;font-size:11px;padding:4px 10px;color:#7c3aed">+ add location</button></div>` : `<div id="save-meta-${s.id}"></div>`);
 
-    const enrichBtn = isPlace && editableTitle
+    // Details = venue lookup: only for text-based place saves, never for photo captures
+    const enrichBtn = isPlace && !s.image_url && editableTitle
       ? `<button onclick="savesEnrich('${s.id}','${editableTitle.replace(/'/g,"\\'")}',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #e0e7ff;background:#f5f3ff;font-size:11px;font-weight:600;cursor:pointer;color:#4f46e5">✨ Details</button>`
+      : "";
+    // Re-scan: re-read a photo save with recipe-aware vision (restores corrupted content)
+    const rescanBtn = s.image_url && !isBook
+      ? `<button onclick="savesRescan('${s.id}',this)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid #d1fae5;background:#ecfdf5;font-size:11px;font-weight:600;cursor:pointer;color:#065f46">🔄 Re-read</button>`
       : "";
     const _productBrand = productItems && productItems.length ? (productItems.find(p => p.brand) || {}).brand || "" : "";
     const brandGuess = _productBrand || (s.title||"").replace(/^🏷️\s*/,"").trim();
@@ -15384,6 +15389,7 @@ _bkBadge();
         ${exportBtns}
         ${deleteBtn}
         ${enrichBtn}
+        ${rescanBtn}
         ${brandBtn}
         ${adAiBtn}
       </div>
@@ -15952,6 +15958,26 @@ _bkBadge();
       } else if(btn) { btn.textContent = "⚠️ Not found"; btn.disabled = false; }
     } catch(e) {
       if(btn) { btn.textContent = "✨ Update details"; btn.disabled = false; }
+    }
+  };
+
+  window.savesRescan = async function(id, btn) {
+    if (btn) { btn.textContent = "🔄 Reading…"; btn.disabled = true; }
+    try {
+      const r = await fetch("/api/wa-saves/rescan", {
+        method: "POST",
+        headers: {..._savesHeaders(), "Content-Type": "application/json"},
+        body: JSON.stringify({id}),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        if (btn) { btn.textContent = "✓ Updated"; btn.style.background = "#d1fae5"; btn.style.color = "#065f46"; }
+        setTimeout(() => _savesRefreshCard(id, {title: d.title, summary: d.summary}), 1000);
+      } else {
+        if (btn) { btn.textContent = "⚠️ Failed"; btn.disabled = false; }
+      }
+    } catch(e) {
+      if (btn) { btn.textContent = "🔄 Re-read"; btn.disabled = false; }
     }
   };
 

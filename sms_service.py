@@ -6877,6 +6877,8 @@ def api_home_brief():
         time_mode = "daytime"
     elif 17 <= hour < 21:
         time_mode = "evening_leisure"
+    elif hour >= 23 or hour < 5:
+        time_mode = "goodnight"
     else:
         time_mode = "night"
     tod = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
@@ -6937,10 +6939,10 @@ def api_home_brief():
         cat = (s.get("category") or "").strip()
         return f"{t} ({cat})" if cat else t
 
-    # Night: only content saves — user is home, not going anywhere
+    # Night/goodnight: only content saves — user is home, not going anywhere
     # Evening: place/food saves first (still reasonable to head out)
     # Daytime: content first
-    if time_mode == "night":
+    if time_mode in ("night", "goodnight"):
         saves_for_prompt = content_saves[:3]
     elif time_mode == "evening_leisure":
         saves_for_prompt = place_saves[:3] + content_saves[:2]
@@ -6970,7 +6972,7 @@ def api_home_brief():
     for ev in school_recent[:1]:
         facts.append(f"Recent school note: {ev.get('child_name','')} — {ev.get('event_title','')}")
     # Spend only relevant during the day
-    if time_mode not in ("evening_leisure", "night") and spend.get("count", 0) > 0 and spend_breakdown:
+    if time_mode not in ("evening_leisure", "night", "goodnight") and spend.get("count", 0) > 0 and spend_breakdown:
         bd_str = " · ".join(
             f"{cat} £{v['total']:.2f}"
             for cat, v in sorted(spend_breakdown.items(), key=lambda x: -x[1]["total"])
@@ -7031,12 +7033,25 @@ def api_home_brief():
             "Do NOT suggest going out, buying food, or visiting any place. No work, no commute, no spend. "
             "Subtle, personal, British. Only mention a save if it is content (show, article, music) — never a food place. "
         )
+    elif time_mode == "goodnight":
+        tomorrow_note = (
+            "Weekend starts tomorrow." if day_type in ("thursday_pre_weekend", "friday") else
+            "Sunday tomorrow — one more day of weekend." if day_type == "weekend" and wday == 6 else
+            "Back to the week tomorrow." if day_type == "weekend" and wday == 0 else
+            f"{(now.date() + __import__('datetime').timedelta(days=1)).strftime('%A')} tomorrow."
+        )
+        bh_note = " Bank holiday Monday — long weekend." if is_long_weekend else ""
+        prompt_parts.append(
+            f"Write a warm, brief good-night message. It's past 11 PM on {dow}.{bh_note} {tomorrow_note} "
+            "One sentence wishing them a good rest. One sentence: a thoughtful, uplifting closing thought — "
+            "could be about something in their saves, their kids, or just something quietly wise. "
+            "British, understated, genuine. No clichés. Under 40 words."
+        )
     else:
         prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon.")
 
     if kids:
-        if time_mode == "night":
-            # Surface weekend events for kids at night
+        if time_mode in ("night", "goodnight"):
             from datetime import timedelta
             weekend_evs = [ev for ev in school_upcoming
                            if ev.get("event_date") and
@@ -7051,7 +7066,7 @@ def api_home_brief():
                 prompt_parts.append(f"Kids: {' and '.join(kids)}.")
         else:
             prompt_parts.append(f"Their kids: {' and '.join(kids)} — school day done.")
-    if saves_context:
+    if saves_context and time_mode != "goodnight":
         if time_mode == "evening_leisure":
             prompt_parts.append(
                 f"Their saved picks: {'; '.join(saves_context)}. "
@@ -7060,7 +7075,10 @@ def api_home_brief():
             )
         else:
             prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
-    if facts:
+    if saves_context and time_mode == "goodnight":
+        # Goodnight: one content save only, as a closing thought
+        prompt_parts.append(f"Something from their saves if it makes for a good closing thought: {saves_context[0]}.")
+    if facts and time_mode != "goodnight":
         prompt_parts.append(f"Facts: {'; '.join(facts)}.")
     prompt_parts.append(
         "Subtle, personal, British English. Sound like you know them. "
@@ -10618,14 +10636,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         prompt_text = (
             "You are analysing images for a UK app. All prices MUST use £ (British pounds) — never $ or €.\n"
             "Identify what this image is. Pick ONE type from: "
-            "event/ticket, store/restaurant, billboard/ad, receipt/bill, menu, wine, sign, document, product, photo.\n"
+            "event/ticket, store/restaurant, billboard/ad, receipt/bill, recipe card, menu, wine, sign, document, product, photo.\n"
             "IMPORTANT type rules:\n"
+            "- Use 'recipe card' for any image showing a recipe with ingredients and/or cooking instructions — even if a restaurant name appears on the card.\n"
+            "- Use 'menu' ONLY for a list of dishes offered at a restaurant (not a recipe card).\n"
             "- Use 'wine' for any photo of a wine bottle or wine label — even if on a table or shelf.\n"
             "- Use 'product' for ANY photo showing physical products, items on shelves, products with price tags, "
             "or a basket/trolley of items — even if taken inside a store or supermarket.\n"
             "- Use 'billboard/ad' ONLY for printed posters, banners, or ads that are NOT showing products on shelves.\n"
             "- Use 'store/restaurant' ONLY for the exterior or entrance of a shop/restaurant, NOT for shelf or product photos.\n"
             "Then give 3 bullet points starting with • covering the key info.\n"
+            "If recipe card: give the recipe name, key ingredients, and cooking steps.\n"
             "If store/restaurant: focus ONLY on the place itself — name, type of food/business, opening hours or price range if visible.\n"
             "If event/ticket: include event name, date, time, venue.\n"
             "If ad/billboard: state the brand, product name, and price/offer.\n"
@@ -10689,6 +10710,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 title = "🏷️ Brand"; img_type = "product"
             elif "receipt" in first or "bill" in first:
                 title = "🧾 Receipt"; img_type = "receipt"
+            elif "recipe" in first:
+                title = "🍳 Recipe"; img_type = "recipe"
             elif "menu" in first:
                 title = "🍽️ Menu"; img_type = "menu"
             elif "wine" in first:
@@ -16600,6 +16623,105 @@ def api_wa_saves_enrich():
             _wa_send_proactive(fn, msg)
 
         return jsonify({"ok": True, "summary": new_summary, "title": update.get("title", ""), "url": update.get("url", "")})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/wa-saves/rescan", methods=["POST"])
+def api_wa_saves_rescan():
+    """Re-run Groq vision on a photo save's image_url and update title/summary."""
+    from_number, err = _check_saves_pin()
+    if err:
+        return err
+    data    = request.json or {}
+    save_id = data.get("id", "").strip()
+    if not save_id:
+        return jsonify({"error": "id required"}), 400
+    try:
+        rows = lib._sb().table("wa_saves").select("id,image_url,from_number").eq("id", save_id).execute().data
+        if not rows:
+            return jsonify({"error": "save not found"}), 404
+        row = rows[0]
+        image_url = row.get("image_url", "")
+        if not image_url:
+            return jsonify({"error": "no image on this save"}), 400
+        import base64 as _b64
+        r = requests.get(image_url, timeout=12)
+        if r.status_code != 200:
+            return jsonify({"error": "could not download image"}), 502
+        img_b64 = _b64.b64encode(r.content).decode()
+        mime = r.headers.get("content-type", "image/jpeg").split(";")[0]
+
+        # Re-run vision with recipe-aware prompt
+        _vm = [
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "llama-3.2-90b-vision-preview",
+            "llama-3.2-11b-vision-preview",
+        ]
+        _prompt = (
+            "You are analysing images for a UK app. All prices MUST use £ — never $ or €.\n"
+            "Identify what this image is. Pick ONE type from: "
+            "event/ticket, store/restaurant, billboard/ad, receipt/bill, recipe card, menu, wine, sign, document, product, photo.\n"
+            "IMPORTANT: Use 'recipe card' for any image showing a recipe with ingredients or cooking instructions — even if a restaurant name appears.\n"
+            "Then give detailed bullet points starting with • covering the key info.\n"
+            "If recipe card: name the dish, list ALL ingredients with quantities, then list each cooking step.\n"
+            "Start your reply with: TYPE: [your choice]\n"
+            "Only add VENUE: [name] if type is store/restaurant, event/ticket, or menu.\n"
+            "Add SEARCH: [2-5 word search term]"
+        )
+        analysis = ""
+        for _m in _vm:
+            try:
+                body = {"model": _m, "max_tokens": 800, "messages": [{"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{img_b64}"}},
+                    {"type": "text", "text": _prompt},
+                ]}]}
+                resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
+                             "Content-Type": "application/json"},
+                    json=body, timeout=20,
+                )
+                if resp.status_code == 200:
+                    analysis = resp.json()["choices"][0]["message"]["content"].strip()
+                    break
+            except Exception:
+                pass
+
+        if not analysis:
+            return jsonify({"error": "vision model unavailable — try again shortly"}), 502
+
+        first = analysis.split("\n")[0].lower()
+        if "recipe" in first:
+            new_title = "🍳 Recipe"
+        elif "menu" in first:
+            new_title = "🍽️ Menu"
+        elif "event" in first or "ticket" in first:
+            new_title = "🎫 Event/Ticket"
+        elif "store" in first or "restaurant" in first:
+            new_title = "🏪 Place"
+        elif "receipt" in first or "bill" in first:
+            new_title = "🧾 Receipt"
+        elif "wine" in first:
+            new_title = "🍷 Wine"
+        else:
+            new_title = "📷 Photo"
+
+        # Extract VENUE tag to append to recipe title if present
+        for _line in analysis.split("\n"):
+            if _line.strip().upper().startswith("VENUE:"):
+                _venue = _line.split(":", 1)[1].strip()
+                if _venue and "recipe" in first:
+                    new_title = f"🍳 {_venue}"
+                break
+
+        # Strip metadata tags from summary body
+        import re as _re
+        clean = _re.sub(r"(?m)^(TYPE|VENUE|SEARCH|PHONE|URL|SHOP|LOCATION|PRODUCT):.*\n?", "", analysis).strip()
+
+        update = {"title": new_title, "summary": clean}
+        lib._sb().table("wa_saves").update(update).eq("id", save_id).execute()
+        return jsonify({"ok": True, "title": new_title, "summary": clean})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
