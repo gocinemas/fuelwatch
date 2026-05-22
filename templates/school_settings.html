@@ -324,6 +324,22 @@
         Events Miru parsed from school emails. Tap ✕ to remove any that are wrong.
       </p>
       <div id="events-list"><div class="events-loading">Loading…</div></div>
+      <!-- Add event manually -->
+      <div id="add-event-form" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb">
+        <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px">📌 Add event manually</div>
+        <select id="add-evt-profile" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;margin-bottom:8px;outline:none;background:#fff;color:#374151"></select>
+        <input id="add-evt-title" type="text" placeholder="Event title (e.g. Dance Show)" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;margin-bottom:8px;outline:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="add-evt-date" type="date" style="padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none">
+          <input id="add-evt-notes" type="text" placeholder="Notes (e.g. 14:00 &amp; 19:00)" style="padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="submitAddEvent()" style="flex:1;padding:10px;background:#1f2937;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">Add event</button>
+          <button onclick="document.getElementById('add-event-form').style.display='none'" style="padding:10px 16px;background:#f3f4f6;color:#374151;border:none;border-radius:10px;font-size:14px;cursor:pointer">Cancel</button>
+        </div>
+        <div id="add-evt-result" style="display:none;margin-top:8px;font-size:13px;font-weight:600"></div>
+      </div>
+      <button onclick="document.getElementById('add-event-form').style.display='block';this.style.display='none'" id="show-add-event-btn" style="margin-top:14px;width:100%;padding:10px;background:#f8fafc;color:#374151;border:1.5px dashed #cbd5e1;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer">+ Add event manually</button>
     </div>
 
     <!-- Fetch now -->
@@ -344,6 +360,7 @@
 <script>
 let _profiles = [];
 let _waNumber = null;
+let _activeProfileId = null;
 
 function _normaliseWa(raw) {
   let d = raw.replace(/[^\d+]/g, "");
@@ -375,8 +392,10 @@ async function lookupProfile() {
     }
     _waNumber  = wa;
     _profiles  = d.profiles;
+    _activeProfileId = _profiles.length ? _profiles[0].id : null;
     renderGmailSection();
     renderAllProfiles();
+    _renderAddEventProfilePicker();
     document.getElementById("screen-lookup").style.display  = "none";
     document.getElementById("screen-profile").style.display = "block";
     loadEvents();
@@ -727,6 +746,48 @@ async function deleteEvent(eventId) {
     }
   } catch {
     if (el) el.style.opacity = "1";
+  }
+}
+
+function _renderAddEventProfilePicker() {
+  const sel = document.getElementById("add-evt-profile");
+  if (!sel) return;
+  sel.innerHTML = _profiles.map(p =>
+    `<option value="${p.id}">${p.child_name}${p.school_name ? " — " + p.school_name : ""}</option>`
+  ).join("");
+}
+
+async function submitAddEvent() {
+  const profileId = document.getElementById("add-evt-profile").value;
+  const title = document.getElementById("add-evt-title").value.trim();
+  const date  = document.getElementById("add-evt-date").value.trim();
+  const notes = document.getElementById("add-evt-notes").value.trim();
+  const res   = document.getElementById("add-evt-result");
+  if (!title) { res.style.color="#991b1b"; res.textContent="Please enter an event title."; res.style.display="block"; return; }
+  if (!profileId) { res.style.color="#991b1b"; res.textContent="No profile selected."; res.style.display="block"; return; }
+  res.style.display = "none";
+  try {
+    const r = await fetch("/api/school/events/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: profileId, wa: _waNumber, event_title: title, event_date: date || null, notes: notes || null })
+    });
+    const d = await r.json();
+    if (r.ok && d.ok) {
+      res.style.color = "#065f46";
+      res.textContent = "✅ Event added.";
+      res.style.display = "block";
+      document.getElementById("add-evt-title").value = "";
+      document.getElementById("add-evt-date").value  = "";
+      document.getElementById("add-evt-notes").value = "";
+      setTimeout(() => { document.getElementById("add-event-form").style.display="none"; document.getElementById("show-add-event-btn").style.display="block"; loadEvents(); }, 1200);
+    } else {
+      res.style.color = "#991b1b";
+      res.textContent = d.error || "Something went wrong.";
+      res.style.display = "block";
+    }
+  } catch {
+    res.style.color = "#991b1b"; res.textContent = "Network error."; res.style.display = "block";
   }
 }
 

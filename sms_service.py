@@ -2955,6 +2955,42 @@ def school_event_delete():
         return _cors(jsonify({"error": str(e)})), 500
 
 
+@app.route("/api/school/events/add", methods=["POST", "OPTIONS"])
+def school_event_add():
+    """Manually pin an event to a school profile (bypasses email scanning window)."""
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+    try:
+        data       = request.get_json(force=True, silent=True) or {}
+        profile_id = data.get("profile_id", "").strip()
+        wa         = data.get("wa", "").strip()
+        title      = data.get("event_title", "").strip()
+        event_date = data.get("event_date", "").strip()   # YYYY-MM-DD
+        notes      = data.get("notes", "").strip()
+        if not all([profile_id, wa, title]):
+            return _cors(jsonify({"error": "profile_id, wa, event_title required"})), 400
+        wa = _normalise_from_number(wa)
+        owns = lib._sb().table("school_profiles") \
+            .select("id,child_name,school_name").eq("id", profile_id).eq("from_number", wa).execute().data
+        if not owns:
+            return _cors(jsonify({"error": "not authorized"})), 403
+        p = owns[0]
+        row = {
+            "profile_id":  profile_id,
+            "child_name":  p.get("child_name", ""),
+            "school_name": p.get("school_name", ""),
+            "event_title": title,
+            "event_date":  event_date or None,
+            "notes":       notes or None,
+            "source":      "manual",
+        }
+        result = lib._sb().table("school_events").insert(row).execute()
+        inserted = result.data[0] if result.data else row
+        return _cors(jsonify({"ok": True, "event": inserted}))
+    except Exception as e:
+        return _cors(jsonify({"error": str(e)})), 500
+
+
 # ── National results: live pull from Democracy Club, 6-hour cache ────────────
 # National results — live from Wikipedia infobox, 30-min cache
 _NAT_CACHE: dict = {"data": None, "ts": 0.0}
