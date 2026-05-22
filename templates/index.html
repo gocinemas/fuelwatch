@@ -13408,7 +13408,7 @@ _bkBadge();
         var dm = parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
         return dm >= _nowMins - 1; // allow 1-min tolerance
       });
-      if (!futureDeps.length) return; // all past — skip card
+      if (futureDeps.length > 0) { // only render if there are future departures
       var deps = futureDeps.slice(0, 3).map(function(d) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
           + '<span style="font-size:14px;font-weight:700;color:var(--text)">' + (d.departs || d.time || "") + '</span>'
@@ -13418,6 +13418,7 @@ _bkBadge();
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
         + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🚆 ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
         + deps + '</div>';
+      } // end futureDeps.length > 0
     }
 
     // School — always show; handle both old (array) and new (dict) shapes
@@ -13499,32 +13500,33 @@ _bkBadge();
     // Saves — recent clippings (places, articles, things saved via WhatsApp)
     var saves = ctx && ctx.saves;
     if (saves && saves.length) {
-      var _saveIcon = function(cat) {
-        var c = (cat || "").toLowerCase();
-        if (c === "place" || c === "restaurant" || c === "pub") return "📍";
-        if (c === "dining" || c === "coffee & lunch" || c === "fast food") return "🍽️";
-        if (c === "groceries") return "🛒";
-        if (c === "parking") return "🅿️";
-        if (c === "transport") return "🚆";
-        if (c === "shopping") return "🛍️";
-        if (c === "fuel") return "⛽";
-        if (c === "article" || c === "news") return "📰";
-        return "📌";
-      };
+      // Known leading-emoji prefixes used in save titles — extract as icon, strip from display text
+      var _SAVE_EMOJIS = ["🧾","📍","🏪","🍽️","🎫","🏷️","📢","🍷","🪧","📄","📷","🏠","🎵","🎬","📦"];
       var savesRows = saves.slice(0, 5).map(function(s) {
-        var t   = (s.title || "").replace(/^🧾\s*/, "").trim();
-        var sm  = (s.summary || "").replace(/^PRODUCTS:.*\n?/m, "").replace(/^META:.*\n?/gm, "").trim();
-        // Strip down summary to first meaningful line
-        var smFirst = sm.split("\n").map(function(l){ return l.replace(/^[•\-]\s*/, "").trim(); })
-                        .filter(function(l){ return l && l.length > 5; })[0] || "";
-        var url = s.url || "";
+        var rawTitle = (s.title || "").trim();
+        // Extract leading emoji — becomes the row icon
+        var icon = "📌";
+        var displayTitle = rawTitle;
+        for (var ei = 0; ei < _SAVE_EMOJIS.length; ei++) {
+          if (rawTitle.startsWith(_SAVE_EMOJIS[ei])) {
+            icon = _SAVE_EMOJIS[ei];
+            displayTitle = rawTitle.slice(_SAVE_EMOJIS[ei].length).trim();
+            break;
+          }
+        }
         var cat = s.category || "";
-        var icon = _saveIcon(cat);
+        var url = s.url || "";
+        var smRaw = s.summary || "";
+        // First meaningful non-metadata line of summary
+        var smFirst = smRaw.split("\n")
+          .map(function(l){ return l.replace(/^(META:|PRODUCTS:|[•\-]\s*)/, "").trim(); })
+          .filter(function(l){ return l.length > 8; })[0] || "";
+
         var row = '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-          + '<span style="font-size:15px;flex-shrink:0;margin-top:2px">' + icon + '</span>'
+          + '<span style="font-size:16px;flex-shrink:0;margin-top:2px;line-height:1">' + icon + '</span>'
           + '<div style="flex:1;min-width:0">'
-            + '<div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + t + '</div>'
-            + (cat ? '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-top:1px">' + cat + '</div>' : '')
+            + '<div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + displayTitle + '</div>'
+            + (cat ? '<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-top:1px">' + cat + '</div>' : '')
             + (smFirst ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + smFirst + '</div>' : '')
           + '</div>';
         if (url && url.startsWith("http")) {
@@ -13534,7 +13536,7 @@ _bkBadge();
         return row;
       }).join("");
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px">📌 Your saves</div>'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">📌 Your saves</div>'
         + savesRows
         + '</div>';
     }
