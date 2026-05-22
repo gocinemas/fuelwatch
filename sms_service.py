@@ -6376,16 +6376,15 @@ def api_home_brief_narrative():
     body  = request.get_json(silent=True) or {}
     mode  = body.get("mode", "")
     facts = body.get("facts", [])
-    if not facts:
-        return jsonify({"text": ""})
     from datetime import datetime as _dt
     now  = _dt.now()
-    dow  = now.strftime("%A")
-    tod  = "morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening"
-    mode_note = "working from home" if mode == "wfh" else "going into the office" if mode == "office" else "at work"
+    dow  = body.get("dow") or now.strftime("%A")
+    tod  = body.get("tod") or ("morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening")
+    mode_note = body.get("mode_note") or ("working from home" if mode == "wfh" else "going into the office" if mode == "office" else "at work")
+    facts_text = "; ".join(str(f) for f in facts[:6]) if facts else "no specific updates today"
     prompt = (
         f"Write a warm, natural 1-2 sentence brief for a UK user on {dow} {tod} who is {mode_note}. "
-        f"Facts: {'; '.join(str(f) for f in facts[:6])}. "
+        f"Facts: {facts_text}. "
         "Be concise and conversational, British English, under 40 words. No bullet points, no greetings."
     )
     try:

@@ -13486,11 +13486,10 @@ _bkBadge();
         + '</div>';
     }
 
-    if (html) {
-      container.innerHTML = html
-        + '<button onclick="_briefShowPrefs()" style="width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:11px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-top:4px">✏️ Update preferences</button>';
-      container.style.display = "flex";
-    }
+    // Always clear and re-render, even if html is empty — prevents stale cards showing
+    container.innerHTML = html
+      + (html ? '<button onclick="_briefShowPrefs()" style="width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:11px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-top:4px">✏️ Update preferences</button>' : '');
+    container.style.display = html ? "flex" : "none";
   }
 
   function _briefUpdateNarrative(d, mode) {
@@ -13507,42 +13506,40 @@ _bkBadge();
     }
     var sRaw = ctx.school;
     var sEvs = Array.isArray(sRaw) ? sRaw : (sRaw && sRaw.events ? sRaw.events : []);
+    var sKids = (sRaw && sRaw.schools) ? sRaw.schools : [];
+    if (wfh && sKids.length) {
+      facts.push("School run for " + sKids.map(function(s){ return s.child_name; }).join(" and "));
+    }
     sEvs.slice(0,2).forEach(function(ev){
       facts.push((ev.child_name||"") + " has " + (ev.event_title||"") + " on " + (ev.event_date||""));
     });
     if (ctx.fuel && ctx.fuel.price) {
-      facts.push("Fuel at " + ctx.fuel.name + ": " + ctx.fuel.price + "p");
+      facts.push("Fuel near you: " + ctx.fuel.name + " at " + ctx.fuel.price + "p");
     }
     if (ctx.spend && ctx.spend.count > 0) {
       facts.push("£" + ctx.spend.total + " spent this month across " + ctx.spend.count + " receipts");
     }
-    if (!facts.length) { return; } // nothing to regenerate with
+    // Always regenerate when mode changes — even with no facts, generate a mode-appropriate line
     var dow = new Date().toLocaleDateString("en-GB", {weekday:"long"});
     var tod = (function(){ var h = new Date().getHours(); return h<12?"morning":h<17?"afternoon":"evening"; })();
-    var modeNote = wfh ? "working from home" : "going into the office";
-    var prompt = "Write a warm, natural 1-2 sentence brief for a UK user on " + dow + " " + tod + " who is " + modeNote + ". "
-      + "Facts: " + facts.join("; ") + ". "
-      + "Be concise and conversational, British English, under 40 words. No bullet points.";
-    // Show loading state
+    var modeNote = wfh ? "working from home today" : "going into the office today";
     briefText.style.opacity = "0.4";
-    fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {"Content-Type":"application/json", "Authorization":"Bearer " + (window._groqKey||"")},
-    }).catch(function(){});
-    // Call server-side to avoid exposing key
     var token = localStorage.getItem("miru_phone") || "";
     var pc    = _miruPostcode() || "";
     fetch("/api/home/brief/narrative", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({mode: mode, facts: facts, token: token, pc: pc})
+      body: JSON.stringify({mode: mode, facts: facts, token: token, pc: pc,
+                            dow: dow, tod: tod, mode_note: modeNote})
     }).then(function(r){ return r.json(); })
       .then(function(resp){
         if (resp.text) {
           briefText.textContent = resp.text;
-          briefText.style.opacity = "1";
         }
+        briefText.style.opacity = "1";
       }).catch(function(){
+        // Fallback: simple local message if API fails
+        if (wfh) briefText.textContent = "You’re working from home today.";
         briefText.style.opacity = "1";
       });
   }
