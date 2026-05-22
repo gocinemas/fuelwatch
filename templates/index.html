@@ -13173,10 +13173,12 @@ _bkBadge();
       wb.style.background = mode === "wfh" ? "#eff6ff" : "var(--surface)";
       wb.style.color = mode === "wfh" ? "#1d4ed8" : "var(--muted)";
     }
-    // Re-render brief context with new mode awareness
-    if (_briefData && _briefData.context) {
+    if (_briefData) {
+      // Re-render context cards with mode filtering
       var ctxCards = document.getElementById("brief-context-cards");
-      _briefRenderContextCards(_briefData.context, ctxCards);
+      _briefRenderContextCards(_briefData.context, ctxCards, mode);
+      // Update narrative to be mode-aware
+      _briefUpdateNarrative(_briefData, mode);
     }
   };
 
@@ -13326,8 +13328,8 @@ _bkBadge();
         // Chips
         _briefRenderChips(d.context, chips);
 
-        // Context cards
-        _briefRenderContextCards(d.context, ctxCards);
+        // Context cards (pass current mode so WFH hides trains on initial load too)
+        _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
 
         // Location section (runs in parallel — doesn't block brief)
         _briefRequestLocation();
@@ -13358,12 +13360,14 @@ _bkBadge();
     }).join("");
   }
 
-  function _briefRenderContextCards(ctx, container) {
+  function _briefRenderContextCards(ctx, container, mode) {
     if (!container) return;
+    var wfh = (mode || _briefCurrentMode) === "wfh";
     var html = "";
 
+    // Trains — hide when WFH (not commuting)
     var trains = ctx && ctx.trains;
-    if (trains && trains.departures && trains.departures.length) {
+    if (!wfh && trains && trains.departures && trains.departures.length) {
       var deps = trains.departures.slice(0, 3).map(function(d) {
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
           + '<span style="font-size:14px;font-weight:700;color:var(--text)">' + (d.departs || d.time || "") + '</span>'
@@ -13375,15 +13379,7 @@ _bkBadge();
         + deps + '</div>';
     }
 
-    var fuel = ctx && ctx.fuel;
-    if (fuel && fuel.price) {
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⛽ Fuel</div>'
-        + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">' + fuel.price + 'p</div>'
-        + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + fuel.name + (fuel.change ? " · " + fuel.change : "") + '</div>'
-        + '</div>';
-    }
-
+    // School — always show, WFH users need this most
     var school = ctx && ctx.school;
     if (school && school.length) {
       var evHtml = school.slice(0, 3).map(function(ev) {
@@ -13397,6 +13393,17 @@ _bkBadge();
         + evHtml + '</div>';
     }
 
+    // Fuel — always show
+    var fuel = ctx && ctx.fuel;
+    if (fuel && fuel.price) {
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⛽ Fuel</div>'
+        + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">' + fuel.price + 'p</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + fuel.name + (fuel.change ? " · " + fuel.change : "") + '</div>'
+        + '</div>';
+    }
+
+    // Spend — always show
     var spend = ctx && ctx.spend;
     if (spend && spend.count > 0) {
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
@@ -13411,6 +13418,60 @@ _bkBadge();
         + '<button onclick="_briefShowPrefs()" style="width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:11px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-top:4px">✏️ Update preferences</button>';
       container.style.display = "flex";
     }
+  }
+
+  function _briefUpdateNarrative(d, mode) {
+    var briefText = document.getElementById("brief-text");
+    if (!briefText) return;
+    var ctx = d.context || {};
+    var wfh = mode === "wfh";
+    // Build mode-aware facts
+    var facts = [];
+    if (!wfh && ctx.trains && ctx.trains.departures && ctx.trains.departures.length) {
+      var t = ctx.trains;
+      var times = t.departures.slice(0,2).map(function(dep){ return dep.departs || dep.time || ""; }).filter(Boolean).join(" and ");
+      if (times) facts.push("Next trains " + (t.from||"") + " → " + (t.to||"") + ": " + times);
+    }
+    if (ctx.school && ctx.school.length) {
+      ctx.school.slice(0,2).forEach(function(ev){
+        facts.push((ev.child_name||"") + " has " + (ev.event_title||"") + " on " + (ev.event_date||""));
+      });
+    }
+    if (ctx.fuel && ctx.fuel.price) {
+      facts.push("Fuel at " + ctx.fuel.name + ": " + ctx.fuel.price + "p");
+    }
+    if (ctx.spend && ctx.spend.count > 0) {
+      facts.push("£" + ctx.spend.total + " spent this month across " + ctx.spend.count + " receipts");
+    }
+    if (!facts.length) { return; } // nothing to regenerate with
+    var dow = new Date().toLocaleDateString("en-GB", {weekday:"long"});
+    var tod = (function(){ var h = new Date().getHours(); return h<12?"morning":h<17?"afternoon":"evening"; })();
+    var modeNote = wfh ? "working from home" : "going into the office";
+    var prompt = "Write a warm, natural 1-2 sentence brief for a UK user on " + dow + " " + tod + " who is " + modeNote + ". "
+      + "Facts: " + facts.join("; ") + ". "
+      + "Be concise and conversational, British English, under 40 words. No bullet points.";
+    // Show loading state
+    briefText.style.opacity = "0.4";
+    fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {"Content-Type":"application/json", "Authorization":"Bearer " + (window._groqKey||"")},
+    }).catch(function(){});
+    // Call server-side to avoid exposing key
+    var token = localStorage.getItem("miru_phone") || "";
+    var pc    = _miruPostcode() || "";
+    fetch("/api/home/brief/narrative", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({mode: mode, facts: facts, token: token, pc: pc})
+    }).then(function(r){ return r.json(); })
+      .then(function(resp){
+        if (resp.text) {
+          briefText.textContent = resp.text;
+          briefText.style.opacity = "1";
+        }
+      }).catch(function(){
+        briefText.style.opacity = "1";
+      });
   }
 
   window._briefSavePrefs = function() {

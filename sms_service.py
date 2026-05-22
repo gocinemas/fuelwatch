@@ -6347,6 +6347,42 @@ def api_home_brief():
     return jsonify(result)
 
 
+@app.route("/api/home/brief/narrative", methods=["POST", "OPTIONS"])
+def api_home_brief_narrative():
+    """Re-generate the brief narrative for a given mode (wfh / office) + facts list."""
+    if request.method == "OPTIONS":
+        return jsonify({})
+    body  = request.get_json(silent=True) or {}
+    mode  = body.get("mode", "")
+    facts = body.get("facts", [])
+    if not facts:
+        return jsonify({"text": ""})
+    from datetime import datetime as _dt
+    now  = _dt.now()
+    dow  = now.strftime("%A")
+    tod  = "morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening"
+    mode_note = "working from home" if mode == "wfh" else "going into the office" if mode == "office" else "at work"
+    prompt = (
+        f"Write a warm, natural 1-2 sentence brief for a UK user on {dow} {tod} who is {mode_note}. "
+        f"Facts: {'; '.join(str(f) for f in facts[:6])}. "
+        "Be concise and conversational, British English, under 40 words. No bullet points, no greetings."
+    )
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 80,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=8,
+        )
+        text = r.json()["choices"][0]["message"]["content"].strip()
+        return jsonify({"text": text})
+    except Exception as e:
+        app.logger.warning(f"[brief/narrative] {e}")
+        return jsonify({"text": ""})
+
+
 @app.route("/api/admin/clear-brand-cache", methods=["POST"])
 def api_admin_clear_brand_cache():
     """Clear cached brand/company data so it re-fetches fresh. Token-protected."""
