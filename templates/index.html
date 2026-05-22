@@ -1791,6 +1791,18 @@
         </button>
       </div>
 
+      <!-- Persistent fuel strip — always visible when price known -->
+      <div id="brief-fuel-strip" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff9ed;border:1px solid #fed7aa;border-radius:12px;padding:9px 14px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:15px">⛽</span>
+          <div>
+            <span id="brief-fuel-price" style="font-size:15px;font-weight:900;color:#92400e"></span>
+            <span id="brief-fuel-name" style="font-size:12px;color:#b45309;margin-left:6px"></span>
+          </div>
+        </div>
+        <span id="brief-fuel-change" style="font-size:11px;font-weight:700;color:#78350f;background:#fef3c7;border-radius:99px;padding:2px 8px;display:none"></span>
+      </div>
+
       <!-- Narrative card — shimmer while loading -->
       <div id="brief-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:20px;padding:20px;margin-bottom:14px;min-height:88px">
         <div id="brief-shimmer">
@@ -13312,6 +13324,9 @@ _bkBadge();
         _briefData = d;
         if (shimmer) shimmer.style.display = "none";
 
+        // Fuel strip — always populate if we have fuel data
+        _briefUpdateFuelStrip(d.context && d.context.fuel);
+
         if (!d.has_prefs) {
           if (briefText) { briefText.textContent = "Set up your brief below to get a personalised daily update."; briefText.style.display = "block"; }
           if (setupCta)  setupCta.style.display = "block";
@@ -13351,13 +13366,31 @@ _bkBadge();
     }
     var fuel = ctx && ctx.fuel;
     if (fuel && fuel.price) chips.push("⛽ " + fuel.name + "  " + fuel.price + "p");
-    var school = ctx && ctx.school;
-    if (school && school.length) chips.push("🏫 " + school.length + " school event" + (school.length > 1 ? "s" : ""));
+    var schoolRaw = ctx && ctx.school;
+    var schoolEvs = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
+    var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
+    if (schoolKids.length) chips.push("🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "));
+    else if (schoolEvs.length) chips.push("🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""));
     var spend = ctx && ctx.spend;
     if (spend && spend.count > 0) chips.push("💳 £" + spend.total + " · " + spend.month);
     container.innerHTML = chips.map(function(c) {
       return '<span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text)">' + c + '</span>';
     }).join("");
+  }
+
+  function _briefUpdateFuelStrip(fuel) {
+    var strip   = document.getElementById("brief-fuel-strip");
+    var price   = document.getElementById("brief-fuel-price");
+    var name    = document.getElementById("brief-fuel-name");
+    var change  = document.getElementById("brief-fuel-change");
+    if (!strip || !fuel || !fuel.price) return;
+    price.textContent  = fuel.price + "p";
+    name.textContent   = fuel.name || "";
+    if (fuel.change) {
+      change.textContent = fuel.change;
+      change.style.display = "inline";
+    }
+    strip.style.display = "flex";
   }
 
   function _briefRenderContextCards(ctx, container, mode) {
@@ -13379,18 +13412,48 @@ _bkBadge();
         + deps + '</div>';
     }
 
-    // School — always show, WFH users need this most
-    var school = ctx && ctx.school;
-    if (school && school.length) {
-      var evHtml = school.slice(0, 3).map(function(ev) {
-        return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
-          + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + (ev.child_name || "") + ': ' + (ev.event_title || "") + '</div>'
-          + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (ev.event_date || "") + '</div>'
+    // School — always show; handle both old (array) and new (dict) shapes
+    var schoolRaw = ctx && ctx.school;
+    var schoolEvents  = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events  ? schoolRaw.events  : []);
+    var schoolRoutes  = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
+
+    if (schoolRoutes.length || schoolEvents.length) {
+      var schoolHtml = "";
+
+      // Daily school run — one row per child with Maps tap
+      if (schoolRoutes.length) {
+        schoolHtml += '<div style="margin-bottom:8px">';
+        schoolRoutes.forEach(function(s) {
+          var dest = encodeURIComponent((s.school_name || "") + " " + (s.address || ""));
+          var mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + dest + "&travelmode=driving";
+          schoolHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
+            + '<div>'
+              + '<div style="font-size:13px;font-weight:700;color:var(--text)">🚗 ' + (s.child_name || "") + '</div>'
+              + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (s.school_name || "") + '</div>'
+            + '</div>'
+            + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" '
+              + 'style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:99px;padding:5px 12px;text-decoration:none;flex-shrink:0;white-space:nowrap">'
+              + '🗺️ Drive →</a>'
           + '</div>';
-      }).join("");
+        });
+        schoolHtml += '</div>';
+      }
+
+      // Upcoming events this week
+      if (schoolEvents.length) {
+        schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:6px 0 5px">📅 This week</div>';
+        schoolEvents.slice(0, 3).forEach(function(ev) {
+          schoolHtml += '<div style="font-size:12px;color:var(--text);padding:4px 0;border-bottom:1px solid var(--border)">'
+            + '<span style="font-weight:600">' + (ev.child_name || "") + '</span>: '
+            + (ev.event_title || "")
+            + '<span style="color:var(--muted);float:right">' + (ev.event_date || "") + '</span>'
+            + '</div>';
+        });
+      }
+
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
         + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🏫 School</div>'
-        + evHtml + '</div>';
+        + schoolHtml + '</div>';
     }
 
     // Fuel — always show
@@ -13432,11 +13495,11 @@ _bkBadge();
       var times = t.departures.slice(0,2).map(function(dep){ return dep.departs || dep.time || ""; }).filter(Boolean).join(" and ");
       if (times) facts.push("Next trains " + (t.from||"") + " → " + (t.to||"") + ": " + times);
     }
-    if (ctx.school && ctx.school.length) {
-      ctx.school.slice(0,2).forEach(function(ev){
-        facts.push((ev.child_name||"") + " has " + (ev.event_title||"") + " on " + (ev.event_date||""));
-      });
-    }
+    var sRaw = ctx.school;
+    var sEvs = Array.isArray(sRaw) ? sRaw : (sRaw && sRaw.events ? sRaw.events : []);
+    sEvs.slice(0,2).forEach(function(ev){
+      facts.push((ev.child_name||"") + " has " + (ev.event_title||"") + " on " + (ev.event_date||""));
+    });
     if (ctx.fuel && ctx.fuel.price) {
       facts.push("Fuel at " + ctx.fuel.name + ": " + ctx.fuel.price + "p");
     }

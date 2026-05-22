@@ -6020,24 +6020,29 @@ def api_v2_prefs_post():
         return jsonify({"error": str(e)}), 500
 
 
-def _v2_fetch_school(from_number: str) -> list:
-    """Next 7 days of school events for this user."""
+def _v2_fetch_school(from_number: str) -> dict:
+    """School profiles (for daily run) + next 7 days of events."""
     from datetime import date, timedelta
     try:
-        today     = date.today().isoformat()
-        horizon   = (date.today() + timedelta(days=7)).isoformat()
-        profiles  = lib._sb().table("school_profiles").select("id") \
-                        .eq("from_number", from_number).execute().data or []
+        today   = date.today().isoformat()
+        horizon = (date.today() + timedelta(days=7)).isoformat()
+        profiles = lib._sb().table("school_profiles") \
+                       .select("id,child_name,school_name,address") \
+                       .eq("from_number", from_number).eq("active", True).execute().data or []
         if not profiles:
-            return []
+            return {"schools": [], "events": []}
         pids = [p["id"] for p in profiles]
-        rows = lib._sb().table("school_events").select(
+        events = lib._sb().table("school_events").select(
             "event_title,event_date,child_name,school_name"
         ).in_("profile_id", pids).gte("event_date", today).lte("event_date", horizon) \
          .order("event_date").execute().data or []
-        return rows
+        schools = [
+            {"child_name": p.get("child_name",""), "school_name": p.get("school_name",""), "address": p.get("address","")}
+            for p in profiles
+        ]
+        return {"schools": schools, "events": events}
     except Exception:
-        return []
+        return {"schools": [], "events": []}
 
 
 def _v2_fetch_spend(from_number: str) -> dict:
@@ -6305,7 +6310,8 @@ def api_home_brief():
     if fuel.get("price"):
         change = f" ({fuel['change']})" if fuel.get("change") else ""
         facts.append(f"Fuel near {fuel_pc}: {fuel['name']} {fuel['price']}p{change}")
-    school_ev = ctx.get("school", [])
+    school_data = ctx.get("school", {})
+    school_ev = school_data.get("events", []) if isinstance(school_data, dict) else school_data
     for ev in school_ev[:2]:
         facts.append(f"School: {ev.get('child_name','')}'s {ev.get('event_title','')} on {ev.get('event_date','')}")
     spend = ctx.get("spend", {})
