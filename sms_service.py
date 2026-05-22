@@ -7018,109 +7018,101 @@ def api_home_brief():
                "It's the weekend." if day_type == "weekend" else "")
             + bh_note + " "
         )
-    elif time_mode == "night":
-        weather_note = ""
-        if weather:
-            weather_note = f"It's {weather['temp']}°C outside. "
-        bh_note = " It's a long weekend — bank holiday Monday, so no rush." if is_long_weekend else (
-                  " Bank holiday today." if bank_holiday_today else "")
-        day_note = (
-            "It's a Friday night — weekend is here. "   if day_type == "friday" else
-            "It's Saturday night. "                      if day_type == "weekend" else
-            "It's a Thursday night. "                    if day_type == "thursday_pre_weekend" else
-            f"It's {dow} night. "
-        )
-        prompt_parts.append(
-            f"Write a chilled, winding-down 2-sentence brief. {day_note}{bh_note}{weather_note}"
-            "Sun is down, they are home. Reflect on the day or the week — something quiet and grounding. "
-            "Do NOT suggest activities, purchases, places, shows, books, or apps. No recommendations of any kind. "
-            "Just a warm, present-moment observation. British, understated. Under 40 words."
-        )
-    elif time_mode == "goodnight":
-        tomorrow_note = (
-            "Weekend starts tomorrow — nothing to worry about till Monday." if day_type in ("thursday_pre_weekend", "friday") else
-            "One more day of weekend left." if day_type == "weekend" and wday == 6 else
-            "Fresh week starts tomorrow." if day_type == "weekend" and wday == 0 else
+    elif time_mode in ("night", "goodnight"):
+        # Build night/goodnight text directly — no Groq creative writing, no purple prose
+        _bh  = " Bank holiday Monday — long weekend." if is_long_weekend else (
+               " Bank holiday today." if bank_holiday_today else "")
+        _wthr = f" {weather['temp']}°C outside." if weather and weather.get("temp") else ""
+        _tomorrow = (
+            "Long weekend — nothing till Tuesday." if is_long_weekend else
+            "Weekend starts tomorrow." if day_type in ("thursday_pre_weekend", "friday") else
+            "One more day of weekend." if day_type == "weekend" and wday == 6 else
+            "Fresh week tomorrow." if day_type == "weekend" and wday == 0 else
             f"{(now.date() + __import__('datetime').timedelta(days=1)).strftime('%A')} tomorrow."
         )
-        bh_note = " Long weekend — bank holiday Monday, so no rush." if is_long_weekend else ""
-        prompt_parts.append(
-            f"Write a warm, genuine good-night message. It's gone 11 PM on {dow}.{bh_note} {tomorrow_note} "
-            "Two sentences max. First: wish them a good rest — warm but not cheesy. "
-            "Second: one positive, uplifting closing thought. Choose the BEST option from: "
-            "(a) a verified fact from 'Verified facts only' below, if one fits naturally; "
-            "(b) an uplifting real-world thought you are CERTAIN is true — a scientific fact about sleep or rest, "
-            "a well-known positive news story from recent months, a true seasonal observation, "
-            "or a short well-known quote from a real person (include their name). "
-            "NEVER invent facts about the user, their day, their purchases, or their family. "
-            "British, understated. No clichés. Under 45 words."
-        )
+        if time_mode == "night":
+            _day_line = (
+                "Friday night — weekend's yours." if day_type == "friday" else
+                "Saturday night." if day_type == "weekend" and wday == 5 else
+                "Sunday evening." if day_type == "weekend" and wday == 6 else
+                f"{dow} evening."
+            )
+            prompt_parts.append(
+                f"Write exactly two short sentences. "
+                f"Sentence 1: a calm, grounded sign-off for {_day_line}{_bh}{_wthr} "
+                f"Sentence 2: one uplifting thought — either a true, well-known quote from a named real person, "
+                f"or a simple positive observation about rest, the weekend, or the season. "
+                f"Plain conversational English. No metaphors, no poetry, no 'twilight', no 'rustle'. Under 35 words total."
+            )
+        else:  # goodnight
+            _kids_note = ""
+            for ev in school_upcoming[:1]:
+                d = ev.get("event_date", "")
+                if d and (date.fromisoformat(d) - date.today()).days <= 3:
+                    _kids_note = f" {ev.get('child_name','')} has {ev.get('event_title','')} soon."
+            if not _kids_note and kids:
+                _kids_note = f" {kids[0]} and the family are all set for the weekend."
+            prompt_parts.append(
+                f"Write exactly two short sentences. "
+                f"Sentence 1: wish them a good rest — plain and warm, not cheesy. It's past 11 PM on {dow}.{_bh} {_tomorrow} "
+                f"Sentence 2: one uplifting closing thought. Use ONLY one of: "
+                f"(a) a true, well-known quote from a real named person; "
+                f"(b) a genuine positive fact about sleep or rest that is scientifically accepted; "
+                f"(c) this if relevant: {_kids_note.strip() or 'the weekend ahead'}. "
+                f"Plain English. No metaphors, no poetry, no made-up observations. Under 40 words total."
+            )
+        prompt = " ".join(prompt_parts)
+        brief_text = ""
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                         "Content-Type": "application/json"},
+                json={"model": "llama-3.1-8b-instant", "max_tokens": 80,
+                      "messages": [{"role": "user", "content": prompt}]},
+                timeout=10,
+            )
+            brief_text = r.json()["choices"][0]["message"]["content"].strip()
+        except Exception as be:
+            app.logger.warning(f"[brief] groq night: {be}")
+            brief_text = f"{_day_line if time_mode == 'night' else 'Rest well.'}{_bh} {_tomorrow}"
     else:
         prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon.")
 
-    if kids:
-        if time_mode == "goodnight":
-            pass  # kids handled in gn_context block below, with verified upcoming events only
-        elif time_mode == "night":
-            from datetime import timedelta
-            weekend_evs = [ev for ev in school_upcoming
-                           if ev.get("event_date") and
-                           (date.fromisoformat(ev["event_date"]) - date.today()).days <= 3]
-            if weekend_evs:
-                ev_str = "; ".join(
-                    f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}"
-                    for ev in weekend_evs[:2]
-                )
-                prompt_parts.append(f"Kids this weekend: {ev_str}.")
-            else:
-                prompt_parts.append(f"Kids: {' and '.join(kids)}.")
-        else:
-            prompt_parts.append(f"Their kids: {' and '.join(kids)} — school day done.")
-    if saves_context and time_mode != "goodnight":
-        if time_mode == "evening_leisure":
-            prompt_parts.append(
-                f"Their saved picks: {'; '.join(saves_context)}. "
-                "Mention one only if it genuinely fits the evening mood — a place they like or something to do tonight. "
-                "Do NOT invent locations, geography, or nearby places. Do NOT suggest receipt/purchase history as recommendations."
-            )
-        else:
-            prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
-    if time_mode == "goodnight":
-        # Goodnight gets NO saves, NO receipts, NO food — only hard facts we know are true
-        gn_context = []
+    if time_mode not in ("night", "goodnight"):
         if kids:
-            gn_context.append(f"Their kids: {' and '.join(kids)}")
-        for ev in school_upcoming[:1]:
-            d = ev.get("event_date", "")
-            if d:
-                days_away = (date.fromisoformat(d) - date.today()).days
-                if days_away <= 3:
-                    gn_context.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {d}")
-        if gn_context:
-            prompt_parts.append(f"Verified facts only — use these if relevant: {'; '.join(gn_context)}.")
-    if facts and time_mode != "goodnight":
-        prompt_parts.append(f"Facts: {'; '.join(facts)}.")
-    prompt_parts.append(
-        "Subtle, personal, British English. Sound like you know them. "
-        "No greetings, no bullet points, no 'Great news'. Under 55 words. "
-        "NEVER invent a location, nearby landmark, or geographic setting — only use places from their saves."
-    )
-    prompt = " ".join(prompt_parts)
-
-    brief_text = ""
-    try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
-                     "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
-                  "messages": [{"role": "user", "content": prompt}]},
-            timeout=10,
+            prompt_parts.append(f"Their kids: {' and '.join(kids)} — school day done.")
+        if saves_context:
+            if time_mode == "evening_leisure":
+                prompt_parts.append(
+                    f"Their saved picks: {'; '.join(saves_context)}. "
+                    "Mention one only if it genuinely fits the evening mood — a place they like or something to do tonight. "
+                    "Do NOT invent locations, geography, or nearby places. Do NOT suggest receipt/purchase history as recommendations."
+                )
+            else:
+                prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
+        if facts:
+            prompt_parts.append(f"Facts: {'; '.join(facts)}.")
+        prompt_parts.append(
+            "Subtle, personal, British English. Sound like you know them. "
+            "No greetings, no bullet points, no 'Great news'. Under 55 words. "
+            "NEVER invent a location, nearby landmark, or geographic setting — only use places from their saves."
         )
-        brief_text = r.json()["choices"][0]["message"]["content"].strip()
-    except Exception as be:
-        app.logger.warning(f"[brief] groq: {be}")
-        brief_text = " ".join(facts[:2]) if facts else ""
+        prompt = " ".join(prompt_parts)
+        brief_text = ""
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                         "Content-Type": "application/json"},
+                json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
+                      "messages": [{"role": "user", "content": prompt}]},
+                timeout=10,
+            )
+            brief_text = r.json()["choices"][0]["message"]["content"].strip()
+        except Exception as be:
+            app.logger.warning(f"[brief] groq: {be}")
+            brief_text = " ".join(facts[:2]) if facts else ""
 
     result = {
         "brief":     brief_text,
