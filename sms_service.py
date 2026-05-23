@@ -7252,21 +7252,25 @@ def api_brief_nearby():
     }
     amenities = _amenity_map.get(vtype, ["cafe", "coffee_shop"])
     try:
+        # nwr = node + way + relation — many cafes/restaurants are mapped as ways (buildings)
         parts = "".join(
-            f'node(around:{radius},{lat},{lng})[amenity="{a}"][name];'
+            f'nwr(around:{radius},{lat},{lng})[amenity="{a}"][name];'
             for a in amenities
         )
-        query = f"[out:json][timeout:7];({parts});out 15;"
+        query = f"[out:json][timeout:10];({parts});out center 20;"
         r = requests.post("https://overpass-api.de/api/interpreter",
-                          data={"data": query}, timeout=8)
+                          data={"data": query}, timeout=10)
         places = []
-        for el in r.json().get("elements", [])[:15]:
+        seen_names = set()
+        for el in r.json().get("elements", []):
             tags = el.get("tags", {})
             name = tags.get("name", "").strip()
-            if not name:
+            if not name or name.lower() in seen_names:
                 continue
-            elat = el.get("lat")
-            elng = el.get("lon")
+            seen_names.add(name.lower())
+            # nodes have lat/lon directly; ways/relations have a center object
+            elat = el.get("lat") or (el.get("center") or {}).get("lat")
+            elng = el.get("lon") or (el.get("center") or {}).get("lon")
             dist_m = round(haversine_km(lat, lng, elat, elng) * 1000) if elat and elng else None
             oh = tags.get("opening_hours") or tags.get("opening_hours:covid19") or ""
             open_now = _parse_opening_hours(oh)
@@ -7274,7 +7278,7 @@ def api_brief_nearby():
                 "name":     name,
                 "type":     tags.get("amenity", ""),
                 "dist_m":   dist_m,
-                "open_now": open_now,   # True / False / None (unknown)
+                "open_now": open_now,
                 "hours":    oh or None,
             })
         # Sort: open first, then unknown, then closed — within each group by distance
