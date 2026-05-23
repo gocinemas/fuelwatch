@@ -6309,11 +6309,12 @@ def _v2_fetch_school(from_number: str) -> dict:
             "event_title,event_date,child_name,school_name,notes"
         ).in_("profile_id", pids).gte("event_date", today_s).lte("event_date", horizon) \
          .order("event_date").execute().data or []
-        # Recent comms — past 14 days (emails extracted from Gmail)
+        # Recent comms — emails received in last 14 days (filter by created_at, not event_date)
+        # event_date is when the event happens (could be future), created_at is when email arrived
         recent_rows = lib._sb().table("school_events").select(
-            "event_title,event_date,child_name,school_name,notes"
-        ).in_("profile_id", pids).gte("event_date", recent).lt("event_date", today_s) \
-         .order("event_date", desc=True).limit(5).execute().data or []
+            "event_title,event_date,child_name,school_name,notes,created_at"
+        ).in_("profile_id", pids).gte("created_at", recent + "T00:00:00") \
+         .order("created_at", desc=True).limit(5).execute().data or []
         schools = [
             {"child_name": p.get("child_name",""), "school_name": p.get("school_name",""), "address": p.get("address","")}
             for p in profiles
@@ -6721,6 +6722,50 @@ def _v2_fetch_deliveries(from_number: str) -> list:
         return results
     except Exception:
         return []
+
+
+def _v2_fetch_area(postcode: str) -> dict:
+    """Pull local area highlights from the cached My Area data for the brief."""
+    if not postcode:
+        return {}
+    try:
+        sb = lib._sb()
+        # Try area_local_cache first (has planning, crime, news, reps)
+        row = sb.table("area_local_cache").select("data,cached_at") \
+            .eq("postcode", postcode.upper().replace(" ", "")).maybe_single().execute()
+        local_data = (row.data or {}).get("data", {}) if row and row.data else {}
+
+        highlights = []
+
+        # Planning notices
+        planning = local_data.get("planning", {})
+        apps = planning.get("applications") or planning.get("recent") or []
+        if apps:
+            recent_apps = [a for a in apps[:3] if a.get("description") or a.get("title")]
+            for a in recent_apps[:2]:
+                desc = (a.get("description") or a.get("title") or "").strip()[:80]
+                highlights.append({"type": "planning", "text": desc, "label": "Planning"})
+
+        # Local news headlines
+        news = local_data.get("news") or local_data.get("local_news") or []
+        for n in news[:2]:
+            title = (n.get("title") or n.get("headline") or "").strip()[:80]
+            if title:
+                highlights.append({"type": "news", "text": title, "label": "Local news"})
+
+        # Area summary (pre-computed prose)
+        summary_row = sb.table("area_summary_cache").select("summary") \
+            .eq("postcode", postcode.upper().replace(" ", "") + "_v5").maybe_single().execute()
+        area_summary = (summary_row.data or {}).get("summary", "") if summary_row and summary_row.data else ""
+        # Pull first sentence only
+        if area_summary:
+            first_sent = area_summary.split(".")[0].strip()
+            if len(first_sent) > 20:
+                highlights.insert(0, {"type": "summary", "text": first_sent, "label": "Your area"})
+
+        return {"highlights": highlights[:4], "postcode": postcode}
+    except Exception:
+        return {}
 
 
 def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
@@ -7453,6 +7498,9 @@ def api_home_brief():
             futures["calendar"]        = pool.submit(_v2_fetch_calendar, from_number)
             futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
             futures["recent_capture"]  = pool.submit(_v2_fetch_recent_capture, from_number)
+        _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
+        if _area_pc:
+            futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
         for k, f in futures.items():
