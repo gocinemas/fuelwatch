@@ -7250,8 +7250,13 @@ def api_home_brief():
     ]
 
     # Split content saves: event clips (🎫) surfaced separately with stricter prompt handling
+    # Also filter visited merchants out of all content — store clippings may have wrong category
     event_saves   = [s for s in content_saves if (s.get("title") or "").startswith("🎫")]
-    other_content = [s for s in content_saves if not (s.get("title") or "").startswith("🎫")]
+    other_content = [
+        s for s in content_saves
+        if not (s.get("title") or "").startswith("🎫")
+        and " ".join((s.get("title") or "").split()[1:]).strip().lower() not in _visited_merchants
+    ]
 
     def _save_label(s):
         t   = (s.get("title") or "").strip()
@@ -11610,6 +11615,19 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     update_data["url"] = search_url
                 if img_type == "receipt" and receipt_data.get("merchant"):
                     update_data["category"] = _receipt_category(receipt_data["merchant"])
+                elif img_type == "store":
+                    # Derive category from venue name so the brief can filter it correctly
+                    update_data["category"] = _receipt_category(venue_tag or title.replace("🏪","").strip()) or "place"
+                elif img_type == "menu":
+                    update_data["category"] = "Dining"
+                elif img_type == "event":
+                    update_data["category"] = "Events"
+                elif img_type == "recipe":
+                    update_data["category"] = "Recipe"
+                elif img_type == "wine":
+                    update_data["category"] = "Dining"
+                elif img_type == "product":
+                    update_data["category"] = "Shopping"
                 lib._sb().table("wa_saves").update(update_data).eq("id", sid).execute()
             except Exception:
                 pass
