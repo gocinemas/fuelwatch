@@ -14256,14 +14256,21 @@ _bkBadge();
           }
           return;
         }
-        var radiusLabel = radius > 1500 ? ' <span style="font-size:10px;color:var(--muted)">(within ' + (radius/1000).toFixed(1) + 'km)</span>' : '';
+        var radiusLabel = radius > 1500 ? '<div style="font-size:10px;color:var(--muted);padding:4px 0">Results within ' + (radius/1000).toFixed(1) + 'km</div>' : '';
         res.innerHTML = places.map(function(p) {
           var dist = p.dist_m ? (p.dist_m < 1000 ? p.dist_m + "m" : (p.dist_m/1000).toFixed(1) + "km") : "";
           var icon = {cafe:"☕", coffee_shop:"☕", bakery:"🥐", restaurant:"🍽️", fast_food:"🍔", pub:"🍺", bar:"🍸"}[p.type] || "📍";
-          return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">'
-            + '<div><span style="font-size:15px">' + icon + '</span> <span style="font-size:13px;font-weight:700;color:var(--text)">' + p.name + '</span>'
-            + '<span style="font-size:11px;color:var(--muted);margin-left:6px">' + (p.type || "") + '</span></div>'
-            + (dist ? '<span style="font-size:11px;font-weight:700;color:var(--muted)">' + dist + '</span>' : '')
+          var openBadge = "";
+          if (p.open_now === true)       openBadge = '<span style="font-size:10px;font-weight:700;color:#16a34a;background:#dcfce7;border-radius:99px;padding:2px 7px;margin-left:6px">Open</span>';
+          else if (p.open_now === false) openBadge = '<span style="font-size:10px;font-weight:700;color:#6b7280;background:#f3f4f6;border-radius:99px;padding:2px 7px;margin-left:6px">Closed</span>';
+          var rowStyle = p.open_now === false ? 'opacity:0.5;' : '';
+          return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;' + rowStyle + '">'
+            + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'
+            + '<span style="font-size:15px">' + icon + '</span>'
+            + '<span style="font-size:13px;font-weight:700;color:var(--text)">' + p.name + '</span>'
+            + openBadge
+            + '</div>'
+            + (dist ? '<span style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;margin-left:8px">' + dist + '</span>' : '')
             + '</div>';
         }).join("") + radiusLabel;
       })

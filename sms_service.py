@@ -7159,9 +7159,84 @@ def api_brief_location():
     return jsonify({"weather": weather, "fuel": fuel, "trains": trains, "venue": venue, "lat": lat, "lng": lng})
 
 
+def _parse_opening_hours(oh_str: str) -> bool | None:
+    """Parse OSM opening_hours string → True (open), False (closed), None (unknown).
+    Handles: 24/7, Mo-Fr 08:00-18:00, Sa 09:00-14:00, no-day rules, semicolon rules.
+    """
+    import re as _re
+    if not oh_str:
+        return None
+    oh = oh_str.strip()
+    if oh == "24/7":
+        return True
+
+    from datetime import datetime as _dtnow
+    _now = _dtnow.now()
+    _wday = _now.weekday()           # Mon=0 … Sun=6
+    _cur  = _now.hour * 60 + _now.minute
+
+    _DAY = {"mo": 0, "tu": 1, "we": 2, "th": 3, "fr": 4, "sa": 5, "su": 6}
+
+    def _day_range(s):
+        s = s.strip().lower()
+        if "-" in s:
+            a, b = s.split("-", 1)
+            ai, bi = _DAY.get(a), _DAY.get(b)
+            if ai is None or bi is None:
+                return set()
+            return set(range(ai, bi + 1)) if bi >= ai else set(range(ai, 7)) | set(range(0, bi + 1))
+        return {_DAY[s]} if s in _DAY else set(range(7))
+
+    def _time_mins(t):
+        parts = t.strip().split(":")
+        try:
+            return int(parts[0]) * 60 + int(parts[1])
+        except Exception:
+            return None
+
+    matched_any_day = False
+    for rule in oh.split(";"):
+        rule = rule.strip()
+        if not rule:
+            continue
+        # Detect leading day spec: "Mo-Fr", "Sa", "Mo,We,Fr"
+        day_m = _re.match(r'^([A-Z][a-z](?:[-,][A-Z][a-z])*)\s+(.*)', rule)
+        if day_m:
+            day_part  = day_m.group(1)
+            time_part = day_m.group(2).strip()
+            days = set()
+            for seg in day_part.split(","):
+                days |= _day_range(seg)
+        else:
+            days = set(range(7))   # no day prefix = applies every day
+            time_part = rule
+
+        if _wday not in days:
+            continue
+        matched_any_day = True
+
+        if time_part.lower() == "off":
+            return False
+
+        t_m = _re.match(r'(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})', time_part)
+        if t_m:
+            open_t  = _time_mins(t_m.group(1))
+            close_t = _time_mins(t_m.group(2))
+            if open_t is None or close_t is None:
+                continue
+            if close_t > open_t:
+                if open_t <= _cur < close_t:
+                    return True
+            else:   # overnight wrap
+                if _cur >= open_t or _cur < close_t:
+                    return True
+
+    return False if matched_any_day else None
+
+
 @app.route("/api/brief/nearby")
 def api_brief_nearby():
-    """Find cafes / restaurants near lat/lng via Overpass OSM."""
+    """Find cafes / restaurants near lat/lng via Overpass OSM, with open/closed status."""
     try:
         lat = float(request.args.get("lat", ""))
         lng = float(request.args.get("lng", ""))
@@ -7181,11 +7256,11 @@ def api_brief_nearby():
             f'node(around:{radius},{lat},{lng})[amenity="{a}"][name];'
             for a in amenities
         )
-        query = f"[out:json][timeout:7];({parts});out 10;"
+        query = f"[out:json][timeout:7];({parts});out 15;"
         r = requests.post("https://overpass-api.de/api/interpreter",
                           data={"data": query}, timeout=8)
         places = []
-        for el in r.json().get("elements", [])[:10]:
+        for el in r.json().get("elements", [])[:15]:
             tags = el.get("tags", {})
             name = tags.get("name", "").strip()
             if not name:
@@ -7193,9 +7268,22 @@ def api_brief_nearby():
             elat = el.get("lat")
             elng = el.get("lon")
             dist_m = round(haversine_km(lat, lng, elat, elng) * 1000) if elat and elng else None
-            places.append({"name": name, "type": tags.get("amenity",""), "dist_m": dist_m})
-        places.sort(key=lambda p: p.get("dist_m") or 9999)
-        return jsonify({"places": places})
+            oh = tags.get("opening_hours") or tags.get("opening_hours:covid19") or ""
+            open_now = _parse_opening_hours(oh)
+            places.append({
+                "name":     name,
+                "type":     tags.get("amenity", ""),
+                "dist_m":   dist_m,
+                "open_now": open_now,   # True / False / None (unknown)
+                "hours":    oh or None,
+            })
+        # Sort: open first, then unknown, then closed — within each group by distance
+        def _sort_key(p):
+            on = p.get("open_now")
+            rank = 0 if on is True else 1 if on is None else 2
+            return (rank, p.get("dist_m") or 9999)
+        places.sort(key=_sort_key)
+        return jsonify({"places": places[:10]})
     except Exception as e:
         return jsonify({"error": str(e), "places": []}), 200
 
