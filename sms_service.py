@@ -7238,23 +7238,53 @@ def api_home_brief():
                      ("Dining", "Coffee & Lunch", "Groceries", "place")]
     content_saves  = [s for s in saves_list if s not in receipt_saves and s not in place_saves]
 
+    # Build set of merchants already visited (have a receipt for) — exclude from evening suggestions
+    _visited_merchants = set()
+    for _rs in receipt_saves:
+        _m = ((_rs.get("title") or "").replace("🧾", "").strip().lower())
+        if _m:
+            _visited_merchants.add(_m)
+    place_saves_unvisited = [
+        s for s in place_saves
+        if " ".join((s.get("title") or "").split()[1:]).strip().lower() not in _visited_merchants
+    ]
+
+    # Split content saves: event clips (🎫) surfaced separately with stricter prompt handling
+    event_saves   = [s for s in content_saves if (s.get("title") or "").startswith("🎫")]
+    other_content = [s for s in content_saves if not (s.get("title") or "").startswith("🎫")]
+
     def _save_label(s):
         t   = (s.get("title") or "").strip()
         cat = (s.get("category") or "").strip()
         return f"{t} ({cat})" if cat else t
 
-    # Night/goodnight: NO saves at all — model hallucrinates from them
-    # When GPS location is provided: only content saves — real location context handles places
-    # Evening: place/food saves first (still reasonable to head out)
+    def _event_label(s):
+        """Strict label for event saves — title + summary facts only, no embellishment."""
+        t = (s.get("title") or "").strip()
+        sm = (s.get("summary") or "").strip()
+        # Pull first meaningful bullet from summary (date/time/venue)
+        for ln in sm.splitlines():
+            ln = ln.strip().lstrip("•").strip()
+            if ln and len(ln) > 4:
+                return f"{t}: {ln[:80]}"
+        return t
+
+    # Night/goodnight: NO saves at all — model hallucinates from them
+    # Evening: unvisited places first, then events (strict), then other content
+    # When GPS provided: content only — location context handles places
     # Daytime: content first
     if time_mode in ("night", "goodnight"):
         saves_for_prompt = []
+        event_context    = []
     elif has_location:
-        saves_for_prompt = content_saves[:3]   # place saves excluded — GPS context handles location
+        saves_for_prompt = other_content[:3]
+        event_context    = [_event_label(s) for s in event_saves[:2]]
     elif time_mode == "evening_leisure":
-        saves_for_prompt = place_saves[:3] + content_saves[:2]
+        saves_for_prompt = place_saves_unvisited[:2] + other_content[:2]
+        event_context    = [_event_label(s) for s in event_saves[:2]]
     else:
-        saves_for_prompt = content_saves[:3] + place_saves[:2]
+        saves_for_prompt = other_content[:3] + place_saves_unvisited[:2]
+        event_context    = [_event_label(s) for s in event_saves[:1]]
     saves_context = [_save_label(s) for s in saves_for_prompt if s.get("title")]
 
     # Recent capture — photo taken in last 20 mins via WhatsApp
@@ -7475,12 +7505,22 @@ def api_home_brief():
         if saves_context:
             if time_mode == "evening_leisure":
                 prompt_parts.append(
-                    f"Their saved picks: {'; '.join(saves_context)}. "
-                    "Mention one only if it genuinely fits the evening mood — a place they like or something to do tonight. "
-                    "Do NOT invent locations, geography, or nearby places. Do NOT suggest receipt/purchase history as recommendations."
+                    f"Places they have saved (not yet visited today): {'; '.join(saves_context)}. "
+                    "Mention one only if it fits the evening — do NOT suggest places that appear in today's receipts. "
+                    "Do NOT invent locations, geography, or activities."
                 )
             else:
                 prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
+        if event_context:
+            if time_mode == "evening_leisure":
+                prompt_parts.append(
+                    f"Saved event clips for tonight: {'; '.join(event_context)}. "
+                    "If relevant, mention the event by its exact name from the clip. "
+                    "NEVER add words like 'favourite', 'usual', 'regular', 'local' — only use what is explicitly in the clip data. "
+                    "Do NOT invent venue names, relationships, or descriptors not present in the clip."
+                )
+            elif event_context:
+                prompt_parts.append(f"Saved events: {'; '.join(event_context)}.")
         if facts:
             prompt_parts.append(f"Facts: {'; '.join(facts)}.")
         _location_rule = (
