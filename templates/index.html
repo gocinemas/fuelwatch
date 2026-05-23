@@ -13579,6 +13579,30 @@ _bkBadge();
     var _isWeekend   = _dow === 0 || _dow === 6;
     var _isPreWeekend = _isFriday && _isNight; // Friday night — weekend planning mode
 
+    // ── Recent capture card — photo taken in last 20 mins ─────────────────────
+    var _rc = (_briefData && _briefData.recent_capture) || {};
+    if (_rc && _rc.title && !_isNight) {
+      var _rcTitle   = (_rc.title || "").replace(/^[\u{1F300}-\u{1FFFF}]\s*/u, "").trim();
+      var _rcRawTitle = (_rc.title || "").trim();
+      var _rcSummary = (_rc.summary || "").slice(0, 100);
+      var _rcCat     = _rc.category || "";
+      var _rcIcon    = {
+        "Dining":"🍽️","Coffee & Lunch":"☕","Groceries":"🛒",
+        "Entertainment":"🎭","Books":"📚","Wine":"🍷"
+      }[_rcCat] || "📸";
+      var _rcMapsQ   = encodeURIComponent(_rcTitle);
+      html += '<div style="background:linear-gradient(135deg,#fefce8,#fef9c3);border:1.5px solid #fde047;border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:10px;font-weight:800;color:#854d0e;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">📸 Just captured · now</div>'
+        + '<div style="font-size:16px;font-weight:900;color:#1c1917;letter-spacing:-0.3px;line-height:1.2">' + _rcRawTitle + '</div>'
+        + (_rcSummary ? '<div style="font-size:12px;color:#78716c;margin-top:5px;line-height:1.4">' + _rcSummary + '</div>' : '')
+        + (_rcCat ? '<div style="font-size:11px;font-weight:700;color:#a16207;margin-top:6px">' + _rcIcon + ' ' + _rcCat + '</div>' : '')
+        + '<div style="margin-top:10px;display:flex;gap:8px">'
+        + '<a href="https://www.google.com/maps/search/?api=1&query=' + _rcMapsQ + '" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:#fff;background:#2563eb;border-radius:8px;padding:5px 12px;text-decoration:none">🗺️ Maps</a>'
+        + '<button onclick="window._miruGoSaves && _miruGoSaves()" style="font-size:12px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:5px 12px;cursor:pointer">View in Saves</button>'
+        + '</div>'
+        + '</div>';
+    }
+
     // ── Weather card (always first in evening, after trains in morning) ──────
     var weather = ctx && ctx.weather;
     var weatherHtml = "";

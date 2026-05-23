@@ -6447,6 +6447,24 @@ def _v2_fetch_calendar(from_number: str) -> list:
         return []
 
 
+def _v2_fetch_recent_capture(from_number: str) -> dict:
+    """Return the most recent photo save from the last 20 minutes, if any.
+    Used to surface 'you just snapped this' context in the V2 brief."""
+    try:
+        from datetime import datetime, timedelta
+        cutoff = (datetime.utcnow() - timedelta(minutes=20)).isoformat()
+        rows = lib._sb().table("wa_saves").select(
+            "id,title,summary,category,image_url,created_at,source"
+        ).eq("from_number", from_number) \
+         .not_.is_("image_url", "null") \
+         .gte("created_at", cutoff) \
+         .order("created_at", desc=True) \
+         .limit(1).execute().data or []
+        return rows[0] if rows else {}
+    except Exception:
+        return {}
+
+
 def _v2_fetch_personal_events(from_number: str) -> list:
     """Read user-added personal events from ma_details."""
     try:
@@ -7103,6 +7121,7 @@ def api_home_brief():
             futures["deliveries"]      = pool.submit(_v2_fetch_deliveries, from_number)
             futures["calendar"]        = pool.submit(_v2_fetch_calendar, from_number)
             futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
+            futures["recent_capture"]  = pool.submit(_v2_fetch_recent_capture, from_number)
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
         for k, f in futures.items():
@@ -7200,6 +7219,9 @@ def api_home_brief():
         saves_for_prompt = content_saves[:3] + place_saves[:2]
     saves_context = [_save_label(s) for s in saves_for_prompt if s.get("title")]
 
+    # Recent capture — photo taken in last 20 mins via WhatsApp
+    recent_capture = ctx.get("recent_capture", {})
+
     # Spend breakdown
     spend = ctx.get("spend", {})
     spend_breakdown = spend.get("breakdown", {})
@@ -7220,6 +7242,16 @@ def api_home_brief():
         loc_str = ""
 
     facts = []
+    # Recent capture — photo taken in last 20 mins surfaces first so Groq can reference it
+    if recent_capture.get("title") and time_mode not in ("night", "goodnight"):
+        _rc_title   = (recent_capture.get("title") or "").strip()
+        _rc_summary = (recent_capture.get("summary") or "")[:80].strip()
+        _rc_cat     = recent_capture.get("category", "")
+        _rc_fact = f"📸 Just captured: {_rc_title}"
+        if _rc_summary:
+            _rc_fact += f" — {_rc_summary}"
+        facts.append(_rc_fact)
+
     # Trains only relevant in commute window — use GPS-nearest station if available
     if time_mode == "morning_commute":
         trains = ctx.get("trains", {})
@@ -7439,10 +7471,12 @@ def api_home_brief():
         "calendar_connected": bool(ctx.get("calendar") is not None and from_number and
             lib._sb().table("ma_details").select("id").eq("device_id", from_number)
             .eq("type", "calendar_token").execute().data),
-        "location":  {"area": loc_str, "venue": loc_venue} if loc_str else {},
+        "location":        {"area": loc_str, "venue": loc_venue} if loc_str else {},
+        "recent_capture":  recent_capture,
     }
-    # Never cache when location-enriched (user may have moved) or during goodnight
-    if time_mode != "goodnight" and not has_location:
+    # Never cache when location-enriched or recent capture present (both are time-sensitive)
+    _has_recent = bool(recent_capture)
+    if time_mode != "goodnight" and not has_location and not _has_recent:
         _v2_brief_cache[from_number or postcode] = {"ts": time.time(), "data": result}
     return jsonify(result)
 
