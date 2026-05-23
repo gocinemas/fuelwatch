@@ -11888,7 +11888,6 @@ def _wa_spending_query(from_number: str, body: str) -> str:
 def _wa_menu_lookup(name: str, from_number: str) -> str:
     """Look up a restaurant/pub menu by name: Places → website → Groq extract."""
     import html, re as _re
-    from groq import Groq as _Groq
 
     # 1. Find place via Google Places text search near user's home postcode
     home_pc = _get_wa_home_postcode(from_number) or ""
@@ -11973,32 +11972,39 @@ def _wa_menu_lookup(name: str, from_number: str) -> str:
     except Exception as _e:
         print(f"[menu_lookup] fetch error: {_e}")
 
+    _groq_key = os.environ.get("GROQ_API_KEY", "")
+    _groq_url = "https://api.groq.com/openai/v1/chat/completions"
+    _groq_hdrs = {"Authorization": f"Bearer {_groq_key}", "Content-Type": "application/json"}
+
+    def _groq_call(messages, max_tokens=400, temperature=0.3):
+        r = requests.post(_groq_url, headers=_groq_hdrs, json={
+            "model": "llama-3.1-8b-instant",
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }, timeout=15)
+        return r.json()["choices"][0]["message"]["content"].strip()
+
     # If website still blocked, ask Groq to generate a representative menu from its training data
     if len(raw_text) < 200:
         print(f"[menu_lookup] website blocked/empty for {place_name}, using Groq knowledge fallback")
         try:
-            gc = _Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
-            fallback = gc.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                temperature=0.3,
-                messages=[{
-                    "role": "system",
-                    "content": (
-                        "You are a UK pub and restaurant food guide. Based on what you know about this venue, "
-                        "give a representative sample of their menu — typical starters, mains, desserts and price range. "
-                        "Be honest if you're not certain. WhatsApp format: short, emoji bullets, no markdown headers."
-                    ),
-                }, {
-                    "role": "user",
-                    "content": f"What kind of food does {place_name} in {place_addr.split(',')[0]} serve? Give me a rough menu.",
-                }],
-                max_tokens=400,
-            ).choices[0].message.content.strip()
+            fallback = _groq_call([{
+                "role": "system",
+                "content": (
+                    "You are a UK pub and restaurant food guide. Based on what you know about this venue, "
+                    "give a representative sample of their menu — typical starters, mains, desserts and price range. "
+                    "Be honest if you're not certain. WhatsApp format: short, emoji bullets, no markdown headers."
+                ),
+            }, {
+                "role": "user",
+                "content": f"What kind of food does {place_name} in {place_addr.split(',')[0]} serve? Give me a rough menu.",
+            }])
             msg = f"🍽️ *{place_name}*\n"
             if place_addr:
                 msg += f"_{place_addr.split(',')[0]}_\n\n"
             msg += fallback + "\n\n"
-            msg += f"_Menu based on Groq knowledge — check directly:_ {website}"
+            msg += f"_Estimated menu — verify directly:_ {website}"
             if place_phone:
                 msg += f"\n📞 {place_phone}"
             return msg
@@ -12008,27 +12014,21 @@ def _wa_menu_lookup(name: str, from_number: str) -> str:
                 f"Their website is blocking automated access — check directly:\n{website}"
                 + (f"\n📞 {place_phone}" if place_phone else ""))
 
-    # 3. Groq extracts menu items
+    # 3. Groq extracts menu items from scraped text
     try:
-        gc = _Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
-        extracted = gc.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            temperature=0,
-            messages=[{
-                "role": "system",
-                "content": (
-                    "You are a menu extractor. From the website text, extract the food and drink menu. "
-                    "Group by section (Starters, Mains, Desserts, Drinks etc). "
-                    "For each item: name and price if shown. Max 20 items total. "
-                    "If no menu is visible on the page, say 'Menu not found on website'. "
-                    "Be concise — WhatsApp format, no markdown headers, use emoji bullets."
-                ),
-            }, {
-                "role": "user",
-                "content": f"Restaurant: {place_name}\n\nWebsite text:\n{raw_text}",
-            }],
-            max_tokens=600,
-        ).choices[0].message.content.strip()
+        extracted = _groq_call([{
+            "role": "system",
+            "content": (
+                "You are a menu extractor. From the website text, extract the food and drink menu. "
+                "Group by section (Starters, Mains, Desserts, Drinks etc). "
+                "For each item: name and price if shown. Max 20 items total. "
+                "If no menu is visible on the page, say 'Menu not found on website'. "
+                "Be concise — WhatsApp format, no markdown headers, use emoji bullets."
+            ),
+        }, {
+            "role": "user",
+            "content": f"Restaurant: {place_name}\n\nWebsite text:\n{raw_text}",
+        }], max_tokens=600, temperature=0)
     except Exception as _e:
         print(f"[menu_lookup] groq error: {_e}")
         extracted = "Menu not found on website"
@@ -13548,13 +13548,12 @@ def _wa_classify_intent(body: str) -> dict | None:
     Returns intent dict or None on failure / unknown.
     Called when no exact command matched — handles typos, word-order variations, and natural phrasing."""
     try:
-        from groq import Groq as _Groq
         import json as _json
-        gc = _Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
-        result = gc.chat.completions.create(
-            model="llama3-8b-8192",
-            temperature=0,
-            messages=[{"role": "system", "content": (
+        result = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}", "Content-Type": "application/json"},
+            json={"model": "llama3-8b-8192", "temperature": 0, "max_tokens": 160,
+            "messages": [{"role": "system", "content": (
                 "Classify the user message into ONE intent. Respond with JSON only — no markdown, no explanation.\n\n"
                 "Intents:\n"
                 "  train        — train/rail departures or journey. Extract: from (station name, str), to (station name or null).\n"
@@ -13606,9 +13605,9 @@ def _wa_classify_intent(body: str) -> dict | None:
                 '{"intent":"my_saves"}\n'
                 '{"intent":"my_link"}\n'
                 '{"intent":"unknown"}'
-            )}, {"role": "user", "content": body[:300]}],
-            max_tokens=160,
-        ).choices[0].message.content.strip()
+            )}, {"role": "user", "content": body[:300]}]},
+            timeout=8,
+        ).json()["choices"][0]["message"]["content"].strip()
         result = re.sub(r"^```[a-z]*\n?|```$", "", result.strip()).strip()
         parsed = _json.loads(result)
         return parsed if parsed.get("intent") and parsed["intent"] != "unknown" else None
