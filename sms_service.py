@@ -6368,6 +6368,66 @@ def _v2_fetch_saves(from_number: str) -> list:
         return []
 
 
+def _v2_fetch_calendar(from_number: str) -> list:
+    """Fetch today's + tomorrow's Google Calendar events for the user."""
+    try:
+        rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number) \
+            .eq("type", "calendar_token").execute().data
+        if not rows:
+            return []
+        refresh_token = (rows[0].get("data") or {}).get("refresh_token", "")
+        if not refresh_token:
+            return []
+        tr = requests.post("https://oauth2.googleapis.com/token", data={
+            "refresh_token": refresh_token,
+            "client_id":     _web_client_id(),
+            "client_secret": _web_client_secret(),
+            "grant_type":    "refresh_token",
+        }, timeout=8)
+        access_token = tr.json().get("access_token", "")
+        if not access_token:
+            return []
+        from datetime import datetime as _cdt, timezone as _ctz, timedelta as _ctd
+        now_utc      = _cdt.now(_ctz.utc)
+        today_min    = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow_max = today_min + _ctd(days=2)
+        er = requests.get(
+            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={
+                "timeMin":      today_min.isoformat(),
+                "timeMax":      tomorrow_max.isoformat(),
+                "singleEvents": "true",
+                "orderBy":      "startTime",
+                "maxResults":   "15",
+            },
+            timeout=8,
+        )
+        events = []
+        for ev in er.json().get("items", []):
+            title = (ev.get("summary") or "").strip()
+            if not title or title.lower() == "busy":
+                continue
+            start   = ev.get("start", {})
+            all_day = "date" in start and "dateTime" not in start
+            raw     = start.get("dateTime") or start.get("date", "")
+            start_label = ""
+            date_label  = raw[:10] if raw else ""
+            if raw and "T" in raw:
+                try:
+                    _s    = _cdt.fromisoformat(raw.replace("Z", "+00:00"))
+                    _s_uk = _s + _ctd(hours=1)   # BST offset (approx)
+                    start_label = _s_uk.strftime("%-I:%M%p").lower().replace(":00am", "am").replace(":00pm", "pm")
+                    date_label  = _s_uk.date().isoformat()
+                except Exception:
+                    pass
+            events.append({"title": title, "start": start_label, "date": date_label, "all_day": all_day})
+        return events
+    except Exception as e:
+        app.logger.warning(f"[calendar] fetch: {e}")
+        return []
+
+
 def _v2_fetch_deliveries(from_number: str) -> list:
     """Scan Gmail for recent parcel delivery emails. Returns up to 3 items."""
     import re as _re
@@ -6861,6 +6921,7 @@ def api_home_brief():
             futures["spend"]      = pool.submit(_v2_fetch_spend, from_number)
             futures["saves"]      = pool.submit(_v2_fetch_saves, from_number)
             futures["deliveries"] = pool.submit(_v2_fetch_deliveries, from_number)
+            futures["calendar"]   = pool.submit(_v2_fetch_calendar, from_number)
         for k, f in futures.items():
             try: ctx[k] = f.result(timeout=8)
             except Exception as ex: app.logger.warning(f"[brief] {k}: {ex}")
@@ -6986,6 +7047,20 @@ def api_home_brief():
             carrier = dlv.get("carrier", "")
             facts.append(f"📦 Parcel out for delivery today{' (' + carrier + ')' if carrier else ''}")
             break
+    # Calendar events — today for morning/daytime, tomorrow for evening
+    _today_s    = now.date().isoformat()
+    _tomorrow_s = (now.date() + __import__("datetime").timedelta(days=1)).isoformat()
+    _cal_events = ctx.get("calendar", [])
+    if time_mode in ("morning_commute", "daytime"):
+        _today_cal = [e for e in _cal_events if e.get("date") == _today_s]
+        for e in _today_cal[:3]:
+            _t = f" at {e['start']}" if e.get("start") else ""
+            facts.append(f"📅 {e['title']}{_t} today")
+    elif time_mode == "evening_leisure":
+        _tom_cal = [e for e in _cal_events if e.get("date") == _tomorrow_s]
+        for e in _tom_cal[:2]:
+            _t = f" at {e['start']}" if e.get("start") else ""
+            facts.append(f"📅 Tomorrow: {e['title']}{_t}")
     bin_day = ctx.get("bin_day")
     if bin_day:
         bt = (bin_day.get("bin_type") or "").capitalize()
@@ -7121,9 +7196,14 @@ def api_home_brief():
         "has_prefs": bool(prefs),
         "tod":       tod,
         "day_type":  day_type,
+        "time_mode": time_mode,
         "bank_holiday_today":   bank_holiday_today,
         "bank_holiday_monday":  bank_holiday_monday,
         "is_long_weekend":      is_long_weekend,
+        "calendar":  ctx.get("calendar", []),
+        "calendar_connected": bool(ctx.get("calendar") is not None and from_number and
+            lib._sb().table("ma_details").select("id").eq("device_id", from_number)
+            .eq("type", "calendar_token").execute().data),
     }
     if time_mode != "goodnight":  # goodnight brief is never cached — always fresh
         _v2_brief_cache[from_number or postcode] = {"ts": time.time(), "data": result}
@@ -15077,6 +15157,8 @@ def school_signup_page():
 _SCHOOL_OAUTH_REDIRECT  = "https://miru.humanagency.co/school/oauth/callback"
 _MA_GMAIL_REDIRECT      = "https://miru.humanagency.co/api/myarea/gmail/callback"
 _SCHOOL_OAUTH_SCOPES    = "https://www.googleapis.com/auth/gmail.readonly"
+_CALENDAR_OAUTH_REDIRECT = "https://miru.humanagency.co/calendar/oauth/callback"
+_CALENDAR_OAUTH_SCOPES   = "https://www.googleapis.com/auth/calendar.readonly"
 
 
 # ── My Details Gmail import ────────────────────────────────────────────────────
@@ -15930,6 +16012,85 @@ def _school_oauth_url(profile_id: str) -> str:
         "state":         profile_id,
     }
     return "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+
+
+def _calendar_oauth_url(from_number: str) -> str:
+    import urllib.parse
+    params = {
+        "client_id":     _web_client_id(),
+        "redirect_uri":  _CALENDAR_OAUTH_REDIRECT,
+        "response_type": "code",
+        "scope":         _CALENDAR_OAUTH_SCOPES,
+        "access_type":   "offline",
+        "prompt":        "consent",
+        "state":         from_number,
+    }
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+
+
+@app.route("/calendar/oauth/callback")
+def calendar_oauth_callback():
+    code        = request.args.get("code", "")
+    from_number = request.args.get("state", "")
+    if request.args.get("error") or not code or not from_number:
+        return "<p>❌ Calendar connection failed. Close this tab and try again.</p>", 400
+    try:
+        tr = requests.post("https://oauth2.googleapis.com/token", data={
+            "code":          code,
+            "client_id":     _web_client_id(),
+            "client_secret": _web_client_secret(),
+            "redirect_uri":  _CALENDAR_OAUTH_REDIRECT,
+            "grant_type":    "authorization_code",
+        }, timeout=10)
+        tokens = tr.json()
+        refresh_token = tokens.get("refresh_token", "")
+        if not refresh_token:
+            return "<p>❌ No refresh token — try disconnecting and reconnecting in Miru.</p>", 400
+        sb = lib._sb()
+        existing = sb.table("ma_details").select("id").eq("device_id", from_number) \
+            .eq("type", "calendar_token").execute().data
+        rec_data = {"refresh_token": refresh_token}
+        if existing:
+            sb.table("ma_details").update({"data": rec_data}).eq("id", existing[0]["id"]).execute()
+        else:
+            sb.table("ma_details").insert({
+                "device_id": from_number, "type": "calendar_token",
+                "label": "Google Calendar", "data": rec_data,
+            }).execute()
+        return "<html><body style='font-family:sans-serif;text-align:center;padding:40px'>" \
+               "<h2>✅ Calendar connected</h2><p>You can close this tab — Miru will now show your events.</p>" \
+               "<script>setTimeout(()=>window.close(),2000)</script></body></html>"
+    except Exception as e:
+        return f"<p>❌ Error: {e}</p>", 500
+
+
+@app.route("/api/calendar/status")
+def api_calendar_status():
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token) if token else None
+    if not from_number:
+        return _cors(jsonify({"connected": False}))
+    row = lib._sb().table("ma_details").select("id").eq("device_id", from_number) \
+        .eq("type", "calendar_token").execute().data
+    connected = bool(row)
+    return _cors(jsonify({
+        "connected": connected,
+        "oauth_url": None if connected else _calendar_oauth_url(from_number),
+    }))
+
+
+@app.route("/api/calendar/disconnect", methods=["POST", "OPTIONS"])
+def api_calendar_disconnect():
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+    data = request.json or {}
+    token = data.get("token", "").strip()
+    from_number = _v2_resolve(token) if token else None
+    if not from_number:
+        return _cors(jsonify({"error": "token required"})), 400
+    lib._sb().table("ma_details").delete().eq("device_id", from_number) \
+        .eq("type", "calendar_token").execute()
+    return _cors(jsonify({"ok": True}))
 
 
 @app.route("/school/oauth/callback")

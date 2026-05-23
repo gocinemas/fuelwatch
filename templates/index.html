@@ -1868,6 +1868,16 @@
               <button type="button" id="brief-bin-fortnightly" onclick="_briefBinRotation('fortnightly')" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;color:var(--text)">Fortnightly</button>
             </div>
           </div>
+          <!-- Calendar connect -->
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Google Calendar</div>
+            <div id="brief-cal-row">
+              <button onclick="_briefConnectCalendar()" id="brief-cal-btn"
+                style="width:100%;padding:11px;border-radius:10px;border:1.5px solid #c7d2fe;background:#eef2ff;font-size:13px;font-weight:700;cursor:pointer;color:#4338ca;display:flex;align-items:center;justify-content:center;gap:8px">
+                <span>📅</span><span id="brief-cal-label">Connect Google Calendar</span>
+              </button>
+            </div>
+          </div>
           <button id="brief-save-btn" onclick="_briefSavePrefs()"
             style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:-0.2px">
             Save &amp; generate brief
@@ -13652,6 +13662,31 @@ _bkBadge();
       });
     }
 
+    // Calendar — today's events in morning/daytime, tomorrow's in evening
+    var _calEvents = (_briefData && _briefData.calendar) || (ctx && ctx.calendar) || [];
+    if (_calEvents.length) {
+      var _todayStr    = new Date().toISOString().slice(0, 10);
+      var _tomorrowStr = (function(){ var d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); })();
+      var _showCal = _isMorning || (!_isOffHours); // morning + daytime show today
+      var _calToShow = _calEvents.filter(function(e) {
+        if (_isEvening) return e.date === _tomorrowStr;
+        return e.date === _todayStr;
+      }).slice(0, 4);
+      if (_calToShow.length) {
+        var _calLabel = _isEvening ? "📅 Tomorrow" : "📅 Today";
+        var _calRows = _calToShow.map(function(e) {
+          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+            + (e.start ? '<span style="font-size:12px;font-weight:700;color:var(--accent);min-width:40px">' + e.start + '</span>' : '<span style="min-width:40px"></span>')
+            + '<span style="font-size:13px;color:var(--text);font-weight:500">' + e.title + '</span>'
+            + '</div>';
+        }).join("");
+        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">' + _calLabel + '</div>'
+          + _calRows
+          + '</div>';
+      }
+    }
+
     // Fuel — only relevant during the day
     var fuel = ctx && ctx.fuel;
     if (!_isOffHours && fuel && fuel.price) {
@@ -13848,6 +13883,57 @@ _bkBadge();
     if (f) { f.style.background = rot === "fortnightly" ? "#2563eb" : "var(--bg)"; f.style.color = rot === "fortnightly" ? "#fff" : "var(--text)"; f.style.borderColor = rot === "fortnightly" ? "#2563eb" : "var(--border)"; }
   };
 
+  window._briefConnectCalendar = async function() {
+    var token = localStorage.getItem("miru_phone") || "";
+    if (!token) { alert("Link your WhatsApp first — go to My Area → Accounts."); return; }
+    var btn = document.getElementById("brief-cal-btn");
+    if (btn) { btn.disabled = true; }
+    try {
+      var r = await fetch("/api/calendar/status?token=" + encodeURIComponent(token));
+      var d = await r.json();
+      if (d.connected) {
+        // Already connected — offer to disconnect
+        if (confirm("Calendar already connected. Disconnect it?")) {
+          await fetch("/api/calendar/disconnect", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({token})});
+          _briefUpdateCalBtn(false, null);
+        }
+        if (btn) btn.disabled = false;
+        return;
+      }
+      if (d.oauth_url) {
+        var popup = window.open(d.oauth_url, "cal_oauth", "width=500,height=650,scrollbars=yes");
+        var poll = setInterval(function() {
+          try { if (popup && popup.closed) { clearInterval(poll); _briefRefreshCalStatus(); } } catch(e) {}
+        }, 800);
+      }
+    } catch(e) { if (btn) btn.disabled = false; }
+  };
+
+  window._briefRefreshCalStatus = async function() {
+    var token = localStorage.getItem("miru_phone") || "";
+    if (!token) return;
+    try {
+      var r = await fetch("/api/calendar/status?token=" + encodeURIComponent(token));
+      var d = await r.json();
+      _briefUpdateCalBtn(d.connected, d.oauth_url);
+      if (d.connected) _briefInit(); // reload brief with calendar events
+    } catch(e) {}
+  };
+
+  function _briefUpdateCalBtn(connected, oauthUrl) {
+    var lbl = document.getElementById("brief-cal-label");
+    var btn = document.getElementById("brief-cal-btn");
+    if (!lbl || !btn) return;
+    if (connected) {
+      lbl.textContent = "✅ Calendar connected · tap to disconnect";
+      btn.style.background = "#d1fae5"; btn.style.borderColor = "#6ee7b7"; btn.style.color = "#065f46";
+    } else {
+      lbl.textContent = "Connect Google Calendar";
+      btn.style.background = "#eef2ff"; btn.style.borderColor = "#c7d2fe"; btn.style.color = "#4338ca";
+    }
+    btn.disabled = false;
+  }
+
   window._briefSavePrefs = function() {
     var fromEl = document.getElementById("brief-pref-from");
     var toEl   = document.getElementById("brief-pref-to");
@@ -13898,6 +13984,9 @@ _bkBadge();
     if (pcEl   && prefs.fuel_postcode) pcEl.value   = prefs.fuel_postcode;
     if (prefs.bin_collection_day !== undefined) _briefBinDay(prefs.bin_collection_day);
     if (prefs.bin_rotation) _briefBinRotation(prefs.bin_rotation);
+    // Reflect calendar connection state
+    var calConnected = _briefData && _briefData.calendar_connected;
+    _briefUpdateCalBtn(!!calConnected, null);
     setupCta.style.display = "block";
     setupCta.scrollIntoView({behavior: "smooth"});
   };
