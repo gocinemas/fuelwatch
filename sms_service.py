@@ -19731,27 +19731,47 @@ def api_train_departures():
             today_str = _dt2.date.today().strftime("%Y/%m/%d")
 
             def _service_stops_at(svc):
+                # Try all known RTT field names for service UID
                 uid = (svc.get("serviceUid") or svc.get("trainUid") or
-                       svc.get("uid") or svc.get("id") or "")
+                       svc.get("uid") or svc.get("id") or
+                       (svc.get("service") or {}).get("uid") or
+                       svc.get("trainIdentity") or "")
                 if not uid:
+                    app.logger.warning(f"[train/filter] no uid — svc keys: {list(svc.keys())}")
                     return True  # can't verify — include it
                 try:
+                    # Try primary date format (YYYY/MM/DD as path segments)
                     det = requests.get(
                         f"https://data.rtt.io/rtt/service/{uid}/{today_str}",
                         headers={"Authorization": f"Bearer {access}"},
                         timeout=5,
                     )
+                    # Fallback: compact date (YYYYMMDD) in case primary format 404s
+                    if det.status_code == 404:
+                        compact = today_str.replace("/", "")
+                        det = requests.get(
+                            f"https://data.rtt.io/rtt/service/{uid}/{compact}",
+                            headers={"Authorization": f"Bearer {access}"},
+                            timeout=5,
+                        )
                     if det.status_code != 200:
+                        app.logger.warning(f"[train/filter] service {uid} detail HTTP {det.status_code}")
                         return True  # unknown — include
                     d2 = det.json()
-                    locations = d2.get("locations") or d2.get("callingPoints") or []
+                    locations = (d2.get("locations") or d2.get("callingPoints") or
+                                 d2.get("stops") or [])
+                    if not locations:
+                        app.logger.warning(f"[train/filter] service {uid} empty locations, keys: {list(d2.keys())}")
+                        return True
                     for loc in locations:
                         loc_obj = loc.get("location") or loc
-                        crs_val = (loc_obj.get("crs") or loc_obj.get("crsCode") or "").upper()
+                        crs_val = (loc_obj.get("crs") or loc_obj.get("crsCode") or
+                                   loc_obj.get("stationCode") or "").upper()
                         if crs_val == calling_at:
                             return True
                     return False  # confirmed does not stop here
-                except Exception:
+                except Exception as _fe:
+                    app.logger.warning(f"[train/filter] exception for {uid}: {_fe}")
                     return True  # on error — include
 
             with _cf2.ThreadPoolExecutor(max_workers=8) as pool2:
