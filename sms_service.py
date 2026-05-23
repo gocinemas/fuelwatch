@@ -8000,11 +8000,12 @@ def api_home_brief():
             prompt_parts.append(
                 f"Write exactly two short sentences. "
                 f"Sentence 1: wish them a good rest — plain and warm, not cheesy. It's past 11 PM on {dow}.{_bh} {_tomorrow} "
-                f"Sentence 2: one uplifting closing thought. Use ONLY one of: "
-                f"(a) a true, well-known quote from a real named person; "
-                f"(b) a genuine positive fact about sleep or rest that is scientifically accepted; "
-                f"(c) this if relevant: {_kids_note.strip() or 'the weekend ahead'}. "
-                f"Plain English. No metaphors, no poetry, no made-up observations. Under 40 words total."
+                f"Sentence 2: one uplifting closing thought — choose one: "
+                f"a well-known real quote with the person's name, "
+                f"a genuine sleep/rest fact (no label), "
+                f"or this if relevant: {_kids_note.strip() or 'the weekend ahead'}. "
+                f"Output ONLY the two sentences. No labels, no explanation, no 'Note:'. "
+                f"Plain English. No metaphors. Under 40 words total."
             )
         prompt = " ".join(prompt_parts)
         brief_text = ""
