@@ -6746,25 +6746,40 @@ def _v2_fetch_location_context(lat: float, lng: float) -> dict:
 
     def _reverse_geocode():
         try:
-            # zoom=10 returns settlement level (Virginia Water) not hamlet (Trumps Green)
+            # zoom=18: precise settlement — addr.village = "Virginia Water" at the station
+            # zoom=10/12: borough level — addr.city = "Runnymede" (too broad)
+            # zoom=15: inconsistent; zoom=16+ is stable
             r = requests.get(
                 "https://nominatim.openstreetmap.org/reverse",
-                params={"lat": lat, "lon": lng, "format": "json", "zoom": 10},
+                params={"lat": lat, "lon": lng, "format": "json", "zoom": 18},
                 headers={"User-Agent": "Miru/1.0 miru.humanagency.co"},
                 timeout=4,
             )
             data = r.json()
             addr = data.get("address", {})
-            area = (addr.get("town") or addr.get("village") or addr.get("city")
-                    or addr.get("suburb") or "")
+            # village > town only; skip hamlet (too local), suburb, city (borough at zoom=14)
+            area = addr.get("village") or addr.get("town") or ""
             if not area:
-                # Fallback: parse display_name, skip the most-local component
+                # Fallback: parse display_name; skip venue (idx 0), streets, postcodes, admin, hamlet
                 dn = data.get("display_name", "")
-                _skip = {"England", "Scotland", "Wales", "UK", "United Kingdom", "Great Britain"}
-                for part in [p.strip() for p in dn.split(",")][1:]:
-                    if part and not re.match(r'^[A-Z]{1,2}\d', part) and part not in _skip:
-                        area = part
-                        break
+                _hamlet = addr.get("hamlet", "")
+                _county = addr.get("county", "")
+                _state_dist = addr.get("state_district", "")
+                _skip_words = {"England", "Scotland", "Wales", "UK", "United Kingdom", "Great Britain"}
+                _skip_exact = {s for s in (_hamlet, _county, _state_dist) if s}
+                _street_kw = {"road", "street", "lane", "avenue", "drive", "close", "way",
+                              "approach", "place", "gardens", "crescent", "terrace", "court"}
+                for i, part in enumerate([p.strip() for p in dn.split(",")]):
+                    if not part or i == 0:  # blank or venue name
+                        continue
+                    if re.match(r'^[A-Z]{1,2}\d', part):  # postcode
+                        continue
+                    if part in _skip_words or part in _skip_exact:
+                        continue
+                    if any(kw in part.lower() for kw in _street_kw):
+                        continue
+                    area = part
+                    break
             county = addr.get("county") or addr.get("state_district") or ""
             county_short = county.split(" ")[0] if county else ""
             return area.strip(), county_short.strip()
