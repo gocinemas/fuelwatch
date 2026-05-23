@@ -6108,6 +6108,188 @@ def api_v2_prefs_post():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/v2/location-profile", methods=["GET"])
+def api_v2_location_profile_get():
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"profile": {}, "has_profile": False})
+    try:
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+        profile = rows[0]["data"] if rows else {}
+        return jsonify({"profile": profile, "has_profile": bool(profile)})
+    except Exception as e:
+        return jsonify({"profile": {}, "has_profile": False, "error": str(e)})
+
+
+@app.route("/api/v2/location-profile", methods=["POST"])
+def api_v2_location_profile_post():
+    """Save or update a named location anchor. Send {"token":"...", "key":"home", "anchor":{...}}"""
+    body = request.get_json(force=True, silent=True) or {}
+    token = (body.get("token") or request.args.get("token", "")).strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"error": "token required"}), 401
+    key    = body.get("key", "").strip()
+    anchor = body.get("anchor")
+    if not key or key not in ("home", "work", "school_run"):
+        return jsonify({"error": "key must be home, work, or school_run"}), 400
+    if anchor is not None and not isinstance(anchor, dict):
+        return jsonify({"error": "anchor must be object or null"}), 400
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_details").select("id,data") \
+            .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+        if rows:
+            profile = rows[0].get("data") or {}
+            if anchor is None:
+                profile.pop(key, None)
+            else:
+                profile[key] = anchor
+            sb.table("ma_details").update({"data": profile}).eq("id", rows[0]["id"]).execute()
+        else:
+            profile = {key: anchor} if anchor else {}
+            sb.table("ma_details").insert({
+                "device_id": from_number,
+                "type": "location_profile",
+                "label": "location_profile",
+                "data": profile,
+            }).execute()
+        return jsonify({"ok": True, "profile": profile})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v2/classify-location", methods=["GET"])
+def api_v2_classify_location():
+    """Lightweight endpoint — classify a GPS ping against stored profile. No brief generated."""
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"context": "unknown"})
+    try:
+        lat = float(request.args.get("lat", ""))
+        lng = float(request.args.get("lng", ""))
+    except (TypeError, ValueError):
+        return jsonify({"context": "unknown"})
+    try:
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+        profile = rows[0]["data"] if rows else {}
+        result = _classify_location(lat, lng, profile)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"context": "out", "error": str(e)})
+
+
+def _classify_location(lat, lng, profile: dict, saves: list = None) -> dict:
+    """Classify a GPS position against a stored location profile.
+
+    Returns:
+      {
+        "context":  "home" | "work" | "school_run" | "nearby_save" | "out",
+        "label":    human-readable string e.g. "Home" or "Near Wagamama",
+        "anchor":   which profile key matched (or None),
+        "save":     nearest save name if context == "nearby_save" (or None),
+        "dist_km":  distance to matched anchor (or None),
+      }
+    """
+    if lat is None or lng is None:
+        return {"context": "unknown", "label": None, "anchor": None, "save": None, "dist_km": None}
+
+    # Check named anchors in order of priority
+    _ANCHOR_ORDER = ["home", "work", "school_run"]
+    for key in _ANCHOR_ORDER:
+        anchor = profile.get(key)
+        if not anchor or not anchor.get("lat") or not anchor.get("lng"):
+            continue
+        dist = haversine_km(lat, lng, anchor["lat"], anchor["lng"])
+        radius = anchor.get("radius_km", 0.5)
+        if dist <= radius:
+            label_map = {"home": "Home", "work": "Work", "school_run": anchor.get("label", "School run")}
+            return {
+                "context":  key,
+                "label":    label_map.get(key, key.title()),
+                "anchor":   key,
+                "save":     None,
+                "dist_km":  round(dist, 2),
+            }
+
+    # Check nearby saves (restaurants, places saved by user) within 400m
+    if saves:
+        for s in saves:
+            slat = s.get("lat") or s.get("_lat")
+            slng = s.get("lng") or s.get("_lng")
+            if not slat or not slng:
+                continue
+            dist = haversine_km(lat, lng, slat, slng)
+            if dist <= 0.4:
+                name = (s.get("title") or "").strip()
+                # Strip leading emoji
+                parts = name.split()
+                if parts and len(parts[0]) <= 2:
+                    name = " ".join(parts[1:])
+                return {
+                    "context":  "nearby_save",
+                    "label":    f"Near {name}" if name else "Near a saved place",
+                    "anchor":   None,
+                    "save":     name,
+                    "dist_km":  round(dist, 2),
+                }
+
+    return {"context": "out", "label": None, "anchor": None, "save": None, "dist_km": None}
+
+
+def _v2_log_location_signal(from_number: str, lat: float, lng: float):
+    """Append a GPS ping to location_signals for auto-learn. Keeps last 10 only."""
+    import datetime as _dt
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_details").select("id,data") \
+            .eq("device_id", from_number).eq("type", "location_signals").limit(1).execute().data or []
+        now_ts = _dt.datetime.utcnow().isoformat()
+        new_ping = {"lat": round(lat, 5), "lng": round(lng, 5), "ts": now_ts}
+        if rows:
+            signals = rows[0].get("data") or {}
+            pings = signals.get("pings", [])
+            pings.append(new_ping)
+            pings = pings[-10:]  # keep last 10
+            sb.table("ma_details").update({"data": {"pings": pings}}).eq("id", rows[0]["id"]).execute()
+        else:
+            sb.table("ma_details").insert({
+                "device_id": from_number,
+                "type": "location_signals",
+                "label": "location_signals",
+                "data": {"pings": [new_ping]},
+            }).execute()
+    except Exception as _e:
+        pass  # non-critical
+
+
+def _v2_check_auto_learn(from_number: str) -> dict | None:
+    """Return a candidate home location if 3+ evening pings cluster within 200m. Else None."""
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "location_signals").limit(1).execute().data or []
+        if not rows:
+            return None
+        pings = (rows[0].get("data") or {}).get("pings", [])
+        # Filter to evening pings (19:00–23:59 UTC, approximate)
+        evening = [p for p in pings if "T1" in p.get("ts", "") or "T2" in p.get("ts", "")]
+        if len(evening) < 3:
+            return None
+        # Check if all cluster within 200m of the most recent
+        ref = evening[-1]
+        cluster = [p for p in evening if haversine_km(ref["lat"], ref["lng"], p["lat"], p["lng"]) <= 0.2]
+        if len(cluster) >= 3:
+            return {"lat": ref["lat"], "lng": ref["lng"]}
+    except Exception:
+        pass
+    return None
+
+
 def _v2_fetch_school(from_number: str) -> dict:
     """School profiles (daily run) + upcoming events (7 days) + recent comms (14 days)."""
     from datetime import date, timedelta
@@ -7117,6 +7299,25 @@ def api_home_brief():
         except Exception:
             pass
 
+    # Load location profile and classify current GPS
+    _loc_profile: dict = {}
+    _loc_classification: dict = {"context": "unknown", "label": None, "anchor": None, "save": None, "dist_km": None}
+    if from_number:
+        try:
+            _lp_rows = lib._sb().table("ma_details").select("data") \
+                .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+            _loc_profile = _lp_rows[0]["data"] if _lp_rows else {}
+        except Exception:
+            pass
+    if has_location and _loc_profile:
+        _loc_classification = _classify_location(_req_lat, _req_lng, _loc_profile)
+    # Log signal for auto-learn (background, only when GPS provided and user is known)
+    if has_location and from_number:
+        try:
+            _v2_log_location_signal(from_number, _req_lat, _req_lng)
+        except Exception:
+            pass
+
     now  = _dt.now()
 
     # Always fetch fresh trains in BOTH directions — frontend picks based on WFH/office mode
@@ -7244,9 +7445,20 @@ def api_home_brief():
         _m = ((_rs.get("title") or "").replace("🧾", "").strip().lower())
         if _m:
             _visited_merchants.add(_m)
+    # Also mark menu uploads as visited — bill+menu images often classify as "menu" not "receipt"
+    for _cs in saves_list:
+        _ct = (_cs.get("title") or "")
+        if _ct.startswith("🍽️") and "Menu" in _ct:
+            _mn = _ct.replace("🍽️", "").strip().split(" Menu")[0].strip().lower()
+            if _mn:
+                _visited_merchants.add(_mn)
     place_saves_unvisited = [
         s for s in place_saves
-        if " ".join((s.get("title") or "").split()[1:]).strip().lower() not in _visited_merchants
+        if not any(
+            vm and (vm in (" ".join((s.get("title") or "").split()[1:]).strip().lower())
+                    or (" ".join((s.get("title") or "").split()[1:]).strip().lower()) in vm)
+            for vm in _visited_merchants
+        )
     ]
 
     # Split content saves: event clips (🎫) surfaced separately with stricter prompt handling
@@ -7381,8 +7593,16 @@ def api_home_brief():
     prompt_parts = []
 
     # Location preamble — injected at the top of every non-night prompt
+    # Prefer named context (Home / Work) over raw area string when profile matches
     _loc_preamble = ""
-    if loc_str:
+    _loc_ctx_label = _loc_classification.get("context", "unknown")
+    if _loc_ctx_label in ("home", "work", "school_run"):
+        _named_label = _loc_classification.get("label", _loc_ctx_label.title())
+        _loc_preamble = f"User is at {_named_label}. "
+    elif _loc_ctx_label == "nearby_save":
+        _save_name = _loc_classification.get("save", "a saved place")
+        _loc_preamble = f"User is near their saved place '{_save_name}' ({_loc_classification.get('dist_km', '?')}km away). "
+    elif loc_str:
         _venue_part = f" (at {loc_venue['name']})" if loc_venue.get("name") else ""
         _loc_preamble = f"User is currently in {loc_str}{_venue_part}. "
 
@@ -7572,6 +7792,7 @@ def api_home_brief():
             lib._sb().table("ma_details").select("id").eq("device_id", from_number)
             .eq("type", "calendar_token").execute().data),
         "location":        {"area": loc_str, "venue": loc_venue} if loc_str else {},
+        "location_context": _loc_classification,
         "recent_capture":  recent_capture,
     }
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
@@ -11103,7 +11324,8 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "event/ticket, store/restaurant, billboard/ad, receipt/bill, recipe card, menu, wine, sign, document, product, photo.\n"
             "IMPORTANT type rules:\n"
             "- Use 'recipe card' for any image showing a recipe with ingredients and/or cooking instructions — even if a restaurant name appears on the card.\n"
-            "- Use 'menu' ONLY for a list of dishes offered at a restaurant (not a recipe card).\n"
+            "- Use 'receipt/bill' if the image shows a bill, total amount due, or itemised charges — even if menu items are also visible.\n"
+            "- Use 'menu' ONLY for a standalone list of dishes with no total/payment amount visible.\n"
             "- Use 'wine' for any photo of a wine bottle or wine label — even if on a table or shelf.\n"
             "- Use 'product' for ANY photo showing physical products, items on shelves, products with price tags, "
             "or a basket/trolley of items — even if taken inside a store or supermarket.\n"
@@ -17431,6 +17653,7 @@ def api_wa_saves_rescan():
             "Identify what this image is. Pick ONE type from: "
             "event/ticket, store/restaurant, billboard/ad, receipt/bill, recipe card, menu, wine, sign, document, product, photo.\n"
             "IMPORTANT: Use 'recipe card' for any image showing a recipe with ingredients or cooking instructions — even if a restaurant name appears.\n"
+            "IMPORTANT: Use 'receipt/bill' if the image shows a bill, total amount due, or itemised charges — even if menu items are also visible. Use 'menu' only for a standalone dish list with no payment total.\n"
             "Then give detailed bullet points starting with • covering the key info.\n"
             "If recipe card: name the dish, list ALL ingredients with quantities, then list each cooking step.\n"
             "Start your reply with: TYPE: [your choice]\n"

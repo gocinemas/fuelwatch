@@ -13472,6 +13472,9 @@ _bkBadge();
         .then(function(r) { return r.json(); })
         .then(function(d) {
           _briefData = d;
+          if (d.location_context && d.location_context.context) {
+            _briefLastCtx = d.location_context.context;
+          }
           if (shimmer) shimmer.style.display = "none";
 
           // Fuel strip — always populate if we have fuel data
@@ -13490,16 +13493,37 @@ _bkBadge();
             briefText.style.display = "block";
           }
 
-          // Location area label above the brief text
+          // Location label — prefer named context (Home/Work) over raw area
           var locLabel = document.getElementById("brief-location-label");
-          var locArea = d.location && d.location.area;
           if (locLabel) {
-            if (locArea) {
-              var venueName = d.location.venue && d.location.venue.name ? " · " + d.location.venue.name : "";
-              locLabel.textContent = "📍 " + locArea + venueName;
+            var lctx = d.location_context && d.location_context.context;
+            var lctxLabel = d.location_context && d.location_context.label;
+            if (lctx === "home") {
+              locLabel.textContent = "🏠 Home";
+              locLabel.style.background = "#dcfce7"; locLabel.style.color = "#166534";
+              locLabel.style.display = "inline-block";
+            } else if (lctx === "work") {
+              locLabel.textContent = "🏢 Work";
+              locLabel.style.background = "#e0e7ff"; locLabel.style.color = "#3730a3";
+              locLabel.style.display = "inline-block";
+            } else if (lctx === "school_run") {
+              locLabel.textContent = "🏫 " + (lctxLabel || "School run");
+              locLabel.style.background = "#fef9c3"; locLabel.style.color = "#854d0e";
+              locLabel.style.display = "inline-block";
+            } else if (lctx === "nearby_save") {
+              locLabel.textContent = "📍 " + (lctxLabel || "Nearby save");
+              locLabel.style.background = "#fce7f3"; locLabel.style.color = "#9d174d";
               locLabel.style.display = "inline-block";
             } else {
-              locLabel.style.display = "none";
+              var locArea = d.location && d.location.area;
+              if (locArea) {
+                var venueName = d.location.venue && d.location.venue.name ? " · " + d.location.venue.name : "";
+                locLabel.textContent = "📍 " + locArea + venueName;
+                locLabel.style.background = "#dbeafe"; locLabel.style.color = "#1d4ed8";
+                locLabel.style.display = "inline-block";
+              } else {
+                locLabel.style.display = "none";
+              }
             }
           }
 
@@ -13554,6 +13578,7 @@ _bkBadge();
 
   // ── Location-triggered brief refresh ──────────────────────────────────────
   var _briefLastLat = null, _briefLastLng = null, _briefWatcher = null;
+  var _briefLastCtx = null; // last known context label (home/work/out/etc.)
 
   function _briefHaversineKm(lat1, lng1, lat2, lng2) {
     var R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
@@ -13569,12 +13594,25 @@ _bkBadge();
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
         if (_briefLastLat === null) { _briefLastLat = lat; _briefLastLng = lng; return; }
         var dist = _briefHaversineKm(_briefLastLat, _briefLastLng, lat, lng);
-        if (dist > 1.0) {
-          _briefLastLat = lat; _briefLastLng = lng;
-          // Only refresh if brief tab is active
-          var bs = document.getElementById("screen-brief");
-          if (bs && bs.classList.contains("active")) _briefInit();
-        }
+        // Only bother re-fetching if moved more than 500m
+        if (dist < 0.5) return;
+        _briefLastLat = lat; _briefLastLng = lng;
+        // Only refresh if brief tab is active
+        var bs = document.getElementById("screen-brief");
+        if (!bs || !bs.classList.contains("active")) return;
+        // Lightweight context check: fetch classification without full brief reload
+        var token = _miruPhone() || "";
+        if (!token) { _briefInit(); return; }
+        fetch("/api/v2/classify-location?token=" + encodeURIComponent(token) + "&lat=" + lat + "&lng=" + lng)
+          .then(function(r) { return r.json(); })
+          .then(function(cl) {
+            var newCtx = cl.context || "out";
+            if (newCtx !== _briefLastCtx) {
+              _briefLastCtx = newCtx;
+              _briefInit(); // context changed — reload brief
+            }
+          })
+          .catch(function() { _briefInit(); }); // on error, reload anyway
       },
       null,
       { enableHighAccuracy: false, maximumAge: 60000, timeout: 30000 }
