@@ -1854,10 +1854,10 @@
         <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Set your regular commute and fuel postcode for a daily context update.</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div>
-            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Work / destination station</div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Office / destination station</div>
             <input id="brief-pref-to" type="text" placeholder="e.g. London Waterloo"
               style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">Home station is derived from your postcode automatically.</div>
+            <div id="brief-train-from-label" style="font-size:11px;color:var(--muted);margin-top:4px">🏠 Home station is set from your saved location.</div>
           </div>
           <input id="brief-pref-from" type="hidden">
           <div>
@@ -13725,8 +13725,12 @@ _bkBadge();
       if (_isOffHours) html += weatherHtml;  // weather leads in evening/night
     }
 
-    // ── Trains — weekdays only during commute window; weekends: behind intent choice ──
-    var trains = wfh ? (ctx && ctx.trains) : (ctx && ctx.trains_home || ctx && ctx.trains);
+    // ── Trains — direction is time-aware ─────────────────────────────────────
+    // Morning: home → work (ctx.trains); Evening: work → home (ctx.trains_home)
+    // WFH mode always shows home → work (in case they need to head out)
+    var _trainsMorning = ctx && ctx.trains;
+    var _trainsEvening = ctx && (ctx.trains_home || ctx.trains);
+    var trains = wfh ? _trainsMorning : (_isMorning ? _trainsMorning : _trainsEvening);
     var _isWeekendMorning = _isWeekend && _isMorning;
 
     if (_isWeekendMorning) {
@@ -13778,13 +13782,25 @@ _bkBadge();
       });
       if (futureDeps.length > 0) {
         var deps = futureDeps.slice(0, 3).map(function(d) {
-          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
-            + '<span style="font-size:14px;font-weight:700;color:var(--text)">' + (d.departs || d.time || "") + '</span>'
-            + '<span style="font-size:12px;color:var(--muted)">' + (d.platform ? "Plat " + d.platform : (d.status || "")) + '</span>'
+          var st = d.status || "On time";
+          var stCol = st === "On time" ? "#16a34a" : st === "Cancelled" ? "#dc2626" : "#d97706";
+          var stBg  = st === "On time" ? "#dcfce7"  : st === "Cancelled" ? "#fee2e2"  : "#fef3c7";
+          var platBadge = d.platform ? '<span style="font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:1px 6px;margin-right:4px">Plat ' + d.platform + '</span>' : '';
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">'
+            + '<div style="display:flex;align-items:center;gap:6px">'
+            + '<span style="font-size:16px;font-weight:900;color:var(--text);letter-spacing:-0.5px">' + (d.departs || d.time || "") + '</span>'
+            + platBadge
+            + '</div>'
+            + '<span style="font-size:11px;font-weight:700;color:' + stCol + ';background:' + stBg + ';border-radius:99px;padding:2px 9px">' + st + '</span>'
             + '</div>';
         }).join("");
+        var _trainDirIcon = _isMorning ? "🚆" : "🏠";
+        var _trainDirLabel = _isMorning ? "To work" : "Heading home";
         html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🚆 ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
+          + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'
+          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">' + _trainDirIcon + ' ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
+          + '<div style="font-size:10px;font-weight:700;color:var(--accent)">' + _trainDirLabel + '</div>'
+          + '</div>'
           + deps + '</div>';
       }
     }

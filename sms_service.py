@@ -6073,21 +6073,37 @@ def api_v2_prefs_post():
     if not isinstance(new_prefs, dict):
         return jsonify({"error": "prefs must be object"}), 400
 
-    # Auto-derive train_from from home postcode when not explicitly set
+    # Auto-derive train_from from location profile home anchor, then fall back to home postcode
     if "train_to" in new_prefs and "train_from" not in new_prefs:
-        _home_pc = (body.get("home_postcode") or "").strip().upper().replace(" ", "")
-        if _home_pc:
+        _hlat = _hlng = None
+        # Prefer stored home location anchor (more precise than postcode centroid)
+        try:
+            _lp = lib._sb().table("ma_details").select("data") \
+                .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+            _home_anchor = (_lp[0].get("data") or {}).get("home", {}) if _lp else {}
+            _hlat = _home_anchor.get("lat")
+            _hlng = _home_anchor.get("lng")
+        except Exception:
+            pass
+        # Fall back to postcode
+        if not _hlat:
+            _home_pc = (body.get("home_postcode") or "").strip().upper().replace(" ", "")
+            if _home_pc:
+                try:
+                    _ll = postcode_to_latlon(_home_pc)
+                    if _ll:
+                        _hlat, _hlng = _ll
+                except Exception:
+                    pass
+        if _hlat and _hlng:
             try:
-                _ll = postcode_to_latlon(_home_pc)
-                if _ll:
-                    _hlat, _hlng = _ll
-                    _scored = sorted(
-                        [(haversine_km(_hlat, _hlng, s["lat"], s["lon"]), s)
-                         for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
-                        key=lambda x: x[0]
-                    )
-                    if _scored and _scored[0][0] < 5.0:
-                        new_prefs["train_from"] = _scored[0][1]["name"]
+                _scored = sorted(
+                    [(haversine_km(_hlat, _hlng, s["lat"], s["lon"]), s)
+                     for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
+                    key=lambda x: x[0]
+                )
+                if _scored and _scored[0][0] < 5.0:
+                    new_prefs["train_from"] = _scored[0][1]["name"]
             except Exception:
                 pass
 
