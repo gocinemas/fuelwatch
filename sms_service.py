@@ -11064,15 +11064,19 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "or a basket/trolley of items — even if taken inside a store or supermarket.\n"
             "- Use 'billboard/ad' ONLY for printed posters, banners, or ads that are NOT showing products on shelves.\n"
             "- Use 'store/restaurant' ONLY for the exterior or entrance of a shop/restaurant, NOT for shelf or product photos.\n"
-            "Then give 3 bullet points starting with • covering the key info.\n"
+            "- Use 'event/ticket' for any poster, flyer, or ticket for an event (quiz night, gig, show, festival, class, etc.).\n"
+            "Then give 3 bullet points starting with • covering ONLY factual details — no marketing copy or promotional language from the image.\n"
             "If recipe card: give the recipe name, key ingredients, and cooking steps.\n"
             "If store/restaurant: focus ONLY on the place itself — name, type of food/business, opening hours or price range if visible.\n"
-            "If event/ticket: include event name, date, time, venue.\n"
+            "If event/ticket: bullets must contain ONLY: event name, date & time, venue/location. Do NOT copy any promotional or descriptive text from the poster.\n"
             "If ad/billboard: state the brand, product name, and price/offer.\n"
             "If product: list EVERY product visible. Look at all price tags, shelf-edge labels, and packaging.\n"
             "If receipt: total and main items.\n"
             "Start your reply with: TYPE: [your choice]\n"
-            "If type is event/ticket, store/restaurant, ad/billboard, menu, or product — add: VENUE: [brand or business name only, e.g. 'Southbank Centre' or 'Nando's']\n"
+            "If type is event/ticket — add these lines:\n"
+            "  EVENT: [the event name only, e.g. 'Quiz Night' or 'Ed Sheeran Live' — NOT the venue]\n"
+            "  VENUE: [the venue or location name, e.g. 'The Crown Pub' or 'O2 Arena']\n"
+            "If type is store/restaurant, ad/billboard, menu, or product — add: VENUE: [brand or business name only, e.g. 'Nando's']\n"
             "If type is product OR ad/billboard — list every product on a separate PRODUCT: line:\n"
             "  PRODUCT: [full product name incl. variant & size] | [brand] | [price or n/a]\n"
             "  e.g. PRODUCT: Heinz Baked Beans 415g | Heinz | £0.89\n"
@@ -11140,8 +11144,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             elif "document" in first:
                 title = "📄 Document"; img_type = "document"
 
-        # Extract VENUE: / LOCATION: / SEARCH: tags before stripping metadata lines
+        # Extract VENUE: / EVENT: / LOCATION: / SEARCH: tags before stripping metadata lines
         venue_tag = ""
+        event_tag = ""
         location_tag = ""
         search_tag = ""
         phone_tag = ""
@@ -11151,7 +11156,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         _BLANK = {"", "n/a", "not visible", "unknown", "none", "-"}
         for _line in analysis.split("\n"):
             _up = _line.strip().upper()
-            if _up.startswith("VENUE:"):
+            if _up.startswith("EVENT:"):
+                event_tag = _line.split(":", 1)[1].strip()
+            elif _up.startswith("VENUE:"):
                 venue_tag = _line.split(":", 1)[1].strip()
             elif _up.startswith("LOCATION:"):
                 location_tag = _line.split(":", 1)[1].strip()
@@ -11179,7 +11186,11 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 shop_tag = _line.split(":", 1)[1].strip()
                 if shop_tag.lower() in _BLANK:
                     shop_tag = ""
-        # Use VENUE: brand name in title where relevant
+        # Use EVENT: tag for event title, VENUE: brand name for ad/menu
+        if img_type == "event" and event_tag and event_tag.lower() not in _BLANK:
+            title = f"🎫 {event_tag[:60]}"
+        elif img_type == "event" and venue_tag and venue_tag.lower() not in _BLANK:
+            title = f"🎫 {venue_tag[:60]}"
         if img_type == "ad" and venue_tag:
             title = f"📢 {venue_tag[:60]}"
         if img_type == "menu" and venue_tag and venue_tag.lower() not in _BLANK:
@@ -11194,7 +11205,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         print(f"[vision] products={product_items} shop_tag={shop_tag!r}")
 
         # Strip metadata lines from summary
-        _meta_prefixes = ("TYPE:", "VENUE:", "LOCATION:", "SEARCH:", "PRODUCT:", "SHOP:", "PHONE:", "URL:")
+        _meta_prefixes = ("TYPE:", "EVENT:", "VENUE:", "LOCATION:", "SEARCH:", "PRODUCT:", "SHOP:", "PHONE:", "URL:")
         summary = "\n".join(
             l for l in analysis.split("\n")
             if not any(l.strip().upper().startswith(p) for p in _meta_prefixes)
