@@ -7309,7 +7309,7 @@ def api_home_brief():
             _loc_profile = _lp_rows[0]["data"] if _lp_rows else {}
         except Exception:
             pass
-    if has_location and _loc_profile:
+    if has_location:
         _loc_classification = _classify_location(_req_lat, _req_lng, _loc_profile)
     # Log signal for auto-learn (background, only when GPS provided and user is known)
     if has_location and from_number:
@@ -7645,8 +7645,14 @@ def api_home_brief():
                 outdoor_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — decent enough to be out."
             else:
                 outdoor_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — cosy-in evening."
-        bh_note = " It's a long weekend — bank holiday Monday." if is_long_weekend else (
-                  " Bank holiday today." if bank_holiday_today else "")
+        if is_long_weekend:
+            if wday == 4:   bh_note = " Long weekend just started — bank holiday Monday."
+            elif wday == 5: bh_note = " Saturday of the long weekend — bank holiday Monday still ahead."
+            else:           bh_note = " Bank holiday Monday tomorrow — last evening of the long weekend."
+        elif bank_holiday_today:
+            bh_note = " Bank holiday today."
+        else:
+            bh_note = ""
         prompt_parts.append(
             f"{_loc_preamble}"
             f"Write a warm, relaxed 2-sentence early-evening brief. It's {dow} evening, {hour}:{now.minute:02d}. "
@@ -7660,11 +7666,19 @@ def api_home_brief():
             prompt_parts.append(f"They're in {loc_str} — suggest one specific outdoor plan for this evening in the area.")
     elif time_mode in ("night", "goodnight"):
         # Build night/goodnight text directly — no Groq creative writing, no purple prose
-        _bh  = " Bank holiday Monday — long weekend." if is_long_weekend else (
-               " Bank holiday today." if bank_holiday_today else "")
+        if is_long_weekend:
+            if wday == 4:   _bh = " Long weekend starts tonight — bank holiday Monday."
+            elif wday == 5: _bh = " Saturday — bank holiday Monday still to come."
+            else:           _bh = " Bank holiday Monday tomorrow."
+        elif bank_holiday_today:
+            _bh = " Bank holiday today."
+        else:
+            _bh = ""
         _wthr = f" {weather['temp']}°C outside." if weather and weather.get("temp") else ""
         _tomorrow = (
-            "Long weekend — nothing till Tuesday." if is_long_weekend else
+            "Sunday and bank holiday Monday still ahead." if is_long_weekend and wday == 5 else
+            "Bank holiday Monday tomorrow — then back to it Tuesday." if is_long_weekend and wday == 6 else
+            "Long weekend starts tomorrow." if is_long_weekend and wday == 4 else
             "Weekend starts tomorrow." if day_type in ("thursday_pre_weekend", "friday") else
             "One more day of weekend." if day_type == "weekend" and wday == 6 else
             "Fresh week tomorrow." if day_type == "weekend" and wday == 0 else

@@ -13534,9 +13534,9 @@ _bkBadge();
               } else {
                 locLabel.style.display = "none";
               }
-              // Offer to save location if GPS was provided but not yet named
+              // Offer to save location if GPS was provided but context unrecognised
               var saveNudge = document.getElementById("brief-save-location-nudge");
-              if (saveNudge && gpsLat !== null && _briefLastCtx === "out") {
+              if (saveNudge && gpsLat !== null && (lctx === "out" || lctx === "unknown")) {
                 saveNudge.style.display = "flex";
               }
             }
