@@ -6072,6 +6072,25 @@ def api_v2_prefs_post():
     new_prefs = body.get("prefs") or {k: v for k, v in body.items() if k in PREF_KEYS}
     if not isinstance(new_prefs, dict):
         return jsonify({"error": "prefs must be object"}), 400
+
+    # Auto-derive train_from from home postcode when not explicitly set
+    if "train_to" in new_prefs and "train_from" not in new_prefs:
+        _home_pc = (body.get("home_postcode") or "").strip().upper().replace(" ", "")
+        if _home_pc:
+            try:
+                _ll = postcode_to_latlon(_home_pc)
+                if _ll:
+                    _hlat, _hlng = _ll
+                    _scored = sorted(
+                        [(haversine_km(_hlat, _hlng, s["lat"], s["lon"]), s)
+                         for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
+                        key=lambda x: x[0]
+                    )
+                    if _scored and _scored[0][0] < 5.0:
+                        new_prefs["train_from"] = _scored[0][1]["name"]
+            except Exception:
+                pass
+
     try:
         sb = lib._sb()
         rows = sb.table("ma_details").select("id,data") \
@@ -6425,6 +6444,16 @@ def _v2_fetch_calendar(from_number: str) -> list:
         return events
     except Exception as e:
         app.logger.warning(f"[calendar] fetch: {e}")
+        return []
+
+
+def _v2_fetch_personal_events(from_number: str) -> list:
+    """Read user-added personal events from ma_details."""
+    try:
+        rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number) \
+            .eq("type", "personal_events").limit(1).execute().data or []
+        return rows[0]["data"] if rows else []
+    except Exception:
         return []
 
 
@@ -6902,7 +6931,90 @@ def api_brief_location():
         except Exception:
             pass
 
-    return jsonify({"weather": weather, "fuel": fuel, "trains": trains, "venue": venue})
+    return jsonify({"weather": weather, "fuel": fuel, "trains": trains, "venue": venue, "lat": lat, "lng": lng})
+
+
+@app.route("/api/brief/nearby")
+def api_brief_nearby():
+    """Find cafes / restaurants near lat/lng via Overpass OSM."""
+    try:
+        lat = float(request.args.get("lat", ""))
+        lng = float(request.args.get("lng", ""))
+    except (TypeError, ValueError):
+        return jsonify({"error": "lat/lng required"}), 400
+    radius  = min(int(request.args.get("radius", 600)), 1500)
+    vtype   = request.args.get("type", "cafe")
+    _amenity_map = {
+        "cafe":       ["cafe", "coffee_shop", "bakery"],
+        "food":       ["restaurant", "cafe", "fast_food"],
+        "pub":        ["pub", "bar"],
+        "all":        ["cafe", "coffee_shop", "restaurant", "fast_food", "pub", "bar"],
+    }
+    amenities = _amenity_map.get(vtype, ["cafe", "coffee_shop"])
+    try:
+        parts = "".join(
+            f'node(around:{radius},{lat},{lng})[amenity="{a}"][name];'
+            for a in amenities
+        )
+        query = f"[out:json][timeout:7];({parts});out 10;"
+        r = requests.post("https://overpass-api.de/api/interpreter",
+                          data={"data": query}, timeout=8)
+        places = []
+        for el in r.json().get("elements", [])[:10]:
+            tags = el.get("tags", {})
+            name = tags.get("name", "").strip()
+            if not name:
+                continue
+            elat = el.get("lat")
+            elng = el.get("lon")
+            dist_m = round(haversine_km(lat, lng, elat, elng) * 1000) if elat and elng else None
+            places.append({"name": name, "type": tags.get("amenity",""), "dist_m": dist_m})
+        places.sort(key=lambda p: p.get("dist_m") or 9999)
+        return jsonify({"places": places})
+    except Exception as e:
+        return jsonify({"error": str(e), "places": []}), 200
+
+
+@app.route("/api/v2/personal-events", methods=["GET", "POST", "OPTIONS"])
+def api_v2_personal_events():
+    """Store and retrieve personal events (birthday, concert, etc.) in ma_details."""
+    if request.method == "OPTIONS":
+        return jsonify({})
+    token = (request.args.get("token") or (request.get_json(silent=True) or {}).get("token") or "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"error": "not authenticated"}), 401
+
+    if request.method == "GET":
+        evs = _v2_fetch_personal_events(from_number)
+        return jsonify({"events": evs})
+
+    body  = request.get_json(silent=True) or {}
+    action = body.get("action", "add")
+    if action == "delete":
+        idx = body.get("index")
+        evs = _v2_fetch_personal_events(from_number)
+        if idx is not None and 0 <= idx < len(evs):
+            evs.pop(idx)
+            _rows = lib._sb().table("ma_details").select("id").eq("device_id", from_number).eq("type","personal_events").limit(1).execute().data
+            if _rows:
+                lib._sb().table("ma_details").update({"data": evs}).eq("id", _rows[0]["id"]).execute()
+        return jsonify({"ok": True})
+
+    title = (body.get("title") or "").strip()
+    if not title:
+        return jsonify({"error": "title required"}), 400
+    ev_date  = (body.get("date") or "").strip()
+    ev_time  = (body.get("time") or "").strip()
+    ev_notes = (body.get("notes") or "").strip()
+    evs = _v2_fetch_personal_events(from_number)
+    evs.append({"title": title, "date": ev_date, "time": ev_time, "notes": ev_notes})
+    rows = lib._sb().table("ma_details").select("id").eq("device_id", from_number).eq("type","personal_events").limit(1).execute().data
+    if rows:
+        lib._sb().table("ma_details").update({"data": evs}).eq("id", rows[0]["id"]).execute()
+    else:
+        lib._sb().table("ma_details").insert({"device_id": from_number, "type": "personal_events", "data": evs, "label": "personal_events"}).execute()
+    return jsonify({"ok": True, "count": len(evs)})
 
 
 _v2_brief_cache: dict = {}   # from_number -> {ts, brief}
@@ -6984,11 +7096,12 @@ def api_home_brief():
             futures["fuel"]    = pool.submit(_v2_fetch_fuel, fuel_pc)
             futures["weather"] = pool.submit(_v2_fetch_weather, fuel_pc)
         if from_number:
-            futures["school"]     = pool.submit(_v2_fetch_school, from_number)
-            futures["spend"]      = pool.submit(_v2_fetch_spend, from_number)
-            futures["saves"]      = pool.submit(_v2_fetch_saves, from_number)
-            futures["deliveries"] = pool.submit(_v2_fetch_deliveries, from_number)
-            futures["calendar"]   = pool.submit(_v2_fetch_calendar, from_number)
+            futures["school"]          = pool.submit(_v2_fetch_school, from_number)
+            futures["spend"]           = pool.submit(_v2_fetch_spend, from_number)
+            futures["saves"]           = pool.submit(_v2_fetch_saves, from_number)
+            futures["deliveries"]      = pool.submit(_v2_fetch_deliveries, from_number)
+            futures["calendar"]        = pool.submit(_v2_fetch_calendar, from_number)
+            futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
         for k, f in futures.items():
@@ -7120,13 +7233,7 @@ def api_home_brief():
         facts.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}")
     for ev in school_recent[:1]:
         facts.append(f"Recent school note: {ev.get('child_name','')} — {ev.get('event_title','')}")
-    # Spend only relevant during the day
-    if time_mode not in ("evening_leisure", "night", "goodnight") and spend.get("count", 0) > 0 and spend_breakdown:
-        bd_str = " · ".join(
-            f"{cat} £{v['total']:.2f}"
-            for cat, v in sorted(spend_breakdown.items(), key=lambda x: -x[1]["total"])
-        )
-        facts.append(f"£{spend['total']} this month — {bd_str}")
+    # Spend intentionally excluded from Groq facts — it belongs in the spend card, not the narrative
     for dlv in ctx.get("deliveries", []):
         if dlv.get("status") in ("out for delivery", "arriving today"):
             carrier = dlv.get("carrier", "")
@@ -7136,6 +7243,11 @@ def api_home_brief():
     _today_s    = now.date().isoformat()
     _tomorrow_s = (now.date() + __import__("datetime").timedelta(days=1)).isoformat()
     _cal_events = ctx.get("calendar", [])
+    # Merge personal events into calendar for brief purposes
+    _personal_evs = ctx.get("personal_events", [])
+    for pe in _personal_evs:
+        if pe.get("date") in (_today_s, _tomorrow_s):
+            _cal_events = _cal_events + [{"title": pe["title"], "date": pe.get("date",""), "start": pe.get("time",""), "personal": True}]
     if time_mode in ("morning_commute", "daytime"):
         _today_cal = [e for e in _cal_events if e.get("date") == _today_s]
         for e in _today_cal[:3]:
@@ -7143,9 +7255,11 @@ def api_home_brief():
             facts.append(f"📅 {e['title']}{_t} today")
     elif time_mode == "evening_leisure":
         _tom_cal = [e for e in _cal_events if e.get("date") == _tomorrow_s]
-        for e in _tom_cal[:2]:
+        _today_cal2 = [e for e in _cal_events if e.get("date") == _today_s]
+        for e in (_today_cal2 + _tom_cal)[:3]:
+            _lbl = "Today" if e.get("date") == _today_s else "Tomorrow"
             _t = f" at {e['start']}" if e.get("start") else ""
-            facts.append(f"📅 Tomorrow: {e['title']}{_t}")
+            facts.append(f"📅 {_lbl}: {e['title']}{_t}")
     bin_day = ctx.get("bin_day")
     if bin_day:
         bt = (bin_day.get("bin_type") or "").capitalize()

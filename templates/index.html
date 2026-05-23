@@ -1844,15 +1844,12 @@
         <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px">Set your regular commute and fuel postcode for a daily context update.</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div>
-            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">From station</div>
-            <input id="brief-pref-from" type="text" placeholder="e.g. Haywards Heath"
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Work / destination station</div>
+            <input id="brief-pref-to" type="text" placeholder="e.g. London Waterloo"
               style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Home station is derived from your postcode automatically.</div>
           </div>
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">To station</div>
-            <input id="brief-pref-to" type="text" placeholder="e.g. London Bridge"
-              style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-          </div>
+          <input id="brief-pref-from" type="hidden">
           <div>
             <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Fuel postcode</div>
             <input id="brief-pref-pc" type="text" placeholder="e.g. KT15"
@@ -1903,15 +1900,43 @@
         <button onclick="_briefRefresh()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;padding:4px 0">↻ Refresh</button>
       </div>
 
+      <!-- Personal event quick-add -->
+      <div id="brief-event-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">＋ Add to your brief</div>
+        <input id="brief-evt-title" type="text" placeholder="e.g. Wife's birthday 🎂" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:8px">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input id="brief-evt-date" type="date" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+          <input id="brief-evt-time" type="time" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="_briefAddEvent()" style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
+          <button onclick="document.getElementById('brief-event-form').style.display='none'" style="flex:1;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+        </div>
+        <div id="brief-evt-err" style="display:none;font-size:12px;color:#ef4444;margin-top:6px"></div>
+      </div>
+
       <!-- Location-aware section -->
       <div id="brief-location-section" style="display:none;margin-top:18px">
-        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">📍 Near you right now</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase">📍 Near you right now</div>
+          <div style="display:flex;gap:6px">
+            <button id="brief-nearby-cafe-btn" onclick="_briefFindNearby('cafe')" style="display:none;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:4px 10px;cursor:pointer;border-width:1px">☕ Cafes</button>
+            <button id="brief-nearby-food-btn" onclick="_briefFindNearby('food')" style="display:none;font-size:11px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:99px;padding:4px 10px;cursor:pointer;border-width:1px">🍽️ Food</button>
+          </div>
+        </div>
         <div id="brief-location-shimmer" style="display:flex;flex-direction:column;gap:10px">
           <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
           <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
         </div>
         <div id="brief-location-cards" style="display:none;flex-direction:column;gap:10px"></div>
         <div id="brief-location-err" style="display:none;font-size:13px;color:var(--muted);padding:12px 0"></div>
+        <div id="brief-nearby-results" style="display:none;flex-direction:column;gap:8px;margin-top:10px"></div>
+      </div>
+
+      <!-- Add event floating button -->
+      <div style="text-align:right;margin-top:10px">
+        <button onclick="document.getElementById('brief-event-form').style.display='block';document.getElementById('brief-evt-title').focus()"
+          style="font-size:12px;font-weight:700;color:var(--muted);background:none;border:1px solid var(--border);border-radius:99px;padding:5px 12px;cursor:pointer">＋ Add event</button>
       </div>
     </div><!-- /screen-brief -->
 
@@ -13519,8 +13544,7 @@ _bkBadge();
     var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
     if (schoolKids.length) chips.push("🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "));
     else if (schoolEvs.length) chips.push("🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""));
-    var spend = ctx && ctx.spend;
-    if (spend && spend.count > 0) chips.push("💳 £" + spend.total + " · " + spend.month);
+    // Spend intentionally excluded from chips — it dominates visual hierarchy
     container.innerHTML = chips.map(function(c) {
       return '<span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text)">' + c + '</span>';
     }).join("");
@@ -13986,15 +14010,13 @@ _bkBadge();
   }
 
   window._briefSavePrefs = function() {
-    var fromEl = document.getElementById("brief-pref-from");
     var toEl   = document.getElementById("brief-pref-to");
     var pcEl   = document.getElementById("brief-pref-pc");
     var errEl  = document.getElementById("brief-pref-err");
-    var from = fromEl ? fromEl.value.trim() : "";
-    var to   = toEl   ? toEl.value.trim()   : "";
-    var pc   = pcEl   ? pcEl.value.trim().toUpperCase() : "";
-    if (!from || !to) {
-      if (errEl) { errEl.textContent = "Please enter both From and To stations."; errEl.style.display = "block"; }
+    var to   = toEl ? toEl.value.trim() : "";
+    var pc   = pcEl ? pcEl.value.trim().toUpperCase() : "";
+    if (!to) {
+      if (errEl) { errEl.textContent = "Please enter your destination station."; errEl.style.display = "block"; }
       return;
     }
     var token = localStorage.getItem("miru_phone") || "";
@@ -14004,7 +14026,8 @@ _bkBadge();
     }
     var btn = document.getElementById("brief-save-btn");
     if (btn) { btn.textContent = "Saving…"; btn.disabled = true; }
-    var payload = {token: token, train_from: from, train_to: to, fuel_postcode: pc};
+    // home_postcode lets server auto-derive train_from (nearest station to postcode)
+    var payload = {token: token, train_to: to, fuel_postcode: pc, home_postcode: _miruPostcode() || pc};
     if (_briefBinDaySelected !== null) payload.bin_collection_day = _briefBinDaySelected;
     if (_briefBinRotationSelected) payload.bin_rotation = _briefBinRotationSelected;
     fetch("/api/v2/prefs", {
@@ -14040,6 +14063,76 @@ _bkBadge();
     _briefUpdateCalBtn(!!calConnected, null);
     setupCta.style.display = "block";
     setupCta.scrollIntoView({behavior: "smooth"});
+  };
+
+  // ── Nearby search ──────────────────────────────────────────────────────────
+  var _briefNearbyLat = null, _briefNearbyLng = null;
+
+  window._briefFindNearby = function(type) {
+    if (!_briefNearbyLat) return;
+    var res = document.getElementById("brief-nearby-results");
+    if (!res) return;
+    res.style.display = "flex";
+    res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Searching…</div>';
+    fetch("/api/brief/nearby?lat=" + _briefNearbyLat + "&lng=" + _briefNearbyLng + "&type=" + type)
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var places = d.places || [];
+        if (!places.length) { res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Nothing found nearby.</div>'; return; }
+        res.innerHTML = places.map(function(p) {
+          var dist = p.dist_m ? (p.dist_m < 1000 ? p.dist_m + "m" : (p.dist_m/1000).toFixed(1) + "km") : "";
+          var icon = {cafe:"☕", coffee_shop:"☕", bakery:"🥐", restaurant:"🍽️", fast_food:"🍔", pub:"🍺", bar:"🍸"}[p.type] || "📍";
+          return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">'
+            + '<div><span style="font-size:15px">' + icon + '</span> <span style="font-size:13px;font-weight:700;color:var(--text)">' + p.name + '</span>'
+            + '<span style="font-size:11px;color:var(--muted);margin-left:6px">' + (p.type || "") + '</span></div>'
+            + (dist ? '<span style="font-size:11px;font-weight:700;color:var(--muted)">' + dist + '</span>' : '')
+            + '</div>';
+        }).join("");
+      })
+      .catch(function() { res.innerHTML = '<div style="font-size:13px;color:var(--muted)">Search failed.</div>'; });
+  };
+
+  // Show nearby buttons + store coords once location is resolved
+  var _origBriefRenderLocation = _briefRenderLocation;
+  _briefRenderLocation = function(d) {
+    _origBriefRenderLocation(d);
+    if (d && d.lat !== undefined) {
+      _briefNearbyLat = d.lat; _briefNearbyLng = d.lng;
+      var cb = document.getElementById("brief-nearby-cafe-btn");
+      var fb = document.getElementById("brief-nearby-food-btn");
+      if (cb) cb.style.display = "inline-block";
+      if (fb) fb.style.display = "inline-block";
+    }
+  };
+
+  // ── Personal event quick-add ───────────────────────────────────────────────
+  window._briefAddEvent = function() {
+    var titleEl = document.getElementById("brief-evt-title");
+    var dateEl  = document.getElementById("brief-evt-date");
+    var timeEl  = document.getElementById("brief-evt-time");
+    var errEl   = document.getElementById("brief-evt-err");
+    var title = titleEl ? titleEl.value.trim() : "";
+    if (!title) { if (errEl) { errEl.textContent = "Add a title."; errEl.style.display = "block"; } return; }
+    var token = _miruPhone() || "";
+    if (!token) { if (errEl) { errEl.textContent = "Link WhatsApp first (My Area → Accounts)."; errEl.style.display = "block"; } return; }
+    fetch("/api/v2/personal-events", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({token: token, title: title, date: dateEl ? dateEl.value : "", time: timeEl ? timeEl.value : ""})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        document.getElementById("brief-event-form").style.display = "none";
+        if (titleEl) titleEl.value = "";
+        if (dateEl) dateEl.value = "";
+        if (timeEl) timeEl.value = "";
+        _briefInit(); // reload brief so the event appears
+      } else {
+        if (errEl) { errEl.textContent = d.error || "Save failed."; errEl.style.display = "block"; }
+      }
+    })
+    .catch(function() { if (errEl) { errEl.textContent = "Save failed."; errEl.style.display = "block"; } });
   };
 
   // If autoscreen already switched to brief before this script loaded, init now
