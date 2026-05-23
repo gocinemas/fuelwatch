@@ -6735,8 +6735,9 @@ def _v2_fetch_location_context(lat: float, lng: float) -> dict:
                 timeout=4,
             )
             addr = r.json().get("address", {})
-            area = (addr.get("suburb") or addr.get("village") or addr.get("town")
-                    or addr.get("city") or "")
+            # Prefer village/town over suburb/hamlet — avoids returning micro-hamlets like "Trumps Green"
+            area = (addr.get("village") or addr.get("town") or addr.get("city")
+                    or addr.get("suburb") or addr.get("hamlet") or "")
             county = addr.get("county") or addr.get("state_district") or ""
             # Drop "Borough", "District", "Council" qualifiers — keep first word
             county_short = county.split(" ")[0] if county else ""
@@ -7186,10 +7187,13 @@ def api_home_brief():
         return f"{t} ({cat})" if cat else t
 
     # Night/goodnight: NO saves at all — model hallucrinates from them
+    # When GPS location is provided: only content saves — real location context handles places
     # Evening: place/food saves first (still reasonable to head out)
     # Daytime: content first
     if time_mode in ("night", "goodnight"):
         saves_for_prompt = []
+    elif has_location:
+        saves_for_prompt = content_saves[:3]   # place saves excluded — GPS context handles location
     elif time_mode == "evening_leisure":
         saves_for_prompt = place_saves[:3] + content_saves[:2]
     else:
