@@ -422,58 +422,84 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
 
 # Action-needed types that warrant an immediate WhatsApp alert
 _ALERT_TYPES = {"reminder", "activity", "trip", "deadline", "payment", "event"}
+_INFO_TYPES  = {"info"}
 
-def _notify_new_school_events(from_number: str, new_events: list[dict]) -> None:
-    """Send a WhatsApp push for newly found action-needed school events."""
-    actionable = [e for e in new_events if (e.get("event_type") or "").lower() in _ALERT_TYPES]
-    if not actionable:
-        return
+_TYPE_EMOJI = {
+    "reminder": "⏰", "activity": "🎨", "event": "📅",
+    "trip": "🚌", "deadline": "🔴", "payment": "💳",
+}
 
-    def _fmt_date(d):
-        if not d:
-            return ""
-        try:
-            from datetime import date as _date
-            dt = _date.fromisoformat(d)
-            return dt.strftime("%-d %b")
-        except Exception:
-            return d
 
-    _TYPE_EMOJI = {
-        "reminder": "⏰", "activity": "🎨", "event": "📅",
-        "trip": "🚌", "deadline": "🔴", "payment": "💳",
-    }
+def _fmt_date(d):
+    if not d:
+        return ""
+    try:
+        from datetime import date as _date
+        dt = _date.fromisoformat(d)
+        return dt.strftime("%-d %b")
+    except Exception:
+        return d
 
-    lines = ["🏫 *New from school — action needed*\n"]
-    for ev in actionable[:6]:
-        emoji = _TYPE_EMOJI.get(ev.get("event_type", ""), "📌")
-        title = ev.get("event_title", "")
-        child = ev.get("child_name", "")
-        dt    = _fmt_date(ev.get("event_date"))
-        action = ev.get("action_needed", "")
-        line = f"{emoji} *{title}*"
-        if dt:     line += f" — {dt}"
-        if child:  line += f" ({child})"
-        if action: line += f"\n   ↳ {action}"
-        lines.append(line)
 
-    lines.append("\nmiru.humanagency.co/?screen=school")
-    msg = "\n".join(lines)
-
+def _school_twilio_send(from_number: str, msg: str) -> None:
     account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "")
     auth_token  = os.environ.get("TWILIO_AUTH_TOKEN", "")
     from_wa     = os.environ.get("TWILIO_WHATSAPP_FROM", "")
     if not all([account_sid, auth_token, from_wa]):
         print("[school] notify: Twilio env vars missing")
         return
+    from twilio.rest import Client
+    Client(account_sid, auth_token).messages.create(
+        body=msg,
+        from_=f"whatsapp:{from_wa}",
+        to=from_number,
+    )
+
+
+def _notify_new_school_events(from_number: str, new_events: list[dict]) -> None:
+    """Push newly found school events via WhatsApp.
+    Action events (reminders, trips, deadlines etc.) get a priority alert.
+    Info-only events get a lighter nudge.
+    """
+    actionable = [e for e in new_events if (e.get("event_type") or "").lower() in _ALERT_TYPES]
+    info_only  = [e for e in new_events
+                  if (e.get("event_type") or "").lower() in _INFO_TYPES
+                  and e not in actionable]
+
+    if not actionable and not info_only:
+        return
+
     try:
-        from twilio.rest import Client
-        Client(account_sid, auth_token).messages.create(
-            body=msg,
-            from_=f"whatsapp:{from_wa}",
-            to=from_number,
-        )
-        print(f"[school] alert sent to {from_number}: {len(actionable)} new events")
+        if actionable:
+            lines = ["🏫 *New from school*\n"]
+            for ev in actionable[:5]:
+                emoji  = _TYPE_EMOJI.get(ev.get("event_type", ""), "📌")
+                title  = ev.get("event_title", "")
+                child  = ev.get("child_name", "")
+                dt     = _fmt_date(ev.get("event_date"))
+                action = ev.get("action_needed", "")
+                line = f"{emoji} *{title}*"
+                if dt:     line += f" — {dt}"
+                if child:  line += f" ({child})"
+                if action: line += f"\n   ↳ {action}"
+                lines.append(line)
+            lines.append("\nmiru.humanagency.co/?screen=school")
+            _school_twilio_send(from_number, "\n".join(lines))
+            print(f"[school] alert sent to {from_number}: {len(actionable)} action events")
+
+        if info_only:
+            school_name = (info_only[0].get("school_name") or "school").strip()
+            child_name  = (info_only[0].get("child_name") or "").strip()
+            who = f"{child_name}'s school" if child_name else school_name
+            lines = [f"📬 *New from {who}*\n"]
+            for ev in info_only[:3]:
+                lines.append(f"• {ev.get('event_title', '').strip()}")
+            if len(info_only) > 3:
+                lines.append(f"• … and {len(info_only) - 3} more")
+            lines.append("\nmiru.humanagency.co/?screen=school")
+            _school_twilio_send(from_number, "\n".join(lines))
+            print(f"[school] info nudge sent to {from_number}: {len(info_only)} info events")
+
     except Exception as e:
         print(f"[school] alert send error for {from_number}: {e}")
 

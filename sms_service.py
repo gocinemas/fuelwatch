@@ -33,7 +33,7 @@ import time
 import requests
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime
-from flask import Flask, request, send_file, render_template, jsonify, Response, redirect, make_response
+from flask import Flask, request, send_file, render_template, jsonify, Response, redirect, make_response, after_this_request
 from twilio.twiml.messaging_response import MessagingResponse
 from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
@@ -6270,7 +6270,7 @@ def _v2_log_location_signal(from_number: str, lat: float, lng: float):
             signals = rows[0].get("data") or {}
             pings = signals.get("pings", [])
             pings.append(new_ping)
-            pings = pings[-10:]  # keep last 10
+            pings = pings[-30:]  # keep last 30 for pattern learning
             sb.table("ma_details").update({"data": {"pings": pings}}).eq("id", rows[0]["id"]).execute()
         else:
             sb.table("ma_details").insert({
@@ -7411,6 +7411,130 @@ def api_menu():
 
 _v2_brief_cache: dict = {}   # from_number -> {ts, brief}
 
+
+@app.route("/api/v2/learn-patterns", methods=["POST"])
+def api_v2_learn_patterns():
+    """Analyse location_signals for all V2 users and write learned patterns into v2_prefs.
+    Cron: POST /api/v2/learn-patterns daily at 03:00 UTC.
+    Token: X-Admin-Token: miru-digest-2026
+    """
+    if request.headers.get("X-Admin-Token") != "miru-digest-2026":
+        return jsonify({"error": "Forbidden"}), 403
+
+    import datetime as _lpdt, collections as _lpc
+
+    def _mode(vals):
+        if not vals:
+            return None
+        c = _lpc.Counter(vals)
+        return c.most_common(1)[0][0]
+
+    try:
+        # Get all users with location signals
+        _sig_rows = lib._sb().table("ma_details").select("device_id,data") \
+            .eq("type", "location_signals").execute().data or []
+    except Exception as _e:
+        return jsonify({"error": str(_e)}), 500
+
+    updated = 0
+    for _sr in _sig_rows:
+        phone  = _sr.get("device_id", "")
+        pings  = (_sr.get("data") or {}).get("pings", [])
+        if not phone or len(pings) < 5:
+            continue
+        try:
+            morning_hours = []   # weekday morning departure signals
+            evening_hours = []   # weekday evening home-arrival signals
+            for _p in pings:
+                try:
+                    _ts = _lpdt.datetime.fromisoformat(_p["ts"].replace("Z", "+00:00"))
+                    _wday = _ts.weekday()  # 0=Mon … 4=Fri
+                    if _wday >= 5:
+                        continue  # skip weekends
+                    _h = _ts.hour  # UTC hour
+                    if 6 <= _h <= 9:     # 7-10 BST — morning departure window
+                        morning_hours.append(_h)
+                    elif 16 <= _h <= 20: # 5-9pm BST — evening home window
+                        evening_hours.append(_h)
+                except Exception:
+                    continue
+
+            if not morning_hours and not evening_hours:
+                continue
+
+            # Load existing prefs to merge
+            _pref_rows = lib._sb().table("ma_details").select("id,data") \
+                .eq("device_id", phone).eq("type", "v2_prefs").limit(1).execute().data or []
+            _prefs = _pref_rows[0]["data"] if _pref_rows else {}
+            _changed = False
+
+            _mode_morning = _mode(morning_hours)
+            if _mode_morning is not None and len(morning_hours) >= 4:
+                _new_val = _mode_morning + 1  # UTC → BST approx
+                if _prefs.get("learned_departure_hour") != _new_val:
+                    _prefs["learned_departure_hour"] = _new_val
+                    _changed = True
+
+            _mode_evening = _mode(evening_hours)
+            if _mode_evening is not None and len(evening_hours) >= 4:
+                _new_val_e = _mode_evening + 1
+                if _prefs.get("learned_home_arrival_hour") != _new_val_e:
+                    _prefs["learned_home_arrival_hour"] = _new_val_e
+                    _changed = True
+
+            if _changed:
+                if _pref_rows:
+                    lib._sb().table("ma_details").update({"data": _prefs}) \
+                        .eq("id", _pref_rows[0]["id"]).execute()
+                else:
+                    lib._sb().table("ma_details").insert({
+                        "device_id": phone, "type": "v2_prefs",
+                        "label": "v2_prefs", "data": _prefs,
+                    }).execute()
+                updated += 1
+                print(f"[learn-patterns] {phone}: departure={_prefs.get('learned_departure_hour')} arrival={_prefs.get('learned_home_arrival_hour')}")
+        except Exception as _le:
+            print(f"[learn-patterns] {phone}: {_le}")
+
+    return jsonify({"ok": True, "users_analysed": len(_sig_rows), "patterns_updated": updated})
+
+
+def _rank_evening_saves(place_saves: list, content_saves: list, event_saves: list,
+                        dow: str, weather: dict, visited_merchants: set) -> tuple:
+    """Groq-rank all saves and return (top_saves, top_events) for the evening brief."""
+    all_candidates = place_saves[:6] + content_saves[:6]
+    events = event_saves[:4]
+    if not all_candidates and not events:
+        return [], []
+    save_lines = [
+        f"- {s.get('title','').strip()} [{s.get('category','place')}]"
+        for s in all_candidates if s.get("title")
+    ]
+    if not save_lines:
+        return all_candidates[:3], events[:2]
+    visited_str = (", ".join(list(visited_merchants)[:4])) if visited_merchants else "none"
+    wx_str = f"{weather.get('temp','?')}°C {weather.get('desc','')}" if weather else ""
+    prompt = (
+        f"It's {dow} evening in the UK. {wx_str}. "
+        f"User has visited today: {visited_str}. "
+        f"Pick the best 2 saves from this list for tonight — prefer unvisited restaurants/venues, "
+        f"then events, then content. Reply ONLY with the exact titles, one per line:\n"
+        + "\n".join(save_lines)
+    )
+    try:
+        raw = _groq_chat(
+            "Return only exact save titles, one per line. No commentary.",
+            [{"role": "user", "content": prompt}],
+            max_tokens=60,
+        )
+        chosen = {ln.strip().lstrip("-•* ").strip().lower()
+                  for ln in raw.strip().splitlines() if ln.strip()}
+        ranked = [s for s in all_candidates if s.get("title","").strip().lower() in chosen]
+        return (ranked or all_candidates[:2]), events[:2]
+    except Exception:
+        return place_saves[:2] + content_saves[:1], events[:2]
+
+
 @app.route("/api/home/brief")
 def api_home_brief():
     """V2 context engine — returns personalised brief text + raw context."""
@@ -7653,8 +7777,12 @@ def api_home_brief():
         saves_for_prompt = other_content[:3]
         event_context    = [_event_label(s) for s in event_saves[:2]]
     elif time_mode == "evening_leisure":
-        saves_for_prompt = place_saves_unvisited[:2] + other_content[:2]
-        event_context    = [_event_label(s) for s in event_saves[:2]]
+        _ep_saves, _ep_events = _rank_evening_saves(
+            place_saves_unvisited, other_content, event_saves,
+            dow, weather, _visited_merchants,
+        )
+        saves_for_prompt = _ep_saves
+        event_context    = [_event_label(s) for s in _ep_events]
     else:
         saves_for_prompt = other_content[:3] + place_saves_unvisited[:2]
         event_context    = [_event_label(s) for s in event_saves[:1]]
@@ -7681,6 +7809,10 @@ def api_home_brief():
         loc_str = loc_area
     else:
         loc_str = ""
+
+    # Learned patterns from location signals — surface in brief prompt
+    _learned_departure = prefs.get("learned_departure_hour")
+    _learned_arrival   = prefs.get("learned_home_arrival_hour")
 
     facts = []
     # Recent capture — photo taken in last 20 mins surfaces first so Groq can reference it
@@ -7788,9 +7920,12 @@ def api_home_brief():
             f"Do NOT mention commuting, trains, or work."
         )
     elif time_mode == "morning_commute":
+        _dep_note = (f" (usually leaves around {_learned_departure}:00)"
+                     if _learned_departure else "")
         prompt_parts.append(
             f"{_loc_preamble}"
-            f"Write a sharp, practical 2-sentence morning brief for a UK commuter. It's {dow} morning."
+            f"Write a sharp, practical 2-sentence morning brief for a UK commuter. "
+            f"It's {dow} morning{_dep_note}."
         )
     elif time_mode == "evening_leisure":
         outdoor_note = ""
@@ -8096,158 +8231,146 @@ def api_admin_fix_currency():
 
 @app.route("/api/morning-brief", methods=["POST"])
 def api_morning_brief():
-    """Send a personalised morning WhatsApp brief to all users with a home postcode.
+    """V2 morning push — uses full context engine + Groq narrative.
     Called daily at 7:30am UK time via cron-job.org.
     Token: X-Admin-Token: miru-digest-2026
+    Supports ?phone=whatsapp:+44... to test a single user.
     """
     if request.headers.get("X-Admin-Token") != "miru-digest-2026":
         return jsonify({"error": "Forbidden"}), 403
 
-    import datetime as _dt
+    import datetime as _mdt, concurrent.futures as _mcf
 
-    def _weather_brief(lat, lon):
-        """Returns (emoji, temp_str, label) or None."""
-        try:
-            r = requests.get(
-                "https://api.open-meteo.com/v1/forecast",
-                params={"latitude": round(lat, 3), "longitude": round(lon, 3),
-                        "current": "temperature_2m,weather_code", "timezone": "Europe/London"},
-                timeout=5
-            )
-            c = r.json().get("current", {})
-            temp = round(c.get("temperature_2m", 0))
-            code = c.get("weather_code", 0)
-            emoji = ("☀️" if code == 0 else "⛅" if code <= 3 else
-                     "🌫️" if code <= 48 else "🌦️" if code <= 57 else
-                     "🌧️" if code <= 67 else "❄️" if code <= 77 else
-                     "🌧️" if code <= 82 else "⛈️")
-            label = ("Sunny" if code == 0 else "Partly cloudy" if code <= 2 else
-                     "Cloudy" if code <= 3 else "Misty" if code <= 48 else
-                     "Drizzle" if code <= 57 else "Rain" if code <= 67 else
-                     "Snow" if code <= 77 else "Showers" if code <= 82 else "Stormy")
-            return emoji, f"{temp}°C", label
-        except Exception:
-            return None
+    now      = _mdt.datetime.now()
+    today    = now.date()
+    dow      = now.strftime("%A")
+    wday     = now.weekday()
 
-    def _fuel_brief(postcode):
-        """Returns cheapest fuel string near postcode or None."""
-        try:
-            latlon = postcode_to_latlon(postcode)
-            if not latlon:
-                return None
-            stations = _nearby_stations(latlon[0], latlon[1], "E10", 8)
-            if not stations:
-                return None
-            best = min(stations, key=lambda s: s.get("price", 9999))
-            price = best.get("price")
-            name  = (best.get("brand") or best.get("name", "")).split()[0]
-            if not price:
-                return None
-            return f"{price}p {name}"
-        except Exception as e:
-            print(f"[morning-brief] fuel error: {e}")
-            return None
+    # Allow testing a single phone number
+    _test_phone = (request.args.get("phone") or "").strip()
 
-    def _school_brief(phone_number, today):
-        """Returns list of upcoming school event strings for this week."""
+    # Get all V2 users (device_id = whatsapp phone, type = v2_prefs)
+    try:
+        _pref_rows = lib._sb().table("ma_details").select("device_id,data") \
+            .eq("type", "v2_prefs").execute().data or []
+    except Exception as _e:
+        return jsonify({"error": str(_e)}), 500
+
+    if _test_phone:
+        _pref_rows = [r for r in _pref_rows if r.get("device_id") == _test_phone]
+
+    sent = errors = skipped = 0
+
+    for _row in _pref_rows:
+        phone = (_row.get("device_id") or "").strip()
+        prefs = (_row.get("data") or {})
+        postcode = (prefs.get("fuel_postcode") or "").strip().upper()
+        if not phone or not phone.startswith("whatsapp:"):
+            skipped += 1
+            continue
+        # Skip paused users
+        if prefs.get("brief_paused"):
+            skipped += 1
+            continue
+
         try:
-            week_end = (today + _dt.timedelta(days=7)).isoformat()
-            variants = _wa_number_variants(phone_number)
-            profiles = (lib._sb().table("school_profiles")
-                        .select("id,child_name,school_name")
-                        .in_("wa_number", variants).eq("active", True)
-                        .execute().data or [])
-            if not profiles:
-                return []
-            profile_ids = [p["id"] for p in profiles]
-            profile_map = {p["id"]: p.get("child_name") or p.get("school_name", "School") for p in profiles}
-            events = (lib._sb().table("school_events")
-                      .select("event_title,event_date,profile_id")
-                      .in_("profile_id", profile_ids)
-                      .gte("event_date", today.isoformat())
-                      .lte("event_date", week_end)
-                      .order("event_date").limit(4).execute().data or [])
-            lines = []
-            for e in events:
-                child = profile_map.get(e["profile_id"], "School")
-                date  = e.get("event_date", "")
-                title = e.get("event_title", "")
-                date_str = ""
-                if date:
+            # Parallel fetch — reuse V2 context engine functions
+            with _mcf.ThreadPoolExecutor(max_workers=6) as _mpool:
+                _mfutures = {}
+                if postcode:
+                    _mfutures["weather"] = _mpool.submit(_v2_fetch_weather, postcode)
+                    _mfutures["fuel"]    = _mpool.submit(_v2_fetch_fuel, postcode)
+                _mfutures["school"]    = _mpool.submit(_v2_fetch_school, phone)
+                _mfutures["trains"]    = _mpool.submit(
+                    _v2_fetch_trains,
+                    prefs.get("train_from", ""),
+                    prefs.get("train_to", ""),
+                ) if prefs.get("train_from") and prefs.get("train_to") else None
+                _mfutures["deliveries"] = _mpool.submit(_v2_fetch_deliveries, phone)
+                _mctx = {}
+                for _mk, _mf in _mfutures.items():
+                    if _mf is None:
+                        continue
                     try:
-                        d = _dt.date.fromisoformat(date)
-                        date_str = " · " + d.strftime("%-d %b")
+                        _mctx[_mk] = _mf.result(timeout=8)
                     except Exception:
                         pass
-                lines.append(f"• {child}: {title}{date_str}")
-            return lines
-        except Exception as e:
-            print(f"[morning-brief] school error: {e}")
-            return []
 
-    try:
-        today = _dt.date.today()
-        # Get all users with a stored home postcode
-        users = (lib._sb().table("my_area_places")
-                 .select("from_number,postcode")
-                 .eq("category", "_home")
-                 .not_.is_("from_number", "null")
-                 .not_.is_("postcode", "null")
-                 .neq("brief_paused", True)
-                 .execute().data or [])
+            # Build facts list
+            _mfacts = []
+            _mwx = _mctx.get("weather", {})
+            if _mwx.get("temp") and _mwx.get("desc"):
+                _mfacts.append(f"Weather: {_mwx['temp']}°C, {_mwx['desc']}")
+            _mtrains = _mctx.get("trains", {})
+            if _mtrains.get("departures"):
+                _mdeps = _mtrains["departures"]
+                _mtimes = " and ".join(
+                    d.get("departs","") for d in _mdeps[:2] if d.get("departs")
+                )
+                if _mtimes:
+                    _mfacts.append(f"Next trains {_mtrains.get('from','')} → {_mtrains.get('to','')}: {_mtimes}")
+            _mschool = _mctx.get("school", {})
+            _mkids   = [s.get("child_name","") for s in _mschool.get("schools",[]) if s.get("child_name")]
+            for _mev in (_mschool.get("upcoming") or [])[:2]:
+                _mfacts.append(
+                    f"{_mev.get('child_name','')} has {_mev.get('event_title','')} on {_mev.get('event_date','')}"
+                )
+            _mfuel = _mctx.get("fuel", {})
+            if _mfuel.get("price"):
+                _mchange = f" ({_mfuel['change']})" if _mfuel.get("change") else ""
+                _mfacts.append(f"Cheapest fuel: {_mfuel['name']} {_mfuel['price']}p{_mchange}")
+            for _mdlv in _mctx.get("deliveries", []):
+                if _mdlv.get("status") in ("out for delivery", "arriving today"):
+                    _mfacts.append(f"📦 Parcel out for delivery today ({_mdlv.get('carrier','')})")
+                    break
 
-        sent = 0
-        errors = 0
-        for user in users:
-            phone    = user.get("from_number", "").strip()
-            postcode = (user.get("postcode") or "").strip().upper()
-            if not phone or not postcode:
-                continue
+            # Groq narrative — 2 crisp sentences, morning tone
+            _mkids_str = f"Kids: {' and '.join(_mkids)}." if _mkids else ""
+            _mfacts_str = "; ".join(_mfacts) if _mfacts else ""
+            _mprompt = (
+                f"Write a 2-sentence morning WhatsApp brief for a UK user. "
+                f"It's {dow} morning. {_mkids_str} "
+                f"Facts: {_mfacts_str}. "
+                f"Warm but efficient tone. No greetings, no bullet points. Under 50 words. "
+                f"Plain British English. No metaphors."
+            )
+            _mnarrative = ""
             try:
-                latlon = postcode_to_latlon(postcode)
-                if not latlon:
-                    continue
+                _mnarrative = _groq_chat(
+                    "You write concise morning briefs for a UK WhatsApp assistant.",
+                    [{"role": "user", "content": _mprompt}],
+                    max_tokens=100,
+                )
+            except Exception:
+                _mnarrative = ". ".join(_mfacts[:2]) if _mfacts else f"Good morning — have a great {dow}."
 
-                # Weather
-                wx = _weather_brief(latlon[0], latlon[1])
-                wx_line = f"{wx[0]} {wx[1]} · {wx[2]}" if wx else ""
+            # Compose WhatsApp message
+            _mparts = [_mnarrative.strip()]
+            # School this week — structured list below narrative
+            _mschool_upcoming = (_mschool.get("upcoming") or [])
+            if _mschool_upcoming:
+                _mparts.append("\n🏫 *School this week*")
+                for _mse in _mschool_upcoming[:3]:
+                    _msdate = _mse.get("event_date","")
+                    try:
+                        _msd = _mdt.date.fromisoformat(_msdate)
+                        _msdate = _msd.strftime("%-d %b")
+                    except Exception:
+                        pass
+                    _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')} ({_msdate})")
+            _mparts.append("\n_miru.humanagency.co — Reply STOP BRIEF to pause_")
+            _mmsg = "\n".join(_mparts)
 
-                # School events this week
-                school_lines = _school_brief(phone, today)
+            to = phone if phone.startswith("whatsapp:") else f"whatsapp:{phone}"
+            _wa_send_proactive(to, _mmsg)
+            sent += 1
+            print(f"[morning-brief] sent to {phone} — facts: {len(_mfacts)}")
+        except Exception as _me:
+            print(f"[morning-brief] error for {phone}: {_me}")
+            errors += 1
 
-                # Cheapest fuel nearby
-                fuel_line = _fuel_brief(postcode)
-
-                # Build message — skip if nothing useful to say
-                if not wx_line and not school_lines and not fuel_line:
-                    continue
-
-                h = _dt.datetime.now().hour
-                greet = "Good morning" if h < 12 else "Good afternoon" if h < 17 else "Good evening"
-                parts = [f"*{greet}* — {wx_line}" if wx_line else f"*{greet}*"]
-
-                if school_lines:
-                    parts.append("\n🏫 *School this week*")
-                    parts.extend(school_lines)
-
-                if fuel_line:
-                    parts.append(f"\n⛽ Cheapest near {postcode}: {fuel_line}")
-
-                parts.append("\n_Reply STOP BRIEF to pause daily updates_")
-
-                msg = "\n".join(parts)
-
-                # Ensure phone has whatsapp: prefix
-                to = phone if phone.startswith("whatsapp:") else f"whatsapp:{phone}"
-                _wa_send_proactive(to, msg)
-                sent += 1
-            except Exception as e:
-                print(f"[morning-brief] error for {phone}: {e}")
-                errors += 1
-
-        return jsonify({"ok": True, "sent": sent, "errors": errors, "total_users": len(users)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"ok": True, "sent": sent, "errors": errors,
+                    "skipped": skipped, "total": len(_pref_rows)})
 
 
 # ── Too Good To Go ────────────────────────────────────────────────────────────
@@ -12521,7 +12644,6 @@ def _wa_send_proactive(to: str, body: str) -> None:
         if not (sid and token and frm):
             print(f"[proactive] skipped — missing Twilio env vars (sid={bool(sid)} token={bool(token)} frm={bool(frm)})")
             return
-        # Normalise FROM — strip any whatsapp: prefix before adding it back
         frm_clean = frm.replace("whatsapp:", "").strip()
         msg = _TC(sid, token).messages.create(
             body=body, from_=f"whatsapp:{frm_clean}", to=to
@@ -12529,6 +12651,67 @@ def _wa_send_proactive(to: str, body: str) -> None:
         print(f"[proactive] sent to={to} sid={msg.sid}")
     except Exception as _e:
         print(f"[proactive] FAILED to={to} error={_e}")
+
+
+# ── WA conversation thread ─────────────────────────────────────────────────────
+
+def _wa_load_thread(from_number: str) -> list:
+    """Return last 3 exchanges (6 messages) from ma_details type=wa_thread."""
+    try:
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "wa_thread").limit(1).execute().data or []
+        return (rows[0].get("data") or {}).get("messages", []) if rows else []
+    except Exception:
+        return []
+
+
+def _wa_save_thread(from_number: str, user_msg: str, bot_reply: str) -> None:
+    """Append exchange to wa_thread, keep last 6 messages (3 exchanges)."""
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_details").select("id,data") \
+            .eq("device_id", from_number).eq("type", "wa_thread").limit(1).execute().data or []
+        msgs = (rows[0].get("data") or {}).get("messages", []) if rows else []
+        msgs.append({"role": "user",      "content": user_msg[:300]})
+        msgs.append({"role": "assistant", "content": bot_reply[:500]})
+        msgs = msgs[-6:]
+        blob = {"messages": msgs}
+        if rows:
+            sb.table("ma_details").update({"data": blob}).eq("id", rows[0]["id"]).execute()
+        else:
+            sb.table("ma_details").insert({
+                "device_id": from_number, "type": "wa_thread",
+                "label": "wa_thread", "data": blob,
+            }).execute()
+    except Exception:
+        pass
+
+
+def _wa_general_chat(from_number: str, body: str, thread: list) -> str:
+    """Answer a general question from the user with Groq, using conversation thread."""
+    ctx_parts = []
+    try:
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+        prefs = rows[0]["data"] if rows else {}
+        if prefs.get("fuel_postcode"):
+            ctx_parts.append(f"User lives near {prefs['fuel_postcode']}, UK.")
+        if prefs.get("train_from") and prefs.get("train_to"):
+            ctx_parts.append(f"Commutes {prefs['train_from']} → {prefs['train_to']}.")
+    except Exception:
+        pass
+    system = (
+        "You are Miru, a concise British AI assistant for everyday UK life — "
+        "trains, fuel, school, local area, saves. "
+        "Reply in plain text, under 60 words. No bullet points. No greetings. "
+        "If you don't know, say so briefly. "
+        + (" ".join(ctx_parts))
+    )
+    messages = list(thread) + [{"role": "user", "content": body}]
+    try:
+        return _groq_chat(system, messages, max_tokens=120)
+    except Exception:
+        return "I didn't quite get that — try asking about fuel, trains, or send a link to save."
 
 
 def _wa_doc_search(from_number: str, query: str) -> str:
@@ -14204,6 +14387,21 @@ def whatsapp_reply():
 
     resp = MessagingResponse()
 
+    # ── Conversation memory: load thread, save exchange after every response ──
+    _wa_thread = _wa_load_thread(from_number) if from_number != "unknown" else []
+
+    @after_this_request
+    def _persist_exchange(response):
+        import threading as _thr, re as _re_thr
+        _rm = _re_thr.search(r'<Message>(.*?)</Message>',
+                             response.get_data(as_text=True), _re_thr.DOTALL)
+        if _rm and body and from_number != "unknown" and len(body.strip()) > 3:
+            _reply_txt = _rm.group(1).strip()[:500]
+            _thr.Thread(target=_wa_save_thread,
+                        args=(from_number, body[:300], _reply_txt),
+                        daemon=True).start()
+        return response
+
     # ── Location share (Twilio sends Latitude+Longitude for WhatsApp location messages) ──
     _lat = request.form.get("Latitude", "")
     _lon = request.form.get("Longitude", "")
@@ -15536,6 +15734,21 @@ def whatsapp_reply():
     _food_reply = _wa_food_find(body, from_number)
     if _food_reply:
         resp.message(_food_reply)
+        return str(resp)
+
+    # ── General question → Miru AI chat with conversation memory ─────────────────
+    _QUESTION_OPENERS = {"what","why","how","when","where","who","which","tell","explain",
+                         "is","are","do","does","will","would","could","should","can"}
+    _bl_words_q = body_lower.split()
+    _looks_like_question = (
+        "?" in body and len(_bl_words_q) >= 3
+    ) or (
+        _bl_words_q and _bl_words_q[0] in _QUESTION_OPENERS and len(_bl_words_q) >= 4
+        and not re.search(r'\b[A-Z]{1,2}\d{1,2}\s*\d[A-Z]{2}\b', body.upper())  # no postcode
+    )
+    if _looks_like_question:
+        _chat_reply = _wa_general_chat(from_number, body, _wa_thread)
+        resp.message(_chat_reply)
         return str(resp)
 
     # ── Guard: conversational replies must not fall through to product search ────
