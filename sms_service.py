@@ -7329,7 +7329,7 @@ def api_home_brief():
     )
 
     if time_mode == "morning_commute" and day_type == "weekend":
-        # Weekend morning — no commute framing, focus on the day ahead
+        # Weekend morning — relaxed tone, weather-led, no commute or invented places
         _wthr_note = ""
         if weather and weather.get("temp") is not None:
             if weather.get("code", 99) <= 1:
@@ -7337,15 +7337,15 @@ def api_home_brief():
             elif weather.get("outdoor_ok"):
                 _wthr_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()}. "
             else:
-                _wthr_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — more of an indoor morning. "
+                _wthr_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()}. "
+        _venue_hint = f" They're at {loc_venue['name']}." if loc_venue.get("name") else ""
         prompt_parts.append(
             f"{_loc_preamble}"
-            f"Write a warm, relaxed 2-sentence {dow} morning message. {_wthr_note}"
-            f"Focus on what's worth doing today — outdoors, local plans, or something enjoyable. "
+            f"Write a warm, relaxed 2-sentence {dow} morning message. {_wthr_note}{_venue_hint} "
+            f"Do NOT invent specific places, attractions, parks, rivers, or activities — "
+            f"only reference the venue or area mentioned above. "
             f"Do NOT mention commuting, trains, or work."
         )
-        if _sunny_outdoor:
-            prompt_parts.append(f"Suggest one specific outdoor activity in {loc_str} for a sunny morning.")
     elif time_mode == "morning_commute":
         prompt_parts.append(
             f"{_loc_preamble}"
@@ -7454,10 +7454,11 @@ def api_home_brief():
         if facts:
             prompt_parts.append(f"Facts: {'; '.join(facts)}.")
         _location_rule = (
-            f"You know they are in {loc_str} — use this location to make the brief specific and relevant. "
-            f"Suggest local trains from {loc_station} if relevant. "
+            f"They are in {loc_str}{(' at ' + loc_venue['name']) if loc_venue.get('name') else ''}. "
+            f"Reference this location naturally. Do NOT invent specific places, attractions, parks, rivers, "
+            f"restaurants or activities that haven't been mentioned — only use what's in the facts above."
             if loc_str else
-            "NEVER invent a location, nearby landmark, or geographic setting — only use places from their saves."
+            "NEVER invent a location, nearby landmark, or geographic setting — only use places from their saves or facts."
         )
         prompt_parts.append(
             f"Subtle, personal, British English. Sound like you know them. "

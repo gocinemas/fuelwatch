@@ -13516,7 +13516,13 @@ _bkBadge();
       navigator.geolocation.getCurrentPosition(
         function(pos) {
           clearTimeout(_gpsTimer);
-          if (!_gpsDone) { _gpsDone = true; _doFetchBrief(pos.coords.latitude, pos.coords.longitude); }
+          if (!_gpsDone) {
+            _gpsDone = true;
+            _briefLastLat = pos.coords.latitude;
+            _briefLastLng = pos.coords.longitude;
+            _doFetchBrief(pos.coords.latitude, pos.coords.longitude);
+            _briefStartLocationWatch(pos.coords.latitude, pos.coords.longitude);
+          }
         },
         function() {
           clearTimeout(_gpsTimer);
@@ -13527,6 +13533,35 @@ _bkBadge();
     } else {
       _doFetchBrief(null, null);
     }
+  }
+
+  // ── Location-triggered brief refresh ──────────────────────────────────────
+  var _briefLastLat = null, _briefLastLng = null, _briefWatcher = null;
+
+  function _briefHaversineKm(lat1, lng1, lat2, lng2) {
+    var R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLng = (lng2-lng1)*Math.PI/180;
+    var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function _briefStartLocationWatch(initLat, initLng) {
+    if (!navigator.geolocation) return;
+    if (_briefWatcher) navigator.geolocation.clearWatch(_briefWatcher);
+    _briefWatcher = navigator.geolocation.watchPosition(
+      function(pos) {
+        var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        if (_briefLastLat === null) { _briefLastLat = lat; _briefLastLng = lng; return; }
+        var dist = _briefHaversineKm(_briefLastLat, _briefLastLng, lat, lng);
+        if (dist > 1.0) {
+          _briefLastLat = lat; _briefLastLng = lng;
+          // Only refresh if brief tab is active
+          var bs = document.getElementById("screen-brief");
+          if (bs && bs.classList.contains("active")) _briefInit();
+        }
+      },
+      null,
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 30000 }
+    );
   }
 
   function _briefRenderChips(ctx, container) {
@@ -13620,29 +13655,68 @@ _bkBadge();
       if (_isOffHours) html += weatherHtml;  // weather leads in evening/night
     }
 
-    // ── Trains — only show during commute window (5–17h) ─────────────────────
+    // ── Trains — weekdays only during commute window; weekends: behind intent choice ──
     var trains = wfh ? (ctx && ctx.trains) : (ctx && ctx.trains_home || ctx && ctx.trains);
-    if (!_isOffHours && trains && trains.departures && trains.departures.length) {
-      // Filter out past departures (safety net in case data is slightly stale)
+    var _isWeekendMorning = _isWeekend && _isMorning;
+
+    if (_isWeekendMorning) {
+      // Weekend morning: show intent choice — don't dump trains by default
+      if (!window._briefIntentChosen) {
+        html += '<div id="brief-intent-card" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+          + '<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px">What\'s the plan?</div>'
+          + '<div style="display:flex;gap:8px">'
+          + '<button onclick="window._briefChooseIntent(\'local\')" style="flex:1;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);font-size:13px;font-weight:700;cursor:pointer;color:var(--text)">🚶 Staying local</button>'
+          + '<button onclick="window._briefChooseIntent(\'out\')" style="flex:1;padding:11px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);font-size:13px;font-weight:700;cursor:pointer;color:var(--text)">🚂 Heading out</button>'
+          + '</div></div>';
+      } else if (window._briefIntentChosen === 'out' && trains && trains.departures && trains.departures.length) {
+        var _nowMins2 = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
+        var futureDeps2 = trains.departures.filter(function(d) {
+          var t = (d.departs || d.time || "").trim();
+          if (!t || t.indexOf(":") < 0) return true;
+          var p = t.split(":"); var dm = parseInt(p[0],10)*60 + parseInt(p[1],10);
+          return dm >= _nowMins2 - 1;
+        });
+        if (futureDeps2.length) {
+          var deps2 = futureDeps2.slice(0, 3).map(function(d) {
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
+              + '<span style="font-size:14px;font-weight:700;color:var(--text)">' + (d.departs || d.time || "") + '</span>'
+              + '<span style="font-size:12px;color:var(--muted)">' + (d.platform ? "Plat " + d.platform : (d.status || "")) + '</span>'
+              + '</div>';
+          }).join("");
+          html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+            + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🚆 ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
+            + deps2 + '</div>';
+        }
+      } else if (window._briefIntentChosen === 'local') {
+        // "Staying local" — show nearby cafes button as CTA
+        html += '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">'
+          + '<div><div style="font-size:13px;font-weight:700;color:#166534">Staying local 🌿</div>'
+          + '<div style="font-size:12px;color:#4ade80;margin-top:2px">Find something nearby</div></div>'
+          + '<div style="display:flex;gap:6px">'
+          + '<button onclick="_briefFindNearby(\'cafe\')" style="font-size:12px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:6px 10px;cursor:pointer">☕</button>'
+          + '<button onclick="_briefFindNearby(\'food\')" style="font-size:12px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:6px 10px;cursor:pointer">🍽️</button>'
+          + '</div></div>';
+      }
+    } else if (!_isOffHours && trains && trains.departures && trains.departures.length) {
       var _nowMins = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
       var futureDeps = trains.departures.filter(function(d) {
         var t = (d.departs || d.time || "").trim();
         if (!t || t.indexOf(":") < 0) return true;
         var p = t.split(":");
         var dm = parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
-        return dm >= _nowMins - 1; // allow 1-min tolerance
+        return dm >= _nowMins - 1;
       });
-      if (futureDeps.length > 0) { // only render if there are future departures
-      var deps = futureDeps.slice(0, 3).map(function(d) {
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
-          + '<span style="font-size:14px;font-weight:700;color:var(--text)">' + (d.departs || d.time || "") + '</span>'
-          + '<span style="font-size:12px;color:var(--muted)">' + (d.platform ? "Plat " + d.platform : (d.status || "")) + '</span>'
-          + '</div>';
-      }).join("");
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🚆 ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
-        + deps + '</div>';
-      } // end futureDeps.length > 0
+      if (futureDeps.length > 0) {
+        var deps = futureDeps.slice(0, 3).map(function(d) {
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
+            + '<span style="font-size:14px;font-weight:700;color:var(--text)">' + (d.departs || d.time || "") + '</span>'
+            + '<span style="font-size:12px;color:var(--muted)">' + (d.platform ? "Plat " + d.platform : (d.status || "")) + '</span>'
+            + '</div>';
+        }).join("");
+        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🚆 ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
+          + deps + '</div>';
+      }
     }
 
     // Weather in non-evening slots (after trains)
@@ -14157,6 +14231,21 @@ _bkBadge();
       }
     })
     .catch(function() { if (errEl) { errEl.textContent = "Save failed."; errEl.style.display = "block"; } });
+  };
+
+  // ── Weekend morning intent choice ─────────────────────────────────────────
+  window._briefIntentChosen = null;
+
+  window._briefChooseIntent = function(choice) {
+    window._briefIntentChosen = choice;
+    // Re-render context cards with chosen intent
+    var ctx = _briefData && _briefData.context;
+    var ctxCards = document.getElementById("brief-context-cards");
+    if (ctx && ctxCards) _briefRenderContextCards(ctx, ctxCards, _briefCurrentMode);
+    // "Staying local" → auto-fire nearby cafe search
+    if (choice === 'local' && _briefNearbyLat) {
+      setTimeout(function() { _briefFindNearby('cafe'); }, 200);
+    }
   };
 
   // If autoscreen already switched to brief before this script loaded, init now
