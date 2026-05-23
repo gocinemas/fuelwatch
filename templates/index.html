@@ -1816,6 +1816,9 @@
         <span id="brief-fuel-change" style="font-size:11px;font-weight:700;color:#78350f;background:#fef3c7;border-radius:99px;padding:2px 8px;display:none"></span>
       </div>
 
+      <!-- Location pill — shown when GPS resolves -->
+      <div id="brief-location-label" style="display:none;font-size:11px;font-weight:700;color:#1d4ed8;background:#dbeafe;border-radius:99px;padding:4px 10px;margin-bottom:10px;letter-spacing:.02em"></div>
+
       <!-- Narrative card — shimmer while loading -->
       <div id="brief-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:20px;padding:20px;margin-bottom:14px;min-height:88px">
         <div id="brief-shimmer">
@@ -13412,45 +13415,83 @@ _bkBadge();
 
     var token = _miruPhone();
     var pc = _miruPostcode() || "";
-    // Always fetch fresh on load — server caches for 15 min anyway, but first visit per session is always live
-    var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc) + "&refresh=1";
 
-    fetch(url)
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        _briefData = d;
-        if (shimmer) shimmer.style.display = "none";
+    function _doFetchBrief(gpsLat, gpsLng) {
+      var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc) + "&refresh=1";
+      if (gpsLat !== null && gpsLng !== null) url += "&lat=" + gpsLat + "&lng=" + gpsLng;
 
-        // Fuel strip — always populate if we have fuel data
-        _briefUpdateFuelStrip(d.context && d.context.fuel);
+      fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          _briefData = d;
+          if (shimmer) shimmer.style.display = "none";
 
-        if (!d.has_prefs) {
-          if (briefText) { briefText.textContent = "Set up your brief below to get a personalised daily update."; briefText.style.display = "block"; }
-          if (setupCta)  setupCta.style.display = "block";
+          // Fuel strip — always populate if we have fuel data
+          _briefUpdateFuelStrip(d.context && d.context.fuel);
+
+          if (!d.has_prefs) {
+            if (briefText) { briefText.textContent = "Set up your brief below to get a personalised daily update."; briefText.style.display = "block"; }
+            if (setupCta)  setupCta.style.display = "block";
+            _briefRequestLocation();
+            return;
+          }
+
+          // Narrative — show location area pill if server resolved it
+          if (briefText) {
+            briefText.textContent = d.brief || "Your brief is ready.";
+            briefText.style.display = "block";
+          }
+
+          // Location area label above the brief text
+          var locLabel = document.getElementById("brief-location-label");
+          var locArea = d.location && d.location.area;
+          if (locLabel) {
+            if (locArea) {
+              var venueName = d.location.venue && d.location.venue.name ? " · " + d.location.venue.name : "";
+              locLabel.textContent = "📍 " + locArea + venueName;
+              locLabel.style.display = "inline-block";
+            } else {
+              locLabel.style.display = "none";
+            }
+          }
+
+          // Chips
+          _briefRenderChips(d.context, chips);
+
+          // Context cards (pass current mode so WFH hides trains on initial load too)
+          _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
+
+          // Location section below (runs in parallel — venue/weather/fuel cards)
           _briefRequestLocation();
-          return;
-        }
+        })
+        .catch(function() {
+          if (shimmer) shimmer.style.display = "none";
+          if (briefText) { briefText.textContent = "Couldn't load your brief — check your connection."; briefText.style.display = "block"; }
+          _briefRequestLocation();
+        });
+    }
 
-        // Narrative
-        if (briefText) {
-          briefText.textContent = d.brief || "Your brief is ready.";
-          briefText.style.display = "block";
-        }
-
-        // Chips
-        _briefRenderChips(d.context, chips);
-
-        // Context cards (pass current mode so WFH hides trains on initial load too)
-        _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
-
-        // Location section (runs in parallel — doesn't block brief)
-        _briefRequestLocation();
-      })
-      .catch(function() {
-        if (shimmer) shimmer.style.display = "none";
-        if (briefText) { briefText.textContent = "Couldn't load your brief — check your connection."; briefText.style.display = "block"; }
-        _briefRequestLocation();
-      });
+    // Try GPS with a 3s window — if permission already granted it resolves instantly
+    // If denied or unavailable, proceed without coords (brief still loads normally)
+    if (navigator.geolocation) {
+      var _gpsDone = false;
+      var _gpsTimer = setTimeout(function() {
+        if (!_gpsDone) { _gpsDone = true; _doFetchBrief(null, null); }
+      }, 3000);
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          clearTimeout(_gpsTimer);
+          if (!_gpsDone) { _gpsDone = true; _doFetchBrief(pos.coords.latitude, pos.coords.longitude); }
+        },
+        function() {
+          clearTimeout(_gpsTimer);
+          if (!_gpsDone) { _gpsDone = true; _doFetchBrief(null, null); }
+        },
+        { timeout: 3000, maximumAge: 300000 }
+      );
+    } else {
+      _doFetchBrief(null, null);
+    }
   }
 
   function _briefRenderChips(ctx, container) {

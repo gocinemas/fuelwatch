@@ -6677,6 +6677,64 @@ _VENUE_SHOP_MAP = {
     "atm":         ("ATM", ""),
 }
 
+def _v2_nearest_station_from_latlon(lat: float, lng: float) -> str:
+    """Return name of the nearest rail station within 3 km, or empty string."""
+    try:
+        scored = sorted(
+            [(haversine_km(lat, lng, s["lat"], s["lon"]), s)
+             for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
+            key=lambda x: x[0]
+        )
+        if scored and scored[0][0] < 3.0:
+            return scored[0][1].get("name", "")
+    except Exception:
+        pass
+    return ""
+
+
+def _v2_fetch_location_context(lat: float, lng: float) -> dict:
+    """Reverse geocode + venue lookup + nearest station for location-aware brief.
+    Runs three sub-tasks in parallel and returns a unified context dict."""
+    import concurrent.futures as _cf3
+
+    def _reverse_geocode():
+        try:
+            r = requests.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                params={"lat": lat, "lon": lng, "format": "json", "zoom": 14},
+                headers={"User-Agent": "Miru/1.0 miru.humanagency.co"},
+                timeout=4,
+            )
+            addr = r.json().get("address", {})
+            area = (addr.get("suburb") or addr.get("village") or addr.get("town")
+                    or addr.get("city") or "")
+            county = addr.get("county") or addr.get("state_district") or ""
+            # Drop "Borough", "District", "Council" qualifiers — keep first word
+            county_short = county.split(" ")[0] if county else ""
+            return area.strip(), county_short.strip()
+        except Exception:
+            return "", ""
+
+    with _cf3.ThreadPoolExecutor(max_workers=3) as p3:
+        vf = p3.submit(_venue_from_latlon, lat, lng)
+        gf = p3.submit(_reverse_geocode)
+        sf = p3.submit(_v2_nearest_station_from_latlon, lat, lng)
+
+        venue = {}
+        try: venue = vf.result(timeout=7) or {}
+        except Exception: pass
+
+        area, county = "", ""
+        try: area, county = gf.result(timeout=5)
+        except Exception: pass
+
+        nearest_station = ""
+        try: nearest_station = sf.result(timeout=5) or ""
+        except Exception: pass
+
+    return {"venue": venue, "area": area, "county": county, "nearest_station": nearest_station}
+
+
 def _venue_from_latlon(lat: float, lng: float) -> dict:
     """Identify the named place at these coords using Overpass OSM."""
     try:
@@ -6863,11 +6921,20 @@ def api_home_brief():
                  request.cookies.get("miru_saves_phone") or "").strip()
     from_number = _v2_resolve(token)
 
+    # GPS coords — if provided, brief is location-enriched (never cached)
+    _req_lat = _req_lng = None
+    try:
+        _req_lat = float(request.args.get("lat", ""))
+        _req_lng = float(request.args.get("lng", ""))
+    except (TypeError, ValueError):
+        _req_lat = _req_lng = None
+    has_location = _req_lat is not None and _req_lng is not None
+
     # Check cache — trains always fresh; rest cached 15 min; ?refresh=1 busts it
-    # Goodnight hours (23:00–05:00) are never served from cache
+    # Goodnight hours (23:00–05:00) and GPS requests are never served from cache
     _cur_hour = _dt.now().hour
     _is_goodnight_hour = _cur_hour >= 23 or _cur_hour < 5
-    force_refresh = request.args.get("refresh", "") == "1" or _is_goodnight_hour
+    force_refresh = request.args.get("refresh", "") == "1" or _is_goodnight_hour or has_location
     cached = _v2_brief_cache.get(from_number or postcode)
     cache_hit = (not force_refresh) and cached and time.time() - cached["ts"] < 900
 
@@ -6910,7 +6977,7 @@ def api_home_brief():
     if fresh_trains_home:
         ctx["trains_home"] = fresh_trains_home
 
-    with _cf.ThreadPoolExecutor(max_workers=6) as pool:
+    with _cf.ThreadPoolExecutor(max_workers=7) as pool:
         futures = {}
         fuel_pc = prefs.get("fuel_postcode") or postcode
         if fuel_pc:
@@ -6922,6 +6989,8 @@ def api_home_brief():
             futures["saves"]      = pool.submit(_v2_fetch_saves, from_number)
             futures["deliveries"] = pool.submit(_v2_fetch_deliveries, from_number)
             futures["calendar"]   = pool.submit(_v2_fetch_calendar, from_number)
+        if has_location:
+            futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
         for k, f in futures.items():
             try: ctx[k] = f.result(timeout=8)
             except Exception as ex: app.logger.warning(f"[brief] {k}: {ex}")
@@ -7018,15 +7087,31 @@ def api_home_brief():
     spend = ctx.get("spend", {})
     spend_breakdown = spend.get("breakdown", {})
 
+    # Location context — injected into prompt if GPS coords were provided
+    loc_ctx = ctx.get("loc_ctx", {})
+    loc_area    = loc_ctx.get("area", "")
+    loc_county  = loc_ctx.get("county", "")
+    loc_venue   = loc_ctx.get("venue", {})
+    loc_station = loc_ctx.get("nearest_station", "")
+
+    # Build a readable location string e.g. "Virginia Water, Surrey"
+    if loc_area and loc_county and loc_county.lower() not in loc_area.lower():
+        loc_str = f"{loc_area}, {loc_county}"
+    elif loc_area:
+        loc_str = loc_area
+    else:
+        loc_str = ""
+
     facts = []
-    # Trains only relevant in commute window
+    # Trains only relevant in commute window — use GPS-nearest station if available
     if time_mode == "morning_commute":
         trains = ctx.get("trains", {})
         if trains.get("departures"):
             deps = trains["departures"]
             times = " · ".join(d.get("departs", d.get("time", "")) for d in deps[:2] if d.get("departs") or d.get("time"))
+            _from_label = loc_station or trains.get("from", "")
             if times:
-                facts.append(f"Next trains {trains.get('from','')} → {trains.get('to','')}: {times}")
+                facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
     fuel = ctx.get("fuel", {})
     if fuel.get("price") and time_mode in ("morning_commute", "daytime"):
         change = f" ({fuel['change']})" if fuel.get("change") else ""
@@ -7072,8 +7157,26 @@ def api_home_brief():
     # Build time-aware Groq prompt
     prompt_parts = []
 
+    # Location preamble — injected at the top of every non-night prompt
+    _loc_preamble = ""
+    if loc_str:
+        _venue_part = f" (at {loc_venue['name']})" if loc_venue.get("name") else ""
+        _loc_preamble = f"User is currently in {loc_str}{_venue_part}. "
+
+    # Outdoor suggestion — sunny + warm + weekend + we know where they are
+    _sunny_outdoor = (
+        loc_str and day_type == "weekend" and
+        weather.get("code", 99) <= 1 and weather.get("temp", 0) >= 15 and
+        time_mode in ("morning_commute", "daytime", "evening_leisure")
+    )
+
     if time_mode == "morning_commute":
-        prompt_parts.append(f"Write a sharp, practical 2-sentence morning brief for a UK commuter. It's {dow} morning.")
+        prompt_parts.append(
+            f"{_loc_preamble}"
+            f"Write a sharp, practical 2-sentence morning brief for a UK commuter. It's {dow} morning."
+        )
+        if _sunny_outdoor:
+            prompt_parts.append(f"It's {weather['temp']}°C and sunny in {loc_str}. Suggest one specific outdoor thing to do in the area.")
     elif time_mode == "evening_leisure":
         outdoor_note = ""
         if weather:
@@ -7086,6 +7189,7 @@ def api_home_brief():
         bh_note = " It's a long weekend — bank holiday Monday." if is_long_weekend else (
                   " Bank holiday today." if bank_holiday_today else "")
         prompt_parts.append(
+            f"{_loc_preamble}"
             f"Write a warm, relaxed 2-sentence early-evening brief. It's {dow} evening, {hour}:{now.minute:02d}. "
             + (outdoor_note + " " if outdoor_note else "")
             + ("It's a Thursday — pre-weekend energy." if day_type == "thursday_pre_weekend" else
@@ -7093,6 +7197,8 @@ def api_home_brief():
                "It's the weekend." if day_type == "weekend" else "")
             + bh_note + " "
         )
+        if _sunny_outdoor and loc_str:
+            prompt_parts.append(f"They're in {loc_str} — suggest one specific outdoor plan for this evening in the area.")
     elif time_mode in ("night", "goodnight"):
         # Build night/goodnight text directly — no Groq creative writing, no purple prose
         _bh  = " Bank holiday Monday — long weekend." if is_long_weekend else (
@@ -7152,7 +7258,12 @@ def api_home_brief():
             app.logger.warning(f"[brief] groq night: {be}")
             brief_text = f"{_day_line if time_mode == 'night' else 'Rest well.'}{_bh} {_tomorrow}"
     else:
-        prompt_parts.append(f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon.")
+        prompt_parts.append(
+            f"{_loc_preamble}"
+            f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon."
+        )
+        if _sunny_outdoor:
+            prompt_parts.append(f"It's {weather['temp']}°C and sunny in {loc_str}. Suggest one specific outdoor activity for the area.")
 
     if time_mode not in ("night", "goodnight"):
         if kids:
@@ -7168,10 +7279,16 @@ def api_home_brief():
                 prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
         if facts:
             prompt_parts.append(f"Facts: {'; '.join(facts)}.")
-        prompt_parts.append(
-            "Subtle, personal, British English. Sound like you know them. "
-            "No greetings, no bullet points, no 'Great news'. Under 55 words. "
+        _location_rule = (
+            f"You know they are in {loc_str} — use this location to make the brief specific and relevant. "
+            f"Suggest local trains from {loc_station} if relevant. "
+            if loc_str else
             "NEVER invent a location, nearby landmark, or geographic setting — only use places from their saves."
+        )
+        prompt_parts.append(
+            f"Subtle, personal, British English. Sound like you know them. "
+            f"No greetings, no bullet points, no 'Great news'. Under 55 words. "
+            + _location_rule
         )
         prompt = " ".join(prompt_parts)
         brief_text = ""
@@ -7204,8 +7321,10 @@ def api_home_brief():
         "calendar_connected": bool(ctx.get("calendar") is not None and from_number and
             lib._sb().table("ma_details").select("id").eq("device_id", from_number)
             .eq("type", "calendar_token").execute().data),
+        "location":  {"area": loc_str, "venue": loc_venue} if loc_str else {},
     }
-    if time_mode != "goodnight":  # goodnight brief is never cached — always fresh
+    # Never cache when location-enriched (user may have moved) or during goodnight
+    if time_mode != "goodnight" and not has_location:
         _v2_brief_cache[from_number or postcode] = {"ts": time.time(), "data": result}
     return jsonify(result)
 
