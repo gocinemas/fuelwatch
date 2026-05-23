@@ -6831,7 +6831,8 @@ def _venue_from_latlon(lat: float, lng: float) -> dict:
             return {}
         raw_type = (tags.get("shop") or tags.get("amenity") or "").lower()
         category, spend_cat = _VENUE_SHOP_MAP.get(raw_type, (raw_type.replace("_", " ").title(), ""))
-        return {"name": name, "type": raw_type, "category": category, "spend_cat": spend_cat}
+        phone = (tags.get("contact:phone") or tags.get("phone") or tags.get("telephone") or "").strip()
+        return {"name": name, "type": raw_type, "category": category, "spend_cat": spend_cat, "phone": phone}
     except Exception:
         return {}
 
@@ -14585,19 +14586,24 @@ def whatsapp_reply():
             resp.message("\n".join(lines))
         return str(resp)
 
-    # ── MENU LOOKUP — "menu at X", "what's on the menu at X", "what's the menu at X" ──
+    # ── MENU LOOKUP — any phrasing with "menu" + venue name ──────────────────
     _MENU_RE = re.compile(
-        r"^(?:what(?:'?s)?\s+(?:the\s+)?(?:on\s+(?:the\s+)?)?menu\s+(?:at|for|of)\s+|"
-        r"menu\s+(?:at|for|of)\s+|"
-        r"show\s+(?:me\s+)?(?:the\s+)?menu\s+(?:at|for|of)\s+|"
-        r"(?:get|find)\s+(?:the\s+)?menu\s+(?:at|for|of)\s+|"
-        r"(?:what\s+(?:do|does)\s+\S+\s+serve)|"
-        r"what(?:'?s)?\s+(?:on\s+at|serving\s+at|cooking\s+at)\s+)",
+        r"^(?:"
+        r"(?:what(?:'?s|is)?\s+)?(?:the\s+)?(?:is\s+)?(?:on\s+(?:the\s+)?)?menu\s+(?:at|for|of|in)\s+|"
+        r"(?:show|get|find)\s+(?:me\s+)?(?:the\s+)?menu\s+(?:at|for|of|in)\s+|"
+        r"what(?:'?s|is)?\s+(?:on\s+at|serving\s+at|cooking\s+at)\s+|"
+        r"menu\s+(?:at|for|of|in|-)?\s*"
+        r")",
         re.I
     )
     _menu_match = _MENU_RE.match(body.strip())
-    if _menu_match:
-        _menu_venue = body.strip()[_menu_match.end():].strip().rstrip("?").strip()
+    # Also catch bare "menu <venue>" with no preposition
+    _bare_menu = re.match(r'^menu\s+(\S.*)', body.strip(), re.I)
+    if _menu_match or _bare_menu:
+        if _menu_match:
+            _menu_venue = body.strip()[_menu_match.end():].strip().rstrip("?").strip()
+        else:
+            _menu_venue = _bare_menu.group(1).strip().rstrip("?").strip()
         if _menu_venue:
             resp.message("🍽️ Looking up their menu…")
             resp.message(_wa_menu_lookup(_menu_venue, from_number))
