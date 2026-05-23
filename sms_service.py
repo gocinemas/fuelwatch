@@ -11939,23 +11939,74 @@ def _wa_menu_lookup(name: str, from_number: str) -> str:
         return (f"🍽️ Found *{place_name}* but couldn't find their website — "
                 f"try searching *{place_name} menu* directly.")
 
-    # 2. Fetch the website and strip HTML
+    # 2. Fetch the website and strip HTML; fall back to menu subpaths if root is blocked
     raw_text = ""
-    try:
-        wr = requests.get(website, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
-        text = wr.text
-        # Remove scripts, styles, nav boilerplate
+    _browser_headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.5",
+    }
+
+    def _scrape(url):
+        r = requests.get(url, timeout=8, headers=_browser_headers, allow_redirects=True)
+        if r.status_code == 403:
+            return ""
+        text = r.text
         text = _re.sub(r'<(script|style|nav|header|footer)[^>]*>.*?</\1>', ' ', text, flags=_re.S|_re.I)
         text = _re.sub(r'<[^>]+>', ' ', text)
         text = html.unescape(text)
-        text = _re.sub(r'\s+', ' ', text).strip()
-        raw_text = text[:6000]  # cap for Groq context
+        return _re.sub(r'\s+', ' ', text).strip()[:6000]
+
+    try:
+        raw_text = _scrape(website)
+        # If root is blocked or thin, try common menu subpaths
+        if len(raw_text) < 300:
+            _base = website.rstrip("/")
+            for _suffix in ["/food", "/menus", "/menu", "/eat", "/dining", "/food-drink"]:
+                try:
+                    _candidate = _scrape(_base + _suffix)
+                    if len(_candidate) > len(raw_text):
+                        raw_text = _candidate
+                        break
+                except Exception:
+                    pass
     except Exception as _e:
         print(f"[menu_lookup] fetch error: {_e}")
 
-    if not raw_text:
+    # If website still blocked, ask Groq to generate a representative menu from its training data
+    if len(raw_text) < 200:
+        print(f"[menu_lookup] website blocked/empty for {place_name}, using Groq knowledge fallback")
+        try:
+            gc = _Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+            fallback = gc.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                temperature=0.3,
+                messages=[{
+                    "role": "system",
+                    "content": (
+                        "You are a UK pub and restaurant food guide. Based on what you know about this venue, "
+                        "give a representative sample of their menu — typical starters, mains, desserts and price range. "
+                        "Be honest if you're not certain. WhatsApp format: short, emoji bullets, no markdown headers."
+                    ),
+                }, {
+                    "role": "user",
+                    "content": f"What kind of food does {place_name} in {place_addr.split(',')[0]} serve? Give me a rough menu.",
+                }],
+                max_tokens=400,
+            ).choices[0].message.content.strip()
+            msg = f"🍽️ *{place_name}*\n"
+            if place_addr:
+                msg += f"_{place_addr.split(',')[0]}_\n\n"
+            msg += fallback + "\n\n"
+            msg += f"_Menu based on Groq knowledge — check directly:_ {website}"
+            if place_phone:
+                msg += f"\n📞 {place_phone}"
+            return msg
+        except Exception as _e2:
+            print(f"[menu_lookup] groq fallback error: {_e2}")
         return (f"🍽️ *{place_name}*\n{place_addr}\n\n"
-                f"Couldn't load their menu — visit: {website}")
+                f"Their website is blocking automated access — check directly:\n{website}"
+                + (f"\n📞 {place_phone}" if place_phone else ""))
 
     # 3. Groq extracts menu items
     try:
@@ -14534,6 +14585,24 @@ def whatsapp_reply():
                 lines.append(f"\n…+{len(rows)-10} more. See all: miru.humanagency.co")
             resp.message("\n".join(lines))
         return str(resp)
+
+    # ── MENU LOOKUP — "menu at X", "what's on the menu at X", "what's the menu at X" ──
+    _MENU_RE = re.compile(
+        r"^(?:what(?:'?s)?\s+(?:the\s+)?(?:on\s+(?:the\s+)?)?menu\s+(?:at|for|of)\s+|"
+        r"menu\s+(?:at|for|of)\s+|"
+        r"show\s+(?:me\s+)?(?:the\s+)?menu\s+(?:at|for|of)\s+|"
+        r"(?:get|find)\s+(?:the\s+)?menu\s+(?:at|for|of)\s+|"
+        r"(?:what\s+(?:do|does)\s+\S+\s+serve)|"
+        r"what(?:'?s)?\s+(?:on\s+at|serving\s+at|cooking\s+at)\s+)",
+        re.I
+    )
+    _menu_match = _MENU_RE.match(body.strip())
+    if _menu_match:
+        _menu_venue = body.strip()[_menu_match.end():].strip().rstrip("?").strip()
+        if _menu_venue:
+            resp.message("🍽️ Looking up their menu…")
+            resp.message(_wa_menu_lookup(_menu_venue, from_number))
+            return str(resp)
 
     # ── PRICE CHECK / COMPARE — strip prefix so "price olive oil" works ──────
     _PRICE_PREFIX_RE = re.compile(
