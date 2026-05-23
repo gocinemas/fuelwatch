@@ -13364,6 +13364,15 @@ _bkBadge();
         });
         vBody += '</div>';
       }
+      // Menu button for food/drink venues
+      var _menuTypes = ["cafe","coffee","restaurant","fast_food","pub","bar","bakery","food_court"];
+      if (_menuTypes.indexOf(v.type) !== -1) {
+        vBody += '<div id="brief-venue-menu-area" style="margin-top:10px">'
+          + '<button onclick="_briefFetchVenueMenu(\'' + v.name.replace(/'/g,"\\'") + '\')" '
+          + 'style="background:#fff;border:1.5px solid #16a34a;color:#16a34a;font-size:12px;font-weight:800;'
+          + 'border-radius:99px;padding:5px 14px;cursor:pointer;letter-spacing:.02em">📋 See menu</button>'
+          + '</div>';
+      }
       html += '<div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:16px;padding:14px 16px;margin-bottom:2px">'
         + vBody + '</div>';
     }
@@ -14201,6 +14210,25 @@ _bkBadge();
       if (cb) cb.style.display = "inline-block";
       if (fb) fb.style.display = "inline-block";
     }
+  };
+
+  // ── Venue menu lookup ─────────────────────────────────────────────────────
+  window._briefFetchVenueMenu = function(venueName) {
+    var area = document.getElementById("brief-venue-menu-area");
+    if (!area) return;
+    area.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:6px 0">Looking up menu…</div>';
+    var token = _miruPhone() || "";
+    fetch("/api/menu?token=" + encodeURIComponent(token) + "&name=" + encodeURIComponent(venueName))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.error) { area.innerHTML = '<div style="font-size:13px;color:#dc2626">' + d.error + '</div>'; return; }
+        var text = (d.menu || "No menu found").replace(/\n/g, "<br>");
+        area.innerHTML = '<div style="margin-top:8px;font-size:12px;color:var(--text);line-height:1.6;background:#fff;border-radius:10px;padding:10px 12px">'
+          + text + '</div>';
+      })
+      .catch(function() {
+        area.innerHTML = '<div style="font-size:13px;color:#dc2626">Failed to load menu.</div>';
+      });
   };
 
   // ── Personal event quick-add ───────────────────────────────────────────────

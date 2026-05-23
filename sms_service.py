@@ -7059,6 +7059,20 @@ def api_v2_personal_events():
     return jsonify({"ok": True, "count": len(evs)})
 
 
+@app.route("/api/menu")
+def api_menu():
+    """Look up a restaurant/pub menu by name. Used by V2 venue card."""
+    token       = request.args.get("token", "").strip()
+    name        = request.args.get("name", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"error": "not authenticated"}), 401
+    if not name:
+        return jsonify({"error": "name required"}), 400
+    result = _wa_menu_lookup(name, from_number)
+    return jsonify({"menu": result, "name": name})
+
+
 _v2_brief_cache: dict = {}   # from_number -> {ts, brief}
 
 @app.route("/api/home/brief")
@@ -11871,6 +11885,119 @@ def _wa_spending_query(from_number: str, body: str) -> str:
     return reply
 
 
+def _wa_menu_lookup(name: str, from_number: str) -> str:
+    """Look up a restaurant/pub menu by name: Places → website → Groq extract."""
+    import html, re as _re
+    from groq import Groq as _Groq
+
+    # 1. Find place via Google Places text search near user's home postcode
+    home_pc = _get_wa_home_postcode(from_number) or ""
+    lat, lon = None, None
+    if home_pc:
+        _ll = postcode_to_latlon(home_pc.replace(" ", "").upper())
+        if _ll:
+            lat, lon = _ll
+
+    place = None
+    website = ""
+    place_name = name
+    place_addr = ""
+    place_phone = ""
+
+    if _GOOGLE_PLACES_KEY:
+        try:
+            query = name + " " + (home_pc or "UK")
+            params = {"query": query, "key": _GOOGLE_PLACES_KEY, "region": "uk"}
+            if lat and lon:
+                params["location"] = f"{lat},{lon}"
+                params["radius"] = 20000
+            ts = requests.get(
+                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                params=params, timeout=6,
+            )
+            results = ts.json().get("results", [])
+            if results:
+                place_id = results[0]["place_id"]
+                place_name = results[0].get("name", name)
+                det = requests.get(
+                    "https://maps.googleapis.com/maps/api/place/details/json",
+                    params={
+                        "place_id": place_id,
+                        "fields": "name,formatted_address,formatted_phone_number,website",
+                        "key": _GOOGLE_PLACES_KEY,
+                    },
+                    timeout=6,
+                )
+                p = det.json().get("result", {})
+                website = p.get("website", "")
+                place_addr = p.get("formatted_address", "")
+                place_phone = p.get("formatted_phone_number", "")
+        except Exception as _e:
+            print(f"[menu_lookup] places error: {_e}")
+
+    if not website:
+        return (f"🍽️ Found *{place_name}* but couldn't find their website — "
+                f"try searching *{place_name} menu* directly.")
+
+    # 2. Fetch the website and strip HTML
+    raw_text = ""
+    try:
+        wr = requests.get(website, timeout=8, headers={"User-Agent": "Mozilla/5.0"})
+        text = wr.text
+        # Remove scripts, styles, nav boilerplate
+        text = _re.sub(r'<(script|style|nav|header|footer)[^>]*>.*?</\1>', ' ', text, flags=_re.S|_re.I)
+        text = _re.sub(r'<[^>]+>', ' ', text)
+        text = html.unescape(text)
+        text = _re.sub(r'\s+', ' ', text).strip()
+        raw_text = text[:6000]  # cap for Groq context
+    except Exception as _e:
+        print(f"[menu_lookup] fetch error: {_e}")
+
+    if not raw_text:
+        return (f"🍽️ *{place_name}*\n{place_addr}\n\n"
+                f"Couldn't load their menu — visit: {website}")
+
+    # 3. Groq extracts menu items
+    try:
+        gc = _Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+        extracted = gc.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            temperature=0,
+            messages=[{
+                "role": "system",
+                "content": (
+                    "You are a menu extractor. From the website text, extract the food and drink menu. "
+                    "Group by section (Starters, Mains, Desserts, Drinks etc). "
+                    "For each item: name and price if shown. Max 20 items total. "
+                    "If no menu is visible on the page, say 'Menu not found on website'. "
+                    "Be concise — WhatsApp format, no markdown headers, use emoji bullets."
+                ),
+            }, {
+                "role": "user",
+                "content": f"Restaurant: {place_name}\n\nWebsite text:\n{raw_text}",
+            }],
+            max_tokens=600,
+        ).choices[0].message.content.strip()
+    except Exception as _e:
+        print(f"[menu_lookup] groq error: {_e}")
+        extracted = "Menu not found on website"
+
+    if "not found" in extracted.lower() or len(extracted) < 30:
+        msg = f"🍽️ *{place_name}*\n{place_addr}\n\n"
+        msg += "Couldn't find menu items on their site — check directly:\n"
+        msg += website
+        if place_phone:
+            msg += f"\n📞 {place_phone}"
+        return msg
+
+    msg = f"🍽️ *{place_name}*\n"
+    if place_addr:
+        msg += f"_{place_addr.split(',')[0]}_\n"
+    msg += f"\n{extracted}\n\n"
+    msg += f"Full menu: {website}"
+    return msg
+
+
 def _wa_send_proactive(to: str, body: str) -> None:
     """Send an outbound WhatsApp message via Twilio (fire-and-forget)."""
     try:
@@ -13407,8 +13534,12 @@ def _wa_classify_intent(body: str) -> dict | None:
                 "  shopping_list— wants ingredients/shopping list from last saved recipe.\n"
                 "  my_saves     — wants to see their saved items list.\n"
                 "  my_link      — wants their personal Miru link.\n"
+                "  menu         — user wants to see the menu of a specific named restaurant/pub/cafe.\n"
+                "                 Extract: name (the restaurant/pub name exactly as mentioned).\n"
                 "  unknown      — anything else (fuel prices, postcodes alone, greetings, etc.).\n\n"
                 "Examples (JSON only):\n"
+                '{"intent":"menu","name":"Belvedere Arms"}\n'
+                '{"intent":"menu","name":"Nando\'s"}\n'
                 '{"intent":"train","from":"waterloo","to":"lewisham"}\n'
                 '{"intent":"train","from":"reading","to":null}\n'
                 '{"intent":"tube","from":null,"to":null,"query":"status"}\n'
@@ -14749,6 +14880,15 @@ def whatsapp_reply():
             if _food_reply:
                 resp.message(_food_reply)
                 return str(resp)
+        elif _itype == "menu":
+            _venue_name = (_intent.get("name") or "").strip()
+            if _venue_name:
+                resp.message("🍽️ Looking up their menu…")
+                _menu_reply = _wa_menu_lookup(_venue_name, from_number)
+                resp.message(_menu_reply)
+            else:
+                resp.message("Which restaurant? Try: *menu Belvedere Arms* or *what's on at Nando's*")
+            return str(resp)
 
     # ── Re-check commands if intent classifier redirected ─────────────────────
     if cmd_up in ("WORTH IT", "WORTH IT?", "REVIEWS", "BOOK REVIEW", "THOUGHTS"):
