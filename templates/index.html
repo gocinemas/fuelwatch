@@ -14236,17 +14236,27 @@ _bkBadge();
   // ── Nearby search ──────────────────────────────────────────────────────────
   var _briefNearbyLat = null, _briefNearbyLng = null;
 
-  window._briefFindNearby = function(type) {
+  window._briefFindNearby = function(type, radius) {
     if (!_briefNearbyLat) return;
+    radius = radius || 1500;
     var res = document.getElementById("brief-nearby-results");
     if (!res) return;
     res.style.display = "flex";
-    res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Searching…</div>';
-    fetch("/api/brief/nearby?lat=" + _briefNearbyLat + "&lng=" + _briefNearbyLng + "&type=" + type)
+    res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Searching' + (radius > 1500 ? ' wider area…' : '…') + '</div>';
+    fetch("/api/brief/nearby?lat=" + _briefNearbyLat + "&lng=" + _briefNearbyLng + "&type=" + type + "&radius=" + radius)
       .then(function(r) { return r.json(); })
       .then(function(d) {
         var places = d.places || [];
-        if (!places.length) { res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Nothing found nearby.</div>'; return; }
+        if (!places.length) {
+          if (radius < 3500) {
+            // Auto-retry with a wider radius
+            _briefFindNearby(type, 3500);
+          } else {
+            res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Nothing found within 3.5km.</div>';
+          }
+          return;
+        }
+        var radiusLabel = radius > 1500 ? ' <span style="font-size:10px;color:var(--muted)">(within ' + (radius/1000).toFixed(1) + 'km)</span>' : '';
         res.innerHTML = places.map(function(p) {
           var dist = p.dist_m ? (p.dist_m < 1000 ? p.dist_m + "m" : (p.dist_m/1000).toFixed(1) + "km") : "";
           var icon = {cafe:"☕", coffee_shop:"☕", bakery:"🥐", restaurant:"🍽️", fast_food:"🍔", pub:"🍺", bar:"🍸"}[p.type] || "📍";
@@ -14255,7 +14265,7 @@ _bkBadge();
             + '<span style="font-size:11px;color:var(--muted);margin-left:6px">' + (p.type || "") + '</span></div>'
             + (dist ? '<span style="font-size:11px;font-weight:700;color:var(--muted)">' + dist + '</span>' : '')
             + '</div>';
-        }).join("");
+        }).join("") + radiusLabel;
       })
       .catch(function() { res.innerHTML = '<div style="font-size:13px;color:var(--muted)">Search failed.</div>'; });
   };

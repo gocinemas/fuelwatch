@@ -7167,7 +7167,7 @@ def api_brief_nearby():
         lng = float(request.args.get("lng", ""))
     except (TypeError, ValueError):
         return jsonify({"error": "lat/lng required"}), 400
-    radius  = min(int(request.args.get("radius", 600)), 1500)
+    radius  = min(int(request.args.get("radius", 1500)), 4000)
     vtype   = request.args.get("type", "cafe")
     _amenity_map = {
         "cafe":       ["cafe", "coffee_shop", "bakery"],
