@@ -6746,18 +6746,26 @@ def _v2_fetch_location_context(lat: float, lng: float) -> dict:
 
     def _reverse_geocode():
         try:
+            # zoom=10 returns settlement level (Virginia Water) not hamlet (Trumps Green)
             r = requests.get(
                 "https://nominatim.openstreetmap.org/reverse",
-                params={"lat": lat, "lon": lng, "format": "json", "zoom": 14},
+                params={"lat": lat, "lon": lng, "format": "json", "zoom": 10},
                 headers={"User-Agent": "Miru/1.0 miru.humanagency.co"},
                 timeout=4,
             )
-            addr = r.json().get("address", {})
-            # Prefer village/town over suburb/hamlet — avoids returning micro-hamlets like "Trumps Green"
-            area = (addr.get("village") or addr.get("town") or addr.get("city")
-                    or addr.get("suburb") or addr.get("hamlet") or "")
+            data = r.json()
+            addr = data.get("address", {})
+            area = (addr.get("town") or addr.get("village") or addr.get("city")
+                    or addr.get("suburb") or "")
+            if not area:
+                # Fallback: parse display_name, skip the most-local component
+                dn = data.get("display_name", "")
+                _skip = {"England", "Scotland", "Wales", "UK", "United Kingdom", "Great Britain"}
+                for part in [p.strip() for p in dn.split(",")][1:]:
+                    if part and not re.match(r'^[A-Z]{1,2}\d', part) and part not in _skip:
+                        area = part
+                        break
             county = addr.get("county") or addr.get("state_district") or ""
-            # Drop "Borough", "District", "Council" qualifiers — keep first word
             county_short = county.split(" ")[0] if county else ""
             return area.strip(), county_short.strip()
         except Exception:
@@ -7252,8 +7260,8 @@ def api_home_brief():
             _rc_fact += f" — {_rc_summary}"
         facts.append(_rc_fact)
 
-    # Trains only relevant in commute window — use GPS-nearest station if available
-    if time_mode == "morning_commute":
+    # Trains: weekday commute window only — never on weekends
+    if time_mode == "morning_commute" and day_type not in ("weekend",):
         trains = ctx.get("trains", {})
         if trains.get("departures"):
             deps = trains["departures"]
@@ -7320,13 +7328,29 @@ def api_home_brief():
         time_mode in ("morning_commute", "daytime", "evening_leisure")
     )
 
-    if time_mode == "morning_commute":
+    if time_mode == "morning_commute" and day_type == "weekend":
+        # Weekend morning — no commute framing, focus on the day ahead
+        _wthr_note = ""
+        if weather and weather.get("temp") is not None:
+            if weather.get("code", 99) <= 1:
+                _wthr_note = f"It's {weather['temp']}°C and sunny. "
+            elif weather.get("outdoor_ok"):
+                _wthr_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()}. "
+            else:
+                _wthr_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()} — more of an indoor morning. "
+        prompt_parts.append(
+            f"{_loc_preamble}"
+            f"Write a warm, relaxed 2-sentence {dow} morning message. {_wthr_note}"
+            f"Focus on what's worth doing today — outdoors, local plans, or something enjoyable. "
+            f"Do NOT mention commuting, trains, or work."
+        )
+        if _sunny_outdoor:
+            prompt_parts.append(f"Suggest one specific outdoor activity in {loc_str} for a sunny morning.")
+    elif time_mode == "morning_commute":
         prompt_parts.append(
             f"{_loc_preamble}"
             f"Write a sharp, practical 2-sentence morning brief for a UK commuter. It's {dow} morning."
         )
-        if _sunny_outdoor:
-            prompt_parts.append(f"It's {weather['temp']}°C and sunny in {loc_str}. Suggest one specific outdoor thing to do in the area.")
     elif time_mode == "evening_leisure":
         outdoor_note = ""
         if weather:
