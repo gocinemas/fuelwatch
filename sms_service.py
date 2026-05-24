@@ -13984,26 +13984,51 @@ def _inline_fuel_snippet(postcode: str) -> str:
         return ""
 
 
+def _drive_weather_tip(postcode: str) -> str:
+    """Return a one-line contextual tip based on current weather. Empty string if conditions are fine."""
+    try:
+        w = _v2_fetch_weather(postcode)
+        if not w:
+            return ""
+        temp = w.get("temp", 15)
+        code = w.get("desc", "")
+        if temp >= 28:
+            tip = f"☀️ {temp}°C today — take water, it'll be busy. Park in the shade if you can."
+        elif temp <= 1:
+            tip = f"🧊 {temp}°C — roads may be icy, allow extra time."
+        elif "rain" in (w.get("desc") or "").lower() or (w.get("weathercode", 0) if hasattr(w, "get") else 0) in range(51, 68):
+            tip = f"🌧️ Rain on the way — allow a bit of extra time."
+        else:
+            return ""
+        return "\n" + tip
+    except Exception:
+        return ""
+
+
 def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_dest: str = None, dest_geo: tuple = None) -> str:
     """Build the drive time + hours reply for a confirmed destination."""
     key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     query = specific_dest or (destination + " UK")
     from concurrent.futures import ThreadPoolExecutor
     if dest_geo:
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            f_from  = pool.submit(_geocode_place, origin_postcode + " UK")
-            f_hours = pool.submit(_fetch_place_hours, specific_dest or destination)
-            from_geo = f_from.result()
-            to_geo   = dest_geo
-            hours    = f_hours.result()
-    else:
         with ThreadPoolExecutor(max_workers=3) as pool:
-            f_from  = pool.submit(_geocode_place, origin_postcode + " UK")
-            f_to    = pool.submit(_geocode_place, query)
-            f_hours = pool.submit(_fetch_place_hours, specific_dest or destination)
-            from_geo = f_from.result()
-            to_geo   = f_to.result()
-            hours    = f_hours.result()
+            f_from    = pool.submit(_geocode_place, origin_postcode + " UK")
+            f_hours   = pool.submit(_fetch_place_hours, specific_dest or destination)
+            f_weather = pool.submit(_drive_weather_tip, origin_postcode)
+            from_geo     = f_from.result()
+            to_geo       = dest_geo
+            hours        = f_hours.result()
+            weather_tip  = f_weather.result()
+    else:
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            f_from    = pool.submit(_geocode_place, origin_postcode + " UK")
+            f_to      = pool.submit(_geocode_place, query)
+            f_hours   = pool.submit(_fetch_place_hours, specific_dest or destination)
+            f_weather = pool.submit(_drive_weather_tip, origin_postcode)
+            from_geo     = f_from.result()
+            to_geo       = f_to.result()
+            hours        = f_hours.result()
+            weather_tip  = f_weather.result()
     if not from_geo or not to_geo or not key:
         return f"Have a good trip to {destination}!"
     try:
@@ -14037,6 +14062,8 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
         if hours.get("today_hours"):
             status = " ✅ Open now" if hours.get("open_now") else " ⛔ Closed now" if hours.get("open_now") is False else ""
             lines.append("\n\U0001f550 Today: " + hours.get("today_hours", "") + status)
+        if weather_tip:
+            lines.append(weather_tip)
         _lat2, _lng2 = to_geo
         lines.append(
             f"\n🗺️ https://maps.google.com/maps?q={_lat2},{_lng2}"
