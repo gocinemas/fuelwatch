@@ -7983,7 +7983,7 @@ def api_home_brief():
                 f"{dow} evening."
             )
             prompt_parts.append(
-                f"Write exactly two short sentences. "
+                f"Write exactly two short sentences addressed directly to the user (use 'you'). "
                 f"Sentence 1: a calm, grounded sign-off for {_day_line}{_bh}{_wthr} "
                 f"Sentence 2: one uplifting thought — either a true, well-known quote from a named real person, "
                 f"or a simple positive observation about rest, the weekend, or the season. "
@@ -7998,8 +7998,8 @@ def api_home_brief():
             if not _kids_note and kids:
                 _kids_note = f" {kids[0]} and the family are all set for the weekend."
             prompt_parts.append(
-                f"Write exactly two short sentences. "
-                f"Sentence 1: wish them a good rest — plain and warm, not cheesy. It's past 11 PM on {dow}.{_bh} {_tomorrow} "
+                f"Write exactly two short sentences addressed directly to the user (use 'you'). "
+                f"Sentence 1: a warm, plain sign-off for the night — not cheesy. It's past 11 PM on {dow}.{_bh} {_tomorrow} "
                 f"Sentence 2: one uplifting closing thought — choose one: "
                 f"a well-known real quote with the person's name, "
                 f"a genuine sleep/rest fact (no label), "
