@@ -16745,6 +16745,16 @@ def whatsapp_reply():
             resp.message("Just send your postcode to find fuel, e.g. *KT15 petrol*")
             return str(resp)
 
+    # ── Recipe / cocktail recipe — intercept before product search ───────────────
+    if re.search(r'\brecipe\b|\bhow\s+to\s+make\b|\bhow\s+do\s+i\s+make\b|\bingredients\s+for\b', body_lower):
+        _dish = re.sub(r'\s*\brecipe\b.*', '', body_lower, flags=re.I).strip()
+        _dish = re.sub(r'^(how\s+to\s+make|how\s+do\s+i\s+make|ingredients\s+for)\s+', '', _dish, flags=re.I).strip()
+        if not _dish:
+            _dish = body_lower.replace("recipe", "").strip()
+        if _dish:
+            resp.message(_wa_recipe_card(_dish))
+            return str(resp)
+
     # Decide: fuel query or product query
     # Product query if: no postcode at all, OR postcode present but there's
     # substantial non-fuel text alongside it
