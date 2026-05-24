@@ -13965,18 +13965,26 @@ def _fetch_place_hours(destination: str) -> dict:
         return {}
 
 
-def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_dest: str = None) -> str:
+def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_dest: str = None, dest_geo: tuple = None) -> str:
     """Build the drive time + hours reply for a confirmed destination."""
     key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     query = specific_dest or (destination + " UK")
     from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        f_from  = pool.submit(_geocode_place, origin_postcode + " UK")
-        f_to    = pool.submit(_geocode_place, query)
-        f_hours = pool.submit(_fetch_place_hours, specific_dest or destination)
-        from_geo = f_from.result()
-        to_geo   = f_to.result()
-        hours    = f_hours.result()
+    if dest_geo:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            f_from  = pool.submit(_geocode_place, origin_postcode + " UK")
+            f_hours = pool.submit(_fetch_place_hours, specific_dest or destination)
+            from_geo = f_from.result()
+            to_geo   = dest_geo
+            hours    = f_hours.result()
+    else:
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            f_from  = pool.submit(_geocode_place, origin_postcode + " UK")
+            f_to    = pool.submit(_geocode_place, query)
+            f_hours = pool.submit(_fetch_place_hours, specific_dest or destination)
+            from_geo = f_from.result()
+            to_geo   = f_to.result()
+            hours    = f_hours.result()
     if not from_geo or not to_geo or not key:
         return f"Have a good trip to {destination}!"
     try:
@@ -14011,8 +14019,8 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
             status = " ✅ Open now" if hours.get("open_now") else " ⛔ Closed now" if hours.get("open_now") is False else ""
             lines.append("\n\U0001f550 Today: " + hours.get("today_hours", "") + status)
         _d = destination.lower()
-        if any(w in _d for w in ["costco","tesco","sainsbury","asda","waitrose","aldi","lidl","morrisons"]):
-            lines.append("\n*price [product]* to compare before you buy\n*fuel near [postcode]* for petrol on the way home")
+        if any(w in _d for w in ["costco","tesco","sainsbury","asda","waitrose","aldi","lidl","morrisons","ikea","b&q","homebase","screwfix"]):
+            lines.append("\n⛽ *fuel near [postcode]* for petrol on the way home")
         return "\n".join(lines)
     except Exception:
         return f"Have a good trip to {destination}!"
@@ -14027,13 +14035,27 @@ _CHAIN_BRANDS = {
 
 
 def _wa_heading_to(body: str, from_number: str) -> str | None:
-    """Detect ‘I’m heading to X’. If X is a chain with no location, show nearest branches to pick from."""
+    """Detect travel intent and reply with nearest branches or drive time."""
+    b = body.strip()
+
+    # Pattern 1: "I’m heading/going/on my way/driving to X"
     _HEADING_RE = re.compile(
-        r"^(?:i[‘’]?m\s+(?:heading|going|on\s+my\s+way|driving|heading\s+out)\s+to\s+|"
-        r"heading\s+to\s+|going\s+to\s+|on\s+my\s+way\s+to\s+)"
+        r"^(?:i[‘’]?m\s+(?:heading|going|on\s+my\s+way|driving|heading\s+out|popping|nipping)\s+to\s+|"
+        r"off\s+to\s+|heading\s+to\s+|going\s+to\s+|on\s+my\s+way\s+to\s+|"
+        r"i[‘’]?m\s+(?:heading|going|driving|popping|nipping)\s+)"  # "i’m heading ikea" without "to"
         r"(.{3,60})$", re.I
     )
-    m = _HEADING_RE.match(body.strip())
+    m = _HEADING_RE.match(b)
+
+    # Pattern 2: "[chain] near me" — treat as travel intent
+    _NEAR_ME_RE = re.compile(r"^(.{3,40}?)\s+near\s+me\s*$", re.I)
+    if not m:
+        nm = _NEAR_ME_RE.match(b)
+        if nm:
+            candidate = nm.group(1).strip().lower()
+            if any(brand in candidate for brand in _CHAIN_BRANDS):
+                m = nm  # reuse match, group(1) is destination
+
     if not m:
         return None
     destination = m.group(1).strip().rstrip(".")
@@ -14084,8 +14106,7 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
                     dlng = loc["lng"] - home_geo[1]
                     dist_km = _math.sqrt(dlat**2 + dlng**2) * 111
                     name = p.get("name", destination.title())
-                    addr = (p.get("formatted_address") or "").split(",")[1].strip() if "," in (p.get("formatted_address") or "") else ""
-                    branches.append({"name": name, "addr": addr, "dist_km": dist_km,
+                    branches.append({"name": name, "dist_km": dist_km,
                                      "lat": loc["lat"], "lng": loc["lng"]})
                 branches.sort(key=lambda x: x["dist_km"])
                 branches = branches[:3]
@@ -14096,8 +14117,7 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
             lines = [f"🛒 Which {destination.title()}?"]
             for i, b in enumerate(branches, 1):
                 dist_mi = round(b["dist_km"] * 0.621, 1)
-                label = b["addr"] or b["name"]
-                lines.append(f"{i}. {label} ({dist_mi} mi)")
+                lines.append(f"{i}. {b['name']} ({dist_mi} mi)")
             lines.append(f"\nReply *1*, *2* or *3*")
             # Store pending intent with branch options
             _set_wa_pending_intent(from_number, {
@@ -15151,9 +15171,9 @@ def whatsapp_reply():
             _idx = int(_num_pick.group(1)) - 1
             if 0 <= _idx < len(_branches):
                 _branch = _branches[_idx]
-                _specific = f"{_branch['name']}, {_branch['addr']}, UK" if _branch.get("addr") else _branch["name"] + " UK"
-                _label = f"{_dest_name.title()} {_branch['addr']}" if _branch.get("addr") else _dest_name.title()
-                reply = _heading_to_drive_reply(_label, _origin, _specific)
+                _label = _branch["name"]  # e.g. "IKEA Wembley", "Costco Farnborough"
+                _dest_geo = (_branch["lat"], _branch["lng"]) if _branch.get("lat") else None
+                reply = _heading_to_drive_reply(_label, _origin, _label + " UK", dest_geo=_dest_geo)
                 resp.message(reply)
             else:
                 resp.message(f"Didn't catch that — reply 1, 2 or 3 to pick a {_dest_name}.")
