@@ -14832,6 +14832,8 @@ def _wa_search_saves(from_number: str, filter_type: str, timeframe: str, author:
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
     body        = request.form.get("Body", "").strip()
+    # Normalise smart/curly quotes — iOS WhatsApp sends ' (U+2019) not ' (U+0027)
+    body = body.replace("’", "'").replace("‘", "'").replace("“", '"').replace("”", '"')
     from_number = request.form.get("From", "unknown")
     print(f"WhatsApp from {from_number}: {body}")
 
@@ -16015,6 +16017,23 @@ def whatsapp_reply():
         resp.message(_heading_reply)
         return str(resp)
 
+    # ── Brand intel (before Groq — "brand X" / "intel X" / "about X") ──────────
+    _brand_m = re.match(r'^(?:brand|intel|about)\s+(.{2,60})$', body.strip(), re.I)
+    if _brand_m:
+        resp.message(_wa_brand_card(_brand_m.group(1).strip()))
+        return str(resp)
+
+    # ── Price check (before Groq — "price X" / "compare X") ────────────────────
+    _price_re = re.compile(
+        r'^(?:price\s+|compare\s+prices?\s+|compare\s+|price\s+check\s+|check\s+price\s+(?:of\s+)?|how\s+much\s+is\s+)',
+        re.I
+    )
+    if _price_re.match(body.strip()):
+        product_q = _price_re.sub("", body.strip(), count=1).strip()
+        if product_q:
+            resp.message(whatsapp_product_format(product_q))
+            return str(resp)
+
     # ── Natural language fallback — Groq intent classification ───────────────
     _intent = _wa_classify_intent(body)
     if _intent:
@@ -16218,12 +16237,6 @@ def whatsapp_reply():
     # ── Tube query ───────────────────────────────────────────────────────────
     if body_lower.strip().startswith("tube"):
         resp.message(handle_tube_command(body, from_number))
-        return str(resp)
-
-    # ── Brand intel: "brand Nike" / "intel Walkers" / "about Oreo" ─────────────
-    _brand_m = re.match(r'^(?:brand|intel|about)\s+(.{2,60})$', body.strip(), re.I)
-    if _brand_m:
-        resp.message(_wa_brand_card(_brand_m.group(1).strip()))
         return str(resp)
 
     # ── Food & drink discovery ───────────────────────────────────────────────
