@@ -2999,6 +2999,7 @@
     { ico:"📌", label:"Clippings",         desc:"Articles & places saved",      action: function(){ _pillNav('saves'); } },
     { ico:"📚", label:"Library",           desc:"Docs & notes in one place",    action: function(){ showScreen('library'); } },
     { ico:"🎵", label:"Music ID",          desc:"Name that song",               action: function(){ showScreen('music'); } },
+    { ico:"🍹", label:"Recipes",           desc:"Dishes & cocktails instantly", action: function(){ showScreen('recipe'); } },
     { ico:"🗺️", label:"Nearby",           desc:"Food · drinks · parks",        action: function(){ _exploreHereOpen && _exploreHereOpen(); _moreClose(); } },
     { ico:"📊", label:"Brief",             desc:"Your daily context brief",     action: function(){ showScreen('brief'); } },
   ];
@@ -3082,6 +3083,7 @@
     if (name === "elections") { document.getElementById("elections-input").focus(); _electionsRefreshHomeRow(); }
     if (name === "ai-watch")  { try { _aiwRenderBookmarks(); } catch(e){} _aiwLoadCo(_aiwV); }
     if (name === "brief")     { if (typeof _briefInit === 'function') _briefInit(); }
+    if (name === "recipe")    { _recipeRenderHistory(); setTimeout(function(){ var el=document.getElementById("recipe-input"); if(el)el.focus(); },100); }
     if (name === "home")       { if (typeof _homeHeroInit === 'function') _homeHeroInit(); }
     if (name === "myarea")     { _loadMyArea(); }
     if (name === "lifeadmin")  { _loadLifeAdmin(); }
@@ -13995,6 +13997,15 @@ _bkBadge();
         var label = ico ? (ico + " " + raw.replace(/^[\u{1F000}-\u{1FFFF}]\s*/u, "").trim()) : raw;
         chips.push({ label: label, action: "_pillNav('saves')" });
       });
+      // Recipe chip — warm or weekend evening
+      var _dow = new Date().getDay();
+      var _isWeekendEve = _dow === 5 || _dow === 6 || _dow === 0;
+      var _wx = ctx && ctx.weather;
+      var _temp = _wx && _wx.temp !== undefined ? _wx.temp : 15;
+      if (_isWeekendEve || _temp >= 18) {
+        var _recipeLabel = _temp >= 22 ? "🍹 Try a cocktail?" : _temp < 8 ? "🫖 Warm cocktail?" : "🍹 Try a recipe?";
+        chips.push({ label: _recipeLabel, action: "showScreen('recipe')" });
+      }
       // Quiet reference row
       if (trains && trains.departures && trains.departures.length)
         secondaryChips.push({ label: "🚆 Train times", action: "showScreen('trains')" });
@@ -17687,6 +17698,159 @@ _bkBadge();
   };
 
 })();
+</script>
+
+<!-- ── RECIPE SCREEN ── -->
+<div id="screen-recipe" class="screen pt-5" style="max-width:480px;margin:0 auto;padding:6px 16px 48px">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin-bottom:4px">🍹 Recipes &amp; Cocktails</h2>
+  <div style="font-size:13px;color:var(--muted);margin-bottom:18px">Ask for any dish or drink — get the recipe instantly</div>
+
+  <!-- Search bar -->
+  <div style="display:flex;gap:8px;margin-bottom:20px">
+    <input id="recipe-input" type="text" placeholder="e.g. Aperol Spritz, spaghetti carbonara…"
+      style="flex:1;padding:12px 14px;border:1.5px solid var(--border);border-radius:14px;font-size:14px;background:var(--surface);color:var(--text);outline:none;font-family:inherit"
+      onkeydown="if(event.key==='Enter')_recipeSearch()">
+    <button onclick="_recipeSearch()" id="recipe-go-btn"
+      style="padding:12px 18px;border-radius:14px;border:none;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0">Go</button>
+  </div>
+
+  <!-- Quick chips -->
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px" id="recipe-quick-chips">
+    <button onclick="_recipeQuick('Aperol Spritz')"    class="recipe-chip">🍹 Aperol Spritz</button>
+    <button onclick="_recipeQuick('Negroni')"           class="recipe-chip">🍸 Negroni</button>
+    <button onclick="_recipeQuick('Espresso Martini')"  class="recipe-chip">☕ Espresso Martini</button>
+    <button onclick="_recipeQuick('Spaghetti Carbonara')" class="recipe-chip">🍝 Carbonara</button>
+    <button onclick="_recipeQuick('Chicken Tikka Masala')" class="recipe-chip">🍛 Tikka Masala</button>
+    <button onclick="_recipeQuick('Hot Toddy')"         class="recipe-chip">🫖 Hot Toddy</button>
+  </div>
+
+  <!-- Result card -->
+  <div id="recipe-card" style="display:none;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:20px;padding:20px 20px 16px">
+    <div id="recipe-shimmer" style="display:none">
+      <div style="height:14px;background:rgba(255,255,255,.1);border-radius:6px;margin-bottom:10px;width:60%"></div>
+      <div style="height:10px;background:rgba(255,255,255,.07);border-radius:6px;margin-bottom:7px"></div>
+      <div style="height:10px;background:rgba(255,255,255,.07);border-radius:6px;margin-bottom:7px;width:80%"></div>
+      <div style="height:10px;background:rgba(255,255,255,.07);border-radius:6px;width:70%"></div>
+    </div>
+    <div id="recipe-text" style="font-size:14px;font-weight:500;color:#fff;line-height:1.7;white-space:pre-wrap"></div>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <button id="recipe-save-btn" onclick="_recipeSave()" style="display:none;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;cursor:pointer">📚 Save to Library</button>
+      <button onclick="_recipeShare()" style="display:none;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);background:none;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:6px 12px;cursor:pointer" id="recipe-share-btn">Share</button>
+    </div>
+  </div>
+
+  <!-- Recent recipes — stored in localStorage -->
+  <div id="recipe-history" style="margin-top:24px"></div>
+</div>
+
+<style>
+  .recipe-chip { background:var(--surface);border:1.5px solid var(--border);border-radius:99px;padding:7px 13px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap; }
+  .recipe-chip:active { background:var(--surface2); }
+</style>
+
+<script>
+  var _recipeCurrentText = "";
+  var _recipeCurrentTitle = "";
+
+  function _recipeSearch() {
+    var q = (document.getElementById("recipe-input").value || "").trim();
+    if (!q) return;
+    _recipeFetch(q);
+  }
+
+  function _recipeQuick(name) {
+    document.getElementById("recipe-input").value = name;
+    _recipeFetch(name);
+  }
+
+  function _recipeFetch(dish) {
+    var card    = document.getElementById("recipe-card");
+    var shimmer = document.getElementById("recipe-shimmer");
+    var text    = document.getElementById("recipe-text");
+    var saveBtn = document.getElementById("recipe-save-btn");
+    var shareBtn= document.getElementById("recipe-share-btn");
+    card.style.display = "block";
+    shimmer.style.display = "block";
+    text.textContent = "";
+    saveBtn.style.display = "none";
+    shareBtn.style.display = "none";
+    _recipeCurrentText = "";
+    _recipeCurrentTitle = dish;
+
+    fetch("/api/recipe", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ dish: dish })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      shimmer.style.display = "none";
+      _recipeCurrentText = d.recipe || "Recipe unavailable.";
+      text.textContent = _recipeCurrentText;
+      saveBtn.style.display = "inline-block";
+      shareBtn.style.display = "inline-block";
+      // Persist to recent history
+      _recipePushHistory(dish, _recipeCurrentText);
+      _recipeRenderHistory();
+    })
+    .catch(function() {
+      shimmer.style.display = "none";
+      text.textContent = "Couldn't load recipe — check your connection.";
+    });
+  }
+
+  function _recipeSave() {
+    if (!_recipeCurrentText) return;
+    var token = _miruToken ? _miruToken() : (localStorage.getItem("miru_token") || "");
+    fetch("/api/library/upload", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ title: "🍳 " + _recipeCurrentTitle, text: _recipeCurrentText, doc_type: "recipe", token: token })
+    }).then(function() {
+      _miruToast && _miruToast("Recipe saved to Library", "success");
+      document.getElementById("recipe-save-btn").textContent = "✅ Saved";
+    }).catch(function() {});
+  }
+
+  function _recipeShare() {
+    var text = _recipeCurrentTitle + "\n\n" + _recipeCurrentText;
+    if (navigator.share) {
+      navigator.share({ title: _recipeCurrentTitle, text: text }).catch(function(){});
+    } else {
+      navigator.clipboard && navigator.clipboard.writeText(text);
+      _miruToast && _miruToast("Copied to clipboard", "success");
+    }
+  }
+
+  function _recipePushHistory(dish, text) {
+    try {
+      var hist = JSON.parse(localStorage.getItem("miru_recipe_hist") || "[]");
+      hist = hist.filter(function(h) { return h.dish !== dish; });
+      hist.unshift({ dish: dish, text: text, ts: Date.now() });
+      localStorage.setItem("miru_recipe_hist", JSON.stringify(hist.slice(0, 8)));
+    } catch(e) {}
+  }
+
+  function _recipeRenderHistory() {
+    var hist;
+    try { hist = JSON.parse(localStorage.getItem("miru_recipe_hist") || "[]"); } catch(e) { hist = []; }
+    var el = document.getElementById("recipe-history");
+    if (!el || hist.length < 2) return;
+    el.innerHTML = '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">Recent</div>'
+      + hist.slice(1).map(function(h) {
+          return '<button onclick="_recipeQuick(' + JSON.stringify(h.dish) + ')" style="width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:8px;cursor:pointer;font-family:inherit">'
+            + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + h.dish + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (h.text || "").split("\n")[0] + '</div>'
+            + '</button>';
+        }).join("");
+  }
+
+  // Render history on screen show
+  var _origShowScreenRecipe = window.showScreen;
+  window.showScreen = function(name) {
+    _origShowScreenRecipe(name);
+    if (name === "recipe") _recipeRenderHistory();
+  };
 </script>
 
 <!-- ── MUSIC SCREEN ── -->

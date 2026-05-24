@@ -8476,6 +8476,19 @@ def api_home_brief_narrative():
         return jsonify({"text": ""})
 
 
+@app.route("/api/recipe", methods=["POST"])
+def api_recipe():
+    """Generate a recipe/cocktail card. Body: {dish}"""
+    body = request.get_json(force=True, silent=True) or {}
+    dish = (body.get("dish") or "").strip()[:120]
+    if not dish:
+        return jsonify({"recipe": ""}), 400
+    text = _wa_recipe_card(dish)
+    # Strip the WhatsApp footer for the web version
+    text = text.split("\n\n_Save a recipe?")[0].strip()
+    return jsonify({"recipe": text})
+
+
 @app.route("/api/home/ask", methods=["POST"])
 def api_home_ask():
     """Answer a follow-up question against the already-fetched brief context.
@@ -15050,12 +15063,17 @@ def _wa_classify_intent(body: str) -> dict | None:
                 "                 author (if 'by X' mentioned, else null), timeframe (today|yesterday|last_week|last_month|all).\n"
                 "  worth_it     — wants review/verdict on last saved book.\n"
                 "  shopping_list— wants ingredients/shopping list from last saved recipe.\n"
+                "  recipe       — wants a recipe or cocktail recipe. Extract: dish (the name of the dish or drink, str).\n"
+                "                 Map 'how do I make X' / 'recipe for X' / 'how to make X' / 'X recipe' / 'ingredients for X' → recipe.\n"
                 "  my_saves     — wants to see their saved items list.\n"
                 "  my_link      — wants their personal Miru link.\n"
                 "  menu         — user wants to see the menu of a specific named restaurant/pub/cafe.\n"
                 "                 Extract: name (the restaurant/pub name exactly as mentioned).\n"
                 "  unknown      — anything else (fuel prices, postcodes alone, greetings, etc.).\n\n"
                 "Examples (JSON only):\n"
+                '{"intent":"recipe","dish":"aperol spritz"}\n'
+                '{"intent":"recipe","dish":"spaghetti carbonara"}\n'
+                '{"intent":"recipe","dish":"negroni"}\n'
                 '{"intent":"menu","name":"Belvedere Arms"}\n'
                 '{"intent":"menu","name":"Nando\'s"}\n'
                 '{"intent":"train","from":"waterloo","to":"lewisham"}\n'
@@ -15082,6 +15100,34 @@ def _wa_classify_intent(body: str) -> dict | None:
     except Exception as _e:
         print(f"[intent] classify failed: {_e}")
         return None
+
+
+def _wa_recipe_card(dish: str) -> str:
+    """Generate a compact recipe/cocktail card via Groq for WhatsApp."""
+    try:
+        prompt = (
+            f"Write a recipe for '{dish}'. Use this exact format:\n\n"
+            "[emoji] [Name]\n\n"
+            "• [ingredient 1 with quantity]\n"
+            "• [ingredient 2 with quantity]\n"
+            "...\n\n"
+            "[Method: 1-2 short sentences]\n"
+            "[Glass/Serve line if cocktail]\n\n"
+            "Rules: British English. Quantities in metric or ml. "
+            "No intro text, no markdown, no asterisks. Under 90 words."
+        )
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 200, "temperature": 0.4,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=10,
+        )
+        text = r.json()["choices"][0]["message"]["content"].strip()
+        return text + "\n\n_Save a recipe? Send a link from BBC Food, Nigella, or AllRecipes._"
+    except Exception:
+        return f"Couldn't fetch the recipe for *{dish}* right now — try again in a moment."
 
 
 def _wa_search_saves(from_number: str, filter_type: str, timeframe: str, author: str = "") -> str:
@@ -16467,6 +16513,10 @@ def whatsapp_reply():
             if bk_info.get("description"): msg += f"\n\n_{bk_info['description'][:220].strip()}…_"
             msg += f"\n\n📚 {'Already in' if already else 'Saved to'} My Books: miru.humanagency.co/?screen=scan&token={user_token}"
             resp.message(msg)
+            return str(resp)
+        elif _itype == "recipe":
+            _dish = (_intent.get("dish") or body).strip()
+            resp.message(_wa_recipe_card(_dish))
             return str(resp)
         elif _itype == "worth_it":
             body = "WORTH IT"
