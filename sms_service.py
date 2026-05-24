@@ -8002,12 +8002,22 @@ def api_home_brief():
     # Calendar events — today for morning/daytime, tomorrow for evening
     _today_s    = now.date().isoformat()
     _tomorrow_s = (now.date() + __import__("datetime").timedelta(days=1)).isoformat()
+    _yesterday_s = (now.date() - __import__("datetime").timedelta(days=1)).isoformat()
+    _now_hhmm_cur = f"{hour:02d}:{now.minute:02d}"
     _cal_events = ctx.get("calendar", [])
     # Merge personal events into calendar for brief purposes
     _personal_evs = ctx.get("personal_events", [])
+    _past_personal = []  # recent past events — for "how was it?" follow-up
     for pe in _personal_evs:
-        if pe.get("date") in (_today_s, _tomorrow_s):
-            _cal_events = _cal_events + [{"title": pe["title"], "date": pe.get("date",""), "start": pe.get("time",""), "personal": True}]
+        _pe_date = pe.get("date", "")
+        _pe_t    = (pe.get("time") or "").strip()
+        if _pe_date == _yesterday_s:
+            _past_personal.append(pe)
+        elif _pe_date == _today_s and _pe_t and _pe_t < _now_hhmm_cur:
+            # Today but already happened — follow-up only, not forward calendar
+            _past_personal.append(pe)
+        elif _pe_date in (_today_s, _tomorrow_s):
+            _cal_events = _cal_events + [{"title": pe["title"], "date": _pe_date, "start": _pe_t, "personal": True}]
     # Merge today's recurring activities (clubs, weekly sessions) into calendar
     for _ra in (ctx.get("recurring") or []):
         _ra_who  = _ra.get("child") or _ra.get("person") or ""
@@ -8247,6 +8257,14 @@ def api_home_brief():
                 )
         if facts:
             prompt_parts.append(f"Facts: {'; '.join(facts)}.")
+        if _past_personal:
+            _past_titles = "; ".join(pe.get("title","") for pe in _past_personal[:2] if pe.get("title"))
+            if _past_titles:
+                prompt_parts.append(
+                    f"Personal event(s) that just happened (yesterday or earlier today): {_past_titles}. "
+                    "If it fits naturally, warmly mention it and ask how it went — one sentence max. "
+                    "Skip if the brief is already full or the event seems minor."
+                )
         _location_rule = (
             f"They are in {loc_str}{(' at ' + loc_venue['name']) if loc_venue.get('name') else ''}. "
             f"Reference this location naturally. Do NOT invent specific places, attractions, parks, rivers, "
