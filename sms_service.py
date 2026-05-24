@@ -78,6 +78,9 @@ analytics.init_db()
 _WA_CACHE: dict = {}
 _WA_CACHE_TTL = 1800
 
+# Weather tip suppression — {from_number: date_str} so we only warn once per day
+_WA_WEATHER_WARNED: dict = {}
+
 # ── Price history files ────────────────────────────────────────────────────────
 NATIONAL_HISTORY_FILE = "price_history_national.json"
 POSTCODE_HISTORY_FILE = "price_history_postcodes.json"
@@ -14002,28 +14005,33 @@ def _inline_fuel_snippet(postcode: str) -> str:
         return ""
 
 
-def _drive_weather_tip(postcode: str) -> str:
-    """Return a one-line contextual tip based on current weather. Empty string if conditions are fine."""
+def _drive_weather_tip(postcode: str, from_number: str = "") -> str:
+    """Return a one-line weather tip — but only once per user per day."""
     try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        warn_key = f"{from_number}:{today}"
+        if from_number and _WA_WEATHER_WARNED.get(warn_key):
+            return ""  # already warned today
         w = _v2_fetch_weather(postcode)
         if not w:
             return ""
         temp = w.get("temp", 15)
-        code = w.get("desc", "")
         if temp >= 28:
             tip = f"☀️ {temp}°C today — take water, it'll be busy. Park in the shade if you can."
         elif temp <= 1:
             tip = f"🧊 {temp}°C — roads may be icy, allow extra time."
-        elif "rain" in (w.get("desc") or "").lower() or (w.get("weathercode", 0) if hasattr(w, "get") else 0) in range(51, 68):
+        elif "rain" in (w.get("desc") or "").lower():
             tip = f"🌧️ Rain on the way — allow a bit of extra time."
         else:
             return ""
+        if from_number:
+            _WA_WEATHER_WARNED[warn_key] = True
         return "\n" + tip
     except Exception:
         return ""
 
 
-def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_dest: str = None, dest_geo: tuple = None) -> str:
+def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_dest: str = None, dest_geo: tuple = None, from_number: str = "") -> str:
     """Build the drive time + hours reply for a confirmed destination."""
     key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     query = specific_dest or (destination + " UK")
@@ -14032,7 +14040,7 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
         with ThreadPoolExecutor(max_workers=3) as pool:
             f_from    = pool.submit(_geocode_place, origin_postcode + " UK")
             f_hours   = pool.submit(_fetch_place_hours, specific_dest or destination)
-            f_weather = pool.submit(_drive_weather_tip, origin_postcode)
+            f_weather = pool.submit(_drive_weather_tip, origin_postcode, from_number)
             from_geo     = f_from.result()
             to_geo       = dest_geo
             hours        = f_hours.result()
@@ -14042,7 +14050,7 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
             f_from    = pool.submit(_geocode_place, origin_postcode + " UK")
             f_to      = pool.submit(_geocode_place, query)
             f_hours   = pool.submit(_fetch_place_hours, specific_dest or destination)
-            f_weather = pool.submit(_drive_weather_tip, origin_postcode)
+            f_weather = pool.submit(_drive_weather_tip, origin_postcode, from_number)
             from_geo     = f_from.result()
             to_geo       = f_to.result()
             hours        = f_hours.result()
@@ -14206,7 +14214,7 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
             return "\n".join(lines)
 
     # Specific location or chain lookup failed — go direct
-    return _heading_to_drive_reply(destination, origin)
+    return _heading_to_drive_reply(destination, origin, from_number=from_number)
 
 
 def _wa_food_find(body: str, from_number: str):
@@ -15250,7 +15258,7 @@ def whatsapp_reply():
                 _branch = _branches[_idx]
                 _label = _branch["name"]  # e.g. "IKEA Wembley", "Costco Farnborough"
                 _dest_geo = (_branch["lat"], _branch["lng"]) if _branch.get("lat") else None
-                reply = _heading_to_drive_reply(_label, _origin, _label + " UK", dest_geo=_dest_geo)
+                reply = _heading_to_drive_reply(_label, _origin, _label + " UK", dest_geo=_dest_geo, from_number=from_number)
                 resp.message(reply)
             else:
                 resp.message(f"Didn't catch that — reply 1, 2 or 3 to pick a {_dest_name}.")
