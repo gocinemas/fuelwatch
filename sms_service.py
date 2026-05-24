@@ -13965,43 +13965,20 @@ def _fetch_place_hours(destination: str) -> dict:
         return {}
 
 
-def _wa_heading_to(body: str, from_number: str) -> str | None:
-    """Detect 'I'm heading to X' and reply with live drive time + opening hours."""
-    _HEADING_RE = re.compile(
-        r"^(?:i[’']?m\s+(?:heading|going|on\s+my\s+way|driving|heading\s+out)\s+to\s+|"
-        r"heading\s+to\s+|going\s+to\s+|on\s+my\s+way\s+to\s+)"
-        r"(.{3,60})$", re.I
-    )
-    # Normalise smart apostrophes before matching
-    m = _HEADING_RE.match(body.strip().replace("’", "'"))
-    if not m:
-        return None
-    destination = m.group(1).strip().rstrip(".")
-    # Get user's home postcode from prefs
-    origin = None
-    try:
-        rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
-        prefs = rows[0]["data"] if rows else {}
-        origin = prefs.get("fuel_postcode") or prefs.get("home_postcode")
-    except Exception:
-        pass
-    if not origin:
-        return f"Enjoy your trip to {destination}! Send me your postcode and I'll check how long it'll take."
-    # Geocode both ends + fetch opening hours in parallel
-    from concurrent.futures import ThreadPoolExecutor, as_completed as _asc
+def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_dest: str = None) -> str:
+    """Build the drive time + hours reply for a confirmed destination."""
+    key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
+    query = specific_dest or (destination + " UK")
+    from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=3) as pool:
-        f_from  = pool.submit(_geocode_place, origin + " UK")
-        f_to    = pool.submit(_geocode_place, destination + " UK")
-        f_hours = pool.submit(_fetch_place_hours, destination)
+        f_from  = pool.submit(_geocode_place, origin_postcode + " UK")
+        f_to    = pool.submit(_geocode_place, query)
+        f_hours = pool.submit(_fetch_place_hours, specific_dest or destination)
         from_geo = f_from.result()
         to_geo   = f_to.result()
         hours    = f_hours.result()
-    if not from_geo or not to_geo:
-        return f"Have a good trip to {destination}! (Couldn't resolve the location for drive time.)"
-    key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
-    if not key:
-        return f"On your way to {destination} — have a good one!"
+    if not from_geo or not to_geo or not key:
+        return f"Have a good trip to {destination}!"
     try:
         r = requests.get(
             "https://maps.googleapis.com/maps/api/directions/json",
@@ -14018,40 +13995,121 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
         d = r.json()
         if d.get("status") != "OK":
             return f"Have a good trip to {destination}!"
-        leg = d["routes"][0]["legs"][0]
-        dur_traffic = leg.get("duration_in_traffic", leg["duration"])["value"]
-        dur_normal  = leg["duration"]["value"]
-        delay       = max(0, dur_traffic - dur_normal)
-        traffic     = "heavy" if delay > 600 else "moderate" if delay > 180 else "clear"
-        emoji       = "🔴" if traffic == "heavy" else "🟡" if traffic == "moderate" else "🟢"
-        dist        = leg["distance"]["text"]
-        via         = d["routes"][0].get("summary", "")
-        dur_min     = dur_traffic // 60
+        leg      = d["routes"][0]["legs"][0]
+        dur_s    = leg.get("duration_in_traffic", leg["duration"])["value"]
+        delay    = max(0, dur_s - leg["duration"]["value"])
+        traffic  = "heavy" if delay > 600 else "moderate" if delay > 180 else "clear"
+        emoji    = "🔴" if traffic == "heavy" else "🟡" if traffic == "moderate" else "🟢"
+        dur_min  = dur_s // 60
+        dist     = leg["distance"]["text"]
+        via      = d["routes"][0].get("summary", "")
         lines = [f"🚗 {destination.title()}"]
         lines.append(f"{emoji} About {dur_min} min · {dist}" + (f" via {via}" if via else ""))
-        if traffic == "heavy":
-            lines.append("Traffic is heavy right now.")
-        elif traffic == "moderate":
-            lines.append("Some traffic on the way.")
-        # Opening hours
+        if traffic == "heavy":   lines.append("Traffic is heavy right now.")
+        elif traffic == "moderate": lines.append("Some traffic on the way.")
         if hours.get("today_hours"):
-            open_now = hours.get("open_now")
-            status   = " ✅ Open now" if open_now else " ⛔ Closed now" if open_now is False else ""
-            lines.append(f"\n🕐 Today: {hours['today_hours']}{status}")
-        # Destination-aware CTA
-        _dest_lower = destination.lower()
-        _is_supermarket = any(w in _dest_lower for w in ["costco","tesco","sainsbury","asda","waitrose","aldi","lidl","morrisons","marks","m&s"])
-        _is_diy = any(w in _dest_lower for w in ["b&q","screwfix","homebase","wickes","ikea","dunelm"])
-        _is_retail = any(w in _dest_lower for w in ["shopping","retail","mall","centre","center"])
-        if _is_supermarket:
-            lines.append("\nWhile you're there:\n  *price oat milk* · *price olive oil* — compare supermarket prices\n  *fuel near [postcode]* — cheapest petrol on the way home")
-        elif _is_diy:
-            lines.append("\nWhile you're there:\n  *brand [product]* — quick intel on any brand\n  *fuel near [postcode]* — cheapest petrol on the way home")
-        else:
-            lines.append("\nWhile you're there, try:\n  *coffee nearby* · *fuel near [postcode]*\n  *price [product]* — compare prices across supermarkets")
+            status = " ✅ Open now" if hours.get("open_now") else " ⛔ Closed now" if hours.get("open_now") is False else ""
+            lines.append("\n\U0001f550 Today: " + hours.get("today_hours", "") + status)
+        _d = destination.lower()
+        if any(w in _d for w in ["costco","tesco","sainsbury","asda","waitrose","aldi","lidl","morrisons"]):
+            lines.append("\n*price [product]* to compare before you buy\n*fuel near [postcode]* for petrol on the way home")
         return "\n".join(lines)
     except Exception:
         return f"Have a good trip to {destination}!"
+
+
+# Known chain brands — single word or short name without a location qualifier
+_CHAIN_BRANDS = {
+    "costco","tesco","sainsburys","sainsbury","asda","waitrose","aldi","lidl",
+    "morrisons","marks","ikea","b&q","screwfix","homebase","wickes","dunelm",
+    "next","primark","argos","halfords","currys","boots","superdrug","john lewis",
+}
+
+
+def _wa_heading_to(body: str, from_number: str) -> str | None:
+    """Detect ‘I’m heading to X’. If X is a chain with no location, show nearest branches to pick from."""
+    _HEADING_RE = re.compile(
+        r"^(?:i[‘’]?m\s+(?:heading|going|on\s+my\s+way|driving|heading\s+out)\s+to\s+|"
+        r"heading\s+to\s+|going\s+to\s+|on\s+my\s+way\s+to\s+)"
+        r"(.{3,60})$", re.I
+    )
+    m = _HEADING_RE.match(body.strip())
+    if not m:
+        return None
+    destination = m.group(1).strip().rstrip(".")
+
+    # Get user’s home postcode
+    origin = None
+    try:
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+        prefs = rows[0]["data"] if rows else {}
+        origin = prefs.get("fuel_postcode") or prefs.get("home_postcode")
+    except Exception:
+        pass
+    if not origin:
+        return f"Enjoy your trip to {destination}! Send me your postcode and I’ll check drive time."
+
+    # Is this a chain name with no location qualifier?
+    dest_words = destination.lower().split()
+    dest_clean = destination.lower().strip()
+    is_chain = dest_clean in _CHAIN_BRANDS or (len(dest_words) == 1 and dest_clean in _CHAIN_BRANDS)
+    # Also treat as chain if destination matches a known brand exactly (no extra town/area words)
+    if not is_chain:
+        for brand in _CHAIN_BRANDS:
+            if dest_clean == brand or dest_clean == brand + "s":
+                is_chain = True
+                break
+
+    if is_chain:
+        # Find nearest 3 branches via Google Places nearbysearch from home postcode
+        gkey = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")
+        home_geo = _geocode_place(origin + " UK")
+        branches = []
+        if home_geo and gkey:
+            try:
+                r = requests.get(
+                    "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                    params={"query": destination + " UK", "location": f"{home_geo[0]},{home_geo[1]}",
+                            "radius": 50000, "key": gkey, "region": "uk"},
+                    timeout=8,
+                )
+                import math as _math
+                for p in r.json().get("results", [])[:4]:
+                    loc = p.get("geometry", {}).get("location", {})
+                    if not loc:
+                        continue
+                    # Distance from home
+                    dlat = loc["lat"] - home_geo[0]
+                    dlng = loc["lng"] - home_geo[1]
+                    dist_km = _math.sqrt(dlat**2 + dlng**2) * 111
+                    name = p.get("name", destination.title())
+                    addr = (p.get("formatted_address") or "").split(",")[1].strip() if "," in (p.get("formatted_address") or "") else ""
+                    branches.append({"name": name, "addr": addr, "dist_km": dist_km,
+                                     "lat": loc["lat"], "lng": loc["lng"]})
+                branches.sort(key=lambda x: x["dist_km"])
+                branches = branches[:3]
+            except Exception:
+                pass
+
+        if len(branches) >= 2:
+            lines = [f"🛒 Which {destination.title()}?"]
+            for i, b in enumerate(branches, 1):
+                dist_mi = round(b["dist_km"] * 0.621, 1)
+                label = b["addr"] or b["name"]
+                lines.append(f"{i}. {label} ({dist_mi} mi)")
+            lines.append(f"\nReply *1*, *2* or *3*")
+            # Store pending intent with branch options
+            _set_wa_pending_intent(from_number, {
+                "type": "heading_to_pick",
+                "destination": destination,
+                "origin": origin,
+                "branches": branches,
+            })
+            return "\n".join(lines)
+
+    # Specific location or chain lookup failed — go direct
+    return _heading_to_drive_reply(destination, origin)
 
 
 def _wa_food_find(body: str, from_number: str):
@@ -15079,6 +15137,26 @@ def whatsapp_reply():
             except Exception as e:
                 print(f"[tgtg_email] {e}")
                 resp.message("Something went wrong setting up TGTG. Try replying *magic bags* to start again.")
+            return str(resp)
+
+    # ── Pending intent: number pick for heading_to_pick ─────────────────────────
+    _num_pick = re.match(r'^([123])\s*$', body.strip())
+    if _num_pick:
+        _hpending = _get_wa_pending_intent(from_number)
+        if _hpending and _hpending.get("type") == "heading_to_pick":
+            _clear_wa_pending_intent(from_number)
+            _branches  = _hpending.get("branches", [])
+            _dest_name = _hpending.get("destination", "")
+            _origin    = _hpending.get("origin", "")
+            _idx = int(_num_pick.group(1)) - 1
+            if 0 <= _idx < len(_branches):
+                _branch = _branches[_idx]
+                _specific = f"{_branch['name']}, {_branch['addr']}, UK" if _branch.get("addr") else _branch["name"] + " UK"
+                _label = f"{_dest_name.title()} {_branch['addr']}" if _branch.get("addr") else _dest_name.title()
+                reply = _heading_to_drive_reply(_label, _origin, _specific)
+                resp.message(reply)
+            else:
+                resp.message(f"Didn't catch that — reply 1, 2 or 3 to pick a {_dest_name}.")
             return str(resp)
 
     # ── Pending intent: postcode reply resolves a stored intent ─────────────────
