@@ -8024,13 +8024,35 @@ def api_home_brief():
             _past_personal.append(pe)
         elif _pe_date in (_today_s, _tomorrow_s):
             _cal_events = _cal_events + [{"title": pe["title"], "date": _pe_date, "start": _pe_t, "personal": True}]
-    # Merge today's recurring activities (clubs, weekly sessions) into calendar
-    for _ra in (ctx.get("recurring") or []):
-        _ra_who  = _ra.get("child") or _ra.get("person") or ""
-        _ra_what = _ra.get("activity","")
-        _ra_loc  = _ra.get("location","")
-        _ra_title = f"{_ra_who + ' — ' if _ra_who else ''}{_ra_what}{' @ ' + _ra_loc if _ra_loc else ''}"
-        _cal_events = _cal_events + [{"title": _ra_title, "date": _today_s, "start": _ra.get("time",""), "personal": True}]
+    # Merge today's recurring activities — compute drive context in parallel for external venues
+    _recurring_today = ctx.get("recurring") or []
+    _origin_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
+    if _recurring_today and _origin_pc:
+        from concurrent.futures import ThreadPoolExecutor as _TPEX
+        with _TPEX(max_workers=min(len(_recurring_today), 4)) as _pool:
+            _drive_futures = [
+                _pool.submit(_compute_activity_drive_context, _ra, _origin_pc, now, weather)
+                for _ra in _recurring_today
+            ]
+            _drive_facts = [f.result() for f in _drive_futures]
+        for _ra, _drive_fact in zip(_recurring_today, _drive_facts):
+            if _drive_fact:
+                # Pre-computed cross-signal fact — inject directly into facts, skip calendar
+                facts.append(_drive_fact)
+            else:
+                # Activity passed or >5h away — add to calendar normally
+                _ra_who   = _ra.get("child") or _ra.get("person") or ""
+                _ra_what  = _ra.get("activity","")
+                _ra_loc   = _ra.get("location","")
+                _ra_title = f"{_ra_who + ' — ' if _ra_who else ''}{_ra_what}{' @ ' + _ra_loc if _ra_loc else ''}"
+                _cal_events = _cal_events + [{"title": _ra_title, "date": _today_s, "start": _ra.get("time",""), "personal": True}]
+    else:
+        for _ra in _recurring_today:
+            _ra_who   = _ra.get("child") or _ra.get("person") or ""
+            _ra_what  = _ra.get("activity","")
+            _ra_loc   = _ra.get("location","")
+            _ra_title = f"{_ra_who + ' — ' if _ra_who else ''}{_ra_what}{' @ ' + _ra_loc if _ra_loc else ''}"
+            _cal_events = _cal_events + [{"title": _ra_title, "date": _today_s, "start": _ra.get("time",""), "personal": True}]
     if time_mode in ("morning_commute", "daytime"):
         _today_cal = [e for e in _cal_events if e.get("date") == _today_s]
         # Drop events that have already passed (start time < now)
@@ -14001,6 +14023,117 @@ def _fetch_place_hours(destination: str) -> dict:
         }
     except Exception:
         return {}
+
+
+_SCHOOL_LOCATION_WORDS = {
+    "school","academy","college","primary","junior","secondary","senior",
+    "infant","nursery","prep","grammar","comprehensive","sixth","form","class",
+}
+
+def _compute_activity_drive_context(ra: dict, origin_postcode: str, now, weather: dict) -> str:
+    """
+    For a recurring activity happening today, return a pre-computed fact string
+    combining: who, what, time, drive time (if external venue), leave-by, weather tip.
+
+    Returns empty string if the activity has already passed or is at school.
+    """
+    try:
+        activity = ra.get("activity", "")
+        child    = ra.get("child", "")
+        location = (ra.get("location") or "").strip()
+        time_str = (ra.get("time") or "").strip()   # "HH:MM" 24h
+
+        if not activity:
+            return ""
+
+        # Parse activity time
+        act_hh, act_mm = 0, 0
+        if time_str and ":" in time_str:
+            try:
+                act_hh, act_mm = int(time_str.split(":")[0]), int(time_str.split(":")[1])
+            except Exception:
+                pass
+        act_minutes = act_hh * 60 + act_mm
+        now_minutes = now.hour * 60 + now.minute
+
+        # Skip if already started or more than 5 hours away (not immediately actionable)
+        if act_minutes <= now_minutes:
+            return ""
+        if act_minutes - now_minutes > 300:
+            return ""
+
+        # Format display time as 12h
+        _period = "am" if act_hh < 12 else "pm"
+        _disp_h = act_hh if act_hh <= 12 else act_hh - 12
+        _disp_h = 12 if _disp_h == 0 else _disp_h
+        time_display = f"{_disp_h}:{act_mm:02d}{_period}"
+
+        who_prefix = f"{child} — " if child else ""
+        base = f"{who_prefix}{activity}"
+
+        # Detect school/on-site activity — no drive needed
+        loc_words = set(location.lower().split())
+        is_at_school = not location or bool(loc_words & _SCHOOL_LOCATION_WORDS)
+
+        if is_at_school:
+            loc_note = " (at school — no travel)" if location else " (at school)"
+            return f"📅 {base} at {time_display}{loc_note}"
+
+        # External venue — compute drive time
+        key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
+        if not key or not origin_postcode:
+            return f"📅 {base} at {time_display} @ {location}"
+
+        from_geo = _geocode_place(origin_postcode + " UK")
+        to_geo   = _geocode_place(location + " UK")
+        if not from_geo or not to_geo:
+            return f"📅 {base} at {time_display} @ {location}"
+
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/directions/json",
+            params={
+                "origin":         f"{from_geo[0]},{from_geo[1]}",
+                "destination":    f"{to_geo[0]},{to_geo[1]}",
+                "mode":           "driving",
+                "departure_time": "now",
+                "traffic_model":  "best_guess",
+                "key":            key,
+            },
+            timeout=6,
+        )
+        d = r.json()
+        if d.get("status") != "OK":
+            return f"📅 {base} at {time_display} @ {location}"
+
+        leg   = d["routes"][0]["legs"][0]
+        dur_s = leg.get("duration_in_traffic", leg["duration"])["value"]
+        dur_m = (dur_s + 59) // 60  # round up minutes
+
+        # Leave-by = activity time - drive - 5 min buffer
+        leave_total = act_minutes - dur_m - 5
+        leave_h, leave_m = leave_total // 60, leave_total % 60
+        leave_period = "am" if leave_h < 12 else "pm"
+        leave_dh = leave_h if leave_h <= 12 else leave_h - 12
+        leave_dh = 12 if leave_dh == 0 else leave_dh
+        leave_str = f"{leave_dh}:{leave_m:02d}{leave_period}"
+
+        delay   = max(0, dur_s - leg["duration"]["value"])
+        traffic = "heavy traffic" if delay > 600 else "some traffic" if delay > 180 else ""
+        traffic_note = f" ({traffic})" if traffic else ""
+
+        fact = (f"📅 {base} at {time_display} @ {location} — "
+                f"{dur_m} min drive{traffic_note}, leave by {leave_str}")
+
+        # Append weather tip if extreme and not already in a previous activity fact
+        temp = (weather or {}).get("temp", 15)
+        if temp >= 28:
+            fact += f". {temp}°C — take water & sunscreen"
+        elif temp <= 1:
+            fact += f". {temp}°C — roads may be icy"
+
+        return fact
+    except Exception:
+        return ""
 
 
 def _inline_fuel_snippet(postcode: str) -> str:
