@@ -14038,7 +14038,17 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
             open_now = hours.get("open_now")
             status   = " ✅ Open now" if open_now else " ⛔ Closed now" if open_now is False else ""
             lines.append(f"\n🕐 Today: {hours['today_hours']}{status}")
-        lines.append("\nNeed anything while you're out? Just ask.")
+        # Destination-aware CTA
+        _dest_lower = destination.lower()
+        _is_supermarket = any(w in _dest_lower for w in ["costco","tesco","sainsbury","asda","waitrose","aldi","lidl","morrisons","marks","m&s"])
+        _is_diy = any(w in _dest_lower for w in ["b&q","screwfix","homebase","wickes","ikea","dunelm"])
+        _is_retail = any(w in _dest_lower for w in ["shopping","retail","mall","centre","center"])
+        if _is_supermarket:
+            lines.append("\nWhile you're there:\n  *price oat milk* · *price olive oil* — compare supermarket prices\n  *fuel near [postcode]* — cheapest petrol on the way home")
+        elif _is_diy:
+            lines.append("\nWhile you're there:\n  *brand [product]* — quick intel on any brand\n  *fuel near [postcode]* — cheapest petrol on the way home")
+        else:
+            lines.append("\nWhile you're there, try:\n  *coffee nearby* · *fuel near [postcode]*\n  *price [product]* — compare prices across supermarkets")
         return "\n".join(lines)
     except Exception:
         return f"Have a good trip to {destination}!"
