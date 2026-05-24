@@ -14218,11 +14218,19 @@ _bkBadge();
     var saves = ctx && ctx.saves;
     if (saves && saves.length) {
       if (_isOffHours) {
-        var _foodCats   = ["Dining", "Coffee & Lunch", "Groceries"];
-        var _entCats    = ["Entertainment", "Events", "Culture"];
-        var _foodSaves  = saves.filter(function(s){ return _foodCats.indexOf(s.category) >= 0 || s.source === "receipt"; });
-        var _restSaves  = saves.filter(function(s){ return _foodSaves.indexOf(s) < 0; });
-        saves = _foodSaves.concat(_restSaves);
+        // Evening/night: strip receipts for shops, groceries, parking, transport — they're done for the day.
+        // Keep only dining receipts (places to eat) + all non-receipt saves.
+        var _keepReceiptCats = ["Dining", "Coffee & Lunch"];
+        saves = saves.filter(function(s) {
+          if (s.source === "receipt") {
+            return _keepReceiptCats.indexOf(s.category) >= 0;
+          }
+          return true;
+        });
+        // Re-sort: dining first, then everything else
+        var _diningFirst = saves.filter(function(s){ return s.category === "Dining" || s.category === "Coffee & Lunch"; });
+        var _rest        = saves.filter(function(s){ return _diningFirst.indexOf(s) < 0; });
+        saves = _diningFirst.concat(_rest);
       }
       var savesRows = saves.slice(0, 5).map(function(s) {
         var rawTitle = (s.title || "").trim();
@@ -14265,6 +14273,8 @@ _bkBadge();
           + '</div>';
         return row;
       }).join("");
+      if (!saves.length) { /* all filtered out — skip section */ }
+      else {
       var savesLabel = _isNight     ? "🌙 Tonight's picks"
                      : _isEvening  ? "🌆 This evening"
                      : "📌 Clippings";
@@ -14272,6 +14282,7 @@ _bkBadge();
         + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">' + savesLabel + '</div>'
         + savesRows
         + '</div>';
+      } // end if saves.length after filter
     }
 
     // School comms — recent emails received (by created_at, not event_date)
