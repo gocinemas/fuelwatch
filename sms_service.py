@@ -14079,9 +14079,33 @@ def _fetch_place_hours(destination: str) -> dict:
         return {
             "open_now":    oh.get("open_now"),
             "today_hours": today_hours,
+            "weekday_text": weekday_text,  # full week for next-open lookup
         }
     except Exception:
         return {}
+
+
+def _next_opening_str(weekday_text: list) -> str:
+    """Given weekday_text (Mon-indexed), return e.g. 'Opens tomorrow at 10:00 AM' or 'Opens Monday at 10:00 AM'."""
+    if not weekday_text:
+        return ""
+    day_names = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+    today_idx = __import__("datetime").datetime.now().weekday()  # 0=Mon
+    for offset in range(1, 8):
+        idx = (today_idx + offset) % 7
+        entry = weekday_text[idx] if idx < len(weekday_text) else ""
+        if not entry:
+            continue
+        hours_part = entry.split(": ", 1)[1] if ": " in entry else entry
+        if hours_part.lower() in ("closed", ""):
+            continue
+        # Extract just the opening time (first time mentioned)
+        import re as _re
+        t = _re.search(r'\d{1,2}:\d{2}\s*[AP]M', hours_part)
+        open_time = t.group(0) if t else hours_part
+        label = "tomorrow" if offset == 1 else day_names[idx]
+        return f"Opens {label} at {open_time}"
+    return ""
 
 
 _SCHOOL_LOCATION_WORDS = {
@@ -14300,8 +14324,14 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
 
         # Closed warning leads — don't bury it after the drive time
         if _is_closed:
-            _today = hours.get("today_hours", "")
-            lines.append(f"⚠️ Closed right now{(' — ' + _today) if _today else ''}. Still want to head there?")
+            _next = _next_opening_str(hours.get("weekday_text", []))
+            _closed_line = f"⚠️ Closed right now"
+            if _next:
+                _closed_line += f" — {_next}"
+            elif hours.get("today_hours"):
+                _closed_line += f" (today: {hours['today_hours']})"
+            _closed_line += ". Still want to head there?"
+            lines.append(_closed_line)
 
         lines.append(f"{emoji} About {dur_min} min · {dist}" + (f" via {via}" if via else ""))
         if traffic == "heavy":      lines.append("Traffic is heavy right now.")
