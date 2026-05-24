@@ -8367,9 +8367,20 @@ def api_home_brief():
             app.logger.warning(f"[brief] groq: {be}")
             brief_text = " ".join(facts[:2]) if facts else ""
 
+    # Evening saves for client-side chips — unvisited places + events, max 4
+    # Always included so night/goodnight chips can surface them even when Groq gets no saves
+    _evening_chip_saves = []
+    for _s in (place_saves_unvisited[:3] + event_saves[:2]):
+        _evening_chip_saves.append({
+            "title":    (_s.get("title") or "").strip(),
+            "category": (_s.get("category") or "").strip(),
+        })
+    _evening_chip_saves = _evening_chip_saves[:4]
+
     result = {
-        "brief":     brief_text,
-        "context":   ctx,
+        "brief":        brief_text,
+        "context":      ctx,
+        "evening_saves": _evening_chip_saves,
         "prefs":     prefs,
         "has_prefs": bool(prefs),
         "tod":       tod,

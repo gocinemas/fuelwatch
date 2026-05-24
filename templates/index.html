@@ -13888,7 +13888,7 @@ _bkBadge();
           if (calNudge) calNudge.style.display = d.calendar_connected ? "none" : "flex";
 
           // Chips
-          _briefRenderChips(d.context, chips);
+          _briefRenderChips(d.context, chips, d.evening_saves || []);
 
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
@@ -13975,36 +13975,49 @@ _bkBadge();
     );
   }
 
-  function _briefRenderChips(ctx, container) {
+  function _briefRenderChips(ctx, container, eveningSaves) {
     if (!container) return;
     var _h = new Date().getHours();
     var _isNightChip = _h >= 21 || _h < 5;
     var chips = [];
-    var secondaryChips = []; // quiet reference links shown at night
+    var secondaryChips = []; // quiet reference chips (train/fuel at night)
+
     var trains = ctx && ctx.trains;
-    if (trains && trains.departures && trains.departures.length) {
-      var t = trains.departures[0];
-      if (_isNightChip) {
-        // Night: quiet shortcut only — don't show a specific departure as if to commute
+    var fuel   = ctx && ctx.fuel;
+
+    if (_isNightChip) {
+      // ── Night mode: surface evening saves as main chips ─────────────────
+      var _catIco = { "Dining": "🍽️", "Coffee & Lunch": "☕", "Entertainment": "🎭", "Event": "🎫" };
+      (eveningSaves || []).forEach(function(s) {
+        var raw  = (s.title || "").trim();
+        var ico  = _catIco[s.category] || (raw.match(/^[\u{1F000}-\u{1FFFF}]/u) ? "" : "📍");
+        // strip leading emoji from title — icon comes from category
+        var label = ico ? (ico + " " + raw.replace(/^[\u{1F000}-\u{1FFFF}]\s*/u, "").trim()) : raw;
+        chips.push({ label: label, action: "_pillNav('saves')" });
+      });
+      // Quiet reference row
+      if (trains && trains.departures && trains.departures.length)
         secondaryChips.push({ label: "🚆 Train times", action: "showScreen('trains')" });
-      } else {
+      if (fuel && fuel.price)
+        secondaryChips.push({ label: "⛽ " + fuel.price + "p nearby", action: "showScreen('fuel')" });
+    } else {
+      // ── Day/evening mode: live data chips ───────────────────────────────
+      if (trains && trains.departures && trains.departures.length) {
+        var t = trains.departures[0];
         chips.push({ label: "🚆 " + (t.departs || t.time || "") + "  " + (trains.from || "") + " → " + (trains.to || ""), action: "showScreen('trains')" });
       }
-    }
-    var fuel = ctx && ctx.fuel;
-    if (fuel && fuel.price) {
-      if (_isNightChip) {
-        secondaryChips.push({ label: "⛽ " + fuel.price + "p nearby", action: "showScreen('fuel')" });
-      } else {
+      if (fuel && fuel.price)
         chips.push({ label: "⛽ " + fuel.name + "  " + fuel.price + "p", action: "showScreen('fuel')" });
-      }
+      var schoolRaw  = ctx && ctx.school;
+      var schoolEvs  = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
+      var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
+      if (schoolKids.length)
+        chips.push({ label: "🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "), action: "_schoolHomeOpen && _schoolHomeOpen()" });
+      else if (schoolEvs.length)
+        chips.push({ label: "🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""), action: "_schoolHomeOpen && _schoolHomeOpen()" });
     }
-    var schoolRaw = ctx && ctx.school;
-    var schoolEvs = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
-    var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
-    if (schoolKids.length) chips.push({ label: "🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "), action: "_schoolHomeOpen && _schoolHomeOpen()" });
-    else if (schoolEvs.length) chips.push({ label: "🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""), action: "_schoolHomeOpen && _schoolHomeOpen()" });
     // Spend intentionally excluded from chips — it dominates visual hierarchy
+
     var mainHtml = chips.map(function(c) {
       return '<button onclick="' + c.action + '" style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + ' ›</button>';
     }).join("");
