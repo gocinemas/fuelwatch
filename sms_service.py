@@ -14294,13 +14294,23 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
         dur_min  = dur_s // 60
         dist     = leg["distance"]["text"]
         via      = d["routes"][0].get("summary", "")
+        _is_closed = hours.get("open_now") is False
+        _is_open   = hours.get("open_now") is True
         lines = [f"🚗 {destination.title()}"]
+
+        # Closed warning leads — don't bury it after the drive time
+        if _is_closed:
+            _today = hours.get("today_hours", "")
+            lines.append(f"⚠️ Closed right now{(' — ' + _today) if _today else ''}. Still want to head there?")
+
         lines.append(f"{emoji} About {dur_min} min · {dist}" + (f" via {via}" if via else ""))
-        if traffic == "heavy":   lines.append("Traffic is heavy right now.")
+        if traffic == "heavy":      lines.append("Traffic is heavy right now.")
         elif traffic == "moderate": lines.append("Some traffic on the way.")
-        if hours.get("today_hours"):
-            status = " ✅ Open now" if hours.get("open_now") else " ⛔ Closed now" if hours.get("open_now") is False else ""
-            lines.append("\n\U0001f550 Today: " + hours.get("today_hours", "") + status)
+
+        # Hours line — only show when open (closed already shown above)
+        if _is_open and hours.get("today_hours"):
+            lines.append(f"\U0001f550 Today: {hours['today_hours']} ✅ Open now")
+
         if weather_tip:
             lines.append(weather_tip)
         _lat2, _lng2 = to_geo
