@@ -8543,8 +8543,9 @@ def api_home_ask():
             "1. NEVER name a specific place, venue, club, or event unless it appears word-for-word in 'Context facts'.\n"
             "2. NEVER invent times, matches, events, or activities.\n"
             "3. You MAY suggest generic ideas (e.g. 'head to a park', 'grab dinner out') based on weather.\n"
-            "4. If 'Context facts' contains a saved restaurant that is open, you may mention it by name.\n"
-            "5. Under 25 words. Plain English. No bullet points."
+            "4. If 'Context facts' contains a saved restaurant, you may mention it by name.\n"
+            "5. NEVER reference calendar events, meetings, or appointments — the user is asking for activity ideas, not their schedule.\n"
+            "6. Under 25 words. Plain English. No bullet points."
         )
     else:
         system_prompt = (
