@@ -1943,6 +1943,18 @@
         <div id="brief-nearby-results" style="display:none;flex-direction:column;gap:8px;margin-top:10px"></div>
       </div>
 
+      <!-- Ask about your day -->
+      <div id="brief-ask-wrap" style="display:none;margin-top:14px">
+        <div id="brief-ask-thread" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="brief-ask-input" type="text" placeholder="Ask about your day…"
+            style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:99px;font-size:14px;background:var(--surface);color:var(--text);outline:none"
+            onkeydown="if(event.key==='Enter')_briefAsk()">
+          <button onclick="_briefAsk()" id="brief-ask-btn"
+            style="width:38px;height:38px;border-radius:50%;border:none;background:#2563eb;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">↑</button>
+        </div>
+      </div>
+
       <!-- Add event floating button -->
       <div style="text-align:right;margin-top:10px">
         <button onclick="document.getElementById('brief-event-form').style.display='block';document.getElementById('brief-evt-title').focus()"
@@ -13676,6 +13688,7 @@ _bkBadge();
             briefText.textContent = d.brief || "Your brief is ready.";
             briefText.style.display = "block";
           }
+          _briefAskShow();
 
           // Location label — prefer named context (Home/Work) over raw area
           var locLabel = document.getElementById("brief-location-label");
@@ -14251,6 +14264,74 @@ _bkBadge();
     var rr = document.getElementById("brief-refresh-row");
     if (rr) rr.style.display = "none";
     _briefInit();
+  }
+
+  // ── Brief ask / conversational Q&A ───────────────────────────────────────
+  var _briefAskThread = [];  // [{q, a}, ...]
+
+  function _briefAskShow() {
+    var wrap = document.getElementById("brief-ask-wrap");
+    if (wrap) wrap.style.display = "block";
+  }
+
+  async function _briefAsk() {
+    var inp = document.getElementById("brief-ask-input");
+    var btn = document.getElementById("brief-ask-btn");
+    var thread = document.getElementById("brief-ask-thread");
+    if (!inp || !thread) return;
+    var q = inp.value.trim();
+    if (!q) return;
+
+    inp.value = "";
+    btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;border-color:rgba(255,255,255,.3);border-top-color:#fff"></span>';
+    btn.disabled = true;
+
+    // Append question bubble
+    thread.insertAdjacentHTML("beforeend",
+      '<div style="align-self:flex-end;max-width:80%;background:#2563eb;color:#fff;border-radius:16px 16px 4px 16px;padding:8px 13px;font-size:14px;line-height:1.5">' + q + '</div>'
+    );
+
+    // Build compact ctx snapshot from _briefData
+    var ctx = {};
+    if (_briefData && _briefData.context) {
+      var bc = _briefData.context;
+      if (bc.trains)    ctx.trains    = {from: bc.trains.from, to: bc.trains.to, departures: (bc.trains.departures||[]).slice(0,3)};
+      if (bc.weather)   ctx.weather   = {temp: bc.weather.temp, desc: bc.weather.desc};
+      if (bc.school)    ctx.school    = {upcoming: (bc.school.upcoming||[]).slice(0,3), recent: (bc.school.recent||[]).slice(0,2)};
+      if (bc.fuel)      ctx.fuel      = bc.fuel;
+      if (bc.calendar)  ctx.calendar  = (bc.calendar||[]).slice(0,3);
+      if (bc.recurring) ctx.recurring = bc.recurring;
+      if (bc.deliveries)ctx.deliveries= (bc.deliveries||[]).slice(0,2);
+    }
+
+    try {
+      var r = await fetch("/api/home/ask", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          question: q,
+          ctx: ctx,
+          thread: _briefAskThread.slice(-2),
+          token: _miruPhone()
+        })
+      });
+      var d = await r.json();
+      var answer = d.answer || "I don't have enough context to answer that.";
+      _briefAskThread.push({q, a: answer});
+
+      thread.insertAdjacentHTML("beforeend",
+        '<div style="align-self:flex-start;max-width:88%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:16px 16px 16px 4px;padding:8px 13px;font-size:14px;line-height:1.5">' + answer + '</div>'
+      );
+    } catch(e) {
+      thread.insertAdjacentHTML("beforeend",
+        '<div style="align-self:flex-start;font-size:13px;color:#dc2626;padding:4px 0">Couldn\'t reach Miru — try again.</div>'
+      );
+    }
+
+    btn.innerHTML = "↑";
+    btn.disabled = false;
+    inp.focus();
+    thread.scrollTop = thread.scrollHeight;
   }
 
   function _briefUpdateNarrative(d, mode) {

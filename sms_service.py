@@ -8338,6 +8338,87 @@ def api_home_brief_narrative():
         return jsonify({"text": ""})
 
 
+@app.route("/api/home/ask", methods=["POST"])
+def api_home_ask():
+    """Answer a follow-up question against the already-fetched brief context.
+    Body: {question, ctx, thread, token}
+    ctx: compact snapshot from the frontend (trains, school, weather, fuel, calendar, recurring)
+    thread: last 2 Q&A pairs [{q, a}, ...] for conversational follow-ups
+    """
+    body     = request.get_json(force=True, silent=True) or {}
+    question = (body.get("question") or "").strip()
+    ctx      = body.get("ctx") or {}
+    thread   = body.get("thread") or []  # [{q, a}, ...]
+    token    = (body.get("token") or "").strip()
+    from_number = _v2_resolve(token) if token else ""
+
+    if not question:
+        return jsonify({"answer": ""}), 400
+
+    # Build a concise context summary Groq can reason over
+    ctx_lines = []
+
+    trains = ctx.get("trains") or {}
+    if trains.get("departures"):
+        deps = ", ".join(d.get("departs") or d.get("time","") for d in trains["departures"][:3] if d.get("departs") or d.get("time"))
+        ctx_lines.append(f"Trains {trains.get('from','')} → {trains.get('to','')}: {deps}")
+
+    weather = ctx.get("weather") or {}
+    if weather.get("temp") is not None:
+        ctx_lines.append(f"Weather: {weather['temp']}°C, {weather.get('desc','')}")
+
+    school = ctx.get("school") or {}
+    for ev in (school.get("upcoming") or [])[:3]:
+        ctx_lines.append(f"School: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}")
+    for ev in (school.get("recent") or [])[:2]:
+        ctx_lines.append(f"Recent school note: {ev.get('child_name','')} — {ev.get('event_title','')}")
+
+    fuel = ctx.get("fuel") or {}
+    if fuel.get("price"):
+        ctx_lines.append(f"Cheapest fuel: {fuel.get('name','')} {fuel['price']}p")
+
+    for ev in (ctx.get("calendar") or [])[:3]:
+        ctx_lines.append(f"Calendar: {ev.get('title','')} on {ev.get('date','')} at {ev.get('start','')}")
+
+    for ra in (ctx.get("recurring") or []):
+        days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+        d = days[ra["weekday"]] if ra.get("weekday") is not None else ""
+        ctx_lines.append(f"Recurring: {ra.get('child','')} {ra.get('activity','')} {d}s at {ra.get('time','')} — {ra.get('location','')}")
+
+    for dlv in (ctx.get("deliveries") or [])[:2]:
+        ctx_lines.append(f"Delivery: {dlv.get('carrier','')} — {dlv.get('status','')}")
+
+    ctx_text = "; ".join(ctx_lines) if ctx_lines else "No specific context available."
+
+    # Build message history for conversational follow-ups
+    messages = [{"role": "system",
+                 "content": (
+                     "You are Miru, a concise British personal assistant. "
+                     "Answer the user's question using ONLY the context provided. "
+                     "If the answer isn't in the context, say so briefly. "
+                     "No bullet points. Under 40 words. Plain conversational English."
+                 )}]
+    for turn in thread[-2:]:  # last 2 exchanges
+        if turn.get("q"): messages.append({"role": "user",      "content": turn["q"]})
+        if turn.get("a"): messages.append({"role": "assistant",  "content": turn["a"]})
+    messages.append({"role": "user",
+                     "content": f"Context: {ctx_text}\n\nQuestion: {question}"})
+
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 100, "messages": messages},
+            timeout=8,
+        )
+        answer = r.json()["choices"][0]["message"]["content"].strip()
+        return jsonify({"answer": answer})
+    except Exception as e:
+        app.logger.warning(f"[home/ask] {e}")
+        return jsonify({"answer": "Sorry, couldn't get an answer right now."}), 500
+
+
 @app.route("/api/admin/clear-brand-cache", methods=["POST"])
 def api_admin_clear_brand_cache():
     """Clear cached brand/company data so it re-fetches fresh. Token-protected."""
