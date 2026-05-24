@@ -14218,13 +14218,16 @@ _bkBadge();
     var saves = ctx && ctx.saves;
     if (saves && saves.length) {
       if (_isOffHours) {
-        // Evening/night: strip receipts for shops, groceries, parking, transport — they're done for the day.
-        // Keep only dining receipts (places to eat) + all non-receipt saves.
-        var _keepReceiptCats = ["Dining", "Coffee & Lunch"];
+        // Evening/night: only dining receipts survive. Coffee/groceries/shops are done for the day.
+        // Also filter out junk saves (advertisement titles, no meaningful content).
         saves = saves.filter(function(s) {
           if (s.source === "receipt") {
-            return _keepReceiptCats.indexOf(s.category) >= 0;
+            return s.category === "Dining"; // restaurants only — not coffee shops
           }
+          var t = (s.title || "").toLowerCase();
+          // Drop saves with spammy/auto-generated titles
+          if (t.indexOf("advertisement") >= 0 || t.indexOf("advert") >= 0 ||
+              t === "event/ticket advertisement" || t.length < 4) return false;
           return true;
         });
         // Re-sort: dining first, then everything else
