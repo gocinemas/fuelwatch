@@ -14275,63 +14275,70 @@ _bkBadge();
   }
 
   async function _briefAsk() {
-    var inp = document.getElementById("brief-ask-input");
-    var btn = document.getElementById("brief-ask-btn");
+    var inp    = document.getElementById("brief-ask-input");
+    var btn    = document.getElementById("brief-ask-btn");
     var thread = document.getElementById("brief-ask-thread");
     if (!inp || !thread) return;
-    var q = inp.value.trim();
+    var q = (inp.value || "").trim();
     if (!q) return;
 
     inp.value = "";
-    btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;border-color:rgba(255,255,255,.3);border-top-color:#fff"></span>';
-    btn.disabled = true;
+    thread.style.display = "flex";
 
-    // Append question bubble
-    thread.insertAdjacentHTML("beforeend",
-      '<div style="align-self:flex-end;max-width:80%;background:#2563eb;color:#fff;border-radius:16px 16px 4px 16px;padding:8px 13px;font-size:14px;line-height:1.5">' + q + '</div>'
-    );
+    // Question bubble
+    var qBubble = document.createElement("div");
+    qBubble.style.cssText = "background:#2563eb;color:#fff;border-radius:16px 16px 4px 16px;padding:9px 13px;font-size:14px;line-height:1.5;margin-left:auto;max-width:82%;word-break:break-word";
+    qBubble.textContent = q;
+    thread.appendChild(qBubble);
 
-    // Build compact ctx snapshot from _briefData
+    // Typing indicator
+    var typingDiv = document.createElement("div");
+    typingDiv.style.cssText = "font-size:13px;color:var(--muted);padding:4px 2px;display:flex;align-items:center;gap:6px";
+    typingDiv.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px"></span> Thinking…';
+    thread.appendChild(typingDiv);
+    thread.scrollTop = thread.scrollHeight;
+
+    if (btn) { btn.disabled = true; btn.style.opacity = "0.5"; }
+
+    // Build ctx snapshot
     var ctx = {};
-    if (_briefData && _briefData.context) {
-      var bc = _briefData.context;
-      if (bc.trains)    ctx.trains    = {from: bc.trains.from, to: bc.trains.to, departures: (bc.trains.departures||[]).slice(0,3)};
-      if (bc.weather)   ctx.weather   = {temp: bc.weather.temp, desc: bc.weather.desc};
-      if (bc.school)    ctx.school    = {upcoming: (bc.school.upcoming||[]).slice(0,3), recent: (bc.school.recent||[]).slice(0,2)};
-      if (bc.fuel)      ctx.fuel      = bc.fuel;
-      if (bc.calendar)  ctx.calendar  = (bc.calendar||[]).slice(0,3);
-      if (bc.recurring) ctx.recurring = bc.recurring;
-      if (bc.deliveries)ctx.deliveries= (bc.deliveries||[]).slice(0,2);
-    }
+    try {
+      if (_briefData && _briefData.context) {
+        var bc = _briefData.context;
+        if (bc.trains)     ctx.trains    = {from: bc.trains.from, to: bc.trains.to, departures: (bc.trains.departures||[]).slice(0,3)};
+        if (bc.weather)    ctx.weather   = {temp: bc.weather.temp, desc: bc.weather.desc};
+        if (bc.school)     ctx.school    = {upcoming: (bc.school.upcoming||[]).slice(0,3), recent: (bc.school.recent||[]).slice(0,2)};
+        if (bc.fuel)       ctx.fuel      = bc.fuel;
+        if (bc.calendar)   ctx.calendar  = (bc.calendar||[]).slice(0,3);
+        if (bc.recurring)  ctx.recurring = bc.recurring;
+        if (bc.deliveries) ctx.deliveries= (bc.deliveries||[]).slice(0,2);
+      }
+    } catch(_) {}
 
+    var answer = "";
     try {
       var r = await fetch("/api/home/ask", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          question: q,
-          ctx: ctx,
-          thread: _briefAskThread.slice(-2),
-          token: _miruPhone()
-        })
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({question: q, ctx: ctx, thread: _briefAskThread.slice(-2), token: _miruPhone()||""})
       });
       var d = await r.json();
-      var answer = d.answer || "I don't have enough context to answer that.";
-      _briefAskThread.push({q, a: answer});
-
-      thread.insertAdjacentHTML("beforeend",
-        '<div style="align-self:flex-start;max-width:88%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:16px 16px 16px 4px;padding:8px 13px;font-size:14px;line-height:1.5">' + answer + '</div>'
-      );
+      answer = (d.answer || "").trim() || "I don't have enough context to answer that.";
+      _briefAskThread.push({q: q, a: answer});
     } catch(e) {
-      thread.insertAdjacentHTML("beforeend",
-        '<div style="align-self:flex-start;font-size:13px;color:#dc2626;padding:4px 0">Couldn\'t reach Miru — try again.</div>'
-      );
+      answer = "Couldn't reach Miru right now — try again.";
     }
 
-    btn.innerHTML = "↑";
-    btn.disabled = false;
-    inp.focus();
+    // Replace typing indicator with answer
+    typingDiv.remove();
+    var aBubble = document.createElement("div");
+    aBubble.style.cssText = "background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:16px 16px 16px 4px;padding:9px 13px;font-size:14px;line-height:1.55;max-width:90%;word-break:break-word";
+    aBubble.textContent = answer;
+    thread.appendChild(aBubble);
     thread.scrollTop = thread.scrollHeight;
+
+    if (btn) { btn.disabled = false; btn.style.opacity = "1"; }
+    inp.focus();
   }
 
   function _briefUpdateNarrative(d, mode) {
