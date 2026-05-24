@@ -14515,6 +14515,10 @@ _HELP_MSG = (
     "\n"
     "Just type naturally — no exact commands needed.\n"
     "\n"
+    "🚗 *Getting around*\n"
+    "  _I'm heading to Costco Farnborough_  → drive time + traffic + opening hours\n"
+    "  _I'm going to IKEA Wembley_\n"
+    "\n"
     "☕🍺 *Food & Drink*\n"
     "  _good coffee near KT15_  |  _cheap beer KT15_\n"
     "  _burger GU25_  |  _steak KT16_  |  _kebab KT16_\n"
@@ -14597,15 +14601,15 @@ _WELCOME_MSG = (
 )
 
 _CLARIFY_MSG = (
-    "Hmm, not sure what you mean 🤔\n\n"
-    "Try:\n"
+    "Not sure what you mean 🤔\n\n"
+    "Try *HI* or *HELP* to see everything I can do.\n\n"
+    "Quick examples:\n"
+    "🚗 _I'm heading to Costco Farnborough_\n"
     "☕ _good coffee near KT15_\n"
     "🚆 _train waterloo to lewisham_\n"
-    "🍺 _cheap beer KT16_\n"
-    "🚇 _tube status_\n"
-    "⛽ KT15 petrol\n"
-    "🔍 brand Unilever\n\n"
-    "Reply *HELP* for the full list or *HI* to start over."
+    "⛽ _KT15 petrol_\n"
+    "🔍 _brand Unilever_\n"
+    "📌 send any link to save it"
 )
 
 _GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru", "join"}
@@ -16289,6 +16293,17 @@ def whatsapp_reply():
         _question_starters = {"what","why","how","when","who","can","could","would","should",
                                "is","are","do","does","help","please","show","tell","get","give"}
         if _pn_words and (_pn_words[0].lower() in _question_starters or "?" in product_name):
+            resp.message(_CLARIFY_MSG)
+            return str(resp)
+        # Don't treat venue/place names as products — they have no SKU
+        _PLACE_SUFFIXES = {
+            "club","fc","cricket","golf","tennis","rugby","leisure","centre","center",
+            "park","ground","arena","stadium","theatre","theater","church","school",
+            "college","university","hospital","hotel","pub","inn","manor","hall",
+            "farm","estate","court","place","road","street","lane","avenue","drive",
+        }
+        _pn_lower_words = {w.lower() for w in _pn_words}
+        if _pn_lower_words & _PLACE_SUFFIXES or len(_pn_words) >= 4:
             resp.message(_CLARIFY_MSG)
             return str(resp)
         _, loc_postcode = _split_product_postcode(body)
