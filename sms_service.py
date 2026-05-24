@@ -6674,6 +6674,49 @@ def _v2_fetch_personal_events(from_number: str) -> list:
         return []
 
 
+_DOW_MAP = {
+    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+    "friday": 4, "saturday": 5, "sunday": 6,
+    "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6,
+}
+
+
+def _v2_fetch_recurring(from_number: str, weekday: int) -> list:
+    """Return recurring activities scheduled for today (weekday 0=Mon … 6=Sun)."""
+    try:
+        rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number) \
+            .eq("type", "recurring_activities").limit(1).execute().data or []
+        activities = (rows[0]["data"] if rows else []) or []
+        return [a for a in activities if a.get("weekday") == weekday]
+    except Exception:
+        return []
+
+
+def _v2_save_recurring(from_number: str, activity: dict) -> None:
+    """Append a recurring activity. Deduplicates by (weekday, activity name)."""
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_details").select("id,data").eq("device_id", from_number) \
+            .eq("type", "recurring_activities").limit(1).execute().data or []
+        activities = list((rows[0].get("data") or []) if rows else [])
+        # Dedup: remove existing with same weekday + activity name
+        new_name = activity.get("activity","").lower()
+        new_day  = activity.get("weekday")
+        activities = [a for a in activities
+                      if not (a.get("weekday") == new_day and
+                               a.get("activity","").lower() == new_name)]
+        activities.append(activity)
+        if rows:
+            sb.table("ma_details").update({"data": activities}).eq("id", rows[0]["id"]).execute()
+        else:
+            sb.table("ma_details").insert({
+                "device_id": from_number, "type": "recurring_activities",
+                "label": "recurring_activities", "data": activities,
+            }).execute()
+    except Exception as _e:
+        print(f"[recurring] save error: {_e}")
+
+
 def _v2_fetch_deliveries(from_number: str) -> list:
     """Scan Gmail for recent parcel delivery emails. Returns up to 3 items."""
     import re as _re
@@ -7638,6 +7681,7 @@ def api_home_brief():
             futures["calendar"]        = pool.submit(_v2_fetch_calendar, from_number)
             futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
             futures["recent_capture"]  = pool.submit(_v2_fetch_recent_capture, from_number)
+            futures["recurring"]       = pool.submit(_v2_fetch_recurring, from_number, now.weekday())
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
@@ -7857,6 +7901,13 @@ def api_home_brief():
     for pe in _personal_evs:
         if pe.get("date") in (_today_s, _tomorrow_s):
             _cal_events = _cal_events + [{"title": pe["title"], "date": pe.get("date",""), "start": pe.get("time",""), "personal": True}]
+    # Merge today's recurring activities (clubs, weekly sessions) into calendar
+    for _ra in (ctx.get("recurring") or []):
+        _ra_who  = _ra.get("child") or _ra.get("person") or ""
+        _ra_what = _ra.get("activity","")
+        _ra_loc  = _ra.get("location","")
+        _ra_title = f"{_ra_who + ' — ' if _ra_who else ''}{_ra_what}{' @ ' + _ra_loc if _ra_loc else ''}"
+        _cal_events = _cal_events + [{"title": _ra_title, "date": _today_s, "start": _ra.get("time",""), "personal": True}]
     if time_mode in ("morning_commute", "daytime"):
         _today_cal = [e for e in _cal_events if e.get("date") == _today_s]
         for e in _today_cal[:3]:
@@ -8282,12 +8333,14 @@ def api_morning_brief():
                     _mfutures["weather"] = _mpool.submit(_v2_fetch_weather, postcode)
                     _mfutures["fuel"]    = _mpool.submit(_v2_fetch_fuel, postcode)
                 _mfutures["school"]    = _mpool.submit(_v2_fetch_school, phone)
+                # Trains: weekdays only (Mon=0 … Fri=4)
                 _mfutures["trains"]    = _mpool.submit(
                     _v2_fetch_trains,
                     prefs.get("train_from", ""),
                     prefs.get("train_to", ""),
-                ) if prefs.get("train_from") and prefs.get("train_to") else None
-                _mfutures["deliveries"] = _mpool.submit(_v2_fetch_deliveries, phone)
+                ) if prefs.get("train_from") and prefs.get("train_to") and wday < 5 else None
+                _mfutures["deliveries"]  = _mpool.submit(_v2_fetch_deliveries, phone)
+                _mfutures["recurring"]   = _mpool.submit(_v2_fetch_recurring, phone, wday)
                 _mctx = {}
                 for _mk, _mf in _mfutures.items():
                     if _mf is None:
@@ -8324,6 +8377,17 @@ def api_morning_brief():
                 if _mdlv.get("status") in ("out for delivery", "arriving today"):
                     _mfacts.append(f"📦 Parcel out for delivery today ({_mdlv.get('carrier','')})")
                     break
+            # Recurring activities today
+            for _ra in (_mctx.get("recurring") or []):
+                _ra_who  = _ra.get("child") or _ra.get("person") or ""
+                _ra_what = _ra.get("activity", "")
+                _ra_time = _ra.get("time", "")
+                _ra_loc  = _ra.get("location", "")
+                _ra_line = f"{_ra_who + ': ' if _ra_who else ''}{_ra_what}"
+                if _ra_time: _ra_line += f" at {_ra_time}"
+                if _ra_loc:  _ra_line += f" ({_ra_loc})"
+                if _ra_line.strip():
+                    _mfacts.append(f"📅 {_ra_line}")
 
             # Groq narrative — 2 crisp sentences, morning tone
             _mkids_str = f"Kids: {' and '.join(_mkids)}." if _mkids else ""
@@ -14483,6 +14547,46 @@ def whatsapp_reply():
             pass
         resp.message("✅ Morning brief is back on — you'll get it each morning.")
         return str(resp)
+
+    # ── Recurring activity capture ─────────────────────────────────────────────
+    # Detect: "every Sunday 9am Inaaya cricket Valley End Cricket Club"
+    _EVERY_RE = re.compile(
+        r'\bevery\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b',
+        re.IGNORECASE
+    )
+    _every_m = _EVERY_RE.search(body)
+    if _every_m:
+        _ra_day_str = _every_m.group(1).lower()
+        _ra_weekday = _DOW_MAP.get(_ra_day_str, -1)
+        if _ra_weekday >= 0:
+            # Parse the rest with Groq
+            try:
+                _ra_parsed = _groq_chat(
+                    "Extract structured data from a UK parent's activity message. "
+                    "Return JSON only: {\"activity\": str, \"time\": \"HH:MM\" or \"\", "
+                    "\"child\": str or \"\", \"location\": str or \"\"}. "
+                    "time must be 24h HH:MM format or empty string. child is a person's name if mentioned.",
+                    [{"role": "user", "content": body}],
+                    max_tokens=80, json_mode=True,
+                )
+                import json as _json
+                _ra_data = _json.loads(_ra_parsed)
+                _ra_data["weekday"] = _ra_weekday
+                _ra_data["day_name"] = _ra_day_str.capitalize()
+                _v2_save_recurring(from_number, _ra_data)
+                _ra_who   = _ra_data.get("child","")
+                _ra_what  = _ra_data.get("activity","activity")
+                _ra_time  = _ra_data.get("time","")
+                _ra_loc   = _ra_data.get("location","")
+                _ra_conf  = f"✅ Got it — {_ra_who + chr(39) + 's ' if _ra_who else ''}{_ra_what}"
+                if _ra_time: _ra_conf += f" at {_ra_time}"
+                _ra_conf += f" every {_ra_data['day_name']}"
+                if _ra_loc:  _ra_conf += f" ({_ra_loc})"
+                _ra_conf += ". I'll include it in your morning brief."
+                resp.message(_ra_conf)
+                return str(resp)
+            except Exception as _rae:
+                print(f"[recurring] parse error: {_rae}")
 
     # ── Too Good To Go ────────────────────────────────────────────────────────────
     if body_lower in ("magic bags", "tgtg", "too good to go", "tgtg setup"):
