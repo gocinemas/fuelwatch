@@ -13918,6 +13918,73 @@ def _places_review_snippet(place_id: str, keywords: list) -> str:
 
 
 
+def _wa_heading_to(body: str, from_number: str) -> str | None:
+    """Detect 'I'm heading to X' and reply with live drive time. Returns None if no match."""
+    _HEADING_RE = re.compile(
+        r"^(?:i'?m\s+(?:heading|going|on\s+my\s+way|driving|heading\s+out)\s+to\s+|"
+        r"heading\s+to\s+|going\s+to\s+|on\s+my\s+way\s+to\s+)"
+        r"(.{3,60})$", re.I
+    )
+    m = _HEADING_RE.match(body.strip())
+    if not m:
+        return None
+    destination = m.group(1).strip().rstrip(".")
+    # Get user's home postcode from prefs
+    origin = None
+    try:
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+        prefs = rows[0]["data"] if rows else {}
+        origin = prefs.get("fuel_postcode") or prefs.get("home_postcode")
+    except Exception:
+        pass
+    if not origin:
+        return f"Enjoy your trip to {destination}! Send me your postcode and I'll check how long it'll take."
+    # Geocode both ends
+    from_geo = _geocode_place(origin + " UK")
+    to_geo   = _geocode_place(destination + " UK")
+    if not from_geo or not to_geo:
+        return f"Have a good trip to {destination}! (Couldn't resolve the location for drive time.)"
+    key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
+    if not key:
+        return f"On your way to {destination} — have a good one!"
+    try:
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/directions/json",
+            params={
+                "origin":         f"{from_geo[0]},{from_geo[1]}",
+                "destination":    f"{to_geo[0]},{to_geo[1]}",
+                "mode":           "driving",
+                "departure_time": "now",
+                "traffic_model":  "best_guess",
+                "key":            key,
+            },
+            timeout=8,
+        )
+        d = r.json()
+        if d.get("status") != "OK":
+            return f"Have a good trip to {destination}!"
+        leg = d["routes"][0]["legs"][0]
+        dur_traffic = leg.get("duration_in_traffic", leg["duration"])["value"]
+        dur_normal  = leg["duration"]["value"]
+        delay       = max(0, dur_traffic - dur_normal)
+        traffic     = "heavy" if delay > 600 else "moderate" if delay > 180 else "clear"
+        emoji       = "🔴" if traffic == "heavy" else "🟡" if traffic == "moderate" else "🟢"
+        dist        = leg["distance"]["text"]
+        via         = d["routes"][0].get("summary", "")
+        dur_min     = dur_traffic // 60
+        lines = [f"🚗 {destination.title()}"]
+        lines.append(f"{emoji} About {dur_min} min · {dist}" + (f" via {via}" if via else ""))
+        if traffic == "heavy":
+            lines.append("Traffic is heavy right now.")
+        elif traffic == "moderate":
+            lines.append("Some traffic on the way.")
+        lines.append(f"\nNeed anything while you're out? Just ask.")
+        return "\n".join(lines)
+    except Exception:
+        return f"Have a good trip to {destination}!"
+
+
 def _wa_food_find(body: str, from_number: str):
     """Return WhatsApp-formatted food/drink picks, or None if not a food query."""
     # Normalise typos: collapse 3+ repeated letters (coffeee→coffee, beeer→beer)
@@ -16090,6 +16157,12 @@ def whatsapp_reply():
         resp.message(_wa_brand_card(_brand_m.group(1).strip()))
         return str(resp)
 
+    # ── "Heading to" → live drive time ──────────────────────────────────────
+    _heading_reply = _wa_heading_to(body, from_number)
+    if _heading_reply:
+        resp.message(_heading_reply)
+        return str(resp)
+
     # ── Food & drink discovery ───────────────────────────────────────────────
     _food_reply = _wa_food_find(body, from_number)
     if _food_reply:
@@ -16100,8 +16173,8 @@ def whatsapp_reply():
     _QUESTION_OPENERS = {"what","why","how","when","where","who","which","tell","explain",
                          "is","are","do","does","will","would","could","should","can"}
     _bl_words_q = body_lower.split()
-    # Also catch "I'm heading to X", "I'm at X", "Just got to X" — context-sharing statements
-    _STATEMENT_OPENERS = {"i'm","im","i've","i've","i am","i have","just","we're","we are","heading"}
+    # Catch remaining context-sharing statements: "I'm at X", "Just got to X" etc
+    _STATEMENT_OPENERS = {"i'm","im","i've","i've","i am","i have","just","we're","we are"}
     _looks_like_statement = (
         len(_bl_words_q) >= 3
         and _bl_words_q[0] in _STATEMENT_OPENERS
