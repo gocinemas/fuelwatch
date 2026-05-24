@@ -6879,15 +6879,8 @@ def _v2_fetch_area(postcode: str) -> dict:
             if title:
                 highlights.append({"type": "news", "text": title, "label": "Local news"})
 
-        # Area summary (pre-computed prose)
-        summary_row = sb.table("area_summary_cache").select("summary") \
-            .eq("postcode", postcode.upper().replace(" ", "") + "_v5").maybe_single().execute()
-        area_summary = (summary_row.data or {}).get("summary", "") if summary_row and summary_row.data else ""
-        # Pull first sentence only
-        if area_summary:
-            first_sent = area_summary.split(".")[0].strip()
-            if len(first_sent) > 20:
-                highlights.insert(0, {"type": "summary", "text": first_sent, "label": "Your area"})
+        # Static area summary intentionally excluded from brief — it never changes
+        # and adds no daily signal. Only planning/news are worth surfacing.
 
         return {"highlights": highlights[:4], "postcode": postcode}
     except Exception:
