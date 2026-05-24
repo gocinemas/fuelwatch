@@ -13918,8 +13918,50 @@ def _places_review_snippet(place_id: str, keywords: list) -> str:
 
 
 
+def _fetch_place_hours(destination: str) -> dict:
+    """Fetch opening hours for a named place via Google Places. Returns {} on failure."""
+    key = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")
+    if not key:
+        return {}
+    try:
+        # Text search to get place_id
+        ts = requests.get(
+            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            params={"query": destination + " UK", "key": key, "region": "uk"},
+            timeout=6,
+        )
+        results = ts.json().get("results", [])
+        if not results:
+            return {}
+        place_id = results[0].get("place_id", "")
+        if not place_id:
+            return {}
+        # Place Details for opening hours
+        pd = requests.get(
+            "https://maps.googleapis.com/maps/api/place/details/json",
+            params={"place_id": place_id, "fields": "name,opening_hours", "key": key},
+            timeout=6,
+        )
+        oh = pd.json().get("result", {}).get("opening_hours", {})
+        if not oh:
+            return {}
+        # weekday_text is ["Monday: 9:00 AM – 8:00 PM", ...] starting from Monday
+        weekday_text = oh.get("weekday_text", [])
+        today_idx    = __import__("datetime").datetime.now().weekday()  # 0=Mon
+        today_hours  = weekday_text[today_idx] if weekday_text else ""
+        # Strip day prefix ("Monday: ")
+        if today_hours and ": " in today_hours:
+            today_hours = today_hours.split(": ", 1)[1]
+        return {
+            "open_now":    oh.get("open_now"),
+            "today_hours": today_hours,
+        }
+    except Exception:
+        return {}
+
+
 def _wa_heading_to(body: str, from_number: str) -> str | None:
-    """Detect 'I'm heading to X' and reply with live drive time. Returns None if no match."""
+    """Detect 'I'm heading to X' and reply with live drive time + opening hours."""
     _HEADING_RE = re.compile(
         r"^(?:i'?m\s+(?:heading|going|on\s+my\s+way|driving|heading\s+out)\s+to\s+|"
         r"heading\s+to\s+|going\s+to\s+|on\s+my\s+way\s+to\s+)"
@@ -13940,9 +13982,15 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
         pass
     if not origin:
         return f"Enjoy your trip to {destination}! Send me your postcode and I'll check how long it'll take."
-    # Geocode both ends
-    from_geo = _geocode_place(origin + " UK")
-    to_geo   = _geocode_place(destination + " UK")
+    # Geocode both ends + fetch opening hours in parallel
+    from concurrent.futures import ThreadPoolExecutor, as_completed as _asc
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_from  = pool.submit(_geocode_place, origin + " UK")
+        f_to    = pool.submit(_geocode_place, destination + " UK")
+        f_hours = pool.submit(_fetch_place_hours, destination)
+        from_geo = f_from.result()
+        to_geo   = f_to.result()
+        hours    = f_hours.result()
     if not from_geo or not to_geo:
         return f"Have a good trip to {destination}! (Couldn't resolve the location for drive time.)"
     key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
@@ -13979,7 +14027,12 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
             lines.append("Traffic is heavy right now.")
         elif traffic == "moderate":
             lines.append("Some traffic on the way.")
-        lines.append(f"\nNeed anything while you're out? Just ask.")
+        # Opening hours
+        if hours.get("today_hours"):
+            open_now = hours.get("open_now")
+            status   = " ✅ Open now" if open_now else " ⛔ Closed now" if open_now is False else ""
+            lines.append(f"\n🕐 Today: {hours['today_hours']}{status}")
+        lines.append("\nNeed anything while you're out? Just ask.")
         return "\n".join(lines)
     except Exception:
         return f"Have a good trip to {destination}!"
