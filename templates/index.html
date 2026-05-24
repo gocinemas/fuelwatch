@@ -14273,6 +14273,7 @@ _bkBadge();
     var wrap = document.getElementById("brief-ask-wrap");
     if (wrap) wrap.style.display = "block";
   }
+  window._briefAskShow = _briefAskShow;
 
   async function _briefAsk() {
     var inp    = document.getElementById("brief-ask-input");
@@ -14340,6 +14341,7 @@ _bkBadge();
     if (btn) { btn.disabled = false; btn.style.opacity = "1"; }
     inp.focus();
   }
+  window._briefAsk = _briefAsk;
 
   function _briefUpdateNarrative(d, mode) {
     var briefText = document.getElementById("brief-text");
