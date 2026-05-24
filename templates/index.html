@@ -13980,23 +13980,38 @@ _bkBadge();
     var _h = new Date().getHours();
     var _isNightChip = _h >= 21 || _h < 5;
     var chips = [];
+    var secondaryChips = []; // quiet reference links shown at night
     var trains = ctx && ctx.trains;
-    // No train chip at night (21:00–05:00) — nobody's commuting
-    if (!_isNightChip && trains && trains.departures && trains.departures.length) {
+    if (trains && trains.departures && trains.departures.length) {
       var t = trains.departures[0];
-      chips.push({ label: "🚆 " + (t.departs || t.time || "") + "  " + (trains.from || "") + " → " + (trains.to || ""), action: "showScreen('trains')" });
+      if (_isNightChip) {
+        // Night: quiet shortcut only — don't show a specific departure as if to commute
+        secondaryChips.push({ label: "🚆 Train times", action: "showScreen('trains')" });
+      } else {
+        chips.push({ label: "🚆 " + (t.departs || t.time || "") + "  " + (trains.from || "") + " → " + (trains.to || ""), action: "showScreen('trains')" });
+      }
     }
     var fuel = ctx && ctx.fuel;
-    if (fuel && fuel.price) chips.push({ label: "⛽ " + fuel.name + "  " + fuel.price + "p", action: "showScreen('fuel')" });
+    if (fuel && fuel.price) {
+      if (_isNightChip) {
+        secondaryChips.push({ label: "⛽ " + fuel.price + "p nearby", action: "showScreen('fuel')" });
+      } else {
+        chips.push({ label: "⛽ " + fuel.name + "  " + fuel.price + "p", action: "showScreen('fuel')" });
+      }
+    }
     var schoolRaw = ctx && ctx.school;
     var schoolEvs = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
     var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
     if (schoolKids.length) chips.push({ label: "🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "), action: "_schoolHomeOpen && _schoolHomeOpen()" });
     else if (schoolEvs.length) chips.push({ label: "🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""), action: "_schoolHomeOpen && _schoolHomeOpen()" });
     // Spend intentionally excluded from chips — it dominates visual hierarchy
-    container.innerHTML = chips.map(function(c) {
+    var mainHtml = chips.map(function(c) {
       return '<button onclick="' + c.action + '" style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + ' ›</button>';
     }).join("");
+    var secHtml = secondaryChips.length ? secondaryChips.map(function(c) {
+      return '<button onclick="' + c.action + '" style="background:none;border:1px solid var(--border);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + '</button>';
+    }).join("") : "";
+    container.innerHTML = mainHtml + (secHtml ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:' + (chips.length ? '6px' : '0') + '">' + secHtml + '</div>' : '');
   }
 
   function _briefUpdateFuelStrip(fuel) {
