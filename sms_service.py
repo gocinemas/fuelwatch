@@ -7416,10 +7416,11 @@ def api_brief_nearby():
 
     # Map brief types → Google Places params
     _TYPE_MAP = {
-        "cafe":  {"keyword": "cafe coffee",     "type": "cafe",       "min_rating": 3.5, "min_reviews": 3},
-        "food":  {"keyword": "restaurant",       "type": "restaurant", "min_rating": 3.5, "min_reviews": 5},
-        "pub":   {"keyword": "pub bar",          "type": "bar",        "min_rating": 3.5, "min_reviews": 3},
-        "all":   {"keyword": "cafe restaurant pub", "type": None,      "min_rating": 3.8, "min_reviews": 5},
+        "cafe":  {"keyword": "cafe coffee",        "type": "cafe",       "min_rating": 3.5, "min_reviews": 3},
+        "food":  {"keyword": "restaurant",          "type": "restaurant", "min_rating": 3.5, "min_reviews": 5},
+        "pub":   {"keyword": "pub bar",             "type": "bar",        "min_rating": 3.5, "min_reviews": 3},
+        "park":  {"keyword": "park garden common",  "type": "park",       "min_rating": 3.8, "min_reviews": 2},
+        "all":   {"keyword": "cafe restaurant pub", "type": None,         "min_rating": 3.8, "min_reviews": 5},
     }
     cfg = _TYPE_MAP.get(vtype, _TYPE_MAP["cafe"])
 
