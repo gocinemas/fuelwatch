@@ -15999,6 +15999,12 @@ def whatsapp_reply():
             resp.message(msg)
             return str(resp)
 
+    # ── "Heading to" → live drive time (before Groq — precise regex match) ────
+    _heading_reply = _wa_heading_to(body, from_number)
+    if _heading_reply:
+        resp.message(_heading_reply)
+        return str(resp)
+
     # ── Natural language fallback — Groq intent classification ───────────────
     _intent = _wa_classify_intent(body)
     if _intent:
@@ -16208,12 +16214,6 @@ def whatsapp_reply():
     _brand_m = re.match(r'^(?:brand|intel|about)\s+(.{2,60})$', body.strip(), re.I)
     if _brand_m:
         resp.message(_wa_brand_card(_brand_m.group(1).strip()))
-        return str(resp)
-
-    # ── "Heading to" → live drive time ──────────────────────────────────────
-    _heading_reply = _wa_heading_to(body, from_number)
-    if _heading_reply:
-        resp.message(_heading_reply)
         return str(resp)
 
     # ── Food & drink discovery ───────────────────────────────────────────────
