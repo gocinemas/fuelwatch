@@ -13977,9 +13977,12 @@ _bkBadge();
 
   function _briefRenderChips(ctx, container) {
     if (!container) return;
+    var _h = new Date().getHours();
+    var _isNightChip = _h >= 21 || _h < 5;
     var chips = [];
     var trains = ctx && ctx.trains;
-    if (trains && trains.departures && trains.departures.length) {
+    // No train chip at night (21:00–05:00) — nobody's commuting
+    if (!_isNightChip && trains && trains.departures && trains.departures.length) {
       var t = trains.departures[0];
       chips.push({ label: "🚆 " + (t.departs || t.time || "") + "  " + (trains.from || "") + " → " + (trains.to || ""), action: "showScreen('trains')" });
     }
