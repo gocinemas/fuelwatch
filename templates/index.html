@@ -6366,6 +6366,13 @@ function _hcAdd() {
         body: JSON.stringify({token, activity, weekday: _clubsSelectedDay, time, child, location})
       });
       if (!r.ok) throw new Error("Save failed");
+      const saved = await r.json();
+      // Show resolved address briefly if it differs from what was typed
+      if (saved.location_resolved && saved.location_resolved !== location) {
+        const locInput = document.getElementById("clubs-input-location");
+        if (locInput) locInput.value = saved.location_resolved;
+        await new Promise(function(res){ setTimeout(res, 800); });
+      }
       _clubsEditOrig = null;
       _clubsAddClose();
       _clubsLoad();

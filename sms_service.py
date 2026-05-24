@@ -6155,17 +6155,46 @@ def api_v2_recurring_add():
     from_number = _v2_resolve(token)
     if not from_number:
         return jsonify({"error": "token required"}), 401
+    raw_location = (body.get("location") or "").strip()
     act = {
         "activity": (body.get("activity") or "").strip(),
         "weekday":  body.get("weekday"),
         "time":     (body.get("time") or "").strip(),
         "child":    (body.get("child") or "").strip(),
-        "location": (body.get("location") or "").strip(),
+        "location": raw_location,
     }
     if not act["activity"] or act["weekday"] is None:
         return jsonify({"error": "activity and weekday required"}), 400
+
+    # Geocode location at save time — store resolved address + lat/lng
+    # so drive-time computation never needs to re-geocode
+    if raw_location:
+        loc_words = set(raw_location.lower().split())
+        _school_words = {"school","academy","college","primary","junior","secondary",
+                         "infant","nursery","prep","grammar","sixth","form"}
+        if not (loc_words & _school_words):  # skip geocoding for school locations
+            try:
+                gkey = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")
+                if gkey:
+                    r = requests.get(
+                        "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                        params={"query": raw_location + " UK", "key": gkey, "region": "uk"},
+                        timeout=5,
+                    )
+                    results = r.json().get("results", [])
+                    if results:
+                        top = results[0]
+                        act["location_resolved"] = top.get("formatted_address", raw_location)
+                        loc = top.get("geometry", {}).get("location", {})
+                        if loc:
+                            act["lat"] = loc["lat"]
+                            act["lng"] = loc["lng"]
+            except Exception:
+                pass  # fall back to raw text — drive time will geocode at runtime
+
     _v2_save_recurring(from_number, act)
-    return jsonify({"ok": True})
+    resolved = act.get("location_resolved", raw_location)
+    return jsonify({"ok": True, "location_resolved": resolved})
 
 
 @app.route("/api/v2/recurring/delete", methods=["POST"])
@@ -14087,7 +14116,11 @@ def _compute_activity_drive_context(ra: dict, origin_postcode: str, now, weather
             return f"📅 {base} at {time_display} @ {location}"
 
         from_geo = _geocode_place(origin_postcode + " UK")
-        to_geo   = _geocode_place(location + " UK")
+        # Use pre-resolved coordinates if saved, else geocode now
+        if ra.get("lat") and ra.get("lng"):
+            to_geo = (ra["lat"], ra["lng"])
+        else:
+            to_geo = _geocode_place((ra.get("location_resolved") or location) + " UK")
         if not from_geo or not to_geo:
             return f"📅 {base} at {time_display} @ {location}"
 
