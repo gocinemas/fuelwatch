@@ -8460,19 +8460,22 @@ def api_home_ask():
 
     ctx_text = "; ".join(ctx_lines) if ctx_lines else "No specific context available."
 
-    # Build message history for conversational follow-ups
+    # Build message history — only pass user questions from thread, NOT prior answers.
+    # Passing prior AI answers risks snowballing hallucinations (model treats invented
+    # content as established fact in the next turn).
     messages = [{"role": "system",
                  "content": (
-                     "You are Miru, a concise British personal assistant. "
-                     "Answer the user's question using ONLY the context facts provided below. "
-                     "IMPORTANT: Do NOT invent, guess, or assume any details not explicitly stated in the context. "
-                     "If the context does not contain the answer, reply with exactly: "
-                     "\"I don't have that in your brief — try asking about trains, weather, school, or fuel.\" "
-                     "No bullet points. Under 40 words. Plain conversational English."
+                     "You are Miru. You answer questions using ONLY the facts in 'Context facts'.\n"
+                     "STRICT RULES — never break these:\n"
+                     "1. If the answer is not explicitly in 'Context facts', reply EXACTLY: "
+                     "\"I don't have that in your brief.\"\n"
+                     "2. NEVER invent, infer, or guess names, places, times, events, or people.\n"
+                     "3. NEVER use information from previous answers — only 'Context facts' is truth.\n"
+                     "4. Under 30 words. No bullet points. Plain English."
                  )}]
-    for turn in thread[-2:]:  # last 2 exchanges
-        if turn.get("q"): messages.append({"role": "user",      "content": turn["q"]})
-        if turn.get("a"): messages.append({"role": "assistant",  "content": turn["a"]})
+    for turn in thread[-2:]:
+        if turn.get("q"): messages.append({"role": "user", "content": turn["q"]})
+        # Deliberately omit prior assistant answers — prevents hallucination snowball
     messages.append({"role": "user",
                      "content": f"Context facts: {ctx_text}\n\nQuestion: {question}"})
 
@@ -8481,7 +8484,8 @@ def api_home_ask():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 100, "messages": messages},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 80,
+                  "temperature": 0, "messages": messages},
             timeout=8,
         )
         answer = r.json()["choices"][0]["message"]["content"].strip()
