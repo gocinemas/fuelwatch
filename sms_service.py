@@ -6068,7 +6068,8 @@ def api_v2_prefs_post():
         return jsonify({"error": "token required"}), 401
     # Accept prefs as nested {"prefs":{...}} or top-level keys in the same body
     PREF_KEYS = {"train_from", "train_to", "fuel_postcode", "commute_mode",
-                 "bin_collection_day", "bin_types", "bin_rotation", "bin_rotation_week"}
+                 "bin_collection_day", "bin_types", "bin_rotation", "bin_rotation_week",
+                 "interests"}
     new_prefs = body.get("prefs") or {k: v for k, v in body.items() if k in PREF_KEYS}
     if not isinstance(new_prefs, dict):
         return jsonify({"error": "prefs must be object"}), 400
@@ -7924,6 +7925,11 @@ def api_home_brief():
     _learned_departure = prefs.get("learned_departure_hour")
     _learned_arrival   = prefs.get("learned_home_arrival_hour")
 
+    # User interest signals — captured passively from search/category taps in the app
+    _user_interests = prefs.get("interests") or []
+    _interests_note = (f"User interests (based on recent searches): {', '.join(_user_interests[:3])}. "
+                       if _user_interests else "")
+
     facts = []
     # Recent capture — photo taken in last 20 mins surfaces first so Groq can reference it
     if recent_capture.get("title") and time_mode not in ("night", "goodnight"):
@@ -8069,6 +8075,7 @@ def api_home_brief():
                "It's Friday — weekend starts now." if day_type == "friday" else
                "It's the weekend." if day_type == "weekend" else "")
             + bh_note + " "
+            + _interests_note
         )
         if _sunny_outdoor and loc_str:
             prompt_parts.append(f"They're in {loc_str} — suggest one specific outdoor plan for this evening in the area.")

@@ -11092,6 +11092,7 @@ function _hcAdd() {
       if (pc && intent) { homeSearchClear(); intent.fill(pc, q); return; }
       if (_LOCAL_SERVICE_KW.some(w => q.toLowerCase().includes(w))) {
         const svc = q.replace(/\b(near me|nearby|local|find me?|find a?)\b/gi,"").trim();
+        _captureSearchInterests(svc || q);
         homeSearchClear();
         window._fillFinder("", svc || q);
         return;
@@ -12345,6 +12346,7 @@ _bkBadge();
     const q = document.getElementById("finder-q").value.trim();
     if(!q){ _showOk("📍 Location set! Tap a category or type your search."); return; }
     _finderCurrentQ = q;
+    _captureSearchInterests(q);
     await _finderFetch(q);
   };
 
@@ -14451,6 +14453,7 @@ _bkBadge();
 
   window._briefFindNearby = function(type, radius) {
     if (!_briefNearbyLat) return;
+    _captureInterest(type);
     radius = radius || 1500;
     var res = document.getElementById("brief-nearby-results");
     if (!res) return;
@@ -16494,7 +16497,51 @@ _bkBadge();
 
     _ehPlaces = _ehCache[cat] || _ehCache["all"] || [];
     _ehRender();
+    if (cat !== "all") _captureInterest(cat);
   };
+
+  // ── Passive interest capture ──────────────────────────────────────────────
+  // Silently records what the user searches for / browses → fed into V2 brief
+  const _INTEREST_NORM = {
+    food:"eating out", eat:"eating out", restaurant:"eating out", restaurants:"eating out",
+    coffee:"coffee", cafe:"coffee", cafes:"coffee", "coffee shop":"coffee",
+    beer:"pubs & bars", pub:"pubs & bars", pubs:"pubs & bars",
+    cocktail:"cocktails", cocktails:"cocktails", bar:"cocktails", bars:"cocktails",
+    wine:"wine", "wine bar":"wine",
+    steak:"steak", steakhouse:"steak",
+    park:"parks & outdoors", parks:"parks & outdoors", kids:"family activities", family:"family activities",
+    breakfast:"breakfast", brunch:"brunch",
+    tea:"tea", indian:"Indian food", curry:"Indian food", chinese:"Chinese food",
+    thai:"Thai food", italian:"Italian food", japanese:"Japanese food", sushi:"sushi",
+    pizza:"pizza", burger:"burgers", burgers:"burgers", kebab:"kebabs",
+    mexican:"Mexican food", tapas:"tapas", vietnamese:"Vietnamese food",
+  };
+  const _INTEREST_SEARCH_KW = Object.keys(_INTEREST_NORM);
+
+  function _captureInterest(raw) {
+    const token = _miruPhone();
+    if (!token) return;
+    const label = _INTEREST_NORM[raw.toLowerCase()] || raw;
+    // Update cached interests list (most recent front, max 5 unique)
+    let interests = [];
+    try { interests = JSON.parse(localStorage.getItem("miru_interests") || "[]"); } catch(e) {}
+    interests = [label, ...interests.filter(i => i !== label)].slice(0, 5);
+    localStorage.setItem("miru_interests", JSON.stringify(interests));
+    // Fire silently to backend — no await, no error surfacing
+    fetch("/api/v2/prefs", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({token, prefs: {interests}})
+    }).catch(function(){});
+  }
+
+  function _captureSearchInterests(query) {
+    if (!query) return;
+    const ql = query.toLowerCase();
+    for (const kw of _INTEREST_SEARCH_KW) {
+      if (ql.includes(kw)) { _captureInterest(kw); break; }
+    }
+  }
 
   function _ehRender() {
     const el = document.getElementById("explore-here-results");
