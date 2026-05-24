@@ -6124,6 +6124,72 @@ def api_v2_prefs_post():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/v2/recurring", methods=["GET"])
+def api_v2_recurring_get():
+    """Return all recurring activities for the user, sorted by weekday then time."""
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"activities": [], "error": "token required"}), 401
+    try:
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "recurring_activities").limit(1).execute().data or []
+        activities = (rows[0]["data"] if rows else []) or []
+        activities.sort(key=lambda a: (a.get("weekday", 7), a.get("time", "")))
+        return jsonify({"activities": activities})
+    except Exception as e:
+        return jsonify({"activities": [], "error": str(e)}), 500
+
+
+@app.route("/api/v2/recurring", methods=["POST"])
+def api_v2_recurring_add():
+    """Add or update a recurring activity. Body: {token, activity, weekday, time, child, location}"""
+    body = request.get_json(force=True, silent=True) or {}
+    token = (body.get("token") or request.args.get("token", "")).strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"error": "token required"}), 401
+    act = {
+        "activity": (body.get("activity") or "").strip(),
+        "weekday":  body.get("weekday"),
+        "time":     (body.get("time") or "").strip(),
+        "child":    (body.get("child") or "").strip(),
+        "location": (body.get("location") or "").strip(),
+    }
+    if not act["activity"] or act["weekday"] is None:
+        return jsonify({"error": "activity and weekday required"}), 400
+    _v2_save_recurring(from_number, act)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/v2/recurring/delete", methods=["POST"])
+def api_v2_recurring_delete():
+    """Remove a recurring activity. Body: {token, weekday, activity}"""
+    body = request.get_json(force=True, silent=True) or {}
+    token = (body.get("token") or request.args.get("token", "")).strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"error": "token required"}), 401
+    weekday  = body.get("weekday")
+    act_name = (body.get("activity") or "").strip().lower()
+    if weekday is None or not act_name:
+        return jsonify({"error": "weekday and activity required"}), 400
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_details").select("id,data") \
+            .eq("device_id", from_number).eq("type", "recurring_activities").limit(1).execute().data or []
+        if not rows:
+            return jsonify({"ok": True})
+        activities = list(rows[0].get("data") or [])
+        activities = [a for a in activities
+                      if not (a.get("weekday") == weekday and
+                              a.get("activity","").lower() == act_name)]
+        sb.table("ma_details").update({"data": activities}).eq("id", rows[0]["id"]).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/v2/location-profile", methods=["GET"])
 def api_v2_location_profile_get():
     token = request.args.get("token", "").strip()

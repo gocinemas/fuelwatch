@@ -2472,6 +2472,64 @@
           <div id="ma-school-status" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
         </div>
 
+        <!-- 🏃 Clubs & Activities -->
+        <div style="margin-top:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">🏃 Clubs &amp; Activities</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Regular events surfaced in your morning brief</div>
+            </div>
+            <button onclick="_clubsAddOpen()" style="font-size:12px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.08);border:1.5px solid rgba(124,58,237,.25);border-radius:12px;padding:7px 13px;cursor:pointer;flex-shrink:0">+ Add</button>
+          </div>
+          <div id="clubs-list"></div>
+
+          <!-- Add form (hidden by default) -->
+          <div id="clubs-add-form" style="display:none;background:var(--surface);border:1.5px solid rgba(124,58,237,.3);border-radius:14px;padding:14px;margin-top:8px">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">New activity</div>
+            <!-- Day picker -->
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Day</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px" id="clubs-day-picker">
+              <button onclick="_clubsDayPick(0)" data-d="0" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Mon</button>
+              <button onclick="_clubsDayPick(1)" data-d="1" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Tue</button>
+              <button onclick="_clubsDayPick(2)" data-d="2" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Wed</button>
+              <button onclick="_clubsDayPick(3)" data-d="3" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Thu</button>
+              <button onclick="_clubsDayPick(4)" data-d="4" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Fri</button>
+              <button onclick="_clubsDayPick(5)" data-d="5" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Sat</button>
+              <button onclick="_clubsDayPick(6)" data-d="6" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Sun</button>
+            </div>
+            <!-- Fields -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Activity</div>
+                <input id="clubs-input-activity" type="text" placeholder="e.g. Cricket"
+                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Time</div>
+                <input id="clubs-input-time" type="time"
+                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Who</div>
+                <input id="clubs-input-child" type="text" placeholder="e.g. Inaaya"
+                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Location</div>
+                <input id="clubs-input-location" type="text" placeholder="e.g. Valley End CC"
+                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button onclick="_clubsAddSave()" style="flex:1;padding:10px;border-radius:12px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Save activity</button>
+              <button onclick="_clubsAddClose()" style="padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:transparent;font-size:13px;color:var(--muted);cursor:pointer">Cancel</button>
+            </div>
+            <div id="clubs-add-error" style="display:none;font-size:12px;color:#dc2626;margin-top:8px"></div>
+          </div>
+        </div>
+
       </div><!-- /matab-accounts -->
 
       <!-- WhatsApp CTA -->
@@ -4531,7 +4589,7 @@ const _ts = new Date(d.timestamp);
       svcSkel.style.display = "none";
     }
     localStorage.setItem("miru_ma_tab", tab);
-    if (tab === "accounts") _maSchoolStatusLoad();
+    if (tab === "accounts") { _maSchoolStatusLoad(); _clubsLoad(); }
   }
 
   function _maSectionHtml(id, title, bodyHtml) {
@@ -6205,6 +6263,119 @@ function _hcAdd() {
     const wa = phone ? phone.replace(/^\+/, "") : "";
     const url = wa ? `/school/settings?wa=${encodeURIComponent(wa)}` : "/school/signup";
     window.location.href = url;
+  }
+
+  // ── Clubs & Activities ────────────────────────────────────────────────────
+  const _CLUBS_DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  let _clubsSelectedDay = null;
+
+  function _clubsDayPick(d) {
+    _clubsSelectedDay = d;
+    document.querySelectorAll(".clubs-day-btn").forEach(function(btn) {
+      const active = parseInt(btn.dataset.d) === d;
+      btn.style.background  = active ? "#7c3aed" : "var(--bg)";
+      btn.style.color       = active ? "#fff"    : "var(--muted)";
+      btn.style.borderColor = active ? "#7c3aed" : "var(--border)";
+    });
+  }
+
+  function _clubsAddOpen() {
+    _clubsSelectedDay = null;
+    document.querySelectorAll(".clubs-day-btn").forEach(function(btn) {
+      btn.style.background = "var(--bg)"; btn.style.color = "var(--muted)"; btn.style.borderColor = "var(--border)";
+    });
+    ["activity","time","child","location"].forEach(function(f) {
+      const el = document.getElementById("clubs-input-"+f);
+      if (el) el.value = "";
+    });
+    const err = document.getElementById("clubs-add-error");
+    if (err) { err.style.display = "none"; err.textContent = ""; }
+    document.getElementById("clubs-add-form").style.display = "block";
+    document.getElementById("clubs-input-activity").focus();
+  }
+
+  function _clubsAddClose() {
+    document.getElementById("clubs-add-form").style.display = "none";
+  }
+
+  async function _clubsAddSave() {
+    const err = document.getElementById("clubs-add-error");
+    const activity = (document.getElementById("clubs-input-activity").value || "").trim();
+    const time     = (document.getElementById("clubs-input-time").value || "").trim();
+    const child    = (document.getElementById("clubs-input-child").value || "").trim();
+    const location = (document.getElementById("clubs-input-location").value || "").trim();
+    if (!activity) { err.textContent = "Activity name is required"; err.style.display = "block"; return; }
+    if (_clubsSelectedDay === null) { err.textContent = "Please pick a day"; err.style.display = "block"; return; }
+    const token = _miruPhone();
+    if (!token) { err.textContent = "Link your phone first (identity bar above)"; err.style.display = "block"; return; }
+    err.style.display = "none";
+    try {
+      const r = await fetch("/api/v2/recurring", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({token, activity, weekday: _clubsSelectedDay, time, child, location})
+      });
+      if (!r.ok) throw new Error("Save failed");
+      _clubsAddClose();
+      _clubsLoad();
+    } catch(e) {
+      err.textContent = "Couldn't save — try again"; err.style.display = "block";
+    }
+  }
+
+  async function _clubsDelete(weekday, activity) {
+    const token = _miruPhone();
+    if (!token) return;
+    try {
+      await fetch("/api/v2/recurring/delete", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({token, weekday, activity})
+      });
+      _clubsLoad();
+    } catch(e) {}
+  }
+
+  async function _clubsLoad() {
+    const list = document.getElementById("clubs-list");
+    if (!list) return;
+    const token = _miruPhone();
+    if (!token) {
+      list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">Link your phone number to see clubs.</div>';
+      return;
+    }
+    list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:7px"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Loading…</div>';
+    try {
+      const r = await fetch("/api/v2/recurring?token=" + encodeURIComponent(token));
+      const d = await r.json();
+      const acts = d.activities || [];
+      if (!acts.length) {
+        list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:12px 0;text-align:center">No clubs yet — tap <strong style="color:var(--text)">+ Add</strong> or tell Miru on WhatsApp:<br><span style="font-size:12px;font-style:italic">"every Sunday 9am Inaaya cricket Valley End CC"</span></div>';
+        return;
+      }
+      list.innerHTML = acts.map(function(a) {
+        const dayLabel = _CLUBS_DAYS[a.weekday] || "";
+        const who  = a.child ? '<span style="font-size:11px;font-weight:600;color:#7c3aed;background:rgba(124,58,237,.08);padding:2px 7px;border-radius:10px">' + a.child + '</span>' : "";
+        const time = a.time ? '<span style="font-size:12px;color:var(--muted)">' + a.time + '</span>' : "";
+        const loc  = a.location ? '<div style="font-size:11px;color:var(--muted);margin-top:3px">📍 ' + a.location + '</div>' : "";
+        const actEsc = a.activity.replace(/'/g, "\\'");
+        return '<div style="display:flex;align-items:flex-start;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 13px;margin-bottom:8px">' +
+          '<div style="display:flex;align-items:flex-start;gap:10px">' +
+            '<div style="background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:4px 8px;border-radius:8px;flex-shrink:0;margin-top:1px;letter-spacing:.03em">' + dayLabel + '</div>' +
+            '<div>' +
+              '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+                '<span style="font-size:14px;font-weight:700;color:var(--text)">' + a.activity + '</span>' +
+                who + time +
+              '</div>' +
+              loc +
+            '</div>' +
+          '</div>' +
+          '<button onclick="_clubsDelete(' + a.weekday + ',\'' + actEsc + '\')" title="Remove" style="background:none;border:none;font-size:15px;color:var(--muted);cursor:pointer;padding:0 0 0 8px;flex-shrink:0;line-height:1">✕</button>' +
+        '</div>';
+      }).join("");
+    } catch(e) {
+      list.innerHTML = '<div style="font-size:12px;color:#dc2626">Failed to load clubs</div>';
+    }
   }
 
   async function _maSchoolStatusLoad() {
