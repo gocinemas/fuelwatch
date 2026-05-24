@@ -8463,19 +8463,36 @@ def api_home_ask():
 
     ctx_text = "; ".join(ctx_lines) if ctx_lines else "No specific context available."
 
+    # Detect suggestion-type questions — these can draw on weather/time context
+    # rather than requiring an exact fact match.
+    _SUGGESTION_WORDS = {"do","idea","ideas","suggest","suggestion","go","out","tonight",
+                         "afternoon","evening","weekend","activity","activities","plan","bored"}
+    _q_words = set(question.lower().split())
+    _is_suggestion = bool(_q_words & _SUGGESTION_WORDS) and "?" not in question.replace("what can i do?","")
+
+    if _is_suggestion:
+        system_prompt = (
+            "You are Miru, a concise British personal assistant. "
+            "The user is asking for a suggestion. Use the weather, time of day, and any saved places "
+            "in 'Context facts' to give one practical idea. "
+            "RULES: Do NOT invent specific event names, times, or places not in 'Context facts'. "
+            "You MAY suggest general activities (e.g. 'go to a park', 'grab lunch outside') based on weather. "
+            "Under 30 words. Plain conversational English. No bullet points."
+        )
+    else:
+        system_prompt = (
+            "You are Miru. You answer questions using ONLY the facts in 'Context facts'.\n"
+            "STRICT RULES — never break these:\n"
+            "1. If the answer is not explicitly in 'Context facts', reply EXACTLY: "
+            "\"I don't have that in your brief.\"\n"
+            "2. NEVER invent, infer, or guess names, places, times, events, or people.\n"
+            "3. NEVER use information from previous answers — only 'Context facts' is truth.\n"
+            "4. Under 30 words. No bullet points. Plain English."
+        )
+
     # Build message history — only pass user questions from thread, NOT prior answers.
-    # Passing prior AI answers risks snowballing hallucinations (model treats invented
-    # content as established fact in the next turn).
-    messages = [{"role": "system",
-                 "content": (
-                     "You are Miru. You answer questions using ONLY the facts in 'Context facts'.\n"
-                     "STRICT RULES — never break these:\n"
-                     "1. If the answer is not explicitly in 'Context facts', reply EXACTLY: "
-                     "\"I don't have that in your brief.\"\n"
-                     "2. NEVER invent, infer, or guess names, places, times, events, or people.\n"
-                     "3. NEVER use information from previous answers — only 'Context facts' is truth.\n"
-                     "4. Under 30 words. No bullet points. Plain English."
-                 )}]
+    # Passing prior AI answers risks snowballing hallucinations.
+    messages = [{"role": "system", "content": system_prompt}]
     for turn in thread[-2:]:
         if turn.get("q"): messages.append({"role": "user", "content": turn["q"]})
         # Deliberately omit prior assistant answers — prevents hallucination snowball
