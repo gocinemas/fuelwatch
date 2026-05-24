@@ -13989,30 +13989,21 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
     key = os.environ.get("GOOGLE_DIRECTIONS_KEY") or os.environ.get("GOOGLE_API_KEY", "")
     query = specific_dest or (destination + " UK")
     from concurrent.futures import ThreadPoolExecutor
-    _is_shop = any(w in destination.lower() for w in [
-        "costco","tesco","sainsbury","asda","waitrose","aldi","lidl","morrisons","ikea","b&q","homebase","screwfix"
-    ])
     if dest_geo:
-        workers = 3 if _is_shop else 2
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        with ThreadPoolExecutor(max_workers=2) as pool:
             f_from  = pool.submit(_geocode_place, origin_postcode + " UK")
             f_hours = pool.submit(_fetch_place_hours, specific_dest or destination)
-            f_fuel  = pool.submit(_inline_fuel_snippet, origin_postcode) if _is_shop else None
             from_geo = f_from.result()
             to_geo   = dest_geo
             hours    = f_hours.result()
-            fuel_snippet = f_fuel.result() if f_fuel else ""
     else:
-        workers = 4 if _is_shop else 3
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        with ThreadPoolExecutor(max_workers=3) as pool:
             f_from  = pool.submit(_geocode_place, origin_postcode + " UK")
             f_to    = pool.submit(_geocode_place, query)
             f_hours = pool.submit(_fetch_place_hours, specific_dest or destination)
-            f_fuel  = pool.submit(_inline_fuel_snippet, origin_postcode) if _is_shop else None
             from_geo = f_from.result()
             to_geo   = f_to.result()
             hours    = f_hours.result()
-            fuel_snippet = f_fuel.result() if f_fuel else ""
     if not from_geo or not to_geo or not key:
         return f"Have a good trip to {destination}!"
     try:
@@ -14046,8 +14037,6 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
         if hours.get("today_hours"):
             status = " ✅ Open now" if hours.get("open_now") else " ⛔ Closed now" if hours.get("open_now") is False else ""
             lines.append("\n\U0001f550 Today: " + hours.get("today_hours", "") + status)
-        if fuel_snippet:
-            lines.append(fuel_snippet)
         return "\n".join(lines)
     except Exception:
         return f"Have a good trip to {destination}!"
