@@ -6374,11 +6374,11 @@ def _v2_check_auto_learn(from_number: str) -> dict | None:
 
 
 def _v2_fetch_school(from_number: str) -> dict:
-    """School profiles (daily run) + upcoming events (7 days) + recent comms (14 days)."""
+    """School profiles (daily run) + upcoming events (42 days) + recent comms (14 days)."""
     from datetime import date, timedelta
     try:
         today    = date.today()
-        horizon  = (today + timedelta(days=7)).isoformat()
+        horizon  = (today + timedelta(days=42)).isoformat()  # 6 weeks — covers half term gaps
         recent   = (today - timedelta(days=14)).isoformat()
         today_s  = today.isoformat()
         profiles = lib._sb().table("school_profiles") \
