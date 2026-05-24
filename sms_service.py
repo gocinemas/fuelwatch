@@ -14037,6 +14037,11 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
         if hours.get("today_hours"):
             status = " ✅ Open now" if hours.get("open_now") else " ⛔ Closed now" if hours.get("open_now") is False else ""
             lines.append("\n\U0001f550 Today: " + hours.get("today_hours", "") + status)
+        _lat2, _lng2 = to_geo
+        lines.append(
+            f"\n🗺️ https://maps.google.com/maps?q={_lat2},{_lng2}"
+            f"\n🚦 https://waze.com/ul?ll={_lat2},{_lng2}&navigate=yes"
+        )
         return "\n".join(lines)
     except Exception:
         return f"Have a good trip to {destination}!"
