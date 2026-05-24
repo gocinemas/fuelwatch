@@ -14435,6 +14435,10 @@ def _wa_food_find(body: str, from_number: str):
     # Normalise typos: collapse 3+ repeated letters (coffeee→coffee, beeer→beer)
     body_lower = re.sub(r'(.)\1{2,}', r'\1\1', body.lower())
 
+    # Recipe requests take priority — don't match "negroni recipe" as a nearby bar search
+    if re.search(r'\brecipe\b|\bhow\s+to\s+make\b|\bhow\s+do\s+i\s+make\b|\bingredients\s+for\b', body_lower):
+        return None
+
     intent = None
     for pattern, info in _FOOD_INTENTS:
         if pattern.search(body_lower):
