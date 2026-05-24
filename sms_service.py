@@ -7870,7 +7870,7 @@ def api_home_brief():
         facts.append(_rc_fact)
 
     # Trains: weekday commute window only — never on weekends
-    if time_mode == "morning_commute" and day_type not in ("weekend",):
+    if time_mode == "morning_commute" and day_type not in ("weekend",) and not bank_holiday_today:
         trains = ctx.get("trains", {})
         if trains.get("departures"):
             deps = trains["departures"]
@@ -8326,6 +8326,20 @@ def api_morning_brief():
             continue
 
         try:
+            # Check UK bank holidays — no train times on bank holidays
+            _mb_is_holiday = False
+            try:
+                _mb_bh_cached = _v2_brief_cache.get("uk_bank_holidays", {})
+                if _mb_bh_cached and _mb_bh_cached.get("dates"):
+                    _mb_bh_dates = _mb_bh_cached["dates"]
+                else:
+                    _mb_bh_r = requests.get("https://www.gov.uk/bank-holidays.json", timeout=5)
+                    _mb_bh_dates = {e["date"] for e in _mb_bh_r.json().get("england-and-wales", {}).get("events", [])}
+                    _v2_brief_cache["uk_bank_holidays"] = {"ts": time.time(), "dates": _mb_bh_dates}
+                _mb_is_holiday = today.isoformat() in _mb_bh_dates
+            except Exception:
+                pass
+
             # Parallel fetch — reuse V2 context engine functions
             with _mcf.ThreadPoolExecutor(max_workers=6) as _mpool:
                 _mfutures = {}
@@ -8333,12 +8347,12 @@ def api_morning_brief():
                     _mfutures["weather"] = _mpool.submit(_v2_fetch_weather, postcode)
                     _mfutures["fuel"]    = _mpool.submit(_v2_fetch_fuel, postcode)
                 _mfutures["school"]    = _mpool.submit(_v2_fetch_school, phone)
-                # Trains: weekdays only (Mon=0 … Fri=4)
+                # Trains: weekdays only, and not a bank holiday
                 _mfutures["trains"]    = _mpool.submit(
                     _v2_fetch_trains,
                     prefs.get("train_from", ""),
                     prefs.get("train_to", ""),
-                ) if prefs.get("train_from") and prefs.get("train_to") and wday < 5 else None
+                ) if prefs.get("train_from") and prefs.get("train_to") and wday < 5 and not _mb_is_holiday else None
                 _mfutures["deliveries"]  = _mpool.submit(_v2_fetch_deliveries, phone)
                 _mfutures["recurring"]   = _mpool.submit(_v2_fetch_recurring, phone, wday)
                 _mctx = {}
