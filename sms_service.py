@@ -7407,60 +7407,102 @@ def _parse_opening_hours(oh_str: str) -> bool | None:
 
 @app.route("/api/brief/nearby")
 def api_brief_nearby():
-    """Find cafes / restaurants near lat/lng via Overpass OSM, with open/closed status."""
+    """Find cafes / restaurants near lat/lng via Google Places (replaces Overpass which had
+    poor coverage in suburban UK areas)."""
     try:
         lat = float(request.args.get("lat", ""))
         lng = float(request.args.get("lng", ""))
     except (TypeError, ValueError):
         return jsonify({"error": "lat/lng required"}), 400
-    radius  = min(int(request.args.get("radius", 1500)), 4000)
-    vtype   = request.args.get("type", "cafe")
-    _amenity_map = {
-        "cafe":       ["cafe", "coffee_shop", "bakery"],
-        "food":       ["restaurant", "cafe", "fast_food"],
-        "pub":        ["pub", "bar"],
-        "all":        ["cafe", "coffee_shop", "restaurant", "fast_food", "pub", "bar"],
+
+    vtype  = request.args.get("type", "cafe")
+    radius = min(int(request.args.get("radius", 3000)), 8000)
+
+    if not _GOOGLE_PLACES_KEY:
+        return jsonify({"error": "Places not configured", "places": []}), 503
+
+    # Map brief types → Google Places params
+    _TYPE_MAP = {
+        "cafe":  {"keyword": "cafe coffee",     "type": "cafe",       "min_rating": 3.5, "min_reviews": 3},
+        "food":  {"keyword": "restaurant",       "type": "restaurant", "min_rating": 3.5, "min_reviews": 5},
+        "pub":   {"keyword": "pub bar",          "type": "bar",        "min_rating": 3.5, "min_reviews": 3},
+        "all":   {"keyword": "cafe restaurant pub", "type": None,      "min_rating": 3.8, "min_reviews": 5},
     }
-    amenities = _amenity_map.get(vtype, ["cafe", "coffee_shop"])
+    cfg = _TYPE_MAP.get(vtype, _TYPE_MAP["cafe"])
+
     try:
-        # nwr = node + way + relation — many cafes/restaurants are mapped as ways (buildings)
-        parts = "".join(
-            f'nwr(around:{radius},{lat},{lng})[amenity="{a}"][name];'
-            for a in amenities
+        params = {
+            "location": f"{lat},{lng}",
+            "radius":   radius,
+            "keyword":  cfg["keyword"],
+            "key":      _GOOGLE_PLACES_KEY,
+            "language": "en-GB",
+        }
+        if cfg.get("type"):
+            params["type"] = cfg["type"]
+        r = requests.get(
+            "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+            params=params, timeout=10,
         )
-        query = f"[out:json][timeout:10];({parts});out center 20;"
-        r = requests.post("https://overpass-api.de/api/interpreter",
-                          data={"data": query}, timeout=10)
-        places = []
-        seen_names = set()
-        for el in r.json().get("elements", []):
-            tags = el.get("tags", {})
-            name = tags.get("name", "").strip()
-            if not name or name.lower() in seen_names:
-                continue
-            seen_names.add(name.lower())
-            # nodes have lat/lon directly; ways/relations have a center object
-            elat = el.get("lat") or (el.get("center") or {}).get("lat")
-            elng = el.get("lon") or (el.get("center") or {}).get("lon")
-            dist_m = round(haversine_km(lat, lng, elat, elng) * 1000) if elat and elng else None
-            oh = tags.get("opening_hours") or tags.get("opening_hours:covid19") or ""
-            open_now = _parse_opening_hours(oh)
-            places.append({
-                "name":     name,
-                "type":     tags.get("amenity", ""),
-                "dist_m":   dist_m,
-                "open_now": open_now,
-                "hours":    oh or None,
-            })
-        # Sort: open first, then unknown, then closed — within each group by distance
-        def _sort_key(p):
-            on = p.get("open_now")
-            rank = 0 if on is True else 1 if on is None else 2
-            return (rank, p.get("dist_m") or 9999)
-        places.sort(key=_sort_key)
-        return jsonify({"places": places[:10]})
+        data = r.json()
     except Exception as e:
+        app.logger.warning(f"[brief/nearby] google error: {e}")
         return jsonify({"error": str(e), "places": []}), 200
+
+    _GTYPE_MAP = {
+        "restaurant":"restaurant","cafe":"cafe","bar":"bar",
+        "bakery":"cafe","meal_takeaway":"restaurant","fast_food":"restaurant",
+        "pub":"pub",
+    }
+    _EMOJI_MAP = {"restaurant":"🍽️","cafe":"☕","bar":"🍺","pub":"🍺"}
+
+    places = []
+    seen = set()
+    for p in (data.get("results") or []):
+        name   = (p.get("name") or "").strip()
+        rating = p.get("rating") or 0
+        nrev   = p.get("user_ratings_total") or 0
+        if not name or name.lower() in seen:
+            continue
+        if rating < cfg["min_rating"] or nrev < cfg["min_reviews"]:
+            continue
+        seen.add(name.lower())
+        types = p.get("types", [])
+        ptype = next((_GTYPE_MAP[t] for t in types if t in _GTYPE_MAP), "cafe")
+        geo   = p.get("geometry", {}).get("location", {})
+        plat, plng = geo.get("lat"), geo.get("lng")
+        dist_m = round(haversine_km(lat, lng, plat, plng) * 1000) if plat and plng else None
+        open_now = (p.get("opening_hours") or {}).get("open_now")
+        places.append({
+            "name":     name,
+            "type":     ptype,
+            "dist_m":   dist_m,
+            "open_now": open_now,
+            "address":  p.get("vicinity", ""),
+            "rating":   rating,
+        })
+
+    # Relax quality gate if empty
+    if not places:
+        for p in (data.get("results") or []):
+            name = (p.get("name") or "").strip()
+            if not name or name.lower() in seen:
+                continue
+            seen.add(name.lower())
+            geo  = p.get("geometry", {}).get("location", {})
+            plat, plng = geo.get("lat"), geo.get("lng")
+            dist_m = round(haversine_km(lat, lng, plat, plng) * 1000) if plat and plng else None
+            types  = p.get("types", [])
+            ptype  = next((_GTYPE_MAP[t] for t in types if t in _GTYPE_MAP), "cafe")
+            places.append({
+                "name": name, "type": ptype, "dist_m": dist_m,
+                "open_now": (p.get("opening_hours") or {}).get("open_now"),
+                "address": p.get("vicinity", ""), "rating": p.get("rating") or 0,
+            })
+
+    # Sort: open first, then by distance
+    places.sort(key=lambda x: (0 if x.get("open_now") else 1 if x.get("open_now") is None else 2, x.get("dist_m") or 9999))
+    return jsonify({"places": places[:10]})
 
 
 @app.route("/api/v2/personal-events", methods=["GET", "POST", "OPTIONS"])
