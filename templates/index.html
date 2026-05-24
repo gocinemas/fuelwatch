@@ -13906,6 +13906,8 @@ _bkBadge();
     var _trainsEvening = ctx && (ctx.trains_home || ctx.trains);
     var trains = wfh ? _trainsMorning : (_isMorning ? _trainsMorning : _trainsEvening);
     var _isWeekendMorning = _isWeekend && _isMorning;
+    var _bankHoliday = !!(ctx && ctx.bank_holiday_today);
+    var _noTrainsDay = _isWeekend || _bankHoliday;
 
     if (_isWeekendMorning) {
       // Weekend morning: show intent choice — don't dump trains by default
@@ -13945,7 +13947,7 @@ _bkBadge();
           + '<button onclick="_briefFindNearby(\'food\')" style="font-size:12px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:6px 10px;cursor:pointer">🍽️</button>'
           + '</div></div>';
       }
-    } else if (!_isOffHours && trains && trains.departures && trains.departures.length) {
+    } else if (!_isOffHours && !_noTrainsDay && trains && trains.departures && trains.departures.length) {
       var _nowMins = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
       var futureDeps = trains.departures.filter(function(d) {
         var t = (d.departs || d.time || "").trim();
