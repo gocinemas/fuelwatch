@@ -8229,6 +8229,20 @@ def api_home_brief():
             prompt_parts.append(f"It's {weather['temp']}°C and sunny in {loc_str}. Suggest one outdoor activity.")
 
     if time_mode not in ("night", "goodnight"):
+        # Extreme weather — tell Groq to flag it, not just mention the number
+        if weather:
+            _wx_temp = weather.get("temp", 15)
+            if _wx_temp >= 28:
+                prompt_parts.append(
+                    f"⚠️ It's {_wx_temp}°C today — very hot. "
+                    f"You MUST mention this clearly: sunscreen, take water, stay hydrated if heading out. "
+                    f"One practical sentence, not just the temperature number."
+                )
+            elif _wx_temp <= 1:
+                prompt_parts.append(
+                    f"⚠️ It's {_wx_temp}°C — freezing. Mention icy roads and wrapping up warm."
+                )
+
         if kids:
             _kids_note = f"Their kids: {' and '.join(kids)}."
             if day_type not in ("weekend",) and not bank_holiday_today:
