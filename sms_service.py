@@ -7982,7 +7982,15 @@ def api_home_brief():
         _cal_events = _cal_events + [{"title": _ra_title, "date": _today_s, "start": _ra.get("time",""), "personal": True}]
     if time_mode in ("morning_commute", "daytime"):
         _today_cal = [e for e in _cal_events if e.get("date") == _today_s]
-        for e in _today_cal[:3]:
+        # Drop events that have already passed (start time < now)
+        _now_hhmm = f"{hour:02d}:{now.minute:02d}"
+        _today_cal_future = []
+        for e in _today_cal:
+            _es = (e.get("start") or "").strip()
+            if _es and _es < _now_hhmm:
+                continue  # past — skip
+            _today_cal_future.append(e)
+        for e in _today_cal_future[:3]:
             _t = f" at {e['start']}" if e.get("start") else ""
             facts.append(f"📅 {e['title']}{_t} today")
     elif time_mode == "evening_leisure":
@@ -8146,17 +8154,38 @@ def api_home_brief():
         except Exception as be:
             app.logger.warning(f"[brief] groq night: {be}")
             brief_text = f"{_day_line if time_mode == 'night' else 'Rest well.'}{_bh} {_tomorrow}"
-    else:
+    elif time_mode == "daytime" and day_type == "weekend":
+        _wx_note = ""
+        if weather and weather.get("temp") is not None:
+            _wx_note = f"It's {weather['temp']}°C and {weather.get('desc','').lower()}. "
+        _venue_hint = f" They're at {loc_venue['name']}." if loc_venue.get("name") else ""
         prompt_parts.append(
             f"{_loc_preamble}"
-            f"Write a natural 2-sentence brief for a UK user. It's {dow} afternoon."
+            f"Write a warm, relaxed 2-sentence {dow} {tod} message for someone at home enjoying their weekend. "
+            f"The time is {hour}:{now.minute:02d}. {_wx_note}{_venue_hint}"
+            f"Do NOT invent places, events, tickets, activities, or things they might do. "
+            f"Only reference facts explicitly given below. "
+            f"Write about the user in second person ('you') — do NOT write as an assistant saying 'I can...'."
         )
-        if _sunny_outdoor:
-            prompt_parts.append(f"It's {weather['temp']}°C and sunny in {loc_str}. Suggest one specific outdoor activity for the area.")
+        if _sunny_outdoor and loc_str:
+            prompt_parts.append(f"It's sunny and warm in {loc_str} — you can suggest one outdoor plan.")
+    else:
+        _tod_label = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
+        prompt_parts.append(
+            f"{_loc_preamble}"
+            f"Write a natural 2-sentence brief for a UK user. It's {dow} {_tod_label}, {hour}:{now.minute:02d}. "
+            f"Do NOT invent events, places, or activities. Only reference facts given below. "
+            f"Write to the user directly ('you') — not as an assistant ('I can...')."
+        )
+        if _sunny_outdoor and loc_str:
+            prompt_parts.append(f"It's {weather['temp']}°C and sunny in {loc_str}. Suggest one outdoor activity.")
 
     if time_mode not in ("night", "goodnight"):
         if kids:
-            prompt_parts.append(f"Their kids: {' and '.join(kids)} — school day done.")
+            _kids_note = f"Their kids: {' and '.join(kids)}."
+            if day_type not in ("weekend",) and not bank_holiday_today:
+                _kids_note += " School day done."
+            prompt_parts.append(_kids_note)
         if saves_context:
             if time_mode == "evening_leisure":
                 prompt_parts.append(
@@ -8165,7 +8194,10 @@ def api_home_brief():
                     "Do NOT invent locations, geography, or activities."
                 )
             else:
-                prompt_parts.append(f"Recent saves: {'; '.join(saves_context)}.")
+                prompt_parts.append(
+                    f"Recent saves (reference only if genuinely relevant): {'; '.join(saves_context)}. "
+                    "Do NOT invent or embellish — only use the exact save title."
+                )
         if event_context:
             if time_mode == "evening_leisure":
                 prompt_parts.append(
@@ -8175,7 +8207,9 @@ def api_home_brief():
                     "Do NOT invent venue names, relationships, or descriptors not present in the clip."
                 )
             elif event_context:
-                prompt_parts.append(f"Saved events: {'; '.join(event_context)}.")
+                prompt_parts.append(
+                    f"Saved events (use exact title only, do not embellish or add details): {'; '.join(event_context)}."
+                )
         if facts:
             prompt_parts.append(f"Facts: {'; '.join(facts)}.")
         _location_rule = (
