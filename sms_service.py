@@ -8447,15 +8447,17 @@ def api_home_ask():
     messages = [{"role": "system",
                  "content": (
                      "You are Miru, a concise British personal assistant. "
-                     "Answer the user's question using ONLY the context provided. "
-                     "If the answer isn't in the context, say so briefly. "
+                     "Answer the user's question using ONLY the context facts provided below. "
+                     "IMPORTANT: Do NOT invent, guess, or assume any details not explicitly stated in the context. "
+                     "If the context does not contain the answer, reply with exactly: "
+                     "\"I don't have that in your brief — try asking about trains, weather, school, or fuel.\" "
                      "No bullet points. Under 40 words. Plain conversational English."
                  )}]
     for turn in thread[-2:]:  # last 2 exchanges
         if turn.get("q"): messages.append({"role": "user",      "content": turn["q"]})
         if turn.get("a"): messages.append({"role": "assistant",  "content": turn["a"]})
     messages.append({"role": "user",
-                     "content": f"Context: {ctx_text}\n\nQuestion: {question}"})
+                     "content": f"Context facts: {ctx_text}\n\nQuestion: {question}"})
 
     try:
         r = requests.post(
