@@ -15106,7 +15106,7 @@ def _wa_classify_intent(body: str) -> dict | None:
         return None
 
 
-def _wa_recipe_card(dish: str) -> str:
+def _wa_recipe_card(dish: str, from_number: str = "") -> str:
     """Generate a compact recipe/cocktail card via Groq for WhatsApp."""
     try:
         prompt = (
@@ -15129,7 +15129,10 @@ def _wa_recipe_card(dish: str) -> str:
             timeout=10,
         )
         text = r.json()["choices"][0]["message"]["content"].strip()
-        return text + "\n\n_Save a recipe? Send a link from BBC Food, Nigella, or AllRecipes._"
+        # Set pending intent so user can reply "save" to save it
+        if from_number:
+            _set_wa_pending_intent(from_number, {"type": "recipe_save", "title": dish, "text": text})
+        return text + "\n\n_Reply *save* to keep this, or send another recipe name._"
     except Exception:
         return f"Couldn't fetch the recipe for *{dish}* right now — try again in a moment."
 
@@ -15547,6 +15550,27 @@ def whatsapp_reply():
                 if _tr:
                     resp.message(_tr)
                     return str(resp)
+
+    # ── Recipe save — user replies "save" after receiving a recipe ───────────
+    _recipe_pending = _get_wa_pending_intent(from_number)
+    if _recipe_pending and _recipe_pending.get("type") == "recipe_save" and body_lower.strip() in ("save", "yes", "save it", "save recipe"):
+        _clear_wa_pending_intent(from_number)
+        _rtitle = _recipe_pending.get("title", "Recipe")
+        _rtext  = _recipe_pending.get("text", "")
+        try:
+            plain = from_number.replace("whatsapp:", "").strip()
+            lib._sb().table("wa_saves").insert({
+                "from_number": plain,
+                "url":         f"recipe:{_rtitle.lower().replace(' ', '_')}",
+                "title":       f"🍳 {_rtitle.title()}",
+                "summary":     _rtext,
+                "status":      "read",
+                "category":    "recipe",
+            }).execute()
+            resp.message(f"✅ *{_rtitle.title()}* saved to your Recipes in Clippings.\n\nView: miru.humanagency.co")
+        except Exception as _re:
+            resp.message("Couldn't save just now — try again.")
+        return str(resp)
 
     # ── URL save ──────────────────────────────────────────────────────────────
     url_m = re.search(r'https?://\S+', body)
@@ -16520,7 +16544,7 @@ def whatsapp_reply():
             return str(resp)
         elif _itype == "recipe":
             _dish = (_intent.get("dish") or body).strip()
-            resp.message(_wa_recipe_card(_dish))
+            resp.message(_wa_recipe_card(_dish, from_number))
             return str(resp)
         elif _itype == "worth_it":
             body = "WORTH IT"
@@ -16752,7 +16776,7 @@ def whatsapp_reply():
         if not _dish:
             _dish = body_lower.replace("recipe", "").strip()
         if _dish:
-            resp.message(_wa_recipe_card(_dish))
+            resp.message(_wa_recipe_card(_dish, from_number))
             return str(resp)
 
     # Decide: fuel query or product query
