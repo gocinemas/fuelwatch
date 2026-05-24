@@ -16100,13 +16100,20 @@ def whatsapp_reply():
     _QUESTION_OPENERS = {"what","why","how","when","where","who","which","tell","explain",
                          "is","are","do","does","will","would","could","should","can"}
     _bl_words_q = body_lower.split()
+    # Also catch "I'm heading to X", "I'm at X", "Just got to X" — context-sharing statements
+    _STATEMENT_OPENERS = {"i'm","im","i've","i've","i am","i have","just","we're","we are","heading"}
+    _looks_like_statement = (
+        len(_bl_words_q) >= 3
+        and _bl_words_q[0] in _STATEMENT_OPENERS
+        and not re.search(r'\b[A-Z]{1,2}\d{1,2}\s*\d[A-Z]{2}\b', body.upper())
+    )
     _looks_like_question = (
         "?" in body and len(_bl_words_q) >= 3
     ) or (
         _bl_words_q and _bl_words_q[0] in _QUESTION_OPENERS and len(_bl_words_q) >= 4
         and not re.search(r'\b[A-Z]{1,2}\d{1,2}\s*\d[A-Z]{2}\b', body.upper())  # no postcode
     )
-    if _looks_like_question:
+    if _looks_like_question or _looks_like_statement:
         _chat_reply = _wa_general_chat(from_number, body, _wa_thread)
         resp.message(_chat_reply)
         return str(resp)
