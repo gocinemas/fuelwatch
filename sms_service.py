@@ -14158,24 +14158,27 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
                 break
 
     if is_chain:
-        # Find nearest 3 branches via Google Places nearbysearch from home postcode
+        # Find nearest branches via nearbySearch ranked by distance (not prominence)
         gkey = os.environ.get("GOOGLE_PLACES_KEY") or os.environ.get("GOOGLE_API_KEY", "")
         home_geo = _geocode_place(origin + " UK")
         branches = []
         if home_geo and gkey:
             try:
+                import math as _math
                 r = requests.get(
-                    "https://maps.googleapis.com/maps/api/place/textsearch/json",
-                    params={"query": destination + " UK", "location": f"{home_geo[0]},{home_geo[1]}",
-                            "radius": 50000, "key": gkey, "region": "uk"},
+                    "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                    params={
+                        "location": f"{home_geo[0]},{home_geo[1]}",
+                        "keyword":  destination,
+                        "rankby":   "distance",   # nearest first, not most prominent
+                        "key":      gkey,
+                    },
                     timeout=8,
                 )
-                import math as _math
-                for p in r.json().get("results", [])[:4]:
+                for p in r.json().get("results", [])[:8]:  # take 8, filter to 3 nearest
                     loc = p.get("geometry", {}).get("location", {})
                     if not loc:
                         continue
-                    # Distance from home
                     dlat = loc["lat"] - home_geo[0]
                     dlng = loc["lng"] - home_geo[1]
                     dist_km = _math.sqrt(dlat**2 + dlng**2) * 111
