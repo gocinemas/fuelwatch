@@ -754,6 +754,8 @@ def whatsapp_search_and_format(postcode: str, fuel: str, radius_miles: float, re
 @app.route("/sms", methods=["POST"])
 def sms_reply():
     body = request.form.get("Body", "").strip()
+    # Normalise smart/curly quotes to ASCII so regex matching works on mobile input
+    body = body.replace("’", "'").replace("‘", "'").replace("“", '"').replace("”", '"')
     from_number = request.form.get("From", "unknown")
 
     print(f"SMS from {from_number}: {body}")
@@ -13966,11 +13968,12 @@ def _fetch_place_hours(destination: str) -> dict:
 def _wa_heading_to(body: str, from_number: str) -> str | None:
     """Detect 'I'm heading to X' and reply with live drive time + opening hours."""
     _HEADING_RE = re.compile(
-        r"^(?:i'?m\s+(?:heading|going|on\s+my\s+way|driving|heading\s+out)\s+to\s+|"
+        r"^(?:i[’']?m\s+(?:heading|going|on\s+my\s+way|driving|heading\s+out)\s+to\s+|"
         r"heading\s+to\s+|going\s+to\s+|on\s+my\s+way\s+to\s+)"
         r"(.{3,60})$", re.I
     )
-    m = _HEADING_RE.match(body.strip())
+    # Normalise smart apostrophes before matching
+    m = _HEADING_RE.match(body.strip().replace("’", "'"))
     if not m:
         return None
     destination = m.group(1).strip().rstrip(".")
