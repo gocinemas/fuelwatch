@@ -767,7 +767,7 @@
         <div style="font-size:10px;font-weight:800;color:var(--subtle);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">More</div>
         <div style="flex:1;height:1px;background:var(--border)"></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px">
         <button class="tool-icon-btn" onclick="_pillNav('saves')">
           <span class="tool-icon-emoji">📌</span>
           <span class="tool-icon-label">Clippings</span>
@@ -788,6 +788,13 @@
           <span class="tool-icon-emoji">🏫</span>
           <span class="tool-icon-label">School</span>
         </button>
+        <button class="tool-icon-btn" onclick="_moreOpen()">
+          <span class="tool-icon-emoji">⋯</span>
+          <span class="tool-icon-label">All tools</span>
+        </button>
+      </div>
+      <div style="text-align:center;margin-bottom:16px">
+        <button onclick="_moreOpen()" style="font-size:12px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 0">Tap ⋯ to explore everything Miru can do →</button>
       </div>
 
       <!-- WhatsApp CTA bottom slot — shown for returning users by _homeHeroInit() -->
@@ -1962,6 +1969,31 @@
         <button onclick="document.getElementById('brief-event-form').style.display='block';document.getElementById('brief-evt-title').focus()"
           style="font-size:12px;font-weight:700;color:var(--muted);background:none;border:1px solid var(--border);border-radius:99px;padding:5px 12px;cursor:pointer">＋ Add event</button>
       </div>
+
+      <!-- Explore Miru — module discovery row -->
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Explore Miru</div>
+          <button onclick="_moreOpen()" style="font-size:12px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;padding:0">See all →</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <button onclick="showScreen('report')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🔎</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Research</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Any area</div>
+          </button>
+          <button onclick="showScreen('library')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">📚</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Library</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Docs & notes</div>
+          </button>
+          <button onclick="showScreen('music')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🎵</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Music ID</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Name a song</div>
+          </button>
+        </div>
+      </div>
     </div><!-- /screen-brief -->
 
     <!-- ── ELECTIONS SCREEN ── -->
@@ -2953,6 +2985,61 @@
   function _pillNav(name) {
     if (name === 'saves') { showScreen('saves'); savesLoad(); return; }
     showScreen(name);
+  }
+
+  // ── All Features drawer ─────────────────────────────────────────────────
+  var _MORE_FEATURES = [
+    { ico:"⛽", label:"Fuel Prices",       desc:"Cheapest near you",           action: function(){ showScreen('fuel'); } },
+    { ico:"🚆", label:"Train Times",       desc:"Live departures & delays",     action: function(){ showScreen('trains'); } },
+    { ico:"🏡", label:"My Local",          desc:"Your area at a glance",        action: function(){ showScreen('myarea'); } },
+    { ico:"🔎", label:"Research an Area",  desc:"Crime · schools · flood risk", action: function(){ showScreen('report'); } },
+    { ico:"🗂️", label:"Life Admin",        desc:"MOT · bills · renewals",       action: function(){ showScreen('lifeadmin'); } },
+    { ico:"🏫", label:"School Comms",      desc:"Letters & events",             action: function(){ _schoolHomeOpen && _schoolHomeOpen(); _moreClose(); } },
+    { ico:"🏢", label:"Brand Intel",       desc:"Research any company",         action: function(){ showScreen('company'); } },
+    { ico:"📌", label:"Clippings",         desc:"Articles & places saved",      action: function(){ _pillNav('saves'); } },
+    { ico:"📚", label:"Library",           desc:"Docs & notes in one place",    action: function(){ showScreen('library'); } },
+    { ico:"🎵", label:"Music ID",          desc:"Name that song",               action: function(){ showScreen('music'); } },
+    { ico:"🗺️", label:"Nearby",           desc:"Food · drinks · parks",        action: function(){ _exploreHereOpen && _exploreHereOpen(); _moreClose(); } },
+    { ico:"📊", label:"Brief",             desc:"Your daily context brief",     action: function(){ showScreen('brief'); } },
+  ];
+
+  function _moreOpen() {
+    var overlay = document.getElementById('more-drawer-overlay');
+    var drawer  = document.getElementById('more-drawer');
+    var grid    = document.getElementById('more-drawer-grid');
+    if (!drawer) return;
+    // Render grid
+    grid.innerHTML = _MORE_FEATURES.map(function(f, i) {
+      return '<button onclick="_moreFeatureTap(' + i + ')" style="'
+        + 'background:var(--bg);border:1.5px solid var(--border);border-radius:16px;'
+        + 'padding:14px 12px;cursor:pointer;text-align:left;font-family:inherit;'
+        + 'display:flex;flex-direction:column;gap:4px;transition:background .1s">'
+        + '<span style="font-size:22px;line-height:1">' + f.ico + '</span>'
+        + '<span style="font-size:13px;font-weight:800;color:var(--text);line-height:1.2;margin-top:2px">' + f.label + '</span>'
+        + '<span style="font-size:11px;color:var(--muted);line-height:1.3">' + f.desc + '</span>'
+        + '</button>';
+    }).join('');
+    overlay.style.display = 'block';
+    drawer.style.display  = 'block';
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() { drawer.style.transform = 'translateY(0)'; });
+    });
+  }
+
+  function _moreClose() {
+    var overlay = document.getElementById('more-drawer-overlay');
+    var drawer  = document.getElementById('more-drawer');
+    if (!drawer) return;
+    drawer.style.transform = 'translateY(100%)';
+    setTimeout(function() {
+      overlay.style.display = 'none';
+      drawer.style.display  = 'none';
+    }, 300);
+  }
+
+  function _moreFeatureTap(i) {
+    _moreClose();
+    setTimeout(function() { _MORE_FEATURES[i].action(); }, 120);
   }
   const _INTEL_MODE = {{ 'true' if intel_mode else 'false' }};
   function showHome() {
@@ -13126,10 +13213,25 @@ _bkBadge();
       <button class="pi-btn"           id="pi-myarea" onclick="_pillNav('myarea')" ><span class="pi-ico">📍</span><span class="pi-lbl">My Area</span><span class="pi-dot"></span></button>
       <button class="pi-btn"           id="pi-intel"  onclick="_pillNav('company')"><span class="pi-ico">🔍</span><span class="pi-lbl">Intel</span><span class="pi-dot"></span></button>
       <button class="pi-btn"           id="pi-saves"  onclick="_pillNav('saves')"  ><span class="pi-ico">📌</span><span class="pi-lbl">Clippings</span><span class="pi-dot"></span></button>
+      <button class="pi-btn"           id="pi-more"   onclick="_moreOpen()"        ><span class="pi-ico">⋯</span><span class="pi-lbl">More</span><span class="pi-dot"></span></button>
     </div>
   </div>
 </div>
 <nav id="bottom-nav" style="display:none"></nav>
+
+<!-- ── All Features drawer ───────────────────────────────────────────────── -->
+<div id="more-drawer-overlay" onclick="_moreClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500"></div>
+<div id="more-drawer" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:501;background:var(--surface);border-radius:24px 24px 0 0;padding:0 0 calc(24px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,1,.5,1)">
+  <div style="padding:14px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+    <div>
+      <div style="width:36px;height:4px;border-radius:99px;background:var(--border);margin:0 auto 10px"></div>
+      <div style="font-size:16px;font-weight:800;color:var(--text)">All features</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">Tap any to open</div>
+    </div>
+    <button onclick="_moreClose()" style="background:var(--surface2);border:none;border-radius:99px;width:32px;height:32px;font-size:18px;cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+  </div>
+  <div id="more-drawer-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 16px 0"></div>
+</div>
 
 <!-- Featured media modal -->
 <div id="co-featured-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px">
@@ -13879,18 +13981,18 @@ _bkBadge();
     var trains = ctx && ctx.trains;
     if (trains && trains.departures && trains.departures.length) {
       var t = trains.departures[0];
-      chips.push("🚆 " + (t.departs || t.time || "") + "  " + (trains.from || "") + " → " + (trains.to || ""));
+      chips.push({ label: "🚆 " + (t.departs || t.time || "") + "  " + (trains.from || "") + " → " + (trains.to || ""), action: "showScreen('trains')" });
     }
     var fuel = ctx && ctx.fuel;
-    if (fuel && fuel.price) chips.push("⛽ " + fuel.name + "  " + fuel.price + "p");
+    if (fuel && fuel.price) chips.push({ label: "⛽ " + fuel.name + "  " + fuel.price + "p", action: "showScreen('fuel')" });
     var schoolRaw = ctx && ctx.school;
     var schoolEvs = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
     var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
-    if (schoolKids.length) chips.push("🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "));
-    else if (schoolEvs.length) chips.push("🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""));
+    if (schoolKids.length) chips.push({ label: "🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "), action: "_schoolHomeOpen && _schoolHomeOpen()" });
+    else if (schoolEvs.length) chips.push({ label: "🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""), action: "_schoolHomeOpen && _schoolHomeOpen()" });
     // Spend intentionally excluded from chips — it dominates visual hierarchy
     container.innerHTML = chips.map(function(c) {
-      return '<span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text)">' + c + '</span>';
+      return '<button onclick="' + c.action + '" style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + ' ›</button>';
     }).join("");
   }
 
