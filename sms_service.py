@@ -14047,6 +14047,14 @@ def _wa_heading_to(body: str, from_number: str) -> str | None:
     )
     m = _HEADING_RE.match(b)
 
+    # Pattern 1b: typo-tolerant — one garbled word then "to [chain]" e.g. "ging to ikea"
+    if not m and len(b.split()) <= 6:
+        _typo_m = re.match(r'^\S{1,8}\s+to\s+(.{3,50})$', b, re.I)
+        if _typo_m:
+            candidate = _typo_m.group(1).strip().lower()
+            if any(brand in candidate for brand in _CHAIN_BRANDS):
+                m = _typo_m
+
     # Pattern 2: "[chain] near me" — treat as travel intent
     _NEAR_ME_RE = re.compile(r"^(.{3,40}?)\s+near\s+me\s*$", re.I)
     if not m:
