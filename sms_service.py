@@ -8188,7 +8188,7 @@ def api_home_brief():
             + _interests_note
         )
         if _sunny_outdoor and loc_str:
-            prompt_parts.append(f"They're in {loc_str} — suggest one specific outdoor plan for this evening in the area.")
+            prompt_parts.append(f"They're in {loc_str} — it's a nice evening. Reference the weather naturally but do NOT invent specific outdoor plans, places, or activities.")
     elif time_mode in ("night", "goodnight"):
         # Build night/goodnight text directly — no Groq creative writing, no purple prose
         if is_long_weekend:
@@ -8270,7 +8270,7 @@ def api_home_brief():
             f"Write about the user in second person ('you') — do NOT write as an assistant saying 'I can...'."
         )
         if _sunny_outdoor and loc_str:
-            prompt_parts.append(f"It's sunny and warm in {loc_str} — you can suggest one outdoor plan.")
+            prompt_parts.append(f"It's sunny and warm in {loc_str} — mention this naturally. Do NOT invent outdoor plans or activities.")
     else:
         _tod_label = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
         prompt_parts.append(
@@ -8280,7 +8280,7 @@ def api_home_brief():
             f"Write to the user directly ('you') — not as an assistant ('I can...')."
         )
         if _sunny_outdoor and loc_str:
-            prompt_parts.append(f"It's {weather['temp']}°C and sunny in {loc_str}. Suggest one outdoor activity.")
+            prompt_parts.append(f"It's {weather['temp']}°C and sunny in {loc_str} — mention this naturally. Do NOT suggest or invent specific activities.")
 
     if time_mode not in ("night", "goodnight"):
         # Extreme weather — tell Groq to flag it, not just mention the number
@@ -8305,26 +8305,28 @@ def api_home_brief():
         if saves_context:
             if time_mode == "evening_leisure":
                 prompt_parts.append(
-                    f"Places they have saved (not yet visited today): {'; '.join(saves_context)}. "
-                    "Mention one only if it fits the evening — do NOT suggest places that appear in today's receipts. "
+                    f"Places they have saved: {'; '.join(saves_context)}. "
+                    "You may name one by its EXACT save title only — do NOT add product names, food items, descriptors, or any words not in the title itself. "
+                    "Do NOT suggest places that appear in today's receipts. "
                     "Do NOT invent locations, geography, or activities."
                 )
             else:
                 prompt_parts.append(
                     f"Recent saves (reference only if genuinely relevant): {'; '.join(saves_context)}. "
-                    "Do NOT invent or embellish — only use the exact save title."
+                    "Use the EXACT save title — do NOT add product names, descriptions, or any embellishment."
                 )
         if event_context:
             if time_mode == "evening_leisure":
                 prompt_parts.append(
-                    f"Saved event clips for tonight: {'; '.join(event_context)}. "
-                    "If relevant, mention the event by its exact name from the clip. "
-                    "NEVER add words like 'favourite', 'usual', 'regular', 'local' — only use what is explicitly in the clip data. "
-                    "Do NOT invent venue names, relationships, or descriptors not present in the clip."
+                    f"Saved event clips: {'; '.join(event_context)}. "
+                    "You may mention the event by its exact title. "
+                    "NEVER say they 'have tickets', 'are going', or 'have plans' — a save is not a confirmed booking. "
+                    "NEVER add words like 'favourite', 'usual', 'regular', 'local' — only use what is explicitly in the clip title. "
+                    "Do NOT invent venue names, times, or descriptors not present in the clip."
                 )
             elif event_context:
                 prompt_parts.append(
-                    f"Saved events (use exact title only, do not embellish or add details): {'; '.join(event_context)}."
+                    f"Saved events (use exact title only, no embellishment, do not infer attendance or tickets): {'; '.join(event_context)}."
                 )
         if facts:
             prompt_parts.append(f"Facts: {'; '.join(facts)}.")
@@ -8356,6 +8358,7 @@ def api_home_brief():
                 headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                          "Content-Type": "application/json"},
                 json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
+                      "temperature": 0.3,
                       "messages": [{"role": "user", "content": prompt}]},
                 timeout=10,
             )
