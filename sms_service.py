@@ -18016,7 +18016,18 @@ def api_wa_saves():
             rows = _run_select("id,title,url,summary,status,remind_day,created_at,image_url")
         except Exception as e:
             return jsonify({"error": str(e)}), 500
-    return jsonify({"saves": rows})
+
+    # Dedup: keep first occurrence (newest, already ordered desc) per normalised title
+    _seen_titles = set()
+    deduped = []
+    for r in (rows or []):
+        _key = (r.get("title") or "").strip().lower()
+        if _key and _key in _seen_titles:
+            continue
+        if _key:
+            _seen_titles.add(_key)
+        deduped.append(r)
+    return jsonify({"saves": deduped})
 
 
 @app.route("/api/wa-saves/update", methods=["POST"])
