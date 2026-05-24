@@ -14020,7 +14020,8 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
             lines.append("\n\U0001f550 Today: " + hours.get("today_hours", "") + status)
         _d = destination.lower()
         if any(w in _d for w in ["costco","tesco","sainsbury","asda","waitrose","aldi","lidl","morrisons","ikea","b&q","homebase","screwfix"]):
-            lines.append("\n⛽ *fuel near [postcode]* for petrol on the way home")
+            _pc_display = origin_postcode.upper().replace("  ", " ")
+            lines.append(f"\n⛽ *fuel near {_pc_display}* for petrol on the way home")
         return "\n".join(lines)
     except Exception:
         return f"Have a good trip to {destination}!"
@@ -16404,6 +16405,15 @@ def whatsapp_reply():
             _clear_wa_pending_intent(from_number)
         resp.message(_CLARIFY_MSG)
         return str(resp)
+
+    # ── "fuel near [me]" / "petrol near me" — use saved home postcode ──────────
+    if re.match(r'^(?:fuel|petrol|diesel)\s+near(?:\s+me)?\s*$', body_lower):
+        _home_pc2 = _get_wa_home_postcode(from_number)
+        if _home_pc2:
+            postcode = _home_pc2.replace(" ", "")
+        else:
+            resp.message("Just send your postcode to find fuel, e.g. *KT15 petrol*")
+            return str(resp)
 
     # Decide: fuel query or product query
     # Product query if: no postcode at all, OR postcode present but there's
