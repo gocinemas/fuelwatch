@@ -8452,6 +8452,22 @@ def api_home_brief():
     # Propagate into ctx so client _briefRenderContextCards can read ctx.bank_holiday_today
     ctx["bank_holiday_today"] = bank_holiday_today
 
+    # Active trip — drive reply sent recently, user hasn't left yet
+    _active_trip = None
+    if from_number:
+        try:
+            import json as _atj, datetime as _atdt
+            _tp = from_number.replace("whatsapp:", "").strip()
+            _at_row = lib._sb().table("ma_details").select("value").eq("device_id", _tp).eq("type", "active_trip").maybe_single().execute()
+            if _at_row.data:
+                _at = _at_row.data.get("value") or "{}"
+                _at = _atj.loads(_at) if isinstance(_at, str) else _at
+                _exp = _at.get("expires_at", "")
+                if _exp and _atdt.datetime.utcnow().isoformat() < _exp:
+                    _active_trip = _at
+        except Exception:
+            pass
+
     # Frequent places — confirmed regulars that match today's day of week
     _frequent_today = []
     if from_number:
@@ -8485,12 +8501,27 @@ def api_home_brief():
         "location_context": _loc_classification,
         "recent_capture":  recent_capture,
         "frequent_today":  _frequent_today,
+        "active_trip":     _active_trip,
     }
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
     if time_mode != "goodnight" and not has_location and not _has_recent:
         _v2_brief_cache[from_number or postcode] = {"ts": time.time(), "data": result}
     return jsonify(result)
+
+
+@app.route("/api/home/active-trip/dismiss", methods=["POST"])
+def api_active_trip_dismiss():
+    """Clear active trip card for this user."""
+    data = request.get_json(silent=True) or {}
+    phone = (data.get("phone") or request.args.get("phone", "")).strip()
+    if not phone:
+        return jsonify({"error": "phone required"}), 400
+    try:
+        lib._sb().table("ma_details").delete().eq("device_id", phone).eq("type", "active_trip").execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/home/brief/narrative", methods=["POST", "OPTIONS"])
@@ -14442,6 +14473,22 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
             _log_place_visit(from_number, destination, destination.lower())
             _set_wa_pending_intent(from_number, {"type": "regular_place", "name": destination})
             reply += "\n\n_Reply *regular* to save as a frequent place._"
+            # Store trip card so home brief can surface it while user is still preparing
+            import json as _tj, datetime as _tdt
+            _trip = {
+                "destination": destination.title(),
+                "lat": _lat2, "lng": _lng2,
+                "dur_min": dur_min,
+                "dist": dist,
+                "via": via,
+                "traffic": traffic,
+                "expires_at": (_tdt.datetime.utcnow() + _tdt.timedelta(hours=3)).isoformat(),
+            }
+            try:
+                _tp = from_number.replace("whatsapp:", "").strip()
+                lib._sb().table("ma_details").upsert({"device_id": _tp, "type": "active_trip", "value": _tj.dumps(_trip)}).execute()
+            except Exception:
+                pass
         return reply
     except Exception:
         return f"Have a good trip to {destination}!"

@@ -3053,6 +3053,20 @@
     const bb = document.getElementById("back-btn");
     if (bb) bb.classList.remove("visible");
   }
+  function _dismissActiveTrip() {
+    var ph = _miruPhone();
+    if (!ph) return;
+    fetch("/api/home/active-trip/dismiss", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({phone: ph.replace(/\D/g,"")})
+    });
+    // Remove card immediately without reload
+    if (_briefData) _briefData.active_trip = null;
+    var ctxCards = document.getElementById("brief-context-cards");
+    _briefRenderContextCards(_briefData && _briefData.context, ctxCards, _briefCurrentMode);
+  }
+
   function _wa_frequent_drive(name) {
     // Tap a frequent-place chip → prefill WhatsApp with a drive query
     var ph = _miruPhone();
@@ -14092,6 +14106,27 @@ _bkBadge();
     var _isFriday    = _dow === 5;
     var _isWeekend   = _dow === 0 || _dow === 6;
     var _isPreWeekend = _isFriday && _isNight; // Friday night — weekend planning mode
+
+    // ── Active trip card — drive reply sent, user hasn't left yet ───────────
+    var _at = _briefData && _briefData.active_trip;
+    if (_at && _at.destination) {
+      var _atEmoji = _at.traffic === "heavy" ? "🔴" : _at.traffic === "moderate" ? "🟡" : "🟢";
+      var _atVia   = _at.via ? " via " + _at.via : "";
+      var _atMaps  = "https://maps.google.com/maps?q=" + _at.lat + "," + _at.lng;
+      var _atWaze  = "https://waze.com/ul?ll=" + _at.lat + "," + _at.lng + "&navigate=yes";
+      html += '<div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1.5px solid #93c5fd;border-radius:16px;padding:14px 16px">'
+        + '<div style="font-size:10px;font-weight:800;color:#1d4ed8;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">🚗 Upcoming trip</div>'
+        + '<div style="font-size:17px;font-weight:900;color:#1c1917;letter-spacing:-0.3px">' + _at.destination + '</div>'
+        + '<div style="font-size:13px;color:#374151;margin-top:4px">' + _atEmoji + ' About ' + _at.dur_min + ' min · ' + _at.dist + _atVia + '</div>'
+        + (_at.traffic === "heavy" ? '<div style="font-size:11px;font-weight:700;color:#dc2626;margin-top:4px">Heavy traffic — allow extra time</div>'
+           : _at.traffic === "moderate" ? '<div style="font-size:11px;font-weight:600;color:#d97706;margin-top:4px">Some traffic on the way</div>' : '')
+        + '<div style="margin-top:10px;display:flex;gap:8px;align-items:center">'
+        + '<a href="' + _atMaps + '" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:#fff;background:#2563eb;border-radius:8px;padding:5px 12px;text-decoration:none">🗺️ Maps</a>'
+        + '<a href="' + _atWaze + '" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:#fff;background:#33ccff;border-radius:8px;padding:5px 12px;text-decoration:none">🚦 Waze</a>'
+        + '<button onclick="_dismissActiveTrip()" style="margin-left:auto;font-size:11px;color:#6b7280;background:none;border:none;cursor:pointer;padding:4px 8px">✕ Done</button>'
+        + '</div>'
+        + '</div>';
+    }
 
     // ── Recent capture card — photo taken in last 20 mins ─────────────────────
     var _rc = (_briefData && _briefData.recent_capture) || {};
