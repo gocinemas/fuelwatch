@@ -548,7 +548,7 @@ def _get_frequent_places(from_number: str) -> dict:
     return {"places": []}
 
 
-def _log_place_visit(from_number: str, name: str, query: str):
+def _log_place_visit(from_number: str, name: str, query: str, lat: float = None, lng: float = None):
     """Increment visit count for a destination; does not confirm it as a regular."""
     import datetime as _dt
     plain = from_number.replace("whatsapp:", "").strip()
@@ -568,9 +568,14 @@ def _log_place_visit(from_number: str, name: str, query: str):
                 if dow not in days:
                     days.append(dow)
                 p["days"] = days
+                if lat is not None and lng is not None:
+                    p["lat"] = lat; p["lng"] = lng
                 break
         else:
-            places.append({"name": name, "query": query_l, "count": 1, "confirmed": False, "last_visit": today, "days": [dow]})
+            entry = {"name": name, "query": query_l, "count": 1, "confirmed": False, "last_visit": today, "days": [dow]}
+            if lat is not None and lng is not None:
+                entry["lat"] = lat; entry["lng"] = lng
+            places.append(entry)
         rec["places"] = places
         lib._sb().table("ma_details").upsert({"device_id": plain, "type": "frequent_places", "data": rec, "label": "frequent_places"}).execute()
     except Exception as _e:
@@ -8479,7 +8484,10 @@ def api_home_brief():
             _fp_rec = _get_frequent_places(from_number)
             for _fp in _fp_rec.get("places", []):
                 if _fp.get("confirmed") and _today_dow in _fp.get("days", []):
-                    _frequent_today.append({"name": _fp.get("name", "").title()})
+                    _ft_entry = {"name": _fp.get("name", "").title()}
+                    if _fp.get("lat") and _fp.get("lng"):
+                        _ft_entry["lat"] = _fp["lat"]; _ft_entry["lng"] = _fp["lng"]
+                    _frequent_today.append(_ft_entry)
         except Exception:
             pass
 
@@ -14472,7 +14480,7 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
         )
         reply = "\n".join(lines)
         if from_number:
-            _log_place_visit(from_number, destination, destination.lower())
+            _log_place_visit(from_number, destination, destination.lower(), lat=_lat2, lng=_lng2)
             _set_wa_pending_intent(from_number, {"type": "regular_place", "name": destination})
             reply += "\n\n_Reply *regular* to save as a frequent place._"
             # Store trip card so home brief can surface it while user is still preparing

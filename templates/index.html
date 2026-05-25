@@ -3067,7 +3067,7 @@
     _briefRenderContextCards(_briefData && _briefData.context, ctxCards, _briefCurrentMode);
   }
 
-  function _wa_frequent_drive(name) {
+  function _wa_frequent_drive(name, lat, lng) {
     // Tap a frequent-place chip → prefill WhatsApp with a drive query
     var ph = _miruPhone();
     var msg = encodeURIComponent("I'm heading to " + name);
@@ -14055,8 +14055,13 @@ _bkBadge();
       // Frequent places — confirmed regulars that match today (weekend / bank holiday chips)
       if (_noCommute && frequentToday && frequentToday.length) {
         frequentToday.forEach(function(fp) {
-          var _ico = /costco|ikea|b&q|asda|tesco|sainsbury|waitrose|aldi|lidl|morrisons|halfords|currys/i.test(fp.name) ? "🛒" : /temple|mandir|mosque|church|gurdwara/i.test(fp.name) ? "🛕" : /stadium|wembley|arena|ground/i.test(fp.name) ? "🏟️" : "📍";
-          chips.push({ label: _ico + " " + fp.name + " run?", action: "_wa_frequent_drive('" + fp.name.replace(/'/g,"") + "')" });
+          var _isRetail   = /costco|ikea|b&q|asda|tesco|sainsbury|waitrose|aldi|lidl|morrisons|halfords|currys|primark|argos|boots|next/i.test(fp.name);
+          var _isReligious= /temple|mandir|mosque|church|gurdwara|gurudwara|masjid/i.test(fp.name);
+          var _isVenue    = /stadium|wembley|arena|ground|theatre|theater|cinema/i.test(fp.name);
+          var _ico    = _isRetail ? "🛒" : _isReligious ? "🛕" : _isVenue ? "🏟️" : "📍";
+          var _suffix = _isRetail ? " run?" : "?";
+          var _coords = (fp.lat && fp.lng) ? ("," + fp.lat + "," + fp.lng) : "";
+          chips.push({ label: _ico + " " + fp.name + _suffix, action: "_wa_frequent_drive('" + fp.name.replace(/'/g,"") + "'" + _coords + ")" });
         });
       }
       var schoolRaw  = ctx && ctx.school;
