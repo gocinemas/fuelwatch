@@ -14484,7 +14484,7 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
                 "dist": dist,
                 "via": via,
                 "traffic": traffic,
-                "expires_at": (_tdt.datetime.utcnow() + _tdt.timedelta(hours=3)).isoformat(),
+                "expires_at": (_tdt.datetime.utcnow() + _tdt.timedelta(hours=2)).isoformat(),
             }
             try:
                 _tp = from_number.replace("whatsapp:", "").strip()
