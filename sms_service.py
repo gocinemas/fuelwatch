@@ -8550,10 +8550,10 @@ def api_admin_test_active_trip():
         plain = from_number.replace("whatsapp:", "").strip()
     import datetime as _tadt
     _trip = {
-        "destination": "Costco Lakeside",
-        "lat": 51.4905, "lng": 0.2793,
-        "dur_min": 27, "dist": "11.3 mi", "via": "M25",
-        "traffic": "moderate",
+        "destination": "Costco Farnborough",
+        "lat": 51.2855, "lng": -0.7515,
+        "dur_min": 19, "dist": "8.2 mi", "via": "A331",
+        "traffic": "clear",
         "expires_at": (_tadt.datetime.utcnow() + _tadt.timedelta(hours=7)).isoformat(),
     }
     try:
