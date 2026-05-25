@@ -534,6 +534,75 @@ def _clear_wa_pending_intent(from_number: str):
         pass
 
 
+# ── Frequent places — learn regular destinations from drive queries ──────────
+
+def _get_frequent_places(from_number: str) -> dict:
+    plain = from_number.replace("whatsapp:", "").strip()
+    try:
+        row = lib._sb().table("ma_details").select("value").eq("device_id", plain).eq("type", "frequent_places").maybe_single().execute()
+        if row.data:
+            v = row.data.get("value") or "{}"
+            import json as _j
+            return _j.loads(v) if isinstance(v, str) else (v or {})
+    except Exception:
+        pass
+    return {"places": []}
+
+
+def _log_place_visit(from_number: str, name: str, query: str):
+    """Increment visit count for a destination; does not confirm it as a regular."""
+    import json as _j, datetime as _dt
+    plain = from_number.replace("whatsapp:", "").strip()
+    if not plain:
+        return
+    try:
+        rec    = _get_frequent_places(from_number)
+        places = rec.get("places", [])
+        today  = _dt.date.today().isoformat()
+        dow    = _dt.datetime.now().weekday()
+        name_l = name.lower(); query_l = query.lower()
+        for p in places:
+            if p.get("query", "").lower() == query_l or p.get("name", "").lower() == name_l:
+                p["count"]      = p.get("count", 0) + 1
+                p["last_visit"] = today
+                days = p.get("days", [])
+                if dow not in days:
+                    days.append(dow)
+                p["days"] = days
+                break
+        else:
+            places.append({"name": name, "query": query_l, "count": 1, "confirmed": False, "last_visit": today, "days": [dow]})
+        rec["places"] = places
+        lib._sb().table("ma_details").upsert({"device_id": plain, "type": "frequent_places", "value": _j.dumps(rec)}).execute()
+    except Exception as _e:
+        app.logger.warning(f"[frequent_places] log error: {_e}")
+
+
+def _confirm_frequent_place(from_number: str, name: str):
+    """Mark a destination as a confirmed regular."""
+    import json as _j, datetime as _dt
+    plain = from_number.replace("whatsapp:", "").strip()
+    if not plain:
+        return
+    try:
+        rec    = _get_frequent_places(from_number)
+        places = rec.get("places", [])
+        name_l = name.lower()
+        matched = False
+        for p in places:
+            if p.get("name", "").lower() == name_l or p.get("query", "").lower() == name_l:
+                p["confirmed"] = True
+                matched = True
+                break
+        if not matched:
+            today = _dt.date.today().isoformat()
+            places.append({"name": name, "query": name_l, "count": 1, "confirmed": True, "last_visit": today, "days": [_dt.datetime.now().weekday()]})
+        rec["places"] = places
+        lib._sb().table("ma_details").upsert({"device_id": plain, "type": "frequent_places", "value": _j.dumps(rec)}).execute()
+    except Exception as _e:
+        app.logger.warning(f"[frequent_places] confirm error: {_e}")
+
+
 def _nearest_tube_station(lat: float, lon: float, radius_m: int = 2000):
     """Return (naptan_id, display_name, distance_m) for nearest tube station, or (None,None,None)."""
     try:
@@ -8383,6 +8452,19 @@ def api_home_brief():
     # Propagate into ctx so client _briefRenderContextCards can read ctx.bank_holiday_today
     ctx["bank_holiday_today"] = bank_holiday_today
 
+    # Frequent places — confirmed regulars that match today's day of week
+    _frequent_today = []
+    if from_number:
+        try:
+            import datetime as _fdt
+            _today_dow = _fdt.datetime.now().weekday()
+            _fp_rec = _get_frequent_places(from_number)
+            for _fp in _fp_rec.get("places", []):
+                if _fp.get("confirmed") and _today_dow in _fp.get("days", []):
+                    _frequent_today.append({"name": _fp.get("name", "").title()})
+        except Exception:
+            pass
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
@@ -8402,6 +8484,7 @@ def api_home_brief():
         "location":        {"area": loc_str, "venue": loc_venue} if loc_str else {},
         "location_context": _loc_classification,
         "recent_capture":  recent_capture,
+        "frequent_today":  _frequent_today,
     }
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
@@ -14354,7 +14437,12 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
             f"\n🗺️ https://maps.google.com/maps?q={_lat2},{_lng2}"
             f"\n🚦 https://waze.com/ul?ll={_lat2},{_lng2}&navigate=yes"
         )
-        return "\n".join(lines)
+        reply = "\n".join(lines)
+        if from_number:
+            _log_place_visit(from_number, destination, destination.lower())
+            _set_wa_pending_intent(from_number, {"type": "regular_place", "name": destination})
+            reply += "\n\n_Reply *regular* to save as a frequent place._"
+        return reply
     except Exception:
         return f"Have a good trip to {destination}!"
 
@@ -15616,6 +15704,15 @@ def whatsapp_reply():
             resp.message(f"✅ *{_rtitle.title()}* saved to your Recipes in Clippings.\n\nView: miru.humanagency.co")
         except Exception as _re:
             resp.message("Couldn't save just now — try again.")
+        return str(resp)
+
+    # ── Regular place — user confirms a frequent destination ─────────────────
+    _reg_pending = _get_wa_pending_intent(from_number)
+    if _reg_pending and _reg_pending.get("type") == "regular_place" and body_lower.strip() in ("regular", "yes", "save", "add regular", "save regular"):
+        _clear_wa_pending_intent(from_number)
+        _reg_name = _reg_pending.get("name", "")
+        _confirm_frequent_place(from_number, _reg_name)
+        resp.message(f"✅ *{_reg_name.title()}* saved as a regular. I'll mention it in your brief when it makes sense.")
         return str(resp)
 
     # ── URL save ──────────────────────────────────────────────────────────────

@@ -3053,6 +3053,17 @@
     const bb = document.getElementById("back-btn");
     if (bb) bb.classList.remove("visible");
   }
+  function _wa_frequent_drive(name) {
+    // Tap a frequent-place chip → prefill WhatsApp with a drive query
+    var ph = _miruPhone();
+    var msg = encodeURIComponent("I'm heading to " + name);
+    if (ph) {
+      window.open("https://wa.me/" + ph.replace(/\D/g, "") + "?text=" + msg, "_blank");
+    } else {
+      window.open("https://wa.me/?text=" + msg, "_blank");
+    }
+  }
+
   function showScreen(name) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     document.getElementById("screen-" + name).classList.add("active");
@@ -13890,7 +13901,7 @@ _bkBadge();
           if (calNudge) calNudge.style.display = d.calendar_connected ? "none" : "flex";
 
           // Chips
-          _briefRenderChips(d.context, chips, d.evening_saves || []);
+          _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
 
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
@@ -13977,7 +13988,7 @@ _bkBadge();
     );
   }
 
-  function _briefRenderChips(ctx, container, eveningSaves) {
+  function _briefRenderChips(ctx, container, eveningSaves, frequentToday) {
     if (!container) return;
     var _h = new Date().getHours();
     var _isNightChip = _h >= 21 || _h < 5;
@@ -14027,6 +14038,13 @@ _bkBadge();
       }
       if (fuel && fuel.price)
         chips.push({ label: "⛽ " + fuel.name + "  " + fuel.price + "p", action: "showScreen('fuel')" });
+      // Frequent places — confirmed regulars that match today (weekend / bank holiday chips)
+      if (_noCommute && frequentToday && frequentToday.length) {
+        frequentToday.forEach(function(fp) {
+          var _ico = /costco|ikea|b&q|asda|tesco|sainsbury|waitrose|aldi|lidl|morrisons|halfords|currys/i.test(fp.name) ? "🛒" : /temple|mandir|mosque|church|gurdwara/i.test(fp.name) ? "🛕" : /stadium|wembley|arena|ground/i.test(fp.name) ? "🏟️" : "📍";
+          chips.push({ label: _ico + " " + fp.name + " run?", action: "_wa_frequent_drive('" + fp.name.replace(/'/g,"") + "')" });
+        });
+      }
       var schoolRaw  = ctx && ctx.school;
       var schoolEvs  = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
       var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
