@@ -8106,16 +8106,12 @@ def api_home_brief():
     if bin_day:
         bt = (bin_day.get("bin_type") or "").capitalize()
         _bn = bin_day.get("day_name", "")
-        if bin_day.get("tomorrow"):
-            # Collection tomorrow — remind in the evening so they put bins out tonight
-            if time_mode == "evening_leisure":
-                facts.append(f"🗑️ Put {bt.lower() or 'the'} bins out tonight — collection tomorrow ({_bn})")
-            elif time_mode == "morning_commute":
-                facts.append(f"🗑️ Bin collection tomorrow ({_bn}) — put them out this evening")
-        elif bin_day.get("tonight"):
-            # Collection is TODAY — only worth mentioning very early morning (bins might not be out yet)
-            if hour < 7:
-                facts.append(f"🗑️ Bin collection today — put them out before you leave")
+        if bin_day.get("tomorrow") and time_mode == "evening_leisure":
+            # Evening before collection — the only useful moment to remind
+            facts.append(f"🗑️ Put {bt.lower() or 'the'} bins out tonight — collection tomorrow ({_bn})")
+        elif bin_day.get("tonight") and hour < 7:
+            # Collection is TODAY but before 7am — last-chance nudge
+            facts.append(f"🗑️ Bin collection today — put them out before you leave")
 
     # Build time-aware Groq prompt
     prompt_parts = []
