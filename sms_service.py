@@ -8671,7 +8671,7 @@ def api_home_ask():
 
     at = ctx.get("active_trip") or {}
     if at.get("destination"):
-        ctx_lines.append(f"Active trip: heading to {at['destination']} — {at.get('dur_min','')} min, traffic {at.get('traffic','')}")
+        ctx_lines.append(f"Planned trip: user said they were heading to {at['destination']} (about {at.get('dur_min','')} min away). Whether they actually went is unknown.")
 
     ctx_text = "; ".join(ctx_lines) if ctx_lines else "No specific context available."
 
