@@ -8534,51 +8534,6 @@ def api_active_trip_dismiss():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/admin/check-active-trip")
-def api_admin_check_active_trip():
-    """Debug: show what the brief sees for active_trip."""
-    phone = request.args.get("phone", "").strip().replace(" ", "+")
-    if phone and not phone.startswith("+"):
-        phone = "+" + phone
-    token = request.args.get("token", "").strip()
-    from_number = _v2_resolve(token) if token else ("whatsapp:" + phone if phone else "")
-    plain = from_number.replace("whatsapp:", "").strip()
-    try:
-        rows = lib._sb().table("ma_details").select("*").eq("device_id", plain).eq("type", "active_trip").execute()
-        return jsonify({"device_id_used": plain, "from_number": from_number, "rows": rows.data, "count": len(rows.data or [])})
-    except Exception as e:
-        return jsonify({"error": str(e), "device_id_used": plain})
-
-
-@app.route("/api/admin/test-active-trip")
-def api_admin_test_active_trip():
-    """Insert a test active_trip for the token holder. 7-hour expiry for testing."""
-    token = request.args.get("token", "").strip()
-    # phone param accepts number directly — handles URL-encoded + (%2B) or raw
-    phone_param = request.args.get("phone", "").strip().replace(" ", "+")
-    if phone_param and not phone_param.startswith("+"):
-        phone_param = "+" + phone_param
-    plain = phone_param or ""
-    if not plain:
-        from_number = _v2_resolve(token) if token else ""
-        if not from_number:
-            return jsonify({"error": "pass ?phone=447XXXXXXXXX"}), 400
-        plain = from_number.replace("whatsapp:", "").strip()
-    import datetime as _tadt
-    _trip = {
-        "destination": "Costco Farnborough",
-        "lat": 51.2855, "lng": -0.7515,
-        "dur_min": 19, "dist": "8.2 mi", "via": "A331",
-        "traffic": "clear",
-        "expires_at": (_tadt.datetime.utcnow() + _tadt.timedelta(hours=7)).isoformat(),
-    }
-    try:
-        lib._sb().table("ma_details").delete().eq("device_id", plain).eq("type", "active_trip").execute()
-        lib._sb().table("ma_details").insert({"device_id": plain, "type": "active_trip", "data": _trip, "label": "active_trip"}).execute()
-        return jsonify({"ok": True, "trip": _trip, "device_id": plain})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 
 @app.route("/api/home/brief/narrative", methods=["POST", "OPTIONS"])
 def api_home_brief_narrative():
