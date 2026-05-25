@@ -8380,6 +8380,9 @@ def api_home_brief():
         })
     _evening_chip_saves = _evening_chip_saves[:4]
 
+    # Propagate into ctx so client _briefRenderContextCards can read ctx.bank_holiday_today
+    ctx["bank_holiday_today"] = bank_holiday_today
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
