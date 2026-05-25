@@ -7869,9 +7869,9 @@ def api_home_brief():
         try:
             import datetime as _atdt2
             _atp = from_number.replace("whatsapp:", "").strip()
-            _at_row2 = lib._sb().table("ma_details").select("data").eq("device_id", _atp).eq("type", "active_trip").maybe_single().execute()
-            if _at_row2.data:
-                _at2 = _at_row2.data.get("data") or {}
+            _at_rows2 = lib._sb().table("ma_details").select("data").eq("device_id", _atp).eq("type", "active_trip").order("id", desc=True).limit(1).execute()
+            if _at_rows2.data:
+                _at2 = (_at_rows2.data[0].get("data") or {})
                 _exp2 = _at2.get("expires_at", "")
                 if _exp2 and _atdt2.datetime.utcnow().isoformat() < _exp2:
                     _active_trip_early = _at2
@@ -8573,7 +8573,8 @@ def api_admin_test_active_trip():
         "expires_at": (_tadt.datetime.utcnow() + _tadt.timedelta(hours=7)).isoformat(),
     }
     try:
-        lib._sb().table("ma_details").upsert({"device_id": plain, "type": "active_trip", "data": _trip, "label": "active_trip"}).execute()
+        lib._sb().table("ma_details").delete().eq("device_id", plain).eq("type", "active_trip").execute()
+        lib._sb().table("ma_details").insert({"device_id": plain, "type": "active_trip", "data": _trip, "label": "active_trip"}).execute()
         return jsonify({"ok": True, "trip": _trip, "device_id": plain})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -14556,7 +14557,8 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
             }
             try:
                 _tp = from_number.replace("whatsapp:", "").strip()
-                lib._sb().table("ma_details").upsert({"device_id": _tp, "type": "active_trip", "data": _trip, "label": "active_trip"}).execute()
+                lib._sb().table("ma_details").delete().eq("device_id", _tp).eq("type", "active_trip").execute()
+                lib._sb().table("ma_details").insert({"device_id": _tp, "type": "active_trip", "data": _trip, "label": "active_trip"}).execute()
             except Exception as _te:
                 app.logger.warning(f"[active_trip] store error: {_te}")
         return reply
