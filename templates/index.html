@@ -14281,10 +14281,20 @@ _bkBadge();
 
     // Bin day pill — show if tonight or tomorrow morning
     var binDay = ctx && ctx.bin_day;
-    if (binDay && (binDay.tonight || (binDay.tomorrow && _isMorning))) {
+    // Show bin reminder:
+    //  - "tomorrow" + evening → put out tonight
+    //  - "tomorrow" + morning → reminder to put out this evening
+    //  - "tonight" (collection TODAY) → only before 7am, otherwise bins are already out
+    var _showBin = binDay && (
+      (binDay.tomorrow) ||
+      (binDay.tonight && _hour < 7)
+    );
+    if (_showBin) {
       var _binLabel = (binDay.bin_type || "").charAt(0).toUpperCase() + (binDay.bin_type || "").slice(1);
       var _binIcon  = binDay.bin_type === "recycling" ? "♻️" : "🗑️";
-      var _binNote  = binDay.tonight ? "out tonight" : "out tonight — collection tomorrow";
+      var _binNote  = binDay.tonight
+        ? "out now — collection today"
+        : (_isEvening ? "out tonight — collection tomorrow" : "out this evening — collection tomorrow");
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:8px">'
         + '<span style="font-size:15px">' + _binIcon + '</span>'
         + '<span style="font-size:13px;font-weight:600;color:var(--text)">' + _binLabel + ' bins ' + _binNote + '</span>'
