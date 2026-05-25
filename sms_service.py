@@ -8534,6 +8534,22 @@ def api_active_trip_dismiss():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/admin/check-active-trip")
+def api_admin_check_active_trip():
+    """Debug: show what the brief sees for active_trip."""
+    phone = request.args.get("phone", "").strip().replace(" ", "+")
+    if phone and not phone.startswith("+"):
+        phone = "+" + phone
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token) if token else ("whatsapp:" + phone if phone else "")
+    plain = from_number.replace("whatsapp:", "").strip()
+    try:
+        row = lib._sb().table("ma_details").select("*").eq("device_id", plain).eq("type", "active_trip").maybe_single().execute()
+        return jsonify({"device_id_used": plain, "from_number": from_number, "row": row.data})
+    except Exception as e:
+        return jsonify({"error": str(e), "device_id_used": plain})
+
+
 @app.route("/api/admin/test-active-trip")
 def api_admin_test_active_trip():
     """Insert a test active_trip for the token holder. 7-hour expiry for testing."""
