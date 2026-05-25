@@ -8544,8 +8544,8 @@ def api_admin_check_active_trip():
     from_number = _v2_resolve(token) if token else ("whatsapp:" + phone if phone else "")
     plain = from_number.replace("whatsapp:", "").strip()
     try:
-        row = lib._sb().table("ma_details").select("*").eq("device_id", plain).eq("type", "active_trip").maybe_single().execute()
-        return jsonify({"device_id_used": plain, "from_number": from_number, "row": row.data})
+        rows = lib._sb().table("ma_details").select("*").eq("device_id", plain).eq("type", "active_trip").execute()
+        return jsonify({"device_id_used": plain, "from_number": from_number, "rows": rows.data, "count": len(rows.data or [])})
     except Exception as e:
         return jsonify({"error": str(e), "device_id_used": plain})
 
@@ -12792,9 +12792,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             # Auto-dismiss active_trip if receipt merchant matches destination
             try:
                 _plain = fn.replace("whatsapp:", "").strip()
-                _at_chk = lib._sb().table("ma_details").select("data").eq("device_id", _plain).eq("type", "active_trip").maybe_single().execute()
+                _at_chk = lib._sb().table("ma_details").select("data").eq("device_id", _plain).eq("type", "active_trip").order("id", desc=True).limit(1).execute()
                 if _at_chk.data:
-                    _at_dest = (_at_chk.data.get("data") or {}).get("destination", "").lower()
+                    _at_dest = (_at_chk.data[0].get("data") or {}).get("destination", "").lower()
                     _merch_l = _r_merchant.lower()
                     if _at_dest and (_merch_l in _at_dest or _at_dest.split()[0] in _merch_l):
                         lib._sb().table("ma_details").delete().eq("device_id", _plain).eq("type", "active_trip").execute()
