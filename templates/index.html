@@ -14602,6 +14602,7 @@ _bkBadge();
         if (bc.recurring)  ctx.recurring = bc.recurring;
         if (bc.deliveries) ctx.deliveries= (bc.deliveries||[]).slice(0,2);
       }
+      if (_briefData && _briefData.active_trip) ctx.active_trip = _briefData.active_trip;
     } catch(_) {}
 
     var answer = "";

@@ -8669,6 +8669,10 @@ def api_home_ask():
     for dlv in (ctx.get("deliveries") or [])[:2]:
         ctx_lines.append(f"Delivery: {dlv.get('carrier','')} — {dlv.get('status','')}")
 
+    at = ctx.get("active_trip") or {}
+    if at.get("destination"):
+        ctx_lines.append(f"Active trip: heading to {at['destination']} — {at.get('dur_min','')} min, traffic {at.get('traffic','')}")
+
     ctx_text = "; ".join(ctx_lines) if ctx_lines else "No specific context available."
 
     # Detect suggestion-type questions — these can draw on weather/time context
