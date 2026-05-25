@@ -12743,6 +12743,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 msg += f"🛒 {len(_r_items)} items scanned\n"
             msg += "\nAsk me: _how much at Tesco this month?_ or _spending this week?_"
             _wa_send_proactive(fn, msg)
+            # Auto-dismiss active_trip if receipt merchant matches destination
+            try:
+                _plain = fn.replace("whatsapp:", "").strip()
+                _at_chk = lib._sb().table("ma_details").select("data").eq("device_id", _plain).eq("type", "active_trip").maybe_single().execute()
+                if _at_chk.data:
+                    _at_dest = (_at_chk.data.get("data") or {}).get("destination", "").lower()
+                    _merch_l = _r_merchant.lower()
+                    if _at_dest and (_merch_l in _at_dest or _at_dest.split()[0] in _merch_l):
+                        lib._sb().table("ma_details").delete().eq("device_id", _plain).eq("type", "active_trip").execute()
+            except Exception:
+                pass
             return
         if product_items or bullets or venue_info or brand_intel or menu_text:
             msg = f"{title}\n"
