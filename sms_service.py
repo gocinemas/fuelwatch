@@ -8538,11 +8538,17 @@ def api_active_trip_dismiss():
 def api_admin_test_active_trip():
     """Insert a test active_trip for the token holder. 7-hour expiry for testing."""
     token = request.args.get("token", "").strip()
-    from_number = _v2_resolve(token) if token else ""
-    if not from_number:
-        return jsonify({"error": "valid token required"}), 400
+    # phone param accepts number directly — handles URL-encoded + (%2B) or raw
+    phone_param = request.args.get("phone", "").strip().replace(" ", "+")
+    if phone_param and not phone_param.startswith("+"):
+        phone_param = "+" + phone_param
+    plain = phone_param or ""
+    if not plain:
+        from_number = _v2_resolve(token) if token else ""
+        if not from_number:
+            return jsonify({"error": "pass ?phone=447XXXXXXXXX"}), 400
+        plain = from_number.replace("whatsapp:", "").strip()
     import datetime as _tadt
-    plain = from_number.replace("whatsapp:", "").strip()
     _trip = {
         "destination": "Costco Lakeside",
         "lat": 51.4905, "lng": 0.2793,
