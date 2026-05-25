@@ -8534,6 +8534,29 @@ def api_active_trip_dismiss():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/admin/test-active-trip")
+def api_admin_test_active_trip():
+    """Insert a test active_trip for the token holder. 7-hour expiry for testing."""
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token) if token else ""
+    if not from_number:
+        return jsonify({"error": "valid token required"}), 400
+    import datetime as _tadt
+    plain = from_number.replace("whatsapp:", "").strip()
+    _trip = {
+        "destination": "Costco Lakeside",
+        "lat": 51.4905, "lng": 0.2793,
+        "dur_min": 27, "dist": "11.3 mi", "via": "M25",
+        "traffic": "moderate",
+        "expires_at": (_tadt.datetime.utcnow() + _tadt.timedelta(hours=7)).isoformat(),
+    }
+    try:
+        lib._sb().table("ma_details").upsert({"device_id": plain, "type": "active_trip", "data": _trip, "label": "active_trip"}).execute()
+        return jsonify({"ok": True, "trip": _trip, "device_id": plain})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/home/brief/narrative", methods=["POST", "OPTIONS"])
 def api_home_brief_narrative():
     """Re-generate the brief narrative for a given mode (wfh / office) + facts list."""
