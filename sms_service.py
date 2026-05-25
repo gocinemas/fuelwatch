@@ -539,11 +539,10 @@ def _clear_wa_pending_intent(from_number: str):
 def _get_frequent_places(from_number: str) -> dict:
     plain = from_number.replace("whatsapp:", "").strip()
     try:
-        row = lib._sb().table("ma_details").select("value").eq("device_id", plain).eq("type", "frequent_places").maybe_single().execute()
+        row = lib._sb().table("ma_details").select("data").eq("device_id", plain).eq("type", "frequent_places").maybe_single().execute()
         if row.data:
-            v = row.data.get("value") or "{}"
-            import json as _j
-            return _j.loads(v) if isinstance(v, str) else (v or {})
+            d = row.data.get("data") or {}
+            return d if isinstance(d, dict) else {}
     except Exception:
         pass
     return {"places": []}
@@ -551,7 +550,7 @@ def _get_frequent_places(from_number: str) -> dict:
 
 def _log_place_visit(from_number: str, name: str, query: str):
     """Increment visit count for a destination; does not confirm it as a regular."""
-    import json as _j, datetime as _dt
+    import datetime as _dt
     plain = from_number.replace("whatsapp:", "").strip()
     if not plain:
         return
@@ -573,14 +572,14 @@ def _log_place_visit(from_number: str, name: str, query: str):
         else:
             places.append({"name": name, "query": query_l, "count": 1, "confirmed": False, "last_visit": today, "days": [dow]})
         rec["places"] = places
-        lib._sb().table("ma_details").upsert({"device_id": plain, "type": "frequent_places", "value": _j.dumps(rec)}).execute()
+        lib._sb().table("ma_details").upsert({"device_id": plain, "type": "frequent_places", "data": rec, "label": "frequent_places"}).execute()
     except Exception as _e:
         app.logger.warning(f"[frequent_places] log error: {_e}")
 
 
 def _confirm_frequent_place(from_number: str, name: str):
     """Mark a destination as a confirmed regular."""
-    import json as _j, datetime as _dt
+    import datetime as _dt
     plain = from_number.replace("whatsapp:", "").strip()
     if not plain:
         return
@@ -598,7 +597,7 @@ def _confirm_frequent_place(from_number: str, name: str):
             today = _dt.date.today().isoformat()
             places.append({"name": name, "query": name_l, "count": 1, "confirmed": True, "last_visit": today, "days": [_dt.datetime.now().weekday()]})
         rec["places"] = places
-        lib._sb().table("ma_details").upsert({"device_id": plain, "type": "frequent_places", "value": _j.dumps(rec)}).execute()
+        lib._sb().table("ma_details").upsert({"device_id": plain, "type": "frequent_places", "data": rec, "label": "frequent_places"}).execute()
     except Exception as _e:
         app.logger.warning(f"[frequent_places] confirm error: {_e}")
 
@@ -7863,12 +7862,11 @@ def api_home_brief():
     _active_trip_early = None
     if from_number:
         try:
-            import json as _atj2, datetime as _atdt2
+            import datetime as _atdt2
             _atp = from_number.replace("whatsapp:", "").strip()
-            _at_row2 = lib._sb().table("ma_details").select("value").eq("device_id", _atp).eq("type", "active_trip").maybe_single().execute()
+            _at_row2 = lib._sb().table("ma_details").select("data").eq("device_id", _atp).eq("type", "active_trip").maybe_single().execute()
             if _at_row2.data:
-                _at2 = _at_row2.data.get("value") or "{}"
-                _at2 = _atj2.loads(_at2) if isinstance(_at2, str) else _at2
+                _at2 = _at_row2.data.get("data") or {}
                 _exp2 = _at2.get("expires_at", "")
                 if _exp2 and _atdt2.datetime.utcnow().isoformat() < _exp2:
                     _active_trip_early = _at2
@@ -14478,7 +14476,7 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
             _set_wa_pending_intent(from_number, {"type": "regular_place", "name": destination})
             reply += "\n\n_Reply *regular* to save as a frequent place._"
             # Store trip card so home brief can surface it while user is still preparing
-            import json as _tj, datetime as _tdt
+            import datetime as _tdt
             _trip = {
                 "destination": destination.title(),
                 "lat": _lat2, "lng": _lng2,
@@ -14490,9 +14488,9 @@ def _heading_to_drive_reply(destination: str, origin_postcode: str, specific_des
             }
             try:
                 _tp = from_number.replace("whatsapp:", "").strip()
-                lib._sb().table("ma_details").upsert({"device_id": _tp, "type": "active_trip", "value": _tj.dumps(_trip)}).execute()
-            except Exception:
-                pass
+                lib._sb().table("ma_details").upsert({"device_id": _tp, "type": "active_trip", "data": _trip, "label": "active_trip"}).execute()
+            except Exception as _te:
+                app.logger.warning(f"[active_trip] store error: {_te}")
         return reply
     except Exception:
         return f"Have a good trip to {destination}!"
