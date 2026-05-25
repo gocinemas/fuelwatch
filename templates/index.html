@@ -14013,9 +14013,17 @@ _bkBadge();
         secondaryChips.push({ label: "⛽ " + fuel.price + "p nearby", action: "showScreen('fuel')" });
     } else {
       // ── Day/evening mode: live data chips ───────────────────────────────
-      if (trains && trains.departures && trains.departures.length) {
+      var _dow2      = new Date().getDay();
+      var _isWeekend2  = _dow2 === 0 || _dow2 === 6;
+      var _bankHol2    = !!(ctx && ctx.bank_holiday_today);
+      var _noCommute   = _isWeekend2 || _bankHol2;
+      // Only show commute trains on working days — never on weekends or bank holidays
+      if (!_noCommute && trains && trains.departures && trains.departures.length) {
         var t = trains.departures[0];
         chips.push({ label: "🚆 " + (t.departs || t.time || "") + "  " + (trains.from || "") + " → " + (trains.to || ""), action: "showScreen('trains')" });
+      } else if (_noCommute && trains && trains.departures && trains.departures.length) {
+        // Weekend/bank holiday — train times still accessible but as a quiet reference
+        secondaryChips.push({ label: "🚆 Train times", action: "showScreen('trains')" });
       }
       if (fuel && fuel.price)
         chips.push({ label: "⛽ " + fuel.name + "  " + fuel.price + "p", action: "showScreen('fuel')" });
