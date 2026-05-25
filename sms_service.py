@@ -7859,12 +7859,29 @@ def api_home_brief():
         except Exception as ex:
             app.logger.warning(f"[brief] trains to-home: {ex}")
 
+    # Active trip — always fetch fresh so it appears immediately after a WhatsApp drive reply
+    _active_trip_early = None
+    if from_number:
+        try:
+            import json as _atj2, datetime as _atdt2
+            _atp = from_number.replace("whatsapp:", "").strip()
+            _at_row2 = lib._sb().table("ma_details").select("value").eq("device_id", _atp).eq("type", "active_trip").maybe_single().execute()
+            if _at_row2.data:
+                _at2 = _at_row2.data.get("value") or "{}"
+                _at2 = _atj2.loads(_at2) if isinstance(_at2, str) else _at2
+                _exp2 = _at2.get("expires_at", "")
+                if _exp2 and _atdt2.datetime.utcnow().isoformat() < _exp2:
+                    _active_trip_early = _at2
+        except Exception as _ate:
+            app.logger.warning(f"[brief] active_trip fetch: {_ate}")
+
     if cache_hit:
         result = dict(cached["data"])
         ctx = dict(result.get("context", {}))
         ctx["trains"]      = fresh_trains
         ctx["trains_home"] = fresh_trains_home
-        result["context"] = ctx
+        result["context"]      = ctx
+        result["active_trip"]  = _active_trip_early
         return jsonify(result)
 
     ctx: dict = {}
@@ -8452,21 +8469,8 @@ def api_home_brief():
     # Propagate into ctx so client _briefRenderContextCards can read ctx.bank_holiday_today
     ctx["bank_holiday_today"] = bank_holiday_today
 
-    # Active trip — drive reply sent recently, user hasn't left yet
-    _active_trip = None
-    if from_number:
-        try:
-            import json as _atj, datetime as _atdt
-            _tp = from_number.replace("whatsapp:", "").strip()
-            _at_row = lib._sb().table("ma_details").select("value").eq("device_id", _tp).eq("type", "active_trip").maybe_single().execute()
-            if _at_row.data:
-                _at = _at_row.data.get("value") or "{}"
-                _at = _atj.loads(_at) if isinstance(_at, str) else _at
-                _exp = _at.get("expires_at", "")
-                if _exp and _atdt.datetime.utcnow().isoformat() < _exp:
-                    _active_trip = _at
-        except Exception:
-            pass
+    # Active trip — already fetched above for cache-hit injection; reuse here for cache-miss path
+    _active_trip = _active_trip_early
 
     # Frequent places — confirmed regulars that match today's day of week
     _frequent_today = []
