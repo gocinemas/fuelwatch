@@ -6557,11 +6557,14 @@ def _v2_fetch_school(from_number: str) -> dict:
         recent   = (today - timedelta(days=14)).isoformat()
         today_s  = today.isoformat()
         tomorrow_s = (today + timedelta(days=1)).isoformat()
+        # Compute holiday status early — needed even if no school profiles registered
+        holiday_status = _surrey_holiday_status(today)
+        holiday_status["inset_days"] = []
         profiles = lib._sb().table("school_profiles") \
                        .select("id,child_name,school_name,address") \
                        .eq("from_number", from_number).eq("active", True).execute().data or []
         if not profiles:
-            return {"schools": [], "upcoming": [], "recent": [], "holiday_status": None}
+            return {"schools": [], "upcoming": [], "recent": [], "events": [], "holiday_status": holiday_status}
         pids = [p["id"] for p in profiles]
         # Upcoming events — next 7 days
         upcoming = lib._sb().table("school_events").select(
@@ -6587,7 +6590,6 @@ def _v2_fetch_school(from_number: str) -> dict:
             {"child_name": p.get("child_name",""), "school_name": p.get("school_name",""), "address": p.get("address","")}
             for p in profiles
         ]
-        holiday_status = _surrey_holiday_status(today)
         holiday_status["inset_days"] = inset_rows
         return {"schools": schools, "upcoming": upcoming, "recent": recent_rows,
                 "events": upcoming, "holiday_status": holiday_status}
@@ -8286,15 +8288,26 @@ def api_home_brief():
             _ra_loc   = _ra.get("location","")
             _ra_title = f"{_ra_who + ' — ' if _ra_who else ''}{_ra_what}{' @ ' + _ra_loc if _ra_loc else ''}"
             _cal_events = _cal_events + [{"title": _ra_title, "date": _today_s, "start": _ra.get("time",""), "personal": True}]
+    # Calendar → Groq facts: personal events only (recurring activities, manually added events)
+    # GCal work meetings (catch-ups, standups, etc.) stay in the calendar card — not the narrative
+    _WORK_MEETING_WORDS = ("catch up", "catchup", "catch-up", "standup", "stand-up", "stand up",
+                           "sync", "1:1", "1on1", "check-in", "check in", "meeting", "review session",
+                           "morning catch", "afternoon catch", "weekly", "daily")
+    def _is_work_meeting(title):
+        tl = (title or "").lower()
+        return any(w in tl for w in _WORK_MEETING_WORDS)
+
     if time_mode in ("morning_commute", "daytime"):
         _today_cal = [e for e in _cal_events if e.get("date") == _today_s]
-        # Drop events that have already passed (start time < now)
         _now_hhmm = f"{hour:02d}:{now.minute:02d}"
         _today_cal_future = []
         for e in _today_cal:
             _es = (e.get("start") or "").strip()
             if _es and _es < _now_hhmm:
                 continue  # past — skip
+            # Skip GCal work meetings from narrative facts
+            if not e.get("personal") and _is_work_meeting(e.get("title","")):
+                continue
             _today_cal_future.append(e)
         for e in _today_cal_future[:3]:
             _t = f" at {e['start']}" if e.get("start") else ""
@@ -8303,6 +8316,8 @@ def api_home_brief():
         _tom_cal = [e for e in _cal_events if e.get("date") == _tomorrow_s]
         _today_cal2 = [e for e in _cal_events if e.get("date") == _today_s]
         for e in (_today_cal2 + _tom_cal)[:3]:
+            if not e.get("personal") and _is_work_meeting(e.get("title","")):
+                continue
             _lbl = "Today" if e.get("date") == _today_s else "Tomorrow"
             _t = f" at {e['start']}" if e.get("start") else ""
             facts.append(f"📅 {_lbl}: {e['title']}{_t}")
