@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MiruPM — Programme Intelligence</title>
-  <meta name="description" content="Paste any brief. Get a full programme pack — BOSCARD, vision, risks, actions, Jira structure — in seconds.">
+  <meta name="description" content="Paste any brief. Get vision, BOSCARD, requirements, use cases, risks, plan and Jira structure in seconds.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -17,22 +17,62 @@
     * { box-sizing:border-box; margin:0; padding:0; }
     body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
 
+    /* ── Project panel ── */
+    #proj-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.3);
+      z-index:150; display:none;
+    }
+    #proj-overlay.open { display:block; }
+    #proj-panel {
+      position:fixed; top:0; left:0; bottom:0;
+      width:300px; max-width:85vw;
+      background:var(--surface); border-right:1px solid var(--border);
+      z-index:200; transform:translateX(-100%);
+      transition:transform .25s ease; overflow-y:auto;
+      display:flex; flex-direction:column;
+    }
+    #proj-panel.open { transform:translateX(0); }
+    .panel-header {
+      padding:16px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      position:sticky; top:0; background:var(--surface); z-index:1;
+    }
+    .panel-title { font-size:14px; font-weight:800; color:var(--accent); }
+    .panel-close {
+      width:28px; height:28px; border-radius:6px;
+      border:1px solid var(--border); background:var(--surface2);
+      cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;
+    }
+    .proj-item {
+      padding:12px 16px; border-bottom:1px solid var(--border);
+      cursor:pointer; transition:background .1s;
+    }
+    .proj-item:hover { background:var(--surface2); }
+    .proj-item-name { font-size:13px; font-weight:700; color:var(--text); }
+    .proj-item-meta { font-size:11px; color:var(--muted); margin-top:3px; display:flex; gap:6px; align-items:center; }
+
     /* ── Top bar ── */
     #topbar {
       position:sticky; top:0; z-index:100;
       background:var(--surface); border-bottom:1px solid var(--border);
-      padding:0 20px; height:52px;
-      display:flex; align-items:center; gap:12px;
+      padding:0 16px; height:52px;
+      display:flex; align-items:center; gap:10px;
     }
     .brand { font-size:16px; font-weight:900; letter-spacing:-0.5px; color:var(--accent); }
     .brand span { color:var(--muted); font-weight:500; }
     .topbar-right { margin-left:auto; display:flex; gap:8px; align-items:center; }
     .icon-btn {
-      width:34px; height:34px; border-radius:8px;
+      height:32px; border-radius:8px; padding:0 10px;
       border:1px solid var(--border); background:var(--surface2);
-      cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:13px; font-weight:600; font-family:inherit;
+      display:flex; align-items:center; gap:5px; color:var(--text);
     }
     .icon-btn:hover { background:var(--border); }
+    .proj-count {
+      font-size:10px; font-weight:800; color:#fff;
+      background:var(--accent); border-radius:99px;
+      padding:1px 5px; min-width:16px; text-align:center;
+    }
 
     /* ── Main ── */
     #main { max-width:720px; margin:0 auto; padding:32px 16px 80px; }
@@ -42,7 +82,6 @@
     .hero-icon { font-size:36px; margin-bottom:12px; }
     .hero h1 { font-size:24px; font-weight:900; letter-spacing:-0.5px; margin-bottom:8px; }
     .hero p { font-size:14px; color:var(--muted); line-height:1.6; max-width:500px; margin:0 auto; }
-
     .intake-box {
       background:var(--surface); border:1.5px solid var(--border);
       border-radius:20px; padding:20px; margin-bottom:20px;
@@ -52,8 +91,7 @@
       border:1.5px solid var(--border); border-radius:14px;
       padding:14px 16px; font-size:14px; font-family:inherit;
       background:var(--bg); color:var(--text);
-      resize:vertical; line-height:1.6; transition:border-color .15s;
-      margin-bottom:12px;
+      resize:vertical; line-height:1.6; transition:border-color .15s; margin-bottom:12px;
     }
     .intake-textarea:focus { outline:none; border-color:var(--accent); }
     .intake-textarea::placeholder { color:var(--muted); }
@@ -67,7 +105,7 @@
 
     /* ── Loading ── */
     #loading { display:none; text-align:center; padding:40px 20px; }
-    .loading-steps { display:flex; flex-direction:column; gap:10px; max-width:320px; margin:20px auto 0; text-align:left; }
+    .loading-steps { display:flex; flex-direction:column; gap:10px; max-width:340px; margin:20px auto 0; text-align:left; }
     .ls-row { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); opacity:.35; transition:opacity .4s; }
     .ls-row.active { opacity:1; color:var(--text); }
     .ls-row.done { opacity:.6; }
@@ -97,13 +135,12 @@
     .proj-type { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
     .proj-name { font-size:22px; font-weight:900; letter-spacing:-0.5px; }
 
-    /* Output sections */
+    /* Sections */
     .section { margin-bottom:14px; }
     .section-header {
       display:flex; align-items:center; justify-content:space-between;
       background:var(--surface); border:1px solid var(--border);
-      border-radius:14px; padding:13px 16px; cursor:pointer;
-      transition:border-color .15s;
+      border-radius:14px; padding:13px 16px; cursor:pointer; transition:border-color .15s;
     }
     .section-header:hover { border-color:var(--accent); }
     .section-header.open { border-radius:14px 14px 0 0; border-bottom-color:transparent; }
@@ -127,21 +164,62 @@
     .section-body table { width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
     .section-body th { background:var(--surface2); padding:7px 10px; text-align:left; font-weight:700; border:1px solid var(--border); }
     .section-body td { padding:6px 10px; border:1px solid var(--border); color:var(--muted); }
-
     .copy-btn {
       font-size:11px; font-weight:700; color:var(--muted);
       background:var(--surface2); border:1px solid var(--border);
-      border-radius:6px; padding:4px 10px; cursor:pointer;
-      flex-shrink:0; transition:all .15s;
+      border-radius:6px; padding:4px 10px; cursor:pointer; flex-shrink:0; transition:all .15s;
     }
     .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
 
-    /* Vision highlight */
+    /* Vision */
     .vision-text {
       font-size:15px; font-weight:500; color:var(--text);
       line-height:1.7; font-style:italic;
       border-left:3px solid var(--accent); padding-left:14px;
     }
+
+    /* Requirements */
+    .req-label {
+      font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px;
+    }
+    .req-label.func { color:var(--accent); }
+    .req-label.nfr  { color:var(--muted); margin-top:14px; }
+
+    /* Use Cases */
+    .use-case {
+      display:flex; align-items:flex-start; gap:10px;
+      padding:10px 0; border-bottom:1px solid var(--border);
+    }
+    .use-case:last-child { border-bottom:none; padding-bottom:0; }
+    .uc-id {
+      font-size:10px; font-weight:800; color:#fff;
+      background:var(--accent); border-radius:4px;
+      padding:2px 6px; flex-shrink:0; margin-top:2px;
+    }
+    .uc-details { flex:1; }
+    .uc-actor  { font-size:12px; font-weight:700; color:var(--text); margin-bottom:2px; }
+    .uc-action { font-size:13px; color:var(--muted); }
+    .uc-outcome { font-size:12px; color:var(--green); margin-top:3px; }
+
+    /* Delivery Plan */
+    .plan-phase { padding:12px 0; border-bottom:1px solid var(--border); }
+    .plan-phase:last-child { border-bottom:none; }
+    .plan-phase-header {
+      display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;
+    }
+    .plan-phase-left { display:flex; align-items:center; gap:8px; }
+    .plan-phase-num {
+      width:22px; height:22px; border-radius:50%; background:var(--accent-light);
+      color:var(--accent); font-size:11px; font-weight:800;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .plan-phase-name { font-size:13px; font-weight:700; color:var(--text); }
+    .plan-phase-dur {
+      font-size:11px; font-weight:700; color:var(--muted);
+      background:var(--surface2); border-radius:99px; padding:2px 8px;
+    }
+    .plan-activities { padding-left:16px; margin-top:4px; }
+    .plan-activities li { font-size:12px; color:var(--muted); margin-bottom:3px; }
 
     /* Actions */
     .action-list { display:flex; flex-direction:column; gap:8px; }
@@ -151,13 +229,13 @@
     }
     .action-num {
       width:22px; height:22px; border-radius:50%; background:var(--accent);
-      color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center;
-      justify-content:center; flex-shrink:0; margin-top:1px;
+      color:#fff; font-size:11px; font-weight:800;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;
     }
     .action-text { font-size:13px; color:var(--text); line-height:1.5; }
 
-    /* Risk table */
-    .risk-row-red td:first-child { color:var(--red); font-weight:600; }
+    /* Risks */
+    .risk-row-red   td:first-child { color:var(--red);   font-weight:600; }
     .risk-row-amber td:first-child { color:var(--amber); font-weight:600; }
 
     /* Jira */
@@ -171,7 +249,56 @@
       padding:6px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--muted);
     }
     .jira-story:last-child { border-bottom:none; }
-    .jira-story-tag { font-size:10px; font-weight:700; color:#fff; background:#94a3b8; border-radius:4px; padding:1px 6px; flex-shrink:0; margin-top:2px; }
+    .jira-story-tag {
+      font-size:10px; font-weight:700; color:#fff; background:#94a3b8;
+      border-radius:4px; padding:1px 6px; flex-shrink:0; margin-top:2px;
+    }
+
+    /* Save bar */
+    #save-bar {
+      background:var(--surface); border:1.5px solid var(--border);
+      border-radius:16px; padding:16px; margin-top:8px; display:none;
+    }
+    .save-label { font-size:13px; font-weight:700; color:var(--text); margin-bottom:10px; }
+    .save-row { display:flex; gap:8px; }
+    .save-input {
+      flex:1; padding:10px 12px; border:1.5px solid var(--border);
+      border-radius:10px; font-size:13px; font-family:inherit;
+      background:var(--bg); color:var(--text); transition:border-color .15s;
+    }
+    .save-input:focus { outline:none; border-color:var(--accent); }
+    .save-btn {
+      padding:10px 16px; border-radius:10px; border:none;
+      background:var(--accent); color:#fff; font-size:13px; font-weight:700;
+      cursor:pointer; font-family:inherit; white-space:nowrap;
+    }
+    .save-btn:disabled { opacity:.5; }
+
+    /* Status buttons */
+    .status-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .status-btn {
+      padding:5px 12px; border-radius:99px; border:1.5px solid var(--border);
+      background:var(--surface2); color:var(--muted); font-size:12px; font-weight:700;
+      cursor:pointer; font-family:inherit; transition:all .15s;
+    }
+    .status-btn.s-drafting.active  { border-color:#fcd34d; color:#92400e; background:#fffbeb; }
+    .status-btn.s-active.active    { border-color:#93c5fd; color:#1d4ed8; background:#eff6ff; }
+    .status-btn.s-delivered.active { border-color:#86efac; color:#166534; background:#f0fdf4; }
+
+    /* Connect bar */
+    #connect-bar {
+      display:none; align-items:center; gap:10px; flex-wrap:wrap;
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:12px; padding:12px 16px; margin-top:8px;
+    }
+    .connect-label { font-size:13px; font-weight:700; color:var(--text); }
+    .connect-btn {
+      padding:7px 14px; border-radius:8px; border:1.5px solid var(--border);
+      background:var(--surface); color:var(--text); font-size:12px; font-weight:700;
+      cursor:pointer; font-family:inherit; transition:all .15s;
+    }
+    .connect-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .connect-soon { font-size:11px; color:var(--muted); margin-left:auto; }
 
     /* Bottom actions */
     .output-actions { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
@@ -195,10 +322,29 @@
 </head>
 <body>
 
+<!-- Project panel overlay -->
+<div id="proj-overlay" onclick="_closePanel()"></div>
+<div id="proj-panel">
+  <div class="panel-header">
+    <div class="panel-title">My Projects</div>
+    <button class="panel-close" onclick="_closePanel()">✕</button>
+  </div>
+  <div id="proj-list" style="flex:1">
+    <div style="font-size:13px;color:var(--muted);padding:20px 16px">Loading…</div>
+  </div>
+  <div style="padding:12px 16px;border-top:1px solid var(--border)">
+    <button onclick="_closePanel();_reset();" style="width:100%;padding:10px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ New project</button>
+  </div>
+</div>
+
+<!-- Topbar -->
 <div id="topbar">
-  <div class="brand">Miru<span>PM</span></div>
+  <button class="icon-btn" onclick="_togglePanel()" id="projects-btn">
+    ☰ Projects <span class="proj-count" id="proj-count" style="display:none">0</span>
+  </button>
+  <div class="brand" style="margin-left:auto;margin-right:auto">Miru<span>PM</span></div>
   <div class="topbar-right">
-    <button class="icon-btn" title="Start over" onclick="_reset()">↺</button>
+    <button class="icon-btn" onclick="_reset()">+ New</button>
   </div>
 </div>
 
@@ -208,10 +354,9 @@
   <div id="intake-view">
     <div class="hero">
       <div class="hero-icon">💡</div>
-      <h1>Paste your brief. Get your programme pack.</h1>
-      <p>Describe the problem or initiative in plain English. The AI reads it and produces your full pack — BOSCARD, vision, risks, actions and Jira structure — in one shot.</p>
+      <h1>Paste your brief. Get your full pack.</h1>
+      <p>Describe the problem or initiative in plain English. Vision, BOSCARD, requirements, use cases, risks, delivery plan and Jira structure — in one shot.</p>
     </div>
-
     <div class="intake-box">
       <textarea id="intake-input" class="intake-textarea"
         placeholder="e.g. We're separating IT systems from the parent company after a de-merger. 14 production systems, 6 months to exit, no clear IT owner on the NewCo side yet. The board wants a clean separation by end of Q3..."></textarea>
@@ -225,20 +370,21 @@
     <div style="font-size:15px;font-weight:700;color:var(--text)">Reading your brief…</div>
     <div class="loading-steps">
       <div class="ls-row" id="ls-1"><span class="ls-icon">🔍</span> Assessing feasibility</div>
-      <div class="ls-row" id="ls-2"><span class="ls-icon">🎯</span> Drafting BOSCARD</div>
-      <div class="ls-row" id="ls-3"><span class="ls-icon">👁️</span> Writing vision statement</div>
-      <div class="ls-row" id="ls-4"><span class="ls-icon">⚠️</span> Identifying risks</div>
-      <div class="ls-row" id="ls-5"><span class="ls-icon">📋</span> Building Jira structure</div>
+      <div class="ls-row" id="ls-2"><span class="ls-icon">👁️</span> Writing vision</div>
+      <div class="ls-row" id="ls-3"><span class="ls-icon">🎯</span> Drafting BOSCARD</div>
+      <div class="ls-row" id="ls-4"><span class="ls-icon">📝</span> Building requirements</div>
+      <div class="ls-row" id="ls-5"><span class="ls-icon">👥</span> Mapping use cases</div>
+      <div class="ls-row" id="ls-6"><span class="ls-icon">⚠️</span> Identifying risks</div>
+      <div class="ls-row" id="ls-7"><span class="ls-icon">📅</span> Planning phases</div>
+      <div class="ls-row" id="ls-8"><span class="ls-icon">📋</span> Structuring Jira board</div>
     </div>
   </div>
 
   <!-- Output view -->
   <div id="output">
 
-    <!-- Feasibility card -->
     <div id="out-feasibility"></div>
 
-    <!-- Project header -->
     <div class="proj-header">
       <div class="proj-type" id="out-proj-type"></div>
       <div class="proj-name" id="out-proj-name"></div>
@@ -269,6 +415,48 @@
       </div>
       <div class="section-body open" id="out-boscard-body">
         <div id="out-boscard"></div>
+      </div>
+    </div>
+
+    <!-- Business Requirements -->
+    <div class="section">
+      <div class="section-header open" onclick="_toggle(this)">
+        <div class="section-title"><span class="section-icon">📝</span> Business Requirements</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="copy-btn" onclick="event.stopPropagation();_copy('requirements')">Copy</button>
+          <span class="section-chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body open" id="out-requirements-body">
+        <div id="out-requirements"></div>
+      </div>
+    </div>
+
+    <!-- Use Cases -->
+    <div class="section">
+      <div class="section-header open" onclick="_toggle(this)">
+        <div class="section-title"><span class="section-icon">👥</span> Use Cases</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="copy-btn" onclick="event.stopPropagation();_copy('usecases')">Copy</button>
+          <span class="section-chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body open" id="out-usecases-body">
+        <div id="out-usecases"></div>
+      </div>
+    </div>
+
+    <!-- Delivery Plan -->
+    <div class="section">
+      <div class="section-header open" onclick="_toggle(this)">
+        <div class="section-title"><span class="section-icon">📅</span> Delivery Plan</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="copy-btn" onclick="event.stopPropagation();_copy('plan')">Copy</button>
+          <span class="section-chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body open" id="out-plan-body">
+        <div id="out-plan"></div>
       </div>
     </div>
 
@@ -303,10 +491,10 @@
       </div>
     </div>
 
-    <!-- Jira -->
+    <!-- Jira / Trello Structure -->
     <div class="section">
       <div class="section-header open" onclick="_toggle(this)">
-        <div class="section-title"><span class="section-icon">📋</span> Jira Structure</div>
+        <div class="section-title"><span class="section-icon">📋</span> Jira / Trello Structure</div>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="copy-btn" onclick="event.stopPropagation();_copy('jira')">Copy</button>
           <span class="section-chevron">▾</span>
@@ -317,6 +505,23 @@
       </div>
     </div>
 
+    <!-- Save bar -->
+    <div id="save-bar">
+      <div class="save-label">💾 Save this project</div>
+      <div class="save-row">
+        <input id="save-name" class="save-input" placeholder="Give this project a name…" />
+        <button id="save-btn" class="save-btn" onclick="_save()">Save</button>
+      </div>
+    </div>
+
+    <!-- Connect bar -->
+    <div id="connect-bar">
+      <span class="connect-label">Push to:</span>
+      <button class="connect-btn" onclick="_connect('jira')">🔵 Jira</button>
+      <button class="connect-btn" onclick="_connect('trello')">🟢 Trello</button>
+      <span class="connect-soon">Integration coming soon</span>
+    </div>
+
     <!-- Bottom actions -->
     <div class="output-actions">
       <button class="btn-primary-sm" onclick="_copyAll()">📋 Copy full pack</button>
@@ -324,70 +529,150 @@
     </div>
 
   </div>
-
 </div>
 
 <script>
-  let _result = null;
+  var _result = null;
+  var _savedProjectId = null;
+  var STEPS = ["ls-1","ls-2","ls-3","ls-4","ls-5","ls-6","ls-7","ls-8"];
 
-  // ── Loading steps animation ────────────────────────────────────────────────
-  let _stepTimer = null;
+  // ── Panel ─────────────────────────────────────────────────────────────────
+  function _togglePanel() {
+    var panel = document.getElementById("proj-panel");
+    var overlay = document.getElementById("proj-overlay");
+    if (panel.classList.contains("open")) {
+      panel.classList.remove("open");
+      overlay.classList.remove("open");
+    } else {
+      panel.classList.add("open");
+      overlay.classList.add("open");
+      _loadProjects();
+    }
+  }
+
+  function _closePanel() {
+    document.getElementById("proj-panel").classList.remove("open");
+    document.getElementById("proj-overlay").classList.remove("open");
+  }
+
+  function _loadProjects() {
+    var list = document.getElementById("proj-list");
+    list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:20px 16px">Loading…</div>';
+    fetch("/api/pm/projects")
+      .then(function(r) { return r.json(); })
+      .then(function(projects) {
+        _updateCount(projects.length);
+        if (!projects.length) {
+          list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:20px 16px">No saved projects yet.<br><span style="font-size:12px;margin-top:6px;display:block">Generate a pack and save it to start tracking.</span></div>';
+          return;
+        }
+        var STATUS = {
+          1: {label:"Drafting",  color:"#92400e", bg:"#fffbeb"},
+          2: {label:"Active",    color:"#1d4ed8", bg:"#eff6ff"},
+          3: {label:"Delivered", color:"#166534", bg:"#f0fdf4"}
+        };
+        list.innerHTML = projects.map(function(p) {
+          var s = STATUS[p.phase] || STATUS[1];
+          var date = new Date(p.created_at).toLocaleDateString("en-GB", {day:"numeric", month:"short"});
+          return '<div class="proj-item" onclick="_openProject(\'' + p.id + '\')">'
+            + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
+            + '<div class="proj-item-name">' + _esc(p.name) + '</div>'
+            + '<span style="font-size:10px;font-weight:700;color:' + s.color + ';background:' + s.bg + ';border-radius:99px;padding:2px 8px;flex-shrink:0">' + s.label + '</span>'
+            + '</div>'
+            + '<div class="proj-item-meta"><span>' + _esc(p.proj_type || "") + '</span><span>·</span><span>' + date + '</span></div>'
+            + '</div>';
+        }).join("");
+      })
+      .catch(function() {
+        list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:20px 16px">Failed to load.</div>';
+      });
+  }
+
+  function _openProject(id) {
+    _closePanel();
+    document.getElementById("intake-view").style.display = "none";
+    document.getElementById("output").style.display = "none";
+    document.getElementById("loading").style.display = "block";
+    Promise.all([
+      fetch("/api/pm/docs?project_id=" + id).then(function(r) { return r.json(); }),
+      fetch("/api/pm/projects").then(function(r) { return r.json(); })
+    ]).then(function(results) {
+      var docs = results[0] || [];
+      var projects = results[1] || [];
+      var packDoc = docs.find(function(d) { return d.doc_type === "agentic_pack"; });
+      if (!packDoc) throw new Error("Pack not found");
+      var pack = JSON.parse(packDoc.content);
+      var proj = projects.find(function(p) { return p.id === id; });
+      _result = pack;
+      _savedProjectId = id;
+      _renderOutput(pack);
+      if (proj) _showSavedState(proj.name, proj.phase || 1);
+    }).catch(function(e) {
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("intake-view").style.display = "block";
+      alert("Could not load project: " + e.message);
+    });
+  }
+
+  // ── Loading steps ─────────────────────────────────────────────────────────
+  var _stepTimer = null;
+
   function _startSteps() {
-    const steps = ["ls-1","ls-2","ls-3","ls-4","ls-5"];
-    let i = 0;
-    steps.forEach(id => document.getElementById(id).className = "ls-row");
+    var i = 0;
+    STEPS.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.className = "ls-row";
+    });
     _stepTimer = setInterval(function() {
       if (i > 0) {
-        const prev = document.getElementById(steps[i-1]);
+        var prev = document.getElementById(STEPS[i - 1]);
         if (prev) prev.className = "ls-row done";
       }
-      if (i < steps.length) {
-        const cur = document.getElementById(steps[i]);
+      if (i < STEPS.length) {
+        var cur = document.getElementById(STEPS[i]);
         if (cur) cur.className = "ls-row active";
         i++;
       }
-    }, 1800);
+    }, 1500);
   }
+
   function _stopSteps() {
     if (_stepTimer) { clearInterval(_stepTimer); _stepTimer = null; }
-    ["ls-1","ls-2","ls-3","ls-4","ls-5"].forEach(function(id) {
+    STEPS.forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.className = "ls-row done";
     });
   }
 
   // ── Run ───────────────────────────────────────────────────────────────────
-  async function _run() {
-    const input = (document.getElementById("intake-input").value || "").trim();
+  function _run() {
+    var input = (document.getElementById("intake-input").value || "").trim();
     if (!input) { alert("Describe your project first"); return; }
-    const btn = document.getElementById("intake-btn");
+    var btn = document.getElementById("intake-btn");
     btn.disabled = true;
     document.getElementById("intake-view").style.display = "none";
     document.getElementById("output").style.display = "none";
     document.getElementById("loading").style.display = "block";
     _startSteps();
-
-    try {
-      const r = await fetch("/api/pm/intake", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ problem: input }),
-      });
-      const data = await r.json();
+    fetch("/api/pm/intake", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({problem: input})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
       _stopSteps();
-      if (data.error) {
-        alert("Error: " + data.error);
-        _showIntake();
-        return;
-      }
+      if (data.error) { alert("Error: " + data.error); _showIntake(); return; }
       _result = data;
+      _savedProjectId = null;
       _renderOutput(data);
-    } catch(e) {
+    })
+    .catch(function() {
       _stopSteps();
       alert("Network error — try again");
       _showIntake();
-    }
-    btn.disabled = false;
+    })
+    .finally(function() { btn.disabled = false; });
   }
 
   // ── Render output ─────────────────────────────────────────────────────────
@@ -395,28 +680,25 @@
     document.getElementById("loading").style.display = "none";
 
     // Feasibility
-    const fMap = {
-      green: { icon:"🟢", label:"Feasible — clear scope, worth starting", cls:"green" },
-      amber: { icon:"🟡", label:"Viable — some gaps to resolve first", cls:"amber" },
-      red:   { icon:"🔴", label:"Needs more clarity before committing", cls:"red" },
+    var fMap = {
+      green: {icon:"🟢", label:"Feasible — clear scope, worth starting", cls:"green"},
+      amber: {icon:"🟡", label:"Viable — some gaps to resolve first",    cls:"amber"},
+      red:   {icon:"🔴", label:"Needs more clarity before committing",   cls:"red"}
     };
-    const f = fMap[d.feasibility] || fMap.amber;
-    let qs = "";
+    var f = fMap[d.feasibility] || fMap.amber;
+    var qs = "";
     if (d.clarifying_questions && d.clarifying_questions.length) {
       qs = '<div class="clarify-qs"><strong>Clarifying questions:</strong><ul>'
-        + d.clarifying_questions.map(q => `<li>${_esc(q)}</li>`).join("") + "</ul></div>";
+        + d.clarifying_questions.map(function(q) { return "<li>" + _esc(q) + "</li>"; }).join("")
+        + "</ul></div>";
     }
     document.getElementById("out-feasibility").innerHTML =
-      `<div class="feasibility-card ${f.cls}">
-        <div class="feasibility-icon">${f.icon}</div>
-        <div>
-          <div class="feasibility-label">${f.label}</div>
-          <div class="feasibility-reason">${_esc(d.feasibility_reason || "")}</div>
-          ${qs}
-        </div>
-      </div>`;
+      '<div class="feasibility-card ' + f.cls + '">'
+      + '<div class="feasibility-icon">' + f.icon + '</div>'
+      + '<div><div class="feasibility-label">' + f.label + '</div>'
+      + '<div class="feasibility-reason">' + _esc(d.feasibility_reason || "") + '</div>'
+      + qs + '</div></div>';
 
-    // Header
     document.getElementById("out-proj-type").textContent = d.project_type || "";
     document.getElementById("out-proj-name").textContent = d.project_name || "Your project";
 
@@ -426,69 +708,217 @@
     // BOSCARD
     document.getElementById("out-boscard").innerHTML = marked.parse(d.boscard || "");
 
+    // Business Requirements
+    var req = d.requirements || {};
+    var fr  = (req.functional     || []).map(function(r) { return "<li>" + _esc(r) + "</li>"; }).join("");
+    var nfr = (req.non_functional || []).map(function(r) { return "<li>" + _esc(r) + "</li>"; }).join("");
+    document.getElementById("out-requirements").innerHTML =
+      (fr  ? '<div class="req-label func">Functional</div><ul>' + fr  + '</ul>' : "")
+      + (nfr ? '<div class="req-label nfr">Non-Functional</div><ul>' + nfr + '</ul>' : "");
+
+    // Use Cases
+    document.getElementById("out-usecases").innerHTML = (d.use_cases || []).map(function(uc, i) {
+      return '<div class="use-case">'
+        + '<div class="uc-id">' + _esc(uc.id || ("UC" + (i + 1))) + '</div>'
+        + '<div class="uc-details">'
+        + '<div class="uc-actor">' + _esc(uc.actor) + '</div>'
+        + '<div class="uc-action">' + _esc(uc.action) + '</div>'
+        + '<div class="uc-outcome">→ ' + _esc(uc.outcome) + '</div>'
+        + '</div></div>';
+    }).join("");
+
+    // Delivery Plan
+    document.getElementById("out-plan").innerHTML = ((d.plan && d.plan.phases) || []).map(function(ph, i) {
+      var acts = (ph.activities || []).map(function(a) { return "<li>" + _esc(a) + "</li>"; }).join("");
+      return '<div class="plan-phase">'
+        + '<div class="plan-phase-header">'
+        + '<div class="plan-phase-left">'
+        + '<div class="plan-phase-num">' + (i + 1) + '</div>'
+        + '<div class="plan-phase-name">' + _esc(ph.name) + '</div>'
+        + '</div>'
+        + '<div class="plan-phase-dur">' + _esc(ph.duration) + '</div>'
+        + '</div>'
+        + (acts ? '<ul class="plan-activities">' + acts + '</ul>' : "")
+        + '</div>';
+    }).join("");
+
     // Risks
-    const tbody = document.getElementById("out-risks-tbody");
-    tbody.innerHTML = (d.risks || []).map(function(r) {
-      const probCls = r.prob === "High" ? "risk-row-red" : r.prob === "Med" ? "risk-row-amber" : "";
-      return `<tr class="${probCls}">
-        <td>${_esc(r.risk)}</td>
-        <td>${_esc(r.prob)}</td>
-        <td>${_esc(r.impact)}</td>
-        <td>${_esc(r.mitigation)}</td>
-      </tr>`;
+    document.getElementById("out-risks-tbody").innerHTML = (d.risks || []).map(function(r) {
+      var cls = r.prob === "High" ? "risk-row-red" : r.prob === "Med" ? "risk-row-amber" : "";
+      return '<tr class="' + cls + '"><td>' + _esc(r.risk) + '</td><td>' + _esc(r.prob) + '</td><td>' + _esc(r.impact) + '</td><td>' + _esc(r.mitigation) + '</td></tr>';
     }).join("");
 
     // Actions
     document.getElementById("out-actions").innerHTML = (d.actions || []).map(function(a, i) {
-      return `<div class="action-item">
-        <div class="action-num">${i+1}</div>
-        <div class="action-text">${_esc(a)}</div>
-      </div>`;
+      return '<div class="action-item"><div class="action-num">' + (i + 1) + '</div><div class="action-text">' + _esc(a) + '</div></div>';
     }).join("");
 
     // Jira
     document.getElementById("out-jira").innerHTML = (d.jira_epics || []).map(function(ep) {
-      const stories = (ep.stories || []).map(function(s) {
-        return `<div class="jira-story">
-          <span class="jira-story-tag">STORY</span>
-          <span>${_esc(s)}</span>
-        </div>`;
+      var stories = (ep.stories || []).map(function(s) {
+        return '<div class="jira-story"><span class="jira-story-tag">STORY</span><span>' + _esc(s) + '</span></div>';
       }).join("");
-      return `<div class="jira-epic">
-        <div class="jira-epic-name">EPIC · ${_esc(ep.epic)}</div>
-        ${stories}
-      </div>`;
+      return '<div class="jira-epic"><div class="jira-epic-name">EPIC · ' + _esc(ep.epic) + '</div>' + stories + '</div>';
     }).join("");
 
+    // Save bar — reset to input state
+    document.getElementById("save-bar").innerHTML =
+      '<div class="save-label">💾 Save this project</div>'
+      + '<div class="save-row">'
+      + '<input id="save-name" class="save-input" placeholder="Give this project a name…" />'
+      + '<button id="save-btn" class="save-btn" onclick="_save()">Save</button>'
+      + '</div>';
+    document.getElementById("save-bar").style.display = "block";
+    document.getElementById("connect-bar").style.display = "none";
+
     document.getElementById("output").style.display = "block";
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({top: 0, behavior: "smooth"});
+    _refreshCount();
+  }
+
+  // ── Save ──────────────────────────────────────────────────────────────────
+  function _save() {
+    var nameInput = document.getElementById("save-name");
+    var name = nameInput ? (nameInput.value || "").trim() : "";
+    if (!name) { if (nameInput) nameInput.focus(); return; }
+    if (!_result) return;
+    var btn = document.getElementById("save-btn");
+    if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    fetch("/api/pm/projects", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        name: name,
+        proj_type: _result.project_type || "Project",
+        phase: 1,
+        description: (document.getElementById("intake-input") ? document.getElementById("intake-input").value || "" : "").trim().slice(0, 500)
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(projData) {
+      if (projData.error) throw new Error(projData.error);
+      _savedProjectId = projData.project.id;
+      return fetch("/api/pm/docs", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          project_id: _savedProjectId,
+          phase: 1,
+          doc_type: "agentic_pack",
+          title: name + " — Full Pack",
+          content: JSON.stringify(_result),
+          status: "draft"
+        })
+      });
+    })
+    .then(function() {
+      _showSavedState(name, 1);
+      _refreshCount();
+    })
+    .catch(function(e) {
+      if (btn) { btn.disabled = false; btn.textContent = "Save"; }
+      alert("Save failed: " + e.message);
+    });
+  }
+
+  function _showSavedState(name, phase) {
+    var STATUS_LABELS = {1: "Drafting", 2: "Active", 3: "Delivered"};
+    var STATUS_CLS    = {1: "s-drafting", 2: "s-active", 3: "s-delivered"};
+    document.getElementById("save-bar").innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      + '<span style="font-size:13px;font-weight:700;color:var(--green)">✓ ' + _esc(name) + '</span>'
+      + '<div class="status-row">'
+      + [1, 2, 3].map(function(p) {
+          return '<button class="status-btn ' + STATUS_CLS[p] + (p === phase ? ' active' : '') + '" '
+            + 'data-phase="' + p + '" onclick="_updateStatus(' + p + ')">' + STATUS_LABELS[p] + '</button>';
+        }).join("")
+      + '</div></div>';
+    document.getElementById("connect-bar").style.display = "flex";
+  }
+
+  function _updateStatus(phase) {
+    if (!_savedProjectId) return;
+    fetch("/api/pm/projects/" + _savedProjectId, {
+      method: "PATCH",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({phase: phase})
+    });
+    document.querySelectorAll(".status-btn").forEach(function(btn) {
+      btn.classList.toggle("active", parseInt(btn.dataset.phase) === phase);
+    });
+  }
+
+  function _refreshCount() {
+    fetch("/api/pm/projects")
+      .then(function(r) { return r.json(); })
+      .then(function(projects) { _updateCount(projects.length); })
+      .catch(function() {});
+  }
+
+  function _updateCount(n) {
+    var el = document.getElementById("proj-count");
+    if (el) { el.textContent = n; el.style.display = n ? "inline" : "none"; }
+  }
+
+  // ── Connect ───────────────────────────────────────────────────────────────
+  function _connect(tool) {
+    alert("Jira and Trello integration is coming in the next release.\n\nFor now, use the Jira / Trello Structure section above — copy epics and stories and paste directly into your board.");
   }
 
   // ── Toggle sections ────────────────────────────────────────────────────────
   function _toggle(header) {
     header.classList.toggle("open");
-    const body = header.nextElementSibling;
+    var body = header.nextElementSibling;
     if (body) body.classList.toggle("open");
   }
 
   // ── Copy helpers ──────────────────────────────────────────────────────────
   function _copy(section) {
     if (!_result) return;
-    let text = "";
-    if (section === "vision")  text = _result.vision || "";
-    if (section === "boscard") text = _result.boscard || "";
-    if (section === "risks")   text = (_result.risks || []).map(r => `${r.risk} | Prob: ${r.prob} | Impact: ${r.impact} | ${r.mitigation}`).join("\n");
-    if (section === "actions") text = (_result.actions || []).map((a,i) => `${i+1}. ${a}`).join("\n");
-    if (section === "jira")    text = (_result.jira_epics || []).map(ep => `EPIC: ${ep.epic}\n${(ep.stories||[]).map(s=>"  Story: "+s).join("\n")}`).join("\n\n");
-    navigator.clipboard.writeText(text).then(function() {
-      // brief flash feedback handled by browser
-    });
+    var d = _result;
+    var req = d.requirements || {};
+    var text = "";
+    if (section === "vision")   text = d.vision || "";
+    if (section === "boscard")  text = d.boscard || "";
+    if (section === "requirements") {
+      text = "FUNCTIONAL REQUIREMENTS\n"
+        + (req.functional || []).map(function(r) { return "- " + r; }).join("\n")
+        + "\n\nNON-FUNCTIONAL REQUIREMENTS\n"
+        + (req.non_functional || []).map(function(r) { return "- " + r; }).join("\n");
+    }
+    if (section === "usecases") {
+      text = (d.use_cases || []).map(function(uc, i) {
+        return (uc.id || "UC" + (i + 1)) + ": " + uc.actor + "\n  Action: " + uc.action + "\n  Outcome: " + uc.outcome;
+      }).join("\n\n");
+    }
+    if (section === "plan") {
+      text = ((d.plan && d.plan.phases) || []).map(function(ph, i) {
+        return "Phase " + (i + 1) + ": " + ph.name + " (" + ph.duration + ")\n"
+          + (ph.activities || []).map(function(a) { return "  - " + a; }).join("\n");
+      }).join("\n\n");
+    }
+    if (section === "risks") {
+      text = (d.risks || []).map(function(r) {
+        return r.risk + " | Prob: " + r.prob + " | Impact: " + r.impact + " | " + r.mitigation;
+      }).join("\n");
+    }
+    if (section === "actions") {
+      text = (d.actions || []).map(function(a, i) { return (i + 1) + ". " + a; }).join("\n");
+    }
+    if (section === "jira") {
+      text = (d.jira_epics || []).map(function(ep) {
+        return "EPIC: " + ep.epic + "\n"
+          + (ep.stories || []).map(function(s) { return "  Story: " + s; }).join("\n");
+      }).join("\n\n");
+    }
+    if (text) navigator.clipboard.writeText(text);
   }
 
   function _copyAll() {
     if (!_result) return;
-    const d = _result;
-    const text = [
+    var d = _result;
+    var req = d.requirements || {};
+    var text = [
       "PROJECT: " + (d.project_name || ""),
       "TYPE: " + (d.project_type || ""),
       "",
@@ -498,14 +928,36 @@
       "BOSCARD",
       d.boscard || "",
       "",
+      "FUNCTIONAL REQUIREMENTS",
+      (req.functional || []).map(function(r) { return "- " + r; }).join("\n"),
+      "",
+      "NON-FUNCTIONAL REQUIREMENTS",
+      (req.non_functional || []).map(function(r) { return "- " + r; }).join("\n"),
+      "",
+      "USE CASES",
+      (d.use_cases || []).map(function(uc, i) {
+        return (uc.id || "UC" + (i + 1)) + ": " + uc.actor + " — " + uc.action + " → " + uc.outcome;
+      }).join("\n"),
+      "",
+      "DELIVERY PLAN",
+      ((d.plan && d.plan.phases) || []).map(function(ph, i) {
+        return "Phase " + (i + 1) + ": " + ph.name + " (" + ph.duration + ")\n"
+          + (ph.activities || []).map(function(a) { return "  - " + a; }).join("\n");
+      }).join("\n\n"),
+      "",
       "TOP RISKS",
-      (d.risks || []).map(r => `- ${r.risk} (Prob: ${r.prob}, Impact: ${r.impact}) — ${r.mitigation}`).join("\n"),
+      (d.risks || []).map(function(r) {
+        return "- " + r.risk + " (Prob: " + r.prob + ", Impact: " + r.impact + ") — " + r.mitigation;
+      }).join("\n"),
       "",
       "FIRST ACTIONS",
-      (d.actions || []).map((a,i) => `${i+1}. ${a}`).join("\n"),
+      (d.actions || []).map(function(a, i) { return (i + 1) + ". " + a; }).join("\n"),
       "",
       "JIRA STRUCTURE",
-      (d.jira_epics || []).map(ep => `EPIC: ${ep.epic}\n${(ep.stories||[]).map(s=>"  Story: "+s).join("\n")}`).join("\n\n"),
+      (d.jira_epics || []).map(function(ep) {
+        return "EPIC: " + ep.epic + "\n"
+          + (ep.stories || []).map(function(s) { return "  Story: " + s; }).join("\n");
+      }).join("\n\n")
     ].join("\n");
     navigator.clipboard.writeText(text).then(function() {
       alert("Full pack copied to clipboard");
@@ -515,6 +967,7 @@
   // ── Reset ─────────────────────────────────────────────────────────────────
   function _reset() {
     _result = null;
+    _savedProjectId = null;
     document.getElementById("output").style.display = "none";
     document.getElementById("loading").style.display = "none";
     _showIntake();
@@ -529,6 +982,9 @@
   function _esc(s) {
     return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
+
+  // Load project count on startup
+  _refreshCount();
 </script>
 </body>
 </html>

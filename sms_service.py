@@ -22799,23 +22799,37 @@ def api_pm_intake():
         '  "project_name": "concise project name",\n'
         '  "project_type": "e.g. IT Transformation / ERP Implementation / De-merger / Digital Build / Process Improvement",\n'
         '  "vision": "One crisp paragraph: what success looks like in plain English — not jargon",\n'
-        '  "boscard": "## Benefits\\n- ...\\n## Objectives\\n- SMART objective 1\\n- ...\\n## Scope\\n**In:** ...\\n**Out:** ...\\n## Constraints\\n- ...\\n## Assumptions\\n- ...\\n## Risks\\n- Risk (High/Med/Low)\\n## Dependencies\\n- ...",\n'
+        '  "boscard": "## Benefits\\n- ...\\n## Objectives\\n- SMART objective 1\\n## Scope\\n**In:** ...\\n**Out:** ...\\n## Constraints\\n- ...\\n## Assumptions\\n- ...\\n## Risks\\n- Risk (High/Med/Low)\\n## Dependencies\\n- ...",\n'
+        '  "requirements": {\n'
+        '    "functional": ["FR1: The system/team shall ...", "FR2: ...", "FR3: ...", "FR4: ...", "FR5: ..."],\n'
+        '    "non_functional": ["NFR1: Performance — ...", "NFR2: Security — ...", "NFR3: Availability — ..."]\n'
+        '  },\n'
+        '  "use_cases": [\n'
+        '    {"id": "UC1", "actor": "Project Sponsor", "action": "...", "outcome": "..."},\n'
+        '    {"id": "UC2", "actor": "...", "action": "...", "outcome": "..."}\n'
+        '  ],\n'
         '  "risks": [\n'
         '    {"risk": "description", "prob": "High|Med|Low", "impact": "High|Med|Low", "mitigation": "..."}\n'
         '  ],\n'
-        '  "actions": [\n'
-        '    "First thing to do this week",\n'
-        '    "Second action",\n'
-        '    "Third action"\n'
-        '  ],\n'
+        '  "plan": {\n'
+        '    "phases": [\n'
+        '      {"name": "Discovery", "duration": "2 weeks", "activities": ["...", "..."]},\n'
+        '      {"name": "Design", "duration": "3 weeks", "activities": ["...", "..."]}\n'
+        '    ]\n'
+        '  },\n'
+        '  "actions": ["First concrete action this week", "Second action", "Third action"],\n'
         '  "jira_epics": [\n'
         '    {"epic": "Epic name", "stories": ["Story 1", "Story 2", "Story 3"]}\n'
         '  ]\n'
         "}\n\n"
         "Rules:\n"
-        "- risks: 3-5 items max, be specific not generic\n"
-        "- actions: exactly 3, concrete and immediate\n"
-        "- jira_epics: 3-5 epics, 2-4 stories each — reflect real programme workstreams\n"
+        "- requirements.functional: 5-7 items, each starting with FRn:\n"
+        "- requirements.non_functional: 3-5 items, each starting with NFRn: Category —\n"
+        "- use_cases: 4-6 items covering key actors (sponsor, PM, end user, IT team, etc.)\n"
+        "- risks: 3-5 items, specific not generic\n"
+        "- plan.phases: 4-6 phases with realistic durations\n"
+        "- actions: exactly 3, concrete and immediate (this week)\n"
+        "- jira_epics: 3-5 epics, 2-4 stories each — real programme workstreams\n"
         "- vision: plain English, no buzzwords, one paragraph\n\n"
         "Brief:\n"
     )
@@ -22828,9 +22842,9 @@ def api_pm_intake():
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt + problem}],
                 "temperature": 0.2,
-                "max_tokens": 3500,
+                "max_tokens": 5000,
             },
-            timeout=45,
+            timeout=60,
         )
         if r.status_code != 200:
             return jsonify({"error": f"AI error {r.status_code}"}), 500

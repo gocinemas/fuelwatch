@@ -14577,9 +14577,14 @@ _bkBadge();
       var title   = e.title || "";
       var timeStr = e.start  || "";
       var loc     = (e.location || "").trim();
-      var navQ    = loc || title;
-      var wazeUrl = "https://waze.com/ul?q=" + encodeURIComponent(navQ) + "&navigate=yes";
-      var mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(navQ);
+      // Only show nav buttons if calendar event has a location set
+      var navBtns = "";
+      if (loc) {
+        var wazeUrl = "https://waze.com/ul?q=" + encodeURIComponent(loc) + "&navigate=yes";
+        var mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(loc);
+        navBtns = '<a href="' + wazeUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#33ccff;border-radius:8px;padding:4px 10px;text-decoration:none">🚦 Waze</a>'
+          + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:8px;padding:4px 10px;text-decoration:none">🗺️ Maps</a>';
+      }
       // "Leave by" = 45 min before event start, only when event has a destination
       var leaveByStr = "";
       var tParts = (timeStr || "").match(/(\d+):(\d+)/);
@@ -14598,10 +14603,8 @@ _bkBadge();
         + (timeStr ? '<div style="font-size:12px;color:var(--muted);margin-top:2px">🕐 ' + timeStr + '</div>' : '')
         + (leaveByStr ? '<div style="font-size:11px;font-weight:700;color:#d97706;margin-top:3px">🚗 Leave by ' + leaveByStr + '</div>' : '')
         + '</div>'
-        + '<div style="display:flex;gap:6px;flex-shrink:0;align-items:center;margin-top:2px">'
-        + '<a href="' + wazeUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#33ccff;border-radius:8px;padding:4px 10px;text-decoration:none">🚦 Waze</a>'
-        + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:8px;padding:4px 10px;text-decoration:none">🗺️ Maps</a>'
-        + '</div></div>'
+        + (navBtns ? '<div style="display:flex;gap:6px;flex-shrink:0;align-items:center;margin-top:2px">' + navBtns + '</div>' : '')
+        + '</div>'
         + '</div>';
     });
     if (html) {
