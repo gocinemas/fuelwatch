@@ -3268,6 +3268,7 @@
   const _INTEL_MODE = {{ 'true' if intel_mode else 'false' }};
   function showHome() {
     if (_INTEL_MODE) { showScreen("company"); return; }
+    var bb = document.getElementById("back-btn");
     if (_miruPhone()) {
       // Brief is the home screen for returning users
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -3276,7 +3277,6 @@
       window.scrollTo({top:0, behavior:"smooth"});
       setFooter("home");
       history.replaceState(null, "", "/");
-      var bb = document.getElementById("back-btn");
       if (bb) bb.classList.remove("visible");
       _pillUpdate("home");
       if (typeof _briefInit === "function" && !_briefData) _briefInit();
@@ -3287,7 +3287,6 @@
     window.scrollTo({top:0, behavior:"smooth"});
     setFooter("home");
     history.replaceState(null, "", "/");
-    const bb = document.getElementById("back-btn");
     if (bb) bb.classList.remove("visible");
     _pillUpdate("home");
   }
