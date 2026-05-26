@@ -14557,7 +14557,6 @@ _bkBadge();
   }
 
   function _briefRenderInfoLines(ctx) {
-    console.log("[miru] glance fuel:", ctx && ctx.fuel, "trains:", ctx && ctx.trains && ctx.trains.departures && ctx.trains.departures.length);
     var now = new Date();
     var dow = now.getDay();
     var h   = now.getHours();
@@ -14568,42 +14567,44 @@ _bkBadge();
     var fuel   = ctx && ctx.fuel;
     var trains = ctx && ctx.trains;
 
-    // ── Fuel ──────────────────────────────────────────────────────────────────
-    var fuelText = "";
+    // ── Fuel (tile subtitle — day only) ───────────────────────────────────────
     var fuelSub  = document.getElementById("tile-fuel-sub");
-    if (!isNight && fuel && fuel.price) {
+    var fuelGlance = "";
+    if (fuel && fuel.price) {
       var fName = (fuel.name || "").split(/[,·]/)[0].trim()
                     .replace(/\b(\w)/g, function(c){ return c.toUpperCase(); });
-      fuelText = "⛽ " + fuel.price + "p · " + fName;
-      if (fuelSub) { fuelSub.textContent = fuel.price + "p · " + fName; fuelSub.style.color = "#1d4ed8"; fuelSub.style.fontWeight = "700"; }
-    } else {
-      if (fuelSub) { fuelSub.textContent = "Cheapest near you"; fuelSub.style.color = ""; fuelSub.style.fontWeight = ""; }
+      fuelGlance = "⛽ " + fuel.price + "p · " + fName;
+      if (!isNight && fuelSub) { fuelSub.textContent = fuel.price + "p · " + fName; fuelSub.style.color = "#1d4ed8"; fuelSub.style.fontWeight = "700"; }
     }
+    if (isNight && fuelSub) { fuelSub.textContent = "Cheapest near you"; fuelSub.style.color = ""; fuelSub.style.fontWeight = ""; }
 
-    // ── Trains ────────────────────────────────────────────────────────────────
-    var trainText = "";
+    // ── Trains (tile subtitle — weekday, daytime only) ────────────────────────
     var trainSub  = document.getElementById("tile-trains-sub");
-    if (!isWeekend && !bankHol && !isNight && trains && trains.departures && trains.departures.length && _briefCurrentMode !== "wfh") {
+    var trainGlance = "";
+    if (trains && trains.departures && trains.departures.length) {
       var d0   = trains.departures[0];
       var t0   = d0.departs || d0.time || "";
       var dst0 = (d0.destination || trains.to || "").replace(/\s+station$/i,"").replace(/^London /i,"");
       var next = trains.departures[1] ? " · " + (trains.departures[1].departs || trains.departures[1].time || "") : "";
-      trainText = "🚆 " + t0 + " " + dst0 + next;
-      if (trainSub) { trainSub.textContent = t0 + " " + dst0 + next; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
-    } else {
-      if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
+      trainGlance = "🚆 " + t0 + " " + dst0 + next;
+      if (!isWeekend && !bankHol && !isNight && _briefCurrentMode !== "wfh" && trainSub) {
+        trainSub.textContent = t0 + " " + dst0 + next; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700";
+      }
+    }
+    if ((isWeekend || bankHol || isNight || _briefCurrentMode === "wfh") && trainSub) {
+      trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = "";
     }
 
-    // ── Glance row above the narrative ────────────────────────────────────────
+    // ── Glance row above the narrative — always visible when data exists ───────
     var glance     = document.getElementById("brief-glance");
     var glanceFuel = document.getElementById("brief-glance-fuel");
     var glanceSep  = document.getElementById("brief-glance-sep");
     var glanceTrain= document.getElementById("brief-glance-train");
     if (glance) {
-      if (fuelText || trainText) {
-        if (glanceFuel)  glanceFuel.textContent  = fuelText;
-        if (glanceTrain) glanceTrain.textContent  = trainText;
-        if (glanceSep)   glanceSep.style.display  = (fuelText && trainText) ? "" : "none";
+      if (fuelGlance || trainGlance) {
+        if (glanceFuel)  glanceFuel.textContent  = fuelGlance;
+        if (glanceTrain) glanceTrain.textContent  = trainGlance;
+        if (glanceSep)   glanceSep.style.display  = (fuelGlance && trainGlance) ? "" : "none";
         glance.style.display = "flex";
       } else {
         glance.style.display = "none";
