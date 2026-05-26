@@ -1814,18 +1814,6 @@
         </button>
       </div>
 
-      <!-- Persistent fuel strip — always visible when price known -->
-      <div id="brief-fuel-strip" onclick="showScreen('fuel')" style="cursor:pointer;display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff9ed;border:1px solid #fed7aa;border-radius:12px;padding:9px 14px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:15px">⛽</span>
-          <div>
-            <span id="brief-fuel-price" style="font-size:15px;font-weight:900;color:#92400e"></span>
-            <span id="brief-fuel-name" style="font-size:12px;color:#b45309;margin-left:6px"></span>
-          </div>
-        </div>
-        <span id="brief-fuel-change" style="font-size:11px;font-weight:700;color:#78350f;background:#fef3c7;border-radius:99px;padding:2px 8px;display:none"></span>
-      </div>
-
       <!-- Location pill — shown when GPS resolves -->
       <div id="brief-location-label" style="display:none;font-size:11px;font-weight:700;color:#1d4ed8;background:#dbeafe;border-radius:99px;padding:4px 10px;margin-bottom:10px;letter-spacing:.02em"></div>
 
@@ -1849,8 +1837,60 @@
         <div id="brief-text" style="display:none;font-size:15px;font-weight:500;color:#fff;line-height:1.65;letter-spacing:-0.1px"></div>
       </div>
 
-      <!-- Context chips row -->
-      <div id="brief-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
+      <!-- Context chips row — horizontal scroll strip -->
+      <div id="brief-chips" style="display:flex;flex-wrap:nowrap;gap:8px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px"></div>
+
+      <!-- Tools grid — quick access to all Miru tools -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Tools</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <button onclick="showScreen('fuel')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">⛽</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Fuel</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Cheapest near you</div>
+          </button>
+          <button onclick="showScreen('trains')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🚆</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Trains</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Live departures</div>
+          </button>
+          <button onclick="showScreen('myarea')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🏡</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">My Local</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Area at a glance</div>
+          </button>
+          <button onclick="showScreen('school')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🏫</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">School</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Letters &amp; events</div>
+          </button>
+          <button onclick="_pillNav('saves')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">📌</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Clippings</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Saved items</div>
+          </button>
+          <button onclick="showScreen('lifeadmin')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🗂️</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Life Admin</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">MOT · bills</div>
+          </button>
+          <button onclick="showScreen('report')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🔎</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Research</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Any postcode</div>
+          </button>
+          <button onclick="showScreen('library')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">📚</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Library</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Docs &amp; notes</div>
+          </button>
+          <button onclick="showScreen('music')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🎵</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Music ID</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Name a song</div>
+          </button>
+        </div>
+      </div>
 
       <!-- Calendar connect nudge — hidden once connected -->
       <div id="brief-cal-nudge" style="display:none;align-items:center;justify-content:space-between;background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:9px 14px;margin-bottom:14px">
@@ -1924,14 +1964,6 @@
         </div>
       </div>
 
-      <!-- Detailed context cards -->
-      <div id="brief-context-cards" style="display:none;flex-direction:column;gap:10px"></div>
-
-      <!-- Refresh button -->
-      <div id="brief-refresh-row" style="display:none;text-align:right;margin-top:2px">
-        <button onclick="_briefRefresh()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;padding:4px 0">↻ Refresh</button>
-      </div>
-
       <!-- Personal event quick-add -->
       <div id="brief-event-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
         <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">＋ Add to your brief</div>
@@ -1992,60 +2024,6 @@
           style="font-size:12px;font-weight:700;color:var(--muted);background:none;border:1px solid var(--border);border-radius:99px;padding:5px 12px;cursor:pointer">＋ Add event</button>
       </div>
 
-      <!-- Module shortcuts — quick access to all Miru tools -->
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">All tools</div>
-          <button onclick="showScreen('home')" style="font-size:12px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;padding:0">Explore →</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-          <button onclick="showScreen('fuel')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">⛽</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Fuel</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Cheapest near you</div>
-          </button>
-          <button onclick="showScreen('trains')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">🚆</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Trains</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Live departures</div>
-          </button>
-          <button onclick="showScreen('myarea')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">🏡</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">My Local</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Area at a glance</div>
-          </button>
-          <button onclick="showScreen('school')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">🏫</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">School</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Letters & events</div>
-          </button>
-          <button onclick="_pillNav('saves')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">📌</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Clippings</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Saved items</div>
-          </button>
-          <button onclick="showScreen('lifeadmin')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">🗂️</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Life Admin</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">MOT · bills</div>
-          </button>
-          <button onclick="showScreen('report')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">🔎</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Research</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Any postcode</div>
-          </button>
-          <button onclick="showScreen('library')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">📚</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Library</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Docs & notes</div>
-          </button>
-          <button onclick="showScreen('music')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">🎵</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Music ID</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Name a song</div>
-          </button>
-        </div>
-      </div>
     </div><!-- /screen-brief -->
 
     <!-- ── ELECTIONS SCREEN ── -->
@@ -14317,9 +14295,6 @@ _bkBadge();
           }
           if (shimmer) shimmer.style.display = "none";
 
-          // Fuel strip — always populate if we have fuel data
-          _briefUpdateFuelStrip(d.context && d.context.fuel);
-
           if (!d.has_prefs) {
             if (briefText) { briefText.textContent = "Set up your brief below to get a personalised daily update."; briefText.style.display = "block"; }
             if (setupCta)  setupCta.style.display = "block";
@@ -14510,6 +14485,11 @@ _bkBadge();
       }
       if (fuel && fuel.price)
         chips.push({ label: "⛽ " + fuel.name + "  " + fuel.price + "p", action: "showScreen('fuel')" });
+      var _wxDay = ctx && ctx.weather;
+      if (_wxDay && _wxDay.temp !== undefined) {
+        var _wxIcon = _wxDay.sunny ? "☀️" : _wxDay.outdoor_ok ? "🌤" : "🌧";
+        chips.push({ label: _wxIcon + " " + _wxDay.temp + "°", action: "showScreen('myarea')" });
+      }
       // Frequent places — confirmed regulars that match today (weekend / bank holiday chips)
       if (_noCommute && frequentToday && frequentToday.length) {
         frequentToday.forEach(function(fp) {
@@ -14533,12 +14513,12 @@ _bkBadge();
     // Spend intentionally excluded from chips — it dominates visual hierarchy
 
     var mainHtml = chips.map(function(c) {
-      return '<button onclick="' + c.action + '" style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + ' ›</button>';
+      return '<button onclick="' + c.action + '" style="flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + ' ›</button>';
     }).join("");
     var secHtml = secondaryChips.length ? secondaryChips.map(function(c) {
-      return '<button onclick="' + c.action + '" style="background:none;border:1px solid var(--border);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + '</button>';
+      return '<button onclick="' + c.action + '" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + '</button>';
     }).join("") : "";
-    container.innerHTML = mainHtml + (secHtml ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:' + (chips.length ? '6px' : '0') + '">' + secHtml + '</div>' : '');
+    container.innerHTML = mainHtml + secHtml;
   }
 
   function _briefUpdateFuelStrip(fuel) {
