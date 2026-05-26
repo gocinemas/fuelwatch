@@ -7716,11 +7716,15 @@ def api_v2_personal_events():
     title = (body.get("title") or "").strip()
     if not title:
         return jsonify({"error": "title required"}), 400
-    ev_date  = (body.get("date") or "").strip()
-    ev_time  = (body.get("time") or "").strip()
-    ev_notes = (body.get("notes") or "").strip()
+    ev_date       = (body.get("date")       or "").strip()
+    ev_time       = (body.get("time")       or "").strip()
+    ev_leave_time = (body.get("leave_time") or "").strip()
+    ev_notes      = (body.get("notes")      or "").strip()
     evs = _v2_fetch_personal_events(from_number)
-    evs.append({"title": title, "date": ev_date, "time": ev_time, "notes": ev_notes})
+    ev_obj = {"title": title, "date": ev_date, "time": ev_time, "notes": ev_notes}
+    if ev_leave_time:
+        ev_obj["leave_time"] = ev_leave_time
+    evs.append(ev_obj)
     rows = lib._sb().table("ma_details").select("id").eq("device_id", from_number).eq("type","personal_events").limit(1).execute().data
     if rows:
         lib._sb().table("ma_details").update({"data": evs}).eq("id", rows[0]["id"]).execute()
@@ -8240,8 +8244,9 @@ def api_home_brief():
     _personal_evs = ctx.get("personal_events", [])
     _past_personal = []  # recent past events — for "how was it?" follow-up
     for pe in _personal_evs:
-        _pe_date = pe.get("date", "")
-        _pe_t    = (pe.get("time") or "").strip()
+        _pe_date       = pe.get("date", "")
+        _pe_t          = (pe.get("time")       or "").strip()
+        _pe_leave      = (pe.get("leave_time") or "").strip()
         if _pe_date == _yesterday_s:
             _past_personal.append(pe)
         elif _pe_date == _today_s and _pe_t and _pe_t < _now_hhmm_cur:
@@ -8249,6 +8254,9 @@ def api_home_brief():
             _past_personal.append(pe)
         elif _pe_date in (_today_s, _tomorrow_s):
             _cal_events = _cal_events + [{"title": pe["title"], "date": _pe_date, "start": _pe_t, "personal": True}]
+            # Leave-time reminder — surface as explicit fact so Groq says "leave by X"
+            if _pe_leave and _pe_date == _today_s and _pe_leave > _now_hhmm_cur:
+                facts.append(f"Leave by {_pe_leave} for {pe['title']}")
     # Merge today's recurring activities — compute drive context in parallel for external venues
     _recurring_today = ctx.get("recurring") or []
     _origin_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
