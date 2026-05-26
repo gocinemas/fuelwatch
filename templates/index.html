@@ -3189,6 +3189,7 @@
   // ── Morphing Pill Nav ────────────────────────────────────────────
   const _PILL_SCREENS = {
     home:    { icon:'🏠', label:'Home',     piId:'pi-home'   },
+    brief:   { icon:'🏠', label:'Home',     piId:'pi-home'   },
     myarea:  { icon:'📍', label:'My Area',  piId:'pi-myarea' },
     company: { icon:'🔍', label:'Intel',    piId:'pi-intel'  },
     saves:   { icon:'📌', label:'Clippings', piId:'pi-saves'  },
@@ -3205,6 +3206,7 @@
   function _pillTap(e) {}
   function _pillNav(name) {
     if (name === 'saves') { showScreen('saves'); savesLoad(); return; }
+    if (name === 'home')  { showHome(); return; }
     showScreen(name);
   }
 
@@ -3276,6 +3278,7 @@
       history.replaceState(null, "", "/");
       var bb = document.getElementById("back-btn");
       if (bb) bb.classList.remove("visible");
+      _pillUpdate("home");
       if (typeof _briefInit === "function" && !_briefData) _briefInit();
       return;
     }
@@ -3286,6 +3289,7 @@
     history.replaceState(null, "", "/");
     const bb = document.getElementById("back-btn");
     if (bb) bb.classList.remove("visible");
+    _pillUpdate("home");
   }
   function _dismissActiveTrip() {
     var ph = _miruPhone();
@@ -3317,7 +3321,8 @@
     document.getElementById("screen-" + name).classList.add("active");
     window.scrollTo({top:0, behavior:"smooth"});
     const bb = document.getElementById("back-btn");
-    if (bb) bb.classList.add("visible");
+    // Brief is the home screen — never show back button on it
+    if (bb) { if (name === "brief") bb.classList.remove("visible"); else bb.classList.add("visible"); }
     if (name === "fuel") {
       const _fpc = document.getElementById("fuel-postcode");
       const _fpc_pc = _miruPostcode();
@@ -14013,6 +14018,7 @@ _bkBadge();
         if (_bs) _bs.classList.add("active");
         var _bb = document.getElementById("back-btn");
         if (_bb) _bb.classList.remove("visible");
+        _pillUpdate("home");
         if (typeof _briefInit === "function") _briefInit();
       }
     }
