@@ -6298,6 +6298,35 @@ def api_v2_recurring_delete():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/v2/recurring/all-year", methods=["POST"])
+def api_v2_recurring_all_year():
+    """Toggle all_year flag on a recurring activity. Body: {token, weekday, activity, all_year}"""
+    body = request.get_json(force=True, silent=True) or {}
+    token = (body.get("token") or "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"error": "token required"}), 401
+    weekday  = body.get("weekday")
+    act_name = (body.get("activity") or "").strip().lower()
+    all_year = bool(body.get("all_year", False))
+    if weekday is None or not act_name:
+        return jsonify({"error": "weekday and activity required"}), 400
+    try:
+        sb = lib._sb()
+        rows = sb.table("ma_details").select("id,data") \
+            .eq("device_id", from_number).eq("type", "recurring_activities").limit(1).execute().data or []
+        if not rows:
+            return jsonify({"ok": True})
+        activities = list(rows[0].get("data") or [])
+        for a in activities:
+            if a.get("weekday") == weekday and a.get("activity","").lower() == act_name:
+                a["all_year"] = all_year
+        sb.table("ma_details").update({"data": activities}).eq("id", rows[0]["id"]).execute()
+        return jsonify({"ok": True, "all_year": all_year})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/v2/location-profile", methods=["GET"])
 def api_v2_location_profile_get():
     token = request.args.get("token", "").strip()
@@ -8264,8 +8293,10 @@ def api_home_brief():
             # Leave-time reminder — surface as explicit fact so Groq says "leave by X"
             if _pe_leave and _pe_date == _today_s and _pe_leave > _now_hhmm_cur:
                 facts.append(f"Leave by {_pe_leave} for {pe['title']}")
-    # Merge today's recurring activities — compute drive context in parallel for external venues
+    # Merge today's recurring activities — suppress during school holidays unless all_year=True
     _recurring_today = ctx.get("recurring") or []
+    if _school_holiday_now.get("on_holiday"):
+        _recurring_today = [r for r in _recurring_today if r.get("all_year")]
     _origin_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
     if _recurring_today and _origin_pc:
         from concurrent.futures import ThreadPoolExecutor as _TPEX
@@ -15719,6 +15750,33 @@ def whatsapp_reply():
         return str(resp)
 
     # ── Recurring activity capture ─────────────────────────────────────────────
+    # Detect: "X runs all year" / "X is all year" / "X all year round" — toggle all_year flag
+    _ALL_YEAR_RE = re.compile(
+        r'^(.+?)\s+(?:runs?\s+all\s+year|is\s+all\s+year|all\s+year(?:\s+round)?)\s*$',
+        re.IGNORECASE
+    )
+    _all_year_m = _ALL_YEAR_RE.match(body.strip())
+    if _all_year_m:
+        _ay_name = _all_year_m.group(1).strip().lower()
+        try:
+            sb = lib._sb()
+            _plain = from_number.replace("whatsapp:", "").strip()
+            rows = sb.table("ma_details").select("id,data").eq("device_id", _plain) \
+                .eq("type", "recurring_activities").limit(1).execute().data or []
+            if rows:
+                activities = list(rows[0].get("data") or [])
+                _matched = [a for a in activities if _ay_name in a.get("activity","").lower()]
+                if _matched:
+                    for a in activities:
+                        if _ay_name in a.get("activity","").lower():
+                            a["all_year"] = True
+                    sb.table("ma_details").update({"data": activities}).eq("id", rows[0]["id"]).execute()
+                    _ay_label = _matched[0].get("activity","").title()
+                    resp.message(f"✅ *{_ay_label}* marked as all year — it'll show in your brief during school holidays too.")
+                    return str(resp)
+        except Exception as _aye:
+            app.logger.warning(f"[all_year] {_aye}")
+
     # Detect: "every Sunday 9am Inaaya cricket Valley End Cricket Club"
     _EVERY_RE = re.compile(
         r'\bevery\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b',

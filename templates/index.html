@@ -6515,6 +6515,19 @@ function _hcAdd() {
     } catch(e) {}
   }
 
+  async function _clubsToggleAllYear(weekday, activity, currentlyAllYear) {
+    const token = _miruPhone();
+    if (!token) return;
+    try {
+      await fetch("/api/v2/recurring/all-year", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({token, weekday, activity, all_year: !currentlyAllYear})
+      });
+      _clubsLoad();
+    } catch(e) {}
+  }
+
   async function _clubsLoad() {
     const list = document.getElementById("clubs-list");
     if (!list) return;
@@ -6541,13 +6554,17 @@ function _hcAdd() {
         const locEsc  = (a.location||"").replace(/'/g, "\\'");
         const childEsc= (a.child||"").replace(/'/g, "\\'");
         const timeEsc = (a.time||"").replace(/'/g, "\\'");
+        const isAllYear = !!a.all_year;
+        const allYearBadge = isAllYear
+          ? '<span title="Runs all year — shows during school holidays" style="font-size:10px;font-weight:700;color:#065f46;background:#d1fae5;border-radius:8px;padding:2px 7px;cursor:pointer" onclick="_clubsToggleAllYear(' + a.weekday + ',\'' + actEsc + '\',' + isAllYear + ')">🗓️ All year</span>'
+          : '<span title="Term time only — tap to mark as all year" style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px 7px;cursor:pointer" onclick="_clubsToggleAllYear(' + a.weekday + ',\'' + actEsc + '\',' + isAllYear + ')">Term only</span>';
         return '<div style="display:flex;align-items:flex-start;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 13px;margin-bottom:8px">' +
           '<div style="display:flex;align-items:flex-start;gap:10px">' +
             '<div style="background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:4px 8px;border-radius:8px;flex-shrink:0;margin-top:1px;letter-spacing:.03em">' + dayLabel + '</div>' +
             '<div>' +
               '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
                 '<span style="font-size:14px;font-weight:700;color:var(--text)">' + a.activity + '</span>' +
-                who + time +
+                who + time + allYearBadge +
               '</div>' +
               loc +
             '</div>' +
