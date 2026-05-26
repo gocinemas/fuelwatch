@@ -14230,34 +14230,7 @@ _bkBadge();
         + '</div>';
     }
 
-    var f = d.fuel || {};
-    if (f.name) {
-      var price = f.price_e5 ? f.price_e5 + "p" : (f.price_e10 ? f.price_e10 + "p E10" : "");
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⛽ Nearest fuel · ' + f.dist_km + 'km</div>'
-        + '<div style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-0.5px;line-height:1">' + (price || "—") + '</div>'
-        + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + f.name + (f.address ? ' · ' + f.address : '') + '</div>'
-        + '</div>';
-    }
-
-    var t = d.trains || {};
-    if (t.station) {
-      var deps = (t.departures || []).slice(0, 3).map(function(dep) {
-        var onTime = dep.status === "On time";
-        var col = onTime ? "#16a34a" : "#d97706";
-        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">'
-          + '<div>'
-          +   '<span style="font-size:14px;font-weight:800;color:var(--text)">' + dep.time + '</span>'
-          +   '<span style="font-size:12px;color:var(--muted);margin-left:8px">' + dep.destination + '</span>'
-          + '</div>'
-          + '<span style="font-size:11px;font-weight:700;color:' + col + '">' + dep.status + '</span>'
-          + '</div>';
-      }).join("");
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🚆 ' + t.station + ' · ' + t.dist_km + 'km</div>'
-        + (deps || '<div style="font-size:13px;color:var(--muted);padding:6px 0">No departures right now</div>')
-        + '</div>';
-    }
+    // Fuel + trains removed here — shown in glance row above the brief instead
 
     if (html) {
       cards.innerHTML = html;
