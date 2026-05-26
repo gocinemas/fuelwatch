@@ -14382,6 +14382,7 @@ _bkBadge();
           _briefRenderInfoLines(d.context);
 
           // Today card — calendar events with navigation + school holiday banner
+          console.log("[miru] today_events", JSON.stringify(d.today_events || []));
           _briefRenderTodayCard(d.today_events, d.school_holiday);
 
           // Chips
@@ -14611,12 +14612,29 @@ _bkBadge();
     var card = document.getElementById("brief-today-card");
     if (!card) return;
     var now        = new Date();
-    var todayStr   = now.toISOString().slice(0, 10);
+    // Use local date (not UTC) so midnight doesn't shift the date for UK users
+    var todayStr   = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
     var nowMins    = now.getHours() * 60 + now.getMinutes();
     var WORK_WORDS = ["catch up","catchup","stand-up","standup","sync","1:1","check-in","meeting","weekly","daily","review session"];
     function isWorkMeeting(t) {
       var tl = (t || "").toLowerCase();
       return WORK_WORDS.some(function(w){ return tl.indexOf(w) >= 0; });
+    }
+    // Parse event start time into minutes-from-midnight, handling both 12hr and 24hr formats
+    function _parseEventMins(s) {
+      if (!s) return null;
+      // 12-hour: "4pm", "4:30pm", "4:30 PM"
+      var m12 = String(s).match(/(\d+)(?::(\d+))?\s*(am|pm)/i);
+      if (m12) {
+        var h = parseInt(m12[1], 10), mn = m12[2] ? parseInt(m12[2], 10) : 0;
+        if (/pm/i.test(m12[3]) && h !== 12) h += 12;
+        if (/am/i.test(m12[3]) && h === 12) h = 0;
+        return h * 60 + mn;
+      }
+      // 24-hour: "16:30" or "16:00"
+      var m24 = String(s).match(/^(\d{1,2}):(\d{2})/);
+      if (m24) return parseInt(m24[1], 10) * 60 + parseInt(m24[2], 10);
+      return null;
     }
     var html = "";
     // School holiday banner
@@ -14631,16 +14649,14 @@ _bkBadge();
         + '<div style="font-size:11px;color:#047857;margin-top:1px">' + holMsg + '</div></div>'
         + '</div>';
     }
-    // Today's events — filter to future, non-work
+    // Today's events — filter to future non-work events
     var events = (todayEvents || []).filter(function(e) {
-      if ((e.date || "") !== todayStr) return false;
+      var eDate = (e.date || "").slice(0, 10);
+      if (eDate && eDate !== todayStr) return false;
       if (isWorkMeeting(e.title)) return false;
       if (e.start) {
-        var p = (e.start || "").match(/(\d+):(\d+)/);
-        if (p) {
-          var eMins = parseInt(p[1], 10) * 60 + parseInt(p[2], 10);
-          if (eMins < nowMins - 15) return false; // already passed
-        }
+        var eMins = _parseEventMins(e.start);
+        if (eMins !== null && eMins < nowMins - 15) return false; // already passed
       }
       return true;
     });
@@ -14658,9 +14674,9 @@ _bkBadge();
       }
       // "Leave by" = 45 min before event start, only when event has a destination
       var leaveByStr = "";
-      var tParts = (timeStr || "").match(/(\d+):(\d+)/);
-      if (loc && tParts) {
-        var leaveMin = parseInt(tParts[1], 10) * 60 + parseInt(tParts[2], 10) - 45;
+      var eMinsStart = loc ? _parseEventMins(timeStr) : null;
+      if (eMinsStart !== null) {
+        var leaveMin = eMinsStart - 45;
         if (leaveMin > 0) {
           var lH = Math.floor(leaveMin / 60);
           var lM = leaveMin % 60;
