@@ -8302,7 +8302,7 @@ def api_home_brief():
                     if _pe_end_raw:
                         _pe_end = (datetime.strptime(_pe_end_raw, "%H:%M") + _ptd(minutes=10)).strftime("%H:%M")
                     else:
-                        _pe_end = (datetime.strptime(_pe_t, "%H:%M") + _ptd(minutes=30)).strftime("%H:%M")
+                        _pe_end = (datetime.strptime(_pe_t, "%H:%M") + _ptd(minutes=120)).strftime("%H:%M")
                     _pe_past = _pe_end < _now_hhmm_cur
                 except Exception:
                     _pe_past = _pe_t < _now_hhmm_cur

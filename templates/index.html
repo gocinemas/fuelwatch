@@ -14578,21 +14578,20 @@ _bkBadge();
     }
     if (isNight && fuelSub) { fuelSub.textContent = "Cheapest near you"; fuelSub.style.color = ""; fuelSub.style.fontWeight = ""; }
 
-    // ── Trains (tile subtitle — weekday, daytime only) ────────────────────────
+    // ── Trains (tile subtitle — weekday, daytime, non-WFH only) ──────────────
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
-    if (trains && trains.departures && trains.departures.length) {
+    var showTrain = trains && trains.departures && trains.departures.length &&
+                    !isWeekend && !bankHol && !isNight && _briefCurrentMode !== "wfh";
+    if (showTrain) {
       var d0   = trains.departures[0];
       var t0   = d0.departs || d0.time || "";
       var dst0 = (d0.destination || trains.to || "").replace(/\s+station$/i,"").replace(/^London /i,"");
       var next = trains.departures[1] ? " · " + (trains.departures[1].departs || trains.departures[1].time || "") : "";
       trainGlance = "🚆 " + t0 + " " + dst0 + next;
-      if (!isWeekend && !bankHol && !isNight && _briefCurrentMode !== "wfh" && trainSub) {
-        trainSub.textContent = t0 + " " + dst0 + next; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700";
-      }
-    }
-    if ((isWeekend || bankHol || isNight || _briefCurrentMode === "wfh") && trainSub) {
-      trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = "";
+      if (trainSub) { trainSub.textContent = t0 + " " + dst0 + next; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+    } else {
+      if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
     }
 
     // ── Glance row above the narrative — always visible when data exists ───────
@@ -14667,7 +14666,7 @@ _bkBadge();
             var endMins = _parseEventMins(e.end_time);
             cutoff = endMins !== null ? endMins + 10 : eMins + 30;
           } else if (e.personal) {
-            cutoff = eMins + 30; // no end time → 30-min buffer after start
+            cutoff = eMins + 120; // no end time → 2hr buffer (personal events tend to run long)
           } else {
             cutoff = eMins + 15; // GCal events: 15-min buffer
           }
