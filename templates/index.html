@@ -2020,9 +2020,16 @@
 
       <!-- Ask about your day -->
       <div id="brief-ask-wrap" style="display:none;margin-top:14px">
+        <!-- Suggestion chips — hidden once user asks first question -->
+        <div id="brief-ask-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <button onclick="_briefAskChip('What did I save this week?')" style="font-size:12px;font-weight:600;color:#4f46e5;background:#eff0ff;border:1px solid #c7d2fe;border-radius:99px;padding:5px 12px;cursor:pointer">📌 My saves</button>
+          <button onclick="_briefAskChip('What\'s the next school event?')" style="font-size:12px;font-weight:600;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:99px;padding:5px 12px;cursor:pointer">🏫 School</button>
+          <button onclick="_briefAskChip('How much have I spent this month?')" style="font-size:12px;font-weight:600;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:99px;padding:5px 12px;cursor:pointer">💷 Spend</button>
+          <button onclick="_briefAskChip('Next train to Waterloo?')" style="font-size:12px;font-weight:600;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:99px;padding:5px 12px;cursor:pointer">🚆 Trains</button>
+        </div>
         <div id="brief-ask-thread" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
         <div style="display:flex;gap:8px;align-items:center">
-          <input id="brief-ask-input" type="text" placeholder="Ask about your day…"
+          <input id="brief-ask-input" type="text" placeholder="Ask Miru anything…"
             style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:99px;font-size:14px;background:var(--surface);color:var(--text);outline:none"
             onkeydown="if(event.key==='Enter')_briefAsk()">
           <button onclick="_briefAsk()" id="brief-ask-btn"
@@ -15212,6 +15219,12 @@ _bkBadge();
   }
   window._briefAskShow = _briefAskShow;
 
+  window._briefAskChip = function(text) {
+    var inp = document.getElementById("brief-ask-input");
+    if (inp) { inp.value = text; inp.focus(); }
+    _briefAsk();
+  };
+
   async function _briefAsk() {
     var inp    = document.getElementById("brief-ask-input");
     var btn    = document.getElementById("brief-ask-btn");
@@ -15222,6 +15235,10 @@ _bkBadge();
 
     inp.value = "";
     thread.style.display = "flex";
+
+    // Hide suggestion chips after first question
+    var chips = document.getElementById("brief-ask-chips");
+    if (chips) chips.style.display = "none";
 
     // Question bubble
     var qBubble = document.createElement("div");
@@ -15257,17 +15274,17 @@ _bkBadge();
         if (bc.personal_events) ctx.personal_events = (bc.personal_events||[]).slice(0,5);
       }
       if (_briefData && _briefData.active_trip) ctx.active_trip = _briefData.active_trip;
-    } catch(_) {}
+    } catch(_e) {}
 
     var answer = "";
     try {
       var r = await fetch("/api/home/ask", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({question: q, ctx: ctx, thread: _briefAskThread.slice(-2), token: _miruPhone()||""})
+        body: JSON.stringify({question: q, ctx: ctx, thread: _briefAskThread.slice(-4), token: _miruPhone()||""})
       });
       var d = await r.json();
-      answer = (d.answer || "").trim() || "I don't have enough context to answer that.";
+      answer = (d.answer || "").trim() || "Not sure — try rephrasing.";
       _briefAskThread.push({q: q, a: answer});
     } catch(e) {
       answer = "Couldn't reach Miru right now — try again.";

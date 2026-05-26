@@ -8816,116 +8816,141 @@ def api_recipe():
 
 @app.route("/api/home/ask", methods=["POST"])
 def api_home_ask():
-    """Answer a follow-up question against the already-fetched brief context.
+    """Answer questions using personal context + general LLM knowledge.
     Body: {question, ctx, thread, token}
-    ctx: compact snapshot from the frontend (trains, school, weather, fuel, calendar, recurring)
-    thread: last 2 Q&A pairs [{q, a}, ...] for conversational follow-ups
     """
-    body     = request.get_json(force=True, silent=True) or {}
-    question = (body.get("question") or "").strip()
-    ctx      = body.get("ctx") or {}
-    thread   = body.get("thread") or []  # [{q, a}, ...]
-    token    = (body.get("token") or "").strip()
+    body        = request.get_json(force=True, silent=True) or {}
+    question    = (body.get("question") or "").strip()
+    ctx         = body.get("ctx") or {}
+    thread      = body.get("thread") or []
+    token       = (body.get("token") or "").strip()
     from_number = _v2_resolve(token) if token else ""
 
     if not question:
         return jsonify({"answer": ""}), 400
 
-    # Build a concise context summary Groq can reason over
+    q_lower = question.lower()
+
+    # ── Intent classification ──────────────────────────────────────────────────
+    # Utility: factual/definitional questions that don't need personal context
+    _UTILITY = ["define ", "definition of", "what does ", "what is a ", "what is the ",
+                "who is ", "who was ", "when did ", "how many ", "how much is ",
+                "convert ", "translate ", "capital of ", "calculate ", "synonym for",
+                "antonym of ", "difference between ", "spell ", "meaning of ",
+                "what does it mean", "how do you say", "what language"]
+    is_utility  = any(q_lower.startswith(u) or u in q_lower for u in _UTILITY)
+
+    # Personal: questions that need the user's own data
+    _PERSONAL   = ["my ", " my ", "i saved", "i've saved", "i have saved", "did i save",
+                   "what did i", "how much did i", "how much have i", "what have i",
+                   "school", "riaan", "inaaya", "train", "fuel", "spend", "spent",
+                   "event", "delivery", "calendar", "saves", "clipping", "saved",
+                   "this week", "this month", "today", "tomorrow"]
+    is_personal = any(p in q_lower for p in _PERSONAL)
+
+    # ── Build personal context ─────────────────────────────────────────────────
     ctx_lines = []
 
-    trains = ctx.get("trains") or {}
-    if trains.get("departures"):
-        deps = ", ".join(d.get("departs") or d.get("time","") for d in trains["departures"][:3] if d.get("departs") or d.get("time"))
-        ctx_lines.append(f"Trains {trains.get('from','')} → {trains.get('to','')}: {deps}")
+    if is_personal or not is_utility:
+        trains = ctx.get("trains") or {}
+        if trains.get("departures"):
+            deps = ", ".join(d.get("departs") or d.get("time","") for d in trains["departures"][:3] if d.get("departs") or d.get("time"))
+            ctx_lines.append(f"Trains {trains.get('from','')} → {trains.get('to','')}: {deps}")
 
-    weather = ctx.get("weather") or {}
-    if weather.get("temp") is not None:
-        ctx_lines.append(f"Weather: {weather['temp']}°C, {weather.get('desc','')}")
+        weather = ctx.get("weather") or {}
+        if weather.get("temp") is not None:
+            ctx_lines.append(f"Weather: {weather['temp']}°C, {weather.get('desc','')}")
 
-    school = ctx.get("school") or {}
-    _hs = school.get("holiday_status") or {}
-    if _hs.get("on_holiday") and _hs.get("label"):
-        ctx_lines.append(f"School holiday: kids are on {_hs['label']} this week (back {_hs.get('back_label','')})")
-    elif _hs.get("starts_tom") and _hs.get("label"):
-        ctx_lines.append(f"School holiday: last day of term today — {_hs['label']} starts tomorrow")
-    for ev in (school.get("upcoming") or [])[:3]:
-        ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}")
-    for ev in (school.get("recent") or [])[:2]:
-        ctx_lines.append(f"Recent school note: {ev.get('child_name','')} — {ev.get('event_title','')}")
+        fuel = ctx.get("fuel") or {}
+        if fuel.get("price"):
+            ctx_lines.append(f"Cheapest fuel: {fuel.get('name','')} {fuel['price']}p")
 
-    for pe in (ctx.get("personal_events") or [])[:5]:
-        _pe_t = f" at {pe['time']}" if pe.get("time") else ""
-        _pe_l = f", leave by {pe['leave_time']}" if pe.get("leave_time") else ""
-        ctx_lines.append(f"Personal event: {pe.get('title','')}{_pe_t} on {pe.get('date','')}{_pe_l}")
+        school = ctx.get("school") or {}
+        _hs = school.get("holiday_status") or {}
+        if _hs.get("on_holiday") and _hs.get("label"):
+            ctx_lines.append(f"School holiday: kids on {_hs['label']} (back {_hs.get('back_label','')})")
+        for ev in (school.get("upcoming") or [])[:3]:
+            ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}")
 
-    fuel = ctx.get("fuel") or {}
-    if fuel.get("price"):
-        ctx_lines.append(f"Cheapest fuel: {fuel.get('name','')} {fuel['price']}p")
+        for pe in (ctx.get("personal_events") or [])[:5]:
+            _t = f" at {pe['time']}" if pe.get("time") else ""
+            _l = f", leave by {pe['leave_time']}" if pe.get("leave_time") else ""
+            ctx_lines.append(f"Personal event: {pe.get('title','')}{_t} on {pe.get('date','')}{_l}")
 
-    for ev in (ctx.get("calendar") or [])[:3]:
-        ctx_lines.append(f"Calendar: {ev.get('title','')} on {ev.get('date','')} at {ev.get('start','')}")
+        for ev in (ctx.get("calendar") or [])[:3]:
+            ctx_lines.append(f"Calendar: {ev.get('title','')} on {ev.get('date','')} at {ev.get('start','')}")
 
-    for ra in (ctx.get("recurring") or []):
-        days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
-        d = days[ra["weekday"]] if ra.get("weekday") is not None else ""
-        ctx_lines.append(f"Recurring: {ra.get('child','')} {ra.get('activity','')} {d}s at {ra.get('time','')} — {ra.get('location','')}")
+        for ra in (ctx.get("recurring") or []):
+            days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+            d = days[ra["weekday"]] if ra.get("weekday") is not None else ""
+            ctx_lines.append(f"Recurring: {ra.get('child','')} {ra.get('activity','')} {d}s at {ra.get('time','')} — {ra.get('location','')}")
 
-    for dlv in (ctx.get("deliveries") or [])[:2]:
-        ctx_lines.append(f"Delivery: {dlv.get('carrier','')} — {dlv.get('status','')}")
+        for dlv in (ctx.get("deliveries") or [])[:2]:
+            ctx_lines.append(f"Delivery: {dlv.get('carrier','')} — {dlv.get('status','')}")
 
-    at = ctx.get("active_trip") or {}
-    if at.get("destination"):
-        ctx_lines.append(f"Planned trip: user said they were heading to {at['destination']} (about {at.get('dur_min','')} min away). Whether they actually went is unknown.")
+        # ── Fetch saves from DB (recent 40) ───────────────────────────────────
+        if from_number:
+            try:
+                plain = from_number.replace("whatsapp:", "").strip()
+                saves_rows = lib._sb().table("wa_saves") \
+                    .select("title,category,created_at") \
+                    .in_("from_number", [plain, "whatsapp:" + plain]) \
+                    .neq("status", "pending_intent") \
+                    .order("created_at", desc=True).limit(40).execute().data or []
+                if saves_rows:
+                    saves_text = "; ".join(
+                        f"{s.get('title','').strip()} [{s.get('category','')}]"
+                        for s in saves_rows if s.get("title")
+                    )
+                    ctx_lines.append(f"Saves library: {saves_text}")
+            except Exception:
+                pass
 
-    ctx_text = "; ".join(ctx_lines) if ctx_lines else "No specific context available."
+            # ── Spend summary ─────────────────────────────────────────────────
+            try:
+                spend = _v2_fetch_spend(from_number)
+                if spend and spend.get("total_month"):
+                    ctx_lines.append(f"Spend this month: £{spend['total_month']:.0f}")
+            except Exception:
+                pass
 
-    # Detect suggestion-type questions — these can draw on weather/time context
-    # rather than requiring an exact fact match.
-    _SUGGESTION_WORDS = {"do","idea","ideas","suggest","suggestion","go","out","tonight",
-                         "afternoon","evening","weekend","activity","activities","plan","bored"}
-    _q_words = set(question.lower().split())
-    _is_suggestion = bool(_q_words & _SUGGESTION_WORDS) and "?" not in question.replace("what can i do?","")
-
-    if _is_suggestion:
+    # ── System prompt by intent ────────────────────────────────────────────────
+    if is_utility and not is_personal:
         system_prompt = (
-            "You are Miru, a concise British personal assistant. "
-            "The user is asking for a suggestion. Use ONLY the weather and time of day from 'Context facts'. "
-            "STRICT RULES:\n"
-            "1. NEVER name a specific place, venue, club, or event unless it appears word-for-word in 'Context facts'.\n"
-            "2. NEVER invent times, matches, events, or activities.\n"
-            "3. You MAY suggest generic ideas (e.g. 'head to a park', 'grab dinner out') based on weather.\n"
-            "4. If 'Context facts' contains a saved restaurant, you may mention it by name.\n"
-            "5. NEVER reference calendar events, meetings, or appointments — the user is asking for activity ideas, not their schedule.\n"
-            "6. Under 25 words. Plain English. No bullet points."
+            "You are Miru, a smart British assistant. "
+            "Answer this question directly and concisely from your knowledge. "
+            "Plain English, no bullet points, under 40 words."
         )
+        messages = [{"role": "system", "content": system_prompt}]
+        for turn in thread[-3:]:
+            if turn.get("q"): messages.append({"role": "user",      "content": turn["q"]})
+            if turn.get("a"): messages.append({"role": "assistant", "content": turn["a"]})
+        messages.append({"role": "user", "content": question})
     else:
+        ctx_text = "; ".join(ctx_lines) if ctx_lines else "No personal context loaded."
         system_prompt = (
-            "You are Miru. You answer questions using ONLY the facts in 'Context facts'.\n"
-            "STRICT RULES — never break these:\n"
-            "1. If the answer is not explicitly in 'Context facts', reply EXACTLY: "
-            "\"I don't have that in your brief.\"\n"
-            "2. NEVER invent, infer, or guess names, places, times, events, or people.\n"
-            "3. NEVER use information from previous answers — only 'Context facts' is truth.\n"
-            "4. Under 30 words. No bullet points. Plain English."
+            "You are Miru, a smart British personal assistant. "
+            "You have two sources: (1) personal 'Context' facts about the user, "
+            "(2) your own general knowledge. "
+            "Use Context for personal questions (saves, events, school, spend, trains). "
+            "Use general knowledge for everything else — definitions, facts, calculations, advice. "
+            "Never say 'I don't have that in your brief' — if it's not in Context, answer from knowledge. "
+            "Plain English, no bullet points, under 45 words."
         )
-
-    # Build message history — only pass user questions from thread, NOT prior answers.
-    # Passing prior AI answers risks snowballing hallucinations.
-    messages = [{"role": "system", "content": system_prompt}]
-    for turn in thread[-2:]:
-        if turn.get("q"): messages.append({"role": "user", "content": turn["q"]})
-        # Deliberately omit prior assistant answers — prevents hallucination snowball
-    messages.append({"role": "user",
-                     "content": f"Context facts: {ctx_text}\n\nQuestion: {question}"})
+        messages = [{"role": "system", "content": system_prompt}]
+        for turn in thread[-3:]:
+            if turn.get("q"): messages.append({"role": "user",      "content": turn["q"]})
+            if turn.get("a"): messages.append({"role": "assistant", "content": turn["a"]})
+        messages.append({"role": "user",
+                         "content": f"Context: {ctx_text}\n\nQuestion: {question}"})
 
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 80,
-                  "temperature": 0, "messages": messages},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
+                  "temperature": 0.2, "messages": messages},
             timeout=8,
         )
         answer = r.json()["choices"][0]["message"]["content"].strip()
