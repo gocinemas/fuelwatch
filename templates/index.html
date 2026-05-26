@@ -14565,30 +14565,35 @@ _bkBadge();
     var bankHol   = !!(ctx && ctx.bank_holiday_today);
 
     var fuel   = ctx && ctx.fuel;
-    var trains = ctx && ctx.trains;
+    // Use whichever trains object has departures (morning→ctx.trains, evening→ctx.trains_home)
+    var _tr1 = ctx && ctx.trains;
+    var _tr2 = ctx && ctx.trains_home;
+    var trains = (_tr1 && _tr1.departures && _tr1.departures.length) ? _tr1
+               : (_tr2 && _tr2.departures && _tr2.departures.length) ? _tr2
+               : null;
 
-    // ── Fuel (tile subtitle — day only) ───────────────────────────────────────
+    // ── Fuel ──────────────────────────────────────────────────────────────────
     var fuelSub  = document.getElementById("tile-fuel-sub");
     var fuelGlance = "";
     if (fuel && fuel.price) {
       var fName = (fuel.name || "").split(/[,·]/)[0].trim()
                     .replace(/\b(\w)/g, function(c){ return c.toUpperCase(); });
-      fuelGlance = "⛽ " + fuel.price + "p · " + fName;
-      if (!isNight && fuelSub) { fuelSub.textContent = fuel.price + "p · " + fName; fuelSub.style.color = "#1d4ed8"; fuelSub.style.fontWeight = "700"; }
+      fuelGlance = "Cheapest ⛽ " + fuel.price + "p · " + fName;
+      if (fuelSub) { fuelSub.textContent = fuel.price + "p · " + fName; fuelSub.style.color = "#1d4ed8"; fuelSub.style.fontWeight = "700"; }
+    } else {
+      if (fuelSub) { fuelSub.textContent = "Cheapest near you"; fuelSub.style.color = ""; fuelSub.style.fontWeight = ""; }
     }
-    if (isNight && fuelSub) { fuelSub.textContent = "Cheapest near you"; fuelSub.style.color = ""; fuelSub.style.fontWeight = ""; }
 
     // ── Trains ────────────────────────────────────────────────────────────────
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
-    if (trains && trains.departures && trains.departures.length) {
+    if (trains) {
       var d0   = trains.departures[0];
       var t0   = d0.departs || d0.time || "";
       var dst0 = (d0.destination || trains.to || "").replace(/\s+station$/i,"").replace(/^London /i,"");
       var next = trains.departures[1] ? " · " + (trains.departures[1].departs || trains.departures[1].time || "") : "";
       trainGlance = "🚆 " + t0 + " " + dst0 + next;
-      // Tile subtitle: only update on weekdays, daytime, non-WFH
-      if (!isWeekend && !bankHol && !isNight && _briefCurrentMode !== "wfh") {
+      if (!isWeekend && !bankHol && !isNight) {
         if (trainSub) { trainSub.textContent = t0 + " " + dst0 + next; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
       } else {
         if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
@@ -14597,7 +14602,7 @@ _bkBadge();
       if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
     }
 
-    // ── Glance row above the narrative — always visible when data exists ───────
+    // ── Glance row above the narrative ────────────────────────────────────────
     var glance     = document.getElementById("brief-glance");
     var glanceFuel = document.getElementById("brief-glance-fuel");
     var glanceSep  = document.getElementById("brief-glance-sep");
@@ -17152,7 +17157,7 @@ _bkBadge();
       : displaySummary
       ? isAreaReport
         ? `<div style="font-size:12px;color:var(--text);line-height:1.7;margin-bottom:10px;opacity:0.85;white-space:pre-wrap">${_hl(displaySummary, _savesHighlightTerm)}</div>`
-        : `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${_hl(displaySummary, _savesHighlightTerm)}</div>`
+        : `<div style="font-size:13px;color:var(--text);line-height:1.55;margin-bottom:10px;opacity:0.8;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${_hl(displaySummary, _savesHighlightTerm)}</div>`
       : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic">Analysing…</div>`;
 
     let sourceDomain = "";
@@ -17170,8 +17175,8 @@ _bkBadge();
     const titlePrefix = _prefixMatch ? _prefixMatch[0].trim() : "";
     const editableTitle = titlePrefix ? rawTitle.slice(_prefixMatch[0].length).trim() || rawTitle : rawTitle;
     const titleHtml = s.url && !isPhoto && !isBook
-      ? `<a href="${s.url}" target="_blank" style="font-size:15px;font-weight:700;color:var(--text);text-decoration:none;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${rawTitle}</a>`
-      : `<span style="font-size:15px;font-weight:700;color:var(--text);line-height:1.35">${rawTitle}</span>`;
+      ? `<a href="${s.url}" target="_blank" style="font-size:16px;font-weight:800;color:var(--text);text-decoration:none;line-height:1.3;letter-spacing:-0.3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${rawTitle}</a>`
+      : `<span style="font-size:16px;font-weight:800;color:var(--text);line-height:1.3;letter-spacing:-0.3px">${rawTitle}</span>`;
 
     const statusBadge = s.remind_day
       ? `<span style="font-size:10px;font-weight:700;color:#d97706;background:#fffbeb;padding:2px 8px;border-radius:99px;white-space:nowrap">🔔</span>`
@@ -17232,33 +17237,57 @@ _bkBadge();
     const exportBtns = isAreaReport ? `
       <button onclick="_viewAreaReport('${_arPostcode}')" style="padding:8px 14px;border-radius:10px;border:1px solid #c7d2fe;background:#eef2ff;font-size:12px;font-weight:600;cursor:pointer;color:#4338ca">🔎 View report →</button>` : "";
 
-    const deleteBtn = `<button onclick="savesDelete('${s.id}',this)" style="padding:8px 12px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626">🗑</button>`;
+    const deleteBtn = `<button onclick="savesDelete('${s.id}',this)" style="padding:7px 11px;border-radius:10px;border:1px solid #fee2e2;background:#fff5f5;font-size:12px;cursor:pointer;color:#dc2626" title="Delete">🗑</button>`;
 
-    return `<div id="save-card-${s.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px 15px;margin-bottom:10px">
+    // Category chip label + color
+    const _cat = _saveCat(s);
+    const _catMeta = {
+      dining:  {label:"Dining",    color:"#c2410c", bg:"#fff7ed"},
+      place:   {label:"Place",     color:"#1d4ed8", bg:"#eff6ff"},
+      wine:    {label:"Wine",      color:"#7c3aed", bg:"#faf5ff"},
+      brand:   {label:"Brand",     color:"#b45309", bg:"#fffbeb"},
+      product: {label:"Product",   color:"#047857", bg:"#ecfdf5"},
+      recipe:  {label:"Recipe",    color:"#c2410c", bg:"#fff7ed"},
+      book:    {label:"Book",      color:"#0f766e", bg:"#f0fdfa"},
+      area:    {label:"Area",      color:"#4338ca", bg:"#eef2ff"},
+      event:   {label:"Event",     color:"#be185d", bg:"#fdf2f8"},
+      receipt: {label:"Receipt",   color:"#6b7280", bg:"#f9fafb"},
+      video:   {label:"Video",     color:"#dc2626", bg:"#fef2f2"},
+      ad:      {label:"Ad",        color:"#6b7280", bg:"#f9fafb"},
+      photo:   {label:"Photo",     color:"#6b7280", bg:"#f9fafb"},
+      article: {label:"Article",   color:"#374151", bg:"#f3f4f6"},
+    };
+    const _cm = _catMeta[_cat] || _catMeta.article;
+    const footerSource = sourceDomain ? " · " + sourceDomain : isPhoto ? " · WhatsApp" : isBook ? " · Book" : "";
+    const footerLine = [date + footerSource, s.remind_day ? "🔔 " + s.remind_day : ""].filter(Boolean).join(" · ");
+
+    return `<div id="save-card-${s.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden">
       ${imageThumb}
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;gap:8px">
-        <div id="save-title-${s.id}" style="flex:1;min-width:0">${titleHtml}</div>
-        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
-          ${statusBadge}
-          <button onclick="savesEditTitle('${s.id}',this.dataset.t,this.dataset.p)" data-t="${editableTitle.replace(/"/g,'&quot;')}" data-p="${titlePrefix.replace(/"/g,'&quot;')}" style="background:none;border:none;cursor:pointer;font-size:13px;opacity:0.5;padding:0;line-height:1" title="Edit title">✏️</button>
+      <div style="padding:13px 14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:10px;font-weight:800;color:${_cm.color};background:${_cm.bg};border-radius:99px;padding:3px 9px;letter-spacing:.04em;text-transform:uppercase">${_cm.label}</span>
+          <div style="display:flex;align-items:center;gap:4px">
+            ${statusBadge}
+            <button onclick="savesEditTitle('${s.id}',this.dataset.t,this.dataset.p)" data-t="${editableTitle.replace(/"/g,'&quot;')}" data-p="${titlePrefix.replace(/"/g,'&quot;')}" style="background:none;border:none;cursor:pointer;font-size:12px;opacity:0.4;padding:2px;line-height:1" title="Edit title">✏️</button>
+          </div>
         </div>
+        <div id="save-title-${s.id}" style="margin-bottom:6px">${titleHtml}</div>
+        ${urlRow}
+        ${metaRow}
+        ${productsHtml}
+        ${!productsHtml ? summaryHtml : ""}
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${footerLine}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          ${openBtn}
+          ${exportBtns}
+          ${deleteBtn}
+          ${enrichBtn}
+          ${rescanBtn}
+          ${brandBtn}
+          ${adAiBtn}
+        </div>
+        <div id="ad-intel-result-${s.id}" style="margin-top:10px${_savedAiResult ? '' : ';display:none'}">${_savedAiResult ? _adIntelCardHtml(_savedAiResult) : ''}</div>
       </div>
-      ${sourceRow}
-      ${urlRow}
-      ${metaRow}
-      ${productsHtml}
-      ${!productsHtml ? summaryHtml : ""}
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${date}${s.remind_day ? " · 🔔 " + s.remind_day : ""}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        ${openBtn}
-        ${exportBtns}
-        ${deleteBtn}
-        ${enrichBtn}
-        ${rescanBtn}
-        ${brandBtn}
-        ${adAiBtn}
-      </div>
-      <div id="ad-intel-result-${s.id}" style="margin-top:10px${_savedAiResult ? '' : ';display:none'}">${_savedAiResult ? _adIntelCardHtml(_savedAiResult) : ''}</div>
     </div>`;
   }
 
