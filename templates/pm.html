@@ -600,9 +600,21 @@
       var docs = results[0] || [];
       var projects = results[1] || [];
       var packDoc = docs.find(function(d) { return d.doc_type === "agentic_pack"; });
-      if (!packDoc) throw new Error("Pack not found");
-      var pack = JSON.parse(packDoc.content);
       var proj = projects.find(function(p) { return p.id === id; });
+      document.getElementById("loading").style.display = "none";
+      if (!packDoc) {
+        // Old-format project — no agentic pack stored
+        document.getElementById("intake-view").style.display = "block";
+        var ta = document.getElementById("intake-input");
+        if (ta && proj && proj.description) ta.value = proj.description;
+        var hero = document.querySelector(".hero p");
+        if (hero) {
+          var n = _esc(proj ? proj.name : "this project");
+          hero.innerHTML = '<span style="color:var(--amber);font-weight:700">⚠ "' + n + '" was saved before the new pack format.</span><br>Paste its brief below and regenerate — then save again.';
+        }
+        return;
+      }
+      var pack = JSON.parse(packDoc.content);
       _result = pack;
       _savedProjectId = id;
       _renderOutput(pack);
@@ -610,7 +622,7 @@
     }).catch(function(e) {
       document.getElementById("loading").style.display = "none";
       document.getElementById("intake-view").style.display = "block";
-      alert("Could not load project: " + e.message);
+      console.error("openProject:", e);
     });
   }
 
