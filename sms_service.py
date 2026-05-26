@@ -8866,7 +8866,14 @@ def api_home_ask():
     if not question:
         return jsonify({"answer": ""}), 400
 
-    q_lower = question.lower()
+    q_lower = question.strip().lower()
+
+    # ── Greeting short-circuit — no context injection, no hallucinated schedules ─
+    _GREETINGS = {"hi", "hello", "hey", "morning", "good morning", "hiya", "yo", "sup",
+                  "evening", "good evening", "afternoon", "good afternoon", "hi miru",
+                  "hello miru", "hey miru"}
+    if q_lower in _GREETINGS:
+        return jsonify({"answer": "Hey! What would you like to know?"})
 
     # ── Intent classification ──────────────────────────────────────────────────
     # Utility: factual/definitional questions that don't need personal context
@@ -8971,6 +8978,7 @@ def api_home_ask():
             "(2) your own general knowledge. "
             "Use Context for personal questions (saves, events, school, spend, trains). "
             "Use general knowledge for everything else — definitions, facts, calculations, advice. "
+            "CRITICAL: never invent events, appointments, or schedules not explicitly in Context. "
             "Never say 'I don't have that in your brief' — if it's not in Context, answer from knowledge. "
             "Plain English, no bullet points, under 45 words."
         )
