@@ -22777,6 +22777,141 @@ def api_pm_analyse():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/pm/assess", methods=["POST"])
+def api_pm_assess():
+    data = request.json or {}
+    problem = (data.get("problem") or "").strip()
+    if not problem:
+        return jsonify({"error": "Problem description required"}), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "AI not configured"}), 500
+
+    prompt = (
+        "You are a senior programme manager reviewing a brief before committing to a full pack. "
+        "Your job: read critically, spot gaps, challenge assumptions, surface what's missing. "
+        "Do NOT generate a full pack yet — just assess.\n\n"
+        "Return ONLY valid JSON:\n"
+        "{\n"
+        '  "feasibility": "green|amber|red",\n'
+        '  "feasibility_reason": "1 honest sentence on confidence level",\n'
+        '  "project_name": "concise project name",\n'
+        '  "project_type": "IT Transformation|Digital Build|Process Improvement|De-merger|ERP Implementation|Other",\n'
+        '  "challenges": [\n'
+        '    "Specific question that would materially change scope, timeline or approach",\n'
+        '    "Another question — 3 to 5 total"\n'
+        '  ],\n'
+        '  "assumptions": [\n'
+        '    "I am assuming X, which would affect Y if wrong",\n'
+        '    "2 to 3 assumptions total"\n'
+        '  ]\n'
+        "}\n\n"
+        "Challenge rules:\n"
+        "- Ask 3-5 questions specific to THIS brief, not generic PM questions\n"
+        "- Probe: scope boundary, ownership, timeline realism, success metrics, key dependencies\n"
+        "- Don't ask what's already stated in the brief\n"
+        "- If the brief is vague, challenge the vagueness directly\n\n"
+        "Brief:\n"
+    )
+
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt + problem}],
+                "temperature": 0.2,
+                "max_tokens": 1200,
+            },
+            timeout=30,
+        )
+        if r.status_code != 200:
+            return jsonify({"error": f"AI error {r.status_code}"}), 500
+        raw = r.json()["choices"][0]["message"]["content"].strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        import json as _json
+        parsed = _json.loads(raw)
+        return jsonify(parsed)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/pm/refine", methods=["POST"])
+def api_pm_refine():
+    import json as _json
+    data = request.json or {}
+    section     = (data.get("section") or "").strip()
+    instruction = (data.get("instruction") or "").strip()
+    context     = data.get("context") or {}
+    if not section or not instruction or not context:
+        return jsonify({"error": "section, instruction and context required"}), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "AI not configured"}), 500
+
+    section_content = {
+        "vision":      context.get("vision", ""),
+        "boscard":     context.get("boscard", ""),
+        "requirements":_json.dumps(context.get("requirements", {})),
+        "use_cases":   _json.dumps(context.get("use_cases", [])),
+        "plan":        _json.dumps(context.get("plan", {})),
+        "risks":       _json.dumps(context.get("risks", [])),
+        "actions":     _json.dumps(context.get("actions", [])),
+        "jira_epics":  _json.dumps(context.get("jira_epics", [])),
+    }.get(section, "")
+
+    return_formats = {
+        "vision":       '{"vision": "rewritten vision paragraph"}',
+        "boscard":      '{"boscard": "## Benefits\\n- ...\\n## Objectives\\n- SMART objective\\n## Scope\\n**In:** ...\\n**Out:** ...\\n## Constraints\\n- ...\\n## Assumptions\\n- ...\\n## Risks\\n- Risk (H/M/L)\\n## Dependencies\\n- ..."}',
+        "requirements": '{"requirements": {"functional": ["FR1: ...", "FR2: ..."], "non_functional": ["NFR1: Performance — ...", "NFR2: Security — ..."]}}',
+        "use_cases":    '{"use_cases": [{"id": "UC1", "actor": "...", "action": "...", "outcome": "..."}]}',
+        "plan":         '{"plan": {"phases": [{"name": "...", "duration": "...", "activities": ["...", "..."]}]}}',
+        "risks":        '{"risks": [{"risk": "...", "prob": "High|Med|Low", "impact": "High|Med|Low", "mitigation": "..."}]}',
+        "actions":      '{"actions": ["First concrete action", "Second action", "Third action"]}',
+        "jira_epics":   '{"jira_epics": [{"epic": "Epic name", "stories": ["Story 1", "Story 2"]}]}',
+    }
+    return_fmt = return_formats.get(section, f'{{"{section}": ...}}')
+
+    prompt = (
+        f"You are refining the '{section}' section of a programme pack.\n\n"
+        f"Project: {context.get('project_name','Unknown')} ({context.get('project_type','')})\n"
+        f"Vision: {str(context.get('vision',''))[:300]}\n\n"
+        f"Current {section}:\n{section_content}\n\n"
+        f"Refinement instruction: {instruction}\n\n"
+        f"Return ONLY valid JSON with just the updated section:\n{return_fmt}\n"
+    )
+
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 2500,
+            },
+            timeout=45,
+        )
+        if r.status_code != 200:
+            return jsonify({"error": f"AI error {r.status_code}"}), 500
+        raw = r.json()["choices"][0]["message"]["content"].strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        parsed = _json.loads(raw)
+        return jsonify(parsed)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/pm/intake", methods=["POST"])
 def api_pm_intake():
     data = request.json or {}
@@ -22840,7 +22975,7 @@ def api_pm_intake():
             headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
             json={
                 "model": "llama-3.3-70b-versatile",
-                "messages": [{"role": "user", "content": prompt + problem}],
+                "messages": [{"role": "user", "content": prompt + _intake_content(problem, data)}],
                 "temperature": 0.2,
                 "max_tokens": 5000,
             },
@@ -22859,6 +22994,13 @@ def api_pm_intake():
         return jsonify(parsed)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def _intake_content(problem, data):
+    answers = (data.get("answers") or "").strip()
+    if answers:
+        return problem + "\n\n---\nUser answers to clarifying questions:\n" + answers
+    return problem
 
 
 # ── Me: last seen location ────────────────────────────────────────────────────

@@ -314,6 +314,84 @@
       cursor:pointer; font-family:inherit;
     }
 
+    /* ── Assess loading ── */
+    #assess-loading { display:none; text-align:center; padding:60px 20px; }
+
+    /* ── Challenge view ── */
+    #challenge-view { display:none; }
+    .challenge-card {
+      background:var(--surface); border:1.5px solid var(--border);
+      border-radius:20px; padding:20px; margin-bottom:16px;
+    }
+    .challenge-q {
+      padding:12px 0; border-bottom:1px solid var(--border);
+    }
+    .challenge-q:last-child { border-bottom:none; padding-bottom:0; }
+    .challenge-q-text {
+      font-size:13px; font-weight:700; color:var(--text);
+      margin-bottom:8px; display:flex; align-items:flex-start; gap:8px;
+    }
+    .challenge-q-num {
+      width:20px; height:20px; border-radius:50%;
+      background:var(--accent-light); color:var(--accent);
+      font-size:11px; font-weight:800; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; margin-top:1px;
+    }
+    .challenge-q-input {
+      width:100%; padding:9px 12px; border:1.5px solid var(--border);
+      border-radius:10px; font-size:13px; font-family:inherit;
+      background:var(--bg); color:var(--text); transition:border-color .15s;
+      resize:none; min-height:54px; line-height:1.5;
+    }
+    .challenge-q-input:focus { outline:none; border-color:var(--accent); }
+    .challenge-q-input::placeholder { color:var(--muted); }
+    .assumptions-block {
+      background:var(--surface2); border-radius:12px;
+      padding:12px 14px; margin-bottom:16px;
+    }
+    .assumptions-label {
+      font-size:11px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.06em; color:var(--muted); margin-bottom:6px;
+    }
+    .assumptions-list { font-size:12px; color:var(--muted); line-height:1.65; padding-left:14px; }
+    .challenge-generate-btn {
+      width:100%; padding:13px; border-radius:12px; border:none;
+      background:var(--accent); color:#fff; font-size:15px; font-weight:700;
+      cursor:pointer; font-family:inherit; transition:opacity .15s;
+    }
+    .challenge-generate-btn:disabled { opacity:.5; cursor:not-allowed; }
+    .challenge-skip-link {
+      text-align:center; font-size:13px; color:var(--muted);
+      cursor:pointer; padding:8px; margin-top:4px;
+    }
+    .challenge-skip-link:hover { color:var(--text); text-decoration:underline; }
+
+    /* ── Refine bar (per section) ── */
+    .refine-bar {
+      display:flex; gap:8px; align-items:stretch;
+      margin-top:12px; padding-top:12px; border-top:1px solid var(--border);
+    }
+    .refine-input {
+      flex:1; padding:8px 12px; border:1.5px solid var(--border);
+      border-radius:8px; font-size:12px; font-family:inherit;
+      background:var(--bg); color:var(--text); transition:border-color .15s;
+    }
+    .refine-input:focus { outline:none; border-color:var(--accent); }
+    .refine-input::placeholder { color:var(--muted); }
+    .refine-apply-btn {
+      padding:8px 14px; border-radius:8px;
+      border:1.5px solid var(--accent); color:var(--accent);
+      background:var(--accent-light); font-size:12px; font-weight:700;
+      cursor:pointer; font-family:inherit; white-space:nowrap; transition:all .15s;
+    }
+    .refine-apply-btn:disabled { opacity:.5; cursor:not-allowed; }
+    .refine-toggle-btn {
+      font-size:11px; font-weight:600; color:var(--muted);
+      background:none; border:1px solid var(--border); border-radius:6px;
+      padding:4px 9px; cursor:pointer; font-family:inherit; transition:all .15s; flex-shrink:0;
+    }
+    .refine-toggle-btn:hover { border-color:var(--accent); color:var(--accent); }
+
     @media(max-width:600px) {
       #main { padding:20px 12px 60px; }
       .hero h1 { font-size:20px; }
@@ -360,8 +438,28 @@
     <div class="intake-box">
       <textarea id="intake-input" class="intake-textarea"
         placeholder="e.g. We're separating IT systems from the parent company after a de-merger. 14 production systems, 6 months to exit, no clear IT owner on the NewCo side yet. The board wants a clean separation by end of Q3..."></textarea>
-      <button id="intake-btn" class="intake-submit" onclick="_run()">Generate programme pack →</button>
+      <button id="intake-btn" class="intake-submit" onclick="_analyse()">Analyse brief →</button>
     </div>
+  </div>
+
+  <!-- Assess loading -->
+  <div id="assess-loading">
+    <div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 16px"></div>
+    <div style="font-size:15px;font-weight:700;color:var(--text)">Reading your brief…</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:6px">Checking feasibility, preparing questions</div>
+  </div>
+
+  <!-- Challenge view -->
+  <div id="challenge-view">
+    <div id="challenge-feasibility"></div>
+    <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:14px">Before I generate your pack, a few things I need to know:</div>
+    <div class="challenge-card" id="challenge-card"></div>
+    <div class="assumptions-block" id="assumptions-block" style="display:none">
+      <div class="assumptions-label">My assumptions</div>
+      <ul class="assumptions-list" id="assumptions-list"></ul>
+    </div>
+    <button class="challenge-generate-btn" id="challenge-btn" onclick="_generateWithAnswers()">Generate pack with my answers →</button>
+    <div class="challenge-skip-link" onclick="_generateSkip()">Skip questions — generate now</div>
   </div>
 
   <!-- Loading view -->
@@ -395,12 +493,17 @@
       <div class="section-header open" onclick="_toggle(this)">
         <div class="section-title"><span class="section-icon">👁️</span> Vision</div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="refine-toggle-btn" onclick="event.stopPropagation();_toggleRefine('vision')">✏ Refine</button>
           <button class="copy-btn" onclick="event.stopPropagation();_copy('vision')">Copy</button>
           <span class="section-chevron">▾</span>
         </div>
       </div>
       <div class="section-body open" id="out-vision-body">
         <div class="vision-text" id="out-vision"></div>
+        <div class="refine-bar" id="refine-vision" style="display:none">
+          <input class="refine-input" id="refine-vision-input" placeholder="e.g. Make it more user-centric, focus on the customer journey" />
+          <button class="refine-apply-btn" id="refine-vision-btn" onclick="_applyRefine('vision')">Apply →</button>
+        </div>
       </div>
     </div>
 
@@ -409,12 +512,17 @@
       <div class="section-header open" onclick="_toggle(this)">
         <div class="section-title"><span class="section-icon">🎯</span> BOSCARD</div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="refine-toggle-btn" onclick="event.stopPropagation();_toggleRefine('boscard')">✏ Refine</button>
           <button class="copy-btn" onclick="event.stopPropagation();_copy('boscard')">Copy</button>
           <span class="section-chevron">▾</span>
         </div>
       </div>
       <div class="section-body open" id="out-boscard-body">
         <div id="out-boscard"></div>
+        <div class="refine-bar" id="refine-boscard" style="display:none">
+          <input class="refine-input" id="refine-boscard-input" placeholder="e.g. Tighten the scope, add a dependency on the data migration team" />
+          <button class="refine-apply-btn" id="refine-boscard-btn" onclick="_applyRefine('boscard')">Apply →</button>
+        </div>
       </div>
     </div>
 
@@ -423,12 +531,17 @@
       <div class="section-header open" onclick="_toggle(this)">
         <div class="section-title"><span class="section-icon">📝</span> Business Requirements</div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="refine-toggle-btn" onclick="event.stopPropagation();_toggleRefine('requirements')">✏ Refine</button>
           <button class="copy-btn" onclick="event.stopPropagation();_copy('requirements')">Copy</button>
           <span class="section-chevron">▾</span>
         </div>
       </div>
       <div class="section-body open" id="out-requirements-body">
         <div id="out-requirements"></div>
+        <div class="refine-bar" id="refine-requirements" style="display:none">
+          <input class="refine-input" id="refine-requirements-input" placeholder="e.g. Add NFR for GDPR compliance, split FR3 into two separate requirements" />
+          <button class="refine-apply-btn" id="refine-requirements-btn" onclick="_applyRefine('requirements')">Apply →</button>
+        </div>
       </div>
     </div>
 
@@ -437,12 +550,17 @@
       <div class="section-header open" onclick="_toggle(this)">
         <div class="section-title"><span class="section-icon">👥</span> Use Cases</div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="refine-toggle-btn" onclick="event.stopPropagation();_toggleRefine('use_cases')">✏ Refine</button>
           <button class="copy-btn" onclick="event.stopPropagation();_copy('usecases')">Copy</button>
           <span class="section-chevron">▾</span>
         </div>
       </div>
       <div class="section-body open" id="out-usecases-body">
         <div id="out-usecases"></div>
+        <div class="refine-bar" id="refine-use_cases" style="display:none">
+          <input class="refine-input" id="refine-use_cases-input" placeholder="e.g. Add a use case for the finance team, make UC2 more specific to billing" />
+          <button class="refine-apply-btn" id="refine-use_cases-btn" onclick="_applyRefine('use_cases')">Apply →</button>
+        </div>
       </div>
     </div>
 
@@ -451,12 +569,17 @@
       <div class="section-header open" onclick="_toggle(this)">
         <div class="section-title"><span class="section-icon">📅</span> Delivery Plan</div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="refine-toggle-btn" onclick="event.stopPropagation();_toggleRefine('plan')">✏ Refine</button>
           <button class="copy-btn" onclick="event.stopPropagation();_copy('plan')">Copy</button>
           <span class="section-chevron">▾</span>
         </div>
       </div>
       <div class="section-body open" id="out-plan-body">
         <div id="out-plan"></div>
+        <div class="refine-bar" id="refine-plan" style="display:none">
+          <input class="refine-input" id="refine-plan-input" placeholder="e.g. Add a UAT phase, compress discovery to 1 week, add go-live support phase" />
+          <button class="refine-apply-btn" id="refine-plan-btn" onclick="_applyRefine('plan')">Apply →</button>
+        </div>
       </div>
     </div>
 
@@ -465,6 +588,7 @@
       <div class="section-header open" onclick="_toggle(this)">
         <div class="section-title"><span class="section-icon">⚠️</span> Top Risks</div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="refine-toggle-btn" onclick="event.stopPropagation();_toggleRefine('risks')">✏ Refine</button>
           <button class="copy-btn" onclick="event.stopPropagation();_copy('risks')">Copy</button>
           <span class="section-chevron">▾</span>
         </div>
@@ -474,6 +598,10 @@
           <thead><tr><th>Risk</th><th>Prob</th><th>Impact</th><th>Mitigation</th></tr></thead>
           <tbody id="out-risks-tbody"></tbody>
         </table>
+        <div class="refine-bar" id="refine-risks" style="display:none">
+          <input class="refine-input" id="refine-risks-input" placeholder="e.g. Add a risk around data quality, elevate the vendor dependency risk" />
+          <button class="refine-apply-btn" id="refine-risks-btn" onclick="_applyRefine('risks')">Apply →</button>
+        </div>
       </div>
     </div>
 
@@ -482,12 +610,17 @@
       <div class="section-header open" onclick="_toggle(this)">
         <div class="section-title"><span class="section-icon">✅</span> First 3 Actions</div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="refine-toggle-btn" onclick="event.stopPropagation();_toggleRefine('actions')">✏ Refine</button>
           <button class="copy-btn" onclick="event.stopPropagation();_copy('actions')">Copy</button>
           <span class="section-chevron">▾</span>
         </div>
       </div>
       <div class="section-body open" id="out-actions-body">
         <div class="action-list" id="out-actions"></div>
+        <div class="refine-bar" id="refine-actions" style="display:none">
+          <input class="refine-input" id="refine-actions-input" placeholder="e.g. Make action 1 more specific, focus on stakeholder mapping first" />
+          <button class="refine-apply-btn" id="refine-actions-btn" onclick="_applyRefine('actions')">Apply →</button>
+        </div>
       </div>
     </div>
 
@@ -496,12 +629,17 @@
       <div class="section-header open" onclick="_toggle(this)">
         <div class="section-title"><span class="section-icon">📋</span> Jira / Trello Structure</div>
         <div style="display:flex;gap:8px;align-items:center">
+          <button class="refine-toggle-btn" onclick="event.stopPropagation();_toggleRefine('jira_epics')">✏ Refine</button>
           <button class="copy-btn" onclick="event.stopPropagation();_copy('jira')">Copy</button>
           <span class="section-chevron">▾</span>
         </div>
       </div>
       <div class="section-body open" id="out-jira-body">
         <div id="out-jira"></div>
+        <div class="refine-bar" id="refine-jira_epics" style="display:none">
+          <input class="refine-input" id="refine-jira_epics-input" placeholder="e.g. Add an epic for data migration, split the integration epic into two" />
+          <button class="refine-apply-btn" id="refine-jira_epics-btn" onclick="_applyRefine('jira_epics')">Apply →</button>
+        </div>
       </div>
     </div>
 
@@ -534,6 +672,7 @@
 <script>
   var _result = null;
   var _savedProjectId = null;
+  var _challengeData = null;
   var STEPS = ["ls-1","ls-2","ls-3","ls-4","ls-5","ls-6","ls-7","ls-8"];
 
   // ── Panel ─────────────────────────────────────────────────────────────────
@@ -591,6 +730,8 @@
   function _openProject(id) {
     _closePanel();
     document.getElementById("intake-view").style.display = "none";
+    document.getElementById("challenge-view").style.display = "none";
+    document.getElementById("assess-loading").style.display = "none";
     document.getElementById("output").style.display = "none";
     document.getElementById("loading").style.display = "block";
     Promise.all([
@@ -656,20 +797,104 @@
     });
   }
 
-  // ── Run ───────────────────────────────────────────────────────────────────
-  function _run() {
+  // ── Phase 1: Analyse ─────────────────────────────────────────────────────
+  function _analyse() {
     var input = (document.getElementById("intake-input").value || "").trim();
     if (!input) { alert("Describe your project first"); return; }
     var btn = document.getElementById("intake-btn");
     btn.disabled = true;
     document.getElementById("intake-view").style.display = "none";
+    document.getElementById("challenge-view").style.display = "none";
+    document.getElementById("output").style.display = "none";
+    document.getElementById("assess-loading").style.display = "block";
+    fetch("/api/pm/assess", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({problem: input})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById("assess-loading").style.display = "none";
+      btn.disabled = false;
+      if (data.error) { _showIntake(); alert("Error: " + data.error); return; }
+      _challengeData = data;
+      _renderChallenge(data);
+    })
+    .catch(function() {
+      document.getElementById("assess-loading").style.display = "none";
+      btn.disabled = false;
+      _showIntake();
+      alert("Network error — try again");
+    });
+  }
+
+  // ── Phase 2: Render challenge card ────────────────────────────────────────
+  function _renderChallenge(data) {
+    var fMap = {
+      green: {icon:"🟢", label:"Feasible — clear enough to build on", cls:"green"},
+      amber: {icon:"🟡", label:"Viable — some gaps to resolve",        cls:"amber"},
+      red:   {icon:"🔴", label:"Needs more clarity before committing", cls:"red"}
+    };
+    var f = fMap[data.feasibility] || fMap.amber;
+    document.getElementById("challenge-feasibility").innerHTML =
+      '<div class="feasibility-card ' + f.cls + '" style="margin-bottom:16px">'
+      + '<div class="feasibility-icon">' + f.icon + '</div>'
+      + '<div><div class="feasibility-label">' + f.label + '</div>'
+      + '<div class="feasibility-reason">' + _esc(data.feasibility_reason || "") + '</div>'
+      + '</div></div>';
+
+    var qs = data.challenges || [];
+    document.getElementById("challenge-card").innerHTML = qs.map(function(q, i) {
+      return '<div class="challenge-q">'
+        + '<div class="challenge-q-text">'
+        + '<div class="challenge-q-num">' + (i + 1) + '</div>'
+        + '<span>' + _esc(q) + '</span></div>'
+        + '<textarea class="challenge-q-input" id="cq-' + i + '" rows="2" placeholder="Your answer (optional)…"></textarea>'
+        + '</div>';
+    }).join("");
+
+    var assumptions = data.assumptions || [];
+    if (assumptions.length) {
+      document.getElementById("assumptions-block").style.display = "block";
+      document.getElementById("assumptions-list").innerHTML =
+        assumptions.map(function(a) { return "<li>" + _esc(a) + "</li>"; }).join("");
+    } else {
+      document.getElementById("assumptions-block").style.display = "none";
+    }
+
+    document.getElementById("challenge-btn").disabled = false;
+    document.getElementById("challenge-view").style.display = "block";
+    window.scrollTo({top: 0, behavior: "smooth"});
+  }
+
+  // ── Phase 3: Generate pack with answers ───────────────────────────────────
+  function _generateWithAnswers() {
+    var qs = (_challengeData && _challengeData.challenges) || [];
+    var pairs = qs.map(function(q, i) {
+      var ans = (document.getElementById("cq-" + i) || {}).value || "";
+      ans = ans.trim();
+      return ans ? ("Q: " + q + "\nA: " + ans) : null;
+    }).filter(Boolean);
+    _generate(pairs.join("\n\n"));
+  }
+
+  function _generateSkip() {
+    _generate("");
+  }
+
+  function _generate(answers) {
+    var input = (document.getElementById("intake-input").value || "").trim();
+    if (!input) return;
+    var btn = document.getElementById("challenge-btn");
+    if (btn) btn.disabled = true;
+    document.getElementById("challenge-view").style.display = "none";
     document.getElementById("output").style.display = "none";
     document.getElementById("loading").style.display = "block";
     _startSteps();
     fetch("/api/pm/intake", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({problem: input})
+      body: JSON.stringify({problem: input, answers: answers})
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -683,8 +908,100 @@
       _stopSteps();
       alert("Network error — try again");
       _showIntake();
+    });
+  }
+
+  // ── Refine a section ──────────────────────────────────────────────────────
+  function _toggleRefine(section) {
+    var bar = document.getElementById("refine-" + section);
+    if (!bar) return;
+    var isHidden = bar.style.display === "none";
+    bar.style.display = isHidden ? "flex" : "none";
+    if (isHidden) {
+      var inp = document.getElementById("refine-" + section + "-input");
+      if (inp) inp.focus();
+    }
+  }
+
+  function _applyRefine(section) {
+    if (!_result) return;
+    var inp = document.getElementById("refine-" + section + "-input");
+    var instruction = inp ? inp.value.trim() : "";
+    if (!instruction) { if (inp) inp.focus(); return; }
+    var btn = document.getElementById("refine-" + section + "-btn");
+    if (btn) { btn.disabled = true; btn.textContent = "Refining…"; }
+    fetch("/api/pm/refine", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({section: section, instruction: instruction, context: _result})
     })
-    .finally(function() { btn.disabled = false; });
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { alert("Refine error: " + data.error); return; }
+      // Merge refined section back into _result
+      Object.assign(_result, data);
+      // Re-render just that section
+      _renderSection(section, data);
+      if (inp) inp.value = "";
+      document.getElementById("refine-" + section).style.display = "none";
+    })
+    .catch(function() { alert("Network error — try again"); })
+    .finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = "Apply →"; }
+    });
+  }
+
+  function _renderSection(section, d) {
+    if (section === "vision") {
+      document.getElementById("out-vision").textContent = d.vision || "";
+    } else if (section === "boscard") {
+      document.getElementById("out-boscard").innerHTML = marked.parse(d.boscard || "");
+    } else if (section === "requirements") {
+      var req = d.requirements || {};
+      var fr  = (req.functional     || []).map(function(r) { return "<li>" + _esc(r) + "</li>"; }).join("");
+      var nfr = (req.non_functional || []).map(function(r) { return "<li>" + _esc(r) + "</li>"; }).join("");
+      document.getElementById("out-requirements").innerHTML =
+        (fr  ? '<div class="req-label func">Functional</div><ul>' + fr  + '</ul>' : "")
+        + (nfr ? '<div class="req-label nfr">Non-Functional</div><ul>' + nfr + '</ul>' : "");
+    } else if (section === "use_cases") {
+      document.getElementById("out-usecases").innerHTML = (d.use_cases || []).map(function(uc, i) {
+        return '<div class="use-case">'
+          + '<div class="uc-id">' + _esc(uc.id || ("UC" + (i+1))) + '</div>'
+          + '<div class="uc-details">'
+          + '<div class="uc-actor">' + _esc(uc.actor) + '</div>'
+          + '<div class="uc-action">' + _esc(uc.action) + '</div>'
+          + '<div class="uc-outcome">→ ' + _esc(uc.outcome) + '</div>'
+          + '</div></div>';
+      }).join("");
+    } else if (section === "plan") {
+      document.getElementById("out-plan").innerHTML = ((d.plan && d.plan.phases) || []).map(function(ph, i) {
+        var acts = (ph.activities || []).map(function(a) { return "<li>" + _esc(a) + "</li>"; }).join("");
+        return '<div class="plan-phase">'
+          + '<div class="plan-phase-header">'
+          + '<div class="plan-phase-left">'
+          + '<div class="plan-phase-num">' + (i+1) + '</div>'
+          + '<div class="plan-phase-name">' + _esc(ph.name) + '</div>'
+          + '</div><div class="plan-phase-dur">' + _esc(ph.duration) + '</div></div>'
+          + (acts ? '<ul class="plan-activities">' + acts + '</ul>' : "")
+          + '</div>';
+      }).join("");
+    } else if (section === "risks") {
+      document.getElementById("out-risks-tbody").innerHTML = (d.risks || []).map(function(r) {
+        var cls = r.prob === "High" ? "risk-row-red" : r.prob === "Med" ? "risk-row-amber" : "";
+        return '<tr class="' + cls + '"><td>' + _esc(r.risk) + '</td><td>' + _esc(r.prob) + '</td><td>' + _esc(r.impact) + '</td><td>' + _esc(r.mitigation) + '</td></tr>';
+      }).join("");
+    } else if (section === "actions") {
+      document.getElementById("out-actions").innerHTML = (d.actions || []).map(function(a, i) {
+        return '<div class="action-item"><div class="action-num">' + (i+1) + '</div><div class="action-text">' + _esc(a) + '</div></div>';
+      }).join("");
+    } else if (section === "jira_epics") {
+      document.getElementById("out-jira").innerHTML = (d.jira_epics || []).map(function(ep) {
+        var stories = (ep.stories || []).map(function(s) {
+          return '<div class="jira-story"><span class="jira-story-tag">STORY</span><span>' + _esc(s) + '</span></div>';
+        }).join("");
+        return '<div class="jira-epic"><div class="jira-epic-name">EPIC · ' + _esc(ep.epic) + '</div>' + stories + '</div>';
+      }).join("");
+    }
   }
 
   // ── Render output ─────────────────────────────────────────────────────────
@@ -980,13 +1297,18 @@
   function _reset() {
     _result = null;
     _savedProjectId = null;
+    _challengeData = null;
     document.getElementById("output").style.display = "none";
     document.getElementById("loading").style.display = "none";
+    document.getElementById("assess-loading").style.display = "none";
+    document.getElementById("challenge-view").style.display = "none";
     _showIntake();
   }
 
   function _showIntake() {
     document.getElementById("intake-view").style.display = "block";
+    document.getElementById("challenge-view").style.display = "none";
+    document.getElementById("assess-loading").style.display = "none";
     document.getElementById("intake-btn").disabled = false;
   }
 
