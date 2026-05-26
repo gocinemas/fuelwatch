@@ -13639,6 +13639,15 @@ _bkBadge();
   window._briefSetMode = function(mode) {
     _briefCurrentMode = mode;
     localStorage.setItem(_briefModeKey, mode);
+    // Sync to server so other devices pick it up
+    var _ph = _miruPhone();
+    if (_ph) {
+      fetch("/api/v2/prefs", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({token: _ph, prefs: {wfh_date: new Date().toISOString().slice(0,10), wfh_mode: mode}})
+      }).catch(function(){});
+    }
     var ob = document.getElementById("brief-btn-office");
     var wb = document.getElementById("brief-btn-wfh");
     if (ob) {
@@ -13913,6 +13922,11 @@ _bkBadge();
           // Calendar connect nudge — show small button if not connected
           var calNudge = document.getElementById("brief-cal-nudge");
           if (calNudge) calNudge.style.display = d.calendar_connected ? "none" : "flex";
+
+          // Restore WFH mode from server prefs if not set locally (cross-device sync)
+          if (!_briefCurrentMode && d.prefs && d.prefs.wfh_date === new Date().toISOString().slice(0,10) && d.prefs.wfh_mode) {
+            _briefSetMode(d.prefs.wfh_mode);
+          }
 
           // Chips
           _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
