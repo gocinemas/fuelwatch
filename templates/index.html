@@ -14644,11 +14644,16 @@ _bkBadge();
         var bc = _briefData.context;
         if (bc.trains)     ctx.trains    = {from: bc.trains.from, to: bc.trains.to, departures: (bc.trains.departures||[]).slice(0,3)};
         if (bc.weather)    ctx.weather   = {temp: bc.weather.temp, desc: bc.weather.desc};
-        if (bc.school)     ctx.school    = {upcoming: (bc.school.upcoming||[]).slice(0,3), recent: (bc.school.recent||[]).slice(0,2)};
-        if (bc.fuel)       ctx.fuel      = bc.fuel;
-        if (bc.calendar)   ctx.calendar  = (bc.calendar||[]).slice(0,3);
-        if (bc.recurring)  ctx.recurring = bc.recurring;
-        if (bc.deliveries) ctx.deliveries= (bc.deliveries||[]).slice(0,2);
+        if (bc.school)     ctx.school    = {
+          upcoming:       (bc.school.upcoming||[]).slice(0,3),
+          recent:         (bc.school.recent||[]).slice(0,2),
+          holiday_status: bc.school.holiday_status || null
+        };
+        if (bc.fuel)            ctx.fuel            = bc.fuel;
+        if (bc.calendar)        ctx.calendar        = (bc.calendar||[]).slice(0,3);
+        if (bc.recurring)       ctx.recurring       = bc.recurring;
+        if (bc.deliveries)      ctx.deliveries      = (bc.deliveries||[]).slice(0,2);
+        if (bc.personal_events) ctx.personal_events = (bc.personal_events||[]).slice(0,5);
       }
       if (_briefData && _briefData.active_trip) ctx.active_trip = _briefData.active_trip;
     } catch(_) {}

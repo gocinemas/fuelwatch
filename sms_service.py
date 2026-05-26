@@ -8783,10 +8783,20 @@ def api_home_ask():
         ctx_lines.append(f"Weather: {weather['temp']}°C, {weather.get('desc','')}")
 
     school = ctx.get("school") or {}
+    _hs = school.get("holiday_status") or {}
+    if _hs.get("on_holiday") and _hs.get("label"):
+        ctx_lines.append(f"School holiday: kids are on {_hs['label']} this week (back {_hs.get('back_label','')})")
+    elif _hs.get("starts_tom") and _hs.get("label"):
+        ctx_lines.append(f"School holiday: last day of term today — {_hs['label']} starts tomorrow")
     for ev in (school.get("upcoming") or [])[:3]:
-        ctx_lines.append(f"School: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}")
+        ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}")
     for ev in (school.get("recent") or [])[:2]:
         ctx_lines.append(f"Recent school note: {ev.get('child_name','')} — {ev.get('event_title','')}")
+
+    for pe in (ctx.get("personal_events") or [])[:5]:
+        _pe_t = f" at {pe['time']}" if pe.get("time") else ""
+        _pe_l = f", leave by {pe['leave_time']}" if pe.get("leave_time") else ""
+        ctx_lines.append(f"Personal event: {pe.get('title','')}{_pe_t} on {pe.get('date','')}{_pe_l}")
 
     fuel = ctx.get("fuel") or {}
     if fuel.get("price"):
