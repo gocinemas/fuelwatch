@@ -11491,7 +11491,10 @@ function _hcAdd() {
   // ── Home greeting + weather ──────────────────────────────────────────────
   // ── Weather helpers (global so _myAreaRefreshTile can call them) ─────────────
   function _wCode(code) {
-    if (code === 0)  return "☀️";
+    var _h = new Date().getHours();
+    var _night = _h >= 21 || _h < 6;
+    if (code === 0)  return _night ? "🌙" : "☀️";
+    if (code <= 2)   return _night ? "🌙" : "🌤️";
     if (code <= 3)   return "⛅";
     if (code <= 48)  return "🌫️";
     if (code <= 55)  return "🌦️";
@@ -14227,7 +14230,7 @@ _bkBadge();
     var w = d.weather || {};
     if (w.temp !== undefined) {
       var rain = w.rain ? " · 🌧️ Rain" : "";
-      var emoji = w.code <= 1 ? "☀️" : w.code <= 3 ? "⛅" : w.code <= 67 ? "🌧️" : w.code <= 77 ? "❄️" : "🌩️";
+      var emoji = _wCode(w.code);
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:14px">'
         + '<div style="font-size:32px;line-height:1">' + emoji + '</div>'
         + '<div>'
