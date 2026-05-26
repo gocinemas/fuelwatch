@@ -6925,7 +6925,8 @@ def _v2_fetch_calendar(from_number: str) -> list:
                     date_label  = _s_uk.date().isoformat()
                 except Exception:
                     pass
-            events.append({"title": title, "start": start_label, "date": date_label, "all_day": all_day})
+            location = (ev.get("location") or "").strip()
+            events.append({"title": title, "start": start_label, "date": date_label, "all_day": all_day, "location": location})
         return events
     except Exception as e:
         app.logger.warning(f"[calendar] fetch: {e}")
@@ -8673,6 +8674,7 @@ def api_home_brief():
         "bank_holiday_monday":  bank_holiday_monday,
         "is_long_weekend":      is_long_weekend,
         "calendar":  ctx.get("calendar", []),
+        "today_events": _cal_events,
         "calendar_connected": bool(ctx.get("calendar") is not None and from_number and
             lib._sb().table("ma_details").select("id").eq("device_id", from_number)
             .eq("type", "calendar_token").execute().data),

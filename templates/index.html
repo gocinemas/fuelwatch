@@ -1892,6 +1892,9 @@
         </div>
       </div>
 
+      <!-- Today card — events with navigation + school holiday status -->
+      <div id="brief-today-card" style="display:none;margin-bottom:14px"></div>
+
       <!-- Calendar connect nudge — hidden once connected -->
       <div id="brief-cal-nudge" style="display:none;align-items:center;justify-content:space-between;background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:9px 14px;margin-bottom:14px">
         <span style="font-size:13px;font-weight:600;color:#0369a1">📅 Connect Google Calendar</span>
@@ -14270,6 +14273,8 @@ _bkBadge();
     if (chips)      { chips.innerHTML = ""; }
     if (setupCta)   { setupCta.style.display = "none"; }
     if (ctxCards)   { ctxCards.style.display = "none"; ctxCards.innerHTML = ""; }
+    var todayCard = document.getElementById("brief-today-card");
+    if (todayCard)  { todayCard.style.display = "none"; todayCard.innerHTML = ""; }
 
     // Show phone link CTA if no phone linked
     var noPh = document.getElementById("brief-no-phone-cta");
@@ -14359,6 +14364,9 @@ _bkBadge();
 
           // Chips
           _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
+
+          // Today card — calendar events with navigation + school holiday banner
+          _briefRenderTodayCard(d.today_events, d.school_holiday);
 
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
@@ -14490,6 +14498,13 @@ _bkBadge();
         var _wxIcon = _wxDay.sunny ? "☀️" : _wxDay.outdoor_ok ? "🌤" : "🌧";
         chips.push({ label: _wxIcon + " " + _wxDay.temp + "°", action: "showScreen('myarea')" });
       }
+      // Lunchtime: proactively surface food nearby (12:00–14:30 on working days)
+      var _lunchHour = new Date().getHours();
+      var _lunchMin  = new Date().getMinutes();
+      var _lunchMins = _lunchHour * 60 + _lunchMin;
+      if (!_noCommute && _lunchMins >= 720 && _lunchMins < 870) { // 12:00–14:30
+        chips.push({ label: "🍽️ Lunch nearby?", action: "_briefFindNearby('food')" });
+      }
       // Frequent places — confirmed regulars that match today (weekend / bank holiday chips)
       if (_noCommute && frequentToday && frequentToday.length) {
         frequentToday.forEach(function(fp) {
@@ -14519,6 +14534,71 @@ _bkBadge();
       return '<button onclick="' + c.action + '" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + '</button>';
     }).join("") : "";
     container.innerHTML = mainHtml + secHtml;
+  }
+
+  function _briefRenderTodayCard(todayEvents, schoolHoliday) {
+    var card = document.getElementById("brief-today-card");
+    if (!card) return;
+    var now        = new Date();
+    var todayStr   = now.toISOString().slice(0, 10);
+    var nowMins    = now.getHours() * 60 + now.getMinutes();
+    var WORK_WORDS = ["catch up","catchup","stand-up","standup","sync","1:1","check-in","meeting","weekly","daily","review session"];
+    function isWorkMeeting(t) {
+      var tl = (t || "").toLowerCase();
+      return WORK_WORDS.some(function(w){ return tl.indexOf(w) >= 0; });
+    }
+    var html = "";
+    // School holiday banner
+    if (schoolHoliday && schoolHoliday.on_holiday && schoolHoliday.label) {
+      var holMsg = schoolHoliday.back_tom
+        ? "Back at school tomorrow"
+        : "Back " + (schoolHoliday.back_label || "soon");
+      var holLabel = (schoolHoliday.label.charAt(0).toUpperCase() + schoolHoliday.label.slice(1));
+      html += '<div style="display:flex;align-items:center;gap:10px;background:#ecfdf5;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:8px">'
+        + '<span style="font-size:18px">🏖️</span>'
+        + '<div><div style="font-size:13px;font-weight:700;color:#065f46">' + holLabel + '</div>'
+        + '<div style="font-size:11px;color:#047857;margin-top:1px">' + holMsg + '</div></div>'
+        + '</div>';
+    }
+    // Today's events — filter to future, non-work
+    var events = (todayEvents || []).filter(function(e) {
+      if ((e.date || "") !== todayStr) return false;
+      if (isWorkMeeting(e.title)) return false;
+      if (e.start) {
+        var p = (e.start || "").match(/(\d+):(\d+)/);
+        if (p) {
+          var eMins = parseInt(p[1], 10) * 60 + parseInt(p[2], 10);
+          if (eMins < nowMins - 15) return false; // already passed
+        }
+      }
+      return true;
+    });
+    events.forEach(function(e) {
+      var title   = e.title || "";
+      var timeStr = e.start  || "";
+      var loc     = (e.location || "").trim();
+      var navQ    = loc || title;
+      var wazeUrl = "https://waze.com/ul?q=" + encodeURIComponent(navQ) + "&navigate=yes";
+      var mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(navQ);
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:8px">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + title + '</div>'
+        + (timeStr ? '<div style="font-size:12px;color:var(--muted);margin-top:2px">🕐 ' + timeStr + '</div>' : '')
+        + (loc ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📍 ' + loc + '</div>' : '')
+        + '</div>'
+        + '<div style="display:flex;gap:6px;flex-shrink:0;align-items:center;margin-top:2px">'
+        + '<a href="' + wazeUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#33ccff;border-radius:8px;padding:4px 10px;text-decoration:none">🚦 Waze</a>'
+        + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:8px;padding:4px 10px;text-decoration:none">🗺️ Maps</a>'
+        + '</div></div>'
+        + '</div>';
+    });
+    if (html) {
+      card.innerHTML = html;
+      card.style.display = "";
+    } else {
+      card.style.display = "none";
+    }
   }
 
   function _briefUpdateFuelStrip(fuel) {
