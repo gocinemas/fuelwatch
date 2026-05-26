@@ -1837,6 +1837,15 @@
         <div id="brief-text" style="display:none;font-size:15px;font-weight:500;color:#fff;line-height:1.65;letter-spacing:-0.1px"></div>
       </div>
 
+      <!-- Train one-liner — next departure, tap to open trains screen -->
+      <div id="brief-train-line" style="display:none;margin-bottom:8px"></div>
+
+      <!-- Fuel one-liner — cheapest nearby, tap to open fuel screen -->
+      <div id="brief-fuel-line" style="display:none;margin-bottom:8px"></div>
+
+      <!-- Today card — calendar events + school holiday — shown right after brief -->
+      <div id="brief-today-card" style="display:none;margin-bottom:10px"></div>
+
       <!-- Context chips row — horizontal scroll strip -->
       <div id="brief-chips" style="display:flex;flex-wrap:nowrap;gap:8px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px"></div>
 
@@ -1891,9 +1900,6 @@
           </button>
         </div>
       </div>
-
-      <!-- Today card — events with navigation + school holiday status -->
-      <div id="brief-today-card" style="display:none;margin-bottom:14px"></div>
 
       <!-- Calendar connect nudge — hidden once connected -->
       <div id="brief-cal-nudge" style="display:none;align-items:center;justify-content:space-between;background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:9px 14px;margin-bottom:14px">
@@ -14087,6 +14093,12 @@ _bkBadge();
       wb.style.background = mode === "wfh" ? "#eff6ff" : "var(--surface)";
       wb.style.color = mode === "wfh" ? "#1d4ed8" : "var(--muted)";
     }
+    // Hide train one-liner on WFH; re-render on office mode
+    var _tl = document.getElementById("brief-train-line");
+    if (_tl) {
+      if (mode === "wfh") { _tl.style.display = "none"; }
+      else if (_briefData) { _briefRenderInfoLines(_briefData.context); }
+    }
     if (_briefData) {
       // Re-render context cards with mode filtering
       var ctxCards = document.getElementById("brief-context-cards");
@@ -14275,6 +14287,10 @@ _bkBadge();
     if (ctxCards)   { ctxCards.style.display = "none"; ctxCards.innerHTML = ""; }
     var todayCard = document.getElementById("brief-today-card");
     if (todayCard)  { todayCard.style.display = "none"; todayCard.innerHTML = ""; }
+    var trainLine = document.getElementById("brief-train-line");
+    if (trainLine) { trainLine.style.display = "none"; trainLine.innerHTML = ""; }
+    var fuelLine = document.getElementById("brief-fuel-line");
+    if (fuelLine)  { fuelLine.style.display = "none"; fuelLine.innerHTML = ""; }
 
     // Show phone link CTA if no phone linked
     var noPh = document.getElementById("brief-no-phone-cta");
@@ -14362,11 +14378,14 @@ _bkBadge();
             _briefSetMode(d.prefs.wfh_mode);
           }
 
-          // Chips
-          _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
+          // Train + fuel one-liners
+          _briefRenderInfoLines(d.context);
 
           // Today card — calendar events with navigation + school holiday banner
           _briefRenderTodayCard(d.today_events, d.school_holiday);
+
+          // Chips
+          _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
 
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
@@ -14483,16 +14502,11 @@ _bkBadge();
       var _isWeekend2  = _dow2 === 0 || _dow2 === 6;
       var _bankHol2    = !!(ctx && ctx.bank_holiday_today);
       var _noCommute   = _isWeekend2 || _bankHol2;
-      // Only show commute trains on working days — never on weekends or bank holidays
-      if (!_noCommute && trains && trains.departures && trains.departures.length) {
-        var t = trains.departures[0];
-        chips.push({ label: "🚆 " + (t.departs || t.time || "") + "  " + (trains.from || "") + " → " + (trains.to || ""), action: "showScreen('trains')" });
-      } else if (_noCommute && trains && trains.departures && trains.departures.length) {
-        // Weekend/bank holiday — train times still accessible but as a quiet reference
+      // Trains and fuel now shown as one-liners above chips, not as chips themselves
+      if (_noCommute && trains && trains.departures && trains.departures.length) {
+        // Weekend/bank holiday — still accessible as a quiet chip
         secondaryChips.push({ label: "🚆 Train times", action: "showScreen('trains')" });
       }
-      if (fuel && fuel.price)
-        chips.push({ label: "⛽ " + fuel.name + "  " + fuel.price + "p", action: "showScreen('fuel')" });
       var _wxDay = ctx && ctx.weather;
       if (_wxDay && _wxDay.temp !== undefined) {
         var _wxIcon = _wxDay.sunny ? "☀️" : _wxDay.outdoor_ok ? "🌤" : "🌧";
@@ -14534,6 +14548,63 @@ _bkBadge();
       return '<button onclick="' + c.action + '" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap">' + c.label + '</button>';
     }).join("") : "";
     container.innerHTML = mainHtml + secHtml;
+  }
+
+  function _briefRenderInfoLines(ctx) {
+    var trainLine = document.getElementById("brief-train-line");
+    var fuelLine  = document.getElementById("brief-fuel-line");
+    var now = new Date();
+    var dow = now.getDay();
+    var h   = now.getHours();
+    var isWeekend = dow === 0 || dow === 6;
+    var isNight   = h >= 21 || h < 5;
+    var bankHol   = !!(ctx && ctx.bank_holiday_today);
+
+    // Train one-liner — only on working days, not at night, not WFH
+    var trains = ctx && ctx.trains;
+    if (trainLine) {
+      if (!isWeekend && !bankHol && !isNight && trains && trains.departures && trains.departures.length && _briefCurrentMode !== "wfh") {
+        var t  = trains.departures[0];
+        var t2 = trains.departures[1] ? " · then " + (trains.departures[1].departs || trains.departures[1].time || "") : "";
+        var tTime = t.departs || t.time || "";
+        var tFrom = trains.from || "";
+        var tTo   = trains.to   || "";
+        trainLine.innerHTML =
+          '<div onclick="showScreen(\'trains\')" style="display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 14px;cursor:pointer;gap:8px">'
+          + '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">'
+          + '<span style="font-size:15px;flex-shrink:0">🚆</span>'
+          + '<div style="min-width:0">'
+          + '<div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + tFrom + ' → ' + tTo + '</div>'
+          + '<div style="font-size:13px;font-weight:700;color:var(--text);margin-top:1px">Next at <span style="color:#1d4ed8">' + tTime + '</span>' + t2 + '</div>'
+          + '</div></div>'
+          + '<span style="font-size:14px;color:var(--muted);flex-shrink:0">›</span>'
+          + '</div>';
+        trainLine.style.display = "block";
+      } else {
+        trainLine.style.display = "none";
+      }
+    }
+
+    // Fuel one-liner — always show when data available (not night)
+    var fuel = ctx && ctx.fuel;
+    if (fuelLine) {
+      if (!isNight && fuel && fuel.price) {
+        var chg = fuel.change
+          ? '<span style="font-size:10px;font-weight:700;margin-left:4px;color:' + (fuel.change.charAt(0) === '+' ? '#dc2626' : '#16a34a') + '">' + fuel.change + '</span>'
+          : '';
+        fuelLine.innerHTML =
+          '<div onclick="showScreen(\'fuel\')" style="display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 14px;cursor:pointer;gap:8px">'
+          + '<div style="display:flex;align-items:center;gap:8px;flex:1">'
+          + '<span style="font-size:15px;flex-shrink:0">⛽</span>'
+          + '<div style="font-size:13px;color:var(--muted)"><span style="font-weight:700;color:var(--text)">' + fuel.price + 'p</span>' + chg + ' · ' + (fuel.name || "nearby") + '</div>'
+          + '</div>'
+          + '<span style="font-size:14px;color:var(--muted);flex-shrink:0">›</span>'
+          + '</div>';
+        fuelLine.style.display = "block";
+      } else {
+        fuelLine.style.display = "none";
+      }
+    }
   }
 
   function _briefRenderTodayCard(todayEvents, schoolHoliday) {
