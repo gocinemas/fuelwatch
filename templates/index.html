@@ -4621,13 +4621,12 @@ const _ts = new Date(d.timestamp);
   }
 
   function _idOpenModal(focusField) {
-    document.getElementById("id-modal-phone").value = _miruPhone();
-    document.getElementById("id-modal-pc").value    = _miruPostcode();
+    document.getElementById("id-modal-phone").value = _miruPhone() || "";
+    document.getElementById("id-modal-pc").value    = _miruPostcode() || "";
     document.getElementById("id-modal-overlay").style.display = "flex";
-    setTimeout(() => {
-      const el = document.getElementById(focusField === "phone" ? "id-modal-phone" : "id-modal-pc");
-      if (el) { el.focus(); el.select(); }
-    }, 80);
+    // Focus synchronously — setTimeout breaks iOS gesture chain and prevents keyboard
+    var el = document.getElementById(focusField === "phone" ? "id-modal-phone" : "id-modal-pc");
+    if (el) { el.focus(); el.select(); }
   }
 
   function _idModalClose() {
@@ -14140,6 +14139,10 @@ _bkBadge();
     navigator.geolocation.getCurrentPosition(
       function(pos) {
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        // Cache GPS so next page load can use it without triggering a permission dialog
+        localStorage.setItem("miru_gps_lat", lat);
+        localStorage.setItem("miru_gps_lng", lng);
+        localStorage.setItem("miru_gps_ts", Date.now());
         var token = _miruPhone() || "";
         var url = "/api/brief/location?lat=" + lat + "&lng=" + lng
                 + (token ? "&token=" + encodeURIComponent(token) : "");
@@ -14396,33 +14399,19 @@ _bkBadge();
         });
     }
 
-    // Try GPS with a 3s window — if permission already granted it resolves instantly
-    // If denied or unavailable, proceed without coords (brief still loads normally)
-    if (navigator.geolocation) {
-      var _gpsDone = false;
-      var _gpsTimer = setTimeout(function() {
-        if (!_gpsDone) { _gpsDone = true; _doFetchBrief(null, null); }
-      }, 3000);
-      navigator.geolocation.getCurrentPosition(
-        function(pos) {
-          clearTimeout(_gpsTimer);
-          if (!_gpsDone) {
-            _gpsDone = true;
-            _briefLastLat = pos.coords.latitude;
-            _briefLastLng = pos.coords.longitude;
-            _doFetchBrief(pos.coords.latitude, pos.coords.longitude);
-            _briefStartLocationWatch(pos.coords.latitude, pos.coords.longitude);
-          }
-        },
-        function() {
-          clearTimeout(_gpsTimer);
-          if (!_gpsDone) { _gpsDone = true; _doFetchBrief(null, null); }
-        },
-        { timeout: 3000, maximumAge: 300000 }
-      );
-    } else {
-      _doFetchBrief(null, null);
+    // Use cached GPS to avoid showing location permission dialog on page load.
+    // Cached position is valid for 30 minutes; stale → load without GPS (location section handles refresh).
+    var _cachedLat = null, _cachedLng = null;
+    var _cachedTs = parseInt(localStorage.getItem("miru_gps_ts") || "0");
+    if (Date.now() - _cachedTs < 30 * 60 * 1000) {
+      _cachedLat = parseFloat(localStorage.getItem("miru_gps_lat") || "") || null;
+      _cachedLng = parseFloat(localStorage.getItem("miru_gps_lng") || "") || null;
     }
+    if (_cachedLat !== null) {
+      _briefLastLat = _cachedLat; _briefLastLng = _cachedLng;
+      _briefStartLocationWatch(_cachedLat, _cachedLng);
+    }
+    _doFetchBrief(_cachedLat, _cachedLng);
   }
 
   // ── Location-triggered brief refresh ──────────────────────────────────────
@@ -14441,6 +14430,10 @@ _bkBadge();
     _briefWatcher = navigator.geolocation.watchPosition(
       function(pos) {
         var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        // Keep GPS cache fresh so next page load skips the permission dialog
+        localStorage.setItem("miru_gps_lat", lat);
+        localStorage.setItem("miru_gps_lng", lng);
+        localStorage.setItem("miru_gps_ts", Date.now());
         if (_briefLastLat === null) { _briefLastLat = lat; _briefLastLng = lng; return; }
         var dist = _briefHaversineKm(_briefLastLat, _briefLastLng, lat, lng);
         // Only bother re-fetching if moved more than 500m
