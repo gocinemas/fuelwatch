@@ -14287,7 +14287,8 @@ _bkBadge();
     var schoolRoutes   = (schoolRaw && schoolRaw.schools)  ? schoolRaw.schools  : [];
     var schoolUpcoming = (schoolRaw && schoolRaw.upcoming) ? schoolRaw.upcoming : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
     var schoolRecent   = (schoolRaw && schoolRaw.recent)   ? schoolRaw.recent   : [];
-    var _holidayStatus = (schoolRaw && schoolRaw.holiday_status) || null;
+    // holiday_status sourced from top-level brief data (pure date math, always present)
+    var _holidayStatus = (_briefData && _briefData.school_holiday) || (schoolRaw && schoolRaw.holiday_status) || null;
 
     if (schoolRoutes.length || schoolUpcoming.length || schoolRecent.length || (_holidayStatus && (_holidayStatus.on_holiday || _holidayStatus.starts_tom || _holidayStatus.back_tom))) {
       var schoolHtml = "";

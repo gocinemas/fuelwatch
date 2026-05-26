@@ -7965,13 +7965,18 @@ def api_home_brief():
         except Exception as _ate:
             app.logger.warning(f"[brief] active_trip fetch: {_ate}")
 
+    # School holiday status — pure date math, always computed regardless of DB
+    import datetime as _shdt
+    _school_holiday_now = _surrey_holiday_status(_shdt.date.today())
+
     if cache_hit:
         result = dict(cached["data"])
         ctx = dict(result.get("context", {}))
-        ctx["trains"]      = fresh_trains
-        ctx["trains_home"] = fresh_trains_home
-        result["context"]      = ctx
-        result["active_trip"]  = _active_trip_early
+        ctx["trains"]        = fresh_trains
+        ctx["trains_home"]   = fresh_trains_home
+        result["context"]        = ctx
+        result["active_trip"]    = _active_trip_early
+        result["school_holiday"] = _school_holiday_now
         return jsonify(result)
 
     ctx: dict = {}
@@ -8645,6 +8650,7 @@ def api_home_brief():
         "recent_capture":  recent_capture,
         "frequent_today":  _frequent_today,
         "active_trip":     _active_trip,
+        "school_holiday":  _school_holiday_now,
     }
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
