@@ -15637,22 +15637,31 @@ _bkBadge();
     if (!title) { if (errEl) { errEl.textContent = "Add a title."; errEl.style.display = "block"; } return; }
     var token = _miruPhone() || "";
     if (!token) { if (errEl) { errEl.textContent = "Link WhatsApp first (My Area → Accounts)."; errEl.style.display = "block"; } return; }
-    fetch("/api/v2/personal-events", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        token: token, title: title,
-        date:       dateEl     ? dateEl.value         : "",
-        time:       timeEl     ? timeEl.value         : "",
-        end_time:   endEl      ? endEl.value          : "",
-        leave_time: leaveEl    ? leaveEl.value        : "",
-        location:   locationEl ? locationEl.value.trim() : ""
-      })
-    })
+    var form = document.getElementById("brief-event-form");
+    var editIdx = form.dataset.editIdx !== undefined && form.dataset.editIdx !== "" ? parseInt(form.dataset.editIdx) : null;
+    var saveBody = {
+      token: token, title: title,
+      date:       dateEl     ? dateEl.value         : "",
+      time:       timeEl     ? timeEl.value         : "",
+      end_time:   endEl      ? endEl.value          : "",
+      leave_time: leaveEl    ? leaveEl.value        : "",
+      location:   locationEl ? locationEl.value.trim() : ""
+    };
+    var doSave = function() {
+      return fetch("/api/v2/personal-events", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(saveBody)
+      });
+    };
+    var chain = editIdx !== null
+      ? fetch("/api/v2/personal-events", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({token: token, action:"delete", index: editIdx})}).then(function(r){ return r.json(); }).then(function(){ return doSave(); })
+      : doSave();
+    chain
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.ok) {
-        document.getElementById("brief-event-form").style.display = "none";
+        form.style.display = "none";
+        form.dataset.editIdx = "";
         if (titleEl)    titleEl.value    = "";
         if (dateEl)     dateEl.value     = "";
         if (timeEl)     timeEl.value     = "";
@@ -15678,21 +15687,46 @@ _bkBadge();
         var evs = (d.events || []).slice().reverse(); // newest first
         if (!evs.length) { container.style.display = "none"; return; }
         container.innerHTML = evs.map(function(ev, ri) {
-          var idx = evs.length - 1 - ri; // original index for delete
-          var timeStr = ev.time ? " · " + ev.time.slice(0,5) : "";
-          var locStr  = ev.location ? ' <span style="color:var(--muted)">📍 ' + ev.location + '</span>' : "";
+          var idx = evs.length - 1 - ri;
+          var timeStr = ev.time ? ev.time.slice(0,5) : "";
+          var endStr  = ev.end_time ? "–" + ev.end_time.slice(0,5) : "";
+          var locStr  = ev.location ? ' · 📍 ' + ev.location : "";
+          var noEnd   = !ev.end_time;
           return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">'
-            + '<div style="flex:1;min-width:0">'
+            + '<div style="flex:1;min-width:0;cursor:pointer" onclick="_briefEditEvent(' + idx + ')">'
             + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + (ev.title || "") + '</div>'
-            + '<div style="font-size:11px;margin-top:2px">'
-            + (ev.date ? '<span style="color:var(--muted)">' + ev.date + '</span>' : "")
-            + '<span style="color:var(--muted)">' + timeStr + '</span>'
+            + '<div style="font-size:11px;color:var(--muted);margin-top:2px">'
+            + (ev.date || "") + (timeStr ? ' · ' + timeStr + endStr : "")
+            + (noEnd && timeStr ? ' <span style="color:#d97706;font-weight:600">· tap to add end time</span>' : "")
             + locStr
             + '</div></div>'
-            + '<button onclick="_briefDeleteEvent(' + idx + ')" style="margin-left:10px;background:none;border:none;font-size:16px;color:var(--muted);cursor:pointer;padding:4px">✕</button>'
+            + '<button onclick="_briefDeleteEvent(' + idx + ')" style="margin-left:10px;background:none;border:none;font-size:16px;color:var(--muted);cursor:pointer;padding:4px 6px">✕</button>'
             + '</div>';
         }).join("");
         container.style.display = "block";
+      })
+      .catch(function() {});
+  };
+
+  window._briefEditEvent = function(idx) {
+    var token = _miruPhone() || "";
+    if (!token) return;
+    fetch("/api/v2/personal-events?token=" + encodeURIComponent(token))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var ev = (d.events || [])[idx];
+        if (!ev) return;
+        var form = document.getElementById("brief-event-form");
+        document.getElementById("brief-evt-title").value    = ev.title    || "";
+        document.getElementById("brief-evt-date").value     = ev.date     || "";
+        document.getElementById("brief-evt-time").value     = ev.time     || "";
+        document.getElementById("brief-evt-end").value      = ev.end_time || "";
+        document.getElementById("brief-evt-leave").value    = ev.leave_time || "";
+        document.getElementById("brief-evt-location").value = ev.location || "";
+        // Store edit index so save replaces rather than appends
+        form.dataset.editIdx = idx;
+        form.style.display = "block";
+        document.getElementById("brief-evt-end").focus();
       })
       .catch(function() {});
   };
