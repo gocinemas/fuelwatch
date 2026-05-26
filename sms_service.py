@@ -7750,11 +7750,14 @@ def api_v2_personal_events():
         return jsonify({"error": "title required"}), 400
     ev_date       = (body.get("date")       or "").strip()
     ev_time       = (body.get("time")       or "").strip()
+    ev_end_time   = (body.get("end_time")   or "").strip()
     ev_leave_time = (body.get("leave_time") or "").strip()
     ev_location   = (body.get("location")   or "").strip()
     ev_notes      = (body.get("notes")      or "").strip()
     evs = _v2_fetch_personal_events(from_number)
     ev_obj = {"title": title, "date": ev_date, "time": ev_time, "notes": ev_notes}
+    if ev_end_time:
+        ev_obj["end_time"] = ev_end_time
     if ev_leave_time:
         ev_obj["leave_time"] = ev_leave_time
     if ev_location:
@@ -8290,12 +8293,16 @@ def api_home_brief():
         if _pe_date == _yesterday_s:
             _past_personal.append(pe)
         elif _pe_date in (_today_s, _tomorrow_s):
-            # Keep personal events visible for 90 minutes after start (end time unknown)
+            # Disappear: end_time + 10 min if set, else start + 30 min
             _pe_past = False
             if _pe_t and _pe_date == _today_s:
                 try:
                     from datetime import timedelta as _ptd
-                    _pe_end = (datetime.strptime(_pe_t, "%H:%M") + _ptd(minutes=90)).strftime("%H:%M")
+                    _pe_end_raw = pe.get("end_time", "")
+                    if _pe_end_raw:
+                        _pe_end = (datetime.strptime(_pe_end_raw, "%H:%M") + _ptd(minutes=10)).strftime("%H:%M")
+                    else:
+                        _pe_end = (datetime.strptime(_pe_t, "%H:%M") + _ptd(minutes=30)).strftime("%H:%M")
                     _pe_past = _pe_end < _now_hhmm_cur
                 except Exception:
                     _pe_past = _pe_t < _now_hhmm_cur
@@ -8306,6 +8313,8 @@ def api_home_brief():
                 _cal_entry = {"title": pe["title"], "date": _pe_date, "start": _pe_t, "personal": True}
                 if _pe_loc:
                     _cal_entry["location"] = _pe_loc
+                if pe.get("end_time"):
+                    _cal_entry["end_time"] = pe["end_time"]
                 _cal_events = _cal_events + [_cal_entry]
             # Leave-time reminder — surface as explicit fact so Groq says "leave by X"
             if _pe_leave and _pe_date == _today_s and _pe_leave > _now_hhmm_cur:

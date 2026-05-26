@@ -1981,6 +1981,7 @@
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <input id="brief-evt-date" type="date" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
           <input id="brief-evt-time" type="time" placeholder="Start" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+          <input id="brief-evt-end" type="time" placeholder="Ends" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
         </div>
         <input id="brief-evt-location" type="text" placeholder="📍 Location (e.g. Go Ape Bracknell, GU17 9BH)" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:8px">
         <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -14556,6 +14557,7 @@ _bkBadge();
   }
 
   function _briefRenderInfoLines(ctx) {
+    console.log("[miru] glance fuel:", ctx && ctx.fuel, "trains:", ctx && ctx.trains && ctx.trains.departures && ctx.trains.departures.length);
     var now = new Date();
     var dow = now.getDay();
     var h   = now.getHours();
@@ -14657,10 +14659,19 @@ _bkBadge();
       if (isWorkMeeting(e.title)) return false;
       if (e.start) {
         var eMins = _parseEventMins(e.start);
-        // Personal events: keep visible for 90 min after start (end time unknown)
-        // GCal events: 15-min buffer
-        var buffer = e.personal ? 90 : 15;
-        if (eMins !== null && eMins < nowMins - buffer) return false;
+        if (eMins !== null) {
+          var cutoff;
+          if (e.end_time) {
+            // Use actual end time + 10-min grace
+            var endMins = _parseEventMins(e.end_time);
+            cutoff = endMins !== null ? endMins + 10 : eMins + 30;
+          } else if (e.personal) {
+            cutoff = eMins + 30; // no end time → 30-min buffer after start
+          } else {
+            cutoff = eMins + 15; // GCal events: 15-min buffer
+          }
+          if (nowMins > cutoff) return false;
+        }
       }
       return true;
     });
@@ -15618,6 +15629,7 @@ _bkBadge();
     var titleEl    = document.getElementById("brief-evt-title");
     var dateEl     = document.getElementById("brief-evt-date");
     var timeEl     = document.getElementById("brief-evt-time");
+    var endEl      = document.getElementById("brief-evt-end");
     var leaveEl    = document.getElementById("brief-evt-leave");
     var locationEl = document.getElementById("brief-evt-location");
     var errEl      = document.getElementById("brief-evt-err");
@@ -15630,9 +15642,10 @@ _bkBadge();
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         token: token, title: title,
-        date:       dateEl     ? dateEl.value     : "",
-        time:       timeEl     ? timeEl.value     : "",
-        leave_time: leaveEl    ? leaveEl.value    : "",
+        date:       dateEl     ? dateEl.value         : "",
+        time:       timeEl     ? timeEl.value         : "",
+        end_time:   endEl      ? endEl.value          : "",
+        leave_time: leaveEl    ? leaveEl.value        : "",
         location:   locationEl ? locationEl.value.trim() : ""
       })
     })
@@ -15643,6 +15656,7 @@ _bkBadge();
         if (titleEl)    titleEl.value    = "";
         if (dateEl)     dateEl.value     = "";
         if (timeEl)     timeEl.value     = "";
+        if (endEl)      endEl.value      = "";
         if (leaveEl)    leaveEl.value    = "";
         if (locationEl) locationEl.value = "";
         _briefLoadSavedEvents();
