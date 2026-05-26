@@ -7216,6 +7216,7 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
         if not from_crs or not to_crs:
             return {}
 
+        import concurrent.futures as _cf3, datetime as _dt3
         access = _get_rtt_token()
         r = requests.get(
             "https://data.rtt.io/rtt/location",
@@ -7224,6 +7225,42 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
             timeout=10,
         )
         services = (r.json().get("services") or []) if r.ok else []
+
+        # RTT calling_at is unreliable — verify each service actually stops at destination
+        today_str = _dt3.date.today().strftime("%Y/%m/%d")
+
+        def _stops_at(svc):
+            uid = (svc.get("serviceUid") or svc.get("trainUid") or
+                   svc.get("uid") or (svc.get("service") or {}).get("uid") or "")
+            if not uid:
+                return True
+            try:
+                det = requests.get(
+                    f"https://data.rtt.io/rtt/service/{uid}/{today_str}",
+                    headers={"Authorization": f"Bearer {access}"},
+                    timeout=5,
+                )
+                if det.status_code == 404:
+                    det = requests.get(
+                        f"https://data.rtt.io/rtt/service/{uid}/{today_str.replace('/', '')}",
+                        headers={"Authorization": f"Bearer {access}"},
+                        timeout=5,
+                    )
+                if det.status_code != 200:
+                    return True
+                locs = det.json().get("locations") or det.json().get("callingPoints") or []
+                for loc in locs:
+                    obj = loc.get("location") or loc
+                    if (obj.get("crs") or obj.get("crsCode") or "").upper() == to_crs:
+                        return True
+                return False
+            except Exception:
+                return True
+
+        if services:
+            with _cf3.ThreadPoolExecutor(max_workers=6) as _pool:
+                keep = list(_pool.map(_stops_at, services[:12]))
+            services = [s for s, k in zip(services[:12], keep) if k]
 
         def _fmt(dt):
             if not dt: return ""
