@@ -7751,11 +7751,14 @@ def api_v2_personal_events():
     ev_date       = (body.get("date")       or "").strip()
     ev_time       = (body.get("time")       or "").strip()
     ev_leave_time = (body.get("leave_time") or "").strip()
+    ev_location   = (body.get("location")   or "").strip()
     ev_notes      = (body.get("notes")      or "").strip()
     evs = _v2_fetch_personal_events(from_number)
     ev_obj = {"title": title, "date": ev_date, "time": ev_time, "notes": ev_notes}
     if ev_leave_time:
         ev_obj["leave_time"] = ev_leave_time
+    if ev_location:
+        ev_obj["location"] = ev_location
     evs.append(ev_obj)
     rows = lib._sb().table("ma_details").select("id").eq("device_id", from_number).eq("type","personal_events").limit(1).execute().data
     if rows:
@@ -8286,11 +8289,24 @@ def api_home_brief():
         _pe_leave      = (pe.get("leave_time") or "").strip()
         if _pe_date == _yesterday_s:
             _past_personal.append(pe)
-        elif _pe_date == _today_s and _pe_t and _pe_t < _now_hhmm_cur:
-            # Today but already happened — follow-up only, not forward calendar
-            _past_personal.append(pe)
         elif _pe_date in (_today_s, _tomorrow_s):
-            _cal_events = _cal_events + [{"title": pe["title"], "date": _pe_date, "start": _pe_t, "personal": True}]
+            # Keep personal events visible for 90 minutes after start (end time unknown)
+            _pe_past = False
+            if _pe_t and _pe_date == _today_s:
+                try:
+                    from datetime import timedelta as _ptd
+                    _pe_end = (datetime.strptime(_pe_t, "%H:%M") + _ptd(minutes=90)).strftime("%H:%M")
+                    _pe_past = _pe_end < _now_hhmm_cur
+                except Exception:
+                    _pe_past = _pe_t < _now_hhmm_cur
+            if _pe_past:
+                _past_personal.append(pe)
+            else:
+                _pe_loc = (pe.get("location") or "").strip()
+                _cal_entry = {"title": pe["title"], "date": _pe_date, "start": _pe_t, "personal": True}
+                if _pe_loc:
+                    _cal_entry["location"] = _pe_loc
+                _cal_events = _cal_events + [_cal_entry]
             # Leave-time reminder — surface as explicit fact so Groq says "leave by X"
             if _pe_leave and _pe_date == _today_s and _pe_leave > _now_hhmm_cur:
                 facts.append(f"Leave by {_pe_leave} for {pe['title']}")

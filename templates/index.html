@@ -1981,6 +1981,7 @@
           <input id="brief-evt-date" type="date" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
           <input id="brief-evt-time" type="time" placeholder="Start" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
         </div>
+        <input id="brief-evt-location" type="text" placeholder="📍 Location (e.g. Go Ape Bracknell, GU17 9BH)" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:8px">
         <div style="display:flex;gap:8px;margin-bottom:10px">
           <div style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:9px;padding:0 10px;background:var(--bg)">
             <span style="font-size:11px;color:var(--muted);white-space:nowrap">Leave at</span>
@@ -2027,10 +2028,14 @@
         </div>
       </div>
 
-      <!-- Add event floating button -->
-      <div style="text-align:right;margin-top:10px">
-        <button onclick="document.getElementById('brief-event-form').style.display='block';document.getElementById('brief-evt-title').focus()"
-          style="font-size:12px;font-weight:700;color:var(--muted);background:none;border:1px solid var(--border);border-radius:99px;padding:5px 12px;cursor:pointer">＋ Add event</button>
+      <!-- Add event + saved events -->
+      <div style="margin-top:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted)">Your events</div>
+          <button onclick="document.getElementById('brief-event-form').style.display='block';document.getElementById('brief-evt-title').focus()"
+            style="font-size:12px;font-weight:700;color:#4f46e5;background:none;border:1px solid #c7d2fe;border-radius:99px;padding:5px 12px;cursor:pointer">＋ Add event</button>
+        </div>
+        <div id="brief-saved-events" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px 12px"></div>
       </div>
 
     </div><!-- /screen-brief -->
@@ -14273,6 +14278,7 @@ _bkBadge();
     if (dl) dl.textContent = days[now.getDay()] + ", " + now.getDate() + " " + months[now.getMonth()];
 
     _briefInitModeToggle();
+    if (typeof _briefLoadSavedEvents === "function") _briefLoadSavedEvents();
 
     // Reset to shimmer state
     var shimmer = document.getElementById("brief-shimmer");
@@ -14655,7 +14661,10 @@ _bkBadge();
       if (isWorkMeeting(e.title)) return false;
       if (e.start) {
         var eMins = _parseEventMins(e.start);
-        if (eMins !== null && eMins < nowMins - 15) return false; // already passed
+        // Personal events: keep visible for 90 min after start (end time unknown)
+        // GCal events: 15-min buffer
+        var buffer = e.personal ? 90 : 15;
+        if (eMins !== null && eMins < nowMins - buffer) return false;
       }
       return true;
     });
@@ -15610,11 +15619,12 @@ _bkBadge();
 
   // ── Personal event quick-add ───────────────────────────────────────────────
   window._briefAddEvent = function() {
-    var titleEl = document.getElementById("brief-evt-title");
-    var dateEl  = document.getElementById("brief-evt-date");
-    var timeEl  = document.getElementById("brief-evt-time");
-    var leaveEl = document.getElementById("brief-evt-leave");
-    var errEl   = document.getElementById("brief-evt-err");
+    var titleEl    = document.getElementById("brief-evt-title");
+    var dateEl     = document.getElementById("brief-evt-date");
+    var timeEl     = document.getElementById("brief-evt-time");
+    var leaveEl    = document.getElementById("brief-evt-leave");
+    var locationEl = document.getElementById("brief-evt-location");
+    var errEl      = document.getElementById("brief-evt-err");
     var title = titleEl ? titleEl.value.trim() : "";
     if (!title) { if (errEl) { errEl.textContent = "Add a title."; errEl.style.display = "block"; } return; }
     var token = _miruPhone() || "";
@@ -15624,25 +15634,70 @@ _bkBadge();
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         token: token, title: title,
-        date:       dateEl  ? dateEl.value  : "",
-        time:       timeEl  ? timeEl.value  : "",
-        leave_time: leaveEl ? leaveEl.value : ""
+        date:       dateEl     ? dateEl.value     : "",
+        time:       timeEl     ? timeEl.value     : "",
+        leave_time: leaveEl    ? leaveEl.value    : "",
+        location:   locationEl ? locationEl.value.trim() : ""
       })
     })
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.ok) {
         document.getElementById("brief-event-form").style.display = "none";
-        if (titleEl) titleEl.value = "";
-        if (dateEl)  dateEl.value  = "";
-        if (timeEl)  timeEl.value  = "";
-        if (leaveEl) leaveEl.value = "";
+        if (titleEl)    titleEl.value    = "";
+        if (dateEl)     dateEl.value     = "";
+        if (timeEl)     timeEl.value     = "";
+        if (leaveEl)    leaveEl.value    = "";
+        if (locationEl) locationEl.value = "";
+        _briefLoadSavedEvents();
         _briefInit();
       } else {
         if (errEl) { errEl.textContent = d.error || "Save failed."; errEl.style.display = "block"; }
       }
     })
     .catch(function() { if (errEl) { errEl.textContent = "Save failed."; errEl.style.display = "block"; } });
+  };
+
+  window._briefLoadSavedEvents = function() {
+    var token = _miruPhone() || "";
+    var container = document.getElementById("brief-saved-events");
+    if (!container || !token) return;
+    fetch("/api/v2/personal-events?token=" + encodeURIComponent(token))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var evs = (d.events || []).slice().reverse(); // newest first
+        if (!evs.length) { container.style.display = "none"; return; }
+        container.innerHTML = evs.map(function(ev, ri) {
+          var idx = evs.length - 1 - ri; // original index for delete
+          var timeStr = ev.time ? " · " + ev.time.slice(0,5) : "";
+          var locStr  = ev.location ? ' <span style="color:var(--muted)">📍 ' + ev.location + '</span>' : "";
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">'
+            + '<div style="flex:1;min-width:0">'
+            + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + (ev.title || "") + '</div>'
+            + '<div style="font-size:11px;margin-top:2px">'
+            + (ev.date ? '<span style="color:var(--muted)">' + ev.date + '</span>' : "")
+            + '<span style="color:var(--muted)">' + timeStr + '</span>'
+            + locStr
+            + '</div></div>'
+            + '<button onclick="_briefDeleteEvent(' + idx + ')" style="margin-left:10px;background:none;border:none;font-size:16px;color:var(--muted);cursor:pointer;padding:4px">✕</button>'
+            + '</div>';
+        }).join("");
+        container.style.display = "block";
+      })
+      .catch(function() {});
+  };
+
+  window._briefDeleteEvent = function(idx) {
+    var token = _miruPhone() || "";
+    if (!token) return;
+    fetch("/api/v2/personal-events", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({token: token, action: "delete", index: idx})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d.ok) { _briefLoadSavedEvents(); _briefInit(); } })
+    .catch(function() {});
   };
 
   // ── Weekend morning intent choice ─────────────────────────────────────────
