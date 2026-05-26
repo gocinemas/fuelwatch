@@ -9000,6 +9000,10 @@ def api_morning_brief():
         if not phone or not phone.startswith("whatsapp:"):
             skipped += 1
             continue
+        # Opt-in only — skip users who haven't enabled morning push
+        if not prefs.get("morning_push"):
+            skipped += 1
+            continue
         # Skip paused users
         if prefs.get("brief_paused"):
             skipped += 1
@@ -9059,10 +9063,21 @@ def api_morning_brief():
                     _mfacts.append(f"Next trains {_mtrains.get('from','')} → {_mtrains.get('to','')}: {_mtimes}")
             _mschool = _mctx.get("school", {})
             _mkids   = [s.get("child_name","") for s in _mschool.get("schools",[]) if s.get("child_name")]
-            for _mev in (_mschool.get("upcoming") or [])[:2]:
-                _mfacts.append(
-                    f"{_mev.get('child_name','')} has {_mev.get('event_title','')} on {_mev.get('event_date','')}"
-                )
+            # School holiday status
+            _mhs = _surrey_holiday_status(today)
+            if _mkids and _mhs.get("on_holiday") and _mhs.get("label"):
+                _mkids_str = " and ".join(_mkids)
+                if _mhs.get("back_tom"):
+                    _mfacts.append(f"{_mkids_str} back at school tomorrow — last day of {_mhs['label']} today")
+                else:
+                    _mfacts.append(f"{_mkids_str} off school — {_mhs['label']} (back {_mhs.get('back_label','')})")
+            elif _mkids and _mhs.get("starts_tom") and _mhs.get("label"):
+                _mfacts.append(f"Last day of term today for {' and '.join(_mkids)} — {_mhs['label']} starts tomorrow")
+            else:
+                for _mev in (_mschool.get("upcoming") or [])[:2]:
+                    _mfacts.append(
+                        f"{_mev.get('child_name','')} has {_mev.get('event_title','')} on {_mev.get('event_date','')}"
+                    )
             _mfuel = _mctx.get("fuel", {})
             if _mfuel.get("price"):
                 _mchange = f" ({_mfuel['change']})" if _mfuel.get("change") else ""

@@ -1815,7 +1815,7 @@
       </div>
 
       <!-- Persistent fuel strip — always visible when price known -->
-      <div id="brief-fuel-strip" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff9ed;border:1px solid #fed7aa;border-radius:12px;padding:9px 14px;margin-bottom:12px">
+      <div id="brief-fuel-strip" onclick="showScreen('fuel')" style="cursor:pointer;display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff9ed;border:1px solid #fed7aa;border-radius:12px;padding:9px 14px;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:15px">⛽</span>
           <div>
@@ -1980,17 +1980,47 @@
           style="font-size:12px;font-weight:700;color:var(--muted);background:none;border:1px solid var(--border);border-radius:99px;padding:5px 12px;cursor:pointer">＋ Add event</button>
       </div>
 
-      <!-- Explore Miru — module discovery row -->
-      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
+      <!-- Module shortcuts — quick access to all Miru tools -->
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Explore Miru</div>
-          <button onclick="_moreOpen()" style="font-size:12px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;padding:0">See all →</button>
+          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">All tools</div>
+          <button onclick="showScreen('home')" style="font-size:12px;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;padding:0">Explore →</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <button onclick="showScreen('fuel')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">⛽</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Fuel</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Cheapest near you</div>
+          </button>
+          <button onclick="showScreen('trains')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🚆</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Trains</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Live departures</div>
+          </button>
+          <button onclick="showScreen('myarea')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🏡</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">My Local</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Area at a glance</div>
+          </button>
+          <button onclick="showScreen('school')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🏫</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">School</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Letters & events</div>
+          </button>
+          <button onclick="_pillNav('saves')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">📌</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Clippings</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Saved items</div>
+          </button>
+          <button onclick="showScreen('lifeadmin')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+            <div style="font-size:20px;margin-bottom:4px">🗂️</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Life Admin</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">MOT · bills</div>
+          </button>
           <button onclick="showScreen('report')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
             <div style="font-size:20px;margin-bottom:4px">🔎</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Research</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Any area</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Any postcode</div>
           </button>
           <button onclick="showScreen('library')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
             <div style="font-size:20px;margin-bottom:4px">📚</div>
@@ -2655,6 +2685,16 @@
               <span>📅</span><span id="setup-cal-label">Connect Google Calendar</span>
             </button>
           </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Morning brief</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 13px">
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--text)">Send to WhatsApp at 7:30am</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">Daily brief delivered each morning</div>
+              </div>
+              <button id="setup-push-toggle" onclick="_setupTogglePush()" style="padding:7px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);transition:all .2s;flex-shrink:0">Off</button>
+            </div>
+          </div>
           <button onclick="_setupSavePrefs()"
             style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;cursor:pointer">
             Save brief settings
@@ -3214,6 +3254,19 @@
   const _INTEL_MODE = {{ 'true' if intel_mode else 'false' }};
   function showHome() {
     if (_INTEL_MODE) { showScreen("company"); return; }
+    if (_miruPhone()) {
+      // Brief is the home screen for returning users
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      var bs = document.getElementById("screen-brief");
+      if (bs) bs.classList.add("active");
+      window.scrollTo({top:0, behavior:"smooth"});
+      setFooter("home");
+      history.replaceState(null, "", "/");
+      var bb = document.getElementById("back-btn");
+      if (bb) bb.classList.remove("visible");
+      if (typeof _briefInit === "function" && !_briefData) _briefInit();
+      return;
+    }
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     document.getElementById("screen-home").classList.add("active");
     window.scrollTo({top:0, behavior:"smooth"});
@@ -6694,7 +6747,7 @@ function _hcAdd() {
   }
 
   // ── Setup screen ─────────────────────────────────────────────────────────
-  var _setupBinDaySel = null, _setupBinRotSel = null;
+  var _setupBinDaySel = null, _setupBinRotSel = null, _setupPushEnabled = false;
 
   window._setupBinDay = function(d) {
     _setupBinDaySel = d;
@@ -6726,6 +6779,15 @@ function _hcAdd() {
     if (pcEl && prefs.fuel_postcode) pcEl.value = prefs.fuel_postcode;
     if (prefs.bin_collection_day !== undefined) _setupBinDay(prefs.bin_collection_day);
     if (prefs.bin_rotation) _setupBinRotation(prefs.bin_rotation);
+    // Morning push state
+    _setupPushEnabled = !!prefs.morning_push;
+    var _pushBtn = document.getElementById("setup-push-toggle");
+    if (_pushBtn) {
+      _pushBtn.textContent = _setupPushEnabled ? "On" : "Off";
+      _pushBtn.style.background   = _setupPushEnabled ? "#2563eb" : "var(--bg)";
+      _pushBtn.style.color        = _setupPushEnabled ? "#fff"    : "var(--muted)";
+      _pushBtn.style.borderColor  = _setupPushEnabled ? "#2563eb" : "var(--border)";
+    }
     // Calendar state
     var calBtn = document.getElementById("setup-cal-btn");
     var calLbl = document.getElementById("setup-cal-label");
@@ -6764,6 +6826,26 @@ function _hcAdd() {
       el.textContent = profiles.length
         ? profiles.map(function(p){ return p.school_name + (p.child_name ? " (" + p.child_name + ")" : ""); }).join(" · ")
         : "No schools set up yet.";
+    } catch(e) {}
+  };
+
+  window._setupTogglePush = async function() {
+    var token = _miruPhone();
+    if (!token) { alert("Link your phone first to enable the morning brief."); return; }
+    _setupPushEnabled = !_setupPushEnabled;
+    var btn = document.getElementById("setup-push-toggle");
+    if (btn) {
+      btn.textContent = _setupPushEnabled ? "On" : "Off";
+      btn.style.background  = _setupPushEnabled ? "#2563eb" : "var(--bg)";
+      btn.style.color       = _setupPushEnabled ? "#fff"    : "var(--muted)";
+      btn.style.borderColor = _setupPushEnabled ? "#2563eb" : "var(--border)";
+    }
+    try {
+      await fetch("/api/v2/prefs", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({token: token, prefs: {morning_push: _setupPushEnabled}})
+      });
     } catch(e) {}
   };
 
@@ -13907,6 +13989,21 @@ _bkBadge();
     }
     _setupBannerInit();
     _homeHeroInit();
+    // Returning users (phone linked, no deep-link params) land on the brief
+    if (_miruPhone() && !_INTEL_MODE) {
+      var _qs = new URLSearchParams(window.location.search);
+      var _hasDeepLink = _qs.get("screen") || _qs.get("report") || _qs.get("places") ||
+                         _qs.get("ll") || _qs.get("gmail_scan") || _qs.get("gmail_error") ||
+                         window.location.hash;
+      if (!_hasDeepLink) {
+        document.querySelectorAll(".screen").forEach(function(s) { s.classList.remove("active"); });
+        var _bs = document.getElementById("screen-brief");
+        if (_bs) _bs.classList.add("active");
+        var _bb = document.getElementById("back-btn");
+        if (_bb) _bb.classList.remove("visible");
+        if (typeof _briefInit === "function") _briefInit();
+      }
+    }
   });
 
   /* ── Home hero: tagline for new users, greeting for returning ──────────── */
@@ -14588,10 +14685,10 @@ _bkBadge();
         }).join("");
         var _trainDirIcon = _isMorning ? "🚆" : "🏠";
         var _trainDirLabel = _isMorning ? "To work" : "Heading home";
-        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        html += '<div onclick="showScreen(\'trains\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
           + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'
           + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">' + _trainDirIcon + ' ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
-          + '<div style="font-size:10px;font-weight:700;color:var(--accent)">' + _trainDirLabel + '</div>'
+          + '<div style="font-size:10px;font-weight:700;color:var(--accent)">' + _trainDirLabel + ' ›</div>'
           + '</div>'
           + deps + '</div>';
       }
@@ -14706,8 +14803,11 @@ _bkBadge();
 
       if (schoolHtml) {
         var schoolLabel = (_isOffHours && (_isPreWeekend || _isWeekend)) ? "👨‍👧 Kids this weekend" : "🏫 School";
-        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">' + schoolLabel + '</div>'
+        html += '<div onclick="showScreen(\'school\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">' + schoolLabel + '</div>'
+          + '<span style="font-size:10px;font-weight:700;color:var(--accent)">Details ›</span>'
+          + '</div>'
           + schoolHtml + '</div>';
       }
     }
@@ -14779,8 +14879,11 @@ _bkBadge();
     // Fuel — only relevant during the day
     var fuel = ctx && ctx.fuel;
     if (!_isOffHours && fuel && fuel.price) {
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⛽ Fuel</div>'
+      html += '<div onclick="showScreen(\'fuel\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">⛽ Fuel</div>'
+        + '<span style="font-size:10px;font-weight:700;color:var(--accent)">Prices ›</span>'
+        + '</div>'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">' + fuel.price + 'p</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + fuel.name + (fuel.change ? " · " + fuel.change : "") + '</div>'
         + '</div>';
