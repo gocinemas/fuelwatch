@@ -14565,11 +14565,11 @@ _bkBadge();
     var bankHol   = !!(ctx && ctx.bank_holiday_today);
 
     var fuel   = ctx && ctx.fuel;
-    // Use whichever trains object has departures (morning→ctx.trains, evening→ctx.trains_home)
+    // Trains: suppress after 9 pm — last-train data at midnight is noise
     var _tr1 = ctx && ctx.trains;
     var _tr2 = ctx && ctx.trains_home;
-    var trains = (_tr1 && _tr1.departures && _tr1.departures.length) ? _tr1
-               : (_tr2 && _tr2.departures && _tr2.departures.length) ? _tr2
+    var trains = (!isNight && (_tr1 && _tr1.departures && _tr1.departures.length)) ? _tr1
+               : (!isNight && (_tr2 && _tr2.departures && _tr2.departures.length)) ? _tr2
                : null;
 
     // ── Fuel ──────────────────────────────────────────────────────────────────
