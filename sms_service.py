@@ -8100,8 +8100,12 @@ def api_home_brief():
             _rc_fact += f" — {_rc_summary}"
         facts.append(_rc_fact)
 
-    # Trains: weekday commute window only — never on weekends
-    if time_mode == "morning_commute" and day_type not in ("weekend",) and not bank_holiday_today:
+    # WFH today — suppress commute content from narrative
+    _wfh_today = (prefs.get("wfh_mode") == "wfh" and
+                  prefs.get("wfh_date") == now.strftime("%Y-%m-%d"))
+
+    # Trains: weekday commute window only — never on weekends or WFH days
+    if time_mode == "morning_commute" and day_type not in ("weekend",) and not bank_holiday_today and not _wfh_today:
         trains = ctx.get("trains", {})
         if trains.get("departures"):
             deps = trains["departures"]
@@ -8440,6 +8444,9 @@ def api_home_brief():
         prompt_parts.append(
             f"Subtle, personal, British English. Sound like you know them. "
             f"No greetings, no bullet points, no 'Great news'. Under 55 words. "
+            f"STRICT: only mention things that appear word-for-word in the facts above. "
+            f"NEVER mention calendar events, meetings, catch-ups, or appointments. "
+            f"NEVER invent quiz nights, events, activities, or plans not in the facts. "
             + _location_rule
         )
         prompt = " ".join(prompt_parts)
