@@ -6480,6 +6480,74 @@ def _v2_check_auto_learn(from_number: str) -> dict | None:
     return None
 
 
+# Surrey CC term holiday periods — (start_iso, end_iso, label, back_iso)
+# Covers community/voluntary-controlled schools; academies may vary by ~1 day
+_SURREY_HOLIDAYS = [
+    ("2025-10-27", "2025-10-31", "autumn half term",  "2025-11-03"),
+    ("2025-12-20", "2026-01-04", "Christmas holidays", "2026-01-05"),
+    ("2026-02-16", "2026-02-20", "spring half term",  "2026-02-23"),
+    ("2026-03-28", "2026-04-13", "Easter holidays",   "2026-04-14"),
+    ("2026-05-25", "2026-05-29", "summer half term",  "2026-06-01"),
+    ("2026-07-23", "2026-09-02", "summer holidays",   "2026-09-03"),
+    ("2026-10-19", "2026-10-30", "autumn half term",  "2026-11-02"),
+    ("2026-12-19", "2027-01-04", "Christmas holidays", "2027-01-05"),
+    ("2027-02-15", "2027-02-19", "spring half term",  "2027-02-22"),
+    ("2027-03-26", "2027-04-09", "Easter holidays",   "2027-04-12"),
+    ("2027-05-31", "2027-06-04", "summer half term",  "2027-06-07"),
+    ("2027-07-29", "2027-09-01", "summer holidays",   "2027-09-02"),
+]
+
+
+def _surrey_holiday_status(today_date):
+    """Return current/imminent holiday info for today's date.
+
+    Returns dict with keys:
+      on_holiday   bool
+      label        str   e.g. "summer half term"
+      back_date    str   ISO  e.g. "2026-06-01"
+      back_label   str   e.g. "Mon 1 Jun"
+      ends_today   bool  — today is the last day of this holiday
+      starts_tom   bool  — holiday starts tomorrow (last school day is today)
+      back_tom     bool  — back at school tomorrow
+    """
+    import datetime as _dt
+    _DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    _MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    def _fmt(iso):
+        d = _dt.date.fromisoformat(iso)
+        return f"{_DAYS[d.weekday()]} {d.day} {_MONTHS[d.month - 1]}"
+
+    today_s   = today_date.isoformat()
+    tomorrow  = (today_date + _dt.timedelta(days=1)).isoformat()
+
+    for start, end, label, back in _SURREY_HOLIDAYS:
+        if start <= today_s <= end:
+            return {
+                "on_holiday": True,
+                "label":      label,
+                "back_date":  back,
+                "back_label": _fmt(back),
+                "ends_today": today_s == end,
+                "starts_tom": False,
+                "back_tom":   tomorrow == back,
+            }
+        if tomorrow == start:
+            return {
+                "on_holiday": False,
+                "label":      label,
+                "back_date":  back,
+                "back_label": _fmt(back),
+                "ends_today": False,
+                "starts_tom": True,
+                "back_tom":   False,
+            }
+
+    return {"on_holiday": False, "label": "", "back_date": "", "back_label": "",
+            "ends_today": False, "starts_tom": False, "back_tom": False}
+
+
 def _v2_fetch_school(from_number: str) -> dict:
     """School profiles (daily run) + upcoming events (42 days) + recent comms (14 days)."""
     from datetime import date, timedelta
@@ -6488,11 +6556,12 @@ def _v2_fetch_school(from_number: str) -> dict:
         horizon  = (today + timedelta(days=42)).isoformat()  # 6 weeks — covers half term gaps
         recent   = (today - timedelta(days=14)).isoformat()
         today_s  = today.isoformat()
+        tomorrow_s = (today + timedelta(days=1)).isoformat()
         profiles = lib._sb().table("school_profiles") \
                        .select("id,child_name,school_name,address") \
                        .eq("from_number", from_number).eq("active", True).execute().data or []
         if not profiles:
-            return {"schools": [], "upcoming": [], "recent": []}
+            return {"schools": [], "upcoming": [], "recent": [], "holiday_status": None}
         pids = [p["id"] for p in profiles]
         # Upcoming events — next 7 days
         upcoming = lib._sb().table("school_events").select(
@@ -6505,13 +6574,21 @@ def _v2_fetch_school(from_number: str) -> dict:
             "event_title,event_date,child_name,school_name,notes,created_at"
         ).in_("profile_id", pids).gte("created_at", recent + "T00:00:00") \
          .order("created_at", desc=True).limit(5).execute().data or []
+        # Inset days — school-specific days off from Gmail scan (today or tomorrow)
+        inset_rows = lib._sb().table("school_events").select(
+            "event_title,event_date,child_name,school_name"
+        ).in_("profile_id", pids).in_("event_date", [today_s, tomorrow_s]) \
+         .ilike("event_title", "%inset%").execute().data or []
         schools = [
             {"child_name": p.get("child_name",""), "school_name": p.get("school_name",""), "address": p.get("address","")}
             for p in profiles
         ]
-        return {"schools": schools, "upcoming": upcoming, "recent": recent_rows, "events": upcoming}
+        holiday_status = _surrey_holiday_status(today)
+        holiday_status["inset_days"] = inset_rows
+        return {"schools": schools, "upcoming": upcoming, "recent": recent_rows,
+                "events": upcoming, "holiday_status": holiday_status}
     except Exception:
-        return {"schools": [], "upcoming": [], "recent": [], "events": []}
+        return {"schools": [], "upcoming": [], "recent": [], "events": [], "holiday_status": None}
 
 
 def _receipt_category(merchant: str) -> str:
@@ -8117,6 +8194,28 @@ def api_home_brief():
     if fuel.get("price") and time_mode in ("morning_commute", "daytime"):
         change = f" ({fuel['change']})" if fuel.get("change") else ""
         facts.append(f"Nearest fuel: {fuel['name']} {fuel['price']}p{change}")
+    # School holiday status — Surrey term dates + Gmail inset days
+    _hs = school_data.get("holiday_status") if isinstance(school_data, dict) else None
+    if _hs and kids:
+        _kids_str = " + ".join(kids) if len(kids) > 1 else kids[0]
+        if _hs.get("on_holiday") and _hs.get("label"):
+            if _hs.get("back_tom"):
+                facts.append(f"{_kids_str} back at school tomorrow — {_hs['label']} ends today")
+            elif _hs.get("ends_today"):
+                facts.append(f"{_kids_str} back at school tomorrow — last day of {_hs['label']} today")
+            else:
+                facts.append(f"{_kids_str} off school — {_hs['label']} (back {_hs['back_label']})")
+        elif _hs.get("starts_tom") and _hs.get("label"):
+            facts.append(f"Last day of term for {_kids_str} today — {_hs['label']} starts tomorrow")
+    # Inset days (school-specific days off from Gmail)
+    if _hs:
+        for _ins in (_hs.get("inset_days") or [])[:2]:
+            _ins_date = _ins.get("event_date", "")
+            _ins_child = _ins.get("child_name", "")
+            if _ins_date == now.date().isoformat():
+                facts.append(f"{_ins_child} off school today — inset day")
+            elif _ins_date == (now.date() + __import__("datetime").timedelta(days=1)).isoformat():
+                facts.append(f"{_ins_child} off school tomorrow — inset day")
     for ev in school_upcoming[:2]:
         facts.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}")
     for ev in school_recent[:1]:
