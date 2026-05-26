@@ -7148,17 +7148,14 @@ def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
 
 
 def _v2_fetch_fuel(postcode: str) -> dict:
-    """Cheapest fuel near postcode — reuses existing search logic."""
+    """Cheapest petrol near postcode."""
     try:
-        from search import _fetch_fuel_prices
-        prices = _fetch_fuel_prices(postcode, fuel_type="E10") or []
-        if not prices:
+        price, station = _get_cheapest_fuel(postcode, "petrol")
+        if not price or not station:
             return {}
-        cheapest = prices[0]
         return {
-            "price":  cheapest.get("price"),
-            "name":   cheapest.get("name", ""),
-            "change": cheapest.get("change", ""),
+            "price": round(price, 1),
+            "name":  station.get("brand", station.get("name", "")),
         }
     except Exception:
         return {}
