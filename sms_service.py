@@ -6575,10 +6575,14 @@ def _v2_fetch_school(from_number: str) -> dict:
         ).in_("profile_id", pids).gte("created_at", recent + "T00:00:00") \
          .order("created_at", desc=True).limit(5).execute().data or []
         # Inset days — school-specific days off from Gmail scan (today or tomorrow)
-        inset_rows = lib._sb().table("school_events").select(
-            "event_title,event_date,child_name,school_name"
-        ).in_("profile_id", pids).in_("event_date", [today_s, tomorrow_s]) \
-         .ilike("event_title", "%inset%").execute().data or []
+        inset_rows = []
+        try:
+            inset_rows = lib._sb().table("school_events").select(
+                "event_title,event_date,child_name,school_name"
+            ).in_("profile_id", pids).in_("event_date", [today_s, tomorrow_s]) \
+             .ilike("event_title", "%inset%").execute().data or []
+        except Exception:
+            pass
         schools = [
             {"child_name": p.get("child_name",""), "school_name": p.get("school_name",""), "address": p.get("address","")}
             for p in profiles

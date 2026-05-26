@@ -14280,9 +14280,33 @@ _bkBadge();
     var schoolRoutes   = (schoolRaw && schoolRaw.schools)  ? schoolRaw.schools  : [];
     var schoolUpcoming = (schoolRaw && schoolRaw.upcoming) ? schoolRaw.upcoming : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
     var schoolRecent   = (schoolRaw && schoolRaw.recent)   ? schoolRaw.recent   : [];
+    var _holidayStatus = (schoolRaw && schoolRaw.holiday_status) || null;
 
-    if (schoolRoutes.length || schoolUpcoming.length || schoolRecent.length) {
+    if (schoolRoutes.length || schoolUpcoming.length || schoolRecent.length || (_holidayStatus && (_holidayStatus.on_holiday || _holidayStatus.starts_tom || _holidayStatus.back_tom))) {
       var schoolHtml = "";
+
+      // Holiday banner — show at top of card when kids are off (or last day / back tomorrow)
+      if (_holidayStatus) {
+        var _kidsNames = schoolRoutes.map(function(s){ return s.child_name; }).join(" + ") || "Kids";
+        if (_holidayStatus.on_holiday && _holidayStatus.label) {
+          var _holMsg = _holidayStatus.back_tom
+            ? "Back at school tomorrow — " + _holidayStatus.label + " ends today"
+            : _holidayStatus.ends_today
+              ? "Back tomorrow — last day of " + _holidayStatus.label + " today"
+              : _holidayStatus.label.charAt(0).toUpperCase() + _holidayStatus.label.slice(1) + " · back " + _holidayStatus.back_label;
+          schoolHtml += '<div style="background:#ecfdf5;border-radius:8px;padding:7px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px">'
+            + '<span style="font-size:16px">🏖️</span>'
+            + '<div><div style="font-size:12px;font-weight:700;color:#065f46">' + _kidsNames + '</div>'
+            + '<div style="font-size:11px;color:#047857;margin-top:1px">' + _holMsg + '</div></div>'
+            + '</div>';
+        } else if (_holidayStatus.starts_tom && _holidayStatus.label) {
+          schoolHtml += '<div style="background:#fff7ed;border-radius:8px;padding:7px 10px;margin-bottom:8px;display:flex;align-items:center;gap:8px">'
+            + '<span style="font-size:16px">📅</span>'
+            + '<div><div style="font-size:12px;font-weight:700;color:#9a3412">Last day of term today</div>'
+            + '<div style="font-size:11px;color:#c2410c;margin-top:1px">' + _holidayStatus.label.charAt(0).toUpperCase() + _holidayStatus.label.slice(1) + ' starts tomorrow</div></div>'
+            + '</div>';
+        }
+      }
 
       if (_isOffHours) {
         // Evening/night: skip drive rows — show weekend events + recent comms only
@@ -14317,16 +14341,19 @@ _bkBadge();
           });
         }
       } else {
-        // Daytime/morning: show route rows with Drive button
-        schoolRoutes.forEach(function(s) {
-          var dest    = encodeURIComponent((s.school_name || "") + " " + (s.address || ""));
-          var mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + dest + "&travelmode=driving";
-          schoolHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
-            + '<div><div style="font-size:13px;font-weight:700;color:var(--text)">' + (s.child_name || "") + '</div>'
-            + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (s.school_name || "") + '</div></div>'
-            + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:99px;padding:5px 12px;text-decoration:none;flex-shrink:0;white-space:nowrap">🗺️ Drive →</a>'
-          + '</div>';
-        });
+        // Daytime/morning: show route rows with Drive button — suppress during school holidays
+        var _onHoliday = _holidayStatus && _holidayStatus.on_holiday;
+        if (!_onHoliday) {
+          schoolRoutes.forEach(function(s) {
+            var dest    = encodeURIComponent((s.school_name || "") + " " + (s.address || ""));
+            var mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + dest + "&travelmode=driving";
+            schoolHtml += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">'
+              + '<div><div style="font-size:13px;font-weight:700;color:var(--text)">' + (s.child_name || "") + '</div>'
+              + '<div style="font-size:11px;color:var(--muted);margin-top:1px">' + (s.school_name || "") + '</div></div>'
+              + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:99px;padding:5px 12px;text-decoration:none;flex-shrink:0;white-space:nowrap">🗺️ Drive →</a>'
+            + '</div>';
+          });
+        }
         if (schoolUpcoming.length) {
           schoolHtml += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:8px 0 4px">📅 Coming up</div>';
           schoolUpcoming.slice(0, 4).forEach(function(ev) {
