@@ -1794,9 +1794,12 @@
     <!-- ── V2 MORNING BRIEF SCREEN ── -->
     <div id="screen-brief" class="screen pt-5">
       <!-- Header -->
-      <div style="margin-bottom:14px">
-        <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Your Brief</div>
-        <div id="brief-dateline" style="font-size:13px;color:var(--muted);margin-top:3px"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Your Brief</div>
+          <div id="brief-dateline" style="font-size:13px;color:var(--muted);margin-top:3px"></div>
+        </div>
+        <button onclick="showScreen('setup')" title="Settings" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 10px;font-size:16px;cursor:pointer;flex-shrink:0;margin-top:2px">⚙️</button>
       </div>
 
       <!-- WFH / Office toggle (weekdays only) -->
@@ -2252,7 +2255,10 @@
           <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px">🏡 My Area</div>
           <div id="myarea-subtitle" style="font-size:12px;color:var(--muted);margin-top:1px">Your local area</div>
         </div>
-        <button onclick="_maToggleCustomise()" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:5px">⚙️ <span>Customise</span></button>
+        <div style="display:flex;gap:6px">
+          <button onclick="_maToggleCustomise()" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer">Customise</button>
+          <button onclick="showScreen('setup')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px 11px;font-size:14px;cursor:pointer" title="Settings">⚙️</button>
+        </div>
       </div>
 
       <!-- Customise panel -->
@@ -2346,8 +2352,6 @@
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏥 My Services</button>
           <button onclick="_maShowTab('civic')" id="matab-btn-civic"
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏛️ Civic</button>
-          <button onclick="_maShowTab('accounts')" id="matab-btn-accounts"
-            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">⚙️ My Setup</button>
         </div>
       </div>
 
@@ -2408,6 +2412,7 @@
       </div>
 
       <!-- Tab: Life Admin — bills, vehicles, MOT, insurance, school comms -->
+      <!-- matab-accounts removed — content lives in screen-setup -->
       <div id="matab-accounts" style="display:none">
 
         <!-- Gmail import card — kept for data mirroring into Life Admin screen -->
@@ -2598,6 +2603,163 @@
         </div>
         <a href="https://wa.me/14155238886?text=join%20hearing-never" target="_blank" rel="noopener"
           style="flex-shrink:0;font-size:12px;font-weight:700;color:#25d366;text-decoration:none">Join →</a>
+      </div>
+    </div>
+
+    <!-- ── SETUP SCREEN ── -->
+    <div id="screen-setup" class="screen" style="padding:16px 16px 60px;max-width:600px;margin:0 auto">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <button onclick="history.back ? history.back() : showScreen('brief')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 11px;font-size:14px;cursor:pointer">←</button>
+        <div>
+          <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.5px">⚙️ Settings</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:1px">Brief, family &amp; accounts</div>
+        </div>
+      </div>
+
+      <!-- ── YOUR BRIEF ── -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Your Brief</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Train to (office/destination)</div>
+            <input id="setup-pref-to" type="text" placeholder="e.g. London Waterloo"
+              style="width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Fuel postcode</div>
+            <input id="setup-pref-pc" type="text" placeholder="e.g. GU15"
+              style="width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Bin collection day</div>
+            <div id="setup-bin-days" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" data-setup-bin="0" onclick="_setupBinDay(0)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Mon</button>
+              <button type="button" data-setup-bin="1" onclick="_setupBinDay(1)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Tue</button>
+              <button type="button" data-setup-bin="2" onclick="_setupBinDay(2)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Wed</button>
+              <button type="button" data-setup-bin="3" onclick="_setupBinDay(3)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Thu</button>
+              <button type="button" data-setup-bin="4" onclick="_setupBinDay(4)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Fri</button>
+              <button type="button" data-setup-bin="5" onclick="_setupBinDay(5)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Sat</button>
+              <button type="button" data-setup-bin="6" onclick="_setupBinDay(6)" style="padding:6px 11px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Sun</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button type="button" id="setup-bin-weekly" onclick="_setupBinRotation('weekly')" style="flex:1;padding:7px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Weekly</button>
+              <button type="button" id="setup-bin-fortnightly" onclick="_setupBinRotation('fortnightly')" style="flex:1;padding:7px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Fortnightly</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Google Calendar</div>
+            <button onclick="_briefConnectCalendar()" id="setup-cal-btn"
+              style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #c7d2fe;background:#eef2ff;font-size:13px;font-weight:700;cursor:pointer;color:#4338ca;display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box">
+              <span>📅</span><span id="setup-cal-label">Connect Google Calendar</span>
+            </button>
+          </div>
+          <button onclick="_setupSavePrefs()"
+            style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;cursor:pointer">
+            Save brief settings
+          </button>
+          <div id="setup-pref-err" style="display:none;font-size:12px;color:#ef4444;text-align:center"></div>
+          <div id="setup-pref-ok" style="display:none;font-size:12px;color:#059669;text-align:center">✅ Saved</div>
+        </div>
+      </div>
+
+      <!-- ── FAMILY ── -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Family</div>
+
+      <!-- School Comms -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="font-size:18px">🏫</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">School Comms</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Events, newsletters &amp; term dates from school emails</div>
+            </div>
+          </div>
+          <button onclick="_maOpenSchoolSettings()" style="font-size:12px;font-weight:700;color:#fff;background:#065f46;border:none;border-radius:12px;padding:8px 14px;cursor:pointer;flex-shrink:0">Setup →</button>
+        </div>
+        <div id="setup-school-status" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
+      </div>
+
+      <!-- Clubs & Activities -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">👨‍👩‍👧‍👦 Kids &amp; Family Activities</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Clubs &amp; regular activities — surfaced in your daily brief</div>
+          </div>
+          <button onclick="_clubsAddOpen()" style="font-size:12px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.08);border:1.5px solid rgba(124,58,237,.25);border-radius:12px;padding:7px 13px;cursor:pointer;flex-shrink:0">+ Add</button>
+        </div>
+        <div id="setup-clubs-list"></div>
+      </div>
+
+      <!-- ── LIFE ADMIN ── -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Life Admin</div>
+
+      <!-- Gmail scan -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-bottom:12px">
+        <div id="setup-gmail-state-connect" style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">📧 Gmail scan</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Auto-detect energy, mobile, insurance &amp; more</div>
+          </div>
+          <a href="#" onclick="_maGmailConnect();return false;" style="display:flex;align-items:center;gap:5px;padding:8px 13px;border-radius:20px;border:1.5px solid #4285f4;background:#fff;font-size:12px;font-weight:700;color:#4285f4;cursor:pointer;text-decoration:none;flex-shrink:0">
+            <svg width="13" height="13" viewBox="0 0 24 24"><path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Connect
+          </a>
+        </div>
+        <div id="setup-gmail-state-done" style="display:none;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="font-size:15px">✅</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Gmail connected</div>
+              <div id="setup-gmail-email-label" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="_maGmailDisconnect()" style="font-size:12px;font-weight:600;color:#9ca3af;background:none;border:1.5px solid #d1d5db;border-radius:12px;padding:6px 10px;cursor:pointer">Disconnect</button>
+            <button onclick="_maGmailRescan()" style="font-size:12px;font-weight:600;color:#4285f4;background:none;border:1.5px solid #4285f4;border-radius:12px;padding:6px 12px;cursor:pointer">Rescan</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Motoring -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🚗 Motoring</div>
+        <div id="setup-vehicles-list"></div>
+        <button onclick="_maAddVehicle()" style="width:100%;margin-top:4px;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add vehicle by registration</button>
+        <div id="setup-cards-motoring"></div>
+      </div>
+
+      <!-- Home & Bills -->
+      <div id="setup-section-home" style="display:none;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🏠 Home &amp; Bills</div>
+        <div id="setup-cards-home"></div>
+      </div>
+
+      <!-- Mobile -->
+      <div id="setup-section-mobile" style="display:none;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📱 Mobile</div>
+        <div id="setup-cards-mobile"></div>
+      </div>
+
+      <!-- Insurance & Health -->
+      <div id="setup-section-insurance" style="display:none;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🛡️ Insurance &amp; Health</div>
+        <div id="setup-cards-insurance"></div>
+      </div>
+
+      <!-- Add / import actions -->
+      <div style="display:flex;gap:6px;margin-top:4px;margin-bottom:24px">
+        <button onclick="myAreaAddDetail()" style="flex:1;padding:10px;border-radius:12px;border:1.5px dashed var(--border);background:transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer">+ Add manually</button>
+        <button onclick="_maPdfUploadTap()" title="Upload a bill PDF" style="padding:10px 13px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer">📄</button>
+      </div>
+
+      <!-- Danger zone -->
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Danger zone</div>
+        <button onclick="_maClearAllDetails()" style="font-size:13px;font-weight:600;color:#dc2626;background:none;border:1.5px solid #fecaca;border-radius:10px;padding:9px 16px;cursor:pointer">🗑️ Delete all Life Admin data</button>
       </div>
     </div>
 
@@ -6497,6 +6659,7 @@ function _hcAdd() {
       _clubsEditOrig = null;
       _clubsAddClose();
       _clubsLoad();
+      _setupLoadClubs();
     } catch(e) {
       err.textContent = "Couldn't save — try again"; err.style.display = "block";
     }
@@ -6512,6 +6675,7 @@ function _hcAdd() {
         body: JSON.stringify({token, weekday, activity})
       });
       _clubsLoad();
+      _setupLoadClubs();
     } catch(e) {}
   }
 
@@ -6525,8 +6689,145 @@ function _hcAdd() {
         body: JSON.stringify({token, weekday, activity, all_year: !currentlyAllYear})
       });
       _clubsLoad();
+      _setupLoadClubs();
     } catch(e) {}
   }
+
+  // ── Setup screen ─────────────────────────────────────────────────────────
+  var _setupBinDaySel = null, _setupBinRotSel = null;
+
+  window._setupBinDay = function(d) {
+    _setupBinDaySel = d;
+    document.querySelectorAll("#setup-bin-days [data-setup-bin]").forEach(function(b) {
+      var active = parseInt(b.dataset.setupBin) === d;
+      b.style.background = active ? "#2563eb" : "var(--bg)";
+      b.style.color      = active ? "#fff"     : "var(--text)";
+      b.style.borderColor= active ? "#2563eb"  : "var(--border)";
+    });
+  };
+  window._setupBinRotation = function(r) {
+    _setupBinRotSel = r;
+    ["weekly","fortnightly"].forEach(function(k) {
+      var el = document.getElementById("setup-bin-" + k);
+      if (!el) return;
+      var active = k === r;
+      el.style.background  = active ? "#2563eb" : "var(--bg)";
+      el.style.color       = active ? "#fff"     : "var(--text)";
+      el.style.borderColor = active ? "#2563eb"  : "var(--border)";
+    });
+  };
+
+  window._setupLoad = function() {
+    // Prefs
+    var prefs = (_briefData && _briefData.prefs) || {};
+    var toEl = document.getElementById("setup-pref-to");
+    var pcEl = document.getElementById("setup-pref-pc");
+    if (toEl && prefs.train_to)      toEl.value = prefs.train_to;
+    if (pcEl && prefs.fuel_postcode) pcEl.value = prefs.fuel_postcode;
+    if (prefs.bin_collection_day !== undefined) _setupBinDay(prefs.bin_collection_day);
+    if (prefs.bin_rotation) _setupBinRotation(prefs.bin_rotation);
+    // Calendar state
+    var calBtn = document.getElementById("setup-cal-btn");
+    var calLbl = document.getElementById("setup-cal-label");
+    var briefCalLabel = document.getElementById("brief-cal-label");
+    if (calLbl && briefCalLabel) calLbl.textContent = briefCalLabel.textContent;
+    // School status
+    var statusEl = document.getElementById("setup-school-status");
+    var maStatusEl = document.getElementById("ma-school-status");
+    if (statusEl && maStatusEl) statusEl.innerHTML = maStatusEl.innerHTML || "";
+    else if (statusEl) _setupLoadSchoolStatus();
+    // Clubs (setup-clubs-list)
+    _setupLoadClubs();
+    // Motoring / bills — mirror from My Area
+    var setupMot = document.getElementById("setup-vehicles-list");
+    var maMot    = document.getElementById("myarea-vehicles-list");
+    if (setupMot && maMot) setupMot.innerHTML = maMot.innerHTML || "";
+    ["home","mobile","insurance"].forEach(function(k) {
+      var src = document.getElementById("ma-cards-" + k);
+      var dst = document.getElementById("setup-cards-" + k);
+      var secSrc = document.getElementById("ma-section-" + k);
+      var secDst = document.getElementById("setup-section-" + k);
+      if (dst && src) dst.innerHTML = src.innerHTML || "";
+      if (secDst && secSrc) secDst.style.display = secSrc.style.display || "none";
+    });
+  };
+
+  window._setupLoadSchoolStatus = async function() {
+    var phone = _miruPhone();
+    var el = document.getElementById("setup-school-status");
+    if (!el || !phone) return;
+    try {
+      var wa = phone.replace(/^whatsapp:/, "");
+      var r = await fetch("/api/school/settings?wa=" + encodeURIComponent(wa));
+      var d = await r.json();
+      var profiles = d.profiles || [];
+      el.textContent = profiles.length
+        ? profiles.map(function(p){ return p.school_name + (p.child_name ? " (" + p.child_name + ")" : ""); }).join(" · ")
+        : "No schools set up yet.";
+    } catch(e) {}
+  };
+
+  window._setupSavePrefs = async function() {
+    var token = _miruPhone() || "";
+    var to = (document.getElementById("setup-pref-to") || {}).value || "";
+    var pc = (document.getElementById("setup-pref-pc") || {}).value || "";
+    var errEl = document.getElementById("setup-pref-err");
+    var okEl  = document.getElementById("setup-pref-ok");
+    if (!token) { if (errEl) { errEl.textContent = "Link your phone first."; errEl.style.display = "block"; } return; }
+    var payload = {token: token, train_to: to.trim(), fuel_postcode: pc.trim().toUpperCase().replace(/\s/g,""), home_postcode: _miruPostcode() || pc.trim()};
+    if (_setupBinDaySel !== null) payload.bin_collection_day = _setupBinDaySel;
+    if (_setupBinRotSel)          payload.bin_rotation = _setupBinRotSel;
+    try {
+      var r = await fetch("/api/v2/prefs", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({token: token, prefs: payload})});
+      var d = await r.json();
+      if (d.ok || d.prefs) {
+        if (errEl) errEl.style.display = "none";
+        if (okEl)  { okEl.style.display = "block"; setTimeout(function(){ okEl.style.display = "none"; }, 2000); }
+        if (typeof _briefInit === "function") _briefInit();
+      }
+    } catch(e) { if (errEl) { errEl.textContent = "Save failed."; errEl.style.display = "block"; } }
+  };
+
+  async function _setupLoadClubs() {
+    var list = document.getElementById("setup-clubs-list");
+    if (!list) return;
+    var token = _miruPhone();
+    if (!token) { list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">Link your phone to see clubs.</div>'; return; }
+    list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:7px"><span class="spinner" style="width:13px;height:13px;border-width:2px"></span>Loading…</div>';
+    try {
+      var r = await fetch("/api/v2/recurring?token=" + encodeURIComponent(token));
+      var d = await r.json();
+      var acts = d.activities || [];
+      if (!acts.length) { list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No clubs yet — tap <strong>+ Add</strong> above.</div>'; return; }
+      list.innerHTML = acts.map(function(a) {
+        var dayLabel = _CLUBS_DAYS[a.weekday] || "";
+        var who  = a.child ? '<span style="font-size:11px;font-weight:600;color:#7c3aed;background:rgba(124,58,237,.08);padding:2px 7px;border-radius:10px">' + a.child + '</span>' : "";
+        var time = a.time ? '<span style="font-size:12px;color:var(--muted)">' + a.time + '</span>' : "";
+        var loc  = a.location ? '<div style="font-size:11px;color:var(--muted);margin-top:3px">📍 ' + a.location + '</div>' : "";
+        var actEsc = a.activity.replace(/'/g, "\\'");
+        var isAllYear = !!a.all_year;
+        var ayBadge = isAllYear
+          ? '<span style="font-size:10px;font-weight:700;color:#065f46;background:#d1fae5;border-radius:8px;padding:2px 7px;cursor:pointer" onclick="_clubsToggleAllYear(' + a.weekday + ',\'' + actEsc + '\',' + isAllYear + ')">🗓️ All year</span>'
+          : '<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px 7px;cursor:pointer" onclick="_clubsToggleAllYear(' + a.weekday + ',\'' + actEsc + '\',' + isAllYear + ')">Term only</span>';
+        return '<div style="display:flex;align-items:flex-start;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;margin-bottom:8px">'
+          + '<div style="display:flex;align-items:flex-start;gap:9px">'
+          + '<div style="background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:4px 8px;border-radius:8px;flex-shrink:0;margin-top:1px">' + dayLabel + '</div>'
+          + '<div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:14px;font-weight:700;color:var(--text)">' + a.activity + '</span>' + who + time + ayBadge + '</div>' + loc + '</div>'
+          + '</div>'
+          + '<button onclick="_clubsDelete(' + a.weekday + ',\'' + actEsc + '\')" style="background:none;border:none;font-size:15px;color:var(--muted);cursor:pointer;padding:0 0 0 6px">✕</button>'
+          + '</div>';
+      }).join("");
+    } catch(e) { list.innerHTML = '<div style="font-size:12px;color:#dc2626">Failed to load</div>'; }
+  }
+
+  // Hook showScreen to init setup screen when navigating to it
+  (function() {
+    var _prevShow = window.showScreen;
+    window.showScreen = function(name) {
+      _prevShow(name);
+      if (name === "setup") _setupLoad();
+    };
+  })();
 
   async function _clubsLoad() {
     const list = document.getElementById("clubs-list");
