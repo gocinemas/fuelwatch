@@ -14642,7 +14642,7 @@ _bkBadge();
       var holMsg = schoolHoliday.back_tom
         ? "Back at school tomorrow"
         : "Back " + (schoolHoliday.back_label || "soon");
-      var holLabel = (schoolHoliday.label.charAt(0).toUpperCase() + schoolHoliday.label.slice(1));
+      var holLabel = "Kids " + schoolHoliday.label.charAt(0).toUpperCase() + schoolHoliday.label.slice(1);
       html += '<div style="display:flex;align-items:center;gap:10px;background:#ecfdf5;border:1px solid #86efac;border-radius:12px;padding:10px 14px;margin-bottom:8px">'
         + '<span style="font-size:18px">🏖️</span>'
         + '<div><div style="font-size:13px;font-weight:700;color:#065f46">' + holLabel + '</div>'
