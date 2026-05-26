@@ -1827,12 +1827,6 @@
         </div>
       </div>
 
-      <!-- Info strip — fuel + train one-liners above the brief -->
-      <div id="brief-info-strip" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        <div id="brief-fuel-line" style="display:none"></div>
-        <div id="brief-train-line" style="display:none"></div>
-      </div>
-
       <!-- Narrative card — shimmer while loading -->
       <div id="brief-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:20px;padding:20px;margin-bottom:14px;min-height:88px">
         <div id="brief-shimmer">
@@ -1856,12 +1850,12 @@
           <button onclick="showScreen('fuel')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
             <div style="font-size:20px;margin-bottom:4px">⛽</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Fuel</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Cheapest near you</div>
+            <div id="tile-fuel-sub" style="font-size:10px;color:var(--muted);margin-top:2px">Cheapest near you</div>
           </button>
           <button onclick="showScreen('trains')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
             <div style="font-size:20px;margin-bottom:4px">🚆</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Trains</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Live departures</div>
+            <div id="tile-trains-sub" style="font-size:10px;color:var(--muted);margin-top:2px">Live departures</div>
           </button>
           <button onclick="showScreen('myarea')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
             <div style="font-size:20px;margin-bottom:4px">🏡</div>
@@ -14098,12 +14092,8 @@ _bkBadge();
       wb.style.background = mode === "wfh" ? "#eff6ff" : "var(--surface)";
       wb.style.color = mode === "wfh" ? "#1d4ed8" : "var(--muted)";
     }
-    // Hide train one-liner on WFH; re-render on office mode
-    var _tl = document.getElementById("brief-train-line");
-    if (_tl) {
-      if (mode === "wfh") { _tl.style.display = "none"; }
-      else if (_briefData) { _briefRenderInfoLines(_briefData.context); }
-    }
+    // Re-render tile subtitles when mode changes (WFH hides trains)
+    if (_briefData) { _briefRenderInfoLines(_briefData.context); }
     if (_briefData) {
       // Re-render context cards with mode filtering
       var ctxCards = document.getElementById("brief-context-cards");
@@ -14293,12 +14283,10 @@ _bkBadge();
     if (ctxCards)   { ctxCards.style.display = "none"; ctxCards.innerHTML = ""; }
     var todayCard = document.getElementById("brief-today-card");
     if (todayCard)  { todayCard.style.display = "none"; todayCard.innerHTML = ""; }
-    var infoStrip = document.getElementById("brief-info-strip");
-    if (infoStrip) { infoStrip.style.display = "none"; }
-    var trainLine = document.getElementById("brief-train-line");
-    if (trainLine) { trainLine.style.display = "none"; trainLine.innerHTML = ""; }
-    var fuelLine = document.getElementById("brief-fuel-line");
-    if (fuelLine)  { fuelLine.style.display = "none"; fuelLine.innerHTML = ""; }
+    var fuelSub  = document.getElementById("tile-fuel-sub");
+    var trainSub = document.getElementById("tile-trains-sub");
+    if (fuelSub)  { fuelSub.textContent  = "Cheapest near you"; fuelSub.style.color  = ""; fuelSub.style.fontWeight  = ""; }
+    if (trainSub) { trainSub.textContent = "Live departures";   trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
 
     // Show phone link CTA if no phone linked
     var noPh = document.getElementById("brief-no-phone-cta");
@@ -14559,9 +14547,6 @@ _bkBadge();
   }
 
   function _briefRenderInfoLines(ctx) {
-    var strip     = document.getElementById("brief-info-strip");
-    var fuelLine  = document.getElementById("brief-fuel-line");
-    var trainLine = document.getElementById("brief-train-line");
     var now = new Date();
     var dow = now.getDay();
     var h   = now.getHours();
@@ -14569,43 +14554,45 @@ _bkBadge();
     var isNight   = h >= 21 || h < 5;
     var bankHol   = !!(ctx && ctx.bank_holiday_today);
 
-    var chipStyle = 'display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;';
-
-    // Fuel pill
+    // Fuel tile subtitle
+    var fuelSub = document.getElementById("tile-fuel-sub");
     var fuel = ctx && ctx.fuel;
-    var fuelVisible = false;
-    if (fuelLine) {
+    if (fuelSub) {
       if (!isNight && fuel && fuel.price) {
-        var fuelName = (fuel.name || "").replace(/\b(\w)/g, function(c){ return c.toUpperCase(); });
-        fuelLine.innerHTML = '<div onclick="showScreen(\'fuel\')" style="' + chipStyle + '">⛽ <span style="color:#1d4ed8;font-weight:700">' + fuel.price + 'p</span> · ' + fuelName + '</div>';
-        fuelLine.style.display = "block";
-        fuelVisible = true;
+        var fName = (fuel.name || "").split(/[,·]/)[0].trim();
+        fName = fName.replace(/\b(\w)/g, function(c){ return c.toUpperCase(); });
+        fuelSub.textContent = fuel.price + "p · " + fName;
+        fuelSub.style.color = "#1d4ed8";
+        fuelSub.style.fontWeight = "700";
       } else {
-        fuelLine.style.display = "none";
+        fuelSub.textContent = "Cheapest near you";
+        fuelSub.style.color = "";
+        fuelSub.style.fontWeight = "";
       }
     }
 
-    // Train pill — weekdays, not WFH, not night
+    // Trains tile subtitle — weekdays, not WFH, not night
+    var trainSub = document.getElementById("tile-trains-sub");
     var trains = ctx && ctx.trains;
-    var trainVisible = false;
-    if (trainLine) {
+    if (trainSub) {
       if (!isWeekend && !bankHol && !isNight && trains && trains.departures && trains.departures.length && _briefCurrentMode !== "wfh") {
-        var deps = trains.departures.slice(0, 2);
-        var tFrom = (trains.from || "").replace(/\s+station$/i, "");
-        var dStr = deps.map(function(d) {
-          var t   = d.departs || d.time || "";
-          var dst = (d.destination || trains.to || "").replace(/\s+station$/i, "").replace("London ", "");
-          return t + " " + dst;
-        }).join(" · ");
-        trainLine.innerHTML = '<div onclick="showScreen(\'trains\')" style="' + chipStyle + '">🚆 ' + tFrom + ' · ' + dStr + '</div>';
-        trainLine.style.display = "block";
-        trainVisible = true;
+        var d0 = trains.departures[0];
+        var t0 = d0.departs || d0.time || "";
+        var dst0 = (d0.destination || trains.to || "").replace(/\s+station$/i, "").replace(/^London /i, "");
+        var extra = "";
+        if (trains.departures[1]) {
+          var d1 = trains.departures[1];
+          extra = " · " + (d1.departs || d1.time || "");
+        }
+        trainSub.textContent = t0 + " " + dst0 + extra;
+        trainSub.style.color = "#1d4ed8";
+        trainSub.style.fontWeight = "700";
       } else {
-        trainLine.style.display = "none";
+        trainSub.textContent = "Live departures";
+        trainSub.style.color = "";
+        trainSub.style.fontWeight = "";
       }
     }
-
-    if (strip) strip.style.display = (fuelVisible || trainVisible) ? "flex" : "none";
   }
 
   function _briefRenderTodayCard(todayEvents, schoolHoliday) {
