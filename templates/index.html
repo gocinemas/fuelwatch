@@ -1827,6 +1827,13 @@
         </div>
       </div>
 
+      <!-- Quick-glance row: fuel + train above the narrative -->
+      <div id="brief-glance" style="display:none;align-items:center;gap:10px;font-size:12px;color:var(--muted);margin-bottom:10px;flex-wrap:wrap">
+        <span id="brief-glance-fuel" onclick="showScreen('fuel')" style="cursor:pointer"></span>
+        <span id="brief-glance-sep" style="opacity:.4">·</span>
+        <span id="brief-glance-train" onclick="showScreen('trains')" style="cursor:pointer"></span>
+      </div>
+
       <!-- Narrative card — shimmer while loading -->
       <div id="brief-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:20px;padding:20px;margin-bottom:14px;min-height:88px">
         <div id="brief-shimmer">
@@ -14285,8 +14292,10 @@ _bkBadge();
     if (todayCard)  { todayCard.style.display = "none"; todayCard.innerHTML = ""; }
     var fuelSub  = document.getElementById("tile-fuel-sub");
     var trainSub = document.getElementById("tile-trains-sub");
+    var glance   = document.getElementById("brief-glance");
     if (fuelSub)  { fuelSub.textContent  = "Cheapest near you"; fuelSub.style.color  = ""; fuelSub.style.fontWeight  = ""; }
     if (trainSub) { trainSub.textContent = "Live departures";   trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
+    if (glance)   { glance.style.display = "none"; }
 
     // Show phone link CTA if no phone linked
     var noPh = document.getElementById("brief-no-phone-cta");
@@ -14554,43 +14563,48 @@ _bkBadge();
     var isNight   = h >= 21 || h < 5;
     var bankHol   = !!(ctx && ctx.bank_holiday_today);
 
-    // Fuel tile subtitle
-    var fuelSub = document.getElementById("tile-fuel-sub");
-    var fuel = ctx && ctx.fuel;
-    if (fuelSub) {
-      if (!isNight && fuel && fuel.price) {
-        var fName = (fuel.name || "").split(/[,·]/)[0].trim();
-        fName = fName.replace(/\b(\w)/g, function(c){ return c.toUpperCase(); });
-        fuelSub.textContent = fuel.price + "p · " + fName;
-        fuelSub.style.color = "#1d4ed8";
-        fuelSub.style.fontWeight = "700";
-      } else {
-        fuelSub.textContent = "Cheapest near you";
-        fuelSub.style.color = "";
-        fuelSub.style.fontWeight = "";
-      }
+    var fuel   = ctx && ctx.fuel;
+    var trains = ctx && ctx.trains;
+
+    // ── Fuel ──────────────────────────────────────────────────────────────────
+    var fuelText = "";
+    var fuelSub  = document.getElementById("tile-fuel-sub");
+    if (!isNight && fuel && fuel.price) {
+      var fName = (fuel.name || "").split(/[,·]/)[0].trim()
+                    .replace(/\b(\w)/g, function(c){ return c.toUpperCase(); });
+      fuelText = "⛽ " + fuel.price + "p · " + fName;
+      if (fuelSub) { fuelSub.textContent = fuel.price + "p · " + fName; fuelSub.style.color = "#1d4ed8"; fuelSub.style.fontWeight = "700"; }
+    } else {
+      if (fuelSub) { fuelSub.textContent = "Cheapest near you"; fuelSub.style.color = ""; fuelSub.style.fontWeight = ""; }
     }
 
-    // Trains tile subtitle — weekdays, not WFH, not night
-    var trainSub = document.getElementById("tile-trains-sub");
-    var trains = ctx && ctx.trains;
-    if (trainSub) {
-      if (!isWeekend && !bankHol && !isNight && trains && trains.departures && trains.departures.length && _briefCurrentMode !== "wfh") {
-        var d0 = trains.departures[0];
-        var t0 = d0.departs || d0.time || "";
-        var dst0 = (d0.destination || trains.to || "").replace(/\s+station$/i, "").replace(/^London /i, "");
-        var extra = "";
-        if (trains.departures[1]) {
-          var d1 = trains.departures[1];
-          extra = " · " + (d1.departs || d1.time || "");
-        }
-        trainSub.textContent = t0 + " " + dst0 + extra;
-        trainSub.style.color = "#1d4ed8";
-        trainSub.style.fontWeight = "700";
+    // ── Trains ────────────────────────────────────────────────────────────────
+    var trainText = "";
+    var trainSub  = document.getElementById("tile-trains-sub");
+    if (!isWeekend && !bankHol && !isNight && trains && trains.departures && trains.departures.length && _briefCurrentMode !== "wfh") {
+      var d0   = trains.departures[0];
+      var t0   = d0.departs || d0.time || "";
+      var dst0 = (d0.destination || trains.to || "").replace(/\s+station$/i,"").replace(/^London /i,"");
+      var next = trains.departures[1] ? " · " + (trains.departures[1].departs || trains.departures[1].time || "") : "";
+      trainText = "🚆 " + t0 + " " + dst0 + next;
+      if (trainSub) { trainSub.textContent = t0 + " " + dst0 + next; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+    } else {
+      if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
+    }
+
+    // ── Glance row above the narrative ────────────────────────────────────────
+    var glance     = document.getElementById("brief-glance");
+    var glanceFuel = document.getElementById("brief-glance-fuel");
+    var glanceSep  = document.getElementById("brief-glance-sep");
+    var glanceTrain= document.getElementById("brief-glance-train");
+    if (glance) {
+      if (fuelText || trainText) {
+        if (glanceFuel)  glanceFuel.textContent  = fuelText;
+        if (glanceTrain) glanceTrain.textContent  = trainText;
+        if (glanceSep)   glanceSep.style.display  = (fuelText && trainText) ? "" : "none";
+        glance.style.display = "flex";
       } else {
-        trainSub.textContent = "Live departures";
-        trainSub.style.color = "";
-        trainSub.style.fontWeight = "";
+        glance.style.display = "none";
       }
     }
   }
