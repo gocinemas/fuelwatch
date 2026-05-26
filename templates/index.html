@@ -1858,6 +1858,18 @@
         <button onclick="_briefConnectCalendar()" style="background:#0284c7;color:#fff;border:none;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer">Connect</button>
       </div>
 
+      <!-- Phone link CTA — shown when no phone linked -->
+      <div id="brief-no-phone-cta" style="display:none;margin-bottom:14px">
+        <button onclick="_idOpenModal('phone')" style="display:flex;align-items:center;gap:10px;width:100%;background:var(--text);color:var(--bg);border:none;border-radius:14px;padding:14px 16px;font-size:15px;font-weight:700;cursor:pointer;text-align:left;font-family:inherit;box-sizing:border-box">
+          <span style="font-size:22px">📱</span>
+          <div>
+            <div>Link your phone to get started</div>
+            <div style="font-size:12px;font-weight:500;opacity:.65;margin-top:2px">Add your phone &amp; postcode for your brief</div>
+          </div>
+          <span style="margin-left:auto;font-size:18px;opacity:.5">›</span>
+        </button>
+      </div>
+
       <!-- Prefs setup CTA (shown when has_prefs=false) -->
       <div id="brief-setup-cta" style="display:none;background:var(--surface);border:1.5px dashed var(--border);border-radius:16px;padding:16px;margin-bottom:14px">
         <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px">Personalise your brief</div>
@@ -14036,6 +14048,14 @@ _bkBadge();
         <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--subtle);margin-bottom:10px">Miru · miru.humanagency.co</div>
         <div style="font-size:32px;font-weight:900;letter-spacing:-1.4px;color:var(--text);line-height:1.05;margin-bottom:10px">Local intelligence,<br>live.</div>
         <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px">Your WhatsApp AI for everyday UK life — train times, fuel prices, school updates, local area reports, brand research and more.</div>
+        <button onclick="_idOpenModal('phone')" style="display:flex;align-items:center;gap:10px;width:100%;background:var(--text);color:var(--bg);border:none;border-radius:14px;padding:14px 16px;font-size:15px;font-weight:700;cursor:pointer;text-align:left;margin-bottom:10px;font-family:inherit">
+          <span style="font-size:22px">📱</span>
+          <div>
+            <div>Set up your Miru brief</div>
+            <div style="font-size:12px;font-weight:500;opacity:.65;margin-top:2px">Add your phone &amp; postcode to get started</div>
+          </div>
+          <span style="margin-left:auto;font-size:18px;opacity:.5">›</span>
+        </button>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           <span style="background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;border-radius:99px;padding:4px 10px">🚆 Trains</span>
           <span style="background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;border-radius:99px;padding:4px 10px">⛽ Fuel</span>
@@ -14264,6 +14284,10 @@ _bkBadge();
     if (chips)      { chips.innerHTML = ""; }
     if (setupCta)   { setupCta.style.display = "none"; }
     if (ctxCards)   { ctxCards.style.display = "none"; ctxCards.innerHTML = ""; }
+
+    // Show phone link CTA if no phone linked
+    var noPh = document.getElementById("brief-no-phone-cta");
+    if (noPh) noPh.style.display = _miruPhone() ? "none" : "block";
 
     // Pre-fill fuel postcode from identity
     var pcInput = document.getElementById("brief-pref-pc");
