@@ -14580,12 +14580,23 @@ _bkBadge();
       var navQ    = loc || title;
       var wazeUrl = "https://waze.com/ul?q=" + encodeURIComponent(navQ) + "&navigate=yes";
       var mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(navQ);
+      // "Leave by" = 45 min before event start, only when event has a destination
+      var leaveByStr = "";
+      var tParts = (timeStr || "").match(/(\d+):(\d+)/);
+      if (loc && tParts) {
+        var leaveMin = parseInt(tParts[1], 10) * 60 + parseInt(tParts[2], 10) - 45;
+        if (leaveMin > 0) {
+          var lH = Math.floor(leaveMin / 60);
+          var lM = leaveMin % 60;
+          leaveByStr = (lH > 12 ? lH - 12 : (lH === 0 ? 12 : lH)) + ":" + (lM < 10 ? "0" + lM : lM) + (lH >= 12 ? " PM" : " AM");
+        }
+      }
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:8px">'
         + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'
         + '<div style="flex:1;min-width:0">'
         + '<div style="font-size:13px;font-weight:700;color:var(--text)">' + title + '</div>'
         + (timeStr ? '<div style="font-size:12px;color:var(--muted);margin-top:2px">🕐 ' + timeStr + '</div>' : '')
-        + (loc ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📍 ' + loc + '</div>' : '')
+        + (leaveByStr ? '<div style="font-size:11px;font-weight:700;color:#d97706;margin-top:3px">🚗 Leave by ' + leaveByStr + '</div>' : '')
         + '</div>'
         + '<div style="display:flex;gap:6px;flex-shrink:0;align-items:center;margin-top:2px">'
         + '<a href="' + wazeUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#33ccff;border-radius:8px;padding:4px 10px;text-decoration:none">🚦 Waze</a>'

@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>PM Intel — humanagency</title>
-  <meta name="description" content="IT project lifecycle intelligence — BOSCARD, RAID, weekly status and more.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MiruPM — Programme Intelligence</title>
+  <meta name="description" content="Paste any brief. Get a full programme pack — BOSCARD, vision, risks, actions, Jira structure — in seconds.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -14,10 +14,6 @@
       --text:#0f172a; --muted:#64748b; --accent:#6366f1; --accent-light:#eef2ff;
       --green:#16a34a; --amber:#d97706; --red:#dc2626;
     }
-    [data-theme="dark"] {
-      --bg:#0f172a; --surface:#1e293b; --surface2:#334155; --border:#334155;
-      --text:#f1f5f9; --muted:#94a3b8; --accent:#818cf8; --accent-light:#1e1b4b;
-    }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
 
@@ -25,1181 +21,513 @@
     #topbar {
       position:sticky; top:0; z-index:100;
       background:var(--surface); border-bottom:1px solid var(--border);
-      padding:0 16px; height:52px;
+      padding:0 20px; height:52px;
       display:flex; align-items:center; gap:12px;
     }
-    #topbar .brand { font-size:16px; font-weight:900; letter-spacing:-0.5px; color:var(--accent); flex-shrink:0; }
-    #topbar .brand span { color:var(--muted); font-weight:500; }
-    #project-picker {
-      flex:1; max-width:320px;
-      border:1px solid var(--border); border-radius:10px;
-      padding:7px 12px; font-size:13px; font-weight:600;
-      background:var(--surface2); color:var(--text); cursor:pointer;
-    }
+    .brand { font-size:16px; font-weight:900; letter-spacing:-0.5px; color:var(--accent); }
+    .brand span { color:var(--muted); font-weight:500; }
+    .topbar-right { margin-left:auto; display:flex; gap:8px; align-items:center; }
     .icon-btn {
-      width:36px; height:36px; border-radius:10px;
+      width:34px; height:34px; border-radius:8px;
       border:1px solid var(--border); background:var(--surface2);
-      cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;
-      flex-shrink:0;
+      cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center;
     }
     .icon-btn:hover { background:var(--border); }
-    #topbar .ml-auto { margin-left:auto; display:flex; gap:8px; align-items:center; }
 
-    /* ── Layout ── */
-    #layout { display:flex; min-height:calc(100vh - 52px); }
-    #sidebar {
-      width:240px; flex-shrink:0;
-      border-right:1px solid var(--border);
-      background:var(--surface);
-      padding:16px 12px;
-      display:flex; flex-direction:column; gap:4px;
-      position:sticky; top:52px; height:calc(100vh - 52px); overflow-y:auto;
-    }
-    #main { flex:1; padding:20px 16px; max-width:860px; }
-
-    /* ── Lifecycle rail ── */
-    #lifecycle-rail {
-      display:flex; gap:0; margin-bottom:24px; overflow-x:auto;
-      background:var(--surface); border:1px solid var(--border); border-radius:16px;
-      padding:4px;
-    }
-    .phase-btn {
-      flex:1; min-width:80px; padding:10px 8px;
-      border:none; border-radius:12px; cursor:pointer;
-      font-size:11px; font-weight:700; text-align:center;
-      background:transparent; color:var(--muted); transition:all .15s;
-      line-height:1.35;
-    }
-    .phase-btn .phase-icon { font-size:18px; display:block; margin-bottom:3px; }
-    .phase-btn.active { background:var(--accent); color:#fff; }
-    .phase-btn.done { background:var(--accent-light); color:var(--accent); }
-    .phase-btn.current-proj { outline:2px solid var(--amber); outline-offset:-2px; }
-
-    /* ── Section card ── */
-    .card {
-      background:var(--surface); border:1px solid var(--border);
-      border-radius:16px; padding:16px; margin-bottom:14px;
-    }
-    .card-title {
-      font-size:14px; font-weight:800; color:var(--text);
-      margin-bottom:12px; padding-bottom:10px;
-      border-bottom:1px solid var(--border);
-      display:flex; align-items:center; gap:8px;
-    }
-
-    /* ── Doc list ── */
-    .doc-item {
-      display:flex; align-items:center; gap:10px;
-      padding:10px 0; border-bottom:1px solid var(--border);
-      cursor:pointer;
-    }
-    .doc-item:last-child { border-bottom:none; padding-bottom:0; }
-    .doc-item:hover .doc-title { color:var(--accent); }
-    .doc-status {
-      width:8px; height:8px; border-radius:50%; flex-shrink:0;
-    }
-    .doc-title { font-size:13px; font-weight:600; flex:1; }
-    .doc-meta { font-size:11px; color:var(--muted); white-space:nowrap; }
-    .doc-type-chip {
-      font-size:10px; font-weight:700; padding:2px 7px;
-      border-radius:99px; background:var(--accent-light); color:var(--accent);
-      white-space:nowrap; flex-shrink:0;
-    }
-    .add-doc-row {
-      display:flex; align-items:center; gap:8px;
-      padding:10px 0; color:var(--muted); font-size:12px; cursor:pointer;
-    }
-    .add-doc-row:hover { color:var(--accent); }
-
-    /* ── AI workspace ── */
-    #ai-workspace {
-      background:linear-gradient(135deg,#1e1b4b,#312e81);
-      border-radius:16px; padding:16px; margin-bottom:14px;
-    }
-    #ai-workspace .ai-title {
-      font-size:13px; font-weight:800; color:#a5b4fc; margin-bottom:12px;
-    }
-    .ai-action-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
-    .ai-action-btn {
-      padding:8px 14px; border-radius:10px;
-      border:1px solid rgba(165,180,252,.3);
-      background:rgba(255,255,255,.08);
-      color:#e0e7ff; font-size:12px; font-weight:600;
-      cursor:pointer; transition:all .15s;
-    }
-    .ai-action-btn:hover { background:rgba(255,255,255,.15); }
-    .ai-action-btn.active { background:#6366f1; border-color:#6366f1; color:#fff; }
-    #ai-input {
-      width:100%; border-radius:12px; padding:11px 14px;
-      font-size:13px; font-family:inherit; line-height:1.5;
-      border:1px solid rgba(165,180,252,.3); background:rgba(255,255,255,.06);
-      color:#e0e7ff; resize:vertical; min-height:100px;
-      margin-bottom:10px;
-    }
-    #ai-input::placeholder { color:rgba(165,180,252,.5); }
-    #ai-input:focus { outline:none; border-color:rgba(165,180,252,.6); }
-    #ai-run-btn {
-      background:#6366f1; color:#fff; border:none;
-      padding:10px 20px; border-radius:10px; font-size:13px; font-weight:700;
-      cursor:pointer; width:100%;
-    }
-    #ai-run-btn:disabled { opacity:.5; cursor:not-allowed; }
-    #ai-output {
-      display:none; margin-top:14px;
-      background:rgba(255,255,255,.05); border:1px solid rgba(165,180,252,.2);
-      border-radius:12px; padding:14px;
-    }
-    #ai-output-content {
-      font-size:13px; color:#e0e7ff; line-height:1.65;
-      max-height:50vh; overflow-y:auto;
-    }
-    #ai-output-content table { width:100%; border-collapse:collapse; font-size:12px; }
-    #ai-output-content th { background:rgba(99,102,241,.3); padding:6px 8px; text-align:left; }
-    #ai-output-content td { padding:5px 8px; border-bottom:1px solid rgba(165,180,252,.15); }
-    #ai-output-content h2,#ai-output-content h3 { color:#a5b4fc; margin:12px 0 6px; font-size:13px; }
-    #ai-output-content strong { color:#c7d2fe; }
-    #ai-output-actions {
-      display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;
-    }
-    .ai-out-btn {
-      padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;
-      border:1px solid rgba(165,180,252,.3); background:transparent; color:#a5b4fc;
-    }
-    .ai-out-btn:hover { background:rgba(165,180,252,.15); }
-
-    /* ── Phase doc types ── */
-    .phase-doc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-    .phase-doc-card {
-      background:var(--surface2); border:1px solid var(--border);
-      border-radius:12px; padding:10px 12px; cursor:pointer;
-      transition:all .15s;
-    }
-    .phase-doc-card:hover { border-color:var(--accent); }
-    .phase-doc-card.has-content { border-color:var(--green); background:#f0fdf4; }
-    [data-theme="dark"] .phase-doc-card.has-content { background:#052e16; }
-    .phase-doc-card-icon { font-size:18px; margin-bottom:4px; }
-    .phase-doc-card-name { font-size:12px; font-weight:700; color:var(--text); }
-    .phase-doc-card-hint { font-size:11px; color:var(--muted); margin-top:2px; }
-
-    /* ── Modals ── */
-    .modal-backdrop {
-      position:fixed; inset:0; background:rgba(0,0,0,.45);
-      display:none; z-index:200; align-items:flex-end; justify-content:center;
-    }
-    .modal-backdrop.open { display:flex; }
-    .modal {
-      background:var(--surface); width:100%; max-width:600px;
-      border-radius:20px 20px 0 0; padding:20px 16px 32px;
-      max-height:92vh; overflow-y:auto;
-    }
-    @media(min-width:640px) {
-      .modal-backdrop { align-items:center; }
-      .modal { border-radius:20px; max-height:85vh; }
-    }
-    .modal-title { font-size:16px; font-weight:800; margin-bottom:16px; }
-    .modal-close { float:right; font-size:20px; cursor:pointer; color:var(--muted); }
-    .form-label { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; display:block; }
-    .form-input {
-      width:100%; border:1px solid var(--border); border-radius:10px;
-      padding:10px 12px; font-size:14px; font-family:inherit;
-      background:var(--surface2); color:var(--text); margin-bottom:12px;
-    }
-    .form-input:focus { outline:none; border-color:var(--accent); }
-    textarea.form-input { min-height:80px; resize:vertical; line-height:1.5; }
-    .form-select { appearance:none; }
-    .btn-primary {
-      width:100%; padding:12px; border-radius:12px; border:none;
-      background:var(--accent); color:#fff; font-size:14px; font-weight:700;
-      cursor:pointer;
-    }
-    .btn-primary:hover { opacity:.9; }
-    .btn-danger { background:var(--red); }
-
-    /* ── Empty states ── */
-    .empty-state { text-align:center; padding:48px 20px; color:var(--muted); }
-    .empty-state .es-icon { font-size:40px; margin-bottom:12px; }
-    .empty-state p { font-size:14px; line-height:1.6; margin-bottom:16px; }
-
-    /* ── Project sidebar items ── */
-    .proj-item {
-      display:flex; align-items:center; gap:8px;
-      padding:9px 10px; border-radius:10px; cursor:pointer;
-      font-size:13px; font-weight:600; color:var(--muted);
-      transition:all .15s;
-    }
-    .proj-item:hover { background:var(--surface2); color:var(--text); }
-    .proj-item.active { background:var(--accent-light); color:var(--accent); }
-    .proj-item .proj-phase-dot {
-      width:8px; height:8px; border-radius:50%; flex-shrink:0;
-    }
-
-    /* ── RAG badge ── */
-    .rag { display:inline-block; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:700; }
-    .rag-g { background:#dcfce7; color:#16a34a; }
-    .rag-a { background:#fef3c7; color:#d97706; }
-    .rag-r { background:#fee2e2; color:#dc2626; }
-
-    /* ── Saved docs list ── */
-    .saved-doc-row {
-      display:flex; gap:10px; align-items:flex-start;
-      padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer;
-    }
-    .saved-doc-row:last-child { border-bottom:none; }
-    .saved-doc-icon { font-size:20px; flex-shrink:0; }
-    .saved-doc-title { font-size:13px; font-weight:700; color:var(--text); }
-    .saved-doc-meta { font-size:11px; color:var(--muted); margin-top:2px; }
-
-    /* ── Spinner ── */
-    .spinner { width:18px; height:18px; border-radius:50%; border:2px solid rgba(165,180,252,.3); border-top-color:#a5b4fc; animation:spin .7s linear infinite; display:inline-block; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-
-    /* ── Responsive ── */
-    @media(max-width:640px) {
-      #sidebar { display:none; }
-      #main { padding:14px 12px; }
-      .phase-doc-grid { grid-template-columns:1fr; }
-    }
+    /* ── Main ── */
+    #main { max-width:720px; margin:0 auto; padding:32px 16px 80px; }
 
     /* ── Intake ── */
-    #intake-form-wrap { max-width:580px; margin:0 auto; padding:12px 4px 32px; }
-    .intake-hero { text-align:center; padding:32px 16px 20px; }
-    .intake-logo { font-size:40px; margin-bottom:12px; }
-    .intake-h1 { font-size:22px; font-weight:900; letter-spacing:-0.5px; color:var(--text); margin-bottom:8px; }
-    .intake-sub { font-size:14px; color:var(--muted); line-height:1.6; }
+    .hero { text-align:center; padding:20px 0 28px; }
+    .hero-icon { font-size:36px; margin-bottom:12px; }
+    .hero h1 { font-size:24px; font-weight:900; letter-spacing:-0.5px; margin-bottom:8px; }
+    .hero p { font-size:14px; color:var(--muted); line-height:1.6; max-width:500px; margin:0 auto; }
+
+    .intake-box {
+      background:var(--surface); border:1.5px solid var(--border);
+      border-radius:20px; padding:20px; margin-bottom:20px;
+    }
     .intake-textarea {
-      width:100%; min-height:150px;
-      border:2px solid var(--border); border-radius:16px;
-      padding:16px; font-size:14px; font-family:inherit;
-      background:var(--surface); color:var(--text);
+      width:100%; min-height:140px;
+      border:1.5px solid var(--border); border-radius:14px;
+      padding:14px 16px; font-size:14px; font-family:inherit;
+      background:var(--bg); color:var(--text);
       resize:vertical; line-height:1.6; transition:border-color .15s;
+      margin-bottom:12px;
     }
     .intake-textarea:focus { outline:none; border-color:var(--accent); }
+    .intake-textarea::placeholder { color:var(--muted); }
     .intake-submit {
-      width:100%; padding:14px; border-radius:14px; border:none;
+      width:100%; padding:13px; border-radius:12px; border:none;
       background:var(--accent); color:#fff; font-size:15px; font-weight:700;
-      cursor:pointer; margin-top:12px;
+      cursor:pointer; font-family:inherit; transition:opacity .15s;
     }
     .intake-submit:disabled { opacity:.5; cursor:not-allowed; }
-    .intake-skip { text-align:center; font-size:12px; color:var(--muted); margin-top:10px; }
-    .intake-skip a { color:var(--accent); text-decoration:none; }
-    #intake-result-wrap { max-width:580px; margin:0 auto; padding:12px 4px 32px; }
-    .feasibility-card {
-      border-radius:16px; padding:16px;
-      display:flex; align-items:flex-start; gap:12px;
-    }
-    .feasibility-card.green { background:#f0fdf4; border:1px solid #86efac; }
-    .feasibility-card.amber { background:#fffbeb; border:1px solid #fcd34d; }
-    .feasibility-card.red   { background:#fef2f2; border:1px solid #fca5a5; }
-    [data-theme="dark"] .feasibility-card.green { background:#052e16; border-color:#166534; }
-    [data-theme="dark"] .feasibility-card.amber { background:#1c1400; border-color:#854d0e; }
-    [data-theme="dark"] .feasibility-card.red   { background:#1c0a0a; border-color:#991b1b; }
-    .feasibility-icon { font-size:28px; flex-shrink:0; }
-    .feasibility-label { font-size:13px; font-weight:800; margin-bottom:4px; color:var(--text); }
-    .feasibility-reason { font-size:13px; color:var(--muted); line-height:1.5; }
-    .intake-qs { font-size:12px; color:var(--muted); margin-top:8px; }
-    .intake-qs strong { color:var(--text); }
-    .intake-qs ul { margin:4px 0 0 16px; }
-    .intake-qs li { margin-bottom:2px; }
+    .intake-submit:hover:not(:disabled) { opacity:.9; }
 
-    /* ── Setup banner ── */
-    #setup-banner {
-      display:none; background:#fef3c7; border:1px solid #fde68a;
-      border-radius:12px; padding:12px 14px; margin-bottom:16px;
-      font-size:12px; color:#92400e;
+    /* ── Loading ── */
+    #loading { display:none; text-align:center; padding:40px 20px; }
+    .loading-steps { display:flex; flex-direction:column; gap:10px; max-width:320px; margin:20px auto 0; text-align:left; }
+    .ls-row { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); opacity:.35; transition:opacity .4s; }
+    .ls-row.active { opacity:1; color:var(--text); }
+    .ls-row.done { opacity:.6; }
+    .ls-icon { font-size:15px; width:22px; text-align:center; flex-shrink:0; }
+    .spinner { width:20px; height:20px; border-radius:50%; border:2px solid #c7d2fe; border-top-color:var(--accent); animation:spin .7s linear infinite; display:inline-block; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Output ── */
+    #output { display:none; }
+
+    .feasibility-card {
+      border-radius:16px; padding:16px 18px;
+      display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;
     }
-    #setup-banner code { background:#fde68a; padding:2px 5px; border-radius:4px; font-size:11px; }
+    .feasibility-card.green { background:#f0fdf4; border:1.5px solid #86efac; }
+    .feasibility-card.amber { background:#fffbeb; border:1.5px solid #fcd34d; }
+    .feasibility-card.red   { background:#fef2f2; border:1.5px solid #fca5a5; }
+    .feasibility-icon { font-size:26px; flex-shrink:0; }
+    .feasibility-label { font-size:14px; font-weight:800; margin-bottom:4px; }
+    .feasibility-reason { font-size:13px; color:var(--muted); line-height:1.55; }
+    .clarify-qs { margin-top:8px; font-size:12px; color:var(--muted); }
+    .clarify-qs strong { color:var(--text); }
+    .clarify-qs ul { margin:4px 0 0 16px; }
+    .clarify-qs li { margin-bottom:3px; }
+
+    .proj-header { margin-bottom:20px; }
+    .proj-type { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
+    .proj-name { font-size:22px; font-weight:900; letter-spacing:-0.5px; }
+
+    /* Output sections */
+    .section { margin-bottom:14px; }
+    .section-header {
+      display:flex; align-items:center; justify-content:space-between;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:14px; padding:13px 16px; cursor:pointer;
+      transition:border-color .15s;
+    }
+    .section-header:hover { border-color:var(--accent); }
+    .section-header.open { border-radius:14px 14px 0 0; border-bottom-color:transparent; }
+    .section-title { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:700; }
+    .section-icon { font-size:17px; }
+    .section-chevron { font-size:13px; color:var(--muted); transition:transform .2s; }
+    .section-header.open .section-chevron { transform:rotate(180deg); }
+    .section-body {
+      display:none; background:var(--surface);
+      border:1px solid var(--border); border-top:none;
+      border-radius:0 0 14px 14px; padding:16px;
+      font-size:13px; line-height:1.7;
+    }
+    .section-body.open { display:block; }
+    .section-body h2, .section-body h3 { font-size:13px; font-weight:700; color:var(--text); margin:12px 0 6px; }
+    .section-body h2:first-child, .section-body h3:first-child { margin-top:0; }
+    .section-body p { color:var(--muted); margin-bottom:8px; }
+    .section-body ul, .section-body ol { padding-left:18px; color:var(--muted); }
+    .section-body li { margin-bottom:4px; }
+    .section-body strong { color:var(--text); }
+    .section-body table { width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
+    .section-body th { background:var(--surface2); padding:7px 10px; text-align:left; font-weight:700; border:1px solid var(--border); }
+    .section-body td { padding:6px 10px; border:1px solid var(--border); color:var(--muted); }
+
+    .copy-btn {
+      font-size:11px; font-weight:700; color:var(--muted);
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:6px; padding:4px 10px; cursor:pointer;
+      flex-shrink:0; transition:all .15s;
+    }
+    .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+    /* Vision highlight */
+    .vision-text {
+      font-size:15px; font-weight:500; color:var(--text);
+      line-height:1.7; font-style:italic;
+      border-left:3px solid var(--accent); padding-left:14px;
+    }
+
+    /* Actions */
+    .action-list { display:flex; flex-direction:column; gap:8px; }
+    .action-item {
+      display:flex; align-items:flex-start; gap:10px;
+      background:var(--surface2); border-radius:10px; padding:10px 12px;
+    }
+    .action-num {
+      width:22px; height:22px; border-radius:50%; background:var(--accent);
+      color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center;
+      justify-content:center; flex-shrink:0; margin-top:1px;
+    }
+    .action-text { font-size:13px; color:var(--text); line-height:1.5; }
+
+    /* Risk table */
+    .risk-row-red td:first-child { color:var(--red); font-weight:600; }
+    .risk-row-amber td:first-child { color:var(--amber); font-weight:600; }
+
+    /* Jira */
+    .jira-epic { margin-bottom:14px; }
+    .jira-epic-name {
+      font-size:12px; font-weight:800; color:var(--accent);
+      text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;
+    }
+    .jira-story {
+      display:flex; align-items:flex-start; gap:8px;
+      padding:6px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--muted);
+    }
+    .jira-story:last-child { border-bottom:none; }
+    .jira-story-tag { font-size:10px; font-weight:700; color:#fff; background:#94a3b8; border-radius:4px; padding:1px 6px; flex-shrink:0; margin-top:2px; }
+
+    /* Bottom actions */
+    .output-actions { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
+    .btn-outline {
+      padding:11px 18px; border-radius:10px; border:1.5px solid var(--border);
+      background:var(--surface); color:var(--text); font-size:13px; font-weight:700;
+      cursor:pointer; font-family:inherit; transition:all .15s;
+    }
+    .btn-outline:hover { border-color:var(--accent); color:var(--accent); }
+    .btn-primary-sm {
+      padding:11px 18px; border-radius:10px; border:none;
+      background:var(--accent); color:#fff; font-size:13px; font-weight:700;
+      cursor:pointer; font-family:inherit;
+    }
+
+    @media(max-width:600px) {
+      #main { padding:20px 12px 60px; }
+      .hero h1 { font-size:20px; }
+    }
   </style>
 </head>
 <body>
 
-<!-- ── Top bar ── -->
 <div id="topbar">
-  <div class="brand">PM<span> Intel</span></div>
-  <select id="project-picker" onchange="_pickProject(this.value)">
-    <option value="">— select project —</option>
-  </select>
-  <div class="ml-auto">
-    <button class="icon-btn" onclick="_openNewProject()" title="New project">＋</button>
-    <button class="icon-btn" onclick="_toggleTheme()" title="Toggle theme">🌙</button>
+  <div class="brand">Miru<span>PM</span></div>
+  <div class="topbar-right">
+    <button class="icon-btn" title="Start over" onclick="_reset()">↺</button>
   </div>
 </div>
 
-<!-- ── Layout ── -->
-<div id="layout">
+<div id="main">
 
-  <!-- Sidebar -->
-  <nav id="sidebar">
-    <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:4px 10px 8px">Projects</div>
-    <div id="sidebar-projects"></div>
-    <button onclick="_openNewProject()" style="margin-top:8px;display:flex;align-items:center;gap:6px;padding:9px 10px;border:1px dashed var(--border);border-radius:10px;background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;width:100%">
-      ＋ New project
-    </button>
-    <div style="flex:1"></div>
-    <div id="sidebar-setup" style="display:none;margin-top:auto;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-size:11px;color:var(--muted);line-height:1.5">⚠️ Run the SQL below in Supabase to enable storage.</div>
-      <button onclick="_showSetupSQL()" style="margin-top:6px;font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;font-weight:600">View setup SQL →</button>
-    </div>
-  </nav>
-
-  <!-- Main content -->
-  <main id="main">
-
-    <!-- Setup banner -->
-    <div id="setup-banner">
-      ⚠️ Supabase tables not set up. Run this SQL in your Supabase SQL editor, then refresh:
-      <pre style="margin-top:8px;font-size:10px;background:#fef9c3;padding:8px;border-radius:6px;overflow-x:auto">create table if not exists pm_projects (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  proj_type text default 'IT Transformation',
-  phase int default 1,
-  description text default '',
-  created_at timestamptz default now()
-);
-create table if not exists pm_docs (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid,
-  phase int not null,
-  doc_type text not null,
-  title text not null,
-  content text default '',
-  ai_summary text default '',
-  status text default 'draft',
-  created_at timestamptz default now()
-);</pre>
+  <!-- Intake view -->
+  <div id="intake-view">
+    <div class="hero">
+      <div class="hero-icon">💡</div>
+      <h1>Paste your brief. Get your programme pack.</h1>
+      <p>Describe the problem or initiative in plain English. The AI reads it and produces your full pack — BOSCARD, vision, risks, actions and Jira structure — in one shot.</p>
     </div>
 
-    <!-- No project selected — AI intake -->
-    <div id="empty-view">
+    <div class="intake-box">
+      <textarea id="intake-input" class="intake-textarea"
+        placeholder="e.g. We're separating IT systems from the parent company after a de-merger. 14 production systems, 6 months to exit, no clear IT owner on the NewCo side yet. The board wants a clean separation by end of Q3..."></textarea>
+      <button id="intake-btn" class="intake-submit" onclick="_run()">Generate programme pack →</button>
+    </div>
+  </div>
 
-      <!-- Step 1: problem input -->
-      <div id="intake-form-wrap">
-        <div class="intake-hero">
-          <div class="intake-logo">💡</div>
-          <h1 class="intake-h1">What problem are you solving?</h1>
-          <p class="intake-sub">Describe it in plain English — AI will check feasibility and draft your BOSCARD</p>
-        </div>
-        <textarea id="intake-input" class="intake-textarea"
-          placeholder="e.g. We're separating our IT systems from the parent company after a de-merger. 14 production systems, 6 months to exit, and no clear IT owner on the NewCo side yet..."></textarea>
-        <button id="intake-btn" class="intake-submit" onclick="_runIntake()">Assess &amp; Draft BOSCARD →</button>
-        <div class="intake-skip">or <a href="#" onclick="_openNewProject();return false">create project manually</a></div>
-      </div>
+  <!-- Loading view -->
+  <div id="loading">
+    <div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 20px"></div>
+    <div style="font-size:15px;font-weight:700;color:var(--text)">Reading your brief…</div>
+    <div class="loading-steps">
+      <div class="ls-row" id="ls-1"><span class="ls-icon">🔍</span> Assessing feasibility</div>
+      <div class="ls-row" id="ls-2"><span class="ls-icon">🎯</span> Drafting BOSCARD</div>
+      <div class="ls-row" id="ls-3"><span class="ls-icon">👁️</span> Writing vision statement</div>
+      <div class="ls-row" id="ls-4"><span class="ls-icon">⚠️</span> Identifying risks</div>
+      <div class="ls-row" id="ls-5"><span class="ls-icon">📋</span> Building Jira structure</div>
+    </div>
+  </div>
 
-      <!-- Step 2: AI result -->
-      <div id="intake-result-wrap" style="display:none">
-        <div id="intake-feasibility-card"></div>
-        <div id="intake-boscard-card" class="card" style="margin-top:14px"></div>
-        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-          <button id="intake-start-btn" class="btn-primary" style="flex:1;min-width:160px" onclick="_startProjectFromIntake()">Start this project →</button>
-          <button onclick="_resetIntake()" style="padding:12px 18px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;font-weight:600;cursor:pointer">Refine</button>
-        </div>
-      </div>
+  <!-- Output view -->
+  <div id="output">
 
+    <!-- Feasibility card -->
+    <div id="out-feasibility"></div>
+
+    <!-- Project header -->
+    <div class="proj-header">
+      <div class="proj-type" id="out-proj-type"></div>
+      <div class="proj-name" id="out-proj-name"></div>
     </div>
 
-    <!-- Project view -->
-    <div id="project-view" style="display:none">
-
-      <!-- Project header -->
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
-        <div>
-          <div id="proj-name-heading" style="font-size:20px;font-weight:900;letter-spacing:-0.5px;color:var(--text)"></div>
-          <div id="proj-meta-heading" style="font-size:12px;color:var(--muted);margin-top:3px"></div>
-        </div>
-        <div style="display:flex;gap:8px;flex-shrink:0;align-items:center">
-          <button onclick="_editPhase()" style="font-size:12px;font-weight:600;padding:7px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer">
-            Move phase →
-          </button>
-          <button onclick="_deleteProject()" style="font-size:12px;color:var(--red);background:none;border:none;cursor:pointer">Delete</button>
+    <!-- Vision -->
+    <div class="section">
+      <div class="section-header open" onclick="_toggle(this)">
+        <div class="section-title"><span class="section-icon">👁️</span> Vision</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="copy-btn" onclick="event.stopPropagation();_copy('vision')">Copy</button>
+          <span class="section-chevron">▾</span>
         </div>
       </div>
-
-      <!-- Lifecycle rail -->
-      <div id="lifecycle-rail">
-        <!-- Populated by JS -->
+      <div class="section-body open" id="out-vision-body">
+        <div class="vision-text" id="out-vision"></div>
       </div>
+    </div>
 
-      <!-- Phase panel -->
-      <div id="phase-panel">
-
-        <!-- Phase overview -->
-        <div class="card">
-          <div class="card-title">
-            <span id="phase-icon-heading"></span>
-            <span id="phase-name-heading"></span>
-            <span id="phase-rag-badge"></span>
-          </div>
-          <div id="phase-description" style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px"></div>
-
-          <!-- Standard documents for this phase -->
-          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Artefacts for this phase</div>
-          <div id="phase-docs-grid" class="phase-doc-grid"></div>
+    <!-- BOSCARD -->
+    <div class="section">
+      <div class="section-header open" onclick="_toggle(this)">
+        <div class="section-title"><span class="section-icon">🎯</span> BOSCARD</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="copy-btn" onclick="event.stopPropagation();_copy('boscard')">Copy</button>
+          <span class="section-chevron">▾</span>
         </div>
+      </div>
+      <div class="section-body open" id="out-boscard-body">
+        <div id="out-boscard"></div>
+      </div>
+    </div>
 
-        <!-- My saved documents for this phase -->
-        <div class="card" id="saved-docs-card" style="display:none">
-          <div class="card-title">📁 Saved Documents</div>
-          <div id="saved-docs-list"></div>
-          <button onclick="_openAddDoc()" style="margin-top:10px;display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px dashed var(--border);border-radius:10px;background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer">
-            ＋ Add document
-          </button>
+    <!-- Risks -->
+    <div class="section">
+      <div class="section-header open" onclick="_toggle(this)">
+        <div class="section-title"><span class="section-icon">⚠️</span> Top Risks</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="copy-btn" onclick="event.stopPropagation();_copy('risks')">Copy</button>
+          <span class="section-chevron">▾</span>
         </div>
+      </div>
+      <div class="section-body open" id="out-risks-body">
+        <table id="out-risks">
+          <thead><tr><th>Risk</th><th>Prob</th><th>Impact</th><th>Mitigation</th></tr></thead>
+          <tbody id="out-risks-tbody"></tbody>
+        </table>
+      </div>
+    </div>
 
-        <!-- AI workspace -->
-        <div id="ai-workspace">
-          <div class="ai-title">🤖 AI workspace — paste content, run action</div>
-
-          <!-- Context line -->
-          <div style="font-size:11px;color:rgba(165,180,252,.7);margin-bottom:10px" id="ai-context-hint"></div>
-
-          <!-- Action buttons -->
-          <div class="ai-action-row" id="ai-actions-row"></div>
-
-          <textarea id="ai-input" placeholder="Paste your brief, notes, meeting transcript or document here…"></textarea>
-
-          <button id="ai-run-btn" onclick="_runAI()">Run AI →</button>
-
-          <!-- Output -->
-          <div id="ai-output">
-            <div style="font-size:11px;color:rgba(165,180,252,.6);margin-bottom:8px;display:flex;justify-content:space-between">
-              <span id="ai-output-label"></span>
-              <span id="ai-spinner"></span>
-            </div>
-            <div id="ai-output-content"></div>
-            <div class="ai-output-actions" id="ai-output-actions">
-              <button class="ai-out-btn" onclick="_copyOutput()">📋 Copy</button>
-              <button class="ai-out-btn" onclick="_saveOutputAsDoc()">💾 Save as document</button>
-            </div>
-          </div>
+    <!-- Actions -->
+    <div class="section">
+      <div class="section-header open" onclick="_toggle(this)">
+        <div class="section-title"><span class="section-icon">✅</span> First 3 Actions</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="copy-btn" onclick="event.stopPropagation();_copy('actions')">Copy</button>
+          <span class="section-chevron">▾</span>
         </div>
+      </div>
+      <div class="section-body open" id="out-actions-body">
+        <div class="action-list" id="out-actions"></div>
+      </div>
+    </div>
 
-      </div><!-- /phase-panel -->
+    <!-- Jira -->
+    <div class="section">
+      <div class="section-header open" onclick="_toggle(this)">
+        <div class="section-title"><span class="section-icon">📋</span> Jira Structure</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="copy-btn" onclick="event.stopPropagation();_copy('jira')">Copy</button>
+          <span class="section-chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body open" id="out-jira-body">
+        <div id="out-jira"></div>
+      </div>
+    </div>
 
-    </div><!-- /project-view -->
+    <!-- Bottom actions -->
+    <div class="output-actions">
+      <button class="btn-primary-sm" onclick="_copyAll()">📋 Copy full pack</button>
+      <button class="btn-outline" onclick="_reset()">↺ New brief</button>
+    </div>
 
-  </main>
-</div><!-- /layout -->
-
-<!-- ── New Project modal ── -->
-<div class="modal-backdrop" id="modal-new-project">
-  <div class="modal">
-    <span class="modal-close" onclick="_closeModal('modal-new-project')">✕</span>
-    <div class="modal-title">New Project</div>
-    <label class="form-label">Project name</label>
-    <input class="form-input" id="np-name" placeholder="e.g. SAP Migration, Project Phoenix, Cloud Move…">
-    <label class="form-label">Type</label>
-    <select class="form-input form-select" id="np-type">
-      <option>IT Transformation</option>
-      <option>Data / Cloud Migration</option>
-      <option>ERP Implementation</option>
-      <option>De-merger / Separation</option>
-      <option>Digital / App Build</option>
-      <option>Infrastructure Refresh</option>
-      <option>Process Improvement</option>
-      <option>Programme Management</option>
-      <option>Other</option>
-    </select>
-    <label class="form-label">Current phase</label>
-    <select class="form-input form-select" id="np-phase">
-      <option value="1">1 — Initiate</option>
-      <option value="2">2 — Design</option>
-      <option value="3">3 — Build & Deliver</option>
-      <option value="4">4 — Test & Validate</option>
-      <option value="5">5 — Transition</option>
-      <option value="6">6 — Close</option>
-    </select>
-    <label class="form-label">Brief description (optional)</label>
-    <textarea class="form-input" id="np-desc" placeholder="One-liner about the programme…"></textarea>
-    <button class="btn-primary" onclick="_createProject()">Create project</button>
   </div>
-</div>
 
-<!-- ── Add / Edit Document modal ── -->
-<div class="modal-backdrop" id="modal-doc">
-  <div class="modal">
-    <span class="modal-close" onclick="_closeModal('modal-doc')">✕</span>
-    <div class="modal-title" id="modal-doc-title">Add Document</div>
-    <input type="hidden" id="doc-edit-id">
-    <label class="form-label">Document title</label>
-    <input class="form-input" id="doc-title" placeholder="e.g. Weekly Status w/e 9 Jan…">
-    <label class="form-label">Type</label>
-    <select class="form-input form-select" id="doc-type">
-      <option value="boscard">BOSCARD</option>
-      <option value="business_case">Business Case</option>
-      <option value="stakeholder_map">Stakeholder Map</option>
-      <option value="raid">RAID Log</option>
-      <option value="raci">RACI Matrix</option>
-      <option value="map_workbook">MAP Workbook</option>
-      <option value="weekly_status">Weekly Status</option>
-      <option value="tsa">TSA Document</option>
-      <option value="test_plan">Test Plan</option>
-      <option value="pir">PIR</option>
-      <option value="note">Note / Other</option>
-    </select>
-    <label class="form-label">Content (paste from Word / PPT / email)</label>
-    <textarea class="form-input" id="doc-content" style="min-height:180px" placeholder="Paste document content here…"></textarea>
-    <label class="form-label">Status</label>
-    <select class="form-input form-select" id="doc-status">
-      <option value="draft">Draft</option>
-      <option value="in_review">In Review</option>
-      <option value="approved">Approved / Final</option>
-    </select>
-    <button class="btn-primary" onclick="_saveDoc()" style="margin-bottom:8px">Save document</button>
-    <button id="doc-delete-btn" class="btn-primary btn-danger" onclick="_deleteDoc()" style="display:none">Delete</button>
-  </div>
-</div>
-
-<!-- ── Setup SQL modal ── -->
-<div class="modal-backdrop" id="modal-setup">
-  <div class="modal">
-    <span class="modal-close" onclick="_closeModal('modal-setup')">✕</span>
-    <div class="modal-title">Supabase Setup SQL</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Run this in your Supabase SQL editor:</p>
-    <pre style="font-size:11px;background:var(--surface2);padding:12px;border-radius:10px;overflow-x:auto;line-height:1.5;color:var(--text)">create table if not exists pm_projects (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  proj_type text default 'IT Transformation',
-  phase int default 1,
-  description text default '',
-  created_at timestamptz default now()
-);
-create table if not exists pm_docs (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid,
-  phase int not null,
-  doc_type text not null,
-  title text not null,
-  content text default '',
-  ai_summary text default '',
-  status text default 'draft',
-  created_at timestamptz default now()
-);</pre>
-    <button class="btn-primary" onclick="_closeModal('modal-setup')" style="margin-top:12px">Got it</button>
-  </div>
 </div>
 
 <script>
-  // ── Lifecycle definition ───────────────────────────────────────────────────
-  const PHASES = [
-    {
-      id:1, icon:"🚀", name:"Initiate",
-      desc:"Define the problem, secure sponsorship and agree the scope. Works for any project type — migration, de-merger, ERP, app build or process change. Key output: BOSCARD and stakeholder alignment.",
-      docs:[
-        {type:"business_case",   icon:"📄", name:"Business Case / Brief", hint:"What problem are we solving, what's the benefit, rough cost"},
-        {type:"boscard",         icon:"🎯", name:"BOSCARD",               hint:"Benefits · Objectives · Scope · Constraints · Assumptions · Risks · Dependencies"},
-        {type:"stakeholder_map", icon:"👥", name:"Stakeholder Map",       hint:"Who needs to know, who can block, communication approach"},
-        {type:"note",            icon:"📋", name:"Project Charter",       hint:"Formal mandate, governance model, reporting lines"},
-      ],
-      aiActions:[
-        {id:"boscard",   label:"Generate BOSCARD"},
-        {id:"raci",      label:"Draft RACI"},
-        {id:"summarise", label:"Summarise brief"},
-      ],
-      aiHint:"Paste any brief, email chain or problem statement → get a full BOSCARD"
-    },
-    {
-      id:2, icon:"🏗️", name:"Plan & Design",
-      desc:"Lock down the approach, dependencies and who does what. Whether you're designing a cloud architecture, a migration blueprint, a service model or an org change — the RAID log and RACI are universal.",
-      docs:[
-        {type:"raid",    icon:"⚠️", name:"RAID Log",           hint:"Risks · Assumptions · Issues · Dependencies (universal to all projects)"},
-        {type:"raci",    icon:"🔲", name:"RACI Matrix",        hint:"Responsible · Accountable · Consulted · Informed"},
-        {type:"note",    icon:"🏛️", name:"Solution / Approach Doc", hint:"Architecture, migration plan, process design, operating model"},
-        {type:"note",    icon:"📜", name:"Contracts / Agreements", hint:"SLA, SOW, MSA, TSA, vendor contracts — whatever applies"},
-      ],
-      aiActions:[
-        {id:"raid",      label:"Extract RAID from notes"},
-        {id:"raci",      label:"Generate RACI"},
-        {id:"summarise", label:"Summarise doc"},
-      ],
-      aiHint:"Paste requirements, meeting notes or a design doc → extract a full RAID log"
-    },
-    {
-      id:3, icon:"⚙️", name:"Execute",
-      desc:"Deliver the work. Track progress, manage scope changes, keep stakeholders informed and escalate blockers early. Weekly status and change log are your key tools regardless of project type.",
-      docs:[
-        {type:"map_workbook",  icon:"📊", name:"Project Tracker / Workbook", hint:"Master plan, workstream RAG, milestones, owners"},
-        {type:"weekly_status", icon:"📅", name:"Weekly Status Report",       hint:"RAG, accomplishments, next week plan, risks, decisions needed"},
-        {type:"note",          icon:"📝", name:"Change Log",                 hint:"All change requests — approved, pending, rejected"},
-        {type:"note",          icon:"✅", name:"Decision Log",               hint:"Key decisions made, rationale, owners"},
-      ],
-      aiActions:[
-        {id:"status",    label:"Write weekly status"},
-        {id:"raid",      label:"Extract RAID from notes"},
-        {id:"summarise", label:"Summarise update"},
-      ],
-      aiHint:"Paste bullet-point progress notes or a status call transcript → get a formal weekly status"
-    },
-    {
-      id:4, icon:"🧪", name:"Test & Validate",
-      desc:"Prove the solution works before go-live. UAT for apps, data validation for migrations, parallel run for ERP, process rehearsal for org changes — same lifecycle, different content.",
-      docs:[
-        {type:"note", icon:"📋", name:"Test Plan",         hint:"What's being tested, by whom, entry/exit criteria, timeline"},
-        {type:"note", icon:"🐛", name:"Defect / Issue Log", hint:"Bugs, data issues, process gaps — severity, owner, resolution"},
-        {type:"note", icon:"✅", name:"UAT / Validation Sign-off", hint:"User acceptance, data quality sign-off, compliance check"},
-        {type:"note", icon:"📊", name:"Test Results Summary", hint:"Pass/fail rates, outstanding items, go-live readiness"},
-      ],
-      aiActions:[
-        {id:"summarise", label:"Summarise test results"},
-        {id:"status",    label:"Write readiness update"},
-        {id:"raid",      label:"Extract issues as RAID"},
-      ],
-      aiHint:"Paste test results or a defect list → get an executive readiness summary"
-    },
-    {
-      id:5, icon:"🔄", name:"Go-Live & Transition",
-      desc:"Switch on, cut over, migrate or hand over — whatever your go-live looks like. Highest-risk phase for any project. Daily status, clear runbook and a hypercare model are non-negotiable.",
-      docs:[
-        {type:"note",          icon:"🔁", name:"Go-Live / Cutover Plan", hint:"Step-by-step tasks, owners, timings, rollback triggers"},
-        {type:"note",          icon:"📗", name:"Runbook / Operations Guide", hint:"How to run the new system or service — for BAU team"},
-        {type:"note",          icon:"🏥", name:"Hypercare / Support Plan", hint:"Who provides support post go-live, escalation path, duration"},
-        {type:"weekly_status", icon:"📅", name:"Steering / Exec Update",   hint:"C-suite briefing on go-live readiness and day-1 status"},
-      ],
-      aiActions:[
-        {id:"status",    label:"Write go-live update"},
-        {id:"summarise", label:"Summarise cutover notes"},
-        {id:"raid",      label:"Extract issues as RAID"},
-      ],
-      aiHint:"Paste cutover notes, war room updates or a runbook draft → get a structured go-live summary"
-    },
-    {
-      id:6, icon:"🎯", name:"Close",
-      desc:"Formally close the project — capture what you delivered vs what was promised, what worked, what didn't, and hand over to whoever runs it from here. Valuable for every project type.",
-      docs:[
-        {type:"pir",  icon:"📊", name:"Post-Implementation Review (PIR)", hint:"Objectives vs actuals, benefits delivered, timeline vs plan"},
-        {type:"note", icon:"💡", name:"Lessons Learned",                  hint:"What worked well · what to do differently · recommendations"},
-        {type:"note", icon:"🤝", name:"Handover / Closure Doc",           hint:"BAU owners, support model, outstanding items, sign-off"},
-        {type:"note", icon:"📈", name:"Benefits Realisation",             hint:"Measured outcomes vs the business case — did we deliver?"},
-      ],
-      aiActions:[
-        {id:"pir",       label:"Draft PIR"},
-        {id:"summarise", label:"Summarise retrospective"},
-      ],
-      aiHint:"Paste retrospective notes or a project summary → generate a full PIR"
-    },
-  ];
+  let _result = null;
 
-  const PHASE_COLORS = ["#7c3aed","#2563eb","#059669","#d97706","#dc2626","#6366f1"];
-  const STATUS_COLOR = {draft:"#94a3b8", in_review:"#d97706", approved:"#16a34a"};
-  const DOC_LABELS = {
-    boscard:"BOSCARD", business_case:"Business Case", stakeholder_map:"Stakeholder Map",
-    raid:"RAID Log", raci:"RACI Matrix", map_workbook:"MAP Workbook",
-    weekly_status:"Weekly Status", tsa:"TSA", test_plan:"Test Plan", pir:"PIR", note:"Note",
-  };
-
-  // ── State ─────────────────────────────────────────────────────────────────
-  let _projects = [];
-  let _docs = [];
-  let _currentProject = null;
-  let _currentPhase = 1;
-  let _currentAction = "summarise";
-  let _editDocId = null;
-
-  // ── Init ──────────────────────────────────────────────────────────────────
-  (async function init() {
-    _loadTheme();
-    // If a project was open last session, hide intake immediately to avoid flash
-    const saved = localStorage.getItem("pm_current_project");
-    if (saved) {
-      document.getElementById("empty-view").style.display = "none";
-      document.getElementById("project-view").style.display = "";
-      document.getElementById("proj-name-heading").textContent = "Loading…";
-      document.getElementById("proj-meta-heading").textContent = "";
-    }
-    await _loadProjects();
-    if (saved && _projects.find(p => p.id === saved)) {
-      _selectProject(saved);
-    } else {
-      // Saved project no longer exists — show intake
-      localStorage.removeItem("pm_current_project");
-      document.getElementById("empty-view").style.display = "";
-      document.getElementById("project-view").style.display = "none";
-    }
-  })();
-
-  // ── Theme ─────────────────────────────────────────────────────────────────
-  function _loadTheme() {
-    if (localStorage.getItem("pm_theme") === "dark") document.documentElement.setAttribute("data-theme","dark");
-  }
-  function _toggleTheme() {
-    const dark = document.documentElement.getAttribute("data-theme") === "dark";
-    document.documentElement.setAttribute("data-theme", dark ? "" : "dark");
-    localStorage.setItem("pm_theme", dark ? "light" : "dark");
-  }
-
-  // ── Projects ──────────────────────────────────────────────────────────────
-  async function _loadProjects() {
-    try {
-      const r = await fetch("/api/pm/projects");
-      if (r.ok) {
-        _projects = await r.json();
-        if (_projects.error) { _showSetupNeeded(); _projects = []; }
-      } else { _showSetupNeeded(); }
-    } catch(e) { _showSetupNeeded(); }
-    _renderProjectList();
-  }
-
-  function _showSetupNeeded() {
-    document.getElementById("setup-banner").style.display = "";
-    document.getElementById("sidebar-setup").style.display = "";
-  }
-
-  function _renderProjectList() {
-    const picker = document.getElementById("project-picker");
-    const sidebar = document.getElementById("sidebar-projects");
-    picker.innerHTML = '<option value="">— select project —</option>';
-    sidebar.innerHTML = "";
-    _projects.forEach(p => {
-      const ph = PHASES[p.phase - 1] || PHASES[0];
-      const opt = document.createElement("option");
-      opt.value = p.id; opt.textContent = p.name;
-      if (_currentProject?.id === p.id) opt.selected = true;
-      picker.appendChild(opt);
-
-      const div = document.createElement("div");
-      div.className = "proj-item" + (_currentProject?.id === p.id ? " active" : "");
-      div.innerHTML = `<span class="proj-phase-dot" style="background:${PHASE_COLORS[p.phase-1]||'#6366f1'}"></span>${p.name}`;
-      div.onclick = () => _selectProject(p.id);
-      sidebar.appendChild(div);
-    });
-  }
-
-  function _pickProject(id) {
-    if (id) _selectProject(id);
-  }
-
-  async function _selectProject(id) {
-    _currentProject = _projects.find(p => p.id === id) || null;
-    localStorage.setItem("pm_current_project", id);
-    document.getElementById("project-picker").value = id;
-    if (!_currentProject) {
-      document.getElementById("empty-view").style.display = "";
-      document.getElementById("project-view").style.display = "none";
-    } else {
-      _currentPhase = _currentProject.phase;
-      document.getElementById("empty-view").style.display = "none";
-      document.getElementById("project-view").style.display = "";
-      _renderProjectHeader();
-      _renderLifecycleRail();
-      await _loadDocs();
-      _renderPhasePanel();
-    }
-    _renderProjectList();
-  }
-
-  function _renderProjectHeader() {
-    const p = _currentProject;
-    document.getElementById("proj-name-heading").textContent = p.name;
-    document.getElementById("proj-meta-heading").textContent =
-      `${p.proj_type} · Phase ${p.phase}: ${PHASES[p.phase-1]?.name || ""}` +
-      (p.description ? ` · ${p.description}` : "");
-  }
-
-  function _renderLifecycleRail() {
-    const rail = document.getElementById("lifecycle-rail");
-    rail.innerHTML = PHASES.map(ph => {
-      const isDone = ph.id < _currentProject.phase;
-      const isActive = ph.id === _currentPhase;
-      const isCurrent = ph.id === _currentProject.phase;
-      let cls = "phase-btn";
-      if (isActive) cls += " active";
-      else if (isDone) cls += " done";
-      if (isCurrent) cls += " current-proj";
-      return `<button class="${cls}" onclick="_switchPhase(${ph.id})">
-        <span class="phase-icon">${ph.icon}</span>
-        <span>${ph.name}</span>
-      </button>`;
-    }).join("");
-  }
-
-  // ── Docs ──────────────────────────────────────────────────────────────────
-  async function _loadDocs() {
-    try {
-      const r = await fetch(`/api/pm/docs?project_id=${_currentProject.id}`);
-      _docs = r.ok ? (await r.json()) : [];
-      if (_docs.error) _docs = [];
-    } catch(e) { _docs = []; }
-  }
-
-  function _docsForPhase(phase) {
-    return _docs.filter(d => d.phase === phase);
-  }
-
-  // ── Phase panel ───────────────────────────────────────────────────────────
-  function _switchPhase(phaseId) {
-    _currentPhase = phaseId;
-    _renderLifecycleRail();
-    _renderPhasePanel();
-  }
-
-  function _renderPhasePanel() {
-    const ph = PHASES[_currentPhase - 1];
-    if (!ph) return;
-
-    document.getElementById("phase-icon-heading").textContent = ph.icon + " ";
-    document.getElementById("phase-name-heading").textContent = ph.name;
-    document.getElementById("phase-description").textContent = ph.desc;
-
-    // RAG badge based on docs
-    const phaseDocs = _docsForPhase(_currentPhase);
-    const hasApproved = phaseDocs.some(d => d.status === "approved");
-    const hasDraft = phaseDocs.length > 0;
-    const badge = document.getElementById("phase-rag-badge");
-    if (hasApproved) badge.innerHTML = '<span class="rag rag-g">✓ Docs ready</span>';
-    else if (hasDraft) badge.innerHTML = '<span class="rag rag-a">In progress</span>';
-    else badge.innerHTML = '<span class="rag rag-r">Not started</span>';
-
-    // Standard doc cards
-    const grid = document.getElementById("phase-docs-grid");
-    grid.innerHTML = ph.docs.map(d => {
-      const hasDoc = phaseDocs.some(pd => pd.doc_type === d.type);
-      return `<div class="phase-doc-card${hasDoc ? " has-content" : ""}"
-        onclick="_openAddDoc('${d.type}','${d.name}')">
-        <div class="phase-doc-card-icon">${d.icon}</div>
-        <div class="phase-doc-card-name">${d.name}</div>
-        <div class="phase-doc-card-hint">${hasDoc ? "✓ Document saved" : d.hint}</div>
-      </div>`;
-    }).join("");
-
-    // Saved docs
-    const savedCard = document.getElementById("saved-docs-card");
-    const savedList = document.getElementById("saved-docs-list");
-    if (phaseDocs.length) {
-      savedCard.style.display = "";
-      savedList.innerHTML = phaseDocs.map(d => `
-        <div class="saved-doc-row" onclick="_editDoc('${d.id}')">
-          <div class="saved-doc-icon">${_docIcon(d.doc_type)}</div>
-          <div style="flex:1;min-width:0">
-            <div class="saved-doc-title">${_esc(d.title)}</div>
-            <div class="saved-doc-meta">
-              <span class="rag ${d.status==='approved'?'rag-g':d.status==='in_review'?'rag-a':'rag-r'}" style="font-size:10px">${d.status?.replace("_"," ")}</span>
-              · ${DOC_LABELS[d.doc_type]||d.doc_type}
-              · ${_relTime(d.created_at)}
-            </div>
-          </div>
-          <div style="font-size:18px;color:var(--muted)">›</div>
-        </div>`).join("");
-    } else {
-      savedCard.style.display = "none";
-    }
-
-    // AI workspace
-    const actRow = document.getElementById("ai-actions-row");
-    actRow.innerHTML = ph.aiActions.map(a =>
-      `<button class="ai-action-btn${_currentAction===a.id?' active':''}"
-        onclick="_setAction('${a.id}',this)">${a.label}</button>`
-    ).join("");
-    document.getElementById("ai-context-hint").textContent =
-      `${ph.icon} ${ph.name} phase · ${_currentProject.name}`;
-    if (!ph.aiActions.find(a => a.id === _currentAction)) {
-      _currentAction = ph.aiActions[0]?.id || "summarise";
-    }
-    document.getElementById("ai-output").style.display = "none";
-    document.getElementById("ai-input").placeholder = ph.aiHint;
-  }
-
-  function _docIcon(type) {
-    const m = {boscard:"🎯",business_case:"📄",stakeholder_map:"👥",raid:"⚠️",raci:"🔲",
-               map_workbook:"📊",weekly_status:"📅",tsa:"📜",test_plan:"📋",pir:"📊",note:"📝"};
-    return m[type] || "📄";
-  }
-
-  // ── AI workspace ──────────────────────────────────────────────────────────
-  function _setAction(actionId, btn) {
-    _currentAction = actionId;
-    document.querySelectorAll(".ai-action-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("ai-output").style.display = "none";
-  }
-
-  async function _runAI() {
-    const content = document.getElementById("ai-input").value.trim();
-    if (!content) { alert("Paste some content first"); return; }
-    const btn = document.getElementById("ai-run-btn");
-    btn.disabled = true; btn.textContent = "Running…";
-    const outDiv = document.getElementById("ai-output");
-    const outContent = document.getElementById("ai-output-content");
-    outDiv.style.display = "";
-    document.getElementById("ai-spinner").innerHTML = '<span class="spinner"></span>';
-    document.getElementById("ai-output-label").textContent = _actionLabel(_currentAction) + "…";
-    outContent.innerHTML = "";
-
-    try {
-      const r = await fetch("/api/pm/analyse", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          action: _currentAction,
-          content,
-          context: `${_currentProject?.name || ""} — ${PHASES[_currentPhase-1]?.name || ""}`,
-        }),
-      });
-      const data = await r.json();
-      if (data.error) {
-        outContent.innerHTML = `<span style="color:#f87171">Error: ${_esc(data.error)}</span>`;
-      } else {
-        outContent.innerHTML = marked.parse(data.result || "");
-        document.getElementById("ai-output-actions").style.display = "flex";
-        window._lastAIResult = data.result;
+  // ── Loading steps animation ────────────────────────────────────────────────
+  let _stepTimer = null;
+  function _startSteps() {
+    const steps = ["ls-1","ls-2","ls-3","ls-4","ls-5"];
+    let i = 0;
+    steps.forEach(id => document.getElementById(id).className = "ls-row");
+    _stepTimer = setInterval(function() {
+      if (i > 0) {
+        const prev = document.getElementById(steps[i-1]);
+        if (prev) prev.className = "ls-row done";
       }
-    } catch(e) {
-      outContent.innerHTML = `<span style="color:#f87171">Network error</span>`;
-    }
-    document.getElementById("ai-spinner").innerHTML = "";
-    document.getElementById("ai-output-label").textContent = _actionLabel(_currentAction) + " result";
-    btn.disabled = false; btn.textContent = "Run AI →";
+      if (i < steps.length) {
+        const cur = document.getElementById(steps[i]);
+        if (cur) cur.className = "ls-row active";
+        i++;
+      }
+    }, 1800);
   }
-
-  function _actionLabel(id) {
-    const m = {boscard:"BOSCARD",raid:"RAID extraction",status:"Weekly status",
-               pir:"PIR",tsa:"TSA review",summarise:"Summary",raci:"RACI"};
-    return m[id] || id;
-  }
-
-  function _copyOutput() {
-    if (!window._lastAIResult) return;
-    navigator.clipboard.writeText(window._lastAIResult).then(() => alert("Copied to clipboard"));
-  }
-
-  function _saveOutputAsDoc() {
-    if (!window._lastAIResult) return;
-    document.getElementById("doc-title").value = _actionLabel(_currentAction) + " — " + new Date().toLocaleDateString("en-GB");
-    document.getElementById("doc-type").value = _currentAction === "status" ? "weekly_status" :
-      _currentAction === "boscard" ? "boscard" : _currentAction === "pir" ? "pir" :
-      _currentAction === "raid" ? "raid" : "note";
-    document.getElementById("doc-content").value = window._lastAIResult;
-    document.getElementById("doc-status").value = "draft";
-    document.getElementById("doc-edit-id").value = "";
-    document.getElementById("doc-delete-btn").style.display = "none";
-    document.getElementById("modal-doc-title").textContent = "Save AI Output";
-    _editDocId = null;
-    _openModal("modal-doc");
-  }
-
-  // ── Doc CRUD ─────────────────────────────────────────────────────────────
-  function _openAddDoc(type, name) {
-    document.getElementById("doc-edit-id").value = "";
-    document.getElementById("doc-title").value = name || "";
-    document.getElementById("doc-type").value = type || "note";
-    document.getElementById("doc-content").value = "";
-    document.getElementById("doc-status").value = "draft";
-    document.getElementById("doc-delete-btn").style.display = "none";
-    document.getElementById("modal-doc-title").textContent = "Add Document";
-    _editDocId = null;
-    _openModal("modal-doc");
-  }
-
-  function _editDoc(id) {
-    const doc = _docs.find(d => d.id === id);
-    if (!doc) return;
-    _editDocId = id;
-    document.getElementById("doc-edit-id").value = id;
-    document.getElementById("doc-title").value = doc.title;
-    document.getElementById("doc-type").value = doc.doc_type;
-    document.getElementById("doc-content").value = doc.content;
-    document.getElementById("doc-status").value = doc.status || "draft";
-    document.getElementById("doc-delete-btn").style.display = "";
-    document.getElementById("modal-doc-title").textContent = "Edit Document";
-    _openModal("modal-doc");
-  }
-
-  async function _saveDoc() {
-    const title = document.getElementById("doc-title").value.trim();
-    if (!title) { alert("Add a title"); return; }
-    const payload = {
-      project_id: _currentProject.id,
-      phase: _currentPhase,
-      doc_type: document.getElementById("doc-type").value,
-      title,
-      content: document.getElementById("doc-content").value,
-      status: document.getElementById("doc-status").value,
-    };
-    if (_editDocId) {
-      await fetch(`/api/pm/docs/${_editDocId}`, {method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-    } else {
-      await fetch("/api/pm/docs", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-    }
-    _closeModal("modal-doc");
-    await _loadDocs();
-    _renderPhasePanel();
-  }
-
-  async function _deleteDoc() {
-    if (!_editDocId || !confirm("Delete this document?")) return;
-    await fetch(`/api/pm/docs/${_editDocId}`, {method:"DELETE"});
-    _closeModal("modal-doc");
-    await _loadDocs();
-    _renderPhasePanel();
-  }
-
-  // ── Project CRUD ─────────────────────────────────────────────────────────
-  function _openNewProject() { _openModal("modal-new-project"); }
-
-  async function _createProject() {
-    const name = document.getElementById("np-name").value.trim();
-    if (!name) { alert("Enter a project name"); return; }
-    const r = await fetch("/api/pm/projects", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        name,
-        proj_type: document.getElementById("np-type").value,
-        phase: parseInt(document.getElementById("np-phase").value),
-        description: document.getElementById("np-desc").value.trim(),
-      }),
+  function _stopSteps() {
+    if (_stepTimer) { clearInterval(_stepTimer); _stepTimer = null; }
+    ["ls-1","ls-2","ls-3","ls-4","ls-5"].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.className = "ls-row done";
     });
-    const data = await r.json();
-    if (data.error) { alert("Error: " + data.error); return; }
-    _closeModal("modal-new-project");
-    document.getElementById("np-name").value = "";
-    document.getElementById("np-desc").value = "";
-    await _loadProjects();
-    if (data.project?.id) _selectProject(data.project.id);
   }
 
-  async function _editPhase() {
-    const ph = prompt(`Move to phase (1-6):\n1 Initiate  2 Design  3 Build & Deliver\n4 Test & Validate  5 Transition  6 Close\n\nCurrent: ${_currentProject.phase}`);
-    const n = parseInt(ph);
-    if (!n || n < 1 || n > 6) return;
-    await fetch(`/api/pm/projects/${_currentProject.id}`, {
-      method:"PATCH", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({phase:n}),
-    });
-    _currentProject.phase = n;
-    _currentPhase = n;
-    _renderProjectHeader();
-    _renderLifecycleRail();
-    _renderPhasePanel();
-    _projects = _projects.map(p => p.id === _currentProject.id ? {...p, phase:n} : p);
-    _renderProjectList();
-  }
-
-  async function _deleteProject() {
-    if (!confirm(`Delete "${_currentProject.name}" and all its documents?`)) return;
-    await fetch(`/api/pm/projects/${_currentProject.id}`, {method:"DELETE"});
-    _currentProject = null;
-    localStorage.removeItem("pm_current_project");
-    await _loadProjects();
-    document.getElementById("project-view").style.display = "none";
-    document.getElementById("empty-view").style.display = "";
-  }
-
-  // ── Modals ────────────────────────────────────────────────────────────────
-  function _openModal(id) { document.getElementById(id).classList.add("open"); }
-  function _closeModal(id) { document.getElementById(id).classList.remove("open"); }
-  function _showSetupSQL() { _openModal("modal-setup"); }
-  document.querySelectorAll(".modal-backdrop").forEach(el =>
-    el.addEventListener("click", e => { if (e.target === el) el.classList.remove("open"); })
-  );
-
-  // ── Utils ─────────────────────────────────────────────────────────────────
-  // ── Intake flow ───────────────────────────────────────────────────────────
-  let _intakeResult = null;
-
-  async function _runIntake() {
-    const input = document.getElementById("intake-input").value.trim();
-    if (!input) { alert("Describe your problem first"); return; }
+  // ── Run ───────────────────────────────────────────────────────────────────
+  async function _run() {
+    const input = (document.getElementById("intake-input").value || "").trim();
+    if (!input) { alert("Describe your project first"); return; }
     const btn = document.getElementById("intake-btn");
-    btn.disabled = true; btn.textContent = "Assessing…";
+    btn.disabled = true;
+    document.getElementById("intake-view").style.display = "none";
+    document.getElementById("output").style.display = "none";
+    document.getElementById("loading").style.display = "block";
+    _startSteps();
+
     try {
       const r = await fetch("/api/pm/intake", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({problem: input}),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ problem: input }),
       });
       const data = await r.json();
-      if (data.error) { alert("Error: " + data.error); btn.disabled=false; btn.textContent="Assess & Draft BOSCARD →"; return; }
-      _intakeResult = data;
-      _renderIntakeResult(data);
-      document.getElementById("intake-form-wrap").style.display = "none";
-      document.getElementById("intake-result-wrap").style.display = "";
+      _stopSteps();
+      if (data.error) {
+        alert("Error: " + data.error);
+        _showIntake();
+        return;
+      }
+      _result = data;
+      _renderOutput(data);
     } catch(e) {
+      _stopSteps();
       alert("Network error — try again");
+      _showIntake();
     }
-    btn.disabled = false; btn.textContent = "Assess & Draft BOSCARD →";
+    btn.disabled = false;
   }
 
-  function _renderIntakeResult(data) {
+  // ── Render output ─────────────────────────────────────────────────────────
+  function _renderOutput(d) {
+    document.getElementById("loading").style.display = "none";
+
+    // Feasibility
     const fMap = {
-      green: {icon:"🟢", label:"Feasible — good to go", cls:"green"},
-      amber: {icon:"🟡", label:"Viable — needs some clarity", cls:"amber"},
-      red:   {icon:"🔴", label:"Needs more detail before starting", cls:"red"},
+      green: { icon:"🟢", label:"Feasible — clear scope, worth starting", cls:"green" },
+      amber: { icon:"🟡", label:"Viable — some gaps to resolve first", cls:"amber" },
+      red:   { icon:"🔴", label:"Needs more clarity before committing", cls:"red" },
     };
-    const f = fMap[data.feasibility] || fMap.amber;
+    const f = fMap[d.feasibility] || fMap.amber;
     let qs = "";
-    if (data.clarifying_questions?.length) {
-      qs = `<div class="intake-qs"><strong>Clarifying questions:</strong><ul>` +
-        data.clarifying_questions.map(q => `<li>${_esc(q)}</li>`).join("") + `</ul></div>`;
+    if (d.clarifying_questions && d.clarifying_questions.length) {
+      qs = '<div class="clarify-qs"><strong>Clarifying questions:</strong><ul>'
+        + d.clarifying_questions.map(q => `<li>${_esc(q)}</li>`).join("") + "</ul></div>";
     }
-    document.getElementById("intake-feasibility-card").innerHTML = `
-      <div class="feasibility-card ${f.cls}">
+    document.getElementById("out-feasibility").innerHTML =
+      `<div class="feasibility-card ${f.cls}">
         <div class="feasibility-icon">${f.icon}</div>
         <div>
           <div class="feasibility-label">${f.label}</div>
-          <div class="feasibility-reason">${_esc(data.feasibility_reason || "")}</div>
+          <div class="feasibility-reason">${_esc(d.feasibility_reason || "")}</div>
           ${qs}
         </div>
       </div>`;
-    const ph = PHASES[(data.suggested_phase||1)-1];
-    document.getElementById("intake-boscard-card").innerHTML = `
-      <div class="card-title">🎯 Draft BOSCARD — ${_esc(data.project_name || "Your project")}</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
-        Suggested type: <strong style="color:var(--text)">${_esc(data.project_type||"")}</strong> ·
-        Starting phase: <strong style="color:var(--text)">${data.suggested_phase||1} — ${ph?.name||""}</strong>
-      </div>
-      <div style="font-size:13px;line-height:1.65;max-height:300px;overflow-y:auto">
-        ${marked.parse(data.boscard || "")}
+
+    // Header
+    document.getElementById("out-proj-type").textContent = d.project_type || "";
+    document.getElementById("out-proj-name").textContent = d.project_name || "Your project";
+
+    // Vision
+    document.getElementById("out-vision").textContent = d.vision || "";
+
+    // BOSCARD
+    document.getElementById("out-boscard").innerHTML = marked.parse(d.boscard || "");
+
+    // Risks
+    const tbody = document.getElementById("out-risks-tbody");
+    tbody.innerHTML = (d.risks || []).map(function(r) {
+      const probCls = r.prob === "High" ? "risk-row-red" : r.prob === "Med" ? "risk-row-amber" : "";
+      return `<tr class="${probCls}">
+        <td>${_esc(r.risk)}</td>
+        <td>${_esc(r.prob)}</td>
+        <td>${_esc(r.impact)}</td>
+        <td>${_esc(r.mitigation)}</td>
+      </tr>`;
+    }).join("");
+
+    // Actions
+    document.getElementById("out-actions").innerHTML = (d.actions || []).map(function(a, i) {
+      return `<div class="action-item">
+        <div class="action-num">${i+1}</div>
+        <div class="action-text">${_esc(a)}</div>
       </div>`;
+    }).join("");
+
+    // Jira
+    document.getElementById("out-jira").innerHTML = (d.jira_epics || []).map(function(ep) {
+      const stories = (ep.stories || []).map(function(s) {
+        return `<div class="jira-story">
+          <span class="jira-story-tag">STORY</span>
+          <span>${_esc(s)}</span>
+        </div>`;
+      }).join("");
+      return `<div class="jira-epic">
+        <div class="jira-epic-name">EPIC · ${_esc(ep.epic)}</div>
+        ${stories}
+      </div>`;
+    }).join("");
+
+    document.getElementById("output").style.display = "block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function _resetIntake() {
-    _intakeResult = null;
-    document.getElementById("intake-result-wrap").style.display = "none";
-    document.getElementById("intake-form-wrap").style.display = "";
+  // ── Toggle sections ────────────────────────────────────────────────────────
+  function _toggle(header) {
+    header.classList.toggle("open");
+    const body = header.nextElementSibling;
+    if (body) body.classList.toggle("open");
   }
 
-  async function _startProjectFromIntake() {
-    if (!_intakeResult) return;
-    const btn = document.getElementById("intake-start-btn");
-    btn.disabled = true; btn.textContent = "Creating…";
-    const r = await fetch("/api/pm/projects", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        name: _intakeResult.project_name || "New Project",
-        proj_type: _intakeResult.project_type || "IT Transformation",
-        phase: _intakeResult.suggested_phase || 1,
-        description: "",
-      }),
+  // ── Copy helpers ──────────────────────────────────────────────────────────
+  function _copy(section) {
+    if (!_result) return;
+    let text = "";
+    if (section === "vision")  text = _result.vision || "";
+    if (section === "boscard") text = _result.boscard || "";
+    if (section === "risks")   text = (_result.risks || []).map(r => `${r.risk} | Prob: ${r.prob} | Impact: ${r.impact} | ${r.mitigation}`).join("\n");
+    if (section === "actions") text = (_result.actions || []).map((a,i) => `${i+1}. ${a}`).join("\n");
+    if (section === "jira")    text = (_result.jira_epics || []).map(ep => `EPIC: ${ep.epic}\n${(ep.stories||[]).map(s=>"  Story: "+s).join("\n")}`).join("\n\n");
+    navigator.clipboard.writeText(text).then(function() {
+      // brief flash feedback handled by browser
     });
-    const projData = await r.json();
-    if (projData.error) { alert("Error: " + projData.error); btn.disabled=false; btn.textContent="Start this project →"; return; }
-    const projId = projData.project?.id;
-    if (projId && _intakeResult.boscard) {
-      await fetch("/api/pm/docs", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          project_id: projId,
-          phase: 1,
-          doc_type: "boscard",
-          title: "BOSCARD — AI Draft",
-          content: _intakeResult.boscard,
-          status: "draft",
-        }),
-      });
-    }
-    _intakeResult = null;
-    await _loadProjects();
-    if (projId) _selectProject(projId);
+  }
+
+  function _copyAll() {
+    if (!_result) return;
+    const d = _result;
+    const text = [
+      "PROJECT: " + (d.project_name || ""),
+      "TYPE: " + (d.project_type || ""),
+      "",
+      "VISION",
+      d.vision || "",
+      "",
+      "BOSCARD",
+      d.boscard || "",
+      "",
+      "TOP RISKS",
+      (d.risks || []).map(r => `- ${r.risk} (Prob: ${r.prob}, Impact: ${r.impact}) — ${r.mitigation}`).join("\n"),
+      "",
+      "FIRST ACTIONS",
+      (d.actions || []).map((a,i) => `${i+1}. ${a}`).join("\n"),
+      "",
+      "JIRA STRUCTURE",
+      (d.jira_epics || []).map(ep => `EPIC: ${ep.epic}\n${(ep.stories||[]).map(s=>"  Story: "+s).join("\n")}`).join("\n\n"),
+    ].join("\n");
+    navigator.clipboard.writeText(text).then(function() {
+      alert("Full pack copied to clipboard");
+    });
+  }
+
+  // ── Reset ─────────────────────────────────────────────────────────────────
+  function _reset() {
+    _result = null;
+    document.getElementById("output").style.display = "none";
+    document.getElementById("loading").style.display = "none";
+    _showIntake();
+  }
+
+  function _showIntake() {
+    document.getElementById("intake-view").style.display = "block";
+    document.getElementById("intake-btn").disabled = false;
   }
 
   // ── Utils ─────────────────────────────────────────────────────────────────
-  function _esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-  function _relTime(ts) {
-    if (!ts) return "";
-    const d = Math.floor((Date.now() - new Date(ts)) / 86400000);
-    if (d === 0) return "today";
-    if (d === 1) return "yesterday";
-    return `${d}d ago`;
+  function _esc(s) {
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
 </script>
 </body>

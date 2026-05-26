@@ -22788,23 +22788,36 @@ def api_pm_intake():
         return jsonify({"error": "AI not configured"}), 500
 
     prompt = (
-        "You are a senior programme manager with deep experience in IT projects "
-        "(SAP, ERP, migrations, de-mergers, digital builds, consumer goods industry).\n\n"
-        "A user has described a problem or idea. Your job:\n"
-        "1. Assess feasibility: green = clear & worth doing, amber = viable but needs clarity, red = too vague\n"
-        "2. Generate a full BOSCARD\n"
-        "3. Suggest project type and starting phase (1=Initiate, 2=Plan & Design, 3=Execute, 4=Test, 5=Transition, 6=Close)\n\n"
-        "Return ONLY valid JSON, no extra text:\n"
+        "You are a senior programme manager with deep experience in IT transformation, "
+        "ERP, de-mergers, digital builds, and process improvement.\n\n"
+        "A user has described a project or problem. Generate a complete programme pack in ONE response.\n\n"
+        "Return ONLY valid JSON, no extra text, no markdown fences:\n"
         "{\n"
         '  "feasibility": "green|amber|red",\n'
-        '  "feasibility_reason": "2 sentence explanation",\n'
-        '  "clarifying_questions": ["question if amber/red, else empty array"],\n'
-        '  "project_name": "short descriptive project name",\n'
-        '  "project_type": "one of: IT Transformation / Data / Cloud Migration / ERP Implementation / De-merger / Separation / Digital / App Build / Infrastructure Refresh / Process Improvement / Programme Management",\n'
-        '  "suggested_phase": 1,\n'
-        '  "boscard": "## Benefits\\n...\\n## Objectives\\n...\\n## Scope\\n**In scope:**...\\n**Out of scope:**...\\n## Constraints\\n...\\n## Assumptions\\n...\\n## Risks\\n...\\n## Dependencies\\n..."\n'
+        '  "feasibility_reason": "2 sentence honest assessment",\n'
+        '  "clarifying_questions": ["1-3 questions only if amber/red, else empty array"],\n'
+        '  "project_name": "concise project name",\n'
+        '  "project_type": "e.g. IT Transformation / ERP Implementation / De-merger / Digital Build / Process Improvement",\n'
+        '  "vision": "One crisp paragraph: what success looks like in plain English — not jargon",\n'
+        '  "boscard": "## Benefits\\n- ...\\n## Objectives\\n- SMART objective 1\\n- ...\\n## Scope\\n**In:** ...\\n**Out:** ...\\n## Constraints\\n- ...\\n## Assumptions\\n- ...\\n## Risks\\n- Risk (High/Med/Low)\\n## Dependencies\\n- ...",\n'
+        '  "risks": [\n'
+        '    {"risk": "description", "prob": "High|Med|Low", "impact": "High|Med|Low", "mitigation": "..."}\n'
+        '  ],\n'
+        '  "actions": [\n'
+        '    "First thing to do this week",\n'
+        '    "Second action",\n'
+        '    "Third action"\n'
+        '  ],\n'
+        '  "jira_epics": [\n'
+        '    {"epic": "Epic name", "stories": ["Story 1", "Story 2", "Story 3"]}\n'
+        '  ]\n'
         "}\n\n"
-        "Problem description:\n"
+        "Rules:\n"
+        "- risks: 3-5 items max, be specific not generic\n"
+        "- actions: exactly 3, concrete and immediate\n"
+        "- jira_epics: 3-5 epics, 2-4 stories each — reflect real programme workstreams\n"
+        "- vision: plain English, no buzzwords, one paragraph\n\n"
+        "Brief:\n"
     )
 
     try:
@@ -22815,14 +22828,13 @@ def api_pm_intake():
                 "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt + problem}],
                 "temperature": 0.2,
-                "max_tokens": 2500,
+                "max_tokens": 3500,
             },
-            timeout=40,
+            timeout=45,
         )
         if r.status_code != 200:
             return jsonify({"error": f"AI error {r.status_code}"}), 500
         raw = r.json()["choices"][0]["message"]["content"].strip()
-        # Strip markdown code fences if present
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
