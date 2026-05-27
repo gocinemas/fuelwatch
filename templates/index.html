@@ -17187,10 +17187,17 @@ _bkBadge();
 
 
   window.savesLoad = async function() {
-    document.getElementById("saves-list").innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div>Loading…</div>';
+    const listEl = document.getElementById("saves-list");
+    if (listEl) listEl.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:16px 0;display:flex;align-items:center;gap:8px"><div class="spinner"></div>Loading…</div>';
     try {
       const r = await fetch("/api/wa-saves", {headers: _savesHeaders()});
       if (r.status === 401) { localStorage.removeItem("wa_saves_token"); sessionStorage.removeItem("wa_saves_token"); const errEl=document.getElementById("saves-phone-error"); if(errEl){errEl.textContent="Session expired — please enter your number again.";errEl.style.display="block";} _savesShowPhone(); return; }
+      if (!r.ok) {
+        const txt = await r.text().catch(()=>"");
+        console.error("[saves] API error", r.status, txt.slice(0, 200));
+        if (listEl) listEl.innerHTML = `<p style="color:#ef4444;font-size:13px">Could not load saves (${r.status}). <button onclick="savesLoad()" style="color:#4f46e5;background:none;border:none;cursor:pointer;text-decoration:underline;font-size:13px">Retry</button></p>`;
+        return;
+      }
       const d = await r.json();
       var _seenTitles = new Set();
       _savesAll = (d.saves || []).filter(function(s){
@@ -17205,7 +17212,8 @@ _bkBadge();
       const _rptPc2 = (document.getElementById("report-postcode")||{}).value||"";
       if (_rptPc2 && typeof _rptCheckSaved === "function") _rptCheckSaved(_rptPc2.trim().replace(/\s+/g,""));
     } catch(e) {
-      document.getElementById("saves-list").innerHTML = '<p style="color:#ef4444;font-size:13px">Failed to load saves.</p>';
+      console.error("[saves] load error:", e);
+      if (listEl) listEl.innerHTML = `<p style="color:#ef4444;font-size:13px">Failed to load saves: ${e.message}. <button onclick="savesLoad()" style="color:#4f46e5;background:none;border:none;cursor:pointer;text-decoration:underline;font-size:13px">Retry</button></p>`;
     }
   };
 
