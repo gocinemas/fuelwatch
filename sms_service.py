@@ -20627,55 +20627,75 @@ def api_books_sync():
     if not phone:
         return jsonify({"error": "phone required"}), 400
 
-    sb = lib._sb()
-    local_books = data.get("books", [])
+    try:
+        sb = lib._sb()
+        local_books = data.get("books", [])
 
-    # Upsert local books into wa_saves (url = book:{isbn})
-    for bk in local_books:
-        isbn  = (bk.get("isbn") or "").strip()
-        title = (bk.get("title") or "Untitled").strip()
-        if not isbn:
-            continue
-        url = f"book:{isbn}"
-        existing = sb.table("wa_saves").select("id").eq("from_number", phone).eq("url", url).execute().data
-        payload = {
-            "from_number": phone,
-            "url":         url,
-            "title":       title,
-            "summary":     json.dumps(bk),
-            "status":      bk.get("status", "read"),
-        }
-        if existing:
-            sb.table("wa_saves").update(payload).eq("id", existing[0]["id"]).execute()
-        else:
-            sb.table("wa_saves").insert(payload).execute()
+        # Fetch existing book saves in one query, then diff locally
+        existing_rows = sb.table("wa_saves") \
+            .select("id,url") \
+            .eq("from_number", phone) \
+            .like("url", "book:%") \
+            .execute().data or []
+        existing_by_url = {r["url"]: r["id"] for r in existing_rows}
 
-    # Fetch all book saves for this phone
-    rows = sb.table("wa_saves") \
-        .select("id,url,title,summary,status,created_at") \
-        .eq("from_number", phone) \
-        .like("url", "book:%") \
-        .order("created_at", desc=True) \
-        .execute().data
+        inserts, updates = [], []
+        for bk in local_books:
+            isbn = (bk.get("isbn") or "").strip()
+            if not isbn:
+                continue
+            url = f"book:{isbn}"
+            payload = {
+                "from_number": phone,
+                "url":         url,
+                "title":       (bk.get("title") or "Untitled").strip(),
+                "summary":     json.dumps(bk),
+                "status":      bk.get("status", "read"),
+            }
+            if url in existing_by_url:
+                updates.append((existing_by_url[url], payload))
+            else:
+                inserts.append(payload)
 
-    merged = []
-    seen = set()
-    for row in rows:
-        try:
-            bk = json.loads(row["summary"] or "{}")
-        except Exception:
-            bk = {}
-        isbn = row["url"].replace("book:", "")
-        if isbn in seen:
-            continue
-        seen.add(isbn)
-        bk.setdefault("isbn",   isbn)
-        bk.setdefault("title",  row["title"] or "")
-        bk.setdefault("status", row["status"] or "read")
-        bk["_id"] = row["id"]
-        merged.append(bk)
+        # Batch insert new books
+        if inserts:
+            sb.table("wa_saves").insert(inserts).execute()
+        # Update existing books one at a time (Supabase client doesn't batch update)
+        for row_id, payload in updates:
+            try:
+                sb.table("wa_saves").update(payload).eq("id", row_id).execute()
+            except Exception:
+                pass
 
-    return jsonify({"books": merged})
+        # Fetch merged result
+        rows = sb.table("wa_saves") \
+            .select("id,url,title,summary,status,created_at") \
+            .eq("from_number", phone) \
+            .like("url", "book:%") \
+            .order("created_at", desc=True) \
+            .execute().data or []
+
+        merged = []
+        seen = set()
+        for row in rows:
+            try:
+                bk = json.loads(row["summary"] or "{}")
+            except Exception:
+                bk = {}
+            isbn = row["url"].replace("book:", "")
+            if isbn in seen:
+                continue
+            seen.add(isbn)
+            bk.setdefault("isbn",   isbn)
+            bk.setdefault("title",  row["title"] or "")
+            bk.setdefault("status", row["status"] or "read")
+            bk["_id"] = row["id"]
+            merged.append(bk)
+
+        return jsonify({"books": merged})
+    except Exception as e:
+        print(f"[books/sync] error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/books/save", methods=["POST"])

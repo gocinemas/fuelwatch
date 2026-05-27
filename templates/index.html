@@ -12459,11 +12459,14 @@ function bkLibFilter(q){
 
 function bkSyncWithPhone(phone, onDone){
   var local = _bkGetLib();
+  var ctrl = new AbortController();
+  var timeout = setTimeout(function(){ ctrl.abort(); }, 12000);
   fetch("/api/books/sync", {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({phone: phone, books: local})
+    body: JSON.stringify({phone: phone, books: local}),
+    signal: ctrl.signal
   })
-  .then(function(r){ return r.json(); })
+  .then(function(r){ clearTimeout(timeout); return r.json(); })
   .then(function(data){
     if(data.error){ console.error('[books/sync]', data.error); if(onDone) onDone(null); return; }
     var remote = data.books || [];
@@ -12475,7 +12478,7 @@ function bkSyncWithPhone(phone, onDone){
     _bkBadge();
     if(onDone) onDone(merged.length);
   })
-  .catch(function(e){ console.error('[books/sync] fetch error', e); if(onDone) onDone(null); });
+  .catch(function(e){ clearTimeout(timeout); console.error('[books/sync] fetch error', e); if(onDone) onDone(null); });
 }
 
 function bkPhoneSave(){
