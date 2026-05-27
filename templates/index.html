@@ -14871,11 +14871,9 @@ _bkBadge();
         var _recipeLabel = _temp >= 22 ? "🍹 Try a cocktail?" : _temp < 8 ? "🫖 Warm cocktail?" : "🍹 Try a recipe?";
         chips.push({ label: _recipeLabel, action: "showScreen('recipe')" });
       }
-      // Quiet reference row
+      // Quiet reference row — trains only at night, fuel irrelevant in the evening
       if (trains && trains.departures && trains.departures.length)
         secondaryChips.push({ label: "🚆 Train times", action: "showScreen('trains')" });
-      if (fuel && fuel.price)
-        secondaryChips.push({ label: "⛽ " + fuel.price + "p nearby", action: "showScreen('fuel')" });
     } else {
       // ── Day/evening mode: live data chips ───────────────────────────────
       var _dow2      = new Date().getDay();
