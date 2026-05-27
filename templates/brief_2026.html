@@ -8,114 +8,138 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap" rel="stylesheet">
 <style>
-/* ── Tokens ── */
+/* ── Design tokens ── */
 :root {
-  --bg:      #f3f3f5;
+  --bg:      #f3f3f6;
   --surface: #ffffff;
-  --s2:      #ebebef;
-  --border:  #e0e0e8;
-  --text:    #0d0d14;
-  --muted:   #6b6b80;
-  --subtle:  #b0b0c0;
+  --s2:      #ebebf0;
+  --border:  #e0e0ea;
+  --text:    #0d0d16;
+  --muted:   #6a6a82;
+  --subtle:  #b4b4c8;
   --accent:  #5b5ef4;
-  --hero-a:  #1a1040;
-  --hero-b:  #1e3a5f;
-  --hero-c:  #c2410c;
+  --sb-w:    72px;
 }
 .dark {
-  --bg:      #0b0b10;
-  --surface: #13131a;
-  --s2:      #1c1c26;
-  --border:  #2a2a38;
-  --text:    #f0f0f8;
-  --muted:   #7878a0;
-  --subtle:  #40404e;
-  --accent:  #7577f8;
+  --bg:      #0a0a10;
+  --surface: #121219;
+  --s2:      #1a1a24;
+  --border:  #28283a;
+  --text:    #f0f0fa;
+  --muted:   #7a7a9a;
+  --subtle:  #3c3c52;
+  --accent:  #7678f8;
 }
 * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
-html, body {
+html,body {
   font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;
-  background:var(--bg);
-  color:var(--text);
-  min-height:100dvh;
-  overflow-x:hidden;
+  background:var(--bg); color:var(--text);
+  min-height:100dvh; overflow-x:hidden;
 }
 
-/* ── HEADER ── */
+/* ════════════════════════════════════
+   APP BAR — always full width
+════════════════════════════════════ */
 .app-bar {
-  position:sticky; top:0; z-index:50;
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
+  position:sticky; top:0; z-index:60;
+  background:var(--surface); border-bottom:1px solid var(--border);
   padding:0 16px;
 }
 .app-bar-inner {
-  max-width:520px; margin:0 auto;
+  max-width:1200px; margin:0 auto;
   display:flex; align-items:center; justify-content:space-between;
   height:48px;
 }
 .app-logo { font-size:20px; font-weight:900; letter-spacing:-0.8px; color:var(--text); }
 .app-logo span { color:var(--accent); }
-.app-bar-actions { display:flex; gap:6px; align-items:center; }
+.app-bar-right { display:flex; align-items:center; gap:8px; }
 .icon-btn {
   width:34px; height:34px; border-radius:10px;
   background:var(--s2); border:none; cursor:pointer;
   font-size:16px; display:flex; align-items:center; justify-content:center;
-  color:var(--text); transition:background .12s;
+  color:var(--text); font-family:inherit;
 }
-.icon-btn:active { background:var(--border); }
-.postcode-pill {
+.pc-pill {
   font-size:11px; font-weight:800; letter-spacing:.03em;
   color:var(--muted); background:var(--s2);
-  border-radius:8px; padding:5px 9px; border:none; cursor:pointer;
-  font-family:inherit;
+  border-radius:8px; padding:5px 9px; border:none; cursor:pointer; font-family:inherit;
 }
+.preview-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  background:rgba(91,94,244,.1); border:1px solid rgba(91,94,244,.18);
+  border-radius:99px; padding:2px 9px;
+  font-size:10px; font-weight:700; color:var(--accent); letter-spacing:.05em;
+}
+.preview-chip a { color:var(--accent); text-decoration:none; opacity:.6; }
 
-/* ── HERO ── */
+/* ════════════════════════════════════
+   LAYOUT SHELL
+════════════════════════════════════ */
+.layout { display:flex; flex-direction:column; }
+
+/* ════════════════════════════════════
+   HERO
+════════════════════════════════════ */
 .hero {
-  background:linear-gradient(155deg,var(--hero-a) 0%,var(--hero-b) 60%,var(--hero-c) 100%);
   padding:18px 16px 20px;
-  transition:background 0.8s ease;
+  background:linear-gradient(155deg,#1a1040 0%,#1e3a5f 60%,#7c3a0a 100%);
+  transition:background .6s ease;
 }
-.hero-inner { max-width:520px; margin:0 auto; }
-.hero-top {
+.hero-inner { max-width:1200px; margin:0 auto; }
+.hero-row {
   display:flex; align-items:flex-start;
-  justify-content:space-between; margin-bottom:12px;
+  justify-content:space-between; gap:12px; margin-bottom:12px;
 }
 .hero-greeting {
   font-size:26px; font-weight:900; letter-spacing:-0.8px;
   color:#fff; line-height:1.1;
 }
-.hero-date { font-size:12px; color:rgba(255,255,255,.5); margin-top:3px; font-weight:500; }
+.hero-date { font-size:12px; color:rgba(255,255,255,.5); margin-top:3px; }
 .hero-wx {
-  display:flex; align-items:center; gap:8px;
+  display:flex; align-items:center; gap:8px; flex-shrink:0;
   background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15);
-  border-radius:12px; padding:8px 10px; flex-shrink:0;
-  backdrop-filter:blur(8px);
+  border-radius:12px; padding:8px 12px; backdrop-filter:blur(8px);
 }
-.hero-wx-icon { font-size:20px; line-height:1; }
-.hero-wx-right { text-align:right; }
-.hero-wx-temp { font-size:18px; font-weight:900; color:#fff; letter-spacing:-0.5px; line-height:1; }
-.hero-wx-desc { font-size:10px; color:rgba(255,255,255,.5); margin-top:1px; white-space:nowrap; }
-
-.wfh-toggle {
-  display:inline-flex; background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.15);
-  border-radius:99px; padding:3px; gap:3px;
-}
+.wx-icon { font-size:20px; line-height:1; }
+.wx-temp { font-size:18px; font-weight:900; color:#fff; letter-spacing:-0.5px; }
+.wx-desc { font-size:10px; color:rgba(255,255,255,.5); margin-top:1px; white-space:nowrap; }
+.wfh-row { display:flex; gap:6px; }
 .wfh-pill {
-  border-radius:99px; padding:5px 14px;
-  font-size:12px; font-weight:700; color:rgba(255,255,255,.5);
-  cursor:pointer; border:none; background:none;
-  transition:all .15s; font-family:inherit;
-  white-space:nowrap;
+  border-radius:99px; padding:5px 14px; font-size:12px; font-weight:700;
+  color:rgba(255,255,255,.5); cursor:pointer; border:none; background:none;
+  font-family:inherit; transition:all .12s;
 }
+.wfh-toggle { display:inline-flex; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.14); border-radius:99px; padding:3px; gap:3px; }
 .wfh-pill.active { background:rgba(255,255,255,.2); color:#fff; }
 
-/* ── SCROLL PAGE ── */
-.page { max-width:520px; margin:0 auto; padding:16px 16px 160px; }
+/* ════════════════════════════════════
+   PAGE — mobile: single column
+════════════════════════════════════ */
+.page {
+  max-width:1200px; margin:0 auto;
+  display:flex; flex-direction:column;
+  padding:16px 16px 160px;
+  gap:0;
+}
+/* On mobile: side col (modules) appears FIRST */
+.col-side { order:-1; }
+.col-main { order:0; }
+.col-full { order:1; }
 
-/* ── MODULE STRIP ── */
+/* ════════════════════════════════════
+   SECTION LABEL
+════════════════════════════════════ */
+.s-label {
+  font-size:10px; font-weight:800; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--muted);
+  margin:20px 0 10px;
+}
+.s-label:first-child { margin-top:0; }
+
+/* ════════════════════════════════════
+   MODULE STRIP — mobile: horizontal scroll
+════════════════════════════════════ */
 .mod-strip {
   display:flex; gap:10px; overflow-x:auto;
   scrollbar-width:none; -webkit-overflow-scrolling:touch;
@@ -125,72 +149,55 @@ html, body {
 .mod-strip::-webkit-scrollbar { display:none; }
 .mod-card {
   flex-shrink:0; scroll-snap-align:start;
-  width:152px; min-height:130px;
-  border-radius:20px; padding:13px 13px 15px;
+  width:150px; min-height:128px;
+  border-radius:20px; padding:12px 13px 14px;
   display:flex; flex-direction:column;
-  cursor:pointer; border:none;
-  position:relative; overflow:hidden;
+  cursor:pointer; border:none; overflow:hidden;
   transition:transform .12s, opacity .12s;
 }
-.mod-card:active { transform:scale(.96); opacity:.88; }
+.mod-card:active { transform:scale(.96); opacity:.85; }
 .mc-train  { background:linear-gradient(145deg,#1e3a5f 0%,#2563eb 100%); }
 .mc-fuel   { background:linear-gradient(145deg,#7f1d1d 0%,#dc2626 100%); }
 .mc-school { background:linear-gradient(145deg,#064e3b 0%,#059669 100%); }
 .mc-spend  { background:linear-gradient(145deg,#312e81 0%,#7c3aed 100%); }
-.live-dot  { width:5px; height:5px; border-radius:50%; background:#4ade80; animation:blink 2s ease infinite; flex-shrink:0; }
+.live-row { display:flex; align-items:center; gap:4px; margin-bottom:8px; }
+.live-dot { width:5px; height:5px; border-radius:50%; background:#4ade80; animation:blink 2s ease infinite; }
 @keyframes blink { 0%,100%{opacity:1}50%{opacity:.25} }
-.mod-live {
-  display:flex; align-items:center; gap:4px; margin-bottom:8px;
-}
-.mod-live-label { font-size:9px; font-weight:700; color:rgba(255,255,255,.55); letter-spacing:.07em; }
+.live-lbl { font-size:9px; font-weight:700; color:rgba(255,255,255,.5); letter-spacing:.07em; }
 .mod-icon { font-size:20px; line-height:1; margin-bottom:5px; }
-.mod-label { font-size:11px; font-weight:800; color:#fff; letter-spacing:-.1px; opacity:.65; }
+.mod-name { font-size:11px; font-weight:800; color:rgba(255,255,255,.6); letter-spacing:-.1px; }
 .mod-data { font-size:21px; font-weight:900; color:#fff; letter-spacing:-0.8px; margin-top:auto; padding-top:8px; line-height:1; }
-.mod-sub { font-size:10px; color:rgba(255,255,255,.45); margin-top:3px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-
-/* shimmer */
-.mod-shimmer { width:70%; height:21px; border-radius:5px; background:rgba(255,255,255,.1); animation:shimmer 1.4s linear infinite; background-size:200% 100%; }
+.mod-sub  { font-size:10px; color:rgba(255,255,255,.45); margin-top:3px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mod-shimmer { width:70%; height:20px; border-radius:5px; background:rgba(255,255,255,.1); animation:shimmer 1.4s linear infinite; background-size:200%; }
+.mod-shimmer-sm { width:88%; height:9px; border-radius:4px; margin-top:4px; background:rgba(255,255,255,.07); animation:shimmer 1.4s linear infinite; background-size:200%; }
 @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
-.mod-shimmer-sm { width:90%; height:10px; border-radius:4px; margin-top:4px; background:rgba(255,255,255,.07); animation:shimmer 1.4s linear infinite; background-size:200% 100%; }
 
-/* ── BRIEF CARD ── */
+/* ════════════════════════════════════
+   BRIEF CARD
+════════════════════════════════════ */
 .brief-card {
   background:linear-gradient(155deg,#0f172a 0%,#1e3a5f 100%);
   border-radius:20px; padding:18px 18px 20px;
-  border:1px solid rgba(99,102,241,.2);
-  position:relative; overflow:hidden;
-  margin-bottom:12px;
+  border:1px solid rgba(91,94,244,.22);
+  position:relative; overflow:hidden; margin-bottom:12px;
 }
 .brief-card::after {
-  content:'';
-  position:absolute; top:-40px; right:-40px;
+  content:''; position:absolute; top:-40px; right:-40px;
   width:130px; height:130px; border-radius:50%;
-  background:radial-gradient(circle,rgba(91,94,244,.18) 0%,transparent 70%);
+  background:radial-gradient(circle,rgba(91,94,244,.2) 0%,transparent 70%);
   pointer-events:none;
 }
-.brief-eyebrow {
-  font-size:10px; font-weight:800; letter-spacing:.1em;
-  color:rgba(255,255,255,.3); text-transform:uppercase; margin-bottom:10px;
-}
-.brief-text {
-  font-size:15px; font-weight:500; color:#fff;
-  line-height:1.65; letter-spacing:-.1px;
-  display:none; opacity:0; transition:opacity .4s;
-}
+.brief-eyebrow { font-size:10px; font-weight:800; letter-spacing:.1em; color:rgba(255,255,255,.3); text-transform:uppercase; margin-bottom:10px; }
+.brief-text { font-size:15px; font-weight:500; color:#fff; line-height:1.65; letter-spacing:-.1px; display:none; opacity:0; transition:opacity .4s; }
 .brief-shimmer { display:flex; flex-direction:column; gap:9px; }
-.brief-sh { height:12px; border-radius:5px; animation:shimmer 1.5s linear infinite; background-size:200% 100%; }
-.brief-sh-1 { width:90%; background:rgba(255,255,255,.12); }
-.brief-sh-2 { width:97%; background:rgba(255,255,255,.09); }
-.brief-sh-3 { width:70%; background:rgba(255,255,255,.06); }
+.bsh { height:12px; border-radius:5px; animation:shimmer 1.5s linear infinite; background-size:200%; }
+.bsh-1 { width:90%; background:rgba(255,255,255,.12); }
+.bsh-2 { width:97%; background:rgba(255,255,255,.09); }
+.bsh-3 { width:68%; background:rgba(255,255,255,.06); }
 
-/* ── SECTION LABEL ── */
-.s-label {
-  font-size:10px; font-weight:800; letter-spacing:.1em;
-  text-transform:uppercase; color:var(--muted);
-  margin:20px 0 10px;
-}
-
-/* ── TODAY EVENTS ── */
+/* ════════════════════════════════════
+   TODAY EVENTS
+════════════════════════════════════ */
 .events-row {
   display:flex; gap:8px; overflow-x:auto;
   scrollbar-width:none; margin:0 -16px; padding:0 16px 4px;
@@ -202,70 +209,65 @@ html, body {
   background:var(--surface); border:1px solid var(--border);
   border-radius:16px; padding:11px 13px; min-width:155px;
 }
-.ev-time { font-size:10px; font-weight:800; color:var(--accent); letter-spacing:.04em; margin-bottom:3px; }
+.ev-time  { font-size:10px; font-weight:800; color:var(--accent); letter-spacing:.04em; margin-bottom:3px; }
 .ev-title { font-size:13px; font-weight:700; color:var(--text); line-height:1.25; }
-.ev-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.ev-sub   { font-size:11px; color:var(--muted); margin-top:2px; }
 
-/* ── NEAR YOU ── */
-.nearby-filters {
-  display:flex; gap:6px; overflow-x:auto; scrollbar-width:none;
-  margin-bottom:10px;
-}
+/* ════════════════════════════════════
+   NEARBY
+════════════════════════════════════ */
+.nearby-filters { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; margin-bottom:10px; }
 .nearby-filters::-webkit-scrollbar { display:none; }
 .nf-btn {
   flex-shrink:0; font-size:11px; font-weight:700;
-  border-radius:99px; padding:5px 12px;
-  cursor:pointer; font-family:inherit; border:none;
-  background:var(--s2); color:var(--muted);
-  transition:all .12s;
+  border-radius:99px; padding:5px 12px; cursor:pointer;
+  font-family:inherit; border:none;
+  background:var(--s2); color:var(--muted); transition:all .12s;
 }
 .nf-btn.active { background:var(--accent); color:#fff; }
+.nearby-list { display:flex; flex-direction:column; gap:8px; }
 .nearby-card {
   display:flex; align-items:center; gap:12px;
   background:var(--surface); border:1px solid var(--border);
-  border-radius:14px; padding:11px 13px; margin-bottom:8px;
-  cursor:pointer; text-decoration:none;
+  border-radius:14px; padding:11px 13px; cursor:pointer;
+  transition:border-color .12s;
 }
 .nearby-card:active { border-color:var(--accent); }
 .nc-icon { font-size:22px; flex-shrink:0; }
 .nc-name { font-size:13px; font-weight:700; color:var(--text); }
 .nc-meta { font-size:11px; color:var(--muted); margin-top:2px; }
-.nc-arr { color:var(--subtle); font-size:14px; margin-left:auto; flex-shrink:0; }
+.nc-arr  { color:var(--subtle); font-size:14px; margin-left:auto; flex-shrink:0; }
 
-/* ── TOOLS GRID ── */
+/* ════════════════════════════════════
+   TOOLS GRID
+════════════════════════════════════ */
 .tools-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .tool-card {
   background:var(--surface); border:1px solid var(--border);
   border-radius:16px; padding:14px 13px 16px;
-  cursor:pointer; text-align:left; border:none;
+  cursor:pointer; text-align:left;
   display:flex; flex-direction:column; gap:9px;
-  border:1px solid var(--border);
-  transition:border-color .12s;
-  font-family:inherit;
+  transition:border-color .12s; font-family:inherit;
 }
 .tool-card:active { border-color:var(--accent); }
 .tool-card-wide { grid-column:span 2; flex-direction:row; align-items:center; gap:12px; }
-.tool-icon { font-size:22px; line-height:1; }
+.tool-icon  { font-size:22px; line-height:1; }
 .tool-label { font-size:13px; font-weight:800; color:var(--text); letter-spacing:-.2px; }
-.tool-sub { font-size:11px; color:var(--muted); margin-top:1px; line-height:1.35; }
-.tool-badge {
-  margin-left:auto; font-size:11px; font-weight:700; flex-shrink:0;
-  background:rgba(91,94,244,.12); color:var(--accent);
-  border-radius:7px; padding:3px 8px;
-}
-.tool-badge-red { background:rgba(239,68,68,.12); color:#ef4444; }
+.tool-sub   { font-size:11px; color:var(--muted); margin-top:1px; line-height:1.35; }
+.tool-badge { margin-left:auto; font-size:11px; font-weight:700; flex-shrink:0; background:rgba(91,94,244,.12); color:var(--accent); border-radius:7px; padding:3px 8px; }
 
-/* ── FLOATING ASK BAR ── */
+/* ════════════════════════════════════
+   MOBILE: floating ask + island nav
+════════════════════════════════════ */
 .ask-bar {
   position:fixed; bottom:68px; left:50%; transform:translateX(-50%);
   width:calc(100% - 24px); max-width:496px; z-index:60;
 }
 .ask-inner {
   display:flex; gap:8px; align-items:center;
-  background:var(--surface);
-  border:1.5px solid var(--border);
+  background:var(--surface); border:1.5px solid var(--border);
   border-radius:99px; padding:7px 7px 7px 16px;
-  box-shadow:0 6px 24px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08);
+  box-shadow:0 6px 24px rgba(0,0,0,.13), 0 2px 6px rgba(0,0,0,.07);
 }
 .ask-input {
   flex:1; background:none; border:none; outline:none;
@@ -278,20 +280,16 @@ html, body {
   font-size:15px; cursor:pointer; display:flex;
   align-items:center; justify-content:center; flex-shrink:0;
 }
-
-/* ── ISLAND NAV ── */
 .island-nav {
   position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
   z-index:70; display:flex; align-items:center;
-  background:rgba(19,19,26,.88);
-  border:1px solid rgba(255,255,255,.08);
+  background:rgba(18,18,25,.9); border:1px solid rgba(255,255,255,.08);
   border-radius:99px; padding:5px 6px; gap:2px;
   backdrop-filter:blur(20px) saturate(160%);
-  box-shadow:0 6px 24px rgba(0,0,0,.32);
+  box-shadow:0 6px 24px rgba(0,0,0,.3);
 }
 body:not(.dark) .island-nav {
-  background:rgba(255,255,255,.9);
-  border-color:rgba(0,0,0,.08);
+  background:rgba(255,255,255,.92); border-color:rgba(0,0,0,.08);
   box-shadow:0 6px 24px rgba(0,0,0,.12);
 }
 .nav-p {
@@ -301,25 +299,92 @@ body:not(.dark) .island-nav {
   transition:background .12s; min-width:48px; font-family:inherit;
 }
 .nav-p.on { background:var(--accent); }
-.nav-p-icon { font-size:15px; line-height:1; }
-.nav-p-label {
-  font-size:8px; font-weight:700; letter-spacing:.04em;
-  color:rgba(255,255,255,.4);
-}
+.nav-p-icon  { font-size:15px; line-height:1; }
+.nav-p-label { font-size:8px; font-weight:700; letter-spacing:.04em; color:rgba(255,255,255,.4); }
 body:not(.dark) .nav-p-label { color:rgba(0,0,0,.35); }
 .nav-p.on .nav-p-label { color:#fff; }
 
-/* ── PREVIEW BADGE ── */
-.preview-chip {
-  display:inline-flex; align-items:center; gap:5px;
-  background:rgba(91,94,244,.12); border:1px solid rgba(91,94,244,.2);
-  border-radius:99px; padding:2px 9px;
-  font-size:10px; font-weight:700; color:var(--accent); letter-spacing:.05em;
-}
-.preview-chip a { color:var(--accent); text-decoration:none; opacity:.65; }
+/* ════════════════════════════════════
+   DESKTOP (≥ 820px)
+════════════════════════════════════ */
+@media (min-width:820px) {
 
-/* ── NO DATA STATE ── */
-.empty-mod { opacity:.45; }
+  /* Left sidebar */
+  .sidebar {
+    position:fixed; left:0; top:48px; bottom:0; width:var(--sb-w);
+    background:var(--surface); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center;
+    padding:16px 8px; gap:4px; z-index:50;
+  }
+  .sb-item {
+    display:flex; flex-direction:column; align-items:center;
+    padding:8px 10px; border-radius:12px; cursor:pointer; border:none;
+    background:none; gap:3px; width:100%; font-family:inherit;
+    transition:background .12s;
+  }
+  .sb-item:hover { background:var(--s2); }
+  .sb-item.on { background:rgba(91,94,244,.12); }
+  .sb-icon  { font-size:18px; line-height:1; }
+  .sb-label { font-size:8px; font-weight:700; color:var(--muted); letter-spacing:.04em; }
+  .sb-item.on .sb-label { color:var(--accent); }
+
+  /* Shift app-bar content to account for sidebar */
+  .app-bar-inner { padding-left:calc(var(--sb-w) + 8px); }
+
+  /* Hero: pad left for sidebar */
+  .hero { padding-left:calc(var(--sb-w) + 20px); padding-right:32px; padding-top:24px; padding-bottom:24px; }
+  .hero-inner { max-width:unset; }
+  .hero-greeting { font-size:30px; }
+
+  /* Page: 2-col grid */
+  .page {
+    padding-left:calc(var(--sb-w) + 20px);
+    padding-right:32px;
+    padding-bottom:40px;
+    display:grid;
+    grid-template-columns:1fr 340px;
+    grid-template-areas:
+      "main side"
+      "full full";
+    gap:0 24px;
+    max-width:unset;
+  }
+  .col-main { grid-area:main; order:0; }
+  .col-side { grid-area:side; order:0; }
+  .col-full { grid-area:full; }
+
+  /* Module strip → 2×2 grid on desktop */
+  .mod-strip {
+    display:grid; grid-template-columns:1fr 1fr;
+    overflow:visible; margin:0; padding:0; gap:10px;
+    scroll-snap-type:unset;
+  }
+  .mod-card { width:auto; flex-shrink:1; scroll-snap-align:unset; min-height:130px; }
+
+  /* Nearby: 2-col grid on desktop */
+  .nearby-list { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .nearby-card { margin-bottom:0; }
+
+  /* Today events: wrap on desktop (no horizontal scroll) */
+  .events-row {
+    flex-wrap:wrap; overflow:visible;
+    margin:0; padding:0; gap:8px;
+    scroll-snap-type:unset;
+  }
+  .ev-card { flex-shrink:1; min-width:150px; flex:1; scroll-snap-align:unset; }
+
+  /* Ask bar: inline in col-main on desktop */
+  .ask-bar {
+    position:static; transform:none;
+    width:100%; max-width:none;
+    margin-top:16px;
+    bottom:auto; left:auto;
+  }
+  .ask-inner { box-shadow:0 2px 8px rgba(0,0,0,.08); }
+
+  /* Hide mobile island nav on desktop */
+  .island-nav { display:none; }
+}
 </style>
 </head>
 <body>
@@ -331,233 +396,239 @@ body:not(.dark) .nav-p-label { color:rgba(0,0,0,.35); }
       <div class="app-logo">mi<span>ru</span></div>
       <div class="preview-chip">2026 · <a href="/">live app</a></div>
     </div>
-    <div class="app-bar-actions">
-      <button class="postcode-pill" id="pc-pill" onclick="window.location='/'">KT16 0DA</button>
+    <div class="app-bar-right">
+      <button class="pc-pill" id="pc-pill" onclick="window.location='/'">—</button>
       <button class="icon-btn" id="theme-btn" onclick="_toggleTheme()" title="Toggle dark/light">🌙</button>
       <button class="icon-btn" onclick="window.location='/'" title="Settings">⚙️</button>
     </div>
   </div>
 </header>
 
-<!-- Hero -->
-<div class="hero" id="hero">
-  <div class="hero-inner">
-    <div class="hero-top">
-      <div>
-        <div class="hero-greeting" id="greeting">Good morning</div>
-        <div class="hero-date" id="dateline">Tuesday, 27 May</div>
+<!-- Desktop sidebar (hidden on mobile via CSS display:none default, shown at 820px) -->
+<nav class="sidebar" style="display:none" id="sidebar">
+  <button class="sb-item on" onclick="window.location='/'">
+    <div class="sb-icon">🏠</div><div class="sb-label">HOME</div>
+  </button>
+  <button class="sb-item" onclick="window.location='/#myarea'">
+    <div class="sb-icon">🏡</div><div class="sb-label">LOCAL</div>
+  </button>
+  <button class="sb-item" onclick="window.location='/#saves'">
+    <div class="sb-icon">📌</div><div class="sb-label">SAVES</div>
+  </button>
+  <button class="sb-item" onclick="window.location='/#report'">
+    <div class="sb-icon">🔎</div><div class="sb-label">SEARCH</div>
+  </button>
+  <button class="sb-item" onclick="window.location='/#school'">
+    <div class="sb-icon">🏫</div><div class="sb-label">SCHOOL</div>
+  </button>
+  <div style="flex:1"></div>
+  <button class="sb-item" onclick="window.location='/#setup'">
+    <div class="sb-icon">⚙️</div><div class="sb-label">SETUP</div>
+  </button>
+</nav>
+
+<!-- Layout wrapper -->
+<div class="layout">
+
+  <!-- Hero -->
+  <div class="hero" id="hero">
+    <div class="hero-inner">
+      <div class="hero-row">
+        <div>
+          <div class="hero-greeting" id="greeting">Good morning</div>
+          <div class="hero-date" id="dateline">Tuesday, 27 May</div>
+        </div>
+        <div class="hero-wx" id="wx-block">
+          <div class="wx-icon" id="wx-icon">⋯</div>
+          <div>
+            <div class="wx-temp" id="wx-temp">—°C</div>
+            <div class="wx-desc" id="wx-desc">loading…</div>
+          </div>
+        </div>
       </div>
-      <div class="hero-wx" id="wx-block">
-        <div class="hero-wx-icon" id="wx-icon">⋯</div>
-        <div class="hero-wx-right">
-          <div class="hero-wx-temp" id="wx-temp">—</div>
-          <div class="hero-wx-desc" id="wx-desc">loading…</div>
+      <div class="wfh-toggle" id="wfh-row" style="display:none">
+        <button class="wfh-pill active" id="pill-wfh"   onclick="_setMode('wfh')">🏠 WFH</button>
+        <button class="wfh-pill"        id="pill-office" onclick="_setMode('office')">🏢 In office</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page (2-col on desktop) -->
+  <div class="page">
+
+    <!-- ── LEFT COLUMN: brief + today + ask ── -->
+    <div class="col-main">
+      <div class="s-label">Your brief</div>
+      <div class="brief-card">
+        <div class="brief-eyebrow">Miru · right now</div>
+        <div class="brief-shimmer" id="brief-shimmer">
+          <div class="bsh bsh-1"></div>
+          <div class="bsh bsh-2"></div>
+          <div class="bsh bsh-3"></div>
+        </div>
+        <div class="brief-text" id="brief-text"></div>
+      </div>
+
+      <div class="s-label" id="today-label" style="display:none">Today</div>
+      <div class="events-row" id="events-row"></div>
+
+      <!-- Ask Miru — floating on mobile, inline on desktop -->
+      <div class="ask-bar">
+        <div class="ask-inner">
+          <input class="ask-input" id="ask-in" type="text" placeholder="Ask Miru anything…"
+            onkeydown="if(event.key==='Enter')_ask()">
+          <button class="ask-send" onclick="_ask()">↑</button>
         </div>
       </div>
     </div>
-    <div class="wfh-toggle" id="wfh-row" style="display:none">
-      <button class="wfh-pill active" id="pill-wfh"   onclick="_setMode('wfh')">🏠 WFH</button>
-      <button class="wfh-pill"        id="pill-office" onclick="_setMode('office')">🏢 Office</button>
-    </div>
-  </div>
-</div>
 
-<!-- Page -->
-<div class="page">
+    <!-- ── RIGHT COLUMN: modules + nearby ── -->
+    <div class="col-side">
+      <div class="s-label">Live now</div>
+      <div class="mod-strip" id="mod-strip">
 
-  <!-- Module strip -->
-  <div class="s-label">Live now</div>
-  <div class="mod-strip" id="mod-strip">
-    <div class="mod-card mc-train" id="mc-train" onclick="window.location='/'">
-      <div class="mod-live"><div class="live-dot"></div><div class="mod-live-label">LIVE</div></div>
-      <div class="mod-icon">🚆</div>
-      <div class="mod-label">Trains</div>
-      <div class="mod-shimmer" id="mc-train-data"></div>
-      <div class="mod-shimmer-sm" id="mc-train-sub"></div>
-    </div>
-    <div class="mod-card mc-fuel" id="mc-fuel" onclick="window.location='/'">
-      <div class="mod-live"><div class="live-dot"></div><div class="mod-live-label">LIVE</div></div>
-      <div class="mod-icon">⛽</div>
-      <div class="mod-label">Fuel</div>
-      <div class="mod-shimmer" id="mc-fuel-data"></div>
-      <div class="mod-shimmer-sm" id="mc-fuel-sub"></div>
-    </div>
-    <div class="mod-card mc-school" id="mc-school" onclick="window.location='/'">
-      <div class="mod-live" style="opacity:0"><div class="live-dot"></div><div class="mod-live-label">SCHOOL</div></div>
-      <div class="mod-icon">🏫</div>
-      <div class="mod-label">School</div>
-      <div class="mod-shimmer" id="mc-school-data"></div>
-      <div class="mod-shimmer-sm" id="mc-school-sub"></div>
-    </div>
-    <div class="mod-card mc-spend" id="mc-spend" onclick="window.location='/'">
-      <div style="font-size:9px;font-weight:800;color:rgba(255,255,255,.35);letter-spacing:.07em;margin-bottom:8px">THIS MONTH</div>
-      <div class="mod-icon">💷</div>
-      <div class="mod-label">Spend</div>
-      <div class="mod-shimmer" id="mc-spend-data"></div>
-      <div class="mod-shimmer-sm" id="mc-spend-sub"></div>
-    </div>
-  </div>
+        <div class="mod-card mc-train" id="mc-train" onclick="window.location='/'">
+          <div class="live-row"><div class="live-dot"></div><div class="live-lbl">LIVE</div></div>
+          <div class="mod-icon">🚆</div>
+          <div class="mod-name">Trains</div>
+          <div class="mod-shimmer" id="mc-train-data"></div>
+          <div class="mod-shimmer-sm" id="mc-train-sub"></div>
+        </div>
 
-  <!-- Brief card -->
-  <div class="s-label" style="margin-top:20px">Your brief</div>
-  <div class="brief-card">
-    <div class="brief-eyebrow">Miru · right now</div>
-    <div class="brief-shimmer" id="brief-shimmer">
-      <div class="brief-sh brief-sh-1"></div>
-      <div class="brief-sh brief-sh-2"></div>
-      <div class="brief-sh brief-sh-3"></div>
-    </div>
-    <div class="brief-text" id="brief-text"></div>
-  </div>
+        <div class="mod-card mc-fuel" id="mc-fuel" onclick="window.location='/'">
+          <div class="live-row"><div class="live-dot"></div><div class="live-lbl">LIVE</div></div>
+          <div class="mod-icon">⛽</div>
+          <div class="mod-name">Fuel</div>
+          <div class="mod-shimmer" id="mc-fuel-data"></div>
+          <div class="mod-shimmer-sm" id="mc-fuel-sub"></div>
+        </div>
 
-  <!-- Today events -->
-  <div class="s-label" id="today-label" style="display:none">Today</div>
-  <div class="events-row" id="events-row"></div>
+        <div class="mod-card mc-school" id="mc-school" onclick="window.location='/'">
+          <div class="live-row" style="opacity:0"><div class="live-dot"></div><div class="live-lbl">SCH</div></div>
+          <div class="mod-icon">🏫</div>
+          <div class="mod-name">School</div>
+          <div class="mod-shimmer" id="mc-school-data"></div>
+          <div class="mod-shimmer-sm" id="mc-school-sub"></div>
+        </div>
 
-  <!-- Near you -->
-  <div class="s-label" style="margin-top:20px">Near you right now</div>
-  <div class="nearby-filters" id="nearby-filters">
-    <button class="nf-btn active" onclick="_nearbyFilter('all',this)">All</button>
-    <button class="nf-btn" onclick="_nearbyFilter('cafe',this)">☕ Cafes</button>
-    <button class="nf-btn" onclick="_nearbyFilter('food',this)">🍽️ Food</button>
-    <button class="nf-btn" onclick="_nearbyFilter('park',this)">🌳 Parks</button>
-    <button class="nf-btn" onclick="_nearbyFilter('pub',this)">🍺 Pubs</button>
-  </div>
-  <div id="nearby-cards">
-    <div style="font-size:13px;color:var(--muted);padding:8px 0">Locating you…</div>
-  </div>
+        <div class="mod-card mc-spend" id="mc-spend" onclick="window.location='/'">
+          <div style="font-size:9px;font-weight:800;color:rgba(255,255,255,.35);letter-spacing:.07em;margin-bottom:8px">THIS MONTH</div>
+          <div class="mod-icon">💷</div>
+          <div class="mod-name">Spend</div>
+          <div class="mod-shimmer" id="mc-spend-data"></div>
+          <div class="mod-shimmer-sm" id="mc-spend-sub"></div>
+        </div>
 
-  <!-- Tools -->
-  <div class="s-label" style="margin-top:20px">Tools</div>
-  <div class="tools-grid">
-    <button class="tool-card" onclick="window.location='/#myarea'">
-      <div class="tool-icon">🏡</div>
-      <div>
-        <div class="tool-label">My Local</div>
-        <div class="tool-sub">Area · MP · services</div>
+      </div><!-- /mod-strip -->
+
+      <div class="s-label" style="margin-top:20px">Near you right now</div>
+      <div class="nearby-filters" id="nearby-filters">
+        <button class="nf-btn active" onclick="_nearbyFilter('all',this)">All</button>
+        <button class="nf-btn" onclick="_nearbyFilter('cafe',this)">☕ Cafes</button>
+        <button class="nf-btn" onclick="_nearbyFilter('food',this)">🍽️ Food</button>
+        <button class="nf-btn" onclick="_nearbyFilter('park',this)">🌳 Parks</button>
+        <button class="nf-btn" onclick="_nearbyFilter('pub',this)">🍺 Pubs</button>
       </div>
-    </button>
-    <button class="tool-card" onclick="window.location='/#lifeadmin'" style="position:relative">
-      <div class="tool-icon">🗂️</div>
-      <div>
-        <div class="tool-label">Life Admin</div>
-        <div class="tool-sub">MOT · bills · renewals</div>
+      <div class="nearby-list" id="nearby-cards">
+        <div style="font-size:13px;color:var(--muted);padding:4px 0">Locating you…</div>
       </div>
-    </button>
-    <button class="tool-card" onclick="window.location='/#saves'">
-      <div class="tool-icon">📌</div>
-      <div>
-        <div class="tool-label">Clippings</div>
-        <div class="tool-sub" id="saves-sub">Saved items</div>
-      </div>
-    </button>
-    <button class="tool-card" onclick="window.location='/#report'">
-      <div class="tool-icon">🔎</div>
-      <div>
-        <div class="tool-label">Research</div>
-        <div class="tool-sub">Any UK postcode</div>
-      </div>
-    </button>
-    <button class="tool-card tool-card-wide" onclick="window.location='https://intel.humanagency.co'">
-      <div class="tool-icon">🔬</div>
-      <div style="flex:1">
-        <div class="tool-label">Brand Intel</div>
-        <div class="tool-sub">Company profiles · leadership · news</div>
-      </div>
-      <div class="tool-badge">intel ↗</div>
-    </button>
-  </div>
+    </div>
 
-</div><!-- /page -->
+    <!-- ── FULL WIDTH: tools ── -->
+    <div class="col-full">
+      <div class="s-label" style="margin-top:24px">Tools</div>
+      <div class="tools-grid">
+        <button class="tool-card" onclick="window.location='/#myarea'">
+          <div class="tool-icon">🏡</div>
+          <div><div class="tool-label">My Local</div><div class="tool-sub">Area · MP · services</div></div>
+        </button>
+        <button class="tool-card" onclick="window.location='/#lifeadmin'">
+          <div class="tool-icon">🗂️</div>
+          <div><div class="tool-label">Life Admin</div><div class="tool-sub">MOT · bills · renewals</div></div>
+        </button>
+        <button class="tool-card" onclick="window.location='/#saves'">
+          <div class="tool-icon">📌</div>
+          <div><div class="tool-label">Clippings</div><div class="tool-sub">Saved items</div></div>
+        </button>
+        <button class="tool-card" onclick="window.location='/#report'">
+          <div class="tool-icon">🔎</div>
+          <div><div class="tool-label">Research</div><div class="tool-sub">Any UK postcode</div></div>
+        </button>
+        <button class="tool-card tool-card-wide" onclick="window.location='https://intel.humanagency.co'">
+          <div class="tool-icon">🔬</div>
+          <div style="flex:1"><div class="tool-label">Brand Intel</div><div class="tool-sub">Company profiles · leadership · news</div></div>
+          <div class="tool-badge">intel ↗</div>
+        </button>
+      </div>
+    </div>
 
-<!-- Ask bar -->
-<div class="ask-bar">
-  <div class="ask-inner">
-    <input class="ask-input" id="ask-in" type="text" placeholder="Ask Miru anything…"
-      onkeydown="if(event.key==='Enter')_ask()">
-    <button class="ask-send" onclick="_ask()">↑</button>
-  </div>
-</div>
+  </div><!-- /page -->
+</div><!-- /layout -->
 
-<!-- Island nav -->
+<!-- Mobile island nav (hidden on desktop) -->
 <nav class="island-nav">
-  <button class="nav-p on"  onclick="window.location='/'">
-    <div class="nav-p-icon">🏠</div><div class="nav-p-label">HOME</div>
-  </button>
-  <button class="nav-p" onclick="window.location='/#myarea'">
-    <div class="nav-p-icon">🏡</div><div class="nav-p-label">LOCAL</div>
-  </button>
-  <button class="nav-p" onclick="window.location='/#saves'">
-    <div class="nav-p-icon">📌</div><div class="nav-p-label">SAVES</div>
-  </button>
-  <button class="nav-p" onclick="window.location='/#report'">
-    <div class="nav-p-icon">🔎</div><div class="nav-p-label">SEARCH</div>
-  </button>
-  <button class="nav-p" onclick="window.location='/'">
-    <div class="nav-p-icon">⋯</div><div class="nav-p-label">MORE</div>
-  </button>
+  <button class="nav-p on"  onclick="window.location='/'"><div class="nav-p-icon">🏠</div><div class="nav-p-label">HOME</div></button>
+  <button class="nav-p" onclick="window.location='/#myarea'"><div class="nav-p-icon">🏡</div><div class="nav-p-label">LOCAL</div></button>
+  <button class="nav-p" onclick="window.location='/#saves'"><div class="nav-p-icon">📌</div><div class="nav-p-label">SAVES</div></button>
+  <button class="nav-p" onclick="window.location='/#report'"><div class="nav-p-icon">🔎</div><div class="nav-p-label">SEARCH</div></button>
+  <button class="nav-p" onclick="window.location='/'"><div class="nav-p-icon">⋯</div><div class="nav-p-label">MORE</div></button>
 </nav>
 
 <script>
 "use strict";
-
-/* ── Identity ── */
 var _phone = localStorage.getItem("miru_phone") || "";
 var _pc    = (localStorage.getItem("miru_postcode") || "").replace(/\s/g,"").toUpperCase();
 var _mode  = localStorage.getItem("brief_mode_" + new Date().toISOString().slice(0,10)) || "";
+var _briefCtx = null;
+var _nearbyLat = null, _nearbyLng = null;
+var _nearbyAll = [];
 
 /* ── Theme ── */
 var _dark = localStorage.getItem("_26_theme") !== "light";
-if (!_dark) document.body.classList.remove("dark");
-else        document.body.classList.add("dark");
-function _toggleTheme() {
-  _dark = !_dark;
+function _applyTheme() {
   document.body.classList.toggle("dark", _dark);
-  localStorage.setItem("_26_theme", _dark ? "dark" : "light");
   document.getElementById("theme-btn").textContent = _dark ? "🌙" : "☀️";
 }
-document.getElementById("theme-btn").textContent = _dark ? "🌙" : "☀️";
+function _toggleTheme() { _dark = !_dark; localStorage.setItem("_26_theme", _dark ? "dark" : "light"); _applyTheme(); }
+_applyTheme();
+
+/* ── Desktop sidebar visibility ── */
+function _checkBreakpoint() {
+  var isDesktop = window.innerWidth >= 820;
+  document.getElementById("sidebar").style.display = isDesktop ? "flex" : "none";
+}
+window.addEventListener("resize", _checkBreakpoint);
+_checkBreakpoint();
 
 /* ── Hero: time-aware ── */
 (function() {
   var h = new Date().getHours();
-  var greets = {
-    morning:   "Good morning",
-    afternoon: "Good afternoon",
-    evening:   "Good evening",
-    night:     "Good evening"
-  };
-  var greet = h < 12 ? greets.morning : h < 17 ? greets.afternoon : h < 21 ? greets.evening : greets.night;
-  document.getElementById("greeting").textContent = greet;
-
+  var now = new Date();
   var days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   var mons = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  var now = new Date();
-  document.getElementById("dateline").textContent = days[now.getDay()] + ", " + now.getDate() + " " + mons[now.getMonth()];
-
+  document.getElementById("greeting").textContent =
+    h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  document.getElementById("dateline").textContent =
+    days[now.getDay()] + ", " + now.getDate() + " " + mons[now.getMonth()];
   var grads = {
     night:   "linear-gradient(155deg,#020617 0%,#0f172a 100%)",
-    morning: "linear-gradient(155deg,#1a1040 0%,#1e3a5f 60%,#7c3a0a 100%)",
-    day:     "linear-gradient(155deg,#0c2461 0%,#1e40af 60%,#0ea5e9 100%)",
+    morning: "linear-gradient(155deg,#1a1040 0%,#1e3a5f 55%,#7c3a0a 100%)",
+    day:     "linear-gradient(155deg,#0c2461 0%,#1e40af 55%,#0ea5e9 100%)",
     evening: "linear-gradient(155deg,#1e0a3c 0%,#7c3aed 50%,#c2410c 100%)",
   };
-  var grad = h < 6 ? grads.night : h < 12 ? grads.morning : h < 17 ? grads.day : h < 21 ? grads.evening : grads.night;
-  document.getElementById("hero").style.background = grad;
-
+  document.getElementById("hero").style.background =
+    h < 6 ? grads.night : h < 12 ? grads.morning : h < 17 ? grads.day : h < 21 ? grads.evening : grads.night;
   document.getElementById("pc-pill").textContent = _pc || "Set postcode";
 })();
 
-/* ── WFH weather emoji helper ── */
-function _wxIcon(code, hour) {
-  var night = hour >= 21 || hour < 6;
-  if (code === 0)  return night ? "🌙" : "☀️";
-  if (code <= 2)   return night ? "🌙" : "🌤️";
-  if (code <= 3)   return "⛅";
-  if (code <= 48)  return "🌫️";
-  if (code <= 55)  return "🌦️";
-  if (code <= 65)  return "🌧️";
-  if (code <= 77)  return "❄️";
-  if (code <= 82)  return "🌧️";
+/* ── Weather icon helper ── */
+function _wxIcon(code, h) {
+  var n = h >= 21 || h < 6;
+  if (code === 0) return n ? "🌙" : "☀️";
+  if (code <= 2)  return n ? "🌙" : "🌤️";
+  if (code <= 3)  return "⛅"; if (code <= 48) return "🌫️";
+  if (code <= 55) return "🌦️"; if (code <= 65) return "🌧️";
+  if (code <= 77) return "❄️"; if (code <= 82) return "🌧️";
   return "⛈️";
 }
 
@@ -568,51 +639,40 @@ function _setMod(id, data, sub) {
   if (d) { d.className = "mod-data"; d.textContent = data; }
   if (s) { s.className = "mod-sub";  s.textContent = sub;  }
 }
-
-/* ── WFH mode ── */
-var _briefCtx = null;
-function _setMode(m) {
-  _mode = m;
-  localStorage.setItem("brief_mode_" + new Date().toISOString().slice(0,10), m);
-  document.getElementById("pill-wfh").className   = "wfh-pill" + (m === "wfh"    ? " active" : "");
-  document.getElementById("pill-office").className = "wfh-pill" + (m === "office" ? " active" : "");
-
-  /* swap train direction */
-  if (_briefCtx) {
-    var tr = m === "office" ? _briefCtx.trains : (_briefCtx.trains_home || _briefCtx.trains);
-    _renderTrainMod(tr, m);
-  }
-
-  /* re-fetch narrative */
-  _fetchNarrative(_briefCtx, m);
-}
-
-function _renderTrainMod(tr, mode) {
+function _renderTrain(tr, mode) {
   if (tr && tr.departures && tr.departures.length) {
     var d0 = tr.departures[0];
     var t0 = d0.departs || d0.time || "?";
     var dst = (d0.destination || tr.to || "").replace(/\s+station$/i,"").replace(/^London /i,"");
     var next = tr.departures[1] ? " · " + (tr.departures[1].departs || tr.departures[1].time || "") : "";
-    var status = d0.status_text || (d0.late_mins > 0 ? d0.late_mins + " min late" : "On time");
+    var status = d0.late_mins > 0 ? d0.late_mins + " min late" : "On time";
     _setMod("train", t0, dst + next + " · " + status);
   } else {
-    _setMod("train", "—", mode === "wfh" ? "No trains saved" : "No upcoming trains");
-    document.getElementById("mc-train").classList.add("empty-mod");
+    _setMod("train", "—", "No departures");
   }
 }
 
-/* ── Main data fetch ── */
+/* ── WFH mode ── */
+function _setMode(m) {
+  _mode = m;
+  localStorage.setItem("brief_mode_" + new Date().toISOString().slice(0,10), m);
+  document.getElementById("pill-wfh").className   = "wfh-pill" + (m === "wfh"    ? " active" : "");
+  document.getElementById("pill-office").className = "wfh-pill" + (m === "office" ? " active" : "");
+  if (_briefCtx) {
+    _renderTrain(m === "office" ? _briefCtx.trains : (_briefCtx.trains_home || _briefCtx.trains), m);
+    _fetchNarrative(_briefCtx, m);
+  }
+}
+
+/* ── Main data load ── */
 function _load() {
   var url = "/api/home/brief?refresh=1";
   if (_phone) url += "&token=" + encodeURIComponent(_phone);
   if (_pc)    url += "&pc=" + encodeURIComponent(_pc);
 
-  /* GPS */
   function _doFetch(lat, lng) {
     if (lat !== null) url += "&lat=" + lat + "&lng=" + lng;
-    fetch(url)
-      .then(function(r) { return r.json(); })
-      .then(function(d) { _render(d); })
+    fetch(url).then(function(r){ return r.json(); }).then(_render)
       .catch(function() {
         document.getElementById("brief-shimmer").style.display = "none";
         var bt = document.getElementById("brief-text");
@@ -621,36 +681,29 @@ function _load() {
       });
   }
 
-  var _cachedTs = parseInt(localStorage.getItem("miru_gps_ts") || "0");
-  var _cachedLat = parseFloat(localStorage.getItem("miru_gps_lat") || "");
-  var _cachedLng = parseFloat(localStorage.getItem("miru_gps_lng") || "");
-  if (Date.now() - _cachedTs < 30 * 60 * 1000 && !isNaN(_cachedLat)) {
-    _nearbyLat = _cachedLat; _nearbyLng = _cachedLng;
-    _doFetch(_cachedLat, _cachedLng);
-    _loadNearby(_cachedLat, _cachedLng);
+  var _ts  = parseInt(localStorage.getItem("miru_gps_ts") || "0");
+  var _lat = parseFloat(localStorage.getItem("miru_gps_lat") || "");
+  var _lng = parseFloat(localStorage.getItem("miru_gps_lng") || "");
+  if (Date.now() - _ts < 30*60*1000 && !isNaN(_lat)) {
+    _nearbyLat = _lat; _nearbyLng = _lng;
+    _doFetch(_lat, _lng); _loadNearby(_lat, _lng);
   } else if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        var lat = pos.coords.latitude, lng = pos.coords.longitude;
-        localStorage.setItem("miru_gps_lat", lat);
-        localStorage.setItem("miru_gps_lng", lng);
-        localStorage.setItem("miru_gps_ts", Date.now());
-        _nearbyLat = lat; _nearbyLng = lng;
-        _doFetch(lat, lng);
-        _loadNearby(lat, lng);
-      },
-      function() { _doFetch(null, null); }
-    );
-  } else {
-    _doFetch(null, null);
-  }
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      var lat = pos.coords.latitude, lng = pos.coords.longitude;
+      localStorage.setItem("miru_gps_lat", lat);
+      localStorage.setItem("miru_gps_lng", lng);
+      localStorage.setItem("miru_gps_ts", Date.now());
+      _nearbyLat = lat; _nearbyLng = lng;
+      _doFetch(lat, lng); _loadNearby(lat, lng);
+    }, function() { _doFetch(null, null); });
+  } else { _doFetch(null, null); }
 }
 
 function _render(d) {
   var ctx = d.context || {};
   _briefCtx = ctx;
 
-  /* WFH toggle — show on weekdays */
+  /* WFH toggle on weekdays */
   var dow = new Date().getDay();
   if (dow > 0 && dow < 6) {
     document.getElementById("wfh-row").style.display = "flex";
@@ -665,183 +718,117 @@ function _render(d) {
     var h = new Date().getHours();
     document.getElementById("wx-icon").textContent = _wxIcon(wx.code || 0, h);
     document.getElementById("wx-temp").textContent = wx.temp + "°C";
-    var descParts = [];
-    if (wx.desc)  descParts.push(wx.desc);
-    if (wx.wind)  descParts.push("Wind " + wx.wind + "km/h");
-    document.getElementById("wx-desc").textContent = descParts.join(" · ");
+    var parts = []; if (wx.desc) parts.push(wx.desc); if (wx.wind) parts.push("Wind " + wx.wind + "km/h");
+    document.getElementById("wx-desc").textContent = parts.join(" · ");
   }
 
   /* Trains */
-  var trainData = _mode === "office"
-    ? (ctx.trains || ctx.trains_home)
-    : (ctx.trains || ctx.trains_home);
-  _renderTrainMod(trainData, _mode || "wfh");
+  _renderTrain(_mode === "office" ? ctx.trains : (ctx.trains_home || ctx.trains), _mode || "wfh");
 
   /* Fuel */
   var fuel = ctx.fuel || {};
   if (fuel.price) {
-    var st = (fuel.name || "").split(/[,·]/)[0].trim();
-    _setMod("fuel", fuel.price + "p", st || "Nearby");
-  } else {
-    _setMod("fuel", "—", "No data");
-    document.getElementById("mc-fuel").classList.add("empty-mod");
-  }
+    _setMod("fuel", fuel.price + "p", (fuel.name || "Nearby").split(/[,·]/)[0].trim());
+  } else { _setMod("fuel", "—", "No data"); }
 
   /* School */
   var sch = ctx.school || {};
-  var schUpcoming = sch.upcoming || sch.events || [];
   var schSchools  = sch.schools  || [];
+  var schUpcoming = sch.upcoming || sch.events || [];
   if (schSchools.length) {
-    var kidName = schSchools[0].child_name || "School";
+    var kid = schSchools[0].child_name || "School";
+    document.querySelector(".mc-school .live-row").style.opacity = "1";
     if (schUpcoming.length) {
       var ev0 = schUpcoming[0];
-      var evTitle = (ev0.title || ev0.summary || "Event").slice(0, 28);
-      var evDate  = (ev0.date || "").slice(5).replace("-","/"); // MM/DD
-      _setMod("school", kidName, evTitle + (evDate ? " · " + evDate : ""));
-    } else {
-      _setMod("school", kidName, "No upcoming events");
-    }
-    document.querySelector(".mc-school .mod-live").style.opacity = "1";
-  } else {
-    _setMod("school", "School", "Not connected");
-    document.getElementById("mc-school").classList.add("empty-mod");
-  }
+      _setMod("school", kid, (ev0.title || "Event").slice(0,26) + (ev0.date ? " · " + ev0.date.slice(5).replace("-","/") : ""));
+    } else { _setMod("school", kid, "No upcoming events"); }
+  } else { _setMod("school", "School", "Not connected"); }
 
   /* Spend */
   var spend = ctx.spend || {};
-  if (spend.total_this_month !== undefined) {
-    _setMod("spend", "£" + Math.round(spend.total_this_month), "this month");
-  } else {
-    _setMod("spend", "—", "Tap to track");
-  }
+  _setMod("spend", spend.total_this_month ? "£" + Math.round(spend.total_this_month) : "—", spend.total_this_month ? "this month" : "Tap to track");
 
   /* Today events */
+  var WORK = ["morning catch up","afternoon catch up","lunch","standup","stand-up","sync","check-in","1:1","weekly","daily"];
   var evs = (d.today_events || []).filter(function(e) {
     if (!e || !e.title) return false;
-    var tl = (e.title || "").toLowerCase();
-    var WORK = ["morning catch up","afternoon catch up","lunch","stand-up","standup",
-                "sync","check-in","1:1","weekly","daily"];
-    return !WORK.some(function(w){ return tl === w; });
+    return !WORK.some(function(w){ return (e.title||"").toLowerCase() === w; });
   });
   var schHol = d.school_holiday;
-  var evRow = document.getElementById("events-row");
   if (schHol || evs.length) {
     document.getElementById("today-label").style.display = "block";
-    var evHtml = "";
-    if (schHol) {
-      evHtml += '<div class="ev-card" style="background:#f0fdf4;border-color:#bbf7d0;min-width:155px">'
-        + '<div class="ev-time" style="color:#16a34a">HOLIDAY</div>'
-        + '<div class="ev-title">' + (schHol.name || "School holiday") + '</div>'
-        + (schHol.ends ? '<div class="ev-sub">Back ' + schHol.ends + '</div>' : '')
-        + '</div>';
-    }
+    var html = "";
+    if (schHol) html += '<div class="ev-card" style="background:#f0fdf4;border-color:#bbf7d0"><div class="ev-time" style="color:#16a34a">HOLIDAY</div><div class="ev-title">' + (schHol.name||"School holiday") + '</div>' + (schHol.ends?'<div class="ev-sub">Back '+schHol.ends+'</div>':'') + '</div>';
     evs.slice(0,4).forEach(function(e) {
-      var timeStr = (e.time || e.start_time || "").trim();
-      var loc = (e.location || "").trim();
-      evHtml += '<div class="ev-card">'
-        + '<div class="ev-time">' + (timeStr || "Today") + '</div>'
-        + '<div class="ev-title">' + (e.title || "Event").slice(0,35) + '</div>'
-        + (loc ? '<div class="ev-sub">📍 ' + loc.slice(0,30) + '</div>' : '')
-        + '</div>';
+      html += '<div class="ev-card"><div class="ev-time">' + (e.time||e.start_time||"Today") + '</div><div class="ev-title">' + (e.title||"").slice(0,35) + '</div>' + (e.location?'<div class="ev-sub">📍'+e.location.slice(0,28)+'</div>':'') + '</div>';
     });
-    evRow.innerHTML = evHtml;
+    document.getElementById("events-row").innerHTML = html;
   }
 
-  /* Brief narrative */
   _fetchNarrative(ctx, _mode || "wfh");
 }
 
-/* ── Narrative fetch ── */
+/* ── Narrative ── */
 function _fetchNarrative(ctx, mode) {
-  if (!ctx) return;
   var sh = document.getElementById("brief-shimmer");
   var bt = document.getElementById("brief-text");
   sh.style.display = "flex"; bt.style.display = "none"; bt.style.opacity = "0";
-
-  /* Build facts for fallback */
+  var fuel = ctx.fuel || {}, wx = ctx.weather || {};
+  var tr = mode === "office" ? (ctx.trains||{}) : (ctx.trains_home||ctx.trains||{});
   var facts = [];
-  var fuel = ctx.fuel || {};
-  var wx   = ctx.weather || {};
-  var tr   = mode === "office" ? (ctx.trains || {}) : (ctx.trains_home || ctx.trains || {});
   if (fuel.price) facts.push("Fuel " + fuel.price + "p at " + (fuel.name||"nearby"));
-  if (wx.temp !== undefined) facts.push(wx.temp + "°C · " + (wx.desc||""));
-  if (tr.departures && tr.departures.length) {
-    var d0 = tr.departures[0];
-    facts.push("Next train " + (d0.departs||d0.time||"") + " to " + (tr.to||""));
-  }
-  var fallback = facts.length ? facts.slice(0,2).join(". ") + "." : "Here's your day ahead.";
-
+  if (wx.temp !== undefined) facts.push(wx.temp + "°C, " + (wx.desc||""));
+  if (tr.departures && tr.departures.length) facts.push("Next train " + (tr.departures[0].departs||tr.departures[0].time||"") + " to " + (tr.to||""));
+  var fallback = facts.length ? facts.slice(0,2).join(". ") + "." : "Here's your day.";
   fetch("/api/home/brief/narrative", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({context: ctx, mode: mode, prefs: {}, facts: facts})
-  }).then(function(r){ return r.json(); })
-    .then(function(r) {
-      sh.style.display = "none";
-      bt.textContent = r.text || fallback;
-      bt.style.display = "block";
-      requestAnimationFrame(function(){ bt.style.opacity = "1"; });
-    }).catch(function() {
-      sh.style.display = "none";
-      bt.textContent = fallback;
-      bt.style.display = "block";
-      requestAnimationFrame(function(){ bt.style.opacity = "1"; });
-    });
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({context:ctx, mode:mode, prefs:{}, facts:facts})
+  }).then(function(r){return r.json();}).then(function(r){
+    sh.style.display = "none";
+    bt.textContent = r.text || fallback;
+    bt.style.display = "block";
+    requestAnimationFrame(function(){ bt.style.opacity = "1"; });
+  }).catch(function(){
+    sh.style.display = "none";
+    bt.textContent = fallback;
+    bt.style.display = "block";
+    requestAnimationFrame(function(){ bt.style.opacity = "1"; });
+  });
 }
 
-/* ── Nearby (GPS based) ── */
-var _nearbyAll = [];
+/* ── Nearby ── */
 function _loadNearby(lat, lng) {
-  var cards = document.getElementById("nearby-cards");
-  cards.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Finding places near you…</div>';
-
+  document.getElementById("nearby-cards").innerHTML = '<div style="font-size:13px;color:var(--muted);padding:4px 0">Finding places…</div>';
   fetch("/api/brief/nearby?lat=" + lat + "&lng=" + lng + "&type=all&radius=2000")
-    .then(function(r){ return r.json(); })
-    .then(function(d) {
+    .then(function(r){return r.json();}).then(function(d){
       _nearbyAll = d.places || [];
       _renderNearby(_nearbyAll);
-    })
-    .catch(function() {
-      cards.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Tap a filter to explore nearby.</div>';
+    }).catch(function(){
+      document.getElementById("nearby-cards").innerHTML = '<div style="font-size:13px;color:var(--muted)">Tap a filter to explore nearby.</div>';
     });
 }
-
 function _renderNearby(places) {
-  var cards = document.getElementById("nearby-cards");
-  if (!places || !places.length) {
-    cards.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No places found nearby.</div>';
-    return;
-  }
-  var _ico = {"cafe":"☕","restaurant":"🍽️","park":"🌳","pub":"🍺","bar":"🍺","coffee":"☕","food":"🍽️"};
-  cards.innerHTML = places.slice(0,4).map(function(p) {
-    var type = (p.type || p.category || "").toLowerCase();
-    var ico  = _ico[type] || "📍";
-    var name = (p.name || p.title || "").slice(0,32);
-    var dist = p.distance_m ? (p.distance_m < 1000 ? Math.round(p.distance_m) + "m" : (p.distance_m/1000).toFixed(1) + "km") : "";
+  var el = document.getElementById("nearby-cards");
+  if (!places || !places.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted)">No places found.</div>'; return; }
+  var ico = {"cafe":"☕","restaurant":"🍽️","park":"🌳","pub":"🍺","bar":"🍺"};
+  el.innerHTML = places.slice(0,4).map(function(p){
+    var t = (p.type||p.category||"").toLowerCase();
+    var name = (p.name||"").slice(0,30);
+    var dist = p.distance_m ? (p.distance_m < 1000 ? Math.round(p.distance_m)+"m" : (p.distance_m/1000).toFixed(1)+"km") : "";
     var open = p.open_now === true ? "Open now" : p.open_now === false ? "Closed" : "";
     var meta = [dist, open].filter(Boolean).join(" · ");
-    return '<div class="nearby-card" onclick="window.location=\'/'+"'"+'+">">'
-      + '<div class="nc-icon">' + ico + '</div>'
-      + '<div><div class="nc-name">' + name + '</div>'
-      + (meta ? '<div class="nc-meta">' + meta + '</div>' : '')
-      + '</div>'
-      + '<div class="nc-arr">›</div>'
-      + '</div>';
+    return '<div class="nearby-card"><div class="nc-icon">' + (ico[t]||"📍") + '</div><div><div class="nc-name">' + name + '</div>' + (meta?'<div class="nc-meta">'+meta+'</div>':'') + '</div><div class="nc-arr">›</div></div>';
   }).join("");
 }
-
-var _nearbyLat = null, _nearbyLng = null;
 function _nearbyFilter(type, btn) {
-  document.querySelectorAll(".nf-btn").forEach(function(b){ b.classList.remove("active"); });
+  document.querySelectorAll(".nf-btn").forEach(function(b){b.classList.remove("active");});
   btn.classList.add("active");
   if (type === "all") { _renderNearby(_nearbyAll); return; }
   if (!_nearbyLat) { _renderNearby(_nearbyAll); return; }
-  var cards = document.getElementById("nearby-cards");
-  cards.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Loading…</div>';
-  fetch("/api/brief/nearby?lat=" + _nearbyLat + "&lng=" + _nearbyLng + "&type=" + type + "&radius=2000")
-    .then(function(r){ return r.json(); })
-    .then(function(d) { _renderNearby(d.places || []); })
-    .catch(function() { _renderNearby(_nearbyAll); });
+  document.getElementById("nearby-cards").innerHTML = '<div style="font-size:13px;color:var(--muted)">Loading…</div>';
+  fetch("/api/brief/nearby?lat="+_nearbyLat+"&lng="+_nearbyLng+"&type="+type+"&radius=2000")
+    .then(function(r){return r.json();}).then(function(d){ _renderNearby(d.places||[]); })
+    .catch(function(){ _renderNearby(_nearbyAll); });
 }
 
 /* ── Ask ── */
