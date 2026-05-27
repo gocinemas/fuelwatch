@@ -377,9 +377,10 @@ body:not(.dark) .nav-label { color:rgba(0,0,0,.35); }
   .sidebar { display:flex; }
   .data-rail { display:block; }
 
-  /* hero: pad for sidebar */
-  .hero { padding-left:calc(var(--sb) + 24px); }
-  .content { padding-left:calc(var(--sb) + 24px); padding-bottom:40px; }
+  /* hero: pad for sidebar, fill full available width */
+  .hero { padding-left:calc(var(--sb) + 24px); padding-right:32px; }
+  .hero-inner { max-width:none; }
+  .content { padding-left:calc(var(--sb) + 24px); padding-right:32px; padding-bottom:40px; max-width:none; }
 
   /* hide mobile-only elements */
   .mod-strip { display:none; }
@@ -819,9 +820,11 @@ function _render(d) {
   _setRR("spend",spStr,"this month");
 
   /* Today events */
-  var SKIP=["morning catch up","afternoon catch up","lunch","standup","stand-up","sync","check-in","1:1","weekly","daily"];
+  var SKIP=["morning catch up","afternoon catch up","lunch","standup","stand-up","sync","check-in","1:1","weekly","daily","morning catch-up","afternoon catch-up"];
   var tevs=(d.today_events||[]).filter(function(e){
-    return e&&e.title&&!SKIP.some(function(w){return (e.title||"").toLowerCase()===w;});
+    if(!e||!e.title) return false;
+    var tl=(e.title||"").toLowerCase().trim();
+    return !SKIP.some(function(w){return tl===w||tl.startsWith(w+" ")||tl.endsWith(" "+w);});
   });
   if(d.school_holiday||tevs.length){
     document.getElementById("today-section").style.display="block";
