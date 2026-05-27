@@ -384,13 +384,13 @@
     @media (min-width: 900px) {
       #desktop-sidebar { display: flex; }
       #pill-nav { display: none !important; }
-      /* Shift content right of sidebar */
-      .main-content {
-        margin-left: 58px !important; max-width: none !important;
-        padding-left: 28px !important; padding-right: 32px !important;
+      /* ID selector wins over Tailwind's class-based mx-auto/max-w-xl */
+      #app-main {
+        margin-left: 58px; max-width: none;
+        padding-left: 28px; padding-right: 32px;
       }
       /* Override inline max-width/margin on individual screens */
-      .screen { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; }
+      #app-main .screen { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; }
       /* Stretch header inner row */
       #app-header .inner { max-width: none; margin: 0; padding: 0 24px; }
       /* Indent identity bar content past sidebar */
@@ -504,7 +504,7 @@
   </nav>
   {% endif %}
 
-  <div class="max-w-xl mx-auto px-4 main-content">
+  <div id="app-main" class="max-w-xl mx-auto px-4 main-content">
 
     <!-- ── HOME SCREEN ── -->
     <div id="screen-home" class="screen active">
