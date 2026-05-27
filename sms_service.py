@@ -15636,7 +15636,19 @@ _CLARIFY_MSG = (
     "📌 send any link to save it"
 )
 
-_GREETING_WORDS = {"hi", "hello", "hey", "start", "help", "menu", "miru", "join"}
+_GREETING_WORDS = {"hi", "hello", "hey", "hiya", "yo", "start", "help", "menu", "miru", "join",
+                   "morning", "good morning", "evening", "good evening"}
+_HELLO_ONLY     = {"hi", "hello", "hey", "hiya", "yo", "morning", "good morning", "evening", "good evening"}
+
+_HELLO_MSG = (
+    "👋 Hey! What can I help with today?\n\n"
+    "Try:\n"
+    "☕ _good coffee near KT15_\n"
+    "🚆 _next train to Waterloo_\n"
+    "⛽ _petrol prices KT16_\n"
+    "📌 send any link to clip it\n\n"
+    "Or reply *HELP* for everything I can do."
+)
 
 _SEEN_NUMBERS: set = set()
 
@@ -15973,7 +15985,11 @@ def _whatsapp_reply_inner():
             if not _get_wa_home_postcode(from_number):
                 _set_wa_pending_intent(from_number, {"type": "setup_postcode"})
                 resp.message("📍 One quick thing — what's your home postcode?\n\nJust reply with it (e.g. *KT16 0HY*) and I'll remember it for trains, fuel prices, local info and more.")
+        elif body_lower in _HELLO_ONLY:
+            # Casual greeting from existing user — short friendly reply, not the full menu
+            resp.message(_HELLO_MSG)
         else:
+            # Explicit "help" / "menu" / "miru" → full capability list
             resp.message(_HELP_MSG)
         return str(resp)
 
