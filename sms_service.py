@@ -15637,19 +15637,9 @@ _HELP_MSG = (
 )
 
 _WELCOME_MSG = (
-    "👋 Welcome to *Miru* — your UK life assistant.\n"
-    "\n"
-    "No app download. Just type naturally:\n"
-    "\n"
-    "☕  _good coffee near KT15_\n"
-    "🚆  _train waterloo to lewisham_\n"
-    "⛽  _KT15 petrol_\n"
-    "🔖  send any link — I'll save it\n"
-    "🧾  send a receipt — I'll track spend\n"
-    "📍  share location — I'll find places\n"
-    "🔍  _brand Unilever_\n"
-    "\n"
-    "Reply *HELP* for everything I can do."
+    "👋 Hey! Welcome to *Miru*.\n\n"
+    "I'm your UK life assistant — trains, fuel, local places, clippings, receipts and more. No app needed.\n\n"
+    "Say *hi* to get started, or *help* to see everything I can do."
 )
 
 _CLARIFY_MSG = (
