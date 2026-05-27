@@ -27,6 +27,25 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;0,9..40,900;1,9..40,400&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Sync: pick start screen before first paint to avoid flash of old homepage -->
+  <script>
+  (function() {
+    try {
+      var ph = localStorage.getItem('miru_phone') || '';
+      if (!ph) {
+        var cm = document.cookie.match(/(?:^|;\s*)miru_saves_phone=([^;]+)/);
+        ph = cm ? decodeURIComponent(cm[1]) : '';
+      }
+      var qs = new URLSearchParams(location.search);
+      var hasDeep = qs.get('screen') || qs.get('report') || qs.get('places') ||
+                    qs.get('ll') || qs.get('gmail_scan') || qs.get('gmail_error') ||
+                    location.hash;
+      if (ph && !hasDeep) {
+        document.documentElement.classList.add('_init-brief');
+      }
+    } catch(e) {}
+  })();
+  </script>
   <style>
     :root {
       --bg:      #f8f7f5;
@@ -127,6 +146,9 @@
 
     .screen { display: none; }
     .screen.active { display: block; }
+    /* Pre-select brief screen before JS loads — eliminates flash of old homepage */
+    ._init-brief #screen-home { display: none !important; }
+    ._init-brief #screen-brief { display: block; }
     #nav-sheet { transition: transform 0.25s ease; transform: translateY(100%); }
     #nav-sheet.open { transform: translateY(0); }
 
@@ -14166,6 +14188,7 @@ _bkBadge();
         if (_bs) _bs.classList.add("active");
         var _bb = document.getElementById("back-btn");
         if (_bb) _bb.classList.remove("visible");
+        document.documentElement.classList.remove("_init-brief");
         _pillUpdate("home");
         if (typeof _briefInit === "function") _briefInit();
       }
@@ -14647,7 +14670,7 @@ _bkBadge();
       var _lunchMin  = new Date().getMinutes();
       var _lunchMins = _lunchHour * 60 + _lunchMin;
       if (!_noCommute && _lunchMins >= 720 && _lunchMins < 870) { // 12:00–14:30
-        chips.push({ label: "🍽️ Lunch nearby?", action: "_briefFindNearby('food')" });
+        chips.push({ label: "🍽️ Lunch nearby?", action: "typeof _exploreHereOpen==='function'&&_exploreHereOpen()" });
       }
       // Frequent places — confirmed regulars that match today (weekend / bank holiday chips)
       if (_noCommute && frequentToday && frequentToday.length) {
