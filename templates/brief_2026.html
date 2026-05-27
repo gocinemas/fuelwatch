@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Miru Brief — 2026 prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0a0a0f;
+  --surface:  #141418;
+  --surface2: #1e1e24;
+  --border:   #2a2a35;
+  --text:     #f0f0f5;
+  --muted:    #7070808;
+  --subtle:   #404050;
+  --accent:   #6366f1;
+  --muted-text: #8888a0;
+}
+[data-theme="light"] {
+  --bg:       #f4f4f6;
+  --surface:  #ffffff;
+  --surface2: #f0f0f4;
+  --border:   #e4e4ec;
+  --text:     #0f0f18;
+  --muted-text: #6868808;
+  --subtle:   #d0d0e0;
+  --accent:   #6366f1;
+  --muted-text: #66668c;
+}
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html, body {
+  font-family:'DM Sans',ui-sans-serif,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+  min-height:100dvh;
+  overflow-x:hidden;
+}
+
+/* ── PREVIEW BANNER ── */
+.banner {
+  background:#6366f1;
+  padding:7px 16px;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  font-size:11px; font-weight:700; color:#fff; letter-spacing:.05em;
+}
+.banner a { color:#c7d2fe; text-decoration:none; }
+.banner-btn {
+  background:rgba(255,255,255,.15); border:none; color:#fff;
+  border-radius:99px; padding:3px 10px; font-size:10px; font-weight:700;
+  cursor:pointer; font-family:inherit; letter-spacing:.04em;
+}
+
+/* ── HERO (time-aware) ── */
+.hero {
+  position:relative; overflow:hidden;
+  padding:20px 20px 24px;
+  background:var(--hero-bg, linear-gradient(160deg,#1e1b4b 0%,#0f172a 100%));
+  transition:background 1s ease;
+}
+.hero-inner { max-width:480px; margin:0 auto; position:relative; z-index:1; }
+.hero-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:14px; }
+.hero-greeting {
+  font-size:28px; font-weight:900; letter-spacing:-1px; color:#fff;
+  line-height:1.1;
+}
+.hero-greeting em { font-style:normal; opacity:.55; }
+.hero-date { font-size:13px; color:rgba(255,255,255,.5); margin-top:4px; font-weight:500; }
+.hero-actions { display:flex; gap:8px; align-items:center; }
+.hero-btn {
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15);
+  border-radius:10px; padding:7px 10px; font-size:14px; cursor:pointer;
+  color:rgba(255,255,255,.7); backdrop-filter:blur(8px);
+}
+/* Weather inline */
+.hero-weather {
+  display:flex; align-items:center; gap:10px;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+  border-radius:16px; padding:10px 14px;
+  backdrop-filter:blur(12px);
+}
+.hero-wx-icon { font-size:26px; line-height:1; }
+.hero-wx-temp { font-size:26px; font-weight:900; color:#fff; letter-spacing:-1px; line-height:1; }
+.hero-wx-right { flex:1; min-width:0; }
+.hero-wx-desc { font-size:12px; color:rgba(255,255,255,.55); line-height:1.4; margin-top:2px; }
+
+/* WFH toggle */
+.wfh-row { display:flex; gap:6px; margin-top:12px; }
+.wfh-btn {
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+  border-radius:99px; padding:5px 12px; font-size:11px; font-weight:700;
+  color:rgba(255,255,255,.5); cursor:pointer; font-family:inherit;
+  transition:all .15s;
+}
+.wfh-btn.active {
+  background:rgba(255,255,255,.18); color:#fff;
+  border-color:rgba(255,255,255,.3);
+}
+
+/* ── SCROLL CONTAINER ── */
+.page { max-width:480px; margin:0 auto; padding:0 16px 160px; }
+
+/* ── MODULE STRIP ── */
+.modules-label {
+  font-size:10px; font-weight:800; color:var(--muted-text);
+  letter-spacing:.1em; text-transform:uppercase;
+  margin:20px 0 10px;
+}
+.modules-track {
+  display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;
+  scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  scroll-snap-type:x mandatory;
+  margin:0 -16px; padding-left:16px; padding-right:16px;
+}
+.modules-track::-webkit-scrollbar { display:none; }
+.module-card {
+  flex-shrink:0; scroll-snap-align:start;
+  width:162px; min-height:148px;
+  border-radius:22px; padding:14px 14px 16px;
+  display:flex; flex-direction:column;
+  cursor:pointer; border:none;
+  position:relative; overflow:hidden;
+  transition:transform .15s, opacity .15s;
+}
+.module-card:active { transform:scale(.97); opacity:.9; }
+.module-train { background:linear-gradient(145deg,#1e3a5f 0%,#1e40af 70%,#3b82f6 100%); }
+.module-fuel  { background:linear-gradient(145deg,#7f1d1d 0%,#991b1b 60%,#dc2626 100%); }
+.module-school{ background:linear-gradient(145deg,#064e3b 0%,#065f46 60%,#059669 100%); }
+.module-spend { background:linear-gradient(145deg,#1e1b4b 0%,#312e81 60%,#4f46e5 100%); }
+.module-ask   { background:linear-gradient(145deg,#292524 0%,#44403c 60%,#57534e 100%); }
+.live-pill {
+  display:inline-flex; align-items:center; gap:4px;
+  background:rgba(255,255,255,.1); border-radius:99px;
+  padding:2px 7px; margin-bottom:10px; width:fit-content;
+}
+.live-dot { width:5px; height:5px; border-radius:50%; background:#4ade80; animation:pulse 1.8s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+.live-pill span { font-size:9px; font-weight:700; color:rgba(255,255,255,.6); letter-spacing:.06em; }
+.mod-icon { font-size:22px; line-height:1; margin-bottom:6px; }
+.mod-label { font-size:12px; font-weight:800; color:#fff; letter-spacing:-.2px; line-height:1.2; }
+.mod-sub { font-size:10px; color:rgba(255,255,255,.45); margin-top:2px; line-height:1.3; }
+.mod-data { font-size:22px; font-weight:900; color:#fff; letter-spacing:-1px; margin-top:auto; padding-top:8px; line-height:1; }
+.mod-data-sub { font-size:10px; color:rgba(255,255,255,.45); margin-top:2px; line-height:1.3; }
+
+/* ── SECTION DIVIDER ── */
+.section-divider {
+  display:flex; align-items:center; gap:10px;
+  margin:22px 0 12px;
+}
+.section-divider-line { flex:1; height:1px; background:var(--border); }
+.section-divider-label {
+  font-size:10px; font-weight:800; color:var(--muted-text);
+  letter-spacing:.1em; text-transform:uppercase; white-space:nowrap;
+}
+
+/* ── BRIEF NARRATIVE CARD ── */
+.brief-card {
+  background:linear-gradient(155deg,#0f172a 0%,#1e3a5f 100%);
+  border-radius:22px; padding:20px 20px 22px;
+  margin-bottom:10px;
+  border:1px solid rgba(99,102,241,.25);
+  position:relative; overflow:hidden;
+}
+.brief-card::before {
+  content:'';
+  position:absolute; top:-30px; right:-30px;
+  width:120px; height:120px; border-radius:50%;
+  background:radial-gradient(circle,rgba(99,102,241,.2) 0%,transparent 70%);
+}
+.brief-brand {
+  display:flex; align-items:center; gap:7px; margin-bottom:12px;
+}
+.brief-brand-dot {
+  width:22px; height:22px; border-radius:7px;
+  background:#6366f1; display:flex; align-items:center;
+  justify-content:center; font-size:12px; flex-shrink:0;
+}
+.brief-brand-name { font-size:11px; font-weight:800; color:rgba(255,255,255,.45); letter-spacing:.08em; }
+.brief-text {
+  font-size:16px; font-weight:500; color:#fff; line-height:1.65;
+  letter-spacing:-.1px;
+}
+.brief-shimmer {
+  display:flex; flex-direction:column; gap:10px;
+}
+.shimmer-line {
+  height:13px; border-radius:6px;
+  background:rgba(255,255,255,.1);
+  animation:shimmer 1.5s linear infinite;
+  background:linear-gradient(90deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,.14) 40%,rgba(255,255,255,.06) 100%);
+  background-size:200% 100%;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── TODAY EVENTS ── */
+.events-strip {
+  display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;
+  scrollbar-width:none; margin:0 -16px; padding-left:16px; padding-right:16px;
+  scroll-snap-type:x mandatory;
+}
+.events-strip::-webkit-scrollbar { display:none; }
+.event-card {
+  flex-shrink:0; scroll-snap-align:start;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:18px; padding:12px 14px; min-width:170px; max-width:200px;
+}
+.event-time { font-size:10px; font-weight:800; color:var(--accent); letter-spacing:.05em; margin-bottom:4px; }
+.event-title { font-size:13px; font-weight:700; color:var(--text); line-height:1.25; }
+.event-sub { font-size:11px; color:var(--muted-text); margin-top:3px; }
+
+/* ── NEAR YOU STRIP ── */
+.venue-strip {
+  display:flex; gap:10px; overflow-x:auto; padding-bottom:4px;
+  scrollbar-width:none; margin:0 -16px; padding-left:16px; padding-right:16px;
+  scroll-snap-type:x mandatory;
+}
+.venue-strip::-webkit-scrollbar { display:none; }
+.venue-card {
+  flex-shrink:0; scroll-snap-align:start;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:18px; padding:14px 14px 12px;
+  width:150px; cursor:pointer; text-align:left;
+  transition:transform .15s;
+}
+.venue-card:active { transform:scale(.96); }
+.venue-cat-btn {
+  font-size:10px; font-weight:700; border-radius:99px; padding:3px 8px;
+  margin-bottom:8px; display:inline-block;
+  background:rgba(99,102,241,.12); color:#a5b4fc; border:none;
+}
+.venue-name { font-size:13px; font-weight:800; color:var(--text); line-height:1.25; }
+.venue-meta { font-size:11px; color:var(--muted-text); margin-top:3px; }
+.venue-add-strip {
+  flex-shrink:0; scroll-snap-align:start;
+  background:var(--surface2); border:1px dashed var(--border);
+  border-radius:18px; padding:14px; width:130px;
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:6px; cursor:pointer;
+}
+.venue-add-icon { font-size:20px; opacity:.4; }
+.venue-add-label { font-size:11px; font-weight:600; color:var(--muted-text); text-align:center; line-height:1.3; }
+
+/* ── QUICK ACTIONS ── */
+.qa-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.qa-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:18px; padding:14px 14px 16px;
+  cursor:pointer; text-align:left; display:flex;
+  flex-direction:column; gap:10px;
+  transition:border-color .15s;
+}
+.qa-card:active { border-color:var(--accent); }
+.qa-card-wide { grid-column:span 2; flex-direction:row; align-items:center; gap:14px; }
+.qa-icon { font-size:24px; line-height:1; }
+.qa-label { font-size:13px; font-weight:800; color:var(--text); letter-spacing:-.2px; }
+.qa-sub { font-size:11px; color:var(--muted-text); margin-top:1px; line-height:1.4; }
+.qa-badge {
+  margin-left:auto; font-size:11px; font-weight:700;
+  background:rgba(99,102,241,.15); color:#a5b4fc;
+  border-radius:8px; padding:4px 9px; flex-shrink:0;
+}
+.qa-badge-red {
+  background:rgba(239,68,68,.15); color:#fca5a5;
+}
+
+/* ── FLOATING ASK BAR ── */
+.ask-float {
+  position:fixed; bottom:72px; left:50%; transform:translateX(-50%);
+  width:calc(100% - 32px); max-width:448px; z-index:60;
+}
+.ask-inner {
+  display:flex; gap:8px; align-items:center;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:99px;
+  padding:8px 8px 8px 16px;
+  box-shadow:0 8px 32px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.2);
+  backdrop-filter:blur(20px);
+}
+.ask-input {
+  flex:1; background:none; border:none; outline:none;
+  font-family:inherit; font-size:14px; color:var(--text);
+}
+.ask-input::placeholder { color:var(--muted-text); }
+.ask-btn {
+  width:36px; height:36px; border-radius:50%;
+  background:var(--accent); border:none; color:#fff;
+  font-size:16px; cursor:pointer; display:flex;
+  align-items:center; justify-content:center; flex-shrink:0;
+}
+
+/* ── FLOATING NAV ISLAND ── */
+.nav-island {
+  position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+  z-index:70; display:flex; align-items:center;
+  background:rgba(20,20,24,.85);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:99px; padding:6px 8px; gap:2px;
+  backdrop-filter:blur(24px) saturate(180%);
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+}
+[data-theme="light"] .nav-island {
+  background:rgba(255,255,255,.85);
+  border-color:rgba(0,0,0,.1);
+}
+.nav-pill {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:6px 14px; border-radius:99px; border:none;
+  background:none; cursor:pointer; gap:2px; transition:background .15s;
+  min-width:52px;
+}
+.nav-pill.active { background:var(--accent); }
+.nav-pill-icon { font-size:16px; line-height:1; }
+.nav-pill-label { font-size:8px; font-weight:700; color:rgba(255,255,255,.45); letter-spacing:.04em; }
+.nav-pill.active .nav-pill-label { color:#fff; }
+[data-theme="light"] .nav-pill-label { color:rgba(0,0,0,.4); }
+[data-theme="light"] .nav-pill.active .nav-pill-label { color:#fff; }
+
+/* ── CHIPS ROW ── */
+.chips { display:flex; gap:7px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:4px; }
+.chips::-webkit-scrollbar { display:none; }
+.chip {
+  flex-shrink:0; background:var(--surface); border:1px solid var(--border);
+  border-radius:99px; padding:6px 12px;
+  font-size:12px; font-weight:600; color:var(--text);
+  cursor:pointer; white-space:nowrap; font-family:inherit;
+}
+.chip:active { border-color:var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- Preview banner -->
+<div class="banner">
+  2026 BRIEF PROTOTYPE ·
+  <a href="/">← Live app</a>
+  <button class="banner-btn" onclick="_toggleTheme()" id="theme-btn">☀️ Light</button>
+  <button class="banner-btn" onclick="_toggleMode()" id="mode-btn">🏢 Office</button>
+</div>
+
+<!-- Time-aware hero -->
+<div class="hero" id="hero">
+  <div class="hero-inner">
+    <div class="hero-top">
+      <div>
+        <div class="hero-greeting" id="hero-greeting">Good morning<br><em>Vikram</em></div>
+        <div class="hero-date" id="hero-date">Tuesday, 27 May</div>
+      </div>
+      <div class="hero-actions">
+        <button class="hero-btn">⚙️</button>
+      </div>
+    </div>
+    <div class="hero-weather" id="hero-weather">
+      <div class="hero-wx-icon" id="wx-icon">☀️</div>
+      <div class="hero-wx-temp" id="wx-temp">21°C</div>
+      <div class="hero-wx-right">
+        <div style="font-size:13px;font-weight:700;color:#fff" id="wx-cond">Clear sky</div>
+        <div class="hero-wx-desc" id="wx-wind">Wind 16 km/h · KT15 1AA</div>
+      </div>
+    </div>
+    <div class="wfh-row">
+      <button class="wfh-btn active" id="wfh-wfh" onclick="_setMode('wfh')">🏠 WFH</button>
+      <button class="wfh-btn" id="wfh-office" onclick="_setMode('office')">🏢 In office</button>
+    </div>
+  </div>
+</div>
+
+<!-- Page content -->
+<div class="page">
+
+  <!-- Module strip -->
+  <div class="modules-label">Live now</div>
+  <div class="modules-track" id="modules-track">
+
+    <button class="module-card module-train" onclick="window.location='/'">
+      <div class="live-pill"><div class="live-dot"></div><span>LIVE</span></div>
+      <div class="mod-icon">🚆</div>
+      <div class="mod-label">Trains</div>
+      <div class="mod-sub" id="mod-train-sub">Weybridge → Waterloo</div>
+      <div class="mod-data" id="mod-train-dep">08:43</div>
+      <div class="mod-data-sub" id="mod-train-status">On time · 4 min</div>
+    </button>
+
+    <button class="module-card module-fuel" onclick="window.location='/'">
+      <div class="live-pill"><div class="live-dot"></div><span>LIVE</span></div>
+      <div class="mod-icon">⛽</div>
+      <div class="mod-label">Fuel</div>
+      <div class="mod-sub">Cheapest near you</div>
+      <div class="mod-data">135.9p</div>
+      <div class="mod-data-sub">Esso · Addlestone</div>
+    </button>
+
+    <button class="module-card module-school" onclick="window.location='/'">
+      <div class="live-pill" style="background:rgba(255,255,255,.1)"><div class="live-dot" style="background:#fbbf24"></div><span style="color:rgba(255,255,255,.6)">SCHOOL</span></div>
+      <div class="mod-icon">🏫</div>
+      <div class="mod-label">Riaan</div>
+      <div class="mod-sub">Stanns Heath</div>
+      <div class="mod-data" style="font-size:16px;line-height:1.3">Year 4<br>trip</div>
+      <div class="mod-data-sub">Wed 29 May</div>
+    </button>
+
+    <button class="module-card module-spend" onclick="window.location='/'">
+      <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.4);letter-spacing:.08em;margin-bottom:10px">THIS MONTH</div>
+      <div class="mod-icon">💷</div>
+      <div class="mod-label">Spend</div>
+      <div class="mod-sub">Across saved receipts</div>
+      <div class="mod-data">£847</div>
+      <div class="mod-data-sub">+£43 vs last month</div>
+    </button>
+
+  </div>
+
+  <!-- Miru Brief -->
+  <div class="section-divider">
+    <div class="section-divider-line"></div>
+    <div class="section-divider-label">Your Brief</div>
+    <div class="section-divider-line"></div>
+  </div>
+
+  <div class="brief-card">
+    <div class="brief-brand">
+      <div class="brief-brand-dot">M</div>
+      <div class="brief-brand-name">MIRU · NOW</div>
+    </div>
+    <div class="brief-shimmer" id="brief-shimmer">
+      <div class="shimmer-line" style="width:85%"></div>
+      <div class="shimmer-line" style="width:95%"></div>
+      <div class="shimmer-line" style="width:62%"></div>
+    </div>
+    <div class="brief-text" id="brief-text" style="display:none"></div>
+  </div>
+
+  <!-- Today events -->
+  <div class="section-divider">
+    <div class="section-divider-line"></div>
+    <div class="section-divider-label">Today</div>
+    <div class="section-divider-line"></div>
+  </div>
+
+  <div class="events-strip" id="events-strip">
+    <div class="event-card">
+      <div class="event-time">10:00 AM</div>
+      <div class="event-title">Team sync</div>
+      <div class="event-sub">📹 Google Meet</div>
+    </div>
+    <div class="event-card">
+      <div class="event-time">3:30 PM</div>
+      <div class="event-title">School pickup</div>
+      <div class="event-sub">🏫 Stanns Heath</div>
+    </div>
+    <div class="event-card" style="border-style:dashed;opacity:.55;cursor:pointer" onclick="window.location='/'">
+      <div class="event-time" style="color:var(--muted-text)">ADD</div>
+      <div class="event-title" style="color:var(--muted-text)">+ Event</div>
+      <div class="event-sub">via WhatsApp</div>
+    </div>
+  </div>
+
+  <!-- Context chips -->
+  <div style="margin-top:14px">
+    <div class="chips" id="ctx-chips">
+      <button class="chip">🚗 School run 3:30pm</button>
+      <button class="chip">☕ Cafes near you</button>
+      <button class="chip">🌳 Park nearby</button>
+      <button class="chip">🍽️ Lunch</button>
+    </div>
+  </div>
+
+  <!-- Near you -->
+  <div class="section-divider">
+    <div class="section-divider-line"></div>
+    <div class="section-divider-label">Near you right now</div>
+    <div class="section-divider-line"></div>
+  </div>
+
+  <div class="venue-strip">
+    <div class="venue-card">
+      <div class="venue-cat-btn">☕ Cafe</div>
+      <div class="venue-name">Starbucks Addlestone</div>
+      <div class="venue-meta">0.3mi · Open now</div>
+    </div>
+    <div class="venue-card">
+      <div class="venue-cat-btn">🍕 Food</div>
+      <div class="venue-name">Franco's Kitchen</div>
+      <div class="venue-meta">0.5mi · Open now</div>
+    </div>
+    <div class="venue-card">
+      <div class="venue-cat-btn">🌳 Park</div>
+      <div class="venue-name">Chertsey Rec Ground</div>
+      <div class="venue-meta">0.8mi · Open</div>
+    </div>
+    <div class="venue-card">
+      <div class="venue-cat-btn">🍺 Pub</div>
+      <div class="venue-name">The Grotto</div>
+      <div class="venue-meta">0.4mi · Opens 11am</div>
+    </div>
+    <div class="venue-add-strip" onclick="window.location='/'">
+      <div class="venue-add-icon">🔍</div>
+      <div class="venue-add-label">Search more places</div>
+    </div>
+  </div>
+
+  <!-- Quick actions (2-col grid) -->
+  <div class="section-divider" style="margin-top:22px">
+    <div class="section-divider-line"></div>
+    <div class="section-divider-label">Tools</div>
+    <div class="section-divider-line"></div>
+  </div>
+
+  <div class="qa-grid">
+    <button class="qa-card" onclick="window.location='/'">
+      <div class="qa-icon">🏡</div>
+      <div>
+        <div class="qa-label">My Local</div>
+        <div class="qa-sub">Area profile · MP · services</div>
+      </div>
+    </button>
+    <button class="qa-card" onclick="window.location='/'">
+      <div class="qa-icon">🗂️</div>
+      <div>
+        <div class="qa-label">Life Admin</div>
+        <div class="qa-sub">MOT · bills · renewals</div>
+      </div>
+      <div class="qa-badge qa-badge-red" style="position:absolute;top:12px;right:12px">2 due</div>
+    </button>
+    <button class="qa-card" onclick="window.location='/'">
+      <div class="qa-icon">📌</div>
+      <div>
+        <div class="qa-label">Clippings</div>
+        <div class="qa-sub">77 saved items</div>
+      </div>
+    </button>
+    <button class="qa-card" onclick="window.location='/'">
+      <div class="qa-icon">🔎</div>
+      <div>
+        <div class="qa-label">Research</div>
+        <div class="qa-sub">Any UK postcode</div>
+      </div>
+    </button>
+    <button class="qa-card qa-card-wide" onclick="window.location='/'">
+      <div class="qa-icon">🔬</div>
+      <div style="flex:1">
+        <div class="qa-label">Brand Intel</div>
+        <div class="qa-sub">Company profiles · leadership · news · market position</div>
+      </div>
+      <div class="qa-badge">intel.humanagency.co</div>
+    </button>
+  </div>
+
+</div><!-- /page -->
+
+<!-- Floating Ask Miru -->
+<div class="ask-float">
+  <div class="ask-inner">
+    <input class="ask-input" type="text" placeholder="Ask Miru anything…" id="ask-input"
+      onkeydown="if(event.key==='Enter')_ask()">
+    <button class="ask-btn" onclick="_ask()">↑</button>
+  </div>
+</div>
+
+<!-- Floating island nav -->
+<nav class="nav-island">
+  <button class="nav-pill active">
+    <div class="nav-pill-icon">🏠</div>
+    <div class="nav-pill-label">HOME</div>
+  </button>
+  <button class="nav-pill">
+    <div class="nav-pill-icon">🏡</div>
+    <div class="nav-pill-label">LOCAL</div>
+  </button>
+  <button class="nav-pill">
+    <div class="nav-pill-icon">📌</div>
+    <div class="nav-pill-label">SAVES</div>
+  </button>
+  <button class="nav-pill">
+    <div class="nav-pill-icon">🔎</div>
+    <div class="nav-pill-label">SEARCH</div>
+  </button>
+  <button class="nav-pill">
+    <div class="nav-pill-icon">⋯</div>
+    <div class="nav-pill-label">MORE</div>
+  </button>
+</nav>
+
+<script>
+  // ── Time-aware hero ──
+  var _now = new Date();
+  var _h = _now.getHours();
+  var _greets = ["Good morning","Good morning","Good afternoon","Good evening","Good evening"];
+  var _greetIdx = _h < 12 ? 0 : _h < 17 ? 2 : _h < 21 ? 3 : 4;
+  var _greet = _greets[_greetIdx];
+
+  var _heroGrads = {
+    night:   "linear-gradient(160deg,#020617 0%,#0f172a 100%)",
+    morning: "linear-gradient(160deg,#1a1040 0%,#1e3a5f 60%,#7c3a0a 100%)",
+    day:     "linear-gradient(160deg,#0c2461 0%,#1e40af 60%,#0ea5e9 100%)",
+    evening: "linear-gradient(160deg,#1e0a3c 0%,#7c3aed 50%,#c2410c 100%)",
+  };
+  var _grad = _h < 6 ? _heroGrads.night : _h < 12 ? _heroGrads.morning : _h < 17 ? _heroGrads.day : _h < 21 ? _heroGrads.evening : _heroGrads.night;
+  document.getElementById("hero").style.background = _grad;
+
+  var _days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var _mons = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  document.getElementById("hero-greeting").innerHTML = _greet + '<br><em>Vikram</em>';
+  document.getElementById("hero-date").textContent = _days[_now.getDay()] + ", " + _now.getDate() + " " + _mons[_now.getMonth()];
+
+  // Night-aware wx icon
+  var _wxCodes = { 0: _h>=21||_h<6 ? "🌙" : "☀️", 1: _h>=21||_h<6 ? "🌙" : "🌤️", 3: "⛅", 45: "🌫️", 63: "🌧️", 77: "❄️" };
+  document.getElementById("wx-icon").textContent = _wxCodes[0]; // mock: clear
+
+  // ── Brief shimmer → text after 1.4s ──
+  setTimeout(function() {
+    var briefs = [
+      "Dry morning ahead for the school run. The 08:43 to Waterloo is on time, and fuel's at 135.9p at Esso if you need to fill up. Riaan has a year trip on Wednesday — consent form due tomorrow.",
+      "You're working from home today. Clear skies and 21°C — good afternoon for a walk. Riaan's school trip is Wednesday, consent form still outstanding."
+    ];
+    var mode = localStorage.getItem("_p26_mode") || "wfh";
+    document.getElementById("brief-shimmer").style.display = "none";
+    var bt = document.getElementById("brief-text");
+    bt.textContent = mode === "wfh" ? briefs[1] : briefs[0];
+    bt.style.display = "block";
+    bt.style.opacity = "0";
+    bt.style.transition = "opacity .4s";
+    requestAnimationFrame(function() { bt.style.opacity = "1"; });
+  }, 1400);
+
+  // ── WFH / Office toggle ──
+  function _setMode(m) {
+    localStorage.setItem("_p26_mode", m);
+    document.getElementById("wfh-wfh").className = "wfh-btn" + (m === "wfh" ? " active" : "");
+    document.getElementById("wfh-office").className = "wfh-btn" + (m === "office" ? " active" : "");
+    document.getElementById("mode-btn").textContent = m === "wfh" ? "🏠 WFH" : "🏢 Office";
+    var ts = document.getElementById("mod-train-sub");
+    var td = document.getElementById("mod-train-dep");
+    var tst = document.getElementById("mod-train-status");
+    if (m === "office") {
+      ts.textContent = "Weybridge → Waterloo";
+      td.textContent = "08:43";
+      tst.textContent = "On time · 4 min";
+    } else {
+      ts.textContent = "Waterloo → Weybridge";
+      td.textContent = "18:15";
+      tst.textContent = "On time · 52 min";
+    }
+    // Re-trigger brief shimmer briefly
+    var sh = document.getElementById("brief-shimmer");
+    var bt = document.getElementById("brief-text");
+    sh.style.display = "flex"; bt.style.display = "none";
+    setTimeout(function() {
+      var briefs = ["Dry morning ahead for the school run. The 08:43 to Waterloo is on time, and fuel's at 135.9p at Esso if you need to fill up. Riaan has a year trip on Wednesday — consent form due tomorrow.","You're working from home today. Clear skies and 21°C — good afternoon for a walk. Riaan's school trip is Wednesday, consent form still outstanding."];
+      sh.style.display = "none"; bt.textContent = m === "wfh" ? briefs[1] : briefs[0];
+      bt.style.display = "block"; bt.style.opacity = "0"; bt.style.transition = "opacity .4s";
+      requestAnimationFrame(function(){ bt.style.opacity = "1"; });
+    }, 900);
+  }
+
+  // ── Banner toggles ──
+  function _toggleTheme() {
+    var isDark = document.documentElement.dataset.theme === "dark";
+    document.documentElement.dataset.theme = isDark ? "light" : "dark";
+    document.getElementById("theme-btn").textContent = isDark ? "🌙 Dark" : "☀️ Light";
+  }
+  function _toggleMode() {
+    var cur = localStorage.getItem("_p26_mode") || "wfh";
+    _setMode(cur === "wfh" ? "office" : "wfh");
+  }
+
+  // Init mode
+  var _initMode = localStorage.getItem("_p26_mode") || "wfh";
+  _setMode(_initMode);
+
+  // ── Ask Miru stub ──
+  function _ask() {
+    var q = document.getElementById("ask-input").value.trim();
+    if (!q) return;
+    document.getElementById("ask-input").value = "";
+    alert("Ask Miru: "" + q + ""\n\n(prototype — hooks into live /api/home/ask on the real app)");
+  }
+</script>
+</body>
+</html>

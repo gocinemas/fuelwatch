@@ -1185,6 +1185,10 @@ def design_lanes():
 def design_weather():
     return render_template("design_weather_icons.html")
 
+@app.route("/design/brief")
+def design_brief():
+    return render_template("brief_2026.html")
+
 @app.route("/privacy")
 def privacy_page():
     return render_template("privacy.html")

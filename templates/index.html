@@ -14824,22 +14824,7 @@ _bkBadge();
         + '</div>';
     }
 
-    // ── Weather card (always first in evening, after trains in morning) ──────
-    var weather = ctx && ctx.weather;
-    var weatherHtml = "";
-    if (weather && weather.temp !== undefined) {
-      var wIcon = weather.sunny ? "☀️" : weather.outdoor_ok ? "🌤️" : "🌧️";
-      var wMood = weather.sunny && weather.warm ? "Good evening for outdoors"
-                : weather.outdoor_ok            ? "Passable for a walk"
-                : "One for staying in";
-      weatherHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">' + wIcon + ' Weather</div>'
-        + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">' + weather.temp + '°C</div>'
-        + '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + weather.desc + (weather.wind ? ' · ' + weather.wind + ' km/h wind' : '') + '</div>'
-        + (_isEvening ? '<div style="font-size:11px;font-weight:600;color:var(--accent);margin-top:5px">' + wMood + '</div>' : '')
-        + '</div>';
-      if (_isOffHours) html += weatherHtml;  // weather leads in evening/night
-    }
+    // Weather now shown in the header bar (brief-weather-bar) — not repeated here
 
     // ── Trains — direction is time-aware ─────────────────────────────────────
     // Morning: home → work (ctx.trains); Evening: work → home (ctx.trains_home)
@@ -14924,9 +14909,6 @@ _bkBadge();
           + deps + '</div>';
       }
     }
-
-    // Weather in non-evening slots (after trains)
-    if (!_isOffHours && weatherHtml) html += weatherHtml;
 
     // School — show profiles + upcoming + recent comms
     var schoolRaw      = ctx && ctx.school;
