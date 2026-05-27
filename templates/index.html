@@ -382,12 +382,12 @@
     .live-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#dc2626; animation:livepulse 2s infinite; }
     .live-dot-green { display:inline-block; width:5px; height:5px; border-radius:50%; background:#4ade80; animation:livepulse 2s infinite; }
 
-    /* ─── Desktop Sidebar ─────────────────────────────────────────────── */
+    /* ─── Desktop Sidebar (fixed) ────────────────────────────────────── */
     #desktop-sidebar {
       display: none; position: fixed; left: 0; top: 0; bottom: 0; width: 58px;
       z-index: 45; background: var(--surface); border-right: 1px solid var(--border);
       flex-direction: column; align-items: center;
-      padding: 100px 0 16px; gap: 2px; overflow-y: auto;
+      padding: 96px 0 16px; gap: 2px; overflow-y: auto;
     }
     .sb-btn {
       width: 42px; height: 42px; border-radius: 12px;
@@ -406,16 +406,7 @@
     @media (min-width: 900px) {
       #desktop-sidebar { display: flex; }
       #pill-nav { display: none !important; }
-      /* ID selector wins over Tailwind's class-based mx-auto/max-w-xl */
-      #app-main {
-        margin-left: 58px; max-width: none;
-        padding-left: 28px; padding-right: 32px;
-      }
-      /* Override inline max-width/margin on individual screens */
-      #app-main .screen { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; }
-      /* Stretch header inner row */
       #app-header .inner { max-width: none; margin: 0; padding: 0 24px; }
-      /* Indent identity bar content past sidebar */
       #identity-bar { padding-left: 58px; }
     }
   </style>
@@ -511,7 +502,7 @@
     </div>
   </div>
 
-  <!-- Desktop sidebar — hidden on mobile, shown ≥900px -->
+  <!-- Desktop sidebar — fixed, hidden on mobile, shown ≥900px -->
   {% if not intel_mode %}
   <nav id="desktop-sidebar" aria-label="Main navigation">
     <button class="sb-btn on" id="sb-home"   title="Home"      onclick="showHome()">🏠</button>
@@ -11534,6 +11525,53 @@ function _hcAdd() {
   } else {
     setTimeout(_maGmailInit, 200);
   }
+
+  // ── Desktop sidebar offset — JS forces margin since Tailwind's mx-auto fights CSS ──
+  (function _deskLayout() {
+    var SB = 58, PAD = 24;
+    // All screens that live OUTSIDE #app-main need explicit left padding
+    var _outerScreens = ["screen-scan","screen-admin","screen-lifeadmin",
+      "screen-school","screen-saves","screen-compare","screen-recipe",
+      "screen-music","screen-trains","screen-news"];
+    function _apply() {
+      var desk = window.innerWidth >= 900;
+      var main = document.getElementById("app-main");
+      if (main) {
+        if (desk) {
+          main.style.setProperty("margin-left", SB + "px", "important");
+          main.style.setProperty("max-width",   "none",    "important");
+          main.style.setProperty("padding-left", PAD + "px", "important");
+          main.style.setProperty("padding-right","32px",   "important");
+        } else {
+          main.style.removeProperty("margin-left");
+          main.style.removeProperty("max-width");
+          main.style.removeProperty("padding-left");
+          main.style.removeProperty("padding-right");
+        }
+      }
+      _outerScreens.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (desk) {
+          el.style.setProperty("padding-left", (SB + PAD) + "px", "important");
+          el.style.setProperty("max-width",    "none",            "important");
+          el.style.setProperty("margin-left",  "0",               "important");
+          el.style.setProperty("margin-right", "0",               "important");
+        } else {
+          el.style.removeProperty("padding-left");
+          el.style.removeProperty("max-width");
+          el.style.removeProperty("margin-left");
+          el.style.removeProperty("margin-right");
+        }
+      });
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", _apply);
+    } else {
+      _apply();
+    }
+    window.addEventListener("resize", _apply);
+  })();
 
   // ── Bottom nav active state ──────────────────────────────────────────────────
   const _origShowScreen = showScreen;
