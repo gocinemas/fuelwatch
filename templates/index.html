@@ -11370,6 +11370,24 @@ function _hcAdd() {
   });
   {% endif %}
 
+  // ── WhatsApp magic-link auto-login (?wt=TOKEN in URL) ───────────────────────
+  (function() {
+    var _wt = new URLSearchParams(location.search).get("wt");
+    if (!_wt) return;
+    fetch("/api/resolve-token?t=" + encodeURIComponent(_wt))
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(d) {
+        if (!d || !d.phone) return;
+        localStorage.setItem("miru_phone", d.phone);
+        if (d.postcode) localStorage.setItem("miru_postcode", d.postcode.replace(/\s+/g,"").toUpperCase());
+        // Clean URL and reload so the page reads fresh identity from localStorage
+        var clean = location.pathname + (location.hash || "");
+        history.replaceState(null, "", clean);
+        location.reload();
+      })
+      .catch(function() {});
+  })();
+
   // ── Global phone bar init ────────────────────────────────────────────────────
   if (document.readyState === "loading") {
     window.addEventListener("DOMContentLoaded", _globalPhoneBarInit);

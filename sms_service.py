@@ -15555,22 +15555,17 @@ _HELP_MSG = (
 _WELCOME_MSG = (
     "👋 Welcome to *Miru* — your UK life assistant.\n"
     "\n"
-    "No app, no signup. Just type naturally:\n"
+    "No app download. Just type naturally:\n"
     "\n"
-    "☕  _where can I get good coffee near KT15_\n"
-    "🍺  _cheap beer KT16_  |  🥩 _steak KT16_\n"
+    "☕  _good coffee near KT15_\n"
     "🚆  _train waterloo to lewisham_\n"
-    "🚇  _tube status_  |  _jubilee line_\n"
-    "⛽  KT15 petrol\n"
-    "🏡  places KT15 3RL\n"
-    "🔍  brand Unilever  _(or send a product photo)_\n"
+    "⛽  _KT15 petrol_\n"
     "🔖  send any link — I'll save it\n"
-    "🧾  send a receipt photo — I'll track your spending\n"
-    "📸  send a photo — I'll describe it\n"
-    "📍  share your location — I'll find places nearby\n"
+    "🧾  send a receipt — I'll track spend\n"
+    "📍  share location — I'll find places\n"
+    "🔍  _brand Unilever_\n"
     "\n"
-    "Reply *HELP* to see everything I can do.\n"
-    "Set your home postcode at miru.humanagency.co 🏠"
+    "Reply *HELP* for everything I can do."
 )
 
 _CLARIFY_MSG = (
@@ -16141,7 +16136,16 @@ def whatsapp_reply():
                     }).execute()
                 except Exception as e:
                     print(f"[setup_postcode] {e}")
-                resp.message(f"✅ Got it — *{_pc_val}* saved as your home.\n\nNow try:\n🚆 _next train_\n⛽ _petrol prices_\n🏡 _places near me_\nOr visit miru.humanagency.co 🌐")
+                _wt = _wa_user_token(from_number)
+                resp.message(
+                    f"✅ *{_pc_val}* saved as your home.\n\n"
+                    f"Now try:\n"
+                    f"🚆 _next train_\n"
+                    f"⛽ _petrol prices_\n"
+                    f"🏡 _places near me_\n\n"
+                    f"👉 Open your personalised Miru:\n"
+                    f"miru.humanagency.co/?wt={_wt}"
+                )
                 return str(resp)
             if _ptype == "food":
                 _cheap_pfx = "cheap " if _pending.get("cheap") else ""
@@ -19396,6 +19400,33 @@ def api_whatsapp_number():
     # strip whatsapp: prefix if present; keep only digits and +
     number = re.sub(r"[^+\d]", "", raw.replace("whatsapp:", ""))
     return jsonify({"number": number})
+
+
+@app.route("/api/resolve-token")
+def api_resolve_token():
+    """Resolve a WhatsApp magic-link token to phone + home postcode.
+    Used by the web app ?wt= param to auto-populate identity without the user typing anything."""
+    token = (request.args.get("t") or "").strip()
+    if not token or len(token) < 8:
+        return jsonify({"error": "invalid"}), 400
+    from_number = _resolve_user_token(token)
+    if not from_number:
+        return jsonify({"error": "not found"}), 404
+    phone = from_number.replace("whatsapp:", "").strip()
+    # Fetch home postcode from my_area_places
+    postcode = ""
+    try:
+        plain = phone
+        rows = lib._sb().table("my_area_places").select("postcode") \
+            .eq("from_number", plain).eq("category", "_home").limit(1).execute().data
+        if not rows:
+            rows = lib._sb().table("my_area_places").select("postcode") \
+                .eq("from_number", "whatsapp:" + plain).eq("category", "_home").limit(1).execute().data
+        if rows:
+            postcode = (rows[0].get("postcode") or "").upper().strip()
+    except Exception:
+        pass
+    return jsonify({"phone": phone, "postcode": postcode})
 
 
 @app.route("/api/saves-token")
