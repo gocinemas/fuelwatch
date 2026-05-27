@@ -826,11 +826,15 @@ function _render(d) {
     var tl=(e.title||"").toLowerCase().trim();
     return !SKIP.some(function(w){return tl===w||tl.startsWith(w+" ")||tl.endsWith(" "+w);});
   });
-  if(d.school_holiday||tevs.length){
+  var _schoolLinked=_ctx.school&&_ctx.school.schools&&_ctx.school.schools.length>0;
+  var _shol=_schoolLinked?d.school_holiday:null;
+  if(_shol||tevs.length){
     document.getElementById("today-section").style.display="block";
     var evHTML="";
-    if(d.school_holiday){
-      evHTML+='<div class="ev-row"><div class="ev-time" style="color:#22c55e">HOLIDAY</div><div><div class="ev-title">'+(d.school_holiday.name||"School holiday")+'</div>'+(d.school_holiday.ends?'<div class="ev-loc">Back '+d.school_holiday.ends+'</div>':'')+' </div></div>';
+    if(_shol&&_shol.on_holiday){
+      var _holLabel="Kids "+(_shol.label||"school holiday");
+      var _holBack=_shol.back_tom?"Back at school tomorrow":"Back "+(_shol.back_label||"soon");
+      evHTML+='<div class="ev-row"><div class="ev-time" style="color:#22c55e">HOLIDAY</div><div><div class="ev-title">'+_holLabel+'</div><div class="ev-loc">'+_holBack+'</div></div></div>';
     }
     tevs.slice(0,4).forEach(function(e){
       evHTML+='<div class="ev-row"><div class="ev-time">'+(e.time||e.start_time||"Today")+'</div><div><div class="ev-title">'+(e.title||"").slice(0,38)+'</div>'+(e.location?'<div class="ev-loc">📍'+(e.location||"").slice(0,30)+'</div>':'')+' </div></div>';

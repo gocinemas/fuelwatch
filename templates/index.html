@@ -14405,7 +14405,9 @@ _bkBadge();
           _briefRenderInfoLines(d.context);
 
           // Today card — calendar events with navigation + school holiday banner
-          _briefRenderTodayCard(d.today_events, d.school_holiday);
+          // Only show school holiday to users who have school comms connected
+          var _schoolLinked = d.context && d.context.school && d.context.school.schools && d.context.school.schools.length > 0;
+          _briefRenderTodayCard(d.today_events, _schoolLinked ? d.school_holiday : null);
 
           // Chips
           _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
