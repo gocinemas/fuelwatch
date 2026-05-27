@@ -387,8 +387,8 @@
         <a href="https://miru.humanagency.co" style="font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:5px 10px;border:1.5px solid var(--border);border-radius:99px">← Miru</a>
         {% else %}
         <button onclick="openMiruStory()"
-          style="font-size:13px;font-weight:700;border:1.5px solid var(--border);background:transparent;cursor:pointer;padding:5px 11px;border-radius:99px;line-height:1;color:var(--muted);font-family:inherit"
-          title="What is Miru?">What's this?</button>
+          style="font-size:14px;border:none;background:transparent;cursor:pointer;padding:6px 8px;border-radius:8px;line-height:1;color:var(--subtle)"
+          title="What is Miru?">ℹ️</button>
         {% endif %}
         <button id="theme-btn" onclick="cycleTheme()"
           style="font-size:16px;border:none;background:transparent;cursor:pointer;padding:6px 8px;border-radius:8px;line-height:1;color:var(--subtle)"
@@ -1798,6 +1798,11 @@
         <div>
           <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Your Brief</div>
           <div id="brief-dateline" style="font-size:13px;color:var(--muted);margin-top:3px"></div>
+          <div id="brief-weather-bar" style="display:none;margin-top:6px;display:flex;align-items:center;gap:6px">
+            <span id="brief-wx-icon" style="font-size:20px"></span>
+            <span id="brief-wx-temp" style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-0.5px"></span>
+            <span id="brief-wx-desc" style="font-size:12px;color:var(--muted);line-height:1.3"></span>
+          </div>
         </div>
         <button onclick="showScreen('setup')" title="Settings" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 10px;font-size:16px;cursor:pointer;flex-shrink:0;margin-top:2px">⚙️</button>
       </div>
@@ -1846,6 +1851,26 @@
 
       <!-- Today card — calendar events + school holiday — shown right after brief -->
       <div id="brief-today-card" style="display:none;margin-bottom:10px"></div>
+
+      <!-- Location-aware section — near you right now -->
+      <div id="brief-location-section" style="display:none;margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase">📍 Near you right now</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button id="brief-nearby-cafe-btn" onclick="_briefFindNearby('cafe')" style="display:none;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:4px 10px;cursor:pointer">☕ Cafes</button>
+            <button id="brief-nearby-food-btn" onclick="_briefFindNearby('food')" style="display:none;font-size:11px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:99px;padding:4px 10px;cursor:pointer">🍽️ Food</button>
+            <button id="brief-nearby-pub-btn"  onclick="_briefFindNearby('pub')"  style="display:none;font-size:11px;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:99px;padding:4px 10px;cursor:pointer">🍺 Pub</button>
+            <button id="brief-nearby-park-btn" onclick="_briefFindNearby('park')" style="display:none;font-size:11px;font-weight:700;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:99px;padding:4px 10px;cursor:pointer">🌳 Park</button>
+          </div>
+        </div>
+        <div id="brief-location-shimmer" style="display:flex;flex-direction:column;gap:10px">
+          <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
+          <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
+        </div>
+        <div id="brief-location-cards" style="display:none;flex-direction:column;gap:10px"></div>
+        <div id="brief-location-err" style="display:none;font-size:13px;color:var(--muted);padding:12px 0"></div>
+        <div id="brief-nearby-results" style="display:none;flex-direction:column;gap:8px;margin-top:10px"></div>
+      </div>
 
       <!-- Context chips row — horizontal scroll strip -->
       <div id="brief-chips" style="display:flex;flex-wrap:nowrap;gap:8px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px"></div>
@@ -1996,26 +2021,6 @@
           <button onclick="document.getElementById('brief-event-form').style.display='none'" style="flex:1;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
         </div>
         <div id="brief-evt-err" style="display:none;font-size:12px;color:#ef4444;margin-top:6px"></div>
-      </div>
-
-      <!-- Location-aware section -->
-      <div id="brief-location-section" style="display:none;margin-top:18px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase">📍 Near you right now</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button id="brief-nearby-cafe-btn" onclick="_briefFindNearby('cafe')" style="display:none;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:4px 10px;cursor:pointer">☕ Cafes</button>
-            <button id="brief-nearby-food-btn" onclick="_briefFindNearby('food')" style="display:none;font-size:11px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:99px;padding:4px 10px;cursor:pointer">🍽️ Food</button>
-            <button id="brief-nearby-pub-btn"  onclick="_briefFindNearby('pub')"  style="display:none;font-size:11px;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:99px;padding:4px 10px;cursor:pointer">🍺 Pub</button>
-            <button id="brief-nearby-park-btn" onclick="_briefFindNearby('park')" style="display:none;font-size:11px;font-weight:700;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:99px;padding:4px 10px;cursor:pointer">🌳 Park</button>
-          </div>
-        </div>
-        <div id="brief-location-shimmer" style="display:flex;flex-direction:column;gap:10px">
-          <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
-          <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
-        </div>
-        <div id="brief-location-cards" style="display:none;flex-direction:column;gap:10px"></div>
-        <div id="brief-location-err" style="display:none;font-size:13px;color:var(--muted);padding:12px 0"></div>
-        <div id="brief-nearby-results" style="display:none;flex-direction:column;gap:8px;margin-top:10px"></div>
       </div>
 
       <!-- Ask about your day -->
@@ -14293,6 +14298,8 @@ _bkBadge();
     if (fuelSub)  { fuelSub.textContent  = "Cheapest near you"; fuelSub.style.color  = ""; fuelSub.style.fontWeight  = ""; }
     if (trainSub) { trainSub.textContent = "Live departures";   trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
     if (glance)   { glance.style.display = "none"; }
+    var _wxBar = document.getElementById("brief-weather-bar");
+    if (_wxBar)   { _wxBar.style.display = "none"; }
 
     // Show phone link CTA if no phone linked
     var noPh = document.getElementById("brief-no-phone-cta");
@@ -14304,6 +14311,15 @@ _bkBadge();
 
     var token = _miruPhone();
     var pc = _miruPostcode() || "";
+
+    // New user: skip fetch if no identity at all — show setup state immediately
+    if (!token && !pc) {
+      if (shimmer)   shimmer.style.display = "none";
+      if (briefText) { briefText.textContent = "Add your phone and postcode to get your personalised daily brief."; briefText.style.display = "block"; }
+      if (setupCta)  setupCta.style.display = "block";
+      _briefRequestLocation();
+      return;
+    }
 
     function _doFetchBrief(gpsLat, gpsLng) {
       var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc) + "&refresh=1";
@@ -14509,11 +14525,6 @@ _bkBadge();
         // Weekend/bank holiday — still accessible as a quiet chip
         secondaryChips.push({ label: "🚆 Train times", action: "showScreen('trains')" });
       }
-      var _wxDay = ctx && ctx.weather;
-      if (_wxDay && _wxDay.temp !== undefined) {
-        var _wxIcon = _wxDay.sunny ? "☀️" : _wxDay.outdoor_ok ? "🌤" : "🌧";
-        chips.push({ label: _wxIcon + " " + _wxDay.temp + "°", action: "showScreen('myarea')" });
-      }
       // Lunchtime: proactively surface food nearby (12:00–14:30 on working days)
       var _lunchHour = new Date().getHours();
       var _lunchMin  = new Date().getMinutes();
@@ -14596,6 +14607,24 @@ _bkBadge();
       }
     } else {
       if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
+    }
+
+    // ── Weather bar (top of brief, after dateline) ───────────────────────────
+    var _wx = ctx && ctx.weather;
+    var _wxBar = document.getElementById("brief-weather-bar");
+    if (_wxBar && _wx && _wx.temp !== undefined) {
+      var _wxH   = new Date().getHours();
+      var _wxNt  = _wxH >= 21 || _wxH < 6;
+      var _wxIco = typeof _wCode === "function" ? _wCode(_wx.code || 0) : (_wxNt ? "🌙" : (_wx.sunny ? "☀️" : _wx.outdoor_ok ? "🌤️" : "🌧️"));
+      var _wxDescParts = [];
+      if (_wx.desc) _wxDescParts.push(_wx.desc);
+      if (_wx.wind) _wxDescParts.push("Wind " + _wx.wind + " km/h");
+      document.getElementById("brief-wx-icon").textContent = _wxIco;
+      document.getElementById("brief-wx-temp").textContent = _wx.temp + "°C";
+      document.getElementById("brief-wx-desc").textContent = _wxDescParts.join(" · ");
+      _wxBar.style.display = "flex";
+    } else if (_wxBar) {
+      _wxBar.style.display = "none";
     }
 
     // ── Glance row above the narrative ────────────────────────────────────────

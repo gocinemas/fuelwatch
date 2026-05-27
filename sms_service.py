@@ -17926,36 +17926,60 @@ def wa_digest():
             {"id": s["id"], "title": s.get("title") or "Untitled", "url": s.get("url", "")}
             for s in batch
         ]
-        lines = [f"📬 Daily digest — {len(saves)} saved\n"]
-        for i, s in enumerate(batch, 1):
-            title = (s.get("title") or "Untitled")[:60]
-            summary = s.get("summary", "")
-            first_bullet = ""
-            if summary and "•" in summary:
-                first_bullet = summary.split("•")[1].strip()[:90]
-            url = s.get("url", "")
-            lines.append(f"{i}. {title}")
-            if first_bullet:
-                lines.append(f"   {first_bullet}")
-            if url:
-                lines.append(f"   {url}")
-        if len(saves) > 9:
-            lines.append(f"\n+{len(saves) - 9} more in My Clippings.")
+
+        # ── Group by category ────────────────────────────────────────────────
+        _CAT_ICO = {
+            "Dining": "🍽️", "Coffee & Lunch": "☕", "Groceries": "🛒",
+            "Entertainment": "🎭", "Books": "📚", "Wine": "🍷",
+            "Travel": "✈️", "Shopping": "🛍️", "Health": "💊",
+            "Finance": "💷", "Tech": "💻", "News": "📰", "Other": "📌",
+        }
+        _cat_groups = {}
+        for s in batch:
+            cat = (s.get("category") or "Other").strip()
+            _cat_groups.setdefault(cat, []).append((s.get("title") or "Untitled")[:55])
+
+        _cat_lines = []
+        for cat, titles in _cat_groups.items():
+            ico = _CAT_ICO.get(cat, "📌")
+            _cat_lines.append(f"{ico} *{cat}*: {' · '.join(titles)}")
+
+        # ── Groq narrative (1–2 sentences, no hallucination) ─────────────────
+        _groq_key = os.environ.get("GROQ_API_KEY", "")
+        _narrative = ""
+        if _groq_key and batch:
+            try:
+                import requests as _req2
+                _titles_for_groq = [s.get("title") or "Untitled" for s in batch[:9]]
+                _groq_prompt = (
+                    "Write exactly 1–2 sentences summarising what this person saved today. "
+                    "Be specific and warm, mention topics/themes, no emojis, no bullet points, no lists. "
+                    "Saved items: " + "; ".join(_titles_for_groq)
+                )
+                _gr = _req2.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {_groq_key}"},
+                    json={"model": "llama-3.1-8b-instant",
+                          "messages": [{"role": "user", "content": _groq_prompt}],
+                          "max_tokens": 80, "temperature": 0.4},
+                    timeout=8,
+                )
+                _narrative = _gr.json()["choices"][0]["message"]["content"].strip()
+            except Exception:
+                pass
+
         user_token = _wa_user_token(from_number)
-        lines.append("\nReply: *1 READ*, *2 SKIP*, *3 REMIND Monday*")
+        lines = [f"📬 *Your saves · {len(batch)} new*\n"]
+        if _narrative:
+            lines.append(_narrative + "\n")
+        lines.extend(_cat_lines)
+        if len(saves) > 9:
+            lines.append(f"\n+{len(saves) - 9} more in My Clippings")
+        lines.append(f"\nReply *1–{len(batch)}* to act on a save")
         lines.append(f"🔗 miru.humanagency.co/?screen=saves&token={user_token}")
 
-        # Split into chunks ≤4000 chars (WhatsApp limit)
         body_text = "\n".join(lines)
-        chunks, current = [], ""
-        for line in lines:
-            if len(current) + len(line) + 1 > 3800:
-                chunks.append(current.strip())
-                current = line + "\n"
-            else:
-                current += line + "\n"
-        if current.strip():
-            chunks.append(current.strip())
+        chunks = [body_text] if len(body_text) <= 3800 else [body_text[:3800]]
 
         try:
             for chunk in chunks:
