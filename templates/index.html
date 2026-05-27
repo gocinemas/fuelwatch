@@ -2090,11 +2090,11 @@
             </div>
             <span style="font-size:16px;color:var(--muted);flex-shrink:0">›</span>
           </button>
-          <button onclick="showScreen('school')" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;background:none;border:none;border-top:1px solid var(--border);cursor:pointer;text-align:left;font-family:inherit">
+          <button id="tile-school-row" onclick="showScreen('school')" style="display:none;align-items:center;gap:12px;width:100%;padding:10px 14px;background:none;border:none;border-top:1px solid var(--border);cursor:pointer;text-align:left;font-family:inherit">
             <div style="width:32px;height:32px;background:#ecfdf5;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏫</div>
             <div style="flex:1;min-width:0">
               <div style="font-size:12px;font-weight:700;color:var(--text)">School</div>
-              <div id="tile-school-sub" style="font-size:11px;color:var(--muted);margin-top:1px">Letters &amp; events</div>
+              <div id="tile-school-sub" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
             </div>
             <span style="font-size:16px;color:var(--muted);flex-shrink:0">›</span>
           </button>
@@ -14634,10 +14634,12 @@ _bkBadge();
     var fuelSub   = document.getElementById("tile-fuel-sub");
     var trainSub  = document.getElementById("tile-trains-sub");
     var schoolSub = document.getElementById("tile-school-sub");
+    var schoolRow = document.getElementById("tile-school-row");
     var glance    = document.getElementById("brief-glance");
     if (fuelSub)   { fuelSub.textContent  = "Cheapest near you"; fuelSub.style.color  = ""; fuelSub.style.fontWeight  = ""; }
     if (trainSub)  { trainSub.textContent = "Live departures";   trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
-    if (schoolSub) { schoolSub.textContent = "Letters & events"; schoolSub.style.color = ""; schoolSub.style.fontWeight = ""; }
+    if (schoolRow) { schoolRow.style.display = "none"; }
+    if (schoolSub) { schoolSub.textContent = ""; schoolSub.style.color = ""; schoolSub.style.fontWeight = ""; }
     if (glance)    { glance.style.display = "none"; }
     var _wxBar = document.getElementById("brief-weather-bar");
     if (_wxBar)    { _wxBar.style.display = "none"; }
@@ -14951,22 +14953,23 @@ _bkBadge();
       if (fuelSub) { fuelSub.textContent = "Cheapest near you"; fuelSub.style.color = ""; fuelSub.style.fontWeight = ""; }
     }
 
-    // ── School tile ───────────────────────────────────────────────────────────
+    // ── School tile — only shown when user has kids connected or events exist ──
     var schoolSubEl = document.getElementById("tile-school-sub");
-    if (schoolSubEl) {
-      var _sctx   = ctx && ctx.school;
-      var _skids  = (_sctx && _sctx.schools) ? _sctx.schools : [];
-      var _sevs   = Array.isArray(_sctx) ? _sctx : (_sctx && _sctx.events ? _sctx.events : []);
+    var schoolRowEl = document.getElementById("tile-school-row");
+    if (schoolSubEl && schoolRowEl) {
+      var _sctx  = ctx && ctx.school;
+      var _skids = (_sctx && _sctx.schools) ? _sctx.schools : [];
+      var _sevs  = Array.isArray(_sctx) ? _sctx : (_sctx && _sctx.events ? _sctx.events : []);
       if (_skids.length) {
-        schoolSubEl.textContent  = _skids.map(function(s){ return s.child_name || ""; }).join(" & ") + " connected";
-        schoolSubEl.style.color  = "#059669"; schoolSubEl.style.fontWeight = "700";
+        schoolSubEl.textContent = _skids.map(function(s){ return s.child_name || ""; }).join(" & ") + " connected";
+        schoolSubEl.style.color = "#059669"; schoolSubEl.style.fontWeight = "700";
+        schoolRowEl.style.display = "flex";
       } else if (_sevs.length) {
-        schoolSubEl.textContent  = _sevs.length + " event" + (_sevs.length > 1 ? "s" : "") + " this week";
-        schoolSubEl.style.color  = "#059669"; schoolSubEl.style.fontWeight = "700";
-      } else {
-        schoolSubEl.textContent  = "Letters & events";
-        schoolSubEl.style.color  = ""; schoolSubEl.style.fontWeight = "";
+        schoolSubEl.textContent = _sevs.length + " event" + (_sevs.length > 1 ? "s" : "") + " this week";
+        schoolSubEl.style.color = "#059669"; schoolSubEl.style.fontWeight = "700";
+        schoolRowEl.style.display = "flex";
       }
+      // else: row stays hidden — user has no kids connected, nothing to surface
     }
 
     // ── Trains ────────────────────────────────────────────────────────────────
