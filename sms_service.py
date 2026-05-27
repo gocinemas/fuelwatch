@@ -4821,7 +4821,7 @@ def api_environment():
         return jsonify({"error": "Postcode required"}), 400
 
     # Cache key versioned so query expansions invalidate stale entries
-    _cache_key = postcode + "_v5"
+    _cache_key = postcode + "_v6"
 
     # Check Supabase cache first (shared across all users)
     try:
@@ -4954,6 +4954,8 @@ def api_environment():
             "industrial": industrial,
             "water":      water,
             "green":      green,
+            "lat":        lat,
+            "lon":        lon,
         }
         _env_cache[_cache_key] = {"data": result, "ts": time.time()}
         # Persist to Supabase so next user gets it instantly
