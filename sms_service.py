@@ -15656,17 +15656,9 @@ _CLARIFY_MSG = (
 
 _GREETING_WORDS = {"hi", "hello", "hey", "hiya", "yo", "start", "help", "menu", "miru", "join",
                    "morning", "good morning", "evening", "good evening"}
-_HELLO_ONLY     = {"hi", "hello", "hey", "hiya", "yo", "morning", "good morning", "evening", "good evening"}
+_HELLO_ONLY     = {"hi", "hello", "hey", "hiya", "yo", "miru", "morning", "good morning", "evening", "good evening"}
 
-_HELLO_MSG = (
-    "👋 Hey! What can I help with today?\n\n"
-    "Try:\n"
-    "☕ _good coffee near KT15_\n"
-    "🚆 _next train to Waterloo_\n"
-    "⛽ _petrol prices KT16_\n"
-    "📌 send any link to clip it\n\n"
-    "Or reply *HELP* for everything I can do."
-)
+_HELLO_MSG = _HELP_MSG
 
 _SEEN_NUMBERS: set = set()
 
