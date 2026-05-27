@@ -1984,6 +1984,26 @@
       <!-- Context chips row — horizontal scroll strip -->
       <div id="brief-chips" style="display:flex;flex-wrap:nowrap;gap:8px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px"></div>
 
+      <!-- Ask about your day — lives in left col to fill vertical space -->
+      <div id="brief-ask-wrap" style="display:none;margin-top:4px">
+        <!-- Suggestion chips — hidden once user asks first question -->
+        <div id="brief-ask-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="width:100%;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px">Ask Miru</div>
+          <button onclick="_briefAskChip('What did I save this week?')" style="font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;text-align:left;font-style:italic">What did I save this week?</button>
+          <button onclick="_briefAskChip('What\'s the next school event?')" style="font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;text-align:left;font-style:italic">Next school event?</button>
+          <button onclick="_briefAskChip('How much have I spent this month?')" style="font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;text-align:left;font-style:italic">How much did I spend?</button>
+          <button onclick="_briefAskChip('Next train to Waterloo?')" style="font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;text-align:left;font-style:italic">Next train?</button>
+        </div>
+        <div id="brief-ask-thread" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="brief-ask-input" type="text" placeholder="Ask Miru anything…"
+            style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:99px;font-size:14px;background:var(--surface);color:var(--text);outline:none"
+            onkeydown="if(event.key==='Enter')_briefAsk()">
+          <button onclick="_briefAsk()" id="brief-ask-btn"
+            style="width:38px;height:38px;border-radius:50%;border:none;background:#2563eb;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">↑</button>
+        </div>
+      </div>
+
       </div><!-- /brief-col-main -->
       <div id="brief-col-side">
 
@@ -2179,24 +2199,7 @@
         <div id="brief-evt-err" style="display:none;font-size:12px;color:#ef4444;margin-top:6px"></div>
       </div>
 
-      <!-- Ask about your day -->
-      <div id="brief-ask-wrap" style="display:none;margin-top:14px">
-        <!-- Suggestion chips — hidden once user asks first question -->
-        <div id="brief-ask-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-          <button onclick="_briefAskChip('What did I save this week?')" style="font-size:12px;font-weight:600;color:#4f46e5;background:#eff0ff;border:1px solid #c7d2fe;border-radius:99px;padding:5px 12px;cursor:pointer">📌 My saves</button>
-          <button onclick="_briefAskChip('What\'s the next school event?')" style="font-size:12px;font-weight:600;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:99px;padding:5px 12px;cursor:pointer">🏫 School</button>
-          <button onclick="_briefAskChip('How much have I spent this month?')" style="font-size:12px;font-weight:600;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:99px;padding:5px 12px;cursor:pointer">💷 Spend</button>
-          <button onclick="_briefAskChip('Next train to Waterloo?')" style="font-size:12px;font-weight:600;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:99px;padding:5px 12px;cursor:pointer">🚆 Trains</button>
-        </div>
-        <div id="brief-ask-thread" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input id="brief-ask-input" type="text" placeholder="Ask Miru anything…"
-            style="flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:99px;font-size:14px;background:var(--surface);color:var(--text);outline:none"
-            onkeydown="if(event.key==='Enter')_briefAsk()">
-          <button onclick="_briefAsk()" id="brief-ask-btn"
-            style="width:38px;height:38px;border-radius:50%;border:none;background:#2563eb;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">↑</button>
-        </div>
-      </div>
+      <!-- Ask Miru — moved into brief-col-main above -->
 
       <!-- Add event + saved events -->
       <div style="margin-top:10px">
