@@ -2858,11 +2858,30 @@
 
       <!-- Header -->
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-        <button onclick="history.back ? history.back() : showScreen('brief')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 11px;font-size:14px;cursor:pointer">←</button>
+        <button onclick="showScreen('brief')" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 11px;font-size:14px;cursor:pointer">←</button>
         <div>
           <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.5px">⚙️ Settings</div>
           <div style="font-size:12px;color:var(--muted);margin-top:1px">Brief, family &amp; accounts</div>
         </div>
+      </div>
+
+      <!-- ── YOUR ACCOUNT ── -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Your account</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px">
+        <button onclick="_idOpenModal('phone')" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:13px 15px;border:none;background:transparent;cursor:pointer;border-bottom:1px solid var(--border);text-align:left">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px">Phone</div>
+            <div id="setup-phone-display" style="font-size:14px;font-weight:600;color:var(--text)"></div>
+          </div>
+          <span style="font-size:12px;color:var(--muted);flex-shrink:0">Edit ›</span>
+        </button>
+        <button onclick="_idOpenModal('postcode')" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:13px 15px;border:none;background:transparent;cursor:pointer;text-align:left">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px">Home postcode</div>
+            <div id="setup-postcode-display" style="font-size:14px;font-weight:600;color:var(--text)"></div>
+          </div>
+          <span style="font-size:12px;color:var(--muted);flex-shrink:0">Edit ›</span>
+        </button>
       </div>
 
       <!-- ── YOUR BRIEF ── -->
@@ -7045,6 +7064,11 @@ function _hcAdd() {
   };
 
   window._setupLoad = function() {
+    // Account identity display
+    var phoneDisp = document.getElementById("setup-phone-display");
+    var pcDisp    = document.getElementById("setup-postcode-display");
+    if (phoneDisp) phoneDisp.textContent = _miruPhone() || "Not set — tap to add";
+    if (pcDisp)    pcDisp.textContent    = _miruPostcode() || "Not set — tap to add";
     // Prefs
     var prefs = (_briefData && _briefData.prefs) || {};
     var toEl = document.getElementById("setup-pref-to");
