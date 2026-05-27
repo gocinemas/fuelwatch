@@ -15368,6 +15368,10 @@ _bkBadge();
     briefText.style.opacity = "0.4";
     var token = localStorage.getItem("miru_phone") || "";
     var pc    = _miruPostcode() || "";
+    var _narrativeFallback = facts.length
+      ? facts.slice(0, 2).join(". ") + "."
+      : (wfh ? "You’re working from home today." : "Here’s your day ahead.");
+
     fetch("/api/home/brief/narrative", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
@@ -15377,13 +15381,10 @@ _bkBadge();
                             is_weekend: isWeekend})
     }).then(function(r){ return r.json(); })
       .then(function(resp){
-        if (resp.text) {
-          briefText.textContent = resp.text;
-        }
+        briefText.textContent = resp.text || _narrativeFallback;
         briefText.style.opacity = "1";
       }).catch(function(){
-        // Fallback: simple local message if API fails
-        if (wfh) briefText.textContent = "You’re working from home today.";
+        briefText.textContent = _narrativeFallback;
         briefText.style.opacity = "1";
       });
   }
