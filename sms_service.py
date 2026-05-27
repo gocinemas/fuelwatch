@@ -13411,7 +13411,7 @@ def _wa_spending_query(from_number: str, body: str) -> str:
             category_filter = cat
             break
 
-    # Merchant intent
+    # Merchant intent — hardcoded map first
     merchant_filter = None
     merchant_label  = None
     for kw, label in _SPEND_MERCHANT_MAP.items():
@@ -13420,14 +13420,42 @@ def _wa_spending_query(from_number: str, body: str) -> str:
             merchant_label  = label
             break
 
+    # Freeform merchant extraction — catches anything not in the hardcoded map
+    if not merchant_filter:
+        import re as _re2
+        _fm = _re2.search(
+            r'(?:at|in|from|for)\s+([A-Za-z][A-Za-z\'&\s]{1,24}?)(?:\s+(?:this|last|today|yesterday|spend|receipt)|\?|$)',
+            body, _re2.IGNORECASE
+        )
+        if _fm:
+            _candidate = _fm.group(1).strip().rstrip("?").strip()
+            _skip = {"how", "what", "much", "did", "the", "my", "your", "i", "me"}
+            if len(_candidate) >= 3 and _candidate.lower() not in _skip:
+                merchant_filter = _candidate.lower()
+                merchant_label  = _candidate.title()
+
     try:
         sb   = lib._sb()
+        # Always search receipts first
         rows = sb.table("wa_saves").select("title,summary,category,created_at") \
             .eq("from_number", from_number) \
             .ilike("title", "🧾%") \
             .gte("created_at", date_from + "T00:00:00") \
             .order("created_at", desc=True) \
             .execute().data or []
+
+        # If a specific merchant is named but no receipt matches, fall back to all clippings
+        if merchant_filter:
+            receipt_hits = [r for r in rows if merchant_filter in (r.get("title") or "").lower()]
+            if not receipt_hits:
+                clip_rows = sb.table("wa_saves").select("title,summary,category,created_at") \
+                    .eq("from_number", from_number) \
+                    .ilike("title", f"%{merchant_filter}%") \
+                    .gte("created_at", date_from + "T00:00:00") \
+                    .order("created_at", desc=True) \
+                    .execute().data or []
+                if clip_rows:
+                    rows = clip_rows  # use clipping results instead
     except Exception as e:
         return "⚠️ Couldn't fetch your receipts right now — try again in a moment."
 
@@ -13444,7 +13472,7 @@ def _wa_spending_query(from_number: str, body: str) -> str:
 
     if not rows:
         label = merchant_label or category_filter or "matching"
-        return f"📭 No {label} receipts found {period}."
+        return f"📭 No {label} receipts or clippings found {period}."
 
     # Extract amounts from summary text
     total  = 0.0
