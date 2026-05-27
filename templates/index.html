@@ -4614,7 +4614,12 @@ const _ts = new Date(d.timestamp);
     return "";
   }
   function _miruPostcode() {
-    return localStorage.getItem("miru_postcode") || "";
+    var stored = localStorage.getItem("miru_postcode") || "";
+    if (stored) return stored;
+    var m = document.cookie.match(/(?:^|;\s*)miru_postcode=([^;]+)/);
+    var cookiePc = m ? decodeURIComponent(m[1]) : "";
+    if (cookiePc) { localStorage.setItem("miru_postcode", cookiePc); return cookiePc; }
+    return "";
   }
 
   // ── Identity bar (persistent phone + postcode) ─────────────────────────────
@@ -4697,6 +4702,13 @@ const _ts = new Date(d.timestamp);
     else       localStorage.removeItem("miru_phone");
     if (pc) localStorage.setItem("miru_postcode", pc);
     else    localStorage.removeItem("miru_postcode");
+
+    // ── Persist to server-side cookie so identity survives localStorage clears ──
+    fetch("/api/identity/persist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: phone || "", postcode: pc || "" })
+    }).catch(function() {});
 
     // Close modal and refresh identity bar immediately
     _idModalClose();
@@ -11371,19 +11383,32 @@ function _hcAdd() {
   {% endif %}
 
   // ── WhatsApp magic-link auto-login (?wt=TOKEN in URL) ───────────────────────
+  // Server sets cookies via /wt/<token> redirect — by the time JS runs identity
+  // is already in cookies, so just read it and clean the URL param.
   (function() {
     var _wt = new URLSearchParams(location.search).get("wt");
     if (!_wt) return;
+    // If we already have identity in localStorage, just clean the URL
+    if (localStorage.getItem("miru_phone")) {
+      history.replaceState(null, "", location.pathname + (location.hash || ""));
+      return;
+    }
+    // Otherwise resolve token server-side and set cookies + localStorage
     fetch("/api/resolve-token?t=" + encodeURIComponent(_wt))
       .then(function(r) { return r.ok ? r.json() : null; })
       .then(function(d) {
         if (!d || !d.phone) return;
         localStorage.setItem("miru_phone", d.phone);
         if (d.postcode) localStorage.setItem("miru_postcode", d.postcode.replace(/\s+/g,"").toUpperCase());
-        // Clean URL and reload so the page reads fresh identity from localStorage
-        var clean = location.pathname + (location.hash || "");
-        history.replaceState(null, "", clean);
-        location.reload();
+        fetch("/api/identity/persist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: d.phone, postcode: d.postcode || "" })
+        }).catch(function() {});
+        history.replaceState(null, "", location.pathname + (location.hash || ""));
+        // Refresh identity bar without full page reload
+        if (typeof _idBarRefresh === "function") _idBarRefresh();
+        if (typeof _briefInit === "function") _briefInit();
       })
       .catch(function() {});
   })();

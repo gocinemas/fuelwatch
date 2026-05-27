@@ -19402,6 +19402,21 @@ def api_whatsapp_number():
     return jsonify({"number": number})
 
 
+@app.route("/api/identity/persist", methods=["POST"])
+def api_identity_persist():
+    """Store phone + postcode in long-lived cookies so identity survives localStorage clears."""
+    data = request.json or {}
+    phone    = data.get("phone", "").strip()
+    postcode = data.get("postcode", "").replace(" ", "").upper().strip()
+    resp = make_response(jsonify({"ok": True}))
+    max_age = 60 * 60 * 24 * 365  # 1 year
+    if phone:
+        resp.set_cookie("miru_saves_phone", phone, max_age=max_age, samesite="Lax", secure=False)
+    if postcode:
+        resp.set_cookie("miru_postcode", postcode, max_age=max_age, samesite="Lax", secure=False)
+    return resp
+
+
 @app.route("/api/resolve-token")
 def api_resolve_token():
     """Resolve a WhatsApp magic-link token to phone + home postcode.
