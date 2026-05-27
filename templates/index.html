@@ -4736,6 +4736,22 @@ const _ts = new Date(d.timestamp);
   function _idCancel()    { _idModalClose(); }
   function _idSave()      { _idModalSave(); }
 
+  // Auto-restore postcode from server if phone is known but postcode is missing
+  function _identityAutoRestore() {
+    const phone = _miruPhone();
+    if (!phone) return;
+    if (_miruPostcode()) return; // already have it
+    fetch("/api/identity/restore?phone=" + encodeURIComponent(phone))
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(d) {
+        if (!d || !d.found || !d.postcode) return;
+        localStorage.setItem("miru_postcode", d.postcode);
+        if (typeof _idBarRefresh === "function") _idBarRefresh();
+        if (typeof _idPushPostcode === "function") _idPushPostcode(d.postcode);
+        if (typeof _onPostcodeChange === "function") _onPostcodeChange(d.postcode);
+      }).catch(function() {});
+  }
+
   function _idPushPostcode(pc) {
     if (!pc) return;
     const fuel = document.getElementById("fuel-postcode");
@@ -11415,9 +11431,13 @@ function _hcAdd() {
 
   // ── Global phone bar init ────────────────────────────────────────────────────
   if (document.readyState === "loading") {
-    window.addEventListener("DOMContentLoaded", _globalPhoneBarInit);
+    window.addEventListener("DOMContentLoaded", function() {
+      _globalPhoneBarInit();
+      setTimeout(_identityAutoRestore, 500); // restore postcode from DB if missing
+    });
   } else {
     _globalPhoneBarInit();
+    setTimeout(_identityAutoRestore, 500);
   }
 
   // ── Gmail My Details init ────────────────────────────────────────────────────

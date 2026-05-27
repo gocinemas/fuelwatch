@@ -19424,7 +19424,7 @@ def api_whatsapp_number():
 
 @app.route("/api/identity/persist", methods=["POST"])
 def api_identity_persist():
-    """Store phone + postcode in long-lived cookies so identity survives localStorage clears."""
+    """Store phone + postcode in long-lived cookies AND Supabase so identity survives device changes."""
     data = request.json or {}
     phone    = data.get("phone", "").strip()
     postcode = data.get("postcode", "").replace(" ", "").upper().strip()
@@ -19434,7 +19434,58 @@ def api_identity_persist():
         resp.set_cookie("miru_saves_phone", phone, max_age=max_age, samesite="Lax", secure=False)
     if postcode:
         resp.set_cookie("miru_postcode", postcode, max_age=max_age, samesite="Lax", secure=False)
+    # Also persist to Supabase so identity can be restored on any device
+    if phone:
+        try:
+            key = phone.replace("whatsapp:", "").strip()
+            rec = {"postcode": postcode} if postcode else {}
+            existing = lib._sb().table("ma_details").select("id,data") \
+                .eq("device_id", key).eq("type", "web_identity").limit(1).execute().data
+            if existing:
+                merged = {**(existing[0].get("data") or {}), **rec}
+                lib._sb().table("ma_details").update({"data": merged}) \
+                    .eq("id", existing[0]["id"]).execute()
+            else:
+                lib._sb().table("ma_details").insert({
+                    "device_id": key, "type": "web_identity",
+                    "data": rec, "label": "web_identity"
+                }).execute()
+        except Exception as _e:
+            print(f"[identity/persist] supabase save failed: {_e}", flush=True)
     return resp
+
+
+@app.route("/api/identity/restore")
+def api_identity_restore():
+    """Given a phone number, return the saved postcode from Supabase.
+    Allows identity recovery on new devices without needing a magic link."""
+    raw_phone = (request.args.get("phone") or "").strip()
+    if not raw_phone:
+        return jsonify({"error": "phone required"}), 400
+    phone = raw_phone.replace("whatsapp:", "").strip()
+    postcode = ""
+    try:
+        # 1. Check web_identity record (set via web app identity modal)
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", phone).eq("type", "web_identity").limit(1).execute().data
+        if rows and rows[0].get("data", {}).get("postcode"):
+            postcode = rows[0]["data"]["postcode"]
+    except Exception:
+        pass
+    if not postcode:
+        try:
+            # 2. Fall back to WhatsApp-set home postcode in my_area_places
+            for variant in [phone, "whatsapp:" + phone]:
+                rows = lib._sb().table("my_area_places").select("postcode") \
+                    .eq("from_number", variant).eq("category", "_home").limit(1).execute().data
+                if rows and rows[0].get("postcode"):
+                    postcode = rows[0]["postcode"].upper().strip()
+                    break
+        except Exception:
+            pass
+    if not postcode:
+        return jsonify({"found": False}), 404
+    return jsonify({"found": True, "postcode": postcode})
 
 
 @app.route("/api/resolve-token")
