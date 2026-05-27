@@ -8891,7 +8891,9 @@ def api_home_ask():
                    "what did i", "how much did i", "how much have i", "what have i",
                    "school", "riaan", "inaaya", "train", "fuel", "spend", "spent",
                    "event", "delivery", "calendar", "saves", "clipping", "saved",
-                   "this week", "this month", "today", "tomorrow"]
+                   "this week", "this month", "today", "tomorrow",
+                   "swimming", "dance", "football", "gym", "club", "class", "lesson",
+                   "activity", "activities", "when is", "what day", "schedule", "routine"]
     is_personal = any(p in q_lower for p in _PERSONAL)
 
     # ── Build personal context ─────────────────────────────────────────────────
@@ -8926,10 +8928,24 @@ def api_home_ask():
         for ev in (ctx.get("calendar") or [])[:3]:
             ctx_lines.append(f"Calendar: {ev.get('title','')} on {ev.get('date','')} at {ev.get('start','')}")
 
-        for ra in (ctx.get("recurring") or []):
-            days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
-            d = days[ra["weekday"]] if ra.get("weekday") is not None else ""
-            ctx_lines.append(f"Recurring: {ra.get('child','')} {ra.get('activity','')} {d}s at {ra.get('time','')} — {ra.get('location','')}")
+        # ctx.recurring is today-only — always fetch ALL activities from DB for ask queries
+        _days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+        _all_recurring = []
+        if from_number:
+            try:
+                _rec_rows = lib._sb().table("ma_details").select("data") \
+                    .eq("device_id", from_number).eq("type", "recurring_activities") \
+                    .limit(1).execute().data or []
+                _all_recurring = (_rec_rows[0]["data"] if _rec_rows else []) or []
+                _all_recurring.sort(key=lambda a: (a.get("weekday", 7), a.get("time", "")))
+            except Exception:
+                _all_recurring = ctx.get("recurring") or []
+        else:
+            _all_recurring = ctx.get("recurring") or []
+
+        for ra in _all_recurring:
+            d = _days[ra["weekday"]] if ra.get("weekday") is not None else ""
+            ctx_lines.append(f"Recurring activity: {ra.get('child','')} {ra.get('activity','')} every {d} at {ra.get('time','')} — {ra.get('location','')}")
 
         for dlv in (ctx.get("deliveries") or [])[:2]:
             ctx_lines.append(f"Delivery: {dlv.get('carrier','')} — {dlv.get('status','')}")
