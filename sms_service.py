@@ -8893,7 +8893,10 @@ def api_home_ask():
                    "event", "delivery", "calendar", "saves", "clipping", "saved",
                    "this week", "this month", "today", "tomorrow",
                    "swimming", "dance", "football", "gym", "club", "class", "lesson",
-                   "activity", "activities", "when is", "what day", "schedule", "routine"]
+                   "activity", "activities", "when is", "what day", "schedule", "routine",
+                   "vehicle", "car", "mot", "tax", "registration", "reg ",
+                   "energy", "electric", "gas", "insurance", "mobile", "broadband",
+                   "provider", "bill", "bin", "postcode", "route", "settings"]
     is_personal = any(p in q_lower for p in _PERSONAL)
 
     # ── Build personal context ─────────────────────────────────────────────────
@@ -8976,6 +8979,59 @@ def api_home_ask():
             except Exception:
                 pass
 
+            # ── User prefs (train route, fuel postcode, bin day) ──────────────
+            try:
+                _prows = lib._sb().table("ma_details").select("data") \
+                    .eq("device_id", from_number).eq("type", "v2_prefs") \
+                    .limit(1).execute().data or []
+                _prefs = (_prows[0]["data"] if _prows else {}) or {}
+                if _prefs.get("train_from") or _prefs.get("train_to"):
+                    ctx_lines.append(
+                        f"Saved train route: {_prefs.get('train_from','')} → {_prefs.get('train_to','')}"
+                    )
+                if _prefs.get("fuel_postcode"):
+                    ctx_lines.append(f"Fuel postcode: {_prefs['fuel_postcode']}")
+                if _prefs.get("bin_collection_day") is not None:
+                    _bdays = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+                    _bday  = _bdays[int(_prefs["bin_collection_day"])] if str(_prefs["bin_collection_day"]).isdigit() else str(_prefs["bin_collection_day"])
+                    _brot  = _prefs.get("bin_rotation", "weekly")
+                    ctx_lines.append(f"Bin collection: {_bday}s, {_brot}")
+            except Exception:
+                pass
+
+            # ── Vehicles (reg, make, model, MOT, tax) ────────────────────────
+            try:
+                _device_id = from_number.replace("whatsapp:", "").strip()
+                _vrows = lib._sb().table("my_area_vehicles").select("*") \
+                    .eq("device_id", _device_id).execute().data or []
+                for v in _vrows:
+                    _vparts = [v.get("make",""), v.get("model",""), v.get("year",""), f"reg {v.get('registration','')}"]
+                    _vdesc  = " ".join(str(p) for p in _vparts if p)
+                    _vextra = []
+                    if v.get("mot_expiry"):   _vextra.append(f"MOT expires {v['mot_expiry']}")
+                    if v.get("tax_due_date"): _vextra.append(f"tax due {v['tax_due_date']}")
+                    if v.get("fuel_type"):    _vextra.append(v["fuel_type"])
+                    ctx_lines.append(f"Vehicle: {_vdesc}" + (f" — {', '.join(_vextra)}" if _vextra else ""))
+            except Exception:
+                pass
+
+            # ── Life admin: energy, insurance, mobile (Gmail-detected) ────────
+            try:
+                _device_id = from_number.replace("whatsapp:", "").strip()
+                _grows = lib._sb().table("ma_gmail_tokens").select("provider_hints") \
+                    .eq("device_id", _device_id).limit(1).execute().data or []
+                _hints = (_grows[0].get("provider_hints") or []) if _grows else []
+                for h in _hints[:8]:
+                    _htype = h.get("type","").replace("_"," ")
+                    _hname = h.get("name") or h.get("provider","")
+                    _hdet  = h.get("detail") or h.get("account","")
+                    if _hname:
+                        ctx_lines.append(
+                            f"Life admin — {_htype}: {_hname}" + (f" ({_hdet})" if _hdet else "")
+                        )
+            except Exception:
+                pass
+
     # ── System prompt by intent ────────────────────────────────────────────────
     if is_utility and not is_personal:
         system_prompt = (
@@ -8992,12 +9048,14 @@ def api_home_ask():
         ctx_text = "; ".join(ctx_lines) if ctx_lines else "No personal context loaded."
         system_prompt = (
             "You are Miru, a smart British personal assistant. "
-            "You have two sources: (1) personal 'Context' facts about the user, "
+            "You have two sources: (1) personal 'Context' facts about the user — "
+            "their saves, recurring activities, school events, spend, train route, "
+            "vehicles, life admin (energy/insurance/mobile), prefs and bin collection; "
             "(2) your own general knowledge. "
-            "Use Context for personal questions (saves, events, school, spend, trains). "
+            "Use Context for any personal question. "
             "Use general knowledge for everything else — definitions, facts, calculations, advice. "
-            "CRITICAL: never invent events, appointments, or schedules not explicitly in Context. "
-            "Never say 'I don't have that in your brief' — if it's not in Context, answer from knowledge. "
+            "CRITICAL: never invent events, appointments, schedules or providers not explicitly in Context. "
+            "Never say 'I don't have that information' — if it's not in Context, answer from knowledge. "
             "Plain English, no bullet points, under 45 words."
         )
         messages = [{"role": "system", "content": system_prompt}]
