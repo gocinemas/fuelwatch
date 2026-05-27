@@ -16974,7 +16974,7 @@ def _whatsapp_reply_inner():
     _MP_NATURAL = re.compile(r'\b(who is my mp|my mp|contact mp|mp contact|who represents me|member of parliament)\b', re.I)
     if body_words & _MP_WORDS or _MP_NATURAL.search(body):
         pc_m = re.search(r'([A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2})', body.upper())
-        mp_postcode = pc_m.group(1).replace(" ", "") if pc_m else postcode
+        mp_postcode = pc_m.group(1).replace(" ", "") if pc_m else (postcode or _get_wa_home_postcode(from_number) or "")
         if mp_postcode:
             cache_key = f"mp:{mp_postcode}"
             cached = _WA_CACHE.get(cache_key)
