@@ -8009,6 +8009,8 @@ def api_home_brief():
     """V2 context engine — returns personalised brief text + raw context."""
     import concurrent.futures as _cf
     from datetime import datetime as _dt
+    import zoneinfo as _zi
+    _LDN = _zi.ZoneInfo("Europe/London")
 
     token    = request.args.get("token", "").strip()
     postcode = request.args.get("pc", "").strip().upper().replace(" ", "")
@@ -8029,7 +8031,7 @@ def api_home_brief():
 
     # Check cache — trains always fresh; rest cached 15 min; ?refresh=1 busts it
     # Goodnight hours (23:00–05:00) and GPS requests are never served from cache
-    _cur_hour = _dt.now().hour
+    _cur_hour = _dt.now(_LDN).hour
     _is_goodnight_hour = _cur_hour >= 23 or _cur_hour < 5
     force_refresh = request.args.get("refresh", "") == "1" or _is_goodnight_hour or has_location
     cached = _v2_brief_cache.get(from_number or postcode)
@@ -8064,7 +8066,7 @@ def api_home_brief():
         except Exception:
             pass
 
-    now  = _dt.now()
+    now  = _dt.now(_LDN)
 
     # Always fetch fresh trains in BOTH directions — frontend picks based on WFH/office mode
     fresh_trains = {}; fresh_trains_home = {}
@@ -8838,7 +8840,8 @@ def api_home_brief_narrative():
     spend       = body.get("spend", {})   # full spend object with breakdown
     is_weekend  = body.get("is_weekend", False)
     from datetime import datetime as _dt
-    now  = _dt.now()
+    import zoneinfo as _zi
+    now  = _dt.now(_zi.ZoneInfo("Europe/London"))
     dow  = body.get("dow") or now.strftime("%A")
     tod  = body.get("tod") or ("morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening")
     mode_note = body.get("mode_note") or ("working from home" if mode == "wfh" else "going into the office" if mode == "office" else "at work")
