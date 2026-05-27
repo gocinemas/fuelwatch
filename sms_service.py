@@ -831,7 +831,7 @@ def whatsapp_search_and_format(postcode: str, fuel: str, radius_miles: float, re
 def sms_reply():
     body = request.form.get("Body", "").strip()
     # Normalise smart/curly quotes to ASCII so regex matching works on mobile input
-    body = body.replace("’", "'").replace("‘", "'").replace("“", '"').replace("”", '"')
+    body = body.replace("\u2018", "'").replace("\u2019", "'").replace("\u201c", '"').replace("\u201d", '"')
     from_number = request.form.get("From", "unknown")
 
     print(f"SMS from {from_number}: {body}")
@@ -15590,14 +15590,24 @@ def _is_new_user(from_number: str) -> bool:
         return False
     try:
         variants = _wa_number_variants(from_number)
-        for table, col in [("wa_saves", "from_number"), ("school_profiles", "wa_number"), ("my_area_places", "from_number")]:
-            rows = lib._sb().table(table).select("id").in_(col, variants).limit(1).execute().data
-            if rows:
-                _SEEN_NUMBERS.add(from_number)
-                return False
+        # Check all tables where a user might leave a footprint
+        checks = [
+            ("wa_saves",       "from_number"),
+            ("school_profiles","wa_number"),
+            ("my_area_places", "from_number"),
+            ("ma_details",     "device_id"),   # v2_prefs / recurring activities
+        ]
+        for table, col in checks:
+            try:
+                rows = lib._sb().table(table).select("id").in_(col, variants).limit(1).execute().data
+                if rows:
+                    _SEEN_NUMBERS.add(from_number)
+                    return False
+            except Exception:
+                pass  # one table failing shouldn't block the rest
         return True
     except Exception:
-        return False
+        return False  # if totally broken, treat as existing user → send help not welcome
 
 
 def _wa_classify_intent(body: str) -> dict | None:
@@ -15829,9 +15839,19 @@ def _wa_search_saves(from_number: str, filter_type: str, timeframe: str, author:
 
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_reply():
+    try:
+        return _whatsapp_reply_inner()
+    except Exception as _top_err:
+        print(f"[whatsapp] UNHANDLED: {_top_err}", flush=True)
+        import traceback; traceback.print_exc()
+        _er = MessagingResponse()
+        _er.message("Sorry, something went wrong. Please try again in a moment.")
+        return str(_er)
+
+def _whatsapp_reply_inner():
     body        = request.form.get("Body", "").strip()
-    # Normalise smart/curly quotes — iOS WhatsApp sends ' (U+2019) not ' (U+0027)
-    body = body.replace("’", "'").replace("‘", "'").replace("“", '"').replace("”", '"')
+    # Normalise smart/curly quotes — iOS WhatsApp sends ‘ (U+2019) not ‘ (U+0027)
+    body = body.replace('\u2018', "'").replace('\u2019', "'").replace('\u201c', '"').replace('\u201d', '"')
     from_number = request.form.get("From", "unknown")
     print(f"WhatsApp from {from_number}: {body}")
 
@@ -16268,11 +16288,11 @@ def whatsapp_reply():
 
     # ── MY LINK command: send the user their personal access link ─────────────
     if body_lower in ("my link", "link", "my saves link", "get link", "access", "my access"):
-        user_token = _wa_user_token(from_number)
+        wt = _wa_user_token(from_number)
         resp.message(
-            f"🔗 Your personal Miru link:\n"
-            f"miru.humanagency.co/?screen=saves&token={user_token}\n\n"
-            f"Tap it to open My Clippings on any browser. Your clippings are private to you."
+            f"🔗 Your personal Miru:\n"
+            f"miru.humanagency.co/?wt={wt}\n\n"
+            f"Tap to open — logs you in automatically on any browser."
         )
         return str(resp)
 
