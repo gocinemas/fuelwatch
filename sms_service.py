@@ -1376,6 +1376,59 @@ Suggest contacting Vikram directly for specific opportunities. Never make up fac
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/mekalav/pitch", methods=["POST", "OPTIONS"])
+def mekalav_pitch():
+    """Generate a company-specific pitch: what could Vikram do for us?"""
+    if request.method == "OPTIONS":
+        return "", 204
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return jsonify({"error": "Not configured"}), 500
+    data = request.get_json(force=True, silent=True) or {}
+    context = (data.get("context") or "").strip()[:300]
+    if not context:
+        return jsonify({"error": "No context provided"}), 400
+
+    SYSTEM = """You are writing a concise, honest pitch on behalf of Vikram Mekala's portfolio site. \
+A visitor has typed something about their company or challenge. Your job: in 3-4 direct sentences, \
+explain specifically where Vikram would add the most value for them. \
+Reference his actual experience — don't be generic. Sound like a smart colleague explaining it, not a CV.
+
+Vikram's background (use to ground your answer):
+- 25 years in technology and transformation, based in Surrey/London, UK
+- Built and shipped: Miru (WhatsApp AI for everyday UK life), Intel (live company research tool), AI literacy platform
+- Unilever: Global Media Analytics Platform — £5M budget, 50-person team, 98% on-time delivery across 100+ markets
+- Unilever: Magnum/Ice Cream M&A separation — technology workstream for a major carve-out
+- Unilever: Net Revenue Management analytics — pricing, portfolio, promotional strategy, eCommerce
+- Mars, Shell, BP, Leaseplan: programme management and digital transformation roles
+- WPP-adjacent media/brand transformation work
+- Deep in AI product delivery — not strategy slides, actual working tools
+- Strong on: making large AI programmes land, M&A technology workstreams, post-acquisition ops, media & FMCG transformation
+- Independent via Malt — available for contract or advisory
+
+Rules:
+- Be specific to what the visitor typed — if they mention a sector, tie it to Vikram's relevant experience there
+- If it's vague, pick the strongest 2-3 angles and be concrete about them
+- End with one simple, low-friction next step (e.g. "A 15-minute call to map this out would be the best starting point")
+- No bullet points. Flowing sentences. Direct, not salesy."""
+
+    messages = [
+        {"role": "system", "content": SYSTEM},
+        {"role": "user", "content": f"The visitor typed: \"{context}\""},
+    ]
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={"model": "llama-3.3-70b-versatile", "messages": messages, "max_tokens": 250, "temperature": 0.65},
+            timeout=20,
+        )
+        pitch = r.json()["choices"][0]["message"]["content"].strip()
+        return jsonify({"pitch": pitch})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/newsletter/subscribe", methods=["POST"])
 def api_newsletter_subscribe():
     """Capture mekalav.com newsletter signups into Supabase."""
