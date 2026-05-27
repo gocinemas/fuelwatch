@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
   <style>
     :root {
       --bg:#f8fafc; --surface:#fff; --surface2:#f1f5f9; --border:#e2e8f0;
@@ -467,14 +469,12 @@
     <div class="spinner" style="width:32px;height:32px;border-width:3px;margin:0 auto 20px"></div>
     <div style="font-size:15px;font-weight:700;color:var(--text)">Reading your brief…</div>
     <div class="loading-steps">
-      <div class="ls-row" id="ls-1"><span class="ls-icon">🔍</span> Assessing feasibility</div>
-      <div class="ls-row" id="ls-2"><span class="ls-icon">👁️</span> Writing vision</div>
-      <div class="ls-row" id="ls-3"><span class="ls-icon">🎯</span> Drafting BOSCARD</div>
-      <div class="ls-row" id="ls-4"><span class="ls-icon">📝</span> Building requirements</div>
-      <div class="ls-row" id="ls-5"><span class="ls-icon">👥</span> Mapping use cases</div>
-      <div class="ls-row" id="ls-6"><span class="ls-icon">⚠️</span> Identifying risks</div>
-      <div class="ls-row" id="ls-7"><span class="ls-icon">📅</span> Planning phases</div>
-      <div class="ls-row" id="ls-8"><span class="ls-icon">📋</span> Structuring Jira board</div>
+      <div class="ls-row" id="ls-1"><span class="ls-icon">🔍</span> Reading your brief</div>
+      <div class="ls-row" id="ls-2"><span class="ls-icon">⚡</span> Running 3 specialist agents in parallel…</div>
+      <div class="ls-row" id="ls-3"><span class="ls-icon">👁️</span> &nbsp;&nbsp;↳ Strategy — Vision + BOSCARD</div>
+      <div class="ls-row" id="ls-4"><span class="ls-icon">📝</span> &nbsp;&nbsp;↳ Functional spec — Requirements + Use Cases</div>
+      <div class="ls-row" id="ls-5"><span class="ls-icon">📅</span> &nbsp;&nbsp;↳ Delivery — Risks + Plan + Jira</div>
+      <div class="ls-row" id="ls-6"><span class="ls-icon">✅</span> Assembling your pack</div>
     </div>
   </div>
 
@@ -486,6 +486,7 @@
     <div class="proj-header">
       <div class="proj-type" id="out-proj-type"></div>
       <div class="proj-name" id="out-proj-name"></div>
+      <div id="out-lifecycle-badge" style="display:none;margin-top:8px"></div>
     </div>
 
     <!-- Vision -->
@@ -523,6 +524,20 @@
           <input class="refine-input" id="refine-boscard-input" placeholder="e.g. Tighten the scope, add a dependency on the data migration team" />
           <button class="refine-apply-btn" id="refine-boscard-btn" onclick="_applyRefine('boscard')">Apply →</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Lifecycle-specific: RFP / Discovery / Vendor -->
+    <div class="section" id="lifecycle-section" style="display:none">
+      <div class="section-header open" onclick="_toggle(this)">
+        <div class="section-title"><span class="section-icon" id="lifecycle-icon">📋</span> <span id="lifecycle-title">Lifecycle Pack</span></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="copy-btn" onclick="event.stopPropagation();_copyLifecycle()">Copy</button>
+          <span class="section-chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body open">
+        <div id="out-lifecycle"></div>
       </div>
     </div>
 
@@ -663,6 +678,8 @@
     <!-- Bottom actions -->
     <div class="output-actions">
       <button class="btn-primary-sm" onclick="_copyAll()">📋 Copy full pack</button>
+      <button class="btn-outline" onclick="_exportWord()" title="Download as Word document">📄 Word</button>
+      <button class="btn-outline" onclick="_exportPPT()" title="Download as PowerPoint deck">📊 Deck</button>
       <button class="btn-outline" onclick="_reset()">↺ New brief</button>
     </div>
 
@@ -673,7 +690,7 @@
   var _result = null;
   var _savedProjectId = null;
   var _challengeData = null;
-  var STEPS = ["ls-1","ls-2","ls-3","ls-4","ls-5","ls-6","ls-7","ls-8"];
+  var STEPS = ["ls-1","ls-2","ls-3","ls-4","ls-5","ls-6"];
 
   // ── Panel ─────────────────────────────────────────────────────────────────
   function _togglePanel() {
@@ -894,7 +911,8 @@
     fetch("/api/pm/intake", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({problem: input, answers: answers})
+      body: JSON.stringify({problem: input, answers: answers,
+                            lifecycle: (_challengeData && _challengeData.lifecycle_type) || "standard"})
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -1030,6 +1048,91 @@
 
     document.getElementById("out-proj-type").textContent = d.project_type || "";
     document.getElementById("out-proj-name").textContent = d.project_name || "Your project";
+
+    // Lifecycle badge
+    var _lcMeta = {
+      rfp:       {label:"RFP · Procurement",  color:"#1d4ed8", bg:"#eff6ff", icon:"🔖"},
+      vendor:    {label:"Vendor-led",          color:"#7c3aed", bg:"#faf5ff", icon:"🤝"},
+      discovery: {label:"Discovery-first",     color:"#065f46", bg:"#ecfdf5", icon:"🔬"}
+    };
+    var _lcBadgeEl = document.getElementById("out-lifecycle-badge");
+    var _lcm = _lcMeta[d.lifecycle_type || ""];
+    if (_lcBadgeEl) {
+      if (_lcm) {
+        _lcBadgeEl.innerHTML = '<span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:' + _lcm.color + ';background:' + _lcm.bg + ';border-radius:99px;padding:3px 10px">' + _lcm.icon + ' ' + _lcm.label + '</span>';
+        _lcBadgeEl.style.display = "block";
+      } else {
+        _lcBadgeEl.style.display = "none";
+      }
+    }
+
+    // Lifecycle-specific section
+    var _lsec = document.getElementById("lifecycle-section");
+    var _lsecTitle = document.getElementById("lifecycle-title");
+    var _lsecIcon  = document.getElementById("lifecycle-icon");
+    var _lsecBody  = document.getElementById("out-lifecycle");
+    if (_lsec && _lsecBody) {
+      if (d.lifecycle_type === "rfp" && (d.rfp_requirements || d.evaluation_criteria)) {
+        _lsecTitle.textContent = "RFP Requirements & Evaluation";
+        _lsecIcon.textContent  = "🔖";
+        var _rfpHtml = "";
+        if (d.rfp_requirements && d.rfp_requirements.length) {
+          _rfpHtml += '<div class="req-label func">RFP Requirements</div><ul>' + d.rfp_requirements.map(function(r){return "<li>"+_esc(r)+"</li>";}).join("") + '</ul>';
+        }
+        if (d.evaluation_criteria && d.evaluation_criteria.length) {
+          _rfpHtml += '<div class="req-label nfr" style="margin-top:14px">Evaluation Scoring</div>'
+            + '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">'
+            + '<thead><tr><th style="background:#f1f5f9;padding:7px 10px;text-align:left;border:1px solid #e2e8f0;font-weight:700">Criterion</th><th style="background:#f1f5f9;padding:7px 10px;text-align:center;border:1px solid #e2e8f0;font-weight:700">Weight</th><th style="background:#f1f5f9;padding:7px 10px;text-align:left;border:1px solid #e2e8f0;font-weight:700">What we\'re looking for</th></tr></thead><tbody>'
+            + d.evaluation_criteria.map(function(c){
+                return '<tr><td style="padding:7px 10px;border:1px solid #e2e8f0;font-weight:600;color:#0f172a">'+_esc(c.criterion)+'</td><td style="padding:7px 10px;border:1px solid #e2e8f0;text-align:center;color:#6366f1;font-weight:700">'+c.weight+'%</td><td style="padding:7px 10px;border:1px solid #e2e8f0;color:#64748b">'+_esc(c.description)+'</td></tr>';
+              }).join("") + '</tbody></table>';
+        }
+        if (d.vendor_criteria && d.vendor_criteria.length) {
+          _rfpHtml += '<div class="req-label nfr" style="margin-top:14px">Vendor Eligibility</div><ul>' + d.vendor_criteria.map(function(r){return "<li>"+_esc(r)+"</li>";}).join("") + '</ul>';
+        }
+        _lsecBody.innerHTML = _rfpHtml;
+        _lsec.style.display = "block";
+      } else if (d.lifecycle_type === "discovery" && (d.research_objectives || d.interview_guide)) {
+        _lsecTitle.textContent = "Discovery & Research Plan";
+        _lsecIcon.textContent  = "🔬";
+        var _discHtml = "";
+        if (d.research_objectives && d.research_objectives.length) {
+          _discHtml += '<div class="req-label func">Research Objectives</div><ul>' + d.research_objectives.map(function(r){return "<li>"+_esc(r)+"</li>";}).join("") + '</ul>';
+        }
+        if (d.interview_guide && d.interview_guide.length) {
+          _discHtml += '<div class="req-label nfr" style="margin-top:14px">Interview Guide</div><ol style="padding-left:18px;color:#64748b">' + d.interview_guide.map(function(q){return "<li style='margin-bottom:6px'>"+_esc(q)+"</li>";}).join("") + '</ol>';
+        }
+        if (d.hypothesis_map && d.hypothesis_map.length) {
+          _discHtml += '<div class="req-label nfr" style="margin-top:14px">Hypotheses to Validate</div>';
+          _discHtml += d.hypothesis_map.map(function(h){
+            var pc = h.priority === "High" ? "#dc2626" : h.priority === "Med" ? "#d97706" : "#16a34a";
+            return '<div style="padding:9px 0;border-bottom:1px solid #e2e8f0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><span style="font-size:10px;font-weight:700;color:'+pc+';background:'+pc+'18;border-radius:4px;padding:1px 6px">'+_esc(h.priority)+'</span><span style="font-size:13px;font-weight:600;color:#0f172a">'+_esc(h.hypothesis)+'</span></div><div style="font-size:12px;color:#64748b">Validate via: '+_esc(h.validation_method)+'</div></div>';
+          }).join("");
+        }
+        _lsecBody.innerHTML = _discHtml;
+        _lsec.style.display = "block";
+      } else if (d.lifecycle_type === "vendor" && d.vendor_brief) {
+        _lsecTitle.textContent = "Vendor Engagement Pack";
+        _lsecIcon.textContent  = "🤝";
+        var _vendHtml = "";
+        if (d.vendor_brief) {
+          _vendHtml += '<div class="req-label func">What We Need From the Vendor</div><div class="vision-text" style="margin-bottom:12px">'+_esc(d.vendor_brief)+'</div>';
+        }
+        if (d.sow_outline && d.sow_outline.length) {
+          _vendHtml += '<div class="req-label func" style="margin-top:12px">Statement of Work Outline</div><ol style="padding-left:18px;color:#64748b">' + d.sow_outline.map(function(s){return "<li style='margin-bottom:5px'>"+_esc(s)+"</li>";}).join("") + '</ol>';
+        }
+        if (d.capability_gaps && d.capability_gaps.length) {
+          _vendHtml += '<div class="req-label nfr" style="margin-top:14px">Capability Gaps to Address</div><ul>' + d.capability_gaps.map(function(g){return "<li>"+_esc(g)+"</li>";}).join("") + '</ul>';
+        }
+        if (d.commercial_structure) {
+          _vendHtml += '<div class="req-label nfr" style="margin-top:14px">Recommended Commercial Structure</div><div style="font-size:13px;color:#0f172a;font-weight:600;padding:8px 0">'+_esc(d.commercial_structure)+'</div>';
+        }
+        _lsecBody.innerHTML = _vendHtml;
+        _lsec.style.display = "block";
+      } else {
+        _lsec.style.display = "none";
+      }
+    }
 
     // Vision
     document.getElementById("out-vision").textContent = d.vision || "";
@@ -1187,6 +1290,189 @@
   function _updateCount(n) {
     var el = document.getElementById("proj-count");
     if (el) { el.textContent = n; el.style.display = n ? "inline" : "none"; }
+  }
+
+  // ── Export: Word ──────────────────────────────────────────────────────────
+  function _exportWord() {
+    if (!_result) return;
+    if (typeof docx === "undefined") { alert("Word library still loading — try again in a moment."); return; }
+    var d = _result;
+    var req = d.requirements || {};
+    var H1 = docx.HeadingLevel.HEADING_1, H2 = docx.HeadingLevel.HEADING_2;
+    function para(text, opts) {
+      return new docx.Paragraph(Object.assign({children:[new docx.TextRun({text: text||"", ...(opts||{})})]}, {}));
+    }
+    function heading(text, level) { return new docx.Paragraph({text: text||"", heading: level}); }
+    function bullet(text) { return new docx.Paragraph({text: text||"", bullet:{level:0}}); }
+    function spacer() { return new docx.Paragraph({text:""}); }
+
+    var children = [
+      heading(d.project_name || "Project Brief", H1),
+      new docx.Paragraph({children:[
+        new docx.TextRun({text: (d.project_type||"") + (d.lifecycle_type && d.lifecycle_type!=="standard" ? " · " + d.lifecycle_type.toUpperCase() : ""), color:"6366f1", bold:true})
+      ]}),
+      spacer(),
+      heading("Vision", H2),
+      para(d.vision || ""),
+      spacer(),
+      heading("BOSCARD", H2),
+      para(d.boscard ? d.boscard.replace(/##\s*/g,"").replace(/\*\*/g,"") : ""),
+      spacer(),
+    ];
+
+    // Lifecycle-specific section
+    if (d.lifecycle_type === "rfp" && d.rfp_requirements) {
+      children.push(heading("RFP Requirements", H2));
+      (d.rfp_requirements||[]).forEach(function(r){children.push(bullet(r));});
+      children.push(spacer());
+      if (d.evaluation_criteria) {
+        children.push(heading("Evaluation Criteria", H2));
+        (d.evaluation_criteria||[]).forEach(function(c){children.push(para(c.criterion+" ("+c.weight+"%) — "+c.description));});
+        children.push(spacer());
+      }
+    } else if (d.lifecycle_type === "discovery" && d.research_objectives) {
+      children.push(heading("Research Objectives", H2));
+      (d.research_objectives||[]).forEach(function(r){children.push(bullet(r));});
+      children.push(spacer());
+      if (d.interview_guide) {
+        children.push(heading("Interview Guide", H2));
+        (d.interview_guide||[]).forEach(function(q,i){children.push(para((i+1)+". "+q));});
+        children.push(spacer());
+      }
+    } else if (d.lifecycle_type === "vendor" && d.vendor_brief) {
+      children.push(heading("Vendor Brief", H2)); children.push(para(d.vendor_brief)); children.push(spacer());
+      if (d.sow_outline) { children.push(heading("Statement of Work Outline", H2)); (d.sow_outline||[]).forEach(function(s){children.push(bullet(s));}); children.push(spacer()); }
+    } else if (req.functional) {
+      children.push(heading("Business Requirements", H2));
+      children.push(new docx.Paragraph({children:[new docx.TextRun({text:"Functional", bold:true, color:"6366f1"})]}));
+      (req.functional||[]).forEach(function(r){children.push(bullet(r));});
+      children.push(new docx.Paragraph({children:[new docx.TextRun({text:"Non-Functional", bold:true, color:"64748b"})]}));
+      (req.non_functional||[]).forEach(function(r){children.push(bullet(r));});
+      children.push(spacer());
+      if (d.use_cases) {
+        children.push(heading("Use Cases", H2));
+        (d.use_cases||[]).forEach(function(uc){children.push(para((uc.id||"")+" "+uc.actor+" — "+uc.action+" → "+uc.outcome));});
+        children.push(spacer());
+      }
+    }
+
+    children.push(heading("Top Risks", H2));
+    (d.risks||[]).forEach(function(r){children.push(para(r.risk+" | Prob: "+r.prob+" | Impact: "+r.impact+" | "+r.mitigation));});
+    children.push(spacer());
+    children.push(heading("Delivery Plan", H2));
+    ((d.plan&&d.plan.phases)||[]).forEach(function(ph,i){
+      children.push(new docx.Paragraph({children:[new docx.TextRun({text:"Phase "+(i+1)+": "+ph.name+" ("+ph.duration+")",bold:true})]}));
+      (ph.activities||[]).forEach(function(a){children.push(bullet(a));});
+    });
+    children.push(spacer());
+    children.push(heading("First 3 Actions", H2));
+    (d.actions||[]).forEach(function(a,i){children.push(para((i+1)+". "+a));});
+
+    var doc = new docx.Document({sections:[{children: children}]});
+    docx.Packer.toBlob(doc).then(function(blob){
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = (d.project_name||"project").replace(/[^a-z0-9]/gi,"_")+".docx";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // ── Export: PowerPoint deck ───────────────────────────────────────────────
+  function _exportPPT() {
+    if (!_result) return;
+    if (typeof PptxGenJS === "undefined") { alert("Deck library still loading — try again in a moment."); return; }
+    var d = _result;
+    var pptx = new PptxGenJS();
+    pptx.layout = "LAYOUT_WIDE";
+    var INDIGO = "6366f1", DARK = "0f172a", MID = "334155", MUTED = "64748b", WHITE = "ffffff";
+
+    // Slide 1: Title
+    var s1 = pptx.addSlide();
+    s1.background = {color:"1e1b4b"};
+    s1.addText(d.project_name||"Project Brief", {x:0.5,y:1.4,w:12,h:1.2,fontSize:38,bold:true,color:WHITE,fontFace:"Inter"});
+    s1.addText((d.project_type||"") + (d.lifecycle_type&&d.lifecycle_type!=="standard"?" · "+d.lifecycle_type.charAt(0).toUpperCase()+d.lifecycle_type.slice(1):""), {x:0.5,y:2.7,w:12,h:0.5,fontSize:16,color:"a5b4fc",fontFace:"Inter"});
+    var _fLabel = d.feasibility==="green"?"✓ Feasible":d.feasibility==="amber"?"⚠ Some gaps":"⚑ Needs clarity";
+    var _fColor = d.feasibility==="green"?"22c55e":d.feasibility==="amber"?"f59e0b":"ef4444";
+    s1.addText(_fLabel, {x:0.5,y:3.4,w:4,h:0.4,fontSize:13,bold:true,color:_fColor,fontFace:"Inter"});
+    s1.addText("MiruPM · Programme Intelligence", {x:0.5,y:6.8,w:12,h:0.4,fontSize:10,color:"6366f1",fontFace:"Inter"});
+
+    // Slide 2: Vision
+    var s2 = pptx.addSlide();
+    s2.addText("Vision", {x:0.5,y:0.4,w:12,h:0.6,fontSize:22,bold:true,color:INDIGO,fontFace:"Inter"});
+    s2.addShape(pptx.ShapeType.rect, {x:0.5,y:1.0,w:0.05,h:4.5,fill:{color:INDIGO}});
+    s2.addText(d.vision||"", {x:0.75,y:1.0,w:11.5,h:4.5,fontSize:16,color:DARK,fontFace:"Inter",valign:"top"});
+
+    // Slide 3: Objectives (from BOSCARD)
+    var s3 = pptx.addSlide();
+    s3.addText("Key Objectives", {x:0.5,y:0.4,w:12,h:0.6,fontSize:22,bold:true,color:INDIGO,fontFace:"Inter"});
+    var _bosc = (d.boscard||"").split("\n");
+    var _objLines = [], _inObj = false;
+    _bosc.forEach(function(l){
+      if (l.match(/^##\s*Objectives/i)){_inObj=true;return;}
+      if (_inObj && l.match(/^##/)){_inObj=false;return;}
+      if (_inObj && l.trim()) _objLines.push(l.replace(/^[-*]\s*/,"").trim());
+    });
+    s3.addText(_objLines.slice(0,5).map(function(l,i){return {text:"0"+(i+1)+"  "+l+"\n",options:{bullet:false}};}).map(function(o){return o.text;}).join(""), {x:0.5,y:1.2,w:12,h:5,fontSize:14,color:DARK,fontFace:"Inter",valign:"top"});
+
+    // Slide 4: Delivery Timeline
+    var s4 = pptx.addSlide();
+    s4.addText("Delivery Plan", {x:0.5,y:0.4,w:12,h:0.6,fontSize:22,bold:true,color:INDIGO,fontFace:"Inter"});
+    var _phases = (d.plan&&d.plan.phases)||[];
+    var _pw = _phases.length ? (12/_phases.length - 0.1) : 3;
+    var _phColors = ["4f46e5","7c3aed","0369a1","0f766e","b45309"];
+    _phases.slice(0,5).forEach(function(ph,i){
+      var _px = 0.5 + i*(_pw+0.1);
+      s4.addShape(pptx.ShapeType.rect, {x:_px,y:1.2,w:_pw,h:1.4,fill:{color:_phColors[i]||"4f46e5"},line:{color:_phColors[i]||"4f46e5"}});
+      s4.addText("Phase "+(i+1), {x:_px,y:1.25,w:_pw,h:0.35,fontSize:9,bold:true,color:WHITE,fontFace:"Inter",align:"center"});
+      s4.addText(ph.name, {x:_px,y:1.6,w:_pw,h:0.45,fontSize:11,bold:true,color:WHITE,fontFace:"Inter",align:"center"});
+      s4.addText(ph.duration, {x:_px,y:2.2,w:_pw,h:0.3,fontSize:9,color:"c7d2fe",fontFace:"Inter",align:"center"});
+      var _acts = (ph.activities||[]).slice(0,3).join("\n");
+      s4.addText(_acts, {x:_px,y:2.7,w:_pw,h:2.8,fontSize:10,color:MID,fontFace:"Inter",valign:"top",align:"left"});
+    });
+
+    // Slide 5: Top Risks
+    var s5 = pptx.addSlide();
+    s5.addText("Top Risks", {x:0.5,y:0.4,w:12,h:0.6,fontSize:22,bold:true,color:INDIGO,fontFace:"Inter"});
+    var _riskRows = [[{text:"Risk",options:{bold:true}},{text:"Prob",options:{bold:true}},{text:"Impact",options:{bold:true}},{text:"Mitigation",options:{bold:true}}]];
+    (d.risks||[]).slice(0,5).forEach(function(r){
+      var _pc = r.prob==="High"?"dc2626":r.prob==="Med"?"f59e0b":"16a34a";
+      _riskRows.push([{text:r.risk,options:{color:DARK}},{text:r.prob,options:{color:_pc,bold:true}},{text:r.impact,options:{color:MUTED}},{text:r.mitigation,options:{color:MUTED}}]);
+    });
+    s5.addTable(_riskRows, {x:0.5,y:1.1,w:12.3,h:4.5,fontSize:11,fontFace:"Inter",align:"left",
+      colW:[4.5,0.9,0.9,5.5],border:{type:"solid",color:"e2e8f0",pt:0.5},
+      fill:{color:"f8fafc"},autoPage:false});
+
+    // Slide 6: Next Actions
+    var s6 = pptx.addSlide();
+    s6.background = {color:"f8fafc"};
+    s6.addText("First 3 Actions", {x:0.5,y:0.4,w:12,h:0.6,fontSize:22,bold:true,color:INDIGO,fontFace:"Inter"});
+    (d.actions||[]).slice(0,3).forEach(function(a,i){
+      var _ay = 1.3 + i*1.6;
+      s6.addShape(pptx.ShapeType.rect, {x:0.5,y:_ay,w:0.7,h:0.7,fill:{color:INDIGO},line:{color:INDIGO},rounding:true});
+      s6.addText(""+(i+1), {x:0.5,y:_ay,w:0.7,h:0.7,fontSize:18,bold:true,color:WHITE,fontFace:"Inter",align:"center",valign:"middle"});
+      s6.addText(a, {x:1.4,y:_ay,w:11,h:0.7,fontSize:15,color:DARK,fontFace:"Inter",valign:"middle"});
+    });
+
+    pptx.writeFile({fileName:(d.project_name||"project").replace(/[^a-z0-9]/gi,"_")+".pptx"});
+  }
+
+  // ── Copy lifecycle-specific section ───────────────────────────────────────
+  function _copyLifecycle() {
+    if (!_result) return;
+    var d = _result;
+    var text = "";
+    if (d.lifecycle_type === "rfp") {
+      text = "RFP REQUIREMENTS\n" + (d.rfp_requirements||[]).map(function(r){return "- "+r;}).join("\n");
+      if (d.evaluation_criteria) text += "\n\nEVALUATION CRITERIA\n" + (d.evaluation_criteria||[]).map(function(c){return c.criterion+" ("+c.weight+"%) — "+c.description;}).join("\n");
+    } else if (d.lifecycle_type === "discovery") {
+      text = "RESEARCH OBJECTIVES\n" + (d.research_objectives||[]).map(function(r){return "- "+r;}).join("\n");
+      if (d.interview_guide) text += "\n\nINTERVIEW GUIDE\n" + (d.interview_guide||[]).map(function(q,i){return (i+1)+". "+q;}).join("\n");
+    } else if (d.lifecycle_type === "vendor") {
+      text = "VENDOR BRIEF\n" + (d.vendor_brief||"");
+      if (d.sow_outline) text += "\n\nSTATEMENT OF WORK\n" + (d.sow_outline||[]).map(function(s,i){return (i+1)+". "+s;}).join("\n");
+    }
+    navigator.clipboard.writeText(text).catch(function(){});
   }
 
   // ── Connect ───────────────────────────────────────────────────────────────

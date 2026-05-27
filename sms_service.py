@@ -22964,7 +22964,9 @@ def api_pm_assess():
         '  "feasibility": "green|amber|red",\n'
         '  "feasibility_reason": "1 honest sentence on confidence level",\n'
         '  "project_name": "concise project name",\n'
-        '  "project_type": "IT Transformation|Digital Build|Process Improvement|De-merger|ERP Implementation|Other",\n'
+        '  "project_type": "IT Transformation|Digital Build|Process Improvement|De-merger|ERP Implementation|RFP / Procurement|Vendor Engagement|Discovery & Research|Other",\n'
+        '  "lifecycle_type": "standard|rfp|vendor|discovery",\n'
+        '  "lifecycle_note": "one sentence explaining which lifecycle this follows and why",\n'
         '  "challenges": [\n'
         '    "Specific question that would materially change scope, timeline or approach",\n'
         '    "Another question — 3 to 5 total"\n'
@@ -22974,6 +22976,11 @@ def api_pm_assess():
         '    "2 to 3 assumptions total"\n'
         '  ]\n'
         "}\n\n"
+        "Lifecycle detection rules:\n"
+        "- rfp: brief mentions RFP, tender, procurement, vendor selection, market engagement, ITT\n"
+        "- vendor: brief mentions pitching to a specific vendor, existing vendor, SOW, proof of concept with named supplier\n"
+        "- discovery: brief mentions user research, interviews, use case discovery, understanding the problem, hypothesis validation\n"
+        "- standard: everything else — IT transformation, digital build, ERP, de-merger, process improvement\n\n"
         "Challenge rules:\n"
         "- Ask 3-5 questions specific to THIS brief, not generic PM questions\n"
         "- Probe: scope boundary, ownership, timeline realism, success metrics, key dependencies\n"
@@ -23082,6 +23089,7 @@ def api_pm_refine():
 
 @app.route("/api/pm/intake", methods=["POST"])
 def api_pm_intake():
+    """Agentic parallel generation: 3 specialist agents run concurrently, results merged."""
     data = request.json or {}
     problem = (data.get("problem") or "").strip()
     if not problem:
@@ -23090,76 +23098,98 @@ def api_pm_intake():
     if not groq_key:
         return jsonify({"error": "AI not configured"}), 500
 
-    prompt = (
-        "You are a senior programme manager with deep experience in IT transformation, "
-        "ERP, de-mergers, digital builds, and process improvement.\n\n"
-        "A user has described a project or problem. Generate a complete programme pack in ONE response.\n\n"
-        "Return ONLY valid JSON, no extra text, no markdown fences:\n"
-        "{\n"
-        '  "feasibility": "green|amber|red",\n'
-        '  "feasibility_reason": "2 sentence honest assessment",\n'
-        '  "clarifying_questions": ["1-3 questions only if amber/red, else empty array"],\n'
-        '  "project_name": "concise project name",\n'
-        '  "project_type": "e.g. IT Transformation / ERP Implementation / De-merger / Digital Build / Process Improvement",\n'
-        '  "vision": "One crisp paragraph: what success looks like in plain English — not jargon",\n'
-        '  "boscard": "## Benefits\\n- ...\\n## Objectives\\n- SMART objective 1\\n## Scope\\n**In:** ...\\n**Out:** ...\\n## Constraints\\n- ...\\n## Assumptions\\n- ...\\n## Risks\\n- Risk (High/Med/Low)\\n## Dependencies\\n- ...",\n'
-        '  "requirements": {\n'
-        '    "functional": ["FR1: The system/team shall ...", "FR2: ...", "FR3: ...", "FR4: ...", "FR5: ..."],\n'
-        '    "non_functional": ["NFR1: Performance — ...", "NFR2: Security — ...", "NFR3: Availability — ..."]\n'
-        '  },\n'
-        '  "use_cases": [\n'
-        '    {"id": "UC1", "actor": "Project Sponsor", "action": "...", "outcome": "..."},\n'
-        '    {"id": "UC2", "actor": "...", "action": "...", "outcome": "..."}\n'
-        '  ],\n'
-        '  "risks": [\n'
-        '    {"risk": "description", "prob": "High|Med|Low", "impact": "High|Med|Low", "mitigation": "..."}\n'
-        '  ],\n'
-        '  "plan": {\n'
-        '    "phases": [\n'
-        '      {"name": "Discovery", "duration": "2 weeks", "activities": ["...", "..."]},\n'
-        '      {"name": "Design", "duration": "3 weeks", "activities": ["...", "..."]}\n'
-        '    ]\n'
-        '  },\n'
-        '  "actions": ["First concrete action this week", "Second action", "Third action"],\n'
-        '  "jira_epics": [\n'
-        '    {"epic": "Epic name", "stories": ["Story 1", "Story 2", "Story 3"]}\n'
-        '  ]\n'
-        "}\n\n"
-        "Rules:\n"
-        "- requirements.functional: 5-7 items, each starting with FRn:\n"
-        "- requirements.non_functional: 3-5 items, each starting with NFRn: Category —\n"
-        "- use_cases: 4-6 items covering key actors (sponsor, PM, end user, IT team, etc.)\n"
-        "- risks: 3-5 items, specific not generic\n"
-        "- plan.phases: 4-6 phases with realistic durations\n"
-        "- actions: exactly 3, concrete and immediate (this week)\n"
-        "- jira_epics: 3-5 epics, 2-4 stories each — real programme workstreams\n"
-        "- vision: plain English, no buzzwords, one paragraph\n\n"
-        "Brief:\n"
+    lifecycle = (data.get("lifecycle") or "standard").strip()
+    content = _intake_content(problem, data)
+
+    # ── Agent 1: Strategy — Vision, BOSCARD, Actions ──────────────────────────
+    STRATEGY_ROLE = (
+        "You are the strategic lead. Write the vision statement, BOSCARD, and immediate next actions. "
+        "Also classify feasibility and name the project."
+    )
+    STRATEGY_SCHEMA = (
+        '{"project_name":"concise name",'
+        '"project_type":"IT Transformation|Digital Build|ERP Implementation|De-merger|Process Improvement|RFP \/ Procurement|Vendor Engagement|Discovery & Research|Other",'
+        '"feasibility":"green|amber|red",'
+        '"feasibility_reason":"1 honest sentence",'
+        '"vision":"one crisp paragraph — what success looks like in plain English, no jargon",'
+        '"boscard":"## Benefits\\n- ...\\n## Objectives\\n- SMART objective\\n## Scope\\n**In:** ...\\n**Out:** ...\\n## Constraints\\n- ...\\n## Assumptions\\n- ...\\n## Risks\\n- Risk (High\/Med\/Low)\\n## Dependencies\\n- ...",'
+        '"actions":["first concrete action this week","second action","third action"]}'
+    )
+
+    # ── Agent 2: Functional spec — varies by lifecycle ─────────────────────────
+    if lifecycle == "rfp":
+        FUNCSPEC_ROLE = (
+            "You are the procurement lead. Write what vendors must respond to, evaluation scoring, and eligibility requirements."
+        )
+        FUNCSPEC_SCHEMA = (
+            '{"rfp_requirements":["The solution must ...","Vendors must demonstrate ...","Pricing to include ..."],'
+            '"evaluation_criteria":[{"criterion":"Technical fit","weight":30,"description":"..."},'
+            '{"criterion":"Cost & value","weight":25,"description":"..."},'
+            '{"criterion":"Implementation approach","weight":20,"description":"..."},'
+            '{"criterion":"References & track record","weight":15,"description":"..."},'
+            '{"criterion":"Support & SLAs","weight":10,"description":"..."}],'
+            '"vendor_criteria":["Must hold ISO 27001","UK data residency required","Minimum 3 similar implementations"]}'
+        )
+    elif lifecycle == "discovery":
+        FUNCSPEC_ROLE = (
+            "You are the research lead. Write research objectives, a stakeholder interview guide, and key hypotheses to validate."
+        )
+        FUNCSPEC_SCHEMA = (
+            '{"research_objectives":["Understand current state of ...","Map all user journeys for ...","Validate the assumption that ..."],'
+            '"interview_guide":["Tell me about how you currently handle ...","Walk me through a typical ...","What causes the most friction day-to-day?","What workarounds do you use today?","If we could change one thing what would it be?","How would you measure success?"],'
+            '"hypothesis_map":[{"hypothesis":"We believe ... will improve ... because ...","validation_method":"User interviews","priority":"High"},'
+            '{"hypothesis":"We assume ... is the main pain point","validation_method":"Data analysis","priority":"Med"}]}'
+        )
+    elif lifecycle == "vendor":
+        FUNCSPEC_ROLE = (
+            "You are the commercial lead. Write the vendor engagement brief, SOW outline, and commercial structure recommendation."
+        )
+        FUNCSPEC_SCHEMA = (
+            '{"vendor_brief":"One paragraph: what you need the vendor to deliver and why",'
+            '"sow_outline":["Deliverable 1: Discovery workshop and findings report","Deliverable 2: ...","Deliverable 3: ..."],'
+            '"capability_gaps":["Gap 1: In-house team lacks ...","Gap 2: No existing tooling for ..."],'
+            '"commercial_structure":"Fixed price | T&M | Outcome-based | Hybrid — recommended approach with brief rationale"}'
+        )
+    else:  # standard
+        FUNCSPEC_ROLE = (
+            "You are the business analyst. Write detailed functional and non-functional requirements, and use cases covering key actors."
+        )
+        FUNCSPEC_SCHEMA = (
+            '{"requirements":{"functional":["FR1: The system\/team shall ...","FR2: ...","FR3: ...","FR4: ...","FR5: ..."],'
+            '"non_functional":["NFR1: Performance — response time < 3s under normal load","NFR2: Security — ...","NFR3: Availability — 99.5% uptime"]},'
+            '"use_cases":[{"id":"UC1","actor":"Project Sponsor","action":"reviews programme dashboard","outcome":"has full visibility of status, risks and spend"},'
+            '{"id":"UC2","actor":"End User","action":"...","outcome":"..."},'
+            '{"id":"UC3","actor":"IT Team","action":"...","outcome":"..."},'
+            '{"id":"UC4","actor":"Programme Manager","action":"...","outcome":"..."}]}'
+        )
+
+    # ── Agent 3: Delivery — Risks, Plan, Jira ─────────────────────────────────
+    DELIVERY_ROLE = (
+        "You are the delivery lead. Write the top risks with mitigations, a phased delivery plan with realistic durations, "
+        "and a Jira\/Trello epic and story structure."
+    )
+    DELIVERY_SCHEMA = (
+        '{"risks":[{"risk":"description of risk","prob":"High|Med|Low","impact":"High|Med|Low","mitigation":"specific mitigation"}],'
+        '"plan":{"phases":[{"name":"Discovery","duration":"2 weeks","activities":["Stakeholder interviews","Current state mapping"]},'
+        '{"name":"Design","duration":"3 weeks","activities":["Solution design","Technical architecture"]},'
+        '{"name":"Build","duration":"6 weeks","activities":["Development sprints","Integration testing"]},'
+        '{"name":"Launch","duration":"2 weeks","activities":["UAT","Go-live","Hypercare"]}]},'
+        '"jira_epics":[{"epic":"Programme Setup","stories":["Create project space","Onboard steering group","Set up reporting cadence"]},'
+        '{"epic":"...","stories":["...","...","..."]}]}'
     )
 
     try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-            json={
-                "model": "llama-3.3-70b-versatile",
-                "messages": [{"role": "user", "content": prompt + _intake_content(problem, data)}],
-                "temperature": 0.2,
-                "max_tokens": 5000,
-            },
-            timeout=60,
-        )
-        if r.status_code != 200:
-            return jsonify({"error": f"AI error {r.status_code}"}), 500
-        raw = r.json()["choices"][0]["message"]["content"].strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
-        import json as _json
-        parsed = _json.loads(raw)
-        return jsonify(parsed)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            strategy_f  = pool.submit(_pm_run_agent, STRATEGY_ROLE,  STRATEGY_SCHEMA,  content, groq_key, 1600)
+            funcspec_f  = pool.submit(_pm_run_agent, FUNCSPEC_ROLE,   FUNCSPEC_SCHEMA,  content, groq_key, 1800)
+            delivery_f  = pool.submit(_pm_run_agent, DELIVERY_ROLE,  DELIVERY_SCHEMA,  content, groq_key, 1800)
+
+        result = {}
+        result.update(strategy_f.result(timeout=55))
+        result.update(funcspec_f.result(timeout=55))
+        result.update(delivery_f.result(timeout=55))
+        result["lifecycle_type"] = lifecycle
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -23169,6 +23199,33 @@ def _intake_content(problem, data):
     if answers:
         return problem + "\n\n---\nUser answers to clarifying questions:\n" + answers
     return problem
+
+
+def _pm_run_agent(role_prompt: str, json_schema: str, content: str, groq_key: str, max_tokens: int = 2200) -> dict:
+    """Run a single PM specialist agent and return parsed JSON. Strips markdown fences."""
+    import json as _j
+    system = (
+        "You are a senior programme manager. " + role_prompt + "\n\n"
+        "CRITICAL: Return ONLY valid JSON — no markdown fences, no explanation, no extra text:\n"
+        + json_schema + "\n\nBrief:\n"
+    )
+    r = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+        json={
+            "model": "llama-3.3-70b-versatile",
+            "messages": [{"role": "user", "content": system + content}],
+            "temperature": 0.2,
+            "max_tokens": max_tokens,
+        },
+        timeout=50,
+    )
+    raw = r.json()["choices"][0]["message"]["content"].strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return _j.loads(raw.strip())
 
 
 # ── Me: last seen location ────────────────────────────────────────────────────
