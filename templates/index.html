@@ -1922,6 +1922,7 @@
       <!-- Header -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
         <div>
+          <div id="brief-status-line" style="display:none;font-size:11px;color:var(--muted);margin-bottom:6px"></div>
           <div style="font-size:24px;font-weight:900;letter-spacing:-0.8px;color:var(--text);line-height:1.1">Your Brief</div>
           <div id="brief-dateline" style="font-size:13px;color:var(--muted);margin-top:3px"></div>
           <div id="brief-weather-bar" style="display:none;margin-top:6px;display:flex;align-items:center;gap:6px">
@@ -1968,17 +1969,23 @@
         <span id="brief-glance-train" onclick="showScreen('trains')" style="cursor:pointer;display:inline-flex;align-items:center;background:#f1f5f9;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;color:#1e293b;letter-spacing:-0.2px"></span>
       </div>
 
+      <!-- Section label -->
+      <div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Your Brief</div>
+
       <!-- Narrative card — shimmer while loading -->
       <div id="brief-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:20px;padding:20px;margin-bottom:14px;min-height:88px">
+        <div style="font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:10px">Miru · right now</div>
         <div id="brief-shimmer">
           <div style="height:13px;border-radius:6px;background:rgba(255,255,255,.18);margin-bottom:10px;width:80%"></div>
           <div style="height:13px;border-radius:6px;background:rgba(255,255,255,.12);margin-bottom:10px;width:95%"></div>
           <div style="height:13px;border-radius:6px;background:rgba(255,255,255,.08);width:55%"></div>
         </div>
         <div id="brief-text" style="display:none;font-size:15px;font-weight:500;color:#fff;line-height:1.65;letter-spacing:-0.1px"></div>
+        <div id="brief-checked-footer" style="display:none;font-size:10px;color:rgba(255,255,255,.32);margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1)"></div>
       </div>
 
-      <!-- Today card — calendar events + school holiday — shown right after brief -->
+      <!-- Today section label + card -->
+      <div id="brief-today-label" style="display:none;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Today</div>
       <div id="brief-today-card" style="display:none;margin-bottom:10px"></div>
 
       <!-- Context chips row — horizontal scroll strip -->
@@ -2028,42 +2035,49 @@
         <div id="brief-nearby-results" style="display:none;flex-direction:column;gap:8px;margin-top:10px"></div>
       </div>
 
-      <!-- Tools — bento cards + small grid -->
+      <!-- Tools — LIVE NOW widget rows + small grid -->
       <div id="brief-tools-wrap" style="margin-bottom:16px">
-        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Tools</div>
 
-        <!-- Bento row: fuel + trains (dark gradient cards) -->
-        <div class="tool-bento-row">
-          <button onclick="showScreen('fuel')" class="tool-card-dark tool-card-fuel">
-            <div>
-              <div class="tool-live-dot"><span>LIVE</span></div>
-              <div class="tool-card-icon">⛽</div>
+        <!-- Live now — compact widget rows (replaces bento dark cards) -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:12px">
+          <div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:10px 14px 4px;display:flex;align-items:center;gap:6px">
+            <span style="width:6px;height:6px;background:#22c55e;border-radius:50%;display:inline-block;animation:live-pulse 2s infinite;flex-shrink:0"></span>Live now
+          </div>
+          <button onclick="showScreen('trains')" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;background:none;border:none;border-top:1px solid var(--border);cursor:pointer;text-align:left;font-family:inherit">
+            <div style="width:32px;height:32px;background:#1e293b;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🚆</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--text)">Trains</div>
+              <div id="tile-trains-sub" style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Live departures</div>
             </div>
-            <div>
-              <div class="tool-card-title">Fuel</div>
-              <div id="tile-fuel-sub" class="tool-card-sub">Cheapest near you</div>
-            </div>
+            <span style="font-size:16px;color:var(--muted);flex-shrink:0">›</span>
           </button>
-          <button onclick="showScreen('trains')" class="tool-card-dark tool-card-trains">
-            <div>
-              <div class="tool-live-dot"><span>LIVE</span></div>
-              <div class="tool-card-icon">🚆</div>
+          <button onclick="showScreen('fuel')" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;background:none;border:none;border-top:1px solid var(--border);cursor:pointer;text-align:left;font-family:inherit">
+            <div style="width:32px;height:32px;background:#0f3460;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⛽</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--text)">Fuel</div>
+              <div id="tile-fuel-sub" style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cheapest near you</div>
             </div>
-            <div>
-              <div class="tool-card-title">Trains</div>
-              <div id="tile-trains-sub" class="tool-card-sub">Live departures</div>
+            <span style="font-size:16px;color:var(--muted);flex-shrink:0">›</span>
+          </button>
+          <button onclick="showScreen('school')" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;background:none;border:none;border-top:1px solid var(--border);cursor:pointer;text-align:left;font-family:inherit">
+            <div style="width:32px;height:32px;background:#ecfdf5;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏫</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--text)">School</div>
+              <div id="tile-school-sub" style="font-size:11px;color:var(--muted);margin-top:1px">Letters &amp; events</div>
             </div>
+            <span style="font-size:16px;color:var(--muted);flex-shrink:0">›</span>
+          </button>
+          <button onclick="showScreen('myarea')" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;background:none;border:none;border-top:1px solid var(--border);cursor:pointer;text-align:left;font-family:inherit">
+            <div style="width:32px;height:32px;background:#064e3b;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏡</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;color:var(--text)">My Local</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">Area at a glance</div>
+            </div>
+            <span style="font-size:16px;color:var(--muted);flex-shrink:0">›</span>
           </button>
         </div>
 
-        <!-- My Area — full-width green card -->
-        <button onclick="showScreen('myarea')" class="tool-card-myarea">
-          <div class="tool-card-icon" style="margin-bottom:0">🏡</div>
-          <div>
-            <div class="tool-card-title">My Local</div>
-            <div class="tool-card-sub">Area at a glance</div>
-          </div>
-        </button>
+        <div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Tools</div>
 
         <!-- Small tools: 3-col grid -->
         <div id="brief-tools-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
@@ -14594,14 +14608,22 @@ _bkBadge();
     if (ctxCards)   { ctxCards.style.display = "none"; ctxCards.innerHTML = ""; }
     var todayCard = document.getElementById("brief-today-card");
     if (todayCard)  { todayCard.style.display = "none"; todayCard.innerHTML = ""; }
-    var fuelSub  = document.getElementById("tile-fuel-sub");
-    var trainSub = document.getElementById("tile-trains-sub");
-    var glance   = document.getElementById("brief-glance");
-    if (fuelSub)  { fuelSub.textContent  = "Cheapest near you"; fuelSub.style.color  = ""; fuelSub.style.fontWeight  = ""; }
-    if (trainSub) { trainSub.textContent = "Live departures";   trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
-    if (glance)   { glance.style.display = "none"; }
+    var todayLabel = document.getElementById("brief-today-label");
+    if (todayLabel) { todayLabel.style.display = "none"; }
+    var fuelSub   = document.getElementById("tile-fuel-sub");
+    var trainSub  = document.getElementById("tile-trains-sub");
+    var schoolSub = document.getElementById("tile-school-sub");
+    var glance    = document.getElementById("brief-glance");
+    if (fuelSub)   { fuelSub.textContent  = "Cheapest near you"; fuelSub.style.color  = ""; fuelSub.style.fontWeight  = ""; }
+    if (trainSub)  { trainSub.textContent = "Live departures";   trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
+    if (schoolSub) { schoolSub.textContent = "Letters & events"; schoolSub.style.color = ""; schoolSub.style.fontWeight = ""; }
+    if (glance)    { glance.style.display = "none"; }
     var _wxBar = document.getElementById("brief-weather-bar");
-    if (_wxBar)   { _wxBar.style.display = "none"; }
+    if (_wxBar)    { _wxBar.style.display = "none"; }
+    var _statusLine = document.getElementById("brief-status-line");
+    if (_statusLine) { _statusLine.style.display = "none"; }
+    var _cf = document.getElementById("brief-checked-footer");
+    if (_cf) { _cf.style.display = "none"; }
 
     // Show phone link CTA if no phone linked
     var noPh = document.getElementById("brief-no-phone-cta");
@@ -14649,6 +14671,19 @@ _bkBadge();
             briefText.style.display = "block";
           }
           _briefAskShow();
+
+          // "Checked: ..." status line + brief card footer
+          var _checkedParts = [];
+          if (d.context) {
+            if (d.context.fuel && d.context.fuel.price) _checkedParts.push("fuel");
+            if (d.context.trains && d.context.trains.departures && d.context.trains.departures.length) _checkedParts.push("trains");
+            if (d.context.school) _checkedParts.push("school");
+            if (d.context.weather && d.context.weather.temp !== undefined) _checkedParts.push("weather");
+          }
+          var _sl = document.getElementById("brief-status-line");
+          if (_sl && _checkedParts.length) { _sl.textContent = "· Miru checked " + _checkedParts.join(" · ") + " · just now"; _sl.style.display = "block"; }
+          var _cfoot = document.getElementById("brief-checked-footer");
+          if (_cfoot && _checkedParts.length) { _cfoot.textContent = "Checked: " + _checkedParts.join(" · "); _cfoot.style.display = "block"; }
 
           // Location label — prefer named context (Home/Work) over raw area
           var locLabel = document.getElementById("brief-location-label");
@@ -14895,6 +14930,24 @@ _bkBadge();
       if (fuelSub) { fuelSub.textContent = "Cheapest near you"; fuelSub.style.color = ""; fuelSub.style.fontWeight = ""; }
     }
 
+    // ── School tile ───────────────────────────────────────────────────────────
+    var schoolSubEl = document.getElementById("tile-school-sub");
+    if (schoolSubEl) {
+      var _sctx   = ctx && ctx.school;
+      var _skids  = (_sctx && _sctx.schools) ? _sctx.schools : [];
+      var _sevs   = Array.isArray(_sctx) ? _sctx : (_sctx && _sctx.events ? _sctx.events : []);
+      if (_skids.length) {
+        schoolSubEl.textContent  = _skids.map(function(s){ return s.child_name || ""; }).join(" & ") + " connected";
+        schoolSubEl.style.color  = "#059669"; schoolSubEl.style.fontWeight = "700";
+      } else if (_sevs.length) {
+        schoolSubEl.textContent  = _sevs.length + " event" + (_sevs.length > 1 ? "s" : "") + " this week";
+        schoolSubEl.style.color  = "#059669"; schoolSubEl.style.fontWeight = "700";
+      } else {
+        schoolSubEl.textContent  = "Letters & events";
+        schoolSubEl.style.color  = ""; schoolSubEl.style.fontWeight = "";
+      }
+    }
+
     // ── Trains ────────────────────────────────────────────────────────────────
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
@@ -15046,11 +15099,14 @@ _bkBadge();
         + '</div>'
         + '</div>';
     });
+    var _todayLbl = document.getElementById("brief-today-label");
     if (html) {
       card.innerHTML = html;
       card.style.display = "";
+      if (_todayLbl) _todayLbl.style.display = "block";
     } else {
       card.style.display = "none";
+      if (_todayLbl) _todayLbl.style.display = "none";
     }
   }
 
