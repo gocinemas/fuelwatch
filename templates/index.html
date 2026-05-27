@@ -17109,7 +17109,10 @@ _bkBadge();
       return;
     }
 
-    list.innerHTML = items.map(function(s) { return savesCardHtml(s); }).join("");
+    list.innerHTML = items.map(function(s) {
+      try { return savesCardHtml(s); }
+      catch(e) { console.error("[saves] card render error", s && s.id, e); return ""; }
+    }).join("");
   }
 
   function savesCardHtml(s) {
@@ -18723,15 +18726,18 @@ _bkBadge();
 
   function _recipeSave() {
     if (!_recipeCurrentText) return;
-    var token = _miruToken ? _miruToken() : (localStorage.getItem("miru_token") || "");
     fetch("/api/library/upload", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ title: "🍳 " + _recipeCurrentTitle, text: _recipeCurrentText, doc_type: "recipe", token: token })
-    }).then(function() {
-      _miruToast && _miruToast("Recipe saved to Library", "success");
+      headers: Object.assign({"Content-Type": "application/json"}, _libHeaders()),
+      body: JSON.stringify({ title: "🍳 " + _recipeCurrentTitle, text: _recipeCurrentText, doc_type: "recipe" })
+    }).then(function(r) {
+      if (!r.ok) throw new Error(r.status);
+      _miruToast && _miruToast("Recipe saved to Library ✓", "success");
       document.getElementById("recipe-save-btn").textContent = "✅ Saved";
-    }).catch(function() {});
+    }).catch(function(e) {
+      console.error("[recipe] save failed", e);
+      _miruToast && _miruToast("Couldn't save — open Library and set your PIN first", "error");
+    });
   }
 
   function _recipeShare() {
