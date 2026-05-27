@@ -359,6 +359,43 @@
     @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.35} }
     .live-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#dc2626; animation:livepulse 2s infinite; }
     .live-dot-green { display:inline-block; width:5px; height:5px; border-radius:50%; background:#4ade80; animation:livepulse 2s infinite; }
+
+    /* ─── Desktop Sidebar ─────────────────────────────────────────────── */
+    #desktop-sidebar {
+      display: none; position: fixed; left: 0; top: 0; bottom: 0; width: 58px;
+      z-index: 45; background: var(--surface); border-right: 1px solid var(--border);
+      flex-direction: column; align-items: center;
+      padding: 100px 0 16px; gap: 2px; overflow-y: auto;
+    }
+    .sb-btn {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: none; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; transition: background .12s; position: relative; flex-shrink: 0;
+    }
+    .sb-btn:hover { background: var(--border); }
+    .sb-btn.on { background: rgba(91,94,244,.12); }
+    .sb-btn.on::before {
+      content: ''; position: absolute; left: -1px; top: 50%; transform: translateY(-50%);
+      width: 3px; height: 18px; background: #5b5ef4; border-radius: 0 3px 3px 0;
+    }
+    .sb-spacer { flex: 1; min-height: 24px; }
+
+    @media (min-width: 900px) {
+      #desktop-sidebar { display: flex; }
+      #pill-nav { display: none !important; }
+      /* Shift content right of sidebar */
+      .main-content {
+        margin-left: 58px !important; max-width: none !important;
+        padding-left: 28px !important; padding-right: 32px !important;
+      }
+      /* Override inline max-width/margin on individual screens */
+      .screen { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; }
+      /* Stretch header inner row */
+      #app-header .inner { max-width: none; margin: 0; padding: 0 24px; }
+      /* Indent identity bar content past sidebar */
+      #identity-bar { padding-left: 58px; }
+    }
   </style>
 </head>
 <body class="min-h-screen">
@@ -451,6 +488,21 @@
       </div>
     </div>
   </div>
+
+  <!-- Desktop sidebar — hidden on mobile, shown ≥900px -->
+  {% if not intel_mode %}
+  <nav id="desktop-sidebar" aria-label="Main navigation">
+    <button class="sb-btn on" id="sb-home"   title="Home"      onclick="showHome()">🏠</button>
+    <button class="sb-btn"    id="sb-myarea" title="My Local"   onclick="showScreen('myarea')">🏡</button>
+    <button class="sb-btn"    id="sb-saves"  title="Clippings"  onclick="_pillNav('saves')">📌</button>
+    <button class="sb-btn"    id="sb-trains" title="Trains"     onclick="showScreen('trains')">🚆</button>
+    <button class="sb-btn"    id="sb-fuel"   title="Fuel"       onclick="showScreen('fuel')">⛽</button>
+    <button class="sb-btn"    id="sb-school" title="School"     onclick="showScreen('school')">🏫</button>
+    <button class="sb-btn"    id="sb-report" title="Research"   onclick="showScreen('report')">🔎</button>
+    <div class="sb-spacer"></div>
+    <button class="sb-btn"    id="sb-setup"  title="Settings"   onclick="showScreen('setup')">⚙️</button>
+  </nav>
+  {% endif %}
 
   <div class="max-w-xl mx-auto px-4 main-content">
 
@@ -3200,12 +3252,25 @@
     company: { icon:'🔍', label:'Intel',    piId:'pi-intel'  },
     saves:   { icon:'📌', label:'Clippings', piId:'pi-saves'  },
   };
+  var _SB_MAP = {
+    home: 'sb-home', brief: 'sb-home', 'screen-home': 'sb-home',
+    myarea: 'sb-myarea', saves: 'sb-saves', trains: 'sb-trains',
+    fuel: 'sb-fuel', school: 'sb-school', report: 'sb-report',
+    setup: 'sb-setup',
+  };
+  function _sbUpdate(name) {
+    document.querySelectorAll('.sb-btn').forEach(function(b) { b.classList.remove('on'); });
+    var id = _SB_MAP[name];
+    if (id) { var el = document.getElementById(id); if (el) el.classList.add('on'); }
+  }
   function _pillUpdate(name) {
     const s = _PILL_SCREENS[name];
-    if (!s) return;
-    document.querySelectorAll('.pi-btn').forEach(b => b.classList.remove('pi-active'));
-    const el = document.getElementById(s.piId);
-    if (el) el.classList.add('pi-active');
+    if (s) {
+      document.querySelectorAll('.pi-btn').forEach(b => b.classList.remove('pi-active'));
+      const el = document.getElementById(s.piId);
+      if (el) el.classList.add('pi-active');
+    }
+    _sbUpdate(name);
   }
   function _pillExpand() {}
   function _pillCollapse() {}
