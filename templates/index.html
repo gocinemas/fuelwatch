@@ -413,7 +413,8 @@
       #brief-cols { display: flex; gap: 28px; align-items: flex-start; }
       #brief-col-main { flex: 3; min-width: 0; }
       #brief-col-side { flex: 2; min-width: 0; }
-      #brief-tools-grid { grid-template-columns: repeat(4, 1fr) !important; }
+      /* small tools grid stays 3-col on desktop — bento cards above provide visual weight */
+      #brief-tools-grid { grid-template-columns: repeat(3, 1fr) !important; }
 
       /* Clippings — 2-column card grid */
       #saves-list { display: grid !important; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
@@ -427,6 +428,48 @@
       /* Trains — wider station slots */
       #train-station-slots { gap: 16px !important; }
     }
+
+    /* ── Bento tool cards (mobile + desktop) ────────────────────────────────── */
+    .tool-bento-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .tool-card-dark {
+      border-radius: 20px; border: none; cursor: pointer; padding: 18px 16px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      font-family: inherit; min-height: 130px; text-align: left;
+      transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+    }
+    .tool-card-dark:active { transform: scale(.97); }
+    .tool-card-fuel {
+      background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      box-shadow: 0 8px 24px rgba(15,52,96,.4), 0 2px 8px rgba(0,0,0,.15);
+    }
+    .tool-card-trains {
+      background: linear-gradient(145deg, #1c1c1c 0%, #2d2d2d 100%);
+      box-shadow: 0 8px 24px rgba(0,0,0,.3), 0 2px 8px rgba(0,0,0,.15);
+    }
+    .tool-card-myarea {
+      width: 100%; border-radius: 18px; border: none; cursor: pointer;
+      padding: 16px 18px; font-family: inherit; text-align: left; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 14px;
+      background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+      box-shadow: 0 8px 24px rgba(6,78,59,.35), 0 2px 6px rgba(0,0,0,.1);
+      transition: transform .15s;
+    }
+    .tool-card-myarea:active { transform: scale(.98); }
+    .tool-card-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; font-size: 18px; flex-shrink: 0; }
+    .tool-card-title { font-size: 14px; font-weight: 800; color: #fff; letter-spacing: -.2px; line-height: 1.2; }
+    .tool-card-sub { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 4px; }
+    .tool-live-dot { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,.1); border-radius: 99px; padding: 3px 8px; width: fit-content; margin-bottom: 10px; }
+    .tool-live-dot::before { content:''; width: 5px; height: 5px; border-radius: 50%; background: #4ade80; animation: live-pulse 2s infinite; display: block; }
+    .tool-live-dot span { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.55); letter-spacing: .06em; }
+    @keyframes live-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .tool-card-sm {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 8px; cursor: pointer;
+      text-align: center; font-family: inherit;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.03);
+      transition: transform .12s;
+    }
+    .tool-card-sm:active { transform: scale(.96); }
   </style>
 </head>
 <body class="min-h-screen">
@@ -1965,51 +2008,71 @@
         <div id="brief-nearby-results" style="display:none;flex-direction:column;gap:8px;margin-top:10px"></div>
       </div>
 
-      <!-- Tools grid — quick access to all Miru tools -->
+      <!-- Tools — bento cards + small grid -->
       <div id="brief-tools-wrap" style="margin-bottom:16px">
         <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Tools</div>
+
+        <!-- Bento row: fuel + trains (dark gradient cards) -->
+        <div class="tool-bento-row">
+          <button onclick="showScreen('fuel')" class="tool-card-dark tool-card-fuel">
+            <div>
+              <div class="tool-live-dot"><span>LIVE</span></div>
+              <div class="tool-card-icon">⛽</div>
+            </div>
+            <div>
+              <div class="tool-card-title">Fuel</div>
+              <div id="tile-fuel-sub" class="tool-card-sub">Cheapest near you</div>
+            </div>
+          </button>
+          <button onclick="showScreen('trains')" class="tool-card-dark tool-card-trains">
+            <div>
+              <div class="tool-live-dot"><span>LIVE</span></div>
+              <div class="tool-card-icon">🚆</div>
+            </div>
+            <div>
+              <div class="tool-card-title">Trains</div>
+              <div id="tile-trains-sub" class="tool-card-sub">Live departures</div>
+            </div>
+          </button>
+        </div>
+
+        <!-- My Area — full-width green card -->
+        <button onclick="showScreen('myarea')" class="tool-card-myarea">
+          <div class="tool-card-icon" style="margin-bottom:0">🏡</div>
+          <div>
+            <div class="tool-card-title">My Local</div>
+            <div class="tool-card-sub">Area at a glance</div>
+          </div>
+        </button>
+
+        <!-- Small tools: 3-col grid -->
         <div id="brief-tools-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-          <button onclick="showScreen('fuel')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">⛽</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Fuel</div>
-            <div id="tile-fuel-sub" style="font-size:10px;color:var(--muted);margin-top:2px">Cheapest near you</div>
-          </button>
-          <button onclick="showScreen('trains')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">🚆</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Trains</div>
-            <div id="tile-trains-sub" style="font-size:10px;color:var(--muted);margin-top:2px">Live departures</div>
-          </button>
-          <button onclick="showScreen('myarea')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
-            <div style="font-size:20px;margin-bottom:4px">🏡</div>
-            <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">My Local</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:2px">Area at a glance</div>
-          </button>
-          <button onclick="showScreen('school')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+          <button onclick="showScreen('school')" class="tool-card-sm">
             <div style="font-size:20px;margin-bottom:4px">🏫</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">School</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Letters &amp; events</div>
           </button>
-          <button onclick="_pillNav('saves')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+          <button onclick="_pillNav('saves')" class="tool-card-sm">
             <div style="font-size:20px;margin-bottom:4px">📌</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Clippings</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Saved items</div>
           </button>
-          <button onclick="showScreen('lifeadmin')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+          <button onclick="showScreen('lifeadmin')" class="tool-card-sm">
             <div style="font-size:20px;margin-bottom:4px">🗂️</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Life Admin</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">MOT · bills</div>
           </button>
-          <button onclick="showScreen('report')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+          <button onclick="showScreen('report')" class="tool-card-sm">
             <div style="font-size:20px;margin-bottom:4px">🔎</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Research</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Any postcode</div>
           </button>
-          <button onclick="showScreen('library')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+          <button onclick="showScreen('library')" class="tool-card-sm">
             <div style="font-size:20px;margin-bottom:4px">📚</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Library</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Docs &amp; notes</div>
           </button>
-          <button onclick="showScreen('music')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:12px 8px;cursor:pointer;text-align:center;font-family:inherit">
+          <button onclick="showScreen('music')" class="tool-card-sm">
             <div style="font-size:20px;margin-bottom:4px">🎵</div>
             <div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.2">Music ID</div>
             <div style="font-size:10px;color:var(--muted);margin-top:2px">Name a song</div>
