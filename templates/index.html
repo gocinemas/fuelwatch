@@ -14507,17 +14507,19 @@ _bkBadge();
   var _briefModeKey = "brief_mode_" + new Date().toISOString().slice(0,10);
   var _briefCurrentMode = localStorage.getItem(_briefModeKey) || "";
 
-  window._briefSetMode = function(mode) {
+  window._briefSetMode = function(mode, silent) {
     _briefCurrentMode = mode;
     localStorage.setItem(_briefModeKey, mode);
-    // Sync to server so other devices pick it up
-    var _ph = _miruPhone();
-    if (_ph) {
-      fetch("/api/v2/prefs", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({token: _ph, prefs: {wfh_date: new Date().toISOString().slice(0,10), wfh_mode: mode}})
-      }).catch(function(){});
+    // Sync to server so other devices pick it up (skip on silent/auto-set to avoid race)
+    if (!silent) {
+      var _ph = _miruPhone();
+      if (_ph) {
+        fetch("/api/v2/prefs", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({token: _ph, prefs: {wfh_date: new Date().toISOString().slice(0,10), wfh_mode: mode}})
+        }).catch(function(){});
+      }
     }
     var ob = document.getElementById("brief-btn-office");
     var wb = document.getElementById("brief-btn-wfh");
@@ -14530,14 +14532,13 @@ _bkBadge();
       btn.style.background = active ? "#eff6ff" : "var(--surface)";
       btn.style.color = active ? "#1d4ed8" : "var(--muted)";
     });
-    // Re-render tile subtitles when mode changes (WFH hides trains)
-    if (_briefData) { _briefRenderInfoLines(_briefData.context); }
+    // Re-render tile subtitles and context cards with mode filtering
     if (_briefData) {
-      // Re-render context cards with mode filtering
+      _briefRenderInfoLines(_briefData.context);
       var ctxCards = document.getElementById("brief-context-cards");
       _briefRenderContextCards(_briefData.context, ctxCards, mode);
-      // Update narrative to be mode-aware
-      _briefUpdateNarrative(_briefData, mode);
+      // Only regenerate narrative when user explicitly taps a button (not on auto-set at load)
+      if (!silent) { _briefUpdateNarrative(_briefData, mode); }
     }
   };
 
@@ -14803,11 +14804,11 @@ _bkBadge();
 
           // Auto-switch to Out mode if car is at service (unless user already chose a mode)
           if (!_briefCurrentMode && d.car_at_service) {
-            _briefSetMode('out');
+            _briefSetMode('out', true);
           }
           // Restore mode from server prefs if not set locally (cross-device sync)
           if (!_briefCurrentMode && d.prefs && d.prefs.wfh_date === new Date().toISOString().slice(0,10) && d.prefs.wfh_mode) {
-            _briefSetMode(d.prefs.wfh_mode);
+            _briefSetMode(d.prefs.wfh_mode, true);
           }
 
           // Train + fuel one-liners
