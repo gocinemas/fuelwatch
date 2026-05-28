@@ -8136,6 +8136,7 @@ def api_home_brief():
             futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
             futures["recent_capture"]  = pool.submit(_v2_fetch_recent_capture, from_number)
             futures["recurring"]       = pool.submit(_v2_fetch_recurring, from_number, now.weekday())
+            futures["thread"]          = pool.submit(_wa_load_thread, from_number)
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
@@ -8147,6 +8148,14 @@ def api_home_brief():
 
     # Bin day — cheap compute from prefs, no network call needed
     ctx["bin_day"] = _v2_fetch_bin_day(prefs, now)
+
+    # WhatsApp thread signals — suppress irrelevant brief facts based on recent conversation
+    _wa_thread = ctx.get("thread", [])
+    _thread_user_msgs = [m["content"] for m in _wa_thread if m.get("role") == "user"][-3:]
+    _thread_combined = " ".join(_thread_user_msgs).lower()
+    _car_at_service = bool(_thread_combined) and any(
+        w in _thread_combined for w in ("service", " garage", "mot ", "mechanic", "dropped off", "drop off", "at the garage")
+    )
 
     # Build Groq prompt — personalised with kids, saves, day context
     hour = now.hour
@@ -8342,7 +8351,7 @@ def api_home_brief():
             if times:
                 facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
     fuel = ctx.get("fuel", {})
-    if fuel.get("price") and time_mode in ("morning_commute", "daytime"):
+    if fuel.get("price") and time_mode in ("morning_commute", "daytime") and not _car_at_service:
         change = f" ({fuel['change']})" if fuel.get("change") else ""
         facts.append(f"Nearest fuel: {fuel['name']} {fuel['price']}p{change}")
     # School holiday status — Surrey term dates + Gmail inset days
@@ -8737,6 +8746,13 @@ def api_home_brief():
                     "If it fits naturally, warmly mention it and ask how it went — one sentence max. "
                     "Skip if the brief is already full or the event seems minor."
                 )
+        if _thread_user_msgs:
+            prompt_parts.append(
+                f"Recent WhatsApp context (what the user just told you): {' | '.join(_thread_user_msgs[:2])}. "
+                "Reference this naturally if relevant — e.g. if they mentioned a pickup time, remind them; "
+                "if car is at a service, skip any fuel references. "
+                "Do NOT repeat their words back verbatim."
+            )
         _location_rule = (
             f"They are in {loc_str}{(' at ' + loc_venue['name']) if loc_venue.get('name') else ''}. "
             f"Reference this location naturally. Do NOT invent specific places, attractions, parks, rivers, "
