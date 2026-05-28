@@ -8603,9 +8603,8 @@ def api_home_brief():
                "It's the weekend." if day_type == "weekend" else "")
             + bh_note + " "
             + _interests_note
+            + " RULE: The user is home for the evening. Do NOT suggest going to a pub, restaurant, park, or anywhere. Do NOT name any specific venues or places. Do NOT say 'why not' or 'you could'. Only reference facts above."
         )
-        if _sunny_outdoor and loc_str:
-            prompt_parts.append(f"They're in {loc_str} — it's a nice evening. Reference the weather naturally but do NOT invent specific outdoor plans, places, or activities.")
     elif time_mode in ("night", "goodnight"):
         # Build night/goodnight text directly — no Groq creative writing, no purple prose
         if is_long_weekend:
