@@ -9064,10 +9064,6 @@ function _hcAdd() {
             if (subEl) subEl.textContent = "📍 You're in " + _myAreaGpsLabel + " · tap to explore nearby";
             const nearbySubEl = document.getElementById("tile-nearby-sub");
             if (nearbySubEl) nearbySubEl.textContent = _myAreaGpsLabel + " · food · drinks · parks";
-            // Set session location so fuel + nearby use current position
-            if (typeof window._sessionLocSet === "function") {
-              window._sessionLocSet(gpsPC, _myAreaGpsLabel, _gpsLat, _gpsLng);
-            }
           });
           const card = document.getElementById("myarea-home-card");
           if (card) card.onclick = function() { _myAreaOpenWithLocation(); };
