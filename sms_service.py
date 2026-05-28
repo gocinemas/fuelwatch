@@ -23544,7 +23544,9 @@ def _resolve_place_name(postcode: str) -> dict:
 
     lat = pc_data.get("latitude")
     lon = pc_data.get("longitude")
-    county = pc_data.get("admin_county") or ""  # None for London boroughs
+    _raw_county = pc_data.get("admin_county") or ""
+    # Filter out postcodes.io pseudo-county entries (e.g. "(pseudo) England (UA/MD/LB)")
+    county = _raw_county if _raw_county and "(pseudo)" not in _raw_county.lower() and "ua/md/lb" not in _raw_county.lower() else ""
 
     # 2. Nominatim reverse geocode — local place name
     place_name = ""
