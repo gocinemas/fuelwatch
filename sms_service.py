@@ -18129,8 +18129,8 @@ def wa_digest():
                 import requests as _req2
                 _titles_for_groq = [s.get("title") or "Untitled" for s in batch[:9]]
                 _groq_prompt = (
-                    "Write exactly 1–2 sentences summarising what this person saved today. "
-                    "Be specific and warm, mention topics/themes, no emojis, no bullet points, no lists. "
+                    "Write exactly 1–2 sentences summarising what you saved today, addressed directly to the user (use 'you'). "
+                    "Be specific, mention topics/themes, no emojis, no bullet points, no lists. "
                     "Saved items: " + "; ".join(_titles_for_groq)
                 )
                 _gr = _req2.post(
