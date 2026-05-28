@@ -18257,7 +18257,7 @@ _bkBadge();
     const ratingText = p.rating
       ? `<span style="font-size:12px;font-weight:700;color:var(--text)">${p.rating.toFixed(1)}</span><span style="font-size:11px;color:var(--muted)"> · ${p.rating_count||0} reviews</span>`
       : "";
-    const safeData = encodeURIComponent(JSON.stringify({name:p.name,address:p.address,rating:p.rating,maps_url:mapsUrl}));
+    const safeData = encodeURIComponent(JSON.stringify({name:p.name,address:p.address,rating:p.rating,maps_url:mapsUrl,place_id:p.place_id||""}));
     return `<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
       <!-- Emoji block -->
       <a href="${mapsUrl}" target="_blank" rel="noopener" style="width:52px;height:52px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;text-decoration:none">${p.emoji || "📍"}</a>

@@ -11312,30 +11312,81 @@ def api_places_nearby():
 
 @app.route("/api/places/save", methods=["POST"])
 def api_places_save():
-    """Save a place from 'What can I do here?' to My Saves."""
+    """Save a place from Nearby to My Saves — enriched via Places Details API."""
     from_number, err = _check_saves_pin()
     if err:
         return err
-    data    = request.json or {}
-    name    = (data.get("name") or "").strip()
-    address = (data.get("address") or "").strip()
-    rating  = data.get("rating")
+    data     = request.json or {}
+    name     = (data.get("name") or "").strip()
+    address  = (data.get("address") or "").strip()
+    rating   = data.get("rating")
     maps_url = (data.get("maps_url") or "").strip()
+    place_id = (data.get("place_id") or "").strip()
     if not name:
         return jsonify({"error": "name required"}), 400
-    lines = [name]
-    if address:  lines.append(f"📍 {address}")
-    if rating:   lines.append(f"⭐ {rating}")
-    if maps_url: lines.append(f"🗺️ {maps_url}")
+
+    # Enrich with Places Details if we have a place_id
+    phone = website = hours_today = top_review = full_address = None
+    if place_id and _GOOGLE_PLACES_KEY:
+        try:
+            det = requests.get(
+                "https://maps.googleapis.com/maps/api/place/details/json",
+                params={
+                    "place_id": place_id,
+                    "fields":   "name,formatted_address,formatted_phone_number,website,"
+                                "rating,user_ratings_total,reviews,opening_hours,url",
+                    "key":      _GOOGLE_PLACES_KEY,
+                    "language": "en-GB",
+                },
+                timeout=8,
+            ).json().get("result", {})
+            full_address = det.get("formatted_address") or address
+            phone        = det.get("formatted_phone_number")
+            website      = det.get("website")
+            maps_url     = det.get("url") or maps_url
+            # Today's opening hours
+            oh = det.get("opening_hours", {})
+            periods = oh.get("weekday_text", [])
+            if periods:
+                from datetime import datetime as _dt
+                today_idx = _dt.now().weekday()  # Mon=0 … Sun=6
+                # Google weekday_text: Mon=0 but list starts Monday in en-GB
+                hours_today = periods[today_idx] if today_idx < len(periods) else None
+            # Top review snippet (first, ≤ 120 chars)
+            reviews = det.get("reviews") or []
+            if reviews:
+                txt = (reviews[0].get("text") or "").strip()
+                top_review = txt[:120] + ("…" if len(txt) > 120 else "")
+            rating_count = det.get("user_ratings_total")
+        except Exception as e:
+            app.logger.warning(f"[places/save] details fetch failed: {e}")
+
+    # Build rich summary block
+    lines = []
+    if full_address or address:
+        lines.append(f"📍 {full_address or address}")
+    if phone:
+        lines.append(f"📞 {phone}")
+    if website:
+        lines.append(f"🌐 {website}")
+    if rating:
+        rc = f" · {rating_count} reviews" if rating_count else ""
+        lines.append(f"⭐ {rating}{rc}")
+    if hours_today:
+        lines.append(f"🕐 {hours_today}")
+    if top_review:
+        lines.append(f'"{top_review}"')
+    if maps_url:
+        lines.append(f"🗺️ {maps_url}")
     summary = "\n".join(lines)
-    save_as = from_number or "web"
+
     try:
-        from supabase import create_client
-        sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        sb = lib._sb()
         sb.table("wa_saves").insert({
-            "from_number": save_as,
+            "from_number": from_number or "web",
             "title":       name,
             "summary":     summary,
+            "url":         maps_url or None,
             "category":    "place",
             "source":      "explore-here",
         }).execute()
