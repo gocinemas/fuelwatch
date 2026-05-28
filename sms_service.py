@@ -11203,7 +11203,7 @@ def api_places_nearby():
     _CAT_CONFIG = {
         "all":      {"keyword": "restaurant cafe pub bar park",                        "type": None,         "min_rating": 4.0, "min_reviews": 20, "radius_dense": 1500, "radius_wide":  6000, "dense_min": 5},
         "food":     {"keyword": "restaurant",                                          "type": "restaurant", "min_rating": 3.8, "min_reviews": 10, "radius_dense": 1500, "radius_wide":  6000, "dense_min": 5},
-        "coffee":   {"keyword": "coffee cafe",                                         "type": "cafe",       "min_rating": 3.5, "min_reviews":  5, "radius_dense":  800, "radius_wide":  3000, "dense_min": 2},
+        "coffee":   {"keyword": "coffee cafe espresso flat white cortado",              "type": None,         "min_rating": 3.5, "min_reviews":  5, "radius_dense":  800, "radius_wide":  3000, "dense_min": 2},
         "beer":     {"keyword": "pub craft beer real ale",                             "type": "bar",        "min_rating": 3.8, "min_reviews": 10, "radius_dense": 1500, "radius_wide":  8000, "dense_min": 4},
         "cocktail": {"keyword": "cocktail bar lounge",                                 "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": None, "radius_wide": 12000, "dense_min": 5},
         "wine":     {"keyword": "wine bar",                                            "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": 2000, "radius_wide":  8000, "dense_min": 3},
