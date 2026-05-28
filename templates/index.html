@@ -1895,12 +1895,16 @@
       <!-- WFH / Office toggle (weekdays only) -->
       <div id="brief-mode-row" style="display:none;gap:8px;margin-bottom:14px">
         <button id="brief-btn-office" onclick="_briefSetMode('office')"
-          style="flex:1;padding:11px;border-radius:14px;border:2px solid var(--border);background:var(--surface);font-size:14px;font-weight:800;cursor:pointer;color:var(--muted);transition:all .15s">
-          🏢 In office
+          style="flex:1;padding:11px;border-radius:14px;border:2px solid var(--border);background:var(--surface);font-size:13px;font-weight:800;cursor:pointer;color:var(--muted);transition:all .15s">
+          🏢 Office
         </button>
         <button id="brief-btn-wfh" onclick="_briefSetMode('wfh')"
-          style="flex:1;padding:11px;border-radius:14px;border:2px solid var(--border);background:var(--surface);font-size:14px;font-weight:800;cursor:pointer;color:var(--muted);transition:all .15s">
+          style="flex:1;padding:11px;border-radius:14px;border:2px solid var(--border);background:var(--surface);font-size:13px;font-weight:800;cursor:pointer;color:var(--muted);transition:all .15s">
           🏠 WFH
+        </button>
+        <button id="brief-btn-out" onclick="_briefSetMode('out')"
+          style="flex:1;padding:11px;border-radius:14px;border:2px solid var(--border);background:var(--surface);font-size:13px;font-weight:800;cursor:pointer;color:var(--muted);transition:all .15s">
+          ☕ Out
         </button>
       </div>
 
@@ -14517,16 +14521,15 @@ _bkBadge();
     }
     var ob = document.getElementById("brief-btn-office");
     var wb = document.getElementById("brief-btn-wfh");
-    if (ob) {
-      ob.style.border = mode === "office" ? "2px solid #2563eb" : "2px solid var(--border)";
-      ob.style.background = mode === "office" ? "#eff6ff" : "var(--surface)";
-      ob.style.color = mode === "office" ? "#1d4ed8" : "var(--muted)";
-    }
-    if (wb) {
-      wb.style.border = mode === "wfh" ? "2px solid #2563eb" : "2px solid var(--border)";
-      wb.style.background = mode === "wfh" ? "#eff6ff" : "var(--surface)";
-      wb.style.color = mode === "wfh" ? "#1d4ed8" : "var(--muted)";
-    }
+    var outb = document.getElementById("brief-btn-out");
+    [["office", ob], ["wfh", wb], ["out", outb]].forEach(function(pair) {
+      var m = pair[0], btn = pair[1];
+      if (!btn) return;
+      var active = mode === m;
+      btn.style.border = active ? "2px solid #2563eb" : "2px solid var(--border)";
+      btn.style.background = active ? "#eff6ff" : "var(--surface)";
+      btn.style.color = active ? "#1d4ed8" : "var(--muted)";
+    });
     // Re-render tile subtitles when mode changes (WFH hides trains)
     if (_briefData) { _briefRenderInfoLines(_briefData.context); }
     if (_briefData) {
@@ -14798,7 +14801,11 @@ _bkBadge();
           var calNudge = document.getElementById("brief-cal-nudge");
           if (calNudge) calNudge.style.display = d.calendar_connected ? "none" : "flex";
 
-          // Restore WFH mode from server prefs if not set locally (cross-device sync)
+          // Auto-switch to Out mode if car is at service (unless user already chose a mode)
+          if (!_briefCurrentMode && d.car_at_service) {
+            _briefSetMode('out');
+          }
+          // Restore mode from server prefs if not set locally (cross-device sync)
           if (!_briefCurrentMode && d.prefs && d.prefs.wfh_date === new Date().toISOString().slice(0,10) && d.prefs.wfh_mode) {
             _briefSetMode(d.prefs.wfh_mode);
           }
@@ -15196,7 +15203,9 @@ _bkBadge();
 
   function _briefRenderContextCards(ctx, container, mode) {
     if (!container) return;
-    var wfh = (mode || _briefCurrentMode) === "wfh";
+    var _activeMode = mode || _briefCurrentMode;
+    var wfh = _activeMode === "wfh";
+    var out = _activeMode === "out";
     var html = "";
     var _hour    = new Date().getHours();
     var _dow     = new Date().getDay(); // 0=Sun, 6=Sat
@@ -15305,7 +15314,7 @@ _bkBadge();
           + (new Date().getHours() >= 9 && new Date().getHours() < 19 ? '<button onclick="_briefFindNearby(\'park\')" style="font-size:12px;font-weight:700;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:6px 10px;cursor:pointer">🌳</button>' : '')
           + '</div></div>';
       }
-    } else if (!_isOffHours && !_noTrainsDay && trains && trains.departures && trains.departures.length) {
+    } else if (!out && !_isOffHours && !_noTrainsDay && trains && trains.departures && trains.departures.length) {
       var _nowMins = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
       var futureDeps = trains.departures.filter(function(d) {
         var t = (d.departs || d.time || "").trim();
@@ -15518,9 +15527,25 @@ _bkBadge();
       }
     }
 
-    // Fuel — only relevant during the day
+    // Out mode — replace trains + fuel with a Nearby CTA
+    if (out && !_isOffHours) {
+      var _outLabel = _myAreaGpsLabel || "your area";
+      html += '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">'
+        + '<div>'
+        + '<div style="font-size:13px;font-weight:800;color:#166534">📍 Out &amp; about</div>'
+        + '<div style="font-size:12px;color:#4ade80;margin-top:2px">Find something nearby in ' + _outLabel + '</div>'
+        + '</div>'
+        + '<div style="display:flex;gap:6px">'
+        + '<button onclick="_briefFindNearby(\'cafe\')" style="font-size:13px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:7px 12px;cursor:pointer">☕</button>'
+        + '<button onclick="_briefFindNearby(\'food\')" style="font-size:13px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:7px 12px;cursor:pointer">🍽️</button>'
+        + '<button onclick="_exploreHereOpen()" style="font-size:13px;font-weight:700;color:#1d4ed8;background:#dbeafe;border:1px solid #93c5fd;border-radius:10px;padding:7px 12px;cursor:pointer">🗺️</button>'
+        + '</div>'
+        + '</div>';
+    }
+
+    // Fuel — only relevant during the day (hidden in Out mode)
     var fuel = ctx && ctx.fuel;
-    if (!_isOffHours && fuel && fuel.price) {
+    if (!out && !_isOffHours && fuel && fuel.price) {
       html += '<div onclick="showScreen(\'fuel\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
         + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">⛽ Fuel</div>'

@@ -8850,6 +8850,7 @@ def api_home_brief():
         "frequent_today":  _frequent_today,
         "active_trip":     _active_trip,
         "school_holiday":  _school_holiday_now,
+        "car_at_service":  _car_at_service,
     }
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
