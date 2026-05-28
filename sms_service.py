@@ -8377,6 +8377,21 @@ def api_home_brief():
     _tomorrow_s = (now.date() + __import__("datetime").timedelta(days=1)).isoformat()
     _yesterday_s = (now.date() - __import__("datetime").timedelta(days=1)).isoformat()
     _now_hhmm_cur = f"{hour:02d}:{now.minute:02d}"
+
+    # Today's event saves — if a 🎫 clip mentions today's date, surface it as a priority fact
+    if time_mode not in ("night", "goodnight"):
+        _ev_today_pats = [
+            now.strftime("%-d %B").lower(),   # "28 may"
+            now.strftime("%d/%m"),            # "28/05"
+            _today_s,                         # "2026-05-28"
+            now.strftime("%A").lower(),       # "thursday"
+            "today", "tonight",
+        ]
+        for _te in event_saves[:5]:
+            _te_text = ((_te.get("summary") or "") + " " + (_te.get("title") or "")).lower()
+            if any(p in _te_text for p in _ev_today_pats):
+                facts.insert(1, f"🎫 Saved for today: {_event_label(_te)}")
+                break
     _cal_events = ctx.get("calendar", [])
     # Merge personal events into calendar for brief purposes
     _personal_evs = ctx.get("personal_events", [])
