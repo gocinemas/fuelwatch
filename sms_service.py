@@ -8152,11 +8152,16 @@ def api_home_brief():
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
+        # Wait up to 8s for ALL futures collectively (not 8s each), then take whatever finished
+        _done, _pending = _cf.wait(futures.values(), timeout=8)
         for k, f in futures.items():
-            try: ctx[k] = f.result(timeout=8)
-            except Exception as ex: app.logger.warning(f"[brief] {k}: {ex}")
+            if f in _done:
+                try: ctx[k] = f.result()
+                except Exception as ex: app.logger.warning(f"[brief] {k}: {ex}")
+            else:
+                app.logger.warning(f"[brief] {k}: timed out")
     finally:
-        pool.shutdown(wait=False)  # don't block on hung Supabase/HTTP threads
+        pool.shutdown(wait=False)  # abandon any still-running threads
 
     # Bin day — cheap compute from prefs, no network call needed
     ctx["bin_day"] = _v2_fetch_bin_day(prefs, now)

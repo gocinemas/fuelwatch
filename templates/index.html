@@ -14551,7 +14551,7 @@ _bkBadge();
     var isWeekend = dow === 0 || dow === 6;
     if (isWeekend) return;
     row.style.display = "flex";
-    if (_briefCurrentMode) _briefSetMode(_briefCurrentMode);
+    if (_briefCurrentMode) _briefSetMode(_briefCurrentMode, true); // silent — _briefInit will fetch fresh data
   }
 
   // ── Location context ──────────────────────────────────────────────────────
