@@ -11195,17 +11195,19 @@ def api_places_nearby():
     # Per-category config: keyword + type + quality thresholds + adaptive radii
     # radius_dense = tight radius tried first; radius_wide = fallback if sparse results
     # Set radius_dense=None to skip adaptive (destination categories — cocktail, kids)
+    # dense_min = how many results within radius_dense before we skip widening
+    # Niche categories (dessert, coffee) stay tight with just 2 good results nearby
     _CAT_CONFIG = {
-        "all":      {"keyword": "restaurant cafe pub bar park",                        "type": None,         "min_rating": 4.0, "min_reviews": 20, "radius_dense": 1500, "radius_wide":  6000},
-        "food":     {"keyword": "restaurant",                                          "type": "restaurant", "min_rating": 3.8, "min_reviews": 10, "radius_dense": 1500, "radius_wide":  6000},
-        "coffee":   {"keyword": "coffee cafe",                                         "type": "cafe",       "min_rating": 3.5, "min_reviews":  5, "radius_dense":  800, "radius_wide":  4000},
-        "beer":     {"keyword": "pub craft beer real ale",                             "type": "bar",        "min_rating": 3.8, "min_reviews": 10, "radius_dense": 1500, "radius_wide":  8000},
-        "cocktail": {"keyword": "cocktail bar lounge",                                 "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": None, "radius_wide": 12000},
-        "wine":     {"keyword": "wine bar",                                            "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": 2000, "radius_wide":  8000},
-        "steak":    {"keyword": "steakhouse steak grill",                              "type": "restaurant", "min_rating": 3.8, "min_reviews": 15, "radius_dense": 3000, "radius_wide":  8000},
-        "dessert":  {"keyword": "ice cream gelato dessert patisserie",                 "type": "cafe",       "min_rating": 3.8, "min_reviews":  5, "radius_dense": 1500, "radius_wide":  5000},
-        "park":     {"keyword": "park",                                                "type": "park",       "min_rating": 0,   "min_reviews":  0, "radius_dense": 2000, "radius_wide":  8000},
-        "kids":     {"keyword": "theme park adventure soft play playground skating",   "type": None,         "min_rating": 3.5, "min_reviews":  5, "radius_dense": None, "radius_wide": 20000},
+        "all":      {"keyword": "restaurant cafe pub bar park",                        "type": None,         "min_rating": 4.0, "min_reviews": 20, "radius_dense": 1500, "radius_wide":  6000, "dense_min": 5},
+        "food":     {"keyword": "restaurant",                                          "type": "restaurant", "min_rating": 3.8, "min_reviews": 10, "radius_dense": 1500, "radius_wide":  6000, "dense_min": 5},
+        "coffee":   {"keyword": "coffee cafe",                                         "type": "cafe",       "min_rating": 3.5, "min_reviews":  5, "radius_dense":  800, "radius_wide":  3000, "dense_min": 2},
+        "beer":     {"keyword": "pub craft beer real ale",                             "type": "bar",        "min_rating": 3.8, "min_reviews": 10, "radius_dense": 1500, "radius_wide":  8000, "dense_min": 4},
+        "cocktail": {"keyword": "cocktail bar lounge",                                 "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": None, "radius_wide": 12000, "dense_min": 5},
+        "wine":     {"keyword": "wine bar",                                            "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": 2000, "radius_wide":  8000, "dense_min": 3},
+        "steak":    {"keyword": "steakhouse steak grill",                              "type": "restaurant", "min_rating": 3.8, "min_reviews": 15, "radius_dense": 3000, "radius_wide":  8000, "dense_min": 2},
+        "dessert":  {"keyword": "ice cream gelato dessert patisserie",                 "type": "cafe",       "min_rating": 3.8, "min_reviews":  5, "radius_dense": 1500, "radius_wide":  2500, "dense_min": 2},
+        "park":     {"keyword": "park",                                                "type": "park",       "min_rating": 0,   "min_reviews":  0, "radius_dense": 2000, "radius_wide":  8000, "dense_min": 3},
+        "kids":     {"keyword": "theme park adventure soft play playground skating",   "type": None,         "min_rating": 3.5, "min_reviews":  5, "radius_dense": None, "radius_wide": 20000, "dense_min": 5},
     }
     cfg = _CAT_CONFIG.get(cat, _CAT_CONFIG["all"])
 
@@ -11285,8 +11287,8 @@ def api_places_nearby():
         if radius_dense:
             dense_data = _places_fetch(radius_dense)
             results = _parse_results(dense_data.get("results") or [], seen)
-            if len(results) >= 5:
-                # Dense area — good results close by, stay tight
+            if len(results) >= cfg.get("dense_min", 5):
+                # Enough quality results close by — stay tight
                 results.sort(key=lambda x: (-(x["rating"]), -(x["rating_count"])))
                 return jsonify({"places": results, "cat": cat, "radius_used": radius_dense})
 
