@@ -7348,6 +7348,12 @@ function _hcAdd() {
   }
 
   function _loadMyArea() {
+    // If GPS detected user away from home and no explicit postcode set, use GPS location
+    if (_myAreaGpsPostcode && !_maCurrentPostcode) {
+      _maCurrentPostcode = _myAreaGpsPostcode;
+      const inp = document.getElementById("myarea-postcode-input");
+      if (inp) inp.value = _myAreaGpsPostcode;
+    }
     _maApplyPrefs();
     _maShowLinkedPhone();
     _maLoadSavedPlaces();
@@ -9007,7 +9013,7 @@ function _hcAdd() {
         _myAreaTilePC = pc;
         if (detail) detail.textContent = "";
         if (typeof _fetchWeatherByPostcode === "function") _fetchWeatherByPostcode(pc);
-        _fetchAreaName(pc, label => { if (sub) sub.textContent = label; });
+        _fetchAreaName(pc, label => { if (!_myAreaGpsPostcode && sub) sub.textContent = label; });
       }
     } else {
       pcEl.textContent = "";
@@ -9016,6 +9022,8 @@ function _hcAdd() {
       _myAreaTilePC = null;
     }
     // GPS near-me: if user is away from home, show current location hint on the card
+    // Guard: skip if already resolved (prevents multiple fetches on repeated calls)
+    if (_myAreaGpsPostcode) return;
     const _gpsLat = parseFloat(localStorage.getItem("miru_gps_lat") || "");
     const _gpsLng = parseFloat(localStorage.getItem("miru_gps_lng") || "");
     const _gpsTs  = parseInt(localStorage.getItem("miru_gps_ts") || "0");
@@ -9030,7 +9038,8 @@ function _hcAdd() {
           if (gpsPC === homePC) return;
           _myAreaGpsPostcode = gpsPC;
           _fetchAreaName(gpsPC, function(label) {
-            if (sub) sub.textContent = "📍 You're in " + (label || gpsPC) + " · tap to explore nearby";
+            const subEl = document.getElementById("myarea-home-subtitle");
+            if (subEl) subEl.textContent = "📍 You're in " + (label || gpsPC) + " · tap to explore nearby";
           });
           const card = document.getElementById("myarea-home-card");
           if (card) card.onclick = function() { _myAreaOpenWithLocation(); };
