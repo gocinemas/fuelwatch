@@ -6254,14 +6254,23 @@ def api_v2_prefs_post():
         sb = lib._sb()
         rows = sb.table("ma_details").select("id,data") \
             .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+        _prev_prefs = (rows[0].get("data") or {}) if rows else {}
         if rows:
-            merged = {**(rows[0].get("data") or {}), **new_prefs}
+            merged = {**_prev_prefs, **new_prefs}
             sb.table("ma_details").update({"data": merged}).eq("id", rows[0]["id"]).execute()
         else:
             sb.table("ma_details").insert({
                 "device_id": from_number, "type": "v2_prefs",
                 "label": "home_brief", "data": new_prefs,
             }).execute()
+        if new_prefs.get("morning_push") is True and not _prev_prefs.get("morning_push"):
+            try:
+                _to = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
+                _wa_send_proactive(_to,
+                    "📬 Morning briefs are on. I'll message you at 7:30am daily.\n\n"
+                    "Reply *STOP BRIEF* anytime to turn off.")
+            except Exception:
+                pass
         return jsonify({"ok": True, "prefs": new_prefs})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -8697,7 +8706,8 @@ def api_home_brief():
             if _wx_temp >= 28:
                 prompt_parts.append(
                     f"⚠️ It's {_wx_temp}°C today — very hot. "
-                    f"You MUST mention this clearly: sunscreen, take water, stay hydrated if heading out. "
+                    f"Mention this clearly: sunscreen and water. "
+                    f"Do NOT say 'if you're heading out' — just state it as a fact. "
                     f"One practical sentence, not just the temperature number."
                 )
             elif _wx_temp <= 1:
@@ -16017,16 +16027,24 @@ def _whatsapp_reply_inner():
     # ── Morning brief opt-out ────────────────────────────────────────────────────
     if body_lower in ("stop brief", "pause brief", "stop morning brief", "no brief"):
         try:
-            lib._sb().table("my_area_places").update({"brief_paused": True}) \
-                .eq("from_number", from_number).eq("category", "_home").execute()
+            _sb2 = lib._sb()
+            _br2 = _sb2.table("ma_details").select("id,data") \
+                .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+            if _br2:
+                _bd2 = {**(_br2[0].get("data") or {}), "brief_paused": True}
+                _sb2.table("ma_details").update({"data": _bd2}).eq("id", _br2[0]["id"]).execute()
         except Exception:
             pass
         resp.message("✅ Morning brief paused. Reply *START BRIEF* anytime to resume.")
         return str(resp)
     if body_lower in ("start brief", "resume brief", "start morning brief"):
         try:
-            lib._sb().table("my_area_places").update({"brief_paused": False}) \
-                .eq("from_number", from_number).eq("category", "_home").execute()
+            _sb3 = lib._sb()
+            _br3 = _sb3.table("ma_details").select("id,data") \
+                .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+            if _br3:
+                _bd3 = {**(_br3[0].get("data") or {}), "brief_paused": False}
+                _sb3.table("ma_details").update({"data": _bd3}).eq("id", _br3[0]["id"]).execute()
         except Exception:
             pass
         resp.message("✅ Morning brief is back on — you'll get it each morning.")
