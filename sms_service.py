@@ -8130,7 +8130,8 @@ def api_home_brief():
     if fresh_trains_home:
         ctx["trains_home"] = fresh_trains_home
 
-    with _cf.ThreadPoolExecutor(max_workers=7) as pool:
+    pool = _cf.ThreadPoolExecutor(max_workers=10)
+    try:
         futures = {}
         fuel_pc = prefs.get("fuel_postcode") or postcode
         if fuel_pc:
@@ -8154,6 +8155,8 @@ def api_home_brief():
         for k, f in futures.items():
             try: ctx[k] = f.result(timeout=8)
             except Exception as ex: app.logger.warning(f"[brief] {k}: {ex}")
+    finally:
+        pool.shutdown(wait=False)  # don't block on hung Supabase/HTTP threads
 
     # Bin day — cheap compute from prefs, no network call needed
     ctx["bin_day"] = _v2_fetch_bin_day(prefs, now)
@@ -8828,6 +8831,16 @@ def api_home_brief():
         except Exception:
             pass
 
+    _cal_connected = False
+    try:
+        if ctx.get("calendar") is not None and from_number:
+            _cal_connected = bool(
+                lib._sb().table("ma_details").select("id").eq("device_id", from_number)
+                .eq("type", "calendar_token").execute().data
+            )
+    except Exception:
+        pass
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
@@ -8842,9 +8855,7 @@ def api_home_brief():
         "is_long_weekend":      is_long_weekend,
         "calendar":  ctx.get("calendar", []),
         "today_events": _cal_events,
-        "calendar_connected": bool(ctx.get("calendar") is not None and from_number and
-            lib._sb().table("ma_details").select("id").eq("device_id", from_number)
-            .eq("type", "calendar_token").execute().data),
+        "calendar_connected": _cal_connected,
         "location":        {"area": loc_str, "venue": loc_venue} if loc_str else {},
         "location_context": _loc_classification,
         "recent_capture":  recent_capture,
