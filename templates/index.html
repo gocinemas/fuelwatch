@@ -14541,13 +14541,11 @@ _bkBadge();
   function _briefInitModeToggle() {
     var now = new Date();
     var dow  = now.getDay();  // 0=Sun, 6=Sat
-    var hour = now.getHours();
     var row  = document.getElementById("brief-mode-row");
     if (!row) return;
-    // Only relevant on weekday commute hours (6am–10am or early evening 16–19)
-    var isWeekend    = dow === 0 || dow === 6;
-    var isCommuteHrs = (hour >= 6 && hour < 10) || (hour >= 16 && hour < 19);
-    if (isWeekend || !isCommuteHrs) return;
+    // Show on all weekdays — mode can be set any time, not just commute hours
+    var isWeekend = dow === 0 || dow === 6;
+    if (isWeekend) return;
     row.style.display = "flex";
     if (_briefCurrentMode) _briefSetMode(_briefCurrentMode);
   }
