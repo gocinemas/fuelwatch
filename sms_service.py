@@ -8891,7 +8891,7 @@ def api_home_brief_narrative():
     now  = _dt.now(_zi.ZoneInfo("Europe/London"))
     dow  = body.get("dow") or now.strftime("%A")
     tod  = body.get("tod") or ("morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening")
-    mode_note = body.get("mode_note") or ("working from home" if mode == "wfh" else "going into the office" if mode == "office" else "at work")
+    mode_note = body.get("mode_note") or ("working from home" if mode == "wfh" else "going into the office" if mode == "office" else "out and about today, not commuting" if mode == "out" else "at work")
 
     # Normalise saves to "Title (Category)" strings
     saves_ctx = []
@@ -11201,6 +11201,7 @@ def api_places_nearby():
         "cocktail": {"keyword": "cocktail bar lounge",                  "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius": 12000},
         "wine":     {"keyword": "wine bar",                             "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius":  8000},
         "steak":    {"keyword": "steakhouse steak grill",               "type": "restaurant", "min_rating": 3.8, "min_reviews": 15, "radius":  8000},
+        "dessert":  {"keyword": "ice cream gelato dessert patisserie",  "type": "cafe",       "min_rating": 3.8, "min_reviews":  5, "radius":  5000},
         "park":     {"keyword": "park",                                 "type": "park",       "min_rating": 0,   "min_reviews":  0, "radius":  8000},
         "kids":     {"keyword": "theme park adventure soft play playground skating", "type": None, "min_rating": 3.5, "min_reviews": 5, "radius": 20000},
     }

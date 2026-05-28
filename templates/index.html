@@ -15786,9 +15786,10 @@ _bkBadge();
     if (!briefText) return;
     var ctx = d.context || {};
     var wfh = mode === "wfh";
+    var out = mode === "out";
     // Build mode-aware facts
     var facts = [];
-    if (!wfh && ctx.trains && ctx.trains.departures && ctx.trains.departures.length) {
+    if (!wfh && !out && ctx.trains && ctx.trains.departures && ctx.trains.departures.length) {
       var t = ctx.trains;
       var times = t.departures.slice(0,2).map(function(dep){ return dep.departs || dep.time || ""; }).filter(Boolean).join(" and ");
       if (times) facts.push("Next trains " + (t.from||"") + " → " + (t.to||"") + ": " + times);
@@ -15796,13 +15797,13 @@ _bkBadge();
     var sRaw = ctx.school;
     var sEvs = Array.isArray(sRaw) ? sRaw : (sRaw && sRaw.events ? sRaw.events : []);
     var sKids = (sRaw && sRaw.schools) ? sRaw.schools : [];
-    if (wfh && sKids.length) {
+    if ((wfh || out) && sKids.length) {
       facts.push("School run for " + sKids.map(function(s){ return s.child_name; }).join(" and "));
     }
     sEvs.slice(0,2).forEach(function(ev){
       facts.push((ev.child_name||"") + " has " + (ev.event_title||"") + " on " + (ev.event_date||""));
     });
-    if (ctx.fuel && ctx.fuel.price) {
+    if (!out && ctx.fuel && ctx.fuel.price) {
       facts.push("Fuel near you: " + ctx.fuel.name + " at " + ctx.fuel.price + "p");
     }
     // Pass kids' names from school profiles
@@ -15826,13 +15827,13 @@ _bkBadge();
     // Always regenerate when mode changes — even with no facts, generate a mode-appropriate line
     var dow = new Date().toLocaleDateString("en-GB", {weekday:"long"});
     var tod = (function(){ var h = new Date().getHours(); return h<12?"morning":h<17?"afternoon":"evening"; })();
-    var modeNote = wfh ? "working from home today" : "going into the office today";
+    var modeNote = out ? "out and about today — not commuting, not at home" : wfh ? "working from home today" : "going into the office today";
     briefText.style.opacity = "0.4";
     var token = localStorage.getItem("miru_phone") || "";
     var pc    = _miruPostcode() || "";
     var _narrativeFallback = facts.length
       ? facts.slice(0, 2).join(". ") + "."
-      : (wfh ? "You’re working from home today." : "Here’s your day ahead.");
+      : (out ? "You’re out and about today." : wfh ? "You’re working from home today." : "Here’s your day ahead.");
 
     fetch("/api/home/brief/narrative", {
       method: "POST",
@@ -17958,7 +17959,7 @@ _bkBadge();
   // ── Nearby ───────────────────────────────────────────────────
   // All categories except "all" get their own per-category backend fetch
   // (local filtering removed — backend Google Places type param handles it)
-  const _EH_NEEDS_FETCH = new Set(["food","coffee","park","kids","beer","cocktail","wine","steak"]);
+  const _EH_NEEDS_FETCH = new Set(["food","coffee","park","kids","beer","cocktail","wine","steak","dessert"]);
   let _ehPlaces = [], _ehActiveCat = "all";
   let _ehLat = null, _ehLon = null;
   const _ehCache = {};
@@ -18199,6 +18200,7 @@ _bkBadge();
     cocktail:"cocktails", cocktails:"cocktails", bar:"cocktails", bars:"cocktails",
     wine:"wine", "wine bar":"wine",
     steak:"steak", steakhouse:"steak",
+    dessert:"desserts & ice cream", "ice cream":"desserts & ice cream", gelato:"desserts & ice cream",
     park:"parks & outdoors", parks:"parks & outdoors", kids:"family activities", family:"family activities",
     breakfast:"breakfast", brunch:"brunch",
     tea:"tea", indian:"Indian food", curry:"Indian food", chinese:"Chinese food",
@@ -21484,7 +21486,7 @@ window.spotifyAddTrack = window.spotifyLike;
     <button class="eh-cat-btn" data-cat="beer"     onclick="_ehSetCat('beer',this)"     style="padding:12px 6px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .15s"><div style="font-size:20px;line-height:1;margin-bottom:3px">🍺</div><div style="font-size:11px;font-weight:700;color:var(--muted)">Beer</div></button>
     <button class="eh-cat-btn" data-cat="cocktail" onclick="_ehSetCat('cocktail',this)" style="padding:12px 6px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .15s"><div style="font-size:20px;line-height:1;margin-bottom:3px">🍸</div><div style="font-size:11px;font-weight:700;color:var(--muted)">Cocktails</div></button>
     <button class="eh-cat-btn" data-cat="wine"     onclick="_ehSetCat('wine',this)"     style="padding:12px 6px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .15s"><div style="font-size:20px;line-height:1;margin-bottom:3px">🍷</div><div style="font-size:11px;font-weight:700;color:var(--muted)">Wine</div></button>
-    <button class="eh-cat-btn" data-cat="steak"    onclick="_ehSetCat('steak',this)"    style="padding:12px 6px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .15s"><div style="font-size:20px;line-height:1;margin-bottom:3px">🥩</div><div style="font-size:11px;font-weight:700;color:var(--muted)">Steak</div></button>
+    <button class="eh-cat-btn" data-cat="dessert"  onclick="_ehSetCat('dessert',this)"  style="padding:12px 6px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .15s"><div style="font-size:20px;line-height:1;margin-bottom:3px">🍦</div><div style="font-size:11px;font-weight:700;color:var(--muted)">Dessert</div></button>
     <button class="eh-cat-btn" data-cat="coffee"   onclick="_ehSetCat('coffee',this)"   style="padding:12px 6px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .15s"><div style="font-size:20px;line-height:1;margin-bottom:3px">☕</div><div style="font-size:11px;font-weight:700;color:var(--muted)">Coffee</div></button>
     <button class="eh-cat-btn" data-cat="park"     onclick="_ehSetCat('park',this)"     style="padding:12px 6px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .15s"><div style="font-size:20px;line-height:1;margin-bottom:3px">🌳</div><div style="font-size:11px;font-weight:700;color:var(--muted)">Parks</div></button>
     <button class="eh-cat-btn" data-cat="kids"     onclick="_ehSetCat('kids',this)"     style="padding:12px 6px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .15s"><div style="font-size:20px;line-height:1;margin-bottom:3px">👶</div><div style="font-size:11px;font-weight:700;color:var(--muted)">Kids</div></button>
