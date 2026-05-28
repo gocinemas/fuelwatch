@@ -8051,29 +8051,47 @@ def api_home_brief():
     cached = _v2_brief_cache.get(from_number or postcode)
     cache_hit = (not force_refresh) and cached and time.time() - cached["ts"] < 900
 
-    # Load prefs
+    # Load prefs + loc_profile + active_trip in parallel with a 5s hard cap.
+    # postgrest-py has a 120s default — without this, one hung Supabase call
+    # blocks the entire endpoint for up to 2 minutes.
+    import threading as _thr
+    import datetime as _atdt2
     prefs: dict = {}
+    _loc_profile: dict = {}
+    _active_trip_early = None
+
     if from_number:
-        try:
-            rows = lib._sb().table("ma_details").select("data") \
-                .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
-            prefs = rows[0]["data"] if rows else {}
-        except Exception:
-            pass
+        def _run_preflight():
+            nonlocal prefs, _loc_profile, _active_trip_early
+            try:
+                rows = lib._sb().table("ma_details").select("data") \
+                    .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+                prefs = rows[0]["data"] if rows else {}
+            except Exception: pass
+            try:
+                _lp = lib._sb().table("ma_details").select("data") \
+                    .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
+                _loc_profile = _lp[0]["data"] if _lp else {}
+            except Exception: pass
+            try:
+                _atp = from_number.replace("whatsapp:", "").strip()
+                _atr = lib._sb().table("ma_details").select("data").eq("device_id", _atp) \
+                    .eq("type", "active_trip").order("id", desc=True).limit(1).execute()
+                if _atr.data:
+                    _at2 = (_atr.data[0].get("data") or {})
+                    _exp2 = _at2.get("expires_at", "")
+                    if _exp2 and _atdt2.datetime.utcnow().isoformat() < _exp2:
+                        _active_trip_early = _at2
+            except Exception: pass
+
+        _pf = _thr.Thread(target=_run_preflight, daemon=True)
+        _pf.start()
+        _pf.join(timeout=5)  # give up after 5s; thread keeps running harmlessly
 
     # Load location profile and classify current GPS
-    _loc_profile: dict = {}
     _loc_classification: dict = {"context": "unknown", "label": None, "anchor": None, "save": None, "dist_km": None}
-    if from_number:
-        try:
-            _lp_rows = lib._sb().table("ma_details").select("data") \
-                .eq("device_id", from_number).eq("type", "location_profile").limit(1).execute().data or []
-            _loc_profile = _lp_rows[0]["data"] if _lp_rows else {}
-        except Exception:
-            pass
     if has_location:
         _loc_classification = _classify_location(_req_lat, _req_lng, _loc_profile)
-    # Log signal for auto-learn (background, only when GPS provided and user is known)
     if has_location and from_number:
         try:
             _v2_log_location_signal(from_number, _req_lat, _req_lng)
@@ -8094,21 +8112,6 @@ def api_home_brief():
             fresh_trains_home = _v2_fetch_trains(tt, tf) or {}  # work → home
         except Exception as ex:
             app.logger.warning(f"[brief] trains to-home: {ex}")
-
-    # Active trip — always fetch fresh so it appears immediately after a WhatsApp drive reply
-    _active_trip_early = None
-    if from_number:
-        try:
-            import datetime as _atdt2
-            _atp = from_number.replace("whatsapp:", "").strip()
-            _at_rows2 = lib._sb().table("ma_details").select("data").eq("device_id", _atp).eq("type", "active_trip").order("id", desc=True).limit(1).execute()
-            if _at_rows2.data:
-                _at2 = (_at_rows2.data[0].get("data") or {})
-                _exp2 = _at2.get("expires_at", "")
-                if _exp2 and _atdt2.datetime.utcnow().isoformat() < _exp2:
-                    _active_trip_early = _at2
-        except Exception as _ate:
-            app.logger.warning(f"[brief] active_trip fetch: {_ate}")
 
     # School holiday status — pure date math, always computed regardless of DB
     import datetime as _shdt
