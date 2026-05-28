@@ -527,6 +527,23 @@
     </div>
   </div>
 
+  <!-- Session location pill — shows when GPS detects user away from home -->
+  <div id="session-loc-bar" style="display:none;background:#eef2ff;border-bottom:1px solid #c7d2fe;padding:0 16px">
+    <div class="max-w-xl mx-auto" style="display:flex;align-items:center;gap:6px;height:30px">
+      <span style="font-size:10px;font-weight:800;color:#4f46e5;letter-spacing:.04em">📍 RIGHT NOW</span>
+      <span id="session-loc-label" style="font-size:11px;font-weight:700;color:#312e81"></span>
+      <div style="flex:1"></div>
+      <button onclick="_sessionLocEdit()" style="font-size:11px;font-weight:600;color:#6366f1;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px">Change</button>
+    </div>
+    <div id="session-loc-edit" style="display:none;padding-bottom:7px;display:none">
+      <input id="session-loc-input" placeholder="Postcode or town…"
+        onkeydown="if(event.key==='Enter')_sessionLocSubmit()"
+        style="font-size:12px;padding:4px 10px;border-radius:8px;border:1.5px solid #818cf8;background:#fff;color:#1e1b4b;width:170px;outline:none">
+      <button onclick="_sessionLocSubmit()" style="font-size:11px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;margin-left:6px">Go</button>
+      <button onclick="_sessionLocCancel()" style="font-size:12px;color:#6366f1;background:none;border:none;cursor:pointer;margin-left:4px">✕</button>
+    </div>
+  </div>
+
   <!-- Details modal (phone + postcode) -->
   <div id="id-modal-overlay" onclick="if(event.target===this)_idModalClose()"
     style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.5);align-items:flex-end;justify-content:center">
@@ -5026,6 +5043,43 @@ const _ts = new Date(d.timestamp);
 
   // Legacy compat
   function _globalPhoneBarInit() { _idBarRefresh(); }
+
+  // ── Session location (GPS-detected, session-only, resets on reload) ──────────
+  window._sessionLocation = null;
+
+  window._sessionLocSet = function(postcode, label, lat, lng) {
+    window._sessionLocation = { postcode: postcode, label: label, lat: lat, lng: lng };
+    var bar = document.getElementById("session-loc-bar");
+    var lbl = document.getElementById("session-loc-label");
+    if (bar) bar.style.display = "";
+    if (lbl) lbl.textContent = label || postcode;
+    // Reload fuel for new location
+    if (typeof window._fuelHomeLoad === "function") window._fuelHomeLoad();
+  };
+
+  window._sessionLocEdit = function() {
+    var edit = document.getElementById("session-loc-edit");
+    if (edit) { edit.style.display = "flex"; document.getElementById("session-loc-input").focus(); }
+  };
+
+  window._sessionLocCancel = function() {
+    var edit = document.getElementById("session-loc-edit");
+    if (edit) edit.style.display = "none";
+  };
+
+  window._sessionLocSubmit = async function() {
+    var raw = (document.getElementById("session-loc-input").value || "").trim().toUpperCase().replace(/\s+/g, "");
+    if (!raw) return;
+    window._sessionLocCancel();
+    try {
+      var r = await fetch("https://api.postcodes.io/postcodes/" + raw);
+      var d = await r.json();
+      if (d.result) {
+        var label = d.result.admin_ward || d.result.parliamentary_constituency || raw;
+        window._sessionLocSet(raw, label, d.result.latitude, d.result.longitude);
+      }
+    } catch(_) {}
+  };
   function _globalPhoneSave() {}
   function _globalPhoneBarDismiss() {}
 
@@ -9010,6 +9064,10 @@ function _hcAdd() {
             if (subEl) subEl.textContent = "📍 You're in " + _myAreaGpsLabel + " · tap to explore nearby";
             const nearbySubEl = document.getElementById("tile-nearby-sub");
             if (nearbySubEl) nearbySubEl.textContent = _myAreaGpsLabel + " · food · drinks · parks";
+            // Set session location so fuel + nearby use current position
+            if (typeof window._sessionLocSet === "function") {
+              window._sessionLocSet(gpsPC, _myAreaGpsLabel, _gpsLat, _gpsLng);
+            }
           });
           const card = document.getElementById("myarea-home-card");
           if (card) card.onclick = function() { _myAreaOpenWithLocation(); };
@@ -14232,7 +14290,7 @@ _bkBadge();
 
   /* ── Home hero card live data ────────────────────────────────────────────── */
   async function _fuelHomeLoad() {
-    const pc = _miruPostcode();
+    const pc = (window._sessionLocation && window._sessionLocation.postcode) || _miruPostcode();
     if (!pc) {
       const ph = document.getElementById("home-fuel-placeholder");
       if (ph) { ph.style.display = ""; ph.innerHTML = '<span onclick="_idOpenModal(\'postcode\')" style="font-size:11px;color:rgba(255,255,255,.5);cursor:pointer;text-decoration:underline;text-underline-offset:2px">📍 Add postcode</span>'; }
