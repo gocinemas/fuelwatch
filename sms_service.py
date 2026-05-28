@@ -8756,12 +8756,14 @@ def api_home_brief():
                     "If it fits naturally, warmly mention it and ask how it went — one sentence max. "
                     "Skip if the brief is already full or the event seems minor."
                 )
-        if _thread_user_msgs:
+        # Only surface thread context for time-sensitive reminders — never re-surface past queries
+        _pickup_keywords = ("pick up", "pickup", "collect", "collecting", "ready at", "back at", "finish at", "done at", "ends at")
+        _has_pickup = any(kw in _thread_combined for kw in _pickup_keywords)
+        if _has_pickup and _thread_user_msgs:
             prompt_parts.append(
-                f"Recent WhatsApp context (what the user just told you): {' | '.join(_thread_user_msgs[:2])}. "
-                "Reference this naturally if relevant — e.g. if they mentioned a pickup time, remind them; "
-                "if car is at a service, skip any fuel references. "
-                "Do NOT repeat their words back verbatim."
+                f"The user mentioned a time-sensitive plan: {' | '.join(_thread_user_msgs[:2])}. "
+                "If there is a specific pickup or collection time in there, mention it as a reminder. "
+                "Do NOT reference any questions they asked about spending, places, or searches — those are past queries, not reminders."
             )
         _location_rule = (
             f"They are in {loc_str}{(' at ' + loc_venue['name']) if loc_venue.get('name') else ''}. "
@@ -8928,7 +8930,8 @@ def api_home_brief_narrative():
             prompt_parts.append(f"They've recently saved: {'; '.join(saves_ctx)}.")
     prompt_parts.append(f"Facts: {facts_text}.")
     prompt_parts.append(
-        "Sound like a smart PA who knows them. Concise, British English, under 40 words. No greetings, no bullet points."
+        "Sound like a smart PA who knows them. Concise, British English, under 40 words. No greetings, no bullet points. "
+        "Never suggest the user 'check', 'look up', or 'you might want to' anything — only state facts or reminders."
     )
     prompt = " ".join(prompt_parts)
     try:
