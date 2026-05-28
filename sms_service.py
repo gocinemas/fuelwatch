@@ -11192,18 +11192,20 @@ def api_places_nearby():
 
     cat = request.args.get("cat", "all").lower()
 
-    # Per-category config: keyword + optional Google type (strict filter), thresholds, radius
+    # Per-category config: keyword + type + quality thresholds + adaptive radii
+    # radius_dense = tight radius tried first; radius_wide = fallback if sparse results
+    # Set radius_dense=None to skip adaptive (destination categories — cocktail, kids)
     _CAT_CONFIG = {
-        "all":      {"keyword": "restaurant cafe pub bar park",         "type": None,         "min_rating": 4.0, "min_reviews": 20, "radius":  5000},
-        "food":     {"keyword": "restaurant",                           "type": "restaurant", "min_rating": 3.8, "min_reviews": 10, "radius":  5000},
-        "coffee":   {"keyword": "coffee cafe",                          "type": "cafe",       "min_rating": 3.5, "min_reviews":  5, "radius":  5000},
-        "beer":     {"keyword": "pub craft beer real ale",              "type": "bar",        "min_rating": 3.8, "min_reviews": 10, "radius":  8000},
-        "cocktail": {"keyword": "cocktail bar lounge",                  "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius": 12000},
-        "wine":     {"keyword": "wine bar",                             "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius":  8000},
-        "steak":    {"keyword": "steakhouse steak grill",               "type": "restaurant", "min_rating": 3.8, "min_reviews": 15, "radius":  8000},
-        "dessert":  {"keyword": "ice cream gelato dessert patisserie",  "type": "cafe",       "min_rating": 3.8, "min_reviews":  5, "radius":  5000},
-        "park":     {"keyword": "park",                                 "type": "park",       "min_rating": 0,   "min_reviews":  0, "radius":  8000},
-        "kids":     {"keyword": "theme park adventure soft play playground skating", "type": None, "min_rating": 3.5, "min_reviews": 5, "radius": 20000},
+        "all":      {"keyword": "restaurant cafe pub bar park",                        "type": None,         "min_rating": 4.0, "min_reviews": 20, "radius_dense": 1500, "radius_wide":  6000},
+        "food":     {"keyword": "restaurant",                                          "type": "restaurant", "min_rating": 3.8, "min_reviews": 10, "radius_dense": 1500, "radius_wide":  6000},
+        "coffee":   {"keyword": "coffee cafe",                                         "type": "cafe",       "min_rating": 3.5, "min_reviews":  5, "radius_dense":  800, "radius_wide":  4000},
+        "beer":     {"keyword": "pub craft beer real ale",                             "type": "bar",        "min_rating": 3.8, "min_reviews": 10, "radius_dense": 1500, "radius_wide":  8000},
+        "cocktail": {"keyword": "cocktail bar lounge",                                 "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": None, "radius_wide": 12000},
+        "wine":     {"keyword": "wine bar",                                            "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": 2000, "radius_wide":  8000},
+        "steak":    {"keyword": "steakhouse steak grill",                              "type": "restaurant", "min_rating": 3.8, "min_reviews": 15, "radius_dense": 3000, "radius_wide":  8000},
+        "dessert":  {"keyword": "ice cream gelato dessert patisserie",                 "type": "cafe",       "min_rating": 3.8, "min_reviews":  5, "radius_dense": 1500, "radius_wide":  5000},
+        "park":     {"keyword": "park",                                                "type": "park",       "min_rating": 0,   "min_reviews":  0, "radius_dense": 2000, "radius_wide":  8000},
+        "kids":     {"keyword": "theme park adventure soft play playground skating",   "type": None,         "min_rating": 3.5, "min_reviews":  5, "radius_dense": None, "radius_wide": 20000},
     }
     cfg = _CAT_CONFIG.get(cat, _CAT_CONFIG["all"])
 
@@ -11229,69 +11231,33 @@ def api_places_nearby():
         "spa":               {"label": "Spa",           "emoji": "🧖"},
     }
 
-    try:
+    def _places_fetch(radius):
         params = {
-            "location":  f"{lat},{lon}",
-            "radius":    cfg["radius"],
-            "keyword":   cfg["keyword"],
-            "key":       _GOOGLE_PLACES_KEY,
-            "language":  "en-GB",
+            "location": f"{lat},{lon}",
+            "radius":   radius,
+            "keyword":  cfg["keyword"],
+            "key":      _GOOGLE_PLACES_KEY,
+            "language": "en-GB",
         }
         if cfg.get("type"):
             params["type"] = cfg["type"]
         r = requests.get(
             "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
-            params=params,
-            timeout=10,
+            params=params, timeout=10,
         )
-        data = r.json()
-    except Exception as e:
-        print(f"[api/places/nearby] error: {e}")
-        return jsonify({"error": "Places unavailable"}), 503
+        return r.json()
 
-    results = []
-    seen = set()
-    for p in (data.get("results") or []):
-        name         = p.get("name", "").strip()
-        rating       = p.get("rating") or 0
-        rating_count = p.get("user_ratings_total") or 0
-
-        if not name or name.lower() in seen:
-            continue
-        # Quality gate — skip low-rated or barely-reviewed places
-        if rating < cfg["min_rating"] or rating_count < cfg["min_reviews"]:
-            continue
-
-        seen.add(name.lower())
-
-        types = p.get("types", [])
-        gcat = next(({"label": v["label"], "emoji": v["emoji"]}
-                     for t in types if (v := _GTYPE_MAP.get(t))), None)
-        if not gcat:
-            gcat = {"label": types[0].replace("_", " ").title() if types else "Place", "emoji": "📍"}
-
-        geo = p.get("geometry", {}).get("location", {})
-        results.append({
-            "name":         name,
-            "category":     gcat["label"],
-            "emoji":        gcat["emoji"],
-            "address":      p.get("vicinity", ""),
-            "rating":       rating,
-            "rating_count": rating_count,
-            "lat":          geo.get("lat"),
-            "lon":          geo.get("lng"),
-            "place_id":     p.get("place_id", ""),
-        })
-
-    if not results:
-        # Relax quality gate — halve the thresholds and retry in same call
-        for p in (data.get("results") or []):
+    def _parse_results(raw_places, seen, relax=False):
+        out = []
+        min_r = max(cfg["min_rating"] - 0.4, 3.5) if relax else cfg["min_rating"]
+        min_n = max(cfg["min_reviews"] // 2, 3)    if relax else cfg["min_reviews"]
+        for p in raw_places:
             name         = p.get("name", "").strip()
             rating       = p.get("rating") or 0
             rating_count = p.get("user_ratings_total") or 0
             if not name or name.lower() in seen:
                 continue
-            if rating < max(cfg["min_rating"] - 0.4, 3.5) or rating_count < max(cfg["min_reviews"] // 2, 5):
+            if rating < min_r or rating_count < min_n:
                 continue
             seen.add(name.lower())
             types = p.get("types", [])
@@ -11300,20 +11266,46 @@ def api_places_nearby():
             if not gcat:
                 gcat = {"label": types[0].replace("_", " ").title() if types else "Place", "emoji": "📍"}
             geo = p.get("geometry", {}).get("location", {})
-            results.append({
+            out.append({
                 "name": name, "category": gcat["label"], "emoji": gcat["emoji"],
                 "address": p.get("vicinity", ""), "rating": rating,
                 "rating_count": rating_count,
                 "lat": geo.get("lat"), "lon": geo.get("lng"),
                 "place_id": p.get("place_id", ""),
             })
+        return out
 
-    if not results:
-        return jsonify({"error": "No quality places found nearby — try a different category"}), 404
+    try:
+        seen = set()
+        results = []
+        radius_dense = cfg.get("radius_dense")
+        radius_wide  = cfg["radius_wide"]
+
+        # Adaptive: try tight radius first (dense urban areas); expand if sparse
+        if radius_dense:
+            dense_data = _places_fetch(radius_dense)
+            results = _parse_results(dense_data.get("results") or [], seen)
+            if len(results) >= 5:
+                # Dense area — good results close by, stay tight
+                results.sort(key=lambda x: (-(x["rating"]), -(x["rating_count"])))
+                return jsonify({"places": results, "cat": cat, "radius_used": radius_dense})
+
+        # Sparse / destination category — fetch at wide radius
+        wide_data = _places_fetch(radius_wide)
+        results = _parse_results(wide_data.get("results") or [], seen)
+        if not results:
+            # Relax quality gate and re-parse the same wide data
+            results = _parse_results(wide_data.get("results") or [], set(), relax=True)
+        if not results:
+            return jsonify({"error": "No quality places found nearby — try a different category"}), 404
+
+    except Exception as e:
+        print(f"[api/places/nearby] error: {e}")
+        return jsonify({"error": "Places unavailable"}), 503
 
     # Sort: rating desc, then review count desc
     results.sort(key=lambda x: (-(x["rating"]), -(x["rating_count"])))
-    return jsonify({"places": results, "cat": cat})
+    return jsonify({"places": results, "cat": cat, "radius_used": radius_wide})
 
 
 @app.route("/api/places/save", methods=["POST"])
