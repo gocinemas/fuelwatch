@@ -18261,7 +18261,7 @@ _bkBadge();
 
   function _ehPlaceCard(p) {
     const dist    = p._dist < 999 ? _distLabel(p._dist) : "";
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.name||"")+" "+(p.address||"")})`;
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.name||"")+" "+(p.address||""))}`;
     const stars = p.rating ? Math.round(p.rating) : 0;
     const starBar = p.rating
       ? `<span style="color:#f59e0b;font-size:13px;letter-spacing:-1px">${"★".repeat(stars)}${"☆".repeat(5-stars)}</span>`
