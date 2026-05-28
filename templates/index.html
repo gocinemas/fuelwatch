@@ -8982,6 +8982,17 @@ function _hcAdd() {
 
   // ── My Area home tile ────────────────────────────────────────────────────────
   let _myAreaTilePC = null;
+  let _myAreaGpsPostcode = null;
+
+  function _myAreaOpenWithLocation() {
+    if (_myAreaGpsPostcode) {
+      _maCurrentPostcode = _myAreaGpsPostcode;
+      const inp = document.getElementById("myarea-postcode-input");
+      if (inp) inp.value = _myAreaGpsPostcode;
+    }
+    showScreen('myarea');
+  }
+
   function _myAreaRefreshTile() {
     const pc    = MiruLocation.getHome() || _miruPostcode() || null;
     const pcEl  = document.getElementById("myarea-home-pc");
@@ -9003,6 +9014,28 @@ function _hcAdd() {
       badge.style.display = "none";
       sub.textContent = "Set home postcode to personalise";
       _myAreaTilePC = null;
+    }
+    // GPS near-me: if user is away from home, show current location hint on the card
+    const _gpsLat = parseFloat(localStorage.getItem("miru_gps_lat") || "");
+    const _gpsLng = parseFloat(localStorage.getItem("miru_gps_lng") || "");
+    const _gpsTs  = parseInt(localStorage.getItem("miru_gps_ts") || "0");
+    if (!isNaN(_gpsLat) && !isNaN(_gpsLng) && (Date.now() - _gpsTs < 1800000)) {
+      fetch("https://api.postcodes.io/postcodes?lon=" + _gpsLng + "&lat=" + _gpsLat + "&limit=1")
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          const res = (d.result || [])[0];
+          if (!res) return;
+          const gpsPC  = res.postcode.replace(/\s+/g, "");
+          const homePC = (MiruLocation.getHome() || _miruPostcode() || "").replace(/\s+/g, "");
+          if (gpsPC === homePC) return;
+          _myAreaGpsPostcode = gpsPC;
+          _fetchAreaName(gpsPC, function(label) {
+            if (sub) sub.textContent = "📍 You're in " + (label || gpsPC) + " · tap to explore nearby";
+          });
+          const card = document.getElementById("myarea-home-card");
+          if (card) card.onclick = function() { _myAreaOpenWithLocation(); };
+        })
+        .catch(function() {});
     }
   }
   document.addEventListener("DOMContentLoaded", _myAreaRefreshTile);
