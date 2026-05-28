@@ -78,6 +78,11 @@ analytics.init_db()
 _WA_CACHE: dict = {}
 _WA_CACHE_TTL = 1800
 
+def _cache_guard(cache: dict, max_size: int = 500) -> None:
+    """Clear cache when it exceeds max_size — prevents unbounded memory growth on long-running process."""
+    if len(cache) > max_size:
+        cache.clear()
+
 # Weather tip suppression — {from_number: date_str} so we only warn once per day
 _WA_WEATHER_WARNED: dict = {}
 
@@ -3658,7 +3663,7 @@ def _resolve_councillors(postcode: str) -> dict:
         if r.status_code != 200:
             raise ValueError("Postcode not found")
         result = r.json().get("result", {})
-        _pc_meta_cache[postcode] = result
+        _cache_guard(_pc_meta_cache); _pc_meta_cache[postcode] = result
     codes         = result.get("codes", {})
     ward_gss      = codes.get("admin_ward", "")
     ward_name     = result.get("admin_ward", "")
@@ -4184,7 +4189,7 @@ def api_elections():
             if r.status_code != 200:
                 return jsonify({"error": f"Could not find postcode {postcode}"}), 404
             result = r.json().get("result", {})
-            _pc_meta_cache[postcode] = result
+            _cache_guard(_pc_meta_cache); _pc_meta_cache[postcode] = result
         codes        = result.get("codes", {})
         ward_gss     = codes.get("admin_ward", "")
         ward_name    = result.get("admin_ward", "")
@@ -9658,7 +9663,7 @@ def api_myarea_local_info():
         weather, crime, petrol = fw.result(), fc.result(), fp.result()
 
     payload = {"weather": weather, "crime": crime, "petrol": petrol}
-    _LOCAL_INFO_CACHE[postcode] = {**payload, "_ts": time.time()}
+    _cache_guard(_LOCAL_INFO_CACHE); _LOCAL_INFO_CACHE[postcode] = {**payload, "_ts": time.time()}
     return jsonify(payload)
 
 
@@ -10808,7 +10813,7 @@ def _groq_place_summary(name: str, category: str, address: str,
             m = re.search(r'\{.*\}', content, re.DOTALL)
             if m:
                 result = json.loads(m.group(0))
-                _PLACE_SUMMARY_CACHE[cache_key] = {"ts": time.time(), "data": result}
+                _cache_guard(_PLACE_SUMMARY_CACHE); _PLACE_SUMMARY_CACHE[cache_key] = {"ts": time.time(), "data": result}
                 return result
     except Exception:
         pass
@@ -11378,7 +11383,7 @@ def api_places():
         return jsonify({"error": "No local services found nearby. Try a different location."}), 404
 
     result = {"location": display, "lat": lat, "lon": lon, "count": len(all_places), "places": all_places}
-    _PLACES_CACHE[cache_key] = (time.time(), result)
+    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (time.time(), result)
     return jsonify(result)
 
 
@@ -11492,7 +11497,7 @@ def api_kids_activities():
         events     = events_f.result()
         events_url = url_f.result()
     result = {"venues": venues, "events": events, "events_url": events_url}
-    _PLACES_CACHE[cache_key] = (time.time(), result)
+    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (time.time(), result)
     return jsonify(result)
 
 
@@ -11778,7 +11783,7 @@ def api_finder():
             ],
         },
     }
-    _PLACES_CACHE[cache_key] = (time.time(), result)
+    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (time.time(), result)
     return jsonify(result)
 
 
@@ -11866,7 +11871,7 @@ def api_finder_search():
             break
 
     result = {"results": top, "checkatrade_url": checkatrade_url, "query": q}
-    _PLACES_CACHE[cache_key] = (time.time(), result)
+    _cache_guard(_PLACES_CACHE); _PLACES_CACHE[cache_key] = (time.time(), result)
     if open_now_filter:
         result = {**result, "results": [p for p in top if p.get("open_now") is True]}
     return jsonify(result)
