@@ -14674,7 +14674,7 @@ _bkBadge();
     var setupCta = document.getElementById("brief-setup-cta");
     var ctxCards = document.getElementById("brief-context-cards");
     if (shimmer)    { shimmer.style.display = "block"; }
-    if (briefText)  { briefText.style.display = "none"; briefText.textContent = ""; }
+    if (briefText)  { briefText.style.display = "none"; briefText.textContent = ""; briefText.style.opacity = "1"; }
     if (chips)      { chips.innerHTML = ""; }
     if (setupCta)   { setupCta.style.display = "none"; }
     if (ctxCards)   { ctxCards.style.display = "none"; ctxCards.innerHTML = ""; }
