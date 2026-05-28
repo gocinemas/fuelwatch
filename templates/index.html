@@ -14932,7 +14932,7 @@ _bkBadge();
       var _lunchMin  = new Date().getMinutes();
       var _lunchMins = _lunchHour * 60 + _lunchMin;
       if (!_noCommute && _lunchMins >= 720 && _lunchMins < 870) { // 12:00–14:30
-        chips.push({ label: "🍽️ Lunch nearby?", action: "typeof _exploreHereOpen==='function'&&_exploreHereOpen()" });
+        chips.push({ label: "🍽️ Lunch nearby?", action: "_exploreHereOpen()" });
       }
       // Frequent places — confirmed regulars that match today (weekend / bank holiday chips)
       if (_noCommute && frequentToday && frequentToday.length) {
@@ -14950,9 +14950,9 @@ _bkBadge();
       var schoolEvs  = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
       var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
       if (schoolKids.length)
-        chips.push({ label: "🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "), action: "_schoolHomeOpen && _schoolHomeOpen()" });
+        chips.push({ label: "🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "), action: "_schoolHomeOpen()" });
       else if (schoolEvs.length)
-        chips.push({ label: "🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""), action: "_schoolHomeOpen && _schoolHomeOpen()" });
+        chips.push({ label: "🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""), action: "_schoolHomeOpen()" });
     }
     // Spend intentionally excluded from chips — it dominates visual hierarchy
 
