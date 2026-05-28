@@ -14723,9 +14723,21 @@ _bkBadge();
       var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc) + "&refresh=1";
       if (gpsLat !== null && gpsLng !== null) url += "&lat=" + gpsLat + "&lng=" + gpsLng;
 
+      // Timeout fallback — if brief hasn't loaded in 15s, show a retry prompt
+      var _briefTimeoutId = setTimeout(function() {
+        if (shimmer && shimmer.style.display !== "none") {
+          shimmer.style.display = "none";
+          if (briefText) {
+            briefText.innerHTML = 'Brief is taking longer than usual. <span onclick="_briefInit()" style="text-decoration:underline;cursor:pointer">Tap to retry</span>';
+            briefText.style.display = "block";
+          }
+        }
+      }, 15000);
+
       fetch(url)
         .then(function(r) { return r.json(); })
         .then(function(d) {
+          clearTimeout(_briefTimeoutId);
           _briefData = d;
           if (d.location_context && d.location_context.context) {
             _briefLastCtx = d.location_context.context;
@@ -14829,6 +14841,7 @@ _bkBadge();
           _briefRequestLocation();
         })
         .catch(function() {
+          clearTimeout(_briefTimeoutId);
           if (shimmer) shimmer.style.display = "none";
           if (briefText) { briefText.textContent = "Couldn't load your brief — check your connection."; briefText.style.display = "block"; }
           _briefRequestLocation();
