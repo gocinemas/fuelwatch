@@ -17375,11 +17375,14 @@ def _whatsapp_reply_inner():
         else:
             from_stn = re.sub(r'^(?:next\s+)?train\s+(?:from\s+)?', '', body_lower.strip()).strip()
             to_stn = ""
+        # "next train to Waterloo" → from_stn="to waterloo"; fix: strip leading "to "
+        if not to_stn and from_stn.startswith("to "):
+            to_stn, from_stn = from_stn[3:].strip(), ""
         # Strip "to X" from from_stn if not already split
         if not to_stn and " to " in from_stn:
             parts = from_stn.split(" to ", 1)
             from_stn, to_stn = parts[0].strip(), parts[1].strip()
-        if from_stn:
+        if from_stn or to_stn:
             wa_train_reply = _wa_train_format(from_stn, to_stn)
             if wa_train_reply:
                 resp.message(wa_train_reply)
