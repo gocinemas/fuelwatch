@@ -13364,34 +13364,47 @@ _bkBadge();
     const raw = document.getElementById("finder-postcode").value.trim();
     if(!raw) return !!_finderLat;
     const pc = raw.toUpperCase().replace(/\s+/g,"");
+    const _fetchTimeout = (url, ms) => {
+      const ctrl = new AbortController();
+      const tid = setTimeout(()=>ctrl.abort(), ms);
+      return fetch(url, {signal: ctrl.signal}).finally(()=>clearTimeout(tid));
+    };
     try{
-      const j=(await (await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`)).json());
+      const j=(await (await _fetchTimeout(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}`, 6000)).json());
       if(j.status===200){ _finderLat=j.result.latitude; _finderLon=j.result.longitude; _finderCurrentPC=raw.toUpperCase().trim(); return true; }
-      const ja=(await (await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`)).json());
+      const ja=(await (await _fetchTimeout(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`, 4000)).json());
       if(ja.result && ja.result.length){
         _finderSuggestion=ja.result[0];
         _dymShow(`Did you mean: ${ja.result[0]}?`); return false;
       }
-      _showErr("Postcode not found."); return false;
-    }catch(e){ _showErr("Could not look up postcode."); return false; }
+      _miruToast("Postcode not found — check and try again.", "error"); return false;
+    }catch(e){ _miruToast("Couldn't reach postcode lookup — check your connection.", "error"); return false; }
   }
 
   /* ── main search (called from button, Enter key, and useLocation dispatch) ── */
   window.finderSearch = async function(){
     _showErr(""); _showOk("");
-    const ok = await _resolvePostcode();
-    if(!ok && !_finderLat){ _showErr("Enter a postcode above, then type what you're looking for."); return; }
-    const q = document.getElementById("finder-q").value.trim();
-    if(!q){
-      // Postcode set but no query — focus the search box with a nudge
-      const qEl = document.getElementById("finder-q");
-      if(qEl){ qEl.focus(); qEl.placeholder = "Type here — e.g. plumber, dentist, garage door…"; }
-      _showOk("📍 Location set — now type what you need and tap Go.");
-      return;
-    }
-    _finderCurrentQ = q;
-    _captureSearchInterests(q);
-    await _finderFetch(q);
+    // Give immediate visual feedback so user knows GO fired
+    const goBtn = document.querySelector("#screen-places button[onclick='finderSearch()']");
+    if(goBtn){ goBtn.textContent = "…"; goBtn.disabled = true; }
+    const restore = ()=>{ if(goBtn){ goBtn.textContent = "Go"; goBtn.disabled = false; } };
+    try {
+      const ok = await _resolvePostcode();
+      if(!ok && !_finderLat){
+        _miruToast("Enter a postcode first, then type what you need.", "error");
+        restore(); return;
+      }
+      const q = document.getElementById("finder-q").value.trim();
+      if(!q){
+        const qEl = document.getElementById("finder-q");
+        if(qEl){ qEl.focus(); qEl.placeholder = "e.g. plumber, dentist, garage door…"; }
+        _miruToast("📍 Postcode set — now type what you need and tap Go.");
+        restore(); return;
+      }
+      _finderCurrentQ = q;
+      _captureSearchInterests(q);
+      await _finderFetch(q);
+    } finally { restore(); }
   };
 
   /* ── category grid ── */
