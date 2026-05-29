@@ -3565,7 +3565,15 @@
     if (name === "lifeadmin")  { _loadLifeAdmin(); }
     if (name === "finder")   { }
     _pillUpdate(name);
-    if (name === "places")   { _placesRefreshHomeRow(); }
+    if (name === "places")   {
+      _placesRefreshHomeRow();
+      // Auto-fill postcode from identity so GO works without manual entry
+      var _fpcEl = document.getElementById("finder-postcode");
+      if (_fpcEl && !_fpcEl.value.trim()) {
+        var _ipc = _miruPostcode();
+        if (_ipc) { _fpcEl.value = _ipc; if (typeof finderPostcodeInput === "function") finderPostcodeInput(_ipc); }
+      }
+    }
     setFooter(name);
   }
 
