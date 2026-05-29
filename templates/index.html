@@ -13403,7 +13403,6 @@ _bkBadge();
         restore(); return;
       }
       _finderCurrentQ = q;
-      _captureSearchInterests(q);
       await _finderFetch(q, _finderLat ? null : pcRaw);
     } finally { restore(); }
   };
