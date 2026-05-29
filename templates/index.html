@@ -13347,7 +13347,7 @@ _bkBadge();
     try{
       const pc=q.toUpperCase().replace(/\s+/g,"");
       const j=(await (await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(pc)}/autocomplete`)).json());
-      if(j.result && j.result.length && j.result[0].toUpperCase()!==pc){
+      if(j.result && j.result.length && j.result[0].toUpperCase().replace(/\s+/g,"")!==pc){
         _finderSuggestion=j.result[0];
         _dymShow(`Did you mean: ${j.result[0]}?`);
       }
@@ -13385,29 +13385,26 @@ _bkBadge();
   /* ── main search (called from button, Enter key, and useLocation dispatch) ── */
   window.finderSearch = async function(){
     _showErr(""); _showOk("");
-    // Give immediate visual feedback so user knows GO fired
     const goBtn = document.querySelector("#screen-places button[onclick='finderSearch()']");
     if(goBtn){ goBtn.textContent = "…"; goBtn.disabled = true; }
     const restore = ()=>{ if(goBtn){ goBtn.textContent = "Go"; goBtn.disabled = false; } };
     try {
-      // Skip postcodes.io if we already have coordinates (from pill search or Near me)
-      if(!_finderLat){
-        const ok = await _resolvePostcode();
-        if(!ok){
-          _miruToast("Enter a postcode first, then type what you need.", "error");
-          restore(); return;
-        }
-      }
       const q = document.getElementById("finder-q").value.trim();
       if(!q){
         const qEl = document.getElementById("finder-q");
         if(qEl){ qEl.focus(); qEl.placeholder = "e.g. plumber, dentist, garage door…"; }
-        _miruToast("📍 Postcode set — now type what you need and tap Go.");
+        _miruToast("Type what you're looking for, then tap Go.");
+        restore(); return;
+      }
+      // Use GPS coords if already set (Near me / pill search), else send postcode to backend
+      const pcRaw = (document.getElementById("finder-postcode").value||"").trim();
+      if(!_finderLat && !pcRaw){
+        _miruToast("Enter a postcode or tap 📍 Near me first.", "error");
         restore(); return;
       }
       _finderCurrentQ = q;
       _captureSearchInterests(q);
-      await _finderFetch(q);
+      await _finderFetch(q, _finderLat ? null : pcRaw);
     } finally { restore(); }
   };
 
@@ -13444,20 +13441,21 @@ _bkBadge();
     document.getElementById("finder-q").value = q;
     _finderCurrentQ = q;
     _showErr("");
-    if(!_finderLat){
-      const ok = await _resolvePostcode();
-      if(!ok){ _showErr("Please enter a postcode or tap 📍 Me first."); btn.classList.remove("fsub-on"); return; }
-    }
-    await _finderFetch(q);
+    const pcRaw = (document.getElementById("finder-postcode").value||"").trim();
+    if(!_finderLat && !pcRaw){ _miruToast("Enter a postcode or tap 📍 Near me first.", "error"); btn.classList.remove("fsub-on"); return; }
+    await _finderFetch(q, _finderLat ? null : pcRaw);
   };
 
   /* ── fetch from /api/finder/search ── */
-  async function _finderFetch(q){
+  async function _finderFetch(q, pc){
     document.getElementById("finder-loading").classList.remove("hidden");
     document.getElementById("finder-results").style.display = "none";
     const openNow = document.getElementById("finder-open-now").checked ? "1" : "0";
     try{
-      const r = await fetch(`/api/finder/search?lat=${_finderLat}&lon=${_finderLon}&q=${encodeURIComponent(q)}&open_now=${openNow}`);
+      const locPart = pc
+        ? `pc=${encodeURIComponent(pc.replace(/\s+/g,"").toUpperCase())}`
+        : `lat=${_finderLat}&lon=${_finderLon}`;
+      const r = await fetch(`/api/finder/search?${locPart}&q=${encodeURIComponent(q)}&open_now=${openNow}`);
       const d = await r.json();
       if(d.error){ _miruToast(d.error, "error"); return; }
       _finderAllResults = d.results || [];
@@ -15038,11 +15036,10 @@ _bkBadge();
     var bankHol   = !!(ctx && ctx.bank_holiday_today);
 
     var fuel   = ctx && ctx.fuel;
-    // Trains: suppress after 9 pm — last-train data at midnight is noise
     var _tr1 = ctx && ctx.trains;
     var _tr2 = ctx && ctx.trains_home;
-    var trains = (!isNight && (_tr1 && _tr1.departures && _tr1.departures.length)) ? _tr1
-               : (!isNight && (_tr2 && _tr2.departures && _tr2.departures.length)) ? _tr2
+    var trains = (_tr1 && _tr1.departures && _tr1.departures.length) ? _tr1
+               : (_tr2 && _tr2.departures && _tr2.departures.length) ? _tr2
                : null;
 
     // ── Fuel ──────────────────────────────────────────────────────────────────
@@ -15085,11 +15082,7 @@ _bkBadge();
       var dst0 = (d0.destination || trains.to || "").replace(/\s+station$/i,"").replace(/^London /i,"");
       var next = trains.departures[1] ? " · " + (trains.departures[1].departs || trains.departures[1].time || "") : "";
       trainGlance = "🚆 " + t0 + " " + dst0 + next;
-      if (!isWeekend && !bankHol && !isNight) {
-        if (trainSub) { trainSub.textContent = t0 + " " + dst0 + next; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
-      } else {
-        if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
-      }
+      if (trainSub) { trainSub.textContent = t0 + (dst0 ? " → " + dst0 : "") + next; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
     } else {
       if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
     }

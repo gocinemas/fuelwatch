@@ -11899,11 +11899,19 @@ _TRADE_CHECKATRADE = {
 
 @app.route("/api/finder/search")
 def api_finder_search():
-    try:
-        lat = float(request.args.get("lat", ""))
-        lon = float(request.args.get("lon", ""))
-    except (ValueError, TypeError):
-        return jsonify({"error": "lat/lon required"}), 400
+    # Accept either lat/lon or a postcode — geocode postcode server-side
+    pc_raw = request.args.get("pc", "").strip().replace(" ", "").upper()
+    if pc_raw:
+        pc_result = _resolve_postcode(pc_raw)
+        if not pc_result:
+            return jsonify({"error": "Postcode not found — check and try again"}), 400
+        lat, lon = pc_result["latitude"], pc_result["longitude"]
+    else:
+        try:
+            lat = float(request.args.get("lat", ""))
+            lon = float(request.args.get("lon", ""))
+        except (ValueError, TypeError):
+            return jsonify({"error": "Enter a postcode or tap Near me first"}), 400
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify({"error": "query required"}), 400
