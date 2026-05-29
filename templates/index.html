@@ -13380,9 +13380,15 @@ _bkBadge();
   window.finderSearch = async function(){
     _showErr(""); _showOk("");
     const ok = await _resolvePostcode();
-    if(!ok && !_finderLat){ _showErr("Please enter a postcode or use your location."); return; }
+    if(!ok && !_finderLat){ _showErr("Enter a postcode above, then type what you're looking for."); return; }
     const q = document.getElementById("finder-q").value.trim();
-    if(!q){ _showOk("📍 Location set! Tap a category or type your search."); return; }
+    if(!q){
+      // Postcode set but no query — focus the search box with a nudge
+      const qEl = document.getElementById("finder-q");
+      if(qEl){ qEl.focus(); qEl.placeholder = "Type here — e.g. plumber, dentist, garage door…"; }
+      _showOk("📍 Location set — now type what you need and tap Go.");
+      return;
+    }
     _finderCurrentQ = q;
     _captureSearchInterests(q);
     await _finderFetch(q);
