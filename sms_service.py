@@ -11408,7 +11408,7 @@ def api_places_save():
             "title":       name,
             "summary":     summary,
             "url":         maps_url or None,
-            "category":    "place",
+            "category":    "nearby",
             "source":      "explore-here",
         }).execute()
         return jsonify({"ok": True})

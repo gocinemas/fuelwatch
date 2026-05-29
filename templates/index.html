@@ -17484,7 +17484,8 @@ _bkBadge();
   // ── Category system ─────────────────────────────────────────────────────────
   var _SAVE_CATS = [
     {key:"all",      label:"All"},
-    {key:"area",     label:"📍 Areas"},
+    {key:"nearby",   label:"📍 Nearby"},
+    {key:"area",     label:"🏘️ Areas"},
     {key:"book",     label:"📚 Books"},
     {key:"recipe",   label:"🍳 Recipes"},
     {key:"wine",     label:"🍷 Wine"},
@@ -17503,6 +17504,8 @@ _bkBadge();
   function _saveCat(s) {
     if ((s.url || "").startsWith("book:")) return "book";
     const t = s.title || "";
+    // Nearby saves (from Explore Here / My Area nearby section)
+    if (s.source === "explore-here") return "nearby";
     // Area reports: source field (new saves) or 📍 prefix (all area report saves)
     if (s.source === "area-report" || s.source === "my-area") return "area";
     if (t.startsWith("📍")) return "area";
@@ -18299,9 +18302,10 @@ _bkBadge();
     }
     btn.innerHTML = "…"; btn.disabled = true;
     try {
+      const _ph = localStorage.getItem("miru_phone") || "";
       const r = await fetch("/api/places/save", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Library-PIN": tok },
+        headers: { "Content-Type": "application/json", "X-Library-PIN": tok, ..._ph ? {"X-User-Phone": _ph} : {} },
         body: JSON.stringify(p),
       });
       if (r.ok) {
@@ -18309,7 +18313,7 @@ _bkBadge();
         btn.style.color = "#059669";
         btn.style.borderColor = "#059669";
         btn.style.background = "#f0fdf4";
-        _miruToast(`${p.name} saved — find it in Saves →`, "success", () => _pillNav("saves"));
+        _miruToast(`${p.name} saved — find it in My Clippings →`, "success", () => _pillNav("saves"));
       } else {
         btn.innerHTML = "✗"; btn.style.color = "#dc2626";
         setTimeout(function() { btn.innerHTML = "💾 Save"; btn.style.color = "#7c3aed"; btn.style.borderColor = "var(--border)"; btn.style.background = "var(--surface)"; btn.disabled = false; }, 2000);
