@@ -17393,10 +17393,17 @@ _bkBadge();
   function savesCheckPin() {
     const tok = _savesPin();
     const phone = _miruPhone();
-    if (tok && phone) { _savesShowMain(); return; }
-    if (tok || phone) {
-      // Have partial auth — try to load; if 401, phone screen will show with error
-      _savesShowMain(); return;
+    if (tok) { _savesShowMain(); return; }
+    if (phone) {
+      // Phone linked but no saves token — auto-fetch silently so user doesn't have to re-enter
+      fetch('/api/user-token?phone=' + encodeURIComponent(phone))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.token) { localStorage.setItem('wa_saves_token', d.token); _savesShowMain(); }
+          else { _savesShowPhone(); }
+        })
+        .catch(function(){ _savesShowPhone(); });
+      return;
     }
     _savesShowPhone();
   }
