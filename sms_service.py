@@ -11905,7 +11905,7 @@ def api_finder_search():
         pc_result = _resolve_postcode(pc_raw)
         if not pc_result:
             return jsonify({"error": "Postcode not found — check and try again"}), 400
-        lat, lon = pc_result["latitude"], pc_result["longitude"]
+        _, lat, lon, _ = pc_result
     else:
         try:
             lat = float(request.args.get("lat", ""))
