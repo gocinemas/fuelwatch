@@ -7355,12 +7355,9 @@ function _hcAdd() {
   }
 
   function _loadMyArea() {
-    // If GPS detected user away from home and no explicit postcode set, use GPS location
-    if (_myAreaGpsPostcode && !_maCurrentPostcode) {
-      _maCurrentPostcode = _myAreaGpsPostcode;
-      const inp = document.getElementById("myarea-postcode-input");
-      if (inp) inp.value = _myAreaGpsPostcode;
-    }
+    // NOTE: GPS override intentionally removed — _myAreaOpenWithLocation() handles
+    // the "tap to explore nearby" case by setting _maCurrentPostcode before calling here.
+    // Direct tab nav should always default to the user's identity postcode, not GPS.
     _maApplyPrefs();
     _maShowLinkedPhone();
     _maLoadSavedPlaces();
