@@ -7115,7 +7115,7 @@ function _hcAdd() {
     // School status
     var statusEl = document.getElementById("setup-school-status");
     var maStatusEl = document.getElementById("ma-school-status");
-    if (statusEl && maStatusEl) statusEl.innerHTML = maStatusEl.innerHTML || "";
+    if (statusEl && maStatusEl && maStatusEl.innerHTML.trim()) statusEl.innerHTML = maStatusEl.innerHTML;
     else if (statusEl) _setupLoadSchoolStatus();
     // Clubs (setup-clubs-list)
     _setupLoadClubs();
@@ -13340,6 +13340,7 @@ _bkBadge();
   window.finderPostcodeInput = function(val){
     _finderSuggestion = null;
     _dymShow("");
+    _finderLat = null; _finderLon = null;
     if(val.length >= 3) _finderDYM(val);
   };
   async function _finderDYM(q){
@@ -13389,10 +13390,13 @@ _bkBadge();
     if(goBtn){ goBtn.textContent = "…"; goBtn.disabled = true; }
     const restore = ()=>{ if(goBtn){ goBtn.textContent = "Go"; goBtn.disabled = false; } };
     try {
-      const ok = await _resolvePostcode();
-      if(!ok && !_finderLat){
-        _miruToast("Enter a postcode first, then type what you need.", "error");
-        restore(); return;
+      // Skip postcodes.io if we already have coordinates (from pill search or Near me)
+      if(!_finderLat){
+        const ok = await _resolvePostcode();
+        if(!ok){
+          _miruToast("Enter a postcode first, then type what you need.", "error");
+          restore(); return;
+        }
       }
       const q = document.getElementById("finder-q").value.trim();
       if(!q){
@@ -13455,13 +13459,14 @@ _bkBadge();
     try{
       const r = await fetch(`/api/finder/search?lat=${_finderLat}&lon=${_finderLon}&q=${encodeURIComponent(q)}&open_now=${openNow}`);
       const d = await r.json();
-      if(d.error){ _showErr(d.error); return; }
+      if(d.error){ _miruToast(d.error, "error"); return; }
       _finderAllResults = d.results || [];
       _finderCheckatradeUrl = d.checkatrade_url || null;
       _finderRender();
       document.getElementById("finder-controls").style.display = "flex";
       _updateSavedBtn();
-    }catch(e){ _showErr("Search failed. Please try again."); }
+      document.getElementById("finder-results").scrollIntoView({behavior:"smooth",block:"nearest"});
+    }catch(e){ _miruToast("Search failed — check your connection and try again.", "error"); }
     finally{ document.getElementById("finder-loading").classList.add("hidden"); }
   }
 
