@@ -9333,13 +9333,16 @@ function _hcAdd() {
     const home    = MiruLocation.getHome();
     const homeRow = document.getElementById("places-home-row");
     const label   = document.getElementById("places-home-pc-label");
-    if (home) {
-      label.textContent = home;
-      homeRow.style.display = "flex";
-    } else {
-      homeRow.style.display = "none";
+    if (homeRow) {
+      if (home) {
+        if (label) label.textContent = home;
+        homeRow.style.display = "flex";
+      } else {
+        homeRow.style.display = "none";
+      }
     }
-    document.getElementById("places-save-home-row").style.display = "none";
+    const saveRow = document.getElementById("places-save-home-row");
+    if (saveRow) saveRow.style.display = "none";
     _localContextCardsRender();
   }
 

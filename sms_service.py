@@ -14086,8 +14086,72 @@ _SERVICE_SYNONYMS = {
 }
 
 
+_TRADE_KEYWORDS = {
+    "plumber", "plumbing", "electrician", "electrical", "gas engineer", "boiler",
+    "builder", "roofer", "roofing", "painter", "decorator", "locksmith", "handyman",
+    "carpenter", "joiner", "tiler", "plasterer", "cleaner", "cleaning", "gardener",
+    "landscaper", "driveway", "garage door", "garage", "guttering", "fencing",
+    "double glazing", "glazier", "drainage", "surveyor", "architect", "skip hire",
+    "removal", "removals", "pest control", "window cleaner", "repair", "fix", "fitting",
+    "installation", "installer", "contractor", "tradesman",
+}
+
+
+def _is_trade_query(sf: str) -> bool:
+    sl = sf.lower()
+    return any(kw in sl for kw in _TRADE_KEYWORDS)
+
+
+def _whatsapp_trade_reply(postcode: str, service_filter: str) -> str:
+    """Fast-path for trade/repair queries — skip Overpass, use Google Places + Checkatrade."""
+    geo = _geocode_place(postcode)
+    if not geo or geo[0] is None:
+        return f"Couldn't find '{postcode}'. Please try again with a valid postcode."
+    lat, lon, display = geo[0], geo[1], geo[2]
+    sf = service_filter.strip()
+    gq = f"{sf} near {display}" if display else sf
+    raw = _gplaces_text_search(gq, lat, lon, radius=10000)
+    lines = []
+    seen = set()
+    for p in raw[:6]:
+        name = p.get("name", "")
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        addr = p.get("formatted_address") or p.get("vicinity") or ""
+        addr_short = ", ".join(addr.split(",")[:2]) if addr else ""
+        line = f"🔧 *{name}*"
+        if addr_short:
+            line += f"\n  📍 {addr_short}"
+        rating = p.get("rating")
+        if rating:
+            line += f"  ⭐ {rating}"
+        lines.append(line)
+    # Checkatrade link for known trade types
+    ct_slug = None
+    for kw, slug in _TRADE_CHECKATRADE.items():
+        if kw in sf.lower():
+            ct_slug = slug
+            break
+    header = f"🔧 *{sf.title()} near {display}*\n\n" if display else f"🔧 *{sf.title()}*\n\n"
+    if not lines:
+        body = "No results found — try Checkatrade for vetted tradespeople:"
+    else:
+        body = "\n\n".join(lines)
+    result = header + body
+    if ct_slug:
+        town = display.replace(" ", "-").replace(",", "") if display else ""
+        ct_url = (f"https://www.checkatrade.com/Search/{ct_slug}/in/{town}"
+                  if town else f"https://www.checkatrade.com/Search/{ct_slug}")
+        result += f"\n\n🔗 Checkatrade: {ct_url}"
+    return result
+
+
 def whatsapp_places_format(q: str, service_filter: str = "") -> str:
     """Format local places info for WhatsApp reply, optionally filtered by service type."""
+    # Trade queries — skip slow Overpass/OSM path entirely, go direct to Google Places
+    if service_filter and _is_trade_query(service_filter):
+        return _whatsapp_trade_reply(q, service_filter)
     try:
         geo = _geocode_place(q)
         if not geo or geo[0] is None:
