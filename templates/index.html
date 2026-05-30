@@ -14179,7 +14179,6 @@ _bkBadge();
     <div id="pill-icons">
       <button class="pi-btn pi-active" id="pi-home"   onclick="_pillNav('home')"  ><span class="pi-ico">🏠</span><span class="pi-lbl">Home</span><span class="pi-dot"></span></button>
       <button class="pi-btn"           id="pi-myarea" onclick="_pillNav('myarea')" ><span class="pi-ico">📍</span><span class="pi-lbl">My Area</span><span class="pi-dot"></span></button>
-      <button class="pi-btn"           id="pi-intel"  onclick="_pillNav('company')"><span class="pi-ico">🔍</span><span class="pi-lbl">Intel</span><span class="pi-dot"></span></button>
       <button class="pi-btn"           id="pi-saves"  onclick="_pillNav('saves')"  ><span class="pi-ico">📌</span><span class="pi-lbl">Clippings</span><span class="pi-dot"></span></button>
       <button class="pi-btn"           id="pi-more"   onclick="_moreOpen()"        ><span class="pi-ico">⋯</span><span class="pi-lbl">More</span><span class="pi-dot"></span></button>
     </div>
@@ -15674,8 +15673,11 @@ _bkBadge();
             }).join("")
           + '</div>';
       }
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">💳 Spend · ' + (spend.month || "") + '</div>'
+      html += '<div onclick="showScreen(\'saves\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">💳 Spend · ' + (spend.month || "") + '</div>'
+        + '<span style="font-size:10px;font-weight:700;color:var(--accent)">Receipts ›</span>'
+        + '</div>'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
         + breakdownHtml
@@ -15749,8 +15751,11 @@ _bkBadge();
       var savesLabel = _isNight     ? "🌙 Tonight's picks"
                      : _isEvening  ? "🌆 This evening"
                      : "📌 Clippings";
-      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">' + savesLabel + '</div>'
+      html += '<div onclick="showScreen(\'saves\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">' + savesLabel + '</div>'
+        + '<span style="font-size:10px;font-weight:700;color:var(--accent)">View all ›</span>'
+        + '</div>'
         + savesRows
         + '</div>';
       } // end if saves.length after filter
@@ -20196,13 +20201,14 @@ _bkBadge();
     var delArg = isRemote ? ("'"+s.id+"'") : i;
     var rawQuery = (s.url||'').startsWith('unmatched:') ? (s.url||'').slice(10) : null;
     var isUnmatched = !!rawQuery;
+    var _spotUrl = s.spotify_url || s.spotify || (s.url && !s.url.startsWith('unmatched:') && s.url.startsWith('http') ? s.url : null) || ('https://open.spotify.com/search/'+encodeURIComponent((s.title||'')+' '+(s.artist||'')));
     var findBtns = isUnmatched
       ? '<div style="display:flex;gap:6px;margin-top:4px">'
         +'<a href="https://open.spotify.com/search/'+encodeURIComponent(rawQuery)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:8px;border:1.5px solid #1db954;font-size:11px;font-weight:700;color:#1db954;text-decoration:none">Spotify ↗</a>'
         +'<a href="https://www.youtube.com/results?search_query='+encodeURIComponent(rawQuery)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:8px;border:1.5px solid #ff0000;font-size:11px;font-weight:700;color:#ff0000;text-decoration:none">YouTube ↗</a>'
         +'<button onclick="musicFindUnmatched('+i+',this)" style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:8px;border:1.5px solid #7c3aed;font-size:11px;font-weight:700;color:#7c3aed;background:none;cursor:pointer">🔍 iTunes</button>'
         +'</div>'
-      : '';
+      : '<div style="margin-top:4px"><a href="'+_spotUrl+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:8px;border:1.5px solid #1db954;font-size:11px;font-weight:700;color:#1db954;text-decoration:none">♫ Open in Spotify</a></div>';
     return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
       +'<div style="display:flex;align-items:center;gap:10px">'
       +(s.cover_url||s.cover?'<img src="'+(s.cover_url||s.cover)+'" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0">':'<div style="width:40px;height:40px;border-radius:8px;background:'+(isUnmatched?'#fef3c7;border:1.5px dashed #d97706':'var(--border)')+';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">'+(isUnmatched?'❓':'🎵')+'</div>')
