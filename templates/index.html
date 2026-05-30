@@ -20513,14 +20513,9 @@ window.spotifyAddTrack = window.spotifyLike;
 <!-- ── TRAINS SCREEN ── -->
 <div id="screen-trains" class="screen pt-5" style="max-width:480px;margin:0 auto;padding:6px 16px 40px">
 
-  <!-- ── IDLE: finding station ── -->
+  <!-- ── IDLE: choose how to find a train ── -->
   <div id="train-idle">
     <h2 style="font-size:18px;font-weight:800;letter-spacing:-0.4px;margin:0 0 16px">🚆 Train Times</h2>
-
-    <!-- Loading shimmer — shown while auto-detecting nearest station -->
-    <div id="train-auto-loading" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px;animation:shimmer 1.4s infinite">
-      <div style="font-size:13px;color:var(--muted)">Finding your nearest station…</div>
-    </div>
 
     <!-- Set-mode banner — shown when user is picking a work station -->
     <div id="train-set-mode-bar" style="display:none;background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:13px;font-weight:600;color:#713f12">
@@ -20528,13 +20523,25 @@ window.spotifyAddTrack = window.spotifyLike;
       <button onclick="trainCancelSetSlot()" style="float:right;font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;font-weight:600">Cancel</button>
     </div>
 
-    <!-- Current location button -->
+    <!-- Saved commute card — only shown when home (+ optionally work) are saved -->
+    <div id="train-commute-card" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">Your commute</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div>
+          <div id="train-commute-label" style="font-size:15px;font-weight:700;color:var(--text)"></div>
+          <div id="train-commute-sub" style="font-size:12px;color:var(--muted);margin-top:2px">Saved in Settings</div>
+        </div>
+        <button onclick="_trainLoadCommute()" style="padding:9px 16px;border:none;background:var(--text);color:var(--bg);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Load →</button>
+      </div>
+    </div>
+
+    <!-- Find nearest stations — GPS on demand -->
     <button id="train-locate-btn" onclick="_trainUseLocation()"
       style="width:100%;padding:14px 18px;border:none;background:#1d4ed8;color:#fff;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px">
       📍 Find nearest stations
     </button>
 
-    <!-- Search — fallback / manual route check -->
+    <!-- Search a specific route -->
     <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Or search a route</div>
     <div style="display:flex;gap:8px">
       <input id="train-search-input" type="text" placeholder="Station name or postcode…"
@@ -20545,7 +20552,7 @@ window.spotifyAddTrack = window.spotifyLike;
     </div>
     <div id="train-search-results" style="margin-top:10px"></div>
 
-    <!-- Nearest stations picker — appears when GPS or postcode produces multiple options -->
+    <!-- Nearest stations picker — appears after GPS or postcode search -->
     <div id="train-nearest-list" style="display:none;margin-top:10px"></div>
   </div>
 
@@ -21199,55 +21206,46 @@ window.spotifyAddTrack = window.spotifyLike;
     _origTrainSearch();
   };
 
+  // Populate commute card from saved bookmarks (no GPS)
+  function _trainShowCommuteCard() {
+    var bh = _getBm("home");
+    var card = document.getElementById("train-commute-card");
+    if (!card) return;
+    if (bh && bh.crs) {
+      var bw = _getBm("work");
+      var label = document.getElementById("train-commute-label");
+      var sub = document.getElementById("train-commute-sub");
+      if (label) label.textContent = bh.name + (bw ? " → " + bw.name : "");
+      if (sub) sub.textContent = bw ? "Home → Work" : "Your saved home station";
+      card.style.display = "block";
+    } else {
+      card.style.display = "none";
+    }
+  }
+
+  window._trainLoadCommute = function() {
+    var bh = _getBm("home");
+    if (!bh || !bh.crs) return;
+    var bw = _getBm("work");
+    if (bw) { _trainToCrs = bw.crs; _trainToName = bw.name; }
+    _showActive(bh.name, bh.crs, "rail");
+    _loadDeps(bh.crs);
+  };
+
   var _origShowScreenTrains = window.showScreen;
   window.showScreen = function(name) {
     _origShowScreenTrains(name);
     if (name === "trains") {
       if (!_trainCrs) {
         _showIdle();
-        var _loading = document.getElementById("train-auto-loading");
-        var _didLoad = false;
-        var _fallback = function() {
-          if (_didLoad) return; _didLoad = true;
-          if (_loading) _loading.style.display = "none";
-          var bh = _getBm("home");
-          if (bh && bh.crs) {
-            var bw = _getBm("work");
-            if (bw) { _trainToCrs = bw.crs; _trainToName = bw.name; }
-            _showActive(bh.name, bh.crs, "rail");
-            _loadDeps(bh.crs);
-            return;
-          }
-          var _tpc = new URLSearchParams(location.search).get("pc") || _miruPostcode();
-          if (_tpc) { _trainAutoLoadPostcode(_tpc); }
-        };
-        var _loadFromGps = function(lat, lon) {
-          if (_didLoad) return; _didLoad = true;
-          _locateBoth(lat, lon,
-            function(rail, tube) {
-              if (_loading) _loading.style.display = "none";
-              _showNearestPicker(rail, tube);
-            },
-            function() { _didLoad = false; _fallback(); }
-          );
-        };
-        if (navigator.geolocation) {
-          var _gpsTimer = setTimeout(function() { _fallback(); }, 3000);
-          navigator.geolocation.getCurrentPosition(
-            function(pos) { clearTimeout(_gpsTimer); _loadFromGps(pos.coords.latitude, pos.coords.longitude); },
-            function() { clearTimeout(_gpsTimer); _fallback(); },
-            { timeout: 6000, enableHighAccuracy: false, maximumAge: 300000 }
-          );
-        } else {
-          _fallback();
-        }
+        _trainShowCommuteCard();
       }
     } else {
       _stopTimers();
     }
   };
 
-  // Manual "Find nearest stations" button
+  // GPS button — explicit, on demand
   window._trainUseLocation = function() {
     var btn = document.getElementById("train-locate-btn");
     if (btn) { btn.textContent = "⏳ Locating…"; btn.disabled = true; }
@@ -21258,12 +21256,10 @@ window.spotifyAddTrack = window.spotifyLike;
         _restore();
         _locateBoth(pos.coords.latitude, pos.coords.longitude,
           function(rail, tube) { _showNearestPicker(rail, tube); },
-          function() {
-            if (btn) { btn.textContent = "Location unavailable"; btn.disabled = false; }
-          }
+          function() { if (btn) { btn.textContent = "Location unavailable"; btn.disabled = false; } }
         );
       },
-      function() { _restore(); if (btn) btn.textContent = "📍 Find nearest stations"; },
+      function() { _restore(); },
       { timeout: 8000, enableHighAccuracy: false, maximumAge: 60000 }
     );
   };
