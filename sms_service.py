@@ -9018,13 +9018,16 @@ def api_home_ask():
     _PERSONAL   = ["my ", " my ", "i saved", "i've saved", "i have saved", "did i save",
                    "what did i", "how much did i", "how much have i", "what have i",
                    "school", "riaan", "inaaya", "train", "fuel", "spend", "spent",
-                   "event", "delivery", "calendar", "saves", "clipping", "saved",
+                   "event", "letter", "newsletter", "permission", "consent", "trip",
+                   "delivery", "calendar", "saves", "clipping", "saved",
                    "this week", "this month", "today", "tomorrow",
                    "swimming", "dance", "football", "gym", "club", "class", "lesson",
                    "activity", "activities", "when is", "what day", "schedule", "routine",
                    "vehicle", "car", "mot", "tax", "registration", "reg ",
                    "energy", "electric", "gas", "insurance", "mobile", "broadband",
-                   "provider", "bill", "bin", "postcode", "route", "settings"]
+                   "provider", "bill", "bin", "postcode", "route", "settings",
+                   "receipt", "shop", "supermarket", "waitrose", "tesco", "restaurant",
+                   "place", "where", "home", "work", "location"]
     is_personal = any(p in q_lower for p in _PERSONAL)
 
     # ── Build personal context ─────────────────────────────────────────────────
@@ -9048,8 +9051,24 @@ def api_home_ask():
         _hs = school.get("holiday_status") or {}
         if _hs.get("on_holiday") and _hs.get("label"):
             ctx_lines.append(f"School holiday: kids on {_hs['label']} (back {_hs.get('back_label','')})")
-        for ev in (school.get("upcoming") or [])[:3]:
-            ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}")
+
+        # ── School events + comms — fetch fresh from DB (brief ctx only has 3 upcoming) ──
+        if from_number:
+            try:
+                _school_full = _v2_fetch_school(from_number)
+                for ev in (_school_full.get("upcoming") or [])[:10]:
+                    _notes = f" — {ev['notes'][:80]}" if ev.get("notes") else ""
+                    ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}{_notes}")
+                for ev in (_school_full.get("recent") or [])[:5]:
+                    _notes = f" — {ev['notes'][:100]}" if ev.get("notes") else ""
+                    ctx_lines.append(f"School comms (received {(ev.get('created_at','')[:10])}): {ev.get('child_name','')} — {ev.get('event_title','')}{_notes}")
+            except Exception:
+                # Fallback to brief ctx
+                for ev in (school.get("upcoming") or [])[:3]:
+                    ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}")
+        else:
+            for ev in (school.get("upcoming") or [])[:3]:
+                ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}")
 
         for pe in (ctx.get("personal_events") or [])[:5]:
             _t = f" at {pe['time']}" if pe.get("time") else ""
@@ -9179,6 +9198,33 @@ def api_home_ask():
                         ctx_lines.append(
                             f"Life admin — {_htype}: {_hname}" + (f" ({_hdet})" if _hdet else "")
                         )
+            except Exception:
+                pass
+
+            # ── Frequent / saved places (home, work, school) ──────────────────
+            try:
+                _fp_rows = lib._sb().table("ma_details").select("data") \
+                    .eq("device_id", from_number).eq("type", "frequent_places") \
+                    .limit(1).execute().data or []
+                _fp = (_fp_rows[0]["data"] if _fp_rows else {}) or {}
+                for _label, _place in _fp.items():
+                    if isinstance(_place, dict) and _place.get("name"):
+                        ctx_lines.append(f"Saved place — {_label}: {_place['name']}, {_place.get('postcode','')}")
+                    elif isinstance(_place, str) and _place:
+                        ctx_lines.append(f"Saved place — {_label}: {_place}")
+            except Exception:
+                pass
+
+            # ── Location profile (home/work addresses) ────────────────────────
+            try:
+                _lp_rows = lib._sb().table("ma_details").select("data") \
+                    .eq("device_id", from_number).eq("type", "location_profile") \
+                    .limit(1).execute().data or []
+                _lp = (_lp_rows[0]["data"] if _lp_rows else {}) or {}
+                if _lp.get("home_postcode"):
+                    ctx_lines.append(f"Home postcode: {_lp['home_postcode']}")
+                if _lp.get("work_postcode") or _lp.get("work_name"):
+                    ctx_lines.append(f"Work: {_lp.get('work_name','')} {_lp.get('work_postcode','')}".strip())
             except Exception:
                 pass
 
