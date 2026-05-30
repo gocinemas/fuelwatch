@@ -10125,6 +10125,14 @@ function _hcAdd() {
     const latlon = (p.lat && p.lon) ? `&lat=${p.lat}&lon=${p.lon}` : "";
     const _pDirUrl = p.lat && p.lon ? `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}` : (p.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.name||'')+', '+(p.address||''))}` : null);
     if (_pDirUrl) links.push(`<a href="${_pDirUrl}" target="_blank" rel="noopener" style="color:#15803d;font-size:12px;font-weight:500">🗺️ Directions</a>`);
+    const _FOOD_CATS = ["restaurant","café","cafe","fast food","pub","bar","bakery","bistro","brasserie","wine bar","cocktail"];
+    const _isFood = _FOOD_CATS.some(c => (p.category || "").toLowerCase().includes(c));
+    if (_isFood) {
+      const _menuUrl = p.place_id
+        ? `https://www.google.com/maps/place/?q=place_id:${p.place_id}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.name||'')+(p.address?', '+p.address:''))}`;
+      links.push(`<a href="${_menuUrl}" target="_blank" rel="noopener" style="color:#d97706;font-size:12px;font-weight:500">🍽️ Menu</a>`);
+    }
     const badge = isFeatured ? `<span style="font-size:10px;background:#7c3aed;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;margin-left:6px">Featured</span>` : "";
     return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
