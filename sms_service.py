@@ -6256,7 +6256,8 @@ def api_v2_prefs_post():
             try:
                 _scored = sorted(
                     [(haversine_km(_hlat, _hlng, s["lat"], s["lon"]), s)
-                     for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
+                     for s in _STATION_CACHE.values()
+                     if s.get("lat") and s.get("lon") and s.get("crs") not in _LOW_SERVICE_CRS],
                     key=lambda x: x[0]
                 )
                 if _scored and _scored[0][0] < 5.0:
@@ -7459,7 +7460,8 @@ def _v2_nearest_station_from_latlon(lat: float, lng: float) -> str:
     try:
         scored = sorted(
             [(haversine_km(lat, lng, s["lat"], s["lon"]), s)
-             for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
+             for s in _STATION_CACHE.values()
+             if s.get("lat") and s.get("lon") and s.get("crs") not in _LOW_SERVICE_CRS],
             key=lambda x: x[0]
         )
         if scored and scored[0][0] < 3.0:
@@ -7624,7 +7626,8 @@ def api_brief_location():
         try:
             scored = sorted(
                 [(haversine_km(lat, lng, s["lat"], s["lon"]), s)
-                 for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
+                 for s in _STATION_CACHE.values()
+                 if s.get("lat") and s.get("lon") and s.get("crs") not in _LOW_SERVICE_CRS],
                 key=lambda x: x[0],
             )
             if not scored:
@@ -16321,6 +16324,9 @@ def _wa_classify_intent(body: str) -> dict | None:
                 "                 author (if 'by X' mentioned, else null), timeframe (today|yesterday|last_week|last_month|all).\n"
                 "  worth_it     — wants review/verdict on last saved book.\n"
                 "  shopping_list— wants ingredients/shopping list from last saved recipe.\n"
+                "  drink_info   — wants to know what's in a cocktail / how it looks or tastes. Extract: drink (name of the cocktail or drink, str).\n"
+                "                 Map 'what's in a X' / 'what is a X' / 'what does a X look like' / 'tell me about X' / 'X cocktail info' → drink_info.\n"
+                "                 Only use when asking ABOUT a drink, not ordering/finding one nearby.\n"
                 "  recipe       — wants a recipe or cocktail recipe. Extract: dish (the name of the dish or drink, str).\n"
                 "                 Map 'how do I make X' / 'recipe for X' / 'how to make X' / 'X recipe' / 'ingredients for X' → recipe.\n"
                 "  my_saves     — wants to see their saved items list.\n"
@@ -16389,6 +16395,33 @@ def _wa_recipe_card(dish: str, from_number: str = "") -> str:
         return text + "\n\n_Reply *save* to keep this, or send another recipe name._"
     except Exception:
         return f"Couldn't fetch the recipe for *{dish}* right now — try again in a moment."
+
+
+def _wa_drink_info_card(drink: str) -> str:
+    """Quick cheat-sheet for any cocktail or drink — ingredients, glass, colour, taste."""
+    try:
+        prompt = (
+            f"Give me a quick cheat-sheet for the cocktail or drink '{drink}'. "
+            "Use this exact format (no markdown, no asterisks, no intro):\n\n"
+            "[emoji] [Name]\n\n"
+            "Ingredients: [ingredient 1] · [ingredient 2] · ...\n"
+            "Glass: [glass type + any garnish]\n"
+            "Colour: [colour]\n"
+            "Taste: [1 line — flavour profile]\n"
+            "Similar: [1-2 drinks the person might also like]\n\n"
+            "Rules: British English. Under 60 words. If it's not a real drink, say so in one line."
+        )
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 150, "temperature": 0.3,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=10,
+        )
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except Exception:
+        return f"Couldn't look up *{drink}* right now — try again in a moment."
 
 
 def _wa_search_saves(from_number: str, filter_type: str, timeframe: str, author: str = "") -> str:
@@ -17863,6 +17896,10 @@ def _whatsapp_reply_inner():
             msg += f"\n\n📚 {'Already in' if already else 'Saved to'} My Books: miru.humanagency.co/?screen=scan&token={user_token}"
             resp.message(msg)
             return str(resp)
+        elif _itype == "drink_info":
+            _drink = (_intent.get("drink") or body).strip()
+            resp.message(_wa_drink_info_card(_drink))
+            return str(resp)
         elif _itype == "recipe":
             _dish = (_intent.get("dish") or body).strip()
             resp.message(_wa_recipe_card(_dish, from_number))
@@ -18091,6 +18128,19 @@ def _whatsapp_reply_inner():
             postcode = _home_pc2.replace(" ", "")
         else:
             resp.message("Just send your postcode to find fuel, e.g. *KT15 petrol*")
+            return str(resp)
+
+    # ── Drink info — "what's in a Negroni", "what is a mojito" ──────────────────
+    _COCKTAIL_NAMES = {"negroni","martini","mojito","margarita","aperol","spritz","daiquiri",
+                       "cosmopolitan","old fashioned","boulevardier","manhattan","gimlet","paloma",
+                       "bellini","mimosa","pina colada","pisco sour","espresso martini",
+                       "white russian","black russian","long island","pornstar martini","french 75",
+                       "whisky sour","whiskey sour","bramble","sidecar","aviation","aperol spritz"}
+    _di_m = re.search(r"what(?:'s|\s+is)\s+(?:in\s+)?(?:a\s+|an\s+)?([a-z\s]+?)(?:\?|$)", body_lower)
+    if _di_m:
+        _di_name = _di_m.group(1).strip()
+        if any(c in body_lower for c in _COCKTAIL_NAMES):
+            resp.message(_wa_drink_info_card(_di_name))
             return str(resp)
 
     # ── Recipe / cocktail recipe — intercept before product search ───────────────
@@ -22228,6 +22278,8 @@ def api_train_test():
 # ── Station data (static — no startup delay, no external API) ──
 import difflib as _difflib
 from uk_stations import UK_STATIONS as _STATION_CACHE
+# Request stops / effectively closed stations — skip in nearest-station proximity searches
+_LOW_SERVICE_CRS = {"LNG"}  # Longcross: request stop, ~1 service/day
 # ───────────────────────────────────────────────────────────────
 
 @app.route("/api/train/nearest")
@@ -22243,7 +22295,8 @@ def api_train_nearest():
 
     scored = sorted(
         [(haversine_km(user_lat, user_lon, s["lat"], s["lon"]), s)
-         for s in _STATION_CACHE.values() if s.get("lat") and s.get("lon")],
+         for s in _STATION_CACHE.values()
+         if s.get("lat") and s.get("lon") and s.get("crs") not in _LOW_SERVICE_CRS],
         key=lambda x: x[0]
     )[:3]
     if not scored:
@@ -22266,7 +22319,7 @@ def api_train_nearest_by_postcode():
             return jsonify({"error": "Postcode not found"}), 404
         scored = []
         for s in _STATION_CACHE.values():
-            if s.get("lat") and s.get("lon"):
+            if s.get("lat") and s.get("lon") and s.get("crs") not in _LOW_SERVICE_CRS:
                 d = haversine_km(lat, lon, s["lat"], s["lon"])
                 scored.append((d, s))
         scored.sort(key=lambda x: x[0])
