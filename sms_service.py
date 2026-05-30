@@ -9081,29 +9081,51 @@ def api_home_ask():
         for dlv in (ctx.get("deliveries") or [])[:2]:
             ctx_lines.append(f"Delivery: {dlv.get('carrier','')} — {dlv.get('status','')}")
 
-        # ── Fetch saves from DB (recent 40) ───────────────────────────────────
+        # ── Fetch saves + receipts from DB (recent 50) ───────────────────────
         if from_number:
             try:
+                import re as _re_ask
                 plain = from_number.replace("whatsapp:", "").strip()
                 saves_rows = lib._sb().table("wa_saves") \
-                    .select("title,category,created_at") \
+                    .select("title,summary,category,created_at") \
                     .in_("from_number", [plain, "whatsapp:" + plain]) \
                     .neq("status", "pending_intent") \
-                    .order("created_at", desc=True).limit(40).execute().data or []
-                if saves_rows:
+                    .order("created_at", desc=True).limit(50).execute().data or []
+                receipts, non_receipts = [], []
+                for s in saves_rows:
+                    if not s.get("title"): continue
+                    if s["title"].startswith("🧾"):
+                        receipts.append(s)
+                    else:
+                        non_receipts.append(s)
+                if non_receipts:
                     saves_text = "; ".join(
-                        f"{s.get('title','').strip()} [{s.get('category','')}]"
-                        for s in saves_rows if s.get("title")
+                        f"{s['title'].strip()} [{s.get('category','')}]"
+                        for s in non_receipts
                     )
                     ctx_lines.append(f"Saves library: {saves_text}")
+                # Receipts with amounts — include merchant + amount so LLM can answer spend queries
+                if receipts:
+                    receipt_parts = []
+                    for s in receipts:
+                        merchant = s["title"].replace("🧾","").strip()
+                        amt_m = _re_ask.search(r'£([\d,]+\.?\d*)', (s.get("summary") or "") + s["title"])
+                        amt = f"£{amt_m.group(1)}" if amt_m else ""
+                        date_str = (s.get("created_at") or "")[:10]
+                        receipt_parts.append(f"{merchant}{' '+amt if amt else ''} ({date_str})")
+                    ctx_lines.append(f"Receipts this device: {'; '.join(receipt_parts)}")
             except Exception:
                 pass
 
             # ── Spend summary ─────────────────────────────────────────────────
             try:
                 spend = _v2_fetch_spend(from_number)
-                if spend and spend.get("total_month"):
-                    ctx_lines.append(f"Spend this month: £{spend['total_month']:.0f}")
+                if spend and spend.get("total") is not None and spend.get("count", 0) > 0:
+                    ctx_lines.append(f"Spend this month ({spend.get('month','')}): £{spend['total']:.2f} across {spend['count']} receipts")
+                    if spend.get("breakdown"):
+                        bd = spend["breakdown"]
+                        bd_text = ", ".join(f"{cat} £{v['total']:.2f}" for cat, v in list(bd.items())[:5])
+                        ctx_lines.append(f"Spend breakdown: {bd_text}")
             except Exception:
                 pass
 
