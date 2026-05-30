@@ -9133,10 +9133,10 @@ def api_home_ask():
                         non_receipts.append(s)
                 if non_receipts:
                     saves_text = "; ".join(
-                        f"{s['title'].strip()} [{s.get('category','')}]"
+                        f"{s['title'].strip()} [{s.get('category','')}] saved {(s.get('created_at') or '')[:10]}"
                         for s in non_receipts
                     )
-                    ctx_lines.append(f"Saves library: {saves_text}")
+                    ctx_lines.append(f"Saves library (clippings/bookmarks, NOT spend): {saves_text}")
                 # Receipts with amounts — include merchant + amount so LLM can answer spend queries
                 if receipts:
                     receipt_parts = []
@@ -9316,6 +9316,9 @@ def api_home_ask():
             "(2) your own general knowledge. "
             "Use Context for any personal question. "
             "Use general knowledge for everything else — definitions, facts, calculations, advice. "
+            "CRITICAL distinction: 'Saves library' = articles, places or clippings the user bookmarked in the app. "
+            "'Receipts' = purchase records showing what they SPENT at shops. "
+            "When the user asks 'what did I save', answer from Saves library ONLY — never use Receipts for this. "
             "CRITICAL: never invent events, appointments, schedules or providers not explicitly in Context. "
             "Never say 'I don't have that information' — if it's not in Context, answer from knowledge. "
             "Plain English, no bullet points, under 45 words."
