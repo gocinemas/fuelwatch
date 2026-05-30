@@ -11533,7 +11533,7 @@ def api_places_nearby():
         "cocktail": {"keyword": "cocktail bar lounge",                                 "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": None, "radius_wide": 12000, "dense_min": 5},
         "wine":     {"keyword": "wine bar",                                            "type": "bar",        "min_rating": 3.8, "min_reviews":  8, "radius_dense": 2000, "radius_wide":  8000, "dense_min": 3},
         "steak":    {"keyword": "steakhouse steak grill",                              "type": "restaurant", "min_rating": 3.8, "min_reviews": 15, "radius_dense": 3000, "radius_wide":  8000, "dense_min": 2},
-        "dessert":  {"keyword": "ice cream gelato dessert patisserie sweet",            "type": None,         "min_rating": 3.5, "min_reviews":  5, "radius_dense": 1500, "radius_wide":  5000, "dense_min": 2},
+        "dessert":  {"keyword": "ice cream gelato dessert patisserie sweet",            "type": None,         "min_rating": 3.0, "min_reviews":  2, "radius_dense": 2000, "radius_wide":  8000, "dense_min": 2},
         "park":     {"keyword": "park",                                                "type": "park",       "min_rating": 0,   "min_reviews":  0, "radius_dense": 2000, "radius_wide":  8000, "dense_min": 3},
         "kids":     {"keyword": "theme park adventure soft play playground skating",   "type": None,         "min_rating": 3.5, "min_reviews":  5, "radius_dense": None, "radius_wide": 20000, "dense_min": 5},
     }

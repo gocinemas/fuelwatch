@@ -10138,7 +10138,7 @@ function _hcAdd() {
       const _menuUrl = p.place_id
         ? `https://www.google.com/maps/place/?q=place_id:${p.place_id}`
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.name||'')+(p.address?', '+p.address:''))}`;
-      links.push(`<a href="${_menuUrl}" target="_blank" rel="noopener" style="color:#d97706;font-size:12px;font-weight:500">🍽️ Menu</a>`);
+      links.push(`<a href="${_menuUrl}" target="_blank" rel="noopener" style="display:inline-block;background:#fff7ed;border:1.5px solid #fed7aa;color:#d97706;font-size:11px;font-weight:700;border-radius:99px;padding:4px 12px;text-decoration:none">🍽️ Menu</a>`);
     }
     const badge = isFeatured ? `<span style="font-size:10px;background:#7c3aed;color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;margin-left:6px">Featured</span>` : "";
     return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
@@ -21821,69 +21821,6 @@ window.spotifyAddTrack = window.spotifyLike;
   </div>
 </div>
 
-<!-- ── Nearby FAB — floating location button ── -->
-<button id="nearby-fab" onclick="_fabFindHere()"
-  style="display:none;position:fixed;bottom:80px;right:18px;z-index:900;
-         width:54px;height:54px;border-radius:50%;border:none;
-         background:#1d4ed8;color:#fff;font-size:22px;cursor:pointer;
-         box-shadow:0 4px 16px rgba(29,78,216,.45);
-         align-items:center;justify-content:center">
-  📍
-</button>
-<script>
-(function() {
-  var _fab = document.getElementById("nearby-fab");
-
-  function _fabShow() { if (_fab) _fab.style.display = "flex"; }
-  function _fabHide() { if (_fab) _fab.style.display = "none"; }
-
-  // Show on home, hide on all other screens
-  var _origSS = window.showScreen;
-  window.showScreen = function(name) { _origSS && _origSS(name); _fabHide(); };
-
-  var _origSH = window.showHome;
-  window.showHome = function() { _origSH && _origSH(); _fabShow(); };
-
-  // Show on initial load (home is default)
-  _fabShow();
-
-  window._fabFindHere = function() {
-    if (!_fab || _fab.disabled) return;
-    _fab.textContent = "⏳";
-    _fab.disabled = true;
-    var _restore = function() { if (_fab) { _fab.textContent = "📍"; _fab.disabled = false; } };
-    if (!navigator.geolocation) { _restore(); return; }
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        fetch("/api/places/near-me?lat=" + pos.coords.latitude + "&lng=" + pos.coords.longitude + "&radius=5000")
-          .then(function(r){ return r.json(); })
-          .then(function(d) {
-            _restore();
-            var res = document.getElementById("brief-nearby-results");
-            if (!res) return;
-            var places = d.places || [];
-            res.style.display = "flex";
-            if (!places.length) { res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Nothing found within 5km.</div>'; return; }
-            res.innerHTML = places.map(function(p) {
-              var dist = p.distance_m < 1000 ? p.distance_m + "m" : (Math.round(p.distance_m/100)/10) + "km";
-              var icons = {restaurant:"🍽️",cafe:"☕",coffee:"☕",bar:"🍸",pub:"🍺",fast_food:"🍔",bakery:"🥐",supermarket:"🛒",convenience:"🏪",pharmacy:"💊",park:"🌳",cinema:"🎬",gym:"🏋️"};
-              var icon = icons[p.type] || "📍";
-              var url = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.name);
-              return '<a href="'+url+'" target="_blank" rel="noopener" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;text-decoration:none">'
-                + '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px">'+icon+'</span>'
-                + '<div><div style="font-size:13px;font-weight:700;color:var(--text)">'+p.name+'</div>'
-                + '<div style="font-size:11px;color:var(--muted)">'+(p.category||p.type||"")+'</div></div></div>'
-                + '<span style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">'+dist+' ↗</span></a>';
-            }).join("");
-          })
-          .catch(function() { _restore(); });
-      },
-      function() { _restore(); },
-      { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
-    );
-  };
-})();
-</script>
 
 </body>
 </html>
