@@ -18514,6 +18514,10 @@ _bkBadge();
       ? `<span style="font-size:12px;font-weight:700;color:var(--text)">${p.rating.toFixed(1)}</span><span style="font-size:11px;color:var(--muted)"> · ${p.rating_count||0} reviews</span>`
       : "";
     const safeData = encodeURIComponent(JSON.stringify({name:p.name,address:p.address,rating:p.rating,maps_url:mapsUrl,place_id:p.place_id||""}));
+    const _FOOD_TYPES = new Set(["restaurant","cafe","bar","bakery","meal_takeaway","pub","fast_food","night_club"]);
+    const _isFood = _FOOD_TYPES.has(p.type) || ["restaurant","café","cafe","fast food","pub","bar","bakery","bistro","wine bar"].some(c => (p.category||"").toLowerCase().includes(c));
+    const menuUrl = p.place_id ? `https://www.google.com/maps/place/?q=place_id:${p.place_id}` : mapsUrl;
+    const menuBtn = _isFood ? `<a href="${menuUrl}" target="_blank" rel="noopener" style="flex-shrink:0;padding:7px 12px;border-radius:12px;border:1.5px solid #fed7aa;background:#fff7ed;font-size:11px;font-weight:700;cursor:pointer;color:#d97706;display:flex;align-items:center;gap:4px;white-space:nowrap;text-decoration:none">🍽️ Menu</a>` : "";
     return `<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
       <!-- Emoji block -->
       <a href="${mapsUrl}" target="_blank" rel="noopener" style="width:52px;height:52px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;text-decoration:none">${p.emoji || "📍"}</a>
@@ -18525,8 +18529,11 @@ _bkBadge();
           <div style="font-size:11px;color:var(--muted)">${[p.category, dist ? dist+" away" : ""].filter(Boolean).join(" · ")}</div>
         </a>
       </div>
-      <!-- Save button -->
-      <button onclick="_ehSavePlace(this,'${safeData}')" style="flex-shrink:0;padding:7px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;color:#7c3aed;display:flex;align-items:center;gap:4px;white-space:nowrap">💾 Save</button>
+      <!-- Action buttons -->
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        ${menuBtn}
+        <button onclick="_ehSavePlace(this,'${safeData}')" style="padding:7px 12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);font-size:11px;font-weight:700;cursor:pointer;color:#7c3aed;display:flex;align-items:center;gap:4px;white-space:nowrap">💾 Save</button>
+      </div>
     </div>`;
   }
 
