@@ -6822,6 +6822,49 @@ def _v2_fetch_spend(from_number: str) -> dict:
         return {}
 
 
+def _v2_fetch_today_activity(from_number: str) -> list:
+    """Receipts from the last 8 hours — tells us what the user did today."""
+    import datetime as _tadt
+    try:
+        _since = (_tadt.datetime.now() - _tadt.timedelta(hours=8)).strftime("%Y-%m-%dT%H:%M:%S")
+        rows = lib._sb().table("receipts").select("merchant,category,total,shop_date") \
+            .eq("phone", from_number) \
+            .gte("shop_date", _since) \
+            .order("shop_date", desc=False).limit(6).execute().data or []
+        return [{"merchant": r.get("merchant",""), "category": r.get("category",""),
+                 "total": r.get("total"), "time": (r.get("shop_date") or "")[:16]} for r in rows]
+    except Exception:
+        return []
+
+
+def _v2_fetch_weekend_patterns(from_number: str) -> dict:
+    """What the user tends to save/do on weekend evenings (5–11pm Sat/Sun) — inferred from history."""
+    import datetime as _wpdt, collections as _wpc
+    try:
+        since = (_wpdt.date.today() - _wpdt.timedelta(days=60)).isoformat()
+        rows = lib._sb().table("wa_saves").select("category,title,created_at") \
+            .eq("from_number", from_number) \
+            .gte("created_at", since + "T00:00:00") \
+            .not_.in_("category", ["nearby", "place"]) \
+            .order("created_at", desc=True).limit(100).execute().data or []
+        cat_counts: dict = _wpc.Counter()
+        for r in rows:
+            ts = r.get("created_at", "")
+            try:
+                dt = _wpdt.datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(
+                    _wpdt.timezone(offset=_wpdt.timedelta(hours=1)))  # BST approx
+                if dt.weekday() in (5, 6) and 17 <= dt.hour < 23:
+                    cat = (r.get("category") or "").strip()
+                    if cat and cat not in ("nearby", "place", ""):
+                        cat_counts[cat] += 1
+            except Exception:
+                continue
+        top = [c for c, _ in cat_counts.most_common(3)]
+        return {"top_categories": top, "sample_size": sum(cat_counts.values())}
+    except Exception:
+        return {}
+
+
 def _v2_fetch_saves(from_number: str) -> list:
     """Recent non-receipt saves (places, articles, clips) for surfacing in the brief."""
     from datetime import date, timedelta
@@ -8161,9 +8204,11 @@ def api_home_brief():
             futures["deliveries"]      = pool.submit(_v2_fetch_deliveries, from_number)
             futures["calendar"]        = pool.submit(_v2_fetch_calendar, from_number)
             futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
-            futures["recent_capture"]  = pool.submit(_v2_fetch_recent_capture, from_number)
-            futures["recurring"]       = pool.submit(_v2_fetch_recurring, from_number, now.weekday())
-            futures["thread"]          = pool.submit(_wa_load_thread, from_number)
+            futures["recent_capture"]   = pool.submit(_v2_fetch_recent_capture, from_number)
+            futures["recurring"]        = pool.submit(_v2_fetch_recurring, from_number, now.weekday())
+            futures["thread"]           = pool.submit(_wa_load_thread, from_number)
+            futures["today_activity"]   = pool.submit(_v2_fetch_today_activity, from_number)
+            futures["weekend_patterns"] = pool.submit(_v2_fetch_weekend_patterns, from_number)
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
@@ -8750,6 +8795,42 @@ def api_home_brief():
             if day_type not in ("weekend",) and not bank_holiday_today:
                 _kids_note += " School day done."
             prompt_parts.append(_kids_note)
+        # Today's activity from receipts — ground the brief in what actually happened
+        _today_activity = ctx.get("today_activity", [])
+        if _today_activity:
+            _activity_parts = []
+            for _ta in _today_activity:
+                _t = _ta.get("time", "")[-5:] or ""  # HH:MM
+                _m = _ta.get("merchant", "")
+                _c = _ta.get("category", "")
+                if _m:
+                    _activity_parts.append(f"{_m}{' at ' + _t if _t else ''}{' (' + _c + ')' if _c else ''}")
+            if _activity_parts:
+                prompt_parts.append(
+                    f"Today's activity (from receipts): {'; '.join(_activity_parts)}. "
+                    "Reference this naturally — 'after picking up groceries' or 'you've already eaten out today'. "
+                    "Do NOT re-suggest places they have already visited today."
+                )
+
+        # Weekend evening patterns — what this user tends toward at this time
+        _wp = ctx.get("weekend_patterns", {})
+        _wp_cats = _wp.get("top_categories", [])
+        if _wp_cats and day_type == "weekend" and time_mode in ("evening_leisure", "night"):
+            _cat_map = {
+                "Cocktails": "making cocktails", "Recipes": "trying a recipe",
+                "Music": "listening to music", "Entertainment": "watching something",
+                "Dining": "eating out", "Books": "reading",
+                "Fitness": "some exercise", "Travel": "planning a trip",
+                "Coffee & Lunch": "a coffee", "Shopping": "browsing",
+            }
+            _wp_labels = [_cat_map.get(c, c.lower()) for c in _wp_cats if _cat_map.get(c, c)]
+            if _wp_labels:
+                prompt_parts.append(
+                    f"On {dow} evenings this person typically tends toward: {', '.join(_wp_labels[:2])}. "
+                    "You may suggest one of these naturally — only if it fits the mood. "
+                    "Say 'you usually...' or 'you tend to...' — do NOT say 'based on your data' or 'I can see that'."
+                )
+
         if saves_context:
             if time_mode == "evening_leisure":
                 prompt_parts.append(

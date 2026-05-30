@@ -3497,6 +3497,8 @@
       setFooter("home");
       history.replaceState(null, "", "/");
       if (bb) bb.classList.remove("visible");
+      var _mfabH = document.getElementById("menu-fab");
+      if (_mfabH) _mfabH.style.display = "none";
       _pillUpdate("home");
       if (typeof _briefInit === "function" && !_briefData) _briefInit();
       return;
