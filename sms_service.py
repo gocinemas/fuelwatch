@@ -8114,19 +8114,6 @@ def api_home_brief():
 
     now  = _dt.now(_LDN)
 
-    # Always fetch fresh trains in BOTH directions — frontend picks based on WFH/office mode
-    fresh_trains = {}; fresh_trains_home = {}
-    if prefs.get("train_from") and prefs.get("train_to"):
-        tf, tt = prefs["train_from"], prefs["train_to"]
-        try:
-            fresh_trains      = _v2_fetch_trains(tf, tt) or {}  # home → work
-        except Exception as ex:
-            app.logger.warning(f"[brief] trains to-work: {ex}")
-        try:
-            fresh_trains_home = _v2_fetch_trains(tt, tf) or {}  # work → home
-        except Exception as ex:
-            app.logger.warning(f"[brief] trains to-home: {ex}")
-
     # School holiday status — pure date math, always computed regardless of DB
     import datetime as _shdt
     _school_holiday_now = _surrey_holiday_status(_shdt.date.today())
@@ -8134,26 +8121,39 @@ def api_home_brief():
     if cache_hit:
         result = dict(cached["data"])
         ctx = dict(result.get("context", {}))
-        ctx["trains"]        = fresh_trains
-        ctx["trains_home"]   = fresh_trains_home
+        # Trains always fresh — fetch both directions in parallel then inject
+        _tc_futures = {}
+        if prefs.get("train_from") and prefs.get("train_to"):
+            _tcp = _cf.ThreadPoolExecutor(max_workers=2)
+            try:
+                tf, tt = prefs["train_from"], prefs["train_to"]
+                _tc_futures["trains"]      = _tcp.submit(_v2_fetch_trains, tf, tt)
+                _tc_futures["trains_home"] = _tcp.submit(_v2_fetch_trains, tt, tf)
+                _tc_done, _ = _cf.wait(_tc_futures.values(), timeout=6)
+                for _tk, _tf in _tc_futures.items():
+                    if _tf in _tc_done:
+                        try: ctx[_tk] = _tf.result() or {}
+                        except Exception: pass
+            finally:
+                _tcp.shutdown(wait=False)
         result["context"]        = ctx
         result["active_trip"]    = _active_trip_early
         result["school_holiday"] = _school_holiday_now
         return jsonify(result)
 
     ctx: dict = {}
-    if fresh_trains:
-        ctx["trains"]      = fresh_trains
-    if fresh_trains_home:
-        ctx["trains_home"] = fresh_trains_home
-
-    pool = _cf.ThreadPoolExecutor(max_workers=10)
+    pool = _cf.ThreadPoolExecutor(max_workers=12)
     try:
         futures = {}
         fuel_pc = prefs.get("fuel_postcode") or postcode
         if fuel_pc:
             futures["fuel"]    = pool.submit(_v2_fetch_fuel, fuel_pc)
             futures["weather"] = pool.submit(_v2_fetch_weather, fuel_pc)
+        # Trains fetched in pool (parallel with everything else, not sequentially before)
+        if prefs.get("train_from") and prefs.get("train_to"):
+            tf, tt = prefs["train_from"], prefs["train_to"]
+            futures["trains"]      = pool.submit(_v2_fetch_trains, tf, tt)
+            futures["trains_home"] = pool.submit(_v2_fetch_trains, tt, tf)
         if from_number:
             futures["school"]          = pool.submit(_v2_fetch_school, from_number)
             futures["spend"]           = pool.submit(_v2_fetch_spend, from_number)
@@ -9073,10 +9073,26 @@ def api_home_ask():
                 for ev in (_school_full.get("upcoming") or [])[:10]:
                     _notes = f" — {ev['notes'][:80]}" if ev.get("notes") else ""
                     ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}{_notes}")
+                # Widen lookback to 45 days for Ask Miru — 14-day window misses older comms
                 _recent_comms = (_school_full.get("recent") or [])
+                if not _recent_comms or len(_recent_comms) < 3:
+                    try:
+                        from datetime import date as _askdate, timedelta as _asktd
+                        _ask_recent = (_askdate.today() - _asktd(days=45)).isoformat()
+                        _pids2 = [p["id"] for p in lib._sb().table("school_profiles").select("id")
+                                  .eq("from_number", from_number).eq("active", True).execute().data or []]
+                        if _pids2:
+                            _wide = lib._sb().table("school_events").select(
+                                "event_title,event_date,child_name,school_name,notes,created_at"
+                            ).in_("profile_id", _pids2).gte("created_at", _ask_recent + "T00:00:00") \
+                             .order("created_at", desc=True).limit(10).execute().data or []
+                            if _wide:
+                                _recent_comms = _wide
+                    except Exception:
+                        pass
                 if not _recent_comms:
                     _recent_comms = (ctx.get("school") or {}).get("recent") or []
-                for ev in _recent_comms[:5]:
+                for ev in _recent_comms[:8]:
                     _notes = f" — {ev['notes'][:100]}" if ev.get("notes") else ""
                     ctx_lines.append(f"School comms (received {(ev.get('created_at','')[:10])}): {ev.get('child_name','')} — {ev.get('event_title','')}{_notes}")
             except Exception:
