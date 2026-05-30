@@ -24157,17 +24157,18 @@ def api_places_near_me():
         lng = float(request.args.get("lng", ""))
     except (ValueError, TypeError):
         return jsonify({"error": "lat/lng required"}), 400
+    radius = min(int(request.args.get("radius", 5000)), 10000)
     query = (
-        f"[out:json][timeout:8];"
+        f"[out:json][timeout:15];"
         f"("
-        f"node(around:200,{lat},{lng})[name][shop];"
-        f"node(around:200,{lat},{lng})[name][amenity];"
-        f"node(around:200,{lat},{lng})[name][tourism];"
-        f"node(around:200,{lat},{lng})[name][leisure];"
-        f"way(around:200,{lat},{lng})[name][shop];"
-        f"way(around:200,{lat},{lng})[name][amenity];"
+        f"node(around:{radius},{lat},{lng})[name][shop];"
+        f"node(around:{radius},{lat},{lng})[name][amenity];"
+        f"node(around:{radius},{lat},{lng})[name][tourism];"
+        f"node(around:{radius},{lat},{lng})[name][leisure];"
+        f"way(around:{radius},{lat},{lng})[name][shop];"
+        f"way(around:{radius},{lat},{lng})[name][amenity];"
         f");"
-        f"out center 10;"
+        f"out center 20;"
     )
     try:
         r = requests.post("https://overpass-api.de/api/interpreter",
@@ -24191,7 +24192,7 @@ def api_places_near_me():
             dist_m = round(haversine_km(lat, lng, elat, elon) * 1000) if elat and elon else 9999
             results.append({"name": name, "type": raw_type, "category": category, "distance_m": dist_m})
         results.sort(key=lambda x: x["distance_m"])
-        return jsonify({"places": results[:6]})
+        return jsonify({"places": results[:15]})
     except Exception as e:
         return jsonify({"error": str(e), "places": []}), 500
 
