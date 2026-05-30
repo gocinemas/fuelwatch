@@ -9073,7 +9073,10 @@ def api_home_ask():
                 for ev in (_school_full.get("upcoming") or [])[:10]:
                     _notes = f" — {ev['notes'][:80]}" if ev.get("notes") else ""
                     ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}{_notes}")
-                for ev in (_school_full.get("recent") or [])[:5]:
+                _recent_comms = (_school_full.get("recent") or [])
+                if not _recent_comms:
+                    _recent_comms = (ctx.get("school") or {}).get("recent") or []
+                for ev in _recent_comms[:5]:
                     _notes = f" — {ev['notes'][:100]}" if ev.get("notes") else ""
                     ctx_lines.append(f"School comms (received {(ev.get('created_at','')[:10])}): {ev.get('child_name','')} — {ev.get('event_title','')}{_notes}")
             except Exception:
@@ -9319,8 +9322,11 @@ def api_home_ask():
             "CRITICAL distinction: 'Saves library' = articles, places or clippings the user bookmarked in the app. "
             "'Receipts' = purchase records showing what they SPENT at shops. "
             "When the user asks 'what did I save', answer from Saves library ONLY — never use Receipts for this. "
-            "CRITICAL: never invent events, appointments, schedules or providers not explicitly in Context. "
-            "Never say 'I don't have that information' — if it's not in Context, answer from knowledge. "
+            "CRITICAL: for personal history questions (places visited, pubs gone to, purchases on a specific date, "
+            "school comms received, things done recently) — if the answer is not in Context, say "
+            "'I don't have a record of that' rather than guessing. Never invent specific places visited, "
+            "school letters, newsletters, or events not explicitly listed in Context. "
+            "For general factual questions (definitions, calculations, world facts) — answer from knowledge. "
             "Plain English, no bullet points, under 45 words."
         )
         messages = [{"role": "system", "content": system_prompt}]
