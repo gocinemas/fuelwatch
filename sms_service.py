@@ -11536,11 +11536,11 @@ def api_places_nearby():
         "steak":    {"keyword": "steakhouse steak grill",                              "type": "restaurant", "min_rating": 3.8, "min_reviews": 15, "radius_dense": 3000, "radius_wide":  8000, "dense_min": 2},
         "dessert":  {"keyword": "ice cream gelato dessert patisserie sweet",            "type": None,         "min_rating": 3.0, "min_reviews":  2, "radius_dense": 2000, "radius_wide":  8000, "dense_min": 2},
         "park":     {"keyword": "park",                                                "type": "park",       "min_rating": 0,   "min_reviews":  0, "radius_dense": 2000, "radius_wide":  8000, "dense_min": 3},
-        "kids":        {"keyword": "theme park adventure soft play playground skating",                        "type": None, "min_rating": 3.5, "min_reviews":  5, "radius_dense": None,  "radius_wide": 20000, "dense_min": 5},
-        "kids_baby":   {"keyword": "soft play baby sensory baby cafe baby friendly nursery rhyme",             "type": None, "min_rating": 3.0, "min_reviews":  2, "radius_dense": None,  "radius_wide": 15000, "dense_min": 3},
-        "kids_toddler":{"keyword": "soft play toddler playground farm park petting zoo messy play",            "type": None, "min_rating": 3.5, "min_reviews":  3, "radius_dense": None,  "radius_wide": 20000, "dense_min": 3},
-        "kids_junior": {"keyword": "adventure park bowling alley cinema skating trampolining go karting laser", "type": None, "min_rating": 3.5, "min_reviews":  5, "radius_dense": None,  "radius_wide": 25000, "dense_min": 3},
-        "kids_teen":   {"keyword": "cinema bowling laser tag escape room arcade go karting climbing wall",      "type": None, "min_rating": 3.5, "min_reviews":  5, "radius_dense": None,  "radius_wide": 25000, "dense_min": 3},
+        "kids":        {"keyword": "theme park adventure soft play playground skating",        "type": None,                "min_rating": 3.5, "min_reviews":  5, "radius_dense": None, "radius_wide": 20000, "dense_min": 5},
+        "kids_baby":   {"keyword": "soft play baby sensory baby cafe baby friendly",          "type": None,                "min_rating": 3.0, "min_reviews":  2, "radius_dense": None, "radius_wide": 15000, "dense_min": 3},
+        "kids_toddler":{"keyword": "soft play toddler playground farm park petting zoo",      "type": None,                "min_rating": 3.5, "min_reviews":  3, "radius_dense": None, "radius_wide": 20000, "dense_min": 3},
+        "kids_junior": {"keyword": "Go Ape adventure climbing zip wire trampolining bowling",  "type": "tourist_attraction","min_rating": 3.5, "min_reviews":  5, "radius_dense": None, "radius_wide": 30000, "dense_min": 3, "extra_types": ["amusement_park"]},
+        "kids_teen":   {"keyword": "laser tag escape room arcade go karting climbing bowling", "type": "tourist_attraction","min_rating": 3.5, "min_reviews":  5, "radius_dense": None, "radius_wide": 30000, "dense_min": 3, "extra_types": ["amusement_park"]},
         "pharmacy":    {"keyword": "pharmacy chemist boots lloyds",                                "type": "pharmacy",    "min_rating": 0,   "min_reviews":  0, "radius_dense": 1500,  "radius_wide":  5000, "dense_min": 1},
         "atm":         {"keyword": "ATM cash machine bank",                                       "type": "atm",         "min_rating": 0,   "min_reviews":  0, "radius_dense":  800,  "radius_wide":  3000, "dense_min": 1},
         "supermarket": {"keyword": "supermarket tesco sainsbury waitrose asda morrisons lidl aldi","type": "supermarket", "min_rating": 3.0, "min_reviews":  2, "radius_dense": 2000,  "radius_wide":  6000, "dense_min": 1},
@@ -11557,8 +11557,9 @@ def api_places_nearby():
         "museum":            {"label": "Museum",        "emoji": "🏛️"},
         "art_gallery":       {"label": "Gallery",       "emoji": "🎨"},
         "tourist_attraction":{"label": "Attraction",    "emoji": "🎡"},
-        "amusement_park":    {"label": "Theme Park",    "emoji": "🎢"},
-        "aquarium":          {"label": "Aquarium",      "emoji": "🐠"},
+        "amusement_park":    {"label": "Theme Park",      "emoji": "🎢"},
+        "tourist_attraction":{"label": "Attraction",     "emoji": "🎡"},
+        "aquarium":          {"label": "Aquarium",       "emoji": "🐠"},
         "zoo":               {"label": "Zoo",           "emoji": "🦁"},
         "movie_theater":     {"label": "Cinema",        "emoji": "🎬"},
         "night_club":        {"label": "Club",          "emoji": "🎵"},
@@ -11569,7 +11570,7 @@ def api_places_nearby():
         "spa":               {"label": "Spa",           "emoji": "🧖"},
     }
 
-    def _places_fetch(radius):
+    def _places_fetch(radius, override_type=None):
         params = {
             "location": f"{lat},{lon}",
             "radius":   radius,
@@ -11577,13 +11578,28 @@ def api_places_nearby():
             "key":      _GOOGLE_PLACES_KEY,
             "language": "en-GB",
         }
-        if cfg.get("type"):
-            params["type"] = cfg["type"]
+        t = override_type or cfg.get("type")
+        if t:
+            params["type"] = t
         r = requests.get(
             "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
             params=params, timeout=10,
         )
         return r.json()
+
+    def _places_fetch_all(radius):
+        """Fetch primary type + any extra_types in parallel, merge raw results."""
+        import concurrent.futures
+        types_to_fetch = [cfg.get("type")] + cfg.get("extra_types", [])
+        raw = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+            futs = [ex.submit(_places_fetch, radius, t) for t in types_to_fetch]
+            for f in concurrent.futures.as_completed(futs):
+                try:
+                    raw.extend(f.result().get("results") or [])
+                except Exception:
+                    pass
+        return raw
 
     def _parse_results(raw_places, seen, relax=False):
         out = []
@@ -11619,21 +11635,21 @@ def api_places_nearby():
         radius_dense = cfg.get("radius_dense")
         radius_wide  = cfg["radius_wide"]
 
+        use_multi = bool(cfg.get("extra_types"))
+
         # Adaptive: try tight radius first (dense urban areas); expand if sparse
-        if radius_dense:
+        if radius_dense and not use_multi:
             dense_data = _places_fetch(radius_dense)
             results = _parse_results(dense_data.get("results") or [], seen)
             if len(results) >= cfg.get("dense_min", 5):
-                # Enough quality results close by — stay tight
                 results.sort(key=lambda x: (-(x["rating"]), -(x["rating_count"])))
                 return jsonify({"places": results, "cat": cat, "radius_used": radius_dense})
 
-        # Sparse / destination category — fetch at wide radius
-        wide_data = _places_fetch(radius_wide)
-        results = _parse_results(wide_data.get("results") or [], seen)
+        # Sparse / destination category — fetch at wide radius (multi-type if needed)
+        wide_raw = _places_fetch_all(radius_wide) if use_multi else (_places_fetch(radius_wide).get("results") or [])
+        results = _parse_results(wide_raw, seen)
         if not results:
-            # Relax quality gate and re-parse the same wide data
-            results = _parse_results(wide_data.get("results") or [], set(), relax=True)
+            results = _parse_results(wide_raw, set(), relax=True)
         if not results:
             return jsonify({"error": "No quality places found nearby — try a different category"}), 404
 
