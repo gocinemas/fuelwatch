@@ -7093,22 +7093,32 @@ function _hcAdd() {
     var pcDisp    = document.getElementById("setup-postcode-display");
     if (phoneDisp) phoneDisp.textContent = _miruPhone() || "Not set — tap to add";
     if (pcDisp)    pcDisp.textContent    = _miruPostcode() || "Not set — tap to add";
-    // Prefs
-    var prefs = (_briefData && _briefData.prefs) || {};
-    var toEl = document.getElementById("setup-pref-to");
-    var pcEl = document.getElementById("setup-pref-pc");
-    if (toEl && prefs.train_to)      toEl.value = prefs.train_to;
-    if (pcEl && prefs.fuel_postcode) pcEl.value = prefs.fuel_postcode;
-    if (prefs.bin_collection_day !== undefined) _setupBinDay(prefs.bin_collection_day);
-    if (prefs.bin_rotation) _setupBinRotation(prefs.bin_rotation);
-    // Morning push state
-    _setupPushEnabled = !!prefs.morning_push;
-    var _pushBtn = document.getElementById("setup-push-toggle");
-    if (_pushBtn) {
-      _pushBtn.textContent = _setupPushEnabled ? "On" : "Off";
-      _pushBtn.style.background   = _setupPushEnabled ? "#2563eb" : "var(--bg)";
-      _pushBtn.style.color        = _setupPushEnabled ? "#fff"    : "var(--muted)";
-      _pushBtn.style.borderColor  = _setupPushEnabled ? "#2563eb" : "var(--border)";
+    // Prefs — use _briefData if already loaded, otherwise fetch directly
+    function _applyPrefs(prefs) {
+      prefs = prefs || {};
+      var toEl = document.getElementById("setup-pref-to");
+      var pcEl = document.getElementById("setup-pref-pc");
+      if (toEl && prefs.train_to)      toEl.value = prefs.train_to;
+      if (pcEl && prefs.fuel_postcode) pcEl.value = prefs.fuel_postcode;
+      if (prefs.bin_collection_day !== undefined) _setupBinDay(prefs.bin_collection_day);
+      if (prefs.bin_rotation) _setupBinRotation(prefs.bin_rotation);
+      _setupPushEnabled = !!prefs.morning_push;
+      var _pushBtn = document.getElementById("setup-push-toggle");
+      if (_pushBtn) {
+        _pushBtn.textContent = _setupPushEnabled ? "On" : "Off";
+        _pushBtn.style.background   = _setupPushEnabled ? "#2563eb" : "var(--bg)";
+        _pushBtn.style.color        = _setupPushEnabled ? "#fff"    : "var(--muted)";
+        _pushBtn.style.borderColor  = _setupPushEnabled ? "#2563eb" : "var(--border)";
+      }
+    }
+    if (_briefData && _briefData.prefs) {
+      _applyPrefs(_briefData.prefs);
+    } else {
+      var _sPhone = _miruPhone();
+      if (_sPhone) fetch("/api/v2/prefs?token=" + encodeURIComponent(_sPhone))
+        .then(function(r){ return r.json(); })
+        .then(function(d){ _applyPrefs(d.prefs || {}); })
+        .catch(function(){});
     }
     // Calendar state
     var calBtn = document.getElementById("setup-cal-btn");
