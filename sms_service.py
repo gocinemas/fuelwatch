@@ -14070,34 +14070,82 @@ def _wa_menu_lookup_pc(name: str, home_pc: str = "") -> str:
         return (f"🍽️ Found *{place_name}* but couldn't find their website — "
                 f"try searching *{place_name} menu* directly.")
 
-    # 2. Fetch the website and strip HTML; fall back to menu subpaths if root is blocked
-    raw_text = ""
+    # 2. Fetch website — follow PDF/menu links, extract text
     _browser_headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-GB,en;q=0.5",
     }
 
-    def _scrape(url):
+    def _scrape_html(url):
         r = requests.get(url, timeout=8, headers=_browser_headers, allow_redirects=True)
-        if r.status_code == 403:
-            return ""
-        text = r.text
-        text = _re.sub(r'<(script|style|nav|header|footer)[^>]*>.*?</\1>', ' ', text, flags=_re.S|_re.I)
-        text = _re.sub(r'<[^>]+>', ' ', text)
-        text = html.unescape(text)
-        return _re.sub(r'\s+', ' ', text).strip()[:6000]
+        if r.status_code not in (200, 301, 302):
+            return "", ""
+        raw = r.text
+        stripped = _re.sub(r'<(script|style|nav|header|footer)[^>]*>.*?</\1>', ' ', raw, flags=_re.S|_re.I)
+        stripped = _re.sub(r'<[^>]+>', ' ', stripped)
+        stripped = html.unescape(stripped)
+        return _re.sub(r'\s+', ' ', stripped).strip()[:8000], raw
 
+    def _extract_pdf(url):
+        try:
+            import fitz, io
+            r = requests.get(url, timeout=10, headers=_browser_headers, allow_redirects=True)
+            if r.status_code != 200 or len(r.content) > 6_000_000:
+                return ""
+            doc = fitz.open(stream=r.content, filetype="pdf")
+            text = " ".join(page.get_text() for page in doc)
+            doc.close()
+            return _re.sub(r'\s+', ' ', text).strip()[:8000]
+        except Exception as _pe:
+            print(f"[menu_lookup] pdf error: {_pe}")
+            return ""
+
+    def _find_menu_links(raw_html, base_url):
+        from urllib.parse import urlparse, urljoin
+        _kw = {"menu", "food", "eat", "drink", "dining", "what-we-serve", "our-food"}
+        hrefs = _re.findall(r'href=["\']([^"\'#?][^"\']*)["\']', raw_html, _re.I)
+        pdf_links, html_links, seen = [], [], set()
+        for href in hrefs:
+            if href in seen: continue
+            seen.add(href)
+            hl = href.lower()
+            if not any(k in hl for k in _kw): continue
+            full = urljoin(base_url, href)
+            if hl.endswith(".pdf"):
+                pdf_links.append(full)
+            elif urlparse(full).netloc == urlparse(base_url).netloc:
+                html_links.append(full)
+        return pdf_links[:4], html_links[:4]
+
+    raw_text = ""
     try:
-        raw_text = _scrape(website)
-        # If root is blocked or thin, try common menu subpaths
-        if len(raw_text) < 300:
-            _base = website.rstrip("/")
-            for _suffix in ["/food", "/menus", "/menu", "/eat", "/dining", "/food-drink"]:
+        raw_text, raw_html = _scrape_html(website)
+        pdf_links, html_links = _find_menu_links(raw_html, website)
+        # PDF menus are the most reliable — try first
+        for pdf_url in pdf_links:
+            print(f"[menu_lookup] trying PDF: {pdf_url}")
+            pdf_text = _extract_pdf(pdf_url)
+            if len(pdf_text) > 150:
+                raw_text = pdf_text
+                print(f"[menu_lookup] got {len(raw_text)} chars from PDF")
+                break
+        # If still thin, follow menu sub-pages found via links
+        if len(raw_text) < 400:
+            for link in html_links:
                 try:
-                    _candidate = _scrape(_base + _suffix)
-                    if len(_candidate) > len(raw_text):
-                        raw_text = _candidate
+                    candidate, _ = _scrape_html(link)
+                    if len(candidate) > len(raw_text):
+                        raw_text = candidate
+                except Exception:
+                    pass
+        # Last resort: hardcoded sub-paths
+        if len(raw_text) < 400:
+            for _suffix in ["/menu", "/menus", "/food", "/eat", "/dining", "/food-drink"]:
+                try:
+                    candidate, _ = _scrape_html(website.rstrip("/") + _suffix)
+                    if len(candidate) > len(raw_text):
+                        raw_text = candidate
                         break
                 except Exception:
                     pass

@@ -18627,10 +18627,10 @@ _bkBadge();
       ? `<span style="font-size:12px;font-weight:700;color:var(--text)">${p.rating.toFixed(1)}</span><span style="font-size:11px;color:var(--muted)"> · ${p.rating_count||0} reviews</span>`
       : "";
     const safeData = encodeURIComponent(JSON.stringify({name:p.name,address:p.address,rating:p.rating,maps_url:mapsUrl,place_id:p.place_id||""}));
-    const _FOOD_TYPES = new Set(["restaurant","cafe","bar","bakery","meal_takeaway","pub","fast_food","night_club"]);
-    const _isFood = _FOOD_TYPES.has(p.type) || ["restaurant","café","cafe","fast food","pub","bar","bakery","bistro","wine bar"].some(c => (p.category||"").toLowerCase().includes(c));
+    const _MENU_TYPES = new Set(["restaurant","bar","pub","night_club"]);
+    const _isMenuVenue = _MENU_TYPES.has(p.type) || ["restaurant","pub","bar","wine bar","bistro","brasserie","gastropub"].some(c => (p.category||"").toLowerCase().includes(c));
     const _safeAddr = (p.address||"").replace(/'/g,"\\'");
-    const menuBtn = _isFood ? `<button onclick="_ehShowMenu('${(p.name||"").replace(/'/g,"\\'")}','${_safeAddr}')" style="flex-shrink:0;padding:7px 12px;border-radius:12px;border:1.5px solid #fed7aa;background:#fff7ed;font-size:11px;font-weight:700;cursor:pointer;color:#d97706;display:flex;align-items:center;gap:4px;white-space:nowrap">🍽️ Menu</button>` : "";
+    const menuBtn = _isMenuVenue ? `<button onclick="_ehShowMenu('${(p.name||"").replace(/'/g,"\\'")}','${_safeAddr}')" style="flex-shrink:0;padding:7px 12px;border-radius:12px;border:1.5px solid #fed7aa;background:#fff7ed;font-size:11px;font-weight:700;cursor:pointer;color:#d97706;display:flex;align-items:center;gap:4px;white-space:nowrap">🍽️ Menu</button>` : "";
     return `<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
       <!-- Emoji block -->
       <a href="${mapsUrl}" target="_blank" rel="noopener" style="width:52px;height:52px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;text-decoration:none">${p.emoji || "📍"}</a>
