@@ -24151,20 +24151,49 @@ def api_place_name_seed():
 
 @app.route("/api/places/near-me")
 def api_places_near_me():
-    """Food venues within 150m — used by the home screen menu FAB."""
+    """Any named venue within 200m via Overpass — used by the nearby FAB."""
     try:
         lat = float(request.args.get("lat", ""))
         lng = float(request.args.get("lng", ""))
     except (ValueError, TypeError):
         return jsonify({"error": "lat/lng required"}), 400
-    seen, results = set(), []
-    for ptype in ["restaurant", "cafe", "bar"]:
-        for p in _places_nearby(lat, lng, ptype, 150, 3):
-            if p["place_id"] not in seen:
-                seen.add(p["place_id"])
-                results.append(p)
-    results.sort(key=lambda x: x.get("distance_km", 999))
-    return jsonify({"places": results[:4]})
+    query = (
+        f"[out:json][timeout:8];"
+        f"("
+        f"node(around:200,{lat},{lng})[name][shop];"
+        f"node(around:200,{lat},{lng})[name][amenity];"
+        f"node(around:200,{lat},{lng})[name][tourism];"
+        f"node(around:200,{lat},{lng})[name][leisure];"
+        f"way(around:200,{lat},{lng})[name][shop];"
+        f"way(around:200,{lat},{lng})[name][amenity];"
+        f");"
+        f"out center 10;"
+    )
+    try:
+        r = requests.post("https://overpass-api.de/api/interpreter",
+                          data={"data": query}, timeout=9)
+        elements = r.json().get("elements", [])
+        seen, results = set(), []
+        for el in elements:
+            tags = el.get("tags", {})
+            name = tags.get("name", "").strip()
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            if el.get("type") == "node":
+                elat, elon = el.get("lat"), el.get("lon")
+            else:
+                c = el.get("center", {})
+                elat, elon = c.get("lat"), c.get("lon")
+            raw_type = (tags.get("shop") or tags.get("amenity") or
+                        tags.get("tourism") or tags.get("leisure") or "").lower()
+            category, _ = _VENUE_SHOP_MAP.get(raw_type, (raw_type.replace("_", " ").title(), ""))
+            dist_m = round(haversine_km(lat, lng, elat, elon) * 1000) if elat and elon else 9999
+            results.append({"name": name, "type": raw_type, "category": category, "distance_m": dist_m})
+        results.sort(key=lambda x: x["distance_m"])
+        return jsonify({"places": results[:6]})
+    except Exception as e:
+        return jsonify({"error": str(e), "places": []}), 500
 
 
 @app.route("/api/ev/nearby")

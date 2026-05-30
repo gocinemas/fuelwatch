@@ -21746,7 +21746,7 @@ window.spotifyAddTrack = window.spotifyLike;
 
 <!-- ── Menu FAB — home screen only ───────────────────────────────────────── -->
 <button id="menu-fab" onclick="_nearbyMenu()" title="Find menu nearby"
-  style="position:fixed;bottom:88px;right:16px;width:50px;height:50px;border-radius:50%;background:#f59e0b;color:#fff;font-size:22px;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;z-index:1200;display:none;align-items:center;justify-content:center;transition:transform .15s">🍽️</button>
+  style="position:fixed;bottom:88px;right:16px;width:50px;height:50px;border-radius:50%;background:#2563eb;color:#fff;font-size:22px;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;z-index:1200;display:none;align-items:center;justify-content:center;transition:transform .15s">📍</button>
 
 <div id="menu-fab-sheet" onclick="_nearbyMenuClose()" style="display:none;position:fixed;inset:0;z-index:1201;background:rgba(0,0,0,.45)">
   <div onclick="event.stopPropagation()" style="position:absolute;bottom:0;left:0;right:0;background:var(--bg);border-radius:20px 20px 0 0;padding:18px 18px calc(28px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto">
@@ -21777,10 +21777,7 @@ window.spotifyAddTrack = window.spotifyLike;
             fab.textContent = "🍽️"; fab.disabled = false;
             var places = d.places || [];
             if (places.length === 1) {
-              var p = places[0];
-              window.open(p.place_id
-                ? "https://www.google.com/maps/place/?q=place_id:" + p.place_id
-                : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.name + " " + (p.address || "")), "_blank");
+              window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(places[0].name), "_blank");
             } else {
               _showMenuSheet(places);
             }
@@ -21792,24 +21789,32 @@ window.spotifyAddTrack = window.spotifyLike;
     );
   };
 
+  var _NEARBY_ICONS = {
+    restaurant:"🍽️", cafe:"☕", coffee:"☕", bar:"🍸", pub:"🍺", fast_food:"🍔",
+    bakery:"🥐", supermarket:"🛒", convenience:"🏪", pharmacy:"💊", chemist:"💊",
+    gym:"🏋️", fitness_centre:"🏋️", park:"🌳", garden:"🌳", playground:"🛝",
+    bank:"🏦", atm:"💳", post_office:"📮", library:"📚", cinema:"🎬",
+    theatre:"🎭", museum:"🏛️", hotel:"🏨", petrol_station:"⛽", car_wash:"🚗",
+    hairdresser:"✂️", beauty:"💅", clothes:"👗", sports:"⚽", swimming_pool:"🏊",
+  };
   function _showMenuSheet(places) {
     var el = document.getElementById("menu-fab-content");
     if (!places.length) {
       el.innerHTML = '<div style="text-align:center;padding:24px 0"><div style="font-size:32px;margin-bottom:8px">🔍</div>'
-        + '<div style="font-size:14px;font-weight:700;color:var(--text)">No food venues found within 150m</div>'
-        + '<div style="font-size:12px;color:var(--muted);margin-top:4px">Move closer to a restaurant and try again</div></div>';
+        + '<div style="font-size:14px;font-weight:700;color:var(--text)">Nothing found within 200m</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-top:4px">Try moving to a busier area</div></div>';
     } else {
-      el.innerHTML = '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">📍 You\'re near…</div>'
+      el.innerHTML = '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">📍 Right here…</div>'
         + places.map(function(p) {
-          var dist = p.distance_km < 0.1 ? Math.round(p.distance_km * 1000) + "m" : (Math.round(p.distance_km * 10) / 10) + "km";
-          var url = p.place_id
-            ? "https://www.google.com/maps/place/?q=place_id:" + p.place_id
-            : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.name + " " + (p.address || ""));
+          var dist = (p.distance_m || 0) < 1000 ? (p.distance_m || "?") + "m" : (Math.round((p.distance_m||0)/100)/10) + "km";
+          var icon = _NEARBY_ICONS[p.type] || "📍";
+          var url = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.name);
+          var cat = p.category || p.type || "";
           return '<a href="' + url + '" target="_blank" rel="noopener" onclick="_nearbyMenuClose()" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);text-decoration:none">'
-            + '<span style="font-size:24px">🍽️</span>'
+            + '<span style="font-size:24px;flex-shrink:0">' + icon + '</span>'
             + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">' + p.name + '</div>'
-            + '<div style="font-size:11px;color:var(--muted)">' + (p.address || "") + ' · ' + dist + '</div></div>'
-            + '<span style="font-size:13px;font-weight:700;color:#f59e0b">Menu ↗</span>'
+            + '<div style="font-size:11px;color:var(--muted)">' + cat + ' · ' + dist + '</div></div>'
+            + '<span style="font-size:12px;color:var(--muted)">↗</span>'
             + '</a>';
         }).join("");
     }
