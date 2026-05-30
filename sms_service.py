@@ -7940,15 +7940,16 @@ def api_v2_personal_events():
 
 @app.route("/api/menu")
 def api_menu():
-    """Look up a restaurant/pub menu by name. Used by V2 venue card."""
-    token       = request.args.get("token", "").strip()
-    name        = request.args.get("name", "").strip()
-    from_number = _v2_resolve(token)
-    if not from_number:
-        return jsonify({"error": "not authenticated"}), 401
+    """Look up a restaurant/pub menu by name. Auth optional — postcode used for location bias."""
+    token    = request.args.get("token", "").strip()
+    name     = request.args.get("name", "").strip()
+    postcode = request.args.get("postcode", "").strip()
     if not name:
         return jsonify({"error": "name required"}), 400
-    result = _wa_menu_lookup(name, from_number)
+    # Resolve home postcode: try token first, fall back to postcode param
+    from_number = _v2_resolve(token) if token else None
+    home_pc = (_get_wa_home_postcode(from_number) if from_number else None) or postcode or ""
+    result = _wa_menu_lookup_pc(name, home_pc)
     return jsonify({"menu": result, "name": name})
 
 
@@ -14012,11 +14013,16 @@ def _wa_spending_query(from_number: str, body: str) -> str:
 
 
 def _wa_menu_lookup(name: str, from_number: str) -> str:
+    """Wrapper: resolve postcode from phone then call _wa_menu_lookup_pc."""
+    home_pc = _get_wa_home_postcode(from_number) or ""
+    return _wa_menu_lookup_pc(name, home_pc)
+
+
+def _wa_menu_lookup_pc(name: str, home_pc: str = "") -> str:
     """Look up a restaurant/pub menu by name: Places → website → Groq extract."""
     import html, re as _re
 
-    # 1. Find place via Google Places text search near user's home postcode
-    home_pc = _get_wa_home_postcode(from_number) or ""
+    # 1. Find place via Google Places text search near postcode
     lat, lon = None, None
     if home_pc:
         _ll = postcode_to_latlon(home_pc.replace(" ", "").upper())

@@ -18502,12 +18502,12 @@ _bkBadge();
       </div>
       <div id="eh-menu-body" style="font-size:13px;color:var(--muted);padding:8px 0">Looking up menu…</div>`;
     sheet.style.display = "block";
-    if (!token) {
-      document.getElementById("eh-menu-body").innerHTML = `<div style="color:#dc2626">Link your WhatsApp first (My Area → Accounts) to use menu lookup.</div>`;
-      return;
-    }
+    const postcode = localStorage.getItem("miru_postcode") || "";
+    const params = new URLSearchParams({ name: name + (address ? " " + address.split(",")[0] : "") });
+    if (token) params.set("token", token);
+    else if (postcode) params.set("postcode", postcode);
     try {
-      const r = await fetch(`/api/menu?token=${encodeURIComponent(token)}&name=${encodeURIComponent(name + (address ? " " + address.split(",")[0] : ""))}`);
+      const r = await fetch(`/api/menu?${params}`);
       const d = await r.json();
       const body = document.getElementById("eh-menu-body");
       if (!body) return;
