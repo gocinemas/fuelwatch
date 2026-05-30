@@ -480,7 +480,7 @@ def get_tube_journey(from_name: str, to_name: str) -> str:
 
 
 def _get_wa_home_postcode(from_number: str):
-    """Return the user's stored home postcode, or None."""
+    """Return the user's stored home postcode — checks my_area_places then v2_prefs."""
     try:
         plain = from_number.replace("whatsapp:", "").strip()
         wa    = from_number if from_number.startswith("whatsapp:") else f"whatsapp:{from_number}"
@@ -488,9 +488,23 @@ def _get_wa_home_postcode(from_number: str):
                 .eq("category", "_home")
                 .in_("from_number", [from_number, plain, wa])
                 .limit(1).execute().data)
-        return rows[0]["postcode"] if rows else None
+        if rows:
+            return rows[0]["postcode"]
     except Exception:
-        return None
+        pass
+    # Fallback: identity postcode stored in v2_prefs
+    try:
+        for did in [plain, wa]:
+            prows = lib._sb().table("ma_details").select("data") \
+                .eq("device_id", did).eq("type", "v2_prefs").limit(1).execute().data or []
+            if prows:
+                prefs = prows[0].get("data") or {}
+                pc = prefs.get("fuel_postcode") or prefs.get("home_postcode") or ""
+                if pc:
+                    return pc
+    except Exception:
+        pass
+    return None
 
 
 def _set_wa_pending_intent(from_number: str, intent: dict):
@@ -9228,6 +9242,58 @@ def api_home_ask():
             except Exception:
                 pass
 
+    # ── Local search intercept — bypass LLM entirely, return real results ────────
+    if from_number and not is_utility:
+        import re as _re_ls
+        _LS_SERVICES = (
+            "plumber|electrician|builder|locksmith|handyman|roofer|plasterer|decorator|"
+            "boiler|carpenter|tiler|gardener|glazier|painter|gas engineer|"
+            "dentist|gp|doctor|pharmacy|chemist|optician|physio|hospital|vet|clinic|"
+            "restaurant|cafe|coffee|pub|takeaway|bar|gym|hairdresser|barber|salon|spa|"
+            "solicitor|accountant|estate agent|mortgage|financial advisor|"
+            "garage|mechanic|mot|tyre|petrol|car wash|"
+            "nursery|childminder|tutor|park|supermarket"
+        )
+        _LS_INTENT = _re_ls.compile(
+            r'(?:'
+            r'(?:find|get|show|any|is there|where.{0,10}find|i need|looking for|recommend)\b.{0,25}'
+            r'(?:' + _LS_SERVICES + r')'
+            r'|(?:' + _LS_SERVICES + r').{0,20}(?:near|nearby|close|local|around)'
+            r')',
+            re.IGNORECASE
+        )
+        if _LS_INTENT.search(question):
+            # Extract postcode from question or use stored home postcode
+            _pc_m   = _re_ls.search(r'\b([A-Za-z]{1,2}\d{1,2}[A-Za-z]?\s*\d[A-Za-z]{2})\b', question)
+            _use_pc = _pc_m.group(1).strip() if _pc_m else (_prefs.get("fuel_postcode") or "")
+            if _use_pc:
+                _geo = _resolve_postcode(_use_pc.replace(" ", "").upper())
+                if _geo:
+                    _, _lat, _lon, _pc_fmt = _geo
+                    # Strip conversational fluff to get clean service query
+                    _sq = _re_ls.sub(
+                        r'\b(find me a?n?|find a?n?|is there a?n?|any |show me|i need a?n?|'
+                        r'looking for|recommend|near me|near home|nearby|local|around me|'
+                        r'near\s+[A-Za-z0-9 ]+)\b', ' ', question, flags=re.IGNORECASE
+                    ).strip(" ?,.")
+                    _sq = _re_ls.sub(r'[A-Za-z]{1,2}\d{1,2}[A-Za-z]?\s*\d[A-Za-z]{2}', '', _sq).strip()
+                    _sq = _re_ls.sub(r'\s+', ' ', _sq).strip() or question
+                    _raw = _gplaces_text_search(_sq, _lat, _lon, radius=10000)
+                    _seen_ls, _res_lines = set(), []
+                    for _p in _raw[:5]:
+                        _n = _p.get("name", "")
+                        if not _n or _n.lower() in _seen_ls: continue
+                        _seen_ls.add(_n.lower())
+                        _addr = ", ".join((_p.get("formatted_address") or _p.get("vicinity") or "").split(",")[:2])
+                        _rat  = f" ★{_p['rating']}" if _p.get("rating") else ""
+                        _open = " · Open" if _p.get("open_now") is True else (" · Closed" if _p.get("open_now") is False else "")
+                        _dist = f" · {_p['dist_km']:.1f}km" if _p.get("dist_km") else ""
+                        _res_lines.append(f"• {_n}{_rat}{_open}{_dist} — {_addr}")
+                    if _res_lines:
+                        _answer = f"Here are some options near {_pc_fmt}:\n\n" + "\n".join(_res_lines)
+                        _answer += "\n\n🔧 Tap Local Finder for more, or ask me to narrow it down."
+                        return jsonify({"answer": _answer})
+
     # ── System prompt by intent ────────────────────────────────────────────────
     if is_utility and not is_personal:
         system_prompt = (
@@ -12045,6 +12111,68 @@ def api_finder_search():
     if open_now_filter:
         result = {**result, "results": [p for p in top if p.get("open_now") is True]}
     return jsonify(result)
+
+
+@app.route("/api/finder/save-trade", methods=["POST"])
+def api_finder_save_trade():
+    """Save or remove a trusted tradesperson for a given service category."""
+    body     = request.get_json(force=True, silent=True) or {}
+    token    = (body.get("token") or "").strip()
+    action   = body.get("action", "save")   # "save" | "remove"
+    name     = (body.get("name") or "").strip()
+    address  = (body.get("address") or "").strip()
+    phone    = (body.get("phone") or "").strip()
+    website  = (body.get("website") or "").strip()
+    category = (body.get("category") or "trade").strip().lower()
+    key      = (body.get("key") or name).strip()
+
+    if not token or not name:
+        return jsonify({"error": "token and name required"}), 400
+
+    device_id = _v2_resolve(token) or token
+    device_id = device_id.replace("whatsapp:", "").strip()
+
+    try:
+        rows = lib._sb().table("ma_details").select("id,data") \
+            .eq("device_id", device_id).eq("type", "trusted_trades") \
+            .limit(1).execute().data or []
+        trades = (rows[0]["data"] if rows else {}) or {}
+        row_id = rows[0]["id"] if rows else None
+
+        if action == "remove":
+            trades.pop(key, None)
+        else:
+            trades[key] = {"name": name, "address": address, "phone": phone,
+                           "website": website, "category": category}
+
+        if row_id:
+            lib._sb().table("ma_details").update({"data": trades}) \
+                .eq("id", row_id).execute()
+        else:
+            lib._sb().table("ma_details").insert({
+                "device_id": device_id, "type": "trusted_trades",
+                "label": "trusted_trades", "data": trades
+            }).execute()
+        return jsonify({"ok": True, "saved": len(trades)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/finder/trusted-trades")
+def api_finder_trusted_trades():
+    """Return saved trusted tradespeople for this user."""
+    token = (request.args.get("token") or "").strip()
+    if not token:
+        return jsonify({"trades": {}})
+    device_id = (_v2_resolve(token) or token).replace("whatsapp:", "").strip()
+    try:
+        rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", device_id).eq("type", "trusted_trades") \
+            .limit(1).execute().data or []
+        trades = (rows[0]["data"] if rows else {}) or {}
+        return jsonify({"trades": trades})
+    except Exception:
+        return jsonify({"trades": {}})
 
 
 @app.route("/api/scan-barcode", methods=["POST"])
@@ -15854,6 +15982,7 @@ _HELP_MSG = (
 _WELCOME_MSG = (
     "👋 Hey! Welcome to *Miru*.\n\n"
     "I'm your UK life assistant — trains, fuel, local places, clippings, receipts and more. No app needed.\n\n"
+    "The more you use Miru, the more it remembers. Your area, your schools, your preferences. It gets sharper over time.\n\n"
     "Say *hi* to get started, or *help* to see everything I can do."
 )
 
