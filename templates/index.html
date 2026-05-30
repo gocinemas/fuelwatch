@@ -16173,25 +16173,18 @@ _bkBadge();
   // ── Nearby search ──────────────────────────────────────────────────────────
   var _briefNearbyLat = null, _briefNearbyLng = null;
 
-  window._briefFindNearby = function(type, radius) {
-    if (!_briefNearbyLat) return;
-    _captureInterest(type);
-    radius = radius || 1500;
+  function _briefDoNearby(type, radius, lat, lng) {
     var res = document.getElementById("brief-nearby-results");
     if (!res) return;
     res.style.display = "flex";
     res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Searching' + (radius > 1500 ? ' wider area…' : '…') + '</div>';
-    fetch("/api/brief/nearby?lat=" + _briefNearbyLat + "&lng=" + _briefNearbyLng + "&type=" + type + "&radius=" + radius)
+    fetch("/api/brief/nearby?lat=" + lat + "&lng=" + lng + "&type=" + type + "&radius=" + radius)
       .then(function(r) { return r.json(); })
       .then(function(d) {
         var places = d.places || [];
         if (!places.length) {
-          if (radius < 3500) {
-            // Auto-retry with a wider radius
-            _briefFindNearby(type, 3500);
-          } else {
-            res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Nothing found within 3.5km.</div>';
-          }
+          if (radius < 3500) { _briefDoNearby(type, 3500, lat, lng); }
+          else { res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Nothing found within 3.5km.</div>'; }
           return;
         }
         var radiusLabel = radius > 1500 ? '<div style="font-size:10px;color:var(--muted);padding:4px 0">Results within ' + (radius/1000).toFixed(1) + 'km</div>' : '';
@@ -16206,13 +16199,27 @@ _bkBadge();
             + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">'
             + '<span style="font-size:15px">' + icon + '</span>'
             + '<span style="font-size:13px;font-weight:700;color:var(--text)">' + p.name + '</span>'
-            + openBadge
-            + '</div>'
+            + openBadge + '</div>'
             + (dist ? '<span style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;margin-left:8px">' + dist + '</span>' : '')
             + '</div>';
         }).join("") + radiusLabel;
       })
       .catch(function() { res.innerHTML = '<div style="font-size:13px;color:var(--muted)">Search failed.</div>'; });
+  }
+
+  window._briefFindNearby = function(type, radius) {
+    _captureInterest(type);
+    radius = radius || 1500;
+    var res = document.getElementById("brief-nearby-results");
+    if (!res) return;
+    res.style.display = "flex";
+    res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Locating…</div>';
+    navigator.geolocation.getCurrentPosition(
+      function(pos) { _briefDoNearby(type, radius, pos.coords.latitude, pos.coords.longitude); },
+      function()    { if (_briefNearbyLat) { _briefDoNearby(type, radius, _briefNearbyLat, _briefNearbyLng); }
+                      else { res.innerHTML = '<div style="font-size:13px;color:var(--muted)">Location unavailable.</div>'; } },
+      { timeout: 5000, enableHighAccuracy: false, maximumAge: 60000 }
+    );
   };
 
   // Show nearby buttons + store coords once location is resolved
