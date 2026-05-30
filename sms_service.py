@@ -9539,35 +9539,57 @@ def api_morning_brief():
                 if _ra_line.strip():
                     _mfacts.append(f"📅 {_ra_line}")
 
-            # Groq narrative — 2 crisp sentences, morning tone
-            _mkids_str = f"Kids: {' and '.join(_mkids)}." if _mkids else ""
-            _mfacts_str = "; ".join(_mfacts) if _mfacts else ""
-            _mprompt = (
-                f"Write a 2-sentence morning WhatsApp message for a UK family. "
-                f"It's {dow} morning. "
-                f"Facts: {_mfacts_str}. "
-                f"Rules: start directly with the most time-sensitive fact — no 'Good morning', "
-                f"no 'in store', no 'top tips', no 'here's your', no 'today's', no filler openers. "
-                f"Sound like a smart friend texting, not a newsletter or assistant. "
-                f"Plain British English. No metaphors. Under 50 words."
-            )
-            _mnarrative = ""
-            try:
-                _mnarrative = _groq_chat(
-                    "You write sharp, direct morning texts for a UK WhatsApp assistant. "
-                    "Never use newsletter phrases. Get straight to the useful facts.",
-                    [{"role": "user", "content": _mprompt}],
-                    max_tokens=100,
-                )
-            except Exception:
-                _mnarrative = ". ".join(_mfacts[:2]) if _mfacts else f"Good morning — have a great {dow}."
-
-            # Compose WhatsApp message
-            _mparts = [_mnarrative.strip()]
-            # School this week — structured list below narrative
+            # Compose WhatsApp message — bullet format, no Groq (consistent + no hallucination)
             _mschool_upcoming = (_mschool.get("upcoming") or [])
+            _mparts = []
+
+            # Header: day + weather inline
+            _mwx_desc = _mwx.get("desc", "")
+            _mwx_temp = _mwx.get("temp")
+            _mwx_icon = {"clear": "☀️", "sunny": "☀️", "cloudy": "☁️", "overcast": "☁️",
+                         "rain": "🌧️", "drizzle": "🌦️", "shower": "🌦️", "thunder": "⛈️",
+                         "snow": "❄️", "fog": "🌫️", "mist": "🌫️", "wind": "💨"}.get(
+                (_mwx_desc or "").lower().split()[0] if _mwx_desc else "", "🌤️")
+            _mwx_str = f" · {_mwx_temp}°C, {_mwx_desc} {_mwx_icon}" if _mwx_temp and _mwx_desc else ""
+            _mparts.append(f"*{dow} morning*{_mwx_str}")
+            _mparts.append("")
+
+            # Recurring activities today
+            for _ra in (_mctx.get("recurring") or []):
+                _ra_who  = _ra.get("child") or _ra.get("person") or ""
+                _ra_what = _ra.get("activity", "")
+                _ra_time = _ra.get("time", "")
+                _ra_loc  = _ra.get("location", "")
+                _ra_line = f"📅 *{_ra_who}* · {_ra_what}" if _ra_who else f"📅 {_ra_what}"
+                if _ra_time: _ra_line += f" · {_ra_time}"
+                if _ra_loc:  _ra_line += f" · {_ra_loc}"
+                if _ra_what.strip():
+                    _mparts.append(_ra_line)
+
+            # Trains
+            if _mtrains.get("departures"):
+                _mtimes = ", ".join(d.get("departs","") for d in _mtrains["departures"][:2] if d.get("departs"))
+                if _mtimes:
+                    _mparts.append(f"🚆 {_mtrains.get('from','')} → {_mtrains.get('to','')}: {_mtimes}")
+
+            # Fuel
+            if _mfuel.get("price"):
+                _mparts.append(f"⛽ {_mfuel['name']} {_mfuel['price']}p")
+
+            # Delivery
+            for _mdlv in _mctx.get("deliveries", []):
+                if _mdlv.get("status") in ("out for delivery", "arriving today"):
+                    _mparts.append(f"📦 {_mdlv.get('carrier','Parcel')} arriving today")
+                    break
+
+            # School holiday note
+            if _mkids and _mhs.get("on_holiday") and _mhs.get("label"):
+                _mparts.append(f"🏖️ {' & '.join(_mkids)} off — {_mhs['label']}")
+
+            # School events this week (upcoming, not today's recurring)
             if _mschool_upcoming:
-                _mparts.append("\n🏫 *School this week*")
+                _mparts.append("")
+                _mparts.append("🏫 *School this week*")
                 for _mse in _mschool_upcoming[:3]:
                     _msdate = _mse.get("event_date","")
                     try:
@@ -9576,6 +9598,7 @@ def api_morning_brief():
                     except Exception:
                         pass
                     _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')} ({_msdate})")
+
             _mparts.append("\n_miru.humanagency.co — Reply STOP BRIEF to pause_")
             _mmsg = "\n".join(_mparts)
 
