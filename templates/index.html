@@ -3543,12 +3543,32 @@
     if (bb) { if (name === "brief") bb.classList.remove("visible"); else bb.classList.add("visible"); }
     if (name === "fuel") {
       const _fpc = document.getElementById("fuel-postcode");
-      const _fpc_pc = _miruPostcode();
-      if (!_fpc.value.trim()) _fpc.value = _fpc_pc;
       _renderRecent("miru_fuel","fuel-recent","fuel-postcode","searchFuel()");
       _myFuelRenderCard();
-      if (_fpc_pc && document.getElementById("fuel-results").classList.contains("hidden")) { searchFuel(); }
-      else { _fpc.focus(); }
+      const _fuelFallback = function() {
+        const _fpc_pc = _miruPostcode();
+        if (!_fpc.value.trim() && _fpc_pc) _fpc.value = _fpc_pc;
+        if (_fpc.value.trim() && document.getElementById("fuel-results").classList.contains("hidden")) { searchFuel(); }
+        else { _fpc.focus(); }
+      };
+      if (!_fpc.value.trim() && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            fetch("https://api.postcodes.io/postcodes?lon=" + pos.coords.longitude + "&lat=" + pos.coords.latitude + "&limit=1")
+              .then(function(r){ return r.json(); })
+              .then(function(d) {
+                const pc = d && d.result && d.result[0] && d.result[0].postcode;
+                if (pc) {
+                  _fpc.value = pc;
+                  if (document.getElementById("fuel-results").classList.contains("hidden")) { searchFuel(); }
+                } else { _fuelFallback(); }
+              })
+              .catch(function() { _fuelFallback(); });
+          },
+          function() { _fuelFallback(); },
+          { timeout: 3000, enableHighAccuracy: false, maximumAge: 300000 }
+        );
+      } else { _fuelFallback(); }
     }
     if (name === "report") {
       const _rpc = document.getElementById("report-postcode");
@@ -21101,18 +21121,47 @@ window.spotifyAddTrack = window.spotifyLike;
     if (name === "trains") {
       if (!_trainCrs) {
         _showIdle();
-        // Auto-load home bookmark if set
-        var bh = _getBm("home");
-        if (bh && bh.crs) {
-          var bw = _getBm("work");
-          if (bw) { _trainToCrs = bw.crs; _trainToName = bw.name; }
-          _showActive(bh.name, bh.crs, "rail");
-          _loadDeps(bh.crs);
-          return;
+        var _loading = document.getElementById("train-auto-loading");
+        var _didLoad = false;
+        var _fallback = function() {
+          if (_didLoad) return; _didLoad = true;
+          if (_loading) _loading.style.display = "none";
+          var bh = _getBm("home");
+          if (bh && bh.crs) {
+            var bw = _getBm("work");
+            if (bw) { _trainToCrs = bw.crs; _trainToName = bw.name; }
+            _showActive(bh.name, bh.crs, "rail");
+            _loadDeps(bh.crs);
+            return;
+          }
+          var _tpc = new URLSearchParams(location.search).get("pc") || _miruPostcode();
+          if (_tpc) { _trainAutoLoadPostcode(_tpc); }
+        };
+        var _loadFromGps = function(lat, lon) {
+          if (_didLoad) return; _didLoad = true;
+          fetch("/api/train/nearest?lat=" + lat + "&lng=" + lon)
+            .then(function(r){ return r.json(); })
+            .then(function(d) {
+              if (_loading) _loading.style.display = "none";
+              var st = d.stations && d.stations[0];
+              if (!st || !st.crs) { _didLoad = false; _fallback(); return; }
+              var bw = _getBm("work");
+              if (bw) { _trainToCrs = bw.crs; _trainToName = bw.name; }
+              _showActive(st.name, st.crs, "rail");
+              _loadDeps(st.crs);
+            })
+            .catch(function() { _didLoad = false; _fallback(); });
+        };
+        if (navigator.geolocation) {
+          if (_loading) _loading.style.display = "block";
+          navigator.geolocation.getCurrentPosition(
+            function(pos) { _loadFromGps(pos.coords.latitude, pos.coords.longitude); },
+            function() { _fallback(); },
+            { timeout: 6000, enableHighAccuracy: false, maximumAge: 300000 }
+          );
+        } else {
+          _fallback();
         }
-        // Auto-derive from stored postcode via nearest-by-postcode API
-        var _tpc = new URLSearchParams(location.search).get("pc") || _miruPostcode();
-        if (_tpc) { _trainAutoLoadPostcode(_tpc); }
       }
     } else {
       _stopTimers();
