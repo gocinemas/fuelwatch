@@ -24062,24 +24062,6 @@ def api_place_name_seed():
     return jsonify({"seeded": len(results), "results": results})
 
 
-@app.route("/api/places/near-me")
-def api_places_near_me():
-    """Food venues within ~150m — used by the one-tap menu FAB."""
-    try:
-        lat = float(request.args.get("lat", ""))
-        lng = float(request.args.get("lng", ""))
-    except (ValueError, TypeError):
-        return jsonify({"error": "lat/lng required"}), 400
-    seen, results = set(), []
-    for ptype in ["restaurant", "cafe", "bar"]:
-        for p in _places_nearby(lat, lng, ptype, 150, 3):
-            if p["place_id"] not in seen:
-                seen.add(p["place_id"])
-                results.append(p)
-    results.sort(key=lambda x: x.get("distance_km", 999))
-    return jsonify({"places": results[:4]})
-
-
 @app.route("/api/ev/nearby")
 def api_ev_nearby():
     """Nearest EV charging stations via OpenStreetMap Overpass (free, no key)."""
