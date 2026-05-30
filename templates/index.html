@@ -18416,6 +18416,63 @@ _bkBadge();
     }
   };
 
+  const _EH_KIDS_AGES = [
+    { id:"baby",    label:"Baby",    emoji:"👶", sub:"0–2",  hint:"Soft play · baby cafés · sensory" },
+    { id:"toddler", label:"Toddler", emoji:"🧸", sub:"2–5",  hint:"Playgrounds · farm parks · soft play" },
+    { id:"junior",  label:"Junior",  emoji:"🎒", sub:"5–12", hint:"Bowling · adventure · cinema · skating" },
+    { id:"teen",    label:"Teen",    emoji:"🎮", sub:"12+",  hint:"Cinema · laser tag · escape rooms · arcade" },
+  ];
+
+  function _ehShowKidsPicker() {
+    const el = document.getElementById("explore-here-results");
+    const lastAge = localStorage.getItem("miru_kids_age") || "";
+    el.innerHTML = `
+      <div style="padding:4px 0 12px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em">How old are they?</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+          ${_EH_KIDS_AGES.map(a => `
+            <button onclick="_ehKidsAge('${a.id}')"
+              style="padding:14px 10px;border-radius:16px;border:1.5px solid ${a.id===lastAge?'#4f46e5':'var(--border)'};
+                     background:${a.id===lastAge?'#eef2ff':'var(--surface)'};cursor:pointer;text-align:left;transition:all .15s">
+              <div style="font-size:22px;margin-bottom:4px">${a.emoji}</div>
+              <div style="font-size:13px;font-weight:800;color:var(--text)">${a.label} <span style="font-size:11px;font-weight:500;color:var(--muted)">${a.sub}</span></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4">${a.hint}</div>
+            </button>`).join("")}
+        </div>
+      </div>`;
+    // Auto-load remembered age
+    if (lastAge) _ehKidsAge(lastAge);
+  }
+
+  window._ehKidsAge = async function(age) {
+    localStorage.setItem("miru_kids_age", age);
+    // Highlight selected tile
+    document.querySelectorAll("#explore-here-results button").forEach(b => {
+      const isThis = b.getAttribute("onclick") === `_ehKidsAge('${age}')`;
+      b.style.borderColor = isThis ? "#4f46e5" : "var(--border)";
+      b.style.background  = isThis ? "#eef2ff"  : "var(--surface)";
+    });
+    const cat = "kids_" + age;
+    const el = document.getElementById("explore-here-results");
+    if (!_ehCache[cat]) {
+      el.style.opacity = "0.35"; el.style.pointerEvents = "none";
+      try {
+        const r = await fetch(`/api/places/nearby?lat=${_ehLat}&lon=${_ehLon}&cat=${cat}`);
+        const d = await r.json();
+        _ehCache[cat] = (d.places || []).map(p => Object.assign({}, p, { _dist: (p.lat && p.lon) ? _distKm(_ehLat, _ehLon, p.lat, p.lon) : 999 }));
+        _ehCache[cat].sort((a,b) => a._dist - b._dist);
+      } catch(_) { _ehCache[cat] = []; }
+      el.style.opacity = ""; el.style.pointerEvents = "";
+    }
+    _ehPlaces = _ehCache[cat] || [];
+    // Re-render picker + results
+    _ehShowKidsPicker();
+    const resultsHtml = _ehPlaces.length
+      ? _ehPlaces.slice(0,7).map(_ehPlaceCard).join("")
+      : `<div style="text-align:center;padding:24px 0;color:var(--muted);font-size:13px">Nothing found nearby for this age group.<br><span style="font-size:12px">Try a wider area or different age.</span></div>`;
+    document.getElementById("explore-here-results").innerHTML += resultsHtml;
+  };
+
   window._ehSetCat = async function(cat, btn) {
     _ehActiveCat = cat;
     document.querySelectorAll(".eh-cat-btn").forEach(b => {
@@ -18427,8 +18484,13 @@ _bkBadge();
     btn.style.background = "#eef2ff";
     btn.querySelector("div:last-child").style.color = "#4338ca";
 
+    // Kids: show age picker instead of direct results
+    if (cat === "kids") {
+      _ehShowKidsPicker();
+      return;
+    }
+
     if (_EH_NEEDS_FETCH.has(cat) && !_ehCache[cat]) {
-      // Dim existing results in-place — no height change, no jump
       const el = document.getElementById("explore-here-results");
       el.style.opacity = "0.35";
       el.style.pointerEvents = "none";
