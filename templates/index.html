@@ -21139,18 +21139,13 @@ window.spotifyAddTrack = window.spotifyLike;
         };
         var _loadFromGps = function(lat, lon) {
           if (_didLoad) return; _didLoad = true;
-          fetch("/api/train/nearest?lat=" + lat + "&lng=" + lon)
-            .then(function(r){ return r.json(); })
-            .then(function(d) {
+          _locateBoth(lat, lon,
+            function(rail, tube) {
               if (_loading) _loading.style.display = "none";
-              var st = d.stations && d.stations[0];
-              if (!st || !st.crs) { _didLoad = false; _fallback(); return; }
-              var bw = _getBm("work");
-              if (bw) { _trainToCrs = bw.crs; _trainToName = bw.name; }
-              _showActive(st.name, st.crs, "rail");
-              _loadDeps(st.crs);
-            })
-            .catch(function() { _didLoad = false; _fallback(); });
+              _showNearestPicker(rail, tube);
+            },
+            function() { _didLoad = false; _fallback(); }
+          );
         };
         if (navigator.geolocation) {
           if (_loading) _loading.style.display = "block";
