@@ -13296,6 +13296,8 @@ _bkBadge();
   let _finderCurrentQ = "";
   let _finderCurrentPC = "";
   let _finderSuggestion = null;
+  let _finderTrustedTrades = {};
+  let _finderTrustedLoaded = false;
 
   /* ── helpers ── */
   function _showErr(msg){ const e=document.getElementById("finder-loc-err"); e.textContent=msg; e.classList.toggle("hidden",!msg); }
@@ -13333,6 +13335,52 @@ _bkBadge();
     document.querySelectorAll(".fsub").forEach(b=>b.classList.remove("fsub-on"));
     _finderRender();
     document.getElementById("finder-controls").style.display = "flex";
+  };
+
+  /* ── trusted tradespeople ── */
+  async function _loadTrustedTrades(){
+    if(_finderTrustedLoaded) return;
+    _finderTrustedLoaded = true;
+    try{
+      const tok = (typeof _maDeviceId === "function") ? _maDeviceId() : "";
+      if(!tok) return;
+      const r = await fetch(`/api/finder/trusted-trades?token=${encodeURIComponent(tok)}`);
+      const d = await r.json();
+      _finderTrustedTrades = d.trades || {};
+    }catch(_){ _finderTrustedLoaded = false; }
+  }
+
+  window.finderSaveTrade = async function(btn, action){
+    const key = btn.getAttribute("data-tkey");
+    try{
+      const tok = (typeof _maDeviceId === "function") ? _maDeviceId() : "";
+      if(!tok){ _miruToast("Sign in to save tradespeople", "error"); return; }
+      let name = "", address = "", phone = "", website = "", category = "";
+      if(action === "save"){
+        const p = _finderAllResults.find(x => (x._key||(x.name+"|"+(x.address||""))).replace(/"/g,"") === key);
+        if(!p){ _miruToast("Couldn't find place details", "error"); return; }
+        name = p.name||""; address = p.address||""; phone = p.phone||""; website = p.website||"";
+        category = _finderCurrentQ.toLowerCase().trim().split(/\s+/).slice(0,2).join(" ");
+      } else {
+        const saved = _finderTrustedTrades[key] || {};
+        name = saved.name||key; category = saved.category||"tradesperson";
+      }
+      const r = await fetch("/api/finder/save-trade", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({token: tok, action, name, address, phone, website, category, key})
+      });
+      const d = await r.json();
+      if(d.error){ _miruToast(d.error, "error"); return; }
+      if(action === "save"){
+        _finderTrustedTrades[key] = {name, address, phone, website, category};
+        _miruToast("✓ Saved as your " + category, "ok");
+      } else {
+        delete _finderTrustedTrades[key];
+        _miruToast("Removed from your tradespeople", "ok");
+      }
+      _finderRender();
+    }catch(e){ _miruToast("Couldn't save — try again", "error"); }
   };
 
   /* ── postcode autocomplete ── */
@@ -13470,7 +13518,14 @@ _bkBadge();
   /* ── render results ── */
   function _finderRender(){
     const openNow = document.getElementById("finder-open-now").checked;
-    const items = openNow ? _finderAllResults.filter(p=>p.open_now===true) : _finderAllResults;
+    const _rawItems = openNow ? _finderAllResults.filter(p=>p.open_now===true) : _finderAllResults;
+    const items = Object.keys(_finderTrustedTrades).length
+      ? [..._rawItems].sort((a,b)=>{
+          const ak=(a._key||(a.name+"|"+(a.address||""))).replace(/"/g,"");
+          const bk=(b._key||(b.name+"|"+(b.address||""))).replace(/"/g,"");
+          return (!!_finderTrustedTrades[bk])-(!!_finderTrustedTrades[ak]);
+        })
+      : _rawItems;
     const hdr  = document.getElementById("finder-results-hdr");
     const list = document.getElementById("finder-list");
     let hdrHtml = "";
@@ -13539,13 +13594,16 @@ _bkBadge();
     const placeJson = JSON.stringify({_key:key, name:p.name||"", address:p.address||"", phone:p.phone||"", website:p.website||"", lat:p.lat, lon:p.lon}).replace(/"/g,"&quot;");
     const isSaved = _isSaved(key);
     const tip = _getPlaceTip(key);
+    const isTrusted = !!_finderTrustedTrades[key];
+    const trustedCat = isTrusted ? (_finderTrustedTrades[key].category || "tradesperson") : "";
+    const trustedBadge = isTrusted ? `<span style="padding:3px 9px;border-radius:20px;background:#dcfce7;color:#15803d;font-size:12px;font-weight:700">✓ My ${trustedCat}</span>` : "";
     const safeKey = btoa(unescape(encodeURIComponent(key))).replace(/[^a-zA-Z0-9]/g,"").slice(0,24);
     return `<div class="finder-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
             <span style="font-size:15px;font-weight:700;color:var(--text)">${p.name}</span>
-            ${openBadge}
+            ${openBadge}${trustedBadge}
           </div>
           ${p.address ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">📍 ${p.address}</div>` : ""}
         </div>
@@ -13562,6 +13620,7 @@ _bkBadge();
         ${dirUrl    ? `<a href="${dirUrl}" target="_blank" rel="noopener" style="padding:6px 12px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;text-decoration:none">🗺️ Directions</a>` : ""}
         ${p.website ? `<a href="${p.website}" target="_blank" rel="noopener" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:600;text-decoration:none">🌐 Website</a>` : ""}
         <button onclick="finderAddTip('${safeKey}','${key.replace(/'/g,"\\'")}',this)" style="padding:6px 12px;border-radius:8px;border:1px solid #fde68a;background:#fefce8;color:#92400e;font-size:12px;font-weight:600;cursor:pointer">${tip?"✏️ Tip":"💡 Add tip"}</button>
+        <button data-tkey="${key.replace(/"/g,'&quot;')}" onclick="finderSaveTrade(this,'${isTrusted?'remove':'save'}')" style="padding:6px 12px;border-radius:8px;border:1px solid ${isTrusted?'#bbf7d0':'var(--border)'};background:${isTrusted?'#dcfce7':'var(--surface)'};color:${isTrusted?'#15803d':'var(--text)'};font-size:12px;font-weight:600;cursor:pointer">${isTrusted?("✓ My "+trustedCat+" · Remove"):"🤝 Trust"}</button>
       </div>
       <div id="tip-form-${safeKey}" style="display:none;margin-top:8px">
         <textarea id="tip-input-${safeKey}" rows="2" placeholder="e.g. great coffee, park round the corner, ask for the manager…" style="width:100%;border:1px solid #fde68a;border-radius:8px;padding:8px;font-size:13px;resize:none;outline:none;box-sizing:border-box"></textarea>
@@ -13686,6 +13745,7 @@ _bkBadge();
   })();
 
   _updateSavedBtn();
+  _loadTrustedTrades();
 })();
 </script>
 
