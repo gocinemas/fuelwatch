@@ -9166,6 +9166,36 @@ def api_home_ask():
                         date_str = (s.get("created_at") or "")[:10]
                         receipt_parts.append(f"{merchant}{' '+amt if amt else ''} ({date_str})")
                     ctx_lines.append(f"Receipts this device: {'; '.join(receipt_parts)}")
+
+                # ── Receipt line items — query receipts table for item-level questions ──
+                # Covers: "did I buy eggs?", "have I got bread?", "do I have milk?"
+                _item_triggers = ["did i buy", "have i got", "do i have", "have i bought",
+                                  "did i get", "i need", "bought any", "any left"]
+                _is_item_q = any(t in q_lower for t in _item_triggers)
+                try:
+                    from datetime import date as _askd, timedelta as _asktd
+                    _items_since = (_askd.today() - _asktd(days=30)).isoformat()
+                    _rcpt_rows = lib._sb().table("receipts").select(
+                        "merchant,items,shop_date,total"
+                    ).eq("phone", plain).gte("shop_date", _items_since) \
+                     .order("shop_date", desc=True).limit(10).execute().data or []
+                    if _rcpt_rows:
+                        import json as _rj
+                        _item_lines = []
+                        for _rr in _rcpt_rows:
+                            _rdate = (_rr.get("shop_date") or "")[:10]
+                            _rm = _rr.get("merchant", "")
+                            try:
+                                _ritems = _rj.loads(_rr.get("items") or "[]") or []
+                                _names = [i.get("name","").strip() for i in _ritems if i.get("name","").strip()]
+                            except Exception:
+                                _names = []
+                            if _names:
+                                _item_lines.append(f"{_rm} ({_rdate}): {', '.join(_names[:20])}")
+                        if _item_lines:
+                            ctx_lines.append(f"Receipt items (last 30 days): {' | '.join(_item_lines)}")
+                except Exception:
+                    pass
             except Exception:
                 pass
 
@@ -9337,7 +9367,9 @@ def api_home_ask():
             "Use general knowledge for everything else — definitions, facts, calculations, advice. "
             "CRITICAL distinction: 'Saves library' = articles, places or clippings the user bookmarked in the app. "
             "'Receipts' = purchase records showing what they SPENT at shops. "
+            "'Receipt items' = individual products bought in a shop visit (eggs, bread, milk etc). "
             "When the user asks 'what did I save', answer from Saves library ONLY — never use Receipts for this. "
+            "When the user asks 'did I buy X' or 'have I got X', check Receipt items — answer yes/no with the shop and date. "
             "CRITICAL: for personal history questions (places visited, pubs gone to, purchases on a specific date, "
             "school comms received, things done recently) — if the answer is not in Context, say "
             "'I don't have a record of that' rather than guessing. Never invent specific places visited, "
