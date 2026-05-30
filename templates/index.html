@@ -2021,11 +2021,13 @@
         </button>
         <!-- Category chips -->
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button id="brief-nearby-cafe-btn"     onclick="_briefFindNearby('cafe')"     style="display:none;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:4px 10px;cursor:pointer">☕ Coffee</button>
-            <button id="brief-nearby-food-btn"     onclick="_briefFindNearby('food')"     style="display:none;font-size:11px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:99px;padding:4px 10px;cursor:pointer">🍽️ Food</button>
-            <button id="brief-nearby-pub-btn"      onclick="_briefFindNearby('pub')"      style="display:none;font-size:11px;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:99px;padding:4px 10px;cursor:pointer">🍺 Pub</button>
-            <button id="brief-nearby-cocktail-btn" onclick="_briefFindNearby('cocktail')" style="display:none;font-size:11px;font-weight:700;color:#9d174d;background:#fdf2f8;border:1px solid #fbcfe8;border-radius:99px;padding:4px 10px;cursor:pointer">🍸 Cocktails</button>
-            <button id="brief-nearby-park-btn"     onclick="_briefFindNearby('park')"     style="display:none;font-size:11px;font-weight:700;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:99px;padding:4px 10px;cursor:pointer">🌳 Park</button>
+            <button id="brief-nearby-cafe-btn"        onclick="_briefFindNearby('cafe')"        style="display:none;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:4px 10px;cursor:pointer">☕ Coffee</button>
+            <button id="brief-nearby-food-btn"        onclick="_briefFindNearby('food')"        style="display:none;font-size:11px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:99px;padding:4px 10px;cursor:pointer">🍽️ Food</button>
+            <button id="brief-nearby-pub-btn"         onclick="_briefFindNearby('pub')"         style="display:none;font-size:11px;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:99px;padding:4px 10px;cursor:pointer">🍺 Pub</button>
+            <button id="brief-nearby-park-btn"        onclick="_briefFindNearby('park')"        style="display:none;font-size:11px;font-weight:700;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:99px;padding:4px 10px;cursor:pointer">🌳 Park</button>
+            <button id="brief-nearby-atm-btn"         onclick="_briefFindNearby('atm')"         style="display:none;font-size:11px;font-weight:700;color:#1e3a5f;background:#e0f2fe;border:1px solid #bae6fd;border-radius:99px;padding:4px 10px;cursor:pointer">🏧 ATM</button>
+            <button id="brief-nearby-pharmacy-btn"    onclick="_briefFindNearby('pharmacy')"    style="display:none;font-size:11px;font-weight:700;color:#7c2d12;background:#fff7ed;border:1px solid #fed7aa;border-radius:99px;padding:4px 10px;cursor:pointer">💊 Pharmacy</button>
+            <button id="brief-nearby-supermarket-btn" onclick="_briefFindNearby('supermarket')" style="display:none;font-size:11px;font-weight:700;color:#14532d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:99px;padding:4px 10px;cursor:pointer">🛒 Supermarket</button>
         </div>
         <div id="brief-location-shimmer" style="display:flex;flex-direction:column;gap:10px">
           <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
@@ -16235,24 +16237,18 @@ _bkBadge();
       var _h = new Date().getHours();
       var _ctx = (d.context || {});
       var _outdoorOk = (_ctx.weather && (_ctx.weather.outdoor_ok || (_ctx.weather.temp >= 14 && (_ctx.weather.code||99) <= 2)));
-      // Always show cafes + food
-      var cb  = document.getElementById("brief-nearby-cafe-btn");
-      var fb  = document.getElementById("brief-nearby-food-btn");
-      var pb  = document.getElementById("brief-nearby-pub-btn");
-      var ckb = document.getElementById("brief-nearby-cocktail-btn");
-      var pkb = document.getElementById("brief-nearby-park-btn");
-      var hb = document.getElementById("brief-nearby-here-btn");
-      if (hb) hb.style.display = "inline-block";
-      if (cb) cb.style.display = "inline-block";
-      if (fb) fb.style.display = "inline-block";
-      // Pub: afternoon and evening (noon onwards)
-      if (pb && _h >= 12) pb.style.display = "inline-block";
-      // Cocktails: evening (5pm onwards)
-      if (ckb && _h >= 17) ckb.style.display = "inline-block";
-      // Park: daytime + decent weather
-      if (pkb && _h >= 8 && _h < 20 && _outdoorOk) pkb.style.display = "inline-block";
-      // Always show park as fallback even without weather (just daytime)
-      if (pkb && _h >= 9 && _h < 19 && pkb.style.display !== "inline-block") pkb.style.display = "inline-block";
+      var _show = function(id) { var el = document.getElementById(id); if (el) el.style.display = "inline-block"; };
+      // Always visible
+      _show("brief-nearby-here-btn");
+      _show("brief-nearby-cafe-btn");
+      _show("brief-nearby-food-btn");
+      _show("brief-nearby-atm-btn");
+      _show("brief-nearby-pharmacy-btn");
+      _show("brief-nearby-supermarket-btn");
+      // Pub: noon onwards
+      if (_h >= 12) _show("brief-nearby-pub-btn");
+      // Park: daytime
+      if (_h >= 9 && _h < 19) _show("brief-nearby-park-btn");
     }
   };
 
