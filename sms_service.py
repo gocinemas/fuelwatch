@@ -9543,16 +9543,19 @@ def api_morning_brief():
             _mkids_str = f"Kids: {' and '.join(_mkids)}." if _mkids else ""
             _mfacts_str = "; ".join(_mfacts) if _mfacts else ""
             _mprompt = (
-                f"Write a 2-sentence morning WhatsApp brief for a UK user. "
-                f"It's {dow} morning. {_mkids_str} "
+                f"Write a 2-sentence morning WhatsApp message for a UK family. "
+                f"It's {dow} morning. "
                 f"Facts: {_mfacts_str}. "
-                f"Warm but efficient tone. No greetings, no bullet points. Under 50 words. "
-                f"Plain British English. No metaphors."
+                f"Rules: start directly with the most time-sensitive fact — no 'Good morning', "
+                f"no 'in store', no 'top tips', no 'here's your', no 'today's', no filler openers. "
+                f"Sound like a smart friend texting, not a newsletter or assistant. "
+                f"Plain British English. No metaphors. Under 50 words."
             )
             _mnarrative = ""
             try:
                 _mnarrative = _groq_chat(
-                    "You write concise morning briefs for a UK WhatsApp assistant.",
+                    "You write sharp, direct morning texts for a UK WhatsApp assistant. "
+                    "Never use newsletter phrases. Get straight to the useful facts.",
                     [{"role": "user", "content": _mprompt}],
                     max_tokens=100,
                 )
