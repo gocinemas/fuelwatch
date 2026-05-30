@@ -15736,14 +15736,21 @@ _bkBadge();
       if (_isOffHours) {
         // Evening/night: only dining receipts survive. Coffee/groceries/shops are done for the day.
         // Also filter out junk saves (advertisement titles, no meaningful content).
+        var _seenTitles = {};
         saves = saves.filter(function(s) {
           if (s.source === "receipt") {
             return s.category === "Dining"; // restaurants only — not coffee shops
           }
-          var t = (s.title || "").toLowerCase();
+          var t = (s.title || "").toLowerCase().trim();
+          // Drop area-research / navigation saves — never useful as evening suggestions
+          if (s.category === "nearby" || s.category === "place") return false;
+          if (t.indexOf("research an area") === 0) return false;
           // Drop saves with spammy/auto-generated titles
           if (t.indexOf("advertisement") >= 0 || t.indexOf("advert") >= 0 ||
               t === "event/ticket advertisement" || t.length < 4) return false;
+          // Deduplicate by normalised title
+          if (_seenTitles[t]) return false;
+          _seenTitles[t] = true;
           return true;
         });
         // Re-sort: dining first, then everything else
@@ -21737,7 +21744,7 @@ window.spotifyAddTrack = window.spotifyLike;
 
 <!-- ── Menu FAB — home screen only ───────────────────────────────────────── -->
 <button id="menu-fab" onclick="_nearbyMenu()" title="Find menu nearby"
-  style="position:fixed;bottom:88px;right:16px;width:50px;height:50px;border-radius:50%;background:#f59e0b;color:#fff;font-size:22px;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;z-index:1200;display:flex;align-items:center;justify-content:center;transition:transform .15s">🍽️</button>
+  style="position:fixed;bottom:88px;right:16px;width:50px;height:50px;border-radius:50%;background:#f59e0b;color:#fff;font-size:22px;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;z-index:1200;display:none;align-items:center;justify-content:center;transition:transform .15s">🍽️</button>
 
 <div id="menu-fab-sheet" onclick="_nearbyMenuClose()" style="display:none;position:fixed;inset:0;z-index:1201;background:rgba(0,0,0,.45)">
   <div onclick="event.stopPropagation()" style="position:absolute;bottom:0;left:0;right:0;background:var(--bg);border-radius:20px 20px 0 0;padding:18px 18px calc(28px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto">
