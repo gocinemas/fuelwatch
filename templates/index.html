@@ -21837,17 +21837,19 @@ window.spotifyAddTrack = window.spotifyLike;
 <script>
 (function() {
   var _fab = document.getElementById("nearby-fab");
-  var _sec = document.getElementById("brief-location-section");
 
-  function _syncFab() {
-    if (!_fab || !_sec) return;
-    var on = _sec.style.display !== "none";
-    _fab.style.display = on ? "flex" : "none";
-  }
+  function _fabShow() { if (_fab) _fab.style.display = "flex"; }
+  function _fabHide() { if (_fab) _fab.style.display = "none"; }
 
-  if (window.MutationObserver && _sec) {
-    new MutationObserver(_syncFab).observe(_sec, { attributes: true, attributeFilter: ["style"] });
-  }
+  // Show on home, hide on all other screens
+  var _origSS = window.showScreen;
+  window.showScreen = function(name) { _origSS && _origSS(name); _fabHide(); };
+
+  var _origSH = window.showHome;
+  window.showHome = function() { _origSH && _origSH(); _fabShow(); };
+
+  // Show on initial load (home is default)
+  _fabShow();
 
   window._fabFindHere = function() {
     if (!_fab || _fab.disabled) return;
