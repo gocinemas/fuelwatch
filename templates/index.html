@@ -18423,54 +18423,105 @@ _bkBadge();
     { id:"teen",    label:"Teen",    emoji:"🎮", sub:"12+",  hint:"Cinema · laser tag · escape rooms · arcade" },
   ];
 
+  // ── Kids age picker ───────────────────────────────────────────────────────
+  function _ehKidsPickerHtml(selectedAge) {
+    return `<div id="eh-kids-picker" style="padding:4px 0 14px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em">How old are they?</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+        ${_EH_KIDS_AGES.map(a => `
+          <button onclick="_ehKidsAge('${a.id}')"
+            style="padding:14px 10px;border-radius:16px;border:1.5px solid ${a.id===selectedAge?'#4f46e5':'var(--border)'};
+                   background:${a.id===selectedAge?'#eef2ff':'var(--surface)'};cursor:pointer;text-align:left;transition:all .15s">
+            <div style="font-size:22px;margin-bottom:4px">${a.emoji}</div>
+            <div style="font-size:13px;font-weight:800;color:var(--text)">${a.label} <span style="font-size:11px;font-weight:500;color:var(--muted)">${a.sub}</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4">${a.hint}</div>
+          </button>`).join("")}
+      </div>
+    </div>
+    <div id="eh-kids-results"></div>`;
+  }
+
   function _ehShowKidsPicker() {
     const el = document.getElementById("explore-here-results");
     const lastAge = localStorage.getItem("miru_kids_age") || "";
-    el.innerHTML = `
-      <div style="padding:4px 0 12px">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em">How old are they?</div>
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-          ${_EH_KIDS_AGES.map(a => `
-            <button onclick="_ehKidsAge('${a.id}')"
-              style="padding:14px 10px;border-radius:16px;border:1.5px solid ${a.id===lastAge?'#4f46e5':'var(--border)'};
-                     background:${a.id===lastAge?'#eef2ff':'var(--surface)'};cursor:pointer;text-align:left;transition:all .15s">
-              <div style="font-size:22px;margin-bottom:4px">${a.emoji}</div>
-              <div style="font-size:13px;font-weight:800;color:var(--text)">${a.label} <span style="font-size:11px;font-weight:500;color:var(--muted)">${a.sub}</span></div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4">${a.hint}</div>
-            </button>`).join("")}
-        </div>
-      </div>`;
-    // Auto-load remembered age
+    el.innerHTML = _ehKidsPickerHtml(lastAge);
     if (lastAge) _ehKidsAge(lastAge);
   }
 
   window._ehKidsAge = async function(age) {
     localStorage.setItem("miru_kids_age", age);
-    // Highlight selected tile
-    document.querySelectorAll("#explore-here-results button").forEach(b => {
-      const isThis = b.getAttribute("onclick") === `_ehKidsAge('${age}')`;
-      b.style.borderColor = isThis ? "#4f46e5" : "var(--border)";
-      b.style.background  = isThis ? "#eef2ff"  : "var(--surface)";
-    });
+    // Update picker highlight without re-rendering (avoids recursive loop)
+    const picker = document.getElementById("eh-kids-picker");
+    if (picker) {
+      picker.querySelectorAll("button").forEach(b => {
+        const isThis = b.getAttribute("onclick") === `_ehKidsAge('${age}')`;
+        b.style.borderColor = isThis ? "#4f46e5" : "var(--border)";
+        b.style.background  = isThis ? "#eef2ff" : "var(--surface)";
+      });
+    } else {
+      // Picker not rendered yet — render it first
+      document.getElementById("explore-here-results").innerHTML = _ehKidsPickerHtml(age);
+    }
+    const resultsDiv = document.getElementById("eh-kids-results");
+    if (resultsDiv) resultsDiv.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:8px 0">Searching…</div>`;
     const cat = "kids_" + age;
-    const el = document.getElementById("explore-here-results");
     if (!_ehCache[cat]) {
-      el.style.opacity = "0.35"; el.style.pointerEvents = "none";
       try {
         const r = await fetch(`/api/places/nearby?lat=${_ehLat}&lon=${_ehLon}&cat=${cat}`);
         const d = await r.json();
         _ehCache[cat] = (d.places || []).map(p => Object.assign({}, p, { _dist: (p.lat && p.lon) ? _distKm(_ehLat, _ehLon, p.lat, p.lon) : 999 }));
         _ehCache[cat].sort((a,b) => a._dist - b._dist);
       } catch(_) { _ehCache[cat] = []; }
-      el.style.opacity = ""; el.style.pointerEvents = "";
     }
     _ehPlaces = _ehCache[cat] || [];
-    // Re-render picker + results
-    _ehShowKidsPicker();
-    const resultsHtml = _ehPlaces.length
+    const rd = document.getElementById("eh-kids-results");
+    if (!rd) return;
+    rd.innerHTML = _ehPlaces.length
       ? _ehPlaces.slice(0,7).map(_ehPlaceCard).join("")
-      : `<div style="text-align:center;padding:24px 0;color:var(--muted);font-size:13px">Nothing found nearby for this age group.<br><span style="font-size:12px">Try a wider area or different age.</span></div>`;
-    document.getElementById("explore-here-results").innerHTML += resultsHtml;
+      : `<div style="text-align:center;padding:24px 0;color:var(--muted);font-size:13px">Nothing found for this age group nearby.<br><span style="font-size:12px">Try a different age or area.</span></div>`;
+  };
+
+  // ── Menu bottom sheet ────────────────────────────────────────────────────
+  window._ehShowMenu = async function(name, address) {
+    const token = _miruPhone() || "";
+    // Build / reveal sheet
+    let sheet = document.getElementById("eh-menu-sheet");
+    if (!sheet) {
+      sheet = document.createElement("div");
+      sheet.id = "eh-menu-sheet";
+      sheet.style.cssText = "position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;background:var(--bg);border-top:1px solid var(--border);border-radius:20px 20px 0 0;padding:0 18px 32px;z-index:1100;max-height:70vh;overflow-y:auto;box-shadow:0 -4px 24px rgba(0,0,0,.12)";
+      document.body.appendChild(sheet);
+    }
+    sheet.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0 10px;position:sticky;top:0;background:var(--bg)">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:var(--text)">${name}</div>
+          ${address ? `<div style="font-size:11px;color:var(--muted)">${address}</div>` : ""}
+        </div>
+        <button onclick="document.getElementById('eh-menu-sheet').remove()" style="font-size:20px;background:none;border:none;cursor:pointer;color:var(--muted);padding:4px 8px">×</button>
+      </div>
+      <div id="eh-menu-body" style="font-size:13px;color:var(--muted);padding:8px 0">Looking up menu…</div>`;
+    sheet.style.display = "block";
+    if (!token) {
+      document.getElementById("eh-menu-body").innerHTML = `<div style="color:#dc2626">Link your WhatsApp first (My Area → Accounts) to use menu lookup.</div>`;
+      return;
+    }
+    try {
+      const r = await fetch(`/api/menu?token=${encodeURIComponent(token)}&name=${encodeURIComponent(name + (address ? " " + address.split(",")[0] : ""))}`);
+      const d = await r.json();
+      const body = document.getElementById("eh-menu-body");
+      if (!body) return;
+      if (d.error) { body.innerHTML = `<div style="color:#dc2626">${d.error}</div>`; return; }
+      // Format: strip WhatsApp *bold*, convert newlines
+      const html = (d.menu || "No menu found")
+        .replace(/\*(.*?)\*/g, "<strong>$1</strong>")
+        .replace(/_(.*?)_/g, "<em>$1</em>")
+        .replace(/\n/g, "<br>");
+      body.innerHTML = `<div style="line-height:1.7;color:var(--text)">${html}</div>`;
+    } catch(e) {
+      const body = document.getElementById("eh-menu-body");
+      if (body) body.innerHTML = `<div style="color:#dc2626">Couldn't load menu. Try again.</div>`;
+    }
   };
 
   window._ehSetCat = async function(cat, btn) {
@@ -18578,8 +18629,8 @@ _bkBadge();
     const safeData = encodeURIComponent(JSON.stringify({name:p.name,address:p.address,rating:p.rating,maps_url:mapsUrl,place_id:p.place_id||""}));
     const _FOOD_TYPES = new Set(["restaurant","cafe","bar","bakery","meal_takeaway","pub","fast_food","night_club"]);
     const _isFood = _FOOD_TYPES.has(p.type) || ["restaurant","café","cafe","fast food","pub","bar","bakery","bistro","wine bar"].some(c => (p.category||"").toLowerCase().includes(c));
-    const menuUrl = p.place_id ? `https://www.google.com/maps/place/?q=place_id:${p.place_id}` : mapsUrl;
-    const menuBtn = _isFood ? `<a href="${menuUrl}" target="_blank" rel="noopener" style="flex-shrink:0;padding:7px 12px;border-radius:12px;border:1.5px solid #fed7aa;background:#fff7ed;font-size:11px;font-weight:700;cursor:pointer;color:#d97706;display:flex;align-items:center;gap:4px;white-space:nowrap;text-decoration:none">🍽️ Menu</a>` : "";
+    const _safeAddr = (p.address||"").replace(/'/g,"\\'");
+    const menuBtn = _isFood ? `<button onclick="_ehShowMenu('${(p.name||"").replace(/'/g,"\\'")}','${_safeAddr}')" style="flex-shrink:0;padding:7px 12px;border-radius:12px;border:1.5px solid #fed7aa;background:#fff7ed;font-size:11px;font-weight:700;cursor:pointer;color:#d97706;display:flex;align-items:center;gap:4px;white-space:nowrap">🍽️ Menu</button>` : "";
     return `<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
       <!-- Emoji block -->
       <a href="${mapsUrl}" target="_blank" rel="noopener" style="width:52px;height:52px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;text-decoration:none">${p.emoji || "📍"}</a>
