@@ -3544,7 +3544,7 @@
     // Brief is the home screen — never show back button on it
     if (bb) { if (name === "brief") bb.classList.remove("visible"); else bb.classList.add("visible"); }
     const _mfab = document.getElementById("menu-fab");
-    if (_mfab) _mfab.style.display = name === "places" ? "flex" : "none";
+    if (_mfab) _mfab.style.display = name === "brief" ? "none" : "flex";
     if (name === "fuel") {
       const _fpc = document.getElementById("fuel-postcode");
       _renderRecent("miru_fuel","fuel-recent","fuel-postcode","searchFuel()");
