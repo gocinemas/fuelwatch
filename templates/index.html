@@ -2012,16 +2012,20 @@
 
       <!-- Location-aware section — near you right now -->
       <div id="brief-location-section" style="display:none;margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase">📍 Near you right now</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button id="brief-nearby-here-btn"    onclick="_briefFindHere()"             style="display:none;font-size:11px;font-weight:700;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:99px;padding:4px 10px;cursor:pointer">📍 Right here</button>
+        <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px">📍 Near you right now</div>
+        <!-- Right here — prominent full-width button -->
+        <button id="brief-nearby-here-btn" onclick="_briefFindHere()"
+          style="display:none;width:100%;padding:12px 16px;border:none;background:#1d4ed8;color:#fff;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;text-align:left">
+          📍 What's right here?
+          <span style="font-size:11px;font-weight:500;opacity:.8;float:right;margin-top:2px">within 200m →</span>
+        </button>
+        <!-- Category chips -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button id="brief-nearby-cafe-btn"     onclick="_briefFindNearby('cafe')"     style="display:none;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:4px 10px;cursor:pointer">☕ Coffee</button>
             <button id="brief-nearby-food-btn"     onclick="_briefFindNearby('food')"     style="display:none;font-size:11px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:99px;padding:4px 10px;cursor:pointer">🍽️ Food</button>
             <button id="brief-nearby-pub-btn"      onclick="_briefFindNearby('pub')"      style="display:none;font-size:11px;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:99px;padding:4px 10px;cursor:pointer">🍺 Pub</button>
             <button id="brief-nearby-cocktail-btn" onclick="_briefFindNearby('cocktail')" style="display:none;font-size:11px;font-weight:700;color:#9d174d;background:#fdf2f8;border:1px solid #fbcfe8;border-radius:99px;padding:4px 10px;cursor:pointer">🍸 Cocktails</button>
             <button id="brief-nearby-park-btn"     onclick="_briefFindNearby('park')"     style="display:none;font-size:11px;font-weight:700;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:99px;padding:4px 10px;cursor:pointer">🌳 Park</button>
-          </div>
         </div>
         <div id="brief-location-shimmer" style="display:flex;flex-direction:column;gap:10px">
           <div style="height:72px;border-radius:16px;background:var(--surface);border:1px solid var(--border);animation:shimmer 1.4s infinite linear;background-size:200% 100%"></div>
@@ -16266,7 +16270,7 @@ _bkBadge();
     res.style.display = "flex";
     res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Locating…</div>';
     if (btn) { btn.textContent = "⏳"; btn.disabled = true; }
-    var _restore = function() { if (btn) { btn.textContent = "📍 Right here"; btn.disabled = false; } };
+    var _restore = function() { if (btn) { btn.innerHTML = '📍 What\'s right here? <span style="font-size:11px;font-weight:500;opacity:.8;float:right;margin-top:2px">within 200m →</span>'; btn.disabled = false; } };
     if (!navigator.geolocation) {
       res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Location not available.</div>';
       _restore(); return;
@@ -20524,8 +20528,14 @@ window.spotifyAddTrack = window.spotifyLike;
       <button onclick="trainCancelSetSlot()" style="float:right;font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;font-weight:600">Cancel</button>
     </div>
 
-    <!-- Search — primary action when auto-load fails or user wants a different route -->
-    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Check a route</div>
+    <!-- Current location button -->
+    <button id="train-locate-btn" onclick="_trainUseLocation()"
+      style="width:100%;padding:14px 18px;border:none;background:#1d4ed8;color:#fff;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px">
+      📍 Find nearest stations
+    </button>
+
+    <!-- Search — fallback / manual route check -->
+    <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Or search a route</div>
     <div style="display:flex;gap:8px">
       <input id="train-search-input" type="text" placeholder="Station name or postcode…"
         style="flex:1;padding:13px 16px;border:1.5px solid var(--border);border-radius:14px;font-size:15px;outline:none;background:var(--surface);color:var(--text)"
@@ -20535,7 +20545,7 @@ window.spotifyAddTrack = window.spotifyLike;
     </div>
     <div id="train-search-results" style="margin-top:10px"></div>
 
-    <!-- Nearest stations picker — appears when searching by postcode produces multiple options -->
+    <!-- Nearest stations picker — appears when GPS or postcode produces multiple options -->
     <div id="train-nearest-list" style="display:none;margin-top:10px"></div>
   </div>
 
@@ -21222,10 +21232,10 @@ window.spotifyAddTrack = window.spotifyLike;
           );
         };
         if (navigator.geolocation) {
-          if (_loading) _loading.style.display = "block";
+          var _gpsTimer = setTimeout(function() { _fallback(); }, 3000);
           navigator.geolocation.getCurrentPosition(
-            function(pos) { _loadFromGps(pos.coords.latitude, pos.coords.longitude); },
-            function() { _fallback(); },
+            function(pos) { clearTimeout(_gpsTimer); _loadFromGps(pos.coords.latitude, pos.coords.longitude); },
+            function() { clearTimeout(_gpsTimer); _fallback(); },
             { timeout: 6000, enableHighAccuracy: false, maximumAge: 300000 }
           );
         } else {
@@ -21235,6 +21245,27 @@ window.spotifyAddTrack = window.spotifyLike;
     } else {
       _stopTimers();
     }
+  };
+
+  // Manual "Find nearest stations" button
+  window._trainUseLocation = function() {
+    var btn = document.getElementById("train-locate-btn");
+    if (btn) { btn.textContent = "⏳ Locating…"; btn.disabled = true; }
+    var _restore = function() { if (btn) { btn.innerHTML = "📍 Find nearest stations"; btn.disabled = false; } };
+    if (!navigator.geolocation) { _restore(); return; }
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        _restore();
+        _locateBoth(pos.coords.latitude, pos.coords.longitude,
+          function(rail, tube) { _showNearestPicker(rail, tube); },
+          function() {
+            if (btn) { btn.textContent = "Location unavailable"; btn.disabled = false; }
+          }
+        );
+      },
+      function() { _restore(); if (btn) btn.textContent = "📍 Find nearest stations"; },
+      { timeout: 8000, enableHighAccuracy: false, maximumAge: 60000 }
+    );
   };
 })();
 </script>
