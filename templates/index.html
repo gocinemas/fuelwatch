@@ -14485,6 +14485,9 @@ _bkBadge();
     let homeBm = null, workBm = null;
     try { homeBm = JSON.parse(localStorage.getItem("miru_train_bm_home") || "null"); } catch {}
     try { workBm = JSON.parse(localStorage.getItem("miru_train_bm_work") || "null"); } catch {}
+    if (homeBm && window._TRAIN_LOW_SERVICE && window._TRAIN_LOW_SERVICE.has(homeBm.crs)) {
+      localStorage.removeItem("miru_train_bm_home"); homeBm = null;
+    }
 
     const isWFH = _trainIsWFH();
     let crs = homeBm ? homeBm.crs : null;
@@ -20740,7 +20743,14 @@ window.spotifyAddTrack = window.spotifyLike;
   var _tubeNaptanId   = "";
 
   // ── Storage ────────────────────────────────────────────────────────────────
-  function _getBm(slot)     { try { return JSON.parse(localStorage.getItem("miru_train_bm_"+(slot||"home"))||"null"); } catch { return null; } }
+  window._TRAIN_LOW_SERVICE = new Set(["LNG"]); // request stops with near-zero service
+  function _getBm(slot) {
+    try {
+      var bm = JSON.parse(localStorage.getItem("miru_train_bm_"+(slot||"home"))||"null");
+      if (bm && window._TRAIN_LOW_SERVICE.has(bm.crs)) { localStorage.removeItem("miru_train_bm_"+(slot||"home")); return null; }
+      return bm;
+    } catch { return null; }
+  }
   function _saveBm(slot,c,n){ localStorage.setItem("miru_train_bm_"+(slot||"home"), JSON.stringify({crs:c,name:n})); }
   function _clearBm(slot)   { localStorage.removeItem("miru_train_bm_"+(slot||"home")); }
 
