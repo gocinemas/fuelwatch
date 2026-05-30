@@ -2015,6 +2015,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase">📍 Near you right now</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button id="brief-nearby-here-btn"    onclick="_briefFindHere()"             style="display:none;font-size:11px;font-weight:700;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:99px;padding:4px 10px;cursor:pointer">📍 Right here</button>
             <button id="brief-nearby-cafe-btn"     onclick="_briefFindNearby('cafe')"     style="display:none;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:99px;padding:4px 10px;cursor:pointer">☕ Coffee</button>
             <button id="brief-nearby-food-btn"     onclick="_briefFindNearby('food')"     style="display:none;font-size:11px;font-weight:700;color:#166534;background:#dcfce7;border:1px solid #86efac;border-radius:99px;padding:4px 10px;cursor:pointer">🍽️ Food</button>
             <button id="brief-nearby-pub-btn"      onclick="_briefFindNearby('pub')"      style="display:none;font-size:11px;font-weight:700;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:99px;padding:4px 10px;cursor:pointer">🍺 Pub</button>
@@ -3497,8 +3498,6 @@
       setFooter("home");
       history.replaceState(null, "", "/");
       if (bb) bb.classList.remove("visible");
-      var _mfabH = document.getElementById("menu-fab");
-      if (_mfabH) _mfabH.style.display = "none";
       _pillUpdate("home");
       if (typeof _briefInit === "function" && !_briefData) _briefInit();
       return;
@@ -3543,8 +3542,6 @@
     const bb = document.getElementById("back-btn");
     // Brief is the home screen — never show back button on it
     if (bb) { if (name === "brief") bb.classList.remove("visible"); else bb.classList.add("visible"); }
-    const _mfab = document.getElementById("menu-fab");
-    if (_mfab) _mfab.style.display = name === "brief" ? "none" : "flex";
     if (name === "fuel") {
       const _fpc = document.getElementById("fuel-postcode");
       _renderRecent("miru_fuel","fuel-recent","fuel-postcode","searchFuel()");
@@ -16233,6 +16230,8 @@ _bkBadge();
       var pb  = document.getElementById("brief-nearby-pub-btn");
       var ckb = document.getElementById("brief-nearby-cocktail-btn");
       var pkb = document.getElementById("brief-nearby-park-btn");
+      var hb = document.getElementById("brief-nearby-here-btn");
+      if (hb) hb.style.display = "inline-block";
       if (cb) cb.style.display = "inline-block";
       if (fb) fb.style.display = "inline-block";
       // Pub: afternoon and evening (noon onwards)
@@ -16244,6 +16243,55 @@ _bkBadge();
       // Always show park as fallback even without weather (just daytime)
       if (pkb && _h >= 9 && _h < 19 && pkb.style.display !== "inline-block") pkb.style.display = "inline-block";
     }
+  };
+
+  var _NEARBY_HERE_ICONS = {
+    restaurant:"🍽️", cafe:"☕", coffee:"☕", bar:"🍸", pub:"🍺", fast_food:"🍔",
+    bakery:"🥐", supermarket:"🛒", convenience:"🏪", pharmacy:"💊", chemist:"💊",
+    gym:"🏋️", fitness_centre:"🏋️", park:"🌳", playground:"🛝", bank:"🏦",
+    post_office:"📮", library:"📚", cinema:"🎬", theatre:"🎭", petrol_station:"⛽",
+    hairdresser:"✂️", clothes:"👗", sports:"⚽",
+  };
+  window._briefFindHere = function() {
+    var res = document.getElementById("brief-nearby-results");
+    var btn = document.getElementById("brief-nearby-here-btn");
+    if (!res) return;
+    res.style.display = "flex";
+    res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Locating…</div>';
+    if (btn) { btn.textContent = "⏳"; btn.disabled = true; }
+    var _restore = function() { if (btn) { btn.textContent = "📍 Right here"; btn.disabled = false; } };
+    if (!navigator.geolocation) {
+      res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Location not available.</div>';
+      _restore(); return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        _restore();
+        fetch("/api/places/near-me?lat=" + pos.coords.latitude + "&lng=" + pos.coords.longitude)
+          .then(function(r){ return r.json(); })
+          .then(function(d) {
+            var places = d.places || [];
+            if (!places.length) {
+              res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Nothing found within 200m.</div>';
+              return;
+            }
+            res.innerHTML = places.map(function(p) {
+              var dist = (p.distance_m||0) < 1000 ? (p.distance_m||"?")+"m" : (Math.round((p.distance_m||0)/100)/10)+"km";
+              var icon = _NEARBY_HERE_ICONS[p.type] || "📍";
+              var url = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.name);
+              return '<a href="'+url+'" target="_blank" rel="noopener" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;text-decoration:none">'
+                + '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px">'+icon+'</span>'
+                + '<div><div style="font-size:13px;font-weight:700;color:var(--text)">'+p.name+'</div>'
+                + '<div style="font-size:11px;color:var(--muted)">'+(p.category||p.type||"")+'</div></div></div>'
+                + '<span style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">'+dist+' ↗</span>'
+                + '</a>';
+            }).join("");
+          })
+          .catch(function() { res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Couldn\'t load nearby places.</div>'; });
+      },
+      function() { _restore(); res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Location access denied.</div>'; },
+      { timeout: 6000, enableHighAccuracy: true, maximumAge: 60000 }
+    );
   };
 
   // ── Venue menu lookup ─────────────────────────────────────────────────────
@@ -21743,85 +21791,6 @@ window.spotifyAddTrack = window.spotifyLike;
   </div>
 </div>
 
-
-<!-- ── Menu FAB — home screen only ───────────────────────────────────────── -->
-<button id="menu-fab" onclick="_nearbyMenu()" title="Find menu nearby"
-  style="position:fixed;bottom:88px;right:16px;width:50px;height:50px;border-radius:50%;background:#2563eb;color:#fff;font-size:22px;border:none;box-shadow:0 3px 12px rgba(0,0,0,.28);cursor:pointer;z-index:1200;display:none;align-items:center;justify-content:center;transition:transform .15s">📍</button>
-
-<div id="menu-fab-sheet" onclick="_nearbyMenuClose()" style="display:none;position:fixed;inset:0;z-index:1201;background:rgba(0,0,0,.45)">
-  <div onclick="event.stopPropagation()" style="position:absolute;bottom:0;left:0;right:0;background:var(--bg);border-radius:20px 20px 0 0;padding:18px 18px calc(28px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto">
-    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px"></div>
-    <div id="menu-fab-content"></div>
-  </div>
-</div>
-
-<script>
-(function(){
-  window._nearbyMenuClose = function() {
-    document.getElementById("menu-fab-sheet").style.display = "none";
-  };
-
-  window._nearbyMenu = function() {
-    var fab = document.getElementById("menu-fab");
-    fab.textContent = "⏳"; fab.disabled = true;
-    if (!navigator.geolocation) {
-      fab.textContent = "🍽️"; fab.disabled = false;
-      _showMenuSheet([]);
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        fetch("/api/places/near-me?lat=" + pos.coords.latitude + "&lng=" + pos.coords.longitude)
-          .then(function(r){ return r.json(); })
-          .then(function(d) {
-            fab.textContent = "🍽️"; fab.disabled = false;
-            var places = d.places || [];
-            if (places.length === 1) {
-              window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(places[0].name), "_blank");
-            } else {
-              _showMenuSheet(places);
-            }
-          })
-          .catch(function() { fab.textContent = "🍽️"; fab.disabled = false; _showMenuSheet([]); });
-      },
-      function() { fab.textContent = "🍽️"; fab.disabled = false; _showMenuSheet([]); },
-      { timeout: 5000, enableHighAccuracy: true, maximumAge: 60000 }
-    );
-  };
-
-  var _NEARBY_ICONS = {
-    restaurant:"🍽️", cafe:"☕", coffee:"☕", bar:"🍸", pub:"🍺", fast_food:"🍔",
-    bakery:"🥐", supermarket:"🛒", convenience:"🏪", pharmacy:"💊", chemist:"💊",
-    gym:"🏋️", fitness_centre:"🏋️", park:"🌳", garden:"🌳", playground:"🛝",
-    bank:"🏦", atm:"💳", post_office:"📮", library:"📚", cinema:"🎬",
-    theatre:"🎭", museum:"🏛️", hotel:"🏨", petrol_station:"⛽", car_wash:"🚗",
-    hairdresser:"✂️", beauty:"💅", clothes:"👗", sports:"⚽", swimming_pool:"🏊",
-  };
-  function _showMenuSheet(places) {
-    var el = document.getElementById("menu-fab-content");
-    if (!places.length) {
-      el.innerHTML = '<div style="text-align:center;padding:24px 0"><div style="font-size:32px;margin-bottom:8px">🔍</div>'
-        + '<div style="font-size:14px;font-weight:700;color:var(--text)">Nothing found within 200m</div>'
-        + '<div style="font-size:12px;color:var(--muted);margin-top:4px">Try moving to a busier area</div></div>';
-    } else {
-      el.innerHTML = '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">📍 Right here…</div>'
-        + places.map(function(p) {
-          var dist = (p.distance_m || 0) < 1000 ? (p.distance_m || "?") + "m" : (Math.round((p.distance_m||0)/100)/10) + "km";
-          var icon = _NEARBY_ICONS[p.type] || "📍";
-          var url = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.name);
-          var cat = p.category || p.type || "";
-          return '<a href="' + url + '" target="_blank" rel="noopener" onclick="_nearbyMenuClose()" style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);text-decoration:none">'
-            + '<span style="font-size:24px;flex-shrink:0">' + icon + '</span>'
-            + '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">' + p.name + '</div>'
-            + '<div style="font-size:11px;color:var(--muted)">' + cat + ' · ' + dist + '</div></div>'
-            + '<span style="font-size:12px;color:var(--muted)">↗</span>'
-            + '</a>';
-        }).join("");
-    }
-    document.getElementById("menu-fab-sheet").style.display = "block";
-  }
-})();
-</script>
 
 </body>
 </html>
