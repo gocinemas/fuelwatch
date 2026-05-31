@@ -945,6 +945,15 @@
         <div id="kagi-news-list"></div>
       </div>
 
+      <!-- Private bookmarks feed — only shown when phone is linked -->
+      <div id="home-bm-feed" style="display:none;margin-bottom:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:800;color:var(--text);letter-spacing:-.2px">From your saves</div>
+          <button onclick="_loadHomeBm()" style="font-size:11px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;font-family:inherit">↻ Refresh</button>
+        </div>
+        <div id="home-bm-grid" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
     </div>
 
     <!-- ── FUEL SCREEN ── -->
@@ -14627,6 +14636,7 @@ _bkBadge();
         if (waSubEl) waSubEl.textContent = "Tap to discover what else you can do";
       }
       if (waBot) waBot.style.display = "none";
+      _loadHomeBm();
     } else {
       hero.innerHTML = `
         <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--subtle);margin-bottom:10px">Miru · miru.humanagency.co</div>
@@ -14653,6 +14663,43 @@ _bkBadge();
     }
   }
   window._homeHeroInit = _homeHeroInit;
+
+  /* ── Private bookmarks feed ─────────────────────────────────────────────── */
+  const _SB_BM_URL = "https://uqwidlptkgmbxgaivafi.supabase.co";
+  const _SB_BM_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxd2lkbHB0a2dtYnhnYWl2YWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MzQ5MTAsImV4cCI6MjA5MjUxMDkxMH0._sNpPZgjpZ6kUCNfv6_wAB2ilmsFa8JnzM2EBXLKBlE";
+
+  async function _loadHomeBm() {
+    if (!_miruPhone()) return;
+    const wrap = document.getElementById("home-bm-feed");
+    const grid = document.getElementById("home-bm-grid");
+    if (!wrap || !grid) return;
+    wrap.style.display = "block";
+    grid.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">Loading…</div>';
+    try {
+      const r = await fetch(
+        _SB_BM_URL + "/rest/v1/twitter_bookmarks?select=author_name,author_handle,text,url,category&text=not.is.null&limit=200",
+        {headers:{"apikey":_SB_BM_KEY,"Authorization":"Bearer "+_SB_BM_KEY}}
+      );
+      const rows = await r.json();
+      if (!Array.isArray(rows) || !rows.length) { grid.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">No bookmarks yet.</div>'; return; }
+      const picks = rows.sort(()=>Math.random()-.5).slice(0,10);
+      grid.innerHTML = picks.map(t => {
+        const handle = t.author_handle ? "@"+t.author_handle : (t.author_name||"");
+        const snippet = (t.text||"").slice(0,160) + ((t.text||"").length>160?"…":"");
+        const href = t.url || ("https://x.com/"+(t.author_handle||""));
+        const cat = t.category || "";
+        return `<a href="${href}" target="_blank" rel="noopener" style="display:block;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;text-decoration:none;transition:border-color .15s" onmouseover="this.style.borderColor='#c7d2fe'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;font-weight:700;color:var(--accent)">${handle}</span>
+            ${cat?`<span style="font-size:10px;color:var(--subtle);background:var(--surface2);border-radius:99px;padding:2px 8px">${cat}</span>`:""}
+          </div>
+          <div style="font-size:13px;color:var(--text);line-height:1.5">${snippet.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+        </a>`;
+      }).join("");
+    } catch(e) {
+      grid.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">Couldn\'t load — try refreshing.</div>';
+    }
+  }
 
   /* ── V2 Morning Brief ───────────────────────────────────────────────────── */
   var _briefData = null;
