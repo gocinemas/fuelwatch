@@ -1323,6 +1323,85 @@ def api_ai_summarize():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/ai/ask", methods=["POST", "OPTIONS"])
+def api_ai_ask():
+    """Ask AI endpoint for ai.humanagency.co — answers questions using site content + bookmark links."""
+    if request.method == "OPTIONS":
+        resp = app.make_response(("", 204))
+        return _cors_headers(resp)
+    data = request.get_json(silent=True) or {}
+    question = (data.get("q") or "").strip()[:500]
+    if not question:
+        resp = jsonify({"error": "No question"})
+        return _cors_headers(resp), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        resp = jsonify({"error": "Not configured"})
+        return _cors_headers(resp), 500
+
+    SITE_CONTEXT = """You are the AI assistant on ai.humanagency.co — a practical AI literacy site for everyday people in the UK.
+The site covers:
+- START HERE: Situation-specific guides for New to AI, Busy parent, Looking for work, Running a business, Returning to work, Student
+- AI IN PRACTICE: Real prompts and workflows for writing, research, planning, learning
+- TOOLS WORTH KNOWING: Claude (best starting point, free), ChatGPT (most popular, free), Perplexity (research/search), Gemini (Google, free), Midjourney (images), Runway (video), Notion AI (notes/docs), Otter.ai (meeting notes)
+- COMMON QUESTIONS: Is AI safe? Will it replace my job? Is free good enough? Do I need to learn to code? Can I trust what it says?
+- WATCH & READ: Curated videos and articles about AI for non-technical people
+- NEWSLETTER: Weekly AI digest — no hype, plain English
+
+Your job: answer questions in plain English, no jargon. Be direct and practical. 2-4 sentences max unless the question needs more. If someone asks about a specific tool, recommend based on their situation. If you don't know something specific about this site, say so honestly."""
+
+    try:
+        # Fetch 5 relevant bookmarks — keyword search first, fallback to random AI & Tech
+        sb = lib._sb()
+        words = [w for w in re.split(r'\W+', question.lower()) if len(w) > 3]
+        bookmarks = []
+        if words:
+            # Try ilike search on tweet text
+            search_term = f"%{words[0]}%"
+            rows = sb.table("twitter_bookmarks") \
+                .select("author_name,author_handle,text,url,category") \
+                .ilike("text", search_term) \
+                .not_.is_("text", "null") \
+                .limit(20).execute().data or []
+            if rows:
+                import random as _r
+                bookmarks = _r.sample(rows, min(5, len(rows)))
+        if len(bookmarks) < 5:
+            import random as _r2
+            extra = sb.table("twitter_bookmarks") \
+                .select("author_name,author_handle,text,url,category") \
+                .in_("category", ["AI & Tech", "Startups & Ideas", "Learning & Reading", "Tools"]) \
+                .not_.is_("text", "null") \
+                .limit(100).execute().data or []
+            if extra:
+                needed = 5 - len(bookmarks)
+                existing_urls = {b.get("url") for b in bookmarks}
+                pool = [x for x in extra if x.get("url") not in existing_urls]
+                bookmarks += _r2.sample(pool, min(needed, len(pool)))
+
+        # Groq answer
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [
+                    {"role": "system", "content": SITE_CONTEXT},
+                    {"role": "user", "content": question}
+                ],
+                "max_tokens": 200,
+                "temperature": 0.4,
+            },
+            timeout=15,
+        )
+        answer = r.json()["choices"][0]["message"]["content"].strip()
+        resp = jsonify({"answer": answer, "bookmarks": bookmarks})
+        return _cors_headers(resp)
+    except Exception as e:
+        resp = jsonify({"error": str(e)})
+        return _cors_headers(resp), 500
+
+
 @app.route("/api/mekalav/chat", methods=["POST", "OPTIONS"])
 def mekalav_chat():
     """AI chat proxy for mekalav.com — answers questions about Vikram using Groq."""
