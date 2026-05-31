@@ -13907,13 +13907,28 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         if img_type == "receipt":
             try:
                 _rcpt_prompt = (
-                    "This is a shopping receipt. Extract every field you can read clearly.\n"
+                    "This is a UK shopping receipt. Extract every field you can read clearly.\n"
                     "Output ONLY these lines:\n"
                     "MERCHANT: [store name, e.g. Tesco, Waitrose, Sainsbury's]\n"
                     "DATE: [date in YYYY-MM-DD format, or leave blank]\n"
                     "TOTAL: [final total paid, numbers only, e.g. 34.72]\n"
                     "ITEM: [item name] | [qty] | [price e.g. 1.50]\n"
-                    "...one ITEM: line per product. Skip items you cannot read clearly."
+                    "...one ITEM: line per product.\n\n"
+                    "CRITICAL item name rules:\n"
+                    "1. Expand supermarket abbreviations to full English names. Examples: "
+                    "'WF '=Waitrose own brand (drop prefix), 'CK '=Co-op Kitchen (drop prefix), "
+                    "'YT '=Yeo Valley (drop prefix), 'TF '=Tesco Finest (drop prefix), "
+                    "'TE '=Tesco (drop prefix), 'M&S '=M&S (drop prefix). "
+                    "E.g. 'WF Pure Puff Pastry Block 270G' → 'Puff Pastry Block 270g', "
+                    "'Ck12 Ciabatta' → 'Ciabatta Roll', 'Mini P. Bap' → 'Mini Bread Bap', "
+                    "'Yt Pesto 130G' → 'Pesto 130g', 'WF Popcorn' → 'Popcorn'.\n"
+                    "2. Skip promotional/offer lines entirely — any line starting with "
+                    "'3 For', '2 For', 'Buy 1', 'Meal Deal', 'Mix & Match', 'Multibuy', "
+                    "'Clubcard Price', 'Nectar Price', 'Points' — do NOT emit an ITEM: for these.\n"
+                    "3. If a promotional line has an actual product embedded in it "
+                    "(e.g. '3 For 2 On Blueberries'), emit ONLY the product: 'Blueberries'.\n"
+                    "4. Skip items you cannot read clearly.\n"
+                    "5. Use sentence case for item names (not ALL CAPS)."
                 )
                 _rcpt_resp = requests.post(
                     "https://api.groq.com/openai/v1/chat/completions",
