@@ -5067,6 +5067,40 @@ def api_area_watch():
 _summary_cache: dict = {}
 _SUMMARY_TTL = 24 * 3600
 
+_FAMOUS_CACHE: dict = {}
+_FAMOUS_TTL = 3600  # 1 hour — stable facts, no need to refresh often
+
+@app.route("/api/area/famous")
+def api_area_famous():
+    area = request.args.get("area", "").strip()
+    if not area or len(area) < 2:
+        return jsonify({"famous": ""})
+    key = area.lower()
+    cached = _FAMOUS_CACHE.get(key)
+    if cached and time.time() - cached[1] < _FAMOUS_TTL:
+        return jsonify({"famous": cached[0]})
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 60, "temperature": 0.2,
+                  "messages": [{"role": "user", "content":
+                    f"What is {area}, UK known for? Give 2-3 items separated by · (middle dot). "
+                    f"Each item max 8 words. No intro, no quotes, no full sentences. "
+                    f"Example for Windsor: Royal castle · Home of Eton College · Great Park"}]},
+            timeout=6,
+        )
+        text = r.json()["choices"][0]["message"]["content"].strip()
+        # Strip any preamble the model added
+        if "·" in text:
+            text = " · ".join(p.strip().strip(".,") for p in text.split("·") if p.strip())
+        _FAMOUS_CACHE[key] = (text, time.time())
+        return jsonify({"famous": text})
+    except Exception:
+        return jsonify({"famous": ""})
+
+
 @app.route("/api/area-summary")
 def api_area_summary():
     postcode = request.args.get("postcode", "").strip().replace(" ", "").upper()
