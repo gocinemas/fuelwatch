@@ -17461,7 +17461,7 @@ def _whatsapp_reply_inner():
                 resp.message("✅ Rating saved!")
             return str(resp)
 
-    # ── RECEIPT ITEMS follow-up — "whats in it", "list items", "break it down" ─
+    # ── RECEIPT ITEMS — "whats in it", "what did I order at X", "[merchant] receipt" ─
     import re as _ri_re
     _RECEIPT_ITEMS_PAT = _ri_re.compile(
         r'\b(what(?:\'s|\s+is|\s+was)\s+in\s+it'
@@ -17469,16 +17469,36 @@ def _whatsapp_reply_inner():
         r'|list\s+(?:the\s+)?items'
         r'|show\s+(?:me\s+)?(?:the\s+)?items'
         r'|what(?:\'s|\s+was)\s+in\s+(?:that|the\s+receipt)'
-        r'|what\s+did\s+i\s+(?:actually\s+)?buy\s+(?:there|from\s+there))\b',
+        r'|what\s+did\s+i\s+(?:actually\s+)?buy\s+(?:there|from\s+there)'
+        r'|what\s+did\s+i\s+order'
+        r'|what\s+(?:was|were)\s+(?:my|the)\s+order'
+        r'|show\s+(?:me\s+)?(?:my\s+)?receipt)\b',
         _ri_re.IGNORECASE
     )
-    if _RECEIPT_ITEMS_PAT.search(body_lower):
+    # Also catch "[merchant name] receipt" as a receipt-items request (not spend total)
+    _MERCHANT_RECEIPT_RE = _ri_re.compile(
+        r'^([a-z][a-z0-9&\s\']{2,30}?)\s+receipt\s*$', _ri_re.IGNORECASE
+    )
+    _mr_match = _MERCHANT_RECEIPT_RE.match(body_lower)
+
+    if _RECEIPT_ITEMS_PAT.search(body_lower) or _mr_match:
         _ri_pending = _get_wa_pending_intent(from_number)
         _ri_merchant, _ri_date = "", ""
-        if _ri_pending and _ri_pending.get("type") == "receipt_items":
+        if _mr_match:
+            # "[merchant] receipt" — merchant is explicit in the message
+            _ri_merchant = _mr_match.group(1).strip()
+        elif _ri_pending and _ri_pending.get("type") == "receipt_items":
             _ri_merchant = _ri_pending.get("merchant_filter", "")
             _ri_date = _ri_pending.get("date_from", "")
             _clear_wa_pending_intent(from_number)
+        else:
+            # "what did I order at Royal Rasoi" — extract merchant after at/in/from
+            _at_match = _ri_re.search(
+                r'\b(?:at|in|from|for)\s+([A-Za-z][A-Za-z0-9&\s\']{2,30}?)(?:\s*\??\s*$)',
+                body_lower
+            )
+            if _at_match:
+                _ri_merchant = _at_match.group(1).strip()
         resp.message(_wa_receipt_items(from_number, _ri_merchant, _ri_date))
         return str(resp)
 
