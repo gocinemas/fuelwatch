@@ -9613,7 +9613,10 @@ def api_home_ask():
                 # ── Receipt line items — query receipts table for item-level questions ──
                 # Covers: "did I buy eggs?", "have I got bread?", "do I have milk?"
                 _item_triggers = ["did i buy", "have i got", "do i have", "have i bought",
-                                  "did i get", "i need", "bought any", "any left"]
+                                  "did i get", "i need", "bought any", "any left",
+                                  "what did i order", "what did i have", "what did i eat",
+                                  "what was my order", "what were my order", "show my receipt",
+                                  "last time i went", "last visit", "last time at"]
                 _is_item_q = any(t in q_lower for t in _item_triggers)
                 try:
                     from datetime import date as _askd, timedelta as _asktd
