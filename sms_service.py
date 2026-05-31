@@ -5755,16 +5755,16 @@ def api_intel_research():
 
 @app.route("/api/intel/deep-dive")
 def api_intel_deep_dive():
-    """Investor Deep Dive — EDGAR filings + Groq synthesis. 24h cached."""
-    import concurrent.futures as _cfdd, re as _re, json as _json
-    from datetime import date, timedelta, datetime, timezone
+    """Investor Deep Dive — SEC XBRL financial data + Groq synthesis. 24h cached."""
+    import concurrent.futures as _cfdd, json as _json
+    from datetime import datetime, timezone
 
     company = request.args.get("company", "").strip()
     if not company:
         return jsonify({"error": "company required"}), 400
 
-    # v4 cache key — v3 may have wrong "no EDGAR data" results from before name resolution fix
-    cache_key = f"deep_dive_v4:{company.lower()}"
+    # v5 — switched from broken EFTS full-text (no highlights) to XBRL financial facts
+    cache_key = f"deep_dive_v5:{company.lower()}"
     try:
         row = lib._sb().table("ai_cache").select("data,cached_at").eq("key", cache_key).execute().data
         if row:
@@ -5775,98 +5775,133 @@ def api_intel_deep_dive():
     except Exception:
         pass
 
-    # Resolve common brand short-names to canonical SEC/EDGAR entity names
     _EDGAR_NAME_MAP = {
         "pepsi": "pepsico", "google": "alphabet", "facebook": "meta",
         "instagram": "meta", "youtube": "alphabet", "snapchat": "snap",
-        "vw": "volkswagen", "x": "twitter", "xl": "xl",
-        "hsbc": "hsbc holdings", "barclays": "barclays",
+        "vw": "volkswagen", "x": "twitter",
     }
     _canon = _EDGAR_NAME_MAP.get(company.lower(), company)
-
-    start_1y  = (date.today() - timedelta(days=365)).isoformat()
-    start_6m  = (date.today() - timedelta(days=180)).isoformat()
-    start_3m  = (date.today() - timedelta(days=90)).isoformat()
     EDGAR_HDR = {"User-Agent": "Intel/humanagency mekala@gmail.com", "Accept-Encoding": "gzip,deflate"}
 
-    def _edgar(query_extra, forms, start, limit=4):
-        # Try quoted canonical name first, fall back to unquoted for broader match
-        for q_company in (f'"{_canon}"', _canon):
+    def _cik_lookup(name):
+        """Return (cik_10digit, display_label) via EDGAR metadata search."""
+        for q in (f'"{name}"', name):
+            try:
+                r = requests.get("https://efts.sec.gov/LATEST/search-index",
+                                 params={"q": q, "forms": "10-K"},
+                                 headers=EDGAR_HDR, timeout=8)
+                hits = r.json().get("hits", {}).get("hits", [])
+                if hits:
+                    src = hits[0].get("_source", {})
+                    ciks = src.get("ciks", [])
+                    names = src.get("display_names", [])
+                    if ciks:
+                        return ciks[0], names[0] if names else name
+            except Exception:
+                pass
+        return None, None
+
+    def _xbrl_annual(cik, concept):
+        """Last 5 annual values for a US-GAAP XBRL concept."""
+        for c in (concept, concept.replace("Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax")):
             try:
                 r = requests.get(
-                    "https://efts.sec.gov/LATEST/search-index",
-                    params={"q": f'{q_company} {query_extra}'.strip(), "forms": forms,
-                            "dateRange": "custom", "startdt": start},
-                    headers=EDGAR_HDR, timeout=12,
-                )
-                hits = r.json().get("hits", {}).get("hits", [])[:limit]
-                out = []
-                for h in hits:
-                    src = h.get("_source", {})
-                    raw = []
-                    for v in h.get("highlight", {}).values():
-                        if isinstance(v, list):
-                            raw.extend(v)
-                    snippets = [_re.sub(r"<[^>]+>", "", s) for s in raw[:3] if s]
-                    if snippets:
-                        out.append({"form": src.get("form_type", "Filing"),
-                                    "date": src.get("file_date", ""),
-                                    "period": src.get("period_of_report", ""),
-                                    "entity": src.get("entity_name", ""),
-                                    "text": " … ".join(snippets)})
+                    f"https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{c}.json",
+                    headers=EDGAR_HDR, timeout=10)
+                usd = r.json().get("units", {}).get("USD", [])
+                annual = sorted([x for x in usd if x.get("form") == "10-K"],
+                                key=lambda x: x.get("filed", ""), reverse=True)
+                seen, out = set(), []
+                for x in annual:
+                    k = x.get("end", "")
+                    if k not in seen:
+                        seen.add(k)
+                        out.append({"year": k[:4], "val": x["val"], "filed": x.get("filed", "")})
                 if out:
-                    return out
+                    return out[:5]
             except Exception:
                 pass
         return []
 
-    with _cfdd.ThreadPoolExecutor(max_workers=4) as ex:
-        fs = ex.submit(_edgar, "strategy growth business revenue", "10-K,10-Q", start_1y)
-        fo = ex.submit(_edgar, "outlook guidance forecast future 2025 2026", "10-K,10-Q,8-K", start_6m)
-        fr = ex.submit(_edgar, "risk competition regulation", "10-K", start_1y, 3)
-        f8 = ex.submit(_edgar, "", "8-K", start_3m, 3)
+    def _submissions(cik):
+        """Most recent filings list and entity name from EDGAR submissions."""
+        try:
+            r = requests.get(f"https://data.sec.gov/submissions/CIK{cik}.json",
+                             headers=EDGAR_HDR, timeout=10)
+            data = r.json()
+            recent = data.get("filings", {}).get("recent", {})
+            forms = recent.get("form", [])
+            dates = recent.get("filingDate", [])
+            out = []
+            for i, f in enumerate(forms):
+                if f in ("10-K", "10-Q", "8-K") and i < len(dates):
+                    out.append({"form": f, "date": dates[i]})
+                    if len(out) >= 6:
+                        break
+            return out, data.get("name", "")
+        except Exception:
+            return [], ""
 
-        strategy = fs.result(timeout=15)
-        outlook  = fo.result(timeout=15)
-        risks    = fr.result(timeout=15)
-        press    = f8.result(timeout=15)
+    # Step 1: resolve CIK (sequential — needed for subsequent calls)
+    cik, entity_label = _cik_lookup(_canon)
 
-    has_edgar = bool(strategy or outlook or risks or press)
+    revenues, net_income, filings, entity_name_sub = [], [], [], ""
+    if cik:
+        with _cfdd.ThreadPoolExecutor(max_workers=3) as ex:
+            frev = ex.submit(_xbrl_annual, cik, "Revenues")
+            fnet = ex.submit(_xbrl_annual, cik, "NetIncomeLoss")
+            fsub = ex.submit(_submissions, cik)
+            revenues      = frev.result(timeout=12)
+            net_income    = fnet.result(timeout=12)
+            filings, entity_name_sub = fsub.result(timeout=12)
 
-    ctx = []
-    if strategy:
-        ctx.append("=== STRATEGY & BUSINESS (SEC filings) ===")
-        for s in strategy[:3]:
-            ctx.append(f"[{s['form']} · {s['date']}]: {s['text'][:700]}")
-    if outlook:
-        ctx.append("\n=== OUTLOOK & GUIDANCE (SEC filings) ===")
-        for s in outlook[:3]:
-            ctx.append(f"[{s['form']} · {s['date']}]: {s['text'][:700]}")
-    if risks:
-        ctx.append("\n=== KEY RISKS (10-K) ===")
-        for s in risks[:2]:
-            ctx.append(f"[{s['form']} · {s['date']}]: {s['text'][:500]}")
-    if press:
-        ctx.append("\n=== RECENT ANNOUNCEMENTS (8-K) ===")
-        for s in press[:2]:
-            ctx.append(f"[8-K · {s['date']}]: {s['text'][:500]}")
+    has_edgar = bool(cik and (revenues or net_income or filings))
+
+    def _fmt(val):
+        if abs(val) >= 1e9: return f"${val/1e9:.1f}B"
+        if abs(val) >= 1e6: return f"${val/1e6:.0f}M"
+        return f"${val:,.0f}"
+
+    entity_display = entity_label or entity_name_sub or company
+    ctx, sources = [], []
+
+    if entity_display:
+        ctx.append(f"Company: {entity_display}")
+    if revenues:
+        ctx.append("Annual Revenue (SEC XBRL 10-K): " +
+                   " | ".join(f"{x['year']}: {_fmt(x['val'])}" for x in revenues))
+        sources.append(f"SEC XBRL Revenue — 10-K filed {revenues[0]['filed']}")
+    if net_income:
+        ctx.append("Net Income (SEC XBRL 10-K): " +
+                   " | ".join(f"{x['year']}: {_fmt(x['val'])}" for x in net_income))
+    if filings:
+        ctx.append("Recent SEC filings: " +
+                   ", ".join(f"{f['form']} ({f['date']})" for f in filings[:5]))
+        latest_10k = next((f for f in filings if f["form"] == "10-K"), None)
+        if latest_10k:
+            sources.append(f"SEC 10-K filed {latest_10k['date']}")
+
     if not ctx:
-        ctx = [f"No SEC filing data found for {company}. Use your training knowledge — this may be a non-US or private company."]
+        ctx = [f"No SEC filing data found for {company}. "
+               "Use your training knowledge — this may be non-US or private."]
 
     prompt = (
-        f"You are a senior equity research analyst. Based on the excerpt data below for '{company}', "
-        "produce a structured investment brief. Return valid JSON only.\n\n"
+        f"You are a senior equity research analyst. Produce a structured investment brief for '{company}' "
+        f"({entity_display}). The financial data below is sourced from SEC XBRL filings — treat it as verified. "
+        "Supplement with your knowledge of this company's strategy, leadership, and competitive position. "
+        "Return valid JSON only.\n\n"
         + "\n".join(ctx) +
         '\n\nReturn this exact JSON:\n'
-        '{"strategy_overview":"2-3 sentence summary of stated strategy",'
-        '"management_voice":[{"quote":"verbatim or close quote","speaker":"Name/Title or Management","context":"form/source","date":"YYYY-MM"}],'
-        '"forward_outlook":"What management said about next 12-24 months",'
+        '{"strategy_overview":"2-3 sentence summary of strategy and business model",'
+        '"management_voice":[{"quote":"close or verbatim quote from CEO/CFO","speaker":"Name, Title","context":"Earnings call or Annual Report","date":"YYYY-MM"}],'
+        '"forward_outlook":"What management has guided or implied for next 12-24 months",'
         '"key_risks":["risk 1","risk 2","risk 3"],'
-        '"financial_signals":"Revenue direction, margin trends, or key metrics",'
-        '"sources":["SEC 10-K filed YYYY-MM-DD","..."],'
+        '"financial_signals":"Summarise the revenue/income trends from the XBRL data above",'
+        f'"sources":{_json.dumps(sources) if sources else "[]"},'
         '"has_edgar_data":true}'
         "\nmanagement_voice: up to 3 items. key_risks: exactly 3. "
-        "If no filing data, still produce the brief from your knowledge and set has_edgar_data to false."
+        "financial_signals MUST reference the actual numbers from the XBRL data if present. "
+        "If no SEC data was provided, set has_edgar_data to false."
     )
 
     try:
@@ -5886,6 +5921,8 @@ def api_intel_deep_dive():
 
     brief["has_edgar_data"] = has_edgar
     brief["company"] = company
+    if sources:
+        brief["sources"] = sources  # Override Groq-invented sources with real ones
 
     try:
         lib._sb().table("ai_cache").upsert({
