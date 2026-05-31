@@ -9619,17 +9619,15 @@ def api_home_ask():
                                   "last time i went", "last visit", "last time at"]
                 _is_item_q = any(t in q_lower for t in _item_triggers)
                 try:
-                    from datetime import date as _askd, timedelta as _asktd
-                    _items_since = (_askd.today() - _asktd(days=30)).isoformat()
+                    import json as _rj
                     _rcpt_rows = lib._sb().table("receipts").select(
-                        "merchant,items,shop_date,total"
-                    ).eq("phone", plain).gte("shop_date", _items_since) \
-                     .order("shop_date", desc=True).limit(10).execute().data or []
+                        "merchant,items,shop_date,total,created_at"
+                    ).eq("phone", plain) \
+                     .order("created_at", desc=True).limit(15).execute().data or []
                     if _rcpt_rows:
-                        import json as _rj
                         _item_lines = []
                         for _rr in _rcpt_rows:
-                            _rdate = (_rr.get("shop_date") or "")[:10]
+                            _rdate = (_rr.get("shop_date") or _rr.get("created_at") or "")[:10]
                             _rm = _rr.get("merchant", "")
                             try:
                                 _ritems = _rj.loads(_rr.get("items") or "[]") or []
@@ -9639,7 +9637,7 @@ def api_home_ask():
                             if _names:
                                 _item_lines.append(f"{_rm} ({_rdate}): {', '.join(_names[:20])}")
                         if _item_lines:
-                            ctx_lines.append(f"Receipt items (last 30 days): {' | '.join(_item_lines)}")
+                            ctx_lines.append(f"Receipt items: {' | '.join(_item_lines)}")
                 except Exception:
                     pass
             except Exception:
@@ -14427,15 +14425,15 @@ def _wa_receipt_items(from_number: str, merchant_hint: str = "", date_hint: str 
     """Return line items from the receipts table for the given merchant/date context."""
     import json as _j, datetime as _dt
     plain = from_number.replace("whatsapp:", "").strip()
-    if not date_hint:
-        date_hint = (_dt.date.today() - _dt.timedelta(days=30)).isoformat()
     try:
         sb = lib._sb()
-        q = sb.table("receipts").select("merchant,items,shop_date,total") \
-            .eq("phone", plain).gte("shop_date", date_hint) \
-            .order("shop_date", desc=True)
+        q = sb.table("receipts").select("merchant,items,shop_date,total,created_at") \
+            .eq("phone", plain)
+        if date_hint:
+            q = q.gte("shop_date", date_hint)
         if merchant_hint:
             q = q.ilike("merchant", f"%{merchant_hint}%")
+        q = q.order("created_at", desc=True)
         rows = q.limit(5).execute().data or []
     except Exception:
         return "⚠️ Couldn't fetch receipt items right now — try again in a moment."
