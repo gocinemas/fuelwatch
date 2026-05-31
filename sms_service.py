@@ -5763,7 +5763,8 @@ def api_intel_deep_dive():
     if not company:
         return jsonify({"error": "company required"}), 400
 
-    cache_key = f"deep_dive_v3:{company.lower()}"
+    # v4 cache key — v3 may have wrong "no EDGAR data" results from before name resolution fix
+    cache_key = f"deep_dive_v4:{company.lower()}"
     try:
         row = lib._sb().table("ai_cache").select("data,cached_at").eq("key", cache_key).execute().data
         if row:
@@ -5774,36 +5775,50 @@ def api_intel_deep_dive():
     except Exception:
         pass
 
+    # Resolve common brand short-names to canonical SEC/EDGAR entity names
+    _EDGAR_NAME_MAP = {
+        "pepsi": "pepsico", "google": "alphabet", "facebook": "meta",
+        "instagram": "meta", "youtube": "alphabet", "snapchat": "snap",
+        "vw": "volkswagen", "x": "twitter", "xl": "xl",
+        "hsbc": "hsbc holdings", "barclays": "barclays",
+    }
+    _canon = _EDGAR_NAME_MAP.get(company.lower(), company)
+
     start_1y  = (date.today() - timedelta(days=365)).isoformat()
     start_6m  = (date.today() - timedelta(days=180)).isoformat()
     start_3m  = (date.today() - timedelta(days=90)).isoformat()
     EDGAR_HDR = {"User-Agent": "Intel/humanagency mekala@gmail.com", "Accept-Encoding": "gzip,deflate"}
 
     def _edgar(query_extra, forms, start, limit=4):
-        try:
-            r = requests.get(
-                "https://efts.sec.gov/LATEST/search-index",
-                params={"q": f'"{company}" {query_extra}', "forms": forms,
-                        "dateRange": "custom", "startdt": start},
-                headers=EDGAR_HDR, timeout=12,
-            )
-            hits = r.json().get("hits", {}).get("hits", [])[:limit]
-            out = []
-            for h in hits:
-                src = h.get("_source", {})
-                raw = []
-                for v in h.get("highlight", {}).values():
-                    if isinstance(v, list):
-                        raw.extend(v)
-                snippets = [_re.sub(r"<[^>]+>", "", s) for s in raw[:3] if s]
-                if snippets:
-                    out.append({"form": src.get("form_type", "Filing"),
-                                "date": src.get("file_date", ""),
-                                "period": src.get("period_of_report", ""),
-                                "text": " … ".join(snippets)})
-            return out
-        except Exception:
-            return []
+        # Try quoted canonical name first, fall back to unquoted for broader match
+        for q_company in (f'"{_canon}"', _canon):
+            try:
+                r = requests.get(
+                    "https://efts.sec.gov/LATEST/search-index",
+                    params={"q": f'{q_company} {query_extra}'.strip(), "forms": forms,
+                            "dateRange": "custom", "startdt": start},
+                    headers=EDGAR_HDR, timeout=12,
+                )
+                hits = r.json().get("hits", {}).get("hits", [])[:limit]
+                out = []
+                for h in hits:
+                    src = h.get("_source", {})
+                    raw = []
+                    for v in h.get("highlight", {}).values():
+                        if isinstance(v, list):
+                            raw.extend(v)
+                    snippets = [_re.sub(r"<[^>]+>", "", s) for s in raw[:3] if s]
+                    if snippets:
+                        out.append({"form": src.get("form_type", "Filing"),
+                                    "date": src.get("file_date", ""),
+                                    "period": src.get("period_of_report", ""),
+                                    "entity": src.get("entity_name", ""),
+                                    "text": " … ".join(snippets)})
+                if out:
+                    return out
+            except Exception:
+                pass
+        return []
 
     with _cfdd.ThreadPoolExecutor(max_workers=4) as ex:
         fs = ex.submit(_edgar, "strategy growth business revenue", "10-K,10-Q", start_1y)
