@@ -14176,6 +14176,16 @@ def _wa_spending_query(from_number: str, body: str) -> str:
         reply = f"🛒 *{merchant_label}* {period}: *{spend_str}*"
         if has_amounts and len(stores) > 1:
             reply += "\n" + "\n".join(f"• {s}: £{v:.2f}" for s, v in sorted(stores.items(), key=lambda x: -x[1])[:4])
+        # Store context so "whats in it" follow-up knows which merchant/date to look up
+        try:
+            _set_wa_pending_intent(from_number, {
+                "type": "receipt_items",
+                "merchant_filter": merchant_filter or "",
+                "merchant_label": merchant_label,
+                "date_from": date_from,
+            })
+        except Exception:
+            pass
     elif category_filter:
         spend_str = f"£{total:.2f}" if has_amounts else f"{len(rows)} receipt{'s' if len(rows)!=1 else ''}"
         reply = f"{'🛒' if category_filter=='Groceries' else '☕' if 'Coffee' in category_filter else '🍽️'} *{category_filter}* {period}: *{spend_str}*"
@@ -14192,6 +14202,55 @@ def _wa_spending_query(from_number: str, body: str) -> str:
             top = list(stores.keys())[:6]
             reply += "\n\n" + "\n".join(f"• {s}" for s in top)
 
+    return reply
+
+
+def _wa_receipt_items(from_number: str, merchant_hint: str = "", date_hint: str = "") -> str:
+    """Return line items from the receipts table for the given merchant/date context."""
+    import json as _j, datetime as _dt
+    plain = from_number.replace("whatsapp:", "").strip()
+    if not date_hint:
+        date_hint = (_dt.date.today() - _dt.timedelta(days=30)).isoformat()
+    try:
+        sb = lib._sb()
+        q = sb.table("receipts").select("merchant,items,shop_date,total") \
+            .eq("phone", plain).gte("shop_date", date_hint) \
+            .order("shop_date", desc=True)
+        if merchant_hint:
+            q = q.ilike("merchant", f"%{merchant_hint}%")
+        rows = q.limit(5).execute().data or []
+    except Exception:
+        return "⚠️ Couldn't fetch receipt items right now — try again in a moment."
+
+    if not rows:
+        return "📭 No receipts found. Send me a photo of a receipt and I'll scan it!"
+
+    r = rows[0]
+    merchant = r.get("merchant") or "Receipt"
+    shop_date = (r.get("shop_date") or "")[:10]
+    total_val = r.get("total")
+    total_str = f" · £{total_val:.2f}" if total_val else ""
+    try:
+        items = _j.loads(r.get("items") or "[]") or []
+    except Exception:
+        items = []
+
+    if not items:
+        return f"📋 *{merchant}* ({shop_date}){total_str}\n\nNo item detail found — the receipt may not have scanned individual lines."
+
+    lines = []
+    for it in items[:25]:
+        name = (it.get("name") or "").strip()
+        price = it.get("price") or it.get("amount")
+        if name:
+            lines.append(f"• {name}" + (f" — £{price:.2f}" if isinstance(price, (int, float)) else ""))
+
+    if not lines:
+        return f"📋 *{merchant}* ({shop_date}){total_str}\n\nNo item detail found."
+
+    reply = f"🧾 *{merchant}* ({shop_date}){total_str}\n\n" + "\n".join(lines)
+    if len(rows) > 1:
+        reply += f"\n\n_(Showing most recent receipt — {len(rows)} found)_"
     return reply
 
 
@@ -17156,6 +17215,27 @@ def _whatsapp_reply_inner():
             except Exception:
                 resp.message("✅ Rating saved!")
             return str(resp)
+
+    # ── RECEIPT ITEMS follow-up — "whats in it", "list items", "break it down" ─
+    import re as _ri_re
+    _RECEIPT_ITEMS_PAT = _ri_re.compile(
+        r'\b(what(?:\'s|\s+is|\s+was)\s+in\s+it'
+        r'|break\s+it\s+down'
+        r'|list\s+(?:the\s+)?items'
+        r'|show\s+(?:me\s+)?(?:the\s+)?items'
+        r'|what(?:\'s|\s+was)\s+in\s+(?:that|the\s+receipt)'
+        r'|what\s+did\s+i\s+(?:actually\s+)?buy\s+(?:there|from\s+there))\b',
+        _ri_re.IGNORECASE
+    )
+    if _RECEIPT_ITEMS_PAT.search(body_lower):
+        _ri_pending = _get_wa_pending_intent(from_number)
+        _ri_merchant, _ri_date = "", ""
+        if _ri_pending and _ri_pending.get("type") == "receipt_items":
+            _ri_merchant = _ri_pending.get("merchant_filter", "")
+            _ri_date = _ri_pending.get("date_from", "")
+            _clear_wa_pending_intent(from_number)
+        resp.message(_wa_receipt_items(from_number, _ri_merchant, _ri_date))
+        return str(resp)
 
     # ── SPENDING / RECEIPTS query — natural language intent detection ─────────
     if _is_spend_query(body_lower):
