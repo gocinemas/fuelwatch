@@ -16867,6 +16867,36 @@ def _whatsapp_reply_inner():
         resp.message(random.choice(bored_msgs))
         return str(resp)
 
+    # 💡 Idea command — surface random saved tweets ──────────────────────────────
+    if body_lower in ("idea", "ideas", "inspire me", "inspire", "surprise me", "random idea"):
+        try:
+            _sb_i = lib._sb()
+            # Pull 50 random-ish from the best signal categories, return 3
+            _idea_rows = _sb_i.table("twitter_bookmarks") \
+                .select("author_name,author_handle,text,url,category") \
+                .in_("category", ["AI & Tech", "Startups & Ideas", "Business & Money",
+                                  "Mindset & Life", "Learning & Reading", "Tools"]) \
+                .not_.is_("text", "null") \
+                .order("saved_at", desc=False) \
+                .limit(500).execute().data or []
+            import random as _rand
+            _picks = _rand.sample(_idea_rows, min(3, len(_idea_rows)))
+            if not _picks:
+                resp.message("💡 No saved ideas found yet — sync your Twitter bookmarks first.")
+                return str(resp)
+            _lines = ["💡 *3 ideas from your saves:*\n"]
+            for _p in _picks:
+                _txt = (_p.get("text") or "").strip()[:200]
+                _handle = _p.get("author_handle", "")
+                _cat = _p.get("category", "")
+                _url = _p.get("url", "")
+                _lines.append(f"_{_cat}_\n*@{_handle}*: {_txt}\n{_url}")
+            resp.message("\n\n".join(_lines))
+        except Exception as _ie:
+            print(f"[idea] error: {_ie}")
+            resp.message("💡 Couldn't fetch ideas right now — try again in a moment.")
+        return str(resp)
+
     # ── Morning brief opt-out ────────────────────────────────────────────────────
     if body_lower in ("stop brief", "pause brief", "stop morning brief", "no brief"):
         try:
