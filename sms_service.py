@@ -5753,6 +5753,136 @@ def api_intel_research():
     return jsonify(brief)
 
 
+@app.route("/api/intel/deep-dive")
+def api_intel_deep_dive():
+    """Investor Deep Dive — EDGAR filings + Groq synthesis. 24h cached."""
+    import concurrent.futures as _cfdd, re as _re, json as _json
+    from datetime import date, timedelta, datetime, timezone
+
+    company = request.args.get("company", "").strip()
+    if not company:
+        return jsonify({"error": "company required"}), 400
+
+    cache_key = f"deep_dive_v3:{company.lower()}"
+    try:
+        row = lib._sb().table("ai_cache").select("data,cached_at").eq("key", cache_key).execute().data
+        if row:
+            age = (datetime.now(timezone.utc) - datetime.fromisoformat(
+                row[0]["cached_at"].replace("Z", "+00:00"))).total_seconds()
+            if age < 86400:
+                return jsonify(row[0]["data"])
+    except Exception:
+        pass
+
+    start_1y  = (date.today() - timedelta(days=365)).isoformat()
+    start_6m  = (date.today() - timedelta(days=180)).isoformat()
+    start_3m  = (date.today() - timedelta(days=90)).isoformat()
+    EDGAR_HDR = {"User-Agent": "Intel/humanagency mekala@gmail.com", "Accept-Encoding": "gzip,deflate"}
+
+    def _edgar(query_extra, forms, start, limit=4):
+        try:
+            r = requests.get(
+                "https://efts.sec.gov/LATEST/search-index",
+                params={"q": f'"{company}" {query_extra}', "forms": forms,
+                        "dateRange": "custom", "startdt": start},
+                headers=EDGAR_HDR, timeout=12,
+            )
+            hits = r.json().get("hits", {}).get("hits", [])[:limit]
+            out = []
+            for h in hits:
+                src = h.get("_source", {})
+                raw = []
+                for v in h.get("highlight", {}).values():
+                    if isinstance(v, list):
+                        raw.extend(v)
+                snippets = [_re.sub(r"<[^>]+>", "", s) for s in raw[:3] if s]
+                if snippets:
+                    out.append({"form": src.get("form_type", "Filing"),
+                                "date": src.get("file_date", ""),
+                                "period": src.get("period_of_report", ""),
+                                "text": " … ".join(snippets)})
+            return out
+        except Exception:
+            return []
+
+    with _cfdd.ThreadPoolExecutor(max_workers=4) as ex:
+        fs = ex.submit(_edgar, "strategy growth business revenue", "10-K,10-Q", start_1y)
+        fo = ex.submit(_edgar, "outlook guidance forecast future 2025 2026", "10-K,10-Q,8-K", start_6m)
+        fr = ex.submit(_edgar, "risk competition regulation", "10-K", start_1y, 3)
+        f8 = ex.submit(_edgar, "", "8-K", start_3m, 3)
+
+        strategy = fs.result(timeout=15)
+        outlook  = fo.result(timeout=15)
+        risks    = fr.result(timeout=15)
+        press    = f8.result(timeout=15)
+
+    has_edgar = bool(strategy or outlook or risks or press)
+
+    ctx = []
+    if strategy:
+        ctx.append("=== STRATEGY & BUSINESS (SEC filings) ===")
+        for s in strategy[:3]:
+            ctx.append(f"[{s['form']} · {s['date']}]: {s['text'][:700]}")
+    if outlook:
+        ctx.append("\n=== OUTLOOK & GUIDANCE (SEC filings) ===")
+        for s in outlook[:3]:
+            ctx.append(f"[{s['form']} · {s['date']}]: {s['text'][:700]}")
+    if risks:
+        ctx.append("\n=== KEY RISKS (10-K) ===")
+        for s in risks[:2]:
+            ctx.append(f"[{s['form']} · {s['date']}]: {s['text'][:500]}")
+    if press:
+        ctx.append("\n=== RECENT ANNOUNCEMENTS (8-K) ===")
+        for s in press[:2]:
+            ctx.append(f"[8-K · {s['date']}]: {s['text'][:500]}")
+    if not ctx:
+        ctx = [f"No SEC filing data found for {company}. Use your training knowledge — this may be a non-US or private company."]
+
+    prompt = (
+        f"You are a senior equity research analyst. Based on the excerpt data below for '{company}', "
+        "produce a structured investment brief. Return valid JSON only.\n\n"
+        + "\n".join(ctx) +
+        '\n\nReturn this exact JSON:\n'
+        '{"strategy_overview":"2-3 sentence summary of stated strategy",'
+        '"management_voice":[{"quote":"verbatim or close quote","speaker":"Name/Title or Management","context":"form/source","date":"YYYY-MM"}],'
+        '"forward_outlook":"What management said about next 12-24 months",'
+        '"key_risks":["risk 1","risk 2","risk 3"],'
+        '"financial_signals":"Revenue direction, margin trends, or key metrics",'
+        '"sources":["SEC 10-K filed YYYY-MM-DD","..."],'
+        '"has_edgar_data":true}'
+        "\nmanagement_voice: up to 3 items. key_risks: exactly 3. "
+        "If no filing data, still produce the brief from your knowledge and set has_edgar_data to false."
+    )
+
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 1200, "temperature": 0.15,
+                  "response_format": {"type": "json_object"},
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=30,
+        )
+        brief = _json.loads(r.json()["choices"][0]["message"]["content"])
+    except Exception as e:
+        brief = {"error": str(e), "strategy_overview": "Synthesis failed — try again.",
+                 "has_edgar_data": has_edgar}
+
+    brief["has_edgar_data"] = has_edgar
+    brief["company"] = company
+
+    try:
+        lib._sb().table("ai_cache").upsert({
+            "key": cache_key, "data": brief,
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+        }).execute()
+    except Exception:
+        pass
+
+    return jsonify(brief)
+
+
 @app.route("/api/intel/email-report", methods=["POST", "OPTIONS"])
 def api_intel_email_report():
     """Send an Intel brief by email via Resend. FROM reports@mekalav.com, BCC mekala@gmail.com."""

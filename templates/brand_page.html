@@ -149,6 +149,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 .bottom-chip{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s}
 .bottom-chip:hover{border-color:var(--accent);color:var(--accent)}
 
+/* deep dive */
+.dd-btn{display:flex;align-items:center;gap:12px;padding:16px 20px;background:linear-gradient(135deg,#1e1b4b,#312e81);border:none;border-radius:var(--radius);font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;width:100%;transition:opacity .15s;text-align:left}
+.dd-btn:hover{opacity:.9}
+.dd-btn:disabled{opacity:.6;cursor:default}
+.dd-btn-sub{font-size:12px;font-weight:400;color:rgba(255,255,255,.6);margin-top:2px}
+.dd-spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+.dd-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-top:10px}
+.dd-card+.dd-card{margin-top:8px}
+.dd-card-label{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.dd-body{font-size:14px;line-height:1.72;color:var(--text)}
+.dd-quote-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--indigo);border-radius:var(--radius);padding:14px 16px;margin-top:8px}
+.dd-quote-text{font-size:13px;line-height:1.65;color:var(--text);font-style:italic;margin-bottom:6px}
+.dd-quote-meta{font-size:11px;color:var(--muted);font-weight:600}
+.dd-risk-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}
+.dd-risk-item{font-size:13px;color:var(--text);line-height:1.5;padding-left:18px;position:relative}
+.dd-risk-item::before{content:"⚠";position:absolute;left:0;font-size:11px;top:2px}
+.dd-sources{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.dd-source{font-size:11px;font-weight:600;color:var(--indigo);background:#eef2ff;border-radius:20px;padding:3px 10px}
+.dd-no-edgar{font-size:11px;color:var(--muted);margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+
 /* skeleton pulse */
 .skel{background:linear-gradient(90deg,var(--border) 25%,var(--bg) 50%,var(--border) 75%);background-size:200% 100%;animation:skel 1.6s ease-in-out infinite;border-radius:8px}
 @keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
@@ -267,6 +287,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
     <div class="section" id="rivals-section" style="display:none">
       <div class="section-label">Competitors</div>
       <div class="rivals-wrap" id="rivals-inner"></div>
+    </div>
+
+    <!-- Investor Deep Dive -->
+    <div class="section" id="dd-section">
+      <div class="section-label">Investor Deep Dive</div>
+      <button class="dd-btn" id="dd-btn" onclick="runDeepDive()">
+        <span style="font-size:20px">📊</span>
+        <span>
+          <div>Run Investor Deep Dive</div>
+          <div class="dd-btn-sub">SEC filings · Strategy · CEO voice · Risks · Outlook — ~15s</div>
+        </span>
+      </button>
+      <div id="dd-output"></div>
     </div>
 
     <!-- Intel Research Brief -->
@@ -576,6 +609,76 @@ function renderResearch(d){
   document.getElementById('research-output').innerHTML =
     `<div style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:${confColor}22;color:${confColor};margin-bottom:12px;letter-spacing:.3px;text-transform:uppercase">${conf} confidence</div>
      <div style="display:flex;flex-direction:column;gap:10px">${cards}</div>`;
+}
+
+// ── investor deep dive ────────────────────────────────────────────────────────
+let _ddRunning = false;
+const _DD_STEPS = ['Searching SEC EDGAR filings','Reading strategy statements','Extracting management voice','Analysing risks & outlook','Synthesising brief'];
+let _ddTimer = null, _ddIdx = 0;
+
+async function runDeepDive(){
+  if(_ddRunning) return;
+  _ddRunning = true;
+  const btn = document.getElementById('dd-btn');
+  const out = document.getElementById('dd-output');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="dd-spinner"></span><span><div>Fetching filings for ${BRAND}…</div><div class="dd-btn-sub">Searching SEC EDGAR · typically 10–20s</div></span>`;
+
+  out.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">' +
+    _DD_STEPS.map((s,i)=>`<div class="research-step" id="dds-${i}"><span>${s}</span><span class="research-step-check">✓</span></div>`).join('') + '</div>';
+
+  _ddIdx = 0;
+  _ddAnimStep(0);
+  _ddTimer = setInterval(()=>{ _ddIdx = Math.min(_ddIdx+1, _DD_STEPS.length-1); _ddAnimStep(_ddIdx); }, 3500);
+
+  try {
+    const r = await fetch('/api/intel/deep-dive?company=' + encodeURIComponent(BRAND));
+    clearInterval(_ddTimer);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    if(d.error) throw new Error(d.error);
+    _renderDeepDive(d);
+    btn.style.display = 'none';
+  } catch(e) {
+    clearInterval(_ddTimer);
+    out.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:14px 16px;font-size:13px;color:#dc2626;margin-top:10px">Deep Dive failed — ${e.message||'try again'}.</div>`;
+    btn.disabled = false;
+    btn.innerHTML = `<span style="font-size:20px">📊</span><span><div>Retry Deep Dive</div><div class="dd-btn-sub">SEC filings · Strategy · CEO voice · Risks · Outlook</div></span>`;
+    _ddRunning = false;
+  }
+}
+
+function _ddAnimStep(i){
+  _DD_STEPS.forEach((_,j)=>{
+    const el = document.getElementById('dds-'+j);
+    if(!el) return;
+    el.classList.toggle('done', j < i);
+    el.classList.toggle('active', j === i);
+  });
+}
+
+function _renderDeepDive(d){
+  const isEdgar = d.has_edgar_data;
+  const edgarNote = isEdgar
+    ? `<div class="dd-sources" style="margin-bottom:14px">${(d.sources||[]).slice(0,4).map(s=>`<span class="dd-source">${s}</span>`).join('')}</div>`
+    : `<div class="dd-no-edgar">ℹ No SEC filings found — ${d.company||'this company'} may be non-US or private. Brief based on AI knowledge.</div>`;
+
+  const quotes = (d.management_voice || []).slice(0,3).map(q=>`
+    <div class="dd-quote-card">
+      <div class="dd-quote-text">"${q.quote||''}"</div>
+      <div class="dd-quote-meta">${[q.speaker,q.context,q.date].filter(Boolean).join(' · ')}</div>
+    </div>`).join('');
+
+  const risks = (d.key_risks || []).slice(0,3).map(r=>`<li class="dd-risk-item">${r}</li>`).join('');
+
+  document.getElementById('dd-output').innerHTML = `
+    ${edgarNote}
+    ${d.strategy_overview ? `<div class="dd-card"><div class="dd-card-label">📋 Strategy Overview</div><div class="dd-body">${d.strategy_overview}</div></div>` : ''}
+    ${quotes ? `<div class="dd-card"><div class="dd-card-label">💬 What Management Has Said</div>${quotes}</div>` : ''}
+    ${d.forward_outlook ? `<div class="dd-card"><div class="dd-card-label">🔭 Forward Outlook</div><div class="dd-body">${d.forward_outlook}</div></div>` : ''}
+    ${risks ? `<div class="dd-card"><div class="dd-card-label">⚠️ Key Risks</div><ul class="dd-risk-list">${risks}</ul></div>` : ''}
+    ${d.financial_signals ? `<div class="dd-card"><div class="dd-card-label">📈 Financial Signals</div><div class="dd-body">${d.financial_signals}</div></div>` : ''}
+  `;
 }
 
 init();
