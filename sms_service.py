@@ -5763,8 +5763,8 @@ def api_intel_deep_dive():
     if not company:
         return jsonify({"error": "company required"}), 400
 
-    # v6 — merged with research brief; added headline/what_they_do/leadership/opportunity fields
-    cache_key = f"deep_dive_v6:{company.lower()}"
+    # v7 — known-CIK map to fix ambiguous names (apple → Apple Inc not Apple Hospitality REIT)
+    cache_key = f"deep_dive_v7:{company.lower()}"
     try:
         row = lib._sb().table("ai_cache").select("data,cached_at").eq("key", cache_key).execute().data
         if row:
@@ -5775,16 +5775,65 @@ def api_intel_deep_dive():
     except Exception:
         pass
 
+    # Alias map: brand short-names → canonical EDGAR search term
     _EDGAR_NAME_MAP = {
         "pepsi": "pepsico", "google": "alphabet", "facebook": "meta",
         "instagram": "meta", "youtube": "alphabet", "snapchat": "snap",
         "vw": "volkswagen", "x": "twitter",
     }
     _canon = _EDGAR_NAME_MAP.get(company.lower(), company)
+
+    # Direct CIK map — bypasses search for names that are ambiguous or return wrong company
+    _KNOWN_CIKS = {
+        "apple": "0000320193",        # Apple Inc (not Apple Hospitality REIT)
+        "apple inc": "0000320193",
+        "amazon": "0001018724",       # Amazon.com
+        "microsoft": "0000789019",
+        "tesla": "0001318605",
+        "nvidia": "0001045810",
+        "netflix": "0001065280",
+        "disney": "0001001039",
+        "nike": "0000320187",
+        "walmart": "0000104169",
+        "coca cola": "0000021344",
+        "coca-cola": "0000021344",
+        "coke": "0000021344",
+        "cocacola": "0000021344",
+        "colgate": "0000021665",
+        "ford": "0000037996",         # Ford Motor Company
+        "gm": "0001467858",
+        "general motors": "0001467854",
+        "boeing": "0000012927",
+        "exxon": "0000034088",
+        "chevron": "0000093410",
+        "jpmorgan": "0000019617",
+        "jp morgan": "0000019617",
+        "goldman sachs": "0000886982",
+        "goldman": "0000886982",
+        "visa": "0001403161",
+        "mastercard": "0000101830",
+        "ibm": "0000051143",
+        "intel": "0000050863",        # Intel Corp (not us!)
+        "shell": "0001306757",        # Shell plc ADR
+        "bp": "0000313807",
+        "unilever": "0000101893",
+        "nestle": "0001285785",
+        "nestlé": "0001285785",
+        "toyota": "0001094517",
+        "sony": "0000313838",
+        "samsung": None,              # Not SEC-listed — use AI knowledge
+        "lvmh": None,
+        "ikea": None,
+        "dyson": None,
+    }
+
     EDGAR_HDR = {"User-Agent": "Intel/humanagency mekala@gmail.com", "Accept-Encoding": "gzip,deflate"}
 
     def _cik_lookup(name):
-        """Return (cik_10digit, display_label) via EDGAR metadata search."""
+        """Return (cik_10digit, display_label) — direct map first, then EDGAR metadata search."""
+        key = name.lower()
+        if key in _KNOWN_CIKS:
+            return _KNOWN_CIKS[key], name  # entity_label filled in from submissions JSON
         for q in (f'"{name}"', name):
             try:
                 r = requests.get("https://efts.sec.gov/LATEST/search-index",
