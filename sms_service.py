@@ -17095,11 +17095,11 @@ def _whatsapp_reply_inner():
                 .order("saved_at", desc=False) \
                 .limit(500).execute().data or []
             import random as _rand
-            _picks = _rand.sample(_idea_rows, min(3, len(_idea_rows)))
+            _picks = _rand.sample(_idea_rows, min(5, len(_idea_rows)))
             if not _picks:
                 resp.message("💡 No saved ideas found yet — sync your Twitter bookmarks first.")
                 return str(resp)
-            _lines = ["💡 *3 ideas from your saves:*\n"]
+            _lines = ["💡 *5 ideas from your saves:*\n"]
             for _p in _picks:
                 _txt = (_p.get("text") or "").strip()[:200]
                 _handle = _p.get("author_handle", "")
@@ -20411,35 +20411,59 @@ def receipt_followup():
             continue
 
         try:
-            # Build context: prior visits + spend this month
             plain = phone.replace("whatsapp:", "").strip()
+
+            # This visit's total
             prior = (lib._sb().table("receipts")
                      .select("shop_date,total")
                      .eq("phone", plain)
                      .ilike("merchant", f"%{merchant.split()[0]}%")
                      .order("shop_date", desc=True)
                      .limit(5).execute().data or [])
-            visit_count  = len(prior)
-            first_visit  = visit_count <= 1
+            visit_count = len(prior)
+            first_visit = visit_count <= 1
+            this_total  = prior[0].get("total") if prior else None
 
-            # Category spend this month
-            import datetime as _dt2
-            month_start = _dt2.date.today().replace(day=1).isoformat()
-            cat_rows = (lib._sb().table("receipts")
-                        .select("total")
-                        .eq("phone", plain)
-                        .gte("shop_date", month_start)
-                        .execute().data or []) if category else []
-            month_total = sum(r.get("total") or 0 for r in cat_rows)
+            # Skip petrol stations and pharmacies — no warm comment to make
+            _skip_cats = {"Fuel", "Pharmacy", "Health"}
+            if category in _skip_cats:
+                skipped += 1
+                _mark_followup_done(row_id)
+                continue
 
-            ctx_parts = [f"The user just scanned a receipt from '{merchant}'."]
-            if first_visit:
-                ctx_parts.append("This appears to be their first visit to this place.")
+            # Infer experience type from merchant name for the warm opener
+            _name_lower = merchant.lower()
+            if any(w in _name_lower for w in ("coffee", "costa", "starbucks", "cafe", "caffe", "brew")):
+                experience = "coffee"
+            elif any(w in _name_lower for w in ("chai", "vadapav", "vada", "krishna", "rasoi", "curry",
+                                                  "indian", "tandoor", "spice", "masala", "biryani")):
+                experience = "Indian food or chai"
+            elif any(w in _name_lower for w in ("pizza", "peri", "burger", "chicken", "kfc", "mcdonald",
+                                                  "subway", "kebab", "wrap", "nando")):
+                experience = "fast food or takeaway"
+            elif any(w in _name_lower for w in ("pub", "bar", "inn", "arms", "tavern", "brewery")):
+                experience = "pub visit"
+            elif any(w in _name_lower for w in ("tesco", "waitrose", "sainsbury", "asda", "aldi",
+                                                  "lidl", "morrisons", "marks", "coop", "co-op")):
+                experience = "supermarket shop"
+            elif category == "Dining":
+                experience = "meal out"
             else:
-                ctx_parts.append(f"They've been here {visit_count} times before.")
-            if month_total > 0:
-                ctx_parts.append(f"They've spent £{month_total:.0f} on {category or 'similar places'} this month.")
-            ctx_parts.append("The message should feel like a friendly nudge from a personal assistant — one short sentence, warm and natural. No emojis overload. No questions unless genuinely curious. If it's a food/drink place, you can reference that. Keep it under 20 words.")
+                experience = "visit"
+
+            total_str = f"£{this_total:.2f}" if this_total else None
+            visit_note = "first time" if first_visit else f"{visit_count} visits now"
+
+            ctx_parts = [
+                f"The user just visited '{merchant}' — this was a {experience}.",
+                f"They spent {total_str} there." if total_str else "",
+                f"This is their {visit_note} to this place.",
+                "Write ONE short WhatsApp message from their personal assistant Miru.",
+                "Lead with a warm reference to the experience (the food, drink, or vibe) — not the money.",
+                f"Then include the spend naturally: e.g. 'hope the chai was good — you spent {total_str} there'." if total_str else "",
+                "Tone: warm, human, not try-hard. Max 20 words. No exclamation marks. One emoji max.",
+                "Do not ask a question. Just notice and comment.",
+            ]
 
             groq_r = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
