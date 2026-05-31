@@ -8227,6 +8227,13 @@ function _hcAdd() {
     document.getElementById("intel-input").value = raw; // keep compat input in sync
     if (!raw) return;
 
+    // On intel.humanagency.co — go straight to the dedicated brand page
+    if (_INTEL_MODE) {
+      var _slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      window.location.href = "/" + _slug;
+      return;
+    }
+
     // Detect local-service searches and nudge toward Finder
     const nudge = document.getElementById("intel-local-nudge");
     if (_LOCAL_SVC.test(raw) || _LOCAL_PFX.test(raw)) {
