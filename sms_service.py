@@ -5763,8 +5763,8 @@ def api_intel_deep_dive():
     if not company:
         return jsonify({"error": "company required"}), 400
 
-    # v5 — switched from broken EFTS full-text (no highlights) to XBRL financial facts
-    cache_key = f"deep_dive_v5:{company.lower()}"
+    # v6 — merged with research brief; added headline/what_they_do/leadership/opportunity fields
+    cache_key = f"deep_dive_v6:{company.lower()}"
     try:
         row = lib._sb().table("ai_cache").select("data,cached_at").eq("key", cache_key).execute().data
         if row:
@@ -5886,22 +5886,27 @@ def api_intel_deep_dive():
                "Use your training knowledge — this may be non-US or private."]
 
     prompt = (
-        f"You are a senior equity research analyst. Produce a structured investment brief for '{company}' "
-        f"({entity_display}). The financial data below is sourced from SEC XBRL filings — treat it as verified. "
-        "Supplement with your knowledge of this company's strategy, leadership, and competitive position. "
+        f"You are a brand intelligence analyst. Produce a plain-English company brief for '{company}' "
+        f"({entity_display}) — written for curious non-professionals: brand managers, job seekers, "
+        "journalists, retail investors. Not for Bloomberg users. "
+        "Financial data below is from SEC XBRL filings — treat as verified. "
+        "Supplement with your knowledge of strategy, leadership, products, and competitive position. "
         "Return valid JSON only.\n\n"
         + "\n".join(ctx) +
         '\n\nReturn this exact JSON:\n'
-        '{"strategy_overview":"2-3 sentence summary of strategy and business model",'
+        '{"headline":"One punchy sentence — what this company really is and what makes it interesting",'
+        '"what_they_do":"2-3 sentences: what the business actually does, key brands/products, where they operate",'
+        '"strategy_overview":"2-3 sentences on stated strategy and where they are focusing",'
+        '"leadership_note":"Who leads it, tenure, and what they are known for (1-2 sentences)",'
         '"management_voice":[{"quote":"close or verbatim quote from CEO/CFO","speaker":"Name, Title","context":"Earnings call or Annual Report","date":"YYYY-MM"}],'
-        '"forward_outlook":"What management has guided or implied for next 12-24 months",'
+        '"forward_outlook":"What they have signalled about the next 12-24 months",'
         '"key_risks":["risk 1","risk 2","risk 3"],'
-        '"financial_signals":"Summarise the revenue/income trends from the XBRL data above",'
+        '"financial_signals":"Revenue and income trends — MUST reference the actual XBRL numbers if present",'
+        '"opportunity_angle":"Why someone curious about this company (brand manager, job seeker) should pay attention right now",'
         f'"sources":{_json.dumps(sources) if sources else "[]"},'
         '"has_edgar_data":true}'
-        "\nmanagement_voice: up to 3 items. key_risks: exactly 3. "
-        "financial_signals MUST reference the actual numbers from the XBRL data if present. "
-        "If no SEC data was provided, set has_edgar_data to false."
+        "\nmanagement_voice: up to 2 items. key_risks: exactly 3. "
+        "Write in plain English — no jargon. If no SEC data provided, set has_edgar_data to false."
     )
 
     try:
@@ -5909,7 +5914,7 @@ def api_intel_deep_dive():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 1200, "temperature": 0.15,
+            json={"model": "llama-3.1-8b-instant", "max_tokens": 1600, "temperature": 0.2,
                   "response_format": {"type": "json_object"},
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=30,
@@ -9956,6 +9961,23 @@ def api_morning_brief():
                     except Exception:
                         pass
                     _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')} ({_msdate})")
+
+            # 💡 Daily idea — 1 random AI/Startup bookmark
+            try:
+                _idea_pool = lib._sb().table("twitter_bookmarks") \
+                    .select("author_handle,text,url") \
+                    .in_("category", ["AI & Tech", "Startups & Ideas", "Business & Money"]) \
+                    .not_.is_("text", "null") \
+                    .limit(300).execute().data or []
+                if _idea_pool:
+                    import random as _mrand
+                    _pick = _mrand.choice(_idea_pool)
+                    _itxt = (_pick.get("text") or "").strip()[:180]
+                    _iurl = _pick.get("url", "")
+                    _ihdl = _pick.get("author_handle", "")
+                    _mparts.append(f"\n💡 *Idea of the day*\n_{_itxt}_\n— @{_ihdl}\n{_iurl}")
+            except Exception as _ie:
+                print(f"[morning-brief] idea fetch failed: {_ie}")
 
             _mparts.append("\n_miru.humanagency.co — Reply STOP BRIEF to pause_")
             _mmsg = "\n".join(_mparts)

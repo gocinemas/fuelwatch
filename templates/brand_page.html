@@ -102,19 +102,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 .rival-chip{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;display:inline-block;transition:border-color .15s,color .15s}
 .rival-chip:hover{border-color:var(--accent);color:var(--accent)}
 
-/* research */
-.research-btn{display:flex;align-items:center;gap:10px;padding:15px 20px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;width:100%;transition:border-color .15s}
-.research-btn:hover{border-color:var(--indigo)}
-.research-btn-icon{font-size:18px}
-.research-btn-sub{font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
-.research-spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--indigo);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+/* brief */
+.brief-btn{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-weight:700;color:var(--text);cursor:pointer;font-family:inherit;width:100%;transition:border-color .15s,box-shadow .15s;text-align:left}
+.brief-btn:hover{border-color:var(--accent);box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.brief-btn:disabled{opacity:.6;cursor:default}
+.brief-btn-icon{font-size:22px;flex-shrink:0}
+.brief-btn-sub{font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
+.brief-spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
-.research-section{margin-top:14px;display:flex;flex-direction:column;gap:10px}
-.research-step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:border-color .2s,color .2s}
-.research-step.active{border-color:var(--indigo);color:var(--text)}
-.research-step.done{border-color:#16a34a;color:#16a34a}
-.research-step-check{margin-left:auto;opacity:0;transition:opacity .2s}
-.research-step.done .research-step-check{opacity:1}
+.brief-step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:border-color .2s,color .2s}
+.brief-step.active{border-color:var(--accent);color:var(--text)}
+.brief-step.done{border-color:#16a34a;color:#16a34a}
+.brief-step-check{margin-left:auto;opacity:0;transition:opacity .2s}
+.brief-step.done .brief-step-check{opacity:1}
 
 /* news */
 .news-item{padding:12px 0;border-bottom:1px solid var(--border)}
@@ -149,25 +149,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 .bottom-chip{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s}
 .bottom-chip:hover{border-color:var(--accent);color:var(--accent)}
 
-/* deep dive */
-.dd-btn{display:flex;align-items:center;gap:12px;padding:16px 20px;background:linear-gradient(135deg,#1e1b4b,#312e81);border:none;border-radius:var(--radius);font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;width:100%;transition:opacity .15s;text-align:left}
-.dd-btn:hover{opacity:.9}
-.dd-btn:disabled{opacity:.6;cursor:default}
-.dd-btn-sub{font-size:12px;font-weight:400;color:rgba(255,255,255,.6);margin-top:2px}
-.dd-spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+/* brief cards */
 .dd-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-top:10px}
 .dd-card+.dd-card{margin-top:8px}
 .dd-card-label{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
 .dd-body{font-size:14px;line-height:1.72;color:var(--text)}
-.dd-quote-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--indigo);border-radius:var(--radius);padding:14px 16px;margin-top:8px}
+.dd-headline{font-size:17px;font-weight:800;line-height:1.35;color:var(--text);margin-bottom:6px}
+.dd-quote-card{background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:12px;padding:14px 16px;margin-top:8px}
 .dd-quote-text{font-size:13px;line-height:1.65;color:var(--text);font-style:italic;margin-bottom:6px}
 .dd-quote-meta{font-size:11px;color:var(--muted);font-weight:600}
 .dd-risk-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}
 .dd-risk-item{font-size:13px;color:var(--text);line-height:1.5;padding-left:18px;position:relative}
 .dd-risk-item::before{content:"⚠";position:absolute;left:0;font-size:11px;top:2px}
-.dd-sources{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
-.dd-source{font-size:11px;font-weight:600;color:var(--indigo);background:#eef2ff;border-radius:20px;padding:3px 10px}
-.dd-no-edgar{font-size:11px;color:var(--muted);margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+.dd-sources{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.dd-source{font-size:11px;font-weight:600;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:3px 10px}
+.dd-ai-note{font-size:11px;color:var(--muted);margin-bottom:12px;padding:6px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);display:inline-block}
 
 /* skeleton pulse */
 .skel{background:linear-gradient(90deg,var(--border) 25%,var(--bg) 50%,var(--border) 75%);background-size:200% 100%;animation:skel 1.6s ease-in-out infinite;border-radius:8px}
@@ -289,30 +285,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
       <div class="rivals-wrap" id="rivals-inner"></div>
     </div>
 
-    <!-- Investor Deep Dive -->
+    <!-- Company Brief -->
     <div class="section" id="dd-section">
-      <div class="section-label">Investor Deep Dive</div>
-      <button class="dd-btn" id="dd-btn" onclick="runDeepDive()">
-        <span style="font-size:20px">📊</span>
+      <div class="section-label">Company Brief</div>
+      <button class="brief-btn" id="dd-btn" onclick="runDeepDive()">
+        <span class="brief-btn-icon">🏢</span>
         <span>
-          <div>Run Investor Deep Dive</div>
-          <div class="dd-btn-sub">SEC filings · Strategy · CEO voice · Risks · Outlook — ~15s</div>
+          <div>Get Company Brief</div>
+          <div class="brief-btn-sub">What they do · Scale · Leadership · Strategy · Risks — ~15s</div>
         </span>
       </button>
       <div id="dd-output"></div>
-    </div>
-
-    <!-- Intel Research Brief -->
-    <div class="section">
-      <div class="section-label">Intel Research Brief</div>
-      <button class="research-btn" id="research-btn" onclick="runResearch()">
-        <span class="research-btn-icon">🔍</span>
-        <span>
-          <div>Run deep research</div>
-          <div class="research-btn-sub">Strategy · Leadership · Hiring · AI signals — takes ~30s</div>
-        </span>
-      </button>
-      <div id="research-output" style="display:none"></div>
     </div>
 
     <!-- Claim this page -->
@@ -351,7 +334,6 @@ const BRAND = {{ brand_name | tojson }};
 const _PF   = {tiktok:'🎵',instagram:'📸',youtube:'▶️',x:'𝕏',twitter:'𝕏',facebook:'👤',linkedin:'💼',snapchat:'👻',pinterest:'📌',spotify:'🎧'};
 
 let _fullExtract = '';
-let _researchRunning = false;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function _str(v){ return typeof v === 'string' ? v : (v && typeof v === 'object' ? (v.name||v.title||v.value||'') : String(v||'')); }
@@ -537,83 +519,9 @@ function renderSocial(d){
   document.getElementById('social-inner').innerHTML = parts || '<div class="empty">No social data available.</div>';
 }
 
-// ── research brief ────────────────────────────────────────────────────────────
-const _STEPS = ['Scanning news','Checking leadership','Reading hiring trends','Analysing strategy','Compiling brief'];
-let _stepTimer = null;
-let _stepIdx   = 0;
-
-async function runResearch(){
-  if(_researchRunning) return;
-  _researchRunning = true;
-  const btn = document.getElementById('research-btn');
-  const out  = document.getElementById('research-output');
-  btn.disabled = true;
-  btn.innerHTML = `<span class="research-spinner"></span><span><div>Agent running on ${BRAND}…</div><div class="research-btn-sub">This takes about 30 seconds</div></span>`;
-
-  // Animated steps
-  out.style.display = 'block';
-  out.innerHTML = '<div class="research-section">' + _STEPS.map((s,i)=>
-    `<div class="research-step" id="rs-${i}"><span>${s}</span><span class="research-step-check">✓</span></div>`
-  ).join('') + '</div>';
-
-  _stepIdx = 0;
-  _animStep(0);
-  _stepTimer = setInterval(()=>{ _stepIdx = Math.min(_stepIdx+1, _STEPS.length-1); _animStep(_stepIdx); }, 5500);
-
-  try{
-    const r = await fetch('/api/intel/research',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({company: BRAND})
-    });
-    clearInterval(_stepTimer);
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const d = await r.json();
-    if(d.error) throw new Error(d.error);
-    renderResearch(d);
-  } catch(e){
-    clearInterval(_stepTimer);
-    out.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:14px 16px;font-size:13px;color:#dc2626">Research failed — ${e.message||'try again'}.</div>`;
-    btn.disabled = false;
-    btn.innerHTML = `<span class="research-btn-icon">🔍</span><span><div>Retry research</div><div class="research-btn-sub">Strategy · Leadership · Hiring · AI signals</div></span>`;
-    _researchRunning = false;
-  }
-}
-
-function _animStep(i){
-  _STEPS.forEach((_,j)=>{
-    const el = document.getElementById('rs-'+j);
-    if(!el) return;
-    el.classList.toggle('done',   j < i);
-    el.classList.toggle('active', j === i);
-  });
-}
-
-function renderResearch(d){
-  const btn = document.getElementById('research-btn');
-  btn.style.display = 'none';
-
-  const conf = (d.confidence||'medium').toLowerCase();
-  const confColor = conf==='high'?'#16a34a':conf==='low'?'#dc2626':'#d97706';
-
-  const cards = [
-    d.headline && `<div class="card card-accent"><div class="card-body" style="font-size:16px;font-weight:700;line-height:1.4">${d.headline}</div></div>`,
-    d.strategy && `<div class="card"><div class="card-label">Strategy</div><div class="card-body">${d.strategy}</div></div>`,
-    d.leadership && `<div class="card"><div class="card-label">Leadership</div><div class="card-body">${d.leadership}</div></div>`,
-    d.hiring_signals && `<div class="card"><div class="card-label">Hiring signals</div><div class="card-body">${d.hiring_signals}</div></div>`,
-    d.ai_focus && `<div class="card card-indigo"><div class="card-label">AI focus</div><div class="card-body">${d.ai_focus}</div></div>`,
-    d.opportunity_angle && `<div class="card card-accent"><div class="card-label">Opportunity</div><div class="card-body">${d.opportunity_angle}</div></div>`,
-    d.risks && d.risks.length && `<div class="card"><div class="card-label">Risks</div>${(Array.isArray(d.risks)?d.risks:[d.risks]).map(r=>`<div style="font-size:14px;color:var(--text);padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px"><span>⚠</span><span>${r}</span></div>`).join('')}</div>`,
-  ].filter(Boolean).join('');
-
-  document.getElementById('research-output').innerHTML =
-    `<div style="display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:${confColor}22;color:${confColor};margin-bottom:12px;letter-spacing:.3px;text-transform:uppercase">${conf} confidence</div>
-     <div style="display:flex;flex-direction:column;gap:10px">${cards}</div>`;
-}
-
-// ── investor deep dive ────────────────────────────────────────────────────────
+// ── company brief ─────────────────────────────────────────────────────────────
 let _ddRunning = false;
-const _DD_STEPS = ['Searching SEC EDGAR filings','Reading strategy statements','Extracting management voice','Analysing risks & outlook','Synthesising brief'];
+const _BRIEF_STEPS = ['Looking up company','Pulling financial data','Checking recent filings','Building brief'];
 let _ddTimer = null, _ddIdx = 0;
 
 async function runDeepDive(){
@@ -622,14 +530,14 @@ async function runDeepDive(){
   const btn = document.getElementById('dd-btn');
   const out = document.getElementById('dd-output');
   btn.disabled = true;
-  btn.innerHTML = `<span class="dd-spinner"></span><span><div>Fetching filings for ${BRAND}…</div><div class="dd-btn-sub">Searching SEC EDGAR · typically 10–20s</div></span>`;
+  btn.innerHTML = `<span class="brief-spinner"></span><span><div>Building brief for ${BRAND}…</div><div class="brief-btn-sub">Typically 10–15s</div></span>`;
 
   out.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">' +
-    _DD_STEPS.map((s,i)=>`<div class="research-step" id="dds-${i}"><span>${s}</span><span class="research-step-check">✓</span></div>`).join('') + '</div>';
+    _BRIEF_STEPS.map((s,i)=>`<div class="brief-step" id="brs-${i}"><span>${s}</span><span class="brief-step-check">✓</span></div>`).join('') + '</div>';
 
   _ddIdx = 0;
   _ddAnimStep(0);
-  _ddTimer = setInterval(()=>{ _ddIdx = Math.min(_ddIdx+1, _DD_STEPS.length-1); _ddAnimStep(_ddIdx); }, 3500);
+  _ddTimer = setInterval(()=>{ _ddIdx = Math.min(_ddIdx+1, _BRIEF_STEPS.length-1); _ddAnimStep(_ddIdx); }, 3500);
 
   try {
     const r = await fetch('/api/intel/deep-dive?company=' + encodeURIComponent(BRAND));
@@ -641,16 +549,16 @@ async function runDeepDive(){
     btn.style.display = 'none';
   } catch(e) {
     clearInterval(_ddTimer);
-    out.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:14px 16px;font-size:13px;color:#dc2626;margin-top:10px">Deep Dive failed — ${e.message||'try again'}.</div>`;
+    out.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;padding:14px 16px;font-size:13px;color:#dc2626;margin-top:10px">Couldn't load brief — ${e.message||'try again'}.</div>`;
     btn.disabled = false;
-    btn.innerHTML = `<span style="font-size:20px">📊</span><span><div>Retry Deep Dive</div><div class="dd-btn-sub">SEC filings · Strategy · CEO voice · Risks · Outlook</div></span>`;
+    btn.innerHTML = `<span class="brief-btn-icon">🏢</span><span><div>Retry Company Brief</div><div class="brief-btn-sub">What they do · Scale · Leadership · Strategy · Risks</div></span>`;
     _ddRunning = false;
   }
 }
 
 function _ddAnimStep(i){
-  _DD_STEPS.forEach((_,j)=>{
-    const el = document.getElementById('dds-'+j);
+  _BRIEF_STEPS.forEach((_,j)=>{
+    const el = document.getElementById('brs-'+j);
     if(!el) return;
     el.classList.toggle('done', j < i);
     el.classList.toggle('active', j === i);
@@ -658,12 +566,11 @@ function _ddAnimStep(i){
 }
 
 function _renderDeepDive(d){
-  const isEdgar = d.has_edgar_data;
-  const edgarNote = isEdgar
-    ? `<div class="dd-sources" style="margin-bottom:14px">${(d.sources||[]).slice(0,4).map(s=>`<span class="dd-source">${s}</span>`).join('')}</div>`
-    : `<div class="dd-no-edgar">ℹ No SEC filings found — ${d.company||'this company'} may be non-US or private. Brief based on AI knowledge.</div>`;
+  const srcNote = d.has_edgar_data && (d.sources||[]).length
+    ? `<div class="dd-sources">${d.sources.slice(0,3).map(s=>`<span class="dd-source">✓ ${s}</span>`).join('')}</div>`
+    : `<div class="dd-ai-note">Brief based on AI knowledge — no public filings found for this company</div>`;
 
-  const quotes = (d.management_voice || []).slice(0,3).map(q=>`
+  const quotes = (d.management_voice || []).slice(0,2).map(q=>`
     <div class="dd-quote-card">
       <div class="dd-quote-text">"${q.quote||''}"</div>
       <div class="dd-quote-meta">${[q.speaker,q.context,q.date].filter(Boolean).join(' · ')}</div>
@@ -672,12 +579,16 @@ function _renderDeepDive(d){
   const risks = (d.key_risks || []).slice(0,3).map(r=>`<li class="dd-risk-item">${r}</li>`).join('');
 
   document.getElementById('dd-output').innerHTML = `
-    ${edgarNote}
-    ${d.strategy_overview ? `<div class="dd-card"><div class="dd-card-label">📋 Strategy Overview</div><div class="dd-body">${d.strategy_overview}</div></div>` : ''}
-    ${quotes ? `<div class="dd-card"><div class="dd-card-label">💬 What Management Has Said</div>${quotes}</div>` : ''}
-    ${d.forward_outlook ? `<div class="dd-card"><div class="dd-card-label">🔭 Forward Outlook</div><div class="dd-body">${d.forward_outlook}</div></div>` : ''}
-    ${risks ? `<div class="dd-card"><div class="dd-card-label">⚠️ Key Risks</div><ul class="dd-risk-list">${risks}</ul></div>` : ''}
-    ${d.financial_signals ? `<div class="dd-card"><div class="dd-card-label">📈 Financial Signals</div><div class="dd-body">${d.financial_signals}</div></div>` : ''}
+    ${d.headline ? `<div style="margin-top:12px;margin-bottom:2px"><div class="dd-headline">${d.headline}</div></div>` : ''}
+    ${srcNote}
+    ${d.what_they_do ? `<div class="dd-card"><div class="dd-card-label">What they do</div><div class="dd-body">${d.what_they_do}</div></div>` : ''}
+    ${d.financial_signals ? `<div class="dd-card"><div class="dd-card-label">Scale & financials</div><div class="dd-body">${d.financial_signals}</div></div>` : ''}
+    ${d.leadership_note ? `<div class="dd-card"><div class="dd-card-label">Leadership</div><div class="dd-body">${d.leadership_note}</div></div>` : ''}
+    ${d.strategy_overview ? `<div class="dd-card"><div class="dd-card-label">Strategy</div><div class="dd-body">${d.strategy_overview}</div></div>` : ''}
+    ${quotes ? `<div class="dd-card"><div class="dd-card-label">What they've said</div>${quotes}</div>` : ''}
+    ${d.forward_outlook ? `<div class="dd-card"><div class="dd-card-label">Where they're headed</div><div class="dd-body">${d.forward_outlook}</div></div>` : ''}
+    ${d.opportunity_angle ? `<div class="dd-card" style="border-left:3px solid var(--accent)"><div class="dd-card-label">Why it's interesting now</div><div class="dd-body">${d.opportunity_angle}</div></div>` : ''}
+    ${risks ? `<div class="dd-card"><div class="dd-card-label">Key risks</div><ul class="dd-risk-list">${risks}</ul></div>` : ''}
   `;
 }
 
