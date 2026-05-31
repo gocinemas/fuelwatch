@@ -20415,7 +20415,7 @@ def receipt_followup():
 
             # This visit's total
             prior = (lib._sb().table("receipts")
-                     .select("shop_date,total")
+                     .select("shop_date,total,items")
                      .eq("phone", plain)
                      .ilike("merchant", f"%{merchant.split()[0]}%")
                      .order("shop_date", desc=True)
@@ -20423,6 +20423,15 @@ def receipt_followup():
             visit_count = len(prior)
             first_visit = visit_count <= 1
             this_total  = prior[0].get("total") if prior else None
+
+            # Pull actual item names from the most recent receipt
+            import json as _fj
+            _raw_items = []
+            try:
+                _raw_items = _fj.loads(prior[0].get("items") or "[]") if prior else []
+            except Exception:
+                pass
+            item_names = [i.get("name","").strip() for i in _raw_items if i.get("name","").strip()]
 
             # Skip petrol stations and pharmacies — no warm comment to make
             _skip_cats = {"Fuel", "Pharmacy", "Health"}
@@ -20454,13 +20463,17 @@ def receipt_followup():
             total_str = f"£{this_total:.2f}" if this_total else None
             visit_note = "first time" if first_visit else f"{visit_count} visits now"
 
+            items_str = ", ".join(item_names[:4]) if item_names else ""
+
             ctx_parts = [
-                f"The user just visited '{merchant}' — this was a {experience}.",
+                f"The user just visited '{merchant}'.",
+                f"They ordered: {items_str}." if items_str else f"It was a {experience}.",
                 f"They spent {total_str} there." if total_str else "",
                 f"This is their {visit_note} to this place.",
                 "Write ONE short WhatsApp message from their personal assistant Miru.",
-                "Lead with a warm reference to the experience (the food, drink, or vibe) — not the money.",
-                f"Then include the spend naturally: e.g. 'hope the chai was good — you spent {total_str} there'." if total_str else "",
+                "Reference a specific dish or item by name if available — not a generic category like 'curry' or 'Indian food'.",
+                f"Example: 'Hope the Chicken Chettinadu was good — you spent {total_str} at {merchant}'." if items_str and total_str else "",
+                "Lead with the food/drink/experience, end with the spend.",
                 "Tone: warm, human, not try-hard. Max 20 words. No exclamation marks. One emoji max.",
                 "Do not ask a question. Just notice and comment.",
             ]
