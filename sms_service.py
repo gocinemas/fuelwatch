@@ -14053,6 +14053,19 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 msg += f"🛒 {len(_r_items)} items scanned\n"
             msg += "\nAsk me: _how much at Tesco this month?_ or _spending this week?_"
             _wa_send_proactive(fn, msg)
+            # Queue a proactive followup in ~15 min (ambient agent nudge)
+            try:
+                _plain_fn = fn.replace("whatsapp:", "").strip()
+                lib._sb().table("wa_saves").insert({
+                    "from_number": _plain_fn,
+                    "status": "followup_pending",
+                    "title": f"followup:{_r_merchant}",
+                    "url": f"pending:receipt_followup",
+                    "summary": _r_merchant,
+                    "category": _receipt_category(_r_merchant) or "receipt",
+                }).execute()
+            except Exception:
+                pass
             # Auto-dismiss active_trip if receipt merchant matches destination
             try:
                 _plain = fn.replace("whatsapp:", "").strip()
@@ -20358,6 +20371,103 @@ def school_poll():
         daemon=True,
     ).start()
     return jsonify({"status": "started", "days_back": days_back, "force": force})
+
+
+@app.route("/api/receipt/followup")
+def receipt_followup():
+    """Ambient agent: send a proactive WhatsApp ~15 min after a receipt scan.
+    Call every 5 min via cron-job.org: GET /api/receipt/followup?token=YOUR_DIGEST_TOKEN
+    """
+    token = request.args.get("token", "")
+    if not token or token != os.environ.get("DIGEST_TOKEN", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    import datetime as _fdt
+    cutoff_early = (_fdt.datetime.utcnow() - _fdt.timedelta(minutes=15)).isoformat()
+    cutoff_late  = (_fdt.datetime.utcnow() - _fdt.timedelta(hours=2)).isoformat()
+
+    try:
+        pending = (lib._sb().table("wa_saves")
+                   .select("id,from_number,summary,category,created_at")
+                   .eq("status", "followup_pending")
+                   .lte("created_at", cutoff_early + "Z")
+                   .gte("created_at", cutoff_late + "Z")
+                   .order("created_at")
+                   .limit(10)
+                   .execute().data or [])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    sent, skipped = 0, 0
+    for row in pending:
+        phone     = row.get("from_number", "")
+        merchant  = row.get("summary", "")
+        category  = row.get("category", "")
+        row_id    = row["id"]
+
+        if not phone or not merchant:
+            skipped += 1
+            _mark_followup_done(row_id)
+            continue
+
+        try:
+            # Build context: prior visits + spend this month
+            plain = phone.replace("whatsapp:", "").strip()
+            prior = (lib._sb().table("receipts")
+                     .select("shop_date,total")
+                     .eq("phone", plain)
+                     .ilike("merchant", f"%{merchant.split()[0]}%")
+                     .order("shop_date", desc=True)
+                     .limit(5).execute().data or [])
+            visit_count  = len(prior)
+            first_visit  = visit_count <= 1
+
+            # Category spend this month
+            import datetime as _dt2
+            month_start = _dt2.date.today().replace(day=1).isoformat()
+            cat_rows = (lib._sb().table("receipts")
+                        .select("total")
+                        .eq("phone", plain)
+                        .gte("shop_date", month_start)
+                        .execute().data or []) if category else []
+            month_total = sum(r.get("total") or 0 for r in cat_rows)
+
+            ctx_parts = [f"The user just scanned a receipt from '{merchant}'."]
+            if first_visit:
+                ctx_parts.append("This appears to be their first visit to this place.")
+            else:
+                ctx_parts.append(f"They've been here {visit_count} times before.")
+            if month_total > 0:
+                ctx_parts.append(f"They've spent £{month_total:.0f} on {category or 'similar places'} this month.")
+            ctx_parts.append("The message should feel like a friendly nudge from a personal assistant — one short sentence, warm and natural. No emojis overload. No questions unless genuinely curious. If it's a food/drink place, you can reference that. Keep it under 20 words.")
+
+            groq_r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY','')}",
+                         "Content-Type": "application/json"},
+                json={"model": "llama-3.1-8b-instant", "max_tokens": 60, "temperature": 0.7,
+                      "messages": [{"role": "user", "content": " ".join(ctx_parts)}]},
+                timeout=10,
+            )
+            nudge = groq_r.json()["choices"][0]["message"]["content"].strip().strip('"')
+
+            wa_to = f"whatsapp:{plain}" if not plain.startswith("whatsapp:") else plain
+            _wa_send_proactive(wa_to, nudge)
+            sent += 1
+        except Exception as ex:
+            print(f"[receipt_followup] error for {phone}: {ex}")
+            skipped += 1
+
+        _mark_followup_done(row_id)
+
+    return jsonify({"sent": sent, "skipped": skipped})
+
+
+def _mark_followup_done(row_id):
+    try:
+        lib._sb().table("wa_saves").update({"status": "followup_sent"}).eq("id", row_id).execute()
+    except Exception:
+        pass
 
 
 _school_token_alert_sent: dict = {}  # from_number → last alert timestamp
