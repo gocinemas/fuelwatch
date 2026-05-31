@@ -228,6 +228,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
       <strong>Did you know?</strong> <span id="dyk-text"></span>
     </div>
 
+    <!-- Company Brief — pinned near top so it's always visible -->
+    <div class="section" id="dd-section">
+      <div class="section-label">Company Brief</div>
+      <button class="brief-btn" id="dd-btn" onclick="runDeepDive()">
+        <span class="brief-btn-icon">🏢</span>
+        <span>
+          <div>Get Company Brief</div>
+          <div class="brief-btn-sub">What they do · Scale · Leadership · Strategy · Risks — ~15s</div>
+        </span>
+      </button>
+      <div id="dd-output"></div>
+    </div>
+
     <!-- Origin Story -->
     <div class="section" id="origin-section" style="display:none">
       <div class="section-label">Origin Story</div>
@@ -283,19 +296,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
     <div class="section" id="rivals-section" style="display:none">
       <div class="section-label">Competitors</div>
       <div class="rivals-wrap" id="rivals-inner"></div>
-    </div>
-
-    <!-- Company Brief -->
-    <div class="section" id="dd-section">
-      <div class="section-label">Company Brief</div>
-      <button class="brief-btn" id="dd-btn" onclick="runDeepDive()">
-        <span class="brief-btn-icon">🏢</span>
-        <span>
-          <div>Get Company Brief</div>
-          <div class="brief-btn-sub">What they do · Scale · Leadership · Strategy · Risks — ~15s</div>
-        </span>
-      </button>
-      <div id="dd-output"></div>
     </div>
 
     <!-- Claim this page -->

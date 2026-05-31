@@ -5843,7 +5843,7 @@ def api_intel_deep_dive():
         return jsonify({"error": "company required"}), 400
 
     # v7 — known-CIK map to fix ambiguous names (apple → Apple Inc not Apple Hospitality REIT)
-    cache_key = f"deep_dive_v7:{company.lower()}"
+    cache_key = f"deep_dive_v8:{company.lower()}"
     try:
         row = lib._sb().table("ai_cache").select("data,cached_at").eq("key", cache_key).execute().data
         if row:
@@ -5904,6 +5904,43 @@ def api_intel_deep_dive():
         "lvmh": None,
         "ikea": None,
         "dyson": None,
+        # Brand → parent company mappings
+        "oreo":          "0001418135",  # Mondelez International
+        "cadbury":       "0001418135",  # Mondelez International
+        "milka":         "0001418135",  # Mondelez International
+        "toblerone":     "0001418135",  # Mondelez International
+        "mondelez":      "0001418135",
+        "pepsi":         "0000077476",  # PepsiCo
+        "pepsico":       "0000077476",
+        "lays":          "0000077476",  # PepsiCo (Lay's)
+        "walkers":       "0000077476",  # PepsiCo (Walkers = UK Lay's)
+        "doritos":       "0000077476",  # PepsiCo
+        "gatorade":      "0000077476",  # PepsiCo
+        "fanta":         "0000021344",  # Coca-Cola
+        "sprite":        "0000021344",  # Coca-Cola
+        "heinz":         "0001637459",  # Kraft Heinz
+        "kraft heinz":   "0001637459",
+        "mcdonalds":     "0000063754",  # McDonald's Corp
+        "mcdonald's":    "0000063754",
+        "starbucks":     "0000829224",
+        "kfc":           "0001041514",  # Yum! Brands
+        "pizza hut":     "0001041514",  # Yum! Brands
+        "taco bell":     "0001041514",  # Yum! Brands
+        "yum brands":    "0001041514",
+        "johnson":       "0000200406",  # Johnson & Johnson
+        "j&j":           "0000200406",
+        "gillette":      "0000080424",  # Procter & Gamble
+        "pampers":       "0000080424",  # Procter & Gamble
+        "tide":          "0000080424",  # Procter & Gamble
+        "p&g":           "0000080424",
+        "procter":       "0000080424",
+        "dove":          "0000101893",  # Unilever
+        "ben jerrys":    "0000101893",  # Unilever
+        "hellmanns":     "0000101893",  # Unilever
+        "red bull":      None,          # Private — Austrian
+        "haribo":        None,          # Private — German
+        "lego":          None,          # Private — Danish
+        "rolex":         None,          # Private — Swiss
     }
 
     EDGAR_HDR = {"User-Agent": "Intel/humanagency mekala@gmail.com", "Accept-Encoding": "gzip,deflate"}
