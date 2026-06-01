@@ -6403,10 +6403,11 @@ function _hcAdd() {
   }
 
   function _maRenderVehicles() {
-    const wrap = document.getElementById("myarea-vehicles-list");
+    const wrap   = document.getElementById("myarea-vehicles-list");
+    const laWrap = document.getElementById("la-vehicles-list");
     if (!wrap) return;
-    if (!_maVehicles || !_maVehicles.length) { wrap.innerHTML = ""; return; }
-    wrap.innerHTML = _maVehicles.map(v => `
+    if (!_maVehicles || !_maVehicles.length) { wrap.innerHTML = ""; if (laWrap) laWrap.innerHTML = ""; return; }
+    const _vHtml = _maVehicles.map(v => `
       <div id="mv-${v.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
           <div style="min-width:0">
@@ -6418,6 +6419,8 @@ function _hcAdd() {
         </div>
         <div id="mv-mot-${v.id}" style="font-size:12px;color:var(--muted)">Loading…</div>
       </div>`).join("");
+    wrap.innerHTML = _vHtml;
+    if (laWrap) laWrap.innerHTML = _vHtml;
     // Fetch MOT for each
     _maVehicles.forEach(v => _maFetchMOT(v));
   }
@@ -9157,20 +9160,14 @@ function _hcAdd() {
     show("la-section-mobile",    groups.mobile.length > 0);
     show("la-section-insurance", groups.insurance.length > 0);
 
-    // Vehicles
+    // Vehicles — load from localStorage directly so Life Admin works without My Area visited first
+    if (typeof _maLoadVehicles === "function") await _maLoadVehicles();
     const maList = document.getElementById("myarea-vehicles-list");
     const laList = document.getElementById("la-vehicles-list");
     if (maList && laList) laList.innerHTML = maList.innerHTML;
 
-    // Gmail state
-    const gmailDone = document.getElementById("ma-gmail-state-done");
-    const laDone    = document.getElementById("la-gmail-state-done");
-    const laConnect = document.getElementById("la-gmail-state-connect");
-    if (gmailDone && laDone && laConnect) {
-      const connected = gmailDone.style.display !== "none";
-      laDone.style.display    = connected ? "flex" : "none";
-      laConnect.style.display = connected ? "none" : "flex";
-    }
+    // Gmail state — re-check live rather than reading stale DOM visibility
+    if (typeof _maGmailCheckStatus === "function") _maGmailCheckStatus();
 
     // Renewals
     const maRenewals = document.getElementById("myarea-renewals");
