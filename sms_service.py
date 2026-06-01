@@ -7652,6 +7652,60 @@ def _v2_fetch_area(postcode: str) -> dict:
         return {}
 
 
+def _v2_fetch_traffic(home_postcode: str, school_profiles: list) -> dict:
+    """Live drive times for school run. Called on weekday mornings only.
+    Returns {"legs": [{child, school, mins, normal_mins, delay_mins, traffic, emoji}]}"""
+    gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY")
+               or os.environ.get("GOOGLE_PLACES_KEY")
+               or os.environ.get("GOOGLE_MAPS_KEY")
+               or os.environ.get("GOOGLE_API_KEY", ""))
+    if not gm_key or not home_postcode:
+        return {}
+    legs = []
+    seen = set()
+    for p in school_profiles[:3]:
+        school = (p.get("school_name") or "").strip()
+        child  = (p.get("child_name")  or "").strip()
+        addr   = (p.get("address")     or "").strip()
+        if not school or school in seen:
+            continue
+        seen.add(school)
+        dest = addr if addr else f"{school}, Surrey, UK"
+        try:
+            r = requests.get(
+                "https://maps.googleapis.com/maps/api/directions/json",
+                params={
+                    "origin":         home_postcode,
+                    "destination":    dest,
+                    "mode":           "driving",
+                    "departure_time": "now",
+                    "traffic_model":  "best_guess",
+                    "key":            gm_key,
+                },
+                timeout=8,
+            )
+            d = r.json()
+            if d.get("status") == "OK":
+                leg       = d["routes"][0]["legs"][0]
+                dur_live  = leg.get("duration_in_traffic", leg["duration"])["value"]
+                dur_norm  = leg["duration"]["value"]
+                delay     = max(0, dur_live - dur_norm)
+                traffic   = "heavy" if delay > 600 else "moderate" if delay > 180 else "clear"
+                emoji     = "🔴" if traffic == "heavy" else "🟡" if traffic == "moderate" else "🟢"
+                legs.append({
+                    "child":       child,
+                    "school":      school,
+                    "mins":        dur_live // 60,
+                    "normal_mins": dur_norm  // 60,
+                    "delay_mins":  delay     // 60,
+                    "traffic":     traffic,
+                    "emoji":       emoji,
+                })
+        except Exception:
+            pass
+    return {"legs": legs}
+
+
 def _v2_fetch_bin_day(prefs: dict, now) -> dict | None:
     """Compute whether bins are due tonight or tomorrow based on prefs."""
     day = prefs.get("bin_collection_day")
@@ -8649,6 +8703,18 @@ def api_home_brief():
     # Bin day — cheap compute from prefs, no network call needed
     ctx["bin_day"] = _v2_fetch_bin_day(prefs, now)
 
+    # Traffic — school run drive times, morning weekdays only
+    _tr_hour = now.hour
+    _tr_wday = now.weekday()
+    if 6 <= _tr_hour < 10 and _tr_wday < 5:
+        _tr_pc   = postcode or prefs.get("fuel_postcode", "")
+        _tr_schl = (ctx.get("school") or {}).get("profiles") or []
+        if _tr_pc and _tr_schl:
+            try:
+                ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl)
+            except Exception:
+                pass
+
     # WhatsApp thread signals — suppress irrelevant brief facts based on recent conversation
     _wa_thread = ctx.get("thread", [])
     _thread_user_msgs = [m["content"] for m in _wa_thread if m.get("role") == "user"][-3:]
@@ -8856,6 +8922,13 @@ def api_home_brief():
             _from_label = loc_station or trains.get("from", "")
             if times:
                 facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
+        # School run traffic — only mention if there's a delay worth flagging
+        _tr = ctx.get("traffic", {})
+        for _tleg in (_tr.get("legs") or []):
+            if _tleg.get("traffic") in ("heavy", "moderate"):
+                _tdelay = _tleg.get("delay_mins", 0)
+                _ttxt   = f"+{_tdelay} min" if _tdelay else _tleg["traffic"]
+                facts.append(f"School run to {_tleg['school'].split()[0]} {_tleg['emoji']} {_tleg['mins']} min ({_ttxt})")
     fuel = ctx.get("fuel", {})
     if fuel.get("price") and time_mode in ("morning_commute", "daytime") and not _car_at_service:
         change = f" ({fuel['change']})" if fuel.get("change") else ""
