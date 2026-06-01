@@ -6366,8 +6366,11 @@ function _hcAdd() {
       // Tax badge
       const taxDays   = d.tax_days_left;
       const taxColour = taxDays == null ? "#6b7280" : taxDays < 0 ? "#dc2626" : taxDays < 30 ? "#d97706" : "#16a34a";
+      const taxPayLink = (taxDays != null && taxDays <= 30)
+        ? ` <a href="https://www.gov.uk/vehicle-tax" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#4f46e5;text-decoration:underline;margin-left:4px">Pay tax →</a>`
+        : "";
       const taxBadge  = d.tax_status
-        ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${taxColour}22;color:${taxColour}">🅿️ ${d.tax_status}${d.tax_due ? " · "+d.tax_due : ""}</span>`
+        ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${taxColour}22;color:${taxColour}">🅿️ ${d.tax_status}${d.tax_due ? " · "+d.tax_due : ""}</span>${taxPayLink}`
         : "";
 
       // ULEZ badge
