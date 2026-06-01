@@ -1323,6 +1323,42 @@ def api_ai_summarize():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/ai/news")
+def api_ai_news():
+    """Fetch top AI headlines from VentureBeat AI RSS — proxied to avoid browser CORS."""
+    import xml.etree.ElementTree as ET
+    try:
+        r = requests.get(
+            "https://venturebeat.com/category/ai/feed/",
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=10,
+        )
+        root = ET.fromstring(r.text)
+        items = root.findall("./channel/item")[:6]
+        news = []
+        for item in items:
+            title = (item.findtext("title") or "").strip()
+            link  = (item.findtext("link") or "").strip()
+            date  = (item.findtext("pubDate") or "").strip()
+            # parse to readable date e.g. "Mon 1 Jun"
+            try:
+                from email.utils import parsedate
+                from time import mktime
+                import datetime
+                d = datetime.datetime(*parsedate(date)[:6])
+                date = d.strftime("%-d %b")
+            except Exception:
+                date = ""
+            if title and link:
+                news.append({"title": title, "url": link, "date": date})
+        resp = jsonify({"news": news})
+        resp.headers["Cache-Control"] = "public, max-age=900"  # cache 15 min
+        return _cors_headers(resp)
+    except Exception as e:
+        resp = jsonify({"error": str(e)})
+        return _cors_headers(resp), 500
+
+
 @app.route("/api/ai/ask", methods=["POST", "OPTIONS"])
 def api_ai_ask():
     """Streaming Ask AI for ai.humanagency.co — Groq answer streamed token by token."""
