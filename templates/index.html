@@ -6339,8 +6339,10 @@ function _hcAdd() {
   }
 
   async function _maFetchMOT(v) {
-    const el     = document.getElementById(`mv-mot-${v.id}`);
-    const makeEl = document.getElementById(`mv-make-${v.id}`);
+    const els    = document.querySelectorAll(`[id="mv-mot-${v.id}"]`);
+    const makeEls = document.querySelectorAll(`[id="mv-make-${v.id}"]`);
+    const el     = els[0];
+    const makeEl = makeEls[0];
     if (!el) return;
     try {
       const r = await fetch(`/api/mot?reg=${encodeURIComponent(v.registration)}`);
@@ -6376,18 +6378,20 @@ function _hcAdd() {
       // CO2 + Euro info line
       const specLine = [d.co2 ? `${d.co2}g/km CO₂` : "", d.euro || ""].filter(Boolean).join(" · ");
 
-      el.innerHTML = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${specLine?'6':'0'}px">
+      const motHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${specLine?'6':'0'}px">
         ${motBadge}${d.mot_expiry ? `<span style="font-size:11px;color:var(--muted);padding-top:3px">until ${d.mot_expiry}</span>` : ""}
         ${taxBadge}
         ${ulezBadge}
       </div>${specLine ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${specLine}</div>` : ""}`;
+      els.forEach(e => { e.innerHTML = motHtml; });
+      if (identParts.length) makeEls.forEach(e => { e.textContent = identParts.join(" · "); });
       _maMotCache[v.registration] = {
         reg: v.registration, nickname: v.nickname || "",
         mot_expiry: d.mot_expiry, mot_days: d.days_left,
         tax_due: d.tax_due, tax_days: d.tax_days_left,
       };
       _maRenderRenewals();
-    } catch { el.innerHTML = `<span style="color:#ef4444">Could not load data</span>`; }
+    } catch { els.forEach(e => { e.innerHTML = `<span style="color:#ef4444">Could not load data</span>`; }); }
   }
 
   function _maRenderRenewals() {
