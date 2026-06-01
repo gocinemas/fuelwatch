@@ -2174,7 +2174,7 @@
       <!-- Phone link CTA — shown when no phone linked -->
       <div id="brief-no-phone-cta" style="display:none;margin-bottom:14px">
         <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:18px;padding:18px">
-          <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.45);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">📱 Get this on WhatsApp · every morning at 7:30am</div>
+          <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.45);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">📱 Get this on WhatsApp · every morning at 7:00am</div>
           <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:11px 13px;margin-bottom:14px;font-family:monospace;font-size:12px;color:rgba(255,255,255,.7);line-height:1.8">
             <div>*Saturday morning* · 18°C, clear ☀️</div>
             <div>📅 *Riaan* · Piano · 09:00 · Shepperton</div>
@@ -2916,7 +2916,7 @@
             <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Morning brief</div>
             <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 13px">
               <div>
-                <div style="font-size:13px;font-weight:600;color:var(--text)">Send to WhatsApp at 7:30am</div>
+                <div style="font-size:13px;font-weight:600;color:var(--text)">Send to WhatsApp at 7:00am</div>
                 <div style="font-size:11px;color:var(--muted);margin-top:2px">Daily brief delivered each morning</div>
               </div>
               <button id="setup-push-toggle" onclick="_setupTogglePush()" style="padding:7px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);transition:all .2s;flex-shrink:0">Off</button>
@@ -7139,7 +7139,7 @@ function _hcAdd() {
       var toEl = document.getElementById("setup-pref-to");
       var pcEl = document.getElementById("setup-pref-pc");
       if (toEl && prefs.train_to)      toEl.value = prefs.train_to;
-      if (pcEl && prefs.fuel_postcode) pcEl.value = prefs.fuel_postcode;
+      if (pcEl) pcEl.value = prefs.fuel_postcode || _miruPostcode() || "";
       if (prefs.bin_collection_day !== undefined) _setupBinDay(prefs.bin_collection_day);
       if (prefs.bin_rotation) _setupBinRotation(prefs.bin_rotation);
       _setupPushEnabled = !!prefs.morning_push;
