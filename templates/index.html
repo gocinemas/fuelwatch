@@ -761,7 +761,7 @@
               <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">LIVE</span>
             </div>
             <div id="home-train-wfh-row" style="display:none">
-              <div onclick="event.stopPropagation();_trainToggleWFH()" style="display:inline-flex;background:rgba(0,0,0,.25);border-radius:99px;padding:3px;gap:3px;cursor:pointer">
+              <div onclick="event.stopPropagation();_trainToggleWFH()" title="WFH = trains to work · Office = trains home" style="display:inline-flex;background:rgba(0,0,0,.25);border-radius:99px;padding:3px;gap:3px;cursor:pointer">
                 <span id="home-train-pill-wfh" style="border-radius:99px;padding:4px 11px;font-size:11px;font-weight:700;letter-spacing:.02em;transition:all .15s">🏠 WFH</span>
                 <span id="home-train-pill-office" style="border-radius:99px;padding:4px 11px;font-size:11px;font-weight:700;letter-spacing:.02em;transition:all .15s">🏢 Office</span>
               </div>
@@ -963,13 +963,13 @@
             id="fuel-loc-btn">📍</button>
         </div>
         <div class="flex gap-2 mb-4">
-          <select id="fuel-type" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+          <select id="fuel-type" onchange="localStorage.setItem('miru_fuel_type',this.value)" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
             <option value="petrol">Petrol</option>
             <option value="diesel">Diesel</option>
           </select>
-          <select id="fuel-radius" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+          <select id="fuel-radius" onchange="localStorage.setItem('miru_fuel_radius',this.value)" class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
             <option value="3">3 miles</option>
-            <option value="5" selected>5 miles</option>
+            <option value="5">5 miles</option>
             <option value="10">10 miles</option>
           </select>
         </div>
@@ -3555,6 +3555,13 @@
       const _fpc = document.getElementById("fuel-postcode");
       _renderRecent("miru_fuel","fuel-recent","fuel-postcode","searchFuel()");
       _myFuelRenderCard();
+      // Restore saved fuel type + radius preferences
+      const _ftSaved = localStorage.getItem("miru_fuel_type");
+      const _frSaved = localStorage.getItem("miru_fuel_radius");
+      const _ftEl = document.getElementById("fuel-type");
+      const _frEl = document.getElementById("fuel-radius");
+      if (_ftEl && _ftSaved) _ftEl.value = _ftSaved;
+      if (_frEl && _frSaved) _frEl.value = _frSaved;
       const _fuelFallback = function() {
         const _fpc_pc = _miruPostcode();
         if (!_fpc.value.trim() && _fpc_pc) _fpc.value = _fpc_pc;
@@ -15462,7 +15469,7 @@ _bkBadge();
         }).join("");
         var _trainDirIcon = _isMorning ? "🚆" : "🏠";
         var _trainDirLabel = _isMorning ? "To work" : "Heading home";
-        html += '<div onclick="showScreen(\'trains\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+        html += '<div onclick="_openTrainsFromBrief()" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
           + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'
           + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">' + _trainDirIcon + ' ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
           + '<div style="font-size:10px;font-weight:700;color:var(--accent)">' + _trainDirLabel + ' ›</div>'
@@ -21400,6 +21407,16 @@ window.spotifyAddTrack = window.spotifyLike;
     _loadDeps(bh.crs);
   };
 
+  // Called when user taps the trains card in the home brief — skips idle if commute is saved
+  window._openTrainsFromBrief = function() {
+    showScreen("trains");
+    setTimeout(function() {
+      var bh = null;
+      try { bh = JSON.parse(localStorage.getItem("miru_train_bm_home") || "null"); } catch {}
+      if (bh && bh.crs && window._trainLoadCommute) window._trainLoadCommute();
+    }, 80);
+  };
+
   var _origShowScreenTrains = window.showScreen;
   window.showScreen = function(name) {
     _origShowScreenTrains(name);
@@ -21418,7 +21435,12 @@ window.spotifyAddTrack = window.spotifyLike;
     var btn = document.getElementById("train-locate-btn");
     if (btn) { btn.textContent = "⏳ Locating…"; btn.disabled = true; }
     var _restore = function() { if (btn) { btn.innerHTML = "📍 Find nearest stations"; btn.disabled = false; } };
-    if (!navigator.geolocation) { _restore(); return; }
+    if (!navigator.geolocation) {
+      if (btn) { btn.textContent = "📍 Not available — search below ↓"; btn.disabled = false; }
+      var si = document.getElementById("train-search-input");
+      if (si) { si.focus(); si.scrollIntoView({behavior:"smooth", block:"center"}); }
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       function(pos) {
         _restore();
@@ -21427,7 +21449,11 @@ window.spotifyAddTrack = window.spotifyLike;
           function() { if (btn) { btn.textContent = "Location unavailable"; btn.disabled = false; } }
         );
       },
-      function() { _restore(); },
+      function() {
+        if (btn) { btn.textContent = "📍 Location blocked — search by postcode ↓"; btn.disabled = false; btn.style.background = "#6b7280"; }
+        var si = document.getElementById("train-search-input");
+        if (si) { si.focus(); si.scrollIntoView({behavior:"smooth", block:"center"}); }
+      },
       { timeout: 8000, enableHighAccuracy: false, maximumAge: 60000 }
     );
   };
