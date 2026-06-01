@@ -23003,7 +23003,7 @@ def api_train_test():
 import difflib as _difflib
 from uk_stations import UK_STATIONS as _STATION_CACHE
 # Request stops / effectively closed stations — skip in nearest-station proximity searches
-_LOW_SERVICE_CRS = {"LNG"}  # Longcross: request stop, ~1 service/day
+_LOW_SERVICE_CRS = set()  # Longcross (LNG) removed — user's actual station for KT16
 # ───────────────────────────────────────────────────────────────
 
 @app.route("/api/train/nearest")
