@@ -20754,10 +20754,7 @@ window.spotifyAddTrack = window.spotifyLike;
       <button onclick="trainChangeStation()"
         style="border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;padding:5px 11px;border-radius:10px">Change</button>
     </div>
-    <!-- Work destination nudge — only shown when work station not saved -->
-    <div id="train-work-nudge" style="display:none;margin-bottom:10px">
-      <button onclick="_trainSetWork()" style="font-size:12px;font-weight:600;color:#2563eb;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">+ Add work destination to see return trains</button>
-    </div>
+    <div id="train-work-nudge" style="display:none"></div>
 
     <!-- Last updated -->
     <div id="train-updated-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -21419,9 +21416,32 @@ window.spotifyAddTrack = window.spotifyLike;
     var bh = _getBm("home");
     if (!bh || !bh.crs) return;
     var bw = _getBm("work");
-    if (bw) { _trainToCrs = bw.crs; _trainToName = bw.name; }
-    _showActive(bh.name, bh.crs, "rail");
-    _loadDeps(bh.crs);
+    if (bw) {
+      _trainToCrs = bw.crs; _trainToName = bw.name;
+      _showActive(bh.name, bh.crs, "rail");
+      _loadDeps(bh.crs);
+    } else {
+      // No work bookmark — resolve train_to from server prefs to a CRS
+      var prefs = (_briefData && _briefData.prefs) || {};
+      var trainTo = (prefs.train_to || "").trim();
+      _showActive(bh.name, bh.crs, "rail");
+      if (trainTo) {
+        fetch("/api/train/search?q=" + encodeURIComponent(trainTo))
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            var hit = d.results && d.results[0];
+            if (hit && hit.crs) {
+              _trainToCrs = hit.crs;
+              _trainToName = hit.name || trainTo;
+              _updateCatUI();
+            }
+            _loadDeps(bh.crs);
+          })
+          .catch(function(){ _loadDeps(bh.crs); });
+      } else {
+        _loadDeps(bh.crs);
+      }
+    }
   };
 
   // Called when user taps the trains card in the home brief — skips idle if commute is saved
