@@ -15342,7 +15342,7 @@ _bkBadge();
     var _isEvening   = _hour >= 17 && _hour < 21;
     var _isNight     = _hour >= 21 || _hour < 5;  // 9pm+
     var _isOffHours  = _hour >= 17 || _hour < 5;  // evening + night (no work/commute context)
-    var _isMorning   = _hour >= 5  && _hour < 10;
+    var _isMorning   = _hour >= 5  && _hour < 13;
     var _isFriday    = _dow === 5;
     var _isWeekend   = _dow === 0 || _dow === 6;
     var _isPreWeekend = _isFriday && _isNight; // Friday night — weekend planning mode
@@ -15398,8 +15398,9 @@ _bkBadge();
     // Morning: home → work (ctx.trains); Evening: work → home (ctx.trains_home)
     // WFH mode always shows home → work (in case they need to head out)
     var _trainsMorning = ctx && ctx.trains;
-    var _trainsEvening = ctx && (ctx.trains_home || ctx.trains);
-    var trains = wfh ? _trainsMorning : (_isMorning ? _trainsMorning : _trainsEvening);
+    var _trainsEvening = ctx && ctx.trains_home && ctx.trains_home.departures && ctx.trains_home.departures.length ? ctx.trains_home : null;
+    var trains = wfh ? _trainsMorning : (_isMorning ? _trainsMorning : (_trainsEvening || _trainsMorning));
+    var _showingEveningTrains = !wfh && !_isMorning && !!_trainsEvening;
     var _isWeekendMorning = _isWeekend && _isMorning;
     var _bankHoliday = !!(ctx && ctx.bank_holiday_today);
     var _noTrainsDay = _isWeekend || _bankHoliday;
@@ -15467,8 +15468,8 @@ _bkBadge();
             + '<span style="font-size:11px;font-weight:700;color:' + stCol + ';background:' + stBg + ';border-radius:99px;padding:2px 9px">' + st + '</span>'
             + '</div>';
         }).join("");
-        var _trainDirIcon = _isMorning ? "🚆" : "🏠";
-        var _trainDirLabel = _isMorning ? "To work" : "Heading home";
+        var _trainDirIcon = _showingEveningTrains ? "🏠" : "🚆";
+        var _trainDirLabel = _showingEveningTrains ? "Heading home" : "To work";
         html += '<div onclick="_openTrainsFromBrief()" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
           + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'
           + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">' + _trainDirIcon + ' ' + (trains.from || "") + ' → ' + (trains.to || "") + '</div>'
