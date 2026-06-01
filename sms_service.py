@@ -10234,18 +10234,30 @@ def api_morning_brief():
             if _mkids and _mhs.get("on_holiday") and _mhs.get("label"):
                 _mparts.append(f"🏖️ {' & '.join(_mkids)} off — {_mhs['label']}")
 
-            # School events this week (upcoming, not today's recurring)
+            # School events — today pinned, rest as this-week list
             if _mschool_upcoming:
-                _mparts.append("")
-                _mparts.append("🏫 *School this week*")
-                for _mse in _mschool_upcoming[:3]:
-                    _msdate = _mse.get("event_date","")
-                    try:
-                        _msd = _mdt.date.fromisoformat(_msdate)
-                        _msdate = _msd.strftime("%-d %b")
-                    except Exception:
-                        pass
-                    _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')} ({_msdate})")
+                _today_s = today.isoformat()
+                _ms_today = [e for e in _mschool_upcoming if e.get("event_date","") == _today_s]
+                _ms_week  = [e for e in _mschool_upcoming if e.get("event_date","") != _today_s]
+                if _ms_today:
+                    _mparts.append("")
+                    for _mse in _ms_today:
+                        _mnote = _mse.get("notes","").strip()
+                        _mline = f"📌 *Today* — {_mse.get('child_name','')} — {_mse.get('event_title','')}"
+                        if _mnote:
+                            _mline += f" _{_mnote}_"
+                        _mparts.append(_mline)
+                if _ms_week:
+                    _mparts.append("")
+                    _mparts.append("🏫 *School this week*")
+                    for _mse in _ms_week[:3]:
+                        _msdate = _mse.get("event_date","")
+                        try:
+                            _msd = _mdt.date.fromisoformat(_msdate)
+                            _msdate = _msd.strftime("%-d %b")
+                        except Exception:
+                            pass
+                        _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')} ({_msdate})")
 
             # 📚 3 random picks from Twitter archive
             try:
