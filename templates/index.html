@@ -15242,7 +15242,7 @@ _bkBadge();
     // ── Trains ────────────────────────────────────────────────────────────────
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
-    if (trains) {
+    if (trains && trains.departures && trains.departures.length > 0) {
       var d0   = trains.departures[0];
       var t0   = d0.departs || d0.time || "";
       var dst0 = (d0.destination || trains.to || "").replace(/\s+station$/i,"").replace(/^London /i,"");
