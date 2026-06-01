@@ -6562,9 +6562,13 @@ def api_v2_prefs_get():
         rows = lib._sb().table("ma_details").select("data") \
             .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
         prefs = rows[0]["data"] if rows else {}
-        return jsonify({"prefs": prefs, "has_prefs": bool(prefs)})
+        cal_connected = bool(
+            lib._sb().table("ma_gmail_tokens").select("device_id")
+            .eq("device_id", from_number).eq("type", "calendar_token").execute().data
+        )
+        return jsonify({"prefs": prefs, "has_prefs": bool(prefs), "calendar_connected": cal_connected})
     except Exception as e:
-        return jsonify({"prefs": {}, "has_prefs": False, "error": str(e)})
+        return jsonify({"prefs": {}, "has_prefs": False, "calendar_connected": False, "error": str(e)})
 
 
 @app.route("/api/v2/prefs", methods=["POST"])

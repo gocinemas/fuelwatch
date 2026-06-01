@@ -7151,32 +7151,21 @@ function _hcAdd() {
         _pushBtn.style.borderColor  = _setupPushEnabled ? "#2563eb" : "var(--border)";
       }
     }
-    if (_briefData && _briefData.prefs) {
-      _applyPrefs(_briefData.prefs);
-    } else {
-      var _sPhone = _miruPhone();
-      if (_sPhone) fetch("/api/v2/prefs?token=" + encodeURIComponent(_sPhone))
+    // Always fetch fresh prefs from server — don't rely on _briefData being loaded
+    var _sPhone = _miruPhone();
+    if (_sPhone) {
+      fetch("/api/v2/prefs?token=" + encodeURIComponent(_sPhone))
         .then(function(r){ return r.json(); })
-        .then(function(d){ _applyPrefs(d.prefs || {}); })
-        .catch(function(){});
-    }
-    // Calendar state — reflect connected/disconnected on the Settings button
-    var calBtn = document.getElementById("setup-cal-btn");
-    var calLbl = document.getElementById("setup-cal-label");
-    var calConnected = _briefData && _briefData.calendar_connected;
-    if (!calConnected) {
-      // Try reading from the brief button label as fallback
-      var briefCalLabel = document.getElementById("brief-cal-label");
-      if (briefCalLabel) calConnected = (briefCalLabel.textContent || "").includes("connected");
-    }
-    if (calBtn && calLbl) {
-      if (calConnected) {
-        calLbl.textContent = "✅ Calendar connected · tap to disconnect";
-        calBtn.style.background = "#d1fae5"; calBtn.style.borderColor = "#6ee7b7"; calBtn.style.color = "#065f46";
-      } else {
-        calLbl.textContent = "Connect Google Calendar";
-        calBtn.style.background = "#eef2ff"; calBtn.style.borderColor = "#c7d2fe"; calBtn.style.color = "#4338ca";
-      }
+        .then(function(d){
+          _applyPrefs(d.prefs || {});
+          _briefUpdateCalBtn(!!d.calendar_connected, null);
+        })
+        .catch(function(){
+          if (_briefData && _briefData.prefs) _applyPrefs(_briefData.prefs);
+        });
+    } else if (_briefData && _briefData.prefs) {
+      _applyPrefs(_briefData.prefs);
+      _briefUpdateCalBtn(!!(_briefData.calendar_connected), null);
     }
     // School status
     var statusEl = document.getElementById("setup-school-status");
