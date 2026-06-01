@@ -10509,11 +10509,13 @@ def api_myarea_local_info():
 
 _MOT_CACHE: dict = {}
 _MOT_CACHE_TTL = 86400  # 24 hours — MOT status changes at most once a year
+_MOT_CACHE_TTL_TAX = 3600  # 1 hour when tax is overdue — user may have just paid
 
 @app.route("/api/mot")
 def api_mot():
     """Fetch MOT history for a UK registration from DVSA API."""
     reg = request.args.get("reg", "").strip().upper().replace(" ", "")
+    force = request.args.get("refresh", "0") == "1"
     if not reg:
         return jsonify({"error": "reg required"}), 400
     # Normalise common O/0 confusion: UK plates are LL DD LLL — letters in positions 0-1 and 4-6
@@ -10526,8 +10528,11 @@ def api_mot():
             if reg[i] == "O": reg[i] = "0"
         reg = "".join(reg)
     cache_hit = _MOT_CACHE.get(reg)
-    if cache_hit and time.time() - cache_hit["ts"] < _MOT_CACHE_TTL:
-        return jsonify(cache_hit["data"])
+    if cache_hit and not force:
+        cached_data = cache_hit["data"]
+        ttl = _MOT_CACHE_TTL_TAX if (cached_data.get("tax_days_left") or 1) <= 0 else _MOT_CACHE_TTL
+        if time.time() - cache_hit["ts"] < ttl:
+            return jsonify(cached_data)
     ves_key = os.environ.get("DVLA_VES_API_KEY", "")
     if not ves_key:
         return jsonify({"error": "DVLA_VES_API_KEY not configured — add your Vehicle Enquiry Service key in Railway env vars"}), 503
