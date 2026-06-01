@@ -7882,7 +7882,7 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
             p_raw = (svc.get("locationMetadata") or {}).get("platform")
             platform = str(p_raw.get("display") or "") if isinstance(p_raw, dict) else (str(p_raw) if p_raw else "")
             deps.append({"departs": sched, "status": status, "platform": platform})
-            if len(deps) >= 3:
+            if len(deps) >= 8:
                 break
 
         return {"departures": deps, "from": train_from, "to": train_to}
@@ -10035,7 +10035,7 @@ def api_admin_fix_currency():
 @app.route("/api/morning-brief", methods=["POST"])
 def api_morning_brief():
     """V2 morning push — uses full context engine + Groq narrative.
-    Called daily at 7:30am UK time via cron-job.org.
+    Called daily at 7:00am UK time via cron-job.org.
     Token: X-Admin-Token: miru-digest-2026
     Supports ?phone=whatsapp:+44... to test a single user.
     """
@@ -10196,11 +10196,29 @@ def api_morning_brief():
                 if _ra_what.strip():
                     _mparts.append(_ra_line)
 
-            # Trains
+            # Trains — all departures in next 60 minutes from now
             if _mtrains.get("departures"):
-                _mtimes = ", ".join(d.get("departs","") for d in _mtrains["departures"][:2] if d.get("departs"))
-                if _mtimes:
-                    _mparts.append(f"🚆 {_mtrains.get('from','')} → {_mtrains.get('to','')}: {_mtimes}")
+                import datetime as _mdt2
+                _mnow_mins = _mdt2.datetime.now().hour * 60 + _mdt2.datetime.now().minute
+                def _t2m(t):
+                    try:
+                        _h, _m = t.split(":")
+                        return int(_h) * 60 + int(_m)
+                    except Exception:
+                        return -1
+                _mhour_deps = [d for d in _mtrains["departures"]
+                               if _mnow_mins <= _t2m(d.get("departs","")) <= _mnow_mins + 60]
+                if _mhour_deps:
+                    _mdep_strs = []
+                    for _md in _mhour_deps:
+                        _mst = _md.get("status", "On time")
+                        if _mst == "Cancelled":
+                            _mdep_strs.append(f"~{_md['departs']}~ ❌")
+                        elif _mst != "On time":
+                            _mdep_strs.append(f"{_md['departs']} ⚠️ {_mst}")
+                        else:
+                            _mdep_strs.append(_md["departs"])
+                    _mparts.append(f"🚆 {_mtrains.get('from','')} → {_mtrains.get('to','')}: {', '.join(_mdep_strs)}")
 
             # Fuel
             if _mfuel.get("price"):
@@ -10229,7 +10247,7 @@ def api_morning_brief():
                         pass
                     _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')} ({_msdate})")
 
-            # 💡 Daily idea — 1 random AI/Startup bookmark
+            # 📚 3 random picks from Twitter archive
             try:
                 _idea_pool = lib._sb().table("twitter_bookmarks") \
                     .select("author_handle,text,url") \
@@ -10238,13 +10256,15 @@ def api_morning_brief():
                     .limit(300).execute().data or []
                 if _idea_pool:
                     import random as _mrand
-                    _pick = _mrand.choice(_idea_pool)
-                    _itxt = (_pick.get("text") or "").strip()[:180]
-                    _iurl = _pick.get("url", "")
-                    _ihdl = _pick.get("author_handle", "")
-                    _mparts.append(f"\n💡 *Idea of the day*\n_{_itxt}_\n— @{_ihdl}\n{_iurl}")
+                    _picks = _mrand.sample(_idea_pool, min(3, len(_idea_pool)))
+                    _mparts.append("\n📚 *From your archive*")
+                    for _pick in _picks:
+                        _itxt = (_pick.get("text") or "").strip()[:160]
+                        _ihdl = _pick.get("author_handle", "")
+                        _iurl = _pick.get("url", "")
+                        _mparts.append(f"_{_itxt}_\n— @{_ihdl} {_iurl}")
             except Exception as _ie:
-                print(f"[morning-brief] idea fetch failed: {_ie}")
+                print(f"[morning-brief] archive fetch failed: {_ie}")
 
             _mparts.append("\n_miru.humanagency.co — Reply STOP BRIEF to pause_")
             _mmsg = "\n".join(_mparts)
