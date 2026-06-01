@@ -7160,11 +7160,24 @@ function _hcAdd() {
         .then(function(d){ _applyPrefs(d.prefs || {}); })
         .catch(function(){});
     }
-    // Calendar state
+    // Calendar state — reflect connected/disconnected on the Settings button
     var calBtn = document.getElementById("setup-cal-btn");
     var calLbl = document.getElementById("setup-cal-label");
-    var briefCalLabel = document.getElementById("brief-cal-label");
-    if (calLbl && briefCalLabel) calLbl.textContent = briefCalLabel.textContent;
+    var calConnected = _briefData && _briefData.calendar_connected;
+    if (!calConnected) {
+      // Try reading from the brief button label as fallback
+      var briefCalLabel = document.getElementById("brief-cal-label");
+      if (briefCalLabel) calConnected = (briefCalLabel.textContent || "").includes("connected");
+    }
+    if (calBtn && calLbl) {
+      if (calConnected) {
+        calLbl.textContent = "✅ Calendar connected · tap to disconnect";
+        calBtn.style.background = "#d1fae5"; calBtn.style.borderColor = "#6ee7b7"; calBtn.style.color = "#065f46";
+      } else {
+        calLbl.textContent = "Connect Google Calendar";
+        calBtn.style.background = "#eef2ff"; calBtn.style.borderColor = "#c7d2fe"; calBtn.style.color = "#4338ca";
+      }
+    }
     // School status
     var statusEl = document.getElementById("setup-school-status");
     var maStatusEl = document.getElementById("ma-school-status");
@@ -16110,17 +16123,20 @@ _bkBadge();
   };
 
   function _briefUpdateCalBtn(connected, oauthUrl) {
-    var lbl = document.getElementById("brief-cal-label");
-    var btn = document.getElementById("brief-cal-btn");
-    if (!lbl || !btn) return;
-    if (connected) {
-      lbl.textContent = "✅ Calendar connected · tap to disconnect";
-      btn.style.background = "#d1fae5"; btn.style.borderColor = "#6ee7b7"; btn.style.color = "#065f46";
-    } else {
-      lbl.textContent = "Connect Google Calendar";
-      btn.style.background = "#eef2ff"; btn.style.borderColor = "#c7d2fe"; btn.style.color = "#4338ca";
-    }
-    btn.disabled = false;
+    var ids = [["brief-cal-label","brief-cal-btn"], ["setup-cal-label","setup-cal-btn"]];
+    ids.forEach(function(pair) {
+      var lbl = document.getElementById(pair[0]);
+      var btn = document.getElementById(pair[1]);
+      if (!lbl || !btn) return;
+      if (connected) {
+        lbl.textContent = "✅ Calendar connected · tap to disconnect";
+        btn.style.background = "#d1fae5"; btn.style.borderColor = "#6ee7b7"; btn.style.color = "#065f46";
+      } else {
+        lbl.textContent = "Connect Google Calendar";
+        btn.style.background = "#eef2ff"; btn.style.borderColor = "#c7d2fe"; btn.style.color = "#4338ca";
+      }
+      btn.disabled = false;
+    });
   }
 
   window._briefSavePrefs = function() {
