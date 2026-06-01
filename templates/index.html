@@ -9080,11 +9080,8 @@ function _hcAdd() {
     show("la-section-mobile",    groups.mobile.length > 0);
     show("la-section-insurance", groups.insurance.length > 0);
 
-    // Vehicles — load from localStorage directly so Life Admin works without My Area visited first
+    // Vehicles — _maRenderVehicles writes to both myarea-vehicles-list and la-vehicles-list directly
     if (typeof _maLoadVehicles === "function") await _maLoadVehicles();
-    const maList = document.getElementById("myarea-vehicles-list");
-    const laList = document.getElementById("la-vehicles-list");
-    if (maList && laList) laList.innerHTML = maList.innerHTML;
 
     // Gmail state — re-check live rather than reading stale DOM visibility
     if (typeof _maGmailCheckStatus === "function") _maGmailCheckStatus();
