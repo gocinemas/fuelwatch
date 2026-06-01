@@ -7035,9 +7035,12 @@ def _v2_fetch_school(from_number: str) -> dict:
         # Compute holiday status early — needed even if no school profiles registered
         holiday_status = _surrey_holiday_status(today)
         holiday_status["inset_days"] = []
+        # Try both formats — profiles may be stored with or without "whatsapp:" prefix
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa    = f"whatsapp:{_fn_plain}"
         profiles = lib._sb().table("school_profiles") \
                        .select("id,child_name,school_name,address") \
-                       .eq("from_number", from_number).eq("active", True).execute().data or []
+                       .in_("from_number", [_fn_plain, _fn_wa]).eq("active", True).execute().data or []
         if not profiles:
             return {"schools": [], "upcoming": [], "recent": [], "events": [], "holiday_status": holiday_status}
         pids = [p["id"] for p in profiles]
