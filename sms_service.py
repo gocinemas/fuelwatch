@@ -916,6 +916,10 @@ def saves_login():
 def my_saves():
     return render_template("my_saves.html")
 
+@app.route("/bookmarks")
+def bookmarks():
+    return render_template("bookmarks.html")
+
 @app.route("/home-v2")
 def home_v2():
     if request.args.get("preview") != "miru2026":
