@@ -15306,26 +15306,47 @@ _bkBadge();
     var slot = document.getElementById("brief-school-slot");
     if (!slot) return;
     var schoolRaw = ctx && ctx.school;
-    var upcoming  = (schoolRaw && schoolRaw.upcoming) ? schoolRaw.upcoming : [];
+    var allEvents = (schoolRaw && schoolRaw.upcoming) ? schoolRaw.upcoming : [];
     var _hs = (_briefData && _briefData.school_holiday) || (schoolRaw && schoolRaw.holiday_status) || null;
     var _onHoliday = _hs && _hs.on_holiday;
-    if (!upcoming.length && !_onHoliday) { slot.style.display = "none"; return; }
+    if (!allEvents.length && !_onHoliday) { slot.style.display = "none"; return; }
 
-    // 3 soonest events (skip newsletters), grouped by child_name for subheadings
-    var top3 = upcoming.filter(function(e){ return e.event_type !== 'newsletter'; }).slice(0, 3);
+    // Reschedule suppression — same logic as home card
+    var _rescKw = /\b(reschedul|postpone|cancel)/i;
+    var _stops  = new Set(['a','an','the','and','or','for','to','of','in','on','at','is','with','about','from','your']);
+    var _sig    = function(t) { return (t||'').toLowerCase().replace(_rescKw,'').split(/\W+/).filter(function(w){ return w.length > 3 && !_stops.has(w); }); };
+    var _supp   = new Set();
+    allEvents.forEach(function(rev) {
+      if (!_rescKw.test(rev.event_title||'')) return;
+      var rw = new Set(_sig(rev.event_title));
+      if (!rw.size) return;
+      allEvents.forEach(function(ev) {
+        if (ev === rev || _supp.has(ev.id) || _rescKw.test(ev.event_title||'')) return;
+        if (_sig(ev.event_title).filter(function(w){ return rw.has(w); }).length >= Math.min(2, rw.size)) _supp.add(ev.id);
+      });
+    });
+
+    // Filter: no newsletters, no suppressed originals
+    var filtered = allEvents.filter(function(e) {
+      return e.event_type !== 'newsletter' && !_supp.has(e.id);
+    });
+
+    // Group by child_name, up to 3 per child
     var byChild = {}, childOrder = [];
-    top3.forEach(function(ev) {
+    filtered.forEach(function(ev) {
       var cn = ev.child_name || "School";
       if (!byChild[cn]) { byChild[cn] = []; childOrder.push(cn); }
-      byChild[cn].push(ev);
+      if (byChild[cn].length < 3) byChild[cn].push(ev);
     });
+
+    if (!childOrder.length && !_onHoliday) { slot.style.display = "none"; return; }
 
     var inner = "";
     if (_onHoliday && _hs.label) {
       inner += '<div style="font-size:11px;color:#047857;background:#ecfdf5;border-radius:8px;padding:5px 10px;margin-bottom:8px">🏖️ ' + _hs.label.charAt(0).toUpperCase() + _hs.label.slice(1) + ' holiday</div>';
     }
     childOrder.forEach(function(cn, ci) {
-      inner += '<div style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;margin:' + (ci || inner ? '8px' : '0') + ' 0 3px">' + cn + '</div>';
+      inner += '<div style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;margin:' + (ci > 0 || inner ? '10px' : '0') + ' 0 3px">' + cn + '</div>';
       byChild[cn].forEach(function(ev, i) {
         var d = (ev.event_date || "").slice(5);
         inner += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;' + (i > 0 ? 'border-top:1px solid var(--border);' : '') + '">'
