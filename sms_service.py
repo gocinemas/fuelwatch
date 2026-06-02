@@ -6559,12 +6559,14 @@ def api_v2_prefs_get():
     if not from_number:
         return jsonify({"prefs": {}, "has_prefs": False})
     try:
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa    = f"whatsapp:{_fn_plain}"
         rows = lib._sb().table("ma_details").select("data") \
-            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
         prefs = rows[0]["data"] if rows else {}
         cal_connected = bool(
-            lib._sb().table("ma_gmail_tokens").select("device_id")
-            .eq("device_id", from_number).eq("type", "calendar_token").execute().data
+            lib._sb().table("ma_details").select("id")
+            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "calendar_token").execute().data
         )
         return jsonify({"prefs": prefs, "has_prefs": bool(prefs), "calendar_connected": cal_connected})
     except Exception as e:
@@ -6625,8 +6627,10 @@ def api_v2_prefs_post():
 
     try:
         sb = lib._sb()
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa    = f"whatsapp:{_fn_plain}"
         rows = sb.table("ma_details").select("id,data") \
-            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
         _prev_prefs = (rows[0].get("data") or {}) if rows else {}
         if rows:
             merged = {**_prev_prefs, **new_prefs}
