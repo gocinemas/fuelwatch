@@ -22622,6 +22622,49 @@ def api_books_search():
     return jsonify({"results": hits[:30]})
 
 
+@app.route("/api/books/synthesise", methods=["POST"])
+def api_books_synthesise():
+    """Generate a personalised learning synthesis from a book's reading notes."""
+    data  = request.get_json(force=True, silent=True) or {}
+    title  = (data.get("title")  or "").strip()
+    author = (data.get("author") or "").strip()
+    notes  = data.get("notes") or []
+    if not notes:
+        return jsonify({"error": "no notes to synthesise"}), 400
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "AI not configured"}), 503
+    notes_text = "\n\n".join([
+        f"[{'Scan' if n.get('type')=='scan' else 'Note'} — {n.get('ts','')}]\n{n.get('text','').strip()}"
+        for n in notes if n.get("text","").strip()
+    ])
+    prompt = f"""You are reading someone's private notes from the book "{title}" by {author}.
+
+These are things they chose to capture — their highlights, scanned pages, and personal thoughts:
+
+{notes_text}
+
+Write a synthesis of what they learned from this book. Cover:
+- The key ideas that clearly landed with them
+- Any arguments, frameworks, or data they found compelling
+- What seemed to surprise or challenge their thinking
+- Their overall takeaway
+
+Write it in second person ("You discovered…", "The book shifted your thinking on…"). Ground everything in their actual notes — don't add ideas they didn't capture. 150–250 words."""
+    try:
+        import anthropic as _ant
+        client = _ant.Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return jsonify({"synthesis": resp.content[0].text.strip()})
+    except Exception as e:
+        print(f"[books/synthesise] error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/books/scan-note", methods=["POST"])
 def api_books_scan_note():
     """Transcribe text or describe a graph/chart from a scanned book page using Claude Vision."""

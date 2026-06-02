@@ -12523,6 +12523,7 @@ function _hcAdd() {
   <div id="book-journal" style="display:none;margin-top:4px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <button onclick="bookCloseJournal()" style="display:flex;align-items:center;gap:5px;border:none;background:none;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;padding:0">← Back</button>
+      <button onclick="bjSynthesise()" id="bj-synth-btn" style="padding:6px 14px;border-radius:8px;border:1.5px solid #c4b5fd;background:#f5f3ff;color:#6d28d9;font-size:12px;font-weight:700;cursor:pointer">✨ Synthesise</button>
       <button onclick="bjExport()" style="padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:700;cursor:pointer">↓ Export</button>
     </div>
     <!-- Compact book header -->
@@ -12534,6 +12535,21 @@ function _hcAdd() {
         <div id="bj-author" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
       </div>
     </div>
+    <!-- Synthesis card -->
+    <div id="bj-synthesis-card" style="display:none;background:linear-gradient(135deg,#f5f3ff 0%,#ede9fe 100%);border:1.5px solid #c4b5fd;border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:800;color:#6d28d9;text-transform:uppercase;letter-spacing:.06em">✨ What you learned</span>
+        <div style="display:flex;gap:6px">
+          <button onclick="bjSynthesise()" style="font-size:11px;font-weight:700;color:#7c3aed;background:none;border:1px solid #c4b5fd;border-radius:6px;padding:3px 9px;cursor:pointer">↻ Redo</button>
+          <button onclick="bjCopySynthesis()" style="font-size:11px;font-weight:700;color:#7c3aed;background:none;border:1px solid #c4b5fd;border-radius:6px;padding:3px 9px;cursor:pointer">Copy</button>
+        </div>
+      </div>
+      <div id="bj-synthesis-text" style="font-size:14px;color:#3b0764;line-height:1.7"></div>
+    </div>
+    <div id="bj-synthesis-loading" style="display:none;text-align:center;padding:24px 0;color:var(--muted);font-size:13px;margin-bottom:16px">
+      <span style="display:inline-block;width:18px;height:18px;border:2px solid #ddd6fe;border-top-color:#7c3aed;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle"></span>Reading your notes…
+    </div>
+
     <!-- Notes list -->
     <div id="bj-notes-list" style="margin-bottom:16px"></div>
     <div id="bj-empty" style="text-align:center;padding:32px 0;color:var(--muted);font-size:14px;display:none">No notes yet — add a thought or scan a page below.</div>
@@ -12873,6 +12889,7 @@ var _bjBook  = null;
 var _bjNotes = [];
 var _bjScanText = "";
 var _bjScanImageUrl = "";
+var _bjSynthesis = "";
 
 function _bjHideAll(){
   ["books-search-panel","books-library-panel","book-detail","book-journal"]
@@ -12919,10 +12936,16 @@ function _bjLoadJournal(bk){
   } else if(saved && saved.notes && saved.notes.trim()){
     _bjNotes = [{id:"legacy", ts:Date.now(), text:saved.notes.trim(), type:"text"}];
   }
-  _bjScanText = "";
+  _bjScanText = ""; _bjScanImageUrl = ""; _bjSynthesis = "";
   document.getElementById("bj-note-input").value = "";
   document.getElementById("bj-scan-preview").style.display = "none";
   document.getElementById("bj-scan-loading").style.display = "none";
+  document.getElementById("bj-synthesis-loading").style.display = "none";
+  // Restore saved synthesis if exists
+  var synthText = saved ? (saved.synthesis||"") : "";
+  _bjSynthesis = synthText;
+  document.getElementById("bj-synthesis-text").textContent = synthText;
+  document.getElementById("bj-synthesis-card").style.display = synthText ? "block" : "none";
   _bjRender();
 }
 
@@ -13025,6 +13048,60 @@ function _bjPersist(){
   }
 }
 
+function bjSynthesise(){
+  if(!_bjNotes.length){ alert("Add some notes first — synthesis is based on what you've captured."); return; }
+  if(!_bjBook) return;
+  var btn = document.getElementById("bj-synth-btn");
+  btn.disabled = true; btn.textContent = "…";
+  document.getElementById("bj-synthesis-card").style.display = "none";
+  document.getElementById("bj-synthesis-loading").style.display = "block";
+  fetch("/api/books/synthesise", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({title: _bjBook.title||"", author: _bjBook.author||"", notes: _bjNotes})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    document.getElementById("bj-synthesis-loading").style.display = "none";
+    if(d.error){ alert("Synthesis failed: "+d.error); return; }
+    document.getElementById("bj-synthesis-text").textContent = d.synthesis;
+    document.getElementById("bj-synthesis-card").style.display = "block";
+    // Persist synthesis with the book
+    _bjSynthesis = d.synthesis;
+    _bjPersistSynthesis();
+  })
+  .catch(function(){
+    document.getElementById("bj-synthesis-loading").style.display = "none";
+    alert("Failed — check your connection");
+  })
+  .finally(function(){
+    btn.disabled = false; btn.textContent = "✨ Synthesise";
+  });
+}
+
+function bjCopySynthesis(){
+  var text = document.getElementById("bj-synthesis-text").textContent;
+  if(!text) return;
+  navigator.clipboard.writeText(text).then(function(){
+    var btn = event.target;
+    btn.textContent = "✓ Copied"; setTimeout(function(){ btn.textContent = "Copy"; }, 2000);
+  });
+}
+
+function _bjPersistSynthesis(){
+  if(!_bjBook || !_bjBook.isbn) return;
+  var lib = _bkGetLib();
+  var idx = lib.findIndex(function(b){ return b.isbn===_bjBook.isbn; });
+  if(idx < 0) return;
+  lib[idx].synthesis = _bjSynthesis;
+  _bkSetLib(lib);
+  var phone = _bkPhone();
+  if(phone){
+    fetch("/api/books/save", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({phone:phone, book:lib[idx]})}).catch(function(){});
+  }
+}
+
 function bjExport(){
   if(!_bjBook) return;
   if(!_bjNotes.length){ alert("No notes to export yet."); return; }
@@ -13036,6 +13113,15 @@ function bjExport(){
     "─".repeat(40),
     ""
   ];
+  if(_bjSynthesis){
+    lines.push("✨ WHAT YOU LEARNED");
+    lines.push(_bjSynthesis);
+    lines.push("");
+    lines.push("─".repeat(40));
+    lines.push("");
+    lines.push("NOTES");
+    lines.push("");
+  }
   _bjNotes.forEach(function(note){
     var dt = new Date(note.ts);
     var dateStr = dt.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})
@@ -13137,6 +13223,7 @@ function bookSave(){
     source: _bookDetailOwned ? (_bookDetailSource||"physical") : (bk.source||"scanned"),
     notes:document.getElementById("bd-notes").value.trim(),
     notes_v2: (_existingEntry && _existingEntry.notes_v2) ? _existingEntry.notes_v2 : [],
+    synthesis: (_existingEntry && _existingEntry.synthesis) ? _existingEntry.synthesis : "",
     added:new Date().toISOString().slice(0,10) };
   // Update localStorage cache
   var cached=_bkGetLib().filter(function(b){ return b.isbn!==entry.isbn; });
