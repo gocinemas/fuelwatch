@@ -391,6 +391,24 @@ def _store_events(profile: dict, events: list[dict], gmail_msg_id: str, sent_dat
                     continue
             except ValueError:
                 pass
+        # If this is a reschedule/cancel notice, delete the superseded original event
+        if any(kw in title.lower() for kw in ("reschedul", "postpone", "cancel")):
+            sig = [w for w in re.split(r'\W+', re.sub(r'reschedul\w*|postpone\w*|cancel\w*', '', title.lower())) if len(w) > 3]
+            if sig:
+                try:
+                    old_evs = lib._sb().table("school_events") \
+                        .select("id, event_title") \
+                        .eq("from_number", profile["from_number"]) \
+                        .execute().data or []
+                    for old_ev in old_evs:
+                        old_t = (old_ev.get("event_title") or "").lower()
+                        if any(kw in old_t for kw in ("reschedul", "postpone", "cancel")):
+                            continue
+                        if sum(1 for w in sig if w in old_t) >= min(2, len(sig)):
+                            lib._sb().table("school_events").delete().eq("id", old_ev["id"]).execute()
+                            print(f"[school] deleted superseded event '{old_ev['event_title']}' → '{title}'")
+                except Exception as _ce:
+                    print(f"[school] reschedule cleanup: {_ce}")
         try:
             desc = ev.get("description", "") or ""
             link = ev.get("link_url") or ""

@@ -17159,8 +17159,27 @@ _bkBadge();
       if (!seen[k]) { seen[k] = true; uniq.push(e); }
     }
 
-    // Pass 2: fuzzy same-date dedup — cluster events on the same date with overlapping title words
+    // Pass 1b: reschedule/cancel detection — suppress originals superseded by a reschedule notice
+    // e.g. "Rescheduled Geography Fieldwork (10 Jun)" suppresses "Geography Fieldwork walk (3 Jun)"
+    const _rescKw = /\b(reschedul|postpone|cancel)/i;
     const _stops = new Set(['a','an','the','and','or','for','to','of','in','on','at','is','with','about','from','your','session','drop','first','parent','support']);
+    const _sigWords = t => (t||'').toLowerCase().replace(_rescKw,'').split(/\W+/).filter(w => w.length > 3 && !_stops.has(w));
+    const _suppressed = new Set();
+    for (const rev of uniq) {
+      if (!_rescKw.test(rev.event_title||'')) continue;
+      const revWords = new Set(_sigWords(rev.event_title));
+      if (!revWords.size) continue;
+      for (const ev of uniq) {
+        if (ev === rev || _suppressed.has(ev.id)) continue;
+        if (_rescKw.test(ev.event_title||'')) continue; // never suppress another reschedule notice
+        const evWords = _sigWords(ev.event_title);
+        const matches = evWords.filter(w => revWords.has(w)).length;
+        if (matches >= Math.min(2, revWords.size)) _suppressed.add(ev.id);
+      }
+    }
+    const uniqF = uniq.filter(e => !_suppressed.has(e.id));
+
+    // Pass 2: fuzzy same-date dedup — cluster events on the same date with overlapping title words
     function _titleWords(t) { return (t||'').toLowerCase().split(/\W+/).filter(w => w.length > 2 && !_stops.has(w)); }
     function _overlap(a, b) {
       const wa = new Set(_titleWords(a)), wbArr = _titleWords(b);
@@ -17170,13 +17189,13 @@ _bkBadge();
     }
     function _richness(e) { return (e.action_needed ? 200 : 0) + (e.description||'').length + (e.action_needed||'').length; }
     const deduped = [], usedIdx = new Set();
-    for (let i = 0; i < uniq.length; i++) {
+    for (let i = 0; i < uniqF.length; i++) {
       if (usedIdx.has(i)) continue;
-      const cluster = [uniq[i]];
-      for (let j = i+1; j < uniq.length; j++) {
+      const cluster = [uniqF[i]];
+      for (let j = i+1; j < uniqF.length; j++) {
         if (usedIdx.has(j)) continue;
-        if (uniq[i].event_date && uniq[i].event_date === uniq[j].event_date && _overlap(uniq[i].event_title, uniq[j].event_title) >= 0.35) {
-          cluster.push(uniq[j]); usedIdx.add(j);
+        if (uniqF[i].event_date && uniqF[i].event_date === uniqF[j].event_date && _overlap(uniqF[i].event_title, uniqF[j].event_title) >= 0.35) {
+          cluster.push(uniqF[j]); usedIdx.add(j);
         }
       }
       cluster.sort((a,b) => _richness(b) - _richness(a));
