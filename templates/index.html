@@ -21297,9 +21297,18 @@ window.spotifyAddTrack = window.spotifyLike;
   // Called when user taps the trains card in the home brief — skips idle if commute is saved
   window._openTrainsFromBrief = function() {
     var bh = _getBm("home");
+    // If no localStorage bookmark, try to bootstrap it from server prefs (train_from CRS)
+    if (!bh) {
+      var prefs = (_briefData && _briefData.prefs) || {};
+      var fromCrs = (prefs.train_from || "").trim().toUpperCase();
+      if (fromCrs) {
+        // Save bookmark so trains screen can use it
+        _saveBm("home", fromCrs, fromCrs);
+        bh = {crs: fromCrs, name: fromCrs};
+      }
+    }
     if (bh && bh.crs) {
-      // Pre-set station so showScreen override skips _showIdle
-      _trainCrs = bh.crs; _trainName = bh.name || "";
+      _trainCrs = bh.crs; _trainName = bh.name || bh.crs;
     }
     showScreen("trains");
     setTimeout(function() {
