@@ -15366,7 +15366,7 @@ _bkBadge();
           + (new Date().getHours() >= 9 && new Date().getHours() < 19 ? '<button onclick="_briefFindNearby(\'park\')" style="font-size:12px;font-weight:700;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:6px 10px;cursor:pointer">🌳</button>' : '')
           + '</div></div>';
       }
-    } else if (!out && !_isOffHours && !_noTrainsDay && trains && trains.departures && trains.departures.length) {
+    } else if (!wfh && !out && !_isOffHours && !_noTrainsDay && trains && trains.departures && trains.departures.length) {
       var _nowMins = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
       var futureDeps = trains.departures.filter(function(d) {
         var t = (d.departs || d.time || "").trim();
@@ -15580,31 +15580,6 @@ _bkBadge();
       });
     }
 
-    // Calendar — today's events in morning/daytime, tomorrow's in evening
-    var _calEvents = (_briefData && _briefData.calendar) || (ctx && ctx.calendar) || [];
-    if (_calEvents.length) {
-      var _todayStr    = new Date().toISOString().slice(0, 10);
-      var _tomorrowStr = (function(){ var d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); })();
-      var _showCal = _isMorning || (!_isOffHours); // morning + daytime show today
-      var _calToShow = _calEvents.filter(function(e) {
-        if (_isEvening) return e.date === _tomorrowStr;
-        return e.date === _todayStr;
-      }).slice(0, 4);
-      if (_calToShow.length) {
-        var _calLabel = _isEvening ? "📅 Tomorrow" : "📅 Today";
-        var _calRows = _calToShow.map(function(e) {
-          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
-            + (e.start ? '<span style="font-size:12px;font-weight:700;color:var(--accent);min-width:40px">' + e.start + '</span>' : '<span style="min-width:40px"></span>')
-            + '<span style="font-size:13px;color:var(--text);font-weight:500">' + e.title + '</span>'
-            + '</div>';
-        }).join("");
-        html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">' + _calLabel + '</div>'
-          + _calRows
-          + '</div>';
-      }
-    }
-
     // Out mode — replace trains + fuel with a Nearby CTA
     if (out && !_isOffHours) {
       var _outLabel = _myAreaGpsLabel || "your area";
@@ -15659,9 +15634,9 @@ _bkBadge();
         + '</div>';
     }
 
-    // Saves — in evening/night surface food + entertainment first
+    // Saves — evening/night only; daytime clippings add noise, not value
     var saves = ctx && ctx.saves;
-    if (saves && saves.length) {
+    if (_isOffHours && saves && saves.length) {
       if (_isOffHours) {
         // Evening/night: only dining receipts survive. Coffee/groceries/shops are done for the day.
         // Also filter out junk saves (advertisement titles, no meaningful content).
