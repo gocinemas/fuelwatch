@@ -7064,12 +7064,12 @@ def _v2_fetch_school(from_number: str) -> dict:
             return ev
         # Upcoming events — next 42 days
         upcoming = [_enrich(e) for e in (lib._sb().table("school_events").select(
-            "profile_id,event_title,event_date,event_type,action_needed"
+            "id,profile_id,event_title,event_date,event_type,action_needed"
         ).in_("profile_id", pids).gte("event_date", today_s).lte("event_date", horizon) \
          .order("event_date").execute().data or [])]
         # Recent comms — emails received in last 14 days
         recent_rows = [_enrich(e) for e in (lib._sb().table("school_events").select(
-            "profile_id,event_title,event_date,event_type,created_at"
+            "id,profile_id,event_title,event_date,event_type,created_at"
         ).in_("profile_id", pids).gte("created_at", recent + "T00:00:00") \
          .order("created_at", desc=True).limit(5).execute().data or [])]
         # Inset days — school-specific days off from Gmail scan (today or tomorrow)

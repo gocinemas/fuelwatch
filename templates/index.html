@@ -15315,20 +15315,21 @@ _bkBadge();
     var _rescKw = /\b(reschedul|postpone|cancel)/i;
     var _stops  = new Set(['a','an','the','and','or','for','to','of','in','on','at','is','with','about','from','your']);
     var _sig    = function(t) { return (t||'').toLowerCase().replace(_rescKw,'').split(/\W+/).filter(function(w){ return w.length > 3 && !_stops.has(w); }); };
+    var _ekey   = function(e) { return (e.id || '') || ((e.event_title||'') + '|' + (e.event_date||'')); };
     var _supp   = new Set();
     allEvents.forEach(function(rev) {
       if (!_rescKw.test(rev.event_title||'')) return;
       var rw = new Set(_sig(rev.event_title));
       if (!rw.size) return;
       allEvents.forEach(function(ev) {
-        if (ev === rev || _supp.has(ev.id) || _rescKw.test(ev.event_title||'')) return;
-        if (_sig(ev.event_title).filter(function(w){ return rw.has(w); }).length >= Math.min(2, rw.size)) _supp.add(ev.id);
+        if (ev === rev || _supp.has(_ekey(ev)) || _rescKw.test(ev.event_title||'')) return;
+        if (_sig(ev.event_title).filter(function(w){ return rw.has(w); }).length >= Math.min(2, rw.size)) _supp.add(_ekey(ev));
       });
     });
 
     // Filter: no newsletters, no suppressed originals
     var filtered = allEvents.filter(function(e) {
-      return e.event_type !== 'newsletter' && !_supp.has(e.id);
+      return e.event_type !== 'newsletter' && !_supp.has(_ekey(e));
     });
 
     // Group by child_name, up to 3 per child
