@@ -15067,8 +15067,11 @@ _bkBadge();
       var schoolRaw  = ctx && ctx.school;
       var schoolEvs  = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
       var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
-      if (schoolKids.length)
-        chips.push({ label: "🚗 School run: " + schoolKids.map(function(s){ return s.child_name; }).join(" & "), action: "_schoolHomeOpen()" });
+      if (schoolKids.length) {
+        var _kSeen = new Set(), _kNames = [];
+        schoolKids.forEach(function(s) { var fn = (s.child_name||"").split(/\s+/)[0]; if (fn && !_kSeen.has(fn)) { _kSeen.add(fn); _kNames.push(fn); } });
+        chips.push({ label: "🚗 School run: " + _kNames.join(" & "), action: "_schoolHomeOpen()" });
+      }
       else if (schoolEvs.length)
         chips.push({ label: "🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""), action: "_schoolHomeOpen()" });
     }
@@ -15332,12 +15335,17 @@ _bkBadge();
       return e.event_type !== 'newsletter' && !_supp.has(_ekey(e));
     });
 
-    // Group by child_name, up to 3 per child
+    // Group by child_name, up to 3 per child; sort by soonest event date
     var byChild = {}, childOrder = [];
     filtered.forEach(function(ev) {
       var cn = ev.child_name || "School";
       if (!byChild[cn]) { byChild[cn] = []; childOrder.push(cn); }
       if (byChild[cn].length < 3) byChild[cn].push(ev);
+    });
+    childOrder.sort(function(a, b) {
+      var da = (byChild[a][0] || {}).event_date || "9999";
+      var db = (byChild[b][0] || {}).event_date || "9999";
+      return da.localeCompare(db);
     });
 
     if (!childOrder.length && !_onHoliday) { slot.style.display = "none"; return; }
