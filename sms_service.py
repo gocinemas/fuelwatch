@@ -6681,12 +6681,14 @@ def api_v2_recurring_add():
     if not from_number:
         return jsonify({"error": "token required"}), 401
     raw_location = (body.get("location") or "").strip()
+    _resume = (body.get("resume_from") or "").strip() or None
     act = {
-        "activity": (body.get("activity") or "").strip(),
-        "weekday":  body.get("weekday"),
-        "time":     (body.get("time") or "").strip(),
-        "child":    (body.get("child") or "").strip(),
-        "location": raw_location,
+        "activity":    (body.get("activity") or "").strip(),
+        "weekday":     body.get("weekday"),
+        "time":        (body.get("time") or "").strip(),
+        "child":       (body.get("child") or "").strip(),
+        "location":    raw_location,
+        "resume_from": _resume,
     }
     if not act["activity"] or act["weekday"] is None:
         return jsonify({"error": "activity and weekday required"}), 400
@@ -7470,12 +7472,24 @@ _DOW_MAP = {
 
 
 def _v2_fetch_recurring(from_number: str, weekday: int) -> list:
-    """Return recurring activities scheduled for today (weekday 0=Mon … 6=Sun)."""
+    """Return recurring activities scheduled for today (weekday 0=Mon … 6=Sun).
+    Suppresses activities where resume_from is in the future."""
     try:
+        from datetime import date as _rd
+        _today = _rd.today().isoformat()
         rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number) \
             .eq("type", "recurring_activities").limit(1).execute().data or []
         activities = (rows[0]["data"] if rows else []) or []
-        return [a for a in activities if a.get("weekday") == weekday]
+        result = []
+        for a in activities:
+            if a.get("weekday") != weekday:
+                continue
+            _rf = (a.get("resume_from") or "").strip()
+            if _rf and _rf > _today:
+                # Paused — skip silently (brief narrative handles warning)
+                continue
+            result.append(a)
+        return result
     except Exception:
         return []
 
@@ -8979,6 +8993,31 @@ def api_home_brief():
             # Leave-time reminder — surface as explicit fact so Groq says "leave by X"
             if _pe_leave and _pe_date == _today_s and _pe_leave > _now_hhmm_cur:
                 facts.append(f"Leave by {_pe_leave} for {pe['title']}")
+    # Warn about paused activities (resume_from in future) — fetch full list to find them
+    try:
+        from datetime import date as _rwd
+        _all_rec_rows = lib._sb().table("ma_details").select("data") \
+            .eq("device_id", from_number).eq("type", "recurring_activities") \
+            .limit(1).execute().data or [] if from_number else []
+        _all_acts = (_all_rec_rows[0]["data"] if _all_rec_rows else []) or []
+        _today_wday = now.weekday()
+        for _pa in _all_acts:
+            if _pa.get("weekday") != _today_wday:
+                continue
+            _prf = (_pa.get("resume_from") or "").strip()
+            if _prf and _prf > _today_s:
+                _pa_who = (_pa.get("child") or "").strip()
+                _pa_act = (_pa.get("activity") or "").strip()
+                try:
+                    _prd = _rwd.fromisoformat(_prf)
+                    _pr_label = _prd.strftime("%-d %b")
+                except Exception:
+                    _pr_label = _prf
+                _warn = f"⚠️ {_pa_who + ': ' if _pa_who else ''}{_pa_act} is NOT on today — resumes {_pr_label}"
+                facts.insert(0, _warn)
+    except Exception:
+        pass
+
     # Merge today's recurring activities — suppress during school holidays unless all_year=True
     _recurring_today = ctx.get("recurring") or []
     if _school_holiday_now.get("on_holiday"):

@@ -2824,6 +2824,11 @@
                   style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
               </div>
             </div>
+            <div style="margin-bottom:12px">
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Resumes from <span style="font-weight:400;text-transform:none;letter-spacing:0">(leave blank if running now)</span></div>
+              <input id="clubs-input-resume" type="date"
+                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+            </div>
             <div style="display:flex;gap:8px">
               <button onclick="_clubsAddSave()" style="flex:1;padding:10px;border-radius:12px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Save activity</button>
               <button onclick="_clubsAddClose()" style="padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:transparent;font-size:13px;color:var(--muted);cursor:pointer">Cancel</button>
@@ -6931,7 +6936,7 @@ function _hcAdd() {
     document.querySelectorAll(".clubs-day-btn").forEach(function(btn) {
       btn.style.background = "var(--bg)"; btn.style.color = "var(--muted)"; btn.style.borderColor = "var(--border)";
     });
-    ["activity","time","child","location"].forEach(function(f) {
+    ["activity","time","child","location","resume"].forEach(function(f) {
       const el = document.getElementById("clubs-input-"+f);
       if (el) el.value = "";
     });
@@ -6943,7 +6948,7 @@ function _hcAdd() {
     document.getElementById("clubs-input-activity").focus();
   }
 
-  function _clubsEdit(weekday, activity, time, child, location) {
+  function _clubsEdit(weekday, activity, time, child, location, resume_from) {
     _clubsEditOrig = {weekday, activity};
     _clubsSelectedDay = weekday;
     document.querySelectorAll(".clubs-day-btn").forEach(function(btn) {
@@ -6957,6 +6962,7 @@ function _hcAdd() {
     set("clubs-input-time", time);
     set("clubs-input-child", child);
     set("clubs-input-location", location);
+    set("clubs-input-resume", resume_from || "");
     const title = document.getElementById("clubs-form-title");
     if (title) title.textContent = "Edit activity";
     const err = document.getElementById("clubs-add-error");
@@ -6989,10 +6995,11 @@ function _hcAdd() {
           body: JSON.stringify({token, weekday: _clubsEditOrig.weekday, activity: _clubsEditOrig.activity})
         });
       }
+      const resume_from = (document.getElementById("clubs-input-resume").value || "").trim();
       const r = await fetch("/api/v2/recurring", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({token, activity, weekday: _clubsSelectedDay, time, child, location})
+        body: JSON.stringify({token, activity, weekday: _clubsSelectedDay, time, child, location, resume_from: resume_from || null})
       });
       if (!r.ok) throw new Error("Save failed");
       const saved = await r.json();
@@ -7256,22 +7263,29 @@ function _hcAdd() {
         const childEsc= (a.child||"").replace(/'/g, "\\'");
         const timeEsc = (a.time||"").replace(/'/g, "\\'");
         const isAllYear = !!a.all_year;
+        const resumeFrom = a.resume_from || "";
+        const today2 = new Date().toISOString().slice(0,10);
+        const isPaused = resumeFrom && resumeFrom > today2;
+        const resumeEsc = resumeFrom.replace(/'/g,"\\'");
         const allYearBadge = isAllYear
           ? '<span title="Runs all year — shows during school holidays" style="font-size:10px;font-weight:700;color:#065f46;background:#d1fae5;border-radius:8px;padding:2px 7px;cursor:pointer" onclick="_clubsToggleAllYear(' + a.weekday + ',\'' + actEsc + '\',' + isAllYear + ')">🗓️ All year</span>'
           : '<span title="Term time only — tap to mark as all year" style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px 7px;cursor:pointer" onclick="_clubsToggleAllYear(' + a.weekday + ',\'' + actEsc + '\',' + isAllYear + ')">Term only</span>';
-        return '<div style="display:flex;align-items:flex-start;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 13px;margin-bottom:8px">' +
+        const pausedBadge = isPaused
+          ? '<span style="font-size:10px;font-weight:700;color:#d97706;background:#fef3c7;border-radius:8px;padding:2px 7px">⏸ resumes ' + resumeFrom + '</span>'
+          : "";
+        return '<div style="display:flex;align-items:flex-start;justify-content:space-between;background:var(--surface);border:1px solid ' + (isPaused ? '#fde68a' : 'var(--border)') + ';border-radius:14px;padding:12px 13px;margin-bottom:8px">' +
           '<div style="display:flex;align-items:flex-start;gap:10px">' +
-            '<div style="background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:4px 8px;border-radius:8px;flex-shrink:0;margin-top:1px;letter-spacing:.03em">' + dayLabel + '</div>' +
+            '<div style="background:' + (isPaused ? '#d97706' : '#7c3aed') + ';color:#fff;font-size:10px;font-weight:800;padding:4px 8px;border-radius:8px;flex-shrink:0;margin-top:1px;letter-spacing:.03em">' + dayLabel + '</div>' +
             '<div>' +
               '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
                 '<span style="font-size:14px;font-weight:700;color:var(--text)">' + a.activity + '</span>' +
-                who + time + allYearBadge +
+                who + time + allYearBadge + pausedBadge +
               '</div>' +
               loc +
             '</div>' +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">' +
-            '<button onclick="_clubsEdit(' + a.weekday + ',\'' + actEsc + '\',\'' + timeEsc + '\',\'' + childEsc + '\',\'' + locEsc + '\')" title="Edit" style="background:none;border:none;font-size:14px;color:var(--muted);cursor:pointer;padding:0 4px;line-height:1">✏️</button>' +
+            '<button onclick="_clubsEdit(' + a.weekday + ',\'' + actEsc + '\',\'' + timeEsc + '\',\'' + childEsc + '\',\'' + locEsc + '\',\'' + resumeEsc + '\')" title="Edit" style="background:none;border:none;font-size:14px;color:var(--muted);cursor:pointer;padding:0 4px;line-height:1">✏️</button>' +
             '<button onclick="_clubsDelete(' + a.weekday + ',\'' + actEsc + '\')" title="Remove" style="background:none;border:none;font-size:15px;color:var(--muted);cursor:pointer;padding:0 0 0 4px;line-height:1">✕</button>' +
           '</div>' +
         '</div>';
