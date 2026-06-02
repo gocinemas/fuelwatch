@@ -14221,13 +14221,11 @@ _bkBadge();
 
     <!-- School name + refresh -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div id="school-profile-card" style="font-size:13px;color:#6b7280"></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button id="school-fetch-btn" onclick="schoolFetchNow()" title="Pull latest emails from school" style="font-size:12px;color:#059669;background:none;border:1px solid #bbf7d0;border-radius:8px;cursor:pointer;padding:3px 8px">fetch emails</button>
-        <button id="school-dedup-btn" onclick="schoolDedup()" title="Remove duplicate events" style="font-size:12px;color:#9ca3af;background:none;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;padding:3px 8px">dedup</button>
-        <a href="/school/settings" target="_blank" title="School settings" style="font-size:15px;color:#9ca3af;text-decoration:none;padding:4px">⚙️</a>
-        <button onclick="schoolLoad()" style="font-size:16px;color:#9ca3af;background:none;border:none;cursor:pointer;padding:4px">↻</button>
-        <span id="school-synced-label" style="font-size:11px;color:#9ca3af;margin-left:4px"></span>
+      <div id="school-profile-card" style="font-size:13px;font-weight:600;color:var(--text)"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span id="school-synced-label" style="font-size:11px;color:#9ca3af"></span>
+        <button onclick="schoolFetchNow()" title="Fetch latest emails" style="font-size:13px;color:#9ca3af;background:none;border:none;cursor:pointer;padding:4px">↻</button>
+        <a href="/school/settings" target="_blank" title="Settings" style="font-size:15px;color:#9ca3af;text-decoration:none;padding:4px">⚙️</a>
       </div>
     </div>
 
@@ -17416,27 +17414,30 @@ _bkBadge();
         ? _schoolAllEvents.filter(e => e.profile_id === _schoolActiveProfileId)
         : _schoolAllEvents;
       _schoolRenderEvents(filtered);
+
+      // Silent background dedup — clean DB without blocking UI
+      fetch("/api/school/dedup", { method: "POST", headers: _schoolHeaders() })
+        .then(r => r.json())
+        .then(d => { if (d.deleted > 0) setTimeout(() => schoolLoad(), 600); })
+        .catch(() => {});
     } catch(e) {
       document.getElementById("school-loading").textContent = "Error loading events.";
     }
   };
 
   window.schoolFetchNow = async function() {
-    const btn = document.getElementById("school-fetch-btn");
-    btn.textContent = "fetching…";
-    btn.disabled = true;
+    const lbl = document.getElementById("school-synced-label");
+    if (lbl) lbl.textContent = "fetching…";
     try {
       const r = await fetch("/api/school/fetch-now", { method: "POST", headers: _schoolHeaders() });
       if (r.status === 401) { _schoolShowLock(); return; }
       const d = await r.json();
-      if (d.error) { btn.textContent = "error"; return; }
-      btn.textContent = `✓ started`;
-      // Auto-reload after 8s to pick up new events
+      if (lbl) lbl.textContent = d.error ? "error" : "✓ started";
       setTimeout(() => schoolLoad(), 8000);
     } catch(e) {
-      btn.textContent = "error";
+      if (lbl) lbl.textContent = "error";
     } finally {
-      setTimeout(() => { btn.textContent = "fetch emails"; btn.disabled = false; }, 12000);
+      setTimeout(() => { if (lbl) lbl.textContent = ""; }, 12000);
     }
   };
 
@@ -17585,12 +17586,13 @@ _bkBadge();
     bar.style.display = "flex";
     bar.innerHTML = _schoolGroups.map((g, i) => {
       const active = i === _schoolActiveSec;
-      return `<button onclick="_schoolSwitchSec(${i})" title="${g.label}"
-        style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;
-               padding:8px 14px;border-radius:20px;border:2px solid ${active?"#1f2937":"#e2e8f0"};
-               background:${active?"#1f2937":"#fff"};cursor:pointer;transition:all .15s">
-        <span style="font-size:20px;line-height:1">${g.icon}</span>
-        <span style="font-size:10px;font-weight:700;color:${active?"#fff":"#6b7280"};letter-spacing:.03em">${g.label}</span>
+      return `<button onclick="_schoolSwitchSec(${i})"
+        style="flex-shrink:0;padding:5px 12px;border-radius:99px;
+               border:1.5px solid ${active?"#1f2937":"#e2e8f0"};
+               background:${active?"#1f2937":"#fff"};cursor:pointer;
+               font-size:12px;font-weight:700;color:${active?"#fff":"#6b7280"};
+               white-space:nowrap;transition:all .15s">
+        ${g.icon} ${g.label} <span style="opacity:.6">${g.items.length}</span>
       </button>`;
     }).join("");
   }
@@ -17614,6 +17616,15 @@ _bkBadge();
     return                              {label: fullDate,          sub: d.getFullYear()+"",dot:"#64748b", bg:"#f8fafc", border:"#e2e8f0", fg:"#475569"};
   }
 
+  function _schoolToggleRow(id) {
+    const d = document.getElementById("school-detail-" + id);
+    const ch = document.getElementById("school-chev-" + id);
+    if (!d) return;
+    const open = d.style.display !== "none";
+    d.style.display = open ? "none" : "block";
+    if (ch) ch.textContent = open ? "›" : "‹";
+  }
+
   function _schoolRenderCards(secIdx) {
     const list = document.getElementById("school-list");
     list.innerHTML = "";
@@ -17626,144 +17637,107 @@ _bkBadge();
     const isComingUp = grp.label === "Coming Up";
 
     if (isComingUp) {
-      // Group by date
-      const byDate = {};
-      const dateOrder = [];
+      const byDate = {}, dateOrder = [];
       for (const ev of grp.items) {
         const dk = ev.event_date || "undated";
         if (!byDate[dk]) { byDate[dk] = []; dateOrder.push(dk); }
         byDate[dk].push(ev);
       }
-
       for (const dk of dateOrder) {
         const evs = byDate[dk];
         const meta = dk !== "undated" ? _schoolDateMeta(dk) : null;
-
-        // Date header
+        // Compact date divider
         const hdr = document.createElement("div");
-        hdr.style.cssText = "display:flex;align-items:center;gap:10px;margin:18px 0 10px;";
+        hdr.style.cssText = "display:flex;align-items:center;gap:8px;margin:14px 0 6px";
         if (meta) {
-          hdr.innerHTML = `
-            <div style="background:${meta.bg};border:1.5px solid ${meta.border};border-radius:12px;padding:8px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0">
-              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${meta.dot};flex-shrink:0"></span>
-              <div>
-                <div style="font-size:13px;font-weight:800;color:${meta.fg};letter-spacing:-.2px;line-height:1">${meta.label}</div>
-                <div style="font-size:10px;color:${meta.fg};opacity:.7;margin-top:2px;font-weight:600">${meta.sub}</div>
-              </div>
-            </div>
-            <div style="flex:1;height:1px;background:#f1f5f9"></div>`;
+          hdr.innerHTML = `<span style="font-size:11px;font-weight:800;color:${meta.fg};background:${meta.bg};border:1px solid ${meta.border};border-radius:99px;padding:2px 9px;white-space:nowrap">${meta.label}</span><div style="flex:1;height:1px;background:#f1f5f9"></div>`;
         } else {
-          hdr.innerHTML = `<div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em">No date</div><div style="flex:1;height:1px;background:#f1f5f9"></div>`;
+          hdr.innerHTML = `<span style="font-size:11px;font-weight:700;color:#9ca3af">No date</span><div style="flex:1;height:1px;background:#f1f5f9"></div>`;
         }
         list.appendChild(hdr);
-
-        // Events under this date (no date chip — date is in the header)
         for (const ev of evs) {
-          const card = document.createElement("div");
-          card.style.cssText = "background:#fff;border:1px solid #f1f5f9;border-radius:14px;padding:13px 14px;margin-bottom:8px";
-          const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
-          const titleEl = gmailUrl
-            ? `<a href="${gmailUrl}" target="_blank" rel="noopener" style="color:#111;font-weight:800;font-size:14px;line-height:1.35;text-decoration:none;display:block">${ev.event_title} ↗</a>`
-            : `<div style="font-weight:800;font-size:14px;line-height:1.35;color:#111">${ev.event_title}</div>`;
-          const deleteBtn = `<button onclick="schoolDeleteEvent('${ev.id}',this)" style="float:right;margin-left:8px;border:none;background:none;font-size:14px;color:#d1d5db;cursor:pointer;padding:0;line-height:1" title="Remove">✕</button>`;
-          let html = deleteBtn + titleEl;
-          if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:7px;line-height:1.6">${_lk(ev.description)}</div>`;
-          if (ev.action_needed) {
-            const dl = ev.deadline ? ` · <span style="color:#ef4444">by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>` : "";
-            html += `<div style="font-size:12px;color:#b45309;margin-top:8px;font-weight:700;background:#fffbeb;border-radius:6px;padding:6px 10px">✏️ ${_lk(ev.action_needed)}${dl}</div>`;
-          }
-          card.id = `school-ev-${ev.id}`;
-          card.innerHTML = html;
-          list.appendChild(card);
+          list.appendChild(_schoolCompactRow(ev, _lk, false));
         }
       }
       return;
     }
 
-    // All other sections — flat card rendering
+    // All other sections — compact rows
     const isGeneral = grp.label === "General";
-
-    // For General tab: sort by urgency — overdue first, then due soon, then action-needed, then info
     const items = isGeneral ? [...grp.items].sort((a, b) => {
-      const _urgency = ev => {
+      const _u = ev => {
         if (!ev.deadline && !ev.action_needed) return 3;
         if (!ev.deadline) return 2;
         const diff = Math.round((new Date(ev.deadline+"T00:00:00") - new Date()) / 86400000);
-        if (diff < 0) return -1;
-        if (diff <= 2) return 0;
-        if (diff <= 7) return 1;
-        return 2;
+        return diff < 0 ? -1 : diff <= 2 ? 0 : diff <= 7 ? 1 : 2;
       };
-      return _urgency(a) - _urgency(b);
+      return _u(a) - _u(b);
     }) : grp.items;
-
     for (const ev of items) {
-      const isNewsletter = ev.event_type === "newsletter";
-      const isFuture = ev.event_date && ev.event_date >= todayStr;
-
-      // Urgency styling for General tab
-      let cardStyle = isNewsletter
-        ? "background:#faf5ff;border:1px solid #e9d5ff;border-radius:14px;padding:14px 16px;margin-bottom:10px"
-        : "background:#fff;border:1px solid #f1f5f9;border-radius:14px;padding:14px 16px;margin-bottom:10px";
-
-      let urgencyBanner = "";
-      if (isGeneral && (ev.action_needed || ev.deadline || ev.event_type === "deadline")) {
-        const today0 = new Date(); today0.setHours(0,0,0,0);
-        const dlDiff = ev.deadline ? Math.round((new Date(ev.deadline+"T00:00:00") - today0) / 86400000) : null;
-        if (dlDiff !== null && dlDiff < 0) {
-          // Overdue
-          cardStyle = "background:#fff1f2;border:2px solid #fca5a5;border-radius:14px;padding:14px 16px;margin-bottom:10px";
-          urgencyBanner = `<div style="font-size:11px;font-weight:800;color:#b91c1c;background:#fee2e2;border-radius:6px;padding:4px 10px;margin-bottom:8px;display:inline-block">⚠️ OVERDUE</div>`;
-        } else if (dlDiff !== null && dlDiff <= 2) {
-          // Due very soon
-          cardStyle = "background:#fff7ed;border:2px solid #fdba74;border-radius:14px;padding:14px 16px;margin-bottom:10px";
-          urgencyBanner = `<div style="font-size:11px;font-weight:800;color:#c2410c;background:#ffedd5;border-radius:6px;padding:4px 10px;margin-bottom:8px;display:inline-block">🔴 DUE ${dlDiff===0?"TODAY":"TOMORROW"}</div>`;
-        } else if (dlDiff !== null && dlDiff <= 7) {
-          cardStyle = "background:#fffbeb;border:2px solid #fde68a;border-radius:14px;padding:14px 16px;margin-bottom:10px";
-          urgencyBanner = `<div style="font-size:11px;font-weight:800;color:#92400e;background:#fef3c7;border-radius:6px;padding:4px 10px;margin-bottom:8px;display:inline-block">🟡 DUE IN ${dlDiff}d</div>`;
-        } else if (ev.action_needed) {
-          cardStyle = "background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:14px 16px;margin-bottom:10px";
-          urgencyBanner = `<div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:6px;display:inline-block">✏️ Action needed</div>`;
-        }
-      }
-
-      const card = document.createElement("div");
-      card.style.cssText = cardStyle;
-
-      const gmailUrl = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
-      const titleEl = gmailUrl
-        ? `<a href="${gmailUrl}" target="_blank" rel="noopener"
-             style="color:${isNewsletter?"#6d28d9":"#111"};font-weight:800;font-size:15px;line-height:1.3;text-decoration:none;display:block">
-             ${ev.event_title}${isNewsletter?" ↗":""}
-           </a>`
-        : `<div style="font-weight:800;font-size:15px;line-height:1.3;color:#111">${ev.event_title}</div>`;
-
-      let dateChip = "";
-      if (ev.event_date) {
-        const d = new Date(ev.event_date+"T00:00:00");
-        const label = d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
-        const bg = isFuture ? "#fef3c7" : "#f1f5f9";
-        const fg = isFuture ? "#92400e" : "#6b7280";
-        dateChip = `<span style="display:inline-block;background:${bg};color:${fg};font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;margin-top:6px">📅 ${label}</span>`;
-      } else if (isNewsletter && ev.created_at) {
-        const label = new Date(ev.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
-        dateChip = `<span style="display:inline-block;background:#f5f3ff;color:#6d28d9;font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;margin-top:6px">${label}</span>`;
-      }
-
-      const deleteBtn = `<button onclick="schoolDeleteEvent('${ev.id}',this)"
-        style="float:right;margin-left:10px;border:none;background:none;font-size:15px;color:#d1d5db;cursor:pointer;padding:0;line-height:1"
-        title="Remove this event">✕</button>`;
-
-      let html = deleteBtn + urgencyBanner + titleEl + dateChip;
-      if (ev.description) html += `<div style="font-size:12px;color:#6b7280;margin-top:8px;line-height:1.6">${_lk(ev.description)}</div>`;
-      if (ev.action_needed) {
-        const dl = ev.deadline ? ` · <span style="color:#ef4444;font-weight:800">by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>` : "";
-        html += `<div style="font-size:12px;color:#b45309;margin-top:8px;font-weight:700;background:#fffbeb;border-radius:6px;padding:6px 10px">✏️ ${_lk(ev.action_needed)}${dl}</div>`;
-      }
-      card.id = `school-ev-${ev.id}`;
-      card.innerHTML = html;
-      list.appendChild(card);
+      list.appendChild(_schoolCompactRow(ev, _lk, isGeneral));
     }
+  }
+
+  function _schoolCompactRow(ev, _lk, showUrgency) {
+    const todayStr = new Date().toISOString().slice(0,10);
+    const isNewsletter = ev.event_type === "newsletter";
+    const hasDetail = ev.description || ev.action_needed;
+    const gmailUrl  = ev.gmail_msg_id ? `https://mail.google.com/mail/u/0/#inbox/${ev.gmail_msg_id}` : "";
+
+    // Urgency dot for General tab
+    let dot = "#cbd5e1"; // neutral grey
+    if (showUrgency && (ev.action_needed || ev.deadline)) {
+      if (ev.deadline) {
+        const diff = Math.round((new Date(ev.deadline+"T00:00:00") - new Date()) / 86400000);
+        dot = diff < 0 ? "#ef4444" : diff <= 2 ? "#f97316" : diff <= 7 ? "#eab308" : "#6366f1";
+      } else {
+        dot = "#6366f1";
+      }
+    }
+
+    // Right-side chip
+    let chip = "";
+    if (ev.event_date) {
+      const d = new Date(ev.event_date+"T00:00:00");
+      const label = d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+      const past = ev.event_date < todayStr;
+      chip = `<span style="font-size:10px;font-weight:700;color:${past?"#9ca3af":"#6b7280"};white-space:nowrap;flex-shrink:0">${label}</span>`;
+    } else if (isNewsletter && ev.created_at) {
+      chip = `<span style="font-size:10px;font-weight:700;color:#9ca3af;white-space:nowrap;flex-shrink:0">${new Date(ev.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>`;
+    }
+
+    const row = document.createElement("div");
+    row.id = `school-ev-${ev.id}`;
+    row.style.cssText = "border-bottom:1px solid #f1f5f9;padding:9px 0";
+
+    const titleHtml = gmailUrl
+      ? `<a href="${gmailUrl}" target="_blank" rel="noopener" style="color:${isNewsletter?"#6d28d9":"#111"};font-weight:600;font-size:13px;text-decoration:none;line-height:1.35">${ev.event_title}${isNewsletter?" ↗":""}</a>`
+      : `<span style="font-weight:600;font-size:13px;color:#111;line-height:1.35">${ev.event_title}</span>`;
+
+    let detailHtml = "";
+    if (hasDetail) {
+      let inner = "";
+      if (ev.description) inner += `<div style="font-size:12px;color:#6b7280;margin-top:6px;line-height:1.55">${_lk(ev.description)}</div>`;
+      if (ev.action_needed) {
+        const dl = ev.deadline ? ` · <span style="color:#ef4444">by ${new Date(ev.deadline+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span>` : "";
+        inner += `<div style="font-size:12px;color:#b45309;margin-top:6px;font-weight:700;background:#fffbeb;border-radius:6px;padding:5px 9px">✏️ ${_lk(ev.action_needed)}${dl}</div>`;
+      }
+      detailHtml = `<div id="school-detail-${ev.id}" style="display:none;padding-bottom:4px">${inner}</div>`;
+    }
+
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0"></span>
+        <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:${hasDetail?"pointer":"default"}"
+             onclick="${hasDetail?`_schoolToggleRow('${ev.id}')`:""}">
+          ${titleHtml}
+        </div>
+        ${chip}
+        ${hasDetail ? `<span id="school-chev-${ev.id}" style="font-size:14px;color:#9ca3af;cursor:pointer;flex-shrink:0" onclick="_schoolToggleRow('${ev.id}')">›</span>` : ""}
+        <button onclick="schoolDeleteEvent('${ev.id}',this)" style="border:none;background:none;font-size:13px;color:#d1d5db;cursor:pointer;padding:0;flex-shrink:0;line-height:1" title="Remove">✕</button>
+      </div>
+      ${detailHtml}`;
+    return row;
   }
 
   window.schoolDeleteEvent = async function(eventId, btn) {
