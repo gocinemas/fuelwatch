@@ -12391,6 +12391,18 @@ function _hcAdd() {
 
     <!-- ── SCANNED BOOKS PANEL ── -->
     <div id="bk-scanned-panel">
+      <!-- Currently Reading card -->
+      <div id="bk-currently-reading" style="display:none;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Currently Reading</div>
+        <div id="bk-cr-card" onclick="bjOpenFromLibrary()" style="display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,#f5f3ff 0%,#ede9fe 100%);border:1.5px solid #c4b5fd;border-radius:16px;padding:14px;cursor:pointer">
+          <img id="bk-cr-cover" src="" alt="" style="width:52px;min-width:52px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.18);display:none" onerror="this.style.display='none'">
+          <div style="flex:1;min-width:0">
+            <div id="bk-cr-title" style="font-size:15px;font-weight:800;color:var(--text);line-height:1.3;letter-spacing:-0.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+            <div id="bk-cr-author" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+            <div style="font-size:12px;color:#7c3aed;font-weight:600;margin-top:6px">📓 Open reading journal →</div>
+          </div>
+        </div>
+      </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <button class="bk-sort-btn bk-sort-on" data-sort="added"  onclick="bkSetSort('added',this)" >📅 Recent</button>
         <button class="bk-sort-btn"            data-sort="rating" onclick="bkSetSort('rating',this)">⭐ Rating</button>
@@ -12507,6 +12519,7 @@ function _hcAdd() {
     <!-- Actions -->
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
       <button onclick="bookSave()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;cursor:pointer">💾 Save to Library</button>
+      <button onclick="bjOpenFromDetail()" style="padding:12px 14px;border-radius:12px;border:1.5px solid #c4b5fd;background:#f5f3ff;color:#6d28d9;font-size:14px;font-weight:700;cursor:pointer" title="Reading notes & scans">📓</button>
     </div>
     <div id="bd-saved-msg" style="display:none;font-size:13px;color:#059669;font-weight:600;margin-bottom:12px">✓ Saved to your library</div>
 
@@ -12517,6 +12530,47 @@ function _hcAdd() {
       </button>
       <div id="bd-library-result" style="display:none;margin-top:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--text);line-height:1.6"></div>
     </div>
+  </div>
+
+  <!-- ── READING JOURNAL ── -->
+  <div id="book-journal" style="display:none;margin-top:4px">
+    <button onclick="bookCloseJournal()" style="display:flex;align-items:center;gap:5px;border:none;background:none;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;padding:0;margin-bottom:16px">← Back</button>
+    <!-- Compact book header -->
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <img id="bj-cover" src="" alt="" style="width:52px;min-width:52px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);display:none" onerror="this.style.display='none'">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">📖 Reading Journal</div>
+        <div id="bj-title" style="font-size:17px;font-weight:800;color:var(--text);line-height:1.25;letter-spacing:-0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+        <div id="bj-author" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
+      </div>
+    </div>
+    <!-- Notes list -->
+    <div id="bj-notes-list" style="margin-bottom:16px"></div>
+    <div id="bj-empty" style="text-align:center;padding:32px 0;color:var(--muted);font-size:14px;display:none">No notes yet — add a thought or scan a page below.</div>
+    <!-- Scan preview card -->
+    <div id="bj-scan-preview" style="display:none;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:14px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">📷 Scan result — review before adding</div>
+      <div id="bj-scan-text" style="font-size:14px;color:var(--text);line-height:1.65;white-space:pre-wrap;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="bjAddScanNote()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">+ Add to journal</button>
+        <button onclick="bjDiscardScan()" style="padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:13px;cursor:pointer">Discard</button>
+      </div>
+    </div>
+    <!-- Scan loading -->
+    <div id="bj-scan-loading" style="display:none;text-align:center;padding:16px 0;color:var(--muted);font-size:13px;margin-bottom:14px">
+      <span style="display:inline-block;width:18px;height:18px;border:2px solid #ddd6fe;border-top-color:#7c3aed;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle"></span>Reading your scan…
+    </div>
+    <!-- Add note input -->
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px">
+      <textarea id="bj-note-input" rows="2" placeholder="Add a thought, quote or highlight…"
+        style="width:100%;padding:0;border:none;background:transparent;color:var(--text);font-size:14px;font-family:inherit;resize:none;outline:none;box-sizing:border-box;line-height:1.55"
+        onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){bjAddTextNote();event.preventDefault()}"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <button onclick="bjAddTextNote()" style="flex:1;padding:9px;border-radius:10px;border:none;background:var(--text);color:var(--bg);font-size:13px;font-weight:700;cursor:pointer">Add note</button>
+        <button onclick="bjStartScan()" style="padding:9px 14px;border-radius:10px;border:1.5px solid #7c3aed;background:#f5f3ff;color:#6d28d9;font-size:13px;font-weight:700;cursor:pointer">📷 Scan page</button>
+      </div>
+    </div>
+    <input id="bj-scan-file" type="file" accept="image/*" capture="environment" style="display:none" onchange="bjHandleScan(this)">
   </div>
 
 </div>
@@ -12854,6 +12908,157 @@ function bookCloseDetail(){
   _bkRenderLib();
 }
 
+// ── READING JOURNAL ──────────────────────────────────────────────────────────
+var _bjBook  = null;
+var _bjNotes = [];
+var _bjScanText = "";
+
+function _bjHideAll(){
+  ["books-search-panel","books-library-panel","book-detail","book-journal"]
+    .forEach(function(id){ document.getElementById(id).style.display="none"; });
+}
+
+function bjOpenFromDetail(){
+  var bk = _bookCurrentDetail;
+  if(!bk) return;
+  _bjBook = bk;
+  _bjLoadJournal(bk);
+  _bjHideAll();
+  document.getElementById("book-journal").style.display = "block";
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function bjOpenFromLibrary(){
+  var reading = _bkGetLib().find(function(b){ return b.status==="reading"; });
+  if(!reading) return;
+  _bjBook = reading;
+  _bjLoadJournal(reading);
+  _bjHideAll();
+  document.getElementById("book-journal").style.display = "block";
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function bookCloseJournal(){
+  document.getElementById("book-journal").style.display = "none";
+  document.getElementById("books-library-panel").style.display = "block";
+  document.querySelectorAll(".btab").forEach(function(b){ b.classList.remove("btab-on"); });
+  document.getElementById("btab-library").classList.add("btab-on");
+  _bkRenderLib();
+}
+
+function _bjLoadJournal(bk){
+  var cover = document.getElementById("bj-cover");
+  if(bk.cover){ cover.src=bk.cover; cover.style.display="block"; } else cover.style.display="none";
+  document.getElementById("bj-title").textContent  = bk.title  || "";
+  document.getElementById("bj-author").textContent = bk.author || "";
+  var saved = bk.isbn ? _bkByIsbn(bk.isbn) : null;
+  _bjNotes = [];
+  if(saved && Array.isArray(saved.notes_v2) && saved.notes_v2.length){
+    _bjNotes = saved.notes_v2.slice();
+  } else if(saved && saved.notes && saved.notes.trim()){
+    _bjNotes = [{id:"legacy", ts:Date.now(), text:saved.notes.trim(), type:"text"}];
+  }
+  _bjScanText = "";
+  document.getElementById("bj-note-input").value = "";
+  document.getElementById("bj-scan-preview").style.display = "none";
+  document.getElementById("bj-scan-loading").style.display = "none";
+  _bjRender();
+}
+
+function _bjRender(){
+  var list  = document.getElementById("bj-notes-list");
+  var empty = document.getElementById("bj-empty");
+  if(!_bjNotes.length){ list.innerHTML=""; empty.style.display="block"; return; }
+  empty.style.display = "none";
+  list.innerHTML = _bjNotes.map(function(note, i){
+    var dt = new Date(note.ts);
+    var dateStr = dt.toLocaleDateString("en-GB",{day:"numeric",month:"short"})
+                + " " + dt.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+    var isScan = note.type === "scan";
+    var bg = isScan ? "background:#faf5ff;border-color:#e9d5ff" : "background:var(--surface);border-color:var(--border)";
+    var icon = isScan ? "📷" : "✏️";
+    return '<div style="'+bg+';border:1.5px solid;border-radius:14px;padding:13px 14px;margin-bottom:10px">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">'
+      + '<span style="font-size:12px;color:var(--muted)">'+icon+' '+dateStr+'</span>'
+      + '<button onclick="bjDeleteNote('+i+')" style="border:none;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0;line-height:1">×</button>'
+      + '</div>'
+      + '<div style="font-size:14px;color:var(--text);line-height:1.65;white-space:pre-wrap">'+_bjEsc(note.text)+'</div>'
+      + '</div>';
+  }).join("");
+}
+
+function bjDeleteNote(i){
+  _bjNotes.splice(i,1);
+  _bjRender();
+  _bjPersist();
+}
+
+function bjAddTextNote(){
+  var inp = document.getElementById("bj-note-input");
+  var text = (inp.value||"").trim();
+  if(!text) return;
+  _bjNotes.push({id:_bjId(), ts:Date.now(), text:text, type:"text"});
+  inp.value = "";
+  _bjRender();
+  _bjPersist();
+}
+
+function bjAddScanNote(){
+  if(!_bjScanText) return;
+  _bjNotes.push({id:_bjId(), ts:Date.now(), text:_bjScanText, type:"scan"});
+  _bjScanText = "";
+  document.getElementById("bj-scan-preview").style.display = "none";
+  _bjRender();
+  _bjPersist();
+}
+
+function bjDiscardScan(){
+  _bjScanText = "";
+  document.getElementById("bj-scan-preview").style.display = "none";
+}
+
+function bjStartScan(){ document.getElementById("bj-scan-file").click(); }
+
+function bjHandleScan(input){
+  var file = input.files[0];
+  if(!file) return;
+  input.value = "";
+  document.getElementById("bj-scan-loading").style.display = "block";
+  document.getElementById("bj-scan-preview").style.display = "none";
+  var fd = new FormData();
+  fd.append("image", file);
+  fetch("/api/books/scan-note", {method:"POST", body:fd})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      document.getElementById("bj-scan-loading").style.display = "none";
+      if(d.error){ alert("Scan failed: "+d.error); return; }
+      _bjScanText = d.text || "";
+      document.getElementById("bj-scan-text").textContent = _bjScanText;
+      document.getElementById("bj-scan-preview").style.display = "block";
+    })
+    .catch(function(){
+      document.getElementById("bj-scan-loading").style.display = "none";
+      alert("Scan failed — check your connection");
+    });
+}
+
+function _bjPersist(){
+  if(!_bjBook || !_bjBook.isbn) return;
+  var lib = _bkGetLib();
+  var idx = lib.findIndex(function(b){ return b.isbn===_bjBook.isbn; });
+  if(idx < 0) return;
+  lib[idx].notes_v2 = _bjNotes;
+  _bkSetLib(lib);
+  var phone = _bkPhone();
+  if(phone){
+    fetch("/api/books/save", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({phone:phone, book:lib[idx]})}).catch(function(){});
+  }
+}
+
+function _bjId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function _bjEsc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
 function bookSetRating(v){ _bookDetailRating=v; _bkStars(v); }
 function _bkStars(v){
   document.querySelectorAll(".bd-star").forEach(function(s){
@@ -12927,12 +13132,15 @@ function bookSetSource(source, btn){
 function bookSave(){
   if(!_bookCurrentDetail) return;
   var bk=_bookCurrentDetail;
+  var _existingEntry = bk.isbn ? _bkByIsbn(bk.isbn) : null;
   var entry = { isbn:bk.isbn||("noisbn_"+Date.now()), title:bk.title||"", author:bk.author||"",
     cover:bk.cover||"", description:bk.description||"", year:bk.year||"",
     rating:_bookDetailRating, status:_bookDetailStatus,
     owned: _bookDetailOwned,
     source: _bookDetailOwned ? (_bookDetailSource||"physical") : (bk.source||"scanned"),
-    notes:document.getElementById("bd-notes").value.trim(), added:new Date().toISOString().slice(0,10) };
+    notes:document.getElementById("bd-notes").value.trim(),
+    notes_v2: (_existingEntry && _existingEntry.notes_v2) ? _existingEntry.notes_v2 : [],
+    added:new Date().toISOString().slice(0,10) };
   // Update localStorage cache
   var cached=_bkGetLib().filter(function(b){ return b.isbn!==entry.isbn; });
   cached.unshift(entry); _bkSetLib(cached); _bkBadge();
@@ -12955,6 +13163,21 @@ function _bkRenderLib(){
   if(q) allLib = allLib.filter(function(b){
     return ((b.title||"")+(b.author||"")).toLowerCase().indexOf(q) >= 0;
   });
+
+  // Currently Reading card
+  var crEl = document.getElementById("bk-currently-reading");
+  if(crEl){
+    var reading = _bkGetLib().find(function(b){ return b.status==="reading"; });
+    if(reading){
+      crEl.style.display = "block";
+      document.getElementById("bk-cr-title").textContent = reading.title || "";
+      document.getElementById("bk-cr-author").textContent = reading.author || "";
+      var crCover = document.getElementById("bk-cr-cover");
+      if(reading.cover){ crCover.src=reading.cover; crCover.style.display="block"; } else crCover.style.display="none";
+    } else {
+      crEl.style.display = "none";
+    }
+  }
 
   if(_bkLibTab === "scanned"){
     var scanned = allLib.filter(function(b){ return !b.owned; });

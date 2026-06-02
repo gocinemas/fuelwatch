@@ -22611,6 +22611,57 @@ def api_books_search():
     return jsonify({"results": hits[:30]})
 
 
+@app.route("/api/books/scan-note", methods=["POST"])
+def api_books_scan_note():
+    """Transcribe text or describe a graph/chart from a scanned book page using Claude Vision."""
+    if "image" not in request.files:
+        return jsonify({"error": "image required"}), 400
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "Vision AI not configured"}), 503
+    img_file = request.files["image"]
+    img_bytes = img_file.read()
+    if not img_bytes:
+        return jsonify({"error": "empty image"}), 400
+    import base64 as _b64
+    import anthropic as _ant
+    mime = img_file.mimetype or "image/jpeg"
+    if mime not in ("image/jpeg", "image/png", "image/gif", "image/webp"):
+        mime = "image/jpeg"
+    img_data = _b64.standard_b64encode(img_bytes).decode("utf-8")
+    try:
+        client = _ant.Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": mime, "data": img_data}},
+                    {"type": "text", "text": (
+                        "This is a scan from a book the user is reading.\n\n"
+                        "If this is a page of TEXT: transcribe it exactly as written, preserving paragraphs. "
+                        "Do not summarise — give the actual words.\n\n"
+                        "If this is a GRAPH, CHART, TABLE or DIAGRAM: describe what it shows clearly. "
+                        "Cover: what is being measured, the key data points or trends, and what conclusion the visual communicates. "
+                        "Be specific and useful — write it so someone who cannot see the image fully understands it.\n\n"
+                        'Reply with JSON only: {"type": "transcription" or "description", "text": "..."}'
+                    )}
+                ]
+            }]
+        )
+        import re as _re
+        raw = resp.content[0].text.strip()
+        m = _re.search(r'\{.*\}', raw, _re.DOTALL)
+        if m:
+            result = json.loads(m.group(0))
+            return jsonify({"text": result.get("text", ""), "type": result.get("type", "transcription")})
+        return jsonify({"text": raw, "type": "transcription"})
+    except Exception as e:
+        print(f"[books/scan-note] error: {e}", flush=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/music/spotify-status")
 def api_music_spotify_status():
     """Debug: check Spotify client credentials config and token fetch."""
