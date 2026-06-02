@@ -2006,6 +2006,9 @@
         </div>
       </div>
 
+      <!-- School card — 3 upcoming events with child subheadings, below Ask Miru -->
+      <div id="brief-school-slot" style="display:none;margin-top:12px"></div>
+
       </div><!-- /brief-col-main -->
       <div id="brief-col-side">
 
@@ -15299,6 +15302,47 @@ _bkBadge();
     strip.style.display = "flex";
   }
 
+  function _briefFillSchoolSlot(ctx) {
+    var slot = document.getElementById("brief-school-slot");
+    if (!slot) return;
+    var schoolRaw = ctx && ctx.school;
+    var upcoming  = (schoolRaw && schoolRaw.upcoming) ? schoolRaw.upcoming : [];
+    var _hs = (_briefData && _briefData.school_holiday) || (schoolRaw && schoolRaw.holiday_status) || null;
+    var _onHoliday = _hs && _hs.on_holiday;
+    if (!upcoming.length && !_onHoliday) { slot.style.display = "none"; return; }
+
+    // 3 soonest events, grouped by child_name for subheadings
+    var top3 = upcoming.slice(0, 3);
+    var byChild = {}, childOrder = [];
+    top3.forEach(function(ev) {
+      var cn = ev.child_name || "School";
+      if (!byChild[cn]) { byChild[cn] = []; childOrder.push(cn); }
+      byChild[cn].push(ev);
+    });
+
+    var inner = "";
+    if (_onHoliday && _hs.label) {
+      inner += '<div style="font-size:11px;color:#047857;background:#ecfdf5;border-radius:8px;padding:5px 10px;margin-bottom:8px">🏖️ ' + _hs.label.charAt(0).toUpperCase() + _hs.label.slice(1) + ' holiday</div>';
+    }
+    childOrder.forEach(function(cn, ci) {
+      inner += '<div style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;margin:' + (ci || inner ? '8px' : '0') + ' 0 3px">' + cn + '</div>';
+      byChild[cn].forEach(function(ev, i) {
+        var d = (ev.event_date || "").slice(5);
+        inner += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;' + (i > 0 ? 'border-top:1px solid var(--border);' : '') + '">'
+          + '<span style="font-size:12px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (ev.event_title || "") + '</span>'
+          + '<span style="font-size:11px;color:var(--muted);flex-shrink:0">' + d + '</span>'
+          + '</div>';
+      });
+    });
+
+    slot.innerHTML = '<div onclick="showScreen(\'school\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🏫 School</div>'
+      + '<span style="font-size:10px;font-weight:700;color:var(--accent)">See all ›</span>'
+      + '</div>' + inner + '</div>';
+    slot.style.display = "";
+  }
+
   function _briefRenderContextCards(ctx, container, mode) {
     if (!container) return;
     var _activeMode = mode || _briefCurrentMode;
@@ -15474,6 +15518,9 @@ _bkBadge();
     }
 
     // School — show profiles + upcoming + recent comms
+    // Fill school slot (below Ask Miru in main column)
+    _briefFillSchoolSlot(ctx);
+
     var schoolRaw      = ctx && ctx.school;
     var schoolRoutes   = (schoolRaw && schoolRaw.schools)  ? schoolRaw.schools  : [];
     var schoolUpcoming = (schoolRaw && schoolRaw.upcoming) ? schoolRaw.upcoming : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
@@ -15481,7 +15528,7 @@ _bkBadge();
     // holiday_status sourced from top-level brief data (pure date math, always present)
     var _holidayStatus = (_briefData && _briefData.school_holiday) || (schoolRaw && schoolRaw.holiday_status) || null;
 
-    if (schoolRoutes.length || schoolUpcoming.length || schoolRecent.length || (_holidayStatus && (_holidayStatus.on_holiday || _holidayStatus.starts_tom || _holidayStatus.back_tom))) {
+    if (false) { // School now rendered in brief-school-slot (main col) — skip from side cards
       var schoolHtml = "";
 
       // Holiday banner — show at top of card when kids are off (or last day / back tomorrow)
