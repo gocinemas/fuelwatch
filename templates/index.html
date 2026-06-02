@@ -15655,35 +15655,6 @@ _bkBadge();
         + areaRows + '</div>';
     }
 
-    // Teaser chips — nudge phone-linked users to connect more data sources
-    if (_miruPhone()) {
-      var _teasers = [];
-      var _hasSchool = !!(ctx && ctx.school && (ctx.school.schools || []).length);
-      var _hasSpend  = !!(ctx && ctx.spend && (ctx.spend.count || ctx.spend.total));
-      if (!_hasSchool) {
-        _teasers.push(
-          '<div onclick="showScreen(\'school\')" style="cursor:pointer;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">'
-          + '<span style="font-size:18px">📚</span>'
-          + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text)">School updates</div>'
-          + '<div style="font-size:11px;color:var(--muted)">Connect Gmail to see school letters &amp; events</div></div>'
-          + '<span style="font-size:11px;font-weight:700;color:var(--accent)">Set up ›</span></div>'
-        );
-      }
-      if (!_hasSpend) {
-        _teasers.push(
-          '<div onclick="showScreen(\'saves\')" style="cursor:pointer;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px">'
-          + '<span style="font-size:18px">💳</span>'
-          + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text)">Receipts &amp; spend</div>'
-          + '<div style="font-size:11px;color:var(--muted)">Scan receipts — Miru tracks your spending automatically</div></div>'
-          + '<span style="font-size:11px;font-weight:700;color:var(--accent)">Scan ›</span></div>'
-        );
-      }
-      if (_teasers.length) {
-        html += '<div style="font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:12px 0 6px">Unlock more</div>'
-          + _teasers.join("");
-      }
-    }
-
     // Always clear and re-render, even if html is empty — prevents stale cards showing
     container.innerHTML = html
       + (html ? '<button onclick="_briefShowPrefs()" style="width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:11px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;margin-top:4px">✏️ Update preferences</button>' : '');
