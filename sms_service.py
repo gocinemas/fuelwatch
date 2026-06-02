@@ -7055,24 +7055,30 @@ def _v2_fetch_school(from_number: str) -> dict:
         if not profiles:
             return {"schools": [], "upcoming": [], "recent": [], "events": [], "holiday_status": holiday_status}
         pids = [p["id"] for p in profiles]
-        # Upcoming events — next 7 days
-        upcoming = lib._sb().table("school_events").select(
-            "event_title,event_date,child_name,school_name,notes"
+        # Build profile_id → child_name/school_name lookup
+        _pid_map = {p["id"]: p for p in profiles}
+        def _enrich(ev):
+            pr = _pid_map.get(ev.get("profile_id"), {})
+            ev["child_name"]  = pr.get("child_name", "")
+            ev["school_name"] = pr.get("school_name", "")
+            return ev
+        # Upcoming events — next 42 days
+        upcoming = [_enrich(e) for e in (lib._sb().table("school_events").select(
+            "profile_id,event_title,event_date,event_type,action_needed"
         ).in_("profile_id", pids).gte("event_date", today_s).lte("event_date", horizon) \
-         .order("event_date").execute().data or []
-        # Recent comms — emails received in last 14 days (filter by created_at, not event_date)
-        # event_date is when the event happens (could be future), created_at is when email arrived
-        recent_rows = lib._sb().table("school_events").select(
-            "event_title,event_date,child_name,school_name,notes,created_at"
+         .order("event_date").execute().data or [])]
+        # Recent comms — emails received in last 14 days
+        recent_rows = [_enrich(e) for e in (lib._sb().table("school_events").select(
+            "profile_id,event_title,event_date,event_type,created_at"
         ).in_("profile_id", pids).gte("created_at", recent + "T00:00:00") \
-         .order("created_at", desc=True).limit(5).execute().data or []
+         .order("created_at", desc=True).limit(5).execute().data or [])]
         # Inset days — school-specific days off from Gmail scan (today or tomorrow)
         inset_rows = []
         try:
-            inset_rows = lib._sb().table("school_events").select(
-                "event_title,event_date,child_name,school_name"
+            inset_rows = [_enrich(e) for e in (lib._sb().table("school_events").select(
+                "profile_id,event_title,event_date"
             ).in_("profile_id", pids).in_("event_date", [today_s, tomorrow_s]) \
-             .ilike("event_title", "%inset%").execute().data or []
+             .ilike("event_title", "%inset%").execute().data or [])]
         except Exception:
             pass
         schools = [
