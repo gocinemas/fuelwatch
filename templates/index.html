@@ -14206,7 +14206,7 @@ _bkBadge();
 
   /* ── School home card ────────────────────────────────────────────────────── */
   async function _schoolHomeLoad() {
-    const phone = _miruPhone();
+    const phone = _schoolWA() || _miruPhone();
     if (!phone) return;
     const card = document.getElementById("school-home-card");
     if (!card) return;
@@ -14310,8 +14310,8 @@ _bkBadge();
   }
 
   window._schoolHomeOpen = function() {
-    const phone = _miruPhone();
-    if (phone) sessionStorage.setItem("school_wa", phone);
+    const phone = _schoolWA() || _miruPhone();
+    if (phone) localStorage.setItem("school_wa", phone);
     showScreen("school");
   };
 
@@ -16946,7 +16946,7 @@ _bkBadge();
     { types: ["_recent_activity"],      header: "📋 Recent",               color: "#f1f5f9", border: "#94a3b8", pastOk: true  },
   ];
 
-  function _schoolWA() { return sessionStorage.getItem("school_wa") || ""; }
+  function _schoolWA() { return localStorage.getItem("school_wa") || sessionStorage.getItem("school_wa") || ""; }
   function _schoolHeaders() { const wa = _schoolWA(); return wa ? {"X-School-WA": wa} : {}; }
 
   function _schoolShowPhoneEntry() {
@@ -16981,7 +16981,7 @@ _bkBadge();
   function schoolCheckPin() {
     var wa = _schoolWA() || _miruPhone();
     if (wa) {
-      if (!_schoolWA()) sessionStorage.setItem("school_wa", wa);
+      localStorage.setItem("school_wa", wa);
       _schoolShowMain();
     } else {
       _schoolShowLock();
@@ -16990,7 +16990,6 @@ _bkBadge();
   window.schoolSubmitPin = async function() {
     const wa = document.getElementById("school-pin-input").value.trim();
     if (!wa) return;
-    // Validate: try to load events — 401 means number not found
     try {
       const r = await fetch("/api/school/events?days=1&back=1", { headers: {"X-School-WA": wa} });
       if (r.status === 401) {
@@ -16998,7 +16997,7 @@ _bkBadge();
         return;
       }
     } catch(e) { /* network error — let it through */ }
-    sessionStorage.setItem("school_wa", wa);
+    localStorage.setItem("school_wa", wa);
     document.getElementById("school-pin-error").style.display = "none";
     _schoolShowMain();
   };
