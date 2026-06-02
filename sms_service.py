@@ -22470,13 +22470,13 @@ def api_books_sync():
         sb = lib._sb()
         local_books = data.get("books", [])
 
-        # Fetch existing book saves in one query, then diff locally
+        # Fetch existing book saves with summaries so we can merge notes_v2
         existing_rows = sb.table("wa_saves") \
-            .select("id,url") \
+            .select("id,url,summary") \
             .eq("from_number", phone) \
             .like("url", "book:%") \
             .execute().data or []
-        existing_by_url = {r["url"]: r["id"] for r in existing_rows}
+        existing_by_url = {r["url"]: r for r in existing_rows}
 
         inserts, updates = [], []
         for bk in local_books:
@@ -22484,15 +22484,26 @@ def api_books_sync():
             if not isbn:
                 continue
             url = f"book:{isbn}"
+            bk_to_save = dict(bk)
+            if url in existing_by_url:
+                # Merge notes_v2 — never let a device with fewer notes overwrite richer server data
+                try:
+                    server_bk = json.loads(existing_by_url[url].get("summary") or "{}")
+                    server_notes = {n["id"]: n for n in server_bk.get("notes_v2") or []}
+                    local_notes  = {n["id"]: n for n in bk.get("notes_v2") or []}
+                    server_notes.update(local_notes)  # local wins on conflict (newer edits)
+                    bk_to_save["notes_v2"] = sorted(server_notes.values(), key=lambda n: n.get("ts", 0))
+                except Exception:
+                    pass
             payload = {
                 "from_number": phone,
                 "url":         url,
-                "title":       (bk.get("title") or "Untitled").strip(),
-                "summary":     json.dumps(bk),
-                "status":      bk.get("status", "read"),
+                "title":       (bk_to_save.get("title") or "Untitled").strip(),
+                "summary":     json.dumps(bk_to_save),
+                "status":      bk_to_save.get("status", "read"),
             }
             if url in existing_by_url:
-                updates.append((existing_by_url[url], payload))
+                updates.append((existing_by_url[url]["id"], payload))
             else:
                 inserts.append(payload)
 

@@ -12658,7 +12658,15 @@ function bkSyncWithPhone(phone, onDone){
     var remote = data.books || [];
     var map = {};
     remote.forEach(function(b){ map[b.isbn]=b; });
-    local.forEach(function(b){ if(!map[b.isbn]) map[b.isbn]=b; });
+    local.forEach(function(b){
+      if(!map[b.isbn]){ map[b.isbn]=b; }
+      else {
+        // Keep whichever side has more journal notes (phone may be ahead of server)
+        var remNotes = (map[b.isbn].notes_v2||[]).length;
+        var locNotes = (b.notes_v2||[]).length;
+        if(locNotes > remNotes) map[b.isbn] = Object.assign({}, map[b.isbn], {notes_v2: b.notes_v2});
+      }
+    });
     var merged = Object.values(map);
     _bkSetLib(merged);
     _bkBadge();
