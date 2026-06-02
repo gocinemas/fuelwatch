@@ -6564,9 +6564,11 @@ def api_v2_prefs_get():
         rows = lib._sb().table("ma_details").select("data") \
             .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
         prefs = rows[0]["data"] if rows else {}
-        cal_connected = bool(
-            lib._sb().table("ma_details").select("id")
-            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "calendar_token").execute().data
+        _all_cal = lib._sb().table("ma_details").select("id,device_id") \
+            .eq("type", "calendar_token").execute().data or []
+        cal_connected = any(
+            r.get("device_id","").replace("whatsapp:","").strip() == _fn_plain
+            for r in _all_cal
         )
         return jsonify({"prefs": prefs, "has_prefs": bool(prefs), "calendar_connected": cal_connected})
     except Exception as e:
@@ -20385,12 +20387,16 @@ def api_calendar_status():
     from_number = _v2_resolve(token) if token else None
     if not from_number:
         return _cors(jsonify({"connected": False}))
+    # Normalise to plain digits so any stored format matches
     _fn_plain = from_number.replace("whatsapp:", "").strip()
     _fn_wa    = f"whatsapp:{_fn_plain}"
-    row = lib._sb().table("ma_details").select("id") \
-        .in_("device_id", [_fn_plain, _fn_wa]) \
-        .eq("type", "calendar_token").execute().data
-    connected = bool(row)
+    # Fetch all calendar tokens and match by normalised number — handles any format variation
+    all_rows = lib._sb().table("ma_details").select("id,device_id") \
+        .eq("type", "calendar_token").execute().data or []
+    connected = any(
+        r.get("device_id","").replace("whatsapp:","").strip() == _fn_plain
+        for r in all_rows
+    )
     return _cors(jsonify({
         "connected": connected,
         "oauth_url": None if connected else _calendar_oauth_url(from_number),
@@ -20563,10 +20569,12 @@ def api_ms_calendar_status():
         return _cors(jsonify({"connected": False, "configured": False}))
     configured = bool(_ms_client_id())
     _fn_plain = from_number.replace("whatsapp:", "").strip()
-    _fn_wa    = f"whatsapp:{_fn_plain}"
-    row = lib._sb().table("ma_details").select("id").in_("device_id", [_fn_plain, _fn_wa]) \
-        .eq("type", "ms_calendar_token").execute().data
-    connected = bool(row)
+    all_ms = lib._sb().table("ma_details").select("id,device_id") \
+        .eq("type", "ms_calendar_token").execute().data or []
+    connected = any(
+        r.get("device_id","").replace("whatsapp:","").strip() == _fn_plain
+        for r in all_ms
+    )
     return _cors(jsonify({
         "connected":  connected,
         "configured": configured,
