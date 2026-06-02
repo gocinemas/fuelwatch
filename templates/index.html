@@ -15311,8 +15311,8 @@ _bkBadge();
     var _onHoliday = _hs && _hs.on_holiday;
     if (!upcoming.length && !_onHoliday) { slot.style.display = "none"; return; }
 
-    // 3 soonest events, grouped by child_name for subheadings
-    var top3 = upcoming.slice(0, 3);
+    // 3 soonest events (skip newsletters), grouped by child_name for subheadings
+    var top3 = upcoming.filter(function(e){ return e.event_type !== 'newsletter'; }).slice(0, 3);
     var byChild = {}, childOrder = [];
     top3.forEach(function(ev) {
       var cn = ev.child_name || "School";
