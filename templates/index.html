@@ -15068,13 +15068,7 @@ _bkBadge();
       var schoolRaw  = ctx && ctx.school;
       var schoolEvs  = Array.isArray(schoolRaw) ? schoolRaw : (schoolRaw && schoolRaw.events ? schoolRaw.events : []);
       var schoolKids = (schoolRaw && schoolRaw.schools) ? schoolRaw.schools : [];
-      if (schoolKids.length) {
-        var _kSeen = new Set(), _kNames = [];
-        schoolKids.forEach(function(s) { var fn = (s.child_name||"").split(/\s+/)[0]; if (fn && !_kSeen.has(fn)) { _kSeen.add(fn); _kNames.push(fn); } });
-        chips.push({ label: "🚗 School run: " + _kNames.join(" & "), action: "_schoolHomeOpen()" });
-      }
-      else if (schoolEvs.length)
-        chips.push({ label: "🏫 " + schoolEvs.length + " school event" + (schoolEvs.length > 1 ? "s" : ""), action: "_schoolHomeOpen()" });
+      // School chip removed — school card below Ask Miru covers this
     }
     // Spend intentionally excluded from chips — it dominates visual hierarchy
 
