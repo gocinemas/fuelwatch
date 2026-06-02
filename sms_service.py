@@ -14172,6 +14172,39 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     update_data["category"] = "Events"
                 elif img_type == "recipe":
                     update_data["category"] = "Recipe"
+                    # If no steps visible, search web for full recipe using dish name
+                    if "no cooking steps" in summary.lower() or "steps" not in summary.lower():
+                        _dish = title.replace("🍳","").strip() or search_tag
+                        if _dish:
+                            try:
+                                _rsearch = requests.get(
+                                    "https://www.googleapis.com/customsearch/v1",
+                                    params={"key": os.environ.get("GOOGLE_API_KEY",""),
+                                            "cx": os.environ.get("GOOGLE_CSE_ID",""),
+                                            "q": f"{_dish} recipe steps ingredients",
+                                            "num": 1},
+                                    timeout=6,
+                                ).json()
+                                _rurl = (_rsearch.get("items") or [{}])[0].get("link","")
+                            except Exception:
+                                _rurl = ""
+                            # Fallback: construct BBC Food / Waitrose search URL
+                            if not _rurl:
+                                import urllib.parse as _up
+                                _rurl = "https://www.bbc.co.uk/food/search?q=" + _up.quote(_dish)
+                            if _rurl:
+                                _rfetched = _fetch_url_text(_rurl)
+                                _rtext = _rfetched.get("text","")[:3000]
+                                if _rtext:
+                                    _rsteps = _groq_chat(
+                                        "Extract ONLY the ingredients list and numbered cooking steps from this recipe page. "
+                                        "Format: first list ingredients with quantities, then numbered steps. Plain text, no markdown.",
+                                        [{"role":"user","content":_rtext}],
+                                        max_tokens=600,
+                                    )
+                                    if _rsteps and len(_rsteps) > 80:
+                                        update_data["summary"] = f"🍳 {_dish}\n\n{_rsteps}\n\nSource: {_rurl}"
+                                        update_data["url"] = _rurl
                 elif img_type == "wine":
                     update_data["category"] = "Dining"
                 elif img_type == "product":
