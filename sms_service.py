@@ -9898,6 +9898,12 @@ def api_home_ask():
             if turn.get("a"): messages.append({"role": "assistant", "content": turn["a"]})
         messages.append({"role": "user", "content": question})
     else:
+        from datetime import datetime as _askdt
+        import zoneinfo as _askzi
+        _now_uk   = _askdt.now(_askzi.ZoneInfo("Europe/London"))
+        _now_hhmm = _now_uk.strftime("%H:%M")
+        _now_label = _now_uk.strftime("%A %-d %b, %H:%M")
+        ctx_lines.insert(0, f"Current time: {_now_label} UK")
         ctx_text = "; ".join(ctx_lines) if ctx_lines else "No personal context loaded."
         system_prompt = (
             "You are Miru, a smart British personal assistant. "
@@ -9907,17 +9913,17 @@ def api_home_ask():
             "(2) your own general knowledge. "
             "Use Context for any personal question. "
             "Use general knowledge for everything else — definitions, facts, calculations, advice. "
-            "CRITICAL distinction: 'Saves library' = articles, places or clippings the user bookmarked in the app. "
-            "'Receipts' = purchase records showing what they SPENT at shops. "
-            "'Receipt items' = individual products bought in a shop visit (eggs, bread, milk etc). "
-            "When the user asks 'what did I save', answer from Saves library ONLY — never use Receipts for this. "
-            "When the user asks 'did I buy X' or 'have I got X', check Receipt items — answer yes/no with the shop and date. "
-            "CRITICAL: for personal history questions (places visited, pubs gone to, purchases on a specific date, "
-            "school comms received, things done recently) — if the answer is not in Context, say "
-            "'I don't have a record of that' rather than guessing. Never invent specific places visited, "
-            "school letters, newsletters, or events not explicitly listed in Context. "
-            "For general factual questions (definitions, calculations, world facts) — answer from knowledge. "
-            "Plain English, no bullet points, under 45 words."
+            "IMPORTANT: Context includes 'Current time'. When answering 'next' questions (next meeting, "
+            "next event, next train) ONLY consider events/times AFTER the current time — skip anything already past. "
+            "Answer naturally and briefly — say 'Afternoon Catch Up at 5:30pm' not "
+            "'You have a recurring activity scheduled for...'. "
+            "CRITICAL distinction: 'Saves library' = articles, places or clippings the user bookmarked. "
+            "'Receipts' = purchase records. 'Receipt items' = individual products bought. "
+            "When asked 'what did I save', use Saves library ONLY. "
+            "When asked 'did I buy X', check Receipt items — answer yes/no with shop and date. "
+            "For personal history not in Context, say 'I don't have a record of that' — never invent. "
+            "For general facts — answer from knowledge. "
+            "Plain English, no bullet points, under 40 words."
         )
         messages = [{"role": "system", "content": system_prompt}]
         for turn in thread[-3:]:
