@@ -12553,6 +12553,7 @@ function _hcAdd() {
     <!-- Scan preview card -->
     <div id="bj-scan-preview" style="display:none;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:14px;padding:14px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">📷 Scan result — review before adding</div>
+      <img id="bj-scan-thumb" src="" alt="" style="display:none;width:100%;max-height:180px;object-fit:contain;border-radius:8px;margin-bottom:10px;background:#f1f5f9">
       <div id="bj-scan-text" style="font-size:14px;color:var(--text);line-height:1.65;white-space:pre-wrap;margin-bottom:12px"></div>
       <div style="display:flex;gap:8px">
         <button onclick="bjAddScanNote()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">+ Add to journal</button>
@@ -12915,6 +12916,7 @@ function bookCloseDetail(){
 var _bjBook  = null;
 var _bjNotes = [];
 var _bjScanText = "";
+var _bjScanImageUrl = "";
 
 function _bjHideAll(){
   ["books-search-panel","books-library-panel","book-detail","book-journal"]
@@ -12980,11 +12982,15 @@ function _bjRender(){
     var isScan = note.type === "scan";
     var bg = isScan ? "background:#faf5ff;border-color:#e9d5ff" : "background:var(--surface);border-color:var(--border)";
     var icon = isScan ? "📷" : "✏️";
+    var thumbHtml = (isScan && note.image_url)
+      ? '<img src="'+note.image_url+'" alt="" style="width:100%;max-height:160px;object-fit:contain;border-radius:8px;margin-bottom:8px;background:#f1f5f9">'
+      : "";
     return '<div style="'+bg+';border:1.5px solid;border-radius:14px;padding:13px 14px;margin-bottom:10px">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">'
       + '<span style="font-size:12px;color:var(--muted)">'+icon+' '+dateStr+'</span>'
       + '<button onclick="bjDeleteNote('+i+')" style="border:none;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0;line-height:1">×</button>'
       + '</div>'
+      + thumbHtml
       + '<div style="font-size:14px;color:var(--text);line-height:1.65;white-space:pre-wrap">'+_bjEsc(note.text)+'</div>'
       + '</div>';
   }).join("");
@@ -13008,15 +13014,15 @@ function bjAddTextNote(){
 
 function bjAddScanNote(){
   if(!_bjScanText) return;
-  _bjNotes.push({id:_bjId(), ts:Date.now(), text:_bjScanText, type:"scan"});
-  _bjScanText = "";
+  _bjNotes.push({id:_bjId(), ts:Date.now(), text:_bjScanText, type:"scan", image_url:_bjScanImageUrl});
+  _bjScanText = ""; _bjScanImageUrl = "";
   document.getElementById("bj-scan-preview").style.display = "none";
   _bjRender();
   _bjPersist();
 }
 
 function bjDiscardScan(){
-  _bjScanText = "";
+  _bjScanText = ""; _bjScanImageUrl = "";
   document.getElementById("bj-scan-preview").style.display = "none";
 }
 
@@ -13035,8 +13041,12 @@ function bjHandleScan(input){
     .then(function(d){
       document.getElementById("bj-scan-loading").style.display = "none";
       if(d.error){ alert("Scan failed: "+d.error); return; }
-      _bjScanText = d.text || "";
+      _bjScanText     = d.text || "";
+      _bjScanImageUrl = d.image_url || "";
       document.getElementById("bj-scan-text").textContent = _bjScanText;
+      var thumb = document.getElementById("bj-scan-thumb");
+      if (_bjScanImageUrl) { thumb.src = _bjScanImageUrl; thumb.style.display = "block"; }
+      else thumb.style.display = "none";
       document.getElementById("bj-scan-preview").style.display = "block";
     })
     .catch(function(){

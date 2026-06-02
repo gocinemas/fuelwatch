@@ -22653,10 +22653,21 @@ def api_books_scan_note():
         import re as _re
         raw = resp.content[0].text.strip()
         m = _re.search(r'\{.*\}', raw, _re.DOTALL)
-        if m:
-            result = json.loads(m.group(0))
-            return jsonify({"text": result.get("text", ""), "type": result.get("type", "transcription")})
-        return jsonify({"text": raw, "type": "transcription"})
+        result = json.loads(m.group(0)) if m else {"type": "transcription", "text": raw}
+
+        # Upload image to Supabase Storage so user keeps the original scan
+        image_url = ""
+        try:
+            ext = mime.split("/")[-1].replace("jpeg", "jpg")
+            path = f"book-scans/{int(time.time() * 1000)}.{ext}"
+            lib._sb().storage.from_("saves-images").upload(
+                path, img_bytes, {"content-type": mime, "upsert": "true"}
+            )
+            image_url = lib._sb().storage.from_("saves-images").get_public_url(path)
+        except Exception as _ue:
+            print(f"[books/scan-note] storage upload failed: {_ue}", flush=True)
+
+        return jsonify({"text": result.get("text", ""), "type": result.get("type", "transcription"), "image_url": image_url})
     except Exception as e:
         print(f"[books/scan-note] error: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
