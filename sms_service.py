@@ -9695,15 +9695,16 @@ def api_home_ask():
                     _show_content = any(w in q_lower for w in
                         ["show me", "what's the recipe", "whats the recipe", "show recipe",
                          "get recipe", "recipe steps", "ingredients", "how to make",
-                         "what did i save", "show save", "what is the"])
+                         "show save", "what is the"])
+                    _today_str2 = __import__('datetime').date.today().isoformat()
                     saves_parts = []
                     for s in non_receipts:
                         _t = s['title'].strip()
                         _d = (s.get('created_at') or '')[:10]
                         _cat = s.get('category','')
-                        if _show_content and s.get('summary'):
-                            # Include first 300 chars of summary for content queries
-                            _sm = s['summary'][:300].replace("\n"," ").strip()
+                        # Only include summary for today's saves to avoid context explosion
+                        if _show_content and s.get('summary') and _d == _today_str2:
+                            _sm = s['summary'][:400].replace("\n"," ").strip()
                             saves_parts.append(f"{_t} [{_cat}] saved {_d}: {_sm}")
                         else:
                             saves_parts.append(f"{_t} [{_cat}] saved {_d}")

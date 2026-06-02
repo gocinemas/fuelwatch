@@ -14715,7 +14715,7 @@ _bkBadge();
     }
   }
 
-  function _briefInit() {
+  function _briefInit(forceRefresh) {
     var now = new Date();
     var days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
     var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -14777,8 +14777,8 @@ _bkBadge();
       return;
     }
 
-    function _doFetchBrief(gpsLat, gpsLng) {
-      var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc) + "&refresh=1";
+    function _doFetchBrief(gpsLat, gpsLng, forceRefresh) {
+      var url = "/api/home/brief?token=" + encodeURIComponent(token) + "&pc=" + encodeURIComponent(pc) + (forceRefresh ? "&refresh=1" : "");
       if (gpsLat !== null && gpsLng !== null) url += "&lat=" + gpsLat + "&lng=" + gpsLng;
 
       // Timeout fallback — if brief hasn't loaded in 15s, show a retry prompt
@@ -14918,7 +14918,7 @@ _bkBadge();
       _briefLastLat = _cachedLat; _briefLastLng = _cachedLng;
       _briefStartLocationWatch(_cachedLat, _cachedLng);
     }
-    _doFetchBrief(_cachedLat, _cachedLng);
+    _doFetchBrief(_cachedLat, _cachedLng, !!forceRefresh);
   }
 
   // ── Location-triggered brief refresh ──────────────────────────────────────
@@ -15670,7 +15670,7 @@ _bkBadge();
   function _briefRefresh() {
     var rr = document.getElementById("brief-refresh-row");
     if (rr) rr.style.display = "none";
-    _briefInit();
+    _briefInit(true); // force fresh fetch
   }
 
   // ── Brief ask / conversational Q&A ───────────────────────────────────────
