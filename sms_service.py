@@ -6720,6 +6720,8 @@ def api_v2_recurring_add():
                 pass  # fall back to raw text — drive time will geocode at runtime
 
     _v2_save_recurring(from_number, act)
+    # Bust brief cache so next load reflects updated activity
+    _v2_brief_cache.pop(from_number, None)
     resolved = act.get("location_resolved", raw_location)
     return jsonify({"ok": True, "location_resolved": resolved})
 
@@ -6747,6 +6749,7 @@ def api_v2_recurring_delete():
                       if not (a.get("weekday") == weekday and
                               a.get("activity","").lower() == act_name)]
         sb.table("ma_details").update({"data": activities}).eq("id", rows[0]["id"]).execute()
+        _v2_brief_cache.pop(from_number, None)
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

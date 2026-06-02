@@ -7013,6 +7013,8 @@ function _hcAdd() {
       _clubsAddClose();
       _clubsLoad();
       _setupLoadClubs();
+      // Refresh brief so resume_from takes effect immediately
+      if (typeof _briefInit === "function") _briefInit(true);
     } catch(e) {
       err.textContent = "Couldn't save — try again"; err.style.display = "block";
     }
