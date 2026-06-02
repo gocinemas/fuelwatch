@@ -843,17 +843,16 @@
             <div style="flex-shrink:0;background:#f59e0b;color:#fff;font-size:12px;font-weight:700;border-radius:99px;padding:5px 12px">Set up</div>
           </div>
         </div>
-        <!-- Events state: cycling strip -->
-        <div id="shc-events" style="display:none;padding:12px 16px;cursor:pointer" onclick="_schoolHomeOpen()">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:18px;flex-shrink:0">🏫</span>
-            <div style="flex:1;min-width:0">
-              <div id="shc-event-strip" style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
-              <div id="shc-event-sub" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
+        <!-- Events state: per-child upcoming list -->
+        <div id="shc-events" style="display:none;padding:14px 16px 12px;cursor:pointer" onclick="_schoolHomeOpen()">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px;line-height:1">🏫</span>
+              <span style="font-size:13px;font-weight:800;color:var(--text);letter-spacing:-.2px">School</span>
             </div>
-            <div id="shc-more-badge" style="display:none;flex-shrink:0;background:#eef2ff;color:#4338ca;font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap"></div>
-            <span style="flex-shrink:0;color:var(--muted);font-size:16px">›</span>
+            <span style="font-size:11px;color:var(--muted);font-weight:600">See all ›</span>
           </div>
+          <div id="shc-events-body"></div>
         </div>
         <!-- No events state -->
         <div id="shc-clear" style="display:none;padding:14px 18px;cursor:pointer" onclick="_schoolHomeOpen()">
@@ -14212,7 +14211,7 @@ _bkBadge();
     const card = document.getElementById("school-home-card");
     if (!card) return;
     try {
-      const r = await fetch("/api/school/events?days=14&back=0", {
+      const r = await fetch("/api/school/events?days=30&back=0", {
         headers: { "X-School-WA": phone }
       });
       if (!r.ok) return;
@@ -14246,53 +14245,66 @@ _bkBadge();
         return;
       }
 
-      const fmt = d => {
-        const dt = new Date(d + "T00:00:00");
-        return dt.toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short" });
-      };
-      const typeEmoji = { reminder:"⏰", activity:"🎨", event:"📅", trip:"🚌", club:"⚽", dinner:"🍽️", newsletter:"📰", deadline:"🔴", payment:"💳" };
-      const moreBadge = document.getElementById("shc-more-badge");
-      moreBadge.style.display = "none";
-
-      // Build rotation list with child name per event if multiple profiles
-      const profileMap = {};
-      profiles.forEach(p => { if (p.child_name) profileMap[p.id] = p.child_name; });
-      const items = events.slice(0, 6).map(ev => {
-        const emoji = typeEmoji[ev.event_type] || "📌";
-        const title = ev.event_title || ev.title || "School event";
-        const kid = ev.profile_id && profileMap[ev.profile_id] ? profileMap[ev.profile_id] : (childName || "School");
-        return { strip: emoji + " " + title, sub: [kid, fmt(ev.event_date)].filter(Boolean).join(" · ") };
-      });
-
-      let _shcIdx = 0;
-      const _stripEl = document.getElementById("shc-event-strip");
-      const _subEl   = document.getElementById("shc-event-sub");
-      const _shcRender = (fade) => {
-        const it = items[_shcIdx];
-        if (fade) {
-          _stripEl.style.transition = "opacity .3s";
-          _subEl.style.transition   = "opacity .3s";
-          _stripEl.style.opacity = "0";
-          _subEl.style.opacity   = "0";
-          setTimeout(() => {
-            _stripEl.textContent = it.strip;
-            _subEl.textContent   = it.sub;
-            _stripEl.style.opacity = "1";
-            _subEl.style.opacity   = "1";
-          }, 300);
-        } else {
-          _stripEl.textContent = it.strip;
-          _subEl.textContent   = it.sub;
+      // Apply reschedule suppression (mirrors school screen Pass 1b)
+      const _rescKwH = /\b(reschedul|postpone|cancel)/i;
+      const _stopsH = new Set(['a','an','the','and','or','for','to','of','in','on','at','is','with','about','from','your']);
+      const _sigWH = t => (t||'').toLowerCase().replace(_rescKwH,'').split(/\W+/).filter(w => w.length > 3 && !_stopsH.has(w));
+      const _suppH = new Set();
+      for (const rev of events) {
+        if (!_rescKwH.test(rev.event_title||'')) continue;
+        const rw = new Set(_sigWH(rev.event_title));
+        if (!rw.size) continue;
+        for (const ev of events) {
+          if (ev === rev || _suppH.has(ev.id)) continue;
+          if (_rescKwH.test(ev.event_title||'')) continue;
+          if (_sigWH(ev.event_title).filter(w => rw.has(w)).length >= Math.min(2, rw.size)) _suppH.add(ev.id);
         }
-      };
-      _shcRender(false);
-      if (items.length > 1) {
-        if (window._shcTimer) clearInterval(window._shcTimer);
-        window._shcTimer = setInterval(() => {
-          _shcIdx = (_shcIdx + 1) % items.length;
-          _shcRender(true);
-        }, 4000);
       }
+      const filteredEvs = events.filter(e => e.event_date && !_suppH.has(e.id) && e.event_type !== 'newsletter');
+
+      // Per-child: up to 3 upcoming events each
+      const multiKid = profiles.filter(p => p.child_name).length > 1;
+      const perChild = profiles.map(p => ({
+        profile: p,
+        evs: filteredEvs.filter(e => e.profile_id === p.id)
+                        .sort((a,b) => a.event_date.localeCompare(b.event_date))
+                        .slice(0, 3)
+      })).filter(c => c.evs.length);
+
+      if (!perChild.length) {
+        document.getElementById("shc-clear").style.display = "";
+        return;
+      }
+
+      const _fmtD = d => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short" });
+      const _dateMeta = d => {
+        if (!d) return { bg:"#f8fafc", fg:"#475569" };
+        const today = new Date(); today.setHours(0,0,0,0);
+        const diff = Math.round((new Date(d + "T00:00:00") - today) / 86400000);
+        if (diff === 0) return { bg:"#f0fdf4", fg:"#166534" };
+        if (diff === 1) return { bg:"#fffbeb", fg:"#92400e" };
+        if (diff <= 6)  return { bg:"#eef2ff", fg:"#3730a3" };
+        return                 { bg:"#f8fafc", fg:"#475569" };
+      };
+
+      let html = '';
+      for (const { profile: p, evs } of perChild) {
+        if (multiKid && p.child_name) {
+          html += `<div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:${html ? '12px' : '0'} 0 6px">${p.child_name}</div>`;
+        }
+        evs.forEach((ev, idx) => {
+          const m = _dateMeta(ev.event_date);
+          const action = (ev.action_needed||'').trim();
+          html += `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 0;${idx > 0 || (html && !multiKid) ? 'border-top:1px solid var(--border)' : ''}">
+            <div style="flex-shrink:0;min-width:68px;font-size:10px;font-weight:700;color:${m.fg};background:${m.bg};border-radius:8px;padding:3px 7px;text-align:center;margin-top:1px;line-height:1.5">${_fmtD(ev.event_date)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--text);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.event_title||'School event'}</div>
+              ${action ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">✏️ ${action.slice(0,80)}</div>` : ''}
+            </div>
+          </div>`;
+        });
+      }
+      document.getElementById("shc-events-body").innerHTML = html;
       document.getElementById("shc-events").style.display = "";
     } catch(e) {}
   }
