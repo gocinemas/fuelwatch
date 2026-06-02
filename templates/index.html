@@ -7094,8 +7094,11 @@ function _hcAdd() {
         .then(function(r){ return r.json(); })
         .then(function(d){
           _applyPrefs(d.prefs || {});
-          _briefUpdateCalBtn(!!d.calendar_connected, null);
-          // Check Microsoft Calendar status
+          // Fetch both calendar statuses independently (dual-format safe)
+          fetch("/api/calendar/status?token=" + encodeURIComponent(_sPhone))
+            .then(function(cr){ return cr.json(); })
+            .then(function(cd){ _briefUpdateCalBtn(cd.connected, cd.oauth_url); })
+            .catch(function(){});
           fetch("/api/calendar/microsoft/status?token=" + encodeURIComponent(_sPhone))
             .then(function(mr){ return mr.json(); })
             .then(function(md){ _briefUpdateMsCalBtn(md.connected); })

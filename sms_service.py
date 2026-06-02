@@ -20385,7 +20385,10 @@ def api_calendar_status():
     from_number = _v2_resolve(token) if token else None
     if not from_number:
         return _cors(jsonify({"connected": False}))
-    row = lib._sb().table("ma_details").select("id").eq("device_id", from_number) \
+    _fn_plain = from_number.replace("whatsapp:", "").strip()
+    _fn_wa    = f"whatsapp:{_fn_plain}"
+    row = lib._sb().table("ma_details").select("id") \
+        .in_("device_id", [_fn_plain, _fn_wa]) \
         .eq("type", "calendar_token").execute().data
     connected = bool(row)
     return _cors(jsonify({
