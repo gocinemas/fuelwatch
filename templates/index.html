@@ -2774,68 +2774,8 @@
           <div id="ma-school-status" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
         </div>
 
-        <!-- 🏃 Clubs & Activities -->
-        <div style="margin-top:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--text)">👨‍👩‍👧‍👦 Kids &amp; Family Activities</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">Clubs, classes &amp; regular activities — surfaced in your daily brief</div>
-            </div>
-            <button onclick="_clubsAddOpen()" style="font-size:12px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.08);border:1.5px solid rgba(124,58,237,.25);border-radius:12px;padding:7px 13px;cursor:pointer;flex-shrink:0">+ Add</button>
-          </div>
-          <div id="clubs-list"></div>
-
-          <!-- Add form (hidden by default) -->
-          <div id="clubs-add-form" style="display:none;background:var(--surface);border:1.5px solid rgba(124,58,237,.3);border-radius:14px;padding:14px;margin-top:8px">
-            <div id="clubs-form-title" style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">New activity</div>
-            <!-- Day picker -->
-            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Day</div>
-            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px" id="clubs-day-picker">
-              <button onclick="_clubsDayPick(0)" data-d="0" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Mon</button>
-              <button onclick="_clubsDayPick(1)" data-d="1" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Tue</button>
-              <button onclick="_clubsDayPick(2)" data-d="2" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Wed</button>
-              <button onclick="_clubsDayPick(3)" data-d="3" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Thu</button>
-              <button onclick="_clubsDayPick(4)" data-d="4" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Fri</button>
-              <button onclick="_clubsDayPick(5)" data-d="5" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Sat</button>
-              <button onclick="_clubsDayPick(6)" data-d="6" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Sun</button>
-            </div>
-            <!-- Fields -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <div>
-                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Activity</div>
-                <input id="clubs-input-activity" type="text" placeholder="e.g. Cricket"
-                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-              </div>
-              <div>
-                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Time</div>
-                <input id="clubs-input-time" type="time"
-                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-              <div>
-                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Who</div>
-                <input id="clubs-input-child" type="text" placeholder="e.g. Inaaya"
-                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-              </div>
-              <div>
-                <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Location</div>
-                <input id="clubs-input-location" type="text" placeholder="e.g. Valley End CC"
-                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-              </div>
-            </div>
-            <div style="margin-bottom:12px">
-              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Resumes from <span style="font-weight:400;text-transform:none;letter-spacing:0">(leave blank if running now)</span></div>
-              <input id="clubs-input-resume" type="date"
-                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-            </div>
-            <div style="display:flex;gap:8px">
-              <button onclick="_clubsAddSave()" style="flex:1;padding:10px;border-radius:12px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Save activity</button>
-              <button onclick="_clubsAddClose()" style="padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:transparent;font-size:13px;color:var(--muted);cursor:pointer">Cancel</button>
-            </div>
-            <div id="clubs-add-error" style="display:none;font-size:12px;color:#dc2626;margin-top:8px"></div>
-          </div>
-        </div>
+        <!-- clubs-list kept here for legacy JS compatibility -->
+        <div id="clubs-list" style="display:none"></div>
 
       </div><!-- /matab-accounts -->
 
@@ -2937,6 +2877,59 @@
             </div>
             <button id="setup-push-toggle" onclick="_setupTogglePush()" style="padding:7px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);transition:all .2s;flex-shrink:0">Off</button>
           </div>
+        </div>
+      </div>
+
+      <!-- ── CLUBS & ACTIVITIES ── -->
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Clubs &amp; Activities</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:13px;color:var(--muted)">Weekly recurring activities — shown in your brief</div>
+          <button onclick="_clubsAddOpen()" style="font-size:12px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.08);border:1.5px solid rgba(124,58,237,.25);border-radius:12px;padding:7px 13px;cursor:pointer;flex-shrink:0">+ Add</button>
+        </div>
+        <div id="setup-clubs-list"></div>
+        <!-- Add/edit form inline in Settings -->
+        <div id="clubs-add-form" style="display:none;background:var(--bg);border:1.5px solid rgba(124,58,237,.3);border-radius:14px;padding:14px;margin-top:10px">
+          <div id="clubs-form-title" style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">New activity</div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Day</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px" id="clubs-day-picker">
+            <button onclick="_clubsDayPick(0)" data-d="0" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Mon</button>
+            <button onclick="_clubsDayPick(1)" data-d="1" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Tue</button>
+            <button onclick="_clubsDayPick(2)" data-d="2" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Wed</button>
+            <button onclick="_clubsDayPick(3)" data-d="3" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Thu</button>
+            <button onclick="_clubsDayPick(4)" data-d="4" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Fri</button>
+            <button onclick="_clubsDayPick(5)" data-d="5" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Sat</button>
+            <button onclick="_clubsDayPick(6)" data-d="6" class="clubs-day-btn" style="padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer">Sun</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Activity</div>
+              <input id="clubs-input-activity" type="text" placeholder="e.g. Cricket" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Time</div>
+              <input id="clubs-input-time" type="time" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Who</div>
+              <input id="clubs-input-child" type="text" placeholder="e.g. Inaaya" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box">
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Location</div>
+              <input id="clubs-input-location" type="text" placeholder="e.g. Valley End CC" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Resumes from <span style="font-weight:400;text-transform:none;letter-spacing:0">(leave blank if running now)</span></div>
+            <input id="clubs-input-resume" type="date" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--surface);color:var(--text);outline:none;box-sizing:border-box">
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="_clubsAddSave()" style="flex:1;padding:10px;border-radius:12px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer">Save activity</button>
+            <button onclick="_clubsAddClose()" style="padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:transparent;font-size:13px;color:var(--muted);cursor:pointer">Cancel</button>
+          </div>
+          <div id="clubs-add-error" style="display:none;font-size:12px;color:#dc2626;margin-top:8px"></div>
         </div>
       </div>
 
@@ -7208,22 +7201,32 @@ function _hcAdd() {
       var d = await r.json();
       var acts = d.activities || [];
       if (!acts.length) { list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">No clubs yet — tap <strong>+ Add</strong> above.</div>'; return; }
+      var _tod2 = new Date().toISOString().slice(0,10);
       list.innerHTML = acts.map(function(a) {
         var dayLabel = _CLUBS_DAYS[a.weekday] || "";
         var who  = a.child ? '<span style="font-size:11px;font-weight:600;color:#7c3aed;background:rgba(124,58,237,.08);padding:2px 7px;border-radius:10px">' + a.child + '</span>' : "";
         var time = a.time ? '<span style="font-size:12px;color:var(--muted)">' + a.time + '</span>' : "";
         var loc  = a.location ? '<div style="font-size:11px;color:var(--muted);margin-top:3px">📍 ' + a.location + '</div>' : "";
-        var actEsc = a.activity.replace(/'/g, "\\'");
+        var actEsc  = a.activity.replace(/'/g, "\\'");
+        var locEsc  = (a.location||"").replace(/'/g, "\\'");
+        var childEsc= (a.child||"").replace(/'/g, "\\'");
+        var timeEsc = (a.time||"").replace(/'/g, "\\'");
+        var resumeEsc = (a.resume_from||"").replace(/'/g,"\\'");
+        var isPaused = a.resume_from && a.resume_from > _tod2;
         var isAllYear = !!a.all_year;
         var ayBadge = isAllYear
           ? '<span style="font-size:10px;font-weight:700;color:#065f46;background:#d1fae5;border-radius:8px;padding:2px 7px;cursor:pointer" onclick="_clubsToggleAllYear(' + a.weekday + ',\'' + actEsc + '\',' + isAllYear + ')">🗓️ All year</span>'
           : '<span style="font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px 7px;cursor:pointer" onclick="_clubsToggleAllYear(' + a.weekday + ',\'' + actEsc + '\',' + isAllYear + ')">Term only</span>';
-        return '<div style="display:flex;align-items:flex-start;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;margin-bottom:8px">'
+        var pausedBadge = isPaused ? '<span style="font-size:10px;font-weight:700;color:#d97706;background:#fef3c7;border-radius:8px;padding:2px 7px">⏸ resumes ' + a.resume_from + '</span>' : "";
+        return '<div style="display:flex;align-items:flex-start;justify-content:space-between;background:var(--surface);border:1px solid ' + (isPaused ? '#fde68a' : 'var(--border)') + ';border-radius:14px;padding:11px 13px;margin-bottom:8px">'
           + '<div style="display:flex;align-items:flex-start;gap:9px">'
-          + '<div style="background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:4px 8px;border-radius:8px;flex-shrink:0;margin-top:1px">' + dayLabel + '</div>'
-          + '<div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:14px;font-weight:700;color:var(--text)">' + a.activity + '</span>' + who + time + ayBadge + '</div>' + loc + '</div>'
+          + '<div style="background:' + (isPaused ? '#d97706' : '#7c3aed') + ';color:#fff;font-size:10px;font-weight:800;padding:4px 8px;border-radius:8px;flex-shrink:0;margin-top:1px">' + dayLabel + '</div>'
+          + '<div><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:14px;font-weight:700;color:var(--text)">' + a.activity + '</span>' + who + time + ayBadge + pausedBadge + '</div>' + loc + '</div>'
           + '</div>'
-          + '<button onclick="_clubsDelete(' + a.weekday + ',\'' + actEsc + '\')" style="background:none;border:none;font-size:15px;color:var(--muted);cursor:pointer;padding:0 0 0 6px">✕</button>'
+          + '<div style="display:flex;gap:4px;flex-shrink:0">'
+          + '<button onclick="_clubsEdit(' + a.weekday + ',\'' + actEsc + '\',\'' + timeEsc + '\',\'' + childEsc + '\',\'' + locEsc + '\',\'' + resumeEsc + '\')" style="background:none;border:none;font-size:14px;color:var(--muted);cursor:pointer;padding:0 4px">✏️</button>'
+          + '<button onclick="_clubsDelete(' + a.weekday + ',\'' + actEsc + '\')" style="background:none;border:none;font-size:15px;color:var(--muted);cursor:pointer;padding:0 0 0 4px">✕</button>'
+          + '</div>'
           + '</div>';
       }).join("");
     } catch(e) { list.innerHTML = '<div style="font-size:12px;color:#dc2626">Failed to load</div>'; }
