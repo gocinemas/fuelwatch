@@ -13663,6 +13663,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             "If you can identify a city or area from signage — add: LOCATION: [city or area name]\n"
             "If a phone number is visible on the sign, van, or ad — add: PHONE: [number]\n"
             "If a website URL is clearly printed in the image — add: URL: [the full URL, starting with http]\n"
+            "If there is a QR code visible in the image, decode it and add: QRCODE: [the decoded URL]\n"
             "Always add: SEARCH: [2-5 word search term]"
             + _loc_hint
         )
@@ -13729,6 +13730,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         search_tag = ""
         phone_tag = ""
         url_tag = ""
+        qr_url_tag = ""
         product_items = []   # list of {name, brand, price} dicts
         shop_tag = ""
         _BLANK = {"", "n/a", "not visible", "unknown", "none", "-"}
@@ -13750,6 +13752,10 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 _u = _line.split(":", 1)[1].strip()
                 if _u.lower() not in _BLANK and ("http" in _u.lower() or "www." in _u.lower()):
                     url_tag = _u if _u.startswith("http") else "https://" + _u
+            elif _up.startswith("QRCODE:"):
+                _qu = _line.split(":", 1)[1].strip()
+                if _qu.lower() not in _BLANK and ("http" in _qu.lower() or "www." in _qu.lower()):
+                    qr_url_tag = _qu if _qu.startswith("http") else "https://" + _qu
             elif _up.startswith("PRODUCT:"):
                 _raw = _line.split(":", 1)[1].strip()
                 _parts = [p.strip() for p in _raw.split("|")]
@@ -14172,10 +14178,13 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     update_data["category"] = "Events"
                 elif img_type == "recipe":
                     update_data["category"] = "Recipe"
-                    # If no steps visible, search web for full recipe using dish name
+                    # If steps not visible, fetch full recipe — QR code URL first, then URL tag, then web search
                     if "no cooking steps" in summary.lower() or "steps" not in summary.lower():
                         _dish = title.replace("🍳","").strip() or search_tag
-                        if _dish:
+                        # Priority 1: QR code decoded by vision model
+                        _rurl = qr_url_tag or url_tag
+                        # Priority 2: web search by dish name
+                        if not _rurl and _dish:
                             try:
                                 _rsearch = requests.get(
                                     "https://www.googleapis.com/customsearch/v1",
@@ -14188,23 +14197,24 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                                 _rurl = (_rsearch.get("items") or [{}])[0].get("link","")
                             except Exception:
                                 _rurl = ""
-                            # Fallback: construct BBC Food / Waitrose search URL
-                            if not _rurl:
-                                import urllib.parse as _up
-                                _rurl = "https://www.bbc.co.uk/food/search?q=" + _up.quote(_dish)
-                            if _rurl:
-                                _rfetched = _fetch_url_text(_rurl)
-                                _rtext = _rfetched.get("text","")[:3000]
-                                if _rtext:
-                                    _rsteps = _groq_chat(
-                                        "Extract ONLY the ingredients list and numbered cooking steps from this recipe page. "
-                                        "Format: first list ingredients with quantities, then numbered steps. Plain text, no markdown.",
-                                        [{"role":"user","content":_rtext}],
-                                        max_tokens=600,
-                                    )
-                                    if _rsteps and len(_rsteps) > 80:
-                                        update_data["summary"] = f"🍳 {_dish}\n\n{_rsteps}\n\nSource: {_rurl}"
-                                        update_data["url"] = _rurl
+                        # Priority 3: BBC Food search
+                        if not _rurl and _dish:
+                            import urllib.parse as _up
+                            _rurl = "https://www.bbc.co.uk/food/search?q=" + _up.quote(_dish)
+                        if _rurl:
+                            _rfetched = _fetch_url_text(_rurl)
+                            _rtext = _rfetched.get("text","")[:3000]
+                            if _rtext:
+                                _rsteps = _groq_chat(
+                                    "Extract ONLY the ingredients list and numbered cooking steps from this recipe page. "
+                                    "Format: first list ingredients with quantities, then numbered steps. Plain text, no markdown.",
+                                    [{"role":"user","content":_rtext}],
+                                    max_tokens=600,
+                                )
+                                if _rsteps and len(_rsteps) > 80:
+                                    _src = "QR code" if qr_url_tag else "web"
+                                    update_data["summary"] = f"🍳 {_dish}\n\n{_rsteps}\n\nSource ({_src}): {_rurl}"
+                                    update_data["url"] = _rurl
                 elif img_type == "wine":
                     update_data["category"] = "Dining"
                 elif img_type == "product":
