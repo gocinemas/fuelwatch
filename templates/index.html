@@ -14639,9 +14639,10 @@ _bkBadge();
     var dow  = now.getDay();  // 0=Sun, 6=Sat
     var row  = document.getElementById("brief-mode-row");
     if (!row) return;
-    // Show on all weekdays — mode can be set any time, not just commute hours
+    // Show on weekdays before 7pm only — no point switching mode in the evening
     var isWeekend = dow === 0 || dow === 6;
-    if (isWeekend) return;
+    var hour = now.getHours();
+    if (isWeekend || hour >= 19) return;
     row.style.display = "flex";
     if (_briefCurrentMode) _briefSetMode(_briefCurrentMode, true); // silent — _briefInit will fetch fresh data
   }
