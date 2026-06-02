@@ -21379,6 +21379,13 @@ window.spotifyAddTrack = window.spotifyLike;
         );
       },
       function() {
+        var savedPc = (localStorage.getItem("miru_postcode") || "").replace(/\s+/g,"").toUpperCase();
+        if (savedPc) {
+          _restore();
+          var si = document.getElementById("train-search-input");
+          if (si) { si.value = savedPc; trainSearch(); }
+          return;
+        }
         if (btn) { btn.textContent = "📍 Location blocked — search by postcode ↓"; btn.disabled = false; btn.style.background = "#6b7280"; }
         var si = document.getElementById("train-search-input");
         if (si) { si.focus(); si.scrollIntoView({behavior:"smooth", block:"center"}); }
