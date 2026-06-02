@@ -9692,11 +9692,22 @@ def api_home_ask():
                     else:
                         non_receipts.append(s)
                 if non_receipts:
-                    saves_text = "; ".join(
-                        f"{s['title'].strip()} [{s.get('category','')}] saved {(s.get('created_at') or '')[:10]}"
-                        for s in non_receipts
-                    )
-                    ctx_lines.append(f"Saves library (clippings/bookmarks, NOT spend): {saves_text}")
+                    _show_content = any(w in q_lower for w in
+                        ["show me", "what's the recipe", "whats the recipe", "show recipe",
+                         "get recipe", "recipe steps", "ingredients", "how to make",
+                         "what did i save", "show save", "what is the"])
+                    saves_parts = []
+                    for s in non_receipts:
+                        _t = s['title'].strip()
+                        _d = (s.get('created_at') or '')[:10]
+                        _cat = s.get('category','')
+                        if _show_content and s.get('summary'):
+                            # Include first 300 chars of summary for content queries
+                            _sm = s['summary'][:300].replace("\n"," ").strip()
+                            saves_parts.append(f"{_t} [{_cat}] saved {_d}: {_sm}")
+                        else:
+                            saves_parts.append(f"{_t} [{_cat}] saved {_d}")
+                    ctx_lines.append(f"Saves library (clippings/bookmarks, NOT spend): {'; '.join(saves_parts)}")
                 # Receipts with amounts — include merchant + amount so LLM can answer spend queries
                 if receipts:
                     receipt_parts = []
@@ -9902,7 +9913,7 @@ def api_home_ask():
         import zoneinfo as _askzi
         _now_uk   = _askdt.now(_askzi.ZoneInfo("Europe/London"))
         _now_hhmm = _now_uk.strftime("%H:%M")
-        _now_label = _now_uk.strftime("%A %-d %b, %H:%M")
+        _now_label = _now_uk.strftime("%A %d %b, %H:%M").replace(" 0", " ")
         ctx_lines.insert(0, f"Current time: {_now_label} UK")
         ctx_text = "; ".join(ctx_lines) if ctx_lines else "No personal context loaded."
         system_prompt = (
@@ -9937,7 +9948,8 @@ def api_home_ask():
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
                      "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant", "max_tokens": 120,
+            json={"model": "llama-3.1-8b-instant",
+                  "max_tokens": 400 if any(w in q_lower for w in ["show", "recipe", "ingredient", "steps"]) else 120,
                   "temperature": 0.2, "messages": messages},
             timeout=8,
         )
@@ -13725,7 +13737,17 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             elif "receipt" in first or "bill" in first:
                 title = "🧾 Receipt"; img_type = "receipt"
             elif "recipe" in first:
-                title = "🍳 Recipe"; img_type = "recipe"
+                img_type = "recipe"
+                # Try to extract dish name from first bullet or analysis text
+                _rdish = ""
+                for _rl in analysis.split("\n"):
+                    _rlu = _rl.strip()
+                    if _rlu.startswith("•") or _rlu.startswith("-"):
+                        _rlu = _rlu.lstrip("•- ").strip()
+                    if len(_rlu) > 4 and not _rlu.upper().startswith("TYPE:") and not _rlu.upper().startswith("SEARCH:"):
+                        _rdish = _rlu[:60]
+                        break
+                title = f"🍳 {_rdish}" if _rdish else "🍳 Recipe"
             elif "menu" in first:
                 title = "🍽️ Menu"; img_type = "menu"
             elif "wine" in first:
