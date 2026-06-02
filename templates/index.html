@@ -2914,11 +2914,15 @@
       <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Morning brief</div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
         <div style="display:flex;flex-direction:column;gap:12px">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Google Calendar</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:2px;letter-spacing:.04em;text-transform:uppercase">Calendars</div>
             <button onclick="_briefConnectCalendar()" id="setup-cal-btn"
               style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #c7d2fe;background:#eef2ff;font-size:13px;font-weight:700;cursor:pointer;color:#4338ca;display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box">
               <span>📅</span><span id="setup-cal-label">Connect Google Calendar</span>
+            </button>
+            <button onclick="_briefConnectMsCalendar()" id="setup-ms-cal-btn"
+              style="width:100%;padding:10px;border-radius:10px;border:1.5px solid #dde1e7;background:#f3f4f6;font-size:13px;font-weight:700;cursor:pointer;color:#374151;display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box">
+              <span>🗓️</span><span id="setup-ms-cal-label">Connect Microsoft / Outlook Calendar</span>
             </button>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 13px">
@@ -15916,8 +15920,10 @@ _bkBadge();
   };
 
   function _briefUpdateMsCalBtn(connected) {
-    var lbl = document.getElementById("brief-ms-cal-label");
-    var btn = document.getElementById("brief-ms-cal-btn");
+    var pairs = [["brief-ms-cal-label","brief-ms-cal-btn"],["setup-ms-cal-label","setup-ms-cal-btn"]];
+    pairs.forEach(function(p) {
+    var lbl = document.getElementById(p[0]);
+    var btn = document.getElementById(p[1]);
     if (!lbl || !btn) return;
     if (connected) {
       lbl.textContent = "✅ Microsoft Calendar connected · tap to disconnect";
@@ -15927,6 +15933,7 @@ _bkBadge();
       btn.style.background = "#f3f4f6"; btn.style.borderColor = "#dde1e7"; btn.style.color = "#374151";
     }
     btn.disabled = false;
+    }); // end pairs.forEach
   }
 
   window._briefRefreshCalStatus = async function() {
