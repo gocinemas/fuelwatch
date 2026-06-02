@@ -7367,7 +7367,10 @@ def _v2_fetch_saves(from_number: str) -> list:
 def _v2_fetch_calendar(from_number: str) -> list:
     """Fetch today's + tomorrow's Google Calendar events for the user."""
     try:
-        rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number) \
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa    = f"whatsapp:{_fn_plain}"
+        rows = lib._sb().table("ma_details").select("data") \
+            .in_("device_id", [_fn_plain, _fn_wa]) \
             .eq("type", "calendar_token").execute().data
         if not rows:
             return []
@@ -8625,6 +8628,7 @@ def api_home_brief():
             futures["saves"]           = pool.submit(_v2_fetch_saves, from_number)
             futures["deliveries"]      = pool.submit(_v2_fetch_deliveries, from_number)
             futures["calendar"]        = pool.submit(_v2_fetch_calendar, from_number)
+            futures["ms_calendar"]     = pool.submit(_v2_fetch_ms_calendar, from_number)
             futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
             futures["recent_capture"]   = pool.submit(_v2_fetch_recent_capture, from_number)
             futures["recurring"]        = pool.submit(_v2_fetch_recurring, from_number, now.weekday())
@@ -8932,7 +8936,7 @@ def api_home_brief():
             if any(p in _te_text for p in _ev_today_pats):
                 facts.insert(1, f"🎫 Saved for today: {_event_label(_te)}")
                 break
-    _cal_events = ctx.get("calendar", [])
+    _cal_events = ctx.get("calendar", []) + ctx.get("ms_calendar", [])
     # Merge personal events into calendar for brief purposes
     _personal_evs = ctx.get("personal_events", [])
     _past_personal = []  # recent past events — for "how was it?" follow-up
@@ -9383,9 +9387,12 @@ def api_home_brief():
 
     _cal_connected = False
     try:
-        if ctx.get("calendar") is not None and from_number:
+        if from_number:
+            _fn_plain = from_number.replace("whatsapp:", "").strip()
+            _fn_wa    = f"whatsapp:{_fn_plain}"
             _cal_connected = bool(
-                lib._sb().table("ma_details").select("id").eq("device_id", from_number)
+                lib._sb().table("ma_details").select("id")
+                .in_("device_id", [_fn_plain, _fn_wa])
                 .eq("type", "calendar_token").execute().data
             )
     except Exception:
@@ -20351,6 +20358,185 @@ def api_calendar_disconnect():
         return _cors(jsonify({"error": "token required"})), 400
     lib._sb().table("ma_details").delete().eq("device_id", from_number) \
         .eq("type", "calendar_token").execute()
+    return _cors(jsonify({"ok": True}))
+
+
+# ── Microsoft Calendar ─────────────────────────────────────────────────────────
+
+_MS_CALENDAR_REDIRECT = "https://miru.humanagency.co/calendar/microsoft/callback"
+_MS_CALENDAR_SCOPES   = "Calendars.Read offline_access"
+
+def _ms_client_id():
+    return os.environ.get("MICROSOFT_CLIENT_ID", "")
+
+def _ms_client_secret():
+    return os.environ.get("MICROSOFT_CLIENT_SECRET", "")
+
+def _ms_calendar_oauth_url(from_number: str) -> str:
+    import urllib.parse
+    params = {
+        "client_id":     _ms_client_id(),
+        "redirect_uri":  _MS_CALENDAR_REDIRECT,
+        "response_type": "code",
+        "scope":         _MS_CALENDAR_SCOPES,
+        "response_mode": "query",
+        "state":         from_number,
+    }
+    return "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" + urllib.parse.urlencode(params)
+
+def _v2_fetch_ms_calendar(from_number: str) -> list:
+    """Fetch today's + tomorrow's Microsoft 365 Calendar events."""
+    try:
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa    = f"whatsapp:{_fn_plain}"
+        rows = lib._sb().table("ma_details").select("data") \
+            .in_("device_id", [_fn_plain, _fn_wa]) \
+            .eq("type", "ms_calendar_token").execute().data
+        if not rows:
+            return []
+        token_data    = rows[0].get("data") or {}
+        refresh_token = token_data.get("refresh_token", "")
+        if not refresh_token:
+            return []
+        tr = requests.post(
+            "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+            data={
+                "refresh_token": refresh_token,
+                "client_id":     _ms_client_id(),
+                "client_secret": _ms_client_secret(),
+                "redirect_uri":  _MS_CALENDAR_REDIRECT,
+                "grant_type":    "refresh_token",
+                "scope":         _MS_CALENDAR_SCOPES,
+            }, timeout=8,
+        )
+        access_token = tr.json().get("access_token", "")
+        # Persist new refresh_token if rotated
+        new_refresh = tr.json().get("refresh_token", "")
+        if new_refresh and new_refresh != refresh_token:
+            try:
+                lib._sb().table("ma_details").update({"data": {"refresh_token": new_refresh}}) \
+                    .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "ms_calendar_token").execute()
+            except Exception:
+                pass
+        if not access_token:
+            return []
+        from datetime import datetime as _cdt, timezone as _ctz, timedelta as _ctd
+        now_utc      = _cdt.now(_ctz.utc)
+        today_min    = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow_max = today_min + _ctd(days=2)
+        er = requests.get(
+            "https://graph.microsoft.com/v1.0/me/calendarView",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={
+                "startDateTime": today_min.isoformat(),
+                "endDateTime":   tomorrow_max.isoformat(),
+                "$select":       "subject,start,end,location,isAllDay",
+                "$orderby":      "start/dateTime",
+                "$top":          "15",
+            },
+            timeout=8,
+        )
+        events = []
+        for ev in er.json().get("value", []):
+            title = (ev.get("subject") or "").strip()
+            if not title or title.lower() == "busy":
+                continue
+            start_raw = (ev.get("start") or {}).get("dateTime", "")
+            all_day   = ev.get("isAllDay", False)
+            start_label = ""
+            date_label  = start_raw[:10] if start_raw else ""
+            if start_raw and not all_day:
+                try:
+                    _s    = _cdt.fromisoformat(start_raw.replace("Z", "+00:00"))
+                    _s_uk = _s + _ctd(hours=1)  # BST approx
+                    start_label = _s_uk.strftime("%-I:%M%p").lower().replace(":00am", "am").replace(":00pm", "pm")
+                    date_label  = _s_uk.date().isoformat()
+                except Exception:
+                    pass
+            location = ((ev.get("location") or {}).get("displayName") or "").strip()
+            events.append({"title": title, "start": start_label, "date": date_label,
+                           "all_day": all_day, "location": location, "source": "microsoft"})
+        return events
+    except Exception as e:
+        app.logger.warning(f"[ms_calendar] fetch: {e}")
+        return []
+
+
+@app.route("/calendar/microsoft/callback")
+def ms_calendar_oauth_callback():
+    code        = request.args.get("code", "")
+    from_number = request.args.get("state", "")
+    if request.args.get("error") or not code or not from_number:
+        return "<p>❌ Microsoft Calendar connection failed. Close this tab and try again.</p>", 400
+    try:
+        tr = requests.post(
+            "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+            data={
+                "code":          code,
+                "client_id":     _ms_client_id(),
+                "client_secret": _ms_client_secret(),
+                "redirect_uri":  _MS_CALENDAR_REDIRECT,
+                "grant_type":    "authorization_code",
+                "scope":         _MS_CALENDAR_SCOPES,
+            }, timeout=10,
+        )
+        tokens        = tr.json()
+        refresh_token = tokens.get("refresh_token", "")
+        if not refresh_token:
+            return "<p>❌ No refresh token — make sure offline_access scope is requested.</p>", 400
+        sb = lib._sb()
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa    = f"whatsapp:{_fn_plain}"
+        existing = sb.table("ma_details").select("id").in_("device_id", [_fn_plain, _fn_wa]) \
+            .eq("type", "ms_calendar_token").execute().data
+        rec_data = {"refresh_token": refresh_token}
+        if existing:
+            sb.table("ma_details").update({"data": rec_data}).eq("id", existing[0]["id"]).execute()
+        else:
+            sb.table("ma_details").insert({
+                "device_id": from_number, "type": "ms_calendar_token",
+                "label": "Microsoft Calendar", "data": rec_data,
+            }).execute()
+        return "<html><body style='font-family:sans-serif;text-align:center;padding:40px'>" \
+               "<h2>✅ Microsoft Calendar connected</h2>" \
+               "<p>You can close this tab — Miru will now show your Outlook events.</p>" \
+               "<script>setTimeout(()=>window.close(),2000)</script></body></html>"
+    except Exception as e:
+        return f"<p>❌ Error: {e}</p>", 500
+
+
+@app.route("/api/calendar/microsoft/status")
+def api_ms_calendar_status():
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token) if token else None
+    if not from_number:
+        return _cors(jsonify({"connected": False, "configured": False}))
+    configured = bool(_ms_client_id())
+    _fn_plain = from_number.replace("whatsapp:", "").strip()
+    _fn_wa    = f"whatsapp:{_fn_plain}"
+    row = lib._sb().table("ma_details").select("id").in_("device_id", [_fn_plain, _fn_wa]) \
+        .eq("type", "ms_calendar_token").execute().data
+    connected = bool(row)
+    return _cors(jsonify({
+        "connected":  connected,
+        "configured": configured,
+        "oauth_url":  None if connected or not configured else _ms_calendar_oauth_url(from_number),
+    }))
+
+
+@app.route("/api/calendar/microsoft/disconnect", methods=["POST", "OPTIONS"])
+def api_ms_calendar_disconnect():
+    if request.method == "OPTIONS":
+        return _cors(Response("", 204))
+    data = request.json or {}
+    token = data.get("token", "").strip()
+    from_number = _v2_resolve(token) if token else None
+    if not from_number:
+        return _cors(jsonify({"error": "token required"})), 400
+    _fn_plain = from_number.replace("whatsapp:", "").strip()
+    _fn_wa    = f"whatsapp:{_fn_plain}"
+    lib._sb().table("ma_details").delete().in_("device_id", [_fn_plain, _fn_wa]) \
+        .eq("type", "ms_calendar_token").execute()
     return _cors(jsonify({"ok": True}))
 
 

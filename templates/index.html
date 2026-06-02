@@ -2224,11 +2224,15 @@
           </div>
           <!-- Calendar connect -->
           <div>
-            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Google Calendar</div>
-            <div id="brief-cal-row">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Calendars</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
               <button onclick="_briefConnectCalendar()" id="brief-cal-btn"
                 style="width:100%;padding:11px;border-radius:10px;border:1.5px solid #c7d2fe;background:#eef2ff;font-size:13px;font-weight:700;cursor:pointer;color:#4338ca;display:flex;align-items:center;justify-content:center;gap:8px">
                 <span>📅</span><span id="brief-cal-label">Connect Google Calendar</span>
+              </button>
+              <button onclick="_briefConnectMsCalendar()" id="brief-ms-cal-btn"
+                style="width:100%;padding:11px;border-radius:10px;border:1.5px solid #dde1e7;background:#f3f4f6;font-size:13px;font-weight:700;cursor:pointer;color:#374151;display:flex;align-items:center;justify-content:center;gap:8px">
+                <span>🗓️</span><span id="brief-ms-cal-label">Connect Microsoft / Outlook Calendar</span>
               </button>
             </div>
           </div>
@@ -7087,6 +7091,11 @@ function _hcAdd() {
         .then(function(d){
           _applyPrefs(d.prefs || {});
           _briefUpdateCalBtn(!!d.calendar_connected, null);
+          // Check Microsoft Calendar status
+          fetch("/api/calendar/microsoft/status?token=" + encodeURIComponent(_sPhone))
+            .then(function(mr){ return mr.json(); })
+            .then(function(md){ _briefUpdateMsCalBtn(md.connected); })
+            .catch(function(){});
         })
         .catch(function(){
           if (_briefData && _briefData.prefs) _applyPrefs(_briefData.prefs);
@@ -15864,6 +15873,61 @@ _bkBadge();
       }
     } catch(e) { if (btn) btn.disabled = false; }
   };
+
+  window._briefConnectMsCalendar = async function() {
+    var token = localStorage.getItem("miru_phone") || "";
+    if (!token) { alert("Link your WhatsApp first — go to My Area → Accounts."); return; }
+    var btn = document.getElementById("brief-ms-cal-btn");
+    if (btn) btn.disabled = true;
+    try {
+      var r = await fetch("/api/calendar/microsoft/status?token=" + encodeURIComponent(token));
+      var d = await r.json();
+      if (!d.configured) {
+        alert("Microsoft Calendar isn't set up yet — MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET need to be added in Railway. Ask Vikram to set this up.");
+        if (btn) btn.disabled = false;
+        return;
+      }
+      if (d.connected) {
+        if (confirm("Microsoft Calendar connected. Disconnect it?")) {
+          await fetch("/api/calendar/microsoft/disconnect", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({token})});
+          _briefUpdateMsCalBtn(false);
+        }
+        if (btn) btn.disabled = false;
+        return;
+      }
+      if (d.oauth_url) {
+        var popup = window.open(d.oauth_url, "ms_cal_oauth", "width=500,height=650,scrollbars=yes");
+        var poll = setInterval(function() {
+          try { if (popup && popup.closed) { clearInterval(poll); _briefRefreshMsCalStatus(); } } catch(e) {}
+        }, 800);
+      }
+    } catch(e) { if (btn) btn.disabled = false; }
+  };
+
+  window._briefRefreshMsCalStatus = async function() {
+    var token = localStorage.getItem("miru_phone") || "";
+    if (!token) return;
+    try {
+      var r = await fetch("/api/calendar/microsoft/status?token=" + encodeURIComponent(token));
+      var d = await r.json();
+      _briefUpdateMsCalBtn(d.connected);
+      if (d.connected) _briefInit();
+    } catch(e) {}
+  };
+
+  function _briefUpdateMsCalBtn(connected) {
+    var lbl = document.getElementById("brief-ms-cal-label");
+    var btn = document.getElementById("brief-ms-cal-btn");
+    if (!lbl || !btn) return;
+    if (connected) {
+      lbl.textContent = "✅ Microsoft Calendar connected · tap to disconnect";
+      btn.style.background = "#d1fae5"; btn.style.borderColor = "#6ee7b7"; btn.style.color = "#065f46";
+    } else {
+      lbl.textContent = "Connect Microsoft / Outlook Calendar";
+      btn.style.background = "#f3f4f6"; btn.style.borderColor = "#dde1e7"; btn.style.color = "#374151";
+    }
+    btn.disabled = false;
+  }
 
   window._briefRefreshCalStatus = async function() {
     var token = localStorage.getItem("miru_phone") || "";
