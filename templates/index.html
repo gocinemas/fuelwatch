@@ -15440,7 +15440,13 @@ _bkBadge();
       var _skids = (_sctx && _sctx.schools) ? _sctx.schools : [];
       var _sevs  = Array.isArray(_sctx) ? _sctx : (_sctx && _sctx.events ? _sctx.events : []);
       if (_skids.length) {
-        schoolSubEl.textContent = _skids.map(function(s){ return s.child_name || ""; }).join(" & ") + " connected";
+        var _uniqueKids = [];
+        var _seenFirst = {};
+        _skids.forEach(function(s){
+          var first = (s.child_name || "").split(/\s+/)[0];
+          if(first && !_seenFirst[first]){ _seenFirst[first]=1; _uniqueKids.push(first); }
+        });
+        schoolSubEl.textContent = _uniqueKids.join(" & ") + " connected";
         schoolSubEl.style.color = "#059669"; schoolSubEl.style.fontWeight = "700";
         schoolRowEl.style.display = "flex";
       } else if (_sevs.length) {
