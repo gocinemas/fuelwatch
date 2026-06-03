@@ -474,32 +474,144 @@ def _school_twilio_send(from_number: str, msg: str) -> None:
     )
 
 
+def _school_quiet_hours() -> bool:
+    """True if current UK time is outside 7am–9pm — don't send alerts now."""
+    import zoneinfo as _zi
+    from datetime import datetime as _dt
+    hour = _dt.now(_zi.ZoneInfo("Europe/London")).hour
+    return hour < 7 or hour >= 21
+
+
+def _school_queue_alerts(from_number: str, events: list[dict]) -> None:
+    """Store pending alerts in ma_details to be sent at next poll inside quiet hours."""
+    try:
+        import json as _j
+        key = f"school_alert_queue:{from_number}"
+        existing_row = lib._sb().table("ma_details").select("id,data") \
+            .eq("device_id", from_number).eq("type", "school_alert_queue").limit(1).execute().data or []
+        queued = (existing_row[0].get("data") or {}).get("events", []) if existing_row else []
+        # Merge — deduplicate by event_title
+        existing_titles = {e.get("event_title","").lower() for e in queued}
+        for ev in events:
+            if ev.get("event_title","").lower() not in existing_titles:
+                queued.append(ev)
+        payload = {"events": queued}
+        if existing_row:
+            lib._sb().table("ma_details").update({"data": payload}).eq("id", existing_row[0]["id"]).execute()
+        else:
+            lib._sb().table("ma_details").insert({"device_id": from_number, "type": "school_alert_queue", "label": "school_alert_queue", "data": payload}).execute()
+        print(f"[school] quiet hours — queued {len(events)} events for {from_number}")
+    except Exception as e:
+        print(f"[school] queue error: {e}")
+
+
+def _school_flush_queue(from_number: str) -> list[dict]:
+    """Return queued alerts and clear the queue. Called at start of morning poll."""
+    try:
+        rows = lib._sb().table("ma_details").select("id,data") \
+            .eq("device_id", from_number).eq("type", "school_alert_queue").limit(1).execute().data or []
+        if not rows:
+            return []
+        queued = (rows[0].get("data") or {}).get("events", [])
+        lib._sb().table("ma_details").delete().eq("id", rows[0]["id"]).execute()
+        return queued
+    except Exception:
+        return []
+
+
 def _notify_new_school_events(from_number: str, new_events: list[dict]) -> None:
     """Push newly found school events via WhatsApp.
-    Action events (reminders, trips, deadlines etc.) get a priority alert.
-    Info-only events get a lighter nudge.
+    - Quiet hours (before 7am or after 9pm): queue for morning delivery
+    - Groups action items from the same email into one message line
+    - Applies reschedule/cancel suppression before sending
     """
-    actionable = [e for e in new_events if (e.get("event_type") or "").lower() in _ALERT_TYPES]
-    info_only  = [e for e in new_events
-                  if (e.get("event_type") or "").lower() in _INFO_TYPES
-                  and e not in actionable]
+    import re as _re
+
+    # Deduplicate and suppress reschedule/cancelled events before notifying
+    _stops = {"a","an","the","and","or","for","to","of","in","on","at","is","with","about","from","your"}
+    def _sig(t):
+        return [w for w in _re.sub(r'[^a-z0-9]',' ',(t or '').lower()).split() if len(w)>3 and w not in _stops]
+    _resc = _re.compile(r'\b(reschedul|postpone|cancel)\w*', _re.I)
+    suppressed, seen_titles = set(), set()
+    for rev in new_events:
+        if not _resc.search(rev.get("event_title","")): continue
+        rev_words = set(_sig(rev["event_title"]))
+        for ev in new_events:
+            if ev is rev or id(ev) in suppressed: continue
+            if _resc.search(ev.get("event_title","")): continue
+            ev_words = _sig(ev.get("event_title",""))
+            if ev_words and sum(1 for w in ev_words if w in rev_words) >= min(2, len(rev_words)):
+                suppressed.add(id(ev))
+    clean = []
+    for ev in new_events:
+        if id(ev) in suppressed: continue
+        key = _re.sub(r'[^a-z0-9]','', (ev.get("event_title") or "").lower())
+        if key in seen_titles: continue
+        seen_titles.add(key)
+        clean.append(ev)
+
+    actionable = [e for e in clean if (e.get("event_type") or "").lower() in _ALERT_TYPES]
+    info_only  = [e for e in clean if (e.get("event_type") or "").lower() in _INFO_TYPES]
 
     if not actionable and not info_only:
         return
 
+    # Quiet hours — queue and return; morning poll will flush
+    if _school_quiet_hours():
+        _school_queue_alerts(from_number, actionable + info_only)
+        return
+
     try:
         if actionable:
+            # Group events from the same email (gmail_msg_id) to avoid fragmented reminders
+            from collections import defaultdict as _dd
+            by_msg = _dd(list)
+            ungrouped = []
+            for ev in actionable:
+                mid = ev.get("gmail_msg_id", "")
+                if mid:
+                    by_msg[mid].append(ev)
+                else:
+                    ungrouped.append(ev)
+
             lines = ["🏫 *New from school*\n"]
-            for ev in actionable[:5]:
-                emoji  = _TYPE_EMOJI.get(ev.get("event_type", ""), "📌")
-                title  = ev.get("event_title", "")
-                child  = ev.get("child_name", "")
-                dt     = _fmt_date(ev.get("event_date"))
-                action = ev.get("action_needed", "")
-                line = f"{emoji} *{title}*"
-                if dt:     line += f" — {dt}"
-                if child:  line += f" ({child})"
-                if action: line += f"\n   ↳ {action}"
+            rendered = 0
+            for mid, evs in by_msg.items():
+                if rendered >= 5: break
+                if len(evs) == 1:
+                    ev = evs[0]
+                    emoji = _TYPE_EMOJI.get(ev.get("event_type",""), "📌")
+                    line  = f"{emoji} *{ev.get('event_title','')}*"
+                    dt    = _fmt_date(ev.get("event_date"))
+                    child = ev.get("child_name","")
+                    if dt:     line += f" — {dt}"
+                    if child:  line += f" ({child})"
+                    if ev.get("action_needed"): line += f"\n   ↳ {ev['action_needed']}"
+                    lines.append(line)
+                else:
+                    # Multiple items from same email — group under a heading
+                    child = evs[0].get("child_name","")
+                    # Find a common theme (non-reminder event if present, else first title)
+                    anchor = next((e for e in evs if e.get("event_type") not in ("reminder",)), evs[0])
+                    heading = anchor.get("event_title","")
+                    dt = _fmt_date(anchor.get("event_date"))
+                    line = f"🏫 *{heading}*"
+                    if dt:    line += f" — {dt}"
+                    if child: line += f" ({child})"
+                    reminders = [e for e in evs if e.get("event_type") == "reminder" and e.get("action_needed")]
+                    if reminders:
+                        actions = " · ".join(e["action_needed"] for e in reminders[:3])
+                        line += f"\n   ↳ {actions}"
+                    lines.append(line)
+                rendered += 1
+            for ev in ungrouped[:max(0, 5 - rendered)]:
+                emoji = _TYPE_EMOJI.get(ev.get("event_type",""), "📌")
+                line  = f"{emoji} *{ev.get('event_title','')}*"
+                dt    = _fmt_date(ev.get("event_date"))
+                child = ev.get("child_name","")
+                if dt:    line += f" — {dt}"
+                if child: line += f" ({child})"
+                if ev.get("action_needed"): line += f"\n   ↳ {ev['action_needed']}"
                 lines.append(line)
             lines.append("\nmiru.humanagency.co/?screen=school")
             _school_twilio_send(from_number, "\n".join(lines))
@@ -511,7 +623,7 @@ def _notify_new_school_events(from_number: str, new_events: list[dict]) -> None:
             who = f"{child_name}'s school" if child_name else school_name
             lines = [f"📬 *New from {who}*\n"]
             for ev in info_only[:3]:
-                lines.append(f"• {ev.get('event_title', '').strip()}")
+                lines.append(f"• {ev.get('event_title','').strip()}")
             if len(info_only) > 3:
                 lines.append(f"• … and {len(info_only) - 3} more")
             lines.append("\nmiru.humanagency.co/?screen=school")
@@ -691,6 +803,18 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
                 total_events += len(events)
                 if inserted:
                     new_by_parent.setdefault(from_number, []).extend(inserted)
+
+    # Flush any queued alerts from quiet-hours polls (send now if daytime)
+    if not _school_quiet_hours():
+        all_numbers = {p["from_number"] for p in profiles}
+        for fn in all_numbers:
+            queued = _school_flush_queue(fn)
+            if queued:
+                new_by_parent.setdefault(fn, [])
+                existing_titles = {e.get("event_title","").lower() for e in new_by_parent[fn]}
+                for ev in queued:
+                    if ev.get("event_title","").lower() not in existing_titles:
+                        new_by_parent[fn].append(ev)
 
     # Send WhatsApp alerts for action-needed new events
     for from_number, new_events in new_by_parent.items():
