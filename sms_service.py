@@ -1359,6 +1359,70 @@ def api_ai_news():
         return _cors_headers(resp), 500
 
 
+@app.route("/api/portfolio/ask", methods=["POST", "OPTIONS"])
+def api_portfolio_ask():
+    """Streaming Ask about Vikram for mekalav.com."""
+    if request.method == "OPTIONS":
+        resp = app.make_response(("", 204))
+        return _cors_headers(resp)
+    data = request.get_json(silent=True) or {}
+    question = (data.get("q") or "").strip()[:500]
+    if not question:
+        return _cors_headers(jsonify({"error": "No question"})), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return _cors_headers(jsonify({"error": "Not configured"})), 500
+
+    BIO = """You are an AI assistant on Vikram Mekala's portfolio site (mekalav.com). Answer questions about Vikram's background, experience and products. Be direct, confident and specific. 3-4 sentences max. No markdown, no lists unless asked.
+
+VIKRAM'S BACKGROUND:
+- 25 years in technology — started as a software engineer in India, moved to Italy then London (2005)
+- Specialises in large-scale digital transformation and AI programme delivery
+- Has led programmes at Unilever, Mars, Shell, BP — budgets up to £5M+, multi-continent teams
+- Recent work: 2025 Unilever M&A technology consultant; 2024–present AI product founder
+- Qualifications: MSc Computer Science, MBA, Prince2, Agile, SAFe
+
+PRODUCTS HE'S BUILT (all live):
+- Miru (miru.humanagency.co): WhatsApp-first AI assistant for everyday UK life — school comms, fuel prices, train times, book scanner, local area intelligence. Built on Flask, Groq, Twilio, Supabase, Railway.
+- Intel (intel.humanagency.co): Brand and company intelligence tool — type a company, get a structured brief covering strategy, leadership, financials, hiring signals, risks. Agentic architecture using parallel research agents.
+- AI (ai.humanagency.co): AI literacy platform for non-technical people — situation-based prompts, tool guides, plain English explanations.
+- MiruPM (miru.humanagency.co/pm): Programme intelligence tool — paste a brief, get Vision, BOSCARD, requirements, use cases, risks, delivery plan and Jira structure in seconds.
+
+AVAILABILITY: Open to AI transformation consulting, digital programme leadership, M&A technology advisory. Available now.
+
+CONTACT: mekalav.com has a contact section. Book 15 min via Calendly."""
+
+    from flask import stream_with_context
+    def generate():
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "system", "content": BIO}, {"role": "user", "content": question}],
+                    "max_tokens": 300, "temperature": 0.4, "stream": True,
+                },
+                stream=True, timeout=20,
+            )
+            for chunk in r.iter_lines():
+                if not chunk: continue
+                line = chunk.decode("utf-8", errors="ignore")
+                if not line.startswith("data: "): continue
+                payload = line[6:]
+                if payload == "[DONE]": yield "data: [DONE]\n\n"; break
+                try:
+                    tok = __import__("json").loads(payload)["choices"][0]["delta"].get("content","")
+                    if tok: yield f"data: {__import__('json').dumps({'t':tok})}\n\n"
+                except Exception: pass
+        except Exception as e:
+            yield f"data: {__import__('json').dumps({'t': 'Sorry, something went wrong.'})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    resp = app.response_class(stream_with_context(generate()), mimetype="text/event-stream")
+    return _cors_headers(resp)
+
+
 @app.route("/api/ai/ask", methods=["POST", "OPTIONS"])
 def api_ai_ask():
     """Streaming Ask AI for ai.humanagency.co — Groq answer streamed token by token."""
