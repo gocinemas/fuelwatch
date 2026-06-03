@@ -18723,8 +18723,15 @@ def _whatsapp_reply_inner():
             resp.message(whatsapp_product_format(product_q))
             return str(resp)
 
+    # ── WFH shortcut — before LLM classifier ────────────────────────────────
+    if re.search(r'\bwfh\b|working from home|work from home|wfh today|at home today', body_lower):
+        _intent = {"intent": "wfh"}
+    else:
+        _intent = None
+
     # ── Natural language fallback — Groq intent classification ───────────────
-    _intent = _wa_classify_intent(body)
+    if not _intent:
+        _intent = _wa_classify_intent(body)
     if _intent:
         _itype = _intent.get("intent")
         if _itype == "book_lookup":
@@ -18797,6 +18804,25 @@ def _whatsapp_reply_inner():
             body = "MY LINK"
             cmd_up = "MY LINK"
             body_lower = "my link"
+        elif _itype == "wfh":
+            import datetime as _wdt
+            _wfh_date = _wdt.date.today().isoformat()
+            _fn_plain = from_number.replace("whatsapp:", "").strip()
+            _fn_wa    = f"whatsapp:{_fn_plain}"
+            try:
+                sb = lib._sb()
+                rows = sb.table("ma_details").select("id,data") \
+                    .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
+                _prev = (rows[0].get("data") or {}) if rows else {}
+                _merged = {**_prev, "wfh_mode": "wfh", "wfh_date": _wfh_date}
+                if rows:
+                    sb.table("ma_details").update({"data": _merged}).eq("id", rows[0]["id"]).execute()
+                else:
+                    sb.table("ma_details").insert({"device_id": from_number, "type": "v2_prefs", "label": "home_brief", "data": _merged}).execute()
+            except Exception as _we:
+                print(f"[wfh] pref save error: {_we}", flush=True)
+            resp.message("🏠 Got it — WFH today. No commute content in your brief.")
+            return str(resp)
         elif _itype == "train":
             _from_stn = (_intent.get("from") or "").strip()
             _to_stn   = (_intent.get("to") or "").strip()
