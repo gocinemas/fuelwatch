@@ -8686,7 +8686,7 @@ def api_home_brief():
     # Traffic — school run drive times, morning weekdays only
     _tr_hour = now.hour
     _tr_wday = now.weekday()
-    if 6 <= _tr_hour < 10 and _tr_wday < 5:
+    if 7 <= _tr_hour <= 8 and _tr_wday < 5:
         _tr_pc   = postcode or prefs.get("fuel_postcode", "")
         _tr_schl = (ctx.get("school") or {}).get("schools") or []
         if _tr_pc and _tr_schl:
@@ -8902,8 +8902,8 @@ def api_home_brief():
             _from_label = loc_station or trains.get("from", "")
             if times:
                 facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
-        # School run traffic — always show drive time in morning, highlight delays
-        _tr = ctx.get("traffic", {})
+        # School run traffic — 7:00–8:30am only (out of the house by then)
+        _tr = ctx.get("traffic", {}) if (7 <= now.hour <= 8 and not (now.hour == 8 and now.minute > 30)) else {}
         for _tleg in (_tr.get("legs") or []):
             _tdelay = _tleg.get("delay_mins", 0)
             _child  = _tleg.get("child", "")
