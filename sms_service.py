@@ -7034,6 +7034,64 @@ def _surrey_holiday_status(today_date):
             "ends_today": False, "starts_tom": False, "back_tom": False}
 
 
+def _school_dedup_events(events: list) -> list:
+    """Deduplicate a list of school events in memory — exact title, fuzzy same-date, and reschedule suppression."""
+    import re as _sre
+    _stops = {"a","an","the","and","or","for","to","of","in","on","at","is","with","about","from","your","session","drop","first","parent","support"}
+    def _words(t):
+        return [w for w in _sre.sub(r"[^a-z0-9]"," ",(t or "").lower()).split() if len(w)>2 and w not in _stops]
+    def _overlap(a, b):
+        wa, wb = set(_words(a)), _words(b)
+        if not wa and not wb: return 0
+        common = sum(1 for w in wb if w in wa)
+        return common / max(len(wa), len(wb), 1)
+    def _richness(e):
+        return (200 if e.get("action_needed") else 0) + len(e.get("description") or "") + len(e.get("action_needed") or "")
+
+    # Pass 1: exact title dedup (case-insensitive, strip punctuation)
+    seen_titles, uniq = {}, []
+    for e in events:
+        k = _sre.sub(r"[^a-z0-9]","", (e.get("event_title") or "").lower())
+        if k and k in seen_titles:
+            # Keep the richer one
+            idx = seen_titles[k]
+            if _richness(e) > _richness(uniq[idx]):
+                uniq[idx] = e
+        else:
+            seen_titles[k] = len(uniq)
+            uniq.append(e)
+
+    # Pass 2: fuzzy same-date dedup across all profiles
+    deduped, used = [], set()
+    for i, ei in enumerate(uniq):
+        if i in used: continue
+        cluster = [ei]
+        for j, ej in enumerate(uniq):
+            if j <= i or j in used: continue
+            same_date = (ei.get("event_date") or "") == (ej.get("event_date") or "")
+            if same_date and _overlap(ei.get("event_title",""), ej.get("event_title","")) >= 0.35:
+                cluster.append(ej)
+                used.add(j)
+        cluster.sort(key=_richness, reverse=True)
+        deduped.append(cluster[0])
+        used.add(i)
+
+    # Pass 3: reschedule/postpone/cancel suppression
+    _resc = _sre.compile(r'\b(reschedul|postpone|cancel)\w*', _sre.I)
+    suppressed = set()
+    for rev in deduped:
+        if not _resc.search(rev.get("event_title","")): continue
+        rev_words = set(_words(rev["event_title"]))
+        if not rev_words: continue
+        for ev in deduped:
+            if ev is rev or id(ev) in suppressed: continue
+            if _resc.search(ev.get("event_title","")): continue
+            ev_words = _words(ev.get("event_title",""))
+            if ev_words and sum(1 for w in ev_words if w in rev_words) >= min(2, len(rev_words)):
+                suppressed.add(id(ev))
+    return [e for e in deduped if id(e) not in suppressed]
+
+
 def _v2_fetch_school(from_number: str) -> dict:
     """School profiles (daily run) + upcoming events (42 days) + recent comms (14 days)."""
     from datetime import date, timedelta
@@ -7086,6 +7144,10 @@ def _v2_fetch_school(from_number: str) -> dict:
             for p in profiles
         ]
         holiday_status["inset_days"] = inset_rows
+
+        # Dedup upcoming events before returning — fixes home brief + school card
+        upcoming = _school_dedup_events(upcoming)
+
         return {"schools": schools, "upcoming": upcoming, "recent": recent_rows,
                 "events": upcoming, "holiday_status": holiday_status}
     except Exception:
