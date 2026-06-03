@@ -8319,6 +8319,7 @@ def api_brief_nearby():
         "atm":         {"keyword": "ATM cash machine",         "type": "atm",         "min_rating": 0,   "min_reviews": 0},
         "pharmacy":    {"keyword": "pharmacy chemist boots",   "type": "pharmacy",    "min_rating": 0,   "min_reviews": 0},
         "supermarket": {"keyword": "supermarket tesco sainsbury waitrose asda", "type": "supermarket", "min_rating": 0, "min_reviews": 0},
+        "lunch":       {"keyword": "lunch restaurant cafe takeaway", "type": None,  "min_rating": 3.5, "min_reviews": 5},
         "all":         {"keyword": "cafe restaurant pub",      "type": None,          "min_rating": 3.8, "min_reviews": 5},
     }
     cfg = _TYPE_MAP.get(vtype, _TYPE_MAP["cafe"])

@@ -2012,6 +2012,9 @@
       <!-- School card — 3 upcoming events with child subheadings, below Ask Miru -->
       <div id="brief-school-slot" style="display:none;margin-top:12px"></div>
 
+      <!-- Lunch card — auto-loads 11:30am–2pm -->
+      <div id="brief-lunch-slot" style="display:none;margin-top:12px"></div>
+
       </div><!-- /brief-col-main -->
       <div id="brief-col-side">
 
@@ -15374,9 +15377,7 @@ _bkBadge();
       var _lunchHour = new Date().getHours();
       var _lunchMin  = new Date().getMinutes();
       var _lunchMins = _lunchHour * 60 + _lunchMin;
-      if (!_noCommute && _lunchMins >= 720 && _lunchMins < 870) { // 12:00–14:30
-        chips.push({ label: "🍽️ Lunch nearby?", action: "_exploreHereOpen()" });
-      }
+      // Lunch card handled by #brief-lunch-slot auto-load — no chip needed
       // Frequent places — confirmed regulars that match today (weekend / bank holiday chips)
       if (_noCommute && frequentToday && frequentToday.length) {
         frequentToday.forEach(function(fp) {
@@ -16526,12 +16527,46 @@ _bkBadge();
     );
   };
 
+  // Lunch card — auto-load 11:30am–2pm
+  function _briefLoadLunch(lat, lng) {
+    var slot = document.getElementById("brief-lunch-slot");
+    if (!slot) return;
+    var h = new Date().getHours(), m = new Date().getMinutes();
+    var mins = h * 60 + m;
+    if (mins < 690 || mins >= 840) return; // outside 11:30–14:00
+    slot.style.display = "block";
+    slot.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+      + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">🍽️ Lunch nearby</div>'
+      + '<div style="font-size:13px;color:var(--muted);padding:4px 0">Finding options…</div>'
+      + '</div>';
+    fetch("/api/brief/nearby?lat=" + lat + "&lng=" + lng + "&type=lunch&radius=800")
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var places = (d.places || []).slice(0, 5);
+        if (!places.length){ slot.style.display = "none"; return; }
+        var rows = places.map(function(p){
+          var rating = p.rating ? ('<span style="color:#f59e0b;font-size:11px;font-weight:700">★ ' + p.rating + '</span>') : "";
+          var dist   = p.distance_m ? ('<span style="color:var(--muted);font-size:11px">' + (p.distance_m < 1000 ? p.distance_m + 'm' : (p.distance_m/1000).toFixed(1) + 'km') + '</span>') : "";
+          var mapsUrl = "https://maps.google.com/?q=" + encodeURIComponent(p.name + " " + (p.vicinity||""));
+          return '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--border);text-decoration:none">'
+            + '<span style="font-size:13px;font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (p.emoji||"🍽️") + " " + p.name + '</span>'
+            + '<span style="display:flex;gap:6px;align-items:center;flex-shrink:0">' + rating + dist + '</span>'
+            + '</a>';
+        }).join("");
+        slot.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+          + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">🍽️ Lunch nearby</div>'
+          + rows + '</div>';
+      })
+      .catch(function(){ slot.style.display = "none"; });
+  }
+
   // Show nearby buttons + store coords once location is resolved
   var _origBriefRenderLocation = _briefRenderLocation;
   _briefRenderLocation = function(d) {
     _origBriefRenderLocation(d);
     if (d && d.lat !== undefined) {
       _briefNearbyLat = d.lat; _briefNearbyLng = d.lng;
+      _briefLoadLunch(d.lat, d.lng);
       var _h = new Date().getHours();
       var _ctx = (d.context || {});
       var _outdoorOk = (_ctx.weather && (_ctx.weather.outdoor_ok || (_ctx.weather.temp >= 14 && (_ctx.weather.code||99) <= 2)));
