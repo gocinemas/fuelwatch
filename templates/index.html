@@ -15684,13 +15684,31 @@ _bkBadge();
       });
     });
 
-    slot.innerHTML = '<div onclick="showScreen(\'school\')" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    var _collapsed = localStorage.getItem("brief_school_collapsed") === "1";
+    var _chev = _collapsed ? "▸" : "▾";
+    var _bodyStyle = _collapsed ? "display:none" : "";
+    slot.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:' + (_collapsed ? '0' : '8') + 'px;cursor:pointer" onclick="_briefSchoolToggle(this)">'
       + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🏫 School</div>'
-      + '<span style="font-size:10px;font-weight:700;color:var(--accent)">See all ›</span>'
-      + '</div>' + inner + '</div>';
+      + '<div style="display:flex;align-items:center;gap:10px">'
+      + '<span onclick="event.stopPropagation();showScreen(\'school\')" style="font-size:10px;font-weight:700;color:var(--accent);cursor:pointer">See all ›</span>'
+      + '<span style="font-size:13px;color:var(--muted)">' + _chev + '</span>'
+      + '</div></div>'
+      + '<div class="brief-school-body" style="' + _bodyStyle + '">' + inner + '</div>'
+      + '</div>';
     slot.style.display = "";
   }
+
+  window._briefSchoolToggle = function(hdr) {
+    var body = hdr.parentElement.querySelector(".brief-school-body");
+    var chev = hdr.querySelector("span:last-child");
+    if (!body) return;
+    var collapsed = body.style.display === "none";
+    body.style.display = collapsed ? "" : "none";
+    if (chev) chev.textContent = collapsed ? "▾" : "▸";
+    hdr.style.marginBottom = collapsed ? "8px" : "0";
+    localStorage.setItem("brief_school_collapsed", collapsed ? "0" : "1");
+  };
 
   function _briefRenderContextCards(ctx, container, mode) {
     if (!container) return;
