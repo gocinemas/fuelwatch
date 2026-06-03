@@ -1423,6 +1423,172 @@ CONTACT: mekalav.com has a contact section. Book 15 min via Calendly."""
     return _cors_headers(resp)
 
 
+@app.route("/api/portfolio/pitch", methods=["POST", "OPTIONS"])
+def api_portfolio_pitch():
+    """Streaming tailored pitch — rewrite Vikram's opening for a specific role/company."""
+    if request.method == "OPTIONS":
+        return _cors_headers(app.make_response(("", 204)))
+    data = request.get_json(silent=True) or {}
+    company = (data.get("company") or "").strip()[:100]
+    role    = (data.get("role")    or "").strip()[:100]
+    jd      = (data.get("jd")     or "").strip()[:800]
+    if not company and not role:
+        return _cors_headers(jsonify({"error": "company or role required"})), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return _cors_headers(jsonify({"error": "Not configured"})), 500
+
+    context = f"Company: {company}" if company else ""
+    if role: context += f"\nRole: {role}"
+    if jd:   context += f"\nJob description excerpt: {jd}"
+
+    prompt = f"""You are writing a tailored opening pitch for Vikram Mekala's portfolio site.
+
+VIKRAM'S BACKGROUND: 25 years in technology. Delivered large-scale digital transformation and AI programmes at Unilever, Mars, Shell and BP. Now founder of Human Agency — building AI products (Miru, Intel, MiruPM) used in production. Deep expertise in enterprise AI strategy, M&A technology, programme delivery.
+
+TARGET: {context}
+
+Write a 3-sentence opening pitch that:
+1. Names the company/role specifically and why Vikram is relevant to them
+2. Draws on 1-2 specific experiences from his background that match their context
+3. Ends with a clear, confident statement of what he'd bring
+
+Tone: direct, confident, no fluff. British English. No "I am excited to..." or "passionate about" clichés. Write in first person as Vikram."""
+
+    from flask import stream_with_context
+    def generate():
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
+                      "max_tokens": 250, "temperature": 0.6, "stream": True},
+                stream=True, timeout=20,
+            )
+            for chunk in r.iter_lines():
+                if not chunk: continue
+                line = chunk.decode("utf-8", errors="ignore")
+                if not line.startswith("data: "): continue
+                payload = line[6:]
+                if payload == "[DONE]": yield "data: [DONE]\n\n"; break
+                try:
+                    tok = __import__("json").loads(payload)["choices"][0]["delta"].get("content","")
+                    if tok: yield f"data: {__import__('json').dumps({'t':tok})}\n\n"
+                except Exception: pass
+        except Exception:
+            yield f"data: {__import__('json').dumps({'t':'Sorry, something went wrong.'})}\n\n"
+            yield "data: [DONE]\n\n"
+    return _cors_headers(app.response_class(stream_with_context(generate()), mimetype="text/event-stream"))
+
+
+@app.route("/api/portfolio/day0", methods=["POST", "OPTIONS"])
+def api_portfolio_day0():
+    """Streaming Day 0 brief — what Vikram would do in first 30 days at a company."""
+    if request.method == "OPTIONS":
+        return _cors_headers(app.make_response(("", 204)))
+    data = request.get_json(silent=True) or {}
+    company = (data.get("company") or "").strip()[:100]
+    if not company:
+        return _cors_headers(jsonify({"error": "company required"})), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return _cors_headers(jsonify({"error": "Not configured"})), 500
+
+    prompt = f"""Vikram Mekala is an AI and digital transformation programme director with 25 years experience at Unilever, Mars, Shell and BP. He is now being asked: what would you do in your first 30 days at {company}?
+
+Write a sharp Day 0 brief in 4 parts. For each part use this exact format:
+**[LABEL]**
+2-3 sentences of specific, practical content.
+
+Parts:
+1. ASSESS — what he'd listen for and map in week 1 (stakeholders, blockers, where AI is already being used badly or not at all)
+2. FIX — the 1-2 quick wins that build credibility fast (typically data quality, governance gaps, or a stalled initiative)
+3. BUILD — the 30-day priority he'd push hard on (the thing that creates real momentum)
+4. MEASURE — how he'd define success at day 30
+
+Be specific to {company}'s industry and context. No generic consulting waffle. British English."""
+
+    from flask import stream_with_context
+    def generate():
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}],
+                      "max_tokens": 450, "temperature": 0.5, "stream": True},
+                stream=True, timeout=25,
+            )
+            for chunk in r.iter_lines():
+                if not chunk: continue
+                line = chunk.decode("utf-8", errors="ignore")
+                if not line.startswith("data: "): continue
+                payload = line[6:]
+                if payload == "[DONE]": yield "data: [DONE]\n\n"; break
+                try:
+                    tok = __import__("json").loads(payload)["choices"][0]["delta"].get("content","")
+                    if tok: yield f"data: {__import__('json').dumps({'t':tok})}\n\n"
+                except Exception: pass
+        except Exception:
+            yield f"data: {__import__('json').dumps({'t':'Sorry, something went wrong.'})}\n\n"
+            yield "data: [DONE]\n\n"
+    return _cors_headers(app.response_class(stream_with_context(generate()), mimetype="text/event-stream"))
+
+
+@app.route("/api/portfolio/miru-chat", methods=["POST", "OPTIONS"])
+def api_portfolio_miru_chat():
+    """Demo Miru chat for mekalav.com labs — handles a message and streams a response."""
+    if request.method == "OPTIONS":
+        return _cors_headers(app.make_response(("", 204)))
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()[:400]
+    if not message:
+        return _cors_headers(jsonify({"error": "message required"})), 400
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if not groq_key:
+        return _cors_headers(jsonify({"error": "Not configured"})), 500
+
+    # Route company research to brand API for richer answers
+    import re as _re
+    _is_research = _re.search(r'\b(research|tell me about|what is|who are|brief on|intel on)\b', message.lower())
+
+    system = """You are Miru — a WhatsApp-first AI assistant for everyday UK life built by Vikram Mekala. You're being demonstrated on his portfolio site.
+
+You help with:
+- Local info: fuel prices, train times, nearby food, weather
+- School comms and family life
+- Company and brand research (powered by Intel)
+- General UK life questions
+
+Keep answers short and practical — 2-4 sentences max. WhatsApp style, no markdown headers. Use a conversational British tone. If asked about fuel, trains, or specific real-time data you don't have, give a realistic example of what you'd normally return and invite them to try the real product."""
+
+    from flask import stream_with_context
+    def generate():
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={"model": "llama-3.1-8b-instant", "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": message}
+                ], "max_tokens": 200, "temperature": 0.6, "stream": True},
+                stream=True, timeout=15,
+            )
+            for chunk in r.iter_lines():
+                if not chunk: continue
+                line = chunk.decode("utf-8", errors="ignore")
+                if not line.startswith("data: "): continue
+                payload = line[6:]
+                if payload == "[DONE]": yield "data: [DONE]\n\n"; break
+                try:
+                    tok = __import__("json").loads(payload)["choices"][0]["delta"].get("content","")
+                    if tok: yield f"data: {__import__('json').dumps({'t':tok})}\n\n"
+                except Exception: pass
+        except Exception:
+            yield f"data: {__import__('json').dumps({'t':'Something went wrong — try again.'})}\n\n"
+            yield "data: [DONE]\n\n"
+    return _cors_headers(app.response_class(stream_with_context(generate()), mimetype="text/event-stream"))
+
+
 @app.route("/api/ai/ask", methods=["POST", "OPTIONS"])
 def api_ai_ask():
     """Streaming Ask AI for ai.humanagency.co — Groq answer streamed token by token."""
