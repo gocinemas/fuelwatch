@@ -8688,7 +8688,7 @@ def api_home_brief():
     _tr_wday = now.weekday()
     if 6 <= _tr_hour < 10 and _tr_wday < 5:
         _tr_pc   = postcode or prefs.get("fuel_postcode", "")
-        _tr_schl = (ctx.get("school") or {}).get("profiles") or []
+        _tr_schl = (ctx.get("school") or {}).get("schools") or []
         if _tr_pc and _tr_schl:
             try:
                 ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl)
@@ -8902,13 +8902,17 @@ def api_home_brief():
             _from_label = loc_station or trains.get("from", "")
             if times:
                 facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
-        # School run traffic — only mention if there's a delay worth flagging
+        # School run traffic — always show drive time in morning, highlight delays
         _tr = ctx.get("traffic", {})
         for _tleg in (_tr.get("legs") or []):
+            _tdelay = _tleg.get("delay_mins", 0)
+            _child  = _tleg.get("child", "")
+            _label  = f"{_child} school run" if _child else f"School run to {_tleg['school'].split()[0]}"
             if _tleg.get("traffic") in ("heavy", "moderate"):
-                _tdelay = _tleg.get("delay_mins", 0)
-                _ttxt   = f"+{_tdelay} min" if _tdelay else _tleg["traffic"]
-                facts.append(f"School run to {_tleg['school'].split()[0]} {_tleg['emoji']} {_tleg['mins']} min ({_ttxt})")
+                _ttxt = f"+{_tdelay} min delay" if _tdelay else _tleg["traffic"]
+                facts.append(f"{_label} {_tleg['emoji']} {_tleg['mins']} min ({_ttxt})")
+            else:
+                facts.append(f"{_label} {_tleg['emoji']} {_tleg['mins']} min")
     fuel = ctx.get("fuel", {})
     if fuel.get("price") and time_mode in ("morning_commute", "daytime") and not _car_at_service:
         change = f" ({fuel['change']})" if fuel.get("change") else ""
@@ -8935,7 +8939,29 @@ def api_home_brief():
                 facts.append(f"{_ins_child} off school today — inset day")
             elif _ins_date == (now.date() + __import__("datetime").timedelta(days=1)).isoformat():
                 facts.append(f"{_ins_child} off school tomorrow — inset day")
-    for ev in school_upcoming[:2]:
+    # Suppress events superseded by a reschedule/postpone/cancel notice
+    import re as _scre
+    _resc_kw = re.compile(r'\b(reschedul|postpone|cancel)\w*', re.I)
+    _stop_w  = {"a","an","the","and","or","for","to","of","in","on","at","is","with","about","from","your","session","drop","first","parent","support"}
+    def _sig(t):
+        return [w for w in re.sub(r'[^a-z0-9]',' ',(t or '').lower()).split() if len(w)>3 and w not in _stop_w]
+    _suppressed_ids = set()
+    for rev in school_upcoming:
+        if not _resc_kw.search(rev.get("event_title","")):
+            continue
+        rev_words = set(_sig(rev["event_title"]))
+        if not rev_words:
+            continue
+        for ev in school_upcoming:
+            if ev is rev or ev.get("id") in _suppressed_ids:
+                continue
+            if _resc_kw.search(ev.get("event_title","")):
+                continue
+            ev_words = _sig(ev["event_title"])
+            if ev_words and sum(1 for w in ev_words if w in rev_words) >= min(2, len(rev_words)):
+                _suppressed_ids.add(ev.get("id"))
+    _brief_upcoming = [ev for ev in school_upcoming if ev.get("id") not in _suppressed_ids]
+    for ev in _brief_upcoming[:2]:
         facts.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}")
     for ev in school_recent[:1]:
         facts.append(f"Recent school note: {ev.get('child_name','')} — {ev.get('event_title','')}")
@@ -21143,9 +21169,11 @@ def api_school_dedup():
             groups[key].append(e)
 
         for (pid, dt), evts in groups.items():
-            if dt == "__undated__" or len(evts) < 2:
+            if len(evts) < 2:
                 continue
             used = set()
+            # Undated: higher overlap threshold to avoid false positives
+            threshold = 0.5 if dt == "__undated__" else 0.35
             for i in range(len(evts)):
                 if i in used:
                     continue
@@ -21153,7 +21181,7 @@ def api_school_dedup():
                 for j in range(i + 1, len(evts)):
                     if j in used:
                         continue
-                    if _overlap(evts[i]["event_title"], evts[j]["event_title"]) >= 0.35:
+                    if _overlap(evts[i]["event_title"], evts[j]["event_title"]) >= threshold:
                         cluster.append(evts[j])
                         used.add(j)
                 if len(cluster) > 1:
