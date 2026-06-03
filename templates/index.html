@@ -844,13 +844,16 @@
           </div>
         </div>
         <!-- Events state: per-child upcoming list -->
-        <div id="shc-events" style="display:none;padding:14px 16px 12px;cursor:pointer" onclick="_schoolHomeOpen()">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div id="shc-events" style="display:none;padding:14px 16px 12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;cursor:pointer" onclick="_shcToggle()">
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:16px;line-height:1">🏫</span>
               <span style="font-size:13px;font-weight:800;color:var(--text);letter-spacing:-.2px">School</span>
             </div>
-            <span style="font-size:11px;color:var(--muted);font-weight:600">See all ›</span>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:11px;color:var(--muted);font-weight:600" onclick="event.stopPropagation();_schoolHomeOpen()">See all ›</span>
+              <span id="shc-chevron" style="font-size:14px;color:var(--muted);transition:transform .2s">▾</span>
+            </div>
           </div>
           <div id="shc-events-body"></div>
         </div>
@@ -14614,8 +14617,24 @@ _bkBadge();
       }
       document.getElementById("shc-events-body").innerHTML = html;
       document.getElementById("shc-events").style.display = "";
+      // Restore collapsed state
+      if(localStorage.getItem("school_card_collapsed") === "1") {
+        document.getElementById("shc-events-body").style.display = "none";
+        var ch = document.getElementById("shc-chevron");
+        if(ch) ch.style.transform = "rotate(-90deg)";
+      }
     } catch(e) {}
   }
+
+  window._shcToggle = function() {
+    var body = document.getElementById("shc-events-body");
+    var chev = document.getElementById("shc-chevron");
+    if(!body) return;
+    var collapsed = body.style.display === "none";
+    body.style.display = collapsed ? "" : "none";
+    if(chev) chev.style.transform = collapsed ? "" : "rotate(-90deg)";
+    localStorage.setItem("school_card_collapsed", collapsed ? "0" : "1");
+  };
 
   window._schoolHomeOpen = function() {
     const phone = _schoolWA() || _miruPhone();
