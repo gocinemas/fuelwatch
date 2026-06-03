@@ -15441,14 +15441,20 @@ _bkBadge();
       var _skids = (_sctx && _sctx.schools) ? _sctx.schools : [];
       var _sevs  = Array.isArray(_sctx) ? _sctx : (_sctx && _sctx.events ? _sctx.events : []);
       if (_skids.length) {
-        var _uniqueKids = [];
-        var _seenFirst = {};
-        _skids.forEach(function(s){
-          var first = (s.child_name || "").split(/\s+/)[0];
-          if(first && !_seenFirst[first]){ _seenFirst[first]=1; _uniqueKids.push(first); }
-        });
-        schoolSubEl.textContent = _uniqueKids.join(" & ") + " connected";
-        schoolSubEl.style.color = "#059669"; schoolSubEl.style.fontWeight = "700";
+        // Show next upcoming event rather than "connected" status
+        var _upcoming = (_sctx && _sctx.upcoming) ? _sctx.upcoming : (_sctx && _sctx.events ? _sctx.events : []);
+        var _todayStr = new Date().toISOString().slice(0,10);
+        var _next = _upcoming.filter(function(e){ return e.event_date && e.event_date >= _todayStr && e.event_type !== "newsletter"; })
+                             .sort(function(a,b){ return a.event_date.localeCompare(b.event_date); })[0];
+        if (_next) {
+          var _nd = new Date(_next.event_date + "T00:00:00");
+          var _nlabel = _nd.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+          var _nchild = (_next.child_name || "").split(/\s+/)[0];
+          schoolSubEl.textContent = (_nchild ? _nchild + " · " : "") + _next.event_title.slice(0,28) + " · " + _nlabel;
+        } else {
+          schoolSubEl.textContent = "Letters & events";
+        }
+        schoolSubEl.style.color = "var(--muted)"; schoolSubEl.style.fontWeight = "500";
         schoolRowEl.style.display = "flex";
       } else if (_sevs.length) {
         schoolSubEl.textContent = _sevs.length + " event" + (_sevs.length > 1 ? "s" : "") + " this week";
