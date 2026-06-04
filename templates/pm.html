@@ -1806,6 +1806,13 @@
     _result = null;
     _savedProjectId = null;
     _challengeData = null;
+    _selectedRole = "pm";
+    document.getElementById("intake-input").value = "";
+    document.querySelectorAll(".role-pill").forEach(function(b) { b.classList.remove("active"); });
+    var pmPill = document.querySelector('.role-pill[data-role="pm"]');
+    if (pmPill) pmPill.classList.add("active");
+    var hint = document.getElementById("role-hint");
+    if (hint) hint.textContent = _ROLE_HINTS.pm || "";
     document.getElementById("output").style.display = "none";
     document.getElementById("loading").style.display = "none";
     document.getElementById("assess-loading").style.display = "none";
