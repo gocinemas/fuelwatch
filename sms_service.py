@@ -25569,14 +25569,54 @@ def api_pm_intake():
         return jsonify({"error": "AI not configured"}), 500
 
     lifecycle = (data.get("lifecycle") or "standard").strip()
-    content = _intake_content(problem, data)
+    role      = (data.get("role")      or "pm").strip().lower()
+    content   = _intake_content(problem, data)
 
-    # ── Agent 1: Strategy — Vision, BOSCARD, Actions ──────────────────────────
-    STRATEGY_ROLE = (
-        "You are the strategic lead. Write the vision statement, BOSCARD, and immediate next actions. "
-        "Also classify feasibility and name the project."
-    )
-    STRATEGY_SCHEMA = (
+    # ── Agent 1: Strategy — varies by role ───────────────────────────────────
+    if role == "director":
+        STRATEGY_ROLE = "You are the executive advisor. Write an executive summary, business case, and governance structure."
+        STRATEGY_SCHEMA = (
+            '{"project_name":"concise name","project_type":"Digital Transformation|IT Programme|Organisational Change|Other",'
+            '"feasibility":"green|amber|red","feasibility_reason":"1 honest sentence",'
+            '"exec_summary":"3-sentence board-ready summary: what we are doing, why now, what success looks like",'
+            '"business_case":{"problem":"the problem in 2 sentences","solution":"proposed solution in 2 sentences",'
+            '"investment":"realistic budget range e.g. £500k–£1.5M","roi_narrative":"how and when value is realised",'
+            '"alternatives_considered":"what else was considered and why this approach won"},'
+            '"governance":{"steering_group":["Sponsor: [role]","Programme Director: [role]","Finance: [role]","IT Lead: [role]"],'
+            '"reporting_cadence":"e.g. Monthly SteerCo, weekly programme update",'
+            '"decision_rights":"who approves budget, scope changes, go/no-go"},'
+            '"actions":["first concrete step","second step","third step"]}'
+        )
+    elif role == "programme_director":
+        STRATEGY_ROLE = "You are the enterprise programme lead. Write the vision, full BOSCARD, stakeholder register, and change impact assessment."
+        STRATEGY_SCHEMA = (
+            '{"project_name":"concise name","project_type":"IT Transformation|M&A Separation|ERP Implementation|Digital Programme|Other",'
+            '"feasibility":"green|amber|red","feasibility_reason":"1 honest sentence",'
+            '"vision":"one crisp paragraph — what success looks like in plain English",'
+            '"boscard":"## Benefits\\n- ...\\n## Objectives\\n- SMART objective\\n## Scope\\n**In:** ...\\n**Out:** ...\\n## Constraints\\n- ...\\n## Assumptions\\n- ...\\n## Risks\\n- Risk (High/Med/Low)\\n## Dependencies\\n- ...",'
+            '"stakeholder_register":[{"name":"[role title]","interest":"what they care about","influence":"High|Med|Low","engagement":"how to engage them"}],'
+            '"change_impact":[{"group":"[affected group]","current_state":"how they work today","future_state":"how they will work","impact":"High|Med|Low","support":"what they need"}],'
+            '"actions":["first concrete action","second action","third action"]}'
+        )
+    elif role == "qa":
+        STRATEGY_ROLE = "You are the test lead. Write the test strategy, test phases with entry/exit criteria, and test approach."
+        STRATEGY_SCHEMA = (
+            '{"project_name":"concise name","project_type":"Software Delivery|System Integration|ERP|Digital Build|Other",'
+            '"feasibility":"green|amber|red","feasibility_reason":"1 honest sentence",'
+            '"test_strategy":"2-paragraph overview: testing philosophy, scope, what will and will not be tested",'
+            '"test_phases":[{"phase":"Smoke","objective":"verify critical paths work post-deployment","entry_criteria":"build deployed to env","exit_criteria":"0 P1 defects","duration":"1 day"},'
+            '{"phase":"System Integration","objective":"validate end-to-end flows across integrated systems","entry_criteria":"smoke passed","exit_criteria":"95% test cases passed, 0 P1/P2 open","duration":"2 weeks"},'
+            '{"phase":"UAT","objective":"business sign-off","entry_criteria":"SIT passed","exit_criteria":"business sign-off obtained","duration":"2 weeks"},'
+            '{"phase":"Performance","objective":"validate system under load","entry_criteria":"UAT passed","exit_criteria":"meets SLA thresholds","duration":"1 week"}],'
+            '"defect_management":"process for raising, triaging, and resolving defects — tool, severity levels, SLA per severity",'
+            '"actions":["first QA action this week","second action","third action"]}'
+        )
+    else:  # pm, ba, junior_pm — shared strategy
+        STRATEGY_ROLE = (
+            "You are the strategic lead. Write the vision statement, BOSCARD, and immediate next actions. "
+            "Also classify feasibility and name the project."
+        )
+        STRATEGY_SCHEMA = (
         '{"project_name":"concise name",'
         '"project_type":"IT Transformation|Digital Build|ERP Implementation|De-merger|Process Improvement|RFP \/ Procurement|Vendor Engagement|Discovery & Research|Other",'
         '"feasibility":"green|amber|red",'
@@ -25586,8 +25626,80 @@ def api_pm_intake():
         '"actions":["first concrete action this week","second action","third action"]}'
     )
 
-    # ── Agent 2: Functional spec — varies by lifecycle ─────────────────────────
-    if lifecycle == "rfp":
+    # ── Agent 2: Functional spec — varies by role, then lifecycle ───────────────
+    if role == "ba":
+        FUNCSPEC_ROLE = (
+            "You are a senior business analyst. Write detailed requirements with acceptance criteria, "
+            "as-is / to-be process summary, data requirements, and a gap analysis."
+        )
+        FUNCSPEC_SCHEMA = (
+            '{"requirements":{"functional":['
+            '{"id":"FR1","requirement":"The system/process shall ...","acceptance_criteria":["Given ... When ... Then ...","Validation rule: ..."]},'
+            '{"id":"FR2","requirement":"...","acceptance_criteria":["..."]},'
+            '{"id":"FR3","requirement":"...","acceptance_criteria":["..."]},'
+            '{"id":"FR4","requirement":"...","acceptance_criteria":["..."]},'
+            '{"id":"FR5","requirement":"...","acceptance_criteria":["..."]}],'
+            '"non_functional":["NFR1: Performance — ...","NFR2: Security — ...","NFR3: Data retention — ..."]},'
+            '"process_analysis":{"as_is":"2-sentence description of how this works today — pain points, manual steps, inefficiencies",'
+            '"to_be":"2-sentence description of the improved future state",'
+            '"gaps":["Gap 1: ...","Gap 2: ...","Gap 3: ..."]},'
+            '"data_requirements":["Data entity 1: fields, source, owner","Data entity 2: ...","Integration point: ..."],'
+            '"use_cases":[{"id":"UC1","actor":"Business User","action":"...","outcome":"..."},'
+            '{"id":"UC2","actor":"System Admin","action":"...","outcome":"..."},'
+            '{"id":"UC3","actor":"Manager","action":"...","outcome":"..."}]}'
+        )
+    elif role == "qa":
+        FUNCSPEC_ROLE = (
+            "You are the test lead. Write detailed test cases derived from the project scope, plus a defect management approach."
+        )
+        FUNCSPEC_SCHEMA = (
+            '{"test_cases":['
+            '{"id":"TC001","scenario":"Happy path: [main flow]","preconditions":["User is logged in","Data exists"],'
+            '"steps":["Step 1: ...","Step 2: ...","Step 3: ..."],"expected_result":"...","priority":"P1","linked_req":"FR1"},'
+            '{"id":"TC002","scenario":"Negative: [error condition]","preconditions":["..."],'
+            '"steps":["Step 1: ...","Step 2: ..."],"expected_result":"Error message displayed","priority":"P2","linked_req":"FR1"},'
+            '{"id":"TC003","scenario":"Edge case: [boundary condition]","preconditions":["..."],'
+            '"steps":["..."],"expected_result":"...","priority":"P2","linked_req":"FR2"},'
+            '{"id":"TC004","scenario":"Integration: [system boundary]","preconditions":["..."],'
+            '"steps":["..."],"expected_result":"...","priority":"P1","linked_req":"FR3"},'
+            '{"id":"TC005","scenario":"UAT: [business scenario]","preconditions":["..."],'
+            '"steps":["..."],"expected_result":"...","priority":"P1","linked_req":"FR4"}],'
+            '"environments":["DEV","SIT","UAT","PROD"],'
+            '"test_data_requirements":["Requirement 1: ...","Requirement 2: ..."]}'
+        )
+    elif role == "director":
+        FUNCSPEC_ROLE = "You are the investment analyst. Write the benefits framework, KPIs, and programme budget outline."
+        FUNCSPEC_SCHEMA = (
+            '{"benefits_framework":['
+            '{"benefit":"Financial: cost saving or revenue","metric":"£ saved / revenue added","baseline":"current cost/revenue","target":"target figure","timeline":"when realised","owner":"[role]"},'
+            '{"benefit":"Efficiency: time/process improvement","metric":"hours saved per week","baseline":"current hours","target":"target hours","timeline":"...","owner":"[role]"},'
+            '{"benefit":"Risk reduction: compliance or operational","metric":"risk rating","baseline":"current rating","target":"target rating","timeline":"...","owner":"[role]"},'
+            '{"benefit":"Strategic: capability or market position","metric":"qualitative measure","baseline":"...","target":"...","timeline":"...","owner":"[role]"}],'
+            '"kpis":["KPI 1: ... — measured by ... — target by ...","KPI 2: ...","KPI 3: ..."],'
+            '"investment_outline":{"discovery":"£X","build":"£X–£Y","run_annual":"£X"}}'
+        )
+    elif role == "programme_director":
+        FUNCSPEC_ROLE = (
+            "You are the business analyst embedded in the programme. Write detailed requirements, use cases, "
+            "and a cutover / hypercare plan."
+        )
+        FUNCSPEC_SCHEMA = (
+            '{"requirements":{"functional":["FR1: The system shall ...","FR2: ...","FR3: ...","FR4: ...","FR5: ..."],'
+            '"non_functional":["NFR1: Performance — response time < 3s","NFR2: Security — ...","NFR3: Availability — 99.5%"]},'
+            '"use_cases":[{"id":"UC1","actor":"Programme Sponsor","action":"reviews status","outcome":"full visibility of progress, risks, spend"},'
+            '{"id":"UC2","actor":"End User","action":"...","outcome":"..."},'
+            '{"id":"UC3","actor":"IT Team","action":"...","outcome":"..."}],'
+            '"cutover_plan":{"go_live_approach":"Big bang | Phased | Parallel run",'
+            '"freeze_date":"recommended freeze X weeks before go-live",'
+            '"key_activities":["Cutover rehearsal","Data migration dry run","Go/no-go checkpoint","Hypercare team briefing"],'
+            '"rollback_trigger":"specific conditions that would trigger rollback",'
+            '"rollback_steps":["Step 1","Step 2","Step 3"]},'
+            '"hypercare":{"duration":"recommended 4 weeks post go-live",'
+            '"support_model":"war room / dedicated support line / tiered escalation",'
+            '"escalation_path":"L1 → L2 → Programme Director → Vendor",'
+            '"success_criteria":"specific metrics that signal stable operation — defect rate, SLA performance, user adoption"}}'
+        )
+    elif lifecycle == "rfp":
         FUNCSPEC_ROLE = (
             "You are the procurement lead. Write what vendors must respond to, evaluation scoring, and eligibility requirements."
         )
@@ -25633,11 +25745,54 @@ def api_pm_intake():
             '{"id":"UC4","actor":"Programme Manager","action":"...","outcome":"..."}]}'
         )
 
-    # ── Agent 3: Delivery — Risks, Plan, Jira ─────────────────────────────────
-    DELIVERY_ROLE = (
-        "You are the delivery lead. Write the top risks with mitigations, a phased delivery plan with realistic durations, "
-        "and a Jira\/Trello epic and story structure."
-    )
+    # ── Agent 3: Delivery — varies by role ───────────────────────────────────
+    if role == "qa":
+        DELIVERY_ROLE = "You are the test manager. Write the test schedule, resource plan, and top test risks with mitigations."
+        DELIVERY_SCHEMA = (
+            '{"risks":[{"risk":"test risk description","prob":"High|Med|Low","impact":"High|Med|Low","mitigation":"specific mitigation"}],'
+            '"test_schedule":{"phases":[{"name":"Test Planning","duration":"1 week","activities":["Test plan sign-off","Environment setup","Test data prep"]},'
+            '{"name":"Smoke Testing","duration":"1 day","activities":["Critical path execution","Build verification"]},'
+            '{"name":"SIT","duration":"2 weeks","activities":["End-to-end scenarios","Integration checks","Defect fix cycles"]},'
+            '{"name":"UAT","duration":"2 weeks","activities":["Business user testing","Sign-off sessions","Final defect triage"]},'
+            '{"name":"Performance","duration":"1 week","activities":["Load testing","Stress testing","Report and sign-off"]}]},'
+            '"jira_epics":[{"epic":"Test Planning","stories":["Create test plan","Set up test environments","Prepare test data","Brief UAT users"]},'
+            '{"epic":"Test Execution","stories":["Execute smoke tests","Execute SIT scenarios","Conduct UAT","Performance testing"]},'
+            '{"epic":"Defect Management","stories":["Triage defects","Regression testing","Final sign-off"]}]}'
+        )
+    elif role == "director":
+        DELIVERY_ROLE = "You are the programme director. Write the top strategic risks, a high-level delivery roadmap, and resource/team structure."
+        DELIVERY_SCHEMA = (
+            '{"risks":[{"risk":"strategic risk","prob":"High|Med|Low","impact":"High|Med|Low","mitigation":"executive mitigation action"}],'
+            '"roadmap":{"phases":[{"name":"Mobilisation","duration":"4 weeks","outcomes":["Team in place","Governance active","Baseline established"]},'
+            '{"name":"Discovery & Design","duration":"6–8 weeks","outcomes":["Current state mapped","Solution agreed","Business case validated"]},'
+            '{"name":"Delivery","duration":"12–16 weeks","outcomes":["System built and tested","Users trained","Go-live approved"]},'
+            '{"name":"Stabilisation","duration":"4 weeks","outcomes":["Hypercare complete","BAU handover","Benefits tracking started"]}]},'
+            '"team_structure":{"programme_director":"accountable for delivery","workstream_leads":["Technology","Business Change","Data","Communications"],'
+            '"governance":["Monthly SteerCo","Weekly programme board","Daily stand-up during critical phases"]}}'
+        )
+    elif role == "programme_director":
+        DELIVERY_ROLE = (
+            "You are the enterprise delivery lead. Write risks, phased plan with realistic durations, "
+            "and a full Jira/Trello epic structure including change management and cutover epics."
+        )
+        DELIVERY_SCHEMA = (
+            '{"risks":[{"risk":"description","prob":"High|Med|Low","impact":"High|Med|Low","mitigation":"specific action"}],'
+            '"plan":{"phases":[{"name":"Programme Mobilisation","duration":"3 weeks","activities":["Governance setup","Stakeholder mapping","Baseline assessment"]},'
+            '{"name":"Discovery & Design","duration":"4 weeks","activities":["Current state analysis","Future state design","Solution architecture"]},'
+            '{"name":"Build & Configure","duration":"8 weeks","activities":["Development/configuration","Unit testing","Integration testing"]},'
+            '{"name":"Test & Validate","duration":"4 weeks","activities":["SIT","UAT","Performance testing","Defect resolution"]},'
+            '{"name":"Cutover & Go-Live","duration":"2 weeks","activities":["Cutover rehearsal","Data migration","Go-live","Hypercare"]}]},'
+            '"jira_epics":[{"epic":"Programme Setup","stories":["Governance framework","Stakeholder register","RAID log","Reporting templates"]},'
+            '{"epic":"Business Change","stories":["Change impact assessment","Training plan","Communication plan","Readiness assessment"]},'
+            '{"epic":"Technical Delivery","stories":["Architecture design","Build sprints","Integration","Data migration"]},'
+            '{"epic":"Testing","stories":["Test plan","SIT execution","UAT","Performance"]},'
+            '{"epic":"Cutover","stories":["Cutover plan","Rehearsal","Go-live","Hypercare checklist"]}]}'
+        )
+    else:
+        DELIVERY_ROLE = (
+            "You are the delivery lead. Write the top risks with mitigations, a phased delivery plan with realistic durations, "
+            "and a Jira/Trello epic and story structure."
+        )
     DELIVERY_SCHEMA = (
         '{"risks":[{"risk":"description of risk","prob":"High|Med|Low","impact":"High|Med|Low","mitigation":"specific mitigation"}],'
         '"plan":{"phases":[{"name":"Discovery","duration":"2 weeks","activities":["Stakeholder interviews","Current state mapping"]},'
@@ -25659,6 +25814,7 @@ def api_pm_intake():
         result.update(funcspec_f.result(timeout=55))
         result.update(delivery_f.result(timeout=55))
         result["lifecycle_type"] = lifecycle
+        result["role"] = role
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

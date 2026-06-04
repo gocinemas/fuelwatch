@@ -97,6 +97,14 @@
     }
     .intake-textarea:focus { outline:none; border-color:var(--accent); }
     .intake-textarea::placeholder { color:var(--muted); }
+    .role-pill {
+      padding:7px 14px; border-radius:99px; border:1.5px solid var(--border);
+      background:var(--surface); color:var(--muted); font-size:13px; font-weight:600;
+      cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s;
+    }
+    .role-pill:hover { border-color:#c7d2fe; color:var(--accent); }
+    .role-pill.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
     .intake-submit {
       width:100%; padding:13px; border-radius:12px; border:none;
       background:var(--accent); color:#fff; font-size:15px; font-weight:700;
@@ -435,7 +443,20 @@
     <div class="hero">
       <div class="hero-icon">💡</div>
       <h1>Paste your brief. Get your full pack.</h1>
-      <p>Describe the problem or initiative in plain English. Vision, BOSCARD, requirements, use cases, risks, delivery plan and Jira structure — in one shot.</p>
+      <p>Describe the problem or initiative in plain English. Select your role — the pack is tailored to what you actually need.</p>
+    </div>
+    <!-- Role selector -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">I am a …</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="role-pill active" data-role="pm" onclick="_setRole('pm',this)">📋 Project Manager</button>
+        <button class="role-pill" data-role="junior_pm" onclick="_setRole('junior_pm',this)">🌱 Junior PM</button>
+        <button class="role-pill" data-role="ba" onclick="_setRole('ba',this)">📊 Business Analyst</button>
+        <button class="role-pill" data-role="qa" onclick="_setRole('qa',this)">🧪 QA / Tester</button>
+        <button class="role-pill" data-role="director" onclick="_setRole('director',this)">🎯 Director / VP</button>
+        <button class="role-pill" data-role="programme_director" onclick="_setRole('programme_director',this)">🏢 Programme Director</button>
+      </div>
+      <div id="role-hint" style="font-size:12px;color:var(--muted);margin-top:8px">Vision · BOSCARD · Requirements · Use cases · Delivery plan · Jira structure</div>
     </div>
     <div class="intake-box">
       <textarea id="intake-input" class="intake-textarea"
@@ -528,6 +549,9 @@
     </div>
 
     <!-- Lifecycle-specific: RFP / Discovery / Vendor -->
+    <!-- Role-specific sections rendered here -->
+    <div id="role-sections"></div>
+
     <div class="section" id="lifecycle-section" style="display:none">
       <div class="section-header open" onclick="_toggle(this)">
         <div class="section-title"><span class="section-icon" id="lifecycle-icon">📋</span> <span id="lifecycle-title">Lifecycle Pack</span></div>
@@ -690,6 +714,24 @@
   var _result = null;
   var _savedProjectId = null;
   var _challengeData = null;
+  var _selectedRole = "pm";
+
+  var _ROLE_HINTS = {
+    pm:                   "Vision · BOSCARD · Requirements · Use cases · Delivery plan · Jira structure",
+    junior_pm:            "Vision · BOSCARD · Requirements · Use cases · Delivery plan · Jira structure",
+    ba:                   "Requirements with acceptance criteria · As-is/To-be · Data requirements · Gap analysis · Use cases",
+    qa:                   "Test strategy · Test phases · Test cases · Defect management · Test schedule",
+    director:             "Executive summary · Business case · Governance · Benefits framework · Investment outline",
+    programme_director:   "Vision · BOSCARD · Stakeholder register · Change impact · Cutover plan · Hypercare"
+  };
+
+  function _setRole(role, btn) {
+    _selectedRole = role;
+    document.querySelectorAll(".role-pill").forEach(function(b){ b.classList.remove("active"); });
+    btn.classList.add("active");
+    var hint = document.getElementById("role-hint");
+    if (hint) hint.textContent = _ROLE_HINTS[role] || "";
+  }
   var STEPS = ["ls-1","ls-2","ls-3","ls-4","ls-5","ls-6"];
 
   // ── Panel ─────────────────────────────────────────────────────────────────
@@ -912,7 +954,8 @@
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({problem: input, answers: answers,
-                            lifecycle: (_challengeData && _challengeData.lifecycle_type) || "standard"})
+                            lifecycle: (_challengeData && _challengeData.lifecycle_type) || "standard",
+                            role: _selectedRole || "pm"})
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -1203,9 +1246,188 @@
     document.getElementById("save-bar").style.display = "block";
     document.getElementById("connect-bar").style.display = "none";
 
+    // Role-specific sections
+    _renderRoleSections(d);
+
     document.getElementById("output").style.display = "block";
     window.scrollTo({top: 0, behavior: "smooth"});
     _refreshCount();
+  }
+
+  function _renderRoleSections(d) {
+    var container = document.getElementById("role-sections");
+    if (!container) return;
+    container.innerHTML = "";
+    var role = d.role || "pm";
+
+    function _sec(icon, title, body) {
+      return '<div class="section" style="display:block;border-top:1px solid var(--border)">'
+        + '<div class="section-header open" onclick="_toggle(this)">'
+        + '<div class="section-title"><span class="section-icon">' + icon + '</span> ' + title + '</div>'
+        + '<span class="section-chevron">▾</span></div>'
+        + '<div class="section-body open">' + body + '</div></div>';
+    }
+
+    var html = "";
+
+    if (role === "ba") {
+      // Enhanced requirements with acceptance criteria
+      if (d.requirements && d.requirements.functional && d.requirements.functional[0] && d.requirements.functional[0].acceptance_criteria) {
+        var frHtml = (d.requirements.functional || []).map(function(r) {
+          var ac = (r.acceptance_criteria || []).map(function(a){ return "<li>" + _esc(a) + "</li>"; }).join("");
+          return '<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">'
+            + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + _esc(r.id || "") + ': ' + _esc(r.requirement || "") + '</div>'
+            + (ac ? '<ul style="margin:6px 0 0 16px;font-size:12px;color:var(--muted)">' + ac + '</ul>' : '')
+            + '</div>';
+        }).join("");
+        if (frHtml) html += _sec("📋", "Functional Requirements (with Acceptance Criteria)", frHtml);
+      }
+      // Process analysis
+      if (d.process_analysis) {
+        var pa = d.process_analysis;
+        var gaps = (pa.gaps || []).map(function(g){ return "<li>" + _esc(g) + "</li>"; }).join("");
+        html += _sec("🔄", "As-Is / To-Be Analysis",
+          '<div style="margin-bottom:10px"><div class="req-label func">AS-IS (Current State)</div><p>' + _esc(pa.as_is||"") + '</p></div>'
+          + '<div style="margin-bottom:10px"><div class="req-label func" style="color:var(--green)">TO-BE (Future State)</div><p>' + _esc(pa.to_be||"") + '</p></div>'
+          + (gaps ? '<div class="req-label nfr">Gaps to Address</div><ul>' + gaps + '</ul>' : ""));
+      }
+      // Data requirements
+      if ((d.data_requirements || []).length) {
+        var dr = d.data_requirements.map(function(r){ return "<li>" + _esc(r) + "</li>"; }).join("");
+        html += _sec("🗃️", "Data Requirements", '<ul>' + dr + '</ul>');
+      }
+    }
+
+    else if (role === "qa") {
+      // Test strategy
+      if (d.test_strategy) html += _sec("🧪", "Test Strategy", '<p>' + _esc(d.test_strategy) + '</p>');
+      // Test phases
+      if ((d.test_phases || []).length) {
+        var phases = d.test_phases.map(function(ph) {
+          return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+            + '<strong style="font-size:13px">' + _esc(ph.phase) + '</strong>'
+            + '<span style="font-size:11px;color:var(--muted);background:var(--surface2);border-radius:99px;padding:2px 8px">' + _esc(ph.duration||"") + '</span></div>'
+            + '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">' + _esc(ph.objective||"") + '</div>'
+            + '<div style="font-size:11px;color:var(--green)">✅ Entry: ' + _esc(ph.entry_criteria||"") + '</div>'
+            + '<div style="font-size:11px;color:var(--accent)">🚪 Exit: ' + _esc(ph.exit_criteria||"") + '</div>'
+            + '</div>';
+        }).join("");
+        html += _sec("📅", "Test Phases", phases);
+      }
+      // Test cases
+      if ((d.test_cases || []).length) {
+        var cases = d.test_cases.map(function(tc) {
+          var steps = (tc.steps || []).map(function(s,i){ return "<li>" + _esc(s) + "</li>"; }).join("");
+          var pColor = tc.priority==="P1" ? "var(--red)" : tc.priority==="P2" ? "var(--amber)" : "var(--muted)";
+          return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+            + '<span style="font-size:10px;font-weight:700;color:#fff;background:var(--accent);border-radius:4px;padding:1px 6px">' + _esc(tc.id||"") + '</span>'
+            + '<span style="font-size:13px;font-weight:600;color:var(--text);flex:1">' + _esc(tc.scenario||"") + '</span>'
+            + '<span style="font-size:10px;font-weight:700;color:' + pColor + '">' + _esc(tc.priority||"") + '</span>'
+            + '</div>'
+            + (steps ? '<ul style="margin:4px 0 4px 16px;font-size:12px;color:var(--muted)">' + steps + '</ul>' : '')
+            + '<div style="font-size:12px;color:var(--green);margin-top:3px">→ ' + _esc(tc.expected_result||"") + '</div>'
+            + '</div>';
+        }).join("");
+        html += _sec("📝", "Test Cases", cases);
+      }
+      // Defect management
+      if (d.defect_management) html += _sec("🐛", "Defect Management", '<p>' + _esc(d.defect_management) + '</p>');
+    }
+
+    else if (role === "director") {
+      // Exec summary
+      if (d.exec_summary) html += _sec("📄", "Executive Summary", '<p style="font-size:15px;line-height:1.7;font-weight:500">' + _esc(d.exec_summary) + '</p>');
+      // Business case
+      if (d.business_case) {
+        var bc = d.business_case;
+        html += _sec("💼", "Business Case",
+          '<div style="margin-bottom:10px"><strong>Problem</strong><p>' + _esc(bc.problem||"") + '</p></div>'
+          + '<div style="margin-bottom:10px"><strong>Solution</strong><p>' + _esc(bc.solution||"") + '</p></div>'
+          + '<div style="margin-bottom:10px"><strong>Investment</strong><p>' + _esc(bc.investment||"") + '</p></div>'
+          + '<div style="margin-bottom:10px"><strong>Return on Investment</strong><p>' + _esc(bc.roi_narrative||"") + '</p></div>'
+          + '<div><strong>Alternatives Considered</strong><p>' + _esc(bc.alternatives_considered||"") + '</p></div>');
+      }
+      // Governance
+      if (d.governance) {
+        var gov = d.governance;
+        var sg = (gov.steering_group||[]).map(function(m){ return "<li>" + _esc(m) + "</li>"; }).join("");
+        html += _sec("🏛️", "Governance",
+          (sg ? '<div class="req-label func">Steering Group</div><ul>' + sg + '</ul>' : '')
+          + '<div class="req-label nfr" style="margin-top:12px">Reporting Cadence</div><p>' + _esc(gov.reporting_cadence||"") + '</p>'
+          + '<div class="req-label nfr" style="margin-top:12px">Decision Rights</div><p>' + _esc(gov.decision_rights||"") + '</p>');
+      }
+      // Benefits framework
+      if ((d.benefits_framework || []).length) {
+        var bfHtml = d.benefits_framework.map(function(b) {
+          return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
+            + '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">' + _esc(b.benefit||"") + '</div>'
+            + '<div style="font-size:12px;color:var(--muted)">Metric: ' + _esc(b.metric||"") + ' · Target: ' + _esc(b.target||"") + ' by ' + _esc(b.timeline||"") + '</div>'
+            + '</div>';
+        }).join("");
+        html += _sec("📈", "Benefits Framework", bfHtml);
+      }
+    }
+
+    else if (role === "programme_director") {
+      // Stakeholder register
+      if ((d.stakeholder_register || []).length) {
+        var srHtml = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+          + '<thead><tr>'
+          + '<th style="background:var(--surface2);padding:7px 10px;text-align:left;border:1px solid var(--border)">Role</th>'
+          + '<th style="background:var(--surface2);padding:7px 10px;text-align:left;border:1px solid var(--border)">Interest</th>'
+          + '<th style="background:var(--surface2);padding:7px 10px;text-align:center;border:1px solid var(--border)">Influence</th>'
+          + '<th style="background:var(--surface2);padding:7px 10px;text-align:left;border:1px solid var(--border)">Engagement</th>'
+          + '</tr></thead><tbody>'
+          + d.stakeholder_register.map(function(s) {
+            var inf = s.influence === "High" ? "🔴" : s.influence === "Med" ? "🟡" : "🟢";
+            return '<tr><td style="padding:7px 10px;border:1px solid var(--border);font-weight:600">' + _esc(s.name||"") + '</td>'
+              + '<td style="padding:7px 10px;border:1px solid var(--border);color:var(--muted)">' + _esc(s.interest||"") + '</td>'
+              + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:center">' + inf + ' ' + _esc(s.influence||"") + '</td>'
+              + '<td style="padding:7px 10px;border:1px solid var(--border);color:var(--muted)">' + _esc(s.engagement||"") + '</td></tr>';
+          }).join("") + '</tbody></table>';
+        html += _sec("👥", "Stakeholder Register", srHtml);
+      }
+      // Change impact
+      if ((d.change_impact || []).length) {
+        var ciHtml = d.change_impact.map(function(c) {
+          var impColor = c.impact==="High"?"var(--red)":c.impact==="Med"?"var(--amber)":"var(--green)";
+          return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+            + '<strong style="font-size:13px;flex:1">' + _esc(c.group||"") + '</strong>'
+            + '<span style="font-size:11px;font-weight:700;color:' + impColor + '">' + _esc(c.impact||"") + ' impact</span></div>'
+            + '<div style="font-size:12px;color:var(--muted)">From: ' + _esc(c.current_state||"") + '</div>'
+            + '<div style="font-size:12px;color:var(--green)">To: ' + _esc(c.future_state||"") + '</div>'
+            + '<div style="font-size:12px;color:var(--accent);margin-top:3px">Support needed: ' + _esc(c.support||"") + '</div>'
+            + '</div>';
+        }).join("");
+        html += _sec("🔄", "Change Impact Assessment", ciHtml);
+      }
+      // Cutover plan
+      if (d.cutover_plan) {
+        var cp = d.cutover_plan;
+        var kact = (cp.key_activities||[]).map(function(a){ return "<li>" + _esc(a) + "</li>"; }).join("");
+        var rsteps = (cp.rollback_steps||[]).map(function(s){ return "<li>" + _esc(s) + "</li>"; }).join("");
+        html += _sec("🚀", "Cutover Plan",
+          '<div style="margin-bottom:8px"><strong>Approach:</strong> ' + _esc(cp.go_live_approach||"") + '</div>'
+          + '<div style="margin-bottom:8px"><strong>Freeze date:</strong> ' + _esc(cp.freeze_date||"") + '</div>'
+          + (kact ? '<div class="req-label func">Key Activities</div><ul>' + kact + '</ul>' : '')
+          + '<div class="req-label nfr" style="margin-top:12px">Rollback Trigger</div><p>' + _esc(cp.rollback_trigger||"") + '</p>'
+          + (rsteps ? '<div class="req-label nfr" style="margin-top:8px">Rollback Steps</div><ul>' + rsteps + '</ul>' : ''));
+      }
+      // Hypercare
+      if (d.hypercare) {
+        var hc = d.hypercare;
+        html += _sec("🩺", "Hypercare Plan",
+          '<div style="margin-bottom:8px"><strong>Duration:</strong> ' + _esc(hc.duration||"") + '</div>'
+          + '<div style="margin-bottom:8px"><strong>Support model:</strong> ' + _esc(hc.support_model||"") + '</div>'
+          + '<div style="margin-bottom:8px"><strong>Escalation path:</strong> ' + _esc(hc.escalation_path||"") + '</div>'
+          + '<div><strong>Success criteria:</strong> ' + _esc(hc.success_criteria||"") + '</div>');
+      }
+    }
+
+    container.innerHTML = html;
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
