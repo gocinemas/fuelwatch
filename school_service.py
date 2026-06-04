@@ -309,8 +309,8 @@ JSON array:"""
     if not groq_key:
         return []
 
-    # Truncate body to avoid hitting context limits
-    body_truncated = body[:12000] if len(body) > 12000 else body
+    # Truncate body aggressively to reduce Groq token usage (stay under 6000 TPM free tier limit)
+    body_truncated = body[:4000] if len(body) > 4000 else body
     prompt = prompt.replace(body, body_truncated)
 
     for attempt in range(3):
@@ -790,7 +790,13 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
                 print(f"[school] empty body for msg {msg_id} subject={subject!r}")
                 continue
 
-            import time as _time; _time.sleep(2)  # stay well under 30 req/min Groq limit
+            # Skip low-value emails to reduce Groq token usage
+            skip_keywords = ("payment successful", "thank you", "receipt", "invoice", "confirmation", "unsubscribe")
+            if any(kw in subject.lower() for kw in skip_keywords):
+                print(f"[school] skipping {msg_id} subject={subject!r} (low-value email)")
+                continue
+
+            import time as _time; _time.sleep(5)  # spread load to avoid Groq free tier rate limit (6000 TPM)
             events = _groq_parse_events(
                 subject, body,
                 matched_profile["school_name"],
