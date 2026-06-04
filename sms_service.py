@@ -9191,10 +9191,28 @@ def api_home_brief():
         trains = ctx.get("trains", {})
         if trains.get("departures"):
             deps = trains["departures"]
-            times = " · ".join(d.get("departs", d.get("time", "")) for d in deps[:2] if d.get("departs") or d.get("time"))
-            _from_label = loc_station or trains.get("from", "")
-            if times:
-                facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
+            # Filter trains: remove past times, detect if switching to next day
+            _future_deps = []
+            for d in deps:
+                dep_time_str = d.get("departs") or d.get("time") or ""
+                if not dep_time_str or ":" not in dep_time_str:
+                    continue
+                try:
+                    _hour, _min = map(int, dep_time_str.split(":")[:2])
+                    _dep_minutes = _hour * 60 + _min
+                    _now_minutes = now.hour * 60 + now.minute
+                    # If train is in the past AND significantly earlier (e.g., 11:23 at 23:00 = tomorrow)
+                    if _dep_minutes < _now_minutes and (_now_minutes - _dep_minutes) > 180:  # 3h gap = next day
+                        _future_deps.append({"departs": f"Tomorrow {dep_time_str}", "status": d.get("status"), "platform": d.get("platform")})
+                    elif _dep_minutes >= _now_minutes:  # Future today
+                        _future_deps.append(d)
+                except ValueError:
+                    _future_deps.append(d)
+            if _future_deps:
+                times = " · ".join(d.get("departs", "") for d in _future_deps[:2] if d.get("departs"))
+                _from_label = loc_station or trains.get("from", "")
+                if times:
+                    facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
         # School run traffic — 7:00–8:30am only (out of the house by then)
         _tr = ctx.get("traffic", {}) if (7 <= now.hour <= 8 and not (now.hour == 8 and now.minute > 30)) else {}
         for _tleg in (_tr.get("legs") or []):
