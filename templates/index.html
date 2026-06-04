@@ -14715,6 +14715,16 @@ _bkBadge();
     const wfhRow = document.getElementById("home-train-wfh-row");
     const wfhBtn = document.getElementById("home-train-wfh-btn");
 
+    // Hide trains after 9 PM — user is home, not commuting
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour >= 21) {
+      if (ph) { ph.style.display = "none"; }
+      document.getElementById("home-train-next").style.display = "none";
+      document.getElementById("home-train-sub").style.display = "none";
+      return;
+    }
+
     let homeBm = null, workBm = null;
     try { homeBm = JSON.parse(localStorage.getItem("miru_train_bm_home") || "null"); } catch {}
     try { workBm = JSON.parse(localStorage.getItem("miru_train_bm_work") || "null"); } catch {}
