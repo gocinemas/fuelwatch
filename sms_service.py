@@ -25570,10 +25570,26 @@ def api_pm_intake():
 
     lifecycle = (data.get("lifecycle") or "standard").strip()
     role      = (data.get("role")      or "pm").strip().lower()
+    custom_role_info = data.get("custom_role_info") or {}
     content   = _intake_content(problem, data)
 
     # ── Agent 1: Strategy — varies by role ───────────────────────────────────
-    if role == "director":
+    if custom_role_info and custom_role_info.get("name"):
+        # Custom role — tailor all agents to this role
+        custom_name = custom_role_info.get("name", "Specialist")
+        custom_instructions = custom_role_info.get("instructions", "")
+        STRATEGY_ROLE = (
+            f"You are a {custom_name}. {custom_instructions if custom_instructions else ''} "
+            f"Write outputs relevant to your role: what matters most, key decisions, risks, and actions."
+        )
+        STRATEGY_SCHEMA = (
+            '{"project_name":"concise name","role_perspective":"key insights from your perspective",'
+            '"key_concerns":["concern 1","concern 2","concern 3"],'
+            '"critical_questions":["What do we need to know?","What could go wrong?","What do we need to decide?"],'
+            '"role_actions":["action 1 for your role","action 2 for your role","action 3 for your role"],'
+            '"success_criteria":"how success looks from your perspective"}'
+        )
+    elif role == "director":
         STRATEGY_ROLE = "You are the executive advisor. Write an executive summary, business case, and governance structure."
         STRATEGY_SCHEMA = (
             '{"project_name":"concise name","project_type":"Digital Transformation|IT Programme|Organisational Change|Other",'
@@ -25627,7 +25643,22 @@ def api_pm_intake():
     )
 
     # ── Agent 2: Functional spec — varies by role, then lifecycle ───────────────
-    if role == "ba":
+    if custom_role_info and custom_role_info.get("name"):
+        # Custom role FuncSpec
+        custom_name = custom_role_info.get("name", "Specialist")
+        custom_instructions = custom_role_info.get("instructions", "")
+        FUNCSPEC_ROLE = (
+            f"You are a {custom_name}. {custom_instructions if custom_instructions else ''} "
+            f"Write detailed analysis, requirements, risks, or considerations relevant to your role."
+        )
+        FUNCSPEC_SCHEMA = (
+            '{"detailed_analysis":"2-3 paragraph deep analysis from your perspective",'
+            '"key_requirements":["requirement 1 for your role","requirement 2","requirement 3"],'
+            '"data_needs":["data point 1","data point 2","data point 3"],'
+            '"risks_and_gaps":["risk 1","risk 2","risk 3"],'
+            '"success_measures":["how to measure success from your perspective"]}'
+        )
+    elif role == "ba":
         FUNCSPEC_ROLE = (
             "You are a senior business analyst. Write detailed requirements with acceptance criteria, "
             "as-is / to-be process summary, data requirements, and a gap analysis."
@@ -25746,7 +25777,22 @@ def api_pm_intake():
         )
 
     # ── Agent 3: Delivery — varies by role ───────────────────────────────────
-    if role == "qa":
+    if custom_role_info and custom_role_info.get("name"):
+        # Custom role Delivery
+        custom_name = custom_role_info.get("name", "Specialist")
+        custom_instructions = custom_role_info.get("instructions", "")
+        DELIVERY_ROLE = (
+            f"You are a {custom_name}. {custom_instructions if custom_instructions else ''} "
+            f"Write a detailed delivery/execution plan from your role's perspective."
+        )
+        DELIVERY_SCHEMA = (
+            '{"role_roadmap":{"phase_1":"phase 1 activities for your role","phase_2":"phase 2 activities",'
+            '"phase_3":"phase 3 activities","phase_4":"phase 4 activities"},'
+            '"team_coordination":"how your role coordinates with others",'
+            '"risks_and_mitigations":[{"risk":"risk 1","mitigation":"mitigation"}],'
+            '"success_checklist":["checkpoint 1","checkpoint 2","checkpoint 3"]}'
+        )
+    elif role == "qa":
         DELIVERY_ROLE = "You are the test manager. Write the test schedule, resource plan, and top test risks with mitigations."
         DELIVERY_SCHEMA = (
             '{"risks":[{"risk":"test risk description","prob":"High|Med|Low","impact":"High|Med|Low","mitigation":"specific mitigation"}],'

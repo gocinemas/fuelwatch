@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Miru — Brief Options</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    :root {
+      --bg:#f8f7f5; --surface:#fff; --border:#e8e8e8; --text:#111; --muted:#666; --subtle:#9ca3af;
+      --accent:#dc2626; --train:#1d4ed8; --fuel:#d97706; --school:#059669; --weather:#6b21a8;
+    }
+    body { font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+
+    /* ── Option switcher ── */
+    .option-bar { position:sticky; top:0; z-index:100; background:var(--surface); border-bottom:1px solid var(--border); }
+    .option-bar-inner { max-width:480px; margin:0 auto; display:flex; }
+    .opt-btn { flex:1; padding:14px 8px; border:none; background:none; font-family:inherit; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; border-bottom:3px solid transparent; transition:all .15s; }
+    .opt-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+    /* ── Option description ── */
+    .opt-desc { max-width:480px; margin:0 auto; padding:14px 16px 10px; }
+    .opt-desc-title { font-size:15px; font-weight:800; letter-spacing:-0.3px; margin-bottom:4px; }
+    .opt-desc-sub { font-size:13px; color:var(--muted); line-height:1.5; }
+
+    /* ── Screens ── */
+    .opt-screen { display:none; }
+    .opt-screen.active { display:block; }
+
+    /* ── Proto toggle (A + B only) ── */
+    .time-switcher { max-width:480px; margin:0 auto; padding:10px 16px 0; display:flex; gap:7px; }
+    .time-btn { flex:1; padding:7px 4px; border-radius:10px; border:1.5px solid var(--border); background:var(--surface); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; color:var(--muted); }
+    .time-btn.active { background:#111; color:#fff; border-color:#111; }
+
+    /* ── Shared card styles ── */
+    .scroll-root { max-width:480px; margin:0 auto; padding:12px 16px 100px; display:flex; flex-direction:column; gap:10px; }
+    .card { background:var(--surface); border:1.5px solid var(--border); border-radius:18px; padding:15px 15px 13px; }
+    .card-label { font-size:10px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+    .label-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .card-action { margin-top:11px; font-size:12px; font-weight:700; color:var(--accent); }
+
+    .brief-header { border-radius:20px; padding:18px 18px 16px; color:#fff; }
+    .brief-header.morning   { background:linear-gradient(135deg,#111,#1f2937); }
+    .brief-header.afternoon { background:linear-gradient(135deg,#1e3a8a,#1d4ed8); }
+    .brief-header.evening   { background:linear-gradient(135deg,#3b0764,#6b21a8); }
+    .brief-date { font-size:11px; font-weight:700; color:#ffffff55; letter-spacing:.5px; text-transform:uppercase; margin-bottom:4px; }
+    .brief-title { font-size:20px; font-weight:800; letter-spacing:-0.5px; line-height:1.2; }
+    .brief-sub { font-size:12px; color:#ffffff55; margin-top:4px; }
+    .brief-live { display:inline-flex; align-items:center; gap:5px; margin-top:10px; background:#ffffff15; border-radius:99px; padding:3px 10px; font-size:11px; font-weight:700; color:#ffffffcc; }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:#22c55e; animation:pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* train */
+    .train-card { border-color:#dbeafe; }
+    .train-card .label-dot { background:var(--train); }
+    .train-card .card-label { color:var(--train); }
+    .t-row { display:flex; align-items:center; justify-content:space-between; padding:9px 11px; background:#eff6ff; border-radius:11px; margin-bottom:7px; }
+    .t-row:last-child { margin-bottom:0; }
+    .t-time { font-size:19px; font-weight:800; letter-spacing:-0.5px; color:var(--train); }
+    .t-dest { font-size:13px; font-weight:600; color:#1e40af; }
+    .t-detail { font-size:11px; color:#60a5fa; margin-top:1px; }
+    .t-badge { font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; flex-shrink:0; }
+    .on-time { background:#dcfce7; color:#15803d; }
+    .delayed  { background:#fef3c7; color:#92400e; }
+
+    /* weather */
+    .weather-card { border-color:#f3e8ff; }
+    .weather-card .label-dot { background:var(--weather); }
+    .weather-card .card-label { color:var(--weather); }
+    .w-main { display:flex; align-items:center; gap:12px; }
+    .w-icon { font-size:36px; line-height:1; }
+    .w-temp { font-size:30px; font-weight:800; letter-spacing:-1px; }
+    .w-desc { font-size:13px; color:var(--muted); margin-top:1px; }
+    .w-pills { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+    .w-pill { font-size:12px; font-weight:600; background:#f5f3ff; color:#6d28d9; padding:4px 9px; border-radius:8px; }
+    .w-tip { margin-top:8px; font-size:12px; color:var(--muted); background:#faf5ff; border-radius:9px; padding:7px 10px; }
+
+    /* fuel */
+    .fuel-card { border-color:#fef3c7; }
+    .fuel-card .label-dot { background:var(--fuel); }
+    .fuel-card .card-label { color:var(--fuel); }
+    .f-row { display:flex; gap:8px; }
+    .f-type { flex:1; background:#fffbeb; border-radius:11px; padding:10px; text-align:center; }
+    .f-name { font-size:10px; font-weight:800; color:#92400e; text-transform:uppercase; letter-spacing:.5px; }
+    .f-price { font-size:22px; font-weight:800; letter-spacing:-0.5px; color:var(--fuel); margin:3px 0 2px; }
+    .f-station { font-size:11px; color:var(--muted); }
+    .f-badge { font-size:10px; font-weight:700; background:#dcfce7; color:#166534; padding:2px 5px; border-radius:4px; margin-top:3px; display:inline-block; }
+
+    /* school */
+    .school-card { border-color:#d1fae5; }
+    .school-card .label-dot { background:var(--school); }
+    .school-card .card-label { color:var(--school); }
+    .s-item { display:flex; align-items:flex-start; gap:8px; padding:8px 10px; background:#f0fdf4; border-radius:10px; margin-bottom:6px; }
+    .s-item:last-child { margin-bottom:0; }
+    .s-emoji { font-size:15px; flex-shrink:0; margin-top:1px; }
+    .s-text { font-size:13px; font-weight:600; line-height:1.4; color:#064e3b; }
+    .s-meta { font-size:11px; color:#6ee7b7; margin-top:1px; }
+
+    /* coffee */
+    .coffee-card { border-color:#fed7aa; }
+    .coffee-card .label-dot { background:#ea580c; }
+    .coffee-card .card-label { color:#ea580c; }
+    .c-usual { display:flex; align-items:center; justify-content:space-between; background:#fff7ed; border-radius:11px; padding:10px 12px; margin-bottom:7px; }
+    .c-name { font-size:14px; font-weight:700; color:#9a3412; }
+    .c-detail { font-size:11px; color:#c2410c; margin-top:1px; }
+    .c-open { font-size:11px; font-weight:700; background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:6px; }
+    .c-row { display:flex; align-items:center; gap:9px; padding:7px 10px; background:var(--bg); border-radius:9px; margin-bottom:5px; }
+    .c-row:last-child { margin-bottom:0; }
+    .c-rname { font-size:13px; font-weight:600; flex:1; }
+    .c-stars { font-size:11px; color:#f59e0b; }
+    .c-dist { font-size:11px; color:var(--muted); }
+
+    /* gigs */
+    .gigs-card { border-color:#fce7f3; }
+    .gigs-card .label-dot { background:#db2777; }
+    .gigs-card .card-label { color:#db2777; }
+    .g-row { display:flex; align-items:center; gap:9px; padding:8px 10px; background:var(--bg); border-radius:10px; margin-bottom:6px; }
+    .g-row:last-child { margin-bottom:0; }
+    .g-emoji { font-size:17px; flex-shrink:0; }
+    .g-info { flex:1; min-width:0; }
+    .g-name { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .g-where { font-size:11px; color:var(--muted); margin-top:1px; }
+    .g-when { font-size:11px; font-weight:700; color:var(--accent); flex-shrink:0; }
+
+    /* shops */
+    .shop-card { border-color:#e0e7ff; }
+    .shop-card .label-dot { background:#4f46e5; }
+    .shop-card .card-label { color:#4f46e5; }
+    .sh-row { display:flex; align-items:center; gap:9px; padding:8px 10px; background:#eef2ff; border-radius:10px; margin-bottom:6px; }
+    .sh-row:last-child { margin-bottom:0; }
+    .sh-name { font-size:13px; font-weight:700; flex:1; }
+    .sh-hours { font-size:11px; color:#4f46e5; }
+    .sh-dist { font-size:11px; color:var(--muted); }
+
+    /* saves */
+    .saves-card { border-color:#e0e7ff; }
+    .saves-card .label-dot { background:#4f46e5; }
+    .saves-card .card-label { color:#4f46e5; }
+    .sv-row { display:flex; gap:9px; align-items:flex-start; padding:8px 10px; background:var(--bg); border-radius:10px; margin-bottom:6px; }
+    .sv-row:last-child { margin-bottom:0; }
+    .sv-icon { font-size:17px; flex-shrink:0; }
+    .sv-title { font-size:13px; font-weight:600; line-height:1.35; }
+    .sv-source { font-size:11px; color:var(--subtle); margin-top:1px; }
+
+    /* tomorrow */
+    .tomorrow-card { border-color:#fce7f3; }
+    .tomorrow-card .label-dot { background:#db2777; }
+    .tomorrow-card .card-label { color:#db2777; }
+    .tm-row { display:flex; align-items:center; gap:9px; padding:8px 10px; background:#fdf2f8; border-radius:10px; margin-bottom:6px; }
+    .tm-row:last-child { margin-bottom:0; }
+    .tm-icon { font-size:15px; flex-shrink:0; }
+    .tm-label { font-size:12px; font-weight:600; color:#831843; flex:1; }
+    .tm-val { font-size:12px; font-weight:700; color:#be185d; }
+
+    /* option C — dimmed (less urgent) */
+    .card.dimmed { opacity:.5; }
+    .card.dimmed .card-label::after { content:'later'; font-size:9px; font-weight:700; background:#f3f4f6; color:#9ca3af; padding:2px 6px; border-radius:4px; margin-left:auto; }
+
+    .hidden { display:none !important; }
+    #b-wfh-cards.hidden, #b-office-cards.hidden { display:none !important; }
+
+    /* ── Onboarding ── */
+    .ob-overlay { position:fixed; inset:0; z-index:300; display:flex; flex-direction:column; }
+    .ob-top { flex:1; background:#00000066; }
+    .ob-sheet { background:var(--surface); border-radius:28px 28px 0 0; padding:28px 24px 40px; }
+    .ob-dots { display:flex; gap:6px; justify-content:center; margin-bottom:22px; }
+    .ob-dot { width:6px; height:6px; border-radius:50%; background:var(--border); transition:all .25s; }
+    .ob-dot.active { background:var(--accent); width:22px; border-radius:99px; }
+    .ob-step { font-size:11px; font-weight:700; color:var(--subtle); letter-spacing:.6px; text-transform:uppercase; margin-bottom:10px; }
+    .ob-q { font-size:22px; font-weight:800; letter-spacing:-0.5px; line-height:1.2; margin-bottom:6px; }
+    .ob-why { font-size:14px; color:var(--muted); line-height:1.6; margin-bottom:4px; }
+    .ob-unlock { display:flex; align-items:center; gap:8px; background:#fff5f5; border:1px solid #fecaca; border-radius:12px; padding:10px 14px; margin:14px 0 20px; }
+    .ob-unlock-icon { font-size:20px; flex-shrink:0; }
+    .ob-unlock-text { font-size:13px; font-weight:600; color:#991b1b; line-height:1.4; }
+    .ob-options { display:flex; flex-direction:column; gap:9px; margin-bottom:0; }
+    .ob-opt { padding:13px 16px; border:2px solid var(--border); border-radius:13px; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:12px; transition:border-color .15s; font-family:inherit; background:var(--surface); text-align:left; width:100%; }
+    .ob-opt:hover, .ob-opt.sel { border-color:var(--accent); background:#fff5f5; }
+    .ob-opt-icon { font-size:20px; flex-shrink:0; }
+    .ob-input { width:100%; border:2px solid var(--border); border-radius:13px; padding:14px 16px; font-size:16px; font-weight:600; font-family:inherit; outline:none; color:var(--text); margin-bottom:4px; }
+    .ob-input:focus { border-color:var(--accent); }
+    .ob-privacy { font-size:11px; color:var(--subtle); margin-top:6px; display:flex; align-items:center; gap:4px; }
+    .ob-next { width:100%; padding:15px; background:var(--accent); color:#fff; border:none; border-radius:14px; font-size:16px; font-weight:700; font-family:inherit; cursor:pointer; margin-top:20px; }
+    .ob-skip { width:100%; padding:10px; background:none; border:none; font-family:inherit; font-size:13px; font-weight:600; color:var(--subtle); cursor:pointer; margin-top:8px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Onboarding overlay ── -->
+<div class="ob-overlay" id="ob-overlay">
+  <div class="ob-top" onclick="void(0)"></div>
+  <div class="ob-sheet">
+    <div class="ob-dots">
+      <div class="ob-dot active" id="ob-dot-0"></div>
+      <div class="ob-dot" id="ob-dot-1"></div>
+      <div class="ob-dot" id="ob-dot-2"></div>
+      <div class="ob-dot" id="ob-dot-3"></div>
+      <div class="ob-dot" id="ob-dot-4"></div>
+      <div class="ob-dot" id="ob-dot-5"></div>
+    </div>
+
+    <!-- Step 0: Postcode -->
+    <div id="ob-0">
+      <div class="ob-step">Step 1 of 6</div>
+      <div class="ob-q">What's your postcode?</div>
+      <div class="ob-why">Everything in your brief — fuel prices, trains, weather, school — is local to you.</div>
+      <input class="ob-input" id="ob-postcode" placeholder="e.g. SM1 1EA" maxlength="8" style="text-transform:uppercase;letter-spacing:2px;margin-top:14px">
+      <button class="ob-next" onclick="obNext(0)">Continue →</button>
+    </div>
+
+    <!-- Step 1: Station -->
+    <div id="ob-1" class="hidden">
+      <div class="ob-step">Step 2 of 6</div>
+      <div class="ob-q">Your nearest train station?</div>
+      <div class="ob-why">We'll show live departures every morning so you never miss your train.</div>
+      <div class="ob-options" style="margin-top:14px">
+        <button class="ob-opt sel" onclick="obSel(this)"><span class="ob-opt-icon">🚆</span> Sutton</button>
+        <button class="ob-opt" onclick="obSel(this)"><span class="ob-opt-icon">🚆</span> Cheam</button>
+        <button class="ob-opt" onclick="obSel(this)"><span class="ob-opt-icon">🚆</span> Ewell East</button>
+        <button class="ob-opt" onclick="obSel(this)"><span class="ob-opt-icon">🚆</span> Other</button>
+      </div>
+      <button class="ob-next" onclick="obNext(1)">Continue →</button>
+      <button class="ob-skip" onclick="obNext(1)">Skip for now</button>
+    </div>
+
+    <!-- Step 2: Phone -->
+    <div id="ob-2" class="hidden">
+      <div class="ob-step">Step 3 of 6</div>
+      <div class="ob-q">What's your mobile number?</div>
+      <div class="ob-why">Get your morning brief on WhatsApp too. Ask anything hands-free on the commute — fuel, trains, local info, saves.</div>
+      <div class="ob-unlock">
+        <div class="ob-unlock-icon">💬</div>
+        <div class="ob-unlock-text">Unlocks: WhatsApp brief · Ask anything · Save by message · School alerts</div>
+      </div>
+      <input class="ob-input" id="ob-phone" type="tel" placeholder="+44 7700 900000">
+      <div class="ob-privacy">🔒 Your number is never shared or sold.</div>
+      <button class="ob-next" onclick="obNext(2)">Continue →</button>
+      <button class="ob-skip" onclick="obNext(2)">Skip — I'll use the app only</button>
+    </div>
+
+    <!-- Step 3: Work pattern -->
+    <div id="ob-3" class="hidden">
+      <div class="ob-step">Step 4 of 6</div>
+      <div class="ob-q">How do you usually work?</div>
+      <div class="ob-why">So we show trains when you need them — and local coffee shops and errands when you don't.</div>
+      <div class="ob-unlock">
+        <div class="ob-unlock-icon">🏢</div>
+        <div class="ob-unlock-text">Unlocks: Smart Office/WFH brief · No irrelevant commute cards on home days</div>
+      </div>
+      <div class="ob-options" style="margin-top:4px">
+        <button class="ob-opt" onclick="obSel(this)"><span class="ob-opt-icon">🏢</span> Office every day</button>
+        <button class="ob-opt sel" onclick="obSel(this)"><span class="ob-opt-icon">🔀</span> Hybrid — mix of both</button>
+        <button class="ob-opt" onclick="obSel(this)"><span class="ob-opt-icon">🏠</span> Fully remote / WFH</button>
+      </div>
+      <button class="ob-next" onclick="obNext(3)">Continue →</button>
+      <button class="ob-skip" onclick="obNext(3)">Skip — just show trains by default</button>
+    </div>
+
+    <!-- Step 4: Morning routine -->
+    <div id="ob-4" class="hidden">
+      <div class="ob-step">Step 5 of 6</div>
+      <div class="ob-q">How does your morning start?</div>
+      <div class="ob-why">We'll put the right things at the top of your brief at the right time.</div>
+      <div class="ob-options" style="margin-top:14px">
+        <button class="ob-opt" onclick="obSel(this)"><span class="ob-opt-icon">🚶</span> Walk straight to station</button>
+        <button class="ob-opt" onclick="obSel(this)"><span class="ob-opt-icon">🚗</span> Drive to station</button>
+        <button class="ob-opt sel" onclick="obSel(this)"><span class="ob-opt-icon">🏫</span> School drop-off first</button>
+        <button class="ob-opt" onclick="obSel(this)"><span class="ob-opt-icon">🔀</span> Varies</button>
+      </div>
+      <button class="ob-next" onclick="obNext(4)">Continue →</button>
+      <button class="ob-skip" onclick="obNext(4)">Skip</button>
+    </div>
+
+    <!-- Step 5: School -->
+    <div id="ob-5" class="hidden">
+      <div class="ob-step">Step 6 of 6</div>
+      <div class="ob-q">Kids at school?</div>
+      <div class="ob-why">We'll scan school emails and surface anything you need to act on — trips, payments, schedule changes — every morning.</div>
+      <div class="ob-unlock">
+        <div class="ob-unlock-icon">🏫</div>
+        <div class="ob-unlock-text">Unlocks: School updates card · Permission slip reminders · Payment alerts · Diary changes</div>
+      </div>
+      <div class="ob-options" style="margin-top:4px">
+        <button class="ob-opt sel" onclick="obSel(this)"><span class="ob-opt-icon">🏫</span> Yes — link school emails</button>
+        <button class="ob-opt" onclick="obSel(this)"><span class="ob-opt-icon">🚫</span> No kids at school</button>
+      </div>
+      <button class="ob-next" onclick="obFinish()">See my brief →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Option switcher ── -->
+<div class="option-bar">
+  <div class="option-bar-inner">
+    <button class="opt-btn active" onclick="showOpt('a')">A — Three modes</button>
+    <button class="opt-btn"        onclick="showOpt('b')">B — Smart single</button>
+    <button class="opt-btn"        onclick="showOpt('c')">C — Always on</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     OPTION A — Three explicit modes
+════════════════════════════════════════ -->
+<div class="opt-screen active" id="opt-a">
+  <div class="opt-desc">
+    <div class="opt-desc-title">A — Three modes</div>
+    <div class="opt-desc-sub">App has Morning / Afternoon / Evening briefs. You can switch manually or it auto-selects. Clear structure, different content each time.</div>
+  </div>
+  <div class="time-switcher">
+    <button class="time-btn" id="a-tbtn-morning"   onclick="setTimeA('morning')">🌅 Morning</button>
+    <button class="time-btn" id="a-tbtn-afternoon" onclick="setTimeA('afternoon')">☀️ Afternoon</button>
+    <button class="time-btn" id="a-tbtn-evening"   onclick="setTimeA('evening')">🌙 Evening</button>
+  </div>
+
+  <!-- A: Morning -->
+  <div class="scroll-root" id="a-morning">
+    <div class="brief-header morning"><div class="brief-date">THURSDAY · 15 MAY · 7:42 AM</div><div class="brief-title">Good morning, Sarah.</div><div class="brief-sub">Sutton SM1 · School drop-off</div><div class="brief-live"><div class="live-dot"></div> LIVE</div></div>
+    <div class="card train-card"><div class="card-label"><div class="label-dot"></div> Trains from Sutton → London</div><div class="t-row"><div><div class="t-time">08:14</div><div class="t-dest">London Victoria</div><div class="t-detail">Platform 3 · 42 min</div></div><span class="t-badge on-time">On time</span></div><div class="t-row"><div><div class="t-time">08:29</div><div class="t-dest">London Bridge</div><div class="t-detail">Platform 1 · 38 min</div></div><span class="t-badge on-time">On time</span></div><div class="t-row"><div><div class="t-time">08:44</div><div class="t-dest">London Victoria</div><div class="t-detail">Platform 3 · 42 min</div></div><span class="t-badge delayed">+7 min</span></div></div>
+    <div class="card weather-card"><div class="card-label"><div class="label-dot"></div> Weather · Sutton</div><div class="w-main"><div class="w-icon">⛅</div><div><div class="w-temp">16°C</div><div class="w-desc">Partly cloudy · feels 14°</div></div></div><div class="w-pills"><div class="w-pill">🌧 Rain 2–4pm</div><div class="w-pill">💨 11 mph</div></div><div class="w-tip">☂️ Take an umbrella — rain on commute back.</div></div>
+    <div class="card fuel-card"><div class="card-label"><div class="label-dot"></div> Fuel near SM1</div><div class="f-row"><div class="f-type"><div class="f-name">Unleaded</div><div class="f-price">131.9p</div><div class="f-station">Tesco Sutton</div><div class="f-badge">Cheapest</div></div><div class="f-type"><div class="f-name">Diesel</div><div class="f-price">138.7p</div><div class="f-station">Tesco Sutton</div><div class="f-badge">Cheapest</div></div></div></div>
+    <div class="card school-card"><div class="card-label"><div class="label-dot"></div> School updates</div><div class="s-item"><div class="s-emoji">📸</div><div><div class="s-text">Photo orders close Friday — Riaan's not done</div><div class="s-meta">Stanns Heath</div></div></div><div class="s-item"><div class="s-emoji">💰</div><div><div class="s-text">Dinner balance low — top up Scopay</div><div class="s-meta">Stanns Heath · Riaan</div></div></div></div>
+    <div class="card coffee-card"><div class="card-label"><div class="label-dot"></div> Morning coffee</div><div class="c-usual"><div><div class="c-name">☕ Costa Coffee</div><div class="c-detail">Sutton High St · 0.2 mi</div></div><div class="c-open">Open</div></div><div class="c-row"><div class="c-rname">Esquires Coffee</div><div class="c-stars">★★★★★</div><div class="c-dist">0.3 mi</div></div><div class="c-row"><div class="c-rname">The Archangel</div><div class="c-stars">★★★★★</div><div class="c-dist">0.5 mi</div></div></div>
+  </div>
+
+  <!-- A: Afternoon -->
+  <div class="scroll-root hidden" id="a-afternoon">
+    <div class="brief-header afternoon"><div class="brief-date">THURSDAY · 15 MAY · 1:15 PM</div><div class="brief-title">Afternoon, Sarah.</div><div class="brief-sub">Thinking about heading home?</div><div class="brief-live"><div class="live-dot"></div> LIVE</div></div>
+    <div class="card train-card"><div class="card-label"><div class="label-dot"></div> Trains home → Sutton</div><div class="t-row"><div><div class="t-time">17:12</div><div class="t-dest">Sutton via Victoria</div><div class="t-detail">Platform 11 · 38 min</div></div><span class="t-badge on-time">On time</span></div><div class="t-row"><div><div class="t-time">17:27</div><div class="t-dest">Sutton via Mitcham</div><div class="t-detail">Platform 6 · 42 min</div></div><span class="t-badge on-time">On time</span></div><div class="t-row"><div><div class="t-time">17:42</div><div class="t-dest">Sutton via Victoria</div><div class="t-detail">Platform 11 · 38 min</div></div><span class="t-badge delayed">+4 min</span></div></div>
+    <div class="card weather-card"><div class="card-label"><div class="label-dot"></div> Your commute home</div><div class="w-main"><div class="w-icon">🌧</div><div><div class="w-temp">14°C</div><div class="w-desc">Rain from 4pm</div></div></div><div class="w-pills"><div class="w-pill">☂️ Umbrella needed</div><div class="w-pill">🌤 Clears 7pm</div></div><div class="w-tip">🧥 Cold and wet leaving the office.</div></div>
+    <div class="card school-card"><div class="card-label"><div class="label-dot"></div> New from school today</div><div class="s-item"><div class="s-emoji">🏃</div><div><div class="s-text">Sports Day rescheduled — Fri 23 May, pick-up 3:45pm</div><div class="s-meta">Stanns Heath · arrived 11:32am</div></div></div></div>
+    <div class="card shop-card"><div class="card-label"><div class="label-dot"></div> Pick something up?</div><div class="sh-row"><span>🛒</span><div class="sh-name">Tesco Sutton</div><div class="sh-hours">Until 11pm</div><div class="sh-dist">0.3 mi</div></div><div class="sh-row"><span>🥩</span><div class="sh-name">Waitrose Cheam</div><div class="sh-hours">Until 9pm</div><div class="sh-dist">1.1 mi</div></div><div class="sh-row"><span>💊</span><div class="sh-name">Boots Sutton</div><div class="sh-hours">Until 6:30pm</div><div class="sh-dist">0.4 mi</div></div></div>
+    <div class="card fuel-card"><div class="card-label"><div class="label-dot"></div> Fuel on the way home</div><div class="f-row"><div class="f-type"><div class="f-name">Unleaded</div><div class="f-price">131.9p</div><div class="f-station">Tesco Sutton</div><div class="f-badge">On your route</div></div><div class="f-type"><div class="f-name">Diesel</div><div class="f-price">136.4p</div><div class="f-station">BP Cheam Rd</div><div class="f-badge">2p cheaper</div></div></div></div>
+  </div>
+
+  <!-- A: Evening -->
+  <div class="scroll-root hidden" id="a-evening">
+    <div class="brief-header evening"><div class="brief-date">THURSDAY · 15 MAY · 7:30 PM</div><div class="brief-title">Evening, Sarah.</div><div class="brief-sub">Kids fed. Kettle on. Five minutes for you.</div><div class="brief-live"><div class="live-dot"></div> LIVE</div></div>
+    <div class="card saves-card"><div class="card-label"><div class="label-dot"></div> Saved to read</div><div class="sv-row"><div class="sv-icon">📰</div><div><div class="sv-title">Why the UK housing market is about to change</div><div class="sv-source">The Guardian · 4 min</div></div></div><div class="sv-row"><div class="sv-icon">📘</div><div><div class="sv-title">Atomic Habits — Chapter 4</div><div class="sv-source">Your notes</div></div></div></div>
+    <div class="card gigs-card"><div class="card-label"><div class="label-dot"></div> This weekend</div><div class="g-row"><div class="g-emoji">🎸</div><div class="g-info"><div class="g-name">The Mavericks</div><div class="g-where">Seccombs Theatre</div></div><div class="g-when">Sat 7:30pm</div></div><div class="g-row"><div class="g-emoji">☕</div><div class="g-info"><div class="g-name">Farmers Market</div><div class="g-where">Sutton High St</div></div><div class="g-when">Sat 9am</div></div></div>
+    <div class="card tomorrow-card"><div class="card-label"><div class="label-dot"></div> Tomorrow morning</div><div class="tm-row"><div class="tm-icon">🌦</div><div class="tm-label">Weather</div><div class="tm-val">17°C · Sunny</div></div><div class="tm-row"><div class="tm-icon">🚆</div><div class="tm-label">First train out</div><div class="tm-val">07:44 · on time</div></div><div class="tm-row"><div class="tm-icon">👟</div><div class="tm-label">Riaan — PE kit needed</div><div class="tm-val">Pack tonight</div></div><div class="tm-row"><div class="tm-icon">📸</div><div class="tm-label">Photo order — last chance</div><div class="tm-val">Tomorrow deadline</div></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     OPTION B — Smart single screen
+════════════════════════════════════════ -->
+<div class="opt-screen" id="opt-b">
+  <div class="opt-desc">
+    <div class="opt-desc-title">B — Smart single</div>
+    <div class="opt-desc-sub">One home screen. No modes. App reads the time and shows only what matters now. Feels alive — like it knows you.</div>
+  </div>
+  <div class="time-switcher">
+    <button class="time-btn" id="b-tbtn-morning"   onclick="setTimeB('morning')">🌅 Morning</button>
+    <button class="time-btn" id="b-tbtn-afternoon" onclick="setTimeB('afternoon')">☀️ Afternoon</button>
+    <button class="time-btn" id="b-tbtn-evening"   onclick="setTimeB('evening')">🌙 Evening</button>
+  </div>
+
+  <!-- B: Morning -->
+  <div class="scroll-root" id="b-morning">
+    <div class="brief-header morning" style="padding-bottom:14px">
+      <div class="brief-date">7:42 AM · Thu 15 May</div>
+      <div class="brief-title">Good morning, Sarah.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+        <div class="brief-live"><div class="live-dot"></div> LIVE</div>
+        <div style="display:flex;border:1.5px solid #ffffff33;border-radius:10px;overflow:hidden">
+          <button id="b-office-btn" onclick="setBMode('office')" style="padding:6px 14px;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:#111">🏢 Office</button>
+          <button id="b-wfh-btn"    onclick="setBMode('wfh')"    style="padding:6px 14px;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;background:transparent;color:#ffffff88">🏠 WFH</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="b-office-cards" style="display:flex;flex-direction:column;gap:10px">
+      <div class="card train-card"><div class="card-label"><div class="label-dot"></div> Trains out → London</div><div class="t-row"><div><div class="t-time">08:14</div><div class="t-dest">London Victoria</div><div class="t-detail">Plat 3 · 42 min</div></div><span class="t-badge on-time">On time</span></div><div class="t-row"><div><div class="t-time">08:29</div><div class="t-dest">London Bridge</div><div class="t-detail">Plat 1 · 38 min</div></div><span class="t-badge on-time">On time</span></div></div>
+      <div class="card weather-card"><div class="card-label"><div class="label-dot"></div> Today · Sutton</div><div class="w-main"><div class="w-icon">⛅</div><div><div class="w-temp">16°C</div><div class="w-desc">Partly cloudy</div></div></div><div class="w-tip">☂️ Rain 2–4pm — umbrella for the commute back.</div></div>
+      <div class="card school-card"><div class="card-label"><div class="label-dot"></div> School</div><div class="s-item"><div class="s-emoji">📸</div><div><div class="s-text">Photo orders close Friday — Riaan's not done</div><div class="s-meta">Stanns Heath</div></div></div><div class="s-item"><div class="s-emoji">💰</div><div><div class="s-text">Dinner balance low — top up Scopay</div><div class="s-meta">Stanns Heath</div></div></div></div>
+      <div class="card coffee-card"><div class="card-label"><div class="label-dot"></div> Coffee · near Sutton station</div><div class="c-usual"><div><div class="c-name">☕ Costa Coffee</div><div class="c-detail">Sutton High St · 0.2 mi · Open</div></div><div class="c-open">Usual</div></div></div>
+      <div class="card fuel-card"><div class="card-label"><div class="label-dot"></div> Fuel · SM1</div><div class="f-row"><div class="f-type"><div class="f-name">Unleaded</div><div class="f-price">131.9p</div><div class="f-station">Tesco</div></div><div class="f-type"><div class="f-name">Diesel</div><div class="f-price">138.7p</div><div class="f-station">Tesco</div></div></div></div>
+    </div>
+
+    <div id="b-wfh-cards" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+      <div class="card weather-card"><div class="card-label"><div class="label-dot"></div> Today · Sutton</div><div class="w-main"><div class="w-icon">⛅</div><div><div class="w-temp">16°C</div><div class="w-desc">Partly cloudy · feels 14°</div></div></div><div class="w-pills"><div class="w-pill">🌧 Rain 2–4pm</div><div class="w-pill">☀️ High 19°</div></div><div class="w-tip">🚶 Good morning for a walk to the coffee shop.</div></div>
+      <div class="card school-card"><div class="card-label"><div class="label-dot"></div> School</div><div class="s-item"><div class="s-emoji">📸</div><div><div class="s-text">Photo orders close Friday — Riaan's not done</div><div class="s-meta">Stanns Heath</div></div></div><div class="s-item"><div class="s-emoji">💰</div><div><div class="s-text">Dinner balance low — top up Scopay</div><div class="s-meta">Stanns Heath</div></div></div></div>
+      <div class="card coffee-card"><div class="card-label"><div class="label-dot"></div> Coffee · walk from home</div>
+        <div class="c-usual"><div><div class="c-name">☕ Costa Coffee</div><div class="c-detail">Sutton High St · 8 min walk</div></div><div class="c-open">Open</div></div>
+        <div style="font-size:11px;font-weight:700;color:var(--subtle);letter-spacing:.4px;text-transform:uppercase;margin:8px 0 6px">Also nearby</div>
+        <div class="c-row"><div class="c-rname">The Archangel — breakfast</div><div class="c-stars">★★★★★</div><div class="c-dist">10 min</div></div>
+        <div class="c-row"><div class="c-rname">Boulangerie Jade</div><div class="c-stars">★★★★☆</div><div class="c-dist">6 min</div></div>
+      </div>
+      <div class="card shop-card"><div class="card-label"><div class="label-dot"></div> Errands today</div><div class="sh-row"><span>🛒</span><div class="sh-name">Tesco Sutton</div><div class="sh-hours">Until 11pm</div><div class="sh-dist">0.3 mi</div></div><div class="sh-row"><span>💊</span><div class="sh-name">Boots Sutton High St</div><div class="sh-hours">Until 6:30pm</div><div class="sh-dist">0.4 mi</div></div><div class="sh-row"><span>📮</span><div class="sh-name">Post Office</div><div class="sh-hours">Until 5:30pm</div><div class="sh-dist">0.5 mi</div></div></div>
+      <div class="card" style="border-color:#fed7aa"><div class="card-label"><div class="label-dot" style="background:#ea580c"></div><span style="color:#ea580c">Lunch nearby</span></div>
+        <div class="c-row"><div class="c-rname">The Archangel</div><div class="c-stars">★★★★★</div><div class="c-dist">0.5 mi</div></div>
+        <div class="c-row"><div class="c-rname">Wagamama Sutton</div><div class="c-stars">★★★★☆</div><div class="c-dist">0.4 mi</div></div>
+        <div class="c-row"><div class="c-rname">Yo! Sushi</div><div class="c-stars">★★★★☆</div><div class="c-dist">0.5 mi</div></div>
+      </div>
+      <div class="card fuel-card"><div class="card-label"><div class="label-dot"></div> Fuel · SM1</div><div class="f-row"><div class="f-type"><div class="f-name">Unleaded</div><div class="f-price">131.9p</div><div class="f-station">Tesco</div></div><div class="f-type"><div class="f-name">Diesel</div><div class="f-price">138.7p</div><div class="f-station">Tesco</div></div></div></div>
+    </div>
+  </div>
+
+  <!-- B: Afternoon (office) -->
+  <div class="scroll-root hidden" id="b-afternoon-office">
+    <div class="brief-header afternoon"><div class="brief-date">1:15 PM · Thu 15 May</div><div class="brief-title">Afternoon, Sarah.</div><div class="brief-sub">Thinking about heading home?</div><div class="brief-live"><div class="live-dot"></div> LIVE</div></div>
+    <div class="card train-card"><div class="card-label"><div class="label-dot"></div> Trains home → Sutton</div><div class="t-row"><div><div class="t-time">17:12</div><div class="t-dest">Sutton via Victoria</div><div class="t-detail">Plat 11 · 38 min</div></div><span class="t-badge on-time">On time</span></div><div class="t-row"><div><div class="t-time">17:27</div><div class="t-dest">Sutton via Mitcham</div><div class="t-detail">Plat 6 · 42 min</div></div><span class="t-badge on-time">On time</span></div></div>
+    <div class="card weather-card"><div class="card-label"><div class="label-dot"></div> Commute home</div><div class="w-main"><div class="w-icon">🌧</div><div><div class="w-temp">14°C</div><div class="w-desc">Rain from 4pm</div></div></div><div class="w-tip">🧥 Cold and wet — dress for it.</div></div>
+    <div class="card school-card"><div class="card-label"><div class="label-dot"></div> New from school</div><div class="s-item"><div class="s-emoji">🏃</div><div><div class="s-text">Sports Day rescheduled — pick-up 3:45pm Fri 23</div><div class="s-meta">Stanns Heath · just in</div></div></div></div>
+    <div class="card shop-card"><div class="card-label"><div class="label-dot"></div> Pick up on the way home</div><div class="sh-row"><span>🛒</span><div class="sh-name">Tesco Sutton</div><div class="sh-hours">Until 11pm</div><div class="sh-dist">0.3 mi</div></div><div class="sh-row"><span>🥩</span><div class="sh-name">Waitrose Cheam</div><div class="sh-hours">Until 9pm</div><div class="sh-dist">1.1 mi</div></div></div>
+  </div>
+
+  <!-- B: Afternoon (WFH) -->
+  <div class="scroll-root hidden" id="b-afternoon-wfh">
+    <div class="brief-header afternoon"><div class="brief-date">1:15 PM · Thu 15 May</div><div class="brief-title">Afternoon, Sarah.</div><div class="brief-sub">School pick-up in a couple of hours.</div><div class="brief-live"><div class="live-dot"></div> LIVE</div></div>
+    <div class="card weather-card"><div class="card-label"><div class="label-dot"></div> For the school run</div><div class="w-main"><div class="w-icon">🌧</div><div><div class="w-temp">14°C</div><div class="w-desc">Rain from 4pm</div></div></div><div class="w-tip">☂️ Take an umbrella for pick-up — rain from 4pm.</div></div>
+    <div class="card school-card"><div class="card-label"><div class="label-dot"></div> School — pick-up today</div><div class="s-item"><div class="s-emoji">🏃</div><div><div class="s-text">Sports Day rescheduled — pick-up 3:45pm Fri 23</div><div class="s-meta">Stanns Heath · just in</div></div></div><div class="s-item"><div class="s-emoji">🏫</div><div><div class="s-text">Normal pick-up today — 3:20pm both schools</div><div class="s-meta">Stanns Heath + New Haw</div></div></div></div>
+    <div class="card shop-card"><div class="card-label"><div class="label-dot"></div> Local errands still open</div><div class="sh-row"><span>🛒</span><div class="sh-name">Tesco Sutton</div><div class="sh-hours">Until 11pm</div><div class="sh-dist">0.3 mi</div></div><div class="sh-row"><span>💊</span><div class="sh-name">Boots Sutton High St</div><div class="sh-hours">Until 6:30pm</div><div class="sh-dist">0.4 mi</div></div><div class="sh-row"><span>📮</span><div class="sh-name">Post Office</div><div class="sh-hours">Closes 5:30pm</div><div class="sh-dist">0.5 mi</div></div></div>
+    <div class="card fuel-card"><div class="card-label"><div class="label-dot"></div> Fuel on the school run</div><div class="f-row"><div class="f-type"><div class="f-name">Unleaded</div><div class="f-price">131.9p</div><div class="f-station">Tesco Sutton</div><div class="f-badge">Cheapest</div></div><div class="f-type"><div class="f-name">Diesel</div><div class="f-price">136.4p</div><div class="f-station">BP Cheam</div><div class="f-badge">2p cheaper</div></div></div></div>
+  </div>
+
+  <!-- B: Evening -->
+  <div class="scroll-root hidden" id="b-evening">
+    <div class="brief-header evening"><div class="brief-date">7:30 PM · Thu 15 May</div><div class="brief-title">Evening, Sarah.</div><div class="brief-live"><div class="live-dot"></div> LIVE</div></div>
+    <div class="card saves-card"><div class="card-label"><div class="label-dot"></div> To read</div><div class="sv-row"><div class="sv-icon">📰</div><div><div class="sv-title">Why the UK housing market is about to change</div><div class="sv-source">The Guardian · 4 min</div></div></div><div class="sv-row"><div class="sv-icon">📘</div><div><div class="sv-title">Atomic Habits — Chapter 4</div><div class="sv-source">Your notes</div></div></div></div>
+    <div class="card tomorrow-card"><div class="card-label"><div class="label-dot"></div> Tomorrow</div><div class="tm-row"><div class="tm-icon">🚆</div><div class="tm-label">First train out</div><div class="tm-val">07:44</div></div><div class="tm-row"><div class="tm-icon">🌦</div><div class="tm-label">Weather</div><div class="tm-val">17°C · Sunny</div></div><div class="tm-row"><div class="tm-icon">👟</div><div class="tm-label">Riaan — PE kit</div><div class="tm-val">Pack tonight</div></div><div class="tm-row"><div class="tm-icon">📸</div><div class="tm-label">Photo order deadline</div><div class="tm-val">Last chance</div></div></div>
+    <div class="card gigs-card"><div class="card-label"><div class="label-dot"></div> This weekend</div><div class="g-row"><div class="g-emoji">🎸</div><div class="g-info"><div class="g-name">The Mavericks</div><div class="g-where">Seccombs Theatre</div></div><div class="g-when">Sat 7:30pm</div></div><div class="g-row"><div class="g-emoji">☕</div><div class="g-info"><div class="g-name">Farmers Market</div><div class="g-where">Sutton High St</div></div><div class="g-when">Sat 9am</div></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     OPTION C — Always on, priority shifts
+════════════════════════════════════════ -->
+<div class="opt-screen" id="opt-c">
+  <div class="opt-desc">
+    <div class="opt-desc-title">C — Always on</div>
+    <div class="opt-desc-sub">All cards visible all day. Nothing disappears. But priority order shifts by time — urgent things float up, less relevant ones dim. Tap the time to see how it shifts.</div>
+  </div>
+  <div class="time-switcher">
+    <button class="time-btn" id="c-tbtn-morning"   onclick="setTimeC('morning')">🌅 Morning</button>
+    <button class="time-btn" id="c-tbtn-afternoon" onclick="setTimeC('afternoon')">☀️ Afternoon</button>
+    <button class="time-btn" id="c-tbtn-evening"   onclick="setTimeC('evening')">🌙 Evening</button>
+  </div>
+
+  <div class="scroll-root" id="c-cards">
+    <div class="brief-header morning" id="c-header"><div class="brief-date" id="c-date">7:42 AM · Thu 15 May</div><div class="brief-title" id="c-title">Good morning, Sarah.</div><div class="brief-sub" id="c-sub">Everything in one place — all day.</div><div class="brief-live"><div class="live-dot"></div> LIVE</div></div>
+
+    <div class="card train-card" id="c-trains"><div class="card-label"><div class="label-dot"></div> <span id="c-train-label">Trains out → London</span></div><div id="c-train-rows"><div class="t-row"><div><div class="t-time">08:14</div><div class="t-dest">London Victoria</div><div class="t-detail">Plat 3 · 42 min</div></div><span class="t-badge on-time">On time</span></div><div class="t-row"><div><div class="t-time">08:29</div><div class="t-dest">London Bridge</div><div class="t-detail">Plat 1 · 38 min</div></div><span class="t-badge on-time">On time</span></div></div></div>
+    <div class="card weather-card" id="c-weather"><div class="card-label"><div class="label-dot"></div> <span id="c-weather-label">Today · Sutton</span></div><div class="w-main"><div class="w-icon" id="c-w-icon">⛅</div><div><div class="w-temp" id="c-w-temp">16°C</div><div class="w-desc" id="c-w-desc">Partly cloudy</div></div></div><div class="w-tip" id="c-w-tip">☂️ Rain 2–4pm — umbrella for the commute back.</div></div>
+    <div class="card school-card" id="c-school"><div class="card-label"><div class="label-dot"></div> School</div><div class="s-item"><div class="s-emoji">📸</div><div><div class="s-text">Photo orders close Friday</div><div class="s-meta">Stanns Heath · Riaan</div></div></div><div class="s-item"><div class="s-emoji">💰</div><div><div class="s-text">Dinner balance low — top up Scopay</div><div class="s-meta">Stanns Heath</div></div></div></div>
+    <div class="card coffee-card" id="c-coffee"><div class="card-label"><div class="label-dot"></div> Coffee · Sutton station</div><div class="c-usual"><div><div class="c-name">☕ Costa Coffee</div><div class="c-detail">0.2 mi · Open now</div></div><div class="c-open">Usual</div></div></div>
+    <div class="card fuel-card" id="c-fuel"><div class="card-label"><div class="label-dot"></div> <span id="c-fuel-label">Fuel · SM1</span></div><div class="f-row"><div class="f-type"><div class="f-name">Unleaded</div><div class="f-price">131.9p</div><div class="f-station">Tesco</div></div><div class="f-type"><div class="f-name">Diesel</div><div class="f-price">138.7p</div><div class="f-station">Tesco</div></div></div></div>
+    <div class="card gigs-card" id="c-gigs"><div class="card-label"><div class="label-dot"></div> This weekend</div><div class="g-row"><div class="g-emoji">🎸</div><div class="g-info"><div class="g-name">The Mavericks</div><div class="g-where">Seccombs Theatre</div></div><div class="g-when">Sat 7:30pm</div></div><div class="g-row"><div class="g-emoji">☕</div><div class="g-info"><div class="g-name">Farmers Market</div><div class="g-where">Sutton High St</div></div><div class="g-when">Sat 9am</div></div></div>
+    <div class="card saves-card" id="c-saves"><div class="card-label"><div class="label-dot"></div> Saved to read</div><div class="sv-row"><div class="sv-icon">📰</div><div><div class="sv-title">Why the UK housing market is about to change</div><div class="sv-source">The Guardian · 4 min</div></div></div><div class="sv-row"><div class="sv-icon">📘</div><div><div class="sv-title">Atomic Habits — Chapter 4</div><div class="sv-source">Your notes</div></div></div></div>
+    <div class="card shop-card" id="c-shops"><div class="card-label"><div class="label-dot"></div> Shops nearby</div><div class="sh-row"><span>🛒</span><div class="sh-name">Tesco Sutton</div><div class="sh-hours">Until 11pm</div><div class="sh-dist">0.3 mi</div></div><div class="sh-row"><span>🥩</span><div class="sh-name">Waitrose Cheam</div><div class="sh-hours">Until 9pm</div><div class="sh-dist">1.1 mi</div></div></div>
+    <div class="card tomorrow-card" id="c-tomorrow"><div class="card-label"><div class="label-dot"></div> Tomorrow</div><div class="tm-row"><div class="tm-icon">🚆</div><div class="tm-label">First train out</div><div class="tm-val">07:44</div></div><div class="tm-row"><div class="tm-icon">🌦</div><div class="tm-label">Weather</div><div class="tm-val">17°C · Sunny</div></div><div class="tm-row"><div class="tm-icon">👟</div><div class="tm-label">Riaan — PE kit</div><div class="tm-val">Pack tonight</div></div></div>
+  </div>
+</div>
+
+<script>
+  // ── Option tabs ──
+  function showOpt(o) {
+    ['a','b','c'].forEach(x => {
+      document.getElementById('opt-'+x).classList.toggle('active', x===o);
+      document.querySelectorAll('.opt-btn')[{a:0,b:1,c:2}[x]].classList.toggle('active', x===o);
+    });
+    window.scrollTo(0,0);
+  }
+
+  // ── Option A time ──
+  function setTimeA(t) {
+    ['morning','afternoon','evening'].forEach(x => {
+      document.getElementById('a-'+x).classList.toggle('hidden', x!==t);
+      document.getElementById('a-tbtn-'+x).classList.toggle('active', x===t);
+    });
+    window.scrollTo(0,0);
+  }
+
+  // ── Option B WFH toggle ──
+  let _bMode = 'office';
+  function setBMode(mode) {
+    _bMode = mode;
+    const isWfh = mode === 'wfh';
+    document.getElementById('b-office-cards').classList.toggle('hidden', isWfh);
+    document.getElementById('b-wfh-cards').classList.toggle('hidden', !isWfh);
+    document.getElementById('b-office-btn').style.background = isWfh ? 'transparent' : '#fff';
+    document.getElementById('b-office-btn').style.color      = isWfh ? '#ffffff88' : '#111';
+    document.getElementById('b-wfh-btn').style.background    = isWfh ? '#fff' : 'transparent';
+    document.getElementById('b-wfh-btn').style.color         = isWfh ? '#111' : '#ffffff88';
+    // re-render afternoon if currently showing it
+    const afEl = document.getElementById('b-afternoon-office');
+    if (afEl && !afEl.classList.contains('hidden')) setTimeB('afternoon');
+  }
+
+  // ── Option B time ──
+  function setTimeB(t) {
+    ['morning','afternoon-office','afternoon-wfh','evening'].forEach(x => {
+      document.getElementById('b-'+x)?.classList.add('hidden');
+    });
+    document.querySelectorAll('[id^="b-tbtn-"]').forEach(b => b.classList.remove('active'));
+    document.getElementById('b-tbtn-'+t)?.classList.add('active');
+    if (t === 'afternoon') {
+      document.getElementById(_bMode === 'wfh' ? 'b-afternoon-wfh' : 'b-afternoon-office').classList.remove('hidden');
+    } else {
+      document.getElementById('b-'+t).classList.remove('hidden');
+    }
+    window.scrollTo(0,0);
+  }
+
+  // ── Option C — reorder + dim cards by time ──
+  const C_ORDER = {
+    morning:   ['c-trains','c-weather','c-school','c-coffee','c-fuel','c-gigs','c-saves','c-shops','c-tomorrow'],
+    afternoon: ['c-trains','c-weather','c-school','c-shops','c-fuel','c-gigs','c-saves','c-coffee','c-tomorrow'],
+    evening:   ['c-saves','c-gigs','c-tomorrow','c-school','c-trains','c-weather','c-fuel','c-coffee','c-shops'],
+  };
+  const C_DIMMED = {
+    morning:   ['c-saves','c-shops','c-tomorrow'],
+    afternoon: ['c-coffee','c-tomorrow','c-saves'],
+    evening:   ['c-trains','c-weather','c-fuel','c-coffee','c-shops'],
+  };
+  const C_HEADER = {
+    morning:   { cls:'morning',   date:'7:42 AM · Thu 15 May', title:'Good morning, Sarah.',    sub:'Everything, all day — most urgent first.' },
+    afternoon: { cls:'afternoon', date:'1:15 PM · Thu 15 May', title:'Afternoon, Sarah.',        sub:'Trains home + commute weather up top.' },
+    evening:   { cls:'evening',   date:'7:30 PM · Thu 15 May', title:'Evening, Sarah.',           sub:'Your reads + tomorrow floated up.' },
+  };
+  const C_TRAIN = {
+    morning:   { label:'Trains out → London', rows:`<div class="t-row"><div><div class="t-time">08:14</div><div class="t-dest">London Victoria</div><div class="t-detail">Plat 3 · 42 min</div></div><span class="t-badge on-time">On time</span></div><div class="t-row"><div><div class="t-time">08:29</div><div class="t-dest">London Bridge</div><div class="t-detail">Plat 1 · 38 min</div></div><span class="t-badge on-time">On time</span></div>` },
+    afternoon: { label:'Trains home → Sutton', rows:`<div class="t-row"><div><div class="t-time">17:12</div><div class="t-dest">Sutton via Victoria</div><div class="t-detail">Plat 11 · 38 min</div></div><span class="t-badge on-time">On time</span></div><div class="t-row"><div><div class="t-time">17:27</div><div class="t-dest">Sutton via Mitcham</div><div class="t-detail">Plat 6 · 42 min</div></div><span class="t-badge on-time">On time</span></div>` },
+    evening:   { label:'Tomorrow\'s first train', rows:`<div class="t-row"><div><div class="t-time">07:44</div><div class="t-dest">London Victoria</div><div class="t-detail">Plat 3 · 42 min</div></div><span class="t-badge on-time">On time</span></div>` },
+  };
+
+  function setTimeC(t) {
+    ['morning','afternoon','evening'].forEach(x => document.getElementById('c-tbtn-'+x).classList.toggle('active', x===t));
+    const h = C_HEADER[t];
+    const hdr = document.getElementById('c-header');
+    hdr.className = 'brief-header ' + h.cls;
+    document.getElementById('c-date').textContent = h.date;
+    document.getElementById('c-title').textContent = h.title;
+    document.getElementById('c-sub').textContent = h.sub;
+    document.getElementById('c-train-label').textContent = C_TRAIN[t].label;
+    document.getElementById('c-train-rows').innerHTML = C_TRAIN[t].rows;
+    const container = document.getElementById('c-cards');
+    C_ORDER[t].forEach(id => container.appendChild(document.getElementById(id)));
+    document.querySelectorAll('#c-cards .card').forEach(el => el.classList.remove('dimmed'));
+    C_DIMMED[t].forEach(id => document.getElementById(id).classList.add('dimmed'));
+    window.scrollTo(0,0);
+  }
+
+  // ── Onboarding ──
+  let _obStep = 0;
+  function obNext(step) {
+    if (step === 0 && !document.getElementById('ob-postcode').value.trim()) {
+      document.getElementById('ob-postcode').focus(); return;
+    }
+    _obStep = step + 1;
+    for (let i = 0; i < 6; i++) {
+      document.getElementById('ob-' + i).classList.toggle('hidden', i !== _obStep);
+      document.getElementById('ob-dot-' + i).classList.toggle('active', i === _obStep);
+    }
+  }
+  function obSel(el) {
+    el.closest('.ob-options').querySelectorAll('.ob-opt').forEach(o => o.classList.remove('sel'));
+    el.classList.add('sel');
+  }
+  function obFinish() { document.getElementById('ob-overlay').classList.add('hidden'); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') obFinish(); });
+
+  // Auto-detect time
+  const hr = new Date().getHours();
+  const auto = hr < 11 ? 'morning' : hr < 17 ? 'afternoon' : 'evening';
+  setTimeA(auto); setTimeB(auto); setTimeC(auto);
+</script>
+</body>
+</html>

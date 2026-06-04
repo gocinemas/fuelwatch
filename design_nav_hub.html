@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Miru — Home as Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    [data-theme="sun"]    { --bg:#f5f0e8; --surface:#fdfcf9; --surface2:#f0ebe0; --border:#e5dfd4; --text:#1a1208; --muted:#7a6d5c; --subtle:#b0a090; --shadow:rgba(180,130,40,.12); --shadow-lg:rgba(180,130,40,.2); --hbg:rgba(245,240,232,.9); --accent:#e02020; }
+    [data-theme="cloudy"] { --bg:#e8ebee; --surface:#f4f5f6; --surface2:#dde0e3; --border:#cdd1d6; --text:#1c2028; --muted:#6b7280; --subtle:#9ba3af; --shadow:rgba(100,110,130,.12); --shadow-lg:rgba(80,90,110,.2); --hbg:rgba(232,235,238,.9); --accent:#e02020; }
+    [data-theme="night"]  { --bg:#080b10; --surface:#101520; --surface2:#181e2c; --border:#1e2738; --text:#dde4f0; --muted:#7a8aaa; --subtle:#3a4558; --shadow:rgba(0,0,0,0); --shadow-lg:rgba(0,0,0,0); --hbg:rgba(8,11,16,.92); --accent:#ff453a; }
+    [data-theme="rain"]   { --bg:#151d2a; --surface:#1c2738; --surface2:#1a2232; --border:#243040; --text:#c8d4e8; --muted:#6a7d9a; --subtle:#3a4d60; --shadow:rgba(0,0,0,0); --shadow-lg:rgba(0,0,0,0); --hbg:rgba(21,29,42,.92); --accent:#5b9cf6; }
+    [data-theme="snow"]   { --bg:#eef3f8; --surface:#ffffff; --surface2:#e2ecf5; --border:#c8d8ea; --text:#0d1e30; --muted:#5a7290; --subtle:#9ab0c8; --shadow:rgba(10,60,120,.1); --shadow-lg:rgba(10,60,120,.18); --hbg:rgba(238,243,248,.9); --accent:#2563eb; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); max-width: 430px; margin: 0 auto; min-height: 100vh; -webkit-font-smoothing: antialiased; transition: background 0.5s; overflow-x: hidden; }
+    body.switching { animation: fade .4s ease; }
+    @keyframes fade { from{opacity:.6} to{opacity:1} }
+
+    /* AMBIENT */
+    .ambient { position:fixed; top:0; left:0; right:0; height:280px; pointer-events:none; z-index:0; }
+    [data-theme="sun"]    .ambient { background:radial-gradient(ellipse at 70% 0%, rgba(255,200,60,.14) 0%, transparent 55%); }
+    [data-theme="cloudy"] .ambient { background:radial-gradient(ellipse at 50% 0%, rgba(180,190,210,.1) 0%, transparent 55%); }
+    [data-theme="night"]  .ambient { background:radial-gradient(ellipse at 30% 0%, rgba(60,80,180,.16) 0%, transparent 55%); }
+    [data-theme="rain"]   .ambient { background:radial-gradient(ellipse at 50% 0%, rgba(40,80,160,.22) 0%, transparent 55%); }
+    [data-theme="snow"]   .ambient { background:radial-gradient(ellipse at 50% 0%, rgba(140,200,255,.16) 0%, transparent 55%); }
+
+    /* ════ SCREEN SYSTEM ════ */
+    .screen { display:none; min-height:100vh; }
+    .screen.active { display:block; animation:screenIn .28s cubic-bezier(.4,0,.2,1); }
+    @keyframes screenIn { from{opacity:0; transform:translateY(12px)} to{opacity:1; transform:translateY(0)} }
+
+    /* HEADER */
+    .header { position:sticky; top:0; z-index:100; background:var(--hbg); backdrop-filter:blur(24px); border-bottom:1px solid var(--border); padding:13px 20px; display:flex; align-items:center; justify-content:space-between; transition:background .5s, border-color .5s; }
+    .logo { display:flex; align-items:center; gap:9px; }
+    .logo-mark { width:32px; height:32px; background:var(--accent); border-radius:10px; display:flex; align-items:center; justify-content:center; transition:background .5s; }
+    .logo-name { font-size:22px; font-weight:900; letter-spacing:-.8px; color:var(--text); transition:color .5s; }
+    .hdr-r { display:flex; gap:8px; align-items:center; }
+    .icon-btn { width:34px; height:34px; background:var(--surface); border:1px solid var(--border); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .5s, border-color .5s; }
+
+    /* BACK BUTTON */
+    .back-btn { display:flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:6px 12px 6px 9px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; color:var(--muted); transition:background .3s, border-color .3s, color .3s; }
+    .back-btn:active { transform:scale(.96); }
+
+    /* ════════════════
+       HOME SCREEN (HUB)
+    ════════════════════ */
+    .hub { padding:0 16px 40px; position:relative; z-index:1; }
+
+    .greeting { padding:24px 0 20px; }
+    .greeting-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .greeting-tag { display:inline-flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:99px; padding:4px 12px; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.04em; transition:background .5s, border-color .5s, color .5s; }
+    .w-widget { display:flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:6px 10px; font-size:13px; font-weight:700; color:var(--text); transition:background .5s, border-color .5s, color .5s; }
+    .greeting-main { font-size:42px; font-weight:900; letter-spacing:-1.8px; color:var(--text); line-height:1; margin-bottom:8px; transition:color .5s; }
+    .greeting-tip { font-size:13px; color:var(--muted); line-height:1.5; transition:color .5s; }
+
+    /* GLOBAL SEARCH */
+    .search-wrap { position:relative; margin-bottom:20px; }
+    .si { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--subtle); }
+    .search-input { width:100%; background:var(--surface); border:1.5px solid var(--border); border-radius:14px; padding:13px 16px 13px 40px; font-size:15px; font-weight:500; font-family:inherit; color:var(--text); outline:none; box-shadow:0 2px 8px var(--shadow); transition:border-color .3s, background .5s, color .5s; }
+    .search-input::placeholder { color:var(--subtle); }
+    .search-input:focus { border-color:var(--accent); }
+
+    /* LIVE ALERT */
+    .alert-chip { display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:10px 14px; margin-bottom:20px; cursor:pointer; width:100%; box-shadow:0 2px 8px var(--shadow); transition:background .5s, border-color .5s; }
+    .chip-lbl { font-size:13px; font-weight:700; color:var(--text); flex:1; text-align:left; transition:color .5s; }
+    .live-g { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:700; color:#16a34a; background:#dcfce7; border-radius:99px; padding:3px 8px; }
+    .ldot { width:5px; height:5px; border-radius:50%; background:#16a34a; animation:pp 2s infinite; }
+    @keyframes pp { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* HUB GRID — big destination tiles */
+    .hub-sec { font-size:12px; font-weight:700; color:var(--subtle); text-transform:uppercase; letter-spacing:.08em; margin-bottom:10px; transition:color .5s; }
+
+    .hub-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+    .hub-tile {
+      border-radius:28px; cursor:pointer; overflow:hidden; position:relative;
+      transition:transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .3s;
+      display:flex; flex-direction:column; justify-content:space-between;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .hub-tile:active { transform:scale(.96); }
+
+    .ht-myarea { background:linear-gradient(145deg,#064e3b,#047857); padding:24px 20px; min-height:180px; grid-column:1/-1; flex-direction:row; align-items:center; gap:20px; box-shadow:0 10px 32px rgba(6,78,59,.35); }
+    .ht-myarea .ht-icon { width:56px; height:56px; background:rgba(255,255,255,.12); border-radius:17px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .ht-myarea .ht-body { flex:1; }
+    .ht-myarea .ht-title { font-size:22px; font-weight:900; color:#fff; letter-spacing:-.6px; }
+    .ht-myarea .ht-desc { font-size:13px; color:rgba(255,255,255,.55); margin-top:5px; line-height:1.5; }
+    .ht-myarea .ht-pc { background:rgba(255,255,255,.15); border-radius:10px; padding:6px 12px; font-size:13px; font-weight:800; color:#fff; margin-top:12px; display:inline-block; }
+    .ht-arrow { display:flex; align-items:center; justify-content:center; width:34px; height:34px; background:rgba(255,255,255,.1); border-radius:10px; flex-shrink:0; }
+
+    .ht-fuel  { background:linear-gradient(145deg,#1a1a2e,#0f3460); padding:22px 18px; min-height:160px; box-shadow:0 8px 28px rgba(15,52,96,.4); }
+    .ht-trains{ background:linear-gradient(145deg,#1c1c1c,#1c2c1c); padding:22px 18px; min-height:160px; box-shadow:0 8px 24px rgba(0,0,0,.3); }
+    .ht-intel { background:linear-gradient(145deg,#1e1b4b,#4f46e5); padding:22px 18px; min-height:160px; box-shadow:0 8px 28px rgba(79,70,229,.35); }
+    .ht-saves { background:var(--surface); border:1px solid var(--border); padding:22px 18px; min-height:160px; box-shadow:0 6px 20px var(--shadow); transition:background .5s, border-color .5s; }
+
+    .lbadge { display:inline-flex; align-items:center; gap:4px; background:rgba(255,255,255,.12); border-radius:99px; padding:3px 9px; width:fit-content; margin-bottom:12px; }
+    .lbadge .d { width:6px; height:6px; border-radius:50%; background:#4ade80; animation:pp 2s infinite; }
+    .lbadge s { font-size:10px; font-weight:700; color:rgba(255,255,255,.55); letter-spacing:.06em; }
+
+    .ht-ico { width:40px; height:40px; background:rgba(255,255,255,.1); border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:auto; }
+    .ht-ico-light { background:var(--surface2); transition:background .5s; }
+    .ht-title-sm { font-size:16px; font-weight:800; letter-spacing:-.3px; }
+    .ht-desc-sm { font-size:11px; margin-top:4px; }
+
+    /* QUICK TILES row */
+    .quick-row { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:20px; }
+    .qt { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:14px 8px; display:flex; flex-direction:column; align-items:center; gap:7px; cursor:pointer; box-shadow:0 2px 8px var(--shadow); transition:background .5s, border-color .5s, transform .18s; }
+    .qt:active { transform:scale(.93); }
+    .qt-ico { width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center; }
+    .qt-lbl { font-size:10px; font-weight:700; color:var(--muted); text-align:center; line-height:1.2; transition:color .5s; }
+
+    /* WA */
+    .wa { background:linear-gradient(135deg,#064e3b,#065f46); border-radius:22px; padding:18px; margin-bottom:16px; box-shadow:0 8px 24px var(--shadow-lg); }
+    .wa-h { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+    .wa-ico { width:38px; height:38px; background:#25d366; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .wa-t { font-size:14px; font-weight:800; color:#fff; flex:1; }
+    .wa-s { font-size:11px; color:rgba(255,255,255,.42); margin-top:2px; }
+    .wa-j { font-size:12px; font-weight:700; color:#fff; background:rgba(255,255,255,.15); border-radius:20px; padding:7px 14px; border:none; cursor:pointer; font-family:inherit; }
+
+    /* NEWS */
+    .sec-t { font-size:19px; font-weight:900; letter-spacing:-.5px; color:var(--text); margin-bottom:12px; transition:color .5s; }
+    .pills { display:flex; gap:7px; overflow-x:auto; padding-bottom:14px; scrollbar-width:none; }
+    .pills::-webkit-scrollbar { display:none; }
+    .pill { flex-shrink:0; font-size:13px; font-weight:600; padding:7px 14px; border-radius:22px; border:1.5px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; font-family:inherit; transition:background .3s, color .3s, border-color .3s; }
+    .pill.active { background:var(--text); color:var(--bg); border-color:var(--text); }
+    .nc { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:14px; display:flex; gap:12px; margin-bottom:8px; box-shadow:0 2px 8px var(--shadow); transition:background .5s, border-color .5s; }
+    .nth { width:60px; height:60px; border-radius:11px; background:var(--surface2); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:22px; transition:background .5s; }
+    .ns { font-size:10px; font-weight:700; color:var(--subtle); text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; transition:color .5s; }
+    .nh { font-size:14px; font-weight:700; color:var(--text); line-height:1.35; transition:color .5s; }
+    .na { font-size:11px; color:var(--subtle); margin-top:5px; transition:color .5s; }
+    .sk { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:14px; display:flex; gap:12px; margin-bottom:8px; }
+    .sk-t { width:60px; height:60px; border-radius:11px; background:var(--surface2); flex-shrink:0; animation:sh 1.6s infinite; }
+    .sk-l { flex:1; }
+    .sk-ln { height:11px; border-radius:6px; background:var(--surface2); margin-bottom:8px; animation:sh 1.6s infinite; }
+    .w80{width:80%}.w60{width:60%}.w40{width:40%}
+    @keyframes sh { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ════ FEATURE SCREENS ════ */
+    .feature { padding:0 16px 60px; position:relative; z-index:1; }
+    .feature-hdr { padding:20px 0 24px; }
+    .feature-icon { width:56px; height:56px; border-radius:18px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
+    .feature-title { font-size:32px; font-weight:900; letter-spacing:-1.2px; color:var(--text); margin-bottom:6px; transition:color .5s; }
+    .feature-sub { font-size:14px; color:var(--muted); transition:color .5s; }
+
+    .placeholder-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:24px; margin-bottom:12px; box-shadow:0 3px 12px var(--shadow); transition:background .5s, border-color .5s; }
+    .ph-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:8px; transition:color .5s; }
+    .ph-body { font-size:13px; color:var(--muted); line-height:1.6; transition:color .5s; }
+    .ph-skel { height:14px; border-radius:7px; background:var(--surface2); margin-bottom:10px; animation:sh 1.6s infinite; }
+
+    /* demo dots */
+    .demo { position:fixed; bottom:24px; right:10px; z-index:500; display:flex; flex-direction:column; align-items:center; gap:5px; }
+    .demo-lbl { font-size:9px; font-weight:700; color:var(--subtle); text-transform:uppercase; letter-spacing:.06em; }
+    .dd { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; background:var(--surface); border:2px solid transparent; cursor:pointer; box-shadow:0 2px 8px var(--shadow-lg); transition:transform .15s; }
+    .dd.active { border-color:var(--text); transform:scale(1.15); }
+    .proto { position:fixed; top:12px; right:12px; background:var(--text); color:var(--bg); font-size:10px; font-weight:800; padding:4px 10px; border-radius:99px; z-index:999; letter-spacing:.06em; transition:background .5s, color .5s; }
+  </style>
+</head>
+<body data-theme="sun">
+  <div class="ambient"></div>
+  <div class="proto">HUB</div>
+
+  <div class="demo">
+    <div class="demo-lbl">demo</div>
+    <div class="dd active" onclick="setTheme('sun',this)">☀️</div>
+    <div class="dd" onclick="setTheme('cloudy',this)">⛅</div>
+    <div class="dd" onclick="setTheme('night',this)">🌙</div>
+    <div class="dd" onclick="setTheme('rain',this)">🌧️</div>
+    <div class="dd" onclick="setTheme('snow',this)">❄️</div>
+  </div>
+
+  <!-- ═══ HOME / HUB ═══ -->
+  <div class="screen active" id="s-home">
+    <header class="header">
+      <div class="logo">
+        <div class="logo-mark"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div>
+        <span class="logo-name">miru</span>
+      </div>
+      <div class="hdr-r">
+        <button class="icon-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="icon-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></button>
+      </div>
+    </header>
+    <div class="hub">
+      <div class="greeting">
+        <div class="greeting-top">
+          <div class="greeting-tag">🇬🇧 Built for life in the UK</div>
+          <div class="w-widget"><span id="wi">☀️</span> <span id="wt">18°C</span></div>
+        </div>
+        <div class="greeting-main">Good morning.</div>
+        <div class="greeting-tip" id="wtip">Clear skies in Runnymede — great day to be out.</div>
+      </div>
+
+      <div class="search-wrap">
+        <svg class="si" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" placeholder="Search Miru — postcode, brand, song…">
+      </div>
+
+      <button class="alert-chip">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span class="chip-lbl">Local Council Elections</span>
+        <span class="live-g"><span class="ldot"></span>LIVE</span>
+      </button>
+
+      <!-- HUB GRID -->
+      <div class="hub-sec">Where do you want to go?</div>
+      <div class="hub-grid">
+
+        <!-- MY AREA — full width hero tile -->
+        <div class="hub-tile ht-myarea" onclick="nav('myarea')">
+          <div class="ht-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <div class="ht-body">
+            <div class="ht-title">My Area</div>
+            <div class="ht-desc">Your MP · Council · Hospitals · GPs · Schools · Crime</div>
+            <div class="ht-pc">KT15 3AB</div>
+          </div>
+          <div class="ht-arrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+
+        <!-- FUEL -->
+        <div class="hub-tile ht-fuel" onclick="nav('fuel')">
+          <div><div class="lbadge"><span class="d"></span><s>LIVE</s></div></div>
+          <div>
+            <div class="ht-ico" style="margin-bottom:12px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 22h12M13 8l3-3 1 1-3 3M16 5l3 3v8a2 2 0 0 1-2 2v0a2 2 0 0 1-2-2v-3M6 12h5"/></svg></div>
+            <div class="ht-title-sm" style="color:#fff">Fuel Prices</div>
+            <div class="ht-desc-sm" style="color:rgba(255,255,255,.42)">Cheapest near you</div>
+          </div>
+        </div>
+
+        <!-- TRAINS -->
+        <div class="hub-tile ht-trains" onclick="nav('trains')">
+          <div><div class="lbadge"><span class="d"></span><s>LIVE</s></div></div>
+          <div>
+            <div class="ht-ico" style="margin-bottom:12px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="16" rx="2"/><path d="M4 11h16M12 3v8"/><circle cx="8.5" cy="17" r=".5" fill="currentColor"/><circle cx="15.5" cy="17" r=".5" fill="currentColor"/></svg></div>
+            <div class="ht-title-sm" style="color:#fff">Train Times</div>
+            <div class="ht-desc-sm" style="color:rgba(255,255,255,.42)">Departures & delays</div>
+          </div>
+        </div>
+
+        <!-- INTEL -->
+        <div class="hub-tile ht-intel" onclick="nav('intel')">
+          <div>
+            <div class="ht-ico" style="margin-bottom:12px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8"/><path d="M3 16.2V21m0 0h4.8M3 21l6-6"/><path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"/><path d="M3 7.8V3m0 0h4.8M3 3l6 6"/></svg></div>
+            <div class="ht-title-sm" style="color:#fff">Brand Intel</div>
+            <div class="ht-desc-sm" style="color:rgba(255,255,255,.42)">Financials · news</div>
+          </div>
+        </div>
+
+        <!-- SAVES -->
+        <div class="hub-tile ht-saves" onclick="nav('saves')">
+          <div>
+            <div class="ht-ico ht-ico-light" style="margin-bottom:12px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="ht-title-sm" style="color:var(--text)">My Saves</div>
+            <div class="ht-desc-sm" style="color:var(--muted)">Links · receipts · notes</div>
+          </div>
+        </div>
+
+      </div><!-- /hub-grid -->
+
+      <!-- QUICK ACCESS ROW -->
+      <div class="hub-sec">Quick access</div>
+      <div class="quick-row">
+        <div class="qt">
+          <div class="qt-ico" style="background:rgba(37,99,235,.1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+          <span class="qt-lbl">Library</span>
+        </div>
+        <div class="qt">
+          <div class="qt-ico" style="background:rgba(168,85,247,.1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+          <span class="qt-lbl">Music ID</span>
+        </div>
+        <div class="qt">
+          <div class="qt-ico" style="background:rgba(234,179,8,.1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+          <span class="qt-lbl">Research</span>
+        </div>
+        <div class="qt">
+          <div class="qt-ico" style="background:rgba(16,185,129,.1)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <span class="qt-lbl">WhatsApp</span>
+        </div>
+      </div>
+
+      <div class="wa"><div class="wa-h"><div class="wa-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></div><div><div class="wa-t">Miru on WhatsApp</div><div class="wa-s">Text, photo, or voice — no app needed</div></div><button class="wa-j">Join →</button></div></div>
+
+      <div class="sec-t">Latest News</div>
+      <div class="pills"><button class="pill active">💼 Business</button><button class="pill">🌍 World</button><button class="pill">🇬🇧 UK</button><button class="pill">💻 Tech</button><button class="pill">🤖 AI</button></div>
+      <div class="nc"><div class="nth">📊</div><div><div class="ns">FT · 2h ago</div><div class="nh">UK inflation falls to 2.3% as energy costs ease ahead of summer</div><div class="na">4 min read</div></div></div>
+      <div class="sk"><div class="sk-t"></div><div class="sk-l"><div class="sk-ln w80"></div><div class="sk-ln w60"></div><div class="sk-ln w40"></div></div></div>
+    </div>
+  </div><!-- /home -->
+
+  <!-- ═══ MY AREA ═══ -->
+  <div class="screen" id="s-myarea">
+    <header class="header">
+      <button class="back-btn" onclick="nav('home')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Home
+      </button>
+      <div class="hdr-r">
+        <button class="icon-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+      </div>
+    </header>
+    <div class="feature">
+      <div class="feature-hdr">
+        <div class="feature-icon" style="background:rgba(6,78,59,.12)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="feature-title">My Area</div>
+        <div class="feature-sub">KT15 3AB · Runnymede · Surrey</div>
+      </div>
+      <div class="placeholder-card"><div class="ph-title">Your MP</div><div class="ph-body">Dr Ben Spencer · Conservative<br>Runnymede and Weybridge</div></div>
+      <div class="placeholder-card"><div class="ph-title">Local Council</div><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+      <div class="placeholder-card"><div class="ph-title">Nearest GP</div><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+      <div class="placeholder-card"><div class="ph-title">Nearest Hospital</div><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+      <div class="placeholder-card"><div class="ph-title">Schools nearby</div><div class="ph-skel w80"></div><div class="ph-skel w60"></div><div class="ph-skel w40"></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ BRAND INTEL ═══ -->
+  <div class="screen" id="s-intel">
+    <header class="header">
+      <button class="back-btn" onclick="nav('home')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Home
+      </button>
+    </header>
+    <div class="feature">
+      <div class="feature-hdr">
+        <div class="feature-icon" style="background:rgba(79,70,229,.1)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8"/><path d="M3 16.2V21m0 0h4.8M3 21l6-6"/><path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"/><path d="M3 7.8V3m0 0h4.8M3 3l6 6"/></svg></div>
+        <div class="feature-title">Brand Intel</div>
+        <div class="feature-sub">Search any brand or company</div>
+      </div>
+      <div class="search-wrap" style="margin-bottom:20px">
+        <svg class="si" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" placeholder="Search brand or company…">
+      </div>
+      <div class="placeholder-card"><div class="ph-title">📌 Pinned</div><div class="ph-skel w80"></div><div class="ph-skel w60"></div><div class="ph-skel w40"></div></div>
+      <div class="placeholder-card"><div class="ph-title">Recent searches</div><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ SAVES ═══ -->
+  <div class="screen" id="s-saves">
+    <header class="header">
+      <button class="back-btn" onclick="nav('home')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Home
+      </button>
+    </header>
+    <div class="feature">
+      <div class="feature-hdr">
+        <div class="feature-icon" style="background:rgba(37,99,235,.08)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="feature-title">My Saves</div>
+        <div class="feature-sub">Articles, links, receipts, photos</div>
+      </div>
+      <div class="placeholder-card"><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+      <div class="placeholder-card"><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+      <div class="placeholder-card"><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ FUEL (stub) ═══ -->
+  <div class="screen" id="s-fuel">
+    <header class="header">
+      <button class="back-btn" onclick="nav('home')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Home
+      </button>
+    </header>
+    <div class="feature">
+      <div class="feature-hdr">
+        <div class="feature-icon" style="background:#1a1a2e"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M3 22h12M13 8l3-3 1 1-3 3M16 5l3 3v8a2 2 0 0 1-2 2v0a2 2 0 0 1-2-2v-3M6 12h5"/></svg></div>
+        <div class="feature-title">Fuel Prices</div>
+        <div class="feature-sub">Cheapest stations near you</div>
+      </div>
+      <div class="placeholder-card"><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+      <div class="placeholder-card"><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ TRAINS (stub) ═══ -->
+  <div class="screen" id="s-trains">
+    <header class="header">
+      <button class="back-btn" onclick="nav('home')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Home
+      </button>
+    </header>
+    <div class="feature">
+      <div class="feature-hdr">
+        <div class="feature-icon" style="background:#1c1c1c"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="16" rx="2"/><path d="M4 11h16M12 3v8"/><circle cx="8.5" cy="17" r=".5" fill="currentColor"/><circle cx="15.5" cy="17" r=".5" fill="currentColor"/></svg></div>
+        <div class="feature-title">Train Times</div>
+        <div class="feature-sub">Live departures & service alerts</div>
+      </div>
+      <div class="placeholder-card"><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+      <div class="placeholder-card"><div class="ph-skel w80"></div><div class="ph-skel w60"></div></div>
+    </div>
+  </div>
+
+  <script>
+    function nav(name) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('s-' + name).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    const THEMES = {
+      sun:    { icon:'☀️', temp:'18°C', tip:'Clear skies in Runnymede — great day to be out.' },
+      cloudy: { icon:'⛅', temp:'14°C', tip:'Overcast this morning — might brighten up later.' },
+      night:  { icon:'🌙', temp:'9°C',  tip:'Good evening. Quiet night across Runnymede.' },
+      rain:   { icon:'🌧️', temp:'11°C', tip:'Heavy showers expected — grab an umbrella.' },
+      snow:   { icon:'❄️', temp:'1°C',  tip:'Snow forecast for the afternoon. Drive carefully.' },
+    };
+    function setTheme(name, btn) {
+      document.body.setAttribute('data-theme', name);
+      document.body.classList.remove('switching');
+      void document.body.offsetWidth;
+      document.body.classList.add('switching');
+      document.querySelectorAll('.dd').forEach(d => d.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      const t = THEMES[name];
+      document.getElementById('wi').textContent   = t.icon;
+      document.getElementById('wt').textContent   = t.temp;
+      document.getElementById('wtip').textContent = t.tip;
+    }
+    const h = new Date().getHours();
+    if (h >= 20 || h < 6) setTheme('night', document.querySelector('.dd[onclick*="night"]'));
+  </script>
+</body>
+</html>

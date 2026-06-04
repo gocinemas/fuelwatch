@@ -455,8 +455,30 @@
         <button class="role-pill" data-role="qa" onclick="_setRole('qa',this)">🧪 QA / Tester</button>
         <button class="role-pill" data-role="director" onclick="_setRole('director',this)">🎯 Director / VP</button>
         <button class="role-pill" data-role="programme_director" onclick="_setRole('programme_director',this)">🏢 Programme Director</button>
+        <button style="padding:7px 14px;border-radius:99px;border:1.5px dashed var(--border);background:transparent;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s" onclick="_openCustomRolePanel()">+ Custom role</button>
       </div>
       <div id="role-hint" style="font-size:12px;color:var(--muted);margin-top:8px">Vision · BOSCARD · Requirements · Use cases · Delivery plan · Jira structure</div>
+    </div>
+
+    <!-- Custom role panel -->
+    <div id="custom-role-panel" style="display:none;margin-bottom:16px;padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Define a custom role</div>
+        <button onclick="_closeCustomRolePanel()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">Role name (e.g. Data Architect, Security Lead, Change Manager)</label>
+        <input id="custom-role-name" type="text" placeholder="Your role title" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">What you need from this project (optional)</label>
+        <textarea id="custom-role-instructions" placeholder="e.g. Focus on data architecture, include security considerations, highlight risks for this role" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical;min-height:70px"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <input id="custom-role-save" type="checkbox" checked style="cursor:pointer">
+        <label for="custom-role-save" style="font-size:12px;color:var(--muted);cursor:pointer">Save this role for future use</label>
+      </div>
+      <button onclick="_createCustomRole()" style="padding:8px 16px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Use this role</button>
     </div>
     <div class="intake-box">
       <textarea id="intake-input" class="intake-textarea"
@@ -728,10 +750,64 @@
   function _setRole(role, btn) {
     _selectedRole = role;
     document.querySelectorAll(".role-pill").forEach(function(b){ b.classList.remove("active"); });
-    btn.classList.add("active");
+    if (btn) btn.classList.add("active");
     var hint = document.getElementById("role-hint");
-    if (hint) hint.textContent = _ROLE_HINTS[role] || "";
+    if (hint) hint.textContent = _ROLE_HINTS[role] || "Custom outputs tailored to your role";
+    document.getElementById("custom-role-panel").style.display = "none";
   }
+
+  var _customRoles = [];
+
+  function _loadCustomRoles() {
+    var saved = localStorage.getItem("_pm_custom_roles");
+    if (saved) try { _customRoles = JSON.parse(saved); } catch(e) {}
+    _renderCustomRolePills();
+  }
+
+  function _renderCustomRolePills() {
+    var container = document.querySelector('.role-pill[data-role="programme_director"]').parentElement;
+    var existing = container.querySelectorAll('[data-role^="custom_"]');
+    existing.forEach(function(el){ el.remove(); });
+    _customRoles.forEach(function(cr) {
+      var btn = document.createElement("button");
+      btn.className = "role-pill";
+      btn.setAttribute("data-role", "custom_" + cr.name.replace(/\s+/g, "_"));
+      btn.textContent = "✨ " + cr.name;
+      btn.onclick = function() { _setRole("custom_" + cr.name, btn); _selectedRoleInfo = cr; };
+      container.insertBefore(btn, container.lastChild);
+    });
+  }
+
+  function _openCustomRolePanel() {
+    document.getElementById("custom-role-panel").style.display = "block";
+    document.getElementById("custom-role-name").focus();
+  }
+
+  function _closeCustomRolePanel() {
+    document.getElementById("custom-role-panel").style.display = "none";
+  }
+
+  function _createCustomRole() {
+    var name = (document.getElementById("custom-role-name").value || "").trim();
+    var instructions = (document.getElementById("custom-role-instructions").value || "").trim();
+    var shouldSave = document.getElementById("custom-role-save").checked;
+    if (!name) { alert("Please enter a role name"); return; }
+    var cr = { name: name, instructions: instructions };
+    if (shouldSave) {
+      _customRoles = _customRoles.filter(function(c){ return c.name !== name; });
+      _customRoles.push(cr);
+      localStorage.setItem("_pm_custom_roles", JSON.stringify(_customRoles));
+      _renderCustomRolePills();
+    }
+    _setRole("custom_" + name, null);
+    _selectedRoleInfo = cr;
+    _closeCustomRolePanel();
+    document.getElementById("custom-role-name").value = "";
+    document.getElementById("custom-role-instructions").value = "";
+  }
+
+  var _selectedRoleInfo = null;
+
   var STEPS = ["ls-1","ls-2","ls-3","ls-4","ls-5","ls-6"];
 
   // ── Panel ─────────────────────────────────────────────────────────────────
@@ -955,7 +1031,8 @@
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({problem: input, answers: answers,
                             lifecycle: (_challengeData && _challengeData.lifecycle_type) || "standard",
-                            role: _selectedRole || "pm"})
+                            role: _selectedRole || "pm",
+                            custom_role_info: _selectedRoleInfo || null})
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -1270,7 +1347,42 @@
 
     var html = "";
 
-    if (role === "ba") {
+    if (role && role.startsWith("custom_")) {
+      // Custom role outputs
+      var customName = role.replace(/^custom_/, "");
+      if (d.role_perspective) html += _sec("✨", customName + " Perspective", '<p>' + _esc(d.role_perspective) + '</p>');
+      if ((d.key_concerns || []).length) {
+        var kcHtml = d.key_concerns.map(function(c){ return "<li>" + _esc(c) + "</li>"; }).join("");
+        html += _sec("⚠️", "Key Concerns", '<ul>' + kcHtml + '</ul>');
+      }
+      if ((d.critical_questions || []).length) {
+        var cqHtml = d.critical_questions.map(function(q){ return "<li>" + _esc(q) + "</li>"; }).join("");
+        html += _sec("❓", "Critical Questions", '<ul>' + cqHtml + '</ul>');
+      }
+      if ((d.role_actions || []).length) {
+        var raHtml = d.role_actions.map(function(a, i){ return '<div class="action-item"><div class="action-num">' + (i+1) + '</div><div class="action-text">' + _esc(a) + '</div></div>'; }).join("");
+        html += _sec("✓", "Actions for Your Role", raHtml);
+      }
+      if (d.detailed_analysis) html += _sec("📊", "Detailed Analysis", '<p>' + _esc(d.detailed_analysis) + '</p>');
+      if ((d.key_requirements || []).length) {
+        var krHtml = d.key_requirements.map(function(r){ return "<li>" + _esc(r) + "</li>"; }).join("");
+        html += _sec("📋", "Key Requirements", '<ul>' + krHtml + '</ul>');
+      }
+      if ((d.data_needs || []).length) {
+        var dnHtml = d.data_needs.map(function(n){ return "<li>" + _esc(n) + "</li>"; }).join("");
+        html += _sec("🗂️", "Data Needs", '<ul>' + dnHtml + '</ul>');
+      }
+      if ((d.risks_and_gaps || []).length) {
+        var rgHtml = d.risks_and_gaps.map(function(r){ return "<li>" + _esc(r) + "</li>"; }).join("");
+        html += _sec("🚨", "Risks & Gaps", '<ul>' + rgHtml + '</ul>');
+      }
+      if ((d.success_measures || []).length) {
+        var smHtml = d.success_measures.map(function(s){ return "<li>" + _esc(s) + "</li>"; }).join("");
+        html += _sec("🎯", "Success Measures", '<ul>' + smHtml + '</ul>');
+      }
+    }
+
+    else if (role === "ba") {
       // Enhanced requirements with acceptance criteria
       if (d.requirements && d.requirements.functional && d.requirements.functional[0] && d.requirements.functional[0].acceptance_criteria) {
         var frHtml = (d.requirements.functional || []).map(function(r) {
@@ -1833,6 +1945,7 @@
   }
 
   // Load project count on startup
+  _loadCustomRoles();
   _refreshCount();
 </script>
 </body>
