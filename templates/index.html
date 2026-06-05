@@ -14719,9 +14719,13 @@ _bkBadge();
     const now = new Date();
     const hour = now.getHours();
     if (hour >= 21) {
+      // Hide ALL train displays (both this function and brief context cards)
       if (ph) { ph.style.display = "none"; }
       document.getElementById("home-train-next").style.display = "none";
       document.getElementById("home-train-sub").style.display = "none";
+      // Also hide the train card in LIVE NOW section
+      const trainCard = document.querySelector('[class*="feat-card-train"]');
+      if (trainCard) { trainCard.style.display = "none"; }
       return;
     }
 
