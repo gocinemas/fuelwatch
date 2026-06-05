@@ -21377,17 +21377,18 @@ window.spotifyAddTrack = window.spotifyLike;
       var dot    = cancelled ? "#ef4444" : onTime ? "#22c55e" : "#f59e0b";
       var scol   = cancelled ? "#ef4444" : onTime ? "#16a34a" : "#d97706";
       var inMins = cancelled ? "" : _minsUntil(t.scheduled);
-      return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);margin-bottom:7px">'
-        + '<div style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0;margin-top:2px"></div>'
+      return '<div style="display:flex;align-items:center;gap:12px;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);margin-bottom:8px">'
+        + '<div style="width:8px;height:8px;border-radius:50%;background:'+dot+';flex-shrink:0;margin-top:3px"></div>'
         + '<div style="flex:1;min-width:0">'
-        +   '<div style="font-size:15px;font-weight:700;color:var(--text)">'+t.scheduled+' → '+t.destination+'</div>'
+        +   '<div style="font-size:16px;font-weight:800;color:var(--text);letter-spacing:-0.3px">'+t.scheduled+'</div>'
+        +   '<div style="font-size:13px;color:var(--text);margin-top:2px;font-weight:600">'+t.destination+'</div>'
         +   (t.platform
-              ? '<div style="display:inline-flex;align-items:center;margin-top:4px;padding:2px 8px;background:#e0e7ff;border-radius:6px;font-size:11px;font-weight:800;color:#3730a3">Plat '+t.platform+'</div>'
+              ? '<div style="font-size:11px;color:var(--muted);margin-top:3px">Platform '+t.platform+'</div>'
               : '')
         + '</div>'
-        + '<div style="text-align:right;flex-shrink:0">'
-        +   '<div style="font-size:12px;font-weight:700;color:'+scol+'">'+t.expected+'</div>'
-        +   (inMins ? '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+inMins+'</div>' : '')
+        + '<div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">'
+        +   '<div style="font-size:13px;font-weight:700;color:'+scol+'">'+t.expected+'</div>'
+        +   (inMins ? '<div style="font-size:11px;color:var(--muted);font-weight:600">'+inMins+'</div>' : '')
         + '</div>'
         + '</div>';
     }).join("");
