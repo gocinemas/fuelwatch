@@ -8826,7 +8826,7 @@ def _rank_evening_saves(place_saves: list, content_saves: list, event_saves: lis
 def api_home_brief():
     """V2 context engine — returns personalised brief text + raw context."""
     import concurrent.futures as _cf
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, date
     import zoneinfo as _zi
     _LDN = _zi.ZoneInfo("Europe/London")
 
