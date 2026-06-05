@@ -14787,18 +14787,22 @@ _bkBadge();
     }
 
     if (!trains.length) {
-      _phShow("No trains right now · tap to check times");
+      document.getElementById("home-train-next").textContent = "No Trains";
+      document.getElementById("home-train-sub").textContent = "";
+      document.getElementById("home-train-next").style.display = "";
+      document.getElementById("home-train-sub").style.display = "none";
+      if (ph) ph.style.display = "none";
       return;
     }
 
     const next = trains[0];
     const dest = (next.destination || "").replace(/^London /i, "");
-    const dirLabel = workBm ? (isWFH ? `${stationName} → ${workName}` : `${workName} → ${stationName}`) : stationName;
-    document.getElementById("home-train-next").textContent = next.scheduled + " → " + dest;
+    const workDest = workName ? workName.replace(/ station$/i, "") : dest;
+    document.getElementById("home-train-next").textContent = "Next to " + workDest + ": " + next.scheduled;
     const status = next.expected && next.expected !== "On time" ? next.expected : "On time";
-    document.getElementById("home-train-sub").textContent = dirLabel + (next.platform ? " · Plat " + next.platform : "") + " · " + status;
+    document.getElementById("home-train-sub").textContent = (next.platform ? "Plat " + next.platform : "") + (next.platform && status ? " · " : "") + status;
     document.getElementById("home-train-next").style.display = "";
-    document.getElementById("home-train-sub").style.display = "";
+    document.getElementById("home-train-sub").style.display = next.platform || status !== "On time" ? "" : "none";
     if (ph) ph.style.display = "none";
 
     // Show WFH/Office pill toggle only when both home + work stations are set
