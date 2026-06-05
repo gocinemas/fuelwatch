@@ -87,7 +87,9 @@
     .intake-box {
       background:var(--surface); border:1.5px solid var(--border);
       border-radius:20px; padding:20px; margin-bottom:20px;
+      transition:background .15s;
     }
+    .intake-box:hover { background:var(--surface2); }
     .intake-textarea {
       width:100%; min-height:140px;
       border:1.5px solid var(--border); border-radius:14px;
@@ -102,7 +104,7 @@
       background:var(--surface); color:var(--muted); font-size:13px; font-weight:600;
       cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s;
     }
-    .role-pill:hover { border-color:#c7d2fe; color:var(--accent); }
+    .role-pill:hover { border-color:var(--accent); color:var(--accent); background:var(--surface2); }
     .role-pill.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
     .intake-submit {
