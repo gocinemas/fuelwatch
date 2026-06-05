@@ -15479,11 +15479,15 @@ _bkBadge();
     var trainGlance = "";
     if (trains && trains.departures && trains.departures.length > 0) {
       var d0   = trains.departures[0];
+      var d1   = trains.departures[1];
       var t0   = d0.departs || d0.time || "";
       var dst0 = (d0.destination || trains.to || "").replace(/\s+station$/i,"").replace(/^London /i,"");
-      var next = trains.departures[1] ? " · " + (trains.departures[1].departs || trains.departures[1].time || "") : "";
-      trainGlance = "🚆 " + t0 + " " + dst0 + next;
-      if (trainSub) { trainSub.textContent = t0 + (dst0 ? " → " + dst0 : "") + next; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+      var t1   = d1 ? (d1.departs || d1.time || "") : "";
+      var dst1 = d1 ? ((d1.destination || "").replace(/\s+station$/i,"").replace(/^London /i,"")) : "";
+      // Show first train, and second train if available (both time and destination)
+      var nextStr = (t1 && dst1) ? " · " + t1 + "→" + dst1 : (t1 ? " · " + t1 : "");
+      trainGlance = "🚆 " + t0 + "→" + dst0 + nextStr;
+      if (trainSub) { trainSub.textContent = t0 + "→" + dst0 + nextStr; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
     } else {
       if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
     }
