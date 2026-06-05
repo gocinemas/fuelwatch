@@ -14784,9 +14784,8 @@ _bkBadge();
     const workName = workBm ? (workBm.name || workBm.crs || "") : "";
     if (workBm && workName && trains.length) {
       const wn = workName.replace(/ station$/i,"").toLowerCase();
-      const filtered = isWFH
-        ? trains.filter(t => (t.destination||"").toLowerCase().includes(wn))
-        : trains.filter(t => !(t.destination||"").toLowerCase().includes(wn));
+      // Always show trains TO work (whether WFH visiting or commuting to office)
+      const filtered = trains.filter(t => (t.destination||"").toLowerCase().includes(wn));
       if (filtered.length) trains = filtered;
     }
 
