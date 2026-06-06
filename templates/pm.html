@@ -1924,7 +1924,14 @@
       _challengeData = null;
       _selectedRole = "pm";
       var input = document.getElementById("intake-input");
-      if (input) input.value = "";
+      console.log("intake-input element:", input);
+      if (input) {
+        console.log("Clearing textarea, current value:", input.value);
+        input.value = "";
+        console.log("Textarea cleared, new value:", input.value);
+      } else {
+        console.error("intake-input element not found!");
+      }
       document.querySelectorAll(".role-pill").forEach(function(b) { b.classList.remove("active"); });
       var pmPill = document.querySelector('.role-pill[data-role="pm"]');
       if (pmPill) pmPill.classList.add("active");
