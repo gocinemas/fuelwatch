@@ -14771,19 +14771,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 msg += f"🛒 {len(_r_items)} items scanned\n"
             msg += "\nAsk me: _how much at Tesco this month?_ or _spending this week?_"
             _wa_send_proactive(fn, msg)
-            # Queue a proactive followup in ~15 min (ambient agent nudge)
-            try:
-                _plain_fn = fn.replace("whatsapp:", "").strip()
-                lib._sb().table("wa_saves").insert({
-                    "from_number": _plain_fn,
-                    "status": "followup_pending",
-                    "title": f"followup:{_r_merchant}",
-                    "url": f"pending:receipt_followup",
-                    "summary": _r_merchant,
-                    "category": _receipt_category(_r_merchant) or "receipt",
-                }).execute()
-            except Exception:
-                pass
+            # Removed: automatic followup nudge (was cluttering clippings - receipt itself is enough)
             # Auto-dismiss active_trip if receipt merchant matches destination
             try:
                 _plain = fn.replace("whatsapp:", "").strip()
