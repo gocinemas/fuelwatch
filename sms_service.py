@@ -8099,10 +8099,12 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
 
         import concurrent.futures as _cf3, datetime as _dt3
         access = _get_rtt_token()
+        # Fetch ALL trains from station (no calling_at filter - it's unreliable)
+        # Show user all destinations, they can pick the one they want
         r = requests.get(
             "https://data.rtt.io/rtt/location",
             headers={"Authorization": f"Bearer {access}"},
-            params={"code": f"gb-nr:{from_crs}", "calling_at": to_crs},
+            params={"code": f"gb-nr:{from_crs}"},
             timeout=10,
         )
         services = (r.json().get("services") or []) if r.ok else []
