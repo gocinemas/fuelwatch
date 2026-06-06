@@ -861,6 +861,23 @@
             + '<div class="proj-item-meta"><span>' + _esc(p.proj_type || "") + '</span><span>·</span><span>' + date + '</span></div>'
             + '</div>';
         }).join("");
+
+        // Attach click handlers to projects in panel
+        var projBtns = list.querySelectorAll('.proj-btn');
+        projBtns.forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var projId = this.getAttribute('data-proj-id');
+            var proj = window._projectsMap[projId];
+            if (proj) {
+              _pmState.currentProject = proj;
+              _showModulePickerScreen();
+            } else {
+              alert("Project not found");
+            }
+          });
+        });
       })
       .catch(function() {
         list.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:20px 16px">Failed to load.</div>';
