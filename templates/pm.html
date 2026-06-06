@@ -421,7 +421,7 @@
     <div style="font-size:13px;color:var(--muted);padding:20px 16px">Loading…</div>
   </div>
   <div style="padding:12px 16px;border-top:1px solid var(--border)">
-    <button onclick="_closePanel();_reset();" style="width:100%;padding:10px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ New project</button>
+    <button onclick="_closePanel(); _showCreateProjectScreen();" style="width:100%;padding:10px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ New project</button>
   </div>
 </div>
 
@@ -827,6 +827,81 @@
   function _closePanel() {
     document.getElementById("proj-panel").classList.remove("open");
     document.getElementById("proj-overlay").classList.remove("open");
+  }
+
+  function _showCreateProjectScreen() {
+    var html = '<div style="max-width:500px;margin:0 auto;padding:32px 20px">';
+    html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:24px">Create New Project</h2>';
+
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Project Name *</label>';
+    html += '<input id="new-proj-name" type="text" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px" placeholder="e.g. AI Transformation Initiative">';
+
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">What stage is this project?</label>';
+    html += '<select id="new-proj-stage" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px">';
+    html += '<option value="">Select...</option>';
+    html += '<option value="brand_new">Brand New (unknown requirements)</option>';
+    html += '<option value="existing">Existing (redesign/new way)</option>';
+    html += '<option value="migration">Migration (clear scope)</option>';
+    html += '<option value="custom">Custom</option>';
+    html += '</select>';
+
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Description (optional)</label>';
+    html += '<textarea id="new-proj-desc" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:24px;min-height:80px;font-family:inherit" placeholder="Brief context..."></textarea>';
+
+    html += '<button onclick="_createProject()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:10px">Create Project</button>';
+    html += '<button onclick="_showProjectsScreen()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600">Back</button>';
+
+    html += '</div>';
+    document.getElementById("main").innerHTML = html;
+  }
+
+  function _createProject() {
+    var name = document.getElementById("new-proj-name").value.trim();
+    var stage = document.getElementById("new-proj-stage").value;
+    var desc = document.getElementById("new-proj-desc").value.trim();
+    if (!name || !stage) { alert("Name and stage required"); return; }
+
+    fetch("/api/pm/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name, proj_type: stage, description: desc })
+    }).then(r => r.json()).then(function(d) {
+      if (d.project) {
+        _selectProject(d.project.id);
+      } else {
+        alert("Error: " + (d.error || "Failed to create"));
+      }
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _selectProject(projectId) {
+    console.log("Selecting project:", projectId);
+    fetch("/api/pm/projects/" + projectId).then(function(r) {
+      console.log("Project fetch response status:", r.status);
+      if (!r.ok) {
+        alert("Error fetching project: " + r.status);
+        return;
+      }
+      return r.json();
+    }).then(function(p) {
+      console.log("Project data:", p);
+      if (!p) {
+        alert("Project not found");
+        return;
+      }
+      var proj = Array.isArray(p) ? p[0] : p;
+      if (!proj || !proj.id) {
+        alert("Invalid project data");
+        console.error("Invalid project:", proj);
+        return;
+      }
+      console.log("Setting current project:", proj);
+      _pmState.currentProject = proj;
+      _showModulePickerScreen();
+    }).catch(function(e) {
+      console.error("Project select error:", e);
+      alert("Error opening project: " + e.message);
+    });
   }
 
   function _loadProjects() {
