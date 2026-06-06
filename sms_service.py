@@ -21482,6 +21482,65 @@ def school_poll():
     return jsonify({"status": "started", "days_back": days_back, "force": force})
 
 
+# ── Moving Checklist Progress ──────────────────────────────────────────────────
+@app.route("/api/moving/progress", methods=["POST"])
+def api_moving_progress():
+    """Save moving checklist task progress to database."""
+    try:
+        data = request.get_json() or {}
+        task_key = data.get("task_key", "")
+        completed = data.get("completed", False)
+
+        phone = _getPhoneFromRequest()
+        if not phone:
+            return jsonify({"error": "Not authenticated"}), 401
+
+        if not task_key:
+            return jsonify({"error": "Missing task_key"}), 400
+
+        # Save to database
+        lib._sb().table("ma_details").upsert({
+            "device_id": phone,
+            "type": "moving_progress",
+            "data": {"task_key": task_key, "completed": completed}
+        }).execute()
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"[moving_progress] {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/moving/progress", methods=["GET"])
+def api_moving_progress_get():
+    """Get moving checklist progress for user."""
+    try:
+        phone = _getPhoneFromRequest()
+        if not phone:
+            return jsonify({"error": "Not authenticated"}), 401
+
+        rows = lib._sb().table("ma_details").select("data").eq("device_id", phone)\
+            .eq("type", "moving_progress").execute().data or []
+
+        progress = [r.get("data", {}) for r in rows if r.get("data")]
+        return jsonify({"progress": progress})
+    except Exception as e:
+        print(f"[moving_get] {e}")
+        return jsonify({"progress": []})
+
+@app.route("/api/moving/progress", methods=["DELETE"])
+def api_moving_progress_clear():
+    """Clear all moving checklist progress."""
+    try:
+        phone = _getPhoneFromRequest()
+        if not phone:
+            return jsonify({"error": "Not authenticated"}), 401
+
+        lib._sb().table("ma_details").delete().eq("device_id", phone).eq("type", "moving_progress").execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"[moving_clear] {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/receipt/followup")
 def receipt_followup():
     """Ambient agent: send a proactive WhatsApp ~15 min after a receipt scan.

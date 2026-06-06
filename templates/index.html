@@ -572,7 +572,7 @@
     <button class="sb-btn"    id="sb-trains" title="Trains"     onclick="showScreen('trains')">🚆</button>
     <button class="sb-btn"    id="sb-fuel"   title="Fuel"       onclick="showScreen('fuel')">⛽</button>
     <button class="sb-btn"    id="sb-school" title="School"     onclick="showScreen('school')">🏫</button>
-    <!-- <button class="sb-btn"    id="sb-moving" title="Moving"     onclick="showScreen('moving');_movingInit()">🏠</button> -->
+    <button class="sb-btn"    id="sb-moving" title="Moving"     onclick="showScreen('moving');_movingInit()">🏠</button>
     <button class="sb-btn"    id="sb-report" title="Research"   onclick="showScreen('report')">🔎</button>
     <div class="sb-spacer"></div>
     <button class="sb-btn"    id="sb-setup"  title="Settings"   onclick="showScreen('setup')">⚙️</button>
@@ -22583,20 +22583,50 @@ window.spotifyAddTrack = window.spotifyLike;
 
   function _movingToggle(key) {
     const isChecked = localStorage.getItem(key) === '1';
-    localStorage.setItem(key, isChecked ? '0' : '1');
+    const newVal = isChecked ? '0' : '1';
+    localStorage.setItem(key, newVal);
+
+    // Save to database
+    _movingSaveToDb(key, newVal);
+
     // Re-render to update progress
     const scenario = key.split('_')[1];
     _movingSetScenario(scenario);
   }
 
+  function _movingSaveToDb(key, value) {
+    // Async save to database - don't block UI
+    fetch('/api/moving/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_key: key, completed: value === '1' })
+    }).catch(e => console.log('[moving] db save error:', e));
+  }
+
   function _movingClearProgress() {
     if (!confirm('Clear all progress? You can still edit individual items.')) return;
     Object.keys(localStorage).filter(k => k.startsWith('moving_')).forEach(k => localStorage.removeItem(k));
+    fetch('/api/moving/progress', { method: 'DELETE' }).catch(e => console.log('[moving] db clear error:', e));
     _movingSetScenario('within');
   }
 
-  // Initialize on screen load
-  window._movingInit = function() {
+  // Initialize on screen load - load progress from DB
+  window._movingInit = async function() {
+    // Try to load progress from database
+    try {
+      const resp = await fetch('/api/moving/progress');
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.progress) {
+          // Restore from DB
+          data.progress.forEach(p => {
+            localStorage.setItem(p.task_key, p.completed ? '1' : '0');
+          });
+        }
+      }
+    } catch (e) {
+      console.log('[moving] load from db error:', e);
+    }
     _movingSetScenario('within');
   };
 </script>
