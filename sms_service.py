@@ -14152,7 +14152,6 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             + _loc_hint
         )
         analysis = ""
-        vision_error = None
         for model in _vision_models:
             try:
                 body = {
@@ -14177,19 +14176,9 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     analysis = resp.json()["choices"][0]["message"]["content"].strip()
                     break
                 else:
-                    vision_error = f"API error: {resp.status_code}"
                     print(f"[vision] error body: {resp.text[:300]}")
-            except requests.exceptions.Timeout:
-                vision_error = "Vision API timeout (slow or down)"
-                print(f"[vision] model={model} TIMEOUT")
             except Exception as exc:
-                vision_error = f"Vision API error: {str(exc)[:50]}"
                 print(f"[vision] model={model} exception: {exc}")
-
-        # If vision completely failed, send error message
-        if not analysis and vision_error:
-            _wa_send_proactive(fn, f"❌ {vision_error}. Try again in a moment.")
-            return
 
         # Derive title and search intent from type
         title = "📷 Photo"
