@@ -14492,8 +14492,9 @@ _bkBadge();
 
 <script>
 // ── My Saves ─────────────────────────────────────────────────────────────────
+// Declare at global scope so it's accessible from other functions
+let _savesAll = [];
 (function() {
-  let _savesAll = [];
   let _savesActiveFilter = "all";
   let _savesHighlightTerm = "";
 
