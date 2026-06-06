@@ -14738,8 +14738,6 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                             _wa_send_proactive(fn, _msg)
             except Exception as _rcpte:
                 print(f"[vision] receipt extraction failed: {_rcpte}")
-            # IMPORTANT: Return after receipt handling to prevent clipping code from also saving it
-            return
 
         # ── Reverse-geocode stored GPS to UK postcode ────────────────────────────
         gps_location = ""
