@@ -14235,6 +14235,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
         img_type = "photo"
         if analysis:
             first = analysis.split("\n")[0].lower()
+            print(f"[classify] first_line='{first[:80]}' analysis_start='{analysis[:150]}'")
             if "store" in first or "restaurant" in first or "cafe" in first or "coffee" in first:
                 title = "🏪 Place"; img_type = "store"
             elif "event" in first or "ticket" in first:
@@ -14246,6 +14247,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                 title = "🏷️ Brand"; img_type = "product"
             elif "receipt" in first or "bill" in first:
                 title = "🧾 Receipt"; img_type = "receipt"
+                print(f"[classify] RECEIPT DETECTED - processing agentic flow")
             elif "recipe" in first:
                 img_type = "recipe"
                 # Try to extract dish name from first bullet or analysis text
