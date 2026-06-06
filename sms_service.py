@@ -9998,7 +9998,17 @@ def api_home_ask():
     if is_personal or not is_utility:
         trains = ctx.get("trains") or {}
         if trains.get("departures"):
-            deps = ", ".join(d.get("departs") or d.get("time","") for d in trains["departures"][:3] if d.get("departs") or d.get("time"))
+            # Include time + destination so LLM can answer "next train to X" queries
+            train_strs = []
+            for d in trains["departures"][:6]:
+                t = d.get("departs") or d.get("time","")
+                dest = (d.get("destination") or "").replace(" station","").replace("London ","").strip()
+                status = d.get("status","On time")
+                if t and dest:
+                    train_strs.append(f"{t} → {dest} ({status})")
+                elif t:
+                    train_strs.append(t)
+            deps = ", ".join(train_strs)
             ctx_lines.append(f"Trains {trains.get('from','')} → {trains.get('to','')}: {deps}")
 
         weather = ctx.get("weather") or {}
