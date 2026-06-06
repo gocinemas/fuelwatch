@@ -8159,6 +8159,9 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
                 last_loc = locations[-1] if isinstance(locations[-1], dict) else {}
                 loc_obj = last_loc.get("location") or last_loc
                 destination = loc_obj.get("name") or loc_obj.get("description") or destination
+            # CRITICAL: Only include if destination matches requested destination (RTT calling_at is unreliable)
+            if train_to.lower() not in destination.lower():
+                continue  # Skip trains that don't go to the requested destination
             deps.append({"departs": sched, "status": status, "platform": platform, "destination": destination})
             if len(deps) >= 8:
                 break
