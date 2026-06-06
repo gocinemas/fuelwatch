@@ -17966,6 +17966,56 @@ def _whatsapp_reply_inner():
                 resp.message(f"Error: {e}")
             return str(resp)
 
+    # ── Receipt Query Handler ──────────────────────────────────────────────────────
+    # Queries like "what did i order at renaizance", "what did i eat at costa", etc.
+    _query_patterns = [
+        r"(?:what|what's).{0,10}(?:did i|i).{0,10}(?:order|eat|have|buy).{0,10}at (.+?)(?:\?|$)",
+        r"(?:order|items|receipt).{0,10}(?:at|from) (.+?)(?:\?|$)",
+        r"items.{0,10}(?:at|from) (.+?)(?:\?|$)",
+    ]
+    for pattern in _query_patterns:
+        match = re.search(pattern, body_lower, re.IGNORECASE)
+        if match:
+            merchant_query = match.group(1).strip()
+            try:
+                _plain_fn = from_number.replace("whatsapp:", "").strip()
+                # Search receipts for this merchant
+                rows = lib._sb().table("receipts").select("merchant,items,total,shop_date").eq("phone", _plain_fn)\
+                    .ilike("merchant", f"%{merchant_query}%").order("shop_date", desc=True).limit(3).execute().data or []
+
+                if not rows:
+                    resp.message(f"No orders found at '{merchant_query}'. Try a different spelling?")
+                    return str(resp)
+
+                # Format results
+                msg = f"📋 Orders at {rows[0]['merchant'].title()}:\n\n"
+                for row in rows:
+                    import json as _qj
+                    items = []
+                    try:
+                        items = _qj.loads(row.get("items", "[]"))
+                    except:
+                        pass
+
+                    date_str = row.get("shop_date", "")
+                    date_display = f" on {date_str}" if date_str else ""
+                    total_str = f"£{row.get('total'):.2f}" if row.get("total") else "—"
+
+                    item_names = [i.get("name", "") for i in items if i.get("name")]
+                    items_display = ", ".join(item_names[:5]) if item_names else "—"
+                    if len(item_names) > 5:
+                        items_display += f" +{len(item_names)-5} more"
+
+                    msg += f"💰 {total_str}{date_display}\n"
+                    msg += f"🛒 {items_display}\n\n"
+
+                resp.message(msg)
+                return str(resp)
+            except Exception as e:
+                print(f"[receipt_query] {e}")
+                resp.message(f"Error looking up orders: {e}")
+                return str(resp)
+
     # ── Merge clippings by merchant ────────────────────────────────────────────────
     if body_lower.startswith("merge "):
         merchant = body_lower.replace("merge ", "").strip()
