@@ -17411,7 +17411,18 @@ _GREETING_WORDS = {"hi", "hello", "hey", "hiya", "yo", "start", "help", "menu", 
                    "morning", "good morning", "evening", "good evening"}
 _HELLO_ONLY     = {"hi", "hello", "hey", "hiya", "yo", "miru", "morning", "good morning", "evening", "good evening"}
 
-_HELLO_MSG = _HELP_MSG
+_HELLO_MSG = (
+    "Hey! 👋\n\n"
+    "What's happening?\n\n"
+    "🚆 _next train to Waterloo_\n"
+    "⛽ _petrol near me_  |  _cheap beer KT15_\n"
+    "🍺 _burger near me_  |  _steak GU25_\n"
+    "✨ _magic bags_ — 🎉 TooGoodToGo alerts near you\n"
+    "🧾 Send a receipt — I'll log it\n"
+    "🏫 _school news_  |  _my councillor_\n"
+    "📌 Send any link to save it\n\n"
+    "Or *help* for everything I can do."
+)
 
 _SEEN_NUMBERS: set = set()
 
