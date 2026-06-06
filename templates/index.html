@@ -2838,12 +2838,8 @@
         <div style="display:flex;flex-direction:column;gap:12px">
           <div>
             <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Home station</div>
-            <div style="display:flex;gap:8px">
-              <input id="setup-pref-from" type="text" placeholder="e.g. Longcross"
-                style="flex:1;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-              <button onclick="_setupFindNearbyStations('home')" style="padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);cursor:pointer;font-weight:700;font-size:12px">📍 Nearby</button>
-            </div>
-            <div id="setup-home-stations" style="display:none;margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+            <input id="setup-pref-from" type="text" placeholder="e.g. Longcross (auto-detected from postcode)"
+              style="width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
           </div>
           <div>
             <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Work station</div>
@@ -7091,10 +7087,20 @@ function _hcAdd() {
     // Prefs — use _briefData if already loaded, otherwise fetch directly
     function _applyPrefs(prefs) {
       prefs = prefs || {};
+      var fromEl = document.getElementById("setup-pref-from");
       var toEl = document.getElementById("setup-pref-to");
       var pcEl = document.getElementById("setup-pref-pc");
+      if (fromEl && prefs.train_from) fromEl.value = prefs.train_from;
       if (toEl && prefs.train_to)      toEl.value = prefs.train_to;
       if (pcEl) pcEl.value = prefs.fuel_postcode || _miruPostcode() || "";
+      // Auto-suggest home station from postcode if not set
+      if (fromEl && !fromEl.value && _miruPostcode()) {
+        var pc = _miruPostcode();
+        fetch("/api/train/nearest-by-postcode?postcode=" + encodeURIComponent(pc))
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(d) { if (d && d.name && fromEl) fromEl.value = d.name; })
+          .catch(function() {});
+      }
       if (prefs.bin_collection_day !== undefined) _setupBinDay(prefs.bin_collection_day);
       if (prefs.bin_rotation) _setupBinRotation(prefs.bin_rotation);
       _setupPushEnabled = !!prefs.morning_push;
@@ -7206,29 +7212,6 @@ function _hcAdd() {
         if (typeof _briefInit === "function") _briefInit();
       }
     } catch(e) { if (errEl) { errEl.textContent = "Save failed."; errEl.style.display = "block"; } }
-  };
-
-  window._setupFindNearbyStations = async function(type) {
-    var container = document.getElementById("setup-" + type + "-stations");
-    if (!container) return;
-    container.innerHTML = '<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px"><span class="spinner" style="width:11px;height:11px;border-width:1.5px"></span>Finding stations…</div>';
-    container.style.display = "flex";
-    try {
-      if (!navigator.geolocation) throw new Error("Location not available");
-      navigator.geolocation.getCurrentPosition(async function(pos) {
-        var lat = pos.coords.latitude, lng = pos.coords.longitude;
-        var r = await fetch("/api/train/nearest-by-postcode?lat=" + lat + "&lng=" + lng);
-        if (!r.ok) throw new Error("Lookup failed");
-        var data = await r.json();
-        if (!data || !data.name) throw new Error("No station found");
-        // For demo, just show this one station (ideally would get 3 nearby)
-        container.innerHTML = '<button onclick="document.getElementById(\'setup-pref-' + type + '\').value=\'' + data.name + '\'" style="padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;color:var(--text)">' + data.name + '</button>';
-      }, function(err) {
-        container.innerHTML = '<div style="font-size:12px;color:#ef4444">Enable location to find nearby stations</div>';
-      });
-    } catch(e) {
-      container.innerHTML = '<div style="font-size:12px;color:#ef4444">Error: ' + e.message + '</div>';
-    }
   };
 
   async function _setupLoadClubs() {
