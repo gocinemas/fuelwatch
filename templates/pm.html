@@ -1917,21 +1917,33 @@
 
   // ── Reset ─────────────────────────────────────────────────────────────────
   function _reset() {
-    _result = null;
-    _savedProjectId = null;
-    _challengeData = null;
-    _selectedRole = "pm";
-    document.getElementById("intake-input").value = "";
-    document.querySelectorAll(".role-pill").forEach(function(b) { b.classList.remove("active"); });
-    var pmPill = document.querySelector('.role-pill[data-role="pm"]');
-    if (pmPill) pmPill.classList.add("active");
-    var hint = document.getElementById("role-hint");
-    if (hint) hint.textContent = _ROLE_HINTS.pm || "";
-    document.getElementById("output").style.display = "none";
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("assess-loading").style.display = "none";
-    document.getElementById("challenge-view").style.display = "none";
-    _showIntake();
+    try {
+      console.log("_reset() called");
+      _result = null;
+      _savedProjectId = null;
+      _challengeData = null;
+      _selectedRole = "pm";
+      var input = document.getElementById("intake-input");
+      if (input) input.value = "";
+      document.querySelectorAll(".role-pill").forEach(function(b) { b.classList.remove("active"); });
+      var pmPill = document.querySelector('.role-pill[data-role="pm"]');
+      if (pmPill) pmPill.classList.add("active");
+      var hint = document.getElementById("role-hint");
+      if (hint) hint.textContent = _ROLE_HINTS.pm || "";
+      var output = document.getElementById("output");
+      if (output) output.style.display = "none";
+      var loading = document.getElementById("loading");
+      if (loading) loading.style.display = "none";
+      var assessLoading = document.getElementById("assess-loading");
+      if (assessLoading) assessLoading.style.display = "none";
+      var challengeView = document.getElementById("challenge-view");
+      if (challengeView) challengeView.style.display = "none";
+      _showIntake();
+      console.log("_reset() completed successfully");
+    } catch(e) {
+      console.error("Error in _reset():", e);
+      alert("Error resetting form: " + e.message);
+    }
   }
 
   function _showIntake() {
