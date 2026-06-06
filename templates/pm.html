@@ -2094,7 +2094,8 @@
       body: JSON.stringify({ name: name, proj_type: stage, description: desc })
     }).then(r => r.json()).then(function(d) {
       if (d.project) {
-        _selectProject(d.project.id);
+        _pmState.currentProject = d.project;
+        _showModulePickerScreen();
       } else {
         alert("Error: " + (d.error || "Failed to create"));
       }
