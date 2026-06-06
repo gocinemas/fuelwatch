@@ -1923,11 +1923,16 @@
         </div>
       </div>
 
-      <!-- Quick-glance row: fuel + train above the narrative -->
-      <div id="brief-glance" style="display:none;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <span id="brief-glance-fuel" onclick="showScreen('fuel')" style="cursor:pointer;display:inline-flex;align-items:center;background:#f1f5f9;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;color:#1e293b;letter-spacing:-0.2px"></span>
-        <span id="brief-glance-sep" style="opacity:.35;font-size:16px;color:#94a3b8">·</span>
-        <span id="brief-glance-train" onclick="showScreen('trains')" style="cursor:pointer;display:inline-flex;align-items:center;background:#f1f5f9;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;color:#1e293b;letter-spacing:-0.2px"></span>
+      <!-- COMMUTE CARD: fuel + train info -->
+      <div id="brief-glance" style="display:none;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px 14px;margin-bottom:12px;gap:0">
+        <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:#fff;margin-bottom:8px">
+          <span style="font-size:14px">🚆</span>
+          <span id="brief-glance-train" onclick="showScreen('trains')" style="cursor:pointer;font-weight:700;color:#fff;flex:1"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:rgba(255,255,255,.8)">
+          <span style="font-size:14px">⛽</span>
+          <span id="brief-glance-fuel" onclick="showScreen('fuel')" style="cursor:pointer;font-weight:700;color:#fff;flex:1"></span>
+        </div>
       </div>
 
       <!-- Section label -->
