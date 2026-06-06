@@ -22619,6 +22619,31 @@ window.spotifyAddTrack = window.spotifyLike;
     _movingSetScenario('within');
   }
 
+  const _AREA_DATA = {
+    'Hillingdon': { price: '£350-450k', transport: '⭐⭐⭐⭐ Good (tubes/buses)', schools: '⭐⭐⭐⭐ Excellent', green: '⭐⭐⭐ Parks', population: '305k', verdict: 'Good area if you work in London. Expensive but well-connected. Heathrow proximity is a pro/con depending on your priorities.' },
+    'Runnymede': { price: '£300-400k', transport: '⭐⭐⭐ Moderate (car needed)', schools: '⭐⭐⭐⭐ Very good', green: '⭐⭐⭐⭐ Excellent (Thames Valley)', population: '82k', verdict: 'Quiet, family-friendly. Less transport links, more car dependent. Great for schools and green space.' },
+    'Westminster': { price: '£800k-2m', transport: '⭐⭐⭐⭐⭐ Excellent', schools: '⭐⭐⭐ Mixed', green: '⭐⭐ Limited', population: '195k', verdict: 'Central London living. Very expensive, excellent transport. Best for young professionals without kids.' },
+    'Croydon': { price: '£250-350k', transport: '⭐⭐⭐⭐ Good', schools: '⭐⭐⭐ Good', green: '⭐⭐⭐ Parks', population: '385k', verdict: 'South London, affordable. Good regeneration. Less prestige than central areas but value is better.' },
+  };
+
+  function _movingGetAreaData(toArea, fromArea) {
+    const to = _AREA_DATA[toArea] || { price: 'TBD', transport: '⭐⭐⭐ Research needed', schools: '⭐⭐⭐ Research needed', green: '⭐⭐⭐ Research needed', population: 'Check ONS', verdict: 'Search for area data online for detailed info.' };
+    const from = _AREA_DATA[fromArea] || { price: 'TBD', transport: '⭐⭐⭐', schools: '⭐⭐⭐', green: '⭐⭐⭐', population: 'Unknown' };
+
+    return {
+      fromPrice: from.price,
+      toPrice: to.price,
+      fromTransport: from.transport,
+      toTransport: to.transport,
+      fromSchools: from.schools,
+      toSchools: to.schools,
+      fromGreen: from.green,
+      toGreen: to.green,
+      population: to.population,
+      verdict: to.verdict
+    };
+  }
+
   function _movingShowGuideForm() {
     const html = `
       <div style="background:linear-gradient(135deg,#fef2f2,#fff);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
@@ -22666,45 +22691,64 @@ window.spotifyAddTrack = window.spotifyLike;
       const from = fromData.result;
       const to = toData.result;
 
-      // Build guide
+      // Build decision-focused guide
+      const areaComparison = _movingGetAreaData(to.admin_district, from.admin_district);
+
       const guide = `
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📋 Your Moving Guide</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🤔 Should you move to ${to.admin_district}?</div>
 
-          <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px">
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">FROM</div>
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${from.outcode}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">${from.admin_district || ''} ${from.admin_county || ''}</div>
+          <!-- Area Comparison -->
+          <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:14px">
+            <table style="width:100%;font-size:11px;border-collapse:collapse">
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px 0;font-weight:600">Aspect</td>
+                <td style="padding:8px;text-align:center;color:var(--muted)">${from.admin_district}</td>
+                <td style="padding:8px;text-align:center;color:var(--muted)">${to.admin_district}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px 0">🏠 House Price</td>
+                <td style="padding:8px;text-align:center">${areaComparison.fromPrice}</td>
+                <td style="padding:8px;text-align:center">${areaComparison.toPrice}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px 0">🚌 Transport</td>
+                <td style="padding:8px;text-align:center">${areaComparison.fromTransport}</td>
+                <td style="padding:8px;text-align:center">${areaComparison.toTransport}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px 0">🏫 Schools</td>
+                <td style="padding:8px;text-align:center">${areaComparison.fromSchools}</td>
+                <td style="padding:8px;text-align:center">${areaComparison.toSchools}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0">☘️ Green Space</td>
+                <td style="padding:8px;text-align:center">${areaComparison.fromGreen}</td>
+                <td style="padding:8px;text-align:center">${areaComparison.toGreen}</td>
+              </tr>
+            </table>
           </div>
 
-          <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:16px">
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">TO</div>
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${to.outcode}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">${to.admin_district || ''} ${to.admin_county || ''}</div>
+          <!-- Verdict -->
+          <div style="background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:6px">✨ Should you move?</div>
+            <div style="font-size:11px;color:#166534;line-height:1.5">${areaComparison.verdict}</div>
           </div>
 
-          <div style="border-top:1px solid var(--border);padding-top:12px">
-            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">📞 Council Contact</div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
-              <strong>Current:</strong> ${from.admin_district || 'N/A'}<br>
-              <strong>New:</strong> ${to.admin_district || 'N/A'}
+          <!-- Key Info -->
+          <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">📍 Area Details</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">
+              <strong>County:</strong> ${to.admin_county || 'N/A'}<br>
+              <strong>Region:</strong> ${to.region || 'N/A'}<br>
+              <strong>Population:</strong> ${areaComparison.population}
             </div>
-            <a href="https://www.gov.uk/find-local-council" target="_blank" style="display:inline-block;padding:6px 12px;background:#4f46e5;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;margin-bottom:12px">Find council info →</a>
           </div>
 
-          <div style="border-top:1px solid var(--border);padding-top:12px">
-            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">💡 Next Steps</div>
-            <ul style="font-size:11px;color:var(--muted);margin:0;padding-left:18px;line-height:1.6">
-              <li>Notify current council of moving date</li>
-              <li>Check utilities available at new address</li>
-              <li>Register with GP in new area</li>
-              <li>Update address with employer/bank</li>
-              <li>Book removals company</li>
-            </ul>
-          </div>
-
-          <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
-            <a href="https://www.gov.uk/moving-home" target="_blank" style="display:block;padding:10px;background:var(--bg);border-radius:8px;text-align:center;font-size:11px;font-weight:600;color:#4f46e5;text-decoration:none">Read full moving guide on gov.uk →</a>
+          <!-- Resources -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <a href="https://www.rightmove.co.uk/property-to-rent/${to.outcode}" target="_blank" style="padding:8px;background:#4f46e5;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;text-align:center">View rentals in ${to.outcode} →</a>
+            <a href="https://www.google.com/maps/place/${to.outcode}" target="_blank" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;text-align:center">Explore on Google Maps →</a>
           </div>
         </div>
       `;
