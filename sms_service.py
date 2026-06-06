@@ -17967,11 +17967,13 @@ def _whatsapp_reply_inner():
             return str(resp)
 
     # ── Receipt Query Handler ──────────────────────────────────────────────────────
-    # Queries like "what did i order at renaizance", "what did i eat in costa", etc.
+    # Flexible patterns for: "what did i order at X", "last order X", "items from X", etc.
     _query_patterns = [
-        r"(?:what|what's).{0,10}(?:did i|i).{0,10}(?:order|eat|have|buy).{0,10}(?:at|in) (.+?)(?:\?|$)",
+        r"(?:what|what's).{0,15}(?:did i|i).{0,15}(?:order|eat|have|buy|ord).{0,15}(?:at|in|from) (.+?)(?:\?|$)",
+        r"(?:last|recent).{0,10}(?:order|receipt|items).{0,10}(?:at|in|from)? (.+?)(?:\?|$)",
         r"(?:order|items|receipt).{0,10}(?:at|in|from) (.+?)(?:\?|$)",
-        r"items.{0,10}(?:at|in|from) (.+?)(?:\?|$)",
+        r"(?:what|what's).{0,10}(?:at|in|from) (.+?)(?:\?|$)",
+        r"^(.+?)(?:\?|$)(?:order|receipt|items|what did i)",  # Fallback: merchant name at start
     ]
     for pattern in _query_patterns:
         match = re.search(pattern, body_lower, re.IGNORECASE)
