@@ -17967,11 +17967,11 @@ def _whatsapp_reply_inner():
             return str(resp)
 
     # ── Receipt Query Handler ──────────────────────────────────────────────────────
-    # Queries like "what did i order at renaizance", "what did i eat at costa", etc.
+    # Queries like "what did i order at renaizance", "what did i eat in costa", etc.
     _query_patterns = [
-        r"(?:what|what's).{0,10}(?:did i|i).{0,10}(?:order|eat|have|buy).{0,10}at (.+?)(?:\?|$)",
-        r"(?:order|items|receipt).{0,10}(?:at|from) (.+?)(?:\?|$)",
-        r"items.{0,10}(?:at|from) (.+?)(?:\?|$)",
+        r"(?:what|what's).{0,10}(?:did i|i).{0,10}(?:order|eat|have|buy).{0,10}(?:at|in) (.+?)(?:\?|$)",
+        r"(?:order|items|receipt).{0,10}(?:at|in|from) (.+?)(?:\?|$)",
+        r"items.{0,10}(?:at|in|from) (.+?)(?:\?|$)",
     ]
     for pattern in _query_patterns:
         match = re.search(pattern, body_lower, re.IGNORECASE)
