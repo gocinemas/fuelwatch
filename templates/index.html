@@ -15506,15 +15506,19 @@ _bkBadge();
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
     if (trains && trains.departures && trains.departures.length > 0) {
-      // Show next 3 train times (simple - no destination guessing)
+      // Show next 3 train times
       var times = [];
       for (var i = 0; i < Math.min(3, trains.departures.length); i++) {
         var t = trains.departures[i].departs || trains.departures[i].time || "";
         if (t) times.push(t);
       }
       if (times.length > 0) {
+        var fromStation = (trains.from || "").replace(/ station$/i,"").trim();
+        var toStation = (trains.to || "").replace(/ station$/i,"").trim();
+        var label = fromStation && toStation ? fromStation + " → " + toStation : "Next trains";
         trainGlance = "🚆 " + times.join(" · ");
-        if (trainSub) { trainSub.textContent = times.join(" · "); trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+        var subtitle = label + ": " + times.join(" · ");
+        if (trainSub) { trainSub.textContent = subtitle; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
       } else {
         if (trainSub) { trainSub.textContent = "No Trains"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
       }
