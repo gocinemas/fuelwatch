@@ -846,10 +846,14 @@
           2: {label:"Active",    color:"#1d4ed8", bg:"#eff6ff"},
           3: {label:"Delivered", color:"#166534", bg:"#f0fdf4"}
         };
+        window._projectsMap = {};
+        projects.forEach(function(p) {
+          window._projectsMap[p.id] = p;
+        });
         list.innerHTML = projects.map(function(p) {
           var s = STATUS[p.phase] || STATUS[1];
           var date = new Date(p.created_at).toLocaleDateString("en-GB", {day:"numeric", month:"short"});
-          return '<div class="proj-item" onclick="_openProject(\'' + p.id + '\')">'
+          return '<div class="proj-item proj-btn" data-proj-id="' + p.id + '" style="cursor:pointer">'
             + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
             + '<div class="proj-item-name">' + _esc(p.name) + '</div>'
             + '<span style="font-size:10px;font-weight:700;color:' + s.color + ';background:' + s.bg + ';border-radius:99px;padding:2px 8px;flex-shrink:0">' + s.label + '</span>'
