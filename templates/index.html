@@ -15485,8 +15485,8 @@ _bkBadge();
       var dst1 = d1 ? ((d1.destination || "").replace(/\s+station$/i,"").replace(/^London /i,"")) : "";
       // Show first train, and second train if available (both time and destination)
       var nextStr = (t1 && dst1) ? " · " + t1 + "→" + dst1 : (t1 ? " · " + t1 : "");
-      trainGlance = "🚆 " + t0 + "→" + dst0 + nextStr;
-      if (trainSub) { trainSub.textContent = t0 + "→" + dst0 + nextStr; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+      trainGlance = "🚆 " + t0 + " to Waterloo";
+      if (trainSub) { trainSub.textContent = t0 + " to Waterloo"; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
     } else {
       if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
     }
