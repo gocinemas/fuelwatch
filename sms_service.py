@@ -10731,6 +10731,56 @@ def api_morning_brief():
                     "skipped": skipped, "total": len(_pref_rows)})
 
 
+# ── Receipt Completion Detection + Agentic AI Flow ────────────────────────────
+def _receipt_is_complete(receipt_data: dict) -> dict:
+    """Check receipt completion. Return {'complete': bool, 'missing': [fields]}"""
+    missing = []
+    if not receipt_data.get("merchant"):
+        missing.append("merchant")
+    if not receipt_data.get("items") or len(receipt_data.get("items", [])) == 0:
+        missing.append("items")
+    if receipt_data.get("total") is None:
+        missing.append("amount")
+    return {"complete": len(missing) == 0, "missing": missing}
+
+def _save_pending_receipt(phone: str, receipt_data: dict, missing_fields: list) -> str:
+    """Save receipt as PENDING. Return receipt_id."""
+    try:
+        import json as _rj
+        _plain_phone = phone.replace("whatsapp:", "").strip()
+        row = lib._sb().table("wa_saves").insert({
+            "from_number": _plain_phone,
+            "status": "receipt_pending",
+            "title": f"🧾 {receipt_data.get('merchant', 'Receipt')}",
+            "summary": receipt_data.get("merchant", ""),
+            "category": "receipt",
+            "data": receipt_data
+        }).execute()
+        return row.data[0]["id"] if row.data else None
+    except Exception as e:
+        print(f"[save_pending_receipt] {e}")
+        return None
+
+def _finalize_receipt(receipt_id: str, receipt_data: dict):
+    """Finalize pending receipt to complete receipt."""
+    try:
+        import json as _rj
+        _plain_phone = receipt_data.get("phone", "").replace("whatsapp:", "").strip()
+        # Save to receipts table
+        _rcpt_row = {
+            "phone": _plain_phone,
+            "merchant": receipt_data.get("merchant", ""),
+            "items": _rj.dumps(receipt_data.get("items", [])),
+            "total": receipt_data.get("total"),
+            "shop_date": receipt_data.get("shop_date", ""),
+        }
+        lib._sb().table("receipts").insert(_rcpt_row).execute()
+        # Update pending receipt to complete
+        lib._sb().table("wa_saves").update({"status": "receipt_complete"}).eq("id", receipt_id).execute()
+        print(f"[finalize_receipt] merchant={receipt_data.get('merchant')} total={receipt_data.get('total')}")
+    except Exception as e:
+        print(f"[finalize_receipt] {e}")
+
 # ── Too Good To Go ────────────────────────────────────────────────────────────
 
 _TGTG_BASE = "https://apptoogoodtogo.com/api"
@@ -14632,23 +14682,47 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                             if _item["name"]:
                                 _rcpt_items.append(_item)
                     receipt_data["items"] = _rcpt_items
+                    receipt_data["phone"] = fn
                     if receipt_data.get("merchant"):
                         title = f"🧾 {receipt_data['merchant']}"
-                    # Store in receipts table
-                    try:
-                        import json as _rjson
-                        _rcpt_row = {
-                            "phone":       fn.replace("whatsapp:","").strip(),
-                            "merchant":    receipt_data.get("merchant",""),
-                            "items":       _rjson.dumps(_rcpt_items),
-                            "raw_summary": summary,
-                        }
-                        if receipt_data.get("total"):    _rcpt_row["total"]     = receipt_data["total"]
-                        if receipt_data.get("shop_date"): _rcpt_row["shop_date"] = receipt_data["shop_date"]
-                        lib._sb().table("receipts").insert(_rcpt_row).execute()
-                        print(f"[receipt] saved: merchant={receipt_data.get('merchant')} total={receipt_data.get('total')} items={len(_rcpt_items)}")
-                    except Exception as _re:
-                        print(f"[receipt] Supabase save failed: {_re}")
+
+                    # Check if receipt is complete
+                    _completion = _receipt_is_complete(receipt_data)
+                    if _completion["complete"]:
+                        # Complete receipt - save immediately
+                        try:
+                            import json as _rjson
+                            _rcpt_row = {
+                                "phone":       fn.replace("whatsapp:","").strip(),
+                                "merchant":    receipt_data.get("merchant",""),
+                                "items":       _rjson.dumps(_rcpt_items),
+                                "raw_summary": summary,
+                            }
+                            if receipt_data.get("total"):    _rcpt_row["total"]     = receipt_data["total"]
+                            if receipt_data.get("shop_date"): _rcpt_row["shop_date"] = receipt_data["shop_date"]
+                            lib._sb().table("receipts").insert(_rcpt_row).execute()
+                            print(f"[receipt] complete: merchant={receipt_data.get('merchant')} total={receipt_data.get('total')} items={len(_rcpt_items)}")
+                        except Exception as _re:
+                            print(f"[receipt] Supabase save failed: {_re}")
+                    else:
+                        # Incomplete receipt - save as pending + ask for missing fields
+                        _receipt_id = _save_pending_receipt(fn, receipt_data, _completion["missing"])
+                        if _receipt_id:
+                            # Ask for first missing field
+                            _missing_str = ", ".join(_completion["missing"])
+                            receipt_data["_pending_id"] = _receipt_id
+                            receipt_data["_missing_fields"] = _completion["missing"]
+                            _set_wa_pending_intent(fn, {"type": "receipt_field", "missing_fields": _completion["missing"], "receipt_id": _receipt_id, "data": receipt_data})
+                            # Agentic prompt for first missing field
+                            if "amount" in _completion["missing"]:
+                                _msg = f"📸 Got items for {receipt_data.get('merchant','')}, but what was the bill amount? (e.g. *36.50*)"
+                            elif "merchant" in _completion["missing"]:
+                                _msg = f"📸 Got {len(_rcpt_items)} items, but which store was this from? (e.g. *Tesco*)"
+                            elif "items" in _completion["missing"]:
+                                _msg = f"📸 Got the bill (£{receipt_data.get('total','')}), but what did you order? List items: *burger, fries, drink*"
+                            else:
+                                _msg = f"📸 Receipt incomplete. Missing: {_missing_str}. Please reply with the missing info."
+                            _wa_send_proactive(fn, _msg)
             except Exception as _rcpte:
                 print(f"[vision] receipt extraction failed: {_rcpte}")
 
@@ -17941,6 +18015,58 @@ def _whatsapp_reply_inner():
             print(f"[edit] {e}")
             resp.message(f"Error: {e}")
         return str(resp)
+
+    # ── Agentic Receipt Field Collection ──────────────────────────────────────────
+    _rcpt_pending = _get_wa_pending_intent(from_number)
+    if _rcpt_pending and _rcpt_pending.get("type") == "receipt_field":
+        missing_fields = _rcpt_pending.get("missing_fields", [])
+        receipt_id = _rcpt_pending.get("receipt_id")
+        receipt_data = _rcpt_pending.get("data", {})
+
+        # Parse user response based on what's missing
+        _field_filled = None
+        if "amount" in missing_fields:
+            _amt_m = re.match(r'^[\d.]+$', body.strip())
+            if _amt_m:
+                try:
+                    receipt_data["total"] = float(body.strip())
+                    missing_fields.remove("amount")
+                    _field_filled = "amount"
+                except Exception:
+                    pass
+        elif "merchant" in missing_fields:
+            receipt_data["merchant"] = body.strip()
+            missing_fields.remove("merchant")
+            _field_filled = "merchant"
+        elif "items" in missing_fields:
+            # Parse comma-separated items
+            items = [{"name": i.strip()} for i in body.split(",") if i.strip()]
+            if items:
+                receipt_data["items"] = items
+                missing_fields.remove("items")
+                _field_filled = "items"
+
+        if _field_filled:
+            # Check if complete now
+            _completion = _receipt_is_complete(receipt_data)
+            if _completion["complete"]:
+                # Finalize receipt
+                _clear_wa_pending_intent(from_number)
+                _finalize_receipt(receipt_id, receipt_data)
+                resp.message(f"✅ Receipt complete! Saved {receipt_data.get('merchant')} (£{receipt_data.get('total')}) with {len(receipt_data.get('items',[]))} items")
+                return str(resp)
+            else:
+                # Ask for next missing field
+                _rcpt_pending["missing_fields"] = missing_fields
+                _set_wa_pending_intent(from_number, _rcpt_pending)
+                if "amount" in missing_fields:
+                    _msg = f"Got it! Now what was the bill amount? (e.g. *36.50*)"
+                elif "merchant" in missing_fields:
+                    _msg = f"Which store was this from? (e.g. *Tesco*)"
+                else:
+                    _msg = f"What items did you order? (e.g. *burger, fries, drink*)"
+                resp.message(_msg)
+                return str(resp)
 
     # ── Pending intent: amount reply for edit ───────────────────────────────────────
     _amount_m = re.match(r'^[\d.]+$', body.strip())
