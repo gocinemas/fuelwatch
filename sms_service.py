@@ -6822,6 +6822,45 @@ def api_v2_prefs_post():
     if not isinstance(new_prefs, dict):
         return jsonify({"error": "prefs must be object"}), 400
 
+    # ── Validate train stations ──────────────────────────────────────────────
+    def _find_station(name):
+        """Find exact or close match for station name. Return (crs, display_name) or None."""
+        if not name: return None
+        name_lower = name.lower().replace("station","").strip()
+        # Exact match
+        for cache_name, cache_stn in _STATION_CACHE.items():
+            if cache_name == name_lower:
+                return cache_stn["crs"], cache_stn["name"]
+        # Prefix match
+        for cache_name, cache_stn in _STATION_CACHE.items():
+            if cache_name.startswith(name_lower):
+                return cache_stn["crs"], cache_stn["name"]
+        # Fuzzy match
+        import difflib
+        close = difflib.get_close_matches(name_lower, list(_STATION_CACHE.keys()), n=1, cutoff=0.6)
+        if close:
+            stn = _STATION_CACHE[close[0]]
+            return stn["crs"], stn["name"]
+        return None
+
+    # Validate train_from and train_to
+    errors = []
+    if "train_from" in new_prefs and new_prefs["train_from"]:
+        result = _find_station(new_prefs["train_from"])
+        if not result:
+            errors.append(f"Home station '{new_prefs['train_from']}' not found. Check spelling.")
+        else:
+            new_prefs["train_from"] = result[1]  # Use canonical name
+    if "train_to" in new_prefs and new_prefs["train_to"]:
+        result = _find_station(new_prefs["train_to"])
+        if not result:
+            errors.append(f"Work station '{new_prefs['train_to']}' not found. Check spelling.")
+        else:
+            new_prefs["train_to"] = result[1]  # Use canonical name
+
+    if errors:
+        return jsonify({"error": " | ".join(errors)}), 400
+
     # Auto-derive train_from from location profile home anchor, then fall back to home postcode
     if "train_to" in new_prefs and "train_from" not in new_prefs:
         _hlat = _hlng = None
