@@ -8103,7 +8103,7 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
             uid = (svc.get("serviceUid") or svc.get("trainUid") or
                    svc.get("uid") or (svc.get("service") or {}).get("uid") or "")
             if not uid:
-                return False  # No UID = can't verify, drop it
+                return True  # No UID = assume it's OK (RTT already filtered with calling_at)
             try:
                 det = requests.get(
                     f"https://data.rtt.io/rtt/service/{uid}/{today_str}",
@@ -8117,15 +8117,15 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
                         timeout=5,
                     )
                 if det.status_code != 200:
-                    return False  # Can't fetch details = can't verify, drop it
+                    return True  # Can't fetch, trust RTT's calling_at filter
                 locs = det.json().get("locations") or det.json().get("callingPoints") or []
                 for loc in locs:
                     obj = loc.get("location") or loc
                     if (obj.get("crs") or obj.get("crsCode") or "").upper() == to_crs:
-                        return True  # Found the destination, keep it
-                return False  # Destination not found, drop it
+                        return True  # Verified - stops at destination
+                return False  # Explicitly doesn't stop at destination, drop it
             except Exception:
-                return False  # Any error = can't verify, drop it
+                return True  # Any error, trust RTT's filter
 
         if services:
             with _cf3.ThreadPoolExecutor(max_workers=6) as _pool:
