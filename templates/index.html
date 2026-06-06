@@ -15473,19 +15473,21 @@ _bkBadge();
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
     if (trains && trains.departures && trains.departures.length > 0) {
-      // Filter to only trains that actually go to Waterloo (client-side verification)
-      var waterlooTrains = trains.departures.filter(function(d) {
-        var dest = (d.destination || "").toLowerCase();
-        return dest.includes("waterloo");
-      });
+      // Separate trains by destination
+      var waterlooTrains = trains.departures.filter(function(d) { return (d.destination || "").toLowerCase().includes("waterloo"); });
+      var readingTrains = trains.departures.filter(function(d) { return (d.destination || "").toLowerCase().includes("reading"); });
+
+      // Show Waterloo first, then Reading
       if (waterlooTrains.length > 0) {
-        var d0   = waterlooTrains[0];
-        var t0   = d0.departs || d0.time || "";
-        var dst0 = (d0.destination || "").replace(/\s+station$/i,"").replace(/^London /i,"");
-        trainGlance = "🚆 " + t0 + " to " + dst0;
-        if (trainSub) { trainSub.textContent = t0 + " to " + dst0; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+        var t0 = waterlooTrains[0].departs || waterlooTrains[0].time || "";
+        trainGlance = "🚆 " + t0 + " to Waterloo";
+        if (trainSub) { trainSub.textContent = t0 + " to Waterloo"; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+      } else if (readingTrains.length > 0) {
+        var t0 = readingTrains[0].departs || readingTrains[0].time || "";
+        trainGlance = "🚆 " + t0 + " to Reading";
+        if (trainSub) { trainSub.textContent = t0 + " to Reading"; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
       } else {
-        if (trainSub) { trainSub.textContent = "No Trains to Waterloo"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
+        if (trainSub) { trainSub.textContent = "No Trains"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
       }
     } else {
       if (trainSub) { trainSub.textContent = "Live departures"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
