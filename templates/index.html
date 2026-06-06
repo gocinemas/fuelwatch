@@ -15489,22 +15489,18 @@ _bkBadge();
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
     if (trains && trains.departures && trains.departures.length > 0) {
-      // Show next 3 trains with their destinations
-      var timesWithDest = [];
+      // Show next 3 train times (just times, no destination confusion)
+      var times = [];
       for (var i = 0; i < Math.min(3, trains.departures.length); i++) {
-        var d = trains.departures[i];
-        var t = d.departs || d.time || "";
-        var dest = (d.destination || "").replace(/ station$/i,"").replace(/^London /i,"").trim();
-        if (t && dest) {
-          timesWithDest.push(t + " (" + dest + ")");
-        } else if (t) {
-          timesWithDest.push(t);
-        }
+        var t = trains.departures[i].departs || trains.departures[i].time || "";
+        if (t) times.push(t);
       }
-      if (timesWithDest.length > 0) {
+      if (times.length > 0) {
         var fromStation = (trains.from || "").replace(/ station$/i,"").trim();
-        trainGlance = "🚆 " + timesWithDest.join(" · ");
-        var subtitle = (fromStation ? fromStation + ": " : "") + timesWithDest.join(" · ");
+        var toStation = (trains.to || "").replace(/ station$/i,"").replace(/^London /i,"").trim();
+        var route = (fromStation && toStation) ? fromStation + " → " + toStation : "Next trains";
+        trainGlance = "🚆 " + times.join(" · ");
+        var subtitle = route + ": " + times.join(" · ");
         if (trainSub) { trainSub.textContent = subtitle; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
       } else {
         if (trainSub) { trainSub.textContent = "No Trains"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
