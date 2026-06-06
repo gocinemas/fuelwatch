@@ -15489,29 +15489,26 @@ _bkBadge();
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
     if (trains && trains.departures && trains.departures.length > 0) {
-      // Show next 3 trains with destinations (like WhatsApp)
+      // Show next 2 trains only (homepage needs to be compact)
       var trainLines = [];
-      for (var i = 0; i < Math.min(3, trains.departures.length); i++) {
+      for (var i = 0; i < Math.min(2, trains.departures.length); i++) {
         var d = trains.departures[i];
         var t = d.departs || d.time || "";
         var dest = (d.destination || "").replace(/ station$/i,"").replace(/^London /i,"").trim();
         var status = d.status || "On time";
         var icon = status.includes("Exp") ? "🕐" : "✅";
         if (t && dest) {
-          trainLines.push(t + " → " + dest + "  " + icon + " " + status);
+          trainLines.push(t + " → " + dest + "  " + icon);
         }
       }
       if (trainLines.length > 0) {
         trainGlance = "🚆 " + trains.departures[0].departs;
         if (trainSub) {
-          // Format: each train on new line with proper spacing
-          var html = trainLines.map(function(line) {
-            return '<div style="margin-bottom:6px;line-height:1.3">' + line + '</div>';
-          }).join('');
-          trainSub.innerHTML = html;
+          // Compact format for homepage
+          trainSub.textContent = trainLines.join(" | ");
           trainSub.style.color = "#1d4ed8";
           trainSub.style.fontWeight = "700";
-          trainSub.style.fontSize = "13px";
+          trainSub.style.fontSize = "12px";
         }
       } else {
         if (trainSub) { trainSub.textContent = "No Trains"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
