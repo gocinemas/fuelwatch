@@ -739,41 +739,35 @@
       <div id="home-miru-desc" style="display:none"></div>
 
 
-      <!-- LIVE NOW -->
-      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Live Now</div>
-      <div style="display:flex;gap:10px;margin-bottom:10px">
-        <button class="feat-card feat-card-fuel" onclick="showScreen('fuel')">
-          <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px;margin-bottom:12px;width:fit-content">
-            <span class="live-dot-green"></span>
-            <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">LIVE</span>
+      <!-- COMMUTE CARD — combines trains + fuel -->
+      <div style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px">
+            <span style="font-size:18px">⚡</span> Commute
           </div>
-          <div style="font-size:26px;line-height:1;margin-bottom:8px">⛽</div>
-          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Fuel Prices</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px;line-height:1.3">Cheapest near you</div>
-          <div id="home-fuel-price" style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-1px;margin-top:6px;line-height:1;display:none"></div>
-          <div id="home-fuel-sub" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.3;display:none"></div>
-          <div id="home-fuel-placeholder" style="display:none"></div>
-        </button>
-        <button class="feat-card feat-card-train" onclick="showScreen('trains')">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 9px">
-              <span class="live-dot-green"></span>
-              <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.65);letter-spacing:.06em">LIVE</span>
-            </div>
-            <div id="home-train-wfh-row" style="display:none">
-              <div onclick="event.stopPropagation();_trainToggleWFH()" title="WFH = trains to work · Office = trains home" style="display:inline-flex;background:rgba(0,0,0,.25);border-radius:99px;padding:3px;gap:3px;cursor:pointer">
-                <span id="home-train-pill-wfh" style="border-radius:99px;padding:4px 11px;font-size:11px;font-weight:700;letter-spacing:.02em;transition:all .15s">🏠 WFH</span>
-                <span id="home-train-pill-office" style="border-radius:99px;padding:4px 11px;font-size:11px;font-weight:700;letter-spacing:.02em;transition:all .15s">🏢 Office</span>
-              </div>
+          <div id="home-train-wfh-row" style="display:none">
+            <div onclick="_trainToggleWFH()" title="WFH = trains to work · Office = trains home" style="display:inline-flex;background:rgba(255,255,255,.1);border-radius:99px;padding:2px;gap:2px;cursor:pointer">
+              <span id="home-train-pill-wfh" style="border-radius:99px;padding:3px 9px;font-size:10px;font-weight:700;transition:all .15s">🏠 WFH</span>
+              <span id="home-train-pill-office" style="border-radius:99px;padding:3px 9px;font-size:10px;font-weight:700;transition:all .15s">🏢 Office</span>
             </div>
           </div>
-          <div style="font-size:26px;line-height:1;margin-bottom:8px">🚆</div>
-          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.4px;line-height:1.15">Train Times</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px;line-height:1.3">Departures &amp; delays</div>
-          <div id="home-train-next" style="font-size:16px;font-weight:900;color:#fff;letter-spacing:-0.5px;margin-top:2px;line-height:1.2;display:none"></div>
-          <div id="home-train-sub" style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.3;display:none"></div>
+        </div>
+
+        <!-- Trains line -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:#fff">
+          <span style="font-size:16px">🚆</span>
+          <div id="home-train-next" style="font-weight:700;color:#fff;display:none"></div>
           <div id="home-train-placeholder" style="display:none"></div>
-        </button>
+        </div>
+
+        <!-- Fuel line -->
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.85)">
+          <span style="font-size:16px">⛽</span>
+          <div id="home-fuel-price" style="font-weight:700;color:#fff;display:none"></div>
+          <div style="color:rgba(255,255,255,.6)">·</div>
+          <div id="home-fuel-sub" style="color:rgba(255,255,255,.7);display:none"></div>
+          <div id="home-fuel-placeholder" style="display:none"></div>
+        </div>
       </div>
 
       <!-- MY WORLD divider -->
