@@ -15473,19 +15473,23 @@ _bkBadge();
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
     if (trains && trains.departures && trains.departures.length > 0) {
-      // Separate trains by destination
-      var waterlooTrains = trains.departures.filter(function(d) { return (d.destination || "").toLowerCase().includes("waterloo"); });
-      var readingTrains = trains.departures.filter(function(d) { return (d.destination || "").toLowerCase().includes("reading"); });
+      // Show next train to EACH destination - Reading and Waterloo
+      var readingTime = "", waterlooTime = "";
+      for (var i = 0; i < trains.departures.length; i++) {
+        var d = trains.departures[i];
+        var dest = (d.destination || "").toLowerCase();
+        if (!readingTime && dest.includes("reading")) readingTime = d.departs || d.time || "";
+        if (!waterlooTime && dest.includes("waterloo")) waterlooTime = d.departs || d.time || "";
+        if (readingTime && waterlooTime) break;
+      }
 
-      // Show Waterloo first, then Reading
-      if (waterlooTrains.length > 0) {
-        var t0 = waterlooTrains[0].departs || waterlooTrains[0].time || "";
-        trainGlance = "🚆 " + t0 + " to Waterloo";
-        if (trainSub) { trainSub.textContent = t0 + " to Waterloo"; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
-      } else if (readingTrains.length > 0) {
-        var t0 = readingTrains[0].departs || readingTrains[0].time || "";
-        trainGlance = "🚆 " + t0 + " to Reading";
-        if (trainSub) { trainSub.textContent = t0 + " to Reading"; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+      var parts = [];
+      if (readingTime) parts.push(readingTime + " Reading");
+      if (waterlooTime) parts.push(waterlooTime + " Waterloo");
+
+      if (parts.length > 0) {
+        trainGlance = "🚆 " + parts.join(" · ");
+        if (trainSub) { trainSub.textContent = parts.join(" · "); trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
       } else {
         if (trainSub) { trainSub.textContent = "No Trains"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
       }
