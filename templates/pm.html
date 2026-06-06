@@ -960,28 +960,34 @@
     if (!input) { alert("Describe your project first"); return; }
     var btn = document.getElementById("intake-btn");
     btn.disabled = true;
-    document.getElementById("intake-view").style.display = "none";
-    document.getElementById("challenge-view").style.display = "none";
-    document.getElementById("output").style.display = "none";
     document.getElementById("assess-loading").style.display = "block";
-    fetch("/api/pm/assess", {
+
+    // Create a new project with the brief
+    var projectName = input.split("\n")[0].slice(0, 60) || "New Project";
+    fetch("/api/pm/projects", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({problem: input})
+      body: JSON.stringify({
+        name: projectName,
+        proj_type: _selectedRole || "IT Transformation",
+        description: input.slice(0, 500)
+      })
     })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      document.getElementById("assess-loading").style.display = "none";
-      btn.disabled = false;
-      if (data.error) { _showIntake(); alert("Error: " + data.error); return; }
-      _challengeData = data;
-      _renderChallenge(data);
+    .then(r => r.json())
+    .then(function(d) {
+      if (d.project) {
+        _pmState.currentProject = d.project;
+        _showModulePickerScreen();
+      } else {
+        alert("Error creating project: " + (d.error || "Unknown error"));
+        btn.disabled = false;
+        document.getElementById("assess-loading").style.display = "none";
+      }
     })
-    .catch(function() {
-      document.getElementById("assess-loading").style.display = "none";
+    .catch(function(e) {
+      alert("Network error: " + e.message);
       btn.disabled = false;
-      _showIntake();
-      alert("Network error — try again");
+      document.getElementById("assess-loading").style.display = "none";
     });
   }
 
