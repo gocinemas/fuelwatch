@@ -14280,6 +14280,9 @@ _bkBadge();
     <button onclick="_movingSetScenario('departure')" id="btn-scenario-departure" style="padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;transition:all .2s">
       🛫 Moving Abroad
     </button>
+    <button onclick="_movingSetScenario('guide')" id="btn-scenario-guide" style="padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;transition:all .2s">
+      📍 Area Guide
+    </button>
   </div>
 
   <!-- Checklist Container -->
@@ -22547,6 +22550,12 @@ window.spotifyAddTrack = window.spotifyLike;
     document.getElementById(`btn-scenario-${scenario}`).style.borderColor = '#dc2626';
     document.getElementById(`btn-scenario-${scenario}`).style.color = '#fff';
 
+    // Handle guide scenario specially
+    if (scenario === 'guide') {
+      _movingShowGuideForm();
+      return;
+    }
+
     // Render checklist
     const items = _MOVING_DATA[scenario] || [];
     const html = items.map((item, idx) => {
@@ -22608,6 +22617,103 @@ window.spotifyAddTrack = window.spotifyLike;
     Object.keys(localStorage).filter(k => k.startsWith('moving_')).forEach(k => localStorage.removeItem(k));
     fetch('/api/moving/progress', { method: 'DELETE' }).catch(e => console.log('[moving] db clear error:', e));
     _movingSetScenario('within');
+  }
+
+  function _movingShowGuideForm() {
+    const html = `
+      <div style="background:linear-gradient(135deg,#fef2f2,#fff);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📍 Moving From → To</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <label style="font-size:11px;color:var(--muted);font-weight:600">From (Current postcode)</label>
+            <input id="moving-from-pc" type="text" placeholder="e.g. SW1A 1AA" maxlength="8" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;margin-top:4px;font-family:monospace;text-transform:uppercase" onchange="this.value = this.value.toUpperCase()">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);font-weight:600">To (New postcode)</label>
+            <input id="moving-to-pc" type="text" placeholder="e.g. E1 6AN" maxlength="8" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;margin-top:4px;font-family:monospace;text-transform:uppercase" onchange="this.value = this.value.toUpperCase()">
+          </div>
+          <button onclick="_movingLoadGuide()" style="width:100%;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">Show Area Guide →</button>
+        </div>
+      </div>
+      <div id="moving-guide-results"></div>
+    `;
+    document.getElementById('moving-checklist-content').innerHTML = html;
+  }
+
+  async function _movingLoadGuide() {
+    const fromPc = document.getElementById('moving-from-pc').value.trim().replace(/\s/g, '');
+    const toPc = document.getElementById('moving-to-pc').value.trim().replace(/\s/g, '');
+
+    if (!fromPc || !toPc) {
+      alert('Please enter both postcodes');
+      return;
+    }
+
+    document.getElementById('moving-guide-results').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Loading area info...</div>';
+
+    try {
+      // Look up area info for both postcodes
+      const [fromData, toData] = await Promise.all([
+        fetch(`https://api.postcodes.io/postcodes/${fromPc}`).then(r => r.json()),
+        fetch(`https://api.postcodes.io/postcodes/${toPc}`).then(r => r.json())
+      ]);
+
+      if (!fromData.result || !toData.result) {
+        document.getElementById('moving-guide-results').innerHTML = '<div style="color:#dc2626;padding:16px;background:var(--surface);border-radius:8px">Invalid postcode(s). Please check and try again.</div>';
+        return;
+      }
+
+      const from = fromData.result;
+      const to = toData.result;
+
+      // Build guide
+      const guide = `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📋 Your Moving Guide</div>
+
+          <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">FROM</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${from.outcode}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">${from.admin_district || ''} ${from.admin_county || ''}</div>
+          </div>
+
+          <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:16px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">TO</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${to.outcode}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">${to.admin_district || ''} ${to.admin_county || ''}</div>
+          </div>
+
+          <div style="border-top:1px solid var(--border);padding-top:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">📞 Council Contact</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
+              <strong>Current:</strong> ${from.admin_district || 'N/A'}<br>
+              <strong>New:</strong> ${to.admin_district || 'N/A'}
+            </div>
+            <a href="https://www.gov.uk/find-local-council" target="_blank" style="display:inline-block;padding:6px 12px;background:#4f46e5;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;margin-bottom:12px">Find council info →</a>
+          </div>
+
+          <div style="border-top:1px solid var(--border);padding-top:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">💡 Next Steps</div>
+            <ul style="font-size:11px;color:var(--muted);margin:0;padding-left:18px;line-height:1.6">
+              <li>Notify current council of moving date</li>
+              <li>Check utilities available at new address</li>
+              <li>Register with GP in new area</li>
+              <li>Update address with employer/bank</li>
+              <li>Book removals company</li>
+            </ul>
+          </div>
+
+          <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
+            <a href="https://www.gov.uk/moving-home" target="_blank" style="display:block;padding:10px;background:var(--bg);border-radius:8px;text-align:center;font-size:11px;font-weight:600;color:#4f46e5;text-decoration:none">Read full moving guide on gov.uk →</a>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('moving-guide-results').innerHTML = guide;
+    } catch (e) {
+      console.error('[moving guide]', e);
+      document.getElementById('moving-guide-results').innerHTML = '<div style="color:#dc2626;padding:16px;background:var(--surface);border-radius:8px">Error loading area info. Please try again.</div>';
+    }
   }
 
   // Initialize on screen load - load progress from DB
