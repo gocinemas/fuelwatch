@@ -15424,11 +15424,7 @@ _bkBadge();
     var bankHol   = !!(ctx && ctx.bank_holiday_today);
 
     var fuel   = ctx && ctx.fuel;
-    var _tr1 = ctx && ctx.trains;
-    var _tr2 = ctx && ctx.trains_home;
-    var trains = (_tr1 && _tr1.departures && _tr1.departures.length) ? _tr1
-               : (_tr2 && _tr2.departures && _tr2.departures.length) ? _tr2
-               : null;
+    var trains = ctx && ctx.trains;  // Only show outbound trains (home → work), never return journey
 
     // ── Fuel ──────────────────────────────────────────────────────────────────
     var fuelSub  = document.getElementById("tile-fuel-sub");
