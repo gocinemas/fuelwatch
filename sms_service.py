@@ -8165,14 +8165,15 @@ def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
             status = "Cancelled" if cancelled else (f"Exp {real}" if real and real != sched else "On time")
             p_raw = (svc.get("locationMetadata") or {}).get("platform")
             platform = str(p_raw.get("display") or "") if isinstance(p_raw, dict) else (str(p_raw) if p_raw else "")
-            # Get actual destination from service (last calling point)
-            destination = train_to  # Default to requested destination
-            locations = (svc.get("locations") or svc.get("callingPoints") or [])
-            if locations:
-                last_loc = locations[-1] if isinstance(locations[-1], dict) else {}
-                loc_obj = last_loc.get("location") or last_loc
-                destination = loc_obj.get("name") or loc_obj.get("description") or destination
-            # Show destination so user can verify which train they want
+            # Get destination - SAME method as WhatsApp (_wa_train_format line 17037)
+            destination = train_to
+            try:
+                dest_list = svc.get("destination") or [{}]
+                if dest_list and len(dest_list) > 0:
+                    dest_obj = dest_list[0].get("location") or {}
+                    destination = dest_obj.get("description") or train_to
+            except:
+                pass
             deps.append({"departs": sched, "status": status, "platform": platform, "destination": destination})
             if len(deps) >= 8:
                 break
