@@ -2837,7 +2837,12 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px">
         <div style="display:flex;flex-direction:column;gap:12px">
           <div>
-            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Train destination (office / usual)</div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Home station</div>
+            <input id="setup-pref-from" type="text" placeholder="e.g. Longcross"
+              style="width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Work station</div>
             <input id="setup-pref-to" type="text" placeholder="e.g. London Waterloo"
               style="width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
           </div>
@@ -15473,23 +15478,15 @@ _bkBadge();
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
     if (trains && trains.departures && trains.departures.length > 0) {
-      // Show next train to EACH destination - Reading and Waterloo
-      var readingTime = "", waterlooTime = "";
-      for (var i = 0; i < trains.departures.length; i++) {
-        var d = trains.departures[i];
-        var dest = (d.destination || "").toLowerCase();
-        if (!readingTime && dest.includes("reading")) readingTime = d.departs || d.time || "";
-        if (!waterlooTime && dest.includes("waterloo")) waterlooTime = d.departs || d.time || "";
-        if (readingTime && waterlooTime) break;
+      // Show next 3 train times (simple - no destination guessing)
+      var times = [];
+      for (var i = 0; i < Math.min(3, trains.departures.length); i++) {
+        var t = trains.departures[i].departs || trains.departures[i].time || "";
+        if (t) times.push(t);
       }
-
-      var parts = [];
-      if (readingTime) parts.push(readingTime + " Reading");
-      if (waterlooTime) parts.push(waterlooTime + " Waterloo");
-
-      if (parts.length > 0) {
-        trainGlance = "🚆 " + parts.join(" · ");
-        if (trainSub) { trainSub.textContent = parts.join(" · "); trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+      if (times.length > 0) {
+        trainGlance = "🚆 " + times.join(" · ");
+        if (trainSub) { trainSub.textContent = times.join(" · "); trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
       } else {
         if (trainSub) { trainSub.textContent = "No Trains"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
       }
