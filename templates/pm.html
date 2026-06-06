@@ -80,16 +80,16 @@
     #main { max-width:720px; margin:0 auto; padding:32px 16px 80px; }
 
     /* ── Intake ── */
-    .hero { text-align:center; padding:20px 0 28px; padding-bottom:32px; border-bottom:1px solid var(--border); }
+    .hero { text-align:center; padding:20px 0 28px; }
     .hero-icon { font-size:36px; margin-bottom:12px; }
     .hero h1 { font-size:24px; font-weight:900; letter-spacing:-0.5px; margin-bottom:8px; }
     .hero p { font-size:14px; color:var(--muted); line-height:1.6; max-width:500px; margin:0 auto; }
     .intake-box {
       background:var(--surface); border:1.5px solid var(--border);
       border-radius:20px; padding:20px; margin-bottom:20px;
-      transition:background .15s, border-color .15s, box-shadow .15s;
+      transition:background .15s;
     }
-    .intake-box:hover { background:var(--surface2); border-color:var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.08); }
+    .intake-box:hover { background:var(--surface2); }
     .intake-textarea {
       width:100%; min-height:140px;
       border:1.5px solid var(--border); border-radius:14px;
@@ -104,16 +104,16 @@
       background:var(--surface); color:var(--muted); font-size:13px; font-weight:600;
       cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s;
     }
-    .role-pill:hover { border-color:var(--accent); color:var(--accent); background:var(--surface2); cursor:pointer; }
+    .role-pill:hover { border-color:var(--accent); color:var(--accent); background:var(--surface2); }
     .role-pill.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
     .intake-submit {
       width:100%; padding:13px; border-radius:12px; border:none;
       background:var(--accent); color:#fff; font-size:15px; font-weight:700;
-      cursor:pointer; font-family:inherit; transition:opacity .15s, transform .15s, box-shadow .15s;
+      cursor:pointer; font-family:inherit; transition:opacity .15s;
     }
     .intake-submit:disabled { opacity:.5; cursor:not-allowed; }
-    .intake-submit:hover:not(:disabled) { opacity:.9; transform:translateY(-1px); box-shadow:0 4px 12px rgba(217,119,6,.3); }
+    .intake-submit:hover:not(:disabled) { opacity:.9; }
 
     /* ── Loading ── */
     #loading { display:none; text-align:center; padding:40px 20px; }
