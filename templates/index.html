@@ -2838,8 +2838,12 @@
         <div style="display:flex;flex-direction:column;gap:12px">
           <div>
             <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Home station</div>
-            <input id="setup-pref-from" type="text" placeholder="e.g. Longcross"
-              style="width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+            <div style="display:flex;gap:8px">
+              <input id="setup-pref-from" type="text" placeholder="e.g. Longcross"
+                style="flex:1;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
+              <button onclick="_setupFindNearbyStations('home')" style="padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);cursor:pointer;font-weight:700;font-size:12px">📍 Nearby</button>
+            </div>
+            <div id="setup-home-stations" style="display:none;margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
           </div>
           <div>
             <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase">Work station</div>
@@ -7184,12 +7188,13 @@ function _hcAdd() {
 
   window._setupSavePrefs = async function() {
     var token = _miruPhone() || "";
+    var from = (document.getElementById("setup-pref-from") || {}).value || "";
     var to = (document.getElementById("setup-pref-to") || {}).value || "";
     var pc = (document.getElementById("setup-pref-pc") || {}).value || "";
     var errEl = document.getElementById("setup-pref-err");
     var okEl  = document.getElementById("setup-pref-ok");
     if (!token) { if (errEl) { errEl.textContent = "Link your phone first."; errEl.style.display = "block"; } return; }
-    var payload = {token: token, train_to: to.trim(), fuel_postcode: pc.trim().toUpperCase().replace(/\s/g,""), home_postcode: _miruPostcode() || pc.trim()};
+    var payload = {token: token, train_from: from.trim(), train_to: to.trim(), fuel_postcode: pc.trim().toUpperCase().replace(/\s/g,""), home_postcode: _miruPostcode() || pc.trim()};
     if (_setupBinDaySel !== null) payload.bin_collection_day = _setupBinDaySel;
     if (_setupBinRotSel)          payload.bin_rotation = _setupBinRotSel;
     try {
@@ -7201,6 +7206,29 @@ function _hcAdd() {
         if (typeof _briefInit === "function") _briefInit();
       }
     } catch(e) { if (errEl) { errEl.textContent = "Save failed."; errEl.style.display = "block"; } }
+  };
+
+  window._setupFindNearbyStations = async function(type) {
+    var container = document.getElementById("setup-" + type + "-stations");
+    if (!container) return;
+    container.innerHTML = '<div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px"><span class="spinner" style="width:11px;height:11px;border-width:1.5px"></span>Finding stations…</div>';
+    container.style.display = "flex";
+    try {
+      if (!navigator.geolocation) throw new Error("Location not available");
+      navigator.geolocation.getCurrentPosition(async function(pos) {
+        var lat = pos.coords.latitude, lng = pos.coords.longitude;
+        var r = await fetch("/api/train/nearest-by-postcode?lat=" + lat + "&lng=" + lng);
+        if (!r.ok) throw new Error("Lookup failed");
+        var data = await r.json();
+        if (!data || !data.name) throw new Error("No station found");
+        // For demo, just show this one station (ideally would get 3 nearby)
+        container.innerHTML = '<button onclick="document.getElementById(\'setup-pref-' + type + '\').value=\'' + data.name + '\'" style="padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;color:var(--text)">' + data.name + '</button>';
+      }, function(err) {
+        container.innerHTML = '<div style="font-size:12px;color:#ef4444">Enable location to find nearby stations</div>';
+      });
+    } catch(e) {
+      container.innerHTML = '<div style="font-size:12px;color:#ef4444">Error: ' + e.message + '</div>';
+    }
   };
 
   async function _setupLoadClubs() {
