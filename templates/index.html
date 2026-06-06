@@ -15447,7 +15447,7 @@ _bkBadge();
     if (fuel && fuel.price) {
       var fName = (fuel.name || "").split(/[,·]/)[0].trim()
                     .replace(/\b(\w)/g, function(c){ return c.toUpperCase(); });
-      fuelGlance = "Cheapest ⛽ " + fuel.price + "p · " + fName;
+      fuelGlance = fuel.price + "p · " + fName;  // For brief-glance card (emoji already in HTML)
       if (fuelSub) { fuelSub.textContent = fuel.price + "p · " + fName; fuelSub.style.color = "#1d4ed8"; fuelSub.style.fontWeight = "700"; }
     } else {
       if (fuelSub) { fuelSub.textContent = "Cheapest near you"; fuelSub.style.color = ""; fuelSub.style.fontWeight = ""; }
@@ -15501,7 +15501,7 @@ _bkBadge();
         }
       }
       if (trainLines.length > 0) {
-        trainGlance = "🚆 " + trains.departures[0].departs;
+        trainGlance = trainLines.join(" | ");  // Full train info for glance
         if (trainSub) {
           // Compact format for homepage
           trainSub.textContent = trainLines.join(" | ");
