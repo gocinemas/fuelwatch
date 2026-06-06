@@ -22728,8 +22728,17 @@ window.spotifyAddTrack = window.spotifyLike;
   }
 
   function _movingGetAreaData(toArea, fromArea) {
-    const to = _AREA_DATA[toArea] || { price: 'TBD', transport: '⭐⭐⭐ Research needed', schools: '⭐⭐⭐ Research needed', green: '⭐⭐⭐ Research needed', population: 'Check ONS', verdict: 'Search for area data online for detailed info.' };
-    const from = _AREA_DATA[fromArea] || { price: 'TBD', transport: '⭐⭐⭐', schools: '⭐⭐⭐', green: '⭐⭐⭐', population: 'Unknown' };
+    // Normalize area names for matching
+    const normalize = (str) => str ? str.trim().toLowerCase().replace(/london borough /i, '') : '';
+    const toNorm = normalize(toArea);
+    const fromNorm = normalize(fromArea);
+
+    // Find matches in _AREA_DATA (case-insensitive)
+    const toKey = Object.keys(_AREA_DATA).find(k => normalize(k) === toNorm);
+    const fromKey = Object.keys(_AREA_DATA).find(k => normalize(k) === fromNorm);
+
+    const to = toKey ? _AREA_DATA[toKey] : { price: 'TBD', transport: '⭐⭐⭐ Research needed', schools: '⭐⭐⭐ Research needed', green: '⭐⭐⭐ Research needed', population: 'Check ONS', verdict: 'Search for area data online for detailed info.' };
+    const from = fromKey ? _AREA_DATA[fromKey] : { price: 'TBD', transport: '⭐⭐⭐', schools: '⭐⭐⭐', green: '⭐⭐⭐', population: 'Unknown' };
 
     return {
       fromPrice: from.price,
