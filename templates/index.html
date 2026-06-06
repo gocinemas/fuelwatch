@@ -22626,6 +22626,94 @@ window.spotifyAddTrack = window.spotifyLike;
     'Croydon': { price: '£250-350k', transport: '⭐⭐⭐⭐ Good', schools: '⭐⭐⭐ Good', green: '⭐⭐⭐ Parks', population: '385k', verdict: 'South London, affordable. Good regeneration. Less prestige than central areas but value is better.' },
   };
 
+  function _movingToggleView(view) {
+    document.getElementById('moving-decide-view').style.display = view === 'decide' ? 'block' : 'none';
+    document.getElementById('moving-move-view').style.display = view === 'move' ? 'block' : 'none';
+
+    document.getElementById('btn-view-decide').style.background = view === 'decide' ? '#dc2626' : 'var(--surface)';
+    document.getElementById('btn-view-decide').style.color = view === 'decide' ? '#fff' : 'var(--text)';
+    document.getElementById('btn-view-decide').style.borderColor = view === 'decide' ? '#dc2626' : 'var(--border)';
+
+    document.getElementById('btn-view-move').style.background = view === 'move' ? '#dc2626' : 'var(--surface)';
+    document.getElementById('btn-view-move').style.color = view === 'move' ? '#fff' : 'var(--text)';
+    document.getElementById('btn-view-move').style.borderColor = view === 'move' ? '#dc2626' : 'var(--border)';
+  }
+
+  function _movingBuildDecideView(to, from, data) {
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🤔 Should you move to ${to.admin_district}?</div>
+
+        <!-- Comparison Table -->
+        <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:14px;overflow-x:auto">
+          <table style="width:100%;font-size:11px">
+            <tr style="border-bottom:1px solid var(--border);font-weight:600">
+              <td style="padding:8px 8px 8px 0">Factor</td>
+              <td style="padding:8px;text-align:center;color:var(--muted)">${from.admin_district}</td>
+              <td style="padding:8px;text-align:center;color:var(--muted)">${to.admin_district}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 8px 8px 0">💷 Prices</td><td style="padding:8px;text-align:center">${data.fromPrice}</td><td style="padding:8px;text-align:center;font-weight:600">${data.toPrice}</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 8px 8px 0">🚌 Transport</td><td style="padding:8px;text-align:center">${data.fromTransport}</td><td style="padding:8px;text-align:center">${data.toTransport}</td></tr>
+            <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 8px 8px 0">🏫 Schools</td><td style="padding:8px;text-align:center">${data.fromSchools}</td><td style="padding:8px;text-align:center">${data.toSchools}</td></tr>
+            <tr><td style="padding:8px 8px 8px 0">🌳 Green</td><td style="padding:8px;text-align:center">${data.fromGreen}</td><td style="padding:8px;text-align:center">${data.toGreen}</td></tr>
+          </table>
+        </div>
+
+        <!-- Verdict -->
+        <div style="background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:4px">✨ Verdict</div>
+          <div style="font-size:11px;color:#166534;line-height:1.5">${data.verdict}</div>
+        </div>
+
+        <a href="https://www.rightmove.co.uk/property-to-rent/${to.outcode}" target="_blank" style="display:block;padding:10px;background:#4f46e5;color:#fff;border-radius:8px;text-align:center;font-size:11px;font-weight:600;text-decoration:none">View properties in ${to.outcode} →</a>
+      </div>
+    `;
+  }
+
+  function _movingBuildMoveView(to, from, data) {
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px">✅ Your moving checklist & resources</div>
+
+        <!-- Key Tasks -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">📋 Essential tasks</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:11px">
+            <div style="background:var(--bg);padding:10px;border-radius:8px">
+              <strong>1. Register with new council</strong><br>
+              ${to.admin_district} Council<br>
+              <a href="https://www.gov.uk/find-local-council" target="_blank" style="color:#4f46e5;text-decoration:none">→ Find council details</a>
+            </div>
+            <div style="background:var(--bg);padding:10px;border-radius:8px">
+              <strong>2. Set up utilities</strong><br>
+              Check gas, electric, water for ${to.outcode}<br>
+              <a href="https://www.ofgem.gov.uk/" target="_blank" style="color:#4f46e5;text-decoration:none">→ Ofgem (energy)</a>
+            </div>
+            <div style="background:var(--bg);padding:10px;border-radius:8px">
+              <strong>3. Register with GP</strong><br>
+              Find a doctor in ${to.admin_district}<br>
+              <a href="https://www.nhs.uk/service-search/find-a-gp" target="_blank" style="color:#4f46e5;text-decoration:none">→ NHS GP finder</a>
+            </div>
+            <div style="background:var(--bg);padding:10px;border-radius:8px">
+              <strong>4. Book removals</strong><br>
+              Search local moving companies<br>
+              <a href="https://www.google.com/maps/search/removals+near+${to.outcode}" target="_blank" style="color:#4f46e5;text-decoration:none">→ Find movers on Maps</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Useful Links -->
+        <div style="border-top:1px solid var(--border);padding-top:12px">
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">🔗 Useful links</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:11px">
+            <a href="https://www.gov.uk/moving-home" target="_blank" style="padding:8px;background:var(--bg);border-radius:6px;text-decoration:none;color:#4f46e5;font-weight:600">Gov.uk moving checklist</a>
+            <a href="https://www.google.com/maps/place/${to.outcode}" target="_blank" style="padding:8px;background:var(--bg);border-radius:6px;text-decoration:none;color:#4f46e5;font-weight:600">Explore area on Maps</a>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   function _movingGetAreaData(toArea, fromArea) {
     const to = _AREA_DATA[toArea] || { price: 'TBD', transport: '⭐⭐⭐ Research needed', schools: '⭐⭐⭐ Research needed', green: '⭐⭐⭐ Research needed', population: 'Check ONS', verdict: 'Search for area data online for detailed info.' };
     const from = _AREA_DATA[fromArea] || { price: 'TBD', transport: '⭐⭐⭐', schools: '⭐⭐⭐', green: '⭐⭐⭐', population: 'Unknown' };
@@ -22647,7 +22735,7 @@ window.spotifyAddTrack = window.spotifyLike;
   function _movingShowGuideForm() {
     const html = `
       <div style="background:linear-gradient(135deg,#fef2f2,#fff);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📍 Moving From → To</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📍 Area Guide</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div>
             <label style="font-size:11px;color:var(--muted);font-weight:600">From (Current postcode)</label>
@@ -22657,7 +22745,7 @@ window.spotifyAddTrack = window.spotifyLike;
             <label style="font-size:11px;color:var(--muted);font-weight:600">To (New postcode)</label>
             <input id="moving-to-pc" type="text" placeholder="e.g. E1 6AN" maxlength="8" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;margin-top:4px;font-family:monospace;text-transform:uppercase" onchange="this.value = this.value.toUpperCase()">
           </div>
-          <button onclick="_movingLoadGuide()" style="width:100%;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">Show Area Guide →</button>
+          <button onclick="_movingLoadGuide()" style="width:100%;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">Load Guide →</button>
         </div>
       </div>
       <div id="moving-guide-results"></div>
@@ -22691,67 +22779,26 @@ window.spotifyAddTrack = window.spotifyLike;
       const from = fromData.result;
       const to = toData.result;
 
-      // Build decision-focused guide
+      // Build dual-view guide
       const areaComparison = _movingGetAreaData(to.admin_district, from.admin_district);
 
+      const decideView = _movingBuildDecideView(to, from, areaComparison);
+      const moveView = _movingBuildMoveView(to, from, areaComparison);
+
       const guide = `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🤔 Should you move to ${to.admin_district}?</div>
-
-          <!-- Area Comparison -->
-          <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:14px">
-            <table style="width:100%;font-size:11px;border-collapse:collapse">
-              <tr style="border-bottom:1px solid var(--border)">
-                <td style="padding:8px 0;font-weight:600">Aspect</td>
-                <td style="padding:8px;text-align:center;color:var(--muted)">${from.admin_district}</td>
-                <td style="padding:8px;text-align:center;color:var(--muted)">${to.admin_district}</td>
-              </tr>
-              <tr style="border-bottom:1px solid var(--border)">
-                <td style="padding:8px 0">🏠 House Price</td>
-                <td style="padding:8px;text-align:center">${areaComparison.fromPrice}</td>
-                <td style="padding:8px;text-align:center">${areaComparison.toPrice}</td>
-              </tr>
-              <tr style="border-bottom:1px solid var(--border)">
-                <td style="padding:8px 0">🚌 Transport</td>
-                <td style="padding:8px;text-align:center">${areaComparison.fromTransport}</td>
-                <td style="padding:8px;text-align:center">${areaComparison.toTransport}</td>
-              </tr>
-              <tr style="border-bottom:1px solid var(--border)">
-                <td style="padding:8px 0">🏫 Schools</td>
-                <td style="padding:8px;text-align:center">${areaComparison.fromSchools}</td>
-                <td style="padding:8px;text-align:center">${areaComparison.toSchools}</td>
-              </tr>
-              <tr>
-                <td style="padding:8px 0">☘️ Green Space</td>
-                <td style="padding:8px;text-align:center">${areaComparison.fromGreen}</td>
-                <td style="padding:8px;text-align:center">${areaComparison.toGreen}</td>
-              </tr>
-            </table>
-          </div>
-
-          <!-- Verdict -->
-          <div style="background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px">
-            <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:6px">✨ Should you move?</div>
-            <div style="font-size:11px;color:#166534;line-height:1.5">${areaComparison.verdict}</div>
-          </div>
-
-          <!-- Key Info -->
-          <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px">
-            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">📍 Area Details</div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">
-              <strong>County:</strong> ${to.admin_county || 'N/A'}<br>
-              <strong>Region:</strong> ${to.region || 'N/A'}<br>
-              <strong>Population:</strong> ${areaComparison.population}
-            </div>
-          </div>
-
-          <!-- Resources -->
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <a href="https://www.rightmove.co.uk/property-to-rent/${to.outcode}" target="_blank" style="padding:8px;background:#4f46e5;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;text-align:center">View rentals in ${to.outcode} →</a>
-            <a href="https://www.google.com/maps/place/${to.outcode}" target="_blank" style="padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;text-align:center">Explore on Google Maps →</a>
-          </div>
+        <!-- Toggle between views -->
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button onclick="_movingToggleView('decide')" id="btn-view-decide" style="flex:1;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:12px;transition:all .2s">🤔 Should I move?</button>
+          <button onclick="_movingToggleView('move')" id="btn-view-move" style="flex:1;padding:10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;font-weight:600;cursor:pointer;font-size:12px;transition:all .2s">✅ I'm moving</button>
         </div>
-      `;
+
+        <div id="moving-decide-view" style="display:block">
+          ${decideView}
+        </div>
+
+        <div id="moving-move-view" style="display:none">
+          ${moveView}
+        </div>`;
 
       document.getElementById('moving-guide-results').innerHTML = guide;
     } catch (e) {
