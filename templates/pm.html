@@ -825,13 +825,8 @@
   }
 
   function _closePanel() {
-    console.log("_closePanel() called");
-    var panel = document.getElementById("proj-panel");
-    var overlay = document.getElementById("proj-overlay");
-    console.log("proj-panel:", panel, "overlay:", overlay);
-    if (panel) panel.classList.remove("open");
-    if (overlay) overlay.classList.remove("open");
-    console.log("_closePanel() completed");
+    document.getElementById("proj-panel").classList.remove("open");
+    document.getElementById("proj-overlay").classList.remove("open");
   }
 
   function _loadProjects() {
@@ -1920,30 +1915,21 @@
 
   // ── Reset ─────────────────────────────────────────────────────────────────
   function _reset() {
-    console.log("_reset() called");
     _result = null;
     _savedProjectId = null;
     _challengeData = null;
     _selectedRole = "pm";
-    var input = document.getElementById("intake-input");
-    console.log("intake-input element:", input);
-    if (input) input.value = "";
+    document.getElementById("intake-input").value = "";
     document.querySelectorAll(".role-pill").forEach(function(b) { b.classList.remove("active"); });
     var pmPill = document.querySelector('.role-pill[data-role="pm"]');
     if (pmPill) pmPill.classList.add("active");
     var hint = document.getElementById("role-hint");
     if (hint) hint.textContent = _ROLE_HINTS.pm || "";
-    var output = document.getElementById("output");
-    var loading = document.getElementById("loading");
-    var assessLoading = document.getElementById("assess-loading");
-    var challengeView = document.getElementById("challenge-view");
-    if (output) output.style.display = "none";
-    if (loading) loading.style.display = "none";
-    if (assessLoading) assessLoading.style.display = "none";
-    if (challengeView) challengeView.style.display = "none";
-    console.log("About to call _showIntake()");
+    document.getElementById("output").style.display = "none";
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("assess-loading").style.display = "none";
+    document.getElementById("challenge-view").style.display = "none";
     _showIntake();
-    console.log("_reset() completed");
   }
 
   function _showIntake() {
