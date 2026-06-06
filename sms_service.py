@@ -14842,10 +14842,35 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
             _MENU_SESSION[fn] = {"save_id": sid, "expires": time.time() + 900, "page_count": 1}
 
         bullets = "\n".join(f"• {b.strip()}" for b in summary.split("•") if b.strip())
-        # OLD RECEIPT HANDLING REMOVED: now handled by agentic system above (lines 14689+)
-        # Receipts are either:
-        # - Complete: saved to receipts table immediately
-        # - Incomplete: saved as PENDING with agentic flow asking for missing fields
+        if img_type == "receipt" and receipt_data:
+            # Try to merge with recent complementary receipt (bill + items from different images)
+            receipt_data = _merge_recent_receipts(fn, receipt_data)
+
+            _r_merchant = receipt_data.get("merchant", "Unknown store")
+            _r_total    = receipt_data.get("total")
+            _r_items    = receipt_data.get("items", [])
+            _r_date     = receipt_data.get("shop_date", "")
+            _r_total_str = f"£{_r_total:.2f}" if _r_total else "total not readable"
+            _r_date_str  = f" on {_r_date}" if _r_date else ""
+            msg = f"🧾 *{_r_merchant}*{_r_date_str}\n"
+            msg += f"💰 Total: {_r_total_str}\n"
+            if _r_items:
+                msg += f"🛒 {len(_r_items)} items scanned\n"
+            msg += "\nAsk me: _how much at Tesco this month?_ or _spending this week?_"
+            _wa_send_proactive(fn, msg)
+            # Removed: automatic followup nudge (was cluttering clippings - receipt itself is enough)
+            # Auto-dismiss active_trip if receipt merchant matches destination
+            try:
+                _plain = fn.replace("whatsapp:", "").strip()
+                _at_chk = lib._sb().table("ma_details").select("data").eq("device_id", _plain).eq("type", "active_trip").order("id", desc=True).limit(1).execute()
+                if _at_chk.data:
+                    _at_dest = (_at_chk.data[0].get("data") or {}).get("destination", "").lower()
+                    _merch_l = _r_merchant.lower()
+                    if _at_dest and (_merch_l in _at_dest or _at_dest.split()[0] in _merch_l):
+                        lib._sb().table("ma_details").delete().eq("device_id", _plain).eq("type", "active_trip").execute()
+            except Exception:
+                pass
+            return
         if product_items or bullets or venue_info or brand_intel or menu_text:
             msg = f"{title}\n"
             if img_type == "product" and product_items:
