@@ -6824,20 +6824,23 @@ def api_v2_prefs_post():
 
     # ── Validate train stations ──────────────────────────────────────────────
     def _find_station(name):
-        """Find exact or close match for station name. Return (crs, display_name) or None."""
+        """Find exact or close match for station name. Strict validation. Return (crs, display_name) or None."""
         if not name: return None
         name_lower = name.lower().replace("station","").strip()
+        # NO digits allowed (rejects "longcross 1", "london 2", etc)
+        if any(c.isdigit() for c in name_lower):
+            return None
         # Exact match
         for cache_name, cache_stn in _STATION_CACHE.items():
             if cache_name == name_lower:
                 return cache_stn["crs"], cache_stn["name"]
-        # Prefix match
+        # Prefix match (must be at least 4 chars and high quality)
         for cache_name, cache_stn in _STATION_CACHE.items():
-            if cache_name.startswith(name_lower):
+            if len(name_lower) >= 4 and cache_name.startswith(name_lower):
                 return cache_stn["crs"], cache_stn["name"]
-        # Fuzzy match
+        # Fuzzy match (high cutoff - 0.8 = must be very similar)
         import difflib
-        close = difflib.get_close_matches(name_lower, list(_STATION_CACHE.keys()), n=1, cutoff=0.6)
+        close = difflib.get_close_matches(name_lower, list(_STATION_CACHE.keys()), n=1, cutoff=0.8)
         if close:
             stn = _STATION_CACHE[close[0]]
             return stn["crs"], stn["name"]
