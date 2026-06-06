@@ -1996,16 +1996,26 @@
 
       document.getElementById("main").innerHTML = html;
 
+      // Store projects in global map for quick access
+      window._projectsMap = {};
+      projects.forEach(function(p) {
+        window._projectsMap[p.id] = p;
+      });
+
       // Attach project click handlers
       var projBtns = document.querySelectorAll('.proj-btn');
-      console.log("Found " + projBtns.length + " project buttons");
       projBtns.forEach(function(btn) {
         btn.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation();
           var projId = this.getAttribute('data-proj-id');
-          console.log("Project clicked:", projId);
-          _selectProject(projId);
+          var proj = window._projectsMap[projId];
+          if (proj) {
+            _pmState.currentProject = proj;
+            _showModulePickerScreen();
+          } else {
+            alert("Project not found");
+          }
         });
       });
 
