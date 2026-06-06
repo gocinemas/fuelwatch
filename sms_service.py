@@ -17990,8 +17990,10 @@ def _whatsapp_reply_inner():
                     return str(resp)
 
                 # Auto-merge incomplete receipts from same date (items without merchant, or vice versa)
+                # Also deduplicate to avoid showing same receipt multiple times
                 try:
                     import json as _mj
+                    _merged_ids = set()
                     for i, row in enumerate(rows):
                         if row.get("merchant") and not row.get("items") and row.get("shop_date"):
                             # This receipt has merchant but no items - find matching items receipt from SAME DATE
@@ -18003,7 +18005,13 @@ def _whatsapp_reply_inner():
                                 merged_items = items_rows[0]["items"]
                                 lib._sb().table("receipts").update({"items": merged_items}).eq("id", row["id"]).execute()
                                 row["items"] = merged_items
+                                # Delete the now-merged items-only receipt
+                                lib._sb().table("receipts").delete().eq("id", items_rows[0]["id"]).execute()
+                                _merged_ids.add(items_rows[0]["id"])
                                 print(f"[receipt_query] auto-merged items for {row.get('merchant')} on {row.get('shop_date')}")
+                    # Deduplicate results by merchant + date
+                    _seen = set()
+                    rows = [r for r in rows if not (f"{r.get('merchant')}_{r.get('shop_date')}" in _seen or _seen.add(f"{r.get('merchant')}_{r.get('shop_date')}"))]
                 except Exception as e:
                     print(f"[receipt_query] merge error: {e}")
 
