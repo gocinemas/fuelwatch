@@ -14779,18 +14779,14 @@ _bkBadge();
       } catch(e) { _phShow("Network error"); return; }
     }
 
-    // Filter by direction if work station is set
+    // Show trains to Waterloo (simplified - no complex filtering)
     let trains = allTrains || [];
-    const workName = workBm ? (workBm.name || workBm.crs || "") : "";
-    if (workBm && workName && trains.length) {
-      const wn = workName.replace(/ station$/i,"").toLowerCase();
-      // Always show trains TO work (whether WFH visiting or commuting to office)
-      const filtered = trains.filter(t => (t.destination||"").toLowerCase().includes(wn));
-      if (filtered.length) trains = filtered;
-    }
 
-    if (!trains.length) {
-      document.getElementById("home-train-next").textContent = "No Trains";
+    // Filter to only Waterloo trains
+    const waterlooTrains = trains.filter(t => (t.destination || "").toLowerCase().includes("waterloo"));
+
+    if (!waterlooTrains.length) {
+      document.getElementById("home-train-next").textContent = "No Trains to Waterloo";
       document.getElementById("home-train-sub").textContent = "";
       document.getElementById("home-train-next").style.display = "";
       document.getElementById("home-train-sub").style.display = "none";
@@ -14798,14 +14794,14 @@ _bkBadge();
       return;
     }
 
-    const next = trains[0];
-    const dest = (next.destination || "").replace(/^London /i, "");
-    const workDest = workName ? workName.replace(/ station$/i, "") : dest;
-    document.getElementById("home-train-next").textContent = "Next to " + workDest + ": " + next.scheduled;
-    const status = next.expected && next.expected !== "On time" ? next.expected : "On time";
-    document.getElementById("home-train-sub").textContent = (next.platform ? "Plat " + next.platform : "") + (next.platform && status ? " · " : "") + status;
+    // Show next 3 trains
+    const displayTrains = waterlooTrains.slice(0, 3);
+    const timesList = displayTrains.map(t => t.scheduled).join(" · ");
+
+    document.getElementById("home-train-next").textContent = "Waterloo: " + timesList;
+    document.getElementById("home-train-sub").textContent = displayTrains.length + " trains available";
     document.getElementById("home-train-next").style.display = "";
-    document.getElementById("home-train-sub").style.display = next.platform || status !== "On time" ? "" : "none";
+    document.getElementById("home-train-sub").style.display = "";
     if (ph) ph.style.display = "none";
 
     // Show WFH/Office pill toggle only when both home + work stations are set
