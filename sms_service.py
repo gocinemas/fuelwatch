@@ -17922,6 +17922,52 @@ def _whatsapp_reply_inner():
             except Exception as _rae:
                 print(f"[recurring] parse error: {_rae}")
 
+    # ── Edit clipping details ──────────────────────────────────────────────────────
+    if body_lower.startswith("edit "):
+        merchant = body_lower.replace("edit ", "").strip()
+        if not merchant:
+            resp.message("Say *edit [store name]* — e.g. *edit renaissance*")
+            return str(resp)
+        try:
+            _plain_fn = from_number.replace("whatsapp:", "").strip()
+            # Find the clipping
+            rows = lib._sb().table("wa_saves").select("id,summary").eq("from_number", _plain_fn)\
+                .ilike("summary", f"%{merchant}%").order("created_at", desc=True).limit(1).execute().data or []
+            if not rows:
+                resp.message(f"No clipping found for '{merchant}'")
+                return str(resp)
+            # Set pending intent to edit
+            _set_wa_pending_intent(from_number, {"type": "edit_amount", "clipping_id": rows[0]["id"], "merchant": merchant})
+            resp.message(f"What's the bill amount for {rows[0]['summary'].title()}? (e.g. *36.50*)")
+        except Exception as e:
+            print(f"[edit] {e}")
+            resp.message(f"Error: {e}")
+        return str(resp)
+
+    # ── Pending intent: amount reply for edit ───────────────────────────────────────
+    _amount_m = re.match(r'^[\d.]+$', body.strip())
+    if _amount_m:
+        _edit_pending = _get_wa_pending_intent(from_number)
+        if _edit_pending and _edit_pending.get("type") == "edit_amount":
+            _clear_wa_pending_intent(from_number)
+            try:
+                amount = float(body.strip())
+                clipping_id = _edit_pending.get("clipping_id")
+                merchant = _edit_pending.get("merchant", "")
+                # Get existing data and update amount
+                row = lib._sb().table("wa_saves").select("data").eq("id", clipping_id).maybe_single().execute()
+                if row and row.data:
+                    data = row.data.get("data") or {}
+                    data["total"] = amount
+                    lib._sb().table("wa_saves").update({"data": data}).eq("id", clipping_id).execute()
+                    resp.message(f"✅ Updated {merchant.title()} — bill amount now £{amount:.2f}")
+                else:
+                    resp.message("Clipping not found")
+            except Exception as e:
+                print(f"[edit_amount] {e}")
+                resp.message(f"Error: {e}")
+            return str(resp)
+
     # ── Merge clippings by merchant ────────────────────────────────────────────────
     if body_lower.startswith("merge "):
         merchant = body_lower.replace("merge ", "").strip()
