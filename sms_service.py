@@ -17922,6 +17922,42 @@ def _whatsapp_reply_inner():
             except Exception as _rae:
                 print(f"[recurring] parse error: {_rae}")
 
+    # ── Merge clippings by merchant ────────────────────────────────────────────────
+    if body_lower.startswith("merge "):
+        merchant = body_lower.replace("merge ", "").strip()
+        if not merchant:
+            resp.message("Say *merge [store name]* — e.g. *merge renaissance* or *merge tesco*")
+            return str(resp)
+        try:
+            _plain_fn = from_number.replace("whatsapp:", "").strip()
+            # Find all clippings for this merchant
+            rows = lib._sb().table("wa_saves").select("*").eq("from_number", _plain_fn)\
+                .ilike("summary", f"%{merchant}%").order("created_at", desc=True).execute().data or []
+            if not rows:
+                resp.message(f"No clippings found for '{merchant}'. Check the spelling!")
+                return str(resp)
+            if len(rows) < 2:
+                resp.message(f"Only found 1 clipping for '{merchant}' — nothing to merge!")
+                return str(resp)
+            # Merge: combine items + total
+            merged_data = {"items": [], "total": None}
+            for row in rows:
+                data = row.get("data") or {}
+                if data.get("items"):
+                    merged_data["items"].extend(data.get("items", []))
+                if data.get("total") and not merged_data["total"]:
+                    merged_data["total"] = data["total"]
+            # Keep the first (newest) clipping, delete others
+            import json as _fj
+            lib._sb().table("wa_saves").update({"data": merged_data}).eq("id", rows[0]["id"]).execute()
+            for row in rows[1:]:
+                lib._sb().table("wa_saves").delete().eq("id", row["id"]).execute()
+            resp.message(f"✅ Merged {len(rows)} {merchant.title()} clippings! Now showing items + total together.")
+        except Exception as e:
+            print(f"[merge] {e}")
+            resp.message(f"Merge failed: {e}")
+        return str(resp)
+
     # ── Too Good To Go ────────────────────────────────────────────────────────────
     if body_lower in ("magic bags", "tgtg", "too good to go", "tgtg setup"):
         existing = None
