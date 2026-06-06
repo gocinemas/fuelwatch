@@ -8066,6 +8066,17 @@ def _v2_fetch_weather(postcode: str) -> dict:
 
 def _v2_fetch_trains(train_from: str, train_to: str) -> dict:
     """Next 3 departures on the saved route using RTT calling_at filter."""
+    # Map common London locations to their nearest rail stations
+    _location_map = {
+        "canary wharf": "Paddington",
+        "canary warf": "Paddington",
+        "docklands": "Paddington",
+        "bank": "Liverpool Street",
+        "city": "Liverpool Street",
+        "shoreditch": "Liverpool Street",
+    }
+    train_to = _location_map.get(train_to.lower(), train_to)
+
     def _crs_for(name: str) -> str:
         """Look up CRS for a station name or return as-is if already a 3-letter code."""
         if name and len(name) == 3 and name.isupper():
