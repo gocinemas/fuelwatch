@@ -17987,6 +17987,24 @@ def _whatsapp_reply_inner():
                     resp.message(f"No orders found at '{merchant_query}'. Try a different spelling?")
                     return str(resp)
 
+                # Auto-merge incomplete receipts (items without merchant, or vice versa)
+                try:
+                    import json as _mj
+                    for i, row in enumerate(rows):
+                        if row.get("merchant") and not row.get("items"):
+                            # This receipt has merchant but no items - find matching items receipt
+                            items_rows = lib._sb().table("receipts").select("id,items").eq("phone", _plain_fn)\
+                                .not_("items", "is", "null").ilike("merchant", f"%{row['merchant'][:10]}%")\
+                                .order("shop_date", desc=True).limit(1).execute().data or []
+                            if items_rows and items_rows[0].get("items"):
+                                # Merge!
+                                merged_items = items_rows[0]["items"]
+                                lib._sb().table("receipts").update({"items": merged_items}).eq("id", row["id"]).execute()
+                                row["items"] = merged_items
+                                print(f"[receipt_query] auto-merged items for {row.get('merchant')}")
+                except Exception as e:
+                    print(f"[receipt_query] merge error: {e}")
+
                 # Format results
                 msg = f"📋 Orders at {rows[0]['merchant'].title()}:\n\n"
                 for row in rows:
