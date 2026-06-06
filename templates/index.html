@@ -22793,6 +22793,7 @@ window.spotifyAddTrack = window.spotifyLike;
       const to = toData.result;
 
       // Build dual-view guide
+      console.log('[moving] from district:', from.admin_district, 'to district:', to.admin_district);
       const areaComparison = _movingGetAreaData(to.admin_district, from.admin_district);
 
       const decideView = _movingBuildDecideView(to, from, areaComparison);
