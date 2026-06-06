@@ -810,6 +810,13 @@
 
   var STEPS = ["ls-1","ls-2","ls-3","ls-4","ls-5","ls-6"];
 
+  var _pmState = {
+    currentScreen: "projects",
+    currentProject: null,
+    currentModule: null,
+    data: {}
+  };
+
   // ── Panel ─────────────────────────────────────────────────────────────────
   function _togglePanel() {
     var panel = document.getElementById("proj-panel");
