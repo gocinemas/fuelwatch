@@ -421,7 +421,7 @@
     <div style="font-size:13px;color:var(--muted);padding:20px 16px">Loading…</div>
   </div>
   <div style="padding:12px 16px;border-top:1px solid var(--border)">
-    <button onclick="_closePanel(); _showCreateProjectScreen();" style="width:100%;padding:10px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ New project</button>
+    <button onclick="_closePanel();_reset();" style="width:100%;padding:10px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ New project</button>
   </div>
 </div>
 
@@ -432,7 +432,8 @@
   </button>
   <div class="brand" style="margin-left:auto;margin-right:auto">Miru<span>PM</span></div>
   <div class="topbar-right">
-    <button class="icon-btn" onclick="_reset()">+ New</button>
+    <button class="icon-btn" onclick="document.getElementById('modules-modal').style.display='block';_renderModuleMenu()">+ New Module</button>
+    <button class="icon-btn" onclick="_reset()">+ New Brief</button>
   </div>
 </div>
 
@@ -810,22 +811,6 @@
 
   var STEPS = ["ls-1","ls-2","ls-3","ls-4","ls-5","ls-6"];
 
-  var _pmState = {
-    currentScreen: "projects",
-    currentProject: null,
-    currentModule: null,
-    data: {}
-  };
-
-  var ALL_MODULES = [
-    { id: "swot", name: "🎯 SWOT Analysis", desc: "Strengths, Weaknesses, Opportunities, Threats" },
-    { id: "discovery", name: "🔍 Discovery & Research", desc: "Synthesize user research, interviews, feedback" },
-    { id: "brief", name: "📋 Brief & Planning", desc: "Create BOSCARD, vision, scope" },
-    { id: "analysis", name: "📊 Current State Analysis", desc: "For migrations: analyze current vs. go-to state" },
-    { id: "interview", name: "🎤 Interview & Synthesis", desc: "Real-time synthesis to requirements" },
-    { id: "execution", name: "⚙️ Execution & Delivery", desc: "Project setup, team, timeline" }
-  ];
-
   // ── Panel ─────────────────────────────────────────────────────────────────
   function _togglePanel() {
     var panel = document.getElementById("proj-panel");
@@ -843,133 +828,6 @@
   function _closePanel() {
     document.getElementById("proj-panel").classList.remove("open");
     document.getElementById("proj-overlay").classList.remove("open");
-  }
-
-  function _showCreateProjectScreen() {
-    var html = '<div style="max-width:500px;margin:0 auto;padding:32px 20px">';
-    html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:24px">Create New Project</h2>';
-
-    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Project Name *</label>';
-    html += '<input id="new-proj-name" type="text" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px" placeholder="e.g. AI Transformation Initiative">';
-
-    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">What stage is this project?</label>';
-    html += '<select id="new-proj-stage" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px">';
-    html += '<option value="">Select...</option>';
-    html += '<option value="brand_new">Brand New (unknown requirements)</option>';
-    html += '<option value="existing">Existing (redesign/new way)</option>';
-    html += '<option value="migration">Migration (clear scope)</option>';
-    html += '<option value="custom">Custom</option>';
-    html += '</select>';
-
-    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Description (optional)</label>';
-    html += '<textarea id="new-proj-desc" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:24px;min-height:80px;font-family:inherit" placeholder="Brief context..."></textarea>';
-
-    html += '<button onclick="_createProject()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:10px">Create Project</button>';
-    html += '<button onclick="_showProjectsScreen()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600">Back</button>';
-
-    html += '</div>';
-    document.getElementById("main").innerHTML = html;
-  }
-
-  function _createProject() {
-    var name = document.getElementById("new-proj-name").value.trim();
-    var stage = document.getElementById("new-proj-stage").value;
-    var desc = document.getElementById("new-proj-desc").value.trim();
-    if (!name || !stage) { alert("Name and stage required"); return; }
-
-    fetch("/api/pm/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name, proj_type: stage, description: desc })
-    }).then(r => r.json()).then(function(d) {
-      if (d.project) {
-        _pmState.currentProject = d.project;
-        _showModulePickerScreen();
-      } else {
-        alert("Error: " + (d.error || "Failed to create"));
-      }
-    }).catch(function(e) { alert("Error: " + e.message); });
-  }
-
-  function _selectProject(projectId) {
-    console.log("Selecting project:", projectId);
-    fetch("/api/pm/projects/" + projectId).then(function(r) {
-      console.log("Project fetch response status:", r.status);
-      if (!r.ok) {
-        alert("Error fetching project: " + r.status);
-        return;
-      }
-      return r.json();
-    }).then(function(p) {
-      console.log("Project data:", p);
-      if (!p) {
-        alert("Project not found");
-        return;
-      }
-      var proj = Array.isArray(p) ? p[0] : p;
-      if (!proj || !proj.id) {
-        alert("Invalid project data");
-        console.error("Invalid project:", proj);
-        return;
-      }
-      console.log("Setting current project:", proj);
-      _pmState.currentProject = proj;
-      _showModulePickerScreen();
-    }).catch(function(e) {
-      console.error("Project select error:", e);
-      alert("Error opening project: " + e.message);
-    });
-  }
-
-  function _showModulePickerScreen() {
-    var html = '<div style="max-width:700px;margin:0 auto;padding:32px 20px">';
-    html += '<button onclick="_showProjectsScreen()" style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:20px">← Back to Projects</button>';
-
-    html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:8px">' + _esc(_pmState.currentProject.name) + '</h2>';
-    html += '<p style="font-size:13px;color:var(--muted);margin-bottom:32px">' + _esc(_pmState.currentProject.description || _pmState.currentProject.proj_type) + '</p>';
-
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:32px">';
-    ALL_MODULES.forEach(function(mod) {
-      html += '<button onclick="_selectModule(\'' + mod.id + '\')" style="padding:16px;border:1.5px solid var(--border);background:var(--surface2);border-radius:12px;cursor:pointer;text-align:left;transition:all .15s"'
-        + ' onmouseover="this.style.borderColor=\'var(--accent)\';this.style.background=\'rgba(99,102,241,.05)\'" '
-        + ' onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--surface2)\'">'
-        + '<div style="font-size:14px;font-weight:700;color:var(--text)">' + mod.name + '</div>'
-        + '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + mod.desc + '</div>'
-        + '</button>';
-    });
-    html += '</div>';
-
-    html += '<div style="margin-bottom:32px">';
-    html += '<h3 style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--accent);text-transform:uppercase">Log</h3>';
-    html += '<div id="activity-log-content" style="font-size:13px;color:var(--muted)">Loading...</div>';
-    html += '</div>';
-
-    html += '</div>';
-    document.getElementById("main").innerHTML = html;
-
-    fetch("/api/pm/docs?project_id=" + _pmState.currentProject.id)
-      .then(r => r.json())
-      .then(function(docs) {
-        var logHtml = '';
-        if (!docs || docs.length === 0) {
-          logHtml = '<div style="color:var(--muted);font-size:12px">No activity yet</div>';
-        } else {
-          docs.forEach(function(doc) {
-            var icon = { 'swot': '🎯', 'discovery': '🔍', 'brief': '📋', 'boscard': '📋', 'interview': '🎤', 'requirements': '🎤', 'analysis': '📊' }[doc.doc_type] || '📄';
-            var date = new Date(doc.created_at);
-            var dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            logHtml += '<div style="padding:6px 0;cursor:pointer" onclick="_viewDocDetail(\'' + doc.id + '\')">';
-            logHtml += '<span style="font-size:14px;margin-right:8px">' + icon + '</span>';
-            logHtml += '<span style="font-size:13px">' + _esc(doc.title) + '</span>';
-            logHtml += '<span style="font-size:11px;color:var(--muted);margin-left:8px">' + dateStr + '</span>';
-            logHtml += '</div>';
-          });
-        }
-        document.getElementById("activity-log-content").innerHTML = logHtml;
-      })
-      .catch(function(e) {
-        document.getElementById("activity-log-content").innerHTML = '<div style="color:var(--muted);font-size:12px">Error loading activity</div>';
-      });
   }
 
   function _loadProjects() {
@@ -2087,9 +1945,858 @@
     return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
 
+  // ── MiruPM v2: Project-Aware Modular System ─────────────────────────────────
+  var _pmState = {
+    currentScreen: "projects", // projects, modulePicker, module
+    currentProject: null,
+    currentModule: null,
+    data: {}
+  };
+
+  var ALL_MODULES = [
+    { id: "swot", name: "🎯 SWOT Analysis", desc: "Strengths, Weaknesses, Opportunities, Threats" },
+    { id: "discovery", name: "🔍 Discovery & Research", desc: "Synthesize user research, interviews, feedback" },
+    { id: "brief", name: "📋 Brief & Planning", desc: "Create BOSCARD, vision, scope" },
+    { id: "analysis", name: "📊 Current State Analysis", desc: "For migrations: analyze current vs. go-to state" },
+    { id: "interview", name: "🎤 Interview & Synthesis", desc: "Real-time synthesis to requirements" },
+    { id: "execution", name: "⚙️ Execution & Delivery", desc: "Project setup, team, timeline" }
+  ];
+
+  function _initPM() {
+    _showProjectsScreen();
+  }
+
+  function _showProjectsScreen() {
+    _pmState.currentScreen = "projects";
+    fetch("/api/pm/projects").then(r => r.json()).then(function(projects) {
+      var html = '<div style="text-align:center;padding:32px 20px">';
+      html += '<h1 style="font-size:28px;font-weight:900;margin-bottom:8px">MiruPM</h1>';
+      html += '<p style="font-size:14px;color:var(--muted);margin-bottom:32px">Programme Intelligence</p>';
+
+      if (projects && projects.length > 0) {
+        html += '<div style="text-align:left;max-width:600px;margin:0 auto;margin-bottom:24px">';
+        html += '<h3 style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent);text-transform:uppercase">Your Projects (' + projects.length + ')</h3>';
+        projects.forEach(function(p) {
+          var id = p.id;
+          var name = p.name;
+          var desc = p.description || p.proj_type;
+          html += '<div style="display:flex;gap:8px;margin-bottom:8px" class="proj-row">';
+          html += '<button style="flex:1;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);cursor:pointer;text-align:left" class="proj-btn" data-proj-id="' + id + '">';
+          html += '<div style="font-size:14px;font-weight:700">' + _esc(name) + '</div>';
+          html += '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + _esc(desc) + '</div>';
+          html += '</button>';
+          html += '<button id="del-' + id + '" class="del-btn" data-id="' + id + '" data-name="' + _esc(name).replace(/"/g, '&quot;') + '" title="Delete" style="padding:4px 8px;background:none;color:var(--muted);border:none;border-radius:4px;cursor:pointer;font-size:16px;opacity:0.6;transition:opacity .15s;flex-shrink:0" onmouseover="this.style.opacity=\'1\';this.style.background=\'#fee2e2\'" onmouseout="this.style.opacity=\'0.6\';this.style.background=\'none\'">×</button>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      html += '<button onclick="_showCreateProjectScreen()" style="padding:12px 24px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">+ Create New Project</button>';
+      html += '</div>';
+
+      document.getElementById("main").innerHTML = html;
+
+      // Attach project click handlers
+      var projBtns = document.querySelectorAll('.proj-btn');
+      console.log("Found " + projBtns.length + " project buttons");
+      projBtns.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var projId = this.getAttribute('data-proj-id');
+          console.log("Project clicked:", projId);
+          _selectProject(projId);
+        });
+      });
+
+      // Attach delete handlers
+      var delBtns = document.querySelectorAll('.del-btn');
+      delBtns.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var projId = this.getAttribute('data-id');
+          console.log("Delete clicked for:", projId);
+          _deleteProject(projId);
+        });
+      });
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _deleteProject(projectId) {
+    console.log("Deleting project:", projectId);
+    fetch("/api/pm/projects/" + projectId, {
+      method: "DELETE"
+    }).then(function(r) {
+      console.log("Delete response:", r.status);
+      if (r.ok) {
+        return r.json().then(function(data) {
+          console.log("Delete succeeded:", data);
+          alert("✓ Project deleted");
+          _showProjectsScreen();
+        });
+      } else {
+        return r.json().then(function(data) {
+          alert("Error: " + (data.error || "Delete failed"));
+        });
+      }
+    }).catch(function(e) {
+      console.error("Delete error:", e);
+      alert("Error: " + e.message);
+    });
+  }
+
+  function _showCreateProjectScreen() {
+    var html = '<div style="max-width:500px;margin:0 auto;padding:32px 20px">';
+    html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:24px">Create New Project</h2>';
+
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Project Name *</label>';
+    html += '<input id="new-proj-name" type="text" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px" placeholder="e.g. AI Transformation Initiative">';
+
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">What stage is this project?</label>';
+    html += '<select id="new-proj-stage" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:20px">';
+    html += '<option value="">Select...</option>';
+    html += '<option value="brand_new">Brand New (unknown requirements)</option>';
+    html += '<option value="existing">Existing (redesign/new way)</option>';
+    html += '<option value="migration">Migration (clear scope)</option>';
+    html += '<option value="custom">Custom</option>';
+    html += '</select>';
+
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Description (optional)</label>';
+    html += '<textarea id="new-proj-desc" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:24px;min-height:80px;font-family:inherit" placeholder="Brief context..."></textarea>';
+
+    html += '<button onclick="_createProject()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:10px">Create Project</button>';
+    html += '<button onclick="_showProjectsScreen()" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600">Back</button>';
+
+    html += '</div>';
+    document.getElementById("main").innerHTML = html;
+  }
+
+  function _createProject() {
+    var name = document.getElementById("new-proj-name").value.trim();
+    var stage = document.getElementById("new-proj-stage").value;
+    var desc = document.getElementById("new-proj-desc").value.trim();
+    if (!name || !stage) { alert("Name and stage required"); return; }
+
+    fetch("/api/pm/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name, proj_type: stage, description: desc })
+    }).then(r => r.json()).then(function(d) {
+      if (d.project) {
+        _selectProject(d.project.id);
+      } else {
+        alert("Error: " + (d.error || "Failed to create"));
+      }
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _selectProject(projectId) {
+    console.log("Selecting project:", projectId);
+    fetch("/api/pm/projects/" + projectId).then(function(r) {
+      console.log("Project fetch response status:", r.status);
+      if (!r.ok) {
+        alert("Error fetching project: " + r.status);
+        return;
+      }
+      return r.json();
+    }).then(function(p) {
+      console.log("Project data:", p);
+      if (!p) {
+        alert("Project not found");
+        return;
+      }
+      // Handle array response from GET endpoint
+      var proj = Array.isArray(p) ? p[0] : p;
+      if (!proj || !proj.id) {
+        alert("Invalid project data");
+        console.error("Invalid project:", proj);
+        return;
+      }
+      console.log("Setting current project:", proj);
+      _pmState.currentProject = proj;
+      _showModulePickerScreen();
+    }).catch(function(e) {
+      console.error("Project select error:", e);
+      alert("Error opening project: " + e.message);
+    });
+  }
+
+  function _showModulePickerScreen() {
+    var html = '<div style="max-width:700px;margin:0 auto;padding:32px 20px">';
+    html += '<button onclick="_showProjectsScreen()" style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:20px">← Back to Projects</button>';
+
+    html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:8px">' + _esc(_pmState.currentProject.name) + '</h2>';
+    html += '<p style="font-size:13px;color:var(--muted);margin-bottom:32px">' + _esc(_pmState.currentProject.description || _pmState.currentProject.proj_type) + '</p>';
+
+    // Module grid
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:32px">';
+    ALL_MODULES.forEach(function(mod) {
+      html += '<button onclick="_selectModule(\'' + mod.id + '\')" style="padding:16px;border:1.5px solid var(--border);background:var(--surface2);border-radius:12px;cursor:pointer;text-align:left;transition:all .15s"'
+        + ' onmouseover="this.style.borderColor=\'var(--accent)\';this.style.background=\'rgba(99,102,241,.05)\'" '
+        + ' onmouseout="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--surface2)\'">'
+        + '<div style="font-size:14px;font-weight:700;color:var(--text)">' + mod.name + '</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + mod.desc + '</div>'
+        + '</button>';
+    });
+    html += '</div>';
+
+    // Activity Log - moved below modules
+    html += '<div style="margin-bottom:32px">';
+    html += '<h3 style="font-size:12px;font-weight:700;margin-bottom:12px;color:var(--accent);text-transform:uppercase">Log</h3>';
+    html += '<div id="activity-log-content" style="font-size:13px;color:var(--muted)">Loading...</div>';
+    html += '</div>';
+
+    html += '</div>';
+    document.getElementById("main").innerHTML = html;
+
+    // Load activity log
+    fetch("/api/pm/docs?project_id=" + _pmState.currentProject.id)
+      .then(r => r.json())
+      .then(function(docs) {
+        var logHtml = '';
+        if (!docs || docs.length === 0) {
+          logHtml = '<div style="color:var(--muted);font-size:12px">No activity yet</div>';
+        } else {
+          docs.forEach(function(doc) {
+            var icon = {
+              'swot': '🎯',
+              'discovery': '🔍',
+              'brief': '📋',
+              'boscard': '📋',
+              'interview': '🎤',
+              'requirements': '🎤',
+              'analysis': '📊'
+            }[doc.doc_type] || '📄';
+
+            var date = new Date(doc.created_at);
+            var dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            logHtml += '<div style="padding:6px 0;cursor:pointer" onclick="_viewDocDetail(\'' + doc.id + '\')">';
+            logHtml += '<span style="font-size:14px;margin-right:8px">' + icon + '</span>';
+            logHtml += '<span style="font-size:13px">' + _esc(doc.title) + '</span>';
+            logHtml += '<span style="font-size:11px;color:var(--muted);margin-left:8px">' + dateStr + '</span>';
+            logHtml += '</div>';
+          });
+        }
+        document.getElementById("activity-log-content").innerHTML = logHtml;
+      })
+      .catch(function(e) {
+        document.getElementById("activity-log-content").innerHTML = '<div style="color:var(--muted);font-size:12px">Error loading activity</div>';
+      });
+  }
+
+  function _showProjectDetailsScreen() {
+    var html = '<div style="max-width:700px;margin:0 auto;padding:32px 20px">';
+    html += '<button onclick="_showModulePickerScreen()" style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:20px">← Back</button>';
+    html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:24px">Project Activity</h2>';
+    html += '<div style="text-align:center;padding:40px;color:var(--muted)">Loading...</div>';
+    document.getElementById("main").innerHTML = html;
+
+    fetch("/api/pm/docs?project_id=" + _pmState.currentProject.id)
+      .then(r => r.json())
+      .then(function(docs) {
+        var html = '<div style="max-width:700px;margin:0 auto;padding:32px 20px">';
+        html += '<button onclick="_showModulePickerScreen()" style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:20px">← Back</button>';
+        html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:24px">Project Activity</h2>';
+
+        if (!docs || docs.length === 0) {
+          html += '<p style="color:var(--muted);text-align:center;padding:40px">No findings saved yet. Start adding modules!</p>';
+        } else {
+          html += '<div style="border-left:2px solid var(--accent);padding-left:20px">';
+          docs.forEach(function(doc) {
+            var icon = {
+              'swot': '🎯',
+              'discovery': '🔍',
+              'brief': '📋',
+              'boscard': '📋',
+              'interview': '🎤',
+              'requirements': '🎤',
+              'analysis': '📊'
+            }[doc.doc_type] || '📄';
+
+            html += '<div style="margin-bottom:20px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);cursor:pointer" onclick="_viewDocDetail(\'' + doc.id + '\', \'' + _esc(doc.doc_type).replace(/'/g, "\\'") + '\')">';
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+            html += '<span style="font-size:18px">' + icon + '</span>';
+            html += '<div>';
+            html += '<div style="font-size:13px;font-weight:700">' + _esc(doc.title) + '</div>';
+            html += '<div style="font-size:11px;color:var(--muted)">Saved on ' + new Date(doc.created_at).toLocaleDateString() + '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+          });
+          html += '</div>';
+        }
+
+        html += '</div>';
+        document.getElementById("main").innerHTML = html;
+      })
+      .catch(function(e) {
+        alert("Error loading findings: " + e.message);
+        _showModulePickerScreen();
+      });
+  }
+
+  var _editingDocId = null;
+
+  function _viewDocDetail(docId) {
+    console.log("Viewing doc:", docId);
+    fetch("/api/pm/docs?project_id=" + _pmState.currentProject.id)
+      .then(r => r.json())
+      .then(function(docs) {
+        var doc = docs.find(d => d.id == docId);
+        if (!doc) { alert("Document not found"); return; }
+
+        _editingDocId = docId;
+
+        var html = '<div style="max-width:700px;margin:0 auto;padding:32px 20px">';
+        html += '<div style="display:flex;gap:8px;margin-bottom:20px">';
+        html += '<button onclick="_showModulePickerScreen()" style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px">← Back</button>';
+        html += '<button onclick="_startEdit()" style="padding:8px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px">✎ Edit</button>';
+        html += '</div>';
+        html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:8px">' + _esc(doc.title) + '</h2>';
+        html += '<p style="font-size:12px;color:var(--muted);margin-bottom:24px">Saved on ' + new Date(doc.created_at).toLocaleDateString() + '</p>';
+
+        var content = doc.content;
+        try {
+          content = JSON.parse(content);
+        } catch(e) {}
+
+        html += '<div id="view-content">';
+        if (typeof content === 'object') {
+          html += '<div style="background:var(--surface2);padding:16px;border-radius:8px">';
+          Object.keys(content).forEach(function(key) {
+            var val = content[key];
+            html += '<div style="margin-bottom:16px">';
+            html += '<div style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:6px">' + key.replace(/_/g, ' ') + '</div>';
+            if (Array.isArray(val)) {
+              html += '<ul style="margin:0;padding-left:20px">';
+              val.forEach(function(item) {
+                html += '<li style="font-size:13px;margin-bottom:4px">' + _esc(item) + '</li>';
+              });
+              html += '</ul>';
+            } else {
+              html += '<div style="font-size:13px;line-height:1.6">' + _esc(String(val)) + '</div>';
+            }
+            html += '</div>';
+          });
+          html += '</div>';
+          _pmState.currentDocContent = JSON.stringify(content, null, 2);
+        } else {
+          html += '<div style="background:var(--surface2);padding:16px;border-radius:8px;font-size:13px;line-height:1.6;white-space:pre-wrap">' + _esc(content) + '</div>';
+          _pmState.currentDocContent = content;
+        }
+        html += '</div>';
+
+        html += '</div>';
+        document.getElementById("main").innerHTML = html;
+      })
+      .catch(function(e) {
+        alert("Error loading document: " + e.message);
+      });
+  }
+
+  function _startEdit() {
+    var content = _pmState.currentDocContent;
+    var parsedContent = null;
+    try {
+      parsedContent = JSON.parse(content);
+    } catch(e) {}
+
+    var html = '<div style="max-width:700px;margin:0 auto;padding:32px 20px">';
+    html += '<div style="display:flex;gap:8px;margin-bottom:20px">';
+    html += '<button onclick="location.reload()" style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px">← Back</button>';
+    html += '</div>';
+    html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:8px">Edit</h2>';
+
+    // Check if this is SWOT (has strengths, weaknesses, opportunities, threats)
+    if (parsedContent && typeof parsedContent === 'object' &&
+        ('strengths' in parsedContent || 'weaknesses' in parsedContent ||
+         'opportunities' in parsedContent || 'threats' in parsedContent)) {
+      // Structured SWOT editor
+      var fields = ['strengths', 'weaknesses', 'opportunities', 'threats'];
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+      fields.forEach(function(field) {
+        var label = field.charAt(0).toUpperCase() + field.slice(1);
+        var items = parsedContent[field] || [];
+        html += '<div>';
+        html += '<label style="display:block;font-weight:700;margin-bottom:8px;font-size:12px;color:var(--accent);text-transform:uppercase">' + label + '</label>';
+        html += '<textarea id="edit-' + field + '" style="width:100%;min-height:120px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px">' +
+          (Array.isArray(items) ? items.join("\n") : items) + '</textarea>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:4px">One per line</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '<div style="margin-top:20px;display:flex;gap:8px">';
+      html += '<button onclick="_saveEditedSWOT()" style="padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">Save</button>';
+      html += '<button onclick="location.reload()" style="padding:10px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer">Cancel</button>';
+      html += '</div>';
+    } else {
+      // Raw text editor for other formats
+      html += '<div style="margin-bottom:20px">';
+      html += '<textarea id="edit-content" style="width:100%;min-height:300px;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:12px">' + _esc(content) + '</textarea>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:8px">';
+      html += '<button onclick="_saveEdit()" style="padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">Save</button>';
+      html += '<button onclick="location.reload()" style="padding:10px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer">Cancel</button>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+    document.getElementById("main").innerHTML = html;
+  }
+
+  function _saveEditedSWOT() {
+    var content = {
+      strengths: document.getElementById("edit-strengths").value.trim().split("\n").filter(x => x.trim()),
+      weaknesses: document.getElementById("edit-weaknesses").value.trim().split("\n").filter(x => x.trim()),
+      opportunities: document.getElementById("edit-opportunities").value.trim().split("\n").filter(x => x.trim()),
+      threats: document.getElementById("edit-threats").value.trim().split("\n").filter(x => x.trim())
+    };
+
+    fetch("/api/pm/docs/" + _editingDocId, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: JSON.stringify(content) })
+    }).then(r => r.json()).then(function(d) {
+      alert("✓ Saved");
+      location.reload();
+    }).catch(function(e) {
+      alert("Error: " + e.message);
+    });
+  }
+
+  function _saveEdit() {
+    var content = document.getElementById("edit-content").value;
+    fetch("/api/pm/docs/" + _editingDocId, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: content })
+    }).then(r => r.json()).then(function(d) {
+      alert("✓ Saved");
+      location.reload();
+    }).catch(function(e) {
+      alert("Error: " + e.message);
+    });
+  }
+
+  function _selectModule(moduleId) {
+    _pmState.currentModule = moduleId;
+    _pmState.currentScreen = "module";
+    _renderModule(moduleId);
+  }
+
+  function _renderModule(moduleId) {
+    var mod = ALL_MODULES.find(m => m.id === moduleId);
+    var html = '<div style="max-width:700px;margin:0 auto;padding:32px 20px">';
+    html += '<button onclick="_showModulePickerScreen()" style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:20px">← Module List</button>';
+    html += '<h2 style="font-size:24px;font-weight:900;margin-bottom:8px">' + mod.name + '</h2>';
+    html += '<p style="color:var(--muted);font-size:13px;margin-bottom:24px">' + mod.desc + '</p>';
+
+    if (moduleId === "discovery") {
+      html += _renderDiscoveryUI();
+    } else if (moduleId === "brief") {
+      html += _renderBriefUI();
+    } else if (moduleId === "interview") {
+      html += _renderInterviewUI();
+    } else if (moduleId === "execution") {
+      html += _renderExecutionUI();
+    } else if (moduleId === "swot") {
+      html += _renderSWOTUI();
+    } else if (moduleId === "analysis") {
+      html += _renderAnalysisUI();
+    }
+
+    html += '</div>';
+    document.getElementById("main").innerHTML = html;
+  }
+
+  function _renderDiscoveryUI() {
+    var html = '';
+    html += '<div style="margin-bottom:20px;padding:16px;background:var(--surface2);border-radius:8px">';
+    html += '<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Option 1: Upload research files or paste notes, let AI synthesize</p>';
+    html += '<div style="margin-bottom:12px">';
+    html += '<input type="file" id="discovery-file" accept=".pdf,.docx,.xlsx,.xls" onchange="_pmUploadFile(\'discovery\')" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-bottom:8px">';
+    html += '</div>';
+    html += '<textarea id="discovery-notes" style="width:100%;min-height:120px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;margin-bottom:10px" placeholder="Or paste research notes, interviews, feedback..."></textarea>';
+    html += '<button onclick="_pmSynthesizeDiscovery()" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px">✨ Synthesize Findings with AI</button>';
+    html += '</div>';
+
+    html += '<div style="margin-bottom:20px;text-align:center;color:var(--muted);font-size:12px">OR</div>';
+
+    html += '<div style="margin-bottom:20px">';
+    html += '<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Option 2: Manual entry of findings</p>';
+    html += '<div style="display:grid;grid-template-columns:1fr;gap:12px">';
+    html += '<div><label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px">Key Findings</label><textarea id="disc-findings" style="width:100%;min-height:80px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px" placeholder="List key discoveries..."></textarea></div>';
+    html += '<div><label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px">Pain Points</label><textarea id="disc-pains" style="width:100%;min-height:80px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px" placeholder="List pain points..."></textarea></div>';
+    html += '<div><label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px">Use Cases</label><textarea id="disc-usecases" style="width:100%;min-height:80px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px" placeholder="List use cases..."></textarea></div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<button onclick="_pmSaveDiscovery()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Save Discovery</button>';
+    html += '<div id="discovery-results" style="margin-top:24px;display:none"></div>';
+    return html;
+  }
+
+  function _renderBriefUI() {
+    var html = '';
+    html += '<div style="margin-bottom:16px">';
+    html += '<input type="file" id="brief-file" accept=".pdf,.docx,.pptx" onchange="_pmUploadFile(\'brief\')" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px">';
+    html += '</div>';
+    html += '<div style="margin-bottom:16px;text-align:center;color:var(--muted);font-size:12px">OR</div>';
+    html += '<div style="margin-bottom:20px">';
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Project Brief</label>';
+    html += '<textarea id="brief-text" style="width:100%;min-height:200px;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:inherit" placeholder="Paste your project brief..."></textarea>';
+    html += '</div>';
+    html += '<button onclick="_pmGenerateBOSCARD()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Generate BOSCARD</button>';
+    html += '<div id="brief-results" style="margin-top:24px;display:none"></div>';
+    return html;
+  }
+
+  function _renderInterviewUI() {
+    var html = '';
+    html += '<div style="margin-bottom:12px">';
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px">Interviewee Name (optional)</label>';
+    html += '<input id="interview-name" type="text" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px" placeholder="e.g. VP Sales, Product Manager">';
+    html += '</div>';
+    html += '<div style="margin-bottom:20px">';
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Interview Notes</label>';
+    html += '<textarea id="interview-notes" style="width:100%;min-height:200px;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:inherit" placeholder="Paste interview transcript or notes..."></textarea>';
+    html += '</div>';
+    html += '<button onclick="_pmSynthesizeInterview()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Synthesize & Generate Requirements</button>';
+    html += '<div id="interview-results" style="margin-top:24px;display:none"></div>';
+    return html;
+  }
+
+  function _renderExecutionUI() {
+    var html = '';
+    html += '<div style="margin-bottom:12px">';
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px">Project Manager Email</label>';
+    html += '<input id="exec-email" type="email" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px" placeholder="pm@example.com">';
+    html += '</div>';
+    html += '<div style="margin-bottom:20px">';
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px">PM Name</label>';
+    html += '<input id="exec-name" type="text" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px" placeholder="e.g. Jane Smith">';
+    html += '</div>';
+    html += '<button onclick="_pmSetupProject()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Setup Project</button>';
+    return html;
+  }
+
+  function _renderSWOTUI() {
+    var html = '';
+    html += '<div style="margin-bottom:20px;padding:16px;background:var(--surface2);border-radius:8px">';
+    html += '<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Option 1: Paste project context and let AI generate SWOT</p>';
+    html += '<textarea id="swot-context" style="width:100%;min-height:100px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;margin-bottom:10px" placeholder="Paste your brief, company context, market info..."></textarea>';
+    html += '<button onclick="_pmGenerateSWOT()" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px">✨ Generate SWOT with AI</button>';
+    html += '</div>';
+
+    html += '<div style="margin-bottom:20px;text-align:center;color:var(--muted);font-size:12px">OR</div>';
+
+    html += '<div style="margin-bottom:20px;">';
+    html += '<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Option 2: Type your own SWOT analysis</p>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+    ['Strengths', 'Weaknesses', 'Opportunities', 'Threats'].forEach(function(label) {
+      var id = label.toLowerCase();
+      html += '<div>';
+      html += '<label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px">' + label + '</label>';
+      html += '<textarea id="swot-' + id + '" style="width:100%;min-height:120px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px" placeholder="List items..."></textarea>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:8px">';
+    html += '<button onclick="_pmSaveSWOT()" style="flex:1;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Save SWOT</button>';
+    html += '</div>';
+
+    html += '<div id="swot-results" style="margin-top:24px;display:none"></div>';
+    return html;
+  }
+
+  function _pmGenerateSWOT() {
+    var context = document.getElementById("swot-context").value.trim();
+    if (!context) { alert("Paste project context"); return; }
+
+    document.getElementById("swot-results").innerHTML = '<div style="text-align:center;padding:20px">Analyzing with AI...</div>';
+    document.getElementById("swot-results").style.display = "block";
+
+    fetch("/api/pm/module/swot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ context: context, project_id: _pmState.currentProject.id })
+    }).then(r => r.json()).then(function(d) {
+      if (d.strengths) {
+        document.getElementById("swot-strengths").value = (d.strengths || []).join("\n");
+        document.getElementById("swot-weaknesses").value = (d.weaknesses || []).join("\n");
+        document.getElementById("swot-opportunities").value = (d.opportunities || []).join("\n");
+        document.getElementById("swot-threats").value = (d.threats || []).join("\n");
+        document.getElementById("swot-results").innerHTML = '<div style="padding:12px;background:#86efac;border-radius:6px;color:#166534;font-size:12px">✓ SWOT generated! Review and save below.</div>';
+      } else {
+        alert("Error: " + (d.error || "Failed"));
+      }
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _renderAnalysisUI() {
+    var html = '';
+    html += '<div style="margin-bottom:20px;padding:16px;background:var(--surface2);border-radius:8px">';
+    html += '<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Option 1: Describe current & future state, let AI structure it</p>';
+    html += '<div style="margin-bottom:12px">';
+    html += '<label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px">Current Context</label>';
+    html += '<textarea id="analysis-context" style="width:100%;min-height:120px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px" placeholder="Describe: current tools, processes, challenges, what exists today..."></textarea>';
+    html += '</div>';
+    html += '<div style="margin-bottom:12px">';
+    html += '<label style="display:block;font-size:12px;font-weight:700;margin-bottom:6px">Desired Outcome</label>';
+    html += '<textarea id="analysis-outcome" style="width:100%;min-height:120px;padding:10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px" placeholder="Describe: target state, desired future, what success looks like..."></textarea>';
+    html += '</div>';
+    html += '<button onclick="_pmGenerateAnalysis()" style="width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px">✨ Generate Analysis with AI</button>';
+    html += '</div>';
+
+    html += '<div style="margin-bottom:20px;text-align:center;color:var(--muted);font-size:12px">OR</div>';
+
+    html += '<div style="margin-bottom:20px">';
+    html += '<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Option 2: Manual entry</p>';
+    html += '<div style="margin-bottom:12px">';
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Current State Analysis</label>';
+    html += '<textarea id="analysis-current" style="width:100%;min-height:120px;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:inherit" placeholder="Describe the current state, tools, processes, pain points..."></textarea>';
+    html += '</div>';
+    html += '<div style="margin-bottom:20px">';
+    html += '<label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px">Future State (Go-to State)</label>';
+    html += '<textarea id="analysis-future" style="width:100%;min-height:120px;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:inherit" placeholder="Describe the target/desired future state..."></textarea>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<button onclick="_pmSaveAnalysis()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Save Analysis</button>';
+    html += '<div id="analysis-results" style="margin-top:24px;display:none"></div>';
+    return html;
+  }
+
+  function _pmGenerateAnalysis() {
+    var context = document.getElementById("analysis-context").value.trim();
+    var outcome = document.getElementById("analysis-outcome").value.trim();
+    if (!context || !outcome) { alert("Describe both current and desired state"); return; }
+
+    document.getElementById("analysis-results").innerHTML = '<div style="text-align:center;padding:20px">Analyzing with AI...</div>';
+    document.getElementById("analysis-results").style.display = "block";
+
+    fetch("/api/pm/module/analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current: context, future: outcome, project_id: _pmState.currentProject.id })
+    }).then(r => r.json()).then(function(d) {
+      if (d.current_analysis && d.future_analysis) {
+        document.getElementById("analysis-current").value = d.current_analysis;
+        document.getElementById("analysis-future").value = d.future_analysis;
+        document.getElementById("analysis-results").innerHTML = '<div style="padding:12px;background:#86efac;border-radius:6px;color:#166534;font-size:12px">✓ Analysis generated! Review and save below.</div>';
+      } else {
+        alert("Error: " + (d.error || "Failed"));
+      }
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _pmUploadFile(module) {
+    var fileInput = document.getElementById(module + '-file');
+    var file = fileInput.files[0];
+    if (!file) return;
+    var formData = new FormData();
+    formData.append("file", file);
+    fetch("/api/pm/upload", {
+      method: "POST",
+      body: formData
+    }).then(r => r.json()).then(function(d) {
+      if (d.text) {
+        document.getElementById(module + '-text').value = d.text;
+      } else {
+        alert("Error: " + (d.error || "Failed to parse file"));
+      }
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _pmSynthesizeDiscovery() {
+    var notes = document.getElementById("discovery-notes").value.trim();
+    if (!notes) { alert("Enter research notes"); return; }
+    document.getElementById("discovery-results").innerHTML = '<div style="text-align:center;padding:20px">Synthesizing...</div>';
+    document.getElementById("discovery-results").style.display = "block";
+    fetch("/api/pm/module/discovery", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: notes, project_id: _pmState.currentProject.id })
+    }).then(r => r.json()).then(function(d) {
+      // Populate the manual fields with AI results
+      document.getElementById("disc-findings").value = (d.key_findings || []).join("\n");
+      document.getElementById("disc-pains").value = (d.pain_points || []).join("\n");
+      document.getElementById("disc-usecases").value = (d.use_cases || []).join("\n");
+
+      var html = '<div style="padding:12px;background:#86efac;border-radius:6px;color:#166534;font-size:12px">✓ Findings synthesized! Review and save below.</div>';
+      document.getElementById("discovery-results").innerHTML = html;
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _pmGenerateBOSCARD() {
+    var text = document.getElementById("brief-text").value.trim();
+    if (!text) { alert("Enter brief"); return; }
+    document.getElementById("brief-results").innerHTML = '<div style="text-align:center;padding:20px">Generating BOSCARD...</div>';
+    fetch("/api/pm/workflow/boscard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brief: text })
+    }).then(r => r.json()).then(function(d) {
+      if (d.boscard) {
+        var html = '<div style="padding:16px;background:var(--surface2);border-radius:8px">';
+        html += '<h3 style="font-size:13px;font-weight:700;margin-bottom:12px">BOSCARD</h3>';
+        html += '<div style="font-size:12px;white-space:pre-wrap;line-height:1.6;max-height:300px;overflow-y:auto">' + _esc(d.boscard) + '</div>';
+        html += '<button onclick="_pmSaveBOSCARD()" style="margin-top:12px;padding:10px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px">Save BOSCARD</button>';
+        html += '</div>';
+        document.getElementById("brief-results").innerHTML = html;
+        document.getElementById("brief-results").style.display = "block";
+      } else {
+        alert("Error: " + (d.error || "Failed"));
+      }
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _pmSynthesizeInterview() {
+    var notes = document.getElementById("interview-notes").value.trim();
+    var name = document.getElementById("interview-name").value.trim();
+    if (!notes) { alert("Enter interview notes"); return; }
+    document.getElementById("interview-results").innerHTML = '<div style="text-align:center;padding:20px">Synthesizing...</div>';
+    fetch("/api/pm/module/interview-synthesis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: notes, interviewee: name, project_id: _pmState.currentProject.id })
+    }).then(r => r.json()).then(function(d) {
+      var html = '<div style="padding:16px;background:var(--surface2);border-radius:8px">';
+      html += '<h3 style="font-size:13px;font-weight:700;margin-bottom:12px">Generated Requirements</h3>';
+      html += '<div style="font-size:12px;line-height:1.8">';
+      html += '<strong>Functional Requirements:</strong><ul style="margin:6px 0 12px 20px">' + (d.functional_requirements || []).map(x => '<li>' + _esc(x) + '</li>').join('') + '</ul>';
+      html += '<strong>Non-Functional:</strong><ul style="margin:6px 0 12px 20px">' + (d.non_functional_requirements || []).map(x => '<li>' + _esc(x) + '</li>').join('') + '</ul>';
+      html += '<strong>User Stories:</strong><ul style="margin:6px 0 12px 20px">' + (d.user_stories || []).map(x => '<li>' + _esc(x) + '</li>').join('') + '</ul>';
+      html += '</div>';
+      html += '<button onclick="_pmSaveInterview()" style="margin-top:12px;padding:10px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px">Save Requirements</button>';
+      html += '</div>';
+      document.getElementById("interview-results").innerHTML = html;
+      document.getElementById("interview-results").style.display = "block";
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _pmSetupProject() {
+    var email = document.getElementById("exec-email").value.trim();
+    var name = document.getElementById("exec-name").value.trim();
+    if (!email || !name) { alert("Fill in PM details"); return; }
+    fetch("/api/pm/workflow/assign-pm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ project_id: _pmState.currentProject.id, pm_email: email, pm_name: name })
+    }).then(r => r.json()).then(function(d) {
+      alert("✓ Project setup complete");
+      _showModulePickerScreen();
+    }).catch(function(e) { alert("Error: " + e.message); });
+  }
+
+  function _pmSaveDiscovery() {
+    var findings = document.getElementById("disc-findings").value.split("\n").filter(x => x.trim());
+    var pains = document.getElementById("disc-pains").value.split("\n").filter(x => x.trim());
+    var usecases = document.getElementById("disc-usecases").value.split("\n").filter(x => x.trim());
+
+    if (!findings.length && !pains.length && !usecases.length) {
+      alert("Add at least one discovery item");
+      return;
+    }
+
+    var discovery = { key_findings: findings, pain_points: pains, use_cases: usecases };
+    fetch("/api/pm/docs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: _pmState.currentProject.id,
+        doc_type: "discovery",
+        title: "Research & Discovery Synthesis",
+        content: JSON.stringify(discovery)
+      })
+    }).then(() => { alert("✓ Discovery saved to project"); _showModulePickerScreen(); })
+      .catch(e => alert("Error: " + e.message));
+  }
+
+  function _pmSaveBOSCARD() {
+    var boscard = document.querySelector('#brief-results') ? document.querySelector('#brief-results div').textContent : '';
+    fetch("/api/pm/docs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: _pmState.currentProject.id,
+        doc_type: "boscard",
+        title: "BOSCARD",
+        content: boscard
+      })
+    }).then(() => { alert("✓ BOSCARD saved to project"); _showModulePickerScreen(); })
+      .catch(e => alert("Error: " + e.message));
+  }
+
+  function _pmSaveInterview() {
+    var reqs = document.querySelector('#interview-results') ? document.querySelector('#interview-results div').textContent : '';
+    fetch("/api/pm/docs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: _pmState.currentProject.id,
+        doc_type: "requirements",
+        title: "Interview Requirements - " + (document.getElementById("interview-name").value || "Anonymous"),
+        content: reqs
+      })
+    }).then(() => { alert("✓ Requirements saved to project"); _showModulePickerScreen(); })
+      .catch(e => alert("Error: " + e.message));
+  }
+
+  function _pmSaveSWOT() {
+    var swot = {
+      strengths: document.getElementById("swot-strengths").value.split("\n").filter(x => x.trim()),
+      weaknesses: document.getElementById("swot-weaknesses").value.split("\n").filter(x => x.trim()),
+      opportunities: document.getElementById("swot-opportunities").value.split("\n").filter(x => x.trim()),
+      threats: document.getElementById("swot-threats").value.split("\n").filter(x => x.trim())
+    };
+    if (!swot.strengths.length && !swot.weaknesses.length && !swot.opportunities.length && !swot.threats.length) {
+      alert("Add at least one item to SWOT");
+      return;
+    }
+    fetch("/api/pm/docs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: _pmState.currentProject.id,
+        doc_type: "swot",
+        title: "SWOT Analysis",
+        content: JSON.stringify(swot)
+      })
+    }).then(() => { alert("✓ SWOT saved to project"); _showModulePickerScreen(); })
+      .catch(e => alert("Error: " + e.message));
+  }
+
+  function _pmSaveAnalysis() {
+    var analysis = {
+      current_state: document.getElementById("analysis-current").value,
+      future_state: document.getElementById("analysis-future").value
+    };
+    if (!analysis.current_state || !analysis.future_state) {
+      alert("Fill in both current and future state");
+      return;
+    }
+    fetch("/api/pm/docs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: _pmState.currentProject.id,
+        doc_type: "analysis",
+        title: "Current vs. Future State Analysis",
+        content: JSON.stringify(analysis)
+      })
+    }).then(() => { alert("✓ Analysis saved to project"); _showModulePickerScreen(); })
+      .catch(e => alert("Error: " + e.message));
+  }
+
   // Load project count on startup
   _loadCustomRoles();
   _refreshCount();
+  _initPM();
 </script>
 </body>
 </html>
