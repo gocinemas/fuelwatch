@@ -15812,7 +15812,8 @@ _bkBadge();
 
     if (_isWeekendMorning) {
       // Weekend morning: show intent choice — don't dump trains by default
-      if (!window._briefIntentChosen) {
+      var _todayIntent = localStorage.getItem("miru_intent_" + new Date().toISOString().slice(0,10));
+      if (!window._briefIntentChosen && !_todayIntent) {
         html += '<div id="brief-intent-card" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
           + '<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px">What\'s the plan?</div>'
           + '<div style="display:flex;gap:8px">'
@@ -16830,6 +16831,11 @@ _bkBadge();
 
   window._briefChooseIntent = function(choice) {
     window._briefIntentChosen = choice;
+    // Hide the "What's the plan?" button row
+    var intentRow = document.querySelector('[style*="gap:8px"][style*="margin-bottom:16px"]');
+    if (intentRow) intentRow.style.display = "none";
+    // Save to localStorage so it doesn't ask again today
+    localStorage.setItem("miru_intent_" + new Date().toISOString().slice(0,10), choice);
     // Re-render context cards with chosen intent
     var ctx = _briefData && _briefData.context;
     var ctxCards = document.getElementById("brief-context-cards");
