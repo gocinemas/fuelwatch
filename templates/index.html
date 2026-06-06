@@ -14779,14 +14779,12 @@ _bkBadge();
       } catch(e) { _phShow("Network error"); return; }
     }
 
-    // Show trains to Waterloo (simplified - no complex filtering)
+    // Show trains to Waterloo ONLY - simplified
     let trains = allTrains || [];
-
-    // Filter to only Waterloo trains
     const waterlooTrains = trains.filter(t => (t.destination || "").toLowerCase().includes("waterloo"));
 
     if (!waterlooTrains.length) {
-      document.getElementById("home-train-next").textContent = "No Trains to Waterloo";
+      document.getElementById("home-train-next").textContent = "No Trains";
       document.getElementById("home-train-sub").textContent = "";
       document.getElementById("home-train-next").style.display = "";
       document.getElementById("home-train-sub").style.display = "none";
@@ -14794,12 +14792,10 @@ _bkBadge();
       return;
     }
 
-    // Show next 3 trains
-    const displayTrains = waterlooTrains.slice(0, 3);
-    const timesList = displayTrains.map(t => t.scheduled).join(" · ");
-
-    document.getElementById("home-train-next").textContent = "Waterloo: " + timesList;
-    document.getElementById("home-train-sub").textContent = displayTrains.length + " trains available";
+    const next = waterlooTrains[0];
+    document.getElementById("home-train-next").textContent = next.scheduled + " to Waterloo";
+    const platform = next.platform ? " · Plat " + next.platform : "";
+    document.getElementById("home-train-sub").textContent = (next.expected || "On time") + platform;
     document.getElementById("home-train-next").style.display = "";
     document.getElementById("home-train-sub").style.display = "";
     if (ph) ph.style.display = "none";
