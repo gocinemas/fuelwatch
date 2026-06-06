@@ -572,6 +572,7 @@
     <button class="sb-btn"    id="sb-trains" title="Trains"     onclick="showScreen('trains')">🚆</button>
     <button class="sb-btn"    id="sb-fuel"   title="Fuel"       onclick="showScreen('fuel')">⛽</button>
     <button class="sb-btn"    id="sb-school" title="School"     onclick="showScreen('school')">🏫</button>
+    <button class="sb-btn"    id="sb-moving" title="Moving"     onclick="showScreen('moving');_movingInit()">🏠</button>
     <button class="sb-btn"    id="sb-report" title="Research"   onclick="showScreen('report')">🔎</button>
     <div class="sb-spacer"></div>
     <button class="sb-btn"    id="sb-setup"  title="Settings"   onclick="showScreen('setup')">⚙️</button>
@@ -14260,6 +14261,34 @@ _bkBadge();
 
 </div><!-- /screen-lifeadmin -->
 
+<!-- MOVING CHECKLIST SCREEN -->
+<div id="screen-moving" class="screen" style="padding:16px 16px 48px;max-width:600px;margin:0 auto">
+  <!-- Header -->
+  <div style="margin-bottom:20px">
+    <div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-.6px">🏠 Moving Checklist</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:2px">Your guide to moving in the UK</div>
+  </div>
+
+  <!-- Scenario Tabs -->
+  <div style="display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding-bottom:8px">
+    <button onclick="_movingSetScenario('within')" id="btn-scenario-within" style="padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;transition:all .2s">
+      🇬🇧 Within UK
+    </button>
+    <button onclick="_movingSetScenario('arrival')" id="btn-scenario-arrival" style="padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;transition:all .2s">
+      ✈️ Moving to UK
+    </button>
+    <button onclick="_movingSetScenario('departure')" id="btn-scenario-departure" style="padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;transition:all .2s">
+      🛫 Moving Abroad
+    </button>
+  </div>
+
+  <!-- Checklist Container -->
+  <div id="moving-checklist-content"></div>
+
+  <!-- Clear Progress -->
+  <button onclick="_movingClearProgress()" style="width:100%;margin-top:20px;padding:10px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer">Clear progress</button>
+</div><!-- /screen-moving -->
+
 <div id="screen-school" class="screen pt-5">
   <!-- WA number login -->
   <div id="school-pin-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 16px;text-align:center">
@@ -22445,6 +22474,132 @@ window.spotifyAddTrack = window.spotifyLike;
   </div>
 </div>
 
+<!-- MOVING CHECKLIST JAVASCRIPT -->
+<script>
+  const _MOVING_DATA = {
+    within: [
+      { task: "Give notice to landlord/seller (usually 1-2 months)", category: "Legal" },
+      { task: "Arrange moving company or hire van", category: "Logistics" },
+      { task: "Notify council of address change", category: "Admin" },
+      { task: "Update postcode with utilities (gas, electric, water)", category: "Utilities" },
+      { task: "Register new address with GP surgery", category: "Health" },
+      { task: "Update driving license address (DVLA)", category: "Admin" },
+      { task: "Change address with passport/visa office if needed", category: "Admin" },
+      { task: "Update address with your bank & building society", category: "Finance" },
+      { task: "Inform insurance companies (home, car, pet)", category: "Insurance" },
+      { task: "Update subscription services (streaming, magazines, etc)", category: "Services" },
+      { task: "Set up mail redirection with Royal Mail", category: "Post" },
+      { task: "Arrange broadband/mobile at new address", category: "Utilities" },
+      { task: "Book removal/moving slot early", category: "Logistics" },
+      { task: "Pack and label boxes by room", category: "Packing" },
+      { task: "Organise cleaning of old property", category: "Cleaning" },
+      { task: "Check meter readings at old property", category: "Utilities" },
+      { task: "Arrange key handover/return", category: "Legal" }
+    ],
+    arrival: [
+      { task: "Apply for Visa/work permit (if required)", category: "Immigration" },
+      { task: "Register with immigration/border agency", category: "Immigration" },
+      { task: "Get National Insurance number (NI)", category: "Government" },
+      { task: "Register with GP surgery", category: "Health" },
+      { task: "Open UK bank account", category: "Finance" },
+      { task: "Apply for tax reference number", category: "Finance" },
+      { task: "Get UK mobile phone number", category: "Communications" },
+      { task: "Arrange UK address (friend, hostel, temporary)", category: "Housing" },
+      { task: "Register with council (for council tax if applicable)", category: "Admin" },
+      { task: "Get BRP (Biometric Residence Permit) if required", category: "Immigration" },
+      { task: "Update your address with employer/university", category: "Work" },
+      { task: "Get UK driving license or provisional license", category: "Transport" },
+      { task: "Register with dentist", category: "Health" },
+      { task: "Open council tax account (when you get your address)", category: "Finance" },
+      { task: "Arrange utilities at your address", category: "Utilities" },
+      { task: "Inform family/friends of new UK address", category: "Personal" },
+      { task: "Get UK appliances that match electrical standards", category: "Housing" }
+    ],
+    departure: [
+      { task: "Check visa/work permit requirements for your destination", category: "Legal" },
+      { task: "Renew passport if expiring soon", category: "Legal" },
+      { task: "Apply for destination country visa if required", category: "Legal" },
+      { task: "Get international driving permit (if driving abroad)", category: "Transport" },
+      { task: "Book flight/transport tickets", category: "Travel" },
+      { task: "Arrange international removals company", category: "Logistics" },
+      { task: "Notify council that you're leaving the UK", category: "Admin" },
+      { task: "Cancel or transfer utilities (gas, electric, water)", category: "Utilities" },
+      { task: "Deregister with GP surgery", category: "Health" },
+      { task: "Notify DVLA that you're leaving (return driving license)", category: "Transport" },
+      { task: "Close or transfer UK bank account", category: "Finance" },
+      { task: "Settle any outstanding bills/debts", category: "Finance" },
+      { task: "Cancel subscriptions and memberships", category: "Services" },
+      { task: "Arrange mail forwarding to new address", category: "Post" },
+      { task: "Cancel or inform insurance companies", category: "Insurance" },
+      { task: "Check tax obligations with HMRC", category: "Finance" },
+      { task: "Sell or arrange transport for car if leaving", category: "Transport" }
+    ]
+  };
+
+  function _movingSetScenario(scenario) {
+    // Update active button
+    document.querySelectorAll('#screen-moving button[onclick^="_moving"]').forEach(b => {
+      b.style.background = 'var(--surface)';
+      b.style.borderColor = 'var(--border)';
+      b.style.color = 'var(--text)';
+    });
+    document.getElementById(`btn-scenario-${scenario}`).style.background = '#dc2626';
+    document.getElementById(`btn-scenario-${scenario}`).style.borderColor = '#dc2626';
+    document.getElementById(`btn-scenario-${scenario}`).style.color = '#fff';
+
+    // Render checklist
+    const items = _MOVING_DATA[scenario] || [];
+    const html = items.map((item, idx) => {
+      const key = `moving_${scenario}_${idx}`;
+      const done = localStorage.getItem(key) === '1';
+      return `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start">
+          <input type="checkbox" ${done ? 'checked' : ''} onchange="_movingToggle('${key}')" style="margin-top:4px;cursor:pointer;accent-color:#16a34a;width:18px;height:18px;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text);${done ? 'opacity:.6;text-decoration:line-through' : ''}">${item.task}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${item.category}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    document.getElementById('moving-checklist-content').innerHTML = html;
+
+    // Update progress
+    const checked = items.filter((_, i) => localStorage.getItem(`moving_${scenario}_${i}`) === '1').length;
+    const progress = Math.round((checked / items.length) * 100);
+    document.getElementById('moving-checklist-content').innerHTML = `
+      <div style="background:linear-gradient(135deg,#fef2f2,#fff);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:12px;font-weight:600;color:var(--muted)">Progress</div>
+          <div style="font-size:12px;font-weight:700;color:#dc2626">${progress}%</div>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+          <div style="height:100%;background:linear-gradient(90deg,#dc2626,#f87171);width:${progress}%;transition:width .3s"></div>
+        </div>
+      </div>
+    ` + html;
+  }
+
+  function _movingToggle(key) {
+    const isChecked = localStorage.getItem(key) === '1';
+    localStorage.setItem(key, isChecked ? '0' : '1');
+    // Re-render to update progress
+    const scenario = key.split('_')[1];
+    _movingSetScenario(scenario);
+  }
+
+  function _movingClearProgress() {
+    if (!confirm('Clear all progress? You can still edit individual items.')) return;
+    Object.keys(localStorage).filter(k => k.startsWith('moving_')).forEach(k => localStorage.removeItem(k));
+    _movingSetScenario('within');
+  }
+
+  // Initialize on screen load
+  window._movingInit = function() {
+    _movingSetScenario('within');
+  };
+</script>
 
 </body>
 </html>
