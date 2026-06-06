@@ -856,32 +856,23 @@
   }
 
   function _createProject() {
-    console.log("_createProject() called");
     var name = document.getElementById("new-proj-name").value.trim();
     var stage = document.getElementById("new-proj-stage").value;
     var desc = document.getElementById("new-proj-desc").value.trim();
-    console.log("Form values:", { name, stage, desc });
     if (!name || !stage) { alert("Name and stage required"); return; }
 
-    console.log("Posting to /api/pm/projects with:", { name, proj_type: stage, description: desc });
     fetch("/api/pm/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name, proj_type: stage, description: desc })
-    }).then(r => {
-      console.log("Response status:", r.status);
-      return r.json();
-    }).then(function(d) {
-      console.log("Response data:", d);
+    }).then(r => r.json()).then(function(d) {
       if (d.project) {
-        _selectProject(d.project.id);
+        _pmState.currentProject = d.project;
+        _showModulePickerScreen();
       } else {
         alert("Error: " + (d.error || "Failed to create"));
       }
-    }).catch(function(e) {
-      console.error("Fetch error:", e);
-      alert("Error: " + e.message);
-    });
+    }).catch(function(e) { alert("Error: " + e.message); });
   }
 
   function _selectProject(projectId) {
