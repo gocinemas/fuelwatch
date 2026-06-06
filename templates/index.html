@@ -15489,19 +15489,27 @@ _bkBadge();
     var trainSub  = document.getElementById("tile-trains-sub");
     var trainGlance = "";
     if (trains && trains.departures && trains.departures.length > 0) {
-      // Show next 3 train times (just times, no destination confusion)
-      var times = [];
+      // Show next 3 trains: time → destination · status
+      var trainLines = [];
       for (var i = 0; i < Math.min(3, trains.departures.length); i++) {
-        var t = trains.departures[i].departs || trains.departures[i].time || "";
-        if (t) times.push(t);
+        var d = trains.departures[i];
+        var t = d.departs || d.time || "";
+        var dest = (d.destination || "").replace(/ station$/i,"").replace(/^London /i,"").trim();
+        var status = d.status || "On time";
+        var icon = status.includes("Exp") ? "🕐" : "✅";
+        if (t && dest) {
+          trainLines.push(t + " → " + dest + "  " + icon + " " + status);
+        }
       }
-      if (times.length > 0) {
-        var fromStation = (trains.from || "").replace(/ station$/i,"").trim();
-        var toStation = (trains.to || "").replace(/ station$/i,"").replace(/^London /i,"").trim();
-        var route = (fromStation && toStation) ? fromStation + " → " + toStation : "Next trains";
-        trainGlance = "🚆 " + times.join(" · ");
-        var subtitle = route + ": " + times.join(" · ");
-        if (trainSub) { trainSub.textContent = subtitle; trainSub.style.color = "#1d4ed8"; trainSub.style.fontWeight = "700"; }
+      if (trainLines.length > 0) {
+        var display = trainLines.join("\n");
+        trainGlance = "🚆 " + trains.departures[0].departs;
+        if (trainSub) {
+          trainSub.textContent = display;
+          trainSub.style.color = "#1d4ed8";
+          trainSub.style.fontWeight = "700";
+          trainSub.style.whiteSpace = "pre-line";
+        }
       } else {
         if (trainSub) { trainSub.textContent = "No Trains"; trainSub.style.color = ""; trainSub.style.fontWeight = ""; }
       }
