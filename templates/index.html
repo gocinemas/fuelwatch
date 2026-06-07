@@ -1482,6 +1482,7 @@
           <button id="itab-btn-finance"   onclick="switchIntelTab('finance')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">Finance</button>
           <button id="itab-btn-campaigns" onclick="switchIntelTab('campaigns')" class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">🎯 Campaigns</button>
           <button id="itab-btn-intel"     onclick="switchIntelTab('intel')"     class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">🔍 Research</button>
+          <button id="itab-btn-compare"   onclick="switchIntelTab('compare')"   class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">📊 Compare</button>
           <button id="itab-btn-social"    onclick="switchIntelTab('social')"    class="itab-btn" style="flex:1;padding:9px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;background:transparent;color:var(--muted)">📱 Social</button>
         </div>
 
@@ -1717,6 +1718,49 @@
             <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px">⚔️ Closest Competitors</div>
             <div id="brand-competitors-el"></div>
           </div>
+        </div>
+
+        <!-- ── Compare tab ── -->
+        <div id="intel-tab-compare" style="display:none">
+          <!-- Company selection -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">📊 Compare companies</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+              <!-- Company A -->
+              <div>
+                <input id="compare-a-input" type="text" placeholder="Company A (e.g., Apple)" maxlength="50" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px" oninput="_compareUpdateAutocomplete('a')">
+                <div id="compare-a-dropdown" style="display:none;position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:2px;max-height:150px;overflow-y:auto;z-index:10;width:250px;font-size:11px"></div>
+              </div>
+              <!-- Company B -->
+              <div>
+                <input id="compare-b-input" type="text" placeholder="Company B (e.g., Microsoft)" maxlength="50" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px" oninput="_compareUpdateAutocomplete('b')">
+                <div id="compare-b-dropdown" style="display:none;position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:2px;max-height:150px;overflow-y:auto;z-index:10;width:250px;font-size:11px"></div>
+              </div>
+              <!-- Company C (optional) -->
+              <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer">
+                <input id="compare-use-c" type="checkbox" style="cursor:pointer">
+                <span>Add 3rd company</span>
+              </label>
+              <div id="compare-c-wrap" style="display:none">
+                <input id="compare-c-input" type="text" placeholder="Company C" maxlength="50" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px" oninput="_compareUpdateAutocomplete('c')">
+                <div id="compare-c-dropdown" style="display:none;position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:2px;max-height:150px;overflow-y:auto;z-index:10;width:250px;font-size:11px"></div>
+              </div>
+            </div>
+            <button onclick="_compareLoad()" style="width:100%;padding:10px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:12px">Compare →</button>
+          </div>
+
+          <!-- Results grid -->
+          <div id="compare-results" style="display:none">
+            <!-- Grid rendered by _compareRenderGrid() -->
+          </div>
+
+          <!-- Loading state -->
+          <div id="compare-loading" style="display:none;text-align:center;padding:20px;color:var(--muted);font-size:12px">
+            Loading comparison...
+          </div>
+
+          <!-- Error state -->
+          <div id="compare-error" style="display:none;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px;color:#991b1b;font-size:12px"></div>
         </div>
 
         <!-- ── Social & Media tab ── -->
@@ -7761,7 +7805,7 @@ function _hcAdd() {
 
   // ── Company search ───────────────────────────────────────────────────────────
   // ── Intel mode toggle ────────────────────────────────────────────────────────
-  const _INTEL_TABS = ["about","finance","campaigns","intel","social"];
+  const _INTEL_TABS = ["about","finance","campaigns","intel","compare","social"];
 
   window.switchIntelMode = function() {}; // no-op kept for any lingering callers
 
@@ -8102,7 +8146,143 @@ function _hcAdd() {
       }
     });
     if (tab === "social") _loadSocialTab();
+    if (tab === "compare") _compareTabInit();
   };
+
+  // ── Company Comparison (new Compare tab) ────────────────────────────────────
+  async function _compareUpdateAutocomplete(field) {
+    const inp = document.getElementById(`compare-${field}-input`);
+    const dropdown = document.getElementById(`compare-${field}-dropdown`);
+    const val = inp.value.trim();
+
+    if (!val || val.length < 2) {
+      dropdown.style.display = "none";
+      return;
+    }
+
+    // Fetch recent searches + competitors as suggestions
+    const recentKey = "miru_company";
+    const recent = (localStorage.getItem(recentKey) || "").split("|").filter(x => x && x.toLowerCase().includes(val.toLowerCase())).slice(0, 3);
+
+    let suggestions = recent;
+
+    // If this is not the first field, get competitors from the other field
+    const otherField = field === "a" ? "b" : field === "b" ? "a" : "c";
+    const otherVal = document.getElementById(`compare-${otherField}-input`)?.value.trim();
+    if (otherVal) {
+      try {
+        const r = await fetch(`/api/intel/competitors?name=${encodeURIComponent(otherVal)}`);
+        const d = await r.json();
+        if (d.competitors) {
+          suggestions = [...new Set([...recent, ...d.competitors.filter(c => c.toLowerCase().includes(val.toLowerCase()))])].slice(0, 5);
+        }
+      } catch(_) {}
+    }
+
+    if (suggestions.length === 0) {
+      dropdown.style.display = "none";
+      return;
+    }
+
+    dropdown.innerHTML = suggestions.map(s =>
+      `<div onclick="document.getElementById('compare-${field}-input').value='${s}';document.getElementById('compare-${field}-dropdown').style.display='none'" style="padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;background:var(--surface)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='var(--surface)'">${s}</div>`
+    ).join("");
+    dropdown.style.display = "block";
+  }
+
+  function _compareTabInit() {
+    // Initialize the compare tab when clicked
+    document.getElementById("compare-use-c").addEventListener("change", function() {
+      document.getElementById("compare-c-wrap").style.display = this.checked ? "block" : "none";
+    });
+  }
+
+  async function _compareLoad() {
+    const a = document.getElementById("compare-a-input").value.trim();
+    const b = document.getElementById("compare-b-input").value.trim();
+    const useC = document.getElementById("compare-use-c").checked;
+    const c = useC ? document.getElementById("compare-c-input").value.trim() : "";
+
+    if (!a || !b) {
+      document.getElementById("compare-error").textContent = "Enter at least 2 companies";
+      document.getElementById("compare-error").style.display = "block";
+      return;
+    }
+
+    // Check for duplicates
+    const companies = [a, b];
+    if (c) companies.push(c);
+    const unique = new Set(companies.map(x => x.toLowerCase()));
+    if (unique.size !== companies.length) {
+      document.getElementById("compare-error").textContent = "Cannot compare the same company twice";
+      document.getElementById("compare-error").style.display = "block";
+      return;
+    }
+
+    // Fetch
+    document.getElementById("compare-loading").style.display = "block";
+    document.getElementById("compare-results").style.display = "none";
+    document.getElementById("compare-error").style.display = "none";
+
+    try {
+      const companyList = companies.join(",");
+      const r = await fetch(`/api/intel/compare-batch?companies=${encodeURIComponent(companyList)}`);
+      const d = await r.json();
+
+      if (d.error) {
+        document.getElementById("compare-error").textContent = d.error;
+        document.getElementById("compare-error").style.display = "block";
+        document.getElementById("compare-loading").style.display = "none";
+        return;
+      }
+
+      _compareRenderGrid(d.companies);
+      document.getElementById("compare-loading").style.display = "none";
+      document.getElementById("compare-results").style.display = "block";
+    } catch(e) {
+      document.getElementById("compare-error").textContent = "Error loading comparison: " + e.message;
+      document.getElementById("compare-error").style.display = "block";
+      document.getElementById("compare-loading").style.display = "none";
+    }
+  }
+
+  function _compareRenderGrid(companies) {
+    const metrics = [
+      { label: "📍 HQ", key: "hq" },
+      { label: "📅 Founded", key: "founded" },
+      { label: "🏭 Industry", key: "industry" },
+      { label: "💰 Revenue", key: "revenue" },
+      { label: "👥 Employees", key: "employees" },
+      { label: "💹 Market Cap", key: "market_cap" },
+      { label: "💼 Hiring", key: "hiring" },
+      { label: "🤖 AI Focus", key: "ai_pct" }
+    ];
+
+    let html = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;overflow-x:auto">`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:12px">`;
+
+    // Header
+    html += `<tr>`;
+    html += `<th style="text-align:left;padding:8px;font-weight:700;color:var(--text);border-bottom:2px solid var(--border)">Metric</th>`;
+    companies.forEach(co => {
+      html += `<th style="text-align:left;padding:8px;font-weight:700;color:var(--text);border-bottom:2px solid var(--border)">${co.name}</th>`;
+    });
+    html += `</tr>`;
+
+    // Metrics
+    metrics.forEach(metric => {
+      html += `<tr style="border-bottom:1px solid var(--border)">`;
+      html += `<td style="padding:8px;font-weight:600;color:var(--muted)">${metric.label}</td>`;
+      companies.forEach(co => {
+        const val = co[metric.key] || "—";
+        html += `<td style="padding:8px;color:var(--text)">${val}</td>`;
+      });
+      html += `</tr>`;
+    });
+
+    html += `</table></div>`;
+    document.getElementById("compare-results").innerHTML = html;
+  }
 
   window._toggleBrandStory = function() {
     var body = document.getElementById("brand-story-body");
