@@ -577,7 +577,7 @@
     <button class="sb-btn"    id="sb-trains" title="Trains"     onclick="showScreen('trains')">🚆</button>
     <button class="sb-btn"    id="sb-fuel"   title="Fuel"       onclick="showScreen('fuel')">⛽</button>
     <button class="sb-btn"    id="sb-school" title="School"     onclick="showScreen('school')">🏫</button>
-    <button class="sb-btn"    id="sb-moving" title="Moving"     onclick="showScreen('moving');_movingInit()">🏠</button>
+    <button class="sb-btn"    id="sb-moving" title="Moving"     onclick="showScreen('moving');_movingInit()">📦</button>
     <button class="sb-btn"    id="sb-report" title="Research"   onclick="showScreen('report')">🔎</button>
     <div class="sb-spacer"></div>
     <button class="sb-btn"    id="sb-setup"  title="Settings"   onclick="showScreen('setup')">⚙️</button>
@@ -22920,39 +22920,65 @@ window.spotifyAddTrack = window.spotifyLike;
       return;
     }
 
-    // Render checklist
+    // Render checklist grouped by category
     const items = _MOVING_DATA[scenario] || [];
-    const html = items.map((item, idx) => {
-      const key = `moving_${scenario}_${idx}`;
-      const done = localStorage.getItem(key) === '1';
-      return `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start;transition:all .2s;${done ? 'opacity:.7;border-color:#86efac' : ''}">
-          <input type="checkbox" ${done ? 'checked' : ''} onchange="_movingToggle('${key}')" style="margin-top:4px;cursor:pointer;accent-color:#16a34a;width:18px;height:18px;flex-shrink:0">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;color:var(--text);${done ? 'opacity:.5;text-decoration:line-through' : ''}">${item.task}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${item.category}</div>
+
+    // Group items by category
+    const grouped = {};
+    items.forEach((item, idx) => {
+      if (!grouped[item.category]) grouped[item.category] = [];
+      grouped[item.category].push({ ...item, idx });
+    });
+
+    // Build HTML with category groupings
+    const categoryHtml = Object.entries(grouped).map(([category, categoryItems]) => {
+      const categoryChecked = categoryItems.filter(item => localStorage.getItem(`moving_${scenario}_${item.idx}`) === '1').length;
+      const categoryProgress = Math.round((categoryChecked / categoryItems.length) * 100);
+
+      const taskHtml = categoryItems.map(item => {
+        const key = `moving_${scenario}_${item.idx}`;
+        const done = localStorage.getItem(key) === '1';
+        return `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:6px;display:flex;gap:10px;align-items:flex-start;transition:all .2s;${done ? 'opacity:.65;border-color:#86efac' : ''}">
+            <input type="checkbox" ${done ? 'checked' : ''} onchange="_movingToggle('${key}')" style="margin-top:4px;cursor:pointer;accent-color:#16a34a;width:18px;height:18px;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:500;color:var(--text);${done ? 'opacity:.5;text-decoration:line-through' : ''}">${item.task}</div>
+            </div>
+            ${done ? '<div style="font-size:16px;margin-left:8px;animation:bounce .4s ease-out">✓</div>' : ''}
           </div>
-          ${done ? '<div style="font-size:16px;margin-left:8px;animation:bounce .4s ease-out">✓</div>' : ''}
+        `;
+      }).join('');
+
+      return `
+        <div style="margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-left:2px">
+            <div style="font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px">${category}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:600">${categoryChecked}/${categoryItems.length}</div>
+          </div>
+          <div style="display:flex;height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;overflow:hidden">
+            <div style="height:100%;background:linear-gradient(90deg,#dc2626,#f87171);width:${categoryProgress}%;transition:width .3s"></div>
+          </div>
+          ${taskHtml}
         </div>
       `;
     }).join('');
 
-    document.getElementById('moving-checklist-content').innerHTML = html;
-
-    // Update progress
+    // Calculate overall progress
     const checked = items.filter((_, i) => localStorage.getItem(`moving_${scenario}_${i}`) === '1').length;
     const progress = Math.round((checked / items.length) * 100);
+
     document.getElementById('moving-checklist-content').innerHTML = `
       <div style="background:linear-gradient(135deg,#fef2f2,#fff);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div style="font-size:12px;font-weight:600;color:var(--muted)">Progress</div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted)">Overall Progress</div>
           <div style="font-size:12px;font-weight:700;color:#dc2626">${progress}%</div>
         </div>
         <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
           <div style="height:100%;background:linear-gradient(90deg,#dc2626,#f87171);width:${progress}%;transition:width .3s"></div>
         </div>
       </div>
-    ` + html;
+      ${categoryHtml}
+    `;
   }
 
   function _movingToggle(key) {
