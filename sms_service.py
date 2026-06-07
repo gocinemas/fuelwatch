@@ -17448,6 +17448,7 @@ _HELP_MSG = (
     "🏫 _school news_  |  _school week_\n"
     "📚 _book Atomic Habits_  |  _my books_  |  _worth it_\n"
     "📌 Send any URL — I'll clip it  |  _my clippings_\n"
+    "🔎 _search bookmarks restaurant london_  |  _find bookmark AI startup_\n"
     "🧾 Send a receipt photo — I'll log it\n"
     "   _how much did I spend this month?_\n"
     "   _how much at Amorino?_  |  _Tesco spend this week?_\n"
@@ -19027,6 +19028,72 @@ def _whatsapp_reply_inner():
                 lines.append(f"\n…+{len(rows)-10} more. See all: miru.humanagency.co")
             resp.message("\n".join(lines))
         return str(resp)
+
+    # ── BOOKMARKS AI SEARCH ──────────────────────────────────────────────────────
+    _BM_PREFIXES = ("search bookmarks ", "find bookmark ", "find in bookmarks ", "bookmark search ", "search my bookmarks ", "find my bookmark ")
+    _bm_prefix = next((p for p in _BM_PREFIXES if body_lower.startswith(p)), None)
+    if _bm_prefix:
+        query = body[len(_bm_prefix):].strip()
+        if query:
+            try:
+                # Fetch user's bookmarks from Supabase
+                plain_fn = from_number.replace("whatsapp:", "").strip()
+                # Get Chrome bookmarks
+                chrome_rows = lib._sb().table("bookmarks").select("title,url,category").limit(500).execute().data or []
+                twitter_rows = lib._sb().table("twitter_bookmarks").select("tweet_id,author_handle,author_name,text,url,category").limit(500).execute().data or []
+
+                bookmarks = []
+                for bm in chrome_rows:
+                    bookmarks.append({"title": bm.get("title", ""), "url": bm.get("url", ""), "category": bm.get("category", ""), "type": "chrome"})
+                for tw in twitter_rows:
+                    bookmarks.append({"title": tw.get("text", "")[:100], "url": tw.get("url", ""), "category": tw.get("category", ""), "author": tw.get("author_name", ""), "type": "twitter"})
+
+                if not bookmarks:
+                    resp.message("📚 No bookmarks found. Save some bookmarks at miru.humanagency.co first!")
+                    return str(resp)
+
+                # Call AI search API
+                ai_resp = requests.post(
+                    "https://miru.humanagency.co/api/bookmarks/search-ai",
+                    json={"query": query, "bookmarks": bookmarks},
+                    timeout=8
+                )
+                if ai_resp.status_code != 200:
+                    raise Exception("AI search failed")
+
+                data = ai_resp.json()
+                results = data.get("results", [])[:5]  # Top 5 for WhatsApp
+                analysis = data.get("analysis", {})
+
+                if not results:
+                    resp.message(f"📚 No bookmarks match \"{query}\".\n\nTry different keywords or check the learning dashboard at miru.humanagency.co")
+                    return str(resp)
+
+                # Format results for WhatsApp
+                lines = [f"📚 Bookmarks matching \"{query}\":"]
+                if analysis.get("intents"):
+                    lines.append(f"_Intent: {', '.join(analysis['intents'])}_")
+                if analysis.get("entities", {}).get("locations"):
+                    lines.append(f"_📍 {', '.join(analysis['entities']['locations'])}_")
+
+                for i, r in enumerate(results[:4], 1):
+                    score = int((r.get("_total_score", 0) or 0) * 100)
+                    if r.get("type") == "twitter":
+                        author = r.get("author", "Unknown")
+                        text = r.get("title", "")[:80]
+                        lines.append(f"\n{i}. *{author}*\n   {text}\n   [{score}%]")
+                    else:
+                        title = r.get("title", "Untitled")[:70]
+                        lines.append(f"\n{i}. {title}\n   [{score}%]")
+
+                lines.append(f"\n_See full results with scores at:_ miru.humanagency.co")
+                resp.message("\n".join(lines))
+                return str(resp)
+
+            except Exception as e:
+                print(f"[bookmarks] error: {e}")
+                resp.message(f"📚 Search error: {str(e)[:50]}. Try again or use miru.humanagency.co")
+                return str(resp)
 
     # ── MENU LOOKUP — any phrasing with "menu" + venue name ──────────────────
     _MENU_RE = re.compile(
