@@ -6499,6 +6499,68 @@ def api_intel_compare():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/intel/compare-batch")
+def api_intel_compare_batch():
+    """Fetch 2-3 companies and return structured grid data for side-by-side comparison."""
+    import concurrent.futures as _cf
+    companies = request.args.get("companies", "").strip().split(",")
+    companies = [c.strip() for c in companies if c.strip()]
+
+    if not companies or len(companies) < 2 or len(companies) > 3:
+        return jsonify({"error": "Provide 2-3 company names (comma-separated)"}), 400
+
+    # Check for duplicates
+    if len(set(c.lower() for c in companies)) != len(companies):
+        return jsonify({"error": "Cannot compare company with itself"}), 400
+
+    # Fetch all companies in parallel
+    def fetch_and_extract(name):
+        d = fetch_company_info(name)
+        w = d.get("wiki") or {}
+        share = d.get("share") or {}
+        jobs = d.get("job_signals") or {}
+        ai = d.get("ai_signals") or {}
+        return {
+            "name": d.get("name") or name,
+            "founded": w.get("founded", "—"),
+            "hq": w.get("hq", "—"),
+            "industry": w.get("industry", "—"),
+            "revenue": w.get("revenue", "—"),
+            "employees": w.get("employees", "—"),
+            "market_cap": share.get("market_cap", "—"),
+            "hiring": f"{jobs.get('total', 0)} open roles",
+            "ai_pct": f"{round(ai.get('ai_pct', 0))}% AI roles" if ai.get('ai_pct') else "—",
+            "overview": w.get("extract", "")[:150] if w.get("extract") else "—",
+        }
+
+    try:
+        with _cf.ThreadPoolExecutor(max_workers=3) as ex:
+            results = list(ex.map(fetch_and_extract, companies))
+        return jsonify({"companies": results, "count": len(results)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/intel/competitors")
+def api_intel_competitors():
+    """Get competitor list for a given company."""
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Company name required"}), 400
+
+    try:
+        d = fetch_company_info(name)
+        competitors = d.get("competitors", [])
+        # Extract names if they're dict objects
+        comp_names = [
+            c.get("name") if isinstance(c, dict) else str(c)
+            for c in competitors
+        ]
+        return jsonify({"company": d.get("name") or name, "competitors": comp_names[:5]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ── AI Watch — vertical company discovery ─────────────────────────────────────
 _AI_WATCH_COMPANIES = {
     "foundation": [
