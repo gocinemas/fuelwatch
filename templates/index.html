@@ -1359,9 +1359,31 @@
             <button onclick="document.getElementById('intel-input').value=document.getElementById('company-q').value;searchIntel()"
               style="background:#4f46e5;color:#fff;font-size:14px;font-weight:700;padding:12px 28px;border-radius:12px;border:none;cursor:pointer;white-space:nowrap;transition:all .2s">Search</button>
           </div>
-          <button onclick="switchIntelTab('compare')" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;transition:all .2s">📊 Or compare 2-3 companies →</button>
+          <button onclick="setIntelCompareMode()" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;transition:all .2s">📊 Or compare 2-3 companies →</button>
         </div>
       </div>
+
+      <!-- ── Compare Mode panel (intel.humanagency.co, compare mode) ── -->
+      <div id="compare-search-row" style="display:none">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:24px">
+          <div style="margin-bottom:16px">
+            <div style="font-size:20px;font-weight:700;color:var(--text)">📊 Compare Companies</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px">Side-by-side analysis · financials · strategy · hiring</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+            <input id="comp-a-input" type="text" placeholder="Company A (e.g., Apple)" style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);outline:none;transition:all .2s" onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='var(--border)'">
+            <input id="comp-b-input" type="text" placeholder="Company B (e.g., Microsoft)" style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);outline:none;transition:all .2s" onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='var(--border)'">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input id="comp-use-c" type="checkbox"><span>Add 3rd company</span></label>
+            <div id="comp-c-wrap" style="display:none"><input id="comp-c-input" type="text" placeholder="Company C" style="width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;background:var(--bg);color:var(--text);outline:none;transition:all .2s" onfocus="this.style.borderColor='#4f46e5'" onblur="this.style.borderColor='var(--border)'"></div>
+          </div>
+          <button onclick="_compareLoadTopLevel()" style="width:100%;padding:12px;background:#4f46e5;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px">Compare →</button>
+          <button onclick="setIntelMode('company')" style="width:100%;margin-top:8px;padding:10px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer;font-size:13px">← Back to Search</button>
+        </div>
+        <!-- Compare results -->
+        <div id="compare-results-top" style="display:none"></div>
+        <div id="compare-error-top" style="display:none;background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:12px;color:#991b1b;font-size:12px;margin-bottom:14px"></div>
+      </div>
+
       <!-- Hidden compat input (synced from brand-q/company-q; also set by recent-item clicks) -->
       <input id="intel-input" type="hidden">
       {% else %}
@@ -8257,6 +8279,99 @@ function _hcAdd() {
       document.getElementById("compare-error").style.display = "block";
       document.getElementById("compare-loading").style.display = "none";
     }
+  }
+
+  function setIntelCompareMode() {
+    document.getElementById("brand-search-row").style.display = "none";
+    document.getElementById("company-search-row").style.display = "none";
+    document.getElementById("compare-search-row").style.display = "block";
+    document.getElementById("intel-pins-section").style.display = "none";
+    document.getElementById("intel-recent").style.display = "none";
+
+    // Set up 3rd company toggle
+    const checkbox = document.getElementById("comp-use-c");
+    const wrapper = document.getElementById("comp-c-wrap");
+    if (checkbox && wrapper) {
+      checkbox.onchange = function() {
+        wrapper.style.display = this.checked ? "block" : "none";
+      };
+    }
+  }
+
+  async function _compareLoadTopLevel() {
+    const a = document.getElementById("comp-a-input").value.trim();
+    const b = document.getElementById("comp-b-input").value.trim();
+    const useC = document.getElementById("comp-use-c").checked;
+    const c = useC ? document.getElementById("comp-c-input").value.trim() : "";
+
+    if (!a || !b) {
+      document.getElementById("compare-error-top").textContent = "Enter at least 2 companies";
+      document.getElementById("compare-error-top").style.display = "block";
+      return;
+    }
+
+    const companies = [a, b];
+    if (c) companies.push(c);
+    const unique = new Set(companies.map(x => x.toLowerCase()));
+    if (unique.size !== companies.length) {
+      document.getElementById("compare-error-top").textContent = "Cannot compare the same company twice";
+      document.getElementById("compare-error-top").style.display = "block";
+      return;
+    }
+
+    document.getElementById("compare-error-top").style.display = "none";
+    document.getElementById("compare-results-top").innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Loading comparison...</div>';
+    document.getElementById("compare-results-top").style.display = "block";
+
+    try {
+      const companyList = companies.join(",");
+      const r = await fetch(`/api/intel/compare-batch?companies=${encodeURIComponent(companyList)}`);
+      const d = await r.json();
+
+      if (d.error) {
+        document.getElementById("compare-error-top").textContent = d.error;
+        document.getElementById("compare-error-top").style.display = "block";
+        document.getElementById("compare-results-top").style.display = "none";
+        return;
+      }
+
+      _compareRenderGridTopLevel(d.companies);
+    } catch(e) {
+      document.getElementById("compare-error-top").textContent = "Error: " + e.message;
+      document.getElementById("compare-error-top").style.display = "block";
+      document.getElementById("compare-results-top").style.display = "none";
+    }
+  }
+
+  function _compareRenderGridTopLevel(companies) {
+    const metrics = [
+      { label: "📍 HQ", key: "hq" },
+      { label: "📅 Founded", key: "founded" },
+      { label: "🏭 Industry", key: "industry" },
+      { label: "💰 Revenue", key: "revenue" },
+      { label: "👥 Employees", key: "employees" },
+      { label: "💹 Market Cap", key: "market_cap" },
+      { label: "💼 Hiring", key: "hiring" },
+      { label: "🤖 AI Focus", key: "ai_pct" }
+    ];
+
+    let html = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;overflow-x:auto">`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:12px">`;
+    html += `<tr><th style="text-align:left;padding:8px;font-weight:700;color:var(--text);border-bottom:2px solid var(--border)">Metric</th>`;
+    companies.forEach(co => html += `<th style="text-align:left;padding:8px;font-weight:700;color:var(--text);border-bottom:2px solid var(--border)">${co.name}</th>`);
+    html += `</tr>`;
+
+    metrics.forEach(metric => {
+      html += `<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px;font-weight:600;color:var(--muted)">${metric.label}</td>`;
+      companies.forEach(co => {
+        const val = co[metric.key] || "—";
+        html += `<td style="padding:8px;color:var(--text)">${val}</td>`;
+      });
+      html += `</tr>`;
+    });
+
+    html += `</table></div>`;
+    document.getElementById("compare-results-top").innerHTML = html;
   }
 
   function _compareRenderGrid(companies) {
