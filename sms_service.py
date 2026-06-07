@@ -26676,6 +26676,175 @@ def api_admin_recategorise_receipts():
         return jsonify({"error": str(e)}), 500
 
 
+# ── Bookmarks AI Search ────────────────────────────────────────────────────────
+
+import math
+
+def _bm25_score(query_terms, doc_text, doc_len, avg_doc_len, k1=1.5, b=0.75, idf=None):
+    """BM25 ranking algorithm for better relevance scoring."""
+    if idf is None:
+        idf = {term: math.log(1 + 1 / (1 + 1)) for term in query_terms}
+
+    score = 0.0
+    doc_lower = doc_text.lower()
+
+    for term in query_terms:
+        if term in doc_lower:
+            freq = doc_lower.count(term)
+            idf_val = idf.get(term, math.log(1.5))
+            score += idf_val * (freq * (k1 + 1)) / (freq + k1 * (1 - b + b * (doc_len / max(avg_doc_len, 1))))
+
+    return score
+
+def _extract_entities(text):
+    """Extract locations, topics, and named entities from query."""
+    entities = {
+        'locations': [],
+        'topics': [],
+        'entities': [],
+        'keywords': []
+    }
+
+    text_lower = text.lower()
+
+    locations = ['london', 'uk', 'us', 'sf', 'new york', 'paris', 'tokyo', 'india', 'mumbai',
+                 'delhi', 'bangalore', 'hyderabad', 'europe', 'asia', 'us', 'usa']
+    for loc in locations:
+        if loc in text_lower:
+            entities['locations'].append(loc)
+
+    topics = ['ai', 'ml', 'startup', 'design', 'business', 'ux', 'python', 'javascript',
+              'react', 'product', 'growth', 'fundraising', 'venture', 'research']
+    for topic in topics:
+        if topic in text_lower:
+            entities['topics'].append(topic)
+
+    entities['keywords'] = [w for w in text.split() if len(w) > 3]
+
+    return entities
+
+def _classify_intent(query):
+    """Classify the intent of the query."""
+    query_lower = query.lower()
+
+    intent_map = {
+        'find_place': ['restaurant', 'cafe', 'bar', 'place', 'location', 'spot'],
+        'learn_topic': ['learn', 'understand', 'explain', 'tutorial', 'guide', 'how to'],
+        'research': ['research', 'paper', 'study', 'report', 'analysis'],
+        'recipe': ['recipe', 'cook', 'meal', 'ingredient'],
+        'tool': ['tool', 'software', 'app', 'service'],
+        'news': ['tweet', 'post', 'article', 'blog', 'news'],
+        'resource': ['book', 'course', 'video', 'watch'],
+    }
+
+    detected_intents = []
+    for intent, keywords in intent_map.items():
+        if any(kw in query_lower for kw in keywords):
+            detected_intents.append(intent)
+
+    return detected_intents or ['general']
+
+def _semantic_similarity(query, text, boost_words=None):
+    """Simple semantic similarity based on shared words and synonyms."""
+    query_words = set(query.lower().split())
+    text_words = set(text.lower().split())
+
+    # Exact matches
+    intersection = query_words & text_words
+    union = query_words | text_words
+    jaccard = len(intersection) / len(union) if union else 0
+
+    # Boost for certain matched words
+    boost = 0
+    if boost_words:
+        boost = sum(0.1 for word in boost_words if word in text.lower())
+
+    return jaccard + boost
+
+@app.route("/api/bookmarks/search-ai", methods=["POST"])
+def api_bookmarks_search_ai():
+    """Advanced AI-powered bookmark search with multiple ranking techniques."""
+    try:
+        data = request.get_json() or {}
+        query = data.get("query", "").strip()
+        bookmarks = data.get("bookmarks", [])
+
+        if not query or not bookmarks:
+            return jsonify({"results": [], "analysis": {}})
+
+        # 1. INTENT CLASSIFICATION
+        intents = _classify_intent(query)
+
+        # 2. ENTITY EXTRACTION
+        entities = _extract_entities(query)
+
+        # 3. QUERY PREPROCESSING
+        query_terms = [w.lower() for w in query.split() if len(w) > 2]
+
+        # 4. SCORE EACH BOOKMARK
+        scored = []
+        avg_doc_len = sum(len(bm.get("title", "") + " " + bm.get("url", "")) for bm in bookmarks) / max(len(bookmarks), 1)
+
+        for bm in bookmarks:
+            doc_text = f"{bm.get('title', '')} {bm.get('url', '')} {bm.get('category', '')}"
+            doc_len = len(doc_text)
+
+            # BM25 score
+            bm25 = _bm25_score(query_terms, doc_text, doc_len, avg_doc_len)
+
+            # Semantic similarity
+            semantic = _semantic_similarity(query, doc_text, entities['topics'])
+
+            # Entity matching
+            entity_match = 0
+            for loc in entities['locations']:
+                if loc in doc_text.lower():
+                    entity_match += 0.3
+            for topic in entities['topics']:
+                if topic in doc_text.lower():
+                    entity_match += 0.2
+
+            # Intent-based boosting
+            intent_boost = 0
+            if 'find_place' in intents and ('restaurant' in doc_text.lower() or 'cafe' in doc_text.lower()):
+                intent_boost += 0.4
+            if 'research' in intents and ('paper' in doc_text.lower() or 'research' in doc_text.lower()):
+                intent_boost += 0.4
+            if 'recipe' in intents and 'recipe' in doc_text.lower():
+                intent_boost += 0.4
+
+            # COMBINED SCORE
+            total_score = (bm25 * 0.4) + (semantic * 0.3) + (entity_match * 0.2) + (intent_boost * 0.1)
+
+            if total_score > 0:
+                scored.append({
+                    **bm,
+                    "_total_score": round(total_score, 3),
+                    "_bm25": round(bm25, 2),
+                    "_semantic": round(semantic, 2),
+                    "_entity": round(entity_match, 2),
+                    "_intent": round(intent_boost, 2),
+                    "_matched_entities": {
+                        "locations": [l for l in entities['locations'] if l in doc_text.lower()],
+                        "topics": [t for t in entities['topics'] if t in doc_text.lower()],
+                    }
+                })
+
+        # Sort by total score
+        scored.sort(key=lambda x: x["_total_score"], reverse=True)
+
+        return jsonify({
+            "results": scored[:50],
+            "analysis": {
+                "query": query,
+                "intents": intents,
+                "entities": entities,
+                "total_matches": len(scored),
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": str(e), "results": []}), 500
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
