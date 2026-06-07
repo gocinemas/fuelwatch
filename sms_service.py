@@ -6566,6 +6566,25 @@ def api_intel_competitors():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/home/last-receipt")
+def api_home_last_receipt():
+    """Get user's last receipt for brief card."""
+    phone = _plain_fn(request.remote_addr, request.headers.get("User-Agent", ""))
+    try:
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date,items").eq("phone", phone).order("shop_date", desc=True).limit(1).execute().data
+        if not rows:
+            return jsonify({"merchant": None, "total": None, "shop_date": None})
+
+        r = rows[0]
+        merchant = r.get("merchant", "Unknown")
+        total = r.get("total", 0)
+        shop_date = r.get("shop_date")
+
+        return jsonify({"merchant": merchant, "total": total, "shop_date": shop_date})
+    except Exception as e:
+        return jsonify({"error": str(e), "merchant": None}), 500
+
+
 # ── AI Watch — vertical company discovery ─────────────────────────────────────
 _AI_WATCH_COMPANIES = {
     "foundation": [
