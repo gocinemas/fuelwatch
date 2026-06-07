@@ -6520,18 +6520,23 @@ def api_intel_compare_batch():
         share = d.get("share") or {}
         jobs = d.get("job_signals") or {}
         ai = d.get("ai_signals") or {}
-        return {
+
+        # Build result with fallbacks for missing fields
+        result = {
             "name": d.get("name") or name,
-            "founded": w.get("founded", "—"),
-            "hq": w.get("hq", "—"),
-            "industry": w.get("industry", "—"),
-            "revenue": w.get("revenue", "—"),
-            "employees": w.get("employees", "—"),
-            "market_cap": share.get("market_cap", "—"),
-            "hiring": f"{jobs.get('total', 0)} open roles",
-            "ai_pct": f"{round(ai.get('ai_pct', 0))}% AI roles" if ai.get('ai_pct') else "—",
-            "overview": w.get("extract", "")[:150] if w.get("extract") else "—",
+            "founded": str(w.get("founded") or w.get("start_date") or "—"),
+            "hq": str(w.get("hq") or w.get("headquarters") or w.get("location") or "—"),
+            "industry": str(w.get("industry") or w.get("categories") or "—"),
+            "revenue": str(w.get("revenue") or w.get("annual_revenue") or "—"),
+            "employees": str(w.get("employees") or w.get("staffing_size") or "—"),
+            "market_cap": str(share.get("market_cap") or share.get("marketcap") or "—"),
+            "hiring": f"{jobs.get('total', 0)} open roles" if jobs.get('total') else "—",
+            "ai_pct": f"{round(ai.get('ai_pct', 0) or 0)}% AI roles" if ai.get('ai_pct') else "—",
+            "overview": w.get("extract") or w.get("summary") or "—",
         }
+        if result["overview"] and len(result["overview"]) > 150:
+            result["overview"] = result["overview"][:150]
+        return result
 
     try:
         with _cf.ThreadPoolExecutor(max_workers=3) as ex:
