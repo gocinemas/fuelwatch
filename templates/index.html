@@ -8201,9 +8201,13 @@ function _hcAdd() {
 
   function _compareTabInit() {
     // Initialize the compare tab when clicked
-    document.getElementById("compare-use-c").addEventListener("change", function() {
-      document.getElementById("compare-c-wrap").style.display = this.checked ? "block" : "none";
-    });
+    const checkbox = document.getElementById("compare-use-c");
+    const wrapper = document.getElementById("compare-c-wrap");
+    if (checkbox && wrapper) {
+      checkbox.onchange = function() {
+        wrapper.style.display = this.checked ? "block" : "none";
+      };
+    }
   }
 
   async function _compareLoad() {
