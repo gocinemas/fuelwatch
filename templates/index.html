@@ -16625,6 +16625,8 @@ let _savesAll = [];
                 formattedDate = dateStr;
               }
             }
+            console.log('[spend-receipt] Raw date from API:', d.shop_date);
+            console.log('[spend-receipt] Formatted date:', formattedDate);
             var el = document.getElementById("brief-spend-last-receipt");
             if (el) {
               el.innerHTML = '🛒 Last: <strong>' + d.merchant + '</strong> for <strong>£' + parseFloat(d.total).toFixed(2) + '</strong>' + (formattedDate ? ' on ' + formattedDate : '');
