@@ -6569,9 +6569,19 @@ def api_intel_competitors():
 @app.route("/api/home/last-receipt")
 def api_home_last_receipt():
     """Get user's last receipt for brief card."""
-    phone = _plain_fn(request.remote_addr, request.headers.get("User-Agent", ""))
+    # Identify user via token or cookie (same as /api/home/brief)
+    token = request.args.get("token", "").strip()
+    if not token:
+        token = (request.cookies.get("miru_saves_token") or
+                 request.cookies.get("miru_saves_phone") or "").strip()
+    from_number = _v2_resolve(token)
+
+    if not from_number:
+        return jsonify({"merchant": None, "total": None, "shop_date": None})
+
+    phone = from_number.replace("whatsapp:", "").strip()
     try:
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date,items").eq("phone", phone).order("shop_date", desc=True).limit(1).execute().data
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date").eq("phone", phone).order("shop_date", desc=True).limit(1).execute().data
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
 
@@ -6582,6 +6592,7 @@ def api_home_last_receipt():
 
         return jsonify({"merchant": merchant, "total": total, "shop_date": shop_date})
     except Exception as e:
+        app.logger.warning(f"[last-receipt] {e}")
         return jsonify({"error": str(e), "merchant": None}), 500
 
 
