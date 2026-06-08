@@ -6590,15 +6590,25 @@ def api_home_last_receipt():
             return jsonify({"merchant": None, "total": None, "shop_date": None})
 
         app.logger.info(f"[last-receipt] Found {len(rows)} receipts for {phone}")
+        # Log all receipts for debugging
+        for i, row in enumerate(rows[:5]):
+            app.logger.info(f"[last-receipt]   [{i}] {row.get('merchant')} | {row.get('total')} | {row.get('shop_date')}")
 
         # Sort by shop_date descending to get the most recent
         try:
-            rows_sorted = sorted(rows, key=lambda x: x.get("shop_date", ""), reverse=True)
+            # Try to sort by date - handle both string and date formats
+            def get_sort_key(row):
+                shop_date = row.get("shop_date", "")
+                # If it's a date string, use it directly (ISO format sorts correctly alphabetically in reverse)
+                return str(shop_date) if shop_date else ""
+
+            rows_sorted = sorted(rows, key=get_sort_key, reverse=True)
             r = rows_sorted[0] if rows_sorted else rows[0]
-            app.logger.info(f"[last-receipt] Returning: {r.get('merchant')} on {r.get('shop_date')}")
+            app.logger.info(f"[last-receipt] RETURNING: {r.get('merchant')} for £{r.get('total')} on {r.get('shop_date')}")
         except Exception as e:
             app.logger.error(f"[last-receipt] Sort error: {e}")
             r = rows[0]  # Fallback to first result if sorting fails
+            app.logger.info(f"[last-receipt] FALLBACK: {r.get('merchant')} on {r.get('shop_date')}")
 
         merchant = r.get("merchant", "Unknown")
         total = r.get("total", 0)
