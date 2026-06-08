@@ -6596,11 +6596,14 @@ def api_home_last_receipt():
 
         # Sort by shop_date descending to get the most recent
         try:
-            # Try to sort by date - handle both string and date formats
+            # Handle None dates by putting them at the end
             def get_sort_key(row):
-                shop_date = row.get("shop_date", "")
-                # If it's a date string, use it directly (ISO format sorts correctly alphabetically in reverse)
-                return str(shop_date) if shop_date else ""
+                shop_date = row.get("shop_date")
+                # None dates go to end (empty string sorts before actual dates in reverse)
+                # Valid dates sort in reverse chronological order (newest first)
+                if shop_date is None:
+                    return ("", "")  # Tuple puts None values last
+                return (shop_date, "")  # Valid dates sort by date string
 
             rows_sorted = sorted(rows, key=get_sort_key, reverse=True)
             r = rows_sorted[0] if rows_sorted else rows[0]
