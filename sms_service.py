@@ -10029,15 +10029,20 @@ def api_home_brief_narrative():
     mode_note = body.get("mode_note") or ("working from home" if mode == "wfh" else "going into the office" if mode == "office" else "out and about today, not commuting" if mode == "out" else "at work")
 
     # Normalise saves to "Title (Category)" strings
+    # IMPORTANT: Only include REAL saved items, never let Groq invent saves
     saves_ctx = []
     for s in saves_raw[:4]:
         if isinstance(s, dict):
             t   = (s.get("title") or "").strip()
             cat = (s.get("category") or "").strip()
-            if t:
+            # Only include if title exists AND is not generic/empty
+            if t and len(t) > 5 and not t.startswith("Unnamed"):
                 saves_ctx.append(f"{t} ({cat})" if cat else t)
         elif s:
-            saves_ctx.append(str(s))
+            s_str = str(s).strip()
+            # Only include real, substantial saves
+            if s_str and len(s_str) > 5 and not s_str.startswith("Unnamed"):
+                saves_ctx.append(s_str)
 
     # Enrich facts with spend breakdown if available
     bd = spend.get("breakdown", {})
@@ -10058,18 +10063,20 @@ def api_home_brief_narrative():
         prompt_parts.append(f"Their children: {' and '.join(kids)}.")
     if saves_ctx:
         if is_weekend:
-            prompt_parts.append(f"Nearly the weekend. They've saved: {'; '.join(saves_ctx)}. Mention one if natural.")
+            prompt_parts.append(f"Weekend context: They've saved: {'; '.join(saves_ctx)}. Reference one only if you mention it.")
         else:
-            prompt_parts.append(f"They've recently saved: {'; '.join(saves_ctx)}.")
+            prompt_parts.append(f"Saved items (mention only if relevant): {'; '.join(saves_ctx)}. Do NOT invent additional saves.")
     prompt_parts.append(f"Facts: {facts_text}.")
     prompt_parts.append(
         "CRITICAL CONSTRAINTS:\n"
         "- ONLY mention facts provided above. Do NOT add any information from your training data.\n"
-        "- Do NOT invent details about children, activities, or schedules.\n"
+        "- Do NOT invent or extrapolate about saves, notes, activities, or schedules.\n"
+        "- Do NOT mention things they 'should have' saved or 'probably' need.\n"
+        "- Only reference the exact saves/facts listed above, nothing more.\n"
         "- Do NOT guess about what they might want or what might happen.\n"
         "- Sound like a smart PA. Concise, British English, under 40 words.\n"
         "- No greetings, no bullet points, no suggestions.\n"
-        "- If you don't know something, don't mention it."
+        "- If you don't have data for it, don't mention it."
     )
     prompt = " ".join(prompt_parts)
     try:
