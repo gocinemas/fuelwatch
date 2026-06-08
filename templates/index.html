@@ -2043,8 +2043,8 @@
       </div>
       <div id="brief-today-card" style="display:none;margin-bottom:10px"></div>
 
-      <!-- Last receipt card -->
-      <div id="brief-receipt-card" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px">
+      <!-- Last receipt card (moved into spend card, kept for backwards compat) -->
+      <div id="brief-receipt-card" style="display:none!important;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div>
             <div style="font-size:13px;font-weight:600;color:var(--text)">🛒 Last shopped at <span id="brief-receipt-merchant" style="color:var(--text)">—</span></div>
@@ -16541,7 +16541,32 @@ let _savesAll = [];
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
         + breakdownHtml
+        + '<div id="brief-spend-last-receipt" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"></div>'
         + '</div>';
+
+      // Fetch and show last receipt
+      fetch("/api/home/last-receipt")
+        .then(r => r.json())
+        .then(d => {
+          if (d.merchant && d.total) {
+            var dateStr = d.shop_date || '';
+            var formattedDate = '';
+            if (dateStr) {
+              try {
+                var parts = dateStr.split("T")[0].split("-");
+                var date = new Date(parts[0], parseInt(parts[1]) - 1, parts[2]);
+                var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                formattedDate = days[date.getDay()] + " " + date.getDate() + " " + months[date.getMonth()];
+              } catch (e) { formattedDate = dateStr; }
+            }
+            var el = document.getElementById("brief-spend-last-receipt");
+            if (el) {
+              el.innerHTML = '🛒 Last: <strong>' + d.merchant + '</strong> for <strong>£' + parseFloat(d.total).toFixed(2) + '</strong>' + (formattedDate ? ' on ' + formattedDate : '');
+            }
+          }
+        })
+        .catch(() => {});
     }
 
     // Clippings removed from home — user navigates there directly.
