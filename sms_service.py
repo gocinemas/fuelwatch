@@ -6586,13 +6586,18 @@ def api_home_last_receipt():
         rows = lib._sb().table("receipts").select("merchant,total,shop_date").eq("phone", phone).limit(100).execute().data or []
 
         if not rows:
+            app.logger.info(f"[last-receipt] No receipts found for {phone}")
             return jsonify({"merchant": None, "total": None, "shop_date": None})
+
+        app.logger.info(f"[last-receipt] Found {len(rows)} receipts for {phone}")
 
         # Sort by shop_date descending to get the most recent
         try:
             rows_sorted = sorted(rows, key=lambda x: x.get("shop_date", ""), reverse=True)
             r = rows_sorted[0] if rows_sorted else rows[0]
-        except Exception:
+            app.logger.info(f"[last-receipt] Returning: {r.get('merchant')} on {r.get('shop_date')}")
+        except Exception as e:
+            app.logger.error(f"[last-receipt] Sort error: {e}")
             r = rows[0]  # Fallback to first result if sorting fails
 
         merchant = r.get("merchant", "Unknown")
