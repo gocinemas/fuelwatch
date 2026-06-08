@@ -10058,8 +10058,13 @@ def api_home_brief_narrative():
             prompt_parts.append(f"They've recently saved: {'; '.join(saves_ctx)}.")
     prompt_parts.append(f"Facts: {facts_text}.")
     prompt_parts.append(
-        "Sound like a smart PA who knows them. Concise, British English, under 40 words. No greetings, no bullet points. "
-        "Never suggest the user 'check', 'look up', or 'you might want to' anything — only state facts or reminders."
+        "CRITICAL CONSTRAINTS:\n"
+        "- ONLY mention facts provided above. Do NOT add any information from your training data.\n"
+        "- Do NOT invent details about children, activities, or schedules.\n"
+        "- Do NOT guess about what they might want or what might happen.\n"
+        "- Sound like a smart PA. Concise, British English, under 40 words.\n"
+        "- No greetings, no bullet points, no suggestions.\n"
+        "- If you don't know something, don't mention it."
     )
     prompt = " ".join(prompt_parts)
     try:
