@@ -6581,11 +6581,20 @@ def api_home_last_receipt():
 
     phone = from_number.replace("whatsapp:", "").strip()
     try:
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date").eq("phone", phone).order("shop_date", desc=True).limit(1).execute().data
+        # Get ALL receipts for this user, sorted properly, then take the most recent
+        # (Supabase order() may have issues with date strings, so we'll sort in Python)
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date").eq("phone", phone).limit(100).execute().data or []
+
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
 
-        r = rows[0]
+        # Sort by shop_date descending to get the most recent
+        try:
+            rows_sorted = sorted(rows, key=lambda x: x.get("shop_date", ""), reverse=True)
+            r = rows_sorted[0] if rows_sorted else rows[0]
+        except Exception:
+            r = rows[0]  # Fallback to first result if sorting fails
+
         merchant = r.get("merchant", "Unknown")
         total = r.get("total", 0)
         shop_date = r.get("shop_date")
