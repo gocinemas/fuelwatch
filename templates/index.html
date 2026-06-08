@@ -16659,10 +16659,7 @@ let _savesAll = [];
         }
       }
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:14px">'
-        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">💳 Spend · ' + (spend.month || "") + '</div>'
-        + '<span onclick="showScreen(\'saves\')" style="font-size:10px;font-weight:700;color:var(--accent);cursor:pointer;text-decoration:underline">Receipts ›</span>'
-        + '</div>'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">💳 Spend · ' + (spend.month || "") + '</div>'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
         + breakdownHtml
