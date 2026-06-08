@@ -15363,16 +15363,44 @@ let _savesAll = [];
 
           if (d.shop_date && dateEl) {
             try {
-              // Parse ISO date (e.g., "2026-06-08") and format as British DD/MM/YY
-              const parts = d.shop_date.split("T")[0].split("-");
-              const year = parts[0];
-              const month = parts[1];
-              const day = parts[2];
-              const shortYear = year.slice(-2); // "2026" → "26"
-              const formatted = day + "/" + month + "/" + shortYear; // "08/06/26"
-              dateEl.textContent = formatted;
+              // Handle multiple date formats
+              const dateOnly = d.shop_date.split("T")[0];
+              let year, month, day;
+
+              if (dateOnly.includes("-")) {
+                // ISO format: "2026-06-08"
+                const parts = dateOnly.split("-");
+                year = parts[0];
+                month = parts[1];
+                day = parts[2];
+              } else if (dateOnly.includes("/")) {
+                // American MM/DD/YYYY or British DD/MM/YYYY
+                const parts = dateOnly.split("/");
+                if (parseInt(parts[0]) > 12) {
+                  // British format: DD/MM/YYYY
+                  day = parts[0];
+                  month = parts[1];
+                  year = parts[2];
+                } else if (parseInt(parts[1]) > 12) {
+                  // American format: MM/DD/YYYY
+                  month = parts[0];
+                  day = parts[1];
+                  year = parts[2];
+                } else {
+                  // Assume American if ambiguous
+                  month = parts[0];
+                  day = parts[1];
+                  year = parts[2];
+                }
+              }
+
+              if (year && month && day) {
+                const shortYear = String(year).slice(-2);
+                const formatted = String(day).padStart(2, '0') + "/" + String(month).padStart(2, '0') + "/" + shortYear;
+                dateEl.textContent = formatted;
+              }
             } catch (e) {
-              dateEl.textContent = d.shop_date; // Fallback to raw date if parsing fails
+              dateEl.textContent = d.shop_date; // Fallback
             }
           }
 
@@ -16554,15 +16582,43 @@ let _savesAll = [];
             var formattedDate = '';
             if (dateStr) {
               try {
-                // Handle ISO date format: "2026-06-08" or "2026-06-08T00:00:00"
-                var dateOnly = dateStr.split("T")[0]; // Get "2026-06-08"
-                var parts = dateOnly.split("-"); // ["2026", "06", "08"]
-                if (parts.length === 3) {
-                  var year = parts[0];
-                  var month = parts[1];
-                  var day = parts[2];
-                  var shortYear = year.slice(-2); // "2026" → "26"
-                  formattedDate = day + "/" + month + "/" + shortYear; // British DD/MM/YY format
+                // Handle multiple date formats
+                var dateOnly = dateStr.split("T")[0]; // Remove time part if present
+                var parts;
+                var year, month, day;
+
+                if (dateOnly.includes("-")) {
+                  // ISO format: "2026-06-08" → [year, month, day]
+                  parts = dateOnly.split("-");
+                  year = parts[0];
+                  month = parts[1];
+                  day = parts[2];
+                } else if (dateOnly.includes("/")) {
+                  // American MM/DD/YYYY or British DD/MM/YYYY format
+                  parts = dateOnly.split("/");
+                  // Detect: if first part > 12, it's definitely DD/MM/YYYY
+                  if (parseInt(parts[0]) > 12) {
+                    // British format: DD/MM/YYYY
+                    day = parts[0];
+                    month = parts[1];
+                    year = parts[2];
+                  } else if (parseInt(parts[1]) > 12) {
+                    // American format: MM/DD/YYYY
+                    month = parts[0];
+                    day = parts[1];
+                    year = parts[2];
+                  } else {
+                    // Ambiguous, assume ISO-stored-as-string: MM/DD/YYYY but stored wrong
+                    // Assume first part is month, second is day
+                    month = parts[0];
+                    day = parts[1];
+                    year = parts[2];
+                  }
+                }
+
+                if (year && month && day) {
+                  var shortYear = String(year).slice(-2);
+                  formattedDate = String(day).padStart(2, '0') + "/" + String(month).padStart(2, '0') + "/" + shortYear;
                 }
               } catch (e) {
                 console.log('[receipt-date] Parse error:', e);
