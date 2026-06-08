@@ -15363,12 +15363,13 @@ let _savesAll = [];
 
           if (d.shop_date && dateEl) {
             try {
-              // Parse ISO date (e.g., "2026-06-08") handling timezone correctly
+              // Parse ISO date (e.g., "2026-06-08") and format as British DD/MM/YY
               const parts = d.shop_date.split("T")[0].split("-");
-              const date = new Date(parts[0], parseInt(parts[1]) - 1, parts[2]);
-              const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-              const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-              const formatted = days[date.getDay()] + " " + date.getDate() + " " + months[date.getMonth()];
+              const year = parts[0];
+              const month = parts[1];
+              const day = parts[2];
+              const shortYear = year.slice(-2); // "2026" → "26"
+              const formatted = day + "/" + month + "/" + shortYear; // "08/06/26"
               dateEl.textContent = formatted;
             } catch (e) {
               dateEl.textContent = d.shop_date; // Fallback to raw date if parsing fails
@@ -16557,13 +16558,11 @@ let _savesAll = [];
                 var dateOnly = dateStr.split("T")[0]; // Get "2026-06-08"
                 var parts = dateOnly.split("-"); // ["2026", "06", "08"]
                 if (parts.length === 3) {
-                  var year = parseInt(parts[0]);
-                  var month = parseInt(parts[1]) - 1; // 0-indexed
-                  var day = parseInt(parts[2]);
-                  var date = new Date(year, month, day);
-                  var days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-                  var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-                  formattedDate = days[date.getDay()] + " " + date.getDate() + " " + months[date.getMonth()];
+                  var year = parts[0];
+                  var month = parts[1];
+                  var day = parts[2];
+                  var shortYear = year.slice(-2); // "2026" → "26"
+                  formattedDate = day + "/" + month + "/" + shortYear; // British DD/MM/YY format
                 }
               } catch (e) {
                 console.log('[receipt-date] Parse error:', e);
