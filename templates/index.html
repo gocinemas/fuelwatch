@@ -15706,8 +15706,8 @@ let _savesAll = [];
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
 
-          // Load last receipt
-          _briefLoadLastReceipt();
+          // Last receipt moved to spend card (shown only there, not as separate card)
+          // _briefLoadLastReceipt(); // DISABLED: now only in spend card
 
           // Location section below (runs in parallel — venue/weather/fuel cards)
           _briefRequestLocation();
