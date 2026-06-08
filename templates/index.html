@@ -16629,7 +16629,11 @@ let _savesAll = [];
             console.log('[spend-receipt] Formatted date:', formattedDate);
             var el = document.getElementById("brief-spend-last-receipt");
             if (el) {
-              el.innerHTML = '🛒 Last: <strong>' + d.merchant + '</strong> for <strong>£' + parseFloat(d.total).toFixed(2) + '</strong>' + (formattedDate ? ' on ' + formattedDate : '');
+              el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">'
+                + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">🛒 ' + d.merchant + '</div>'
+                + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div></div>'
+                + '<div style="text-align:right;font-size:13px;font-weight:700;color:var(--accent)">£' + parseFloat(d.total).toFixed(2) + '</div>'
+                + '</div>';
             }
           }
         })
@@ -16686,7 +16690,11 @@ let _savesAll = [];
                   formattedDate = dateStr;
                 }
               }
-              el.innerHTML = '🛒 Last: <strong>' + d.merchant + '</strong> for <strong>£' + parseFloat(d.total).toFixed(2) + '</strong>' + (formattedDate ? ' on ' + formattedDate : '');
+              el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">'
+                + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">🛒 ' + d.merchant + '</div>'
+                + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div></div>'
+                + '<div style="text-align:right;font-size:13px;font-weight:700;color:var(--accent)">£' + parseFloat(d.total).toFixed(2) + '</div>'
+                + '</div>';
             }
           }
         })
