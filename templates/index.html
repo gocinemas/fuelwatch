@@ -16638,6 +16638,60 @@ let _savesAll = [];
 
     // Clippings removed from home — user navigates there directly.
     // Spend card (💳) below is the only receipt signal needed on home.
+    if (spend && spend.total > 0) {
+      var breakdownHtml = "";
+      if (spend.breakdown) {
+        for (var cat in spend.breakdown) {
+          var cb = spend.breakdown[cat];
+          var pct = spend.total > 0 ? Math.round((cb.total / spend.total) * 100) : 0;
+          breakdownHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+            + '<div style="font-size:12px;color:var(--text)">' + cat + '</div>'
+            + '<div style="font-size:12px;font-weight:600;color:var(--accent)">£' + cb.total.toFixed(2) + ' (' + pct + '%)</div>'
+            + '</div>';
+        }
+      }
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:14px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">💳 Spend · ' + (spend.month || "") + '</div>'
+        + '<span style="font-size:10px;font-weight:700;color:var(--accent)">Receipts ›</span>'
+        + '</div>'
+        + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
+        + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
+        + breakdownHtml
+        + '<div id="brief-spend-last-receipt" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"></div>'
+        + '</div>';
+
+      // Fetch and show last receipt
+      var _token = _miruPhone() || localStorage.getItem("miru_saves_token") || "";
+      fetch("/api/home/last-receipt" + (_token ? "?token=" + encodeURIComponent(_token) : ""))
+        .then(r => r.json())
+        .then(d => {
+          if (d.merchant && d.total) {
+            var el = document.getElementById("brief-spend-last-receipt");
+            if (el) {
+              var dateStr = d.shop_date || '';
+              var formattedDate = '';
+              if (dateStr) {
+                try {
+                  var dateOnly = dateStr.split("T")[0];
+                  var parts = dateOnly.split("-");
+                  if (parts.length === 3) {
+                    var year = parts[0];
+                    var month = parts[1];
+                    var day = parts[2];
+                    var shortYear = String(year).slice(-2);
+                    formattedDate = day + "/" + month + "/" + shortYear;
+                  }
+                } catch (e) {
+                  formattedDate = dateStr;
+                }
+              }
+              el.innerHTML = '🛒 Last: <strong>' + d.merchant + '</strong> for <strong>£' + parseFloat(d.total).toFixed(2) + '</strong>' + (formattedDate ? ' on ' + formattedDate : '');
+            }
+          }
+        })
+        .catch(err => { console.log('[receipt-fetch] Error:', err); });
+    }
 
     // Area highlights — planning, news, area summary
     var area = ctx && ctx.area;
