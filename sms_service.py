@@ -10072,10 +10072,33 @@ def api_home_brief_narrative():
         dow  = body.get("dow") or now.strftime("%A")
         tod  = body.get("tod") or ("morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening")
 
-        # Extract facts from facts parameter OR context
+        # Extract facts from facts parameter
         facts = body.get("facts", [])
 
         app.logger.info(f"[brief/narrative] NEW PIPELINE STARTING: mode={mode}, facts={len(facts)}, kids={kids}")
+
+        # CRITICAL: Validate facts to remove inferences
+        # Only allow facts that are purely factual, not inferred
+        validated_facts = []
+        for fact in facts:
+            fact_str = str(fact).lower()
+            # Block inferred/suggestion phrases
+            blocked_words = [
+                "request", "help", "need", "wants", "would like",
+                "might want", "should", "probably", "could use",
+                "might need", "think about", "consider", "try to",
+                "ensure", "make sure", "don't forget", "remember",
+                "visit", "go to", "head to", "think", "believe"
+            ]
+            is_blocked = any(word in fact_str for word in blocked_words)
+            if not is_blocked:
+                validated_facts.append(fact)
+                app.logger.debug(f"[brief/narrative] ✓ Fact OK: {fact[:60]}")
+            else:
+                app.logger.warning(f"[brief/narrative] ✗ BLOCKED inference: {fact[:60]}")
+
+        facts = validated_facts
+        app.logger.info(f"[brief/narrative] Facts after validation: {len(facts)} (was {len(body.get('facts', []))})")
 
         # Generate using new pipeline
         narrative = NarrativeGenerator.generate(
