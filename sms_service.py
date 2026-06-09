@@ -15691,17 +15691,27 @@ def _wa_spending_query(from_number: str, body: str) -> str:
 
         # If merchant specified, search receipts table directly
         if merchant_filter:
-            rcpt_rows = sb.table("receipts").select("merchant,total,shop_date").eq("phone", plain_phone) \
+            rcpt_rows = sb.table("receipts").select("merchant,total,shop_date,created_at").eq("phone", plain_phone) \
                 .ilike("merchant", f"%{merchant_filter}%") \
-                .order("created_at", desc=True).limit(5).execute().data or []
+                .order("created_at", desc=True).limit(1).execute().data or []
 
             if rcpt_rows:
-                # Found matching receipts
-                merchant = rcpt_rows[0].get("merchant", "Receipt")
-                total = rcpt_rows[0].get("total", 0)
-                shop_date = rcpt_rows[0].get("shop_date", "")[:10]
-                total_str = f" · £{total:.2f}" if total else ""
-                return f"🧾 *{merchant}* ({shop_date}){total_str}\n\n_(Most recent Waitrose receipt)_"
+                # Found matching receipts - get most recent
+                r = rcpt_rows[0]
+                merchant = r.get("merchant", "Receipt")
+                total = r.get("total")
+                shop_date = r.get("shop_date", "")[:10] if r.get("shop_date") else ""
+
+                # Format total - ensure float and 2 decimals
+                try:
+                    total_val = float(total) if total else 0
+                    total_str = f"£{total_val:.2f}" if total_val > 0 else ""
+                except (ValueError, TypeError):
+                    total_str = ""
+
+                parts = [merchant, f"({shop_date})" if shop_date else None, total_str]
+                parts = [p for p in parts if p]
+                return f"🧾 {' · '.join(parts)}"
 
         # Fallback: search wa_saves clippings
         rows = sb.table("wa_saves").select("title,summary,category,created_at") \
