@@ -15064,11 +15064,15 @@ let _savesAll = [];
     }
     if (!data || !data.stations || !data.stations.length) return;
     const best = data.stations[0];
-    document.getElementById("home-fuel-price").textContent = best.price.toFixed(1) + "p";
-    document.getElementById("home-fuel-sub").textContent = best.brand + " · " + (best.dist_mi ? best.dist_mi.toFixed(1) + " mi" : "");
-    document.getElementById("home-fuel-price").style.display = "";
-    document.getElementById("home-fuel-sub").style.display = "";
-    document.getElementById("home-fuel-placeholder").style.display = "none";
+    const fuelPr = document.getElementById("home-fuel-price");
+    const fuelSb = document.getElementById("home-fuel-sub");
+    const fuelPh = document.getElementById("home-fuel-placeholder");
+    if (!fuelPr || !fuelSb || !fuelPh) return;  // Elements not in DOM
+    fuelPr.textContent = best.price.toFixed(1) + "p";
+    fuelSb.textContent = best.brand + " · " + (best.dist_mi ? best.dist_mi.toFixed(1) + " mi" : "");
+    fuelPr.style.display = "";
+    fuelSb.style.display = "";
+    fuelPh.style.display = "none";
     // 🥚 Fuel price easter egg — celebrate a great price
     if (best.price < 125) {
       setTimeout(() => {

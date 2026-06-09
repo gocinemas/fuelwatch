@@ -21041,15 +21041,19 @@ def ma_gmail_hints():
         rows = sb.table("ma_gmail_tokens").select("device_id,provider_hints").eq("device_id", device_id).execute().data if device_id else []
         if not rows and from_number:
             rows = sb.table("ma_gmail_tokens").select("device_id,provider_hints").eq("from_number", from_number).execute().data
-        row_device_id = rows[0]["device_id"] if rows else (device_id or from_number)
-        q = sb.table("ma_gmail_tokens").eq("device_id", row_device_id)
+
         if request.method == "GET":
-            hints = (rows[0].get("provider_hints") or []) if rows else []
+            if not rows:
+                return jsonify({"hints": []})  # No token found, return empty hints
+            hints = rows[0].get("provider_hints") or []
             return jsonify({"hints": hints})
         else:
+            if not rows:
+                return jsonify({"error": "No Gmail token found"}), 404  # Can't save hints without token
             hints = (request.json or {}).get("hints", [])
             hints = [h.strip() for h in hints if isinstance(h, str) and h.strip()][:20]
-            q.update({"provider_hints": hints}).execute()
+            row_device_id = rows[0]["device_id"]
+            sb.table("ma_gmail_tokens").eq("device_id", row_device_id).update({"provider_hints": hints}).execute()
             # Log for community aggregation
             try:
                 for h in hints:
