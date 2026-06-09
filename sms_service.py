@@ -15211,7 +15211,7 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                     "Output ONLY these lines:\n"
                     "MERCHANT: [store name, e.g. Tesco, Waitrose, Sainsbury's]\n"
                     "DATE: [date in YYYY-MM-DD format, or leave blank]\n"
-                    "TOTAL: [FINAL AMOUNT PAID (after discounts/clubcard/nectar applied), NOT subtotal, numbers only, e.g. 34.72]\n"
+                    "TOTAL: [FINAL AMOUNT PAID — the BOTTOM line showing what customer paid. NOT Subtotal/Net, numbers only with decimals, e.g. 34.72]\n"
                     "ITEM: [item name] | [qty] | [price e.g. 1.50]\n"
                     "...one ITEM: line per product.\n\n"
                     "CRITICAL item name rules:\n"
