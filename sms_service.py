@@ -6622,75 +6622,16 @@ def api_home_last_receipt():
 
     phone = from_number.replace("whatsapp:", "").strip()
 
-    def parse_date(date_str):
-        """Parse date in any format to YYYY-MM-DD for sorting."""
-        if not date_str:
-            return "0000-00-00"
-
-        # Already ISO format
-        if date_str.startswith("20") and len(date_str) >= 10:
-            return date_str[:10]
-
-        # Try DD/MM/YY or MM/DD/YY format
-        if "/" in date_str:
-            parts = date_str.split("/")
-            if len(parts) == 3:
-                try:
-                    p1, p2, p3 = parts[0], parts[1], parts[2]
-                    y = int(p3) if len(p3) == 4 else 2000 + int(p3)
-                    # Heuristic: if first part > 12, it's DD/MM; else try to guess
-                    if int(p1) > 12:
-                        d, m = p1, p2
-                    elif int(p2) > 12:
-                        m, d = p1, p2
-                    else:
-                        # Both valid - assume DD/MM/YY (UK format)
-                        d, m = p1, p2
-                    return f"{y:04d}-{m:0>2}-{d:0>2}"
-                except:
-                    return "0000-00-00"
-
-        return "0000-00-00"
-
     try:
-        # Get ALL receipts for this user, sorted properly, then take the most recent
-        # (Supabase order() may have issues with date strings, so we'll sort in Python)
+        # Get recent receipts - database returns in insertion order (newest first)
         rows = lib._sb().table("receipts").select("merchant,total,shop_date").eq("phone", phone).limit(100).execute().data or []
 
         if not rows:
-            app.logger.info(f"[last-receipt] No receipts found for {phone}")
             return jsonify({"merchant": None, "total": None, "shop_date": None})
 
-        app.logger.info(f"[last-receipt] Found {len(rows)} receipts for {phone}")
-        # Log all receipts for debugging
-        for i, row in enumerate(rows[:10]):
-            raw_date = row.get('shop_date')
-            parsed = parse_date(raw_date)
-            app.logger.info(f"[last-receipt]   [{i}] {row.get('merchant')} | £{row.get('total')} | raw={raw_date} | parsed={parsed}")
-
-        # Sort by shop_date descending to get the most recent
-        try:
-            def get_sort_key(row):
-                shop_date = row.get("shop_date")
-                return parse_date(shop_date)
-
-            # Debug: show all receipts and sorting
-            app.logger.warning(f"[last-receipt] ALL RECEIPTS (before sort):")
-            for i, row in enumerate(rows):
-                app.logger.warning(f"  [{i}] {row.get('merchant')} | {row.get('shop_date')} | £{row.get('total')}")
-
-            rows_sorted = sorted(rows, key=get_sort_key, reverse=True)
-
-            app.logger.warning(f"[last-receipt] ALL RECEIPTS (after sort):")
-            for i, row in enumerate(rows_sorted):
-                app.logger.warning(f"  [{i}] {row.get('merchant')} | {row.get('shop_date')} (parsed: {get_sort_key(row)}) | £{row.get('total')}")
-
-            r = rows_sorted[0] if rows_sorted else rows[0]
-            app.logger.warning(f"[last-receipt] RETURNING: {r.get('merchant')} for £{r.get('total')} on {r.get('shop_date')}")
-        except Exception as e:
-            app.logger.error(f"[last-receipt] Sort error: {e}")
-            r = rows[0]  # Fallback to first result if sorting fails
-            app.logger.info(f"[last-receipt] FALLBACK: {r.get('merchant')} on {r.get('shop_date')}")
+        # Take the first one - newest by insertion order
+        r = rows[0]
+        app.logger.info(f"[last-receipt] RETURNING: {r.get('merchant')} on {r.get('shop_date')}")
 
         merchant = r.get("merchant", "Unknown")
         total = r.get("total", 0)
