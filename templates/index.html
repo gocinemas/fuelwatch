@@ -16692,7 +16692,7 @@ let _savesAll = [];
                       var month = parts[1];
                       var day = parts[2];
                       var shortYear = String(year).slice(-2);
-                      formattedDate = day + "/" + month + "/" + shortYear;
+                      formattedDate = String(day).padStart(2, '0') + "/" + String(month).padStart(2, '0') + "/" + shortYear;
                     }
                   } catch (e) {
                     formattedDate = dateStr;
