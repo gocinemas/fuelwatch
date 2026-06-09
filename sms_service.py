@@ -10039,9 +10039,51 @@ def api_active_trip_dismiss():
 
 @app.route("/api/home/brief/narrative", methods=["POST", "OPTIONS"])
 def api_home_brief_narrative():
-    """Re-generate the brief narrative for a given mode (wfh / office) + facts list."""
+    """Re-generate the brief narrative for a given mode (wfh / office) + facts list.
+
+    NEW: Uses clean architecture pipeline (InferenceGuard → NarrativeGenerator → OutputSanitizer)
+    """
     if request.method == "OPTIONS":
         return jsonify({})
+
+    # Try new pipeline first
+    try:
+        from miru.brief import InferenceGuard, NarrativeGenerator, OutputSanitizer
+        from miru.core.types import BriefContext
+
+        body  = request.get_json(silent=True) or {}
+        mode  = body.get("mode", "")
+        kids  = body.get("kids", [])
+        from datetime import datetime as _dt
+        import zoneinfo as _zi
+        now  = _dt.now(_zi.ZoneInfo("Europe/London"))
+        dow  = body.get("dow") or now.strftime("%A")
+        tod  = body.get("tod") or ("morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening")
+
+        # Extract facts from facts parameter OR context
+        facts = body.get("facts", [])
+
+        # Generate using new pipeline
+        narrative = NarrativeGenerator.generate(
+            facts=facts,
+            mode=mode,
+            dow=dow,
+            tod=tod,
+            kids=kids,
+        )
+
+        # Sanitize output
+        narrative = OutputSanitizer.sanitize(narrative)
+
+        app.logger.info(f"[brief/narrative] NEW PIPELINE: {len(facts)} facts → {len(narrative)} chars")
+        return jsonify({"text": narrative})
+
+    except ImportError as e:
+        app.logger.debug(f"[brief/narrative] New pipeline not available: {e}, falling back to old")
+    except Exception as e:
+        app.logger.error(f"[brief/narrative] New pipeline error: {e}, falling back to old")
+
+    # Fallback to old pipeline
     body  = request.get_json(silent=True) or {}
     mode  = body.get("mode", "")
     facts = body.get("facts", [])
