@@ -69,21 +69,22 @@ def smart_event(events: List[Dict], now: datetime, location: Optional[str] = Non
     return None
 
 
+def smart_location_context(location: Optional[str]) -> Optional[str]:
+    """Simply state where user is."""
+    if location:
+        return f"You are at {location}"
+    return None
+
+
 def smart_time(now: datetime, location: Optional[str]) -> Optional[str]:
     """Time-of-day context."""
     hour = now.hour
-
-    # Meal times + location awareness
-    if 11 <= hour < 14 and location:
-        return f"Lunch time — you're at {location}"
-    if 12 <= hour < 14:
-        return "Lunch time"
 
     # School pickup windows
     if 14 <= hour < 17:
         return "School pickup time coming up"
 
-    # Evening
+    # Dinner time
     if 17 <= hour < 21:
         return "Dinner time"
 
@@ -122,11 +123,12 @@ def smart_context_brief(
         1-3 sentence brief combining weather + event + location context
     """
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = {
             "weather": executor.submit(smart_weather, weather, now),
             "event": executor.submit(smart_event, events, now, location),
             "location": executor.submit(smart_location, location, receipts),
+            "location_context": executor.submit(smart_location_context, location),
             "time": executor.submit(smart_time, now, location),
         }
 
@@ -139,9 +141,9 @@ def smart_context_brief(
             except Exception as e:
                 logger.debug(f"[smart_context] {name} failed: {e}")
 
-    # Priority: event > location > time > weather
+    # Priority: event > location_context > location_history > time > weather
     parts = []
-    for priority in ["event", "location", "time", "weather"]:
+    for priority in ["event", "location_context", "location", "time", "weather"]:
         if priority in results:
             parts.append(results[priority])
 
