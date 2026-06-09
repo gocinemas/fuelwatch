@@ -16616,10 +16616,10 @@ let _savesAll = [];
                     day = parts[1];
                     year = parts[2];
                   } else {
-                    // Ambiguous, assume ISO-stored-as-string: MM/DD/YYYY but stored wrong
-                    // Assume first part is month, second is day
-                    month = parts[0];
-                    day = parts[1];
+                    // Ambiguous: Database stores as MM/DD/YYYY, we output DD/MM/YY
+                    // So swap: parts[0]=MM, parts[1]=DD → day=DD, month=MM
+                    month = parts[0]; // First part is month
+                    day = parts[1];   // Second part is day
                     year = parts[2];
                   }
                 }
