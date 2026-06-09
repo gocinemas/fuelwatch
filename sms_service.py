@@ -10352,12 +10352,36 @@ def api_home_ask():
                     rows = query.order("shop_date", desc=True).limit(10).execute().data or []
 
                     if rows:
+                        # Helper to fix swapped dates and format as DD/MM/YY
+                        def _fix_and_format_date(iso_date_str):
+                            """Fix swapped month/day and convert to British format."""
+                            if not iso_date_str:
+                                return ""
+                            try:
+                                parts = iso_date_str[:10].split("-")
+                                if len(parts) != 3:
+                                    return iso_date_str[:10]
+                                year_str, m_str, d_str = parts[0], parts[1], parts[2]
+                                month_num = int(m_str)
+                                day_num = int(d_str)
+
+                                # Smart swap: if month >= 7 and day <= 12, they're swapped
+                                if month_num >= 7 and day_num <= 12 and month_num > day_num:
+                                    m_str, d_str = d_str, m_str
+
+                                # Convert to DD/MM/YY
+                                year_2digit = year_str[-2:]  # "2026" → "26"
+                                return f"{d_str}/{m_str}/{year_2digit}"
+                            except:
+                                return iso_date_str[:10]
+
                         # Group by (merchant, date) and deduplicate items
                         grouped = {}
                         for r in rows:
                             merchant = r.get("merchant", "")
-                            date_str = r.get("shop_date", "")[:10]
-                            key = (merchant, date_str)
+                            raw_date = r.get("shop_date", "")[:10]
+                            formatted_date = _fix_and_format_date(raw_date)
+                            key = (merchant, formatted_date)
 
                             if key not in grouped:
                                 grouped[key] = []
@@ -10373,7 +10397,7 @@ def api_home_ask():
                         for (merchant, date_str), items in sorted(grouped.items(), reverse=True):
                             unique_items = list(dict.fromkeys(items))[:12]
                             if unique_items:
-                                result_lines.append(f"📦 {merchant} ({date_str}): {', '.join(unique_items)}")
+                                result_lines.append(f"You bought {', '.join(unique_items)} from {merchant} on {date_str}.")
 
                         if result_lines:
                             answer = "\n".join(result_lines)
