@@ -10299,10 +10299,32 @@ def api_home_ask():
             time_qualifier = "yesterday"
 
         receipt_patterns = [
-            r"(?:what|what's).{0,20}(?:did i|i).{0,20}(?:buy|order|eat|have|get).{0,30}(?:at|in|from) (.+?)(?:\?|$)",
-            r"(?:what|what's).{0,30}(?:did i|i).{0,30}(?:buy|order|get)(?:.*?)(?:at|in|from) (.+?)(?:\?|$)",
+            # "what did i buy in tesco" / "what did i buy last time in tesco"
+            r"(?:what|what's).{0,40}(?:did i|i).{0,40}(?:buy|order|eat|have|get).{0,30}(?:at|in|from) (.+?)(?:\?|$)",
+            # "what did i buy last time / previously / last visit"
+            r"(?:what|what's).{0,20}(?:did i|i).{0,20}(?:buy|order|get)(?:\s+(?:last\s+time|previously|last\s+visit))?(?:.*?)(?:at|in|from) (.+?)(?:\?|$)",
+            # "when was the last tesco visit" / "when did i last buy at tesco"
+            r"(?:when|when\s+was)(?:.*?)(?:last|previously)(?:.*?)(?:at|in|from) ([a-z\s]+?)(?:\?|$)",
+            # "what's at tesco"
             r"(?:what|what's).{0,10}(?:at|in|from) ([a-z\s]+?)(?:\?|$)",
         ]
+
+        # Also handle "when was this" / "what date" follow-ups
+        if any(w in q_lower for w in ["when was this", "what date", "when was it", "what time"]):
+            # User asking about a previous receipt they just asked about
+            try:
+                plain = from_number.replace("whatsapp:", "").strip()
+                # Get most recent receipt (any merchant)
+                rows = lib._sb().table("receipts").select("merchant,shop_date") \
+                    .eq("phone", plain).order("shop_date", desc=True).limit(1).execute().data or []
+                if rows:
+                    date_str = rows[0].get("shop_date", "")[:10]
+                    merchant = rows[0].get("merchant", "")
+                    answer = f"That {merchant} visit was on {date_str}."
+                    app.logger.info(f"[ask] Follow-up date query: {date_str}")
+                    return jsonify({"answer": answer})
+            except Exception as e:
+                app.logger.debug(f"[ask] Follow-up query error: {e}")
 
         for pattern in receipt_patterns:
             m = _re_rcpt.search(pattern, q_lower)
