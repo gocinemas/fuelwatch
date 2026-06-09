@@ -46,6 +46,50 @@ import school_service
 
 app = Flask(__name__)
 
+# CENTRAL BRIEF TEXT VALIDATION — Used by /api/home/brief and all Groq brief paths
+def _validate_brief_text(text):
+    """Remove inferences from brief text. Return empty if all inferences."""
+    if not text:
+        return ""
+
+    # Split into sentences and validate each
+    sentences = [s.strip() for s in text.split(".") if s.strip()]
+    valid = []
+
+    for sent in sentences:
+        sent_lower = sent.lower()
+
+        # Strip apostrophes for pronoun checking: "You've" → "youve"
+        sent_check = sent_lower.replace("'", "").replace("'", "").strip()
+
+        # Block if starts with pronoun
+        if any(sent_check.startswith(p) for p in ["you", "i ", "they ", "we "]):
+            app.logger.debug(f"[validate] Blocked pronoun: {sent[:40]}")
+            continue
+
+        # Block if contains inference words
+        blocked = [
+            "probably", "might", "may", "could", "should",
+            "unwind", "relax", "reminder", "due to", "busy day",
+            "rest of", "afternoon", "free now", "got time",
+            "you're due", "you want", "you need",
+        ]
+        if any(b in sent_lower for b in blocked):
+            app.logger.debug(f"[validate] Blocked inference: {sent[:40]}")
+            continue
+
+        valid.append(sent)
+
+    result = ". ".join(valid)
+    if result and not result.endswith("."):
+        result += "."
+
+    if not result:
+        app.logger.warning(f"[validate] ALL sentences blocked, returning empty")
+
+    return result
+
+
 _CORS_ORIGINS = {"https://ai.humanagency.co", "http://ai.humanagency.co", "http://localhost:8080",
                  "https://mekalav.com", "https://www.mekalav.com"}
 
@@ -9803,6 +9847,8 @@ def api_home_brief():
                 timeout=10,
             )
             brief_text = r.json()["choices"][0]["message"]["content"].strip()
+            # CRITICAL: Validate brief for inferences
+            brief_text = _validate_brief_text(brief_text)
         except Exception as be:
             app.logger.warning(f"[brief] groq night: {be}")
             brief_text = f"{_day_line if time_mode == 'night' else 'Rest well.'}{_bh} {_tomorrow}"
@@ -9962,6 +10008,8 @@ def api_home_brief():
                 timeout=10,
             )
             brief_text = r.json()["choices"][0]["message"]["content"].strip()
+            # CRITICAL: Validate brief for inferences
+            brief_text = _validate_brief_text(brief_text)
         except Exception as be:
             app.logger.warning(f"[brief] groq: {be}")
             brief_text = " ".join(facts[:2]) if facts else ""
