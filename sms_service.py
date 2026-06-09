@@ -19644,13 +19644,18 @@ def _whatsapp_reply_inner():
 
                 for i, r in enumerate(results[:4], 1):
                     score = int((r.get("_total_score", 0) or 0) * 100)
+                    url = r.get("url", "")
                     if r.get("type") == "twitter":
                         author = r.get("author", "Unknown")
                         text = r.get("title", "")[:80]
                         lines.append(f"\n{i}. *{author}*\n   {text}\n   [{score}%]")
+                        if url:
+                            lines.append(f"   🔗 {url}")
                     else:
                         title = r.get("title", "Untitled")[:70]
                         lines.append(f"\n{i}. {title}\n   [{score}%]")
+                        if url:
+                            lines.append(f"   🔗 {url}")
 
                 lines.append(f"\n_See full results with scores at:_ miru.humanagency.co")
                 resp.message("\n".join(lines))
