@@ -10079,6 +10079,35 @@ def api_home_brief():
     except Exception:
         pass
 
+    # SMART CONTEXT — augment brief with intelligent inference
+    # Run agents in parallel: weather, events, location history
+    try:
+        from miru.brief.smart_context import smart_context_brief
+
+        _events_for_smart = ctx.get("school", {}).get("events", []) if isinstance(ctx.get("school"), dict) else []
+        _receipts_for_smart = recent_capture.get("receipts", []) if isinstance(recent_capture, dict) else []
+        _weather_for_smart = ctx.get("weather", {}) or {}
+        _location_for_smart = _loc_classification.get("label") if _loc_classification else None
+
+        smart_brief = smart_context_brief(
+            now=now,
+            weather=_weather_for_smart,
+            events=_events_for_smart,
+            receipts=_receipts_for_smart,
+            location=_location_for_smart,
+        )
+
+        # AUGMENT brief_text with smart context (don't replace)
+        if smart_brief and brief_text:
+            brief_text = smart_brief + " " + brief_text
+        elif smart_brief:
+            brief_text = smart_brief
+
+        if smart_brief:
+            app.logger.info(f"[brief] Smart context: {smart_brief[:80]}")
+    except Exception as e:
+        app.logger.debug(f"[brief] Smart context (non-critical): {e}")
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
