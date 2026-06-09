@@ -18687,7 +18687,7 @@ def _whatsapp_reply_inner():
                             # This receipt has merchant but no items - find matching items receipt from SAME DATE
                             items_rows = lib._sb().table("receipts").select("id,items,shop_date").eq("phone", _plain_fn)\
                                 .not_("items", "is", "null").eq("shop_date", row.get("shop_date"))\
-                                .order("shop_date", desc=True).limit(1).execute().data or []
+                                .order("created_at", desc=True).limit(1).execute().data or []
                             if items_rows and items_rows[0].get("items"):
                                 # Merge only if same date!
                                 merged_items = items_rows[0]["items"]
