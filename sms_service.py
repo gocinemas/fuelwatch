@@ -19599,8 +19599,8 @@ def _whatsapp_reply_inner():
                 # Fetch user's bookmarks from Supabase
                 plain_fn = from_number.replace("whatsapp:", "").strip()
                 # Get Chrome bookmarks (filter by user to prevent privacy leak)
-                chrome_rows = lib._sb().table("bookmarks").select("title,url,category").eq("phone", plain_fn).limit(500).execute().data or []
-                twitter_rows = lib._sb().table("twitter_bookmarks").select("tweet_id,author_handle,author_name,text,url,category").eq("phone", plain_fn).limit(500).execute().data or []
+                chrome_rows = lib._sb().table("bookmarks").select("title,url,category").eq("user_phone", plain_fn).limit(500).execute().data or []
+                twitter_rows = lib._sb().table("twitter_bookmarks").select("tweet_id,author_handle,author_name,text,url,category").eq("user_phone", plain_fn).limit(500).execute().data or []
 
                 bookmarks = []
                 for bm in chrome_rows:
