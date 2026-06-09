@@ -18669,9 +18669,9 @@ def _whatsapp_reply_inner():
             merchant_query = match.group(1).strip()
             try:
                 _plain_fn = from_number.replace("whatsapp:", "").strip()
-                # Search receipts for this merchant
-                rows = lib._sb().table("receipts").select("merchant,items,total,shop_date").eq("phone", _plain_fn)\
-                    .ilike("merchant", f"%{merchant_query}%").order("shop_date", desc=True).limit(3).execute().data or []
+                # Search receipts for this merchant - order by upload time (created_at), not printed date (shop_date)
+                rows = lib._sb().table("receipts").select("merchant,items,total,shop_date,created_at").eq("phone", _plain_fn)\
+                    .ilike("merchant", f"%{merchant_query}%").order("created_at", desc=True).limit(3).execute().data or []
 
                 if not rows:
                     resp.message(f"No orders found at '{merchant_query}'. Try a different spelling?")
