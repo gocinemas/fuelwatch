@@ -10731,7 +10731,9 @@ def api_home_ask():
             "restaurant|cafe|coffee|pub|takeaway|bar|gym|hairdresser|barber|salon|spa|"
             "solicitor|accountant|estate agent|mortgage|financial advisor|"
             "garage|mechanic|mot|tyre|petrol|car wash|"
-            "nursery|childminder|tutor|park|supermarket"
+            "nursery|childminder|tutor|park|supermarket|"
+            "post office|bank|library|swimming pool|leisure centre|train station|"
+            "hotel|cinema|theatre|museum|gallery|council|tax office"
         )
         _LS_INTENT = _re_ls.compile(
             r'(?:'
