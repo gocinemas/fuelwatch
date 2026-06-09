@@ -19599,10 +19599,14 @@ def _whatsapp_reply_inner():
             try:
                 # Fetch user's bookmarks from Supabase
                 plain_fn = from_number.replace("whatsapp:", "").strip()
-                # Get Chrome bookmarks (filter by user to prevent privacy leak)
-                # Bookmark search temporarily offline - schema issue
-                app.logger.warning(f"[bookmark] Search requested but disabled due to schema mismatch")
-                return _msg_send(resp, "📚 Bookmarks search is temporarily offline. Try again later or use miru.humanagency.co")
+                # Get Chrome bookmarks - try without filter first to see what columns exist
+                try:
+                    chrome_rows = lib._sb().table("bookmarks").select("*").limit(10).execute().data or []
+                    twitter_rows = lib._sb().table("twitter_bookmarks").select("*").limit(10).execute().data or []
+                    app.logger.warning(f"[bookmark] Sample bookmarks: {chrome_rows[:1] if chrome_rows else 'empty'}")
+                except Exception as e:
+                    app.logger.error(f"[bookmark] Query failed: {e}")
+                    return _msg_send(resp, f"📚 Bookmarks error: {str(e)[:100]}")
 
                 bookmarks = []
                 for bm in chrome_rows:
