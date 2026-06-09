@@ -27074,6 +27074,14 @@ def api_bookmarks_search_ai():
     except Exception as e:
         return jsonify({"error": str(e), "results": []}), 500
 
+# ── Register blueprints ──────────────────────────────────────────────────────
+try:
+    from miru.routes.onboarding import bp as onboarding_bp
+    app.register_blueprint(onboarding_bp)
+    app.logger.info("[app] Onboarding blueprint registered")
+except Exception as e:
+    app.logger.warning(f"[app] Failed to register onboarding blueprint: {e}")
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
