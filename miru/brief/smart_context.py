@@ -31,7 +31,7 @@ def smart_weather(weather: Dict, now: datetime) -> Optional[str]:
 
 
 def smart_event(events: List[Dict], now: datetime, location: Optional[str] = None) -> Optional[str]:
-    """Next event with countdown, location-aware."""
+    """Next event with countdown, location-aware. Only future events."""
     if not events:
         return None
 
@@ -48,7 +48,7 @@ def smart_event(events: List[Dict], now: datetime, location: Optional[str] = Non
 
             mins_until = (event_dt - now).total_seconds() / 60
 
-            # Show if 0 < mins < 180 (next 3 hours)
+            # ONLY show if event is FUTURE (mins_until > 0) and within next 3 hours
             if 0 < mins_until < 180:
                 child = ev.get("child_name", "").split()[0]  # First name only
                 title = ev.get("event_title", "")
