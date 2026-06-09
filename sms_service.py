@@ -10895,32 +10895,30 @@ def api_home_ask():
         if validated_answer and not validated_answer.endswith("."):
             validated_answer += "."
 
-        app.logger.info(f"[home/ask] {len(sentences)} → {len(valid_sentences)} sentences after validation")
+        sentences_blocked = len(sentences) - len(valid_sentences)
+        app.logger.info(f"[home/ask] Validation: {len(sentences)} → {len(valid_sentences)} sentences ({sentences_blocked} blocked)")
 
-        # EMERGENCY: Block ANY response with inference markers
-        # Better empty than hallucinated
-        final_text = validated_answer if validated_answer else answer
-        final_lower = final_text.lower()
-
-        # Red flag words that indicate inferences
-        red_flags = [
-            "you've", "you got", "you might", "you could", "you want", "you need",
-            "might want", "could use", "should ", "unwind", "relax",
-            "busy day", "pop down", "pop to", "afternoon to", "time to",
-            "i think", "i know", "i believe", "probably"
-        ]
-
-        blocked_flag = None
-        for flag in red_flags:
-            if flag in final_lower:
-                blocked_flag = flag
-                break
-
-        if blocked_flag:
-            app.logger.error(f"[home/ask] EMERGENCY BLOCK ('{blocked_flag}'): {final_text[:60]}")
+        # CRITICAL: If validation blocked ANY sentences, check original for inferences
+        # If original has inferences AND validation removed things, DON'T show original
+        if sentences_blocked > 0:
+            app.logger.warning(f"[home/ask] Validation blocked {sentences_blocked}/{len(sentences)} sentences - returning empty")
             return jsonify({"answer": ""})
 
-        return jsonify({"answer": validated_answer or answer})
+        # EMERGENCY: If no sentences were blocked but answer still has red flags, block it
+        if answer:
+            red_flags = [
+                "you've", "you got", "you might", "you could", "you want", "you need",
+                "might want", "could use", "should ", "unwind", "relax",
+                "busy day", "pop down", "pop to", "afternoon to", "time to",
+                "i think", "i know", "i believe", "probably", "reminder", "due to leave"
+            ]
+            answer_lower = answer.lower()
+            for flag in red_flags:
+                if flag in answer_lower:
+                    app.logger.error(f"[home/ask] EMERGENCY BLOCK ('{flag}'): {answer[:60]}")
+                    return jsonify({"answer": ""})
+
+        return jsonify({"answer": validated_answer if validated_answer else ""})
     except Exception as e:
         app.logger.warning(f"[home/ask] {e}")
         return jsonify({"answer": "Sorry, couldn't get an answer right now."}), 500
