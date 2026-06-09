@@ -10081,17 +10081,18 @@ def api_home_brief_narrative():
             prompt_parts.append(f"Saved items (mention only if relevant): {'; '.join(saves_ctx)}. Do NOT invent additional saves.")
     prompt_parts.append(f"Facts: {facts_text}.")
     prompt_parts.append(
-        "CRITICAL CONSTRAINTS:\n"
-        "- ONLY mention facts provided above. Do NOT add any information from your training data.\n"
-        "- Do NOT invent or extrapolate about saves, notes, activities, or schedules.\n"
-        "- Do NOT mention things they 'should have' saved or 'probably' need.\n"
-        "- Do NOT suggest buying fuel if they already filled up recently (check receipts).\n"
-        "- Do NOT suggest activities or purchases beyond the facts provided.\n"
-        "- Only reference the exact saves/facts listed above, nothing more.\n"
-        "- Do NOT guess about what they might want or what might happen.\n"
+        "CRITICAL CONSTRAINTS (ZERO TOLERANCE FOR HALLUCINATIONS):\n"
+        "- ONLY mention EXACT facts provided. Do NOT add ANY information from your training data.\n"
+        "- Do NOT invent, infer, or extrapolate about ANY events, activities, or people's needs.\n"
+        "- Do NOT use words like 'should', 'probably', 'still', 'maybe', 'might', 'could' — only state facts.\n"
+        "- Do NOT mention children/people by name UNLESS explicitly in facts above.\n"
+        "- Do NOT create context about past, present, or future beyond what's explicitly stated.\n"
+        "- Do NOT suggest activities, purchases, or actions beyond exact facts provided.\n"
+        "- Do NOT mention events, plans, or people that are NOT in the facts list.\n"
+        "- Each fact is limited to: [Person] has [Exact Event Title] on [Date] — nothing more.\n"
         "- Sound like a smart PA. Concise, British English, under 40 words.\n"
-        "- No greetings, no bullet points, no suggestions.\n"
-        "- If you don't have data for it, don't mention it."
+        "- No greetings, no bullet points, no suggestions, no inferences.\n"
+        "- REPEAT: If it's not in the facts above, DO NOT MENTION IT."
     )
     prompt = " ".join(prompt_parts)
     try:
