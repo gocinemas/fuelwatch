@@ -10852,6 +10852,18 @@ def api_home_ask():
 
         app.logger.info(f"[home/ask] {len(sentences)} → {len(valid_sentences)} sentences after validation")
 
+        # EMERGENCY: If answer still contains inference words, return empty brief
+        # Better to show nothing than show hallucinations
+        emergency_block_words = [
+            "you've", "you got", "you might", "you could", "you should",
+            "i think", "i know", "i believe", "probably", "might want",
+            "could use", "should", "time to unwind", "time to relax",
+            "afternoon to unwind", "rest of the afternoon"
+        ]
+        if any(word in validated_answer.lower() for word in emergency_block_words):
+            app.logger.error(f"[home/ask] EMERGENCY BLOCK: Still had inference after validation: {validated_answer[:60]}")
+            return jsonify({"answer": ""})
+
         return jsonify({"answer": validated_answer or answer})
     except Exception as e:
         app.logger.warning(f"[home/ask] {e}")
