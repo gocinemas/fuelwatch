@@ -9849,11 +9849,16 @@ def api_home_brief():
             brief_text = r.json()["choices"][0]["message"]["content"].strip()
             # CRITICAL: Validate brief for inferences
             brief_text = _validate_brief_text(brief_text)
-            # If validation removed everything, use facts instead
-            if not brief_text and facts:
-                brief_text = ". ".join(facts[:3])
-                if brief_text and not brief_text.endswith("."):
-                    brief_text += "."
+            # If validation removed everything, show raw facts as fallback
+            if not brief_text:
+                if facts:
+                    brief_text = ". ".join(facts[:3])
+                    if brief_text and not brief_text.endswith("."):
+                        brief_text += "."
+                    app.logger.info(f"[brief] Fallback to facts: {len(facts)} available")
+                else:
+                    # No facts - user is out and about, keep it simple
+                    brief_text = "Enjoy your time out!"
         except Exception as be:
             app.logger.warning(f"[brief] groq night: {be}")
             brief_text = f"{_day_line if time_mode == 'night' else 'Rest well.'}{_bh} {_tomorrow}"
@@ -10015,11 +10020,16 @@ def api_home_brief():
             brief_text = r.json()["choices"][0]["message"]["content"].strip()
             # CRITICAL: Validate brief for inferences
             brief_text = _validate_brief_text(brief_text)
-            # If validation removed everything, use facts instead
-            if not brief_text and facts:
-                brief_text = ". ".join(facts[:3])
-                if brief_text and not brief_text.endswith("."):
-                    brief_text += "."
+            # If validation removed everything, show raw facts as fallback
+            if not brief_text:
+                if facts:
+                    brief_text = ". ".join(facts[:3])
+                    if brief_text and not brief_text.endswith("."):
+                        brief_text += "."
+                    app.logger.info(f"[brief] Fallback to facts: {len(facts)} available")
+                else:
+                    # No facts - user is out and about, keep it simple
+                    brief_text = "Enjoy your time out!"
         except Exception as be:
             app.logger.warning(f"[brief] groq: {be}")
             brief_text = " ".join(facts[:2]) if facts else ""
