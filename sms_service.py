@@ -6674,9 +6674,19 @@ def api_home_last_receipt():
                 shop_date = row.get("shop_date")
                 return parse_date(shop_date)
 
+            # Debug: show all receipts and sorting
+            app.logger.warning(f"[last-receipt] ALL RECEIPTS (before sort):")
+            for i, row in enumerate(rows):
+                app.logger.warning(f"  [{i}] {row.get('merchant')} | {row.get('shop_date')} | £{row.get('total')}")
+
             rows_sorted = sorted(rows, key=get_sort_key, reverse=True)
+
+            app.logger.warning(f"[last-receipt] ALL RECEIPTS (after sort):")
+            for i, row in enumerate(rows_sorted):
+                app.logger.warning(f"  [{i}] {row.get('merchant')} | {row.get('shop_date')} (parsed: {get_sort_key(row)}) | £{row.get('total')}")
+
             r = rows_sorted[0] if rows_sorted else rows[0]
-            app.logger.info(f"[last-receipt] RETURNING: {r.get('merchant')} for £{r.get('total')} on {r.get('shop_date')} (parsed as {get_sort_key(r)})")
+            app.logger.warning(f"[last-receipt] RETURNING: {r.get('merchant')} for £{r.get('total')} on {r.get('shop_date')}")
         except Exception as e:
             app.logger.error(f"[last-receipt] Sort error: {e}")
             r = rows[0]  # Fallback to first result if sorting fails
