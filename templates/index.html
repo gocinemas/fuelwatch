@@ -16558,10 +16558,10 @@ let _savesAll = [];
     }
 
     // Fuel card removed — home hero already shows fuel price via _fuelHomeLoad
+    // Spend card removed from context cards — now rendered in right sidebar only
 
-    // Spend — only relevant during the day
     var spend = ctx && ctx.spend;
-    if (!_isOffHours && spend && spend.count > 0) {
+    if (false) {  // DISABLED: Spend card now in sidebar, not here
       var breakdownHtml = "";
       var bd = spend.breakdown || {};
       var bdKeys = Object.keys(bd).sort(function(a, b) { return bd[b].total - bd[a].total; });
