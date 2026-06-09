@@ -15791,6 +15791,29 @@ def _wa_receipt_items(from_number: str, merchant_hint: str = "", date_hint: str 
         return "⚠️ Couldn't fetch receipt items right now — try again in a moment."
 
     if not rows:
+        # No exact match - try to find similar merchants for typeahead
+        if merchant_hint:
+            try:
+                # Get all merchants for this user, find similar ones
+                all_rows = sb.table("receipts").select("merchant").eq("phone", plain) \
+                    .order("created_at", desc=True).limit(50).execute().data or []
+
+                # Get unique merchants
+                merchants = list(set([r.get("merchant", "").strip() for r in all_rows if r.get("merchant", "").strip()]))
+
+                # Find merchants that start with or contain the hint
+                hint_lower = merchant_hint.lower()
+                similar = [m for m in merchants if hint_lower in m.lower() or m.lower().startswith(hint_lower)]
+
+                if similar:
+                    # Return suggestions
+                    lines = [f"🔍 No exact match for '*{merchant_hint}*'.\n\nDid you mean:"]
+                    for m in similar[:5]:
+                        lines.append(f"• {m}")
+                    return "\n".join(lines)
+            except Exception:
+                pass
+
         return "📭 No receipts found. Send me a photo of a receipt and I'll scan it!"
 
     r = rows[0]
