@@ -10085,6 +10085,8 @@ def api_home_brief_narrative():
         "- ONLY mention facts provided above. Do NOT add any information from your training data.\n"
         "- Do NOT invent or extrapolate about saves, notes, activities, or schedules.\n"
         "- Do NOT mention things they 'should have' saved or 'probably' need.\n"
+        "- Do NOT suggest buying fuel if they already filled up recently (check receipts).\n"
+        "- Do NOT suggest activities or purchases beyond the facts provided.\n"
         "- Only reference the exact saves/facts listed above, nothing more.\n"
         "- Do NOT guess about what they might want or what might happen.\n"
         "- Sound like a smart PA. Concise, British English, under 40 words.\n"
@@ -10194,7 +10196,9 @@ def api_home_ask():
             ctx_lines.append(f"Weather: {weather['temp']}°C, {weather.get('desc','')}")
 
         fuel = ctx.get("fuel") or {}
-        if fuel.get("price"):
+        # Only include fuel price if they don't have a recent fuel purchase
+        has_recent_fuel = spend.get("breakdown", {}).get("Fuel") or spend.get("breakdown", {}).get("Petrol")
+        if fuel.get("price") and not has_recent_fuel:
             ctx_lines.append(f"Cheapest fuel: {fuel.get('name','')} {fuel['price']}p")
 
         school = ctx.get("school") or {}
