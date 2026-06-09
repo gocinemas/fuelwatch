@@ -10495,7 +10495,7 @@ def api_home_ask():
                         query = query.gte("shop_date", f"{yesterday_str}T00:00:00") \
                                     .lte("shop_date", f"{yesterday_str}T23:59:59")
 
-                    rows = query.order("shop_date", desc=True).limit(10).execute().data or []
+                    rows = query.order("shop_date", desc=True).limit(1).execute().data or []
 
                     if rows:
                         # Helper to fix swapped dates and format as DD/MM/YY
