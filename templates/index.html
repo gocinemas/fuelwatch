@@ -16689,21 +16689,37 @@ let _savesAll = [];
               if (el) {
                 var dateStr = d.shop_date || '';
                 var formattedDate = '';
+                console.log('[receipt] Raw date from API:', dateStr);
                 if (dateStr) {
                   try {
+                    // Backend should return ISO YYYY-MM-DD now
                     var dateOnly = dateStr.split("T")[0];
                     var parts = dateOnly.split("-");
-                    if (parts.length === 3) {
+
+                    // ISO format: parts[0]=YYYY, parts[1]=MM, parts[2]=DD
+                    if (parts.length === 3 && parts[0].length === 4) {
                       var year = parts[0];
                       var month = parts[1];
                       var day = parts[2];
                       var shortYear = String(year).slice(-2);
                       formattedDate = String(day).padStart(2, '0') + "/" + String(month).padStart(2, '0') + "/" + shortYear;
+                      console.log('[receipt] Parsed ISO:', {year, month, day, formatted: formattedDate});
+                    } else {
+                      // Fallback: if not ISO, treat as MM/DD/YY and swap
+                      console.log('[receipt] Not ISO format, attempting swap...');
+                      if (parts.length === 3) {
+                        var day = parts[1];  // Swap: second is day
+                        var month = parts[0];  // Swap: first is month
+                        var year = parts[2];
+                        formattedDate = String(day).padStart(2, '0') + "/" + String(month).padStart(2, '0') + "/" + year;
+                      }
                     }
                   } catch (e) {
+                    console.error('[receipt] Parse error:', e);
                     formattedDate = dateStr;
                   }
                 }
+                console.log('[receipt] Final formatted date:', formattedDate);
                 el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">'
                   + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Last shopped at <strong>' + d.merchant + '</strong></div>'
                   + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div></div>'

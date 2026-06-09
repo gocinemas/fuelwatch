@@ -6617,6 +6617,20 @@ def api_home_last_receipt():
         total = r.get("total", 0)
         shop_date = r.get("shop_date")
 
+        # CRITICAL FIX: Use DateFormatter to normalize date format
+        # DB might have MM/DD/YY or other format, normalize to ISO
+        try:
+            from miru.core.formatting import DateFormatter
+            if shop_date:
+                try:
+                    iso_date = DateFormatter.to_storage(shop_date)
+                    shop_date = iso_date
+                    app.logger.info(f"[last-receipt] Date normalized: {r.get('shop_date')} → {iso_date}")
+                except Exception as e:
+                    app.logger.debug(f"[last-receipt] Date parse failed: {e}, keeping raw")
+        except ImportError:
+            pass  # Fallback if miru not available
+
         return jsonify({"merchant": merchant, "total": total, "shop_date": shop_date})
     except Exception as e:
         app.logger.warning(f"[last-receipt] {e}")
