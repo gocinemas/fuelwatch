@@ -15722,26 +15722,32 @@ def _wa_spending_query(from_number: str, body: str) -> str:
 
     if not rows:
         # No match - try typeahead suggestions if merchant was searched
-        if merchant_filter:
+        if merchant_filter and merchant_label:
             try:
                 # Get all merchants the user has shopped at
                 all_rows = sb.table("wa_saves").select("title").eq("from_number", from_number) \
-                    .ilike("title", "🧾%").order("created_at", desc=True).limit(100).execute().data or []
+                    .ilike("title", "🧾%").order("created_at", desc=True).limit(50).execute().data or []
 
                 # Extract merchant names from titles like "🧾 Waitrose"
-                merchants = list(set([t.get("title", "").replace("🧾", "").strip() for t in all_rows
-                                     if t.get("title", "").strip()]))
+                merchants = []
+                seen = set()
+                for t in all_rows:
+                    m = t.get("title", "").replace("🧾", "").strip()
+                    if m and m not in seen:
+                        merchants.append(m)
+                        seen.add(m)
 
-                # Find similar merchants
-                similar = [m for m in merchants if merchant_filter in m.lower() or m.lower().startswith(merchant_filter)]
+                # Find similar merchants (case-insensitive contains or starts-with)
+                search_term = merchant_filter.lower()
+                similar = [m for m in merchants if search_term in m.lower()][:5]
 
                 if similar:
-                    lines = [f"🔍 No matches for '*{merchant_label}*' {period}.\n\nDid you mean:"]
-                    for m in similar[:5]:
+                    lines = [f"🔍 No receipts for '*{merchant_label}*' {period}.\n\nDid you mean:"]
+                    for m in similar:
                         lines.append(f"• {m}")
                     return "\n".join(lines)
-            except Exception:
-                pass
+            except Exception as e:
+                app.logger.debug(f"[typeahead] Error: {e}")
 
         label = merchant_label or category_filter or "matching"
         return f"📭 No {label} receipts or clippings found {period}."
