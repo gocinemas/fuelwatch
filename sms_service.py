@@ -10289,8 +10289,12 @@ def api_home_ask():
     if is_personal and from_number:
         import re as _re_rcpt
         receipt_patterns = [
-            r"(?:what|what's).{0,15}(?:did i|i).{0,15}(?:buy|order|eat|have).{0,15}(?:at|in|from) (.+?)(?:\?|$)",
-            r"(?:what|what's).{0,10}(?:at|in|from) (.+?)(?:\?|$)(?:buy|order|food|item)",
+            # "what did i buy in tesco" / "what did i buy at tesco this morning"
+            r"(?:what|what's).{0,20}(?:did i|i).{0,20}(?:buy|order|eat|have|get).{0,30}(?:at|in|from) (.+?)(?:\s+(?:this|today|yesterday|this\s+morning|this\s+afternoon))?(?:\?|$)",
+            # "what did i buy this morning at tesco"
+            r"(?:what|what's).{0,30}(?:did i|i).{0,30}(?:buy|order|get)(?:.*?)(?:at|in|from) (.+?)(?:\?|$)",
+            # "what's at tesco" / "what did i get at tesco"
+            r"(?:what|what's).{0,10}(?:at|in|from) ([a-z\s]+?)(?:\?|$)",
         ]
         for pattern in receipt_patterns:
             m = _re_rcpt.search(pattern, q_lower)
