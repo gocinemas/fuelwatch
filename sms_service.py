@@ -6623,13 +6623,13 @@ def api_home_last_receipt():
     phone = from_number.replace("whatsapp:", "").strip()
 
     try:
-        # Get recent receipts - database returns in insertion order (newest first)
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date").eq("phone", phone).limit(100).execute().data or []
+        # Get most recent receipt - order by id descending (newest first)
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date,id").eq("phone", phone) \
+            .order("id", desc=True).limit(1).execute().data or []
 
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
 
-        # Take the first one - newest by insertion order
         r = rows[0]
         app.logger.info(f"[last-receipt] RETURNING: {r.get('merchant')} on {r.get('shop_date')}")
 
