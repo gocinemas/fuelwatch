@@ -62,14 +62,15 @@ def _validate_brief_text(text):
     for sent in sentences:
         sent_lower = sent.lower().strip()
 
-        # HARD BLOCK: Clear pronouns + inference verbs
+        # HARD BLOCK: Clear pronouns + inference verbs (include contractions)
         hard_blocks = [
-            "you have", "you've got", "you might", "you should",
-            "you could", "you want", "you need", "you are",
+            "you have", "you've", "you've got", "you might", "you should",
+            "you could", "you want", "you need", "you are", "you're",
+            "you just", "might want to", "pop into", "pop to",
             "i think", "i believe", "i know",
         ]
 
-        if any(sent_lower.startswith(block) for block in hard_blocks):
+        if any(sent_lower.startswith(block) or block in sent_lower for block in hard_blocks):
             app.logger.debug(f"[validate] Blocked hard inference: {sent[:40]}")
             continue
 
