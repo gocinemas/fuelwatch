@@ -18,21 +18,29 @@ def _get_user_id(token):
 def get_setup_status():
     """Check onboarding completion status."""
     token = request.args.get('token', '').strip()
-    from_number = _get_user_id(token)
-
-    if not from_number:
-        return jsonify({"error": "unauthorized"}), 401
 
     try:
+        from_number = _get_user_id(token)
+        if not from_number:
+            return jsonify({"error": "unauthorized"}), 401
+
         from sms_service import lib
 
         # Check if prefs exist
-        prefs_rows = lib._sb().table("ma_details").select("id") \
-            .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+        try:
+            prefs_rows = lib._sb().table("ma_details").select("id") \
+                .eq("device_id", from_number).eq("type", "v2_prefs").limit(1).execute().data or []
+        except Exception as e:
+            logger.warning(f"[onboarding] Prefs query error: {e}")
+            prefs_rows = []
 
         # Check if schools exist
-        school_rows = lib._sb().table("school_profiles").select("id") \
-            .eq("user_phone", from_number).limit(1).execute().data or []
+        try:
+            school_rows = lib._sb().table("school_profiles").select("id") \
+                .eq("user_phone", from_number).limit(1).execute().data or []
+        except Exception as e:
+            logger.warning(f"[onboarding] Schools query error: {e}")
+            school_rows = []
 
         completed = len(prefs_rows) > 0 or len(school_rows) > 0
         missing = []
@@ -46,7 +54,7 @@ def get_setup_status():
             "has_schools": len(school_rows) > 0,
         })
     except Exception as e:
-        logger.error(f"[onboarding] Status error: {e}")
+        logger.error(f"[onboarding] Status error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
