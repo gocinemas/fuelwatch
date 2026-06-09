@@ -11032,10 +11032,10 @@ def api_home_ask():
         sentences_blocked = len(sentences) - len(valid_sentences)
         app.logger.info(f"[home/ask] Validation: {len(sentences)} → {len(valid_sentences)} sentences ({sentences_blocked} blocked)")
 
-        # CRITICAL: If validation blocked ANY sentences, check original for inferences
-        # If original has inferences AND validation removed things, DON'T show original
-        if sentences_blocked > 0:
-            app.logger.warning(f"[home/ask] Validation blocked {sentences_blocked}/{len(sentences)} sentences - returning empty")
+        # Only return empty if ALL sentences were blocked
+        # If SOME sentences survived validation, show those
+        if len(valid_sentences) == 0 and sentences_blocked > 0:
+            app.logger.warning(f"[home/ask] ALL {sentences_blocked} sentences blocked - returning empty")
             return jsonify({"answer": ""})
 
         # EMERGENCY: If no sentences were blocked but answer still has red flags, block it
