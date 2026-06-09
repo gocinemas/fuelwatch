@@ -10063,6 +10063,8 @@ def api_home_brief_narrative():
         # Extract facts from facts parameter OR context
         facts = body.get("facts", [])
 
+        app.logger.info(f"[brief/narrative] NEW PIPELINE STARTING: mode={mode}, facts={len(facts)}, kids={kids}")
+
         # Generate using new pipeline
         narrative = NarrativeGenerator.generate(
             facts=facts,
@@ -10075,13 +10077,13 @@ def api_home_brief_narrative():
         # Sanitize output
         narrative = OutputSanitizer.sanitize(narrative)
 
-        app.logger.info(f"[brief/narrative] NEW PIPELINE: {len(facts)} facts → {len(narrative)} chars")
+        app.logger.info(f"[brief/narrative] ✅ NEW PIPELINE SUCCESS: {len(facts)} facts → {len(narrative)} chars")
         return jsonify({"text": narrative})
 
     except ImportError as e:
-        app.logger.debug(f"[brief/narrative] New pipeline not available: {e}, falling back to old")
+        app.logger.warning(f"[brief/narrative] ❌ New pipeline import error: {e}")
     except Exception as e:
-        app.logger.error(f"[brief/narrative] New pipeline error: {e}, falling back to old")
+        app.logger.error(f"[brief/narrative] ❌ New pipeline error: {e}", exc_info=True)
 
     # Fallback to old pipeline
     body  = request.get_json(silent=True) or {}
