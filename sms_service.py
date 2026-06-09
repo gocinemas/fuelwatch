@@ -10217,6 +10217,18 @@ def api_home_brief_narrative():
             timeout=8,
         )
         text = r.json()["choices"][0]["message"]["content"].strip()
+
+        # EMERGENCY VALIDATION: Block any remaining inferences
+        emergency_words = [
+            "you've", "you got", "you might", "you could", "you should",
+            "you want", "you need", "you think", "you could",
+            "might want", "might want to", "could use", "should",
+            "unwind", "relax", "time to", "afternoon to", "rest of"
+        ]
+        if any(word in text.lower() for word in emergency_words):
+            app.logger.error(f"[brief/narrative] FALLBACK PIPELINE BLOCKED inference: {text[:60]}")
+            return jsonify({"text": ""})
+
         return jsonify({"text": text})
     except Exception as e:
         app.logger.warning(f"[brief/narrative] {e}")
