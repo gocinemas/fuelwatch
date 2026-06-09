@@ -6617,20 +6617,32 @@ def api_home_last_receipt():
         total = r.get("total", 0)
         shop_date = r.get("shop_date")
 
-        # FORCE FIX: Database returns MM/DD/YY, we need ISO YYYY-MM-DD
-        # Pattern: 06/09/26 (MM/DD/YY) → 2026-06-09 (ISO)
-        if shop_date and "/" in shop_date:
+        # FORCE FIX: Ensure date is correct
+        # Database might have wrong format or swapped month/day
+        if shop_date:
             try:
-                parts = shop_date.split("/")
-                if len(parts) == 3:
-                    month_str, day_str, year_str = parts[0], parts[1], parts[2]
-                    # Handle 2-digit or 4-digit year
-                    year = int(year_str) if len(year_str) == 4 else 2000 + int(year_str)
-                    # ISO format: YYYY-MM-DD
-                    shop_date = f"{year:04d}-{month_str.zfill(2)}-{day_str.zfill(2)}"
-                    app.logger.info(f"[last-receipt] Date swapped: {r.get('shop_date')} → {shop_date}")
+                if "/" in shop_date:
+                    # MM/DD/YY format → ISO YYYY-MM-DD
+                    parts = shop_date.split("/")
+                    if len(parts) == 3:
+                        month_str, day_str, year_str = parts[0], parts[1], parts[2]
+                        year = int(year_str) if len(year_str) == 4 else 2000 + int(year_str)
+                        shop_date = f"{year:04d}-{month_str.zfill(2)}-{day_str.zfill(2)}"
+                        app.logger.info(f"[last-receipt] Slash format normalized: {r.get('shop_date')} → {shop_date}")
+                elif "-" in shop_date:
+                    # ISO format: check if month/day are swapped
+                    # If month > 12, swap them (likely YYYY-DD-MM instead of YYYY-MM-DD)
+                    parts = shop_date.split("-")
+                    if len(parts) == 3:
+                        year_str, m_str, d_str = parts[0], parts[1], parts[2]
+                        month_num = int(m_str)
+                        day_num = int(d_str)
+                        # If month > 12, swap (user likely swapped them)
+                        if month_num > 12 and day_num <= 12:
+                            shop_date = f"{year_str}-{d_str}-{m_str}"
+                            app.logger.info(f"[last-receipt] ISO swapped: {r.get('shop_date')} → {shop_date}")
             except Exception as e:
-                app.logger.debug(f"[last-receipt] Date swap failed: {e}, keeping raw")
+                app.logger.debug(f"[last-receipt] Date fix failed: {e}, keeping raw")
 
         return jsonify({"merchant": merchant, "total": total, "shop_date": shop_date})
     except Exception as e:

@@ -53,7 +53,11 @@ class NarrativeGenerator:
 
         system_prompt = (
             "You are a UK personal assistant. Generate warm, factual briefings from provided data only. "
-            "No suggestions, no inferences, no hallucinations."
+            "No suggestions, no inferences, no hallucinations. "
+            "CRITICAL: Never use: should, should probably, should get, you should, "
+            "probably, might want, may want, consider, ensure, make sure, don't forget, "
+            "get sorted, try to, attempt to, maybe you. "
+            "ONLY STATE FACTS."
         )
 
         user_prompt = f"""Generate a brief for someone who is {mode_note} on {dow} {tod}.
