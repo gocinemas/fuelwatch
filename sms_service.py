@@ -10548,15 +10548,24 @@ def api_home_ask():
                         if result_lines:
                             answer = "\n".join(result_lines)
 
-                            # ADD LOCATION CONFIRMATION
-                            # Extract merchant name and ask if they're there now
+                            # ADD LOCATION CONFIRMATION (transient)
+                            # Extract merchant name and show: "You are at Costa [Edit]"
                             try:
                                 from miru.brief.location_extractor import LocationExtractor
 
                                 detected_location = LocationExtractor.extract(q_lower)
-                                if detected_location:
-                                    answer += f"\n\nAre you at {detected_location} right now?"
-                                    app.logger.info(f"[ask] Added location confirmation: {detected_location}")
+                                if detected_location and from_number:
+                                    # Store location temporarily (30 min TTL) for brief context
+                                    import time
+                                    if not hasattr(api_home_ask, "_location_cache"):
+                                        api_home_ask._location_cache = {}
+                                    api_home_ask._location_cache[from_number] = {
+                                        "location": detected_location,
+                                        "timestamp": time.time(),
+                                    }
+                                    # Show simple confirmation: "You are at Costa [Edit]"
+                                    answer += f"\n\n📍 You are at {detected_location} [edit location]"
+                                    app.logger.info(f"[ask] Location stored: {detected_location}")
                             except Exception as e:
                                 app.logger.debug(f"[ask] Location confirmation failed: {e}")
 
