@@ -30,8 +30,8 @@ def smart_weather(weather: Dict, now: datetime) -> Optional[str]:
     return None
 
 
-def smart_event(events: List[Dict], now: datetime) -> Optional[str]:
-    """Next event with countdown."""
+def smart_event(events: List[Dict], now: datetime, location: Optional[str] = None) -> Optional[str]:
+    """Next event with countdown, location-aware."""
     if not events:
         return None
 
@@ -52,9 +52,40 @@ def smart_event(events: List[Dict], now: datetime) -> Optional[str]:
             if 0 < mins_until < 180:
                 child = ev.get("child_name", "").split()[0]  # First name only
                 title = ev.get("event_title", "")
+                location_str = ev.get("location", "")
+
+                # Add context if at same location
+                if location and location.lower() in (location_str or "").lower():
+                    return f"At {location}. {child}'s {title} in {int(mins_until)} mins — need to leave soon."
+
+                # If location nearby
+                if location_str:
+                    return f"{child}'s {title} in {int(mins_until)} mins at {location_str.split(',')[0]}"
+
                 return f"{child}'s {title} in {int(mins_until)} mins"
         except (ValueError, AttributeError):
             continue
+
+    return None
+
+
+def smart_time(now: datetime, location: Optional[str]) -> Optional[str]:
+    """Time-of-day context."""
+    hour = now.hour
+
+    # Meal times + location awareness
+    if 11 <= hour < 14 and location:
+        return f"Lunch time — you're at {location}"
+    if 12 <= hour < 14:
+        return "Lunch time"
+
+    # School pickup windows
+    if 14 <= hour < 17:
+        return "School pickup time coming up"
+
+    # Evening
+    if 17 <= hour < 21:
+        return "Dinner time"
 
     return None
 
@@ -91,11 +122,12 @@ def smart_context_brief(
         1-3 sentence brief combining weather + event + location context
     """
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {
             "weather": executor.submit(smart_weather, weather, now),
-            "event": executor.submit(smart_event, events, now),
+            "event": executor.submit(smart_event, events, now, location),
             "location": executor.submit(smart_location, location, receipts),
+            "time": executor.submit(smart_time, now, location),
         }
 
         results = {}
@@ -107,9 +139,9 @@ def smart_context_brief(
             except Exception as e:
                 logger.debug(f"[smart_context] {name} failed: {e}")
 
-    # Priority: event > location > weather
+    # Priority: event > location > time > weather
     parts = []
-    for priority in ["event", "location", "weather"]:
+    for priority in ["event", "location", "time", "weather"]:
         if priority in results:
             parts.append(results[priority])
 
