@@ -16851,9 +16851,13 @@ let _savesAll = [];
       facts.push("School run for " + sKids.map(function(s){ return s.child_name; }).join(" and "));
     }
     sEvs.slice(0,2).forEach(function(ev){
-      facts.push((ev.child_name||"") + " has " + (ev.event_title||"") + " on " + (ev.event_date||""));
+      if (ev.event_title && ev.event_date) {  // Only add if both title and date exist
+        facts.push((ev.child_name||"") + " has " + ev.event_title + " on " + ev.event_date);
+      }
     });
-    if (!out && ctx.fuel && ctx.fuel.price) {
+    // Only suggest fuel if: (1) not out, (2) fuel data exists, (3) NO recent fuel purchase
+    var hasFuelReceipt = ctx.spend && (ctx.spend.breakdown && (ctx.spend.breakdown.Fuel || ctx.spend.breakdown.Petrol));
+    if (!out && ctx.fuel && ctx.fuel.price && !hasFuelReceipt) {
       facts.push("Fuel near you: " + ctx.fuel.name + " at " + ctx.fuel.price + "p");
     }
     // Pass kids' names from school profiles
