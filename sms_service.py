@@ -14814,7 +14814,16 @@ def _wa_process_image(from_number: str, media_url: str, media_type: str) -> str:
                         elif _ru.startswith("DATE:"):
                             _d = _rl.split(":", 1)[1].strip()
                             if _d and _d != "":
-                                receipt_data["shop_date"] = _d
+                                # CRITICAL: Normalize date to ISO YYYY-MM-DD before storing
+                                try:
+                                    from miru.core.formatting import DateFormatter
+                                    _d = DateFormatter.to_storage(_d)
+                                    receipt_data["shop_date"] = _d
+                                    app.logger.info(f"[receipt] Date normalized: {_rl} → {_d}")
+                                except Exception as e:
+                                    # Fallback: store as-is if normalization fails
+                                    receipt_data["shop_date"] = _d
+                                    app.logger.warning(f"[receipt] Date normalization failed: {e}, storing raw: {_d}")
                         elif _ru.startswith("TOTAL:"):
                             try:
                                 receipt_data["total"] = float(_rl.split(":", 1)[1].strip().replace("£","").replace(",",""))
