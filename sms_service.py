@@ -10288,42 +10288,74 @@ def api_home_ask():
     # ── EARLY RETURN: Receipt queries (what did i buy in X) ───────────────────
     if is_personal and from_number:
         import re as _re_rcpt
+        import datetime as _rcpt_dt
+        import json as _rcpt_json
+
+        # Check for time qualifiers (today, this morning, yesterday)
+        time_qualifier = None
+        if any(w in q_lower for w in ["this morning", "today", "this afternoon", "this evening"]):
+            time_qualifier = "today"
+        elif "yesterday" in q_lower:
+            time_qualifier = "yesterday"
+
         receipt_patterns = [
-            # "what did i buy in tesco" / "what did i buy at tesco this morning"
-            r"(?:what|what's).{0,20}(?:did i|i).{0,20}(?:buy|order|eat|have|get).{0,30}(?:at|in|from) (.+?)(?:\s+(?:this|today|yesterday|this\s+morning|this\s+afternoon))?(?:\?|$)",
-            # "what did i buy this morning at tesco"
+            r"(?:what|what's).{0,20}(?:did i|i).{0,20}(?:buy|order|eat|have|get).{0,30}(?:at|in|from) (.+?)(?:\?|$)",
             r"(?:what|what's).{0,30}(?:did i|i).{0,30}(?:buy|order|get)(?:.*?)(?:at|in|from) (.+?)(?:\?|$)",
-            # "what's at tesco" / "what did i get at tesco"
             r"(?:what|what's).{0,10}(?:at|in|from) ([a-z\s]+?)(?:\?|$)",
         ]
+
         for pattern in receipt_patterns:
             m = _re_rcpt.search(pattern, q_lower)
             if m:
                 merchant_q = m.group(1).strip()
                 try:
                     plain = from_number.replace("whatsapp:", "").strip()
-                    rows = lib._sb().table("receipts").select("merchant,items,total,shop_date") \
-                        .eq("phone", plain).ilike("merchant", f"%{merchant_q}%") \
-                        .order("shop_date", desc=True).limit(3).execute().data or []
+
+                    # Build query with optional date filter
+                    query = lib._sb().table("receipts").select("merchant,items,total,shop_date") \
+                        .eq("phone", plain).ilike("merchant", f"%{merchant_q}%")
+
+                    # If time qualifier: filter to specific date
+                    if time_qualifier == "today":
+                        today_str = _rcpt_dt.date.today().isoformat()
+                        query = query.gte("shop_date", f"{today_str}T00:00:00") \
+                                    .lte("shop_date", f"{today_str}T23:59:59")
+                        app.logger.info(f"[ask] Receipt query filtering to TODAY: {today_str}")
+                    elif time_qualifier == "yesterday":
+                        yesterday = _rcpt_dt.date.today() - _rcpt_dt.timedelta(days=1)
+                        yesterday_str = yesterday.isoformat()
+                        query = query.gte("shop_date", f"{yesterday_str}T00:00:00") \
+                                    .lte("shop_date", f"{yesterday_str}T23:59:59")
+
+                    rows = query.order("shop_date", desc=True).limit(10).execute().data or []
+
                     if rows:
-                        import json as _rcpt_json
-                        result_lines = []
+                        # Group by (merchant, date) and deduplicate items
+                        grouped = {}
                         for r in rows:
                             merchant = r.get("merchant", "")
-                            total = r.get("total", 0)
-                            date_str = r.get("shop_date", "")[:10] if r.get("shop_date") else ""
+                            date_str = r.get("shop_date", "")[:10]
+                            key = (merchant, date_str)
+
+                            if key not in grouped:
+                                grouped[key] = []
+
                             try:
                                 items = _rcpt_json.loads(r.get("items") or "[]") or []
-                                item_names = [i.get("name","").strip() for i in items if i.get("name","").strip()]
-                                if item_names:
-                                    result_lines.append(f"📦 {merchant} ({date_str}): {', '.join(item_names[:8])}")
-                                else:
-                                    result_lines.append(f"💳 {merchant}: £{total:.2f} ({date_str})")
+                                item_names = [i.get("name", "").strip() for i in items if i.get("name", "").strip()]
+                                grouped[key].extend(item_names)
                             except:
-                                result_lines.append(f"💳 {merchant}: £{total:.2f} ({date_str})")
+                                pass
+
+                        result_lines = []
+                        for (merchant, date_str), items in sorted(grouped.items(), reverse=True):
+                            unique_items = list(dict.fromkeys(items))[:12]
+                            if unique_items:
+                                result_lines.append(f"📦 {merchant} ({date_str}): {', '.join(unique_items)}")
+
                         if result_lines:
                             answer = "\n".join(result_lines)
-                            app.logger.info(f"[ask] Receipt query matched: {merchant_q}")
+                            app.logger.info(f"[ask] Receipt query: {merchant_q} {time_qualifier or 'all-time'}")
                             return jsonify({"answer": answer})
                 except Exception as e:
                     app.logger.debug(f"[ask] Receipt query error: {e}")
