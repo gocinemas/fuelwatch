@@ -10472,6 +10472,10 @@ def api_home_ask():
             m = _re_rcpt.search(pattern, q_lower)
             if m:
                 merchant_q = m.group(1).strip()
+                # CLEAN merchant query: remove time qualifiers (last, yesterday, etc.)
+                merchant_q = _re_rcpt.sub(r"\b(?:last|yesterday|this|previously|last\s+time|last\s+visit)\b", "", merchant_q).strip()
+                if not merchant_q:
+                    continue  # Empty after cleaning, skip
                 try:
                     plain = from_number.replace("whatsapp:", "").strip()
 
