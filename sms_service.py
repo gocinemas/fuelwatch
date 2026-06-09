@@ -6623,9 +6623,9 @@ def api_home_last_receipt():
     phone = from_number.replace("whatsapp:", "").strip()
 
     try:
-        # Get most recent receipt - order by id descending (newest first)
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date,id").eq("phone", phone) \
-            .order("id", desc=True).limit(1).execute().data or []
+        # Get most recent receipt - order by shop_date descending (most recent date first)
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date").eq("phone", phone) \
+            .order("shop_date", desc=True).limit(1).execute().data or []
 
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
