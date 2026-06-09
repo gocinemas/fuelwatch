@@ -48,36 +48,32 @@ app = Flask(__name__)
 
 # CENTRAL BRIEF TEXT VALIDATION — Used by /api/home/brief and all Groq brief paths
 def _validate_brief_text(text):
-    """Remove inferences from brief text. Return empty if all inferences."""
+    """Remove obvious inferences from brief text. Keep factual statements."""
     if not text:
         return ""
 
-    # Split into sentences and validate each
+    # ONLY block extremely obvious inferences
+    # "You have", "You've got", "You might", "You should", "I think"
+    # These are clear pronouns + inferred action
+
     sentences = [s.strip() for s in text.split(".") if s.strip()]
     valid = []
 
     for sent in sentences:
-        sent_lower = sent.lower()
+        sent_lower = sent.lower().strip()
 
-        # Strip apostrophes for pronoun checking: "You've" → "youve"
-        sent_check = sent_lower.replace("'", "").replace("'", "").strip()
-
-        # Block if starts with pronoun
-        if any(sent_check.startswith(p) for p in ["you", "i ", "they ", "we "]):
-            app.logger.debug(f"[validate] Blocked pronoun: {sent[:40]}")
-            continue
-
-        # Block if contains inference words
-        blocked = [
-            "probably", "might", "may", "could", "should",
-            "unwind", "relax", "reminder", "due to", "busy day",
-            "rest of", "afternoon", "free now", "got time",
-            "you're due", "you want", "you need",
+        # HARD BLOCK: Clear pronouns + inference verbs
+        hard_blocks = [
+            "you have", "you've got", "you might", "you should",
+            "you could", "you want", "you need", "you are",
+            "i think", "i believe", "i know",
         ]
-        if any(b in sent_lower for b in blocked):
-            app.logger.debug(f"[validate] Blocked inference: {sent[:40]}")
+
+        if any(sent_lower.startswith(block) for block in hard_blocks):
+            app.logger.debug(f"[validate] Blocked hard inference: {sent[:40]}")
             continue
 
+        # Keep everything else - let user see the facts
         valid.append(sent)
 
     result = ". ".join(valid)
@@ -85,7 +81,7 @@ def _validate_brief_text(text):
         result += "."
 
     if not result:
-        app.logger.warning(f"[validate] ALL sentences blocked, returning empty")
+        app.logger.warning(f"[validate] ALL blocked, returning empty")
 
     return result
 
