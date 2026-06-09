@@ -9280,6 +9280,35 @@ def api_home_brief():
         time_mode = "night"
     tod = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
 
+    # INTELLIGENT CONTEXT ORCHESTRATOR — parallel agents
+    # Runs 5 agents in parallel: Weather, Time, Location, Event, Service
+    intelligent_context = ""
+    try:
+        from miru.brief.context_orchestrator import ContextOrchestrator
+
+        # Collect data for orchestrator
+        _events = ctx.get("school", {}).get("events", []) if isinstance(ctx.get("school"), dict) else []
+        _receipts = ctx.get("recent_capture", {}).get("receipts", []) if isinstance(ctx.get("recent_capture"), dict) else []
+        _nearby = ctx.get("location", {}).get("nearby", []) if isinstance(ctx.get("location"), dict) else []
+        _weather = ctx.get("weather", {})
+        _loc_label = _loc_classification.get("label") if _loc_classification else None
+
+        intelligent_context = ContextOrchestrator.orchestrate(
+            now=now,
+            weather=_weather,
+            location=_loc_label,
+            events=_events,
+            receipts=_receipts,
+            nearby_services=_nearby,
+            mode=_wfh_mode or "office",
+        )
+
+        if intelligent_context:
+            app.logger.info(f"[brief] Orchestrator: {intelligent_context[:80]}")
+            ctx["intelligent_context"] = intelligent_context
+    except Exception as e:
+        app.logger.debug(f"[brief] Orchestrator (non-critical): {e}")
+
     # Day type
     # Weekday: Mon=0 Tue=1 Wed=2 Thu=3 Fri=4 Sat=5 Sun=6
     if wday == 3:    day_type = "thursday_pre_weekend"
@@ -10081,6 +10110,7 @@ def api_home_brief():
 
     result = {
         "brief":        brief_text,
+        "intelligent_context": ctx.get("intelligent_context", ""),  # Smart agents output
         "context":      ctx,
         "evening_saves": _evening_chip_saves,
         "prefs":     prefs,
