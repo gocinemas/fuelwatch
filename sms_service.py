@@ -10725,15 +10725,42 @@ def api_home_ask():
     if from_number and not is_utility:
         import re as _re_ls
         _LS_SERVICES = (
+            # TRADES & REPAIRS
             "plumber|electrician|builder|locksmith|handyman|roofer|plasterer|decorator|"
-            "boiler|carpenter|tiler|gardener|glazier|painter|gas engineer|"
+            "boiler|carpenter|tiler|gardener|glazier|painter|gas engineer|plumbing|electrical|"
+            # HEALTH & WELLNESS
             "dentist|gp|doctor|pharmacy|chemist|optician|physio|hospital|vet|clinic|"
-            "restaurant|cafe|coffee|pub|takeaway|bar|gym|hairdresser|barber|salon|spa|"
-            "solicitor|accountant|estate agent|mortgage|financial advisor|"
-            "garage|mechanic|mot|tyre|petrol|car wash|"
-            "nursery|childminder|tutor|park|supermarket|"
-            "post office|bank|atm|cash machine|library|swimming pool|leisure centre|train station|"
-            "hotel|cinema|theatre|museum|gallery|council|tax office|police station|fire station"
+            "optician|dentistry|veterinary|physiotherapy|massage|therapy|"
+            # FOOD & DRINK
+            "restaurant|cafe|coffee|pub|takeaway|bar|bistro|diner|grill|pizzeria|"
+            "bakery|bakery|butcher|fishmonger|greengrocer|deli|sandwich|"
+            # FITNESS & LEISURE
+            "gym|swimming pool|swimming|leisure centre|leisure|sports|yoga|pilates|"
+            "boxing|dance|fitness|aqua|"
+            # BEAUTY & GROOMING
+            "hairdresser|barber|salon|spa|beautician|nail|waxing|tanning|"
+            # PROFESSIONAL SERVICES
+            "solicitor|lawyer|accountant|estate agent|mortgage|financial advisor|tax|"
+            # AUTOMOTIVE
+            "garage|mechanic|mot|tyre|petrol|diesel|car wash|service|repair|"
+            # RETAIL & SHOPPING
+            "supermarket|shop|store|market|department store|"
+            # CHILDCARE & EDUCATION
+            "nursery|childminder|tutor|school|college|university|training|"
+            # FINANCIAL & BANKING
+            "bank|atm|cash machine|building society|"
+            # PUBLIC SERVICES & AMENITIES
+            "post office|library|council|tax office|police station|fire station|"
+            "train station|bus station|airport|taxi|parking|"
+            # ENTERTAINMENT & CULTURE
+            "cinema|theatre|theatre|museum|gallery|art|exhibition|concert|comedy|"
+            "bowling|arcade|trampoline|theme park|"
+            # ACCOMMODATION
+            "hotel|hostel|bed and breakfast|camping|caravan|"
+            # PARKS & OUTDOOR
+            "park|playground|nature reserve|forest|beach|"
+            # MISCELLANEOUS
+            "pharmacy|pet shop|flower shop|bookshop|newsagent|convenience"
         )
         _LS_INTENT = _re_ls.compile(
             r'(?:'
