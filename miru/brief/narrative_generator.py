@@ -37,7 +37,7 @@ class NarrativeGenerator:
             mode: "wfh", "office", "out"
             dow: Day of week (Monday, Tuesday, etc.)
             tod: Time of day (morning, afternoon, evening)
-            kids: List of children's names
+            kids: List of children's names (NOT passed to Groq to prevent inference)
 
         Returns:
             Brief narrative (1-2 sentences, under 40 words)
@@ -48,25 +48,21 @@ class NarrativeGenerator:
             "out": "out and about",
         }.get(mode, "at home")
 
-        kids_str = " and ".join(kids) if kids else "none mentioned"
         facts_text = "; ".join(facts) if facts else "no specific updates"
 
         system_prompt = (
-            "You are a UK personal assistant. Generate warm, factual briefings from provided data only. "
-            "No suggestions, no inferences, no hallucinations. "
-            "CRITICAL: Never use: should, should probably, should get, you should, "
-            "probably, might want, may want, consider, ensure, make sure, don't forget, "
-            "get sorted, try to, attempt to, maybe you. "
-            "ONLY STATE FACTS."
+            "You are a factual UK assistant. ONLY state facts provided. "
+            "ABSOLUTELY FORBIDDEN: should, probably, might, may, could, think, believe, "
+            "want, relax, unwind, looking forward, heading to, have time, take a look, "
+            "you've got, you need, suggest, consider, ensure. "
+            "ONLY FACTS FROM THE LIST."
         )
 
-        user_prompt = f"""Generate a brief for someone who is {mode_note} on {dow} {tod}.
-Children: {kids_str}.
-
-Facts (mention ONLY what's listed, nothing else):
+        # DO NOT mention kids names - they cause inference
+        user_prompt = f"""Facts (state ONLY these, nothing else):
 {facts_text}
 
-Write 1-2 sentences max, under 40 words. Reference only facts above. No suggestions or inferences."""
+Write 1-2 sentences max. State facts only. NO suggestions, NO inferences, NO opinions."""
 
         try:
             response = requests.post(
@@ -91,6 +87,10 @@ Write 1-2 sentences max, under 40 words. Reference only facts above. No suggesti
                 return ""
 
             text = response.json()["choices"][0]["message"]["content"].strip()
+
+            # POST-VALIDATION: Remove any inferred sentences
+            text = NarrativeGenerator._validate_output(text)
+
             logger.debug(f"Generated narrative: {text[:100]}...")
             return text
 
@@ -100,3 +100,46 @@ Write 1-2 sentences max, under 40 words. Reference only facts above. No suggesti
         except Exception as e:
             logger.error(f"NarrativeGenerator error: {e}")
             return ""
+
+    @staticmethod
+    def _validate_output(text: str) -> str:
+        """POST-VALIDATE output to remove inferences Groq snuck in.
+
+        Removes sentences that:
+        - Start with pronouns (You, I, They)
+        - Contain inference words (probably, might, could, think, suggest)
+        - Contain suggestions (want, need, relax, unwind, heading)
+        """
+        if not text:
+            return ""
+
+        sentences = [s.strip() for s in text.split(".") if s.strip()]
+        valid_sentences = []
+
+        for sent in sentences:
+            sent_lower = sent.lower()
+
+            # Block sentences starting with pronouns
+            if any(sent_lower.startswith(p) for p in ["you ", "i ", "they ", "we "]):
+                logger.warning(f"[validate] Blocked pronoun-start: {sent[:50]}")
+                continue
+
+            # Block sentences with inference/suggestion words
+            blocked_words = [
+                "probably", "might", "may", "could", "should", "think",
+                "believe", "know", "suggest", "consider", "want", "need",
+                "relax", "unwind", "forward", "heading", "visit", "go to",
+                "take a look", "pick up", "looking forward", "a bit of time"
+            ]
+            if any(word in sent_lower for word in blocked_words):
+                logger.warning(f"[validate] Blocked inference: {sent[:50]}")
+                continue
+
+            valid_sentences.append(sent)
+
+        result = ". ".join(valid_sentences)
+        if result:
+            result += "."
+
+        logger.info(f"[validate] {len(sentences)} → {len(valid_sentences)} sentences")
+        return result
