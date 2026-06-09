@@ -10543,6 +10543,19 @@ def api_home_ask():
 
                         if result_lines:
                             answer = "\n".join(result_lines)
+
+                            # ADD LOCATION CONFIRMATION
+                            # Extract merchant name and ask if they're there now
+                            try:
+                                from miru.brief.location_extractor import LocationExtractor
+
+                                detected_location = LocationExtractor.extract(q_lower)
+                                if detected_location:
+                                    answer += f"\n\nAre you at {detected_location} right now?"
+                                    app.logger.info(f"[ask] Added location confirmation: {detected_location}")
+                            except Exception as e:
+                                app.logger.debug(f"[ask] Location confirmation failed: {e}")
+
                             app.logger.info(f"[ask] Receipt query: {merchant_q} {time_qualifier or 'all-time'}")
                             return jsonify({"answer": answer})
                 except Exception as e:
