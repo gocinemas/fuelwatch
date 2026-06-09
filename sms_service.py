@@ -6623,9 +6623,10 @@ def api_home_last_receipt():
     phone = from_number.replace("whatsapp:", "").strip()
 
     try:
-        # Get most recent receipt - order by shop_date descending (most recent date first)
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date").eq("phone", phone) \
-            .order("shop_date", desc=True).limit(1).execute().data or []
+        # Get most recent receipt: order by purchase date first, then by upload timestamp
+        # This handles same-day receipts correctly using the timestamp
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date,created_at").eq("phone", phone) \
+            .order("shop_date", desc=True).order("created_at", desc=True).limit(1).execute().data or []
 
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
