@@ -9207,9 +9207,30 @@ def api_home_brief():
             futures["weather"] = pool.submit(_v2_fetch_weather, fuel_pc)
         # Trains fetched in pool (parallel with everything else, not sequentially before)
         if prefs.get("train_from") and prefs.get("train_to"):
-            tf, tt = prefs["train_from"], prefs["train_to"]
-            futures["trains"]      = pool.submit(_v2_fetch_trains, tf, tt)
-            futures["trains_home"] = pool.submit(_v2_fetch_trains, tt, tf)
+            futures["trains"] = pool.submit(_v2_fetch_trains, prefs["train_from"], prefs["train_to"])
+            futures["trains_home"] = pool.submit(_v2_fetch_trains, prefs["train_to"], prefs["train_from"])
+
+        # NEW: If user has GPS location, fetch trains from NEAREST STATION to destination
+        if has_location and prefs.get("train_to"):
+            try:
+                # Find nearest train station to current location
+                stations = fetch_all_stations()
+                nearest_stn = None
+                nearest_dist = float('inf')
+                for stn in stations:
+                    dist = haversine_km(_req_lat, _req_lng, stn["lat"], stn["lon"])
+                    if dist < nearest_dist:
+                        nearest_dist = dist
+                        nearest_stn = stn["code"]
+
+                if nearest_stn and nearest_dist < 5:  # Only if within 5km
+                    futures["trains_from_here"] = pool.submit(
+                        _v2_fetch_trains, nearest_stn, prefs["train_to"]
+                    )
+                    app.logger.debug(f"[brief] Trains from nearest station {nearest_stn} ({nearest_dist:.1f}km away)")
+            except Exception as e:
+                app.logger.debug(f"[brief] Nearest station lookup failed: {e}")
+
         if from_number:
             futures["school"]          = pool.submit(_v2_fetch_school, from_number)
             futures["spend"]           = pool.submit(_v2_fetch_spend, from_number)
@@ -9479,6 +9500,25 @@ def api_home_brief():
                 _from_label = loc_station or trains.get("from", "")
                 if times:
                     facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
+
+        # NEW: If user has GPS location, show trains from NEAREST STATION
+        trains_from_here = ctx.get("trains_from_here", {})
+        if trains_from_here and trains_from_here.get("departures"):
+            _departures = trains_from_here.get("departures", [])
+            _future_here = []
+            for d in _departures:
+                try:
+                    _dep_time = datetime.strptime(d.get("departs", ""), "%H:%M").time()
+                    if _dep_time > now.time():
+                        _future_here.append(d)
+                except ValueError:
+                    _future_here.append(d)
+            if _future_here:
+                times = " · ".join(d.get("departs", "") for d in _future_here[:2] if d.get("departs"))
+                _here_from = trains_from_here.get("from", "Nearby station")
+                if times:
+                    facts.append(f"Next train from {_here_from}: {times}")
+
         # School run traffic — 7:00–8:30am only (out of the house by then)
         _tr = ctx.get("traffic", {}) if (7 <= now.hour <= 8 and not (now.hour == 8 and now.minute > 30)) else {}
         for _tleg in (_tr.get("legs") or []):
