@@ -6637,18 +6637,43 @@ def api_home_last_receipt():
 
         # Sort by shop_date descending to get the most recent
         try:
-            # Handle None dates by putting them at the end
+            def parse_date(date_str):
+                """Parse date in any format to YYYY-MM-DD for sorting."""
+                if not date_str:
+                    return "0000-00-00"
+
+                # Already ISO format
+                if date_str.startswith("20") and len(date_str) >= 10:
+                    return date_str[:10]
+
+                # Try DD/MM/YY or MM/DD/YY format
+                if "/" in date_str:
+                    parts = date_str.split("/")
+                    if len(parts) == 3:
+                        try:
+                            p1, p2, p3 = parts[0], parts[1], parts[2]
+                            y = int(p3) if len(p3) == 4 else 2000 + int(p3)
+                            # Heuristic: if first part > 12, it's DD/MM; else try to guess
+                            if int(p1) > 12:
+                                d, m = p1, p2
+                            elif int(p2) > 12:
+                                m, d = p1, p2
+                            else:
+                                # Both valid - assume DD/MM/YY (UK format)
+                                d, m = p1, p2
+                            return f"{y:04d}-{m:0>2}-{d:0>2}"
+                        except:
+                            return "0000-00-00"
+
+                return "0000-00-00"
+
             def get_sort_key(row):
                 shop_date = row.get("shop_date")
-                # None dates go to end (empty string sorts before actual dates in reverse)
-                # Valid dates sort in reverse chronological order (newest first)
-                if shop_date is None:
-                    return ("", "")  # Tuple puts None values last
-                return (shop_date, "")  # Valid dates sort by date string
+                return parse_date(shop_date)
 
             rows_sorted = sorted(rows, key=get_sort_key, reverse=True)
             r = rows_sorted[0] if rows_sorted else rows[0]
-            app.logger.info(f"[last-receipt] RETURNING: {r.get('merchant')} for £{r.get('total')} on {r.get('shop_date')}")
+            app.logger.info(f"[last-receipt] RETURNING: {r.get('merchant')} for £{r.get('total')} on {r.get('shop_date')} (parsed as {get_sort_key(r)})")
         except Exception as e:
             app.logger.error(f"[last-receipt] Sort error: {e}")
             r = rows[0]  # Fallback to first result if sorting fails
