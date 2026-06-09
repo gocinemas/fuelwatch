@@ -10352,30 +10352,41 @@ def api_home_ask():
             ctx_lines.append(f"Weather: {weather['temp']}°C, {weather.get('desc','')}")
 
         fuel = ctx.get("fuel") or {}
-        # CRITICAL: Check for recent fuel purchase and EXCLUDE fuel price if found
-        has_recent_fuel = False
+        # CRITICAL: Check for recent fuel purchase (within 7 days)
+        # Logic: Only suggest fuel if last purchase was > 7 days ago
+        should_suggest_fuel = True
+        last_fuel_date = None
         try:
-            # Check spend breakdown first
-            has_recent_fuel = spend.get("breakdown", {}).get("Fuel") or spend.get("breakdown", {}).get("Petrol")
-            # ALSO check receipts table directly for petrol/fuel keywords in last 24h
-            if not has_recent_fuel and from_number:
+            if from_number:
                 plain = from_number.replace("whatsapp:", "").strip()
                 recent_receipts = lib._sb().table("receipts").select("merchant,shop_date") \
-                    .eq("phone", plain).order("shop_date", desc=True).limit(10).execute().data or []
+                    .eq("phone", plain).order("shop_date", desc=True).limit(20).execute().data or []
+
+                # Find most recent fuel purchase
                 for r in recent_receipts:
                     merchant = (r.get("merchant") or "").lower()
                     if any(w in merchant for w in ["petrol", "fuel", "shell", "bp", "esso", "morrisons petrol", "tesco petrol", "sainsbury petrol", "asda fuel"]):
-                        has_recent_fuel = True
-                        app.logger.info(f"[brief] Found recent fuel: {merchant}, excluding fuel price")
+                        last_fuel_date = r.get("shop_date")
                         break
+
+                # Check if within 7 days
+                if last_fuel_date:
+                    import datetime as _fdt
+                    last_fuel = _fdt.datetime.fromisoformat(last_fuel_date[:10])
+                    today = _fdt.date.today()
+                    days_since = (today - last_fuel.date()).days
+
+                    if days_since <= 7:
+                        should_suggest_fuel = False
+                        app.logger.info(f"[brief] Recent fuel {days_since}d ago, excluding price")
+                    else:
+                        app.logger.info(f"[brief] Last fuel {days_since}d ago, can suggest")
         except Exception as e:
             app.logger.debug(f"[brief] Fuel check error: {e}")
 
-        # ONLY add fuel price if NO recent purchase found
-        if fuel.get("price") and not has_recent_fuel:
+        # Add fuel price ONLY if not filled up in last 7 days
+        if fuel.get("price") and should_suggest_fuel:
             ctx_lines.append(f"Cheapest fuel: {fuel.get('name','')} {fuel['price']}p")
-        elif has_recent_fuel:
-            app.logger.info(f"[brief] Recent fuel found, excluding price from context")
 
         school = ctx.get("school") or {}
         _hs = school.get("holiday_status") or {}
