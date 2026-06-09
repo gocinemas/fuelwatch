@@ -15686,7 +15686,23 @@ def _wa_spending_query(from_number: str, body: str) -> str:
 
     try:
         sb   = lib._sb()
-        # Always search receipts first
+        plain_phone = from_number.replace("whatsapp:", "").strip()
+
+        # If merchant specified, search receipts table directly
+        if merchant_filter:
+            rcpt_rows = sb.table("receipts").select("merchant,total,shop_date").eq("phone", plain_phone) \
+                .ilike("merchant", f"%{merchant_filter}%") \
+                .order("created_at", desc=True).limit(5).execute().data or []
+
+            if rcpt_rows:
+                # Found matching receipts
+                merchant = rcpt_rows[0].get("merchant", "Receipt")
+                total = rcpt_rows[0].get("total", 0)
+                shop_date = rcpt_rows[0].get("shop_date", "")[:10]
+                total_str = f" · £{total:.2f}" if total else ""
+                return f"🧾 *{merchant}* ({shop_date}){total_str}\n\n_(Most recent Waitrose receipt)_"
+
+        # Fallback: search wa_saves clippings
         rows = sb.table("wa_saves").select("title,summary,category,created_at") \
             .eq("from_number", from_number) \
             .ilike("title", "🧾%") \
@@ -15694,18 +15710,8 @@ def _wa_spending_query(from_number: str, body: str) -> str:
             .order("created_at", desc=True) \
             .execute().data or []
 
-        # If a specific merchant is named but no receipt matches, fall back to all clippings
         if merchant_filter:
-            receipt_hits = [r for r in rows if merchant_filter in (r.get("title") or "").lower()]
-            if not receipt_hits:
-                clip_rows = sb.table("wa_saves").select("title,summary,category,created_at") \
-                    .eq("from_number", from_number) \
-                    .ilike("title", f"%{merchant_filter}%") \
-                    .gte("created_at", date_from + "T00:00:00") \
-                    .order("created_at", desc=True) \
-                    .execute().data or []
-                if clip_rows:
-                    rows = clip_rows  # use clipping results instead
+            rows = [r for r in rows if merchant_filter in (r.get("title") or "").lower()]
     except Exception as e:
         return "⚠️ Couldn't fetch your receipts right now — try again in a moment."
 
@@ -15721,34 +15727,6 @@ def _wa_spending_query(from_number: str, body: str) -> str:
                 or _receipt_category((r.get("title") or "").replace("🧾","").strip()) == category_filter]
 
     if not rows:
-        # No match - try typeahead suggestions if merchant was searched
-        if merchant_filter and merchant_label:
-            try:
-                # Get all merchants the user has shopped at
-                all_rows = sb.table("wa_saves").select("title").eq("from_number", from_number) \
-                    .ilike("title", "🧾%").order("created_at", desc=True).limit(50).execute().data or []
-
-                # Extract merchant names from titles like "🧾 Waitrose"
-                merchants = []
-                seen = set()
-                for t in all_rows:
-                    m = t.get("title", "").replace("🧾", "").strip()
-                    if m and m not in seen:
-                        merchants.append(m)
-                        seen.add(m)
-
-                # Find similar merchants (case-insensitive contains or starts-with)
-                search_term = merchant_filter.lower()
-                similar = [m for m in merchants if search_term in m.lower()][:5]
-
-                if similar:
-                    lines = [f"🔍 No receipts for '*{merchant_label}*' {period}.\n\nDid you mean:"]
-                    for m in similar:
-                        lines.append(f"• {m}")
-                    return "\n".join(lines)
-            except Exception as e:
-                app.logger.debug(f"[typeahead] Error: {e}")
-
         label = merchant_label or category_filter or "matching"
         return f"📭 No {label} receipts or clippings found {period}."
 
