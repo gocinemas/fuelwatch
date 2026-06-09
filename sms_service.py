@@ -10740,6 +10740,7 @@ def api_home_ask():
             r'(?:find|get|show|any|is there|where.{0,10}find|i need|looking for|recommend)\b.{0,25}'
             r'(?:' + _LS_SERVICES + r')'
             r'|(?:' + _LS_SERVICES + r').{0,20}(?:near|nearby|close|local|around)'
+            r'|(?:where|what.{0,10}address).{0,20}(?:' + _LS_SERVICES + r'|tesco|sainsbury|asda|morrisons|waitrose|boots|lloyds)'
             r')',
             re.IGNORECASE
         )
@@ -10755,7 +10756,7 @@ def api_home_ask():
                     _sq = _re_ls.sub(
                         r'\b(find me a?n?|find a?n?|is there a?n?|any |show me|i need a?n?|'
                         r'looking for|recommend|near me|near home|nearby|local|around me|'
-                        r'near\s+[A-Za-z0-9 ]+)\b', ' ', question, flags=re.IGNORECASE
+                        r'near\s+[A-Za-z0-9 ]+|where is|where.s the|what.s the address|where.s)\b', ' ', question, flags=re.IGNORECASE
                     ).strip(" ?,.")
                     _sq = _re_ls.sub(r'[A-Za-z]{1,2}\d{1,2}[A-Za-z]?\s*\d[A-Za-z]{2}', '', _sq).strip()
                     _sq = _re_ls.sub(r'\s+', ' ', _sq).strip() or question
