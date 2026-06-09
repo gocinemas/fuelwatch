@@ -10083,11 +10083,23 @@ def api_home_brief():
     # Run agents in parallel: weather, events, location history
     try:
         from miru.brief.smart_context import smart_context_brief
+        import time
 
         _events_for_smart = ctx.get("school", {}).get("events", []) if isinstance(ctx.get("school"), dict) else []
         _receipts_for_smart = recent_capture.get("receipts", []) if isinstance(recent_capture, dict) else []
         _weather_for_smart = ctx.get("weather", {}) or {}
-        _location_for_smart = _loc_classification.get("label") if _loc_classification else None
+
+        # Check for recently stored location (from /api/home/ask)
+        _location_for_smart = None
+        if from_number and hasattr(api_home_ask, "_location_cache"):
+            cached = api_home_ask._location_cache.get(from_number)
+            if cached and time.time() - cached["timestamp"] < 1800:  # 30 min TTL
+                _location_for_smart = cached["location"]
+                app.logger.debug(f"[brief] Using stored location: {_location_for_smart}")
+
+        # Fallback to location classification if no recent location
+        if not _location_for_smart:
+            _location_for_smart = _loc_classification.get("label") if _loc_classification else None
 
         smart_brief = smart_context_brief(
             now=now,
@@ -10361,6 +10373,27 @@ def api_home_ask():
         return jsonify({"answer": ""}), 400
 
     q_lower = question.strip().lower()
+
+    # ── LOCATION EXTRACTION — learn where user is from conversation ──
+    # Extract "at Costa", "in Tesco", etc. and store for next 30 mins
+    try:
+        from miru.brief.location_extractor import LocationExtractor
+
+        detected_location = LocationExtractor.extract(question)
+        if detected_location and from_number:
+            # Store location in cache with 30 min TTL
+            import time
+
+            if not hasattr(api_home_ask, "_location_cache"):
+                api_home_ask._location_cache = {}
+
+            api_home_ask._location_cache[from_number] = {
+                "location": detected_location,
+                "timestamp": time.time(),
+            }
+            app.logger.info(f"[location] Stored for {from_number}: {detected_location}")
+    except Exception as e:
+        app.logger.debug(f"[location] Extraction failed: {e}")
 
     # ── Greeting short-circuit — no context injection, no hallucinated schedules ─
     _GREETINGS = {"hi", "hello", "hey", "morning", "good morning", "hiya", "yo", "sup",
