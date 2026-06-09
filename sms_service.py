@@ -10842,21 +10842,24 @@ def api_home_ask():
         for sent in sentences:
             sent_lower = sent.lower()
 
-            # Block sentences starting with pronouns (You, I, They, We)
-            if any(sent_lower.startswith(p) for p in ["you ", "you'", "i ", "they ", "we "]):
-                app.logger.warning(f"[home/ask] Blocked pronoun-start: {sent[:50]}")
+            # AGGRESSIVE: Block sentences starting with pronouns
+            # Strip apostrophes to catch "You've", "You'll", etc.
+            sent_check = sent_lower.replace("'", "").replace("'", "").strip()
+            if any(sent_check.startswith(p) for p in ["you ", "you", "i ", "they ", "we ", "i'"]):
+                app.logger.warning(f"[home/ask] BLOCKED PRONOUN: {sent[:50]}")
                 continue
 
-            # Block sentences with inference/suggestion words
+            # AGGRESSIVE: Block sentences with inference/suggestion words
             blocked_words = [
                 "probably", "might", "may", "could", "should", "think",
                 "believe", "know", "suggest", "consider", "want", "need",
                 "relax", "unwind", "forward", "heading", "visit", "go to",
                 "take a look", "pick up", "looking forward", "a bit of time",
-                "time to", "only ", "just got", "right now"
+                "time to unwind", "time to relax", "rest of the afternoon",
+                "busy day", "free now", "reminder you", "you're due"
             ]
             if any(word in sent_lower for word in blocked_words):
-                app.logger.warning(f"[home/ask] Blocked inference: {sent[:50]}")
+                app.logger.warning(f"[home/ask] BLOCKED INFERENCE: {sent[:50]}")
                 continue
 
             valid_sentences.append(sent)
