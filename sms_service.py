@@ -19600,8 +19600,9 @@ def _whatsapp_reply_inner():
                 # Fetch user's bookmarks from Supabase
                 plain_fn = from_number.replace("whatsapp:", "").strip()
                 # Get Chrome bookmarks (filter by user to prevent privacy leak)
-                chrome_rows = lib._sb().table("bookmarks").select("title,url,category").eq("device_id", plain_fn).limit(500).execute().data or []
-                twitter_rows = lib._sb().table("twitter_bookmarks").select("tweet_id,author_handle,author_name,text,url,category").eq("device_id", plain_fn).limit(500).execute().data or []
+                # Bookmark search temporarily offline - schema issue
+                app.logger.warning(f"[bookmark] Search requested but disabled due to schema mismatch")
+                return _msg_send(resp, "📚 Bookmarks search is temporarily offline. Try again later or use miru.humanagency.co")
 
                 bookmarks = []
                 for bm in chrome_rows:
