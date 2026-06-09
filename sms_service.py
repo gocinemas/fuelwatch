@@ -6631,16 +6631,23 @@ def api_home_last_receipt():
                         app.logger.info(f"[last-receipt] Slash format normalized: {r.get('shop_date')} → {shop_date}")
                 elif "-" in shop_date:
                     # ISO format: check if month/day are swapped
-                    # If month > 12, swap them (likely YYYY-DD-MM instead of YYYY-MM-DD)
                     parts = shop_date.split("-")
                     if len(parts) == 3:
                         year_str, m_str, d_str = parts[0], parts[1], parts[2]
                         month_num = int(m_str)
                         day_num = int(d_str)
-                        # If month > 12, swap (user likely swapped them)
+
+                        # Case 1: month > 12 (impossible month)
                         if month_num > 12 and day_num <= 12:
                             shop_date = f"{year_str}-{d_str}-{m_str}"
-                            app.logger.info(f"[last-receipt] ISO swapped: {r.get('shop_date')} → {shop_date}")
+                            app.logger.info(f"[last-receipt] ISO swapped (month>12): {r.get('shop_date')} → {shop_date}")
+
+                        # Case 2: month > day + statistical heuristic
+                        # Most shopping happens early/mid month (day < 15), rarely late (day > 20)
+                        # If month > day AND month is mid-late AND day is early, they're swapped
+                        elif month_num > day_num and month_num >= 7 and day_num <= 12:
+                            shop_date = f"{year_str}-{d_str}-{m_str}"
+                            app.logger.info(f"[last-receipt] ISO swapped (heuristic): {r.get('shop_date')} → {shop_date}")
             except Exception as e:
                 app.logger.debug(f"[last-receipt] Date fix failed: {e}, keeping raw")
 
