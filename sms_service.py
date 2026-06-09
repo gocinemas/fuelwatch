@@ -10348,10 +10348,30 @@ def api_home_ask():
             ctx_lines.append(f"Weather: {weather['temp']}°C, {weather.get('desc','')}")
 
         fuel = ctx.get("fuel") or {}
-        # Only include fuel price if they don't have a recent fuel purchase
-        has_recent_fuel = spend.get("breakdown", {}).get("Fuel") or spend.get("breakdown", {}).get("Petrol")
+        # CRITICAL: Check for recent fuel purchase and EXCLUDE fuel price if found
+        has_recent_fuel = False
+        try:
+            # Check spend breakdown first
+            has_recent_fuel = spend.get("breakdown", {}).get("Fuel") or spend.get("breakdown", {}).get("Petrol")
+            # ALSO check receipts table directly for petrol/fuel keywords in last 24h
+            if not has_recent_fuel and from_number:
+                plain = from_number.replace("whatsapp:", "").strip()
+                recent_receipts = lib._sb().table("receipts").select("merchant,shop_date") \
+                    .eq("phone", plain).order("shop_date", desc=True).limit(10).execute().data or []
+                for r in recent_receipts:
+                    merchant = (r.get("merchant") or "").lower()
+                    if any(w in merchant for w in ["petrol", "fuel", "shell", "bp", "esso", "morrisons petrol", "tesco petrol", "sainsbury petrol", "asda fuel"]):
+                        has_recent_fuel = True
+                        app.logger.info(f"[brief] Found recent fuel: {merchant}, excluding fuel price")
+                        break
+        except Exception as e:
+            app.logger.debug(f"[brief] Fuel check error: {e}")
+
+        # ONLY add fuel price if NO recent purchase found
         if fuel.get("price") and not has_recent_fuel:
             ctx_lines.append(f"Cheapest fuel: {fuel.get('name','')} {fuel['price']}p")
+        elif has_recent_fuel:
+            app.logger.info(f"[brief] Recent fuel found, excluding price from context")
 
         school = ctx.get("school") or {}
         _hs = school.get("holiday_status") or {}
