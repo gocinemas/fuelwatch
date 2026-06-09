@@ -16315,7 +16315,7 @@ let _savesAll = [];
           + (new Date().getHours() >= 9 && new Date().getHours() < 19 ? '<button onclick="_briefFindNearby(\'park\')" style="font-size:12px;font-weight:700;color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:6px 10px;cursor:pointer">🌳</button>' : '')
           + '</div></div>';
       }
-    } else if (!wfh && !out && !_isOffHours && !_noTrainsDay && trains && trains.departures && trains.departures.length) {
+    } else if (false) {  // DISABLED: Trains card already showing in home hero — don't duplicate here
       var _nowMins = (function(){ var n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
       var futureDeps = trains.departures.filter(function(d) {
         var t = (d.departs || d.time || "").trim();
