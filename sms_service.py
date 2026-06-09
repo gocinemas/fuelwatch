@@ -15673,8 +15673,9 @@ def _wa_spending_query(from_number: str, body: str) -> str:
     # Freeform merchant extraction — catches anything not in the hardcoded map
     if not merchant_filter:
         import re as _re2
+        # Match single merchant name after at/in/from/for (no spaces in merchant name)
         _fm = _re2.search(
-            r'(?:at|in|from|for)\s+([A-Za-z][A-Za-z\'&\s]{1,24}?)(?:\s+(?:this|last|today|yesterday|spend|receipt)|\?|$)',
+            r'(?:at|in|from|for)\s+([A-Za-z\'\-&]+)',
             body, _re2.IGNORECASE
         )
         if _fm:
