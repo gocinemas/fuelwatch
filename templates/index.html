@@ -16627,6 +16627,7 @@ let _savesAll = [];
                 if (year && month && day) {
                   var shortYear = String(year).slice(-2);
                   formattedDate = String(day).padStart(2, '0') + "/" + String(month).padStart(2, '0') + "/" + shortYear;
+                  console.log('[date-debug] Parsed:', {year, month, day, formatted: formattedDate, raw: dateStr});
                 }
               } catch (e) {
                 console.log('[receipt-date] Parse error:', e);
