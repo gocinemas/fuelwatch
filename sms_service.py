@@ -15721,6 +15721,28 @@ def _wa_spending_query(from_number: str, body: str) -> str:
                 or _receipt_category((r.get("title") or "").replace("🧾","").strip()) == category_filter]
 
     if not rows:
+        # No match - try typeahead suggestions if merchant was searched
+        if merchant_filter:
+            try:
+                # Get all merchants the user has shopped at
+                all_rows = sb.table("wa_saves").select("title").eq("from_number", from_number) \
+                    .ilike("title", "🧾%").order("created_at", desc=True).limit(100).execute().data or []
+
+                # Extract merchant names from titles like "🧾 Waitrose"
+                merchants = list(set([t.get("title", "").replace("🧾", "").strip() for t in all_rows
+                                     if t.get("title", "").strip()]))
+
+                # Find similar merchants
+                similar = [m for m in merchants if merchant_filter in m.lower() or m.lower().startswith(merchant_filter)]
+
+                if similar:
+                    lines = [f"🔍 No matches for '*{merchant_label}*' {period}.\n\nDid you mean:"]
+                    for m in similar[:5]:
+                        lines.append(f"• {m}")
+                    return "\n".join(lines)
+            except Exception:
+                pass
+
         label = merchant_label or category_filter or "matching"
         return f"📭 No {label} receipts or clippings found {period}."
 
