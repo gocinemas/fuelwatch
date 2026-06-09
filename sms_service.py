@@ -10819,7 +10819,40 @@ def api_home_ask():
             timeout=8,
         )
         answer = r.json()["choices"][0]["message"]["content"].strip()
-        return jsonify({"answer": answer})
+
+        # POST-VALIDATE: Remove inferred/suggested sentences
+        sentences = [s.strip() for s in answer.split(".") if s.strip()]
+        valid_sentences = []
+
+        for sent in sentences:
+            sent_lower = sent.lower()
+
+            # Block sentences starting with pronouns (You, I, They, We)
+            if any(sent_lower.startswith(p) for p in ["you ", "you'", "i ", "they ", "we "]):
+                app.logger.warning(f"[home/ask] Blocked pronoun-start: {sent[:50]}")
+                continue
+
+            # Block sentences with inference/suggestion words
+            blocked_words = [
+                "probably", "might", "may", "could", "should", "think",
+                "believe", "know", "suggest", "consider", "want", "need",
+                "relax", "unwind", "forward", "heading", "visit", "go to",
+                "take a look", "pick up", "looking forward", "a bit of time",
+                "time to", "only ", "just got", "right now"
+            ]
+            if any(word in sent_lower for word in blocked_words):
+                app.logger.warning(f"[home/ask] Blocked inference: {sent[:50]}")
+                continue
+
+            valid_sentences.append(sent)
+
+        validated_answer = ". ".join(valid_sentences)
+        if validated_answer and not validated_answer.endswith("."):
+            validated_answer += "."
+
+        app.logger.info(f"[home/ask] {len(sentences)} → {len(valid_sentences)} sentences after validation")
+
+        return jsonify({"answer": validated_answer or answer})
     except Exception as e:
         app.logger.warning(f"[home/ask] {e}")
         return jsonify({"answer": "Sorry, couldn't get an answer right now."}), 500
