@@ -313,6 +313,12 @@
       </div>
 
       <div class="field">
+        <label>School Address</label>
+        <input type="text" id="schoolAddress" placeholder="e.g. Virginia Water, Surrey">
+        <div class="hint">Postcode or town (for transit lookups)</div>
+      </div>
+
+      <div class="field">
         <label>School Email Address</label>
         <input type="email" id="schoolEmail" placeholder="e.g. office@school.surrey.sch.uk">
         <div class="hint">Where school sends updates from (optional)</div>
@@ -344,6 +350,10 @@
           <span class="confirmation-detail-label">School:</span>
           <span id="confirmSchool">-</span>
         </div>
+        <div class="confirmation-detail">
+          <span class="confirmation-detail-label">Location:</span>
+          <span id="confirmAddress">-</span>
+        </div>
       </div>
 
       <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 14px; margin-bottom: 20px;">
@@ -373,8 +383,10 @@
       }
 
       // Show confirmation
+      const schoolAddress = document.getElementById('schoolAddress').value.trim();
       document.getElementById('confirmChild').textContent = childName;
       document.getElementById('confirmSchool').textContent = schoolName;
+      document.getElementById('confirmAddress').textContent = schoolAddress || '(not provided)';
     }
 
     // Hide all steps
@@ -396,12 +408,14 @@
   function connectGmail() {
     const childName = document.getElementById('childName').value.trim();
     const schoolName = document.getElementById('schoolName').value.trim();
+    const schoolAddress = document.getElementById('schoolAddress').value.trim();
     const schoolEmail = document.getElementById('schoolEmail').value.trim();
 
     // Save to localStorage for post-OAuth callback
     localStorage.setItem('_schoolSetup', JSON.stringify({
       childName,
       schoolName,
+      schoolAddress,
       schoolEmail
     }));
 
