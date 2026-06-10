@@ -7,36 +7,30 @@ from miru.brief.constraint_encoder import ConstraintEncoder
 
 
 class OutputValidator:
-    """Post-Groq validation: ensure brief only mentions things from source data."""
+    """Post-Groq validation: allow smart data-backed inference, block hallucinations."""
 
-    HALLUCINATION_PATTERNS = [
-        # Pronoun starters (inference)
-        r"^you've\s+got",
-        r"^you\s+can\s+",
-        r"^you\s+could\s+",
-        r"^you\s+should\s+",
-        r"^you\s+might\s+",
-        r"^you\s+have\s+",
-        r"^you\s+are\s+",
-        r"^you're\s+",
-        r"^you'll\s+",
+    # UNGROUNDED suggestions (no data backing) — always block
+    UNGROUNDED_PATTERNS = [
+        # Invented activities without context
+        r"(?:pick up|grab|get|buy)\s+(?:fuel|petrol|gas|lunch|coffee|beer)",
+        r"(?:head to|visit|go to|pop by|check out)\s+[A-Z]\w+",  # Invented place suggestion
+        r"(?:stop by|call|text)\s+",
 
-        # Action verbs (invention)
-        r"(?:pick up|grab|get|buy)\s+(?:fuel|petrol|gas)",
-        r"(?:head to|visit|go to|pop by)\s+",
-        r"(?:stop by|check out|look in)\s+",
-        r"(?:take a|have a|grab a)\s+(?:break|rest|moment)",
+        # Weak suggestion patterns
+        r"you\s+(?:should probably|might want to|could try|may want to)",
+        r"(?:why not|perhaps you should|maybe you could)",
 
-        # Wishy-washy language
-        r"\bperhaps\b",
-        r"\bmight\s+be\b",
-        r"\bcould\s+be\b",
-        r"\bmaybe\b",
-        r"\bprobably\b",
+        # Pure wishy-washy with no grounding
+        r"(?:it would be nice|it\s+might be good|you probably should)",
+    ]
 
-        # Opinions/suggestions
-        r"(?:it would be|it\s+is)\s+(?:nice|good|great|perfect|ideal)",
-        r"(?:why not|how about|what about)\s+",
+    # ALLOWED patterns (smart inference grounded in data)
+    ALLOWED_PATTERNS = [
+        r"it's\s+(?:\d+(?:am|pm)|morning|afternoon|evening)",  # Time context
+        r"(?:rainy|sunny|cold|warm|windy)",  # Weather
+        r"in\s+\d+\s+(?:min|hour|mins|hours)",  # Time delta (event countdown)
+        r"at\s+[A-Z]\w+(?:\s+station)?",  # Known location
+        r"bring\s+(?:umbrella|jacket|water|sunscreen)",  # Weather-based prep
     ]
 
     @staticmethod
@@ -64,42 +58,47 @@ class OutputValidator:
         for sent in sentences:
             sent_lower = sent.lower().strip()
 
-            # RULE 0: Block if starts with "you" or "i" (pronouns = inference)
-            if sent_lower.startswith(("you ", "you've", "you're", "you'll", "you'd",
-                                     "i ", "i've", "i'm", "it's", "they ", "we ")):
-                continue
-
-            # RULE 1: Check against hallucination patterns
-            is_hallucination = any(
+            # RULE 1: Block ungrounded suggestions (invented activities/places)
+            is_ungrounded = any(
                 re.search(pattern, sent_lower)
-                for pattern in OutputValidator.HALLUCINATION_PATTERNS
+                for pattern in OutputValidator.UNGROUNDED_PATTERNS
             )
-            if is_hallucination:
+            if is_ungrounded:
                 continue
 
             # RULE 2: Check if sentence mentions unknown entities
+            # Allow if entity is in allowed_entities OR it's a known pattern
             mentions_unknown = False
-            for entity in allowed_entities:
-                if entity in sent_lower:
-                    # This entity is known, so it's safe
+
+            # Extract place/merchant names mentioned
+            place_pattern = r"\b(?:at|to|in|near|by)\s+([A-Z][a-zA-Z\s&]+)"
+            matches = re.findall(place_pattern, sent)
+            for match in matches:
+                match_lower = match.lower()
+                # Allow if: it's a known entity OR it's a generic location (station, café, home)
+                if match_lower not in allowed_entities and \
+                   match_lower not in ("station", "cafe", "café", "home", "office", "school"):
+                    mentions_unknown = True
                     break
-            else:
-                # Check for suspiciously specific place/merchant names that aren't in allowed_entities
-                # (e.g., "head to Starbucks" when no Starbucks in facts)
-                place_pattern = r"\b(?:at|to|in|near|by)\s+([A-Z][a-zA-Z\s&]+)"
-                matches = re.findall(place_pattern, sent)
-                for match in matches:
-                    if match.lower() not in allowed_entities and match.lower() != "the":
-                        mentions_unknown = True
-                        break
 
             if mentions_unknown:
                 continue
 
-            # RULE 3: Block generic "you should" suggestions without grounding
-            if sent_lower.startswith(("you should", "you might", "you could")) and \
-               "because" not in sent_lower and "since" not in sent_lower:
-                continue
+            # RULE 3: Allow smart inference IF it has 2+ data anchors
+            # (e.g., time + weather, event + location, weather + activity)
+            has_time = any(p in sent_lower for p in ["am", "pm", "morning", "afternoon", "evening", "min", "hour"])
+            has_weather = any(p in sent_lower for p in ["rainy", "sunny", "cold", "warm", "windy", "rain"])
+            has_location = any(p in sent_lower for p in allowed_entities)
+            has_event = any(p in sent_lower for p in ["pickup", "event", "meeting", "appointment", "class"])
+
+            data_anchors = sum([has_time, has_weather, has_location, has_event])
+
+            # If sentence starts with "you" but has multiple data anchors, allow it
+            # (it's smart inference, not hallucination)
+            if sent_lower.startswith(("you ", "you've", "you're")):
+                if data_anchors < 2:
+                    # Not enough grounding
+                    continue
 
             # Sentence passed validation
             valid_sentences.append(sent)
