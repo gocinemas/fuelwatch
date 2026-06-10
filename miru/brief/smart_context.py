@@ -31,7 +31,7 @@ def smart_weather(weather: Dict, now: datetime) -> Optional[str]:
 
 
 def smart_event(events: List[Dict], now: datetime, location: Optional[str] = None) -> Optional[str]:
-    """Next event with countdown, location-aware. Only future events."""
+    """Next event with countdown, location-aware, + transit context. Only future events."""
     if not events:
         return None
 
@@ -54,13 +54,32 @@ def smart_event(events: List[Dict], now: datetime, location: Optional[str] = Non
                 title = ev.get("event_title", "")
                 location_str = ev.get("location", "")
 
+                # Try to add transit context
+                transit = None
+                if location_str:
+                    try:
+                        from miru.brief.transit_context import transit_context_for_event
+                        # Get lat/lon from event or location lookup
+                        lat = ev.get("lat")
+                        lon = ev.get("lon")
+                        if lat and lon:
+                            transit = transit_context_for_event(location_str, lat, lon)
+                    except Exception:
+                        pass
+
                 # Add context if at same location
                 if location and location.lower() in (location_str or "").lower():
-                    return f"At {location}. {child}'s {title} in {int(mins_until)} mins — need to leave soon."
+                    msg = f"At {location}. {child}'s {title} in {int(mins_until)} mins — need to leave soon."
+                    if transit:
+                        msg += f". {transit}"
+                    return msg
 
                 # If location nearby
                 if location_str:
-                    return f"{child}'s {title} in {int(mins_until)} mins at {location_str.split(',')[0]}"
+                    msg = f"{child}'s {title} in {int(mins_until)} mins at {location_str.split(',')[0]}"
+                    if transit:
+                        msg += f". {transit}"
+                    return msg
 
                 return f"{child}'s {title} in {int(mins_until)} mins"
         except (ValueError, AttributeError):
