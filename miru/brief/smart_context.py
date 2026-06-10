@@ -58,6 +58,40 @@ def smart_event_prep(event_title: str, weather: Dict) -> Optional[str]:
     return None
 
 
+def format_event_with_prep(child_name: str, event_title: str, event_date: str, weather: Optional[Dict] = None) -> str:
+    """Format school event with weather-based prep suggestion.
+
+    Args:
+        child_name: Child's name
+        event_title: Event title (e.g., "Geography Field Trip")
+        event_date: Event date (e.g., "2026-06-09")
+        weather: Weather dict (optional) - if provided, adds prep suggestion
+
+    Returns:
+        Formatted event string with prep suggestion if relevant
+        Example: "Inaaya has Geography Field Trip on 09/06. 🌧️ Rainy walk — bring waterproof jacket"
+    """
+    # Format date as DD/MM/YY
+    try:
+        if len(event_date) >= 10:
+            parts = event_date[:10].split("-")
+            date_display = f"{parts[2]}/{parts[1]}/{parts[0][-2:]}"
+        else:
+            date_display = event_date
+    except:
+        date_display = event_date
+
+    msg = f"{child_name} has {event_title} on {date_display}"
+
+    # Add weather prep if available
+    if weather:
+        prep = smart_event_prep(event_title, weather)
+        if prep:
+            msg += f". {prep}"
+
+    return msg
+
+
 def smart_event(events: List[Dict], now: datetime, location: Optional[str] = None, weather: Optional[Dict] = None) -> Optional[str]:
     """Next event with countdown, location-aware, + transit context + weather prep. Only future events."""
     if not events:

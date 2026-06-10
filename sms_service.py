@@ -10622,8 +10622,21 @@ def api_home_ask():
             try:
                 _school_full = _v2_fetch_school(from_number)
                 for ev in (_school_full.get("upcoming") or [])[:10]:
-                    _notes = f" — {ev['notes'][:80]}" if ev.get("notes") else ""
-                    ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}{_notes}")
+                    # Add weather-based prep suggestions to school events
+                    try:
+                        from miru.brief.smart_context import format_event_with_prep
+                        _event_msg = format_event_with_prep(
+                            ev.get('child_name',''),
+                            ev.get('event_title',''),
+                            ev.get('event_date',''),
+                            weather=_weather_ctx  # Pass current weather
+                        )
+                        _notes = f" — {ev['notes'][:80]}" if ev.get("notes") else ""
+                        ctx_lines.append(f"School event: {_event_msg}{_notes}")
+                    except Exception:
+                        # Fallback if prep logic fails
+                        _notes = f" — {ev['notes'][:80]}" if ev.get("notes") else ""
+                        ctx_lines.append(f"School event: {ev.get('child_name','')} — {ev.get('event_title','')} on {ev.get('event_date','')}{_notes}")
                 # Widen lookback to 45 days for Ask Miru — 14-day window misses older comms
                 _recent_comms = (_school_full.get("recent") or [])
                 if not _recent_comms or len(_recent_comms) < 3:
