@@ -10629,7 +10629,7 @@ def api_home_ask():
                             ev.get('child_name',''),
                             ev.get('event_title',''),
                             ev.get('event_date',''),
-                            weather=_weather_ctx  # Pass current weather
+                            weather=ctx.get('weather', {})  # Pass weather from context
                         )
                         _notes = f" — {ev['notes'][:80]}" if ev.get("notes") else ""
                         ctx_lines.append(f"School event: {_event_msg}{_notes}")

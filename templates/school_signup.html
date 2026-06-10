@@ -373,7 +373,7 @@
 
 <script>
   function nextStep(step) {
-    // Validate step 2
+    // Validate step 2 before showing step 3
     if (step === 3) {
       const childName = document.getElementById('childName').value.trim();
       const schoolName = document.getElementById('schoolName').value.trim();
@@ -382,12 +382,6 @@
         alert('Please fill in child name and school name');
         return;
       }
-
-      // Show confirmation
-      const schoolAddress = document.getElementById('schoolAddress').value.trim();
-      document.getElementById('confirmChild').textContent = childName;
-      document.getElementById('confirmSchool').textContent = schoolName;
-      document.getElementById('confirmAddress').textContent = schoolAddress || '(not provided)';
     }
 
     // Hide all steps
@@ -403,6 +397,17 @@
     // Mark previous steps as completed
     for (let i = 1; i < step; i++) {
       document.getElementById('step' + i + 'Indicator').classList.add('completed');
+    }
+
+    // NOW populate confirmation after step 3 is visible
+    if (step === 3) {
+      const childName = document.getElementById('childName').value.trim();
+      const schoolName = document.getElementById('schoolName').value.trim();
+      const schoolAddress = document.getElementById('schoolAddress').value.trim();
+
+      document.getElementById('confirmChild').textContent = childName;
+      document.getElementById('confirmSchool').textContent = schoolName;
+      document.getElementById('confirmAddress').textContent = schoolAddress || '(not provided)';
     }
   }
 
