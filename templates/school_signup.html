@@ -6,374 +6,414 @@
 <title>School Comms Setup — Miru</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #1a1a2e;
+    --accent: #f59e0b;
+    --success: #10b981;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-400: #9ca3af;
+    --gray-600: #4b5563;
+  }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #f8fafc;
-    color: #1a1a2e;
+    background: var(--gray-50);
+    color: var(--primary);
     min-height: 100vh;
   }
+
   .header {
     background: #fff;
-    border-bottom: 1px solid #e8eaed;
+    border-bottom: 1px solid var(--gray-200);
     padding: 16px 20px;
     display: flex;
     align-items: center;
     gap: 10px;
   }
-  .header-logo { font-size: 22px; font-weight: 900; color: #1a1a2e; text-decoration: none; }
-  .header-logo span { color: #f59e0b; }
-  .header-sub { font-size: 13px; color: #888; margin-left: auto; }
+  .header-logo { font-size: 22px; font-weight: 900; color: var(--primary); text-decoration: none; }
+  .header-logo span { color: var(--accent); }
 
   .container { max-width: 520px; margin: 0 auto; padding: 32px 20px 60px; }
 
-  .hero { margin-bottom: 28px; }
-  .hero h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 8px; }
-  .hero p { font-size: 15px; color: #555; line-height: 1.6; }
+  /* Step Indicator */
+  .step-indicator {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+  }
+  .step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+  }
+  .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    right: -50%;
+    height: 2px;
+    background: var(--gray-200);
+    z-index: 0;
+  }
+  .step.active:not(:last-child)::after { background: var(--accent); }
+
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    font-weight: 700;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+    transition: background .2s;
+  }
+  .step.active .step-number { background: var(--accent); color: #fff; }
+  .step.completed .step-number { background: var(--success); color: #fff; }
+
+  .step-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .step.active .step-label { color: var(--primary); }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .hero-icon { font-size: 48px; margin-bottom: 16px; }
+  .hero h1 { font-size: 24px; font-weight: 900; margin-bottom: 8px; }
+  .hero p { font-size: 14px; color: var(--gray-600); line-height: 1.6; }
 
   .card {
     background: #fff;
     border-radius: 16px;
-    border: 1px solid #e8eaed;
-    padding: 24px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid var(--gray-200);
+    padding: 28px;
+    margin-bottom: 20px;
   }
 
-  .section-title {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    color: #9ca3af;
-    margin: 24px 0 14px;
+  .field {
+    margin-bottom: 18px;
   }
-  .section-title:first-of-type { margin-top: 0; }
-
-  .field { margin-bottom: 16px; }
   label {
     display: block;
     font-size: 13px;
     font-weight: 600;
-    color: #374151;
-    margin-bottom: 6px;
+    color: var(--primary);
+    margin-bottom: 8px;
   }
-  label .opt { font-weight: 400; color: #9ca3af; }
-  input[type=text], input[type=tel], input[type=email], textarea {
+  input[type=text], input[type=email], select {
     width: 100%;
-    padding: 11px 14px;
-    border: 1.5px solid #d1d5db;
+    padding: 12px 14px;
+    border: 1.5px solid var(--gray-200);
     border-radius: 10px;
     font-size: 15px;
-    color: #111;
+    color: var(--primary);
     background: #fff;
     outline: none;
     transition: border-color .15s;
     font-family: inherit;
   }
-  input:focus, textarea:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.1); }
-  input::placeholder, textarea::placeholder { color: #bbb; }
-  textarea { resize: vertical; min-height: 72px; }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(245,158,11,.1); }
+  input::placeholder { color: var(--gray-400); }
 
-  .school-lookup-wrap { position: relative; }
   .lookup-status {
-    font-size: 12px;
-    margin-top: 6px;
-    padding: 8px 12px;
+    margin-top: 8px;
+    padding: 10px 12px;
     border-radius: 8px;
+    font-size: 13px;
     display: none;
   }
-  .lookup-status.found { background: #d1fae5; color: #065f46; display: block; }
-  .lookup-status.notfound { background: #fef3c7; color: #92400e; display: block; }
-
-  .wa-hint {
-    font-size: 12px;
-    color: #9ca3af;
-    margin-top: 5px;
+  .lookup-status.found {
+    background: #d1fae5;
+    color: #065f46;
+    display: block;
+  }
+  .lookup-status.notfound {
+    background: #fef3c7;
+    color: #92400e;
+    display: block;
   }
 
-  .emails-hint {
+  .confirmation-card {
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .confirmation-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #065f46;
+    margin-bottom: 12px;
+  }
+  .confirmation-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 13px;
+    color: #047857;
+  }
+  .confirmation-detail-label { font-weight: 600; }
+
+  .button-group {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-primary {
+    flex: 1;
+    padding: 14px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+    font-family: inherit;
+  }
+  .btn-primary:hover { background: var(--accent); }
+  .btn-primary:disabled { background: var(--gray-400); cursor: not-allowed; }
+
+  .btn-secondary {
+    flex: 1;
+    padding: 14px;
+    background: transparent;
+    color: var(--primary);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    font-family: inherit;
+  }
+  .btn-secondary:hover { border-color: var(--primary); background: var(--gray-50); }
+
+  .hint {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--gray-600);
     margin-top: 6px;
     line-height: 1.5;
   }
 
-  .submit-btn {
+  .hidden { display: none; }
+
+  .step-content { display: none; }
+  .step-content.active { display: block; }
+
+  /* Google OAuth Button */
+  .btn-google {
     width: 100%;
-    margin-top: 24px;
-    padding: 15px;
-    background: #1a1a2e;
-    color: #fff;
-    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px;
+    background: #fff;
+    color: var(--primary);
+    border: 1.5px solid var(--gray-200);
     border-radius: 12px;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background .15s;
-    letter-spacing: -0.2px;
-  }
-  .submit-btn:hover { background: #2d2d44; }
-  .submit-btn:disabled { background: #9ca3af; cursor: not-allowed; }
-
-  .success-screen {
-    display: none;
-    text-align: center;
-    padding: 48px 24px;
-  }
-  .success-icon { font-size: 56px; margin-bottom: 16px; }
-  .success-screen h2 { font-size: 24px; font-weight: 900; margin-bottom: 10px; }
-  .success-screen p { font-size: 15px; color: #555; margin-bottom: 24px; line-height: 1.6; }
-  .success-link {
-    display: inline-block;
-    padding: 13px 28px;
-    background: #f59e0b;
-    color: #fff;
-    border-radius: 12px;
-    font-weight: 700;
     font-size: 15px;
-    text-decoration: none;
-  }
-
-  .error-msg {
-    background: #fee2e2;
-    color: #991b1b;
-    font-size: 13px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    margin-top: 12px;
-    display: none;
-  }
-
-  .multi-child-toggle {
-    font-size: 13px;
-    color: #f59e0b;
-    cursor: pointer;
     font-weight: 600;
-    border: none;
-    background: none;
-    padding: 0;
-    margin-top: 4px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-google:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+
+  @media (max-width: 600px) {
+    .container { padding: 24px 16px; }
+    .step-indicator { margin-bottom: 28px; }
+    .hero h1 { font-size: 22px; }
+    .card { padding: 20px; }
   }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <a href="/" class="header-logo">Mi<span>ru</span></a>
-  <span class="header-sub">School Comms</span>
+  <a href="/" class="header-logo">Miru<span>.</span></a>
 </div>
 
 <div class="container">
-  <!-- Form -->
-  <div id="form-view">
-    <div class="hero">
-      <h1>Set up school emails 🏫</h1>
-      <p>Connect your child's school and get all their letters, events and newsletters in one place.</p>
-      <div style="margin-top:14px;padding:12px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:12px;font-size:13px;color:#713f12;line-height:1.6">
-        <strong>Gmail required.</strong> Miru reads school emails directly from your Gmail inbox using Google's secure login. After you sign up you'll be taken to Google to grant access — this takes about 30 seconds.<br>
-        <span style="margin-top:6px;display:block;color:#92400e">If your school emails go to Outlook, Yahoo or another provider, the auto-read feature won't work. WhatsApp commands will still work, but emails won't be fetched automatically.</span>
-      </div>
-      <div style="margin-top:10px;padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;font-size:13px;color:#991b1b;line-height:1.6">
-        <strong>⚠️ Google warning — what to expect:</strong> When connecting Gmail you may see a Google screen saying <em>"This app isn't verified"</em>. This is because Miru is currently in testing mode. It's safe to proceed — click <strong>"Advanced"</strong> then <strong>"Go to Miru (unsafe)"</strong> to continue. We only read school emails and never modify or share your inbox.
-      </div>
+  <!-- Step Indicator -->
+  <div class="step-indicator">
+    <div class="step active" id="step1Indicator">
+      <div class="step-number">1</div>
+      <div class="step-label">Welcome</div>
     </div>
-
-    <div class="card">
-      <p class="section-title">Your WhatsApp</p>
-
-      <div class="field">
-        <label>WhatsApp number</label>
-        <input type="tel" id="wa_number" placeholder="+447700900000" value="{{ prefill_wa or '' }}">
-        <div class="wa-hint">Include country code — e.g. +44 for UK</div>
-      </div>
-
-      <p class="section-title">About your child</p>
-
-      <div class="field">
-        <label>Child's first name</label>
-        <input type="text" id="child_name" placeholder="e.g. Olivia">
-      </div>
-
-      <div class="field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div>
-          <label>Year group <span class="opt">(optional)</span></label>
-          <input type="text" id="year_group" placeholder="Year 4">
-        </div>
-        <div>
-          <label>Class <span class="opt">(optional)</span></label>
-          <input type="text" id="class_name" placeholder="4A">
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Class teacher <span class="opt">(optional)</span></label>
-        <input type="text" id="teacher_name" placeholder="Mr Akhurst">
-      </div>
-
-      <div class="field">
-        <label>Class WhatsApp group name <span class="opt">(optional)</span></label>
-        <input type="text" id="class_wa_group" placeholder="e.g. Year 4 Parents">
-        <div class="wa-hint">So you can forward class messages to Miru and it knows which child they're for</div>
-      </div>
-
-      <p class="section-title">About the school</p>
-
-      <div class="field school-lookup-wrap">
-        <label>School name</label>
-        <input type="text" id="school_name" placeholder="e.g. Greenway Academy" autocomplete="off">
-        <div class="lookup-status" id="lookup-status"></div>
-      </div>
-
-      <div id="school-details" style="display:none">
-        <div class="field">
-          <label>Address <span class="opt">(editable)</span></label>
-          <input type="text" id="school_address" placeholder="School address">
-        </div>
-        <div class="field">
-          <label>Phone <span class="opt">(editable)</span></label>
-          <input type="tel" id="school_phone" placeholder="School phone number">
-        </div>
-      </div>
-
-      <div class="field">
-        <label>School email address(es) <span style="color:#ef4444;font-weight:700">*</span></label>
-        <textarea id="sender_emails" placeholder="admin@greenway.sch.uk&#10;newsletter@greenway.sch.uk"></textarea>
-        <div class="emails-hint">
-          ⚠️ <strong>This is the school's email address, not yours.</strong><br>
-          Open any email from your child's school → look at the <strong>"From"</strong> field → copy that address here.<br>
-          It usually looks like <em>admin@schoolname.sch.uk</em> or <em>office@schoolname.co.uk</em>.
-        </div>
-      </div>
-
-      <button class="submit-btn" id="submit-btn" onclick="submitForm()">Set up school comms →</button>
-      <div class="error-msg" id="error-msg"></div>
+    <div class="step" id="step2Indicator">
+      <div class="step-number">2</div>
+      <div class="step-label">Add School</div>
+    </div>
+    <div class="step" id="step3Indicator">
+      <div class="step-number">3</div>
+      <div class="step-label">Connect</div>
     </div>
   </div>
 
-  <!-- Success -->
-  <div id="success-view" class="success-screen">
-    <div class="success-icon">🎉</div>
-    <h2>You're all set!</h2>
-    <p id="success-msg">Gmail connected. We're fetching the last 30 days of emails from <strong id="success-school"></strong> now.<br>Check back in a minute.</p>
-    <a href="/?screen=school" class="success-link">View school dashboard →</a>
-    <p style="margin-top:20px;font-size:13px;color:#9ca3af">You can also ask Miru on WhatsApp:<br><em>school upcoming</em> or <em>school week</em></p>
+  <!-- STEP 1: Welcome -->
+  <div class="step-content active" id="step1">
+    <div class="hero">
+      <div class="hero-icon">📚</div>
+      <h1>School Updates on WhatsApp</h1>
+      <p>Get school emails and event alerts sent to your WhatsApp. Never miss an important message from school.</p>
+    </div>
+
+    <div class="card">
+      <div style="text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 16px;">📧</div>
+        <h3 style="margin-bottom: 8px; font-size: 16px;">How it works</h3>
+        <ul style="text-align: left; font-size: 13px; color: var(--gray-600); line-height: 1.8; margin-left: 16px;">
+          <li>✓ Add your child's school</li>
+          <li>✓ Connect your school email via Gmail</li>
+          <li>✓ Receive alerts on WhatsApp</li>
+        </ul>
+      </div>
+
+      <button class="btn-primary" onclick="nextStep(2)" style="margin-top: 20px;">Get Started</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Add School -->
+  <div class="step-content" id="step2">
+    <div class="hero">
+      <div class="hero-icon">🏫</div>
+      <h1>Tell Us About School</h1>
+      <p>Add your child's school details</p>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label>Child's Name *</label>
+        <input type="text" id="childName" placeholder="e.g. Riaan">
+        <div class="hint">Your child's first name</div>
+      </div>
+
+      <div class="field">
+        <label>School Name *</label>
+        <input type="text" id="schoolName" placeholder="e.g. Stanns Heath Junior School">
+        <div class="hint">Full school name</div>
+      </div>
+
+      <div class="field">
+        <label>School Email Address</label>
+        <input type="email" id="schoolEmail" placeholder="e.g. office@school.surrey.sch.uk">
+        <div class="hint">Where school sends updates from (optional)</div>
+      </div>
+
+      <div class="button-group">
+        <button class="btn-secondary" onclick="nextStep(1)">← Back</button>
+        <button class="btn-primary" onclick="nextStep(3)">Next: Confirm →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Confirmation -->
+  <div class="step-content" id="step3">
+    <div class="hero">
+      <div class="hero-icon">✓</div>
+      <h1>Ready to Connect</h1>
+      <p>Confirm your details and connect Gmail</p>
+    </div>
+
+    <div class="card">
+      <div class="confirmation-card">
+        <div class="confirmation-title">📋 Your Details</div>
+        <div class="confirmation-detail">
+          <span class="confirmation-detail-label">Child:</span>
+          <span id="confirmChild">-</span>
+        </div>
+        <div class="confirmation-detail">
+          <span class="confirmation-detail-label">School:</span>
+          <span id="confirmSchool">-</span>
+        </div>
+      </div>
+
+      <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 14px; margin-bottom: 20px;">
+        <div style="font-size: 13px; color: #1e40af; line-height: 1.6;">
+          <strong>Next:</strong> Click "Connect Gmail" to authorize Miru to read your school emails. You'll be redirected to Google to approve access.
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button class="btn-secondary" onclick="nextStep(2)">← Back</button>
+        <button class="btn-primary" id="connectBtn" onclick="connectGmail()">Connect Gmail →</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-let _lookupTimer = null;
-let _lookupData  = {};
+  function nextStep(step) {
+    // Validate step 2
+    if (step === 3) {
+      const childName = document.getElementById('childName').value.trim();
+      const schoolName = document.getElementById('schoolName').value.trim();
 
-document.getElementById("school_name").addEventListener("input", function() {
-  clearTimeout(_lookupTimer);
-  const val = this.value.trim();
-  const status = document.getElementById("lookup-status");
-  if (val.length < 4) { status.className = "lookup-status"; return; }
-  status.className = "lookup-status";
-  status.textContent = "Looking up…";
-  status.style.display = "block";
-  _lookupTimer = setTimeout(() => lookupSchool(val), 700);
-});
+      if (!childName || !schoolName) {
+        alert('Please fill in child name and school name');
+        return;
+      }
 
-async function lookupSchool(name) {
-  const status  = document.getElementById("lookup-status");
-  const details = document.getElementById("school-details");
-  try {
-    const r = await fetch("/api/school/lookup?name=" + encodeURIComponent(name));
-    const d = await r.json();
-    if (d.address) {
-      _lookupData = d;
-      // Update school name to matched name
-      document.getElementById("school_name").value = d.place_name || name;
-      // Populate address & phone fields
-      document.getElementById("school_address").value = d.address || "";
-      document.getElementById("school_phone").value   = d.phone   || "";
-      details.style.display = "block";
-      status.className = "lookup-status found";
-      status.textContent = "✓ School found — address and phone filled in below";
-    } else {
-      _lookupData = {};
-      document.getElementById("school_address").value = "";
-      document.getElementById("school_phone").value   = "";
-      details.style.display = "block";
-      status.className = "lookup-status notfound";
-      status.textContent = "School not found automatically — you can enter the address manually below.";
+      // Show confirmation
+      document.getElementById('confirmChild').textContent = childName;
+      document.getElementById('confirmSchool').textContent = schoolName;
     }
-  } catch(e) {
-    status.className = "lookup-status";
-    status.style.display = "none";
-  }
-}
 
-async function submitForm() {
-  const btn   = document.getElementById("submit-btn");
-  const errEl = document.getElementById("error-msg");
-  errEl.style.display = "none";
-
-  const wa    = document.getElementById("wa_number").value.trim();
-  const child = document.getElementById("child_name").value.trim();
-  const school = document.getElementById("school_name").value.trim();
-  const rawEmails = document.getElementById("sender_emails").value;
-
-  if (!wa)     { showError("Please enter your WhatsApp number."); return; }
-  if (!child)  { showError("Please enter your child's name."); return; }
-  if (!school) { showError("Please enter the school name."); return; }
-
-  const emails = rawEmails
-    .split(/[\n,]+/)
-    .map(e => e.trim().toLowerCase())
-    .filter(e => e.includes("@"));
-  if (!emails.length) { showError("Please enter at least one school email address."); return; }
-
-  btn.disabled = true;
-  btn.textContent = "Setting up…";
-
-  const payload = {
-    wa_number:      wa,
-    child_name:     child,
-    school_name:    school,
-    class_name:     document.getElementById("class_name").value.trim(),
-    teacher_name:   document.getElementById("teacher_name").value.trim(),
-    year_group:     document.getElementById("year_group").value.trim(),
-    class_wa_group: document.getElementById("class_wa_group").value.trim(),
-    sender_emails:  emails,
-    address:        document.getElementById("school_address").value.trim(),
-    phone:          document.getElementById("school_phone").value.trim(),
-  };
-
-  try {
-    const r = await fetch("/api/school/signup", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(payload),
+    // Hide all steps
+    document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.step').forEach(el => {
+      el.classList.remove('active', 'completed');
     });
-    const d = await r.json();
-    if (!r.ok) { showError(d.error || "Something went wrong. Please try again."); return; }
 
-    // Redirect to Google OAuth to grant Gmail read access
-    if (d.oauth_url) {
-      btn.textContent = "Connecting Gmail…";
-      window.location.href = d.oauth_url;
-    } else {
-      // Fallback if no OAuth URL returned
-      document.getElementById("success-school").textContent = payload.school_name;
-      document.getElementById("form-view").style.display    = "none";
-      document.getElementById("success-view").style.display = "block";
-      window.scrollTo(0, 0);
+    // Show current step
+    document.getElementById('step' + step).classList.add('active');
+    document.getElementById('step' + step + 'Indicator').classList.add('active');
+
+    // Mark previous steps as completed
+    for (let i = 1; i < step; i++) {
+      document.getElementById('step' + i + 'Indicator').classList.add('completed');
     }
-  } catch(e) {
-    showError("Network error. Please try again.");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Set up school comms →";
   }
-}
 
-function showError(msg) {
-  const el = document.getElementById("error-msg");
-  el.textContent = msg;
-  el.style.display = "block";
-  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-}
+  function connectGmail() {
+    const childName = document.getElementById('childName').value.trim();
+    const schoolName = document.getElementById('schoolName').value.trim();
+    const schoolEmail = document.getElementById('schoolEmail').value.trim();
+
+    // Save to localStorage for post-OAuth callback
+    localStorage.setItem('_schoolSetup', JSON.stringify({
+      childName,
+      schoolName,
+      schoolEmail
+    }));
+
+    // Redirect to Google OAuth (implement actual OAuth flow)
+    const clientId = 'YOUR_CLIENT_ID'; // Replace with actual
+    const redirectUri = encodeURIComponent(window.location.origin + '/auth/google/callback');
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly');
+
+    // For now, just show success
+    alert('Gmail connection flow would start here.\n\nChild: ' + childName + '\nSchool: ' + schoolName);
+  }
 </script>
+
 </body>
 </html>

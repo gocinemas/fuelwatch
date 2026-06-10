@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Settings — Miru</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f8fafc;
+    color: #1a1a2e;
+    min-height: 100vh;
+  }
+  .header {
+    background: #fff;
+    border-bottom: 1px solid #e8eaed;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-logo { font-size: 22px; font-weight: 900; color: #1a1a2e; text-decoration: none; }
+  .header-logo span { color: #f59e0b; }
+  .header-sub { font-size: 13px; color: #888; margin-left: auto; }
+
+  .container { max-width: 520px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  .hero { margin-bottom: 28px; }
+  .hero h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .hero p { font-size: 15px; color: #555; line-height: 1.6; }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e8eaed;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #9ca3af;
+    margin-bottom: 14px;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  input[type=text], input[type=tel], input[type=email] {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 15px;
+    color: #111;
+    background: #fff;
+    outline: none;
+    transition: border-color .15s;
+    font-family: inherit;
+  }
+  input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.1); }
+  input::placeholder { color: #bbb; }
+
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: #1a1a2e;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+    font-family: inherit;
+    margin-top: 14px;
+  }
+  .btn-primary:hover { background: #2d2d44; }
+  .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  .btn-amber {
+    padding: 10px 18px;
+    background: #f59e0b;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-amber:hover { background: #d97706; }
+
+  .btn-google {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 13px 18px;
+    background: #fff;
+    color: #374151;
+    border: 1.5px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+    text-decoration: none;
+  }
+  .btn-google:hover { border-color: #9ca3af; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+  .btn-google svg { flex-shrink: 0; }
+
+  .gmail-connected-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #d1fae5;
+    color: #065f46;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 20px;
+  }
+
+  .error-msg {
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 10px;
+    display: none;
+  }
+  .success-msg {
+    background: #d1fae5;
+    color: #065f46;
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 10px;
+    display: none;
+  }
+
+  /* Profile info */
+  .profile-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 14px;
+  }
+  .profile-row:last-child { border-bottom: none; }
+  .profile-label { font-weight: 600; color: #6b7280; min-width: 100px; font-size: 12px; }
+  .profile-value { color: #1a1a2e; }
+
+  /* Email list */
+  .email-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 14px;
+  }
+  .email-item:last-child { border-bottom: none; }
+  .email-item-addr { color: #1a1a2e; word-break: break-all; }
+  .btn-remove {
+    flex-shrink: 0;
+    border: none;
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-remove:hover { background: #fca5a5; }
+
+  .add-email-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .add-email-row input { flex: 1; margin: 0; }
+
+  .wa-hint { font-size: 12px; color: #9ca3af; margin-top: 5px; }
+
+  .edit-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .edit-field { display: flex; flex-direction: column; gap: 4px; }
+  .edit-field label { font-size: 12px; font-weight: 600; color: #6b7280; }
+  .edit-field input {
+    padding: 9px 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #111;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .edit-field input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.1); }
+  .edit-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .btn-save {
+    flex: 1; padding: 10px; background: #1a1a2e; color: #fff;
+    border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  .btn-save:hover { background: #2d2d44; }
+  .btn-cancel {
+    padding: 10px 16px; background: #f3f4f6; color: #6b7280;
+    border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .profile-edit-btn {
+    margin-left: auto; border: none; background: #f3f4f6; color: #374151;
+    font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 8px;
+    cursor: pointer; font-family: inherit;
+  }
+  .profile-edit-btn:hover { background: #e5e7eb; }
+
+  /* Events */
+  .event-item {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 12px 0;
+  }
+  .event-item:last-child { border-bottom: none; }
+  .event-header { display: flex; align-items: flex-start; gap: 10px; }
+  .event-date-badge {
+    flex-shrink: 0;
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    white-space: nowrap;
+  }
+  .event-date-badge.soon { background: #fef3c7; color: #92400e; }
+  .event-date-badge.past { background: #f3f4f6; color: #9ca3af; }
+  .event-title { font-size: 14px; font-weight: 600; color: #1a1a2e; flex: 1; }
+  .event-desc { font-size: 13px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+  .event-action { font-size: 12px; color: #d97706; font-weight: 600; margin-top: 4px; }
+  .event-delete-btn {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: #d1d5db;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .event-delete-btn:hover { color: #ef4444; }
+  .events-loading { font-size: 13px; color: #9ca3af; padding: 12px 0; text-align: center; }
+
+  /* Screens */
+  #screen-lookup  { }
+  #screen-profile { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="https://miru.humanagency.co" class="header-logo">Miru<span>.</span></a>
+  <span class="header-sub">School settings</span>
+</div>
+
+<div class="container">
+
+  <div class="hero">
+    <h1>📚 School settings</h1>
+    <p>Manage the email addresses Miru monitors for your school communications.</p>
+  </div>
+
+  <!-- Step 1: look up by WA number -->
+  <div id="screen-lookup">
+    <div class="card">
+      <div class="section-title">Your WhatsApp number</div>
+      <label for="wa-input">Enter the number you signed up with</label>
+      <input type="tel" id="wa-input" placeholder="+447700900000" />
+      <p class="wa-hint">Include the country code, e.g. +44 for UK</p>
+      <div id="lookup-error" class="error-msg">We couldn't find an account with that number. Check it's the same one you used to sign up.</div>
+      <button class="btn-primary" onclick="lookupProfile()">Find my account</button>
+    </div>
+  </div>
+
+  <!-- Step 2: profile + email management -->
+  <div id="screen-profile">
+
+    <!-- Gmail connection status -->
+    <div id="gmail-section"></div>
+
+    <!-- Profile + email cards -->
+    <div id="profile-list"></div>
+
+    <!-- Events review -->
+    <div class="card" id="events-card" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="section-title" style="margin:0">School events found</div>
+        <button onclick="loadEvents()" style="border:none;background:none;font-size:12px;color:#9ca3af;cursor:pointer;padding:0">Refresh</button>
+      </div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:14px;line-height:1.5">
+        Events Miru parsed from school emails. Tap ✕ to remove any that are wrong.
+      </p>
+      <div id="events-list"><div class="events-loading">Loading…</div></div>
+      <!-- Add event manually -->
+      <div id="add-event-form" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb">
+        <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px">📌 Add event manually</div>
+        <select id="add-evt-profile" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;margin-bottom:8px;outline:none;background:#fff;color:#374151"></select>
+        <input id="add-evt-title" type="text" placeholder="Event title (e.g. Dance Show)" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;margin-bottom:8px;outline:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="add-evt-date" type="date" style="padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none">
+          <input id="add-evt-notes" type="text" placeholder="Notes (e.g. 14:00 &amp; 19:00)" style="padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="submitAddEvent()" style="flex:1;padding:10px;background:#1f2937;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">Add event</button>
+          <button onclick="document.getElementById('add-event-form').style.display='none'" style="padding:10px 16px;background:#f3f4f6;color:#374151;border:none;border-radius:10px;font-size:14px;cursor:pointer">Cancel</button>
+        </div>
+        <div id="add-evt-result" style="display:none;margin-top:8px;font-size:13px;font-weight:600"></div>
+      </div>
+      <button onclick="document.getElementById('add-event-form').style.display='block';this.style.display='none'" id="show-add-event-btn" style="margin-top:14px;width:100%;padding:10px;background:#f8fafc;color:#374151;border:1.5px dashed #cbd5e1;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer">+ Add event manually</button>
+    </div>
+
+    <!-- Fetch now -->
+    <div class="card" style="text-align:center">
+      <div class="section-title" style="margin-bottom:6px">Check for new emails</div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:16px;line-height:1.5">
+        Miru normally checks every 6 hours. Tap below to check right now.
+      </p>
+      <button class="btn-primary" id="fetch-btn" onclick="fetchNow()" style="margin-top:0">
+        📬 Fetch emails now
+      </button>
+      <div id="fetch-result" style="display:none;margin-top:12px;font-size:13px;font-weight:600"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let _profiles = [];
+let _waNumber = null;
+let _activeProfileId = null;
+
+function _normaliseWa(raw) {
+  let d = raw.replace(/[^\d+]/g, "");
+  if (!d.startsWith("+")) {
+    if (d.startsWith("07"))   d = "+44" + d.slice(1);
+    else if (d.startsWith("44")) d = "+" + d;
+    else d = "+" + d;
+  }
+  return d;
+}
+
+async function lookupProfile() {
+  const raw = document.getElementById("wa-input").value.trim();
+  if (!raw) return;
+  const wa = _normaliseWa(raw);
+  const btn = document.querySelector("#screen-lookup .btn-primary");
+  btn.disabled = true;
+  btn.textContent = "Looking up…";
+  document.getElementById("lookup-error").style.display = "none";
+
+  try {
+    const r = await fetch("/api/school/settings?wa=" + encodeURIComponent(wa));
+    const d = await r.json();
+    if (!r.ok || !d.profiles || !d.profiles.length) {
+      document.getElementById("lookup-error").style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "Find my account";
+      return;
+    }
+    _waNumber  = wa;
+    _profiles  = d.profiles;
+    _activeProfileId = _profiles.length ? _profiles[0].id : null;
+    renderGmailSection();
+    renderAllProfiles();
+    _renderAddEventProfilePicker();
+    document.getElementById("screen-lookup").style.display  = "none";
+    document.getElementById("screen-profile").style.display = "block";
+    loadEvents();
+  } catch(e) {
+    document.getElementById("lookup-error").style.display = "block";
+    document.getElementById("lookup-error").textContent = "Network error — please try again.";
+    btn.disabled = false;
+    btn.textContent = "Find my account";
+  }
+}
+
+function renderGmailSection() {
+  const el = document.getElementById("gmail-section");
+  const notConnected = _profiles.filter(p => !p.gmail_connected);
+  const allConnected = notConnected.length === 0;
+
+  const hasTokenError = _profiles.some(p => p.gmail_token_error);
+
+  if (allConnected) {
+    const reconnectBtns = _profiles.map(p => {
+      const label = _profiles.length > 1 && p.child_name ? ` (${p.child_name})` : "";
+      return `<button onclick="_gmailReconnect('${p.id}','${_esc(p.oauth_url)}')" style="font-size:12px;color:${hasTokenError?'#dc2626':'#6b7280'};background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">Reconnect${label}</button>`;
+    }).join(" · ");
+
+    if (hasTokenError) {
+      el.innerHTML = `
+        <div class="card" style="border-color:#fca5a5;background:#fef2f2">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:22px">⚠️</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#991b1b;margin-bottom:2px">Gmail access expired</div>
+              <div style="font-size:13px;color:#b91c1c">Miru can't reach your Gmail — school comms are paused.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div>${reconnectBtns}</div>
+            <button onclick="lookupProfile().then(()=>renderGmailSection())" style="font-size:12px;color:#059669;background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">Already reconnected? Refresh ↻</button>
+          </div>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div class="card" style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:22px">📬</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px">Gmail connected</div>
+            <div style="font-size:13px;color:#6b7280">Miru is scanning your inbox for school emails.</div>
+            <div style="margin-top:6px">${reconnectBtns}</div>
+          </div>
+          <span class="gmail-connected-badge" style="margin-left:auto">✓ Connected</span>
+        </div>`;
+    }
+    return;
+  }
+
+  const buttons = notConnected.map(p => {
+    const label = _profiles.length > 1 && p.child_name ? ` for ${p.child_name}` : "";
+    return `<a href="${_esc(p.oauth_url)}" class="btn-google" style="margin-bottom:8px">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.48A4.8 4.8 0 0 1 4.5 7.5V5.43H1.83a8 8 0 0 0 0 7.14l2.67-2.09z"/><path fill="#EA4335" d="M8.98 3.58c1.32 0 2.5.45 3.44 1.35l2.54-2.54A8 8 0 0 0 1.83 5.43L4.5 7.5a4.77 4.77 0 0 1 4.48-3.92z"/></svg>
+      Connect Gmail${label}
+    </a>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="card" style="border-color:#fbbf24;background:#fffbeb">
+      <div class="section-title" style="color:#92400e;margin-bottom:10px">Gmail not connected</div>
+      <p style="font-size:13px;color:#78350f;margin-bottom:16px;line-height:1.6">
+        Miru needs access to your Gmail to scan for school emails. Connect below — Miru only reads emails from the school addresses you've added.
+      </p>
+      ${buttons}
+    </div>`;
+}
+
+function renderAllProfiles() {
+  document.getElementById("profile-list").innerHTML =
+    _profiles.map((p, pi) => _profileCard(p, pi)).join("");
+}
+
+function _profileCard(p, pi) {
+  const label = _profiles.length > 1 ? (p.child_name || "Child " + (pi + 1)) : "";
+
+  const emails = p.sender_emails && p.sender_emails.length
+    ? p.sender_emails.map((e, ei) =>
+        `<div class="email-item">
+          <span class="email-item-addr">📧 ${e}</span>
+          <button class="btn-remove" onclick="removeEmail(${pi},${ei})">Remove</button>
+        </div>`
+      ).join("")
+    : `<p style="font-size:13px;color:#9ca3af;padding:8px 0">No email addresses added yet.</p>`;
+
+  return `
+    <div class="card" id="profile-card-${pi}">
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <div class="section-title" style="margin:0">Child${_profiles.length > 1 ? " " + (pi+1) : ""}</div>
+        <button class="profile-edit-btn" onclick="startEdit(${pi})">✏️ Edit</button>
+      </div>
+      <div id="profile-view-${pi}">
+        ${[["Child", p.child_name], ["School", p.school_name], ["Class", p.class_name], ["Teacher", p.teacher_name]].map(([l,v]) =>
+          `<div class="profile-row"><span class="profile-label">${l}</span><span class="profile-value">${v || "—"}</span></div>`
+        ).join("")}
+      </div>
+      <div id="profile-edit-${pi}" style="display:none">
+        <div class="edit-row">
+          <div class="edit-field"><label>Child's name</label><input id="edit-child-${pi}" type="text" value="${_esc(p.child_name)}" /></div>
+          <div class="edit-field"><label>School / institution</label><input id="edit-school-${pi}" type="text" value="${_esc(p.school_name)}" placeholder="e.g. Wentworth Dance Centre" /></div>
+          <div class="edit-field"><label>Class / year group</label><input id="edit-class-${pi}" type="text" value="${_esc(p.class_name)}" /></div>
+          <div class="edit-field"><label>Class teacher</label><input id="edit-teacher-${pi}" type="text" value="${_esc(p.teacher_name)}" /></div>
+        </div>
+        <div class="edit-actions">
+          <button class="btn-cancel" onclick="cancelEdit(${pi})">Cancel</button>
+          <button class="btn-save"   onclick="saveProfile(${pi})">Save changes</button>
+        </div>
+        <div id="profile-save-error-${pi}" class="error-msg"></div>
+        <div id="profile-save-ok-${pi}"    class="success-msg"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Monitored emails${label ? " — " + label : ""}</div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:12px;line-height:1.5">
+        Miru scans emails from these addresses and WhatsApps you when there's something important.
+      </p>
+      <div id="email-list-${pi}">${emails}</div>
+      <div class="add-email-row">
+        <input type="email" id="new-email-input-${pi}" placeholder="e.g. admin@school.org.uk" />
+        <button class="btn-amber" onclick="addEmail(${pi})">Add</button>
+      </div>
+      <div id="email-error-${pi}"   class="error-msg"></div>
+      <div id="email-success-${pi}" class="success-msg"></div>
+    </div>`;
+}
+
+function _esc(s) { return (s || "").replace(/"/g, "&quot;"); }
+
+async function _gmailReconnect(profileId, oauthUrl) {
+  if (!confirm("This will disconnect Gmail and send you to Google to reconnect. Continue?")) return;
+  try {
+    await fetch("/api/school/gmail-disconnect", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({profile_id: profileId})
+    });
+  } catch(e) { /* ignore — redirect anyway */ }
+  window.location.href = oauthUrl;
+}
+function _escHtml(s) {
+  return (s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function startEdit(pi) {
+  document.getElementById("profile-view-" + pi).style.display = "none";
+  document.getElementById("profile-edit-" + pi).style.display = "";
+  document.getElementById("profile-save-error-" + pi).style.display = "none";
+  document.getElementById("profile-save-ok-"    + pi).style.display = "none";
+}
+
+function cancelEdit(pi) {
+  document.getElementById("profile-view-" + pi).style.display = "";
+  document.getElementById("profile-edit-" + pi).style.display = "none";
+}
+
+async function saveProfile(pi) {
+  const p          = _profiles[pi];
+  const child_name   = document.getElementById("edit-child-"   + pi).value.trim();
+  const school_name  = document.getElementById("edit-school-"  + pi).value.trim();
+  const class_name   = document.getElementById("edit-class-"   + pi).value.trim();
+  const teacher_name = document.getElementById("edit-teacher-" + pi).value.trim();
+  const errEl = document.getElementById("profile-save-error-" + pi);
+  const okEl  = document.getElementById("profile-save-ok-"    + pi);
+  errEl.style.display = "none";
+  okEl.style.display  = "none";
+
+  try {
+    const r = await fetch("/api/school/settings/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: p.id, wa: _waNumber, child_name, school_name, class_name, teacher_name })
+    });
+    if (!r.ok) throw new Error();
+    _profiles[pi].child_name   = child_name;
+    _profiles[pi].class_name   = class_name;
+    _profiles[pi].teacher_name = teacher_name;
+    cancelEdit(pi);
+    document.getElementById("profile-view-" + pi).innerHTML =
+      [["Child", child_name], ["School", p.school_name], ["Class", class_name], ["Teacher", teacher_name]].map(([l,v]) =>
+        `<div class="profile-row"><span class="profile-label">${l}</span><span class="profile-value">${v || "—"}</span></div>`
+      ).join("");
+  } catch {
+    errEl.textContent = "Couldn't save — please try again.";
+    errEl.style.display = "block";
+  }
+}
+
+function _reRenderEmailList(pi) {
+  const p = _profiles[pi];
+  const emails = p.sender_emails && p.sender_emails.length
+    ? p.sender_emails.map((e, ei) =>
+        `<div class="email-item">
+          <span class="email-item-addr">📧 ${e}</span>
+          <button class="btn-remove" onclick="removeEmail(${pi},${ei})">Remove</button>
+        </div>`
+      ).join("")
+    : `<p style="font-size:13px;color:#9ca3af;padding:8px 0">No email addresses added yet.</p>`;
+  document.getElementById("email-list-" + pi).innerHTML = emails;
+}
+
+async function addEmail(pi) {
+  const input  = document.getElementById("new-email-input-" + pi);
+  const email  = input.value.trim().toLowerCase();
+  const errEl  = document.getElementById("email-error-" + pi);
+  const okEl   = document.getElementById("email-success-" + pi);
+  errEl.style.display = "none";
+  okEl.style.display  = "none";
+
+  if (!email || !email.includes("@")) {
+    errEl.textContent = "Please enter a valid email address.";
+    errEl.style.display = "block";
+    return;
+  }
+  const current = _profiles[pi].sender_emails || [];
+  if (current.includes(email)) {
+    errEl.textContent = "That email is already being monitored.";
+    errEl.style.display = "block";
+    return;
+  }
+
+  const updated = [...current, email];
+  const ok = await _saveEmails(pi, updated);
+  if (ok) {
+    _profiles[pi].sender_emails = updated;
+    input.value = "";
+    _reRenderEmailList(pi);
+    okEl.textContent = `✅ ${email} added — Miru will now monitor it.`;
+    okEl.style.display = "block";
+    setTimeout(() => okEl.style.display = "none", 4000);
+  } else {
+    errEl.textContent = "Couldn't save — please try again.";
+    errEl.style.display = "block";
+  }
+}
+
+async function removeEmail(pi, ei) {
+  const current = _profiles[pi].sender_emails || [];
+  const email   = current[ei];
+  const updated = current.filter((_, i) => i !== ei);
+  const errEl   = document.getElementById("email-error-" + pi);
+  const okEl    = document.getElementById("email-success-" + pi);
+  errEl.style.display = "none";
+  okEl.style.display  = "none";
+
+  const ok = await _saveEmails(pi, updated);
+  if (ok) {
+    _profiles[pi].sender_emails = updated;
+    _reRenderEmailList(pi);
+    okEl.textContent = `Removed ${email}.`;
+    okEl.style.display = "block";
+    setTimeout(() => okEl.style.display = "none", 3000);
+  } else {
+    errEl.textContent = "Couldn't remove — please try again.";
+    errEl.style.display = "block";
+  }
+}
+
+async function _saveEmails(pi, emails) {
+  try {
+    const r = await fetch("/api/school/settings/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: _profiles[pi].id, wa: _waNumber, emails })
+    });
+    return r.ok;
+  } catch(e) {
+    return false;
+  }
+}
+
+// ── Events ──────────────────────────────────────────────────────────────────
+
+async function loadEvents() {
+  if (!_waNumber) return;
+  const card = document.getElementById("events-card");
+  const listEl = document.getElementById("events-list");
+  card.style.display = "block";
+  listEl.innerHTML = '<div class="events-loading">Loading events…</div>';
+
+  try {
+    const r = await fetch("/api/school/events?days=60&back=30", {
+      headers: { "X-School-WA": _waNumber }
+    });
+    const d = await r.json();
+    if (!r.ok || !d.events) {
+      listEl.innerHTML = '<div class="events-loading">Could not load events.</div>';
+      return;
+    }
+    const events = d.events;
+    if (!events.length) {
+      listEl.innerHTML = '<div class="events-loading">No events found yet. Connect Gmail and tap "Fetch emails now" to scan your inbox.</div>';
+      return;
+    }
+    listEl.innerHTML = events.map(e => _eventHtml(e)).join("");
+  } catch(err) {
+    listEl.innerHTML = '<div class="events-loading">Network error loading events.</div>';
+  }
+}
+
+function _eventHtml(e) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  let dateBadge = "No date";
+  let badgeClass = "";
+  if (e.event_date) {
+    const dt = new Date(e.event_date + "T00:00:00");
+    const diffDays = Math.round((dt - today) / 86400000);
+    if (diffDays < 0)       badgeClass = "past";
+    else if (diffDays <= 7) badgeClass = "soon";
+    dateBadge = dt.toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short" });
+    if (diffDays === 0) dateBadge = "Today";
+    else if (diffDays === 1) dateBadge = "Tomorrow";
+  }
+  const desc = e.description ? `<div class="event-desc">${_escHtml(e.description)}</div>` : "";
+  const action = e.action_needed ? `<div class="event-action">⚡ ${_escHtml(e.action_needed)}</div>` : "";
+  return `
+    <div class="event-item" id="event-${e.id}">
+      <div class="event-header">
+        <span class="event-date-badge ${badgeClass}">${dateBadge}</span>
+        <span class="event-title">${_escHtml(e.event_title)}</span>
+        <button class="event-delete-btn" onclick="deleteEvent('${e.id}')" title="Remove this event">✕</button>
+      </div>
+      ${desc}${action}
+    </div>`;
+}
+
+async function deleteEvent(eventId) {
+  const el = document.getElementById("event-" + eventId);
+  if (el) el.style.opacity = "0.4";
+  try {
+    const r = await fetch("/api/school/events/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: eventId, wa: _waNumber })
+    });
+    if (r.ok) {
+      if (el) el.remove();
+      const listEl = document.getElementById("events-list");
+      if (listEl && !listEl.querySelector(".event-item")) {
+        listEl.innerHTML = '<div class="events-loading">No events yet.</div>';
+      }
+    } else {
+      if (el) el.style.opacity = "1";
+    }
+  } catch {
+    if (el) el.style.opacity = "1";
+  }
+}
+
+function _renderAddEventProfilePicker() {
+  const sel = document.getElementById("add-evt-profile");
+  if (!sel) return;
+  sel.innerHTML = _profiles.map(p =>
+    `<option value="${p.id}">${p.child_name}${p.school_name ? " — " + p.school_name : ""}</option>`
+  ).join("");
+}
+
+async function submitAddEvent() {
+  const profileId = document.getElementById("add-evt-profile").value;
+  const title = document.getElementById("add-evt-title").value.trim();
+  const date  = document.getElementById("add-evt-date").value.trim();
+  const notes = document.getElementById("add-evt-notes").value.trim();
+  const res   = document.getElementById("add-evt-result");
+  if (!title) { res.style.color="#991b1b"; res.textContent="Please enter an event title."; res.style.display="block"; return; }
+  if (!profileId) { res.style.color="#991b1b"; res.textContent="No profile selected."; res.style.display="block"; return; }
+  res.style.display = "none";
+  try {
+    const r = await fetch("/api/school/events/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: profileId, wa: _waNumber, event_title: title, event_date: date || null, notes: notes || null })
+    });
+    const d = await r.json();
+    if (r.ok && d.ok) {
+      res.style.color = "#065f46";
+      res.textContent = "✅ Event added.";
+      res.style.display = "block";
+      document.getElementById("add-evt-title").value = "";
+      document.getElementById("add-evt-date").value  = "";
+      document.getElementById("add-evt-notes").value = "";
+      setTimeout(() => { document.getElementById("add-event-form").style.display="none"; document.getElementById("show-add-event-btn").style.display="block"; loadEvents(); }, 1200);
+    } else {
+      res.style.color = "#991b1b";
+      res.textContent = d.error || "Something went wrong.";
+      res.style.display = "block";
+    }
+  } catch {
+    res.style.color = "#991b1b"; res.textContent = "Network error."; res.style.display = "block";
+  }
+}
+
+// ── Fetch now ────────────────────────────────────────────────────────────────
+
+async function fetchNow() {
+  const btn = document.getElementById("fetch-btn");
+  const res = document.getElementById("fetch-result");
+  btn.disabled = true;
+  btn.textContent = "Checking inbox…";
+  res.style.display = "none";
+
+  try {
+    const r = await fetch("/api/school/fetch-now", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wa: _waNumber })
+    });
+    if (r.ok) {
+      res.style.color = "#065f46";
+      res.textContent = "✅ Scanning inbox — new events will appear below in a few seconds.";
+      setTimeout(loadEvents, 4000);
+    } else {
+      res.style.color = "#991b1b";
+      res.textContent = "Something went wrong — please try again.";
+    }
+  } catch {
+    res.style.color = "#991b1b";
+    res.textContent = "Network error — please try again.";
+  }
+
+  res.style.display = "block";
+  btn.disabled = false;
+  btn.textContent = "📬 Fetch emails now";
+}
+
+document.getElementById("wa-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") lookupProfile();
+});
+
+// Auto-fill WA number from URL param or localStorage; auto-lookup on OAuth return
+(function() {
+  const params = new URLSearchParams(location.search);
+  const wa = params.get("wa") || localStorage.getItem("miru_phone") || "";
+  if (wa) {
+    document.getElementById("wa-input").value = wa;
+    if (params.get("oauth") === "success") {
+      // Just returned from Gmail OAuth — auto-lookup and show a success banner.
+      // Force-clear gmail_token_error on all profiles to prevent a race where the
+      // background poll immediately re-flags the error before this page load completes.
+      lookupProfile().then(() => {
+        _profiles.forEach(p => { p.gmail_token_error = false; });
+        renderGmailSection();
+        const sec = document.getElementById("gmail-section");
+        if (sec) {
+          const banner = document.createElement("div");
+          banner.style.cssText = "background:#d1fae5;color:#065f46;font-size:13px;font-weight:600;padding:10px 14px;border-radius:10px;margin-bottom:12px";
+          banner.textContent = "✅ Gmail connected! Scanning your inbox for school emails now…";
+          sec.prepend(banner);
+          setTimeout(() => banner.remove(), 6000);
+        }
+      });
+    }
+  }
+})();
+</script>
+</body>
+</html>
