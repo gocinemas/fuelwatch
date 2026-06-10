@@ -18111,11 +18111,11 @@ _CLARIFY_MSG = (
     "Not sure what you mean 🤔\n\n"
     "Try *HI* or *HELP* to see everything I can do.\n\n"
     "Quick examples:\n"
-    "🚗 _I'm heading to Costco Farnborough_\n"
-    "☕ _good coffee near KT15_\n"
     "🚆 _train waterloo to lewisham_\n"
-    "⛽ _KT15 petrol_\n"
-    "🔍 _brand Unilever_\n"
+    "🧾 _what did I shop at Waitrose_\n"
+    "☕ _good coffee near me_\n"
+    "🏫 _Inaaya upcoming events_\n"
+    "🔖 _find bookmark AI tools_\n"
     "📌 send any link to save it"
 )
 
@@ -18129,10 +18129,11 @@ _HELLO_MSG = (
     "🚆 _next train to Waterloo_\n"
     "⛽ _petrol near me_  |  _cheap beer KT15_\n"
     "🍺 _burger near me_  |  _steak GU25_\n"
-    "🧾 Send a receipt — I'll log it\n"
-    "🏫 _school news_  |  _my councillor_\n"
-    "📌 Send any link to save it\n\n"
-    "Or *help* for everything I can do."
+    "🧾 _what did I order at Costa_  |  send receipt photo\n"
+    "🏫 _school news_  |  _Riaan upcoming events_\n"
+    "🔖 _find bookmark India AI_\n"
+    "📌 send any link to save it\n\n"
+    "Or *help* for everything."
 )
 
 _SEEN_NUMBERS: set = set()
