@@ -378,7 +378,7 @@
         </div>
 
         <div class="card-actions">
-          <button class="btn-action" onclick="editSchool(${i})">✎ Edit</button>
+          <button class="btn-action" onclick="editAddress(${i})">📍 Location</button>
           <button class="btn-action danger" onclick="deleteSchool(${i})">🗑 Remove</button>
         </div>
       </div>
@@ -421,8 +421,17 @@
     }
   }
 
-  function editSchool(i) {
-    alert('Edit feature coming soon');
+  function editAddress(i) {
+    const school = schools[i];
+    const newAddress = prompt(`Update location for ${school.school_name}:\n\n(Leave empty for no address)`, school.address || '');
+
+    if (newAddress !== null) {
+      schools[i].address = newAddress.trim();
+      // Here you would save to backend via API
+      // For now, just update UI
+      renderSchools();
+      alert('Address updated (changes saved locally)');
+    }
   }
 
   function deleteSchool(i) {
