@@ -7571,6 +7571,7 @@ def _v2_fetch_school(from_number: str) -> dict:
             pr = _pid_map.get(ev.get("profile_id"), {})
             ev["child_name"]  = pr.get("child_name", "")
             ev["school_name"] = pr.get("school_name", "")
+            ev["address"]     = pr.get("address", "")  # For transit lookup + smart context
             return ev
         # Upcoming events — next 42 days
         upcoming = [_enrich(e) for e in (lib._sb().table("school_events").select(
@@ -9975,12 +9976,20 @@ def api_home_brief():
             if loc_str else
             "NEVER invent a location, nearby landmark, or geographic setting — only use places from their saves or facts."
         )
+        # Smart combination rules: allow EVENT + WEATHER + TIME, but no invention
+        prompt_parts.append(
+            f"COMBINE DATA SMARTLY: "
+            f"- Event + Weather: if it's rainy and there's a field trip, suggest waterproof jacket. "
+            f"- Event + Time: mention how soon (e.g., 'in 2 hours'). "
+            f"- Event + Location: include station/transit if it's a journey. "
+            f"But ONLY if all those facts are above. NO invention. "
+            f"DO NOT mention parents' work, meetings, or personal appointments — only school events for the kids. "
+            f"NEVER invent locations, activities, or suggestions not in the facts. "
+        )
         prompt_parts.append(
             f"Subtle, personal, British English. Sound like you know them. "
             f"No greetings, no bullet points, no 'Great news'. Under 55 words. "
-            f"STRICT: only mention things that appear word-for-word in the facts above. "
-            f"NEVER mention calendar events, meetings, catch-ups, or appointments. "
-            f"NEVER invent quiz nights, events, activities, or plans not in the facts. "
+            f"STRICT: only mention things from the facts above. "
             + _location_rule
         )
         prompt = " ".join(prompt_parts)

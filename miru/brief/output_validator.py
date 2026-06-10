@@ -30,7 +30,9 @@ class OutputValidator:
         r"(?:rainy|sunny|cold|warm|windy)",  # Weather
         r"in\s+\d+\s+(?:min|hour|mins|hours)",  # Time delta (event countdown)
         r"at\s+[A-Z]\w+(?:\s+station)?",  # Known location
-        r"bring\s+(?:umbrella|jacket|water|sunscreen)",  # Weather-based prep
+        r"bring\s+(?:umbrella|jacket|water|sunscreen|waterproof)",  # Weather-based prep
+        r"(?:field trip|pickup|event|class|assembly)",  # School events (OK to mention)
+        r"(?:station|walk|train|transport|journey)",  # Transit context
     ]
 
     @staticmethod
