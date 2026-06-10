@@ -10073,9 +10073,8 @@ def api_home_brief():
                 except Exception as val_err:
                     app.logger.debug(f"[brief] Output validation (non-critical): {val_err}")
 
-            # FALLBACK: Old validation still runs as safety net
-            if not brief_text or len(brief_text) < 10:
-                brief_text = _validate_brief_text(brief_text) if brief_text else ""
+            # FALLBACK: Always apply old validation as final safety net
+            brief_text = _validate_brief_text(brief_text) if brief_text else ""
 
             # If validation removed everything, show raw facts as fallback
             if not brief_text:

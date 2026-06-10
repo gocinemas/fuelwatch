@@ -10,10 +10,33 @@ class OutputValidator:
     """Post-Groq validation: ensure brief only mentions things from source data."""
 
     HALLUCINATION_PATTERNS = [
-        r"(?:pick up|grab|get|buy)\s+(?:fuel|petrol|gas)",  # Invented fuel suggestion
-        r"(?:head to|visit|go to|pop by)\s+\w+",  # Invented place suggestion
-        r"(?:you should|you might|you could)\s+(?:consider|try|visit)",  # Weak inference
-        r"(?:it would be|it\s+is)\s+(?:nice|good|great)\s+(?:to|for)",  # Invented opinions
+        # Pronoun starters (inference)
+        r"^you've\s+got",
+        r"^you\s+can\s+",
+        r"^you\s+could\s+",
+        r"^you\s+should\s+",
+        r"^you\s+might\s+",
+        r"^you\s+have\s+",
+        r"^you\s+are\s+",
+        r"^you're\s+",
+        r"^you'll\s+",
+
+        # Action verbs (invention)
+        r"(?:pick up|grab|get|buy)\s+(?:fuel|petrol|gas)",
+        r"(?:head to|visit|go to|pop by)\s+",
+        r"(?:stop by|check out|look in)\s+",
+        r"(?:take a|have a|grab a)\s+(?:break|rest|moment)",
+
+        # Wishy-washy language
+        r"\bperhaps\b",
+        r"\bmight\s+be\b",
+        r"\bcould\s+be\b",
+        r"\bmaybe\b",
+        r"\bprobably\b",
+
+        # Opinions/suggestions
+        r"(?:it would be|it\s+is)\s+(?:nice|good|great|perfect|ideal)",
+        r"(?:why not|how about|what about)\s+",
     ]
 
     @staticmethod
@@ -39,7 +62,12 @@ class OutputValidator:
         valid_sentences = []
 
         for sent in sentences:
-            sent_lower = sent.lower()
+            sent_lower = sent.lower().strip()
+
+            # RULE 0: Block if starts with "you" or "i" (pronouns = inference)
+            if sent_lower.startswith(("you ", "you've", "you're", "you'll", "you'd",
+                                     "i ", "i've", "i'm", "it's", "they ", "we ")):
+                continue
 
             # RULE 1: Check against hallucination patterns
             is_hallucination = any(
