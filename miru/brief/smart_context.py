@@ -30,8 +30,36 @@ def smart_weather(weather: Dict, now: datetime) -> Optional[str]:
     return None
 
 
-def smart_event(events: List[Dict], now: datetime, location: Optional[str] = None) -> Optional[str]:
-    """Next event with countdown, location-aware, + transit context. Only future events."""
+def smart_event_prep(event_title: str, weather: Dict) -> Optional[str]:
+    """Suggest practical prep based on event type + weather (facts only)."""
+    if not event_title or not weather:
+        return None
+
+    title_lower = event_title.lower()
+    temp = weather.get("temp")
+    desc = (weather.get("desc") or "").lower()
+
+    # OUTDOOR EVENTS
+    if any(w in title_lower for w in ["walk", "trip", "field", "sports", "pe", "outdoor", "playground"]):
+        if "rain" in desc:
+            return "🌧️ Rainy walk — bring waterproof jacket"
+        if temp and temp < 10:
+            return "🥶 Cold walk — wear extra layer"
+        if temp and temp > 20 and "sunny" in desc:
+            return "☀️ Sunny activity — bring sunscreen & water"
+        if "wind" in desc:
+            return "💨 Windy day — secure any loose items"
+
+    # ASSEMBLY/INDOOR (general)
+    if any(w in title_lower for w in ["assembly", "meeting", "presentation", "class"]):
+        if temp and temp > 22:
+            return "Warm indoors — lighter clothing works"
+
+    return None
+
+
+def smart_event(events: List[Dict], now: datetime, location: Optional[str] = None, weather: Optional[Dict] = None) -> Optional[str]:
+    """Next event with countdown, location-aware, + transit context + weather prep. Only future events."""
     if not events:
         return None
 
@@ -67,21 +95,27 @@ def smart_event(events: List[Dict], now: datetime, location: Optional[str] = Non
                     except Exception:
                         pass
 
+                # Try to add event prep suggestions (weather-based)
+                prep = smart_event_prep(title, weather=weather or {})
+
+                # Build message with transit + prep
+                msg_parts = []
+
                 # Add context if at same location
                 if location and location.lower() in (location_str or "").lower():
-                    msg = f"At {location}. {child}'s {title} in {int(mins_until)} mins — need to leave soon."
-                    if transit:
-                        msg += f". {transit}"
-                    return msg
+                    msg_parts.append(f"At {location}. {child}'s {title} in {int(mins_until)} mins — need to leave soon.")
+                elif location_str:
+                    msg_parts.append(f"{child}'s {title} in {int(mins_until)} mins at {location_str.split(',')[0]}")
+                else:
+                    msg_parts.append(f"{child}'s {title} in {int(mins_until)} mins")
 
-                # If location nearby
-                if location_str:
-                    msg = f"{child}'s {title} in {int(mins_until)} mins at {location_str.split(',')[0]}"
-                    if transit:
-                        msg += f". {transit}"
-                    return msg
+                # Add transit + prep suggestions
+                if transit:
+                    msg_parts.append(transit)
+                if prep:
+                    msg_parts.append(prep)
 
-                return f"{child}'s {title} in {int(mins_until)} mins"
+                return ". ".join(msg_parts)
         except (ValueError, AttributeError):
             continue
 
@@ -145,7 +179,7 @@ def smart_context_brief(
     with ThreadPoolExecutor(max_workers=5) as executor:
         futures = {
             "weather": executor.submit(smart_weather, weather, now),
-            "event": executor.submit(smart_event, events, now, location),
+            "event": executor.submit(smart_event, events, now, location, weather),
             "location": executor.submit(smart_location, location, receipts),
             "location_context": executor.submit(smart_location_context, location),
             "time": executor.submit(smart_time, now, location),
