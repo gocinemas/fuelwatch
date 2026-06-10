@@ -9986,6 +9986,69 @@ def api_home_brief():
         prompt = " ".join(prompt_parts)
         brief_text = ""
         try:
+            # NEW: Add constraint encoding to prevent hallucinations
+            try:
+                from miru.brief.fact_schema import FactWithSource
+                from miru.brief.constraint_encoder import ConstraintEncoder
+                from miru.brief.output_validator import OutputValidator
+
+                # Convert facts to FactWithSource (with source data from ctx)
+                facts_with_source = []
+
+                # Map facts to sources
+                if ctx.get("fuel"):
+                    fuel = ctx["fuel"]
+                    facts_with_source.append(FactWithSource(
+                        text=f"Fuel: {fuel.get('merchant', 'N/A')} {fuel.get('price', 'N/A')}p",
+                        source_type="fuel",
+                        source_data=fuel,
+                        is_inferred=False,
+                        confidence=1.0
+                    ))
+
+                if ctx.get("trains", {}).get("departures"):
+                    trains = ctx["trains"]
+                    facts_with_source.append(FactWithSource(
+                        text=f"Trains: {trains.get('destination', 'N/A')}",
+                        source_type="trains",
+                        source_data=trains,
+                        is_inferred=False,
+                        confidence=1.0
+                    ))
+
+                if ctx.get("school", {}).get("events"):
+                    school = ctx["school"]
+                    for ev in school.get("events", [])[:2]:
+                        facts_with_source.append(FactWithSource(
+                            text=f"School: {ev.get('child_name', '')} — {ev.get('event_title', '')}",
+                            source_type="school",
+                            source_data=ev,
+                            is_inferred=False,
+                            confidence=1.0
+                        ))
+
+                if ctx.get("weather"):
+                    weather = ctx["weather"]
+                    facts_with_source.append(FactWithSource(
+                        text=f"Weather: {weather.get('desc', 'N/A')} {weather.get('temp', '')}°C",
+                        source_type="weather",
+                        source_data=weather,
+                        is_inferred=False,
+                        confidence=1.0
+                    ))
+
+                # Add constraint rules to prompt
+                if facts_with_source:
+                    constraint_rules = ConstraintEncoder.encode(facts_with_source)
+                    # Inject constraints into prompt before facts
+                    prompt = constraint_rules + " " + prompt
+                    app.logger.debug(f"[brief] Constraints: {constraint_rules[:100]}")
+
+            except Exception as constraint_err:
+                app.logger.debug(f"[brief] Constraint encoding (non-critical): {constraint_err}")
+                facts_with_source = []
+
+            # Call Groq
             r = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
@@ -9996,8 +10059,24 @@ def api_home_brief():
                 timeout=10,
             )
             brief_text = r.json()["choices"][0]["message"]["content"].strip()
-            # CRITICAL: Validate brief for inferences
-            brief_text = _validate_brief_text(brief_text)
+
+            # NEW: Use data-driven validation if available
+            if facts_with_source:
+                try:
+                    brief_text_before = brief_text
+                    brief_text = OutputValidator.validate(brief_text, facts_with_source)
+                    if brief_text != brief_text_before:
+                        report = OutputValidator.get_validation_report(brief_text_before, brief_text, facts_with_source)
+                        app.logger.info(f"[brief] Validation report: {report['blocked_count']} sentences blocked")
+                        if report["blocked_sentences"]:
+                            app.logger.warning(f"[brief] Blocked: {report['blocked_sentences']}")
+                except Exception as val_err:
+                    app.logger.debug(f"[brief] Output validation (non-critical): {val_err}")
+
+            # FALLBACK: Old validation still runs as safety net
+            if not brief_text or len(brief_text) < 10:
+                brief_text = _validate_brief_text(brief_text) if brief_text else ""
+
             # If validation removed everything, show raw facts as fallback
             if not brief_text:
                 if facts:
