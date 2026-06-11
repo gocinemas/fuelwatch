@@ -14729,6 +14729,12 @@ _bkBadge();
     <!-- Section icon tabs -->
     <div id="school-section-tabs" style="display:none;gap:8px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
 
+    <!-- Action items section -->
+    <div id="school-action-items" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:14px;padding:16px;margin-bottom:16px">
+      <div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:12px">⚡ Action items this week</div>
+      <div id="school-action-list" style=""></div>
+    </div>
+
     <!-- Gmail not connected banner -->
     <div id="school-oauth-banner" style="display:none;background:#fef3c7;border:1px solid #fde68a;border-radius:14px;padding:16px;margin-bottom:16px;text-align:center">
       <div style="font-size:20px;margin-bottom:6px">📧</div>
@@ -18256,6 +18262,7 @@ let _savesAll = [];
       const data = await r.json();
       _schoolProfiles  = data.profiles || [];
       _schoolAllEvents = data.events   || [];
+      const _actionItems = data.actions || [];
       const ls = data.last_synced;
       const lsEl = document.getElementById("school-synced-label");
       if (lsEl && ls) {
@@ -18276,6 +18283,24 @@ let _savesAll = [];
         if (oauthLink && needsOauth.oauth_url) oauthLink.href = needsOauth.oauth_url;
       } else if (banner) {
         banner.style.display = "none";
+      }
+
+      // Render action items
+      const actionSection = document.getElementById("school-action-items");
+      const actionList = document.getElementById("school-action-list");
+      if (_actionItems && _actionItems.length > 0) {
+        let html = "";
+        _actionItems.forEach(item => {
+          html += `<div style="padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.1);font-size:13px;color:#78350f">
+            <div style="font-weight:600">${item.child_name}</div>
+            <div style="margin-top:2px">${item.title}</div>
+            <div style="margin-top:2px;font-size:11px;color:#92400e">Due: ${item.due_date}</div>
+          </div>`;
+        });
+        actionList.innerHTML = html;
+        if (actionSection) actionSection.style.display = "block";
+      } else {
+        if (actionSection) actionSection.style.display = "none";
       }
 
       _schoolRenderTabs();
