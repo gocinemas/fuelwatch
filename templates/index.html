@@ -5269,33 +5269,117 @@ const _ts = new Date(d.timestamp);
     const overlay = document.createElement("div");
     overlay.id = "ma-edit-places-overlay";
     overlay.style.cssText = "position:fixed;inset:0;background:var(--bg);z-index:9999;overflow-y:auto;-webkit-overflow-scrolling:touch";
-    const rows = places.length ? places.map(p => `
-      <div style="padding:18px 0;border-bottom:1px solid var(--border)" data-place-id="${p.id}">
-        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">${p.emoji || '⭐'} ${p.name}</div>
-        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px">Address</label>
-        <input class="ma-ep-addr" data-id="${p.id}"
-          value="${(p.address||'').replace(/"/g,'&quot;')}"
-          placeholder="e.g. 12 High Street, KT1 2BA"
-          style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:10px;font-family:inherit"
-          onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
-        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px">Phone</label>
-        <input class="ma-ep-phone" data-id="${p.id}"
-          value="${(p.phone||'').replace(/"/g,'&quot;')}"
-          type="tel" placeholder="e.g. 01932 336571"
-          style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:12px;font-family:inherit"
-          onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
-        <button onclick="_maEditPlaceSaveRow('${p.id}',this)"
-          style="padding:8px 20px;border-radius:10px;border:none;background:#065f46;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>
-      </div>`).join("") : `<div style="padding:32px 0;text-align:center;color:var(--muted);font-size:14px">No saved places yet.</div>`;
-    overlay.innerHTML = `
-      <div style="max-width:520px;margin:0 auto;padding:0 20px 60px">
-        <div style="position:sticky;top:0;background:var(--bg);padding:16px 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px;display:flex;align-items:center;gap:12px;z-index:1">
-          <button onclick="document.getElementById('ma-edit-places-overlay').remove()" style="font-size:22px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0;line-height:1">←</button>
-          <div style="font-size:17px;font-weight:800;color:var(--text)">Edit Saved Places</div>
-        </div>
-        <div id="ma-ep-rows">${rows}</div>
-      </div>`;
+
+    // NEW USER ONBOARDING vs EXISTING USER EDIT
+    const isNewUser = places.length === 0;
+
+    let content = "";
+    if (isNewUser) {
+      // ONBOARDING SCREEN for new users
+      content = `
+        <div style="max-width:520px;margin:0 auto;padding:0 20px 60px">
+          <div style="position:sticky;top:0;background:var(--bg);padding:16px 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px;display:flex;align-items:center;gap:12px;z-index:1">
+            <button onclick="document.getElementById('ma-edit-places-overlay').remove()" style="font-size:22px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0;line-height:1">←</button>
+            <div style="font-size:17px;font-weight:800;color:var(--text)">Add Your First Place</div>
+          </div>
+
+          <div style="text-align:center;padding:32px 0 20px">
+            <div style="font-size:48px;margin-bottom:12px">🔖</div>
+            <div style="font-size:14px;color:var(--text);margin-bottom:4px">Save your favourite spots</div>
+            <div style="font-size:12px;color:var(--muted)">Pubs, cafes, shops, and more</div>
+          </div>
+
+          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:8px">Place name</label>
+            <input id="ma-new-place-name" type="text" placeholder="e.g. The Four Horseshoes, Waitrose, Costa"
+              style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:12px;font-family:inherit"
+              onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px">Pick emoji</label>
+            <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+              <button onclick="document.getElementById('ma-new-place-emoji').value='🍺';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">🍺</button>
+              <button onclick="document.getElementById('ma-new-place-emoji').value='☕';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">☕</button>
+              <button onclick="document.getElementById('ma-new-place-emoji').value='💊';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">💊</button>
+              <button onclick="document.getElementById('ma-new-place-emoji').value='🍽️';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">🍽️</button>
+              <button onclick="document.getElementById('ma-new-place-emoji').value='🛒';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">🛒</button>
+              <button onclick="document.getElementById('ma-new-place-emoji').value='💈';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">💈</button>
+            </div>
+            <input id="ma-new-place-emoji" type="hidden" value="🔖">
+
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:8px">Address (optional)</label>
+            <input id="ma-new-place-addr" type="text" placeholder="e.g. 13 Burrow Hill Green, Surrey"
+              style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:12px;font-family:inherit"
+              onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:8px">Phone (optional)</label>
+            <input id="ma-new-place-phone" type="tel" placeholder="e.g. 01276 856257"
+              style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:14px;font-family:inherit"
+              onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+
+            <button onclick="_maAddNewPlace()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#065f46;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Save Place</button>
+          </div>
+        </div>`;
+    } else {
+      // EDIT SCREEN for existing users
+      const rows = places.map(p => `
+        <div style="padding:18px 0;border-bottom:1px solid var(--border)" data-place-id="${p.id}">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">${p.emoji || '⭐'} ${p.name}</div>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px">Address</label>
+          <input class="ma-ep-addr" data-id="${p.id}"
+            value="${(p.address||'').replace(/"/g,'&quot;')}"
+            placeholder="e.g. 12 High Street, KT1 2BA"
+            style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:10px;font-family:inherit"
+            onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+          <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px">Phone</label>
+          <input class="ma-ep-phone" data-id="${p.id}"
+            value="${(p.phone||'').replace(/"/g,'&quot;')}"
+            type="tel" placeholder="e.g. 01932 336571"
+            style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:12px;font-family:inherit"
+            onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+          <button onclick="_maEditPlaceSaveRow('${p.id}',this)"
+            style="padding:8px 20px;border-radius:10px;border:none;background:#065f46;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>
+        </div>`).join("");
+      content = `
+        <div style="max-width:520px;margin:0 auto;padding:0 20px 60px">
+          <div style="position:sticky;top:0;background:var(--bg);padding:16px 0 12px;border-bottom:1px solid var(--border);margin-bottom:4px;display:flex;align-items:center;gap:12px;z-index:1">
+            <button onclick="document.getElementById('ma-edit-places-overlay').remove()" style="font-size:22px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0;line-height:1">←</button>
+            <div style="font-size:17px;font-weight:800;color:var(--text)">Edit Saved Places</div>
+          </div>
+          <div id="ma-ep-rows">${rows}</div>
+        </div>`;
+    }
+
+    overlay.innerHTML = content;
     document.body.appendChild(overlay);
+  }
+
+  async function _maAddNewPlace() {
+    const name = document.getElementById("ma-new-place-name")?.value.trim();
+    const emoji = document.getElementById("ma-new-place-emoji")?.value || "🔖";
+    const addr = document.getElementById("ma-new-place-addr")?.value.trim() || "";
+    const phone = document.getElementById("ma-new-place-phone")?.value.trim() || "";
+
+    if (!name) {
+      alert("Please enter a place name");
+      return;
+    }
+
+    const newPlace = {
+      id: "place_" + Date.now(),
+      name: name,
+      emoji: emoji,
+      address: addr,
+      phone: phone,
+      category: "saved"
+    };
+
+    _maSavedPlaces = (_maSavedPlaces || []);
+    _maSavedPlaces.push(newPlace);
+    _maPlacesToLS(_maSavedPlaces);
+    _maReRenderSections();
+    _maRenderMyPlaces();
+
+    document.getElementById("ma-edit-places-overlay").remove();
   }
 
   async function _maEditPlaceSaveRow(placeId, btn) {
