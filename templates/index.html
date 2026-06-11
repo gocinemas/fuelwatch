@@ -5431,8 +5431,10 @@ const _ts = new Date(d.timestamp);
 
   async function _maAddPlaceFromModal() {
     try {
+      console.log("[add-place] Save clicked");
       const nameEl = document.getElementById("ma-add-place-name");
       const name = nameEl?.value.trim();
+      console.log("[add-place] Name:", name);
       const emoji = document.getElementById("ma-add-place-emoji")?.value || "🔖";
       const addr = document.getElementById("ma-add-place-addr")?.value.trim() || "";
       const phone = document.getElementById("ma-add-place-phone")?.value.trim() || "";
@@ -5451,32 +5453,42 @@ const _ts = new Date(d.timestamp);
         category: "saved"
       };
 
+      console.log("[add-place] Creating:", newPlace);
       _maSavedPlaces = (_maSavedPlaces || []);
       _maSavedPlaces.push(newPlace);
+      console.log("[add-place] Array now:", _maSavedPlaces);
+
       _maPlacesToLS(_maSavedPlaces);
+      console.log("[add-place] Saved to localStorage");
 
       // Also sync to backend
       const param = _miruPhone() ? `from_number=${encodeURIComponent(_miruPhone())}` : `device_id=${encodeURIComponent(_maDeviceId())}`;
+      console.log("[add-place] API param:", param);
       try {
-        await fetch(`/api/myarea/places?${param}`, {
+        const r = await fetch(`/api/myarea/places?${param}`, {
           method: "POST",
           headers: {"Content-Type":"application/json"},
           body: JSON.stringify({name, address: addr, phone, emoji, category: "saved"})
         });
+        console.log("[add-place] API response:", r.status, r.statusText);
       } catch(e) {
         console.log("[add-place] Backend sync failed but localStorage saved:", e);
       }
 
       _maReRenderSections();
       _maRenderMyPlaces();
+      console.log("[add-place] UI updated");
 
       // Close modal
       const modal = document.getElementById("ma-add-place-modal");
-      if (modal) modal.remove();
+      if (modal) {
+        modal.remove();
+        console.log("[add-place] Modal closed");
+      }
 
-      console.log("[add-place] Saved:", name);
+      console.log("[add-place] ✅ COMPLETE:", name);
     } catch(e) {
-      console.error("[add-place] Error:", e);
+      console.error("[add-place] ❌ ERROR:", e);
       alert("Error saving place: " + e.message);
     }
   }
