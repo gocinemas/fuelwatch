@@ -16811,14 +16811,42 @@ let _savesAll = [];
       // Unique ID for this card's toggle
       var cardId = "spend-chart-" + Math.random().toString(36).substr(2, 9);
 
+      // Receipt-style breakdown (looks like actual receipt paper)
+      var receiptHtml = '<div style="background:#f5f1e8;border:1px solid #d4cec0;border-radius:12px;padding:12px;font-family:\'Courier New\',monospace;font-size:11px;color:#3a3a3a;margin-top:8px">'
+        + '<div style="text-align:center;border-bottom:1px dashed #9a9a9a;padding-bottom:6px;margin-bottom:6px">'
+        + '<div style="font-weight:bold;letter-spacing:1px">SPEND</div>'
+        + '<div style="font-size:10px;color:#666">' + (spend.month || "JUNE") + ' 2026</div>'
+        + '</div>';
+
+      // Add items (categories)
+      colorIdx = 0;
+      for (var cat in spend.breakdown) {
+        var cb = spend.breakdown[cat];
+        var pct = spend.total > 0 ? Math.round((cb.total / spend.total) * 100) : 0;
+        var col = colors[colorIdx % colors.length];
+        receiptHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted #d4cec0">'
+          + '<div style="flex:1">' + cat + ' <span style="color:#999">(' + pct + '%)</span></div>'
+          + '<div style="text-align:right;font-weight:bold">£' + cb.total.toFixed(2) + '</div>'
+          + '</div>';
+        colorIdx++;
+      }
+
+      // Total line
+      receiptHtml += '<div style="border-top:2px solid #3a3a3a;border-bottom:1px dashed #9a9a9a;padding:6px 0;margin:6px 0;display:flex;justify-content:space-between;font-weight:bold;font-size:12px">'
+        + '<div>TOTAL</div>'
+        + '<div>£' + spend.total.toFixed(2) + '</div>'
+        + '</div>'
+        + '<div style="text-align:center;font-size:10px;color:#666;padding-top:4px">' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
+        + '</div>';
+
       var spendHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
         + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">💳 Spend · ' + (spend.month || "") + '</div>'
-        + '<button onclick="document.getElementById(\'' + cardId + '-chart\').style.display = document.getElementById(\'' + cardId + '-chart\').style.display === \'none\' ? \'block\' : \'none\'; document.getElementById(\'' + cardId + '-list\').style.display = document.getElementById(\'' + cardId + '-chart\').style.display === \'none\' ? \'block\' : \'none\'" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600">📊 View</button>'
+        + '<button onclick="document.getElementById(\'' + cardId + '-chart\').style.display = document.getElementById(\'' + cardId + '-chart\').style.display === \'none\' ? \'block\' : \'none\'; document.getElementById(\'' + cardId + '-receipt\').style.display = document.getElementById(\'' + cardId + '-chart\').style.display === \'none\' ? \'block\' : \'none\'" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600">📊 View</button>'
         + '</div>'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
-        + '<div id="' + cardId + '-list" style="margin-top:8px">' + breakdownHtml + '</div>'
+        + '<div id="' + cardId + '-receipt" style="margin-top:8px">' + receiptHtml + '</div>'
         + '<div id="' + cardId + '-chart" style="display:none;margin-top:8px">' + pieChartHtml + '</div>'
         + '<div id="brief-spend-last-receipt" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"></div>'
         + '</div>';
