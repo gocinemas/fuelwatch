@@ -6516,6 +6516,7 @@ function _hcAdd() {
 
   let _commuteSearchDebounce;
   async function _commuteSearchDest(query) {
+    console.log("[commute-search] Query:", query);
     if (!query || query.length < 2) {
       document.getElementById("commute-dest-suggestions").innerHTML = "";
       return;
@@ -6523,25 +6524,36 @@ function _hcAdd() {
     try {
       const r = await fetch(`/api/myarea/place-search?q=${encodeURIComponent(query)}`);
       const results = await r.json();
+      console.log("[commute-search] Results:", results);
+
       let html = "";
-      results.slice(0,4).forEach((p, idx) => {
-        html += `<div class="commute-suggestion" data-addr="${(p.address||'').replace(/"/g,'&quot;')}"
-          style="padding:8px;cursor:pointer;border-bottom:1px solid var(--border)">
+      results.slice(0,4).forEach(p => {
+        html += `<div class="commute-suggestion" style="padding:8px;cursor:pointer;border-bottom:1px solid var(--border)" data-address="${(p.address||'').replace(/"/g,'&quot;')}">
           <strong>${p.name}</strong><br/>
           <span style="color:var(--muted);font-size:11px">${p.address || ''}</span>
         </div>`;
       });
+
       const container = document.getElementById("commute-dest-suggestions");
+      if (!container) {
+        console.log("[commute-search] Container not found!");
+        return;
+      }
+
       container.innerHTML = html || '<div style="padding:8px;color:var(--muted)">No results</div>';
-      // Add click handlers to suggestions
-      container.querySelectorAll(".commute-suggestion").forEach(el => {
-        el.addEventListener("click", () => {
-          document.getElementById("commute-add-dest").value = el.dataset.addr;
+      console.log("[commute-search] Added", results.length, "results");
+
+      // Add click handlers
+      document.querySelectorAll(".commute-suggestion").forEach(el => {
+        el.onclick = function(e) {
+          const addr = this.getAttribute("data-address");
+          console.log("[commute-select] Selected address:", addr);
+          document.getElementById("commute-add-dest").value = addr;
           container.innerHTML = "";
-        });
+        };
       });
     } catch(e) {
-      console.log("Commute search error:", e);
+      console.log("[commute-search] ERROR:", e);
     }
   }
 
