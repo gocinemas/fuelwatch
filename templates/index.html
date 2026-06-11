@@ -5433,6 +5433,17 @@ const _ts = new Date(d.timestamp);
         return;
       }
 
+      // Check for duplicates
+      _maSavedPlaces = (_maSavedPlaces || []);
+      const isDuplicate = _maSavedPlaces.some(p =>
+        p.name.toLowerCase() === name.toLowerCase() &&
+        p.address.toLowerCase() === addr.toLowerCase()
+      );
+      if (isDuplicate) {
+        alert("You already have '" + name + "' saved!");
+        return;
+      }
+
       const newPlace = {
         id: "place_" + Date.now(),
         name: name,
@@ -5443,7 +5454,6 @@ const _ts = new Date(d.timestamp);
       };
 
       console.log("[add-place] Creating:", newPlace);
-      _maSavedPlaces = (_maSavedPlaces || []);
       _maSavedPlaces.push(newPlace);
       console.log("[add-place] Array now:", _maSavedPlaces);
 
@@ -5549,6 +5559,18 @@ const _ts = new Date(d.timestamp);
       return;
     }
 
+    _maSavedPlaces = (_maSavedPlaces || []);
+
+    // Check for duplicates
+    const isDuplicate = _maSavedPlaces.some(p =>
+      p.name.toLowerCase() === name.toLowerCase() &&
+      p.address.toLowerCase() === addr.toLowerCase()
+    );
+    if (isDuplicate) {
+      alert("You already have '" + name + "' saved!");
+      return;
+    }
+
     const newPlace = {
       id: "place_" + Date.now(),
       name: name,
@@ -5558,7 +5580,6 @@ const _ts = new Date(d.timestamp);
       category: "saved"
     };
 
-    _maSavedPlaces = (_maSavedPlaces || []);
     _maSavedPlaces.push(newPlace);
     _maPlacesToLS(_maSavedPlaces);
     _maReRenderSections();
