@@ -6530,14 +6530,25 @@ function _hcAdd() {
     _commuteRender();
   }
 
+  function _getCommuteType(label) {
+    // Detect commute type for smart sorting
+    const l = (label || "").toLowerCase();
+    if (l.includes("school") || l.includes("nursery") || l.includes("college")) return 0; // Schools first
+    if (l.includes("tesco") || l.includes("sainsbury") || l.includes("asda") || l.includes("supermarket") || l.includes("waitrose")) return 1; // Supermarkets
+    if (l.includes("restaurant") || l.includes("cafe") || l.includes("coffee") || l.includes("pub") || l.includes("burger") || l.includes("pizza")) return 2; // Restaurants
+    return 3; // Regular places
+  }
+
   async function _commuteRender() {
     const el = document.getElementById("commute-list");
     if (!el) return;
-    const arr = await _commuteLoad();
+    let arr = await _commuteLoad();
     if (!arr.length) {
       el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:8px 0">No commutes saved yet — tap + Add to set up Work, school, etc.</div>`;
       return;
     }
+    // Sort by type: Schools → Supermarkets → Restaurants → Other
+    arr = arr.sort((a, b) => _getCommuteType(a.label) - _getCommuteType(b.label));
     el.innerHTML = arr.map(c => `
       <div id="commute-card-${c.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
@@ -17489,6 +17500,17 @@ let _savesAll = [];
       // Add saved places so Ask Miru can look them up
       if (_maSavedPlaces && _maSavedPlaces.length) {
         ctx.saved_places = (_maSavedPlaces || []).filter(p => p.category !== "_home").map(p => ({name: p.name, emoji: p.emoji, address: p.address, phone: p.phone}));
+      }
+      // Add commutes so Ask Miru can answer travel time questions
+      if (window._commuteLoad) {
+        try {
+          const commutes = await window._commuteLoad();
+          if (commutes && commutes.length) {
+            ctx.commutes = commutes.map(c => ({label: c.label, destination: c.dest}));
+          }
+        } catch(e) {
+          console.log("[ask] Commute load failed:", e);
+        }
       }
     } catch(_e) {}
 

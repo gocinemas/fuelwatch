@@ -10591,6 +10591,17 @@ def api_home_ask():
         if "saved_places" not in str(ctx):
             ctx["_note"] = "User asked about saved places but we found none. If providing nearby suggestions, mention that first."
 
+    # ── COMMUTE LOOKUP — "How long to Riaan's school?" ──────────────────────────
+    if any(w in q_lower for w in ["how long", "how far", "drive time", "commute", "travel time", "to ", "time to"]):
+        commutes = ctx.get("commutes") or []
+        for commute in commutes:
+            c_label = (commute.get("label") or "").lower()
+            if c_label and any(word in q_lower for word in c_label.split()):
+                # Found a matching commute!
+                answer = f"For {commute.get('label')}, check the live drive time in My Regular Commutes — it updates with current traffic!"
+                app.logger.info(f"[ask] Commute found: {commute.get('label')}")
+                return jsonify({"answer": answer})
+
     # ── Intent classification ──────────────────────────────────────────────────
     # Utility: factual/definitional questions that don't need personal context
     _UTILITY = ["define ", "definition of", "what does ", "what is a ", "what is the ",
