@@ -2254,6 +2254,17 @@
           </button>
         </div>
 
+        <!-- School Comms Card — upcoming events + permissions -->
+        <div id="school-comms-card" style="background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%);border-radius:16px;padding:16px;margin-bottom:12px;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="font-size:14px;font-weight:800;color:#065f46;display:flex;align-items:center;gap:6px">
+              🏫 School Comms
+            </div>
+            <button onclick="showScreen('school')" style="font-size:12px;background:none;border:none;color:#047857;cursor:pointer;font-weight:600">View all ›</button>
+          </div>
+          <div id="school-comms-body" style="font-size:12px;line-height:1.6;color:#1f2937"></div>
+        </div>
+
         <!-- Spend card container — rendered by JavaScript -->
         <div id="brief-spend-card-container" style="margin-bottom:12px"></div>
 
@@ -16102,6 +16113,9 @@ let _savesAll = [];
           // Chips
           _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
 
+          // School Comms card
+          _renderSchoolCommsCard(d);
+
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
 
@@ -16614,6 +16628,57 @@ let _savesAll = [];
     hdr.style.marginBottom = collapsed ? "8px" : "0";
     localStorage.setItem("brief_school_collapsed", collapsed ? "0" : "1");
   };
+
+  function _renderSchoolCommsCard(briefData) {
+    // Render upcoming school events for both kids
+    const card = document.getElementById("school-comms-card");
+    const body = document.getElementById("school-comms-body");
+    if (!card || !body) return;
+
+    if (!briefData || !briefData.context || !briefData.context.school) {
+      card.style.display = "none";
+      return;
+    }
+
+    const school = briefData.context.school || {};
+    const upcoming = school.upcoming || [];
+    const holidays = school.holiday_status;
+
+    if (upcoming.length === 0) {
+      card.style.display = "none";
+      return;
+    }
+
+    card.style.display = "block";
+
+    // Group by child name
+    const byChild = {};
+    upcoming.forEach(e => {
+      const child = e.child_name || "School";
+      if (!byChild[child]) byChild[child] = [];
+      byChild[child].push(e);
+    });
+
+    let html = "";
+    Object.entries(byChild).forEach(([child, events]) => {
+      if (events.length > 0) {
+        const first = events[0];
+        const emoji = first.emoji || "📌";
+        const time = first.event_time ? ` · ${first.event_time}` : "";
+        html += `<div style="margin-bottom:8px">
+          <div style="font-weight:700;color:#047857">${child}</div>
+          <div style="color:#374151;margin-top:2px">${emoji} ${first.event_name}${time}</div>
+          ${events.length > 1 ? `<div style="color:#6b7280;font-size:11px;margin-top:2px">+${events.length - 1} more</div>` : ""}
+        </div>`;
+      }
+    });
+
+    if (holidays) {
+      html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #d1fae5;color:#059669;font-size:11px;font-weight:600">📅 ${holidays}</div>`;
+    }
+
+    body.innerHTML = html;
+  }
 
   function _briefRenderContextCards(ctx, container, mode) {
     if (!container) return;
