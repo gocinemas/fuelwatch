@@ -11116,62 +11116,13 @@ def api_home_ask():
         )
         answer = r.json()["choices"][0]["message"]["content"].strip()
 
-        # POST-VALIDATE: Remove inferred/suggested sentences
-        sentences = [s.strip() for s in answer.split(".") if s.strip()]
-        valid_sentences = []
-
-        for sent in sentences:
-            sent_lower = sent.lower()
-
-            # AGGRESSIVE: Block sentences starting with pronouns
-            # Strip apostrophes to catch "You've", "You'll", etc.
-            sent_check = sent_lower.replace("'", "").replace("'", "").strip()
-            if any(sent_check.startswith(p) for p in ["you ", "you", "i ", "they ", "we ", "i'"]):
-                app.logger.warning(f"[home/ask] BLOCKED PRONOUN: {sent[:50]}")
-                continue
-
-            # AGGRESSIVE: Block sentences with inference/suggestion words
-            blocked_words = [
-                "probably", "might", "may", "could", "should", "think",
-                "believe", "know", "suggest", "consider", "want", "need",
-                "relax", "unwind", "forward", "heading", "visit", "go to",
-                "take a look", "pick up", "looking forward", "a bit of time",
-                "time to unwind", "time to relax", "rest of the afternoon",
-                "busy day", "free now", "reminder you", "you're due"
-            ]
-            if any(word in sent_lower for word in blocked_words):
-                app.logger.warning(f"[home/ask] BLOCKED INFERENCE: {sent[:50]}")
-                continue
-
-            valid_sentences.append(sent)
-
-        validated_answer = ". ".join(valid_sentences)
+        # Return answer as-is from Groq (removed over-aggressive blocking)
+        # The LLM has been instructed to be factual, not to hallucinate
+        validated_answer = answer.strip()
         if validated_answer and not validated_answer.endswith("."):
             validated_answer += "."
 
-        sentences_blocked = len(sentences) - len(valid_sentences)
-        app.logger.info(f"[home/ask] Validation: {len(sentences)} → {len(valid_sentences)} sentences ({sentences_blocked} blocked)")
-
-        # Only return empty if ALL sentences were blocked
-        # If SOME sentences survived validation, show those
-        if len(valid_sentences) == 0 and sentences_blocked > 0:
-            app.logger.warning(f"[home/ask] ALL {sentences_blocked} sentences blocked - returning empty")
-            return jsonify({"answer": ""})
-
-        # EMERGENCY: If no sentences were blocked but answer still has red flags, block it
-        if answer:
-            red_flags = [
-                "you've", "you got", "you might", "you could", "you want", "you need",
-                "might want", "could use", "should ", "unwind", "relax",
-                "busy day", "pop down", "pop to", "afternoon to", "time to",
-                "i think", "i know", "i believe", "probably", "reminder", "due to leave"
-            ]
-            answer_lower = answer.lower()
-            for flag in red_flags:
-                if flag in answer_lower:
-                    app.logger.error(f"[home/ask] EMERGENCY BLOCK ('{flag}'): {answer[:60]}")
-                    return jsonify({"answer": ""})
-
+        app.logger.info(f"[home/ask] Answer: {validated_answer[:100]}")
         return jsonify({"answer": validated_answer if validated_answer else ""})
     except Exception as e:
         app.logger.warning(f"[home/ask] {e}")
