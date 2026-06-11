@@ -17080,7 +17080,7 @@ let _savesAll = [];
 
     if (btn) { btn.disabled = true; btn.style.opacity = "0.5"; }
 
-    // Build ctx snapshot
+    // Build ctx snapshot — comprehensive context from all sources
     var ctx = {};
     try {
       if (_briefData && _briefData.context) {
@@ -17097,6 +17097,13 @@ let _savesAll = [];
         if (bc.recurring)       ctx.recurring       = bc.recurring;
         if (bc.deliveries)      ctx.deliveries      = (bc.deliveries||[]).slice(0,2);
         if (bc.personal_events) ctx.personal_events = (bc.personal_events||[]).slice(0,5);
+        // NEW: Add spend, saves, area, activity data
+        if (bc.spend)           ctx.spend           = bc.spend;
+        if (bc.saves)           ctx.saves           = (bc.saves||[]).slice(0,10);
+        if (bc.area)            ctx.area            = bc.area;
+        if (bc.today_activity)  ctx.today_activity  = bc.today_activity;
+        if (bc.weekend_patterns) ctx.weekend_patterns = bc.weekend_patterns;
+        if (bc.recent_capture)  ctx.recent_capture  = (bc.recent_capture||[]).slice(0,5);
       }
       if (_briefData && _briefData.active_trip) ctx.active_trip = _briefData.active_trip;
       // Add saved places so Ask Miru can look them up
