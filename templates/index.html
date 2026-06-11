@@ -16835,9 +16835,9 @@ let _savesAll = [];
         var cb = spend.breakdown[cat];
         var pct = spend.total > 0 ? Math.round((cb.total / spend.total) * 100) : 0;
         var col = colors[colorIdx % colors.length];
-        receiptHtml += '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted #d4cec0">'
-          + '<div style="flex:1">' + cat + ' <span style="color:#999">(' + pct + '%)</span></div>'
-          + '<div style="text-align:right;font-weight:bold">£' + cb.total.toFixed(2) + '</div>'
+        receiptHtml += '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dotted #d4cec0">'
+          + '<div style="flex:1;font-weight:700;color:#1a1a1a">' + cat + ' <span style="color:#999;font-weight:600">(' + pct + '%)</span></div>'
+          + '<div style="text-align:right;font-weight:800;color:#1a1a1a;font-size:12px">£' + cb.total.toFixed(2) + '</div>'
           + '</div>';
         colorIdx++;
       }
