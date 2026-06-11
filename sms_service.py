@@ -10491,8 +10491,21 @@ def api_home_ask():
     # Check if question mentions a place and user has it saved
     if any(w in q_lower for w in ["phone", "address", "where", "location", "local"]):
         try:
-            # Get saved places from context (passed by frontend from localStorage)
-            saved_places = ctx.get("saved_places") or []
+            # Try database first, fallback to context
+            saved_places = []
+
+            # Query database if user is identified
+            if from_number:
+                plain = from_number.replace("whatsapp:", "").strip()
+                db_places = lib._sb().table("my_area_places") \
+                    .select("name,address,phone,emoji") \
+                    .neq("category", "_home") \
+                    .eq("from_number", plain).execute().data or []
+                saved_places.extend(db_places)
+
+            # Fallback to context (frontend localStorage)
+            if not saved_places:
+                saved_places = ctx.get("saved_places") or []
 
             # Match place name in question
             for place in saved_places:
