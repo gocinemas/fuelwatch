@@ -5268,7 +5268,10 @@ const _ts = new Date(d.timestamp);
     const places = (_maSavedPlaces || []).filter(p => p.category !== "_home");
     const overlay = document.createElement("div");
     overlay.id = "ma-edit-places-overlay";
-    overlay.style.cssText = "position:fixed;inset:0;background:var(--bg);z-index:9999;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column";
+    overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:#ffffff;z-index:99999;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column";
+
+    // Hide all other screens
+    document.querySelectorAll(".screen").forEach(s => s.style.display = "none");
 
     // NEW USER ONBOARDING vs EXISTING USER EDIT
     const isNewUser = places.length === 0;
@@ -5388,6 +5391,24 @@ const _ts = new Date(d.timestamp);
 
     overlay.innerHTML = content;
     document.body.appendChild(overlay);
+
+    // Close handler — restore screens
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        overlay.remove();
+        document.querySelectorAll(".screen").forEach(s => s.style.display = "");
+      }
+    });
+
+    // Back button closes overlay
+    overlay.querySelectorAll("button").forEach(btn => {
+      if (btn.textContent.trim() === "←") {
+        btn.addEventListener("click", () => {
+          overlay.remove();
+          document.querySelectorAll(".screen").forEach(s => s.style.display = "");
+        });
+      }
+    });
   }
 
   let _maSearchDebounce;
