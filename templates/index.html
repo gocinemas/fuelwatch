@@ -5268,7 +5268,7 @@ const _ts = new Date(d.timestamp);
     const places = (_maSavedPlaces || []).filter(p => p.category !== "_home");
     const overlay = document.createElement("div");
     overlay.id = "ma-edit-places-overlay";
-    overlay.style.cssText = "position:fixed;inset:0;background:var(--bg);z-index:9999;overflow-y:auto;-webkit-overflow-scrolling:touch";
+    overlay.style.cssText = "position:fixed;inset:0;background:var(--bg);z-index:9999;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column";
 
     // NEW USER ONBOARDING vs EXISTING USER EDIT
     const isNewUser = places.length === 0;
