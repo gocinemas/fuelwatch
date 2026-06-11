@@ -2791,7 +2791,6 @@
             <input id="commute-add-name" placeholder="Label (e.g. Work, Inaaya's School)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:6px">
 
             <input id="commute-add-dest" placeholder="Address or school name (e.g. New Haw Junior School)"
-              oninput="clearTimeout(_commuteSearchDebounce);_commuteSearchDebounce=setTimeout(()=>_commuteSearchDest(this.value),300)"
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:2px">
 
             <div id="commute-dest-suggestions" style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;max-height:120px;overflow-y:auto;font-size:12px;margin-bottom:8px"></div>
@@ -6515,6 +6514,19 @@ function _hcAdd() {
   setTimeout(_hcRender, 500);
 
   let _commuteSearchDebounce;
+
+  // Setup commute destination search on page load
+  document.addEventListener("DOMContentLoaded", () => {
+    const destInput = document.getElementById("commute-add-dest");
+    if (destInput) {
+      destInput.addEventListener("input", function() {
+        clearTimeout(_commuteSearchDebounce);
+        _commuteSearchDebounce = setTimeout(() => _commuteSearchDest(this.value), 300);
+      });
+      console.log("[commute] Event listener attached to destination field");
+    }
+  });
+
   async function _commuteSearchDest(query) {
     console.log("[commute-search] Query:", query);
     if (!query || query.length < 2) {
