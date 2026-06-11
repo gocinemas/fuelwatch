@@ -5458,25 +5458,50 @@ const _ts = new Date(d.timestamp);
     const addr    = addrEl?.value.trim()  || "";
     const phone   = phoneEl?.value.trim() || "";
     const orig    = btn.textContent;
-    btn.textContent = "Saving…"; btn.disabled = true;
+
+    btn.textContent = "Saving…";
+    btn.disabled = true;
+    btn.style.opacity = "0.6";
+
+    // Always update localStorage first
     const idx = (_maSavedPlaces || []).findIndex(p => String(p.id) === String(placeId));
     if (idx >= 0) {
       _maSavedPlaces[idx] = {..._maSavedPlaces[idx], address: addr, phone};
       _maPlacesToLS(_maSavedPlaces);
-      _maReRenderSections();
+      _maRenderMyPlaces();  // Update My Places card immediately
     }
+
+    // Try to sync to backend
     const param = _miruPhone() ? `from_number=${encodeURIComponent(_miruPhone())}` : `device_id=${encodeURIComponent(_maDeviceId())}`;
     try {
-      await fetch(`/api/myarea/places/${placeId}?${param}`, {
+      const r = await fetch(`/api/myarea/places/${placeId}?${param}`, {
         method: "PATCH",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({address: addr, phone})
       });
-      btn.textContent = "Saved ✓"; btn.style.background = "#16a34a";
-    } catch {
-      btn.textContent = orig;
+      if (r.ok) {
+        btn.textContent = "Saved ✓";
+        btn.style.background = "#16a34a";
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.style.background = "";
+          btn.style.opacity = "1";
+          btn.disabled = false;
+        }, 2000);
+      } else {
+        throw new Error("Save failed");
+      }
+    } catch(e) {
+      console.log("[edit-place] API sync failed but localStorage saved:", e);
+      btn.textContent = "Saved (offline)";
+      btn.style.background = "#f59e0b";
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.background = "";
+        btn.style.opacity = "1";
+        btn.disabled = false;
+      }, 2000);
     }
-    btn.disabled = false;
   }
 
   function _maToggleNearby(section) {
