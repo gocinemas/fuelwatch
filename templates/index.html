@@ -7149,6 +7149,16 @@ function _hcAdd() {
     if (laScanning) laScanning.style.display = state === "scanning"  ? "flex" : "none";
     if (laDone)     laDone.style.display     = (state === "done" || state === "pending") ? "flex" : "none";
 
+    // Safety: hide scanning after 10s (in case scan gets stuck)
+    if (state === "scanning" && laScanning) {
+      setTimeout(() => {
+        if (laScanning && laScanning.style.display !== "none") {
+          laScanning.style.display = "none";
+          if (laDone) laDone.style.display = "flex";
+        }
+      }, 10000);
+    }
+
     if (state === "done" && data?.email) {
       const lbl = document.getElementById("ma-gmail-email-label");
       if (lbl) lbl.textContent = data.email;
