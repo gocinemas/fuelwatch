@@ -18738,6 +18738,8 @@ let _savesAll = [];
     document.getElementById("school-main").style.display = "block";
     _schoolActiveProfileId = "";
     schoolLoad();
+    // Render school summary with latest brief data
+    setTimeout(() => _renderSchoolSummary(_briefData), 100);
   }
   window.schoolCheckPin = function() {
     var wa = _schoolWA() || _miruPhone();
