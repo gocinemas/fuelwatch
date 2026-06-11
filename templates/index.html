@@ -5566,7 +5566,7 @@ const _ts = new Date(d.timestamp);
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${p.address || 'No address'}</div>
           ${p.phone ? `<div style="font-size:11px;color:var(--muted)">${p.phone}</div>` : ''}
         </div>
-        <button onclick="document.getElementById('myarea-saved-list').parentElement.scrollIntoView(); _maPlacesEdit('${p.id}')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600;padding:4px 8px">Edit</button>
+        <button onclick="_maOpenEditPlaces()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600;padding:4px 8px">Edit</button>
       </div>`;
     });
     html += '</div>';
