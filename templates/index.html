@@ -5346,11 +5346,81 @@ const _ts = new Date(d.timestamp);
             <div style="font-size:17px;font-weight:800;color:var(--text)">Edit Saved Places</div>
           </div>
           <div id="ma-ep-rows">${rows}</div>
+
+          <div id="ma-add-new-form" style="display:none;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-top:16px">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">+ Add another place</div>
+            <input id="ma-new-place-name-edit" type="text" placeholder="e.g. The Four Horseshoes, Waitrose, Costa"
+              style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:12px;font-family:inherit"
+              onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px">Pick emoji</label>
+            <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+              <button onclick="document.getElementById('ma-new-place-emoji-edit').value='🍺';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">🍺</button>
+              <button onclick="document.getElementById('ma-new-place-emoji-edit').value='☕';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">☕</button>
+              <button onclick="document.getElementById('ma-new-place-emoji-edit').value='💊';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">💊</button>
+              <button onclick="document.getElementById('ma-new-place-emoji-edit').value='🍽️';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">🍽️</button>
+              <button onclick="document.getElementById('ma-new-place-emoji-edit').value='🛒';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">🛒</button>
+              <button onclick="document.getElementById('ma-new-place-emoji-edit').value='💈';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">💈</button>
+            </div>
+            <input id="ma-new-place-emoji-edit" type="hidden" value="🔖">
+
+            <input id="ma-new-place-addr-edit" type="text" placeholder="Address (optional)"
+              style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:12px;font-family:inherit"
+              onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+
+            <input id="ma-new-place-phone-edit" type="tel" placeholder="Phone (optional)"
+              style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:12px;font-family:inherit"
+              onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+
+            <div style="display:flex;gap:6px">
+              <button onclick="_maAddPlaceFromEdit()" style="flex:1;padding:8px;border-radius:10px;border:none;background:#065f46;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>
+              <button onclick="document.getElementById('ma-add-new-form').style.display='none'" style="flex:1;padding:8px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>
+            </div>
+          </div>
+
+          <button onclick="document.getElementById('ma-add-new-form').style.display='block';document.getElementById('ma-new-place-name-edit').focus()" style="width:100%;padding:12px;margin-top:16px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">+ Add another place</button>
         </div>`;
     }
 
     overlay.innerHTML = content;
     document.body.appendChild(overlay);
+  }
+
+  async function _maAddPlaceFromEdit() {
+    // Add from edit screen (inline form)
+    const name = document.getElementById("ma-new-place-name-edit")?.value.trim();
+    const emoji = document.getElementById("ma-new-place-emoji-edit")?.value || "🔖";
+    const addr = document.getElementById("ma-new-place-addr-edit")?.value.trim() || "";
+    const phone = document.getElementById("ma-new-place-phone-edit")?.value.trim() || "";
+
+    if (!name) {
+      alert("Please enter a place name");
+      return;
+    }
+
+    const newPlace = {
+      id: "place_" + Date.now(),
+      name: name,
+      emoji: emoji,
+      address: addr,
+      phone: phone,
+      category: "saved"
+    };
+
+    _maSavedPlaces = (_maSavedPlaces || []);
+    _maSavedPlaces.push(newPlace);
+    _maPlacesToLS(_maSavedPlaces);
+    _maReRenderSections();
+    _maRenderMyPlaces();
+
+    // Clear form and hide it
+    document.getElementById("ma-new-place-name-edit").value = "";
+    document.getElementById("ma-new-place-addr-edit").value = "";
+    document.getElementById("ma-new-place-phone-edit").value = "";
+    document.getElementById("ma-add-new-form").style.display = "none";
+
+    // Refresh edit screen to show new place
+    _maOpenEditPlaces();
   }
 
   async function _maAddNewPlace() {
