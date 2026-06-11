@@ -2752,12 +2752,19 @@
 
       <!-- Tab bar (hidden until first search) -->
       <!-- Tab bar — always visible once My Area loads -->
+      <!-- MY PLACES — always visible at top -->
+      <div id="myarea-my-places-card" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🔖 My Places</div>
+          <button onclick="_maOpenEditPlaces()" style="font-size:11px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;padding:4px 8px">+ Add</button>
+        </div>
+        <div id="myarea-my-places-list" style=""></div>
+      </div>
+
       <div id="myarea-tab-bar" style="margin-bottom:10px">
         <div style="display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px">
           <button onclick="_maShowTab('places')" id="matab-btn-places"
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🚌 Transport</button>
-          <button onclick="_maShowTab('services')" id="matab-btn-services"
-            style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏥 My Services</button>
           <button onclick="_maShowTab('civic')" id="matab-btn-civic"
             style="flex:1;padding:8px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">🏛️ Civic</button>
         </div>
@@ -2789,26 +2796,6 @@
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Tab: Services -->
-      <div id="matab-services" style="display:none">
-        <div id="myarea-services-loading" style="display:none">
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;opacity:.5">
-            <div style="height:13px;background:var(--border);border-radius:4px;width:40%;margin-bottom:8px"></div>
-            <div style="height:11px;background:var(--border);border-radius:4px;width:70%;margin-bottom:5px"></div>
-            <div style="height:11px;background:var(--border);border-radius:4px;width:55%"></div>
-          </div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;opacity:.4">
-            <div style="height:13px;background:var(--border);border-radius:4px;width:35%;margin-bottom:8px"></div>
-            <div style="height:11px;background:var(--border);border-radius:4px;width:60%;margin-bottom:5px"></div>
-            <div style="height:11px;background:var(--border);border-radius:4px;width:45%"></div>
-          </div>
-        </div>
-        <div id="myarea-gp"      style="display:none;margin-bottom:10px"></div>
-        <div id="myarea-shops"   style="display:none;margin-bottom:10px"></div>
-        <div id="myarea-pubs"    style="display:none;margin-bottom:10px"></div>
-        <div id="myarea-schools" style="display:none;margin-bottom:10px"></div>
       </div>
 
       <!-- Tab: Civic — MP, councillors, council, crime only -->
@@ -5350,6 +5337,7 @@ const _ts = new Date(d.timestamp);
   function _maReRenderSections() {
     // Always render — each function checks _maSavedPlaces and shows bookmarks
     // even when API data hasn't arrived yet (empty object = no nearby items)
+    _maRenderMyPlaces();  // Update My Places card
     _maRenderGPs(_maAreaData || {});
     _maRenderShops(_maShopsData || {});
     _maRenderPubs(_maLocalData || {});
@@ -5365,13 +5353,13 @@ const _ts = new Date(d.timestamp);
   }
 
   function _maShowTab(tab) {
-    const postcodeRequired = ["places","services","civic"];
+    const postcodeRequired = ["places","civic"];
     // If switching to a postcode-dependent tab without a postcode, nudge to search first
     if (postcodeRequired.includes(tab) && !_maCurrentPostcode) {
       document.getElementById("myarea-postcode-input")?.focus();
       return;
     }
-    ["places","services","civic","accounts"].forEach(t => {
+    ["places","civic","accounts"].forEach(t => {
       document.getElementById(`matab-${t}`).style.display = t === tab ? "" : "none";
       const btn = document.getElementById(`matab-btn-${t}`);
       if (btn) {
@@ -5379,16 +5367,31 @@ const _ts = new Date(d.timestamp);
         btn.style.color = t === tab ? "#fff" : "var(--muted)";
       }
     });
-    const svcSkel = document.getElementById("myarea-services-loading");
-    if (svcSkel && tab === "services") {
-      const hasContent = ["myarea-gp","myarea-shops","myarea-pubs","myarea-schools"]
-        .some(id => { const el = document.getElementById(id); return el && el.style.display !== "none"; });
-      if (!hasContent && _maCurrentPostcode) svcSkel.style.display = "";
-    } else if (svcSkel) {
-      svcSkel.style.display = "none";
-    }
     localStorage.setItem("miru_ma_tab", tab);
     if (tab === "accounts") { _maSchoolStatusLoad(); _clubsLoad(); }
+  }
+
+  function _maRenderMyPlaces() {
+    const list = document.getElementById("myarea-my-places-list");
+    if (!list) return;
+    const places = (_maSavedPlaces || []).filter(p => p.category !== "_home");
+    if (places.length === 0) {
+      list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">No saved places yet. Add your favorite pub, pharmacy, coffee shop!</div>';
+      return;
+    }
+    let html = '<div style="display:flex;flex-direction:column;gap:6px">';
+    places.forEach(p => {
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:var(--bg);border-radius:8px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${p.emoji} ${p.name}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${p.address || 'No address'}</div>
+          ${p.phone ? `<div style="font-size:11px;color:var(--muted)">${p.phone}</div>` : ''}
+        </div>
+        <button onclick="document.getElementById('myarea-saved-list').parentElement.scrollIntoView(); _maPlacesEdit('${p.id}')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-weight:600;padding:4px 8px">Edit</button>
+      </div>`;
+    });
+    html += '</div>';
+    list.innerHTML = html;
   }
 
   function _maSectionHtml(id, title, bodyHtml) {
@@ -7575,6 +7578,7 @@ function _hcAdd() {
     _maApplyPrefs();
     _maShowLinkedPhone();
     _maLoadSavedPlaces();
+    _maRenderMyPlaces();  // Render My Places card with saved places
     _maLoadVehicles();
     _maSchoolStatusLoad();
     _clubsLoad();
