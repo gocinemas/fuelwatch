@@ -10487,9 +10487,10 @@ def api_home_ask():
     if q_lower in _GREETINGS:
         return jsonify({"answer": "Hey! What would you like to know?"})
 
-    # ── SAVED PLACES LOOKUP — "What's my local Waitrose phone?" ──────────────────
+    # ── SAVED PLACES LOOKUP — PRIORITY before LLM ──────────────────────────────────
     # Check if question mentions a place and user has it saved
-    if any(w in q_lower for w in ["phone", "address", "where", "location", "local"]):
+    # This runs EARLY to avoid LLM doing nearby searches instead of returning saved place
+    if any(w in q_lower for w in ["phone", "address", "where", "location", "local", "did i", "have i", "was i"]):
         try:
             # Try database first, fallback to context
             saved_places = []
@@ -10507,21 +10508,39 @@ def api_home_ask():
             if not saved_places:
                 saved_places = ctx.get("saved_places") or []
 
-            # Match place by keywords in question (smart matching)
+            # SMART MATCHING: Check by name words AND emoji type
             for place in saved_places:
                 place_name = (place.get("name") or "").lower()
+                place_emoji = place.get("emoji") or ""
                 place_words = place_name.split()
-                # Check if ANY word from place name is in question
-                # E.g., "coffee" from "Blacksheep Coffee" matches "what's my local coffee?"
+
+                # Match 1: Direct name word match
+                # E.g., "coffee" from "Blacksheep Coffee" matches "where did i have coffee?"
                 if place_words and any(word in q_lower for word in place_words):
-                    # Found a saved place!
                     phone = place.get("phone") or "Not saved"
                     addr = place.get("address") or "Not saved"
-                    emoji = place.get("emoji") or "📍"
-
-                    answer = f"{emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
-                    app.logger.info(f"[ask] Saved place found: {place.get('name')}")
+                    answer = f"{place_emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
+                    app.logger.info(f"[ask] Saved place found by name: {place.get('name')}")
                     return jsonify({"answer": answer})
+
+                # Match 2: Emoji type match for questions like "where did i have coffee?"
+                # Coffee emoji matches "coffee" keyword
+                emoji_map = {
+                    "☕": ["coffee", "cafe"],
+                    "🍺": ["pub", "bar", "drink"],
+                    "🍽️": ["restaurant", "food", "ate", "dinner", "lunch"],
+                    "💊": ["pharmacy", "pharmacy"],
+                    "🛒": ["shop", "shopping", "waitrose", "tesco", "shop"],
+                }
+                if place_emoji in emoji_map:
+                    place_types = emoji_map[place_emoji]
+                    if any(ptype in q_lower for ptype in place_types):
+                        phone = place.get("phone") or "Not saved"
+                        addr = place.get("address") or "Not saved"
+                        answer = f"{place_emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
+                        app.logger.info(f"[ask] Saved place found by emoji: {place.get('name')}")
+                        return jsonify({"answer": answer})
+
         except Exception as e:
             app.logger.debug(f"[ask] Saved places lookup failed: {e}")
 
