@@ -2254,17 +2254,6 @@
           </button>
         </div>
 
-        <!-- School Comms Card — upcoming events + permissions -->
-        <div id="school-comms-card" style="background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%);border-radius:16px;padding:16px;margin-bottom:12px;display:none">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div style="font-size:14px;font-weight:800;color:#065f46;display:flex;align-items:center;gap:6px">
-              🏫 School Comms
-            </div>
-            <button onclick="showScreen('school')" style="font-size:12px;background:none;border:none;color:#047857;cursor:pointer;font-weight:600">View all ›</button>
-          </div>
-          <div id="school-comms-body" style="font-size:12px;line-height:1.6;color:#1f2937"></div>
-        </div>
-
         <!-- Spend card container — rendered by JavaScript -->
         <div id="brief-spend-card-container" style="margin-bottom:12px"></div>
 
@@ -15061,6 +15050,12 @@ _bkBadge();
     <!-- Child selector -->
     <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:18px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
 
+    <!-- School Comms Summary Card -->
+    <div id="school-summary-card" style="background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%);border-radius:16px;padding:16px;margin-bottom:16px;display:none">
+      <div style="font-size:14px;font-weight:800;color:#065f46;margin-bottom:12px">📋 Upcoming Events</div>
+      <div id="school-summary-body" style="font-size:13px;line-height:1.7;color:#1f2937"></div>
+    </div>
+
     <!-- School name + refresh -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div id="school-profile-card" style="font-size:13px;font-weight:600;color:var(--text)"></div>
@@ -16125,8 +16120,8 @@ let _savesAll = [];
           // Chips
           _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
 
-          // School Comms card
-          _renderSchoolCommsCard(d);
+          // School summary (rendered on school screen, not brief)
+          _renderSchoolSummary(d);
 
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
@@ -16641,10 +16636,10 @@ let _savesAll = [];
     localStorage.setItem("brief_school_collapsed", collapsed ? "0" : "1");
   };
 
-  function _renderSchoolCommsCard(briefData) {
-    // Render upcoming school events for both kids
-    const card = document.getElementById("school-comms-card");
-    const body = document.getElementById("school-comms-body");
+  function _renderSchoolSummary(briefData) {
+    // Render upcoming school events on School screen (not brief)
+    const card = document.getElementById("school-summary-card");
+    const body = document.getElementById("school-summary-body");
     if (!card || !body) return;
 
     if (!briefData || !briefData.context || !briefData.context.school) {
@@ -16677,16 +16672,16 @@ let _savesAll = [];
         const first = events[0];
         const emoji = first.emoji || "📌";
         const time = first.event_time ? ` · ${first.event_time}` : "";
-        html += `<div style="margin-bottom:8px">
-          <div style="font-weight:700;color:#047857">${child}</div>
-          <div style="color:#374151;margin-top:2px">${emoji} ${first.event_name}${time}</div>
-          ${events.length > 1 ? `<div style="color:#6b7280;font-size:11px;margin-top:2px">+${events.length - 1} more</div>` : ""}
+        html += `<div style="margin-bottom:10px">
+          <strong style="color:#047857">${child}</strong><br/>
+          ${emoji} ${first.event_name}${time}
+          ${events.length > 1 ? `<br/><span style="color:#6b7280;font-size:11px">+${events.length - 1} more events</span>` : ""}
         </div>`;
       }
     });
 
     if (holidays) {
-      html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #d1fae5;color:#059669;font-size:11px;font-weight:600">📅 ${holidays}</div>`;
+      html += `<div style="margin-top:10px;padding-top:10px;border-top:1px solid #d1fae5;color:#059669">📅 ${holidays}</div>`;
     }
 
     body.innerHTML = html;
