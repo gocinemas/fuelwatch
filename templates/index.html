@@ -2789,7 +2789,13 @@
           <div id="commute-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:8px">
             <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">Add a destination</div>
             <input id="commute-add-name" placeholder="Label (e.g. Work, Inaaya's School)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:6px">
-            <input id="commute-add-dest" placeholder="Address or school name (e.g. New Haw Junior School)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:8px">
+
+            <input id="commute-add-dest" placeholder="Address or school name (e.g. New Haw Junior School)"
+              oninput="clearTimeout(_commuteSearchDebounce);_commuteSearchDebounce=setTimeout(()=>_commuteSearchDest(this.value),300)"
+              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:2px">
+
+            <div id="commute-dest-suggestions" style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;max-height:120px;overflow-y:auto;font-size:12px;margin-bottom:8px"></div>
+
             <div style="display:flex;gap:6px">
               <button onclick="_commuteSave()" style="flex:1;padding:8px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
               <button onclick="document.getElementById('commute-add-form').style.display='none'" style="padding:8px 14px;background:var(--border);color:var(--text);border:none;border-radius:8px;font-size:13px;cursor:pointer">Cancel</button>
@@ -6508,10 +6514,39 @@ function _hcAdd() {
 
   setTimeout(_hcRender, 500);
 
+  let _commuteSearchDebounce;
+  async function _commuteSearchDest(query) {
+    if (!query || query.length < 2) {
+      document.getElementById("commute-dest-suggestions").innerHTML = "";
+      return;
+    }
+    try {
+      const r = await fetch(`/api/myarea/place-search?q=${encodeURIComponent(query)}`);
+      const results = await r.json();
+      let html = "";
+      results.slice(0,4).forEach(p => {
+        html += `<div onclick="_commuteSelectDest('${(p.address||'').replace(/'/g,"\\'")}')"
+          style="padding:8px;cursor:pointer;border-bottom:1px solid var(--border);hover:background:var(--surface)">
+          <strong>${p.name}</strong><br/>
+          <span style="color:var(--muted);font-size:11px">${p.address || ''}</span>
+        </div>`;
+      });
+      document.getElementById("commute-dest-suggestions").innerHTML = html || '<div style="padding:8px;color:var(--muted)">No results</div>';
+    } catch(e) {
+      console.log("Commute search error:", e);
+    }
+  }
+
+  function _commuteSelectDest(addr) {
+    document.getElementById("commute-add-dest").value = addr;
+    document.getElementById("commute-dest-suggestions").innerHTML = "";
+  }
+
   function _commuteAdd() {
     document.getElementById("commute-add-form").style.display = "";
     document.getElementById("commute-add-name").value = "";
     document.getElementById("commute-add-dest").value = "";
+    document.getElementById("commute-dest-suggestions").innerHTML = "";
     document.getElementById("commute-add-name").focus();
   }
 
