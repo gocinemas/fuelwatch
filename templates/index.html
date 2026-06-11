@@ -15170,10 +15170,10 @@ _bkBadge();
     <!-- Child selector -->
     <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:18px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
 
-    <!-- School Comms Summary Card -->
-    <div id="school-summary-card" style="background:linear-gradient(135deg,#ecfdf5 0%,#d1fae5 100%);border-radius:16px;padding:16px;margin-bottom:16px;display:none">
-      <div style="font-size:14px;font-weight:800;color:#065f46;margin-bottom:12px">📋 Upcoming Events</div>
-      <div id="school-summary-body" style="font-size:13px;line-height:1.7;color:#1f2937"></div>
+    <!-- School Comms Summary Card — Crisp & Clean -->
+    <div id="school-summary-card" style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #93c5fd;border-radius:16px;padding:16px;margin-bottom:16px;display:none">
+      <div style="font-size:11px;font-weight:800;color:#1d4ed8;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">📚 School Calendar</div>
+      <div id="school-summary-body" style="font-size:13px;line-height:1.8;color:#1e40af"></div>
     </div>
 
     <!-- School name + refresh -->
@@ -16789,21 +16789,21 @@ let _savesAll = [];
     });
 
     let html = "";
-    Object.entries(byChild).forEach(([child, events]) => {
+    Object.entries(byChild).forEach(([child, events], idx) => {
       if (events.length > 0) {
         const first = events[0];
         const emoji = first.emoji || "📌";
-        const time = first.event_time ? ` · ${first.event_time}` : "";
-        html += `<div style="margin-bottom:10px">
-          <strong style="color:#047857">${child}</strong><br/>
-          ${emoji} ${first.event_name}${time}
-          ${events.length > 1 ? `<br/><span style="color:#6b7280;font-size:11px">+${events.length - 1} more events</span>` : ""}
+        const time = first.event_time ? ` · <strong>${first.event_time}</strong>` : "";
+        html += `<div style="margin-bottom:12px${idx > 0 ? ';padding-top:12px;border-top:1px solid #bfdbfe' : ''}">
+          <div style="font-weight:700;color:#1e40af;font-size:12px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${child}</div>
+          <div style="color:#1e40af">${emoji} ${first.event_name}${time}</div>
+          ${events.length > 1 ? `<div style="color:#60a5fa;font-size:11px;margin-top:4px">+${events.length - 1} more</div>` : ""}
         </div>`;
       }
     });
 
     if (holidays) {
-      html += `<div style="margin-top:10px;padding-top:10px;border-top:1px solid #d1fae5;color:#059669">📅 ${holidays}</div>`;
+      html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #bfdbfe;color:#1e40af;font-weight:600">📅 ${holidays}</div>`;
     }
 
     body.innerHTML = html;
