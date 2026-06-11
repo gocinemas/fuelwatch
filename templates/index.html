@@ -6524,22 +6524,25 @@ function _hcAdd() {
       const r = await fetch(`/api/myarea/place-search?q=${encodeURIComponent(query)}`);
       const results = await r.json();
       let html = "";
-      results.slice(0,4).forEach(p => {
-        html += `<div onclick="_commuteSelectDest('${(p.address||'').replace(/'/g,"\\'")}')"
-          style="padding:8px;cursor:pointer;border-bottom:1px solid var(--border);hover:background:var(--surface)">
+      results.slice(0,4).forEach((p, idx) => {
+        html += `<div class="commute-suggestion" data-addr="${(p.address||'').replace(/"/g,'&quot;')}"
+          style="padding:8px;cursor:pointer;border-bottom:1px solid var(--border)">
           <strong>${p.name}</strong><br/>
           <span style="color:var(--muted);font-size:11px">${p.address || ''}</span>
         </div>`;
       });
-      document.getElementById("commute-dest-suggestions").innerHTML = html || '<div style="padding:8px;color:var(--muted)">No results</div>';
+      const container = document.getElementById("commute-dest-suggestions");
+      container.innerHTML = html || '<div style="padding:8px;color:var(--muted)">No results</div>';
+      // Add click handlers to suggestions
+      container.querySelectorAll(".commute-suggestion").forEach(el => {
+        el.addEventListener("click", () => {
+          document.getElementById("commute-add-dest").value = el.dataset.addr;
+          container.innerHTML = "";
+        });
+      });
     } catch(e) {
       console.log("Commute search error:", e);
     }
-  }
-
-  function _commuteSelectDest(addr) {
-    document.getElementById("commute-add-dest").value = addr;
-    document.getElementById("commute-dest-suggestions").innerHTML = "";
   }
 
   function _commuteAdd() {
