@@ -16760,7 +16760,7 @@ let _savesAll = [];
           colorIdx++;
         }
 
-        // Draw pie chart
+        // Draw pie chart (hidden by default, shown on toggle)
         if (pieData.length > 0) {
           var svg = '<svg viewBox="0 0 100 100" style="width:100%;height:120px;margin:10px 0">';
           var angle = 0;
@@ -16782,7 +16782,7 @@ let _savesAll = [];
           pieChartHtml = svg;
         }
 
-        // Build breakdown list
+        // Build breakdown list (always shown by default)
         colorIdx = 0;
         for (var cat in spend.breakdown) {
           var cb = spend.breakdown[cat];
@@ -16795,12 +16795,19 @@ let _savesAll = [];
           colorIdx++;
         }
       }
+
+      // Unique ID for this card's toggle
+      var cardId = "spend-chart-" + Math.random().toString(36).substr(2, 9);
+
       var spendHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px">'
-        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">💳 Spend · ' + (spend.month || "") + '</div>'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+        + '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">💳 Spend · ' + (spend.month || "") + '</div>'
+        + '<button onclick="document.getElementById(\'' + cardId + '-chart\').style.display = document.getElementById(\'' + cardId + '-chart\').style.display === \'none\' ? \'block\' : \'none\'; document.getElementById(\'' + cardId + '-list\').style.display = document.getElementById(\'' + cardId + '-chart\').style.display === \'none\' ? \'block\' : \'none\'" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-weight:600">📊 View</button>'
+        + '</div>'
         + '<div style="font-size:22px;font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1">£' + spend.total + '</div>'
         + '<div style="font-size:12px;color:var(--muted);margin-top:3px">across ' + spend.count + ' receipt' + (spend.count !== 1 ? 's' : '') + '</div>'
-        + pieChartHtml
-        + breakdownHtml
+        + '<div id="' + cardId + '-list" style="margin-top:8px">' + breakdownHtml + '</div>'
+        + '<div id="' + cardId + '-chart" style="display:none;margin-top:8px">' + pieChartHtml + '</div>'
         + '<div id="brief-spend-last-receipt" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"></div>'
         + '</div>';
 
