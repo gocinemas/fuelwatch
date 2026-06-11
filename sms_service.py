@@ -7609,8 +7609,20 @@ def _v2_fetch_school(from_number: str) -> dict:
         # Dedup upcoming events before returning — fixes home brief + school card
         upcoming = _school_dedup_events(upcoming)
 
+        # Extract action items due this week
+        action_items = [
+            {
+                "child_name": e.get("child_name", ""),
+                "title": e.get("event_title", ""),
+                "due_date": e.get("event_date", ""),
+                "action": e.get("action_needed", ""),
+            }
+            for e in upcoming
+            if e.get("action_needed") and e.get("event_date") <= (today + timedelta(days=7)).isoformat()
+        ]
+
         return {"schools": schools, "upcoming": upcoming, "recent": recent_rows,
-                "events": upcoming, "holiday_status": holiday_status}
+                "events": upcoming, "actions": action_items, "holiday_status": holiday_status}
     except Exception:
         return {"schools": [], "upcoming": [], "recent": [], "events": [], "holiday_status": None}
 
