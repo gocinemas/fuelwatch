@@ -15589,7 +15589,7 @@ let _savesAll = [];
     _trainHomeLoad();
   };
 
-  async function _trainHomeLoad() {
+  window._trainHomeLoad = async function() {
     const pc = _miruPostcode();
     const ph = document.getElementById("home-train-placeholder");
     const wfhRow = document.getElementById("home-train-wfh-row");
@@ -15601,8 +15601,10 @@ let _savesAll = [];
     if (hour >= 21) {
       // Hide ALL train displays (both this function and brief context cards)
       if (ph) { ph.style.display = "none"; }
-      document.getElementById("home-train-next").style.display = "none";
-      document.getElementById("home-train-sub").style.display = "none";
+      const trainNext = document.getElementById("home-train-next");
+      if (trainNext) { trainNext.style.display = "none"; }
+      const trainSub = document.getElementById("home-train-sub");
+      if (trainSub) { trainSub.style.display = "none"; }
       // Also hide the train card in LIVE NOW section
       const trainCard = document.querySelector('[class*="feat-card-train"]');
       if (trainCard) { trainCard.style.display = "none"; }
@@ -19070,7 +19072,7 @@ let _savesAll = [];
     return                              {label: fullDate,          sub: d.getFullYear()+"",dot:"#64748b", bg:"#f8fafc", border:"#e2e8f0", fg:"#475569"};
   }
 
-  function _schoolToggleRow(id) {
+  window._schoolToggleRow = function(id) {
     const d = document.getElementById("school-detail-" + id);
     const ch = document.getElementById("school-chev-" + id);
     if (!d) return;
