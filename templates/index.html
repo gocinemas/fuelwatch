@@ -16123,10 +16123,15 @@ let _savesAll = [];
       var isOnline = title.toLowerCase().includes("sublime") || (loc && loc.toLowerCase().includes("online"));
 
       if (isOnline) {
-        // Online event — show Join button
-        // Try to extract URL from location if it exists, otherwise generic Join
-        var joinUrl = (loc && loc.includes("http")) ? loc : "javascript:void(0)";
-        navBtns = '<button onclick="alert(\'Join link: Check your email or calendar for the event link\')" style="font-size:11px;font-weight:700;color:#fff;background:#10b981;border:none;border-radius:8px;padding:4px 10px;cursor:pointer;text-decoration:none">🔗 Join</button>';
+        // Online event — show Join button with actual URL if available
+        var joinUrl = (loc && loc.includes("http")) ? loc : null;
+        if (joinUrl) {
+          // Location contains the join URL (e.g., Zoom link)
+          navBtns = '<a href="' + joinUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#10b981;border-radius:8px;padding:4px 10px;cursor:pointer;text-decoration:none">🔗 Join</a>';
+        } else {
+          // No URL in location — show generic Join button
+          navBtns = '<button onclick="alert(\'Join link will be sent to your email. Check your email or calendar for the event link.\')" style="font-size:11px;font-weight:700;color:#fff;background:#10b981;border:none;border-radius:8px;padding:4px 10px;cursor:pointer">🔗 Join</button>';
+        }
       } else if (loc) {
         // Physical location — show Waze/Maps
         var wazeUrl = "https://waze.com/ul?q=" + encodeURIComponent(loc) + "&navigate=yes";
