@@ -16255,9 +16255,6 @@ let _savesAll = [];
           // Chips
           _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
 
-          // School summary (rendered on school screen, not brief)
-          _renderSchoolSummary(d);
-
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
 
