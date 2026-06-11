@@ -6623,16 +6623,24 @@ def api_home_last_receipt():
     phone = from_number.replace("whatsapp:", "").strip()
 
     try:
-        # Get most recent receipt by UPLOAD timestamp (created_at)
-        # shop_date is often NULL since vision model doesn't always extract it
-        # created_at is reliable - it's when the receipt was uploaded
+        # Get most recent REAL receipt by UPLOAD timestamp (created_at)
+        # Skip "Online:" merchants (broken data) — find first real receipt
         rows = lib._sb().table("receipts").select("merchant,total,shop_date,created_at").eq("phone", phone) \
-            .order("created_at", desc=True).limit(1).execute().data or []
+            .order("created_at", desc=True).limit(20).execute().data or []  # Get 20 to filter through
 
         if not rows:
             return jsonify({"merchant": None, "total": None, "shop_date": None})
 
-        r = rows[0]
+        # Find first real receipt (not "Online:")
+        r = None
+        for row in rows:
+            merchant = row.get("merchant", "")
+            if merchant and not merchant.startswith("Online:"):
+                r = row
+                break
+
+        if not r:
+            return jsonify({"merchant": None, "total": None, "shop_date": None})
         app.logger.info(f"[last-receipt] RETURNING: {r.get('merchant')} on {r.get('shop_date')}")
 
         merchant = r.get("merchant", "Unknown")
@@ -7573,9 +7581,9 @@ def _v2_fetch_school(from_number: str) -> dict:
             ev["school_name"] = pr.get("school_name", "")
             ev["address"]     = pr.get("address", "")  # For transit lookup + smart context
             return ev
-        # Upcoming events — next 42 days
+        # Upcoming events — next 42 days (include time so frontend can display it)
         upcoming = [_enrich(e) for e in (lib._sb().table("school_events").select(
-            "id,profile_id,event_title,event_date,event_type,action_needed"
+            "id,profile_id,event_title,event_date,event_time,event_type,action_needed,location"
         ).in_("profile_id", pids).gte("event_date", today_s).lte("event_date", horizon) \
          .order("event_date").execute().data or [])]
         # Recent comms — emails received in last 14 days
