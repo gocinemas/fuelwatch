@@ -10507,10 +10507,13 @@ def api_home_ask():
             if not saved_places:
                 saved_places = ctx.get("saved_places") or []
 
-            # Match place name in question
+            # Match place by keywords in question (smart matching)
             for place in saved_places:
                 place_name = (place.get("name") or "").lower()
-                if place_name and place_name in q_lower:
+                place_words = place_name.split()
+                # Check if ANY word from place name is in question
+                # E.g., "coffee" from "Blacksheep Coffee" matches "what's my local coffee?"
+                if place_words and any(word in q_lower for word in place_words):
                     # Found a saved place!
                     phone = place.get("phone") or "Not saved"
                     addr = place.get("address") or "Not saved"
