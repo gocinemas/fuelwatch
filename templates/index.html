@@ -18787,10 +18787,19 @@ let _savesAll = [];
     _schoolActiveProfileId = "";
     schoolLoad();
 
-    // Load brief data if not available, then render school summary
+    // Load brief data silently if not available, then render school summary
     if (!_briefData) {
-      _briefInit(); // Trigger brief load
-      setTimeout(() => _renderSchoolSummary(_briefData), 500);
+      // Fetch brief data without rendering it
+      const pc = _miruPostcode();
+      if (pc) {
+        fetch(`/api/home/brief?pc=${encodeURIComponent(pc)}&token=${_miruPhone()||''}`)
+          .then(r => r.json())
+          .then(d => {
+            _briefData = d;
+            _renderSchoolSummary(_briefData);
+          })
+          .catch(() => {});
+      }
     } else {
       _renderSchoolSummary(_briefData);
     }
