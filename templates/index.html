@@ -18786,8 +18786,14 @@ let _savesAll = [];
     document.getElementById("school-main").style.display = "block";
     _schoolActiveProfileId = "";
     schoolLoad();
-    // Render school summary with latest brief data
-    setTimeout(() => _renderSchoolSummary(_briefData), 100);
+
+    // Load brief data if not available, then render school summary
+    if (!_briefData) {
+      _briefInit(); // Trigger brief load
+      setTimeout(() => _renderSchoolSummary(_briefData), 500);
+    } else {
+      _renderSchoolSummary(_briefData);
+    }
   }
   window.schoolCheckPin = function() {
     var wa = _schoolWA() || _miruPhone();
