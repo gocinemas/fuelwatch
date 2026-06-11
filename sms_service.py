@@ -10544,6 +10544,11 @@ def api_home_ask():
         except Exception as e:
             app.logger.debug(f"[ask] Saved places lookup failed: {e}")
 
+        # If we reach here, saved places lookup was triggered but didn't find a match
+        # Add to context so Groq knows to mention this when suggesting nearby places
+        if "saved_places" not in str(ctx):
+            ctx["_note"] = "User asked about saved places but we found none. If providing nearby suggestions, mention that first."
+
     # ── Intent classification ──────────────────────────────────────────────────
     # Utility: factual/definitional questions that don't need personal context
     _UTILITY = ["define ", "definition of", "what does ", "what is a ", "what is the ",
@@ -11138,7 +11143,7 @@ def api_home_ask():
             "You are Miru, a smart British personal assistant. "
             "You have two sources: (1) personal 'Context' facts about the user — "
             "their saves, recurring activities, school events, spend, train route, "
-            "vehicles, life admin (energy/insurance/mobile), prefs and bin collection; "
+            "vehicles, life admin (energy/insurance/mobile), prefs, saved places and bin collection; "
             "(2) your own general knowledge. "
             "Use Context for any personal question. "
             "Use general knowledge for everything else — definitions, facts, calculations, advice. "
@@ -11148,8 +11153,11 @@ def api_home_ask():
             "'You have a recurring activity scheduled for...'. "
             "CRITICAL distinction: 'Saves library' = articles, places or clippings the user bookmarked. "
             "'Receipts' = purchase records. 'Receipt items' = individual products bought. "
+            "'Saved places' = user's favorite shops, pubs, cafes they've saved. "
             "When asked 'what did I save', use Saves library ONLY. "
             "When asked 'did I buy X', check Receipt items — answer yes/no with shop and date. "
+            "When user asks 'where did I have X' and it's not in saved places, say: "
+            "'I didn't find that in your saved places, but here are some nearby recommendations:' then list options. "
             "For personal history not in Context, say 'I don't have a record of that' — never invent. "
             "For general facts — answer from knowledge. "
             "Plain English, no bullet points, under 40 words."
