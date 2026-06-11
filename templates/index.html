@@ -6498,6 +6498,7 @@ function _hcAdd() {
 
   function _maRenderGPs(area) {
     const el = document.getElementById("myarea-gp");
+    if (!el) return; // Element doesn't exist (not on My Area screen)
     if (!_maGetPrefs().gp) { el.style.display = "none"; return; }
     const gps    = (area.gps || []).slice(0, 5);
     const pharms = (area.pharmacies || []).slice(0, 3);
@@ -6537,6 +6538,7 @@ function _hcAdd() {
 
   function _maRenderShops(data) {
     const el = document.getElementById("myarea-shops");
+    if (!el) return; // Element doesn't exist (not on My Area screen)
     if (!_maGetPrefs().shops) { el.style.display = "none"; return; }
     const supers = (data.supermarkets || []).slice(0, 5);
     const offlic = (data.off_licences || []).slice(0, 5);
@@ -6579,6 +6581,7 @@ function _hcAdd() {
 
   function _maRenderPubs(data) {
     const el = document.getElementById("myarea-pubs");
+    if (!el) return; // Element doesn't exist (not on My Area screen)
     if (!_maGetPrefs().pubs) { el.style.display = "none"; return; }
     const pubs  = (data.pubs  || []).slice(0, 5);
     const cafes = (data.cafes || []).slice(0, 3);
