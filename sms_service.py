@@ -10487,6 +10487,29 @@ def api_home_ask():
     if q_lower in _GREETINGS:
         return jsonify({"answer": "Hey! What would you like to know?"})
 
+    # ── SAVED PLACES LOOKUP — "What's my local Waitrose phone?" ──────────────────
+    # Check if question mentions a place and user has it saved
+    if from_number and any(w in q_lower for w in ["phone", "address", "where", "location", "local"]):
+        try:
+            plain = from_number.replace("whatsapp:", "").strip()
+            saved_places = lib._sb().table("ma_saved_places").select("name,address,phone,emoji") \
+                .eq("phone", plain).execute().data or []
+
+            # Match place name in question
+            for place in saved_places:
+                place_name = (place.get("name") or "").lower()
+                if place_name and place_name in q_lower:
+                    # Found a saved place!
+                    phone = place.get("phone") or "Not saved"
+                    addr = place.get("address") or "Not saved"
+                    emoji = place.get("emoji") or "📍"
+
+                    answer = f"{emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
+                    app.logger.info(f"[ask] Saved place found: {place.get('name')}")
+                    return jsonify({"answer": answer})
+        except Exception as e:
+            app.logger.debug(f"[ask] Saved places lookup failed: {e}")
+
     # ── Intent classification ──────────────────────────────────────────────────
     # Utility: factual/definitional questions that don't need personal context
     _UTILITY = ["define ", "definition of", "what does ", "what is a ", "what is the ",
