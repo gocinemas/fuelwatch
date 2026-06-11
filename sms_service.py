@@ -5699,6 +5699,48 @@ def api_myarea_places_patch(place_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/myarea/place-search", methods=["GET"])
+def api_myarea_place_search():
+    """Search for places and return address + phone for autocomplete."""
+    query = request.args.get("q", "").strip()
+    if not query or len(query) < 2:
+        return jsonify([])
+    if not _GOOGLE_PLACES_KEY:
+        return jsonify([])
+    try:
+        # Text Search
+        ts = requests.get(
+            "https://maps.googleapis.com/maps/api/place/textsearch/json",
+            params={"query": query + " UK", "key": _GOOGLE_PLACES_KEY, "region": "uk"},
+            timeout=8,
+        )
+        results = []
+        for p in ts.json().get("results", [])[:5]:
+            place_id = p.get("place_id")
+            if not place_id:
+                continue
+
+            # Get full details (address, phone)
+            det = requests.get(
+                "https://maps.googleapis.com/maps/api/place/details/json",
+                params={
+                    "place_id": place_id,
+                    "fields": "name,formatted_address,international_phone_number",
+                    "key": _GOOGLE_PLACES_KEY,
+                },
+                timeout=8,
+            )
+            detail = det.json().get("result", {})
+            results.append({
+                "name": detail.get("name", ""),
+                "address": detail.get("formatted_address", ""),
+                "phone": detail.get("international_phone_number", ""),
+            })
+        return jsonify(results)
+    except Exception:
+        return jsonify([])
+
+
 @app.route("/api/myarea/home-postcode", methods=["GET"])
 def api_myarea_home_postcode_get():
     from_number = request.args.get("from_number", "").strip()

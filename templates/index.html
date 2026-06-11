@@ -2756,7 +2756,7 @@
       <div id="myarea-my-places-card" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">🔖 My Places</div>
-          <button onclick="_maOpenEditPlaces()" style="font-size:11px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;padding:4px 8px">+ Add</button>
+          <button onclick="_maOpenAddPlaceModal()" style="font-size:11px;font-weight:700;color:#4f46e5;background:none;border:none;cursor:pointer;padding:4px 8px">+ Add</button>
         </div>
         <div id="myarea-my-places-list" style=""></div>
       </div>
@@ -5384,6 +5384,123 @@ const _ts = new Date(d.timestamp);
 
     overlay.innerHTML = content;
     document.body.appendChild(overlay);
+  }
+
+  let _maSearchDebounce;
+  async function _maSearchPlaces(query) {
+    // Autocomplete search with debounce
+    if (!query || query.length < 2) {
+      document.getElementById("ma-add-suggestions").innerHTML = "";
+      return;
+    }
+    try {
+      const r = await fetch(`/api/myarea/place-search?q=${encodeURIComponent(query)}`);
+      const results = await r.json();
+      let html = "";
+      results.forEach(p => {
+        html += `<div onclick="_maSelectPlace('${(p.name||'').replace(/'/g,"\\'")}',' ${(p.address||'').replace(/'/g,"\\'")}',' ${(p.phone||'').replace(/'/g,"\\'")}')"
+          style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px;hover:background:var(--surface)">
+          📍 <strong>${p.name}</strong><br/>
+          <span style="color:var(--muted);font-size:10px">${p.address || ''}</span>
+        </div>`;
+      });
+      document.getElementById("ma-add-suggestions").innerHTML = html || '<div style="padding:8px 10px;font-size:12px;color:var(--muted)">No results</div>';
+    } catch(e) {
+      console.log("Place search error:", e);
+    }
+  }
+
+  function _maSelectPlace(name, addr, phone) {
+    // Auto-fill form when user selects a suggestion
+    document.getElementById("ma-add-place-name").value = name;
+    document.getElementById("ma-add-place-addr").value = addr.trim();
+    document.getElementById("ma-add-place-phone").value = phone.trim();
+    document.getElementById("ma-add-suggestions").innerHTML = "";
+  }
+
+  async function _maAddPlaceFromModal() {
+    const name = document.getElementById("ma-add-place-name")?.value.trim();
+    const emoji = document.getElementById("ma-add-place-emoji")?.value || "🔖";
+    const addr = document.getElementById("ma-add-place-addr")?.value.trim() || "";
+    const phone = document.getElementById("ma-add-place-phone")?.value.trim() || "";
+
+    if (!name) {
+      alert("Please enter a place name");
+      return;
+    }
+
+    const newPlace = {
+      id: "place_" + Date.now(),
+      name: name,
+      emoji: emoji,
+      address: addr,
+      phone: phone,
+      category: "saved"
+    };
+
+    _maSavedPlaces = (_maSavedPlaces || []);
+    _maSavedPlaces.push(newPlace);
+    _maPlacesToLS(_maSavedPlaces);
+    _maReRenderSections();
+    _maRenderMyPlaces();
+
+    // Close modal
+    document.getElementById("ma-add-place-modal").remove();
+  }
+
+  function _maOpenAddPlaceModal() {
+    // Simple modal for adding one place
+    const modal = document.createElement("div");
+    modal.id = "ma-add-place-modal";
+    modal.style.cssText = `
+      position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);
+      display:flex;align-items:flex-end;justify-content:center;z-index:9999
+    `;
+    modal.innerHTML = `
+      <div style="background:var(--bg);width:100%;max-width:500px;border-radius:24px 24px 0 0;padding:24px 20px 40px;max-height:90vh;overflow-y:auto;box-sizing:border-box">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div style="font-size:18px;font-weight:800;color:var(--text)">🔖 Add a place</div>
+          <button onclick="document.getElementById('ma-add-place-modal').remove()" style="font-size:22px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0">✕</button>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <input id="ma-add-place-name" type="text" placeholder="e.g. The Four Horseshoes, Waitrose, Costa"
+            oninput="clearTimeout(_maSearchDebounce);_maSearchDebounce=setTimeout(()=>_maSearchPlaces(this.value),300)"
+            style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--surface);color:var(--text);box-sizing:border-box;font-family:inherit"
+            onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+          <div id="ma-add-suggestions" style="background:var(--surface);border:1.5px solid var(--border);border-top:none;border-radius:0 0 10px 10px;max-height:200px;overflow-y:auto"></div>
+        </div>
+
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px">Pick emoji</label>
+        <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+          <button onclick="document.getElementById('ma-add-place-emoji').value='🍺';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">🍺</button>
+          <button onclick="document.getElementById('ma-add-place-emoji').value='☕';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">☕</button>
+          <button onclick="document.getElementById('ma-add-place-emoji').value='💊';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">💊</button>
+          <button onclick="document.getElementById('ma-add-place-emoji').value='🍽️';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">🍽️</button>
+          <button onclick="document.getElementById('ma-add-place-emoji').value='🛒';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">🛒</button>
+          <button onclick="document.getElementById('ma-add-place-emoji').value='💈';this.parentElement.querySelectorAll('button').forEach(b=>b.style.opacity='0.4');this.style.opacity='1'" style="font-size:20px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer;opacity:0.4">💈</button>
+        </div>
+        <input id="ma-add-place-emoji" type="hidden" value="🔖">
+
+        <input id="ma-add-place-addr" type="text" placeholder="Address (auto-filled)"
+          style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--surface);color:var(--text);box-sizing:border-box;margin-bottom:12px;font-family:inherit"
+          onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+
+        <input id="ma-add-place-phone" type="tel" placeholder="Phone (auto-filled)"
+          style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:var(--surface);color:var(--text);box-sizing:border-box;margin-bottom:16px;font-family:inherit"
+          onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
+
+        <div style="display:flex;gap:8px">
+          <button onclick="_maAddPlaceFromModal()" style="flex:1;padding:12px;border:none;border-radius:10px;background:#065f46;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>
+          <button onclick="document.getElementById('ma-add-place-modal').remove()" style="flex:1;padding:12px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.onclick = (e) => {
+      if (e.target === modal) modal.remove();
+    };
+    document.getElementById("ma-add-place-name").focus();
   }
 
   async function _maAddPlaceFromEdit() {
