@@ -5336,8 +5336,12 @@ const _ts = new Date(d.timestamp);
             type="tel" placeholder="e.g. 01932 336571"
             style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:12px;font-family:inherit"
             onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='var(--border)'">
-          <button onclick="_maEditPlaceSaveRow('${p.id}',this)"
-            style="padding:8px 20px;border-radius:10px;border:none;background:#065f46;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>
+          <div style="display:flex;gap:6px">
+            <button onclick="_maEditPlaceSaveRow('${p.id}',this)"
+              style="flex:1;padding:8px 12px;border-radius:10px;border:none;background:#065f46;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>
+            <button onclick="_maDeletePlace('${p.id}')"
+              style="flex:1;padding:8px 12px;border-radius:10px;border:1px solid #ef4444;background:transparent;color:#ef4444;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Delete</button>
+          </div>
         </div>`).join("");
       content = `
         <div style="max-width:520px;margin:0 auto;padding:0 20px 60px">
@@ -5622,6 +5626,31 @@ const _ts = new Date(d.timestamp);
     _maRenderMyPlaces();
 
     document.getElementById("ma-edit-places-overlay").remove();
+  }
+
+  async function _maDeletePlace(placeId) {
+    if (!confirm("Delete this place?")) return;
+
+    // Remove from localStorage
+    _maSavedPlaces = (_maSavedPlaces || []).filter(p => String(p.id) !== String(placeId));
+    _maPlacesToLS(_maSavedPlaces);
+
+    // Remove from backend
+    const param = _miruPhone() ? `from_number=${encodeURIComponent(_miruPhone())}` : `device_id=${encodeURIComponent(_maDeviceId())}`;
+    try {
+      await fetch(`/api/myarea/places/${placeId}?${param}`, {
+        method: "DELETE",
+        headers: {"Content-Type":"application/json"}
+      });
+      console.log("[delete-place] Deleted:", placeId);
+    } catch(e) {
+      console.log("[delete-place] Backend delete failed but removed from localStorage:", e);
+    }
+
+    // Refresh edit screen
+    _maReRenderSections();
+    _maRenderMyPlaces();
+    _maOpenEditPlaces(); // Reopen to show updated list
   }
 
   async function _maEditPlaceSaveRow(placeId, btn) {
