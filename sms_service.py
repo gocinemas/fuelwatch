@@ -10489,11 +10489,10 @@ def api_home_ask():
 
     # ── SAVED PLACES LOOKUP — "What's my local Waitrose phone?" ──────────────────
     # Check if question mentions a place and user has it saved
-    if from_number and any(w in q_lower for w in ["phone", "address", "where", "location", "local"]):
+    if any(w in q_lower for w in ["phone", "address", "where", "location", "local"]):
         try:
-            plain = from_number.replace("whatsapp:", "").strip()
-            saved_places = lib._sb().table("ma_saved_places").select("name,address,phone,emoji") \
-                .eq("phone", plain).execute().data or []
+            # Get saved places from context (passed by frontend from localStorage)
+            saved_places = ctx.get("saved_places") or []
 
             # Match place name in question
             for place in saved_places:

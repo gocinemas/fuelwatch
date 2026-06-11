@@ -17099,6 +17099,10 @@ let _savesAll = [];
         if (bc.personal_events) ctx.personal_events = (bc.personal_events||[]).slice(0,5);
       }
       if (_briefData && _briefData.active_trip) ctx.active_trip = _briefData.active_trip;
+      // Add saved places so Ask Miru can look them up
+      if (_maSavedPlaces && _maSavedPlaces.length) {
+        ctx.saved_places = (_maSavedPlaces || []).filter(p => p.category !== "_home").map(p => ({name: p.name, emoji: p.emoji, address: p.address, phone: p.phone}));
+      }
     } catch(_e) {}
 
     var answer = "";
