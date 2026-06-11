@@ -18715,7 +18715,7 @@ let _savesAll = [];
     _schoolActiveProfileId = "";
     schoolLoad();
   }
-  function schoolCheckPin() {
+  window.schoolCheckPin = function() {
     var wa = _schoolWA() || _miruPhone();
     if (wa) {
       localStorage.setItem("school_wa", wa);
