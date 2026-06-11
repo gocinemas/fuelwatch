@@ -16134,15 +16134,17 @@ let _savesAll = [];
         navBtns = '<a href="' + wazeUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#33ccff;border-radius:8px;padding:4px 10px;text-decoration:none">🚦 Waze</a>'
           + '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="font-size:11px;font-weight:700;color:#fff;background:#2563eb;border-radius:8px;padding:4px 10px;text-decoration:none">🗺️ Maps</a>';
       }
-      // "Leave by" = 45 min before event start, only when event has a destination
+      // "Leave by" = 45 min before event start, ONLY for physical locations (not online events)
       var leaveByStr = "";
-      var eMinsStart = loc ? _parseEventMins(timeStr) : null;
-      if (eMinsStart !== null) {
-        var leaveMin = eMinsStart - 45;
-        if (leaveMin > 0) {
-          var lH = Math.floor(leaveMin / 60);
-          var lM = leaveMin % 60;
-          leaveByStr = (lH > 12 ? lH - 12 : (lH === 0 ? 12 : lH)) + ":" + (lM < 10 ? "0" + lM : lM) + (lH >= 12 ? " PM" : " AM");
+      if (!isOnline) {  // Only show leave time for physical events
+        var eMinsStart = loc ? _parseEventMins(timeStr) : null;
+        if (eMinsStart !== null) {
+          var leaveMin = eMinsStart - 45;
+          if (leaveMin > 0) {
+            var lH = Math.floor(leaveMin / 60);
+            var lM = leaveMin % 60;
+            leaveByStr = (lH > 12 ? lH - 12 : (lH === 0 ? 12 : lH)) + ":" + (lM < 10 ? "0" + lM : lM) + (lH >= 12 ? " PM" : " AM");
+          }
         }
       }
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:8px">'
