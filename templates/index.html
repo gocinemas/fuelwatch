@@ -6425,22 +6425,15 @@ function _hcAdd() {
   }
 
   async function _commuteLoad() {
-    if (_commuteCache !== null) {
-      console.log("[commuteLoad] Using cache:", _commuteCache);
-      return _commuteCache;
-    }
+    if (_commuteCache !== null) return _commuteCache;
     try {
       const p  = _commuteApiParams();
       const qs = new URLSearchParams(p);
-      console.log("[commuteLoad] Fetching from /api/commute/list?", qs.toString());
       const r  = await fetch(`/api/commute/list?${qs}`);
       const d  = await r.json();
-      console.log("[commuteLoad] API response:", d);
       let rows = d.commutes || [];
-      // Migrate localStorage → API on first cloud load
       if (!rows.length) {
         const local = JSON.parse(localStorage.getItem("miru_commutes") || "[]");
-        console.log("[commuteLoad] No API rows, checking localStorage:", local);
         if (local.length) {
           for (const c of local) {
             await fetch("/api/commute/save", {
@@ -6454,7 +6447,6 @@ function _hcAdd() {
         }
       }
       _commuteCache = rows;
-      console.log("[commuteLoad] Final rows:", rows);
       return rows;
     } catch(e) {
       return JSON.parse(localStorage.getItem("miru_commutes") || "[]");
@@ -6494,30 +6486,19 @@ function _hcAdd() {
   }
 
   async function _hcRender() {
-    const strip = document.getElementById("hc-local-strip");
-    if (!strip) return;
-    const h = new Date().getHours();
-    if (h < 7 || h >= 22) { strip.style.display = "none"; return; }
-    const arr = await _commuteLoad();
-    if (!arr || !arr.length) { strip.style.display = "none"; return; }
-    const pc = _miruPostcode ? _miruPostcode() : "";
-    strip.innerHTML = arr.map(c => `
-      <a id="hcp-${c.id}" href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pc)}&destination=${encodeURIComponent(c.dest)}" target="_blank" onclick="event.stopPropagation()"
-        style="flex-shrink:0;background:rgba(255,255,255,.1);border-radius:10px;padding:6px 12px;text-align:center;min-width:70px;text-decoration:none;display:block">
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">${c.label}</div>
-        <div class="hcp-time-${c.id}" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:1px">${pc ? "…" : "—"}</div>
-      </a>`).join("");
-    strip.style.display = "flex";
-    if (!pc) return;
-    arr.forEach(c => {
-      fetch(`/api/commute/live?from=${encodeURIComponent(pc)}&to=${encodeURIComponent(c.dest)}`)
-        .then(r => r.json()).then(d => {
-          const inner = document.querySelector(".hcp-time-" + c.id);
-          if (!inner) return;
-          if (d.error) { inner.textContent = "—"; return; }
-          inner.innerHTML = `<span style="font-weight:800;color:#fff">${d.duration_min}m</span> ${d.traffic_emoji}`;
-        }).catch(() => {});
-    });
+    try {
+      const strip = document.getElementById("hc-local-strip");
+      if (!strip) return;
+      const arr = await _commuteLoad();
+      if (!arr || !arr.length) { strip.style.display = "none"; return; }
+      const pc = _miruPostcode ? _miruPostcode() : "";
+      const h = new Date().getHours();
+      const timeOk = h >= 7 && h < 22;
+      if (!timeOk) { strip.style.display = "none"; return; }
+      strip.innerHTML = arr.map(c => `<a id="hcp-${c.id}" href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pc)}&destination=${encodeURIComponent(c.dest)}" target="_blank" onclick="event.stopPropagation()" style="flex-shrink:0;background:rgba(255,255,255,.1);border-radius:10px;padding:6px 12px;text-align:center;min-width:70px;text-decoration:none;display:block"><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8)">${c.label}</div><div class="hcp-time-${c.id}" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:1px">${pc ? "…" : "—"}</div></a>`).join("");
+      strip.style.display = "flex";
+      if (pc) arr.forEach(c => fetch(`/api/commute/live?from=${encodeURIComponent(pc)}&to=${encodeURIComponent(c.dest)}`).then(r => r.json()).then(d => { const inner = document.querySelector(".hcp-time-" + c.id); if (inner && !d.error) inner.innerHTML = `<span style="font-weight:800;color:#fff">${d.duration_min}m</span> ${d.traffic_emoji}`; }).catch(() => {}));
+    } catch(e) { console.error("[hcRender] Error:", e); }
   }
 
   setTimeout(_hcRender, 500);
