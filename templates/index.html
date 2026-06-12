@@ -6644,7 +6644,7 @@ function _hcAdd() {
     // Sort by type: Schools → Supermarkets → Restaurants → Other
     arr = arr.sort((a, b) => _getCommuteType(a.label) - _getCommuteType(b.label));
     el.innerHTML = arr.map(c => `
-      <div id="commute-card-${c.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:8px;position:relative">
+      <div id="commute-card-${c.id}" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;position:relative">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <div style="font-size:13px;font-weight:800;color:var(--text);flex:1">🚗 <span id="label-${c.id}">${c.label}</span></div>
           <div style="position:relative">
