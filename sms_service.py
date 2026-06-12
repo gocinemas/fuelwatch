@@ -10586,19 +10586,32 @@ def api_home_ask():
             if not saved_places:
                 saved_places = ctx.get("saved_places") or []
 
-            # SMART MATCHING: Check by name words AND emoji type
+            # SMART MATCHING: Prioritize FULL place name matches, then partial
+            # First pass: exact or multi-word matches (high confidence)
+            for place in saved_places:
+                place_name = (place.get("name") or "").lower()
+                place_emoji = place.get("emoji") or ""
+
+                # Check if full place name is in question (highest priority)
+                if place_name in q_lower or all(word in q_lower for word in place_name.split() if len(word) > 3):
+                    phone = place.get("phone") or "Not saved"
+                    addr = place.get("address") or "Not saved"
+                    answer = f"{place_emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
+                    app.logger.info(f"[ask] Saved place found by full name: {place.get('name')}")
+                    return jsonify({"answer": answer})
+
+            # Second pass: single word matches (lower confidence)
             for place in saved_places:
                 place_name = (place.get("name") or "").lower()
                 place_emoji = place.get("emoji") or ""
                 place_words = place_name.split()
 
-                # Match 1: Direct name word match
-                # E.g., "coffee" from "Blacksheep Coffee" matches "where did i have coffee?"
-                if place_words and any(word in q_lower for word in place_words):
+                # Only match significant words (3+ chars) to avoid "a" or "in" false positives
+                if place_words and any(word in q_lower for word in place_words if len(word) > 3):
                     phone = place.get("phone") or "Not saved"
                     addr = place.get("address") or "Not saved"
                     answer = f"{place_emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
-                    app.logger.info(f"[ask] Saved place found by name: {place.get('name')}")
+                    app.logger.info(f"[ask] Saved place found by partial name: {place.get('name')}")
                     return jsonify({"answer": answer})
 
                 # Match 2: Emoji type match for questions like "where did i have coffee?"
