@@ -6423,16 +6423,22 @@ function _hcAdd() {
   }
 
   async function _commuteLoad() {
-    if (_commuteCache !== null) return _commuteCache;
+    if (_commuteCache !== null) {
+      console.log("[commuteLoad] Using cache:", _commuteCache);
+      return _commuteCache;
+    }
     try {
       const p  = _commuteApiParams();
       const qs = new URLSearchParams(p);
+      console.log("[commuteLoad] Fetching from /api/commute/list?', qs.toString());
       const r  = await fetch(`/api/commute/list?${qs}`);
       const d  = await r.json();
+      console.log("[commuteLoad] API response:', d);
       let rows = d.commutes || [];
       // Migrate localStorage → API on first cloud load
       if (!rows.length) {
         const local = JSON.parse(localStorage.getItem("miru_commutes") || "[]");
+        console.log("[commuteLoad] No API rows, checking localStorage:', local);
         if (local.length) {
           for (const c of local) {
             await fetch("/api/commute/save", {
@@ -6446,6 +6452,7 @@ function _hcAdd() {
         }
       }
       _commuteCache = rows;
+      console.log("[commuteLoad] Final rows:', rows);
       return rows;
     } catch(e) {
       return JSON.parse(localStorage.getItem("miru_commutes") || "[]");
@@ -6486,11 +6493,14 @@ function _hcAdd() {
 
   async function _hcRender() {
     const strip = document.getElementById("hc-local-strip");
-    if (!strip) return;
+    if (!strip) { console.log("[hcRender] strip element not found"); return; }
     const h = new Date().getHours();
-    if (h < 7 || h >= 22) { strip.style.display = "none"; return; }
+    console.log("[hcRender] Current hour:", h);
+    if (h < 7 || h >= 22) { console.log("[hcRender] Outside time window (7am-10pm)"); strip.style.display = "none"; return; }
     const arr = await _commuteLoad();
-    if (!arr.length) { strip.style.display = "none"; return; }
+    console.log("[hcRender] Loaded commutes:", arr);
+    if (!arr.length) { console.log("[hcRender] No commutes saved"); strip.style.display = "none"; return; }
+    console.log("[hcRender] Rendering", arr.length, 'commutes');
     strip.style.display = "flex";
     const pc = _miruPostcode ? _miruPostcode() : "";
     strip.innerHTML = arr.map(c => `
