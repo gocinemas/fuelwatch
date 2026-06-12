@@ -2090,7 +2090,7 @@
       <!-- Today section label + card -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div id="brief-today-label" style="display:none;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Today</div>
-        <button onclick="document.getElementById('brief-event-form').style.display='block';document.getElementById('brief-evt-title').focus()"
+        <button onclick="_openBriefEventForm()"
           style="font-size:11px;font-weight:700;color:#4f46e5;background:#eef2ff;border:none;border-radius:8px;padding:4px 10px;cursor:pointer;margin-left:auto">＋ Add event</button>
       </div>
       <div id="brief-today-card" style="display:none;margin-bottom:10px"></div>
@@ -2108,26 +2108,19 @@
         </div>
       </div>
 
-      <!-- Personal event quick-add form — inline in left col -->
+      <!-- Personal event quick-add form — simplified with address autocomplete -->
       <div id="brief-event-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">＋ Add to your brief</div>
-        <input id="brief-evt-title" type="text" placeholder="e.g. Inaaya Go Ape Bracknell" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">＋ Add event</div>
+        <input id="brief-evt-title" type="text" placeholder="e.g. Go Ape Bracknell" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:6px">
+        <input id="brief-evt-location" type="text" placeholder="📍 Location or address" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:2px">
+        <div id="brief-evt-suggestions" style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 9px 9px;max-height:100px;overflow-y:auto;font-size:12px;margin-bottom:8px;display:none"></div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <input id="brief-evt-date" type="date" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
           <input id="brief-evt-time" type="time" placeholder="Start" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-          <input id="brief-evt-end" type="time" placeholder="Ends" style="flex:1;border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box">
-        </div>
-        <input id="brief-evt-location" type="text" placeholder="📍 Location (e.g. Go Ape Bracknell, GU17 9BH)" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;margin-bottom:8px">
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <div style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:9px;padding:0 10px;background:var(--bg)">
-            <span style="font-size:11px;color:var(--muted);white-space:nowrap">Leave at</span>
-            <input id="brief-evt-leave" type="time" style="flex:1;border:none;background:transparent;color:var(--text);font-size:13px;outline:none;padding:9px 0">
-          </div>
-          <div style="flex:1"></div>
         </div>
         <div style="display:flex;gap:8px">
           <button onclick="_briefAddEvent()" style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
-          <button onclick="document.getElementById('brief-event-form').style.display='none'" style="flex:1;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+          <button onclick="_closeBriefEventForm()" style="flex:1;background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
         </div>
         <div id="brief-evt-err" style="display:none;font-size:12px;color:#ef4444;margin-top:6px"></div>
       </div>
@@ -18102,12 +18095,64 @@ let _savesAll = [];
   };
 
   // ── Personal event quick-add ───────────────────────────────────────────────
+  let _briefEventSearchDebounce;
+
+  window._openBriefEventForm = function() {
+    document.getElementById("brief-event-form").style.display = "block";
+    const locationEl = document.getElementById("brief-evt-location");
+    if (locationEl) {
+      locationEl.addEventListener("input", function(e) {
+        clearTimeout(_briefEventSearchDebounce);
+        _briefEventSearchDebounce = setTimeout(() => _briefEventLocationSearch(e.target.value), 300);
+      });
+      locationEl.focus();
+    }
+    document.getElementById("brief-evt-title").focus();
+  };
+
+  window._briefEventLocationSearch = function(query) {
+    if (!query || query.length < 2) {
+      document.getElementById("brief-evt-suggestions").style.display = "none";
+      return;
+    }
+    fetch("/api/myarea/place-search?q=" + encodeURIComponent(query))
+      .then(r => r.json())
+      .then(results => {
+        const container = document.getElementById("brief-evt-suggestions");
+        if (!results.length) {
+          container.style.display = "none";
+          return;
+        }
+        let html = "";
+        results.slice(0, 4).forEach(p => {
+          html += `<div class="evt-suggestion" style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer" data-address="${p.address || ''}" data-name="${p.name || ''}">
+            <div style="font-weight:600;color:var(--text);font-size:12px">${p.name}</div>
+            <div style="color:var(--muted);font-size:11px">${p.address || ''}</div>
+          </div>`;
+        });
+        container.innerHTML = html;
+        container.style.display = "block";
+
+        // Click handler for suggestions
+        document.querySelectorAll(".evt-suggestion").forEach(el => {
+          el.onclick = function() {
+            document.getElementById("brief-evt-location").value = this.getAttribute("data-address");
+            container.style.display = "none";
+          };
+        });
+      })
+      .catch(() => {});
+  };
+
+  window._closeBriefEventForm = function() {
+    document.getElementById("brief-event-form").style.display = "none";
+    document.getElementById("brief-evt-suggestions").style.display = "none";
+  };
+
   window._briefAddEvent = function() {
     var titleEl    = document.getElementById("brief-evt-title");
     var dateEl     = document.getElementById("brief-evt-date");
     var timeEl     = document.getElementById("brief-evt-time");
-    var endEl      = document.getElementById("brief-evt-end");
-    var leaveEl    = document.getElementById("brief-evt-leave");
     var locationEl = document.getElementById("brief-evt-location");
     var errEl      = document.getElementById("brief-evt-err");
     var title = titleEl ? titleEl.value.trim() : "";
@@ -18118,11 +18163,9 @@ let _savesAll = [];
     var editIdx = form.dataset.editIdx !== undefined && form.dataset.editIdx !== "" ? parseInt(form.dataset.editIdx) : null;
     var saveBody = {
       token: token, title: title,
-      date:       dateEl     ? dateEl.value         : "",
-      time:       timeEl     ? timeEl.value         : "",
-      end_time:   endEl      ? endEl.value          : "",
-      leave_time: leaveEl    ? leaveEl.value        : "",
-      location:   locationEl ? locationEl.value.trim() : ""
+      date: dateEl ? dateEl.value : "",
+      time: timeEl ? timeEl.value : "",
+      location: locationEl ? locationEl.value.trim() : ""
     };
     var doSave = function() {
       return fetch("/api/v2/personal-events", {
@@ -18138,12 +18181,11 @@ let _savesAll = [];
     .then(function(d) {
       if (d.ok) {
         form.style.display = "none";
+        document.getElementById("brief-evt-suggestions").style.display = "none";
         form.dataset.editIdx = "";
-        if (titleEl)    titleEl.value    = "";
-        if (dateEl)     dateEl.value     = "";
-        if (timeEl)     timeEl.value     = "";
-        if (endEl)      endEl.value      = "";
-        if (leaveEl)    leaveEl.value    = "";
+        if (titleEl)    titleEl.value = "";
+        if (dateEl)     dateEl.value = "";
+        if (timeEl)     timeEl.value = "";
         if (locationEl) locationEl.value = "";
         _briefLoadSavedEvents();
         _briefInit();
