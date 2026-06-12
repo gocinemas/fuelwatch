@@ -10614,8 +10614,7 @@ def api_home_ask():
                     app.logger.info(f"[ask] Saved place found by partial name: {place.get('name')}")
                     return jsonify({"answer": answer})
 
-                # Match 2: Emoji type match — but only if place name keyword IS in question
-                # E.g., ☕ coffee emoji + "coffee" keyword in question, BUT also need place name match
+                # Match 2: Emoji type match — smart handling of generic vs specific queries
                 emoji_map = {
                     "☕": ["coffee", "cafe"],
                     "🍺": ["pub", "bar", "drink"],
@@ -10625,15 +10624,26 @@ def api_home_ask():
                 }
                 if place_emoji in emoji_map:
                     place_types = emoji_map[place_emoji]
-                    # Only match if BOTH the emoji type AND place name keywords are in question
                     has_type_match = any(ptype in q_lower for ptype in place_types)
                     has_name_match = any(word in q_lower for word in place_words if len(word) > 2)
-                    if has_type_match and has_name_match:
-                        phone = place.get("phone") or "Not saved"
-                        addr = place.get("address") or "Not saved"
-                        answer = f"{place_emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
-                        app.logger.info(f"[ask] Saved place found by emoji+name: {place.get('name')}")
-                        return jsonify({"answer": answer})
+
+                    if has_type_match:
+                        # If place name is mentioned specifically, match immediately
+                        if has_name_match:
+                            phone = place.get("phone") or "Not saved"
+                            addr = place.get("address") or "Not saved"
+                            answer = f"{place_emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
+                            app.logger.info(f"[ask] Saved place found by emoji+name: {place.get('name')}")
+                            return jsonify({"answer": answer})
+                        # Fallback: if user asks generically ("my pub") and this is the ONLY place of this type, return it
+                        elif "my " in q_lower or "the " in q_lower:
+                            same_emoji_count = sum(1 for p in saved_places if p.get("emoji") == place_emoji)
+                            if same_emoji_count == 1:  # Only one pub/cafe/shop of this type saved
+                                phone = place.get("phone") or "Not saved"
+                                addr = place.get("address") or "Not saved"
+                                answer = f"{place_emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
+                                app.logger.info(f"[ask] Saved place found as default for emoji: {place.get('name')}")
+                                return jsonify({"answer": answer})
 
         except Exception as e:
             app.logger.debug(f"[ask] Saved places lookup failed: {e}")
