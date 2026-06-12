@@ -6700,7 +6700,7 @@ def api_home_last_receipt():
     try:
         # Get most recent REAL receipt by UPLOAD timestamp (created_at)
         # Skip "Online:" merchants (broken data) — find first real receipt
-        rows = lib._sb().table("receipts").select("merchant,total,shop_date,created_at").eq("phone", phone) \
+        rows = lib._sb().table("receipts").select("merchant,total,shop_date,created_at,items").eq("phone", phone) \
             .order("created_at", desc=True).limit(20).execute().data or []  # Get 20 to filter through
 
         if not rows:
@@ -6756,7 +6756,17 @@ def api_home_last_receipt():
             except Exception as e:
                 app.logger.debug(f"[last-receipt] Date fix failed: {e}, keeping raw")
 
-        return jsonify({"merchant": merchant, "total": total, "shop_date": shop_date})
+        # Parse items if available
+        items_str = r.get("items", "[]") or "[]"
+        items = []
+        try:
+            import json as _json_items
+            items_list = _json_items.loads(items_str)
+            items = [item.get("name", "") for item in (items_list or []) if item.get("name", "")][:3]  # Top 3 items
+        except:
+            pass
+
+        return jsonify({"merchant": merchant, "total": total, "shop_date": shop_date, "items": items})
     except Exception as e:
         app.logger.warning(f"[last-receipt] {e}")
         return jsonify({"error": str(e), "merchant": None}), 500

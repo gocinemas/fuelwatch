@@ -17515,9 +17515,15 @@ let _savesAll = [];
                 if (d.merchant && d.merchant.startsWith('Online:')) {
                   el.innerHTML = '';
                 } else {
-                  el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">'
-                    + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Last shopped at <strong>' + d.merchant + '</strong></div>'
-                    + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div></div>'
+                  var itemsHtml = '';
+                  if (d.items && d.items.length) {
+                    itemsHtml = '<div style="font-size:11px;color:var(--muted);margin-top:6px">Bought: ' + d.items.join(', ') + '</div>';
+                  }
+                  el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+                    + '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">Last shopped at <strong style="cursor:pointer;text-decoration:underline" onclick="showScreen(\'saves\')">' + d.merchant + '</strong></div>'
+                    + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (formattedDate || 'date unknown') + '</div>'
+                    + itemsHtml
+                    + '</div>'
                     + '<div style="text-align:right;font-size:13px;font-weight:700;color:var(--accent)">£' + parseFloat(d.total).toFixed(2) + '</div>'
                     + '</div>';
                 }
