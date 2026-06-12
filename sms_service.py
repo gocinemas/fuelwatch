@@ -7738,7 +7738,7 @@ def _receipt_category(merchant: str) -> str:
 
 
 def _v2_fetch_spend(from_number: str) -> dict:
-    """Sum receipt clippings this calendar month, broken down by category."""
+    """Sum receipt clippings this calendar month, broken down by category. Excludes online orders."""
     import re as _re
     from datetime import date
     try:
@@ -7751,6 +7751,10 @@ def _v2_fetch_spend(from_number: str) -> dict:
         total = 0.0; count = 0
         breakdown: dict = {}
         for r in rows:
+            merchant = (r.get("title") or "").replace("🧾", "").strip()
+            # Skip online orders
+            if merchant.startswith("Online:"):
+                continue
             m = _re.search(r'£([\d,]+\.?\d*)', r.get("summary", "") + r.get("title", ""))
             if not m:
                 continue
@@ -7762,7 +7766,6 @@ def _v2_fetch_spend(from_number: str) -> dict:
             # Determine category — use stored value or derive from title
             cat = r.get("category") or ""
             if not cat:
-                merchant = (r.get("title") or "").replace("🧾", "").strip()
                 cat = _receipt_category(merchant)
             if cat not in breakdown:
                 breakdown[cat] = {"total": 0.0, "count": 0}
