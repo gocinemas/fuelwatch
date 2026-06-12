@@ -5705,40 +5705,59 @@ def api_myarea_place_search():
     query = request.args.get("q", "").strip()
     if not query or len(query) < 2:
         return jsonify([])
-    if not _GOOGLE_PLACES_KEY:
-        return jsonify([])
-    try:
-        # Text Search
-        ts = requests.get(
-            "https://maps.googleapis.com/maps/api/place/textsearch/json",
-            params={"query": query + " UK", "key": _GOOGLE_PLACES_KEY, "region": "uk"},
-            timeout=8,
-        )
-        results = []
-        for p in ts.json().get("results", [])[:5]:
-            place_id = p.get("place_id")
-            if not place_id:
-                continue
 
-            # Get full details (address, phone)
-            det = requests.get(
-                "https://maps.googleapis.com/maps/api/place/details/json",
-                params={
-                    "place_id": place_id,
-                    "fields": "name,formatted_address,international_phone_number",
-                    "key": _GOOGLE_PLACES_KEY,
-                },
+    results = []
+
+    # Try Google Places if key is set
+    if _GOOGLE_PLACES_KEY:
+        try:
+            ts = requests.get(
+                "https://maps.googleapis.com/maps/api/place/textsearch/json",
+                params={"query": query + " UK", "key": _GOOGLE_PLACES_KEY, "region": "uk"},
                 timeout=8,
             )
-            detail = det.json().get("result", {})
+            for p in ts.json().get("results", [])[:5]:
+                place_id = p.get("place_id")
+                if not place_id:
+                    continue
+                det = requests.get(
+                    "https://maps.googleapis.com/maps/api/place/details/json",
+                    params={
+                        "place_id": place_id,
+                        "fields": "name,formatted_address,international_phone_number",
+                        "key": _GOOGLE_PLACES_KEY,
+                    },
+                    timeout=8,
+                )
+                detail = det.json().get("result", {})
+                results.append({
+                    "name": detail.get("name", ""),
+                    "address": detail.get("formatted_address", ""),
+                    "phone": detail.get("international_phone_number", ""),
+                })
+            if results:
+                return jsonify(results)
+        except Exception:
+            pass
+
+    # Fallback to Nominatim (free, no API key needed)
+    try:
+        nom = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={"q": query + " UK", "format": "json", "limit": 5, "countrycodes": "gb"},
+            headers={"User-Agent": "Miru/1.0 (miru.humanagency.co)"},
+            timeout=8,
+        )
+        for p in nom.json():
             results.append({
-                "name": detail.get("name", ""),
-                "address": detail.get("formatted_address", ""),
-                "phone": detail.get("international_phone_number", ""),
+                "name": p.get("name", "") or ", ".join(p.get("display_name", "").split(",")[:2]),
+                "address": p.get("display_name", ""),
+                "phone": "",
             })
-        return jsonify(results)
     except Exception:
-        return jsonify([])
+        pass
+
+    return jsonify(results)
 
 
 @app.route("/api/myarea/home-postcode", methods=["GET"])
