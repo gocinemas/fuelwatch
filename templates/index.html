@@ -857,7 +857,7 @@
           </div>
         </button>
         <!-- Drive times teaser -->
-        <div id="hc-local-strip" style="display:none;border-top:1px solid rgba(255,255,255,.1);padding:10px 18px;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
+        <div id="hc-local-strip" style="display:flex;border-top:1px solid rgba(255,255,255,.1);padding:10px 18px;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;visibility:hidden"></div>
       </div>
 
       <!-- EXPLORE divider -->
@@ -6495,15 +6495,12 @@ function _hcAdd() {
 
   async function _hcRender() {
     const strip = document.getElementById("hc-local-strip");
-    if (!strip) { console.log("[hcRender] strip element not found"); return; }
+    if (!strip) return;
     const h = new Date().getHours();
-    console.log("[hcRender] Current hour:", h);
-    if (h < 7 || h >= 22) { console.log("[hcRender] Outside time window (7am-10pm)"); strip.style.display = "none"; return; }
+    if (h < 7 || h >= 22) { strip.style.visibility = "hidden"; return; }
     const arr = await _commuteLoad();
-    console.log("[hcRender] Loaded commutes:", arr);
-    if (!arr.length) { console.log("[hcRender] No commutes saved"); strip.style.display = "none"; return; }
-    console.log("[hcRender] Rendering", arr.length, 'commutes');
-    strip.style.display = "flex";
+    if (!arr.length) { strip.style.visibility = "hidden"; return; }
+    strip.style.visibility = "visible";
     const pc = _miruPostcode ? _miruPostcode() : "";
     strip.innerHTML = arr.map(c => `
       <a id="hcp-${c.id}" href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(pc)}&destination=${encodeURIComponent(c.dest)}" target="_blank" onclick="event.stopPropagation()"
