@@ -1212,6 +1212,20 @@ def api_commute_list():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/commute/update", methods=["POST"])
+def api_commute_update():
+    body = request.get_json(force=True, silent=True) or {}
+    commute_id = body.get("id")
+    label = (body.get("label") or "").strip()
+    if not commute_id or not label:
+        return jsonify({"error": "id and label required"}), 400
+    try:
+        lib._sb().table("user_commutes").update({"label": label}).eq("id", commute_id).execute()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/commute/delete", methods=["POST"])
 def api_commute_delete():
     body      = request.get_json(force=True, silent=True) or {}
