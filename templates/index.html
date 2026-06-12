@@ -6432,15 +6432,15 @@ function _hcAdd() {
     try {
       const p  = _commuteApiParams();
       const qs = new URLSearchParams(p);
-      console.log("[commuteLoad] Fetching from /api/commute/list?', qs.toString());
+      console.log("[commuteLoad] Fetching from /api/commute/list?", qs.toString());
       const r  = await fetch(`/api/commute/list?${qs}`);
       const d  = await r.json();
-      console.log("[commuteLoad] API response:', d);
+      console.log("[commuteLoad] API response:", d);
       let rows = d.commutes || [];
       // Migrate localStorage → API on first cloud load
       if (!rows.length) {
         const local = JSON.parse(localStorage.getItem("miru_commutes") || "[]");
-        console.log("[commuteLoad] No API rows, checking localStorage:', local);
+        console.log("[commuteLoad] No API rows, checking localStorage:", local);
         if (local.length) {
           for (const c of local) {
             await fetch("/api/commute/save", {
@@ -6454,7 +6454,7 @@ function _hcAdd() {
         }
       }
       _commuteCache = rows;
-      console.log("[commuteLoad] Final rows:', rows);
+      console.log("[commuteLoad] Final rows:", rows);
       return rows;
     } catch(e) {
       return JSON.parse(localStorage.getItem("miru_commutes") || "[]");
