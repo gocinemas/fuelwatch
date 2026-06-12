@@ -37,7 +37,7 @@ def get_setup_status():
         # Check if schools exist
         try:
             school_rows = lib._sb().table("school_profiles").select("id") \
-                .eq("user_phone", from_number).limit(1).execute().data or []
+                .eq("from_number", from_number).limit(1).execute().data or []
         except Exception as e:
             logger.warning(f"[onboarding] Schools query error: {e}")
             school_rows = []
@@ -150,11 +150,10 @@ def add_school():
 
         # Insert school profile
         result = lib._sb().table("school_profiles").insert({
-            "user_phone": from_number,
+            "from_number": from_number,
             "child_name": child_name,
             "school_name": school_name,
-            "email": school_email if school_email else None,
-            "status": "active",
+            "sender_emails": [school_email] if school_email else [],
         }).execute()
 
         logger.info(f"[onboarding] School added for {from_number}: {child_name} @ {school_name}")
@@ -176,8 +175,8 @@ def get_schools():
     try:
         from sms_service import lib
 
-        schools = lib._sb().table("school_profiles").select("id,child_name,school_name,email") \
-            .eq("user_phone", from_number).execute().data or []
+        schools = lib._sb().table("school_profiles").select("id,child_name,school_name") \
+            .eq("from_number", from_number).execute().data or []
 
         return jsonify({"schools": schools})
     except Exception as e:
