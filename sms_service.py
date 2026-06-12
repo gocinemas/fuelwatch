@@ -10614,22 +10614,25 @@ def api_home_ask():
                     app.logger.info(f"[ask] Saved place found by partial name: {place.get('name')}")
                     return jsonify({"answer": answer})
 
-                # Match 2: Emoji type match for questions like "where did i have coffee?"
-                # Coffee emoji matches "coffee" keyword
+                # Match 2: Emoji type match — but only if place name keyword IS in question
+                # E.g., ☕ coffee emoji + "coffee" keyword in question, BUT also need place name match
                 emoji_map = {
                     "☕": ["coffee", "cafe"],
                     "🍺": ["pub", "bar", "drink"],
                     "🍽️": ["restaurant", "food", "ate", "dinner", "lunch"],
                     "💊": ["pharmacy", "pharmacy"],
-                    "🛒": ["shop", "shopping", "waitrose", "tesco", "shop"],
+                    "🛒": ["shop", "shopping", "tesco", "waitrose"],
                 }
                 if place_emoji in emoji_map:
                     place_types = emoji_map[place_emoji]
-                    if any(ptype in q_lower for ptype in place_types):
+                    # Only match if BOTH the emoji type AND place name keywords are in question
+                    has_type_match = any(ptype in q_lower for ptype in place_types)
+                    has_name_match = any(word in q_lower for word in place_words if len(word) > 2)
+                    if has_type_match and has_name_match:
                         phone = place.get("phone") or "Not saved"
                         addr = place.get("address") or "Not saved"
                         answer = f"{place_emoji} {place.get('name')}\n📍 {addr}\n📞 {phone}"
-                        app.logger.info(f"[ask] Saved place found by emoji: {place.get('name')}")
+                        app.logger.info(f"[ask] Saved place found by emoji+name: {place.get('name')}")
                         return jsonify({"answer": answer})
 
         except Exception as e:
