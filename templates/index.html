@@ -16422,7 +16422,7 @@ let _savesAll = [];
 
     if (_isNightChip) {
       // ── Night mode: surface evening saves as main chips ─────────────────
-      var _catIco = { "Dining": "🍽️", "Coffee & Lunch": "☕", "Entertainment": "🎭", "Event": "🎫" };
+      var _catIco = { "Dining": "🍽️", "Coffee & Lunch": "☕", "Takeaway": "🥡", "Entertainment": "🎭", "Event": "🎫" };
       (eveningSaves || []).forEach(function(s) {
         var raw  = (s.title || "").trim();
         var ico  = _catIco[s.category] || (raw.match(/^[\u{1F000}-\u{1FFFF}]/u) ? "" : "📍");
@@ -16947,7 +16947,7 @@ let _savesAll = [];
       var _rcSummary = (_rc.summary || "").slice(0, 100);
       var _rcCat     = _rc.category || "";
       var _rcIcon    = {
-        "Dining":"🍽️","Coffee & Lunch":"☕","Groceries":"🛒",
+        "Dining":"🍽️","Coffee & Lunch":"☕","Takeaway":"🥡","Groceries":"🛒",
         "Entertainment":"🎭","Books":"📚","Wine":"🍷"
       }[_rcCat] || "📸";
       var _rcMapsQ   = encodeURIComponent(_rcTitle);

@@ -7737,10 +7737,18 @@ def _receipt_category(merchant: str) -> str:
                               "the bull", "the fox", "the anchor", "the white"]):
         return "Dining"
 
+    # Takeaway (Indian, Chinese, Thai, Vietnamese, etc.)
+    if any(k in m for k in ["takeaway", "tandoori", "biryani", "curry", "indian",
+                              "chinese", "thai", "vietnamese", "pho", "pad thai",
+                              "dim sum", "jaipur", "maharaja", "taj", "spice",
+                              "naan", "tikka", "samosa", "dosa", "basmati",
+                              "wok", "dragon", "orient", "asia", "bangkok"]):
+        return "Takeaway"
+
     # Fast Food
     if any(k in m for k in ["mcdonald", "kfc", "burger king", "subway", "papa john",
                               "domino", "pizza hut", "kebab", "chippy", "fish & chip",
-                              "fish and chip"]):
+                              "fish and chip", "fried chicken", "burger", "hot dog"]):
         return "Fast Food"
 
     # Fuel / Petrol
