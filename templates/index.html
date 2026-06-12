@@ -18099,6 +18099,23 @@ let _savesAll = [];
 
   window._openBriefEventForm = function() {
     document.getElementById("brief-event-form").style.display = "block";
+
+    // Set date to today
+    const dateEl = document.getElementById("brief-evt-date");
+    if (dateEl && !dateEl.value) {
+      const today = new Date();
+      dateEl.value = today.toISOString().split('T')[0];
+    }
+
+    // Set time to current hour
+    const timeEl = document.getElementById("brief-evt-time");
+    if (timeEl && !timeEl.value) {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      timeEl.value = hh + ':' + mm;
+    }
+
     const locationEl = document.getElementById("brief-evt-location");
     if (locationEl) {
       locationEl.addEventListener("input", function(e) {
