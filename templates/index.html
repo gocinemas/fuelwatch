@@ -855,7 +855,7 @@
           </div>
         </button>
         <!-- Drive times teaser -->
-        <div id="hc-local-strip" style="display:none;border-top:1px solid rgba(255,255,255,.1);padding:10px 18px;display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
+        <div id="hc-local-strip" style="display:none;border-top:1px solid rgba(255,255,255,.1);padding:10px 18px;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none"></div>
       </div>
 
       <!-- EXPLORE divider -->
@@ -6585,11 +6585,13 @@ function _hcAdd() {
     await _commuteSaveToApi(label, dest);
     document.getElementById("commute-add-form").style.display = "none";
     _commuteRender();
+    _hcRender();
   }
 
   async function _commuteDelete(id) {
     await _commuteDeleteFromApi(id);
     _commuteRender();
+    _hcRender();
   }
 
   function _getCommuteType(label) {
