@@ -6556,15 +6556,22 @@ function _hcAdd() {
     // Setup search on destination field
     const destInput = document.getElementById("commute-add-dest");
     if (destInput) {
-      destInput.oninput = function() {
-        clearTimeout(_commuteSearchDebounce);
-        console.log("[commute] Typing:", this.value);
-        _commuteSearchDebounce = setTimeout(() => _commuteSearchDest(this.value), 300);
-      };
-      console.log("[commute] Search listener ready");
-    }
+      // Remove any existing listeners to avoid duplicates
+      const newInput = destInput.cloneNode(false);
+      destInput.parentNode.replaceChild(newInput, destInput);
 
-    document.getElementById("commute-add-name").focus();
+      // Add listener to fresh element
+      const freshInput = document.getElementById("commute-add-dest");
+      freshInput.addEventListener("input", function(e) {
+        clearTimeout(_commuteSearchDebounce);
+        console.log("[commute] Typing:", e.target.value);
+        _commuteSearchDebounce = setTimeout(() => _commuteSearchDest(e.target.value), 300);
+      });
+      console.log("[commute] Search listener ready");
+      freshInput.focus();
+    } else {
+      document.getElementById("commute-add-name").focus();
+    }
   }
 
   async function _commuteSave() {
