@@ -19029,6 +19029,48 @@ let _savesAll = [];
     return `<div>${top}</div>${addr}${phone}${waGroup}`;
   }
 
+  function _schoolRenderSummaryCard(allEvents) {
+    const card = document.getElementById("school-summary-card");
+    const body = document.getElementById("school-summary-body");
+    if (!card || !body) return;
+
+    const today = new Date();
+    const next7 = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const nextWeekEvents = (allEvents || []).filter(e => {
+      if (!e.event_date) return false;
+      const eDate = new Date(e.event_date);
+      return eDate >= today && eDate < next7;
+    }).sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
+
+    if (nextWeekEvents.length === 0) {
+      card.style.display = "none";
+      return;
+    }
+
+    const grouped = {};
+    nextWeekEvents.forEach(e => {
+      const d = e.event_date;
+      if (!grouped[d]) grouped[d] = [];
+      grouped[d].push(e);
+    });
+
+    let html = "";
+    Object.keys(grouped).sort().forEach(dateStr => {
+      const d = new Date(dateStr);
+      const dayName = d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
+      const events = grouped[dateStr];
+      html += `<div style="margin-bottom:10px"><div style="font-weight:600;color:#1e40af;font-size:12px">${dayName}</div>`;
+      events.forEach(e => {
+        const title = (e.event_title || "Event").slice(0, 35);
+        html += `<div style="font-size:12px;margin-top:4px;color:#1e3a8a">• ${title}</div>`;
+      });
+      html += "</div>";
+    });
+
+    body.innerHTML = html;
+    card.style.display = "block";
+  }
+
   function _schoolRenderTabs() {
     const tabsEl = document.getElementById("school-child-tabs");
     if (_schoolProfiles.length <= 1) { tabsEl.style.display = "none"; return; }
@@ -19110,6 +19152,9 @@ let _savesAll = [];
       } else {
         if (actionSection) actionSection.style.display = "none";
       }
+
+      // Populate next 7 days summary card
+      _schoolRenderSummaryCard(_schoolAllEvents);
 
       _schoolRenderTabs();
       const activeProfile = _schoolProfiles.find(p => p.id === _schoolActiveProfileId);
