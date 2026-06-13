@@ -11195,14 +11195,14 @@ def api_home_ask():
             time_qualifier = "yesterday"
 
         receipt_patterns = [
-            # "what did i buy in tesco" / "what did i buy last time in tesco"
-            r"(?:what|what's).{0,40}(?:did i|i).{0,40}(?:buy|order|eat|have|get).{0,30}(?:at|in|from) (.+?)(?:\?|$)",
-            # "what did i buy last time / previously / last visit"
-            r"(?:what|what's).{0,20}(?:did i|i).{0,20}(?:buy|order|get)(?:\s+(?:last\s+time|previously|last\s+visit))?(?:.*?)(?:at|in|from) (.+?)(?:\?|$)",
+            # "what did i buy/shop in tesco" / "what did i buy last time in tesco"
+            r"(?:what|what's).{0,40}(?:did i|i).{0,40}(?:buy|shop|order|eat|have|get|purchased).{0,30}(?:at|in|from) (.+?)(?:\?|$)",
+            # "what did i buy/shop last time / previously / last visit"
+            r"(?:what|what's).{0,20}(?:did i|i).{0,20}(?:buy|shop|order|get)(?:\s+(?:last\s+time|previously|last\s+visit))?(?:.*?)(?:at|in|from) (.+?)(?:\?|$)",
             # "when was the last tesco visit" / "when did i last buy at tesco"
             r"(?:when|when\s+was)(?:.*?)(?:last|previously)(?:.*?)(?:at|in|from) ([a-z\s]+?)(?:\?|$)",
-            # "what's at tesco"
-            r"(?:what|what's).{0,10}(?:at|in|from) ([a-z\s]+?)(?:\?|$)",
+            # "what's at tesco" / "what did i get at tesco"
+            r"(?:what|what's).{0,10}(?:at|in|from) ([a-z\s&]+?)(?:\?|$)",
         ]
 
         # Also handle "when was this" / "what date" follow-ups
