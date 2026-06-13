@@ -7078,6 +7078,24 @@ def api_v2_prefs_get():
         return jsonify({"prefs": {}, "has_prefs": False, "calendar_connected": False, "error": str(e)})
 
 
+@app.route("/api/user/setup-status", methods=["GET"])
+def api_user_setup_status():
+    """Check if user has completed V2 setup (i.e., has saved preferences)."""
+    token = request.args.get("token", "").strip()
+    from_number = _v2_resolve(token)
+    if not from_number:
+        return jsonify({"completed": False})
+    try:
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa    = f"whatsapp:{_fn_plain}"
+        rows = lib._sb().table("ma_details").select("data") \
+            .in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
+        has_prefs = bool(rows and rows[0].get("data"))
+        return jsonify({"completed": has_prefs})
+    except Exception as e:
+        return jsonify({"completed": False, "error": str(e)})
+
+
 @app.route("/api/v2/prefs", methods=["POST"])
 def api_v2_prefs_post():
     """Save V2 preferences. Merges with existing — send only changed keys."""
