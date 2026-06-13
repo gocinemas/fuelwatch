@@ -20625,8 +20625,8 @@ let _savesAll = [];
       btn.querySelector("div:last-child").style.color = "#4338ca";
     }
 
-    // Food: show cuisine picker before fetching
-    if (cat === "food") {
+    // Food: show cuisine picker before fetching (but only if no cuisine selected yet)
+    if (cat === "food" && !_ehActiveCuisine) {
       const el = document.getElementById("explore-here-results");
       el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">
         <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'indian'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🇮🇳 Indian</button>
