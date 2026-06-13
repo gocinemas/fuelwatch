@@ -14146,6 +14146,20 @@ def api_places_nearby():
         return jsonify({"error": "Places not configured"}), 503
 
     cat = request.args.get("cat", "all").lower()
+    cuisine = request.args.get("cuisine", "").lower()
+
+    # Cuisine to keyword map for food/restaurant searches
+    _CUISINE_KEYWORDS = {
+        "indian": "Indian restaurant tandoori curry",
+        "chinese": "Chinese restaurant dim sum",
+        "italian": "Italian restaurant pasta pizza",
+        "mexican": "Mexican restaurant taco burrito",
+        "thai": "Thai restaurant pad thai",
+        "japanese": "Japanese restaurant sushi ramen",
+        "spanish": "Spanish restaurant tapas paella",
+        "british": "British restaurant pub fish chips",
+        "middle eastern": "Middle Eastern restaurant kebab",
+    }
 
     # Per-category config: keyword + type + quality thresholds + adaptive radii
     # radius_dense = tight radius tried first; radius_wide = fallback if sparse results
@@ -14172,6 +14186,11 @@ def api_places_nearby():
         "supermarket": {"keyword": "supermarket tesco sainsbury waitrose asda morrisons lidl aldi","type": "supermarket", "min_rating": 3.0, "min_reviews":  2, "radius_dense": 2000,  "radius_wide":  6000, "dense_min": 1},
     }
     cfg = _CAT_CONFIG.get(cat, _CAT_CONFIG["all"])
+
+    # If cuisine selected and it's a food category, override keyword
+    if cuisine and cuisine in _CUISINE_KEYWORDS and cat == "food":
+        cfg = cfg.copy()
+        cfg["keyword"] = _CUISINE_KEYWORDS[cuisine]
 
     _GTYPE_MAP = {
         "restaurant":        {"label": "Restaurant",   "emoji": "🍽️"},
