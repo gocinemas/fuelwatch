@@ -6637,7 +6637,7 @@ function _hcAdd() {
           <div style="font-size:13px;font-weight:800;color:var(--text);flex:1">🚗 <span id="label-${c.id}">${c.label}</span></div>
           <div style="position:relative">
             <button onclick="_commuteMenu('${c.id}')" style="padding:4px 8px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;opacity:0.6;transition:opacity 0.2s">⋮</button>
-            <div id="menu-${c.id}" style="position:absolute;right:0;top:28px;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:140px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:10;display:none;overflow:hidden">
+            <div id="menu-${c.id}" style="position:absolute;right:0;top:28px;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:140px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:1000;display:none;overflow:hidden">
               <button onclick="_commuteEdit('${c.id}', '${c.label.replace(/'/g,"\\'")}'); _closeCommuteMenu();" style="width:100%;padding:10px 14px;background:none;border:none;color:var(--text);text-align:left;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s">✎ Rename</button>
               <button onclick="_commuteDelete('${c.id}'); _closeCommuteMenu();" style="width:100%;padding:10px 14px;background:none;border:none;color:#ef4444;text-align:left;font-size:13px;cursor:pointer;transition:background 0.15s">🗑 Delete</button>
             </div>
