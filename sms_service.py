@@ -7101,12 +7101,8 @@ def api_v2_spend():
     """Get this month's spend breakdown by category and merchant."""
     token = request.args.get("token", "").strip()
     from_number = _v2_resolve(token)
-    if not from_number:
-        return jsonify({"total": 0, "count": 0, "month": "", "breakdown": {}})
-    try:
-        return jsonify(_v2_fetch_spend(from_number))
-    except Exception as e:
-        return jsonify({"total": 0, "count": 0, "month": "", "breakdown": {}, "error": str(e)})
+    result = _v2_fetch_spend(from_number) if from_number else {"total": 0, "count": 0, "month": "", "breakdown": {}}
+    return jsonify(result)
 
 
 @app.route("/api/v2/prefs", methods=["POST"])

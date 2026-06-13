@@ -24612,8 +24612,7 @@ window.spotifyAddTrack = window.spotifyLike;
 
       for (const [cat, catData] of Object.entries(data.breakdown).sort((a, b) => b[1].total - a[1].total)) {
         const catEmoji = {"Clothes":"👗","Accessories":"👜","Groceries":"🛒","Coffee & Lunch":"☕","Dining":"🍽️","Fast Food":"🍔","Takeaway":"🥡","Fuel":"⛽","Transport":"🚆","Shopping":"🛍️","Subscriptions":"🎬","Parking":"🅿️","Other":"📌"}[cat] || "📌";
-        const merchants = catData.merchants || {};
-        const merchantList = Object.entries(merchants).slice(0, 5);
+        const merchants = catData.merchants || [];
 
         html += `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:12px;overflow:hidden">`;
         html += `<div onclick="this.parentElement.querySelector('[data-merchants]').style.display = this.parentElement.querySelector('[data-merchants]').style.display === 'none' ? 'block' : 'none'; this.querySelector('[data-arrow]').textContent = this.parentElement.querySelector('[data-merchants]').style.display === 'none' ? '▶' : '▼'" style="padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center">`;
@@ -24622,9 +24621,9 @@ window.spotifyAddTrack = window.spotifyLike;
         html += `</div>`;
 
         html += `<div data-merchants style="display:none;padding:8px 12px">`;
-        for (const [merchant, amount] of merchantList) {
+        for (const m of merchants) {
           html += `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)">`;
-          html += `<div style="font-weight:600;margin-bottom:4px">${merchant} <span style="font-weight:400;color:var(--muted)">£${amount.toFixed(2)}</span></div>`;
+          html += `<div style="font-weight:600;margin-bottom:4px">${m.name} <span style="font-weight:400;color:var(--muted)">£${m.total.toFixed(2)}</span></div>`;
           html += `</div>`;
         }
         html += `</div></div>`;
