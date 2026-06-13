@@ -8326,6 +8326,122 @@ def _v2_fetch_area(postcode: str) -> dict:
         return {}
 
 
+def _v2_fetch_weekend_nearby_places(postcode: str, is_weekend: bool) -> dict:
+    """Weekend-only: Fetch nearby restaurants, cafes, and parks. Returns {places: [...]}"""
+    if not is_weekend or not postcode:
+        return {}
+    try:
+        ll = postcode_to_latlon(postcode)
+        if not ll:
+            return {}
+        lat, lon = ll
+
+        # Use Google Places if available, else Overpass/OSM
+        gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY")
+                  or os.environ.get("GOOGLE_PLACES_KEY")
+                  or os.environ.get("GOOGLE_MAPS_KEY")
+                  or os.environ.get("GOOGLE_API_KEY", ""))
+
+        places = []
+
+        if gm_key:
+            # Try Google Places first
+            try:
+                for place_type in ["restaurant", "cafe", "park"]:
+                    r = requests.get(
+                        "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                        params={
+                            "location": f"{lat},{lon}",
+                            "radius": 1000,  # 1km radius
+                            "type": place_type,
+                            "key": gm_key,
+                        },
+                        timeout=5,
+                    )
+                    if r.status_code == 200:
+                        for result in r.json().get("results", [])[:2]:
+                            name = result.get("name", "")
+                            place_type_icon = {"restaurant": "🍽️", "cafe": "☕", "park": "🌳"}.get(place_type, "📍")
+
+                            # Estimate distance in miles (rough haversine)
+                            plat, plon = result.get("geometry", {}).get("location", {}).get("lat"), \
+                                        result.get("geometry", {}).get("location", {}).get("lng")
+                            if plat and plon:
+                                dist_km = haversine_km(lat, lon, plat, plon)
+                                dist_mi = dist_km / 1.60934
+                                places.append({
+                                    "name": name,
+                                    "type": place_type,
+                                    "icon": place_type_icon,
+                                    "distance_mi": round(dist_mi, 1),
+                                })
+            except Exception:
+                pass
+
+        # Fallback to Overpass/OSM if no Google key or if Google failed
+        if not places:
+            try:
+                query = f"""
+[out:json][timeout:5];
+(
+  node["amenity"="restaurant"](around:1000,{lat},{lon});
+  node["amenity"="cafe"](around:1000,{lat},{lon});
+  node["leisure"="park"](around:1000,{lat},{lon});
+);
+out body 20;
+"""
+                elements = _overpass(query)
+                type_icon_map = {
+                    "restaurant": ("🍽️", "restaurant"),
+                    "cafe": ("☕", "cafe"),
+                    "park": ("🌳", "park"),
+                }
+
+                for e in elements[:6]:
+                    tags = e.get("tags", {})
+                    name = tags.get("name", "")
+                    if not name:
+                        continue
+                    elat, elon = e.get("lat"), e.get("lon")
+                    if elat is None or elon is None:
+                        continue
+
+                    # Determine type and icon
+                    place_type = "place"
+                    place_icon = "📍"
+                    if tags.get("amenity") == "restaurant":
+                        place_type, place_icon = "restaurant", "🍽️"
+                    elif tags.get("amenity") == "cafe":
+                        place_type, place_icon = "cafe", "☕"
+                    elif tags.get("leisure") == "park":
+                        place_type, place_icon = "park", "🌳"
+
+                    dist_km = haversine_km(lat, lon, elat, elon)
+                    dist_mi = dist_km / 1.60934
+                    places.append({
+                        "name": name,
+                        "type": place_type,
+                        "icon": place_icon,
+                        "distance_mi": round(dist_mi, 1),
+                    })
+            except Exception:
+                pass
+
+        # Deduplicate and limit to 3 total suggestions
+        seen_names = set()
+        unique_places = []
+        for p in places:
+            if p["name"].lower() not in seen_names:
+                seen_names.add(p["name"].lower())
+                unique_places.append(p)
+                if len(unique_places) >= 3:
+                    break
+
+        return {"places": unique_places, "postcode": postcode}
+    except Exception:
+        return {}
+
+
 def _v2_fetch_traffic(home_postcode: str, school_profiles: list) -> dict:
     """Live drive times for school run. Called on weekday mornings only.
     Returns {"legs": [{child, school, mins, normal_mins, delay_mins, traffic, emoji}]}"""
@@ -8435,7 +8551,7 @@ def _v2_fetch_fuel(postcode: str) -> dict:
 
 
 def _v2_fetch_weather(postcode: str) -> dict:
-    """Current weather for postcode — structured for time-aware Groq prompt."""
+    """Current weather for postcode + daily forecast — structured for time-aware Groq prompt."""
     try:
         ll = postcode_to_latlon(postcode)
         if not ll:
@@ -8446,11 +8562,13 @@ def _v2_fetch_weather(postcode: str) -> dict:
             params={
                 "latitude": lat, "longitude": lon,
                 "current": "temperature_2m,weathercode,windspeed_10m",
+                "daily": "temperature_2m_max,temperature_2m_min,weathercode",
                 "timezone": "Europe/London",
             },
             timeout=5,
         )
-        c = r.json()["current"]
+        resp_data = r.json()
+        c = resp_data["current"]
         temp = round(c["temperature_2m"])
         code = c["weathercode"]
         wind = round(c["windspeed_10m"])
@@ -8458,10 +8576,22 @@ def _v2_fetch_weather(postcode: str) -> dict:
         sunny     = code <= 1               # clear sky / mainly clear
         outdoor_ok = code <= 3 and temp >= 11  # not raining, not freezing
         warm      = temp >= 16
+
+        # Extract today's min/max forecast
+        daily = resp_data.get("daily", {})
+        temp_max = daily.get("temperature_2m_max", [None])[0]
+        temp_min = daily.get("temperature_2m_min", [None])[0]
+        forecast_range = ""
+        if temp_max is not None and temp_min is not None:
+            forecast_range = f" ({round(temp_min)}-{round(temp_max)}°C)"
+
         return {
             "temp": temp, "desc": desc, "wind": wind,
             "sunny": sunny, "outdoor_ok": outdoor_ok, "warm": warm,
             "summary": f"{temp}°C, {desc}",
+            "forecast_range": forecast_range,
+            "temp_max": round(temp_max) if temp_max else None,
+            "temp_min": round(temp_min) if temp_min else None,
         }
     except Exception:
         return {}
@@ -11580,11 +11710,13 @@ def api_morning_brief():
                 pass
 
             # Parallel fetch — reuse V2 context engine functions
-            with _mcf.ThreadPoolExecutor(max_workers=6) as _mpool:
+            with _mcf.ThreadPoolExecutor(max_workers=7) as _mpool:
                 _mfutures = {}
                 if postcode:
                     _mfutures["weather"] = _mpool.submit(_v2_fetch_weather, postcode)
                     _mfutures["fuel"]    = _mpool.submit(_v2_fetch_fuel, postcode)
+                    # Weekend-only: nearby places (restaurants, cafes, parks)
+                    _mfutures["nearby_places"] = _mpool.submit(_v2_fetch_weekend_nearby_places, postcode, wday >= 5)
                 _mfutures["school"]    = _mpool.submit(_v2_fetch_school, phone)
                 # Trains: weekdays only, and not a bank holiday
                 _mfutures["trains"]    = _mpool.submit(
@@ -11657,14 +11789,15 @@ def api_morning_brief():
             _mschool_upcoming = (_mschool.get("upcoming") or [])
             _mparts = []
 
-            # Header: day + weather inline
+            # Header: day + weather inline (with forecast range)
             _mwx_desc = _mwx.get("desc", "")
             _mwx_temp = _mwx.get("temp")
+            _mwx_forecast = _mwx.get("forecast_range", "")
             _mwx_icon = {"clear": "☀️", "sunny": "☀️", "cloudy": "☁️", "overcast": "☁️",
                          "rain": "🌧️", "drizzle": "🌦️", "shower": "🌦️", "thunder": "⛈️",
                          "snow": "❄️", "fog": "🌫️", "mist": "🌫️", "wind": "💨"}.get(
                 (_mwx_desc or "").lower().split()[0] if _mwx_desc else "", "🌤️")
-            _mwx_str = f" · {_mwx_temp}°C, {_mwx_desc} {_mwx_icon}" if _mwx_temp and _mwx_desc else ""
+            _mwx_str = f" · {_mwx_temp}°C, {_mwx_desc}{_mwx_forecast} {_mwx_icon}" if _mwx_temp and _mwx_desc else ""
             _mparts.append(f"*{dow} morning*{_mwx_str}")
             _mparts.append("")
 
@@ -11742,6 +11875,14 @@ def api_morning_brief():
                         except Exception:
                             pass
                         _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')} ({_msdate})")
+
+            # 🏘️ Weekend nearby places (Sat/Sun only)
+            _mnearby = _mctx.get("nearby_places", {})
+            if wday >= 5 and _mnearby.get("places"):
+                _mparts.append("")
+                _mparts.append("*Weekend spots nearby*")
+                for _mp in _mnearby["places"][:3]:
+                    _mparts.append(f"{_mp.get('icon', '📍')} {_mp.get('name', '')} ({_mp.get('distance_mi', 0)}mi)")
 
             # 📚 3 random picks from Twitter archive
             try:
