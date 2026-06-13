@@ -969,6 +969,124 @@ def _get_cached_ask_miru_context(from_number: str) -> str:
     return _build_ask_miru_context(from_number)
 
 
+# ── Ask Miru Intelligence Tools (for agentic RAG) ────────────────────────────
+
+def _tool_get_receipts(merchant_name: str, from_number: str) -> str:
+    """Get receipts for a specific merchant."""
+    try:
+        plain = from_number.replace("whatsapp:", "").strip()
+        rows = lib._sb().table("wa_saves").select("title,summary,created_at") \
+            .eq("from_number", plain).ilike("title", f"%🧾%{merchant_name}%") \
+            .order("created_at", desc=True).limit(5).execute().data or []
+
+        if not rows:
+            return f"No receipts found for {merchant_name}."
+
+        results = []
+        for r in rows:
+            merchant = (r.get("title","").replace("🧾","").strip())
+            summary = r.get("summary","")
+            date_str = (r.get("created_at","")[:10])
+            results.append(f"• {merchant} on {date_str}: {summary[:60]}")
+        return "\n".join(results) if results else f"No receipts found for {merchant_name}."
+    except Exception as e:
+        return f"Error retrieving receipts: {str(e)}"
+
+
+def _tool_get_spend(period: str, from_number: str) -> str:
+    """Get spending summary for a period (this month, last month, this quarter, etc)."""
+    try:
+        from datetime import date, timedelta
+        plain = from_number.replace("whatsapp:", "").strip()
+
+        # Parse period
+        today = date.today()
+        if "this month" in period.lower():
+            start = today.replace(day=1)
+            end = date(today.year, today.month + 1, 1) if today.month < 12 else date(today.year + 1, 1, 1)
+        elif "last month" in period.lower():
+            first = today.replace(day=1)
+            last_month = first - timedelta(days=1)
+            start = last_month.replace(day=1)
+            end = first
+        elif "this quarter" in period.lower():
+            quarter = (today.month - 1) // 3 + 1
+            start = date(today.year, (quarter-1)*3 + 1, 1)
+            end = date(today.year, quarter*3 + 1, 1) if quarter < 4 else date(today.year + 1, 1, 1)
+        else:
+            start = today.replace(day=1)
+            end = date(today.year, today.month + 1, 1) if today.month < 12 else date(today.year + 1, 1, 1)
+
+        # Fetch spend data
+        rows = lib._sb().table("wa_saves").select("title,summary,category") \
+            .eq("from_number", plain).ilike("title", "🧾%") \
+            .gte("created_at", start.isoformat()).lt("created_at", end.isoformat()) \
+            .execute().data or []
+
+        if not rows:
+            return f"No spending found for {period}."
+
+        total = 0.0
+        by_category = {}
+        import re as _re_sp
+        for r in rows:
+            summary = r.get("summary", "")
+            category = r.get("category", "Other")
+            m = _re_sp.search(r'£([\d,]+\.?\d*)', summary)
+            if m:
+                amount = float(m.group(1).replace(",", ""))
+                total += amount
+                if category not in by_category:
+                    by_category[category] = 0
+                by_category[category] += amount
+
+        result = f"Spending for {period}: £{total:.2f}\n"
+        for cat in sorted(by_category.keys(), key=lambda x: -by_category[x])[:5]:
+            result += f"• {cat}: £{by_category[cat]:.2f}\n"
+        return result
+    except Exception as e:
+        return f"Error retrieving spend: {str(e)}"
+
+
+def _tool_get_schools(from_number: str) -> str:
+    """Get active schools and children."""
+    try:
+        rows = lib._sb().table("school_profiles").select("child_name,school_name") \
+            .eq("from_number", from_number).eq("active", True).execute().data or []
+
+        if not rows:
+            return "No active schools configured."
+
+        result = "Active schools:\n"
+        for r in rows:
+            child = r.get("child_name", "Unknown")
+            school = r.get("school_name", "Unknown")
+            result += f"• {child} — {school}\n"
+        return result
+    except Exception as e:
+        return f"Error retrieving schools: {str(e)}"
+
+
+def _tool_get_commutes(from_number: str) -> str:
+    """Get user's saved commute routes."""
+    try:
+        rows = lib._sb().table("commutes").select("label,dest,duration") \
+            .eq("from_number", from_number).execute().data or []
+
+        if not rows:
+            return "No commutes configured."
+
+        result = "Your commutes:\n"
+        for r in rows:
+            label = r.get("label", "Unknown")
+            dest = r.get("dest", "")
+            duration = r.get("duration", "")
+            result += f"• {label} → {dest}" + (f" ({duration})" if duration else "") + "\n"
+        return result
+    except Exception as e:
+        return f"Error retrieving commutes: {str(e)}"
+
+
 def _refresh_all_ask_miru_contexts() -> dict:
     """Background task: rebuild Ask Miru context for all active users."""
     try:
@@ -11861,25 +11979,112 @@ def api_home_ask():
             app.logger.debug(f"[ask] Weekly saves formatting failed: {e}")
 
     try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
-                     "Content-Type": "application/json"},
-            json={"model": "llama-3.1-8b-instant",
-                  "max_tokens": 400 if any(w in q_lower for w in ["show", "recipe", "ingredient", "steps"]) else 120,
-                  "temperature": 0.2, "messages": messages},
-            timeout=8,
-        )
-        answer = r.json()["choices"][0]["message"]["content"].strip()
+        # ── Agentic RAG: Define tools for the LLM ────────────────────────────────
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_receipts",
+                    "description": "Get receipts for a specific merchant or shop",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "merchant_name": {
+                                "type": "string",
+                                "description": "Name of the shop or merchant (e.g., H&M, Tesco, Pret)"
+                            }
+                        },
+                        "required": ["merchant_name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_spend",
+                    "description": "Get spending summary for a time period",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "period": {
+                                "type": "string",
+                                "description": "Time period (e.g., 'this month', 'last month', 'this quarter')"
+                            }
+                        },
+                        "required": ["period"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_schools",
+                    "description": "Get the user's children and their schools"
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_commutes",
+                    "description": "Get the user's saved commute routes"
+                }
+            }
+        ]
 
-        # Return answer as-is from Groq (removed over-aggressive blocking)
-        # The LLM has been instructed to be factual, not to hallucinate
-        validated_answer = answer.strip()
-        if validated_answer and not validated_answer.endswith("."):
-            validated_answer += "."
+        # Tool execution loop
+        for iteration in range(3):  # Max 3 iterations to prevent infinite loops
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                         "Content-Type": "application/json"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "max_tokens": 400 if any(w in q_lower for w in ["show", "recipe", "ingredient", "steps"]) else 300,
+                    "temperature": 0.2,
+                    "messages": messages,
+                    "tools": tools if is_personal else None  # Only offer tools for personal questions
+                },
+                timeout=10,
+            )
 
-        app.logger.info(f"[home/ask] Answer: {validated_answer[:100]}")
-        return jsonify({"answer": validated_answer if validated_answer else ""})
+            response = r.json()
+            choice = response.get("choices", [{}])[0]
+            message = choice.get("message", {})
+
+            # Check if LLM wants to call a tool
+            tool_calls = message.get("tool_calls", [])
+            if tool_calls and is_personal and from_number:
+                # Execute tools and add results to conversation
+                for tool_call in tool_calls:
+                    tool_name = tool_call.get("function", {}).get("name", "")
+                    tool_args = __import__("json").loads(tool_call.get("function", {}).get("arguments", "{}"))
+
+                    tool_result = ""
+                    if tool_name == "get_receipts":
+                        tool_result = _tool_get_receipts(tool_args.get("merchant_name", ""), from_number)
+                    elif tool_name == "get_spend":
+                        tool_result = _tool_get_spend(tool_args.get("period", "this month"), from_number)
+                    elif tool_name == "get_schools":
+                        tool_result = _tool_get_schools(from_number)
+                    elif tool_name == "get_commutes":
+                        tool_result = _tool_get_commutes(from_number)
+
+                    # Add assistant response and tool result to messages
+                    messages.append({"role": "assistant", "content": message.get("content", ""), "tool_calls": tool_calls})
+                    messages.append({"role": "tool", "tool_call_id": tool_call.get("id", ""), "content": tool_result})
+                    app.logger.info(f"[ask] Tool called: {tool_name}, result: {tool_result[:80]}")
+            else:
+                # LLM returned final answer
+                answer = message.get("content", "").strip()
+                validated_answer = answer.strip()
+                if validated_answer and not validated_answer.endswith("."):
+                    validated_answer += "."
+
+                app.logger.info(f"[home/ask] Answer: {validated_answer[:100]}")
+                return jsonify({"answer": validated_answer if validated_answer else ""})
+
+        # Fallback if max iterations reached
+        return jsonify({"answer": "Sorry, I had trouble getting enough information to answer that."})
     except Exception as e:
         app.logger.warning(f"[home/ask] {e}")
         return jsonify({"answer": "Sorry, couldn't get an answer right now."}), 500
