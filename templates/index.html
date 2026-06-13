@@ -15417,7 +15417,7 @@ _bkBadge();
 
   <!-- Main view -->
   <div id="saves-main" style="display:none;padding:0 16px">
-    <div style="max-width:600px;margin:0 auto">
+    <div style="max-width:1400px;margin:0 auto;width:100%">
 
     <!-- Header -->
     <div style="display:flex;align-items:flex-start;margin-bottom:12px;gap:10px">
@@ -15449,8 +15449,8 @@ _bkBadge();
     <!-- Category pills -->
     <div id="saves-cat-pills" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:10px;margin-bottom:12px;scrollbar-width:none;-ms-overflow-style:none"></div>
 
-    <!-- List/Tiles container -->
-    <div id="saves-list" style="display:grid;grid-template-columns:1fr;gap:10px"></div>
+    <!-- List/Tiles container — responsive grid (auto-fill with 400px min) -->
+    <div id="saves-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px"></div>
 
     </div>
   </div>
