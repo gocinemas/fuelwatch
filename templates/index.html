@@ -16705,6 +16705,7 @@ let _savesAll = [];
           }
         }
       }
+      var deleteBtn = e.personal ? '<button onclick="_deletePersonalEvent(this)" data-title="' + title.replace(/"/g,'&quot;') + '" style="font-size:14px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;flex-shrink:0" title="Remove event">✕</button>' : '';
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:8px">'
         + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'
         + '<div style="flex:1;min-width:0">'
@@ -16712,6 +16713,7 @@ let _savesAll = [];
         + (timeStr ? '<div style="font-size:12px;color:var(--muted);margin-top:2px">🕐 ' + timeStr + '</div>' : '')
         + (leaveByStr ? '<div style="font-size:11px;font-weight:700;color:#d97706;margin-top:3px">🚗 Leave by ' + leaveByStr + '</div>' : '')
         + '</div>'
+        + (deleteBtn ? '<div style="display:flex;gap:6px;flex-shrink:0;align-items:center">' + deleteBtn + '</div>' : '')
         + (navBtns ? '<div style="display:flex;gap:6px;flex-shrink:0;align-items:center;margin-top:2px">' + navBtns + '</div>' : '')
         + '</div>'
         + '</div>';
@@ -16725,6 +16727,42 @@ let _savesAll = [];
       card.style.display = "none";
       if (_todayLbl) _todayLbl.style.display = "none";
     }
+  }
+
+  function _deletePersonalEvent(btn) {
+    var title = btn.getAttribute('data-title');
+    if (!title) return;
+    // Find the event in the personal events list and get its index
+    var ctx = _briefData && _briefData.context;
+    var personal = (ctx && ctx.personal_events) || [];
+    var idx = -1;
+    for (var i = 0; i < personal.length; i++) {
+      if (personal[i].title === title) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx === -1) {
+      alert('Event not found');
+      return;
+    }
+    // Delete via API
+    fetch("/api/v2/personal-events", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({action: "delete", index: idx})
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        // Remove from local context and re-render
+        personal.splice(idx, 1);
+        _briefRenderTodayCard(_briefData.today_events, _briefData.school_holiday);
+      } else {
+        alert('Failed to delete event');
+      }
+    })
+    .catch(e => alert('Error: ' + e.message));
   }
 
   function _briefUpdateFuelStrip(fuel) {
