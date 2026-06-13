@@ -7801,6 +7801,7 @@ def _v2_fetch_spend(from_number: str) -> dict:
             .execute().data or []
         total = 0.0; count = 0
         breakdown: dict = {}
+        merchants_by_cat: dict = {}  # Track merchants per category for detailed breakdown
         for r in rows:
             merchant = (r.get("title") or "").replace("🧾", "").strip()
             # Skip online orders
@@ -7819,9 +7820,20 @@ def _v2_fetch_spend(from_number: str) -> dict:
             if not cat:
                 cat = _receipt_category(merchant)
             if cat not in breakdown:
-                breakdown[cat] = {"total": 0.0, "count": 0}
+                breakdown[cat] = {"total": 0.0, "count": 0, "merchants": {}}
+                merchants_by_cat[cat] = {}
             breakdown[cat]["total"] = round(breakdown[cat]["total"] + amt, 2)
             breakdown[cat]["count"] += 1
+            # Track merchant spending in this category
+            if merchant not in merchants_by_cat[cat]:
+                merchants_by_cat[cat][merchant] = 0.0
+            merchants_by_cat[cat][merchant] += amt
+
+        # Add top merchants to each category (sorted by amount)
+        for cat in breakdown:
+            merchants_list = [(m, merchants_by_cat[cat][m]) for m in merchants_by_cat[cat]]
+            merchants_list.sort(key=lambda x: x[1], reverse=True)
+            breakdown[cat]["merchants"] = [{"name": m[0], "total": round(m[1], 2)} for m in merchants_list[:5]]  # Top 5
         return {
             "total":     round(total, 2),
             "count":     count,
