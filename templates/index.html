@@ -15402,34 +15402,44 @@ _bkBadge();
   <div id="saves-pin-screen" style="display:none"><a id="saves-wa-link" href="#"></a></div>
 
   <!-- Main view -->
-  <div id="saves-main" style="display:none">
+  <div id="saves-main" style="display:none;padding:0 16px">
+    <div style="max-width:600px;margin:0 auto">
 
     <!-- Header -->
-    <div style="display:flex;align-items:flex-start;margin-bottom:16px;gap:10px">
+    <div style="display:flex;align-items:flex-start;margin-bottom:12px;gap:10px">
       <div style="flex:1">
-        <div style="font-size:24px;font-weight:900;color:var(--text);letter-spacing:-0.6px;line-height:1">My Clippings</div>
-        <div id="saves-count-label" style="font-size:12px;color:var(--muted);margin-top:4px">Menus · places · wine · receipts · links — all from WhatsApp</div>
+        <div style="font-size:24px;font-weight:900;color:var(--text);letter-spacing:-0.6px;line-height:1">📌 My Clippings</div>
+        <div id="saves-count-label" style="font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px">Menus · Places · Articles · Receipts · Links</div>
       </div>
       <button onclick="savesFabOpen()" title="Add save"
-        style="background:var(--text);color:var(--bg);border:none;border-radius:14px;padding:9px 16px;font-size:20px;font-weight:300;cursor:pointer;line-height:1;flex-shrink:0">
+        style="background:#059669;color:white;border:none;border-radius:12px;padding:8px 14px;font-size:18px;font-weight:300;cursor:pointer;line-height:1;flex-shrink:0">
         +
       </button>
     </div>
 
-
-    <!-- Search -->
-    <div style="position:relative;margin-bottom:16px">
-      <input id="saves-search-input" type="search" placeholder="Search clippings…"
-        style="width:100%;border:1px solid var(--border);border-radius:14px;padding:11px 36px 11px 40px;font-size:14px;outline:none;background:var(--surface);color:var(--text)"
-        oninput="savesSearchInput()" />
-      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔍</span>
-      <button id="saves-search-clear" onclick="savesSearchClear()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#9ca3af;line-height:1;padding:0">✕</button>
+    <!-- Search & View Toggle -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+      <div style="position:relative;flex:1">
+        <input id="saves-search-input" type="search" placeholder="Search clippings…"
+          style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 32px 10px 36px;font-size:13px;outline:none;background:var(--surface);color:var(--text)"
+          oninput="savesSearchInput()" />
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none">🔍</span>
+        <button id="saves-search-clear" onclick="savesSearchClear()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;color:#9ca3af;line-height:1;padding:0">✕</button>
+      </div>
+      <div style="display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px">
+        <button onclick="savesSetViewMode('list')" id="saves-view-list" title="List view" style="background:transparent;border:none;padding:6px 8px;cursor:pointer;font-size:14px;color:#059669">☰</button>
+        <button onclick="savesSetViewMode('tiles')" id="saves-view-tiles" title="Tiles view" style="background:transparent;border:none;padding:6px 8px;cursor:pointer;font-size:14px;color:#9ca3af">⊞</button>
+      </div>
     </div>
 
     <!-- Category pills -->
-    <div id="saves-cat-pills" style="display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:12px;margin-bottom:4px;scrollbar-width:none;-ms-overflow-style:none"></div>
+    <div id="saves-cat-pills" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:10px;margin-bottom:12px;scrollbar-width:none;-ms-overflow-style:none"></div>
 
-    <div id="saves-list"></div>
+    <!-- List/Tiles container -->
+    <div id="saves-list" style="display:grid;grid-template-columns:1fr;gap:10px"></div>
+
+    </div>
+  </div>
   </div>
 </div>
 
@@ -20160,6 +20170,21 @@ let _savesAll = [];
       <script>setTimeout(()=>window.print(),400);<\/script>
       </body></html>`);
     w.document.close();
+  };
+
+  let _savesViewMode = 'list';
+
+  window.savesSetViewMode = function(mode) {
+    _savesViewMode = mode;
+    document.getElementById('saves-view-list').style.color = mode === 'list' ? '#059669' : '#9ca3af';
+    document.getElementById('saves-view-tiles').style.color = mode === 'tiles' ? '#059669' : '#9ca3af';
+    const listEl = document.getElementById('saves-list');
+    if (mode === 'tiles') {
+      listEl.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    } else {
+      listEl.style.gridTemplateColumns = '1fr';
+    }
+    savesRender();
   };
 
   let _savesSearchTimer = null;
