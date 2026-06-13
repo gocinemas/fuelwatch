@@ -24511,6 +24511,12 @@ window.spotifyAddTrack = window.spotifyLike;
     const token = _miruPhone() || localStorage.getItem("miru_saves_token") || "";
     if (!token) return; // Not logged in yet
 
+    // Check if user has skipped onboarding
+    if (localStorage.getItem("onboarding_skipped") === "1") {
+      document.getElementById("onboarding-modal").style.display = "none";
+      return;
+    }
+
     try {
       const resp = await fetch(`/api/user/setup-status?token=${encodeURIComponent(token)}`);
       if (resp.ok) {
