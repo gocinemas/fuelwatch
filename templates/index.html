@@ -3672,16 +3672,19 @@
     }
     if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); _renderRecent("miru_intel_" + (_intelSearchMode || "brand"), "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); }
     if (name === "scan") {
-      console.log("scan handler: calling bookTab...");
-      setTimeout(function() {
-        const btn = document.getElementById("btab-library");
-        if (btn) {
-          console.log("scan handler: btab-library found, calling bookTab");
-          bookTab("library", btn);
-        } else {
-          console.error("scan handler: btab-library NOT found!");
-        }
-      }, 0);
+      // Show library immediately without auth
+      const panel = document.getElementById("books-library-panel");
+      const search = document.getElementById("books-search-panel");
+      if (panel) panel.style.display = "block";
+      if (search) search.style.display = "none";
+
+      // Render books from localStorage
+      try {
+        _bkRenderLib();
+      } catch(e) {
+        console.error("Failed to render library:", e);
+        if (panel) panel.innerHTML = '<div style="padding:20px;color:#dc2626">Library error — refresh the page</div>';
+      }
     }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
