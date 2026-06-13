@@ -3615,7 +3615,13 @@
 
   function showScreen(name) {
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-    document.getElementById("screen-" + name).classList.add("active");
+    const screenEl = document.getElementById("screen-" + name);
+    if (screenEl) {
+      screenEl.classList.add("active");
+      console.log("showScreen(" + name + ") → screen-" + name + " is now active");
+    } else {
+      console.error("showScreen(" + name + ") → screen-" + name + " not found!");
+    }
     window.scrollTo({top:0, behavior:"smooth"});
     const bb = document.getElementById("back-btn");
     // Brief is the home screen — never show back button on it
@@ -3666,8 +3672,15 @@
     }
     if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); _renderRecent("miru_intel_" + (_intelSearchMode || "brand"), "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); }
     if (name === "scan") {
+      console.log("scan handler: calling bookTab...");
       setTimeout(function() {
-        bookTab("library", document.getElementById("btab-library"));
+        const btn = document.getElementById("btab-library");
+        if (btn) {
+          console.log("scan handler: btab-library found, calling bookTab");
+          bookTab("library", btn);
+        } else {
+          console.error("scan handler: btab-library NOT found!");
+        }
       }, 0);
     }
     if (name === "school")  { schoolCheckPin(); }
@@ -13259,10 +13272,10 @@ function _hcAdd() {
 </script>
 
 <!-- ===================== MY BOOKS SCREEN ===================== -->
-<div id="screen-scan" class="screen">
+<div id="screen-scan" class="screen" style="background:var(--bg)">
 <div style="display:block;width:100%;max-width:36rem;margin:0 auto;padding:16px 16px calc(80px + env(safe-area-inset-bottom))">
 
-  <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px">My Books</div>
+  <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px">📚 My Books</div>
   <div style="font-size:13px;color:var(--subtle);margin-bottom:10px">Search, scan barcodes, track your reading</div>
 
   <!-- Tab strip -->
