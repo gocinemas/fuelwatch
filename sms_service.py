@@ -7849,24 +7849,22 @@ def _v2_fetch_spend(from_number: str) -> dict:
             except ValueError:
                 continue
             total += amt; count += 1
-            # Determine category — use stored value or derive from title/items
-            cat = r.get("category") or ""
-            if not cat:
-                cat = _receipt_category(merchant)
-                # Also check items for better categorization (clothes/accessories)
-                summary = (r.get("summary") or "").lower()
-                if "clothes" not in cat.lower() and "accessories" not in cat.lower():
-                    clothes_kw = ["shirt", "jeans", "dress", "blouse", "pants", "trouser",
-                                  "jacket", "coat", "jumper", "sweater", "top", "skirt",
-                                  "shorts", "socks", "tights", "leggings", "trousers"]
-                    accessories_kw = ["shoes", "shoe", "boots", "trainers", "sneaker", "heels",
-                                     "bag", "handbag", "backpack", "purse", "wallet",
-                                     "belt", "scarf", "hat", "cap", "gloves", "sunglasses",
-                                     "jewelry", "jewellery", "watch", "bracelet", "necklace"]
-                    if any(kw in summary for kw in clothes_kw):
-                        cat = "Clothes"
-                    elif any(kw in summary for kw in accessories_kw):
-                        cat = "Accessories"
+            # Determine category — always recategorize with latest logic
+            cat = _receipt_category(merchant)
+            # Also check items for better categorization (clothes/accessories)
+            summary = (r.get("summary") or "").lower()
+            if "clothes" not in cat.lower() and "accessories" not in cat.lower():
+                clothes_kw = ["shirt", "jeans", "dress", "blouse", "pants", "trouser",
+                              "jacket", "coat", "jumper", "sweater", "top", "skirt",
+                              "shorts", "socks", "tights", "leggings", "trousers"]
+                accessories_kw = ["shoes", "shoe", "boots", "trainers", "sneaker", "heels",
+                                 "bag", "handbag", "backpack", "purse", "wallet",
+                                 "belt", "scarf", "hat", "cap", "gloves", "sunglasses",
+                                 "jewelry", "jewellery", "watch", "bracelet", "necklace"]
+                if any(kw in summary for kw in clothes_kw):
+                    cat = "Clothes"
+                elif any(kw in summary for kw in accessories_kw):
+                    cat = "Accessories"
             if cat not in breakdown:
                 breakdown[cat] = {"total": 0.0, "count": 0, "merchants": {}}
                 merchants_by_cat[cat] = {}
