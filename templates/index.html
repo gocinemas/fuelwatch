@@ -15320,14 +15320,7 @@ _bkBadge();
   <div style="padding:0 16px;max-width:500px;margin:0 auto">
     <div style="font-size:16px;font-weight:900;color:var(--text);margin-bottom:8px;letter-spacing:1px">💰 <span id="receipts-period">JUNE</span></div>
 
-    <!-- Period selector tabs -->
-    <div style="display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
-      <button onclick="_receiptsAnalysisLoad('month')" id="receipts-tab-month" style="padding:6px 12px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text)">Monthly</button>
-      <button onclick="_receiptsAnalysisLoad('quarter')" id="receipts-tab-quarter" style="padding:6px 12px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text)">Quarterly</button>
-      <button onclick="_receiptsAnalysisLoad('year')" id="receipts-tab-year" style="padding:6px 12px;border:1px solid #e5e5e0;background:white;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;color:var(--text)">Yearly</button>
-    </div>
-
-    <!-- Month/Quarter/Year selector (for monthly view) -->
+    <!-- Month selector -->
     <div id="receipts-month-nav" style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
       <button onclick="_receiptsAnalysisLoadPrev()" style="padding:6px 10px;border:1px solid #e5e5e0;background:white;border-radius:6px;cursor:pointer;font-weight:600;color:var(--muted)">‹</button>
       <select id="receipts-month-select" onchange="_receiptsAnalysisLoad('month')" style="flex:1;padding:8px;border:1px solid #e5e5e0;border-radius:6px;background:white;color:var(--text);font-weight:600;cursor:pointer">
@@ -24603,33 +24596,20 @@ window.spotifyAddTrack = window.spotifyLike;
   }
 
   // Receipt Analysis state
-  let _receiptsCurrentPeriod = 'month';
   let _receiptsCurrentDate = new Date();
 
-  window._receiptsAnalysisLoad = async function(period) {
+  window._receiptsAnalysisLoad = async function() {
     const token = _miruPhone() || localStorage.getItem("miru_saves_token");
     if (!token) return;
 
-    if (period) {
-      _receiptsCurrentPeriod = period;
-      _receiptsCurrentDate = new Date();
-      _receiptsUpdateUI();
-    }
+    _receiptsUpdateUI();
 
     document.getElementById("receipts-loading").style.display = "block";
     document.getElementById("receipts-list").style.display = "none";
     document.getElementById("receipts-empty").style.display = "none";
 
     try {
-      let url = `/api/v2/spend?token=${encodeURIComponent(token)}`;
-      if (_receiptsCurrentPeriod === 'month') {
-        url += `&month=${_receiptsCurrentDate.getMonth()+1}&year=${_receiptsCurrentDate.getFullYear()}`;
-      } else if (_receiptsCurrentPeriod === 'quarter') {
-        const q = Math.floor(_receiptsCurrentDate.getMonth() / 3) + 1;
-        url += `&quarter=${q}&year=${_receiptsCurrentDate.getFullYear()}`;
-      } else if (_receiptsCurrentPeriod === 'year') {
-        url += `&year=${_receiptsCurrentDate.getFullYear()}`;
-      }
+      const url = `/api/v2/spend?token=${encodeURIComponent(token)}&month=${_receiptsCurrentDate.getMonth()+1}&year=${_receiptsCurrentDate.getFullYear()}`;
 
       const r = await fetch(url);
       if (!r.ok) throw new Error("Failed to fetch spend");
@@ -24678,11 +24658,10 @@ window.spotifyAddTrack = window.spotifyLike;
     const curMonth = _receiptsCurrentDate.getMonth();
     const curYear = _receiptsCurrentDate.getFullYear();
 
-    // Update period title
-    if (_receiptsCurrentPeriod === 'month') {
-      document.getElementById('receipts-period').textContent = months[curMonth].toUpperCase();
-      document.getElementById('receipts-month-nav').style.display = 'flex';
-      const sel = document.getElementById('receipts-month-select');
+    document.getElementById('receipts-period').textContent = months[curMonth].toUpperCase();
+
+    const sel = document.getElementById('receipts-month-select');
+    if (sel) {
       sel.innerHTML = '';
       for (let y = curYear - 2; y <= curYear; y++) {
         for (let m = 0; m < 12; m++) {
@@ -24698,41 +24677,16 @@ window.spotifyAddTrack = window.spotifyLike;
         _receiptsCurrentDate = new Date(y, m-1, 1);
         _receiptsAnalysisLoad();
       };
-    } else if (_receiptsCurrentPeriod === 'quarter') {
-      const q = Math.floor(curMonth / 3) + 1;
-      document.getElementById('receipts-period').textContent = `Q${q} ${curYear}`;
-      document.getElementById('receipts-month-nav').style.display = 'none';
-    } else if (_receiptsCurrentPeriod === 'year') {
-      document.getElementById('receipts-period').textContent = `${curYear}`;
-      document.getElementById('receipts-month-nav').style.display = 'none';
     }
-
-    // Update tab highlight
-    document.querySelectorAll('[id^="receipts-tab-"]').forEach(btn => btn.style.background = 'white');
-    document.getElementById(`receipts-tab-${_receiptsCurrentPeriod}`).style.background = '#f0f0f0';
   }
 
   window._receiptsAnalysisLoadPrev = function() {
-    if (_receiptsCurrentPeriod === 'month') {
-      _receiptsCurrentDate.setMonth(_receiptsCurrentDate.getMonth() - 1);
-    } else if (_receiptsCurrentPeriod === 'quarter') {
-      _receiptsCurrentDate.setMonth(_receiptsCurrentDate.getMonth() - 3);
-    } else if (_receiptsCurrentPeriod === 'year') {
-      _receiptsCurrentDate.setFullYear(_receiptsCurrentDate.getFullYear() - 1);
-    }
-    _receiptsUpdateUI();
+    _receiptsCurrentDate.setMonth(_receiptsCurrentDate.getMonth() - 1);
     _receiptsAnalysisLoad();
   };
 
   window._receiptsAnalysisLoadNext = function() {
-    if (_receiptsCurrentPeriod === 'month') {
-      _receiptsCurrentDate.setMonth(_receiptsCurrentDate.getMonth() + 1);
-    } else if (_receiptsCurrentPeriod === 'quarter') {
-      _receiptsCurrentDate.setMonth(_receiptsCurrentDate.getMonth() + 3);
-    } else if (_receiptsCurrentPeriod === 'year') {
-      _receiptsCurrentDate.setFullYear(_receiptsCurrentDate.getFullYear() + 1);
-    }
-    _receiptsUpdateUI();
+    _receiptsCurrentDate.setMonth(_receiptsCurrentDate.getMonth() + 1);
     _receiptsAnalysisLoad();
   };
 
