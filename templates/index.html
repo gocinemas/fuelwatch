@@ -2808,12 +2808,28 @@
           <div id="commute-list"></div>
           <div id="commute-add-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:8px">
             <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">Add a destination</div>
-            <input id="commute-add-name" placeholder="Label (e.g. Work, Inaaya's School)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:6px">
+            <input id="commute-add-name" placeholder="Label (e.g. Work, Temple, School)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:6px">
 
-            <input id="commute-add-dest" placeholder="Address or school name (e.g. New Haw Junior School)"
+            <input id="commute-add-dest" placeholder="Address or place name (e.g. New Haw Junior School)"
               style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);margin-bottom:2px">
 
             <div id="commute-dest-suggestions" style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;max-height:120px;overflow-y:auto;font-size:12px;margin-bottom:8px"></div>
+
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">Days</div>
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px">
+                <input type="radio" name="commute-days" value="both" checked style="cursor:pointer">
+                <span>Every day</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px">
+                <input type="radio" name="commute-days" value="weekday" style="cursor:pointer">
+                <span>Weekdays</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px">
+                <input type="radio" name="commute-days" value="weekend" style="cursor:pointer">
+                <span>Weekends</span>
+              </label>
+            </div>
 
             <div style="display:flex;gap:6px">
               <button onclick="_commuteSave()" style="flex:1;padding:8px;background:#4f46e5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save</button>
@@ -6595,10 +6611,13 @@ function _hcAdd() {
   async function _commuteSave() {
     const name = document.getElementById("commute-add-name").value.trim();
     const dest = document.getElementById("commute-add-dest").value.trim();
+    const days = document.querySelector('input[name="commute-days"]:checked').value;
     if (!dest) { document.getElementById("commute-add-dest").focus(); return; }
     const label = name || dest;
-    await _commuteSaveToApi(label, dest);
+    const full_label = days === 'both' ? label : `${label} (${days === 'weekday' ? 'Weekdays' : 'Weekends'})`;
+    await _commuteSaveToApi(full_label, dest);
     document.getElementById("commute-add-form").style.display = "none";
+    document.querySelector('input[name="commute-days"]').checked = true;
     _commuteRender();
     _hcRender();
   }
