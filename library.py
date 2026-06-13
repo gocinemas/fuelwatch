@@ -3,6 +3,7 @@ import os
 import uuid
 
 from supabase import create_client
+from supabase.lib.client_options import ClientOptions
 try:
     from algoliasearch.search_client import SearchClient
     _ALGOLIA_OK = True
@@ -23,7 +24,8 @@ _sb_client = None
 def _sb():
     global _sb_client
     if _sb_client is None:
-        _sb_client = create_client(_SUPABASE_URL, _SUPABASE_KEY)
+        opts = ClientOptions(timeout=8)
+        _sb_client = create_client(_SUPABASE_URL, _SUPABASE_KEY, opts)
     return _sb_client
 
 
