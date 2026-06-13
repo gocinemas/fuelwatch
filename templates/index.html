@@ -14194,7 +14194,8 @@ function bookSave(){
 }
 
 function _bkRenderLib(){
-  var allLib = _bkSortedLib();
+  try {
+    var allLib = _bkSortedLib();
   var q = _bkLibQuery;
   if(q) allLib = allLib.filter(function(b){
     return ((b.title||"")+(b.author||"")).toLowerCase().indexOf(q) >= 0;
@@ -14236,6 +14237,11 @@ function _bkRenderLib(){
     }
   }
   _bkBadge();
+  } catch(e) {
+    console.error("_bkRenderLib error:", e);
+    document.getElementById("books-library-empty-scanned").style.display="block";
+    document.getElementById("books-library-list-scanned").innerHTML="<div style='padding:20px;color:#dc2626;font-size:13px'>Error loading library — refresh and try again</div>";
+  }
 }
 
 function _bkCoverHtml(b, size){
