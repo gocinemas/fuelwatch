@@ -18087,17 +18087,19 @@ let _savesAll = [];
   // ── Nearby search ──────────────────────────────────────────────────────────
   var _briefNearbyLat = null, _briefNearbyLng = null;
 
-  function _briefDoNearby(type, radius, lat, lng) {
+  function _briefDoNearby(type, radius, lat, lng, cuisine) {
     var res = document.getElementById("brief-nearby-results");
     if (!res) return;
     res.style.display = "flex";
     res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Searching' + (radius > 1500 ? ' wider area…' : '…') + '</div>';
-    fetch("/api/brief/nearby?lat=" + lat + "&lng=" + lng + "&type=" + type + "&radius=" + radius)
+    var url = "/api/brief/nearby?lat=" + lat + "&lng=" + lng + "&type=" + type + "&radius=" + radius;
+    if (cuisine) url += "&cuisine=" + encodeURIComponent(cuisine);
+    fetch(url)
       .then(function(r) { return r.json(); })
       .then(function(d) {
         var places = d.places || [];
         if (!places.length) {
-          if (radius < 3500) { _briefDoNearby(type, 3500, lat, lng); }
+          if (radius < 3500) { _briefDoNearby(type, 3500, lat, lng, cuisine); }
           else { res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Nothing found within 3.5km.</div>'; }
           return;
         }
@@ -18121,16 +18123,42 @@ let _savesAll = [];
       .catch(function() { res.innerHTML = '<div style="font-size:13px;color:var(--muted)">Search failed.</div>'; });
   }
 
-  window._briefFindNearby = function(type, radius) {
+  let _briefCurrentNearbyType = null;
+  let _briefSelectedCuisine = null;
+
+  window._briefFindNearby = function(type, radius, cuisine) {
     _captureInterest(type);
+    _briefCurrentNearbyType = type;
+    _briefSelectedCuisine = cuisine || null;
     radius = radius || 1500;
     var res = document.getElementById("brief-nearby-results");
     if (!res) return;
+
+    // Show cuisine filter for food type
+    if (type === 'food' && !cuisine) {
+      res.style.display = "flex";
+      res.innerHTML = '<div style="padding:8px 0">'
+        + '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px">Select cuisine:</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'indian\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🇮🇳 Indian</button>'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'chinese\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🥡 Chinese</button>'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'italian\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🍝 Italian</button>'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'mexican\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🌮 Mexican</button>'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'vietnamese\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🥢 Vietnamese</button>'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'thai\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🌶️ Thai</button>'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'spanish\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🇪🇸 Spanish</button>'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'british\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🍖 British</button>'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'japanese\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🍣 Japanese</button>'
+        + '<button onclick="_briefFindNearby(\'food\', 1500, \'middle_eastern\')" style="font-size:11px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer">🥙 Middle East</button>'
+        + '</div></div>';
+      return;
+    }
+
     res.style.display = "flex";
     res.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:8px 0">Locating…</div>';
     navigator.geolocation.getCurrentPosition(
-      function(pos) { _briefDoNearby(type, radius, pos.coords.latitude, pos.coords.longitude); },
-      function()    { if (_briefNearbyLat) { _briefDoNearby(type, radius, _briefNearbyLat, _briefNearbyLng); }
+      function(pos) { _briefDoNearby(type, radius, pos.coords.latitude, pos.coords.longitude, cuisine); },
+      function()    { if (_briefNearbyLat) { _briefDoNearby(type, radius, _briefNearbyLat, _briefNearbyLng, cuisine); }
                       else { res.innerHTML = '<div style="font-size:13px;color:var(--muted)">Location unavailable.</div>'; } },
       { timeout: 5000, enableHighAccuracy: false, maximumAge: 60000 }
     );
