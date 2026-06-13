@@ -3666,17 +3666,10 @@
     }
     if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); _renderRecent("miru_intel_" + (_intelSearchMode || "brand"), "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); }
     if (name === "scan") {
+      libCheckPin();
       setTimeout(function() {
         var btn = document.getElementById("btab-library");
-        if (btn) {
-          bookTab("library", btn);
-        } else {
-          // Fallback: directly set display if button not found
-          var searchPanel = document.getElementById("books-search-panel");
-          var libPanel = document.getElementById("books-library-panel");
-          if (searchPanel) searchPanel.style.display = "none";
-          if (libPanel) { libPanel.style.display = "block"; _bkRenderLib(); }
-        }
+        if (btn) bookTab("library", btn);
       }, 50);
     }
     if (name === "school")  { schoolCheckPin(); }
