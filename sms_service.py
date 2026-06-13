@@ -8237,6 +8237,58 @@ def _v2_fetch_deliveries(from_number: str) -> list:
         return []
 
 
+def _v2_fetch_gmail_accounts(from_number: str) -> dict:
+    """Fetch pending Gmail household accounts (bills, energy, insurance, etc.)
+    Returns: {accounts: [{"type": "energy", "provider": "...", "account_no": "...", ...}, ...]}
+    """
+    if not from_number:
+        return {"accounts": []}
+    try:
+        sb = lib._sb()
+        device_id = from_number.replace("whatsapp:", "").strip()
+
+        # Query ma_gmail_tokens for pending accounts (only if connected)
+        rows = sb.table("ma_gmail_tokens").select("pending,access_token,refresh_token") \
+            .eq("device_id", device_id).limit(1).execute().data or []
+
+        if not rows:
+            # Try from_number as fallback
+            rows = sb.table("ma_gmail_tokens").select("pending,access_token,refresh_token") \
+                .eq("from_number", from_number).limit(1).execute().data or []
+
+        if not rows:
+            return {"accounts": []}
+
+        row = rows[0]
+        # Only return accounts if user has connected Gmail (has tokens)
+        if not row.get("access_token") and not row.get("refresh_token"):
+            return {"accounts": []}
+
+        pending = row.get("pending") or []
+
+        # Format pending accounts for context
+        accounts = []
+        for item in pending:
+            if isinstance(item, dict):
+                data = item.get("data") or {}
+                account = {
+                    "type": item.get("type", "other"),
+                    "label": item.get("label", ""),
+                    "provider": data.get("Provider") or data.get("Council", ""),
+                    "account_no": data.get("Account No") or data.get("Policy No", ""),
+                    "phone": data.get("Phone", ""),
+                    "renewal_date": data.get("Renewal Date", ""),
+                    "price": data.get("Price", ""),
+                }
+                if account.get("provider"):  # Only include if we have a provider name
+                    accounts.append(account)
+
+        return {"accounts": accounts}
+    except Exception as ex:
+        app.logger.debug(f"[gmail_accounts] Error: {ex}")
+        return {"accounts": []}
+
+
 def _v2_fetch_area(postcode: str) -> dict:
     """Pull local area highlights from the cached My Area data for the brief."""
     if not postcode:
@@ -9322,6 +9374,7 @@ def api_home_brief():
             futures["spend"]           = pool.submit(_v2_fetch_spend, from_number)
             futures["saves"]           = pool.submit(_v2_fetch_saves, from_number)
             futures["deliveries"]      = pool.submit(_v2_fetch_deliveries, from_number)
+            futures["gmail_accounts"]  = pool.submit(_v2_fetch_gmail_accounts, from_number)
             futures["calendar"]        = pool.submit(_v2_fetch_calendar, from_number)
             futures["ms_calendar"]     = pool.submit(_v2_fetch_ms_calendar, from_number)
             futures["personal_events"] = pool.submit(_v2_fetch_personal_events, from_number)
@@ -10694,6 +10747,60 @@ def api_home_ask():
                 app.logger.info(f"[ask] Commute found: {commute.get('label')}")
                 return jsonify({"answer": answer})
 
+    # ── GMAIL ACCOUNTS LOOKUP — "Do I have energy alerts?", "What's my council tax?" ──
+    if is_personal and from_number and any(w in q_lower for w in ["energy", "gas", "electric", "insurance", "council tax", "mobile", "broadband", "provider", "bill", "account", "alert"]):
+        gmail_data = ctx.get("gmail_accounts") or {}
+        accounts = gmail_data.get("accounts") or []
+
+        if accounts:
+            # Build a set of account types for matching
+            account_types = {a.get("type", "").lower(): a for a in accounts}
+
+            # Match patterns to account types
+            matches = []
+            type_patterns = {
+                "energy": ["energy", "gas", "electric", "electricity"],
+                "broadband": ["broadband", "internet", "fibre"],
+                "mobile": ["mobile", "phone", "sim", "contract"],
+                "car_ins": ["car insurance", "motor insurance", "vehicle insurance"],
+                "home_ins": ["home insurance", "house insurance", "contents insurance"],
+                "life_ins": ["life insurance"],
+                "council_tax": ["council tax", "council"],
+                "other": ["bill", "invoice", "account", "provider"],
+            }
+
+            for acc_type, patterns in type_patterns.items():
+                if any(p in q_lower for p in patterns):
+                    # Look for this type in accounts
+                    if acc_type in account_types:
+                        matches.append(account_types[acc_type])
+                    elif acc_type == "other" and not any(w in q_lower for w in ["energy", "gas", "insurance", "council", "broadband", "mobile"]):
+                        # Generic bill question — show all accounts
+                        matches = accounts[:3]
+                        break
+
+            if matches:
+                # Format answer
+                lines = []
+                for acc in matches:
+                    provider = acc.get("provider", "")
+                    acc_no = acc.get("account_no", "")
+                    renewal = acc.get("renewal_date", "")
+                    label = acc.get("label", "").replace("_", " ").title()
+
+                    if provider:
+                        line = f"✅ {label}: {provider}"
+                        if acc_no:
+                            line += f" (Account: {acc_no})"
+                        if renewal:
+                            line += f" — renews {renewal}"
+                        lines.append(line)
+
+                if lines:
+                    answer = "Your accounts:\n\n" + "\n".join(lines)
+                    app.logger.info(f"[ask] Gmail account found: {matches[0].get('provider')}")
+                    return jsonify({"answer": answer})
+
     # ── Intent classification ──────────────────────────────────────────────────
     # Utility: factual/definitional questions that don't need personal context
     _UTILITY = ["define ", "definition of", "what does ", "what is a ", "what is the ",
@@ -11141,17 +11248,37 @@ def api_home_ask():
             # ── Life admin: energy, insurance, mobile (Gmail-detected) ────────
             try:
                 _device_id = from_number.replace("whatsapp:", "").strip()
+
+                # Fetch Gmail accounts from context (already available from api_home_brief)
+                _gmail_accs = ctx.get("gmail_accounts", {}).get("accounts", [])
+                for acc in _gmail_accs[:8]:
+                    _atype = acc.get("type", "").replace("_", " ").title()
+                    _aprov = acc.get("provider", "")
+                    _aacno = acc.get("account_no", "")
+                    if _aprov:
+                        _line = f"Life admin — {_atype}: {_aprov}"
+                        if _aacno:
+                            _line += f" ({_aacno})"
+                        ctx_lines.append(_line)
+
+                # Also add provider hints for backward compatibility
                 _grows = lib._sb().table("ma_gmail_tokens").select("provider_hints") \
                     .eq("device_id", _device_id).limit(1).execute().data or []
                 _hints = (_grows[0].get("provider_hints") or []) if _grows else []
+                # Only add hints if they're strings (legacy format) and we haven't covered them above
+                _shown_providers = {acc.get("provider", "").lower() for acc in _gmail_accs}
                 for h in _hints[:8]:
-                    _htype = h.get("type","").replace("_"," ")
-                    _hname = h.get("name") or h.get("provider","")
-                    _hdet  = h.get("detail") or h.get("account","")
-                    if _hname:
-                        ctx_lines.append(
-                            f"Life admin — {_htype}: {_hname}" + (f" ({_hdet})" if _hdet else "")
-                        )
+                    # Handle both string hints and dict hints
+                    if isinstance(h, str) and h.lower() not in _shown_providers:
+                        ctx_lines.append(f"Life admin — Provider hint: {h}")
+                    elif isinstance(h, dict):
+                        _htype = h.get("type","").replace("_"," ")
+                        _hname = h.get("name") or h.get("provider","")
+                        _hdet  = h.get("detail") or h.get("account","")
+                        if _hname and _hname.lower() not in _shown_providers:
+                            ctx_lines.append(
+                                f"Life admin — {_htype}: {_hname}" + (f" ({_hdet})" if _hdet else "")
+                            )
             except Exception:
                 pass
 
