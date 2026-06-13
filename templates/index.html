@@ -2815,19 +2815,14 @@
 
             <div id="commute-dest-suggestions" style="background:var(--bg);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;max-height:120px;overflow-y:auto;font-size:12px;margin-bottom:8px"></div>
 
-            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">Days</div>
-            <div style="display:flex;gap:6px;margin-bottom:8px">
-              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px">
-                <input type="radio" name="commute-days" value="both" checked style="cursor:pointer">
-                <span>Every day</span>
+            <div style="display:flex;gap:8px;margin-bottom:8px">
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;flex:1">
+                <input type="radio" name="commute-days" value="weekday" checked style="cursor:pointer">
+                <span>Weekday</span>
               </label>
-              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px">
-                <input type="radio" name="commute-days" value="weekday" style="cursor:pointer">
-                <span>Weekdays</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px">
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;flex:1">
                 <input type="radio" name="commute-days" value="weekend" style="cursor:pointer">
-                <span>Weekends</span>
+                <span>Weekend</span>
               </label>
             </div>
 
@@ -6614,10 +6609,10 @@ function _hcAdd() {
     const days = document.querySelector('input[name="commute-days"]:checked').value;
     if (!dest) { document.getElementById("commute-add-dest").focus(); return; }
     const label = name || dest;
-    const full_label = days === 'both' ? label : `${label} (${days === 'weekday' ? 'Weekdays' : 'Weekends'})`;
+    const full_label = `${label} (${days === 'weekday' ? 'Weekday' : 'Weekend'})`;
     await _commuteSaveToApi(full_label, dest);
     document.getElementById("commute-add-form").style.display = "none";
-    document.querySelector('input[name="commute-days"]').checked = true;
+    document.querySelectorAll('input[name="commute-days"]')[0].checked = true;
     _commuteRender();
     _hcRender();
   }
