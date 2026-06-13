@@ -11220,6 +11220,31 @@ def api_home_ask():
                 app.logger.info(f"[ask] Commute found: {commute.get('label')}")
                 return jsonify({"answer": answer})
 
+    # ── Intent classification ──────────────────────────────────────────────────
+    # Utility: factual/definitional questions that don't need personal context
+    _UTILITY = ["define ", "definition of", "what does ", "what is a ", "what is the ",
+                "who is ", "who was ", "when did ", "how many ", "how much is ",
+                "convert ", "translate ", "capital of ", "calculate ", "synonym for",
+                "antonym of ", "difference between ", "spell ", "meaning of ",
+                "what does it mean", "how do you say", "what language"]
+    is_utility  = any(q_lower.startswith(u) or u in q_lower for u in _UTILITY)
+
+    # Personal: questions that need the user's own data
+    _PERSONAL   = ["my ", " my ", "i saved", "i've saved", "i have saved", "did i save",
+                   "what did i", "how much did i", "how much have i", "what have i",
+                   "school", "riaan", "inaaya", "train", "fuel", "spend", "spent",
+                   "event", "letter", "newsletter", "permission", "consent", "trip",
+                   "delivery", "calendar", "saves", "clipping", "saved",
+                   "this week", "this month", "today", "tomorrow",
+                   "swimming", "dance", "football", "gym", "club", "class", "lesson",
+                   "activity", "activities", "when is", "what day", "schedule", "routine",
+                   "vehicle", "car", "mot", "tax", "registration", "reg ",
+                   "energy", "electric", "gas", "insurance", "mobile", "broadband",
+                   "provider", "bill", "bin", "postcode", "route", "settings",
+                   "receipt", "shop", "supermarket", "waitrose", "tesco", "restaurant",
+                   "place", "where", "home", "work", "location"]
+    is_personal = any(p in q_lower for p in _PERSONAL)
+
     # ── GMAIL ACCOUNTS LOOKUP — "Do I have energy alerts?", "What's my council tax?" ──
     if is_personal and from_number and any(w in q_lower for w in ["energy", "gas", "electric", "insurance", "council tax", "mobile", "broadband", "provider", "bill", "account", "alert"]):
         gmail_data = ctx.get("gmail_accounts") or {}
@@ -11273,31 +11298,6 @@ def api_home_ask():
                     answer = "Your accounts:\n\n" + "\n".join(lines)
                     app.logger.info(f"[ask] Gmail account found: {matches[0].get('provider')}")
                     return jsonify({"answer": answer})
-
-    # ── Intent classification ──────────────────────────────────────────────────
-    # Utility: factual/definitional questions that don't need personal context
-    _UTILITY = ["define ", "definition of", "what does ", "what is a ", "what is the ",
-                "who is ", "who was ", "when did ", "how many ", "how much is ",
-                "convert ", "translate ", "capital of ", "calculate ", "synonym for",
-                "antonym of ", "difference between ", "spell ", "meaning of ",
-                "what does it mean", "how do you say", "what language"]
-    is_utility  = any(q_lower.startswith(u) or u in q_lower for u in _UTILITY)
-
-    # Personal: questions that need the user's own data
-    _PERSONAL   = ["my ", " my ", "i saved", "i've saved", "i have saved", "did i save",
-                   "what did i", "how much did i", "how much have i", "what have i",
-                   "school", "riaan", "inaaya", "train", "fuel", "spend", "spent",
-                   "event", "letter", "newsletter", "permission", "consent", "trip",
-                   "delivery", "calendar", "saves", "clipping", "saved",
-                   "this week", "this month", "today", "tomorrow",
-                   "swimming", "dance", "football", "gym", "club", "class", "lesson",
-                   "activity", "activities", "when is", "what day", "schedule", "routine",
-                   "vehicle", "car", "mot", "tax", "registration", "reg ",
-                   "energy", "electric", "gas", "insurance", "mobile", "broadband",
-                   "provider", "bill", "bin", "postcode", "route", "settings",
-                   "receipt", "shop", "supermarket", "waitrose", "tesco", "restaurant",
-                   "place", "where", "home", "work", "location"]
-    is_personal = any(p in q_lower for p in _PERSONAL)
 
     # ── EARLY RETURN: Receipt queries (what did i buy in X) ───────────────────
     if is_personal and from_number:
