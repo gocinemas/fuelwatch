@@ -27980,27 +27980,53 @@ def api_bus_stops():
 
 @app.route("/api/admin/recategorise-receipts", methods=["POST"])
 def api_admin_recategorise_receipts():
-    """Backfill category on all existing receipt saves using merchant name from title."""
+    """Re-categorize ALL receipt saves using merchant name + item keywords (Clothes/Accessories detection)."""
     key = request.headers.get("X-Admin-Key", "") or request.args.get("key", "")
     if not key or key != os.environ.get("ADMIN_KEY", "miru-admin-2026"):
         return jsonify({"error": "unauthorized"}), 401
     try:
-        rows = lib._sb().table("wa_saves").select("id,title,category") \
+        rows = lib._sb().table("wa_saves").select("id,title,summary,category") \
             .ilike("title", "🧾%").execute().data or []
         updated = 0; skipped = 0
+
+        clothes_kw = ["shirt", "jeans", "dress", "blouse", "pants", "trouser",
+                      "jacket", "coat", "jumper", "sweater", "top", "skirt",
+                      "shorts", "socks", "tights", "leggings", "trousers"]
+        accessories_kw = ["shoes", "shoe", "boots", "trainers", "sneaker", "heels",
+                         "bag", "handbag", "backpack", "purse", "wallet",
+                         "belt", "scarf", "hat", "cap", "gloves", "sunglasses",
+                         "jewelry", "jewellery", "watch", "bracelet", "necklace"]
+
         for row in rows:
-            if row.get("category"):
-                skipped += 1; continue
             merchant = (row.get("title") or "").replace("🧾", "").strip()
+            summary = (row.get("summary") or "").lower()
+
             if not merchant:
-                skipped += 1; continue
-            cat = _receipt_category(merchant)
-            try:
-                lib._sb().table("wa_saves").update({"category": cat}).eq("id", row["id"]).execute()
-                updated += 1
-            except Exception:
                 skipped += 1
-        return jsonify({"updated": updated, "skipped": skipped})
+                continue
+
+            # Get merchant-based category
+            cat = _receipt_category(merchant)
+
+            # Override with item-level detection for Clothes/Accessories
+            if "clothes" not in cat.lower() and "accessories" not in cat.lower():
+                if any(kw in summary for kw in clothes_kw):
+                    cat = "Clothes"
+                elif any(kw in summary for kw in accessories_kw):
+                    cat = "Accessories"
+
+            # Only update if category changed
+            old_cat = row.get("category")
+            if cat != old_cat:
+                try:
+                    lib._sb().table("wa_saves").update({"category": cat}).eq("id", row["id"]).execute()
+                    updated += 1
+                except Exception:
+                    skipped += 1
+            else:
+                skipped += 1
+
+        return jsonify({"updated": updated, "skipped": skipped, "message": f"Re-categorized {updated} receipts with new Clothes/Accessories detection"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
