@@ -11583,6 +11583,41 @@ def api_home_ask():
         messages.append({"role": "user",
                          "content": f"Context: {ctx_text}\n\nQuestion: {question}"})
 
+    # ── Special formatting for "What did I save this week?" ────
+    if any(w in q_lower for w in ["save this week", "saved this week", "what.*save.*week"]):
+        try:
+            plain = from_number.replace("whatsapp:", "").strip() if from_number else ""
+            if plain:
+                from datetime import date, timedelta
+                week_ago = (date.today() - timedelta(days=7)).isoformat()
+                week_saves = lib._sb().table("wa_saves").select("title,category,created_at") \
+                    .eq("from_number", plain).gte("created_at", week_ago) \
+                    .order("created_at", desc=True).limit(50).execute().data or []
+
+                if week_saves:
+                    cat_map = {"Dining": "🍽️", "Coffee & Lunch": "☕", "Takeaway": "🥡",
+                               "Entertainment": "🎭", "Event": "🎫", "Article": "📰",
+                               "Book": "📖", "Wine": "🍷", "Place": "📍"}
+                    grouped = {}
+                    for s in week_saves:
+                        cat = s.get("category") or "Other"
+                        if cat not in grouped: grouped[cat] = []
+                        grouped[cat].append(s.get("title", "").replace("🧾","").strip())
+
+                    answer_lines = ["📚 Your Week"]
+                    for cat in sorted(grouped.keys(), key=lambda c: -len(grouped[c]))[:4]:
+                        ico = cat_map.get(cat, "📌")
+                        count = len(grouped[cat])
+                        answer_lines.append(f"\n{ico} {cat} ({count})")
+                        for item in grouped[cat][:5]:
+                            if item:
+                                answer_lines.append(f"  • {item[:50]}")
+
+                    answer_lines.append(f"\n**Total: {len(week_saves)} items**")
+                    return jsonify({"answer": "\n".join(answer_lines)})
+        except Exception as e:
+            app.logger.debug(f"[ask] Weekly saves formatting failed: {e}")
+
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
