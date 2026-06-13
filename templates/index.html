@@ -20615,16 +20615,36 @@ let _savesAll = [];
     }
   };
 
-  window._ehSetCat = async function(cat, btn) {
+  window._ehSetCat = async function(cat, btn, opts) {
     _ehActiveCat = cat;
-    document.querySelectorAll(".eh-cat-btn").forEach(b => {
-      b.style.borderColor = "var(--border)";
-      b.style.background = "var(--surface)";
-      b.querySelector("div:last-child").style.color = "var(--muted)";
-    });
-    btn.style.borderColor = "#4f46e5";
-    btn.style.background = "#eef2ff";
-    btn.querySelector("div:last-child").style.color = "#4338ca";
+    _ehActiveCuisine = opts && opts.cuisine;
+    if (btn) {
+      document.querySelectorAll(".eh-cat-btn").forEach(b => {
+        b.style.borderColor = "var(--border)";
+        b.style.background = "var(--surface)";
+        b.querySelector("div:last-child").style.color = "var(--muted)";
+      });
+      btn.style.borderColor = "#4f46e5";
+      btn.style.background = "#eef2ff";
+      btn.querySelector("div:last-child").style.color = "#4338ca";
+    }
+
+    // Food: show cuisine picker before fetching
+    if (cat === "food") {
+      const el = document.getElementById("explore-here-results");
+      el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'indian'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🇮🇳 Indian</button>
+        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'chinese'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🥡 Chinese</button>
+        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'italian'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🍝 Italian</button>
+        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'mexican'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🌮 Mexican</button>
+        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'thai'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🌶️ Thai</button>
+        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'japanese'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🍣 Japanese</button>
+        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'spanish'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🇪🇸 Spanish</button>
+        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'british'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🍖 British</button>
+        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'middleeastern'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🥙 Middle East</button>
+      </div>`;
+      return;
+    }
 
     // Kids: show age picker instead of direct results
     if (cat === "kids") {
@@ -20676,7 +20696,9 @@ let _savesAll = [];
       el.style.opacity = "0.35";
       el.style.pointerEvents = "none";
       try {
-        const r = await fetch(`/api/places/nearby?lat=${_ehLat}&lon=${_ehLon}&cat=${cat}`);
+        let url = `/api/places/nearby?lat=${_ehLat}&lon=${_ehLon}&cat=${cat}`;
+        if (_ehActiveCuisine) url += `&cuisine=${_ehActiveCuisine}`;
+        const r = await fetch(url);
         const d = await r.json();
         _ehCache[cat] = (d.places || []).map(function(p) {
           return Object.assign({}, p, { _dist: (p.lat && p.lon) ? _distKm(_ehLat, _ehLon, p.lat, p.lon) : 999 });
