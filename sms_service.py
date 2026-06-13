@@ -887,6 +887,55 @@ def whatsapp_search_and_format(postcode: str, fuel: str, radius_miles: float, re
     return "\n".join(lines)
 
 
+# ── Ask Miru Context Builder ──────────────────────────────────────────────────
+
+def _build_ask_miru_context(from_number: str) -> str:
+    """Build personalized user context for Ask Miru AI responses."""
+    context_parts = []
+
+    try:
+        # Commutes
+        commutes = _commuteLoad() if callable(globals().get("_commuteLoad")) else None
+        if commutes:
+            context_parts.append(f"User's commutes: {'; '.join(c.get('label','') for c in commutes[:3])}")
+    except Exception:
+        pass
+
+    try:
+        # Fuel postcode from preferences
+        _fn_plain = from_number.replace("whatsapp:", "").strip()
+        _fn_wa = f"whatsapp:{_fn_plain}"
+        rows = lib._sb().table("ma_details").select("data").in_("device_id", [_fn_plain, _fn_wa]).eq("type", "v2_prefs").limit(1).execute().data or []
+        if rows and rows[0].get("data", {}).get("fuel_postcode"):
+            fuel_pc = rows[0]["data"]["fuel_postcode"]
+            context_parts.append(f"Home postcode for fuel/travel: {fuel_pc}")
+    except Exception:
+        pass
+
+    try:
+        # School info
+        school_rows = lib._sb().table("school_profiles").select("school_name,child_name").eq("from_number", from_number).eq("active", True).execute().data or []
+        if school_rows:
+            children = ", ".join(set(p.get("school_name","") for p in school_rows if p.get("school_name")))
+            context_parts.append(f"Children's schools: {children}")
+    except Exception:
+        pass
+
+    try:
+        # Recent spend summary
+        from datetime import date
+        month_start = date.today().replace(day=1).isoformat()
+        spend_rows = lib._sb().table("wa_saves").select("category").eq("from_number", from_number).gte("created_at", month_start).ilike("title", "🧾%").execute().data or []
+        if spend_rows:
+            categories = set(r.get("category","") for r in spend_rows if r.get("category"))
+            if categories:
+                context_parts.append(f"This month's spend categories: {', '.join(sorted(categories)[:5])}")
+    except Exception:
+        pass
+
+    return "\n".join(context_parts) if context_parts else ""
+
+
 # ── Webhook ───────────────────────────────────────────────────────────────────
 
 @app.route("/sms", methods=["POST"])
@@ -1609,6 +1658,10 @@ def api_portfolio_miru_chat():
     import re as _re
     _is_research = _re.search(r'\b(research|tell me about|what is|who are|brief on|intel on)\b', message.lower())
 
+    # Build user context
+    phone = (data.get("phone") or "").strip()
+    user_context = _build_ask_miru_context(phone) if phone else "No personal data available yet. User can set up preferences when using the app."
+
     system = """You are Miru — a WhatsApp-first AI assistant for everyday UK life built by Vikram Mekala. You're being demonstrated on his portfolio site.
 
 You help with:
@@ -1617,7 +1670,10 @@ You help with:
 - Company and brand research (powered by Intel)
 - General UK life questions
 
-Keep answers short and practical — 2-4 sentences max. WhatsApp style, no markdown headers. Use a conversational British tone. If asked about fuel, trains, or specific real-time data you don't have, give a realistic example of what you'd normally return and invite them to try the real product."""
+About this user:
+{USER_CONTEXT}
+
+Keep answers short and practical — 2-4 sentences max. WhatsApp style, no markdown headers. Use a conversational British tone. Reference their personal data when relevant (commutes, schools, spending patterns). If asked about fuel, trains, or specific real-time data you don't have, give a realistic example of what you'd normally return and invite them to try the real product.""".format(USER_CONTEXT=user_context)
 
     from flask import stream_with_context
     def generate():
