@@ -9738,6 +9738,9 @@ def api_home_brief():
     _cur_hour = _dt.now(_LDN).hour
     _is_goodnight_hour = _cur_hour >= 23 or _cur_hour < 5
     force_refresh = request.args.get("refresh", "") == "1" or _is_goodnight_hour or has_location
+
+    # Send current hour to frontend so it uses server time instead of browser time
+    _response_time_hour = _cur_hour
     cached = _v2_brief_cache.get(from_number or postcode)
     cache_hit = (not force_refresh) and cached and time.time() - cached["ts"] < 900
 
@@ -10848,6 +10851,7 @@ def api_home_brief():
         "tod":       tod,
         "day_type":  day_type,
         "time_mode": time_mode,
+        "hour":      hour,
         "bank_holiday_today":   bank_holiday_today,
         "bank_holiday_monday":  bank_holiday_monday,
         "is_long_weekend":      is_long_weekend,

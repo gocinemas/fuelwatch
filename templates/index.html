@@ -16464,7 +16464,7 @@ let _savesAll = [];
 
   function _briefRenderChips(ctx, container, eveningSaves, frequentToday) {
     if (!container) return;
-    var _h = new Date().getHours();
+    var _h = (ctx && ctx.hour !== undefined) ? ctx.hour : new Date().getHours();
     var _isNightChip = _h >= 21 || _h < 5;
     var chips = [];
     var secondaryChips = []; // quiet reference chips (train/fuel at night)
