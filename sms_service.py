@@ -10496,10 +10496,22 @@ def api_home_brief():
     except Exception as e:
         app.logger.debug(f"[brief] Smart context (non-critical): {e}")
 
+    # Weekly saves summary — past 7 days only
+    _weekly_saves = []
+    if from_number:
+        try:
+            _week_ago = (date.today() - timedelta(days=7)).isoformat()
+            _week_saves = lib._sb().table("wa_saves").select("title,category,created_at") \
+                .eq("from_number", from_number).gte("created_at", _week_ago).order("created_at", desc=True).limit(20).execute().data or []
+            _weekly_saves = _week_saves
+        except Exception:
+            pass
+
     result = {
         "brief":        brief_text,
         "context":      ctx,
         "evening_saves": _evening_chip_saves,
+        "weekly_saves": _weekly_saves,
         "prefs":     prefs,
         "has_prefs": bool(prefs),
         "tod":       tod,

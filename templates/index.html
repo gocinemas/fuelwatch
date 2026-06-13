@@ -2157,6 +2157,13 @@
       <!-- Lunch card — auto-loads 11:30am–2pm -->
       <div id="brief-lunch-slot" style="display:none;margin-top:12px"></div>
 
+      <!-- Weekly Saves Summary Card — Beautiful & Simple -->
+      <div id="brief-weekly-saves" style="display:none;margin-top:14px;background:linear-gradient(135deg,#fef3c7 0%,#fde68a 50%,#fcd34d 100%);border:1px solid #fbbf24;border-radius:16px;padding:16px;cursor:pointer" onclick="showScreen('saves')">
+        <div style="font-size:11px;font-weight:800;color:#92400e;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">📊 This Week</div>
+        <div id="brief-weekly-summary" style="font-size:13px;color:#78350f;line-height:1.8"></div>
+        <div style="margin-top:10px;font-size:11px;color:#b45309;font-weight:600">View all →</div>
+      </div>
+
       </div><!-- /brief-col-main -->
       <div id="brief-col-side">
 
@@ -16331,6 +16338,9 @@ let _savesAll = [];
           // Chips
           _briefRenderChips(d.context, chips, d.evening_saves || [], d.frequent_today || []);
 
+          // Weekly saves summary
+          _briefRenderWeeklySaves(d.weekly_saves || []);
+
           // Context cards (pass current mode so WFH hides trains on initial load too)
           _briefRenderContextCards(d.context, ctxCards, _briefCurrentMode);
 
@@ -16778,6 +16788,42 @@ let _savesAll = [];
       change.style.display = "inline";
     }
     strip.style.display = "flex";
+  }
+
+  function _briefRenderWeeklySaves(saves) {
+    var card = document.getElementById("brief-weekly-saves");
+    var body = document.getElementById("brief-weekly-summary");
+    if (!card || !body) return;
+
+    if (!saves || saves.length === 0) {
+      card.style.display = "none";
+      return;
+    }
+
+    var catMap = {
+      "Dining": "🍽️", "Coffee & Lunch": "☕", "Takeaway": "🥡",
+      "Entertainment": "🎭", "Event": "🎫", "Article": "📰",
+      "Book": "📖", "Wine": "🍷", "Place": "📍", "Other": "📌"
+    };
+
+    var grouped = {};
+    saves.forEach(function(s) {
+      var cat = s.category || "Other";
+      if (!grouped[cat]) grouped[cat] = 0;
+      grouped[cat]++;
+    });
+
+    var html = "";
+    Object.keys(grouped).sort(function(a, b) { return grouped[b] - grouped[a]; }).slice(0, 4).forEach(function(cat) {
+      var ico = catMap[cat] || "📌";
+      html += `<div>${ico} ${grouped[cat]} ${cat}${grouped[cat] > 1 ? 's' : ''}</div>`;
+    });
+
+    var total = saves.length;
+    html += `<div style="margin-top:8px;font-size:12px;opacity:.8">Total: <strong>${total} items</strong></div>`;
+
+    body.innerHTML = html;
+    card.style.display = "block";
   }
 
   function _briefFillSchoolSlot(ctx) {
