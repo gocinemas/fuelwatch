@@ -128,18 +128,24 @@ def _cache_guard(cache: dict, max_size: int = 500) -> None:
 _WA_WEATHER_WARNED: dict = {}
 
 # ── Price history files ────────────────────────────────────────────────────────
-NATIONAL_HISTORY_FILE = "price_history_national.json"
-POSTCODE_HISTORY_FILE = "price_history_postcodes.json"
+def _load_price_history(key):
+    """Load price history from Supabase ai_cache table."""
+    try:
+        rows = lib._sb().table("ai_cache").select("data").eq("key", key).limit(1).execute().data or []
+        return rows[0]["data"] if rows else []
+    except Exception:
+        return []
 
-def _load_json(path):
-    if os.path.exists(path):
-        with open(path) as f:
-            return json.load(f)
-    return []
-
-def _save_json(path, data):
-    with open(path, "w") as f:
-        json.dump(data, f)
+def _save_price_history(key, data):
+    """Save price history to Supabase ai_cache table."""
+    try:
+        rows = lib._sb().table("ai_cache").select("id").eq("key", key).limit(1).execute().data or []
+        if rows:
+            lib._sb().table("ai_cache").update({"data": data}).eq("key", key).execute()
+        else:
+            lib._sb().table("ai_cache").insert({"key": key, "data": data}).execute()
+    except Exception:
+        pass
 
 def log_national_snapshot(stations):
     """Append national avg petrol/diesel to history after each cache refresh."""
@@ -153,12 +159,12 @@ def log_national_snapshot(stations):
         "diesel_avg": round(sum(diesel_prices) / len(diesel_prices), 2) if diesel_prices else None,
         "station_count": len(stations),
     }
-    history = _load_json(NATIONAL_HISTORY_FILE)
+    history = _load_price_history("price_history_national")
     # Deduplicate by minute
     if not history or history[-1]["ts"] != record["ts"]:
         history.append(record)
         history = history[-2016:]  # keep ~6 weeks of 30-min snapshots
-        _save_json(NATIONAL_HISTORY_FILE, history)
+        _save_price_history("price_history_national", history)
 
 def log_postcode_snapshot(postcode, fuel, nearby):
     """Append cheapest + area avg for a postcode search to history."""
@@ -172,16 +178,12 @@ def log_postcode_snapshot(postcode, fuel, nearby):
         "avg": round(sum(prices) / len(prices), 2),
         "count": len(prices),
     }
-    all_history = _load_json(POSTCODE_HISTORY_FILE)
-    if not isinstance(all_history, dict):
-        all_history = {}
-    key = f"{postcode.upper()}_{fuel}"
-    entries = all_history.get(key, [])
+    cache_key = f"price_history_postcode_{postcode.upper()}_{fuel}"
+    entries = _load_price_history(cache_key)
     if not entries or entries[-1]["ts"] != record["ts"]:
         entries.append(record)
         entries = entries[-336:]  # keep ~1 week of 30-min snapshots
-        all_history[key] = entries
-        _save_json(POSTCODE_HISTORY_FILE, all_history)
+        _save_price_history(cache_key, entries)
 
 
 # ── Cache stations in memory (refresh every 30 min) ───────────────────────────
@@ -21238,7 +21240,7 @@ def chart_national():
     import matplotlib.pyplot as plt
     import matplotlib.dates as mdates
 
-    history = _load_json(NATIONAL_HISTORY_FILE)
+    history = _load_price_history("price_history_national")
     if len(history) < 2:
         return "Not enough data yet — check back after a few cache refreshes (30 min each).", 404
 
@@ -21275,12 +21277,8 @@ def chart_postcode(postcode, fuel="petrol"):
 
     postcode = postcode.upper().replace(" ", "")
     fuel = fuel.lower()
-    all_history = _load_json(POSTCODE_HISTORY_FILE)
-    if not isinstance(all_history, dict):
-        all_history = {}
-
-    key = f"{postcode}_{fuel}"
-    entries = all_history.get(key, [])
+    cache_key = f"price_history_postcode_{postcode}_{fuel}"
+    entries = _load_price_history(cache_key)
     if len(entries) < 2:
         return (
             f"Not enough data for {postcode} {fuel} yet. "
