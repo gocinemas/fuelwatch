@@ -635,6 +635,7 @@
     <button class="sb-btn"    id="sb-trains" title="Trains"     onclick="showScreen('trains')">🚆</button>
     <button class="sb-btn"    id="sb-fuel"   title="Fuel"       onclick="showScreen('fuel')">⛽</button>
     <button class="sb-btn"    id="sb-school" title="School"     onclick="showScreen('school')">🏫</button>
+    <button class="sb-btn"    id="sb-receipts" title="Receipt Analysis" onclick="showScreen('receipts');_receiptsAnalysisLoad()">💰</button>
     <button class="sb-btn"    id="sb-moving" title="Moving"     onclick="showScreen('moving');_movingInit()">📦</button>
     <button class="sb-btn"    id="sb-report" title="Research"   onclick="showScreen('report')">🔎</button>
     <div class="sb-spacer"></div>
@@ -15314,6 +15315,22 @@ _bkBadge();
   </div>
 </div>
 
+<!-- RECEIPT ANALYSIS SCREEN -->
+<div id="screen-receipts" class="screen pt-5">
+  <div style="padding:0 16px">
+    <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px">💰 RECEIPT ANALYSIS</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Click to expand categories, then merchants</div>
+
+    <div id="receipts-loading" style="text-align:center;padding:40px 0;color:var(--muted)">Loading receipts...</div>
+    <div id="receipts-empty" style="display:none;text-align:center;padding:40px 16px;color:var(--muted);font-size:14px">
+      <div style="font-size:32px;margin-bottom:10px">🧾</div>
+      <div>No receipts yet. Send receipts to Miru on WhatsApp to get started.</div>
+    </div>
+
+    <div id="receipts-list" style="display:none"></div>
+  </div>
+</div>
+
 <div id="screen-saves" class="screen pt-5">
   <!-- Onboarding: shown when no token exists (first visit, no WhatsApp link yet) -->
   <!-- Phone number sign-in (replaces both onboard + lock screens) -->
@@ -24568,6 +24585,57 @@ window.spotifyAddTrack = window.spotifyLike;
     document.getElementById("onboarding-modal").style.display = "none";
     localStorage.setItem("onboarding_skipped", "1");
   }
+
+  // Receipt Analysis — expandable categories + merchants + items
+  window._receiptsAnalysisLoad = async function() {
+    const token = _miruPhone() || localStorage.getItem("miru_saves_token");
+    if (!token) return;
+
+    document.getElementById("receipts-loading").style.display = "block";
+    document.getElementById("receipts-list").style.display = "none";
+    document.getElementById("receipts-empty").style.display = "none";
+
+    try {
+      const r = await fetch(`/api/v2/spend?token=${encodeURIComponent(token)}`);
+      if (!r.ok) throw new Error("Failed to fetch spend");
+      const data = await r.json();
+
+      if (!data.breakdown || Object.keys(data.breakdown).length === 0) {
+        document.getElementById("receipts-loading").style.display = "none";
+        document.getElementById("receipts-empty").style.display = "block";
+        return;
+      }
+
+      let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Total: £${data.total?.toFixed(2)} across ${data.count} receipts</div>`;
+
+      for (const [cat, catData] of Object.entries(data.breakdown).sort((a, b) => b[1].total - a[1].total)) {
+        const catEmoji = {"Clothes":"👗","Accessories":"👜","Groceries":"🛒","Coffee & Lunch":"☕","Dining":"🍽️","Fast Food":"🍔","Takeaway":"🥡","Fuel":"⛽","Transport":"🚆","Shopping":"🛍️","Subscriptions":"🎬","Parking":"🅿️","Other":"📌"}[cat] || "📌";
+        const merchants = catData.merchants || {};
+        const merchantList = Object.entries(merchants).slice(0, 5);
+
+        html += `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:12px;overflow:hidden">`;
+        html += `<div onclick="this.parentElement.querySelector('[data-merchants]').style.display = this.parentElement.querySelector('[data-merchants]').style.display === 'none' ? 'block' : 'none'; this.querySelector('[data-arrow]').textContent = this.parentElement.querySelector('[data-merchants]').style.display === 'none' ? '▶' : '▼'" style="padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center">`;
+        html += `<div style="font-weight:600;color:var(--text)">${catEmoji} ${cat} <span style="font-weight:400;color:var(--muted)">(${catData.count})</span></div>`;
+        html += `<div style="display:flex;align-items:center;gap:8px"><span style="font-weight:700;color:var(--text)">£${catData.total.toFixed(2)}</span><span data-arrow style="font-size:12px;color:var(--muted)">▶</span></div>`;
+        html += `</div>`;
+
+        html += `<div data-merchants style="display:none;padding:8px 12px">`;
+        for (const [merchant, amount] of merchantList) {
+          html += `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)">`;
+          html += `<div style="font-weight:600;margin-bottom:4px">${merchant} <span style="font-weight:400;color:var(--muted)">£${amount.toFixed(2)}</span></div>`;
+          html += `</div>`;
+        }
+        html += `</div></div>`;
+      }
+
+      document.getElementById("receipts-list").innerHTML = html;
+      document.getElementById("receipts-loading").style.display = "none";
+      document.getElementById("receipts-list").style.display = "block";
+    } catch (e) {
+      console.error("[receipts]", e);
+      document.getElementById("receipts-loading").textContent = "Error loading receipts";
+    }
+  };
 
   // Check onboarding on app load
   setTimeout(_onboardingCheckStatus, 500);
