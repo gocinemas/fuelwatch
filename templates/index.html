@@ -16449,10 +16449,6 @@ let _savesAll = [];
       var _bankHol2    = !!(ctx && ctx.bank_holiday_today);
       var _noCommute   = _isWeekend2 || _bankHol2;
       // Trains and fuel now shown as one-liners above chips, not as chips themselves
-      if (_noCommute && trains && trains.departures && trains.departures.length) {
-        // Weekend/bank holiday — still accessible as a quiet chip
-        secondaryChips.push({ label: "🚆 Train times", action: "showScreen('trains')" });
-      }
       // Lunchtime: proactively surface food nearby (12:00–14:30 on working days)
       var _lunchHour = new Date().getHours();
       var _lunchMin  = new Date().getMinutes();
