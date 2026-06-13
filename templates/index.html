@@ -3666,8 +3666,9 @@
     }
     if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); _renderRecent("miru_intel_" + (_intelSearchMode || "brand"), "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); }
     if (name === "scan") {
-      var btn = document.getElementById("btab-library");
-      if (btn) bookTab("library", btn);
+      setTimeout(function() {
+        bookTab("library", document.getElementById("btab-library"));
+      }, 0);
     }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
@@ -16475,15 +16476,7 @@ let _savesAll = [];
         var label = ico ? (ico + " " + raw.replace(/^[\u{1F000}-\u{1FFFF}]\s*/u, "").trim()) : raw;
         chips.push({ label: label, action: "_pillNav('saves')" });
       });
-      // Recipe chip — warm or weekend evening
-      var _dow = new Date().getDay();
-      var _isWeekendEve = _dow === 5 || _dow === 6 || _dow === 0;
-      var _wx = ctx && ctx.weather;
-      var _temp = _wx && _wx.temp !== undefined ? _wx.temp : 15;
-      if (_isWeekendEve || _temp >= 18) {
-        var _recipeLabel = _temp >= 22 ? "🍹 Try a cocktail?" : _temp < 8 ? "🫖 Warm cocktail?" : "🍹 Try a recipe?";
-        chips.push({ label: _recipeLabel, action: "showScreen('recipe')" });
-      }
+      // NO recipes at night — user is home, not cooking. Only content saves (line 16476 above)
       // Quiet reference row — trains only at night, fuel irrelevant in the evening
       if (trains && trains.departures && trains.departures.length)
         secondaryChips.push({ label: "🚆 Train times", action: "showScreen('trains')" });
