@@ -7098,11 +7098,19 @@ def api_user_setup_status():
 
 @app.route("/api/v2/spend", methods=["GET"])
 def api_v2_spend():
-    """Get this month's spend breakdown by category and merchant."""
+    """Get spend breakdown by category and merchant for a given period."""
     token = request.args.get("token", "").strip()
     from_number = _v2_resolve(token)
-    result = _v2_fetch_spend(from_number) if from_number else {"total": 0, "count": 0, "month": "", "breakdown": {}}
-    return jsonify(result)
+    if not from_number:
+        return jsonify({"total": 0, "count": 0, "period": "", "breakdown": {}})
+    try:
+        month = request.args.get("month", type=int)
+        quarter = request.args.get("quarter", type=int)
+        year = request.args.get("year", type=int)
+        result = _v2_fetch_spend(from_number, month=month, quarter=quarter, year=year)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"total": 0, "count": 0, "period": "", "breakdown": {}, "error": str(e)})
 
 
 @app.route("/api/v2/prefs", methods=["POST"])
@@ -7831,15 +7839,48 @@ def _receipt_category(merchant: str) -> str:
     return "Other"
 
 
-def _v2_fetch_spend(from_number: str) -> dict:
-    """Sum receipt clippings this calendar month, broken down by category. Excludes online orders."""
+def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, year: int = None) -> dict:
+    """Sum receipt clippings for a period, broken down by category. Excludes online orders."""
     import re as _re
-    from datetime import date
+    from datetime import date, datetime, timedelta
     try:
-        month_start = date.today().replace(day=1).isoformat()
+        today = date.today()
+        # Determine date range
+        if year and not month and not quarter:
+            # Yearly: whole year
+            period_start = date(year, 1, 1).isoformat()
+            period_end = date(year + 1, 1, 1).isoformat()
+            period_label = str(year)
+        elif year and quarter:
+            # Quarterly
+            start_month = (quarter - 1) * 3 + 1
+            period_start = date(year, start_month, 1).isoformat()
+            if quarter == 4:
+                period_end = date(year + 1, 1, 1).isoformat()
+            else:
+                period_end = date(year, start_month + 3, 1).isoformat()
+            period_label = f"Q{quarter} {year}"
+        elif year and month:
+            # Monthly (default)
+            period_start = date(year, month, 1).isoformat()
+            if month == 12:
+                period_end = date(year + 1, 1, 1).isoformat()
+            else:
+                period_end = date(year, month + 1, 1).isoformat()
+            period_label = date(year, month, 1).strftime("%B %Y")
+        else:
+            # Default: this month
+            period_start = today.replace(day=1).isoformat()
+            if today.month == 12:
+                period_end = date(today.year + 1, 1, 1).isoformat()
+            else:
+                period_end = date(today.year, today.month + 1, 1).isoformat()
+            period_label = today.strftime("%B %Y")
+
         rows = lib._sb().table("wa_saves").select("summary,title,category") \
             .eq("from_number", from_number) \
-            .gte("created_at", month_start) \
+            .gte("created_at", period_start) \
+            .lt("created_at", period_end) \
             .ilike("title", "🧾%") \
             .execute().data or []
         total = 0.0; count = 0
@@ -7892,7 +7933,7 @@ def _v2_fetch_spend(from_number: str) -> dict:
         return {
             "total":     round(total, 2),
             "count":     count,
-            "month":     date.today().strftime("%B"),
+            "period":    period_label,
             "breakdown": breakdown,
         }
     except Exception:
