@@ -7774,10 +7774,26 @@ def _receipt_category(merchant: str) -> str:
                               "british airways", "ryanair", "ba.com", "heathrow express"]):
         return "Transport"
 
-    # Shopping (non-grocery retail)
-    if any(k in m for k in ["amazon", "asos", "zara", "h&m", "next ", "john lewis",
-                              "primark", "tk maxx", "tkmaxx", "boots pharmacy", "superdrug",
-                              "argos", "currys", "jd sport", "sports direct", "waterstones"]):
+    # Clothes (fashion retail)
+    if any(k in m for k in ["zara", "h&m", "uniqlo", "topshop", "gap", "next ",
+                              "asos", "selfridges", "john lewis", "debenhams",
+                              "river island", "urban outfitters", "new look",
+                              "fashion", "clothing", "apparel", "wardrobe"]):
+        return "Clothes"
+
+    # Accessories (shoes, bags, jewelry, beauty)
+    if any(k in m for k in ["office", "clarks", "schuh", "boots beauty", "superdrug",
+                              "dune", "ted baker", "reiss", "carvela", "aldo",
+                              "timberland", "nike", "adidas", "sports direct",
+                              "jewelry", "jewellery", "watch", "bag", "handbag",
+                              "sunglasses", "boots pharmacy", "boots", "space nk",
+                              "sephora", "beauty", "accessory", "footwear", "shoes"]):
+        return "Accessories"
+
+    # Shopping (general retail — books, home, etc.)
+    if any(k in m for k in ["amazon", "waterstones", "argos", "currys",
+                              "jd sport", "john lewis home", "dunelm",
+                              "homebase", "b&q", "ikea", "wilko"]):
         return "Shopping"
 
     # Subscriptions / Digital
@@ -7815,10 +7831,24 @@ def _v2_fetch_spend(from_number: str) -> dict:
             except ValueError:
                 continue
             total += amt; count += 1
-            # Determine category — use stored value or derive from title
+            # Determine category — use stored value or derive from title/items
             cat = r.get("category") or ""
             if not cat:
                 cat = _receipt_category(merchant)
+                # Also check items for better categorization (clothes/accessories)
+                summary = (r.get("summary") or "").lower()
+                if "clothes" not in cat.lower() and "accessories" not in cat.lower():
+                    clothes_kw = ["shirt", "jeans", "dress", "blouse", "pants", "trouser",
+                                  "jacket", "coat", "jumper", "sweater", "top", "skirt",
+                                  "shorts", "socks", "tights", "leggings", "trousers"]
+                    accessories_kw = ["shoes", "shoe", "boots", "trainers", "sneaker", "heels",
+                                     "bag", "handbag", "backpack", "purse", "wallet",
+                                     "belt", "scarf", "hat", "cap", "gloves", "sunglasses",
+                                     "jewelry", "jewellery", "watch", "bracelet", "necklace"]
+                    if any(kw in summary for kw in clothes_kw):
+                        cat = "Clothes"
+                    elif any(kw in summary for kw in accessories_kw):
+                        cat = "Accessories"
             if cat not in breakdown:
                 breakdown[cat] = {"total": 0.0, "count": 0, "merchants": {}}
                 merchants_by_cat[cat] = {}
