@@ -990,8 +990,32 @@ def _lookup_school(name: str) -> dict:
 
 # ── WhatsApp conversation handler ──────────────────────────────────────────────
 
-# Multi-step setup state: from_number → {step, data}
-_SETUP_STATE: dict = {}
+# Multi-step setup state: persisted to Supabase ma_details table (type="school_setup_state")
+def _load_setup_state(from_number: str) -> dict:
+    """Load school setup state from Supabase."""
+    try:
+        rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number).eq("type", "school_setup_state").limit(1).execute().data or []
+        return rows[0]["data"] if rows else None
+    except Exception:
+        return None
+
+def _save_setup_state(from_number: str, state: dict) -> None:
+    """Save school setup state to Supabase."""
+    try:
+        rows = lib._sb().table("ma_details").select("id").eq("device_id", from_number).eq("type", "school_setup_state").limit(1).execute().data or []
+        if rows:
+            lib._sb().table("ma_details").update({"data": state}).eq("id", rows[0]["id"]).execute()
+        else:
+            lib._sb().table("ma_details").insert({"device_id": from_number, "type": "school_setup_state", "data": state}).execute()
+    except Exception:
+        pass
+
+def _delete_setup_state(from_number: str) -> None:
+    """Delete school setup state from Supabase."""
+    try:
+        lib._sb().table("ma_details").delete().eq("device_id", from_number).eq("type", "school_setup_state").execute()
+    except Exception:
+        pass
 
 _SETUP_STEPS = ["child_name", "school_name", "class_name", "teacher_name", "year_group", "sender_emails"]
 _SETUP_PROMPTS = {
@@ -1022,12 +1046,12 @@ def handle_wa_school(from_number: str, text: str) -> str:
     cmd  = text.lower()
 
     # ── Resume setup if in progress ───────────────────────────────────────────
-    if from_number in _SETUP_STATE:
-        state = _SETUP_STATE[from_number]
+    state = _load_setup_state(from_number)
+    if state:
         step  = state["step"]
 
         if cmd in ("cancel", "stop", "quit"):
-            del _SETUP_STATE[from_number]
+            _delete_setup_state(from_number)
             return "Setup cancelled. Reply *school* to start again."
 
         # Store answer for current step
@@ -1053,6 +1077,7 @@ def handle_wa_school(from_number: str, text: str) -> str:
         idx = _SETUP_STEPS.index(step)
         if idx + 1 < len(_SETUP_STEPS):
             state["step"] = _SETUP_STEPS[idx + 1]
+            _save_setup_state(from_number, state)
             prompt = _next_setup_prompt(state)
             # After school name — show what was found
             if step == "school_name" and state["data"].get("address"):
@@ -1062,7 +1087,7 @@ def handle_wa_school(from_number: str, text: str) -> str:
         else:
             # All steps done — save profile
             data = state["data"]
-            del _SETUP_STATE[from_number]
+            _delete_setup_state(from_number)
             try:
                 lib._sb().table("school_profiles").insert({
                     "from_number":   from_number,
@@ -1125,7 +1150,7 @@ def handle_wa_school(from_number: str, text: str) -> str:
         )
 
     if cmd == "school chat":
-        _SETUP_STATE[from_number] = {"step": "child_name", "data": {}}
+        _save_setup_state(from_number, {"step": "child_name", "data": {}})
         return (
             "🏫 *Add a school* (reply *cancel* at any time)\n\n"
             + _SETUP_PROMPTS["child_name"]
