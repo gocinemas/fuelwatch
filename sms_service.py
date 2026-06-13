@@ -27779,13 +27779,13 @@ def api_pm_intake():
             "Also classify feasibility and name the project."
         )
         STRATEGY_SCHEMA = (
-        '{"project_name":"concise name",'
-        '"project_type":"IT Transformation|Digital Build|ERP Implementation|De-merger|Process Improvement|RFP \/ Procurement|Vendor Engagement|Discovery & Research|Other",'
-        '"feasibility":"green|amber|red",'
-        '"feasibility_reason":"1 honest sentence",'
-        '"vision":"one crisp paragraph — what success looks like in plain English, no jargon",'
-        '"boscard":"## Benefits\\n- ...\\n## Objectives\\n- SMART objective\\n## Scope\\n**In:** ...\\n**Out:** ...\\n## Constraints\\n- ...\\n## Assumptions\\n- ...\\n## Risks\\n- Risk (High\/Med\/Low)\\n## Dependencies\\n- ...",'
-        '"actions":["first concrete action this week","second action","third action"]}'
+        r'{"project_name":"concise name",'
+        r'"project_type":"IT Transformation|Digital Build|ERP Implementation|De-merger|Process Improvement|RFP \/ Procurement|Vendor Engagement|Discovery & Research|Other",'
+        r'"feasibility":"green|amber|red",'
+        r'"feasibility_reason":"1 honest sentence",'
+        r'"vision":"one crisp paragraph — what success looks like in plain English, no jargon",'
+        r'"boscard":"## Benefits\n- ...\n## Objectives\n- SMART objective\n## Scope\n**In:** ...\n**Out:** ...\n## Constraints\n- ...\n## Assumptions\n- ...\n## Risks\n- Risk (High\/Med\/Low)\n## Dependencies\n- ...",'
+        r'"actions":["first concrete action this week","second action","third action"]}'
     )
 
     # ── Agent 2: Functional spec — varies by role, then lifecycle ───────────────
@@ -27914,12 +27914,12 @@ def api_pm_intake():
             "You are the business analyst. Write detailed functional and non-functional requirements, and use cases covering key actors."
         )
         FUNCSPEC_SCHEMA = (
-            '{"requirements":{"functional":["FR1: The system\/team shall ...","FR2: ...","FR3: ...","FR4: ...","FR5: ..."],'
-            '"non_functional":["NFR1: Performance — response time < 3s under normal load","NFR2: Security — ...","NFR3: Availability — 99.5% uptime"]},'
-            '"use_cases":[{"id":"UC1","actor":"Project Sponsor","action":"reviews programme dashboard","outcome":"has full visibility of status, risks and spend"},'
-            '{"id":"UC2","actor":"End User","action":"...","outcome":"..."},'
-            '{"id":"UC3","actor":"IT Team","action":"...","outcome":"..."},'
-            '{"id":"UC4","actor":"Programme Manager","action":"...","outcome":"..."}]}'
+            r'{"requirements":{"functional":["FR1: The system\/team shall ...","FR2: ...","FR3: ...","FR4: ...","FR5: ..."],'
+            r'"non_functional":["NFR1: Performance — response time < 3s under normal load","NFR2: Security — ...","NFR3: Availability — 99.5% uptime"]},'
+            r'"use_cases":[{"id":"UC1","actor":"Project Sponsor","action":"reviews programme dashboard","outcome":"has full visibility of status, risks and spend"},'
+            r'{"id":"UC2","actor":"End User","action":"...","outcome":"..."},'
+            r'{"id":"UC3","actor":"IT Team","action":"...","outcome":"..."},'
+            r'{"id":"UC4","actor":"Programme Manager","action":"...","outcome":"..."}]}'
         )
 
     # ── Agent 3: Delivery — varies by role ───────────────────────────────────
