@@ -15262,19 +15262,28 @@ _bkBadge();
   </div>
 
   <!-- Main view -->
-  <div id="school-main" style="display:none">
+  <div id="school-main" style="display:none;padding:0 16px">
+    <div style="max-width:600px;margin:0 auto">
 
     <!-- Child selector -->
     <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:18px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
 
+    <!-- View tabs: All vs Summary -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid #e5f0e8;padding-bottom:12px">
+      <button onclick="schoolSetView('all')" id="school-tab-all" style="padding:6px 12px;border:none;background:none;border-bottom:2px solid transparent;font-size:13px;font-weight:600;cursor:pointer;color:#059669">📅 All</button>
+      <button onclick="schoolSetView('summary')" id="school-tab-summary" style="padding:6px 12px;border:none;background:none;border-bottom:2px solid transparent;font-size:13px;font-weight:600;cursor:pointer;color:#6b7280">📚 Summary This Week</button>
+    </div>
+
     <!-- School Comms Summary Card — Crisp & Clean -->
-    <div id="school-summary-card" style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #93c5fd;border-radius:16px;padding:16px;margin-bottom:16px;display:none">
-      <div style="font-size:11px;font-weight:800;color:#1d4ed8;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">📚 School Calendar</div>
-      <div id="school-summary-body" style="font-size:13px;line-height:1.8;color:#1e40af"></div>
+    <div id="school-summary-view" style="display:none">
+      <div id="school-summary-card" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1.5px solid #86efac;border-radius:16px;padding:20px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:800;color:#15803d;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">📚 Week Ahead</div>
+        <div id="school-summary-body" style="font-size:14px;line-height:1.8;color:#1f5e3d;font-weight:500"></div>
+      </div>
     </div>
 
     <!-- School name + refresh -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:12px;background:#f9fdf7;border-radius:10px">
       <div id="school-profile-card" style="font-size:13px;font-weight:600;color:var(--text)"></div>
       <div style="display:flex;gap:6px;align-items:center">
         <span id="school-synced-label" style="font-size:11px;color:#9ca3af"></span>
@@ -15312,6 +15321,8 @@ _bkBadge();
     </div>
     <div id="school-list"></div>
 
+    </div>
+    </div>
   </div>
 </div>
 
@@ -19088,6 +19099,22 @@ let _savesAll = [];
     localStorage.setItem("school_wa", wa);
     document.getElementById("school-pin-error").style.display = "none";
     _schoolShowMain();
+  };
+
+  let _schoolViewMode = 'all';
+
+  window.schoolSetView = function(view) {
+    _schoolViewMode = view;
+    // Update tab highlights
+    document.getElementById('school-tab-all').style.color = view === 'all' ? '#059669' : '#6b7280';
+    document.getElementById('school-tab-all').style.borderBottom = view === 'all' ? '2px solid #059669' : '2px solid transparent';
+    document.getElementById('school-tab-summary').style.color = view === 'summary' ? '#059669' : '#6b7280';
+    document.getElementById('school-tab-summary').style.borderBottom = view === 'summary' ? '2px solid #059669' : '2px solid transparent';
+
+    // Show/hide views
+    document.getElementById('school-summary-view').style.display = view === 'summary' ? 'block' : 'none';
+    document.getElementById('school-list').style.display = view === 'all' ? 'block' : 'none';
+    document.getElementById('school-section-tabs').style.display = view === 'all' ? 'flex' : 'none';
   };
 
   let _schoolProfiles = [];
