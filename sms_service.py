@@ -11978,113 +11978,59 @@ def api_home_ask():
         except Exception as e:
             app.logger.debug(f"[ask] Weekly saves formatting failed: {e}")
 
+    # ── Special formatting for "How much have I spent?" ────
+    if any(w in q_lower for w in ["how much spend", "how much have i spent", "total spent", "spent this month"]):
+        try:
+            if from_number:
+                spend = _v2_fetch_spend(from_number)
+                if spend and spend.get("total") is not None:
+                    total = spend['total']
+                    month = spend.get('month', '')
+                    count = spend.get('count', 0)
+                    answer = f"💰 You've spent **£{total:.2f}** this {month} ({count} receipts)"
+                    if spend.get("breakdown"):
+                        bd = spend["breakdown"]
+                        bd_text = ", ".join(f"{cat} £{v['total']:.2f}" for cat, v in list(bd.items())[:5])
+                        answer += f"\n\nBreakdown: {bd_text}"
+                    return jsonify({"answer": answer})
+        except Exception as e:
+            app.logger.debug(f"[ask] Spend formatting failed: {e}")
+
+    # ── Special formatting for "Next train?" ────
+    if any(w in q_lower for w in ["next train", "when is the next train", "train to "]):
+        try:
+            trains = ctx.get("trains") or {}
+            if trains.get("departures"):
+                deps = trains["departures"][:3]
+                lines = [f"🚂 {trains.get('from','')} → {trains.get('to','')}"]
+                for d in deps:
+                    t = d.get("departs") or d.get("time", "")
+                    status = d.get("status", "On time")
+                    if t:
+                        lines.append(f"  • {t} ({status})")
+                return jsonify({"answer": "\n".join(lines)})
+        except Exception as e:
+            app.logger.debug(f"[ask] Train formatting failed: {e}")
+
     try:
-        # ── Agentic RAG: Define tools for the LLM ────────────────────────────────
-        tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": "get_receipts",
-                    "description": "Get receipts for a specific merchant or shop",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "merchant_name": {
-                                "type": "string",
-                                "description": "Name of the shop or merchant (e.g., H&M, Tesco, Pret)"
-                            }
-                        },
-                        "required": ["merchant_name"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "get_spend",
-                    "description": "Get spending summary for a time period",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "period": {
-                                "type": "string",
-                                "description": "Time period (e.g., 'this month', 'last month', 'this quarter')"
-                            }
-                        },
-                        "required": ["period"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "get_schools",
-                    "description": "Get the user's children and their schools"
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "get_commutes",
-                    "description": "Get the user's saved commute routes"
-                }
-            }
-        ]
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
+                     "Content-Type": "application/json"},
+            json={"model": "llama-3.1-8b-instant",
+                  "max_tokens": 400 if any(w in q_lower for w in ["show", "recipe", "ingredient", "steps"]) else 120,
+                  "temperature": 0.2, "messages": messages},
+            timeout=8,
+        )
+        answer = r.json()["choices"][0]["message"]["content"].strip()
 
-        # Tool execution loop
-        for iteration in range(3):  # Max 3 iterations to prevent infinite loops
-            r = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY', '')}",
-                         "Content-Type": "application/json"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "max_tokens": 400 if any(w in q_lower for w in ["show", "recipe", "ingredient", "steps"]) else 300,
-                    "temperature": 0.2,
-                    "messages": messages,
-                    "tools": tools if is_personal else None  # Only offer tools for personal questions
-                },
-                timeout=10,
-            )
+        # Return answer as-is from Groq
+        validated_answer = answer.strip()
+        if validated_answer and not validated_answer.endswith("."):
+            validated_answer += "."
 
-            response = r.json()
-            choice = response.get("choices", [{}])[0]
-            message = choice.get("message", {})
-
-            # Check if LLM wants to call a tool
-            tool_calls = message.get("tool_calls", [])
-            if tool_calls and is_personal and from_number:
-                # Execute tools and add results to conversation
-                for tool_call in tool_calls:
-                    tool_name = tool_call.get("function", {}).get("name", "")
-                    tool_args = __import__("json").loads(tool_call.get("function", {}).get("arguments", "{}"))
-
-                    tool_result = ""
-                    if tool_name == "get_receipts":
-                        tool_result = _tool_get_receipts(tool_args.get("merchant_name", ""), from_number)
-                    elif tool_name == "get_spend":
-                        tool_result = _tool_get_spend(tool_args.get("period", "this month"), from_number)
-                    elif tool_name == "get_schools":
-                        tool_result = _tool_get_schools(from_number)
-                    elif tool_name == "get_commutes":
-                        tool_result = _tool_get_commutes(from_number)
-
-                    # Add assistant response and tool result to messages
-                    messages.append({"role": "assistant", "content": message.get("content", ""), "tool_calls": tool_calls})
-                    messages.append({"role": "tool", "tool_call_id": tool_call.get("id", ""), "content": tool_result})
-                    app.logger.info(f"[ask] Tool called: {tool_name}, result: {tool_result[:80]}")
-            else:
-                # LLM returned final answer
-                answer = message.get("content", "").strip()
-                validated_answer = answer.strip()
-                if validated_answer and not validated_answer.endswith("."):
-                    validated_answer += "."
-
-                app.logger.info(f"[home/ask] Answer: {validated_answer[:100]}")
-                return jsonify({"answer": validated_answer if validated_answer else ""})
-
-        # Fallback if max iterations reached
-        return jsonify({"answer": "Sorry, I had trouble getting enough information to answer that."})
+        app.logger.info(f"[home/ask] Answer: {validated_answer[:100]}")
+        return jsonify({"answer": validated_answer if validated_answer else ""})
     except Exception as e:
         app.logger.warning(f"[home/ask] {e}")
         return jsonify({"answer": "Sorry, couldn't get an answer right now."}), 500
