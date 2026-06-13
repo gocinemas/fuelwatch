@@ -15282,22 +15282,14 @@ _bkBadge();
   <div id="school-main" style="display:none;padding:0 16px">
     <div style="max-width:600px;margin:0 auto">
 
+    <!-- School Comms Summary Card — Always visible at top -->
+    <div id="school-summary-card" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1.5px solid #86efac;border-radius:16px;padding:20px;margin-bottom:18px">
+      <div style="font-size:11px;font-weight:800;color:#15803d;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">📚 Week Ahead</div>
+      <div id="school-summary-body" style="font-size:14px;line-height:1.8;color:#1f5e3d;font-weight:500"></div>
+    </div>
+
     <!-- Child selector -->
     <div id="school-child-tabs" style="display:none;gap:8px;margin-bottom:18px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;padding-bottom:14px"></div>
-
-    <!-- View tabs: All vs Summary -->
-    <div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid #e5f0e8;padding-bottom:12px">
-      <button onclick="schoolSetView('all')" id="school-tab-all" style="padding:6px 12px;border:none;background:none;border-bottom:2px solid transparent;font-size:13px;font-weight:600;cursor:pointer;color:#059669">📅 All</button>
-      <button onclick="schoolSetView('summary')" id="school-tab-summary" style="padding:6px 12px;border:none;background:none;border-bottom:2px solid transparent;font-size:13px;font-weight:600;cursor:pointer;color:#6b7280">📚 Summary This Week</button>
-    </div>
-
-    <!-- School Comms Summary Card — Crisp & Clean -->
-    <div id="school-summary-view" style="display:none">
-      <div id="school-summary-card" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1.5px solid #86efac;border-radius:16px;padding:20px;margin-bottom:16px">
-        <div style="font-size:11px;font-weight:800;color:#15803d;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">📚 Week Ahead</div>
-        <div id="school-summary-body" style="font-size:14px;line-height:1.8;color:#1f5e3d;font-weight:500"></div>
-      </div>
-    </div>
 
     <!-- School name + refresh -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:12px;background:#f9fdf7;border-radius:10px">
@@ -19118,22 +19110,6 @@ let _savesAll = [];
     _schoolShowMain();
   };
 
-  let _schoolViewMode = 'all';
-
-  window.schoolSetView = function(view) {
-    _schoolViewMode = view;
-    // Update tab highlights
-    document.getElementById('school-tab-all').style.color = view === 'all' ? '#059669' : '#6b7280';
-    document.getElementById('school-tab-all').style.borderBottom = view === 'all' ? '2px solid #059669' : '2px solid transparent';
-    document.getElementById('school-tab-summary').style.color = view === 'summary' ? '#059669' : '#6b7280';
-    document.getElementById('school-tab-summary').style.borderBottom = view === 'summary' ? '2px solid #059669' : '2px solid transparent';
-
-    // Show/hide views
-    document.getElementById('school-summary-view').style.display = view === 'summary' ? 'block' : 'none';
-    document.getElementById('school-list').style.display = view === 'all' ? 'block' : 'none';
-    document.getElementById('school-section-tabs').style.display = view === 'all' ? 'flex' : 'none';
-  };
-
   let _schoolProfiles = [];
   let _schoolActiveProfileId = "";
 
@@ -19179,10 +19155,11 @@ let _savesAll = [];
       const d = new Date(dateStr);
       const dayName = d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
       const events = grouped[dateStr];
-      html += `<div style="margin-bottom:10px"><div style="font-weight:600;color:#1e40af;font-size:12px">${dayName}</div>`;
+      html += `<div style="margin-bottom:12px"><div style="font-weight:700;color:#15803d;font-size:11px;text-transform:uppercase;letter-spacing:0.5px">${dayName}</div>`;
       events.forEach(e => {
-        const title = (e.event_title || "Event").slice(0, 35);
-        html += `<div style="font-size:12px;margin-top:4px;color:#1e3a8a">• ${title}</div>`;
+        const title = (e.event_title || "Event").slice(0, 30);
+        const childName = e.school_name ? ` <span style="font-size:11px;color:#6b7280">(${e.school_name})</span>` : "";
+        html += `<div style="font-size:13px;margin-top:5px;color:#1e5e3d">• ${title}${childName}</div>`;
       });
       html += "</div>";
     });
