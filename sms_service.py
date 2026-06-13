@@ -1060,6 +1060,7 @@ def api_commute():
     to_crs   = request.args.get("to_crs",   "").strip().upper()[:3]
 
     # Accept lat/lon directly (from frontend geocoding) or fallback to postcodes
+    from_pc = to_pc = ""
     try:
         from_lat = float(request.args.get("from_lat", ""))
         from_lon = float(request.args.get("from_lon", ""))
@@ -3209,7 +3210,7 @@ def _get_elections():
 # ── ai.humanagency.co content API ───────────────────────────────────────────
 # Stored in Supabase site_config table so it survives Railway redeploys.
 # SQL: CREATE TABLE IF NOT EXISTS site_config (key text PRIMARY KEY, value jsonb NOT NULL DEFAULT '{}');
-_AIHA_EDIT_TOKEN = "aiha-2026-edit"
+_AIHA_EDIT_TOKEN = os.environ.get("AIHA_EDIT_TOKEN", "")
 
 def _aiha_read():
     try:
@@ -3435,12 +3436,9 @@ def school_event_add():
         p = owns[0]
         row = {
             "profile_id":  profile_id,
-            "child_name":  p.get("child_name", ""),
-            "school_name": p.get("school_name", ""),
             "event_title": title,
             "event_date":  event_date or None,
-            "notes":       notes or None,
-            "source":      "manual",
+            "description": notes or None,
         }
         result = lib._sb().table("school_events").insert(row).execute()
         inserted = result.data[0] if result.data else row

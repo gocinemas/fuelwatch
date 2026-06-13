@@ -99,8 +99,8 @@ def _gmail_access_token(refresh_token: str = None) -> str:
     return rj["access_token"]
 
 
-def _gmail_get(path: str, params: dict = None, refresh_token: str = None) -> dict:
-    token = _gmail_access_token(refresh_token)
+def _gmail_get(path: str, params: dict = None, refresh_token: str = None, access_token: str = None) -> dict:
+    token = access_token or _gmail_access_token(refresh_token)
     r = requests.get(
         f"{_GMAIL_API_BASE}/{path}",
         headers={"Authorization": f"Bearer {token}"},
@@ -733,6 +733,15 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
             print(f"[school] No Gmail token for {from_number}, skipping — needs OAuth")
             continue
 
+        # Fetch access token once for all API calls in this parent's loop
+        try:
+            access_token = _gmail_access_token(gmail_token)
+        except Exception as e:
+            print(f"[school] Gmail auth error for {from_number}: {e}")
+            if not skip_error_flag:
+                _flag_token_error(from_number, parent_profiles, on_error)
+            continue
+
         # Collect all sender emails across this parent's schools
         all_senders: list[str] = []
         for p in parent_profiles:
@@ -743,7 +752,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
 
         query = _build_gmail_query(all_senders, days_back=days_back)
         try:
-            res = _gmail_get("messages", {"q": query, "maxResults": 50}, refresh_token=gmail_token)
+            res = _gmail_get("messages", {"q": query, "maxResults": 50}, access_token=access_token)
         except Exception as e:
             print(f"[school] Gmail list error for {from_number}: {e}")
             if not skip_error_flag and ("400" in str(e) or "401" in str(e)):
@@ -756,7 +765,7 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
         for stub in msg_stubs:
             msg_id = stub["id"]
             try:
-                msg = _gmail_get(f"messages/{msg_id}", {"format": "full"}, refresh_token=gmail_token)
+                msg = _gmail_get(f"messages/{msg_id}", {"format": "full"}, access_token=access_token)
             except Exception as e:
                 print(f"[school] Gmail fetch error {msg_id}: {e}")
                 continue
@@ -796,7 +805,6 @@ def poll_all_profiles(days_back: int = 7, force: bool = False, profile_ids: list
                 print(f"[school] skipping {msg_id} subject={subject!r} (low-value email)")
                 continue
 
-            import time as _time; _time.sleep(5)  # spread load to avoid Groq free tier rate limit (6000 TPM)
             events = _groq_parse_events(
                 subject, body,
                 matched_profile["school_name"],
