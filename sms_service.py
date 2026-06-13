@@ -11172,7 +11172,27 @@ def api_home_ask():
                 try:
                     plain = from_number.replace("whatsapp:", "").strip()
 
-                    # Build query with optional date filter
+                    # FIRST: Check wa_saves for clipped receipts (🧾)
+                    ws_rows = lib._sb().table("wa_saves").select("title,summary,created_at") \
+                        .eq("from_number", plain).ilike("title", f"%🧾%{merchant_q}%").order("created_at", desc=True).limit(3).execute().data or []
+
+                    if ws_rows:
+                        result_lines = []
+                        for r in ws_rows:
+                            merchant = (r.get("title","").replace("🧾","").strip())
+                            summary = r.get("summary","")
+                            date_str = (r.get("created_at","")[:10])
+                            # Extract amount from summary
+                            import re as _re_amt
+                            amt_match = _re_amt.search(r'£([\d,]+\.?\d*)', summary)
+                            amt_str = f" (£{amt_match.group(1)})" if amt_match else ""
+                            result_lines.append(f"You shopped at {merchant} on {date_str}{amt_str}.\n💬 {summary[:80]}")
+                        if result_lines:
+                            answer = "\n\n".join(result_lines)
+                            app.logger.info(f"[ask] Receipt found in wa_saves: {merchant_q}")
+                            return jsonify({"answer": answer})
+
+                    # FALLBACK: Check receipts table if wa_saves had nothing
                     query = lib._sb().table("receipts").select("merchant,items,total,shop_date") \
                         .eq("phone", plain).ilike("merchant", f"%{merchant_q}%")
 
@@ -11685,6 +11705,9 @@ def api_home_ask():
                         _answer += "\n\n🔧 Tap Local Finder for more, or ask me to narrow it down."
                         return jsonify({"answer": _answer})
 
+    # Build Ask Miru context
+    miru_context_str = _build_ask_miru_context(from_number) if from_number else ""
+
     # ── System prompt by intent ────────────────────────────────────────────────
     if is_utility and not is_personal:
         system_prompt = (
@@ -11705,6 +11728,11 @@ def api_home_ask():
         _now_label = _now_uk.strftime("%A %d %b, %H:%M").replace(" 0", " ")
         ctx_lines.insert(0, f"Current time: {_now_label} UK")
         ctx_text = "; ".join(ctx_lines) if ctx_lines else "No personal context loaded."
+
+        # Add Ask Miru context if available
+        if miru_context_str:
+            ctx_text += f"\n\nPersonal summary:\n{miru_context_str}"
+
         system_prompt = (
             "You are Miru, a smart British personal assistant. "
             "You have two sources: (1) personal 'Context' facts about the user — "
@@ -11722,6 +11750,7 @@ def api_home_ask():
             "'Saved places' = user's favorite shops, pubs, cafes they've saved. "
             "When asked 'what did I save', use Saves library ONLY. "
             "When asked 'did I buy X', check Receipt items — answer yes/no with shop and date. "
+            "When asked about spending at a specific shop (H&M, Pret, M&S, etc), reference the Personal summary above if available. "
             "When user asks 'where did I have X' and it's not in saved places, say: "
             "'I didn't find that in your saved places, but here are some nearby recommendations:' then list options. "
             "For personal history not in Context, say 'I don't have a record of that' — never invent. "
