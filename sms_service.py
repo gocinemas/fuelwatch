@@ -11987,11 +11987,11 @@ def api_home_ask():
                     total = spend['total']
                     month = spend.get('month', '')
                     count = spend.get('count', 0)
-                    answer = f"💰 You've spent **£{total:.2f}** this {month} ({count} receipts)"
+                    answer = f"💰 You've spent £{total:.2f} this {month} across {count} receipts"
                     if spend.get("breakdown"):
                         bd = spend["breakdown"]
-                        bd_text = ", ".join(f"{cat} £{v['total']:.2f}" for cat, v in list(bd.items())[:5])
-                        answer += f"\n\nBreakdown: {bd_text}"
+                        bd_lines = [f"  • {cat}: £{v['total']:.2f}" for cat, v in list(bd.items())[:6]]
+                        answer += f"\n\nBy category:\n" + "\n".join(bd_lines)
                     return jsonify({"answer": answer})
         except Exception as e:
             app.logger.debug(f"[ask] Spend formatting failed: {e}")
@@ -12002,12 +12002,14 @@ def api_home_ask():
             trains = ctx.get("trains") or {}
             if trains.get("departures"):
                 deps = trains["departures"][:3]
-                lines = [f"🚂 {trains.get('from','')} → {trains.get('to','')}"]
+                from_stn = trains.get('from','').replace(' station','').strip()
+                to_stn = trains.get('to','').replace(' station','').strip()
+                lines = [f"🚂 {from_stn} to {to_stn}"]
                 for d in deps:
                     t = d.get("departs") or d.get("time", "")
                     status = d.get("status", "On time")
                     if t:
-                        lines.append(f"  • {t} ({status})")
+                        lines.append(f"  {t} - {status}")
                 return jsonify({"answer": "\n".join(lines)})
         except Exception as e:
             app.logger.debug(f"[ask] Train formatting failed: {e}")
