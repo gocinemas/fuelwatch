@@ -936,6 +936,67 @@ def _build_ask_miru_context(from_number: str) -> str:
     return "\n".join(context_parts) if context_parts else ""
 
 
+def _cache_ask_miru_context(from_number: str) -> None:
+    """Build and cache Ask Miru context for a user in ma_details."""
+    try:
+        if not from_number:
+            return
+        context_text = _build_ask_miru_context(from_number)
+        from datetime import datetime
+        lib._sb().table("ma_details").upsert({
+            "device_id": from_number,
+            "type": "ask_miru_context",
+            "data": {
+                "context": context_text,
+                "built_at": datetime.utcnow().isoformat()
+            }
+        }, on_conflict="device_id,type").execute()
+    except Exception as e:
+        app.logger.debug(f"[cache_context] Failed for {from_number}: {e}")
+
+
+def _get_cached_ask_miru_context(from_number: str) -> str:
+    """Retrieve cached Ask Miru context for a user, or build fresh if missing."""
+    try:
+        if not from_number:
+            return ""
+        rows = lib._sb().table("ma_details").select("data").eq("device_id", from_number).eq("type", "ask_miru_context").limit(1).execute().data or []
+        if rows and rows[0].get("data", {}).get("context"):
+            return rows[0]["data"]["context"]
+    except Exception:
+        pass
+    # Fallback: build fresh
+    return _build_ask_miru_context(from_number)
+
+
+def _refresh_all_ask_miru_contexts() -> dict:
+    """Background task: rebuild Ask Miru context for all active users."""
+    try:
+        # Get all unique users (from school_profiles, v2_prefs, etc.)
+        users = set()
+        try:
+            sp_rows = lib._sb().table("school_profiles").select("from_number").eq("active", True).execute().data or []
+            users.update(r.get("from_number") for r in sp_rows if r.get("from_number"))
+        except Exception:
+            pass
+        try:
+            vp_rows = lib._sb().table("ma_details").select("device_id").eq("type", "v2_prefs").execute().data or []
+            users.update(r.get("device_id") for r in vp_rows if r.get("device_id"))
+        except Exception:
+            pass
+
+        updated = 0
+        for user in users:
+            _cache_ask_miru_context(user)
+            updated += 1
+
+        app.logger.info(f"[background] Ask Miru contexts refreshed for {updated} users")
+        return {"users_updated": updated, "total_users": len(users)}
+    except Exception as e:
+        app.logger.error(f"[background] Context refresh failed: {e}")
+        return {"error": str(e)}
+
+
 # ── Webhook ───────────────────────────────────────────────────────────────────
 
 @app.route("/sms", methods=["POST"])
@@ -11705,8 +11766,8 @@ def api_home_ask():
                         _answer += "\n\n🔧 Tap Local Finder for more, or ask me to narrow it down."
                         return jsonify({"answer": _answer})
 
-    # Build Ask Miru context
-    miru_context_str = _build_ask_miru_context(from_number) if from_number else ""
+    # Retrieve cached Ask Miru context (or build fresh if missing)
+    miru_context_str = _get_cached_ask_miru_context(from_number) if from_number else ""
 
     # ── System prompt by intent ────────────────────────────────────────────────
     if is_utility and not is_personal:
@@ -11872,6 +11933,18 @@ def api_admin_fix_currency():
         return jsonify({"ok": True, "checked": len(rows), "fixed": fixed})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/background/refresh-ask-miru", methods=["POST"])
+def api_background_refresh_ask_miru():
+    """Background task: rebuild Ask Miru Intelligence (context) for all active users.
+    Called hourly via cron-job.org to keep user contexts fresh.
+    Token: X-Admin-Token: miru-digest-2026
+    """
+    if request.headers.get("X-Admin-Token") != "miru-digest-2026":
+        return jsonify({"error": "Forbidden"}), 403
+    result = _refresh_all_ask_miru_contexts()
+    return jsonify(result)
 
 
 @app.route("/api/morning-brief", methods=["POST"])
