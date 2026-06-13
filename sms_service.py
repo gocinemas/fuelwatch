@@ -11908,8 +11908,10 @@ def api_home_ask():
         ctx_lines.insert(0, f"Current time: {_now_label} UK")
         ctx_text = "; ".join(ctx_lines) if ctx_lines else "No personal context loaded."
 
-        # Add Ask Miru context if available
-        if miru_context_str:
+        # Add Ask Miru context if available — but NOT for specific save lookups
+        # (asking "what did i save" should not inject unrelated context like school schedule)
+        is_specific_save_query = any(w in q_lower for w in ["save", "saved", "what did i", "did i save"])
+        if miru_context_str and not is_specific_save_query:
             ctx_text += f"\n\nPersonal summary:\n{miru_context_str}"
 
         system_prompt = (
