@@ -23265,6 +23265,14 @@ def api_school_events():
         last_synced = None
         if all_events:
             last_synced = max((e.get("created_at") or "") for e in all_events) or None
+
+        # Enrich events with school_name from profiles
+        profile_map = {p["id"]: p.get("school_name", "") for p in profiles}
+        for event in all_events:
+            pid = event.get("profile_id")
+            if pid and pid in profile_map:
+                event["school_name"] = profile_map[pid]
+
         return jsonify({"events": all_events, "profiles": profiles, "last_synced": last_synced})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
