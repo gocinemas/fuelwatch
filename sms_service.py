@@ -9944,6 +9944,16 @@ def api_home_brief():
     kids = [s.get("child_name", "") for s in school_data.get("schools", [])] if isinstance(school_data, dict) else []
     kids = [k for k in kids if k]
 
+    # Detect active school trip today (suppress at-home activity suggestions)
+    _trip_keywords = ["trip", "visit", "excursion", "outing", "coach", "field trip", "school trip"]
+    _active_trip = None
+    for ev in school_upcoming:
+        if ev.get("event_date") == now.date().isoformat():
+            _ev_title = (ev.get("event_title") or "").lower()
+            if any(kw in _ev_title for kw in _trip_keywords):
+                _active_trip = ev
+                break
+
     # Weather
     weather = ctx.get("weather", {})
 
@@ -10396,6 +10406,7 @@ def api_home_brief():
             bh_note = " Bank holiday today."
         else:
             bh_note = ""
+        _home_rule = "" if _active_trip else "The user is home for the evening. Do NOT suggest going to a pub, restaurant, park, or anywhere. "
         prompt_parts.append(
             f"{_loc_preamble}"
             f"Write a warm, relaxed 2-sentence early-evening brief. It's {dow} evening, {hour}:{now.minute:02d}. "
@@ -10405,7 +10416,7 @@ def api_home_brief():
                "It's the weekend." if day_type == "weekend" else "")
             + bh_note + " "
             + _interests_note
-            + " RULE: The user is home for the evening. Do NOT suggest going to a pub, restaurant, park, or anywhere. Do NOT name any specific venues or places. Do NOT say 'why not' or 'you could'. Only reference facts above."
+            + f" RULE: {_home_rule}Do NOT name any specific venues or places. Do NOT say 'why not' or 'you could'. Only reference facts above."
         )
     elif time_mode in ("night", "goodnight"):
         # Build night/goodnight text directly — no Groq creative writing, no purple prose
