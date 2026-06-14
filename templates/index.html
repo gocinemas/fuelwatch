@@ -3518,7 +3518,7 @@
     { ico:"🏫", label:"School Comms",      desc:"Letters & events",             action: function(){ _schoolHomeOpen && _schoolHomeOpen(); _moreClose(); } },
     { ico:"🏢", label:"Brand Intel",       desc:"Research any company",         action: function(){ showScreen('company'); } },
     { ico:"📌", label:"Clippings",         desc:"Articles & places saved",      action: function(){ _pillNav('saves'); } },
-    { ico:"📚", label:"Library",           desc:"My Books & reading tracker",   action: function(){ window.location.href = '/library'; } },
+    { ico:"📚", label:"Library",           desc:"My Books & reading tracker",   action: function(){ showScreen('scan'); } },
     { ico:"🎵", label:"Music ID",          desc:"Name that song",               action: function(){ showScreen('music'); } },
     { ico:"🍹", label:"Recipes",           desc:"Dishes & cocktails instantly", action: function(){ showScreen('recipe'); } },
     { ico:"🗺️", label:"Nearby",           desc:"Food · drinks · parks",        action: function(){ _exploreHereOpen && _exploreHereOpen(); _moreClose(); } },
@@ -3672,34 +3672,47 @@
     }
     if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); _renderRecent("miru_intel_" + (_intelSearchMode || "brand"), "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); }
     if (name === "scan") {
-      // Simple library - just show books from localStorage
-      var books = [];
-      try {
-        books = JSON.parse(localStorage.getItem("miru_books") || "[]");
-      } catch(e) {}
+      // Load books from API
+      var phone = localStorage.getItem("miru_phone") || "";
+      var loading = document.getElementById("lib-loading");
+      var empty = document.getElementById("lib-empty");
+      var booksDiv = document.getElementById("lib-books");
 
-      var html = '<div style="padding:16px">';
-      if (books.length === 0) {
-        html += '<div style="text-align:center;padding:40px 20px;color:var(--muted)"><div style="font-size:48px;margin-bottom:10px">📚</div><div style="font-size:14px">No books yet</div><div style="font-size:12px;margin-top:5px">Add books via WhatsApp or search above</div></div>';
-      } else {
-        html += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">You have ' + books.length + ' book(s)</div>';
-        books.forEach(function(b) {
-          html += '<div style="padding:10px;background:var(--surface);border-radius:8px;margin-bottom:8px">';
-          html += '<div style="font-weight:700;color:var(--text)">' + (b.title || 'Unknown') + '</div>';
-          html += '<div style="font-size:12px;color:var(--muted)">' + (b.author || '') + '</div>';
-          html += '</div>';
+      if (loading) loading.style.display = "block";
+      if (empty) empty.style.display = "none";
+      if (booksDiv) booksDiv.style.display = "none";
+
+      if (!phone) {
+        if (loading) loading.style.display = "none";
+        if (empty) empty.style.display = "block";
+        return;
+      }
+
+      fetch("/api/library/books?phone=" + encodeURIComponent(phone))
+        .then(r => r.json())
+        .then(function(bookList) {
+          if (loading) loading.style.display = "none";
+
+          if (!bookList || bookList.length === 0) {
+            if (empty) empty.style.display = "block";
+          } else {
+            if (booksDiv) {
+              booksDiv.innerHTML = '<div style="margin-bottom:12px;font-size:12px;color:var(--muted)">You have ' + bookList.length + ' book(s)</div>' +
+                bookList.map(function(b) {
+                  return '<div style="padding:12px;background:var(--surface);border-radius:8px;margin-bottom:8px;border-left:3px solid #7c3aed">' +
+                    '<div style="font-weight:700;color:var(--text)">' + (b.title || 'Unknown') + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + (b.author || '') + '</div>' +
+                    '</div>';
+                }).join("");
+              booksDiv.style.display = "block";
+            }
+          }
+        })
+        .catch(function(e) {
+          console.error("Error loading books:", e);
+          if (loading) loading.style.display = "none";
+          if (empty) empty.style.display = "block";
         });
-      }
-      html += '</div>';
-
-      var panel = document.getElementById("books-library-panel");
-      if (panel) {
-        panel.innerHTML = html;
-        panel.style.display = "block";
-      }
-
-      var search = document.getElementById("books-search-panel");
-      if (search) search.style.display = "none";
     }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
@@ -13344,18 +13357,22 @@ function _hcAdd() {
   </div>
 
   <!-- ── MY LIBRARY PANEL ── -->
-  <div id="books-library-panel" style="display:block;padding:24px;text-align:center">
-    <div style="font-size:48px;margin-bottom:16px">📚</div>
-    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px">My Books</div>
-    <div style="font-size:14px;color:var(--muted);line-height:1.6">
-      <p>Add books via WhatsApp to Miru:</p>
-      <div style="background:var(--surface);padding:12px;border-radius:8px;margin:12px 0;font-family:monospace;font-size:13px">
-        book The Great Gatsby<br>
-        book George Orwell<br>
-        book 9780743273565
+  <div id="books-library-panel" style="display:block;padding:16px">
+    <div id="lib-loading" style="text-align:center;padding:40px 20px;color:var(--muted)">Loading books...</div>
+    <div id="lib-empty" style="display:none;text-align:center;padding:40px 20px">
+      <div style="font-size:48px;margin-bottom:16px">📚</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">No books yet</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px">Add books via WhatsApp</div>
+      <div style="background:var(--surface);padding:12px;border-radius:8px;text-align:left;font-size:12px">
+        <div style="margin-bottom:8px"><strong>📖 By title:</strong></div>
+        <code style="background:#f3f4f6;padding:4px 6px;display:block;margin-bottom:12px">book The Great Gatsby</code>
+        <div style="margin-bottom:8px"><strong>👤 By author:</strong></div>
+        <code style="background:#f3f4f6;padding:4px 6px;display:block;margin-bottom:12px">book George Orwell</code>
+        <div style="margin-bottom:8px"><strong>🔢 By ISBN:</strong></div>
+        <code style="background:#f3f4f6;padding:4px 6px;display:block">book 9780743273565</code>
       </div>
-      <p style="font-size:12px;color:var(--subtle)">Books will appear here once added</p>
     </div>
+    <div id="lib-books" style="display:none"></div>
   </div>
 
     <!-- Hidden sub-tabs for future use -->
