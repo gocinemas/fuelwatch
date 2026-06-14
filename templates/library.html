@@ -192,29 +192,36 @@ function bookToggleScanner() {
 function bookStartScanner() {
   if (_bkScanner) return;
 
+  console.log('[scanner] ZXing available?', typeof ZXing);
+
+  if (typeof ZXing === 'undefined') {
+    alert('Scanner library not loaded. Refresh the page.');
+    return;
+  }
+
   try {
+    console.log('[scanner] Creating reader...');
     var codeReader = new ZXing.BrowserMultiFormatReader();
     _bkScanner = codeReader;
 
-    console.log('[scanner] Starting ZXing scanner...');
-    codeReader.decodeFromVideoDevice(null, 'scanner-video', (result, err) => {
+    console.log('[scanner] Starting decode from video device...');
+    var promise = codeReader.decodeFromVideoDevice(null, 'scanner-video', (result, err) => {
       if (result) {
         var code = result.text.trim();
-        console.log('[scanner] Detected barcode:', code);
+        console.log('[scanner] ✓ Detected:', code);
         bookStopScanner();
         bookSearchISBN(code);
       }
-      if (err && err !== 'NotFoundException') {
-        console.error('[scanner] Error:', err);
-      }
-    }).catch(err => {
-      console.error('[scanner] Init error:', err);
-      alert('Camera error: ' + err.message);
+    });
+
+    promise.catch(err => {
+      console.error('[scanner] Error:', err);
+      alert('Camera: ' + (err?.message || err));
       bookStopScanner();
     });
   } catch (e) {
     console.error('[scanner] Exception:', e);
-    alert('Scanner error: ' + e.message);
+    alert('Error: ' + e.message);
     bookStopScanner();
   }
 }
