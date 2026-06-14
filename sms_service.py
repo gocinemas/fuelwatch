@@ -8112,12 +8112,36 @@ def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, ye
                 period_end = date(today.year, today.month + 1, 1).isoformat()
             period_label = today.strftime("%B %Y")
 
-        rows = lib._sb().table("wa_saves").select("summary,title,category") \
+        rows = lib._sb().table("wa_saves").select("summary,title,category,id") \
             .eq("from_number", from_number) \
             .gte("created_at", period_start) \
             .lt("created_at", period_end) \
             .ilike("title", "🧾%") \
             .execute().data or []
+
+        # Deduplicate: same merchant on same day = duplicate, keep first (earliest by id)
+        # This handles case where same receipt was uploaded/processed twice
+        import datetime as _dedup_dt
+        seen_by_day = {}  # (merchant, date_key) → first receipt id
+        deduplicated_rows = []
+        for r in rows:
+            merchant = (r.get("title") or "").replace("🧾", "").strip()
+            try:
+                created = r.get("created_at", "")
+                date_key = created[:10]  # YYYY-MM-DD
+            except Exception:
+                date_key = "unknown"
+
+            key = (merchant, date_key)
+            if key not in seen_by_day:
+                seen_by_day[key] = r.get("id")
+                deduplicated_rows.append(r)
+
+        # Log deduplication
+        if len(deduplicated_rows) < len(rows):
+            app.logger.info(f"[spend] Deduplicated {len(rows)} receipts → {len(deduplicated_rows)} (removed {len(rows)-len(deduplicated_rows)} duplicates)")
+
+        rows = deduplicated_rows
         total = 0.0; count = 0
         breakdown: dict = {}
         merchants_by_cat: dict = {}  # Track merchants per category for detailed breakdown
@@ -28808,6 +28832,69 @@ Summary:"""
         app.logger.warning(f"[book_summarize] Groq error: {e}")
         return jsonify({"error": "Summarization failed"}), 500
 
+
+@app.route("/api/library/cleanup-receipts", methods=["POST"])
+def api_cleanup_receipts():
+    """Remove duplicate receipt entries for a user in a given month."""
+    phone = (request.headers.get("X-Phone") or request.args.get("phone") or "").strip()
+    year = int(request.args.get("year", 2026))
+    month = int(request.args.get("month", 5))
+
+    if not phone:
+        return jsonify({"error": "Need phone"}), 400
+
+    try:
+        from datetime import date
+        period_start = date(year, month, 1).isoformat()
+        if month == 12:
+            period_end = date(year + 1, 1, 1).isoformat()
+        else:
+            period_end = date(year, month + 1, 1).isoformat()
+
+        # Fetch all receipts for this period
+        rows = lib._sb().table("wa_saves").select("id,title,created_at") \
+            .eq("from_number", phone) \
+            .gte("created_at", period_start) \
+            .lt("created_at", period_end) \
+            .ilike("title", "🧾%") \
+            .execute().data or []
+
+        # Identify duplicates: same merchant on same day
+        seen_by_day = {}  # (merchant, date_key) → [ids]
+        for r in rows:
+            merchant = (r.get("title") or "").replace("🧾", "").strip()
+            created = r.get("created_at", "")
+            date_key = created[:10]
+            key = (merchant, date_key)
+            if key not in seen_by_day:
+                seen_by_day[key] = []
+            seen_by_day[key].append(r.get("id"))
+
+        # Delete duplicates (keep first, delete rest)
+        to_delete = []
+        for key, ids in seen_by_day.items():
+            if len(ids) > 1:
+                to_delete.extend(ids[1:])  # Delete all but first
+
+        if to_delete:
+            for rec_id in to_delete:
+                lib._sb().table("wa_saves").delete().eq("id", rec_id).execute()
+            return jsonify({
+                "success": True,
+                "deleted": len(to_delete),
+                "period": f"{year}-{month:02d}",
+                "message": f"Removed {len(to_delete)} duplicate receipts"
+            })
+        else:
+            return jsonify({
+                "success": True,
+                "deleted": 0,
+                "period": f"{year}-{month:02d}",
+                "message": "No duplicates found"
+            })
+    except Exception as e:
+        app.logger.warning(f"[cleanup-receipts] error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/library")
 def library_page():
