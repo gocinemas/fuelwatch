@@ -10941,7 +10941,8 @@ def api_home_brief():
     # Never cache when location-enriched or recent capture present (both are time-sensitive)
     _has_recent = bool(recent_capture)
     if time_mode != "goodnight" and not has_location and not _has_recent:
-        _v2_brief_cache[from_number or postcode] = {"ts": time.time(), "data": result}
+        import time as _time_module
+        _v2_brief_cache[from_number or postcode] = {"ts": _time_module.time(), "data": result}
     return jsonify(result)
 
 
