@@ -3672,26 +3672,34 @@
     }
     if (name === "company") { var _ii2 = document.getElementById("intel-input"); if (_ii2 && _ii2.type !== "hidden") _ii2.focus(); if (!_INTEL_MODE && typeof setIntelMode === 'function') setIntelMode(_intelSearchMode || 'brand'); _renderRecent("miru_intel_" + (_intelSearchMode || "brand"), "intel-recent", "intel-input", "searchIntel()"); _loadIntelPins(); }
     if (name === "scan") {
-      // Force show library panel
-      var panel = document.getElementById("books-library-panel");
-      var search = document.getElementById("books-search-panel");
-      var fallback = document.getElementById("lib-fallback");
-
-      if (panel) {
-        panel.style.display = "block";
-        panel.style.visibility = "visible";
-      }
-      if (search) search.style.display = "none";
-      if (fallback) fallback.style.display = "none";
-
-      // Render books
+      // Simple library - just show books from localStorage
+      var books = [];
       try {
-        _bkRenderLib();
-      } catch(e) {
-        console.error("Library render error:", e);
-        if (fallback) fallback.innerHTML = "Error loading library: " + e.message;
-        if (fallback) fallback.style.display = "block";
+        books = JSON.parse(localStorage.getItem("miru_books") || "[]");
+      } catch(e) {}
+
+      var html = '<div style="padding:16px">';
+      if (books.length === 0) {
+        html += '<div style="text-align:center;padding:40px 20px;color:var(--muted)"><div style="font-size:48px;margin-bottom:10px">📚</div><div style="font-size:14px">No books yet</div><div style="font-size:12px;margin-top:5px">Add books via WhatsApp or search above</div></div>';
+      } else {
+        html += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">You have ' + books.length + ' book(s)</div>';
+        books.forEach(function(b) {
+          html += '<div style="padding:10px;background:var(--surface);border-radius:8px;margin-bottom:8px">';
+          html += '<div style="font-weight:700;color:var(--text)">' + (b.title || 'Unknown') + '</div>';
+          html += '<div style="font-size:12px;color:var(--muted)">' + (b.author || '') + '</div>';
+          html += '</div>';
+        });
       }
+      html += '</div>';
+
+      var panel = document.getElementById("books-library-panel");
+      if (panel) {
+        panel.innerHTML = html;
+        panel.style.display = "block";
+      }
+
+      var search = document.getElementById("books-search-panel");
+      if (search) search.style.display = "none";
     }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
