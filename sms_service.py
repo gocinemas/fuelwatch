@@ -10204,7 +10204,11 @@ def api_home_brief():
             ev_words = _sig(ev["event_title"])
             if ev_words and sum(1 for w in ev_words if w in rev_words) >= min(2, len(rev_words)):
                 _suppressed_ids.add(ev.get("id"))
-    _brief_upcoming = [ev for ev in school_upcoming if ev.get("id") not in _suppressed_ids]
+    # Filter school events: only show future events (not past)
+    _today_iso = now.date().isoformat()
+    _brief_upcoming = [ev for ev in school_upcoming
+                      if ev.get("id") not in _suppressed_ids
+                      and ev.get("event_date", "") >= _today_iso]
     for ev in _brief_upcoming[:2]:
         facts.append(f"{ev.get('child_name','')} has {ev.get('event_title','')} on {ev.get('event_date','')}")
     for ev in school_recent[:1]:
