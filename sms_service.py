@@ -10443,7 +10443,8 @@ def api_home_brief():
             bh_note = " Bank holiday today."
         else:
             bh_note = ""
-        _home_rule = "" if _active_trip else "The user is home for the evening. Do NOT suggest going to a pub, restaurant, park, or anywhere. "
+        _home_rule = "" if _active_trip else "The user is home for the evening. "
+        _venue_rule = "Do NOT suggest going to a pub, restaurant, cafe, or bar. " if not _active_trip else ""
         prompt_parts.append(
             f"{_loc_preamble}"
             f"Write a warm, relaxed 2-sentence early-evening brief. It's {dow} evening, {hour}:{now.minute:02d}. "
@@ -10453,7 +10454,7 @@ def api_home_brief():
                "It's the weekend." if day_type == "weekend" else "")
             + bh_note + " "
             + _interests_note
-            + f" RULE: {_home_rule}Do NOT name any specific venues or places. Do NOT say 'why not' or 'you could'. Only reference facts above."
+            + f" RULE: {_home_rule}{_venue_rule}You can suggest activities (reading, swimming, walks, exercise). Do NOT name specific venues or restaurants. Do NOT say 'why not' or 'you could'. Only reference facts above."
         )
     elif time_mode in ("night", "goodnight"):
         # Build night/goodnight text directly — no Groq creative writing, no purple prose
