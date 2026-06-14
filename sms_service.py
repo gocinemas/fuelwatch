@@ -16774,14 +16774,17 @@ def _wa_spending_query(from_number: str, body: str) -> str:
         date_from, period = today.isoformat(), "today"
     elif "yesterday" in t:
         date_from, period = (today - _dt.timedelta(days=1)).isoformat(), "yesterday"
-    elif any(x in t for x in ["2 week", "two week"]):
-        date_from, period = (today - _dt.timedelta(days=14)).isoformat(), "last 2 weeks"
-    elif any(x in t for x in ["3 week", "three week"]):
-        date_from, period = (today - _dt.timedelta(days=21)).isoformat(), "last 3 weeks"
-    elif any(x in t for x in ["4 week", "four week", "month"]):
-        date_from, period = (today - _dt.timedelta(days=28)).isoformat(), "last 4 weeks"
-    elif "week" in t or "7 day" in t:
-        date_from, period = (today - _dt.timedelta(days=7)).isoformat(), "this week"
+    elif "week" in t:
+        # Check for "N weeks" pattern (e.g., "3 weeks", "5 weeks")
+        _week_match = _re.search(r'(\d+)\s*weeks?', t)
+        if _week_match:
+            num_weeks = int(_week_match.group(1))
+            date_from = (today - _dt.timedelta(days=num_weeks*7)).isoformat()
+            period = f"last {num_weeks} weeks" if num_weeks > 1 else "last week"
+        else:
+            date_from, period = (today - _dt.timedelta(days=7)).isoformat(), "this week"
+    elif "7 day" in t:
+        date_from, period = (today - _dt.timedelta(days=7)).isoformat(), "last 7 days"
     elif "year" in t:
         date_from, period = today.replace(month=1, day=1).isoformat(), "this year"
     else:
