@@ -16747,7 +16747,8 @@ def _is_spend_query(text: str) -> bool:
                     "have", "had", "bought", "buy"}
     _CATEGORY_WORDS = set(_SPEND_CATEGORY_MAP.keys())
     _STORE_WORDS = set(_SPEND_MERCHANT_MAP.keys())
-    _TIME_WORDS = {"today", "yesterday", "week", "month", "year", "this", "last", "weeks", "months"}
+    _TIME_WORDS = {"today", "yesterday", "week", "month", "year", "this", "last", "weeks", "months",
+                   "shopping", "run", "trip"}
 
     words = set(t.split())
     has_spend  = bool(words & _SPEND_WORDS)
@@ -16756,15 +16757,17 @@ def _is_spend_query(text: str) -> bool:
     has_time   = bool(words & _TIME_WORDS)
 
     # Debug log
-    if "chai" in t or "tea" in t:
+    if "chai" in t or "tea" in t or "milk" in t or "egg" in t:
         app.logger.info(f"[spend_detect] '{t}' → has_spend={has_spend}, has_cat={has_cat}, has_store={has_store}, has_time={has_time}")
 
     if has_spend: return True                         # "my spend", "total spent"
     if has_cat and has_time: return True              # "grocery this month", "coffee this week"
     if has_cat and has_store: return True             # "tesco grocery"
     if has_store and has_time: return True            # "tesco this month"
+    if has_spend and has_time: return True            # "did i buy X last week"
     if "how much" in t: return True                  # "how much at waitrose"
     if "what did i" in t and any(w in t for w in ("buy", "pay", "spend", "shop", "get", "order")): return True
+    if "did i" in t and ("buy" in t or "get" in t) and ("shopping" in t or "week" in t or "last" in t): return True  # "did i buy milk last shopping"
     return False
 
 def _wa_spending_query(from_number: str, body: str) -> str:
@@ -16778,6 +16781,12 @@ def _wa_spending_query(from_number: str, body: str) -> str:
         date_from, period = today.isoformat(), "today"
     elif "yesterday" in t:
         date_from, period = (today - _dt.timedelta(days=1)).isoformat(), "yesterday"
+    elif "shopping" in t or "run" in t or "trip" in t:
+        # "last shopping", "last shopping run", "last supermarket run"
+        if "last" in t:
+            date_from, period = (today - _dt.timedelta(days=7)).isoformat(), "last shopping"
+        else:
+            date_from, period = today.isoformat(), "today's shopping"
     elif "week" in t:
         # Check for "N weeks" pattern (e.g., "3 weeks", "5 weeks")
         _week_match = _re.search(r'(\d+)\s*weeks?', t)
