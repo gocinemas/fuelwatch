@@ -10253,18 +10253,24 @@ def api_home_brief():
         elif _pe_date == _yesterday_s:
             _past_personal.append(pe)
         elif _pe_date in (_today_s, _tomorrow_s):
-            # Disappear: end_time + 10 min if set, else start + 30 min
+            # For today: hide if event time has passed (with end_time buffer)
             _pe_past = False
             if _pe_t and _pe_date == _today_s:
                 try:
                     from datetime import timedelta as _ptd
+                    # Parse start time
+                    _start_dt = datetime.strptime(_pe_t, "%H:%M")
+                    # Get end time: use set end_time + 10 min buffer, or start + 2 hours
                     _pe_end_raw = pe.get("end_time", "")
                     if _pe_end_raw:
-                        _pe_end = (datetime.strptime(_pe_end_raw, "%H:%M") + _ptd(minutes=10)).strftime("%H:%M")
+                        _end_dt = datetime.strptime(_pe_end_raw, "%H:%M") + _ptd(minutes=10)
                     else:
-                        _pe_end = (datetime.strptime(_pe_t, "%H:%M") + _ptd(minutes=120)).strftime("%H:%M")
+                        _end_dt = _start_dt + _ptd(minutes=120)
+                    _pe_end = _end_dt.strftime("%H:%M")
+                    # Compare times as strings (HH:MM)
                     _pe_past = _pe_end < _now_hhmm_cur
-                except Exception:
+                except Exception as _te:
+                    app.logger.debug(f"[event-time] parse error: {_te}, using start time only")
                     _pe_past = _pe_t < _now_hhmm_cur
             if _pe_past:
                 _past_personal.append(pe)
