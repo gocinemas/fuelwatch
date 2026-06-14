@@ -28863,7 +28863,10 @@ def api_cleanup_receipts():
             period_end = date(year, month + 1, 1).isoformat()
 
         # Try both phone formats: with and without "whatsapp:" prefix
+        # Also check both wa_saves and receipts tables
         rows = []
+
+        # From wa_saves (clipped receipts with emoji)
         for phone_fmt in [phone, f"whatsapp:{phone}"]:
             r = lib._sb().table("wa_saves").select("id,title,summary,created_at") \
                 .eq("from_number", phone_fmt) \
@@ -28871,19 +28874,39 @@ def api_cleanup_receipts():
                 .lt("created_at", period_end) \
                 .ilike("title", "🧾%") \
                 .execute().data or []
+            for item in r:
+                item["source"] = "wa_saves"
+                item["table"] = "wa_saves"
             rows.extend(r)
+
+        # From receipts table (direct receipt entries)
+        phone_clean = phone.replace("whatsapp:", "")
+        r2 = lib._sb().table("receipts").select("id,merchant,total,shop_date") \
+            .eq("phone", phone_clean) \
+            .gte("shop_date", period_start) \
+            .lt("shop_date", period_end) \
+            .execute().data or []
+        for item in r2:
+            # Convert receipts format to match wa_saves format
+            item["id"] = item.get("id")
+            item["title"] = f"🧾 {item.get('merchant', '')}"
+            item["summary"] = f"£{item.get('total', 0)}"
+            item["created_at"] = item.get("shop_date", "")
+            item["source"] = "receipts"
+            item["table"] = "receipts"
+        rows.extend(r2)
 
         # Find duplicates: same amount + same day = duplicate
         # If amount repeats on same day, it's the same transaction uploaded twice
         import re as _cleanup_re
-        seen_by_key = {}  # (date, amount) → [ids]
+        seen_by_key = {}  # (date, amount) → [receipt_objects]
 
         for r in rows:
             created = r.get("created_at", "")
-            date_key = created[:10]
+            date_key = created[:10] if created else "unknown"
 
             # Extract amount from summary
-            amount_match = _cleanup_re.search(r'£([\d,]+\.?\d*)', r.get("summary", ""))
+            amount_match = _cleanup_re.search(r'£([\d,]+\.?\d*)', r.get("summary", "") or "")
             if not amount_match:
                 continue
 
@@ -28895,22 +28918,31 @@ def api_cleanup_receipts():
             key = (date_key, amount)
             if key not in seen_by_key:
                 seen_by_key[key] = []
-            seen_by_key[key].append(r.get("id"))
+            seen_by_key[key].append(r)
 
         # Mark duplicates for deletion (keep first, delete rest)
         to_delete = []
-        for key, ids in seen_by_key.items():
-            if len(ids) > 1:
-                to_delete.extend(ids[1:])  # Keep first, delete rest
+        for key, receipt_list in seen_by_key.items():
+            if len(receipt_list) > 1:
+                to_delete.extend(receipt_list[1:])  # Keep first, delete rest
 
         if to_delete:
-            for rec_id in to_delete:
-                lib._sb().table("wa_saves").delete().eq("id", rec_id).execute()
+            deleted_count = 0
+            for rec in to_delete:
+                try:
+                    if rec.get("table") == "receipts":
+                        lib._sb().table("receipts").delete().eq("id", rec["id"]).execute()
+                    else:
+                        lib._sb().table("wa_saves").delete().eq("id", rec["id"]).execute()
+                    deleted_count += 1
+                except Exception as e:
+                    app.logger.warning(f"[cleanup] Failed to delete {rec['table']} id={rec['id']}: {e}")
+
             return jsonify({
                 "success": True,
-                "deleted": len(to_delete),
+                "deleted": deleted_count,
                 "period": f"{year}-{month:02d}",
-                "message": f"Removed {len(to_delete)} duplicate receipts"
+                "message": f"Removed {deleted_count} duplicate receipts"
             })
         else:
             return jsonify({
