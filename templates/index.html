@@ -144,8 +144,8 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
 
-    .screen { display: none; }
-    .screen.active { display: block; }
+    .screen { display: none !important; }
+    .screen.active { display: block !important; visibility: visible !important; }
     /* Pre-select brief screen before JS loads — eliminates flash of old homepage */
     ._init-brief #screen-home { display: none !important; }
     ._init-brief #screen-brief { display: block; }
