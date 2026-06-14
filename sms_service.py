@@ -20233,7 +20233,21 @@ def _whatsapp_reply_inner():
 
     # ── SPENDING / RECEIPTS query — natural language intent detection ─────────
     if _is_spend_query(body_lower):
-        resp.message(_wa_spending_query(from_number, body_lower))
+        spend_reply = _wa_spending_query(from_number, body_lower)
+        # Extract category from query for follow-ups (e.g., "chai" → "Coffee & Lunch")
+        import re as _spend_re
+        for kw, cat in _SPEND_CATEGORY_MAP.items():
+            if kw in body_lower:
+                try:
+                    _set_wa_pending_intent(from_number, {
+                        "type": "spend_query_followup",
+                        "category": cat,
+                        "query": body_lower,
+                    })
+                except Exception:
+                    pass
+                break
+        resp.message(spend_reply)
         return str(resp)
 
     # ── SPENDING FOLLOW-UP: "where", "which cafe", etc. after a spend query ─────
