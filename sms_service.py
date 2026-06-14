@@ -10247,6 +10247,14 @@ def api_home_brief():
         _pe_date       = pe.get("date", "")
         _pe_t          = (pe.get("time")       or "").strip()
         _pe_leave      = (pe.get("leave_time") or "").strip()
+
+        # Handle recurring events (no date, but has weekday or frequency)
+        _is_recurring = not _pe_date and (pe.get("weekday") is not None or pe.get("frequency"))
+        if _is_recurring:
+            # Add recurring events that happen today
+            _pe_date = _today_s
+            app.logger.info(f"[brief] Recurring event: {pe.get('title')} on today ({_today_s})")
+
         # Filter out past events (before today)
         if _pe_date < _today_s:
             _past_personal.append(pe)
