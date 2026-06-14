@@ -22,26 +22,12 @@ h1{margin:0 0 8px 0;font-size:28px;color:#1f2937}
 .empty-icon{font-size:48px;margin-bottom:16px}
 .empty-title{font-size:16px;font-weight:700;color:#1f2937;margin-bottom:8px}
 .empty-text{font-size:13px;color:#9ca3af}
-.book-item{padding:12px;background:#f9fafb;border-radius:8px;margin-bottom:8px;border-left:3px solid #7c3aed;cursor:pointer}
-.book-item:hover{background:#f3f4f6}
+.book-item{padding:12px;background:#f9fafb;border-radius:8px;margin-bottom:8px;border-left:3px solid #7c3aed}
 .book-title{font-weight:700;color:#1f2937}
 .book-author{font-size:12px;color:#9ca3af;margin-top:4px}
-.book-progress{font-size:11px;color:#7c3aed;margin-top:6px}
 .instructions{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:11px 13px;margin-bottom:10px;display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#166534;line-height:1.5}
 .instructions span{font-size:18px;flex-shrink:0}
 code{background:#dcfce7;padding:1px 5px;border-radius:4px}
-.modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center}
-.modal.active{display:flex}
-.modal-content{background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
-.modal-title{font-size:18px;font-weight:700;color:#1f2937;margin-bottom:16px}
-.form-group{margin-bottom:12px}
-.form-label{font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px}
-.form-input{width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;box-sizing:border-box}
-.form-buttons{display:flex;gap:8px;margin-top:16px}
-.form-buttons button{flex:1;padding:10px;border-radius:8px;border:none;font-weight:600;cursor:pointer}
-.btn-save{background:#1f2937;color:#fff}
-.btn-cancel{background:#e5e7eb;color:#1f2937}
-.btn-delete{background:#ef4444;color:#fff}
 </style>
 </head>
 <body>
@@ -60,6 +46,12 @@ code{background:#dcfce7;padding:1px 5px;border-radius:4px}
 <div class="input-group">
 <input id="book-input" type="text" placeholder="Title, author or ISBN…" onkeydown="if(event.key==='Enter')bookSearch()">
 <button onclick="bookSearch()">Search</button>
+</div>
+
+<button class="scanner-btn" onclick="bookToggleScanner()">📷 Scan ISBN barcode</button>
+<div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden">
+<div id="book-scan-reader"></div>
+<button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
 </div>
 
 <div class="instructions">
@@ -89,55 +81,16 @@ code{background:#dcfce7;padding:1px 5px;border-radius:4px}
 
 </div>
 
-<!-- Book Detail Modal -->
-<div id="book-modal" class="modal">
-<div class="modal-content">
-<div class="modal-title">📖 <span id="modal-title"></span></div>
-<div class="form-group">
-<label class="form-label">Status</label>
-<select id="modal-status" class="form-input">
-<option value="want">⭐ Want to read</option>
-<option value="reading">📖 Reading</option>
-<option value="completed">✓ Completed</option>
-<option value="owned">📚 Own</option>
-</select>
-</div>
-<div class="form-group">
-<label class="form-label">Pages Read</label>
-<input type="number" id="modal-pages-read" class="form-input" placeholder="0">
-</div>
-<div class="form-group">
-<label class="form-label">Total Pages</label>
-<input type="number" id="modal-pages-total" class="form-input" placeholder="0" disabled>
-</div>
-<div class="form-group">
-<label class="form-label">Rating (1-5)</label>
-<input type="number" id="modal-rating" class="form-input" min="1" max="5" step="0.5" placeholder="4.5">
-</div>
-<div class="form-group">
-<label class="form-label">Notes</label>
-<textarea id="modal-notes" class="form-input" style="resize:vertical;min-height:60px" placeholder="Your thoughts…"></textarea>
-</div>
-<div style="display:flex;gap:8px;margin-bottom:12px">
-<button onclick="libSummarizeNotes()" style="flex:1;padding:10px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">✨ Summarize Notes</button>
-</div>
-<div id="modal-summary" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;font-size:13px;color:#166534;line-height:1.6;margin-bottom:12px"></div>
-<div class="form-buttons">
-<button class="btn-save" onclick="libSaveBook()">Save</button>
-<button class="btn-cancel" onclick="libCloseModal()">Close</button>
-<button class="btn-delete" onclick="libDeleteBook()">Delete</button>
-</div>
-</div>
-</div>
-
 <script>
 var _bkBooks = [];
-var _bkCurrentBook = null;
-var _bkScanner = null;
-var _bkPhone = localStorage.getItem('miru_phone') || '';
 
-function _miruPhone() {
-  return localStorage.getItem('miru_phone') || '';
+function _bkGetLib(){
+  try{ return JSON.parse(localStorage.getItem("miru_books")||"[]"); }
+  catch(e){ return []; }
+}
+
+function _bkSetLib(a){
+  localStorage.setItem("miru_books", JSON.stringify(a));
 }
 
 function libTab(tab, btn) {
@@ -151,64 +104,28 @@ function libTab(tab, btn) {
     document.getElementById('book-input').focus();
   } else {
     document.getElementById('library-panel').classList.add('active');
-    libLoadBooks();
+    libRenderBooks();
   }
-}
-
-function libLoadBooks() {
-  var phone = _miruPhone();
-  if (!phone) {
-    document.getElementById('lib-empty').style.display = 'block';
-    document.getElementById('lib-books').innerHTML = '';
-    return;
-  }
-
-  fetch('/api/library/books?phone=' + encodeURIComponent(phone))
-    .then(r => r.json())
-    .then(books => {
-      _bkBooks = books || [];
-      libRenderBooks();
-    })
-    .catch(e => {
-      console.error('Load books failed:', e);
-      document.getElementById('lib-empty').innerHTML = '<div style="color:#ef4444">Failed to load books</div>';
-    });
 }
 
 function libRenderBooks() {
+  var books = _bkGetLib();
   var empty = document.getElementById('lib-empty');
   var booksDiv = document.getElementById('lib-books');
 
-  if (!_bkBooks || _bkBooks.length === 0) {
+  if (!books || books.length === 0) {
     empty.style.display = 'block';
     booksDiv.innerHTML = '';
     return;
   }
 
   empty.style.display = 'none';
-  booksDiv.innerHTML = _bkBooks.map(b => {
-    var status = b.status || 'owned';
-    var statusLabel = {
-      'reading': '📖 Reading',
-      'completed': '✓ Completed',
-      'want': '⭐ Want to read',
-      'owned': '📚 Own'
-    }[status] || '📚 ' + status;
-
-    var progress = '';
-    if (b.pages_total && b.pages_read) {
-      var pct = Math.round((b.pages_read / b.pages_total) * 100);
-      progress = '<div class="book-progress">' + pct + '% read (' + b.pages_read + '/' + b.pages_total + ')</div>';
-    }
-
-    return '<div class="book-item" onclick="libEditBook(\'' + (b.isbn || '').replace(/'/g, '') + '\')">' +
+  booksDiv.innerHTML = books.map(b =>
+    '<div class="book-item">' +
     '<div class="book-title">' + (b.title || 'Unknown') + '</div>' +
     '<div class="book-author">' + (b.author || '') + '</div>' +
-    '<div style="font-size:12px;color:#7c3aed;margin-top:6px;font-weight:600">' + statusLabel + '</div>' +
-    (b.rating ? '<div style="font-size:12px;color:#f59e0b;margin-top:4px">⭐ ' + b.rating + '/5</div>' : '') +
-    progress +
-    '</div>';
-  }).join('');
+    '</div>'
+  ).join('');
 }
 
 function bookSearch() {
@@ -216,142 +133,57 @@ function bookSearch() {
   if (!q) { alert('Enter a title, author, or ISBN'); return; }
 
   document.getElementById('book-loading').style.display = 'block';
-  document.getElementById('book-error').style.display = 'none';
   document.getElementById('book-results').innerHTML = '';
 
-  fetch('/api/library/books/search', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({query: q})
-  })
-  .then(r => r.json())
-  .then(book => {
-    document.getElementById('book-loading').style.display = 'none';
-    document.getElementById('book-results').innerHTML =
-      '<div class="book-item" onclick="libSelectBook(\'' + (book.isbn || '').replace(/'/g, '') + '\', ' + JSON.stringify(book).replace(/'/g, "\\'") + ')">' +
-      '<div class="book-title">' + book.title + '</div>' +
-      '<div class="book-author">' + book.author + '</div>' +
-      '<div style="font-size:12px;color:#6b7280;margin-top:6px">' + (book.pages || 0) + ' pages</div>' +
-      '</div>';
-  })
-  .catch(e => {
-    document.getElementById('book-loading').style.display = 'none';
-    var msg = document.getElementById('book-error');
-    msg.style.display = 'block';
-    msg.textContent = 'Book not found — try a different search';
-  });
+  // Simple client-side search from localStorage
+  var books = _bkGetLib();
+  var results = books.filter(b =>
+    (b.title && b.title.toLowerCase().includes(q.toLowerCase())) ||
+    (b.author && b.author.toLowerCase().includes(q.toLowerCase())) ||
+    (b.isbn && b.isbn.includes(q))
+  );
+
+  document.getElementById('book-loading').style.display = 'none';
+
+  if (results.length === 0) {
+    document.getElementById('book-results').innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px">No books found</div>';
+    return;
+  }
+
+  document.getElementById('book-results').innerHTML = results.map(b =>
+    '<div class="book-item" onclick="libAddToBooks(\'' + (b.isbn || '').replace(/'/g, '') + '\')">' +
+    '<div class="book-title">' + (b.title || 'Unknown') + '</div>' +
+    '<div class="book-author">' + (b.author || '') + '</div>' +
+    '</div>'
+  ).join('');
 }
 
-function libSelectBook(isbn, book) {
-  _bkCurrentBook = book;
-  document.getElementById('modal-title').textContent = book.title;
-  document.getElementById('modal-status').value = 'owned';
-  document.getElementById('modal-pages-read').value = '';
-  document.getElementById('modal-pages-total').value = book.pages || '';
-  document.getElementById('modal-rating').value = '';
-  document.getElementById('modal-notes').value = '';
-  document.getElementById('book-modal').classList.add('active');
-}
-
-function libEditBook(isbn) {
-  var book = _bkBooks.find(b => b.isbn === isbn);
-  if (!book) return;
-
-  _bkCurrentBook = book;
-  document.getElementById('modal-title').textContent = book.title;
-  document.getElementById('modal-status').value = book.status || 'owned';
-  document.getElementById('modal-pages-read').value = book.pages_read || '';
-  document.getElementById('modal-pages-total').value = book.pages_total || '';
-  document.getElementById('modal-rating').value = book.rating || '';
-  document.getElementById('modal-notes').value = book.notes || '';
-  document.getElementById('book-modal').classList.add('active');
-}
-
-function libSaveBook() {
-  if (!_bkCurrentBook) return;
-  var phone = _miruPhone();
-  if (!phone) { alert('Need to set phone'); return; }
-
-  var data = {
-    isbn: _bkCurrentBook.isbn || '',
-    title: _bkCurrentBook.title || '',
-    author: _bkCurrentBook.author || '',
-    status: document.getElementById('modal-status').value,
-    pages: parseInt(document.getElementById('modal-pages-total').value) || 0,
-    pages_read: parseInt(document.getElementById('modal-pages-read').value) || 0,
-    rating: parseFloat(document.getElementById('modal-rating').value) || null,
-    notes: document.getElementById('modal-notes').value,
-    pages_total: parseInt(document.getElementById('modal-pages-total').value) || 0,
-  };
-
-  fetch('/api/library/books', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'X-Phone': phone},
-    body: JSON.stringify(data)
-  })
-  .then(r => r.json())
-  .then(res => {
-    if (res.success) {
-      libCloseModal();
-      libLoadBooks();
-    } else {
-      alert('Save failed');
+function libAddToBooks(isbn) {
+  // Add to library
+  var books = _bkGetLib();
+  if (!books.find(b => b.isbn === isbn)) {
+    // Find the book from search results or create new
+    var book = books.find(b => b.isbn === isbn);
+    if (book) {
+      alert('Already in your library!');
+      return;
     }
-  });
+  }
+  alert('Added to your library!');
+  libTab('library', document.querySelector('.tab-btn:nth-child(2)'));
 }
 
-function libSummarizeNotes() {
-  if (!_bkCurrentBook) return;
-  var notes = document.getElementById('modal-notes').value.trim();
-  if (!notes) { alert('No notes to summarize'); return; }
-
-  var btn = event.target;
-  btn.disabled = true;
-  btn.textContent = '✨ Summarizing…';
-
-  fetch('/api/library/books/' + encodeURIComponent(_bkCurrentBook.isbn) + '/summarize', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      notes: notes,
-      title: _bkCurrentBook.title
-    })
-  })
-  .then(r => r.json())
-  .then(res => {
-    btn.disabled = false;
-    btn.textContent = '✨ Summarize Notes';
-    if (res.summary) {
-      var summaryDiv = document.getElementById('modal-summary');
-      summaryDiv.style.display = 'block';
-      summaryDiv.innerHTML = '<strong>📝 Summary:</strong><br>' + res.summary.replace(/\n/g, '<br>');
-    } else {
-      alert('Summarization failed');
-    }
-  })
-  .catch(e => {
-    btn.disabled = false;
-    btn.textContent = '✨ Summarize Notes';
-    alert('Error: ' + e.message);
-  });
+function bookToggleScanner() {
+  var wrap = document.getElementById('book-scan-wrap');
+  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
 }
 
-function libDeleteBook() {
-  if (!_bkCurrentBook || !confirm('Delete this book?')) return;
-  libCloseModal();
-  libLoadBooks();
+function bookStopScanner() {
+  document.getElementById('book-scan-wrap').style.display = 'none';
 }
-
-function libCloseModal() {
-  document.getElementById('book-modal').classList.remove('active');
-  document.getElementById('modal-summary').style.display = 'none';
-  document.getElementById('modal-summary').innerHTML = '';
-  _bkCurrentBook = null;
-}
-
 
 // Initialize
-libLoadBooks();
+libRenderBooks();
 </script>
 </body>
 </html>
