@@ -28975,6 +28975,24 @@ def api_cleanup_receipts():
         app.logger.warning(f"[cleanup-receipts] error: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/debug/personal-events", methods=["GET"])
+def debug_personal_events():
+    """Debug endpoint: show user's personal events from database."""
+    phone = (request.args.get("phone") or request.headers.get("X-Phone") or "").strip()
+    if not phone:
+        return jsonify({"error": "Need phone"}), 400
+
+    try:
+        result = lib._sb().table("ma_details").select("data").eq("device_id", phone).eq("type", "personal_events").limit(1).execute()
+        events = result.data[0]["data"] if result.data else []
+        return jsonify({
+            "phone": phone,
+            "total_events": len(events),
+            "events": events
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/library")
 def library_page():
     """Full-featured library page with book search, scanner, and tracking."""
