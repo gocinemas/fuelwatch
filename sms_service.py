@@ -8119,22 +8119,32 @@ def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, ye
             .ilike("title", "🧾%") \
             .execute().data or []
 
-        # Deduplicate: same merchant on same day = duplicate, keep first (earliest by id)
-        # This handles case where same receipt was uploaded/processed twice
-        import datetime as _dedup_dt
-        seen_by_day = {}  # (merchant, date_key) → first receipt id
+        # Deduplicate by: merchant (normalized) + date + amount
+        # Catches variations like "Dosa idle kada" vs "Dosa Idly Kada"
+        seen_by_key = {}  # (merchant_key, date_key, amount) → first receipt record
         deduplicated_rows = []
         for r in rows:
             merchant = (r.get("title") or "").replace("🧾", "").strip()
-            try:
-                created = r.get("created_at", "")
-                date_key = created[:10]  # YYYY-MM-DD
-            except Exception:
-                date_key = "unknown"
+            created = r.get("created_at", "")
+            date_key = created[:10]  # YYYY-MM-DD
 
-            key = (merchant, date_key)
-            if key not in seen_by_day:
-                seen_by_day[key] = r.get("id")
+            # Extract amount from summary
+            m = _re.search(r'£([\d,]+\.?\d*)', r.get("summary", "") + r.get("title", ""))
+            if not m:
+                # No amount found, use merchant+date as key
+                amount = 0
+            else:
+                try:
+                    amount = float(m.group(1).replace(",", ""))
+                except ValueError:
+                    amount = 0
+
+            # Normalize merchant: alphanumeric only
+            merchant_key = "".join(c.lower() for c in merchant if c.isalnum())
+
+            key = (merchant_key, date_key, round(amount, 2))
+            if key not in seen_by_key:
+                seen_by_key[key] = r
                 deduplicated_rows.append(r)
 
         # Log deduplication
