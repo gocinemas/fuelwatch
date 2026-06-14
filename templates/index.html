@@ -16715,6 +16715,7 @@ let _savesAll = [];
     // Use local date (not UTC) so midnight doesn't shift the date for UK users
     var todayStr   = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
     var nowMins    = now.getHours() * 60 + now.getMinutes();
+    console.log("[briefCard] Rendering with nowMins=" + nowMins + " (" + now.getHours() + ":" + String(now.getMinutes()).padStart(2,"0") + ")");
     var WORK_WORDS = ["catch up","catchup","stand-up","standup","sync","1:1","check-in","meeting","weekly","daily","review session"];
     function isWorkMeeting(t) {
       var tl = (t || "").toLowerCase();
@@ -16752,22 +16753,31 @@ let _savesAll = [];
     // Today's events — filter to future non-work events
     var events = (todayEvents || []).filter(function(e) {
       var eDate = (e.date || "").slice(0, 10);
-      if (eDate && eDate !== todayStr) return false;
-      if (isWorkMeeting(e.title)) return false;
+      if (eDate && eDate !== todayStr) {
+        console.log("[briefCard] Filter out (wrong date): " + e.title + " date=" + eDate + " vs " + todayStr);
+        return false;
+      }
+      if (isWorkMeeting(e.title)) {
+        console.log("[briefCard] Filter out (work meeting): " + e.title);
+        return false;
+      }
       if (e.start) {
         var eMins = _parseEventMins(e.start);
         if (eMins !== null) {
           var cutoff;
           if (e.end_time) {
-            // Use actual end time + 10-min grace
             var endMins = _parseEventMins(e.end_time);
             cutoff = endMins !== null ? endMins + 10 : eMins + 30;
           } else if (e.personal) {
-            cutoff = eMins + 120; // no end time → 2hr buffer (personal events tend to run long)
+            cutoff = eMins + 120;
           } else {
-            cutoff = eMins + 15; // GCal events: 15-min buffer
+            cutoff = eMins + 15;
           }
-          if (nowMins > cutoff) return false;
+          if (nowMins > cutoff) {
+            console.log("[briefCard] Filter out (past): " + e.title + " eMins=" + eMins + " cutoff=" + cutoff + " nowMins=" + nowMins);
+            return false;
+          }
+          console.log("[briefCard] Keep (future): " + e.title + " eMins=" + eMins + " cutoff=" + cutoff + " nowMins=" + nowMins);
         }
       }
       return true;
