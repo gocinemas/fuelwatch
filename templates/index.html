@@ -18119,7 +18119,11 @@ let _savesAll = [];
     _briefSelectedCuisine = cuisine || null;
     radius = radius || 1500;
     var res = document.getElementById("brief-nearby-results");
-    if (!res) return;
+    if (!res) {
+      console.error("brief-nearby-results div not found!");
+      return;
+    }
+    console.log("_briefFindNearby:", type, radius, cuisine);
 
     // Show cuisine filter for food type
     if (type === 'food' && !cuisine) {
