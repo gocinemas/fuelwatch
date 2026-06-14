@@ -16755,6 +16755,10 @@ def _is_spend_query(text: str) -> bool:
     has_store  = bool(words & _STORE_WORDS)
     has_time   = bool(words & _TIME_WORDS)
 
+    # Debug log
+    if "chai" in t or "tea" in t:
+        app.logger.info(f"[spend_detect] '{t}' → has_spend={has_spend}, has_cat={has_cat}, has_store={has_store}, has_time={has_time}")
+
     if has_spend: return True                         # "my spend", "total spent"
     if has_cat and has_time: return True              # "grocery this month", "coffee this week"
     if has_cat and has_store: return True             # "tesco grocery"
