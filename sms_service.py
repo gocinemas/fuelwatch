@@ -8119,37 +8119,36 @@ def _v2_fetch_spend(from_number: str, month: int = None, quarter: int = None, ye
             .ilike("title", "🧾%") \
             .execute().data or []
 
-        # Deduplicate by: merchant (normalized) + date + amount
-        # Catches variations like "Dosa idle kada" vs "Dosa Idly Kada"
-        seen_by_key = {}  # (merchant_key, date_key, amount) → first receipt record
+        # Deduplicate: same amount + same day = duplicate (keep first occurrence)
+        # If amount is repeated on same day, it's the same transaction uploaded twice
+        seen_by_key = {}  # (date_key, amount) → first receipt record
         deduplicated_rows = []
         for r in rows:
-            merchant = (r.get("title") or "").replace("🧾", "").strip()
             created = r.get("created_at", "")
             date_key = created[:10]  # YYYY-MM-DD
 
             # Extract amount from summary
             m = _re.search(r'£([\d,]+\.?\d*)', r.get("summary", "") + r.get("title", ""))
             if not m:
-                # No amount found, use merchant+date as key
-                amount = 0
-            else:
-                try:
-                    amount = float(m.group(1).replace(",", ""))
-                except ValueError:
-                    amount = 0
+                # No amount found, still add it (can't deduplicate without amount)
+                deduplicated_rows.append(r)
+                continue
 
-            # Normalize merchant: alphanumeric only
-            merchant_key = "".join(c.lower() for c in merchant if c.isalnum())
+            try:
+                amount = float(m.group(1).replace(",", ""))
+            except ValueError:
+                deduplicated_rows.append(r)
+                continue
 
-            key = (merchant_key, date_key, round(amount, 2))
+            # Key: just date + amount
+            key = (date_key, round(amount, 2))
             if key not in seen_by_key:
-                seen_by_key[key] = r
+                seen_by_key[key] = True
                 deduplicated_rows.append(r)
 
         # Log deduplication
         if len(deduplicated_rows) < len(rows):
-            app.logger.info(f"[spend] Deduplicated {len(rows)} receipts → {len(deduplicated_rows)} (removed {len(rows)-len(deduplicated_rows)} duplicates)")
+            app.logger.info(f"[spend] Deduplicated {len(rows)} receipts → {len(deduplicated_rows)} (removed {len(rows)-len(deduplicated_rows)} duplicates by same amount on same day)")
 
         rows = deduplicated_rows
         total = 0.0; count = 0
@@ -28871,47 +28870,33 @@ def api_cleanup_receipts():
             .ilike("title", "🧾%") \
             .execute().data or []
 
-        # Extract merchant names and amounts
-        receipts_data = []
+        # Find duplicates: same amount + same day = duplicate
+        # If amount repeats on same day, it's the same transaction uploaded twice
+        import re as _cleanup_re
+        seen_by_key = {}  # (date, amount) → [ids]
+
         for r in rows:
-            merchant = (r.get("title") or "").replace("🧾", "").strip().lower()
             created = r.get("created_at", "")
             date_key = created[:10]
 
-            # Extract amount from summary (look for £X.XX)
-            import re as _cleanup_re
+            # Extract amount from summary
             amount_match = _cleanup_re.search(r'£([\d,]+\.?\d*)', r.get("summary", ""))
-            amount = float(amount_match.group(1).replace(",", "")) if amount_match else 0
+            if not amount_match:
+                continue
 
-            receipts_data.append({
-                "id": r.get("id"),
-                "merchant": merchant,
-                "date": date_key,
-                "amount": amount,
-                "summary": r.get("summary", "")
-            })
+            try:
+                amount = round(float(amount_match.group(1).replace(",", "")), 2)
+            except ValueError:
+                continue
 
-        # Find duplicates: same or similar merchant + same day + same amount
-        to_delete = []
-        seen = {}  # (merchant_norm, date, amount) → [ids]
-
-        for receipt in receipts_data:
-            merchant = receipt["merchant"]
-            date_key = receipt["date"]
-            amount = receipt["amount"]
-
-            # Normalize merchant name: remove common variations
-            merchant_norm = merchant.replace("receipt", "").strip()
-            # Remove spaces and common punctuation for fuzzy match
-            merchant_key = "".join(c.lower() for c in merchant_norm if c.isalnum())
-
-            key = (merchant_key, date_key, amount)
-            if key not in seen:
-                seen[key] = []
-            seen[key].append(receipt["id"])
+            key = (date_key, amount)
+            if key not in seen_by_key:
+                seen_by_key[key] = []
+            seen_by_key[key].append(r.get("id"))
 
         # Mark duplicates for deletion (keep first, delete rest)
-        for key, ids in seen.items():
+        to_delete = []
+        for key, ids in seen_by_key.items():
             if len(ids) > 1:
                 to_delete.extend(ids[1:])  # Keep first, delete rest
 
