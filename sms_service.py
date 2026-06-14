@@ -28621,6 +28621,73 @@ def api_bookmarks_search_ai():
     except Exception as e:
         return jsonify({"error": str(e), "results": []}), 500
 
+# ── Book Lookup Service ──────────────────────────────────────────────────────
+
+def _book_lookup_google(query: str, isbn: str = "") -> dict | None:
+    """Lookup book via Google Books API."""
+    try:
+        # Use ISBN if provided (most accurate)
+        if isbn:
+            search_q = f"isbn:{isbn}"
+        else:
+            search_q = query
+
+        url = f"https://www.googleapis.com/books/v1/volumes?q={search_q}&maxResults=1"
+        r = requests.get(url, timeout=5)
+
+        if r.status_code == 200:
+            data = r.json()
+            if data.get("items"):
+                item = data["items"][0]
+                vol = item.get("volumeInfo", {})
+                return {
+                    "isbn": isbn or vol.get("industryIdentifiers", [{}])[0].get("identifier", ""),
+                    "title": vol.get("title", "Unknown"),
+                    "author": ", ".join(vol.get("authors", [])),
+                    "description": vol.get("description", "")[:200],
+                    "pages": vol.get("pageCount", 0),
+                    "cover_url": vol.get("imageLinks", {}).get("thumbnail", ""),
+                }
+        return None
+    except Exception as e:
+        app.logger.warning(f"[book_lookup] Google Books error: {e}")
+        return None
+
+def _book_save_to_supabase(phone: str, book: dict) -> bool:
+    """Save book to Supabase user library."""
+    try:
+        sb = lib._sb()
+        # Upsert book record keyed by phone + isbn
+        sb.table("ma_books").upsert({
+            "phone": phone,
+            "isbn": book.get("isbn", ""),
+            "title": book.get("title", ""),
+            "author": book.get("author", ""),
+            "status": book.get("status", "owned"),
+            "pages_total": book.get("pages", 0),
+            "pages_read": book.get("pages_read", 0),
+            "started_date": book.get("started_date"),
+            "completed_date": book.get("completed_date"),
+            "rating": book.get("rating"),
+            "notes": book.get("notes", ""),
+            "cover_url": book.get("cover_url", ""),
+            "updated_at": datetime.utcnow().isoformat(),
+        }).execute()
+        return True
+    except Exception as e:
+        app.logger.warning(f"[book_save] Supabase error: {e}")
+        return False
+
+def _book_fetch_from_supabase(phone: str) -> list:
+    """Fetch all books for user from Supabase."""
+    try:
+        sb = lib._sb()
+        result = sb.table("ma_books").select("*").eq("phone", phone).execute()
+        return result.data or []
+    except Exception as e:
+        app.logger.warning(f"[book_fetch] Supabase error: {e}")
+        return []
+
 # ── Register blueprints ──────────────────────────────────────────────────────
 try:
     from miru.routes.onboarding import bp as onboarding_bp
@@ -28633,9 +28700,9 @@ except Exception as e:
 
 if __name__ == "__main__":
     print("\nFuelWatch UK — SMS Service")
-@app.route("/api/library/books")
-def api_library_books():
-    """Return user's books - requires phone or postcode."""
+@app.route("/api/library/books", methods=["GET"])
+def api_library_books_get():
+    """Return user's books from Supabase."""
     phone = request.args.get("phone", "").strip()
     if not phone:
         phone = (request.headers.get("X-Phone") or "").strip()
@@ -28643,13 +28710,70 @@ def api_library_books():
     if not phone:
         return jsonify([])
 
-    try:
-        # Get books from library module
-        books = lib.books_search(phone, "", hits_per_page=50)
-        return jsonify(books)
-    except Exception as e:
-        print(f"Error fetching books: {e}")
-        return jsonify([])
+    books = _book_fetch_from_supabase(phone)
+    return jsonify(books)
+
+@app.route("/api/library/books/search", methods=["POST"])
+def api_library_books_search():
+    """Search for books via Google Books API."""
+    data = request.get_json() or {}
+    query = (data.get("query") or "").strip()
+    isbn = (data.get("isbn") or "").strip()
+
+    if not query and not isbn:
+        return jsonify({"error": "Need query or isbn"}), 400
+
+    result = _book_lookup_google(query, isbn)
+    if result:
+        return jsonify(result)
+    return jsonify({"error": "Book not found"}), 404
+
+@app.route("/api/library/books", methods=["POST"])
+def api_library_books_add():
+    """Add book to user library."""
+    phone = (request.headers.get("X-Phone") or "").strip()
+    if not phone:
+        return jsonify({"error": "Need X-Phone header"}), 400
+
+    data = request.get_json() or {}
+    book = {
+        "isbn": (data.get("isbn") or "").strip(),
+        "title": (data.get("title") or "").strip(),
+        "author": (data.get("author") or "").strip(),
+        "status": data.get("status", "owned"),
+        "pages": int(data.get("pages", 0)),
+        "pages_read": int(data.get("pages_read", 0)),
+        "started_date": data.get("started_date"),
+        "completed_date": data.get("completed_date"),
+        "rating": data.get("rating"),
+        "notes": (data.get("notes") or "").strip(),
+        "cover_url": (data.get("cover_url") or "").strip(),
+    }
+
+    if _book_save_to_supabase(phone, book):
+        return jsonify({"success": True, "book": book})
+    return jsonify({"error": "Failed to save book"}), 500
+
+@app.route("/api/library/books/<isbn>", methods=["PUT"])
+def api_library_books_update(isbn):
+    """Update book progress/status."""
+    phone = (request.headers.get("X-Phone") or "").strip()
+    if not phone:
+        return jsonify({"error": "Need X-Phone header"}), 400
+
+    data = request.get_json() or {}
+    book = {
+        "isbn": isbn,
+        "pages_read": int(data.get("pages_read", 0)),
+        "status": data.get("status", "owned"),
+        "completed_date": data.get("completed_date"),
+        "rating": data.get("rating"),
+        "notes": (data.get("notes") or "").strip(),
+    }
+
+    if _book_save_to_supabase(phone, book):
+        return jsonify({"success": True})
+    return jsonify({"error": "Failed to update book"}), 500
 
 
 @app.route("/library")
