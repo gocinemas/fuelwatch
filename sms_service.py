@@ -10356,12 +10356,14 @@ def api_home_brief():
         _today_cal_future = []
         for e in _today_cal:
             _es = (e.get("start") or "").strip()
+            # Skip past events (has start time AND is in the past)
             if _es and _es < _now_hhmm:
                 continue  # past — skip
             # Skip GCal work meetings from narrative facts
             if not e.get("personal") and _is_work_meeting(e.get("title","")):
                 continue
             _today_cal_future.append(e)
+        # Add upcoming events to facts (up to 3)
         for e in _today_cal_future[:3]:
             _t = f" at {e['start']}" if e.get("start") else ""
             facts.append(f"📅 {e['title']}{_t} today")
