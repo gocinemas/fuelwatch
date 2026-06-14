@@ -10247,7 +10247,10 @@ def api_home_brief():
         _pe_date       = pe.get("date", "")
         _pe_t          = (pe.get("time")       or "").strip()
         _pe_leave      = (pe.get("leave_time") or "").strip()
-        if _pe_date == _yesterday_s:
+        # Filter out past events (before today)
+        if _pe_date < _today_s:
+            _past_personal.append(pe)
+        elif _pe_date == _yesterday_s:
             _past_personal.append(pe)
         elif _pe_date in (_today_s, _tomorrow_s):
             # Disappear: end_time + 10 min if set, else start + 30 min
