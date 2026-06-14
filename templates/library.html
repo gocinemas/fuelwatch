@@ -120,12 +120,22 @@ function libRenderBooks() {
   }
 
   empty.style.display = 'none';
-  booksDiv.innerHTML = books.map(b =>
-    '<div class="book-item">' +
+  booksDiv.innerHTML = books.map(b => {
+    var status = b.status || 'owned';
+    var statusLabel = {
+      'reading': '📖 Reading',
+      'completed': '✓ Completed',
+      'want': '⭐ Want to read',
+      'owned': '📚 Own'
+    }[status] || '📚 ' + status;
+
+    return '<div class="book-item">' +
     '<div class="book-title">' + (b.title || 'Unknown') + '</div>' +
     '<div class="book-author">' + (b.author || '') + '</div>' +
-    '</div>'
-  ).join('');
+    '<div style="font-size:12px;color:#7c3aed;margin-top:6px;font-weight:600">' + statusLabel + '</div>' +
+    (b.rating ? '<div style="font-size:12px;color:#f59e0b;margin-top:4px">⭐ ' + b.rating + '/5</div>' : '') +
+    '</div>';
+  }).join('');
 }
 
 function bookSearch() {
@@ -159,18 +169,33 @@ function bookSearch() {
 }
 
 function libAddToBooks(isbn) {
-  // Add to library
   var books = _bkGetLib();
-  if (!books.find(b => b.isbn === isbn)) {
-    // Find the book from search results or create new
-    var book = books.find(b => b.isbn === isbn);
-    if (book) {
-      alert('Already in your library!');
-      return;
-    }
+  var existing = books.find(b => b.isbn === isbn);
+  if (existing) {
+    alert('Already in your library!');
+    return;
   }
-  alert('Added to your library!');
-  libTab('library', document.querySelector('.tab-btn:nth-child(2)'));
+
+  // Get the book from search results
+  var searchItems = document.querySelectorAll('#book-results .book-item');
+  var bookData = null;
+  searchItems.forEach(item => {
+    if (item.onclick && item.onclick.toString().includes(isbn)) {
+      bookData = {
+        isbn: isbn,
+        title: item.querySelector('.book-title')?.textContent || 'Unknown',
+        author: item.querySelector('.book-author')?.textContent || '',
+        status: 'owned'
+      };
+    }
+  });
+
+  if (bookData) {
+    books.push(bookData);
+    _bkSetLib(books);
+    alert('Added to your library!');
+    libTab('library', document.querySelector('.tab-btn:nth-child(2)'));
+  }
 }
 
 function bookToggleScanner() {
