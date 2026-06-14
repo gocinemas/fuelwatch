@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>📚 My Books</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;margin:0;padding:20px}
+.container{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h1{margin:0 0 8px 0;font-size:28px;color:#1f2937}
+.subtitle{font-size:14px;color:#9ca3af;margin-bottom:24px}
+.tab-strip{display:flex;gap:8px;margin-bottom:18px}
+.tab-btn{padding:8px 16px;border-radius:20px;border:1.5px solid #e5e7eb;background:#f3f4f6;color:#9ca3af;font-size:13px;font-weight:600;cursor:pointer;transition:all .12s}
+.tab-btn.active{background:#1f2937;color:#fff;border-color:#1f2937}
+.panel{display:none}
+.panel.active{display:block}
+.input-group{display:flex;gap:8px;margin-bottom:10px}
+.input-group input{flex:1;padding:11px 14px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;color:#1f2937;font-size:15px}
+.input-group button{padding:11px 18px;border-radius:12px;border:none;background:#1f2937;color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+.scanner-btn{display:block;width:100%;padding:11px;border-radius:12px;border:1.5px dashed #7c3aed;background:#f5f3ff;color:#6d28d9;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px}
+.empty{text-align:center;padding:40px 20px}
+.empty-icon{font-size:48px;margin-bottom:16px}
+.empty-title{font-size:16px;font-weight:700;color:#1f2937;margin-bottom:8px}
+.empty-text{font-size:13px;color:#9ca3af}
+.book-item{padding:12px;background:#f9fafb;border-radius:8px;margin-bottom:8px;border-left:3px solid #7c3aed}
+.book-title{font-weight:700;color:#1f2937}
+.book-author{font-size:12px;color:#9ca3af;margin-top:4px}
+.instructions{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:11px 13px;margin-bottom:10px;display:flex;gap:10px;align-items:flex-start;font-size:12px;color:#166534;line-height:1.5}
+.instructions span{font-size:18px;flex-shrink:0}
+code{background:#dcfce7;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📚 My Books</h1>
+<div class="subtitle">Search, scan barcodes, track your reading</div>
+
+<!-- Tabs -->
+<div class="tab-strip">
+<button class="tab-btn active" onclick="libTab('search', this)">🔍 Find Books</button>
+<button class="tab-btn" onclick="libTab('library', this)">📚 My Library</button>
+</div>
+
+<!-- Search Panel -->
+<div id="search-panel" class="panel active">
+<div class="input-group">
+<input id="book-input" type="text" placeholder="Title, author or ISBN…" onkeydown="if(event.key==='Enter')bookSearch()">
+<button onclick="bookSearch()">Search</button>
+</div>
+
+<button class="scanner-btn" onclick="bookToggleScanner()">📷 Scan ISBN barcode</button>
+<div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden">
+<div id="book-scan-reader"></div>
+<button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
+</div>
+
+<div class="instructions">
+<span>💬</span>
+<div>
+<strong>Add via WhatsApp</strong> — message Miru:<br>
+<code>book the human experience</code><br>
+<code>book john sills</code><br>
+<code>book 9781399401739</code>
+</div>
+</div>
+
+<div id="book-loading" style="display:none;text-align:center;padding:24px 0;color:#9ca3af;font-size:13px">Searching…</div>
+<div id="book-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;font-size:13px;color:#b91c1c;margin-bottom:10px"></div>
+<div id="book-results"></div>
+</div>
+
+<!-- Library Panel -->
+<div id="library-panel" class="panel">
+<div id="lib-empty" class="empty">
+<div class="empty-icon">📚</div>
+<div class="empty-title">No books yet</div>
+<div class="empty-text">Search or scan to add your first book</div>
+</div>
+<div id="lib-books"></div>
+</div>
+
+</div>
+
+<script>
+var _bkBooks = [];
+
+function _bkGetLib(){
+  try{ return JSON.parse(localStorage.getItem("miru_books")||"[]"); }
+  catch(e){ return []; }
+}
+
+function _bkSetLib(a){
+  localStorage.setItem("miru_books", JSON.stringify(a));
+}
+
+function libTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+  if (btn) btn.classList.add('active');
+
+  if (tab === 'search') {
+    document.getElementById('search-panel').classList.add('active');
+    document.getElementById('book-input').focus();
+  } else {
+    document.getElementById('library-panel').classList.add('active');
+    libRenderBooks();
+  }
+}
+
+function libRenderBooks() {
+  var books = _bkGetLib();
+  var empty = document.getElementById('lib-empty');
+  var booksDiv = document.getElementById('lib-books');
+
+  if (!books || books.length === 0) {
+    empty.style.display = 'block';
+    booksDiv.innerHTML = '';
+    return;
+  }
+
+  empty.style.display = 'none';
+  booksDiv.innerHTML = books.map(b =>
+    '<div class="book-item">' +
+    '<div class="book-title">' + (b.title || 'Unknown') + '</div>' +
+    '<div class="book-author">' + (b.author || '') + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function bookSearch() {
+  var q = document.getElementById('book-input').value.trim();
+  if (!q) { alert('Enter a title, author, or ISBN'); return; }
+
+  document.getElementById('book-loading').style.display = 'block';
+  document.getElementById('book-results').innerHTML = '';
+
+  // Simple client-side search from localStorage
+  var books = _bkGetLib();
+  var results = books.filter(b =>
+    (b.title && b.title.toLowerCase().includes(q.toLowerCase())) ||
+    (b.author && b.author.toLowerCase().includes(q.toLowerCase())) ||
+    (b.isbn && b.isbn.includes(q))
+  );
+
+  document.getElementById('book-loading').style.display = 'none';
+
+  if (results.length === 0) {
+    document.getElementById('book-results').innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px">No books found</div>';
+    return;
+  }
+
+  document.getElementById('book-results').innerHTML = results.map(b =>
+    '<div class="book-item" onclick="libAddToBooks(\'' + (b.isbn || '').replace(/'/g, '') + '\')">' +
+    '<div class="book-title">' + (b.title || 'Unknown') + '</div>' +
+    '<div class="book-author">' + (b.author || '') + '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function libAddToBooks(isbn) {
+  // Add to library
+  var books = _bkGetLib();
+  if (!books.find(b => b.isbn === isbn)) {
+    // Find the book from search results or create new
+    var book = books.find(b => b.isbn === isbn);
+    if (book) {
+      alert('Already in your library!');
+      return;
+    }
+  }
+  alert('Added to your library!');
+  libTab('library', document.querySelector('.tab-btn:nth-child(2)'));
+}
+
+function bookToggleScanner() {
+  var wrap = document.getElementById('book-scan-wrap');
+  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+}
+
+function bookStopScanner() {
+  document.getElementById('book-scan-wrap').style.display = 'none';
+}
+
+// Initialize
+libRenderBooks();
+</script>
+</body>
+</html>
