@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>📚 My Books</title>
-<script src="https://unpkg.com/html5-qrcode"></script>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;margin:0;padding:20px}
 .container{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
@@ -61,12 +60,6 @@ code{background:#dcfce7;padding:1px 5px;border-radius:4px}
 <div class="input-group">
 <input id="book-input" type="text" placeholder="Title, author or ISBN…" onkeydown="if(event.key==='Enter')bookSearch()">
 <button onclick="bookSearch()">Search</button>
-</div>
-
-<button class="scanner-btn" onclick="bookToggleScanner()">📷 Scan ISBN barcode</button>
-<div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden;max-width:100%;max-height:300px">
-<div id="book-scan-reader" style="width:100%;height:280px;position:relative"></div>
-<button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
 </div>
 
 <div class="instructions">
@@ -356,56 +349,6 @@ function libCloseModal() {
   _bkCurrentBook = null;
 }
 
-function bookToggleScanner() {
-  var wrap = document.getElementById('book-scan-wrap');
-  if (wrap.style.display === 'none') {
-    wrap.style.display = 'block';
-    bookStartScanner();
-  } else {
-    bookStopScanner();
-  }
-}
-
-function bookStartScanner() {
-  if (_bkScanner) return;
-
-  if (typeof Html5Qrcode === 'undefined') {
-    alert('Scanner library not loaded. Please refresh the page.');
-    return;
-  }
-
-  try {
-    _bkScanner = new Html5Qrcode("book-scan-reader");
-    _bkScanner.start(
-      {facingMode: "environment"},
-      {fps: 10, qrbox: 250},
-      code => {
-        if (code && code.trim()) {
-          console.log('[scanner] Detected:', code);
-          bookStopScanner();
-          bookSearchISBN(code);
-        }
-      },
-      err => {}
-    );
-  } catch (e) {
-    console.error('[scanner] Error:', e);
-    alert('Camera error: ' + e.message);
-  }
-}
-
-function bookSearchISBN(code) {
-  document.getElementById('book-input').value = code.trim();
-  bookSearch();
-}
-
-function bookStopScanner() {
-  if (_bkScanner) {
-    _bkScanner.stop().catch(e => console.log('Stop error:', e));
-    _bkScanner = null;
-  }
-  document.getElementById('book-scan-wrap').style.display = 'none';
-}
 
 // Initialize
 libLoadBooks();
