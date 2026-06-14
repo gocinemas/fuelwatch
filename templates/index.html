@@ -13344,16 +13344,22 @@ function _hcAdd() {
   </div>
 
   <!-- ── MY LIBRARY PANEL ── -->
-  <div id="books-library-panel" style="display:block!important;visibility:visible!important">
+  <div id="books-library-panel" style="display:block!important;visibility:visible!important;padding:16px">
 
-    <!-- Sub-tabs: Scanned Books / Books I Own -->
-    <div style="display:flex;gap:6px;margin-bottom:12px">
+    <div style="text-align:center;padding:40px 20px;color:var(--muted)">
+      <div style="font-size:48px;margin-bottom:10px">📚</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:5px">My Books</div>
+      <div style="font-size:13px">No books yet — add via WhatsApp or search</div>
+    </div>
+
+    <!-- Hidden sub-tabs for future use -->
+    <div style="display:none;gap:6px;margin-bottom:12px">
       <button id="bltab-scanned" class="bltab bltab-on" onclick="bkLibTab('scanned',this)">📷 Scanned</button>
       <button id="bltab-owned"   class="bltab"          onclick="bkLibTab('owned',this)"  >📚 Books I Own</button>
     </div>
 
-    <!-- Search bar -->
-    <div style="display:flex;gap:8px;margin-bottom:12px">
+    <!-- Hidden search bar -->
+    <div style="display:none;gap:8px;margin-bottom:12px">
       <input id="bk-lib-search" type="text" placeholder="Search your library…" autocomplete="off"
         style="flex:1;padding:9px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px"
         oninput="bkLibFilter(this.value)">
