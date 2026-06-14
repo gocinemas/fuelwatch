@@ -16765,9 +16765,10 @@ def _is_spend_query(text: str) -> bool:
     if has_cat and has_store: return True             # "tesco grocery"
     if has_store and has_time: return True            # "tesco this month"
     if has_spend and has_time: return True            # "did i buy X last week"
-    if "how much" in t: return True                  # "how much at waitrose"
+    if "how much" in t or "how many" in t: return True  # "how much at waitrose", "how many chai"
     if "what did i" in t and any(w in t for w in ("buy", "pay", "spend", "shop", "get", "order")): return True
     if "did i" in t and ("buy" in t or "get" in t) and ("shopping" in t or "week" in t or "last" in t): return True  # "did i buy milk last shopping"
+    if "how many" in t and ("have" in t or "buy" in t) and has_cat: return True  # "how many chai did i have"
     return False
 
 def _wa_spending_query(from_number: str, body: str) -> str:
