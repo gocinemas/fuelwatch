@@ -64,8 +64,8 @@ code{background:#dcfce7;padding:1px 5px;border-radius:4px}
 </div>
 
 <button class="scanner-btn" onclick="bookToggleScanner()">📷 Scan ISBN barcode</button>
-<div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden">
-<div id="book-scan-reader" style="width:100%"></div>
+<div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden;max-width:100%;max-height:300px">
+<div id="book-scan-reader" style="width:100%;height:280px;position:relative"></div>
 <button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
 </div>
 
@@ -377,57 +377,36 @@ function bookStartScanner() {
   try {
     Quagga.init({
       inputStream: {
-        name: "Live",
         type: "LiveStream",
-        target: document.querySelector("#book-scan-reader"),
+        target: "#book-scan-reader",
         constraints: {
-          width: {min: 320},
-          height: {min: 240},
           facingMode: "environment",
-          aspectRatio: {min: 1, max: 100}
+          width: 320,
+          height: 280
         }
       },
       decoder: {
-        readers: [
-          "code_128_reader",
-          "ean_reader",
-          "ean_8_reader",
-          "code_39_reader",
-          "code_39_vin_reader",
-          "upc_reader",
-          "upc_e_reader",
-          "i2of5_reader"
-        ],
-        debug: {
-          showPatches: false,
-          showFoundPatches: false,
-          showSkeleton: false,
-          showLabels: false,
-          showPattern: false
-        }
-      },
-      locator: {
-        halfSample: true,
-        patchSize: "medium"
-      },
-      numOfWorkers: 4,
-      frequency: 10
+        readers: ["ean_reader", "ean_8_reader", "upc_reader", "code_128_reader"]
+      }
     }, function(err) {
       if (err) {
         console.error('[scanner] Init error:', err);
-        alert('Camera error: ' + err.message);
+        alert('Camera access needed. Please allow camera permission.');
         bookStopScanner();
         return;
       }
+      console.log('[scanner] Started');
       Quagga.start();
       _bkScanner = true;
 
       Quagga.onDetected(function(result) {
-        if (result.codeResult && result.codeResult.code) {
+        if (result && result.codeResult && result.codeResult.code) {
           var code = result.codeResult.code.trim();
-          console.log('[scanner] Detected:', code);
-          bookStopScanner();
-          bookSearchISBN(code);
+          if (code.length > 8) {
+            console.log('[scanner] Detected:', code);
+            bookStopScanner();
+            bookSearchISBN(code);
+          }
         }
       });
     });
