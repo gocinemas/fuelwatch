@@ -369,16 +369,34 @@ function bookToggleScanner() {
 function bookStartScanner() {
   if (_bkScanner) return;
 
-  _bkScanner = new Html5Qrcode("book-scan-reader");
-  _bkScanner.start(
-    {facingMode: "environment"},
-    {fps: 10, qrbox: 250},
-    isbn => {
+  if (typeof Html5Qrcode === 'undefined') {
+    alert('Scanner library not loaded. Please refresh the page.');
+    console.error('Html5Qrcode is not defined');
+    return;
+  }
+
+  try {
+    _bkScanner = new Html5Qrcode("book-scan-reader");
+    _bkScanner.start(
+      {facingMode: "environment"},
+      {fps: 10, qrbox: 250},
+      isbn => {
+        console.log('[scanner] Detected ISBN:', isbn);
+        bookStopScanner();
+        bookSearchISBN(isbn);
+      },
+      err => {
+        console.warn('[scanner] Error:', err);
+      }
+    ).catch(err => {
+      console.error('[scanner] Failed to start:', err);
+      alert('Camera access denied or scanner error: ' + err.message);
       bookStopScanner();
-      bookSearchISBN(isbn);
-    },
-    err => console.log(err)
-  );
+    });
+  } catch (e) {
+    console.error('[scanner] Exception:', e);
+    alert('Scanner error: ' + e.message);
+  }
 }
 
 function bookSearchISBN(isbn) {
