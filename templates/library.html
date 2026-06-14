@@ -377,26 +377,70 @@ function bookStartScanner() {
 
   try {
     _bkScanner = new Html5Qrcode("book-scan-reader");
+
+    // Add status message
+    var statusDiv = document.createElement('div');
+    statusDiv.id = 'scanner-status';
+    statusDiv.style.cssText = 'position:absolute;top:10px;left:10px;background:#fff;padding:8px 12px;border-radius:8px;font-size:12px;color:#1f2937;z-index:10;font-weight:600';
+    statusDiv.textContent = '📷 Point at barcode...';
+    document.getElementById('book-scan-wrap').appendChild(statusDiv);
+
     _bkScanner.start(
       {facingMode: "environment"},
-      {fps: 10, qrbox: 250},
-      isbn => {
-        console.log('[scanner] Detected ISBN:', isbn);
-        bookStopScanner();
-        bookSearchISBN(isbn);
+      {fps: 15, qrbox: {width: 280, height: 280}},
+      decodedText => {
+        var code = decodedText.trim();
+        console.log('[scanner] Detected:', code);
+
+        // Extract ISBN from various formats
+        var isbn = _extractISBN(code);
+        if (isbn) {
+          statusDiv.textContent = '✅ Found: ' + isbn;
+          console.log('[scanner] Extracted ISBN:', isbn);
+          setTimeout(() => {
+            bookStopScanner();
+            bookSearchISBN(isbn);
+          }, 500);
+        } else {
+          statusDiv.textContent = '❌ Not an ISBN. Try again.';
+          console.log('[scanner] No ISBN found in:', code);
+        }
       },
       err => {
-        console.warn('[scanner] Error:', err);
+        // Silent - don't log every scan attempt error
       }
     ).catch(err => {
       console.error('[scanner] Failed to start:', err);
-      alert('Camera access denied or scanner error: ' + err.message);
+      alert('Camera error: ' + err.message + '\n\nMake sure you granted camera permission.');
       bookStopScanner();
     });
   } catch (e) {
     console.error('[scanner] Exception:', e);
     alert('Scanner error: ' + e.message);
   }
+}
+
+function _extractISBN(code) {
+  // Remove spaces and hyphens
+  var clean = code.replace(/[\s\-]/g, '');
+
+  // ISBN-13 (13 digits starting with 978 or 979)
+  var isbn13 = clean.match(/^(978|979)\d{10}$/);
+  if (isbn13) return isbn13[0];
+
+  // ISBN-10 (10 digits)
+  var isbn10 = clean.match(/^\d{10}$/);
+  if (isbn10) return isbn10[0];
+
+  // EAN-13 (most books have this, treat as ISBN)
+  var ean13 = clean.match(/^\d{13}$/);
+  if (ean13) return ean13[0];
+
+  // UPC-A (12 digits, common in US books)
+  var upca = clean.match(/^\d{12}$/);
+  if (upca) return upca[0];
+
+  return null;
 }
 
 function bookSearchISBN(isbn) {
