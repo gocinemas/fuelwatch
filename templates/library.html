@@ -50,8 +50,10 @@ code{background:#dcfce7;padding:1px 5px;border-radius:4px}
 </div>
 
 <button class="scanner-btn" onclick="bookToggleScanner()">📷 Scan ISBN barcode</button>
-<div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden">
-<div id="book-scan-reader"></div>
+<div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden;background:#000">
+<div id="book-scan-reader" style="width:100%;height:300px;background:#000;position:relative">
+<video id="scanner-video" style="width:100%;height:100%;object-fit:cover;display:block"></video>
+</div>
 <button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
 </div>
 
@@ -191,31 +193,28 @@ function bookStartScanner() {
   if (_bkScanner) return;
 
   try {
-    var video = document.querySelector('#book-scan-reader video');
-    if (!video) {
-      var canvas = document.createElement('canvas');
-      canvas.id = 'scanner-canvas';
-      var video = document.createElement('video');
-      video.id = 'scanner-video';
-      video.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-      document.getElementById('book-scan-reader').innerHTML = '';
-      document.getElementById('book-scan-reader').appendChild(video);
-    }
-
     var codeReader = new ZXing.BrowserMultiFormatReader();
     _bkScanner = codeReader;
 
+    console.log('[scanner] Starting ZXing scanner...');
     codeReader.decodeFromVideoDevice(null, 'scanner-video', (result, err) => {
       if (result) {
         var code = result.text.trim();
-        console.log('[scanner] Detected:', code);
+        console.log('[scanner] Detected barcode:', code);
         bookStopScanner();
         bookSearchISBN(code);
       }
+      if (err && err !== 'NotFoundException') {
+        console.error('[scanner] Error:', err);
+      }
+    }).catch(err => {
+      console.error('[scanner] Init error:', err);
+      alert('Camera error: ' + err.message);
+      bookStopScanner();
     });
   } catch (e) {
-    console.error('[scanner] Error:', e);
-    alert('Camera error: ' + e.message);
+    console.error('[scanner] Exception:', e);
+    alert('Scanner error: ' + e.message);
     bookStopScanner();
   }
 }
