@@ -28845,36 +28845,65 @@ def api_cleanup_receipts():
 
     try:
         from datetime import date
+        import difflib
+
         period_start = date(year, month, 1).isoformat()
         if month == 12:
             period_end = date(year + 1, 1, 1).isoformat()
         else:
             period_end = date(year, month + 1, 1).isoformat()
 
-        # Fetch all receipts for this period
-        rows = lib._sb().table("wa_saves").select("id,title,created_at") \
+        # Fetch all receipts for this period with summary (to get amount)
+        rows = lib._sb().table("wa_saves").select("id,title,summary,created_at") \
             .eq("from_number", phone) \
             .gte("created_at", period_start) \
             .lt("created_at", period_end) \
             .ilike("title", "🧾%") \
             .execute().data or []
 
-        # Identify duplicates: same merchant on same day
-        seen_by_day = {}  # (merchant, date_key) → [ids]
+        # Extract merchant names and amounts
+        receipts_data = []
         for r in rows:
-            merchant = (r.get("title") or "").replace("🧾", "").strip()
+            merchant = (r.get("title") or "").replace("🧾", "").strip().lower()
             created = r.get("created_at", "")
             date_key = created[:10]
-            key = (merchant, date_key)
-            if key not in seen_by_day:
-                seen_by_day[key] = []
-            seen_by_day[key].append(r.get("id"))
 
-        # Delete duplicates (keep first, delete rest)
+            # Extract amount from summary (look for £X.XX)
+            import re as _cleanup_re
+            amount_match = _cleanup_re.search(r'£([\d,]+\.?\d*)', r.get("summary", ""))
+            amount = float(amount_match.group(1).replace(",", "")) if amount_match else 0
+
+            receipts_data.append({
+                "id": r.get("id"),
+                "merchant": merchant,
+                "date": date_key,
+                "amount": amount,
+                "summary": r.get("summary", "")
+            })
+
+        # Find duplicates: same or similar merchant + same day + same amount
         to_delete = []
-        for key, ids in seen_by_day.items():
+        seen = {}  # (merchant_norm, date, amount) → [ids]
+
+        for receipt in receipts_data:
+            merchant = receipt["merchant"]
+            date_key = receipt["date"]
+            amount = receipt["amount"]
+
+            # Normalize merchant name: remove common variations
+            merchant_norm = merchant.replace("receipt", "").strip()
+            # Remove spaces and common punctuation for fuzzy match
+            merchant_key = "".join(c.lower() for c in merchant_norm if c.isalnum())
+
+            key = (merchant_key, date_key, amount)
+            if key not in seen:
+                seen[key] = []
+            seen[key].append(receipt["id"])
+
+        # Mark duplicates for deletion (keep first, delete rest)
+        for key, ids in seen.items():
             if len(ids) > 1:
-                to_delete.extend(ids[1:])  # Delete all but first
+                to_delete.extend(ids[1:])  # Keep first, delete rest
 
         if to_delete:
             for rec_id in to_delete:
