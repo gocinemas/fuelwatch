@@ -3675,14 +3675,23 @@
       // Force show library panel
       var panel = document.getElementById("books-library-panel");
       var search = document.getElementById("books-search-panel");
+      var fallback = document.getElementById("lib-fallback");
+
       if (panel) {
         panel.style.display = "block";
         panel.style.visibility = "visible";
       }
       if (search) search.style.display = "none";
+      if (fallback) fallback.style.display = "none";
 
       // Render books
-      try { _bkRenderLib(); } catch(e) { console.error(e); }
+      try {
+        _bkRenderLib();
+      } catch(e) {
+        console.error("Library render error:", e);
+        if (fallback) fallback.innerHTML = "Error loading library: " + e.message;
+        if (fallback) fallback.style.display = "block";
+      }
     }
     if (name === "school")  { schoolCheckPin(); }
     if (name === "brand")   { showScreen("company"); }
@@ -13273,11 +13282,12 @@ function _hcAdd() {
 </script>
 
 <!-- ===================== MY BOOKS SCREEN ===================== -->
-<div id="screen-scan" class="screen" style="background:var(--bg);min-height:100vh;display:none">
-<div style="display:block;width:100%;max-width:36rem;margin:0 auto;padding:16px 16px calc(80px + env(safe-area-inset-bottom))">
+<div id="screen-scan" class="screen">
+<div style="display:block;width:100%;max-width:36rem;margin:0 auto;padding:16px 16px calc(80px + env(safe-area-inset-bottom));min-height:100vh">
 
   <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:2px">📚 My Books</div>
   <div style="font-size:13px;color:var(--subtle);margin-bottom:10px">Search, scan barcodes, track your reading</div>
+  <div id="lib-fallback" style="padding:20px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin:20px 0;color:#856404">Loading library...</div>
 
   <!-- Tab strip -->
   <div style="display:flex;gap:6px;margin-bottom:18px">
