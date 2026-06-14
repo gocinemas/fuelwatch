@@ -28775,6 +28775,39 @@ def api_library_books_update(isbn):
         return jsonify({"success": True})
     return jsonify({"error": "Failed to update book"}), 500
 
+@app.route("/api/library/books/<isbn>/summarize", methods=["POST"])
+def api_library_books_summarize(isbn):
+    """Summarize reading notes for a book using Groq."""
+    data = request.get_json() or {}
+    notes = (data.get("notes") or "").strip()
+    title = (data.get("title") or "").strip()
+
+    if not notes:
+        return jsonify({"error": "No notes to summarize"}), 400
+
+    try:
+        from groq import Groq
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        prompt = f"""Summarize these reading notes about "{title}" in 2-3 concise bullet points.
+Focus on key insights and memorable ideas. Be conversational.
+
+Notes:
+{notes}
+
+Summary:"""
+
+        response = client.chat.completions.create(
+            model="mixtral-8x7b-32768",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=200,
+        )
+        summary = response.choices[0].message.content.strip()
+        return jsonify({"summary": summary})
+    except Exception as e:
+        app.logger.warning(f"[book_summarize] Groq error: {e}")
+        return jsonify({"error": "Summarization failed"}), 500
+
 
 @app.route("/library")
 def library_page():

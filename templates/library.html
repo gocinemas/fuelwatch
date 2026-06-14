@@ -125,6 +125,10 @@ code{background:#dcfce7;padding:1px 5px;border-radius:4px}
 <label class="form-label">Notes</label>
 <textarea id="modal-notes" class="form-input" style="resize:vertical;min-height:60px" placeholder="Your thoughts…"></textarea>
 </div>
+<div style="display:flex;gap:8px;margin-bottom:12px">
+<button onclick="libSummarizeNotes()" style="flex:1;padding:10px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">✨ Summarize Notes</button>
+</div>
+<div id="modal-summary" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;font-size:13px;color:#166534;line-height:1.6;margin-bottom:12px"></div>
 <div class="form-buttons">
 <button class="btn-save" onclick="libSaveBook()">Save</button>
 <button class="btn-cancel" onclick="libCloseModal()">Close</button>
@@ -303,6 +307,42 @@ function libSaveBook() {
   });
 }
 
+function libSummarizeNotes() {
+  if (!_bkCurrentBook) return;
+  var notes = document.getElementById('modal-notes').value.trim();
+  if (!notes) { alert('No notes to summarize'); return; }
+
+  var btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '✨ Summarizing…';
+
+  fetch('/api/library/books/' + encodeURIComponent(_bkCurrentBook.isbn) + '/summarize', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      notes: notes,
+      title: _bkCurrentBook.title
+    })
+  })
+  .then(r => r.json())
+  .then(res => {
+    btn.disabled = false;
+    btn.textContent = '✨ Summarize Notes';
+    if (res.summary) {
+      var summaryDiv = document.getElementById('modal-summary');
+      summaryDiv.style.display = 'block';
+      summaryDiv.innerHTML = '<strong>📝 Summary:</strong><br>' + res.summary.replace(/\n/g, '<br>');
+    } else {
+      alert('Summarization failed');
+    }
+  })
+  .catch(e => {
+    btn.disabled = false;
+    btn.textContent = '✨ Summarize Notes';
+    alert('Error: ' + e.message);
+  });
+}
+
 function libDeleteBook() {
   if (!_bkCurrentBook || !confirm('Delete this book?')) return;
   libCloseModal();
@@ -311,6 +351,8 @@ function libDeleteBook() {
 
 function libCloseModal() {
   document.getElementById('book-modal').classList.remove('active');
+  document.getElementById('modal-summary').style.display = 'none';
+  document.getElementById('modal-summary').innerHTML = '';
   _bkCurrentBook = null;
 }
 
