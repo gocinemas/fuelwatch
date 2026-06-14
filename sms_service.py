@@ -28862,13 +28862,16 @@ def api_cleanup_receipts():
         else:
             period_end = date(year, month + 1, 1).isoformat()
 
-        # Fetch all receipts for this period with summary (to get amount)
-        rows = lib._sb().table("wa_saves").select("id,title,summary,created_at") \
-            .eq("from_number", phone) \
-            .gte("created_at", period_start) \
-            .lt("created_at", period_end) \
-            .ilike("title", "🧾%") \
-            .execute().data or []
+        # Try both phone formats: with and without "whatsapp:" prefix
+        rows = []
+        for phone_fmt in [phone, f"whatsapp:{phone}"]:
+            r = lib._sb().table("wa_saves").select("id,title,summary,created_at") \
+                .eq("from_number", phone_fmt) \
+                .gte("created_at", period_start) \
+                .lt("created_at", period_end) \
+                .ilike("title", "🧾%") \
+                .execute().data or []
+            rows.extend(r)
 
         # Find duplicates: same amount + same day = duplicate
         # If amount repeats on same day, it's the same transaction uploaded twice
