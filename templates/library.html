@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>📚 My Books</title>
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;margin:0;padding:20px}
 .container{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
@@ -173,12 +174,66 @@ function libAddToBooks(isbn) {
   libTab('library', document.querySelector('.tab-btn:nth-child(2)'));
 }
 
+var _bkScanner = null;
+var _bkCameraStream = null;
+
 function bookToggleScanner() {
   var wrap = document.getElementById('book-scan-wrap');
-  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+  if (wrap.style.display === 'none') {
+    wrap.style.display = 'block';
+    bookStartScanner();
+  } else {
+    bookStopScanner();
+  }
+}
+
+function bookStartScanner() {
+  if (_bkScanner) return;
+
+  try {
+    var video = document.querySelector('#book-scan-reader video');
+    if (!video) {
+      var canvas = document.createElement('canvas');
+      canvas.id = 'scanner-canvas';
+      var video = document.createElement('video');
+      video.id = 'scanner-video';
+      video.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      document.getElementById('book-scan-reader').innerHTML = '';
+      document.getElementById('book-scan-reader').appendChild(video);
+    }
+
+    var codeReader = new ZXing.BrowserMultiFormatReader();
+    _bkScanner = codeReader;
+
+    codeReader.decodeFromVideoDevice(null, 'scanner-video', (result, err) => {
+      if (result) {
+        var code = result.text.trim();
+        console.log('[scanner] Detected:', code);
+        bookStopScanner();
+        bookSearchISBN(code);
+      }
+    });
+  } catch (e) {
+    console.error('[scanner] Error:', e);
+    alert('Camera error: ' + e.message);
+    bookStopScanner();
+  }
+}
+
+function bookSearchISBN(code) {
+  document.getElementById('book-input').value = code;
+  bookSearch();
 }
 
 function bookStopScanner() {
+  if (_bkScanner) {
+    _bkScanner.reset();
+    _bkScanner = null;
+  }
+  var video = document.querySelector('#book-scan-reader video');
+  if (video && video.srcObject) {
+    video.srcObject.getTracks().forEach(track => track.stop());
+  }
   document.getElementById('book-scan-wrap').style.display = 'none';
 }
 
