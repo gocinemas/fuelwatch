@@ -28643,76 +28643,49 @@ def api_library_books():
 
 @app.route("/library")
 def library_page():
-    """Simple standalone library page - test without screen-scan complexity."""
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>My Books</title>
-        <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-            h1 { margin: 0 0 8px 0; font-size: 28px; color: #1f2937; }
-            .subtitle { font-size: 14px; color: #9ca3af; margin-bottom: 24px; }
-            .empty { text-align: center; padding: 40px 20px; }
-            .empty-icon { font-size: 48px; margin-bottom: 16px; }
-            .empty-title { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 12px; }
-            .empty-text { font-size: 14px; color: #9ca3af; line-height: 1.6; }
-            .instructions { background: #f9fafb; border-radius: 8px; padding: 16px; margin-top: 16px; }
-            .instructions p { margin: 0 0 12px 0; font-size: 13px; color: #6b7280; }
-            code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; }
-            .book-list { margin-top: 24px; }
-            .book-item { padding: 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #7c3aed; }
-            .book-title { font-weight: 700; color: #1f2937; }
-            .book-author { font-size: 12px; color: #9ca3af; margin-top: 4px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>📚 My Books</h1>
-            <div class="subtitle">Track your reading</div>
-
-            <div class="empty">
-                <div class="empty-icon">📚</div>
-                <div class="empty-title">No books yet</div>
-                <div class="empty-text">Add books via WhatsApp to see them here</div>
-            </div>
-
-            <div class="instructions">
-                <p><strong>Add books by messaging Miru on WhatsApp:</strong></p>
-                <p>📖 By title:<br><code>book The Great Gatsby</code></p>
-                <p>👤 By author:<br><code>book George Orwell</code></p>
-                <p>🔢 By ISBN:<br><code>book 9780743273565</code></p>
-            </div>
-
-            <div id="books-list" class="book-list"></div>
-        </div>
-
-        <script>
-            // Load books from API
-            fetch('/api/library/books')
-                .then(r => r.json())
-                .then(books => {
-                    if (books && books.length > 0) {
-                        const empty = document.querySelector('.empty');
-                        if (empty) empty.style.display = 'none';
-
-                        const list = document.getElementById('books-list');
-                        list.innerHTML = books.map(b => `
-                            <div class="book-item">
-                                <div class="book-title">${b.title || 'Unknown'}</div>
-                                <div class="book-author">${b.author || ''}</div>
-                            </div>
-                        `).join('');
-                    }
-                })
-                .catch(e => console.error('Error loading books:', e));
-        </script>
-    </body>
-    </html>
-    """
+    """Simple standalone library page."""
+    html = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Books</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;margin:0;padding:20px}
+.container{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+h1{margin:0 0 8px 0;font-size:28px;color:#1f2937}
+.subtitle{font-size:14px;color:#9ca3af;margin-bottom:24px}
+.empty{text-align:center;padding:40px 20px}
+.empty-icon{font-size:48px;margin-bottom:16px}
+.empty-title{font-size:18px;font-weight:700;color:#1f2937;margin-bottom:12px}
+.empty-text{font-size:14px;color:#9ca3af;line-height:1.6}
+.instructions{background:#f9fafb;border-radius:8px;padding:16px;margin-top:16px}
+.instructions p{margin:0 0 12px 0;font-size:13px;color:#6b7280}
+code{background:#f3f4f6;padding:2px 6px;border-radius:4px;font-family:monospace;font-size:12px}
+.book-item{padding:12px;background:#f9fafb;border-radius:8px;margin-bottom:8px;border-left:3px solid #7c3aed}
+.book-title{font-weight:700;color:#1f2937}
+.book-author{font-size:12px;color:#9ca3af;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📚 My Books</h1>
+<div class="subtitle">Track your reading</div>
+<div class="empty">
+<div class="empty-icon">📚</div>
+<div class="empty-title">No books yet</div>
+<div class="empty-text">Add books via WhatsApp to see them here</div>
+</div>
+<div class="instructions">
+<p><strong>Add books by messaging Miru on WhatsApp:</strong></p>
+<p>📖 By title:<br><code>book The Great Gatsby</code></p>
+<p>👤 By author:<br><code>book George Orwell</code></p>
+<p>🔢 By ISBN:<br><code>book 9780743273565</code></p>
+</div>
+<div id="books-list"></div>
+</div>
+</body>
+</html>"""
     return html
 
 
