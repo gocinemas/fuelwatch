@@ -28717,38 +28717,15 @@ def _book_lookup_google(query: str, isbn: str = "") -> dict | None:
 
 def _book_save_to_supabase(phone: str, book: dict) -> bool:
     """Save book to Supabase user library."""
-    try:
-        sb = lib._sb()
-        # Upsert book record keyed by phone + isbn
-        sb.table("ma_books").upsert({
-            "phone": phone,
-            "isbn": book.get("isbn", ""),
-            "title": book.get("title", ""),
-            "author": book.get("author", ""),
-            "status": book.get("status", "owned"),
-            "pages_total": book.get("pages", 0),
-            "pages_read": book.get("pages_read", 0),
-            "started_date": book.get("started_date"),
-            "completed_date": book.get("completed_date"),
-            "rating": book.get("rating"),
-            "notes": book.get("notes", ""),
-            "cover_url": book.get("cover_url", ""),
-            "updated_at": datetime.utcnow().isoformat(),
-        }).execute()
-        return True
-    except Exception as e:
-        app.logger.warning(f"[book_save] Supabase error: {e}")
-        return False
+    # TODO: Implement when ma_books table created
+    # For now, books are stored in localStorage on client
+    return True
 
 def _book_fetch_from_supabase(phone: str) -> list:
     """Fetch all books for user from Supabase."""
-    try:
-        sb = lib._sb()
-        result = sb.table("ma_books").select("*").eq("phone", phone).execute()
-        return result.data or []
-    except Exception as e:
-        app.logger.warning(f"[book_fetch] Supabase error: {e}")
-        return []
+    # TODO: Implement when ma_books table created
+    # For now, books are stored in localStorage on client
+    return []
 
 # ── Register blueprints ──────────────────────────────────────────────────────
 try:
