@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>📚 My Books</title>
-<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/instascan@1.4.0/build/instascan.min.js"></script>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;margin:0;padding:20px}
 .container{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
@@ -177,7 +177,6 @@ function libAddToBooks(isbn) {
 }
 
 var _bkScanner = null;
-var _bkCameraStream = null;
 
 function bookToggleScanner() {
   var wrap = document.getElementById('book-scan-wrap');
@@ -192,31 +191,29 @@ function bookToggleScanner() {
 function bookStartScanner() {
   if (_bkScanner) return;
 
-  console.log('[scanner] ZXing available?', typeof ZXing);
+  console.log('[scanner] Starting Instascan...');
 
-  if (typeof ZXing === 'undefined') {
+  if (typeof Instascan === 'undefined') {
     alert('Scanner library not loaded. Refresh the page.');
     return;
   }
 
   try {
-    console.log('[scanner] Creating reader...');
-    var codeReader = new ZXing.BrowserMultiFormatReader();
-    _bkScanner = codeReader;
+    var scanner = new Instascan.Scanner({ video: document.getElementById('scanner-video'), autoFocus: true, mirror: false });
 
-    console.log('[scanner] Starting decode from video device...');
-    var promise = codeReader.decodeFromVideoDevice(null, 'scanner-video', (result, err) => {
-      if (result) {
-        var code = result.text.trim();
-        console.log('[scanner] ✓ Detected:', code);
-        bookStopScanner();
-        bookSearchISBN(code);
-      }
+    scanner.addListener('scan', function(content) {
+      console.log('[scanner] ✓ Scanned:', content);
+      bookStopScanner();
+      bookSearchISBN(content);
     });
 
-    promise.catch(err => {
-      console.error('[scanner] Error:', err);
-      alert('Camera: ' + (err?.message || err));
+    Instascan.Camera.request().then(function(camera) {
+      _bkScanner = scanner;
+      scanner.start(camera);
+      console.log('[scanner] Camera started');
+    }).catch(function(err) {
+      console.error('[scanner] Camera error:', err);
+      alert('Camera error: ' + err);
       bookStopScanner();
     });
   } catch (e) {
@@ -233,12 +230,8 @@ function bookSearchISBN(code) {
 
 function bookStopScanner() {
   if (_bkScanner) {
-    _bkScanner.reset();
+    _bkScanner.stop();
     _bkScanner = null;
-  }
-  var video = document.querySelector('#book-scan-reader video');
-  if (video && video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
   }
   document.getElementById('book-scan-wrap').style.display = 'none';
 }
