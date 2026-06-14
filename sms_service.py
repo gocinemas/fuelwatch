@@ -10255,6 +10255,7 @@ def api_home_brief():
         elif _pe_date in (_today_s, _tomorrow_s):
             # For today: hide if event time has passed (with end_time buffer)
             _pe_past = False
+            app.logger.info(f"[personal-event] Processing: {pe.get('title')} date={_pe_date} time={_pe_t}")
             if _pe_t and _pe_date == _today_s:
                 try:
                     from datetime import timedelta as _ptd
