@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>📚 My Books</title>
-<script src="https://cdn.jsdelivr.net/npm/instascan@1.4.0/build/instascan.min.js"></script>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;margin:0;padding:20px}
 .container{max-width:600px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
@@ -177,6 +176,7 @@ function libAddToBooks(isbn) {
 }
 
 var _bkScanner = null;
+var _bkStream = null;
 
 function bookToggleScanner() {
   var wrap = document.getElementById('book-scan-wrap');
@@ -191,36 +191,56 @@ function bookToggleScanner() {
 function bookStartScanner() {
   if (_bkScanner) return;
 
-  console.log('[scanner] Starting Instascan...');
-
-  if (typeof Instascan === 'undefined') {
-    alert('Scanner library not loaded. Refresh the page.');
+  if (!window.BarcodeDetector) {
+    alert('Barcode scanner not supported on this device');
+    bookStopScanner();
     return;
   }
 
   try {
-    var scanner = new Instascan.Scanner({ video: document.getElementById('scanner-video'), autoFocus: true, mirror: false });
-
-    scanner.addListener('scan', function(content) {
-      console.log('[scanner] ✓ Scanned:', content);
-      bookStopScanner();
-      bookSearchISBN(content);
-    });
-
-    Instascan.Camera.request().then(function(camera) {
-      _bkScanner = scanner;
-      scanner.start(camera);
-      console.log('[scanner] Camera started');
+    var video = document.getElementById('scanner-video');
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream) {
+      _bkStream = stream;
+      video.srcObject = stream;
+      _bkScanner = true;
+      bookScanFrame();
     }).catch(function(err) {
       console.error('[scanner] Camera error:', err);
-      alert('Camera error: ' + err);
+      alert('Camera access denied');
       bookStopScanner();
     });
   } catch (e) {
-    console.error('[scanner] Exception:', e);
+    console.error('[scanner] Error:', e);
     alert('Error: ' + e.message);
     bookStopScanner();
   }
+}
+
+function bookScanFrame() {
+  if (!_bkScanner || !_bkStream) return;
+
+  var video = document.getElementById('scanner-video');
+  var canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+
+  var detector = new window.BarcodeDetector({ formats: ['code_128', 'code_39', 'ean_13', 'ean_8'] });
+  detector.detect(canvas).then(function(barcodes) {
+    if (barcodes.length > 0) {
+      var code = barcodes[0].rawValue;
+      console.log('[scanner] ✓ Detected:', code);
+      bookStopScanner();
+      bookSearchISBN(code);
+      return;
+    }
+    // Continue scanning
+    setTimeout(bookScanFrame, 100);
+  }).catch(function(err) {
+    console.error('[scanner] Detection error:', err);
+    setTimeout(bookScanFrame, 100);
+  });
 }
 
 function bookSearchISBN(code) {
@@ -229,10 +249,11 @@ function bookSearchISBN(code) {
 }
 
 function bookStopScanner() {
-  if (_bkScanner) {
-    _bkScanner.stop();
-    _bkScanner = null;
+  if (_bkStream) {
+    _bkStream.getTracks().forEach(function(track) { track.stop(); });
+    _bkStream = null;
   }
+  _bkScanner = null;
   document.getElementById('book-scan-wrap').style.display = 'none';
 }
 
