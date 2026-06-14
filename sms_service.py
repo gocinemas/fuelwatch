@@ -16927,6 +16927,21 @@ def _wa_spending_query(from_number: str, body: str) -> str:
         if has_amounts:
             top = sorted(stores.items(), key=lambda x: -x[1])[:4]
             reply += "\n" + "\n".join(f"• {s}: £{v:.2f}" for s, v in top if v > 0)
+        else:
+            # No amounts but we have count — show where from at least
+            top = sorted(stores.items(), key=lambda x: -x[1])[:4]
+            reply += "\n" + "\n".join(f"• {s}" for s in [s for s, _ in top] if s)
+        # Store context for follow-up "where", "which", "which cafe" questions
+        try:
+            _set_wa_pending_intent(from_number, {
+                "type": "spend_query_followup",
+                "category": category_filter,
+                "period": period,
+                "date_from": date_from,
+                "stores": list(stores.keys())[:6],
+            })
+        except Exception:
+            pass
     else:
         spend_str = f"£{total:.2f}" if has_amounts else f"{len(rows)} receipts"
         reply = f"💰 *Total {period}: {spend_str}*\n🧾 {len(rows)} receipt{'s' if len(rows)!=1 else ''} scanned"
@@ -20220,6 +20235,17 @@ def _whatsapp_reply_inner():
     if _is_spend_query(body_lower):
         resp.message(_wa_spending_query(from_number, body_lower))
         return str(resp)
+
+    # ── SPENDING FOLLOW-UP: "where", "which cafe", etc. after a spend query ─────
+    if body_lower in ("where", "where from", "which cafe", "which ones", "which places"):
+        _sp_pending = _get_wa_pending_intent(from_number)
+        if _sp_pending and _sp_pending.get("type") == "spend_query_followup":
+            stores = _sp_pending.get("stores", [])
+            category = _sp_pending.get("category", "")
+            if stores:
+                reply = f"☕ You had {category} at:\n" + "\n".join(f"• {s}" for s in stores)
+                resp.message(reply)
+                return str(resp)
 
     if body_lower in ("new", "new save", "new session"):
         _MENU_SESSION.pop(from_number, None)
