@@ -16713,9 +16713,10 @@ _SPEND_CATEGORY_MAP = {
     # Grocery keywords → Groceries
     "grocery": "Groceries", "groceries": "Groceries", "supermarket": "Groceries",
     "food shop": "Groceries", "food shopping": "Groceries",
-    # Coffee keywords
+    # Coffee & tea keywords
     "coffee": "Coffee & Lunch", "cafe": "Coffee & Lunch", "café": "Coffee & Lunch",
     "lunch": "Coffee & Lunch", "costa": "Coffee & Lunch", "starbucks": "Coffee & Lunch",
+    "tea": "Coffee & Lunch", "chai": "Coffee & Lunch", "chai tea": "Coffee & Lunch",
     # Dining keywords
     "dining": "Dining", "dinner": "Dining", "restaurant": "Dining",
     "eating out": "Dining", "takeaway": "Dining", "pub": "Dining",
@@ -16742,10 +16743,11 @@ def _is_spend_query(text: str) -> bool:
     """Detect natural-language spending queries regardless of word order."""
     t = text.lower()
     _SPEND_WORDS = {"spend", "spent", "spending", "total", "much", "cost", "paid",
-                    "receipt", "receipts", "expense", "expenses", "expenditure", "outgoing"}
+                    "receipt", "receipts", "expense", "expenses", "expenditure", "outgoing",
+                    "have", "had", "bought", "buy"}
     _CATEGORY_WORDS = set(_SPEND_CATEGORY_MAP.keys())
     _STORE_WORDS = set(_SPEND_MERCHANT_MAP.keys())
-    _TIME_WORDS = {"today", "yesterday", "week", "month", "year", "this", "last"}
+    _TIME_WORDS = {"today", "yesterday", "week", "month", "year", "this", "last", "weeks", "months"}
 
     words = set(t.split())
     has_spend  = bool(words & _SPEND_WORDS)
@@ -16772,6 +16774,12 @@ def _wa_spending_query(from_number: str, body: str) -> str:
         date_from, period = today.isoformat(), "today"
     elif "yesterday" in t:
         date_from, period = (today - _dt.timedelta(days=1)).isoformat(), "yesterday"
+    elif any(x in t for x in ["2 week", "two week"]):
+        date_from, period = (today - _dt.timedelta(days=14)).isoformat(), "last 2 weeks"
+    elif any(x in t for x in ["3 week", "three week"]):
+        date_from, period = (today - _dt.timedelta(days=21)).isoformat(), "last 3 weeks"
+    elif any(x in t for x in ["4 week", "four week", "month"]):
+        date_from, period = (today - _dt.timedelta(days=28)).isoformat(), "last 4 weeks"
     elif "week" in t or "7 day" in t:
         date_from, period = (today - _dt.timedelta(days=7)).isoformat(), "this week"
     elif "year" in t:
