@@ -20276,6 +20276,33 @@ def _whatsapp_reply_inner():
                 resp.message("✅ Rating saved!")
             return str(resp)
 
+    # ── QUICK SPEND LOG: "Waitrose 34 at Sunningdale" or "Petrol 45 at Egham" ────────
+    import re as _qs_re
+    _quick_spend_pat = _qs_re.match(r'^([a-z\s&\']+?)\s+([\d.]+)\s+(?:at|@)\s+([a-z\s]+?)$', body_lower)
+    if _quick_spend_pat:
+        merchant_raw = _quick_spend_pat.group(1).strip().title()
+        amount_str = _quick_spend_pat.group(2).strip()
+        location = _quick_spend_pat.group(3).strip().title()
+        try:
+            amount = float(amount_str)
+            category = _receipt_category(merchant_raw)
+            title = f"🧾 {merchant_raw} at {location}"
+            summary = f"£{amount:.2f}"
+            lib._sb().table("wa_saves").insert({
+                "from_number": from_number,
+                "device_id": from_number,
+                "title": title,
+                "summary": summary,
+                "category": category,
+                "created_at": datetime.utcnow().isoformat(),
+                "type": "receipt",
+                "source": "manual_log"
+            }).execute()
+            resp.message(f"✅ Logged: {merchant_raw} £{amount:.2f} at {location} ({category})")
+            return str(resp)
+        except (ValueError, Exception):
+            pass
+
     # ── RECEIPT ITEMS — "whats in it", "what did I order at X", "[merchant] receipt" ─
     import re as _ri_re
     _RECEIPT_ITEMS_PAT = _ri_re.compile(
