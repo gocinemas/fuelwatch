@@ -12474,26 +12474,29 @@ def api_morning_brief():
                 _today_s = today.isoformat()
                 _ms_today = [e for e in _mschool_upcoming if e.get("event_date","") == _today_s]
                 _ms_week  = [e for e in _mschool_upcoming if e.get("event_date","") != _today_s]
-                if _ms_today:
+                if _ms_today or _ms_week:
                     _mparts.append("")
-                    for _mse in _ms_today:
-                        _mnote = _mse.get("notes","").strip()
-                        _mline = f"📌 *Today* — {_mse.get('child_name','')} — {_mse.get('event_title','')}"
-                        if _mnote:
-                            _mline += f" _{_mnote}_"
-                        _mparts.append(_mline)
-                if _ms_week:
-                    _mparts.append("")
-                    _today_formatted = today.strftime("%-d %b")  # Format today's date (e.g., "14 Jun")
-                    _mparts.append(f"🏫 *School this week* (from {_today_formatted})")
+                    _mparts.append("🏫 *School this week*")
+                    # Today's events first
+                    if _ms_today:
+                        _today_dow = today.strftime("%a %-d %b")  # e.g., "Mon 15 Jun"
+                        _mparts.append(f"*{_today_dow}*")
+                        for _mse in _ms_today:
+                            _mnote = _mse.get("notes","").strip()
+                            _mline = f"• {_mse.get('child_name','')} — {_mse.get('event_title','')}"
+                            if _mnote:
+                                _mline += f" _{_mnote}_"
+                            _mparts.append(_mline)
+                    # Rest of week
                     for _mse in _ms_week[:3]:
                         _msdate = _mse.get("event_date","")
                         try:
                             _msd = _mdt.date.fromisoformat(_msdate)
-                            _msdate = _msd.strftime("%-d %b")
+                            _msdate_dow = _msd.strftime("%a %-d %b")  # e.g., "Tue 16 Jun"
                         except Exception:
-                            pass
-                        _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')} ({_msdate})")
+                            _msdate_dow = _msdate
+                        _mparts.append(f"*{_msdate_dow}*")
+                        _mparts.append(f"• {_mse.get('child_name','')} — {_mse.get('event_title','')}")
 
             # 🏘️ Weekend nearby places (Sat/Sun only)
             _mnearby = _mctx.get("nearby_places", {})
