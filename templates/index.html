@@ -1570,6 +1570,18 @@
         <div id="co-share-name" style="display:none"></div>
         <div id="co-bookmark-btn" style="display:none"></div>
 
+        <!-- Research Documents (Pinpoint) -->
+        <div id="intel-research-docs-card" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">📚 Research Documents</div>
+            <button id="intel-research-open-btn" onclick="_intelOpenPinpoint()" style="font-size:11px;font-weight:600;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;padding:4px 10px;cursor:pointer;white-space:nowrap">Open Pinpoint ↗</button>
+          </div>
+          <div id="intel-research-docs-list" style="font-size:12px;color:var(--muted);line-height:1.6">
+            <div id="intel-research-empty" style="text-align:center;padding:10px;color:#9ca3af">No documents yet. Open Pinpoint to upload.</div>
+            <div id="intel-research-items" style="display:none"></div>
+          </div>
+        </div>
+
         <!-- Compare panel -->
         <div id="intel-compare-panel" style="display:none;margin-bottom:12px">
           <div style="background:var(--surface);border:1px solid #99f6e4;border-radius:16px;padding:14px 16px">
@@ -8835,6 +8847,12 @@ function _hcAdd() {
     } catch(_) {}
   };
 
+  window._intelOpenPinpoint = function() {
+    if (window._intelPinpointUrl) {
+      window.open(window._intelPinpointUrl, "_blank");
+    }
+  };
+
   window.switchIntelTab = function(tab) {
     _INTEL_TABS.forEach(t => {
       const panel = document.getElementById("intel-tab-" + t);
@@ -9343,6 +9361,25 @@ function _hcAdd() {
         if (_sEl && brData.slogan) { _sEl.textContent = `"${brData.slogan}"`; _sEl.style.display = ""; }
       } else if (coData && coData.name) {
         document.getElementById("brand-name-el").textContent = coData.name;
+      }
+
+      // Fetch Pinpoint collection for this brand/company
+      const _company = brData?.name || coData?.name || raw;
+      const _brandKey = (_company || "").toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/^-|-$/g, "");
+      if (_company && _brandKey) {
+        fetch(`/api/intel/pinpoint/collection?brand_key=${encodeURIComponent(_brandKey)}&company_name=${encodeURIComponent(_company)}`)
+          .then(r => r.json())
+          .then(d => {
+            const card = document.getElementById("intel-research-docs-card");
+            if (!card || !d.ok) return;
+            card.style.display = "";
+            window._intelPinpointUrl = d.pinpoint_url;
+            if (d.pinpoint_url) {
+              document.getElementById("intel-research-empty").style.display = "none";
+              document.getElementById("intel-research-items").style.display = "block";
+              document.getElementById("intel-research-items").innerHTML = `<a href="${d.pinpoint_url}" target="_blank" style="color:#7c3aed;text-decoration:none">Open collection in Pinpoint ↗</a>`;
+            }
+          }).catch(() => {});
       }
 
       // ── Hide tabs + sections that have no data ──
