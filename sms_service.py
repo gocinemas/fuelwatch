@@ -8806,9 +8806,9 @@ out body 20;
         return {}
 
 
-def _v2_fetch_traffic(home_postcode: str, school_profiles: list) -> dict:
-    """Live drive times for school run. Called on weekday mornings only.
-    Returns {"legs": [{child, school, mins, normal_mins, delay_mins, traffic, emoji}]}"""
+def _v2_fetch_traffic(home_postcode: str, school_profiles: list, work_anchor: dict = None) -> dict:
+    """Live drive times for school run + work commute. Called on weekday mornings only.
+    Returns {"legs": [{child, school, mins, normal_mins, delay_mins, traffic, emoji}, ...]}"""
     gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY")
                or os.environ.get("GOOGLE_PLACES_KEY")
                or os.environ.get("GOOGLE_MAPS_KEY")
@@ -8817,6 +8817,46 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list) -> dict:
         return {}
     legs = []
     seen = set()
+
+    # First: work commute if available
+    if work_anchor and work_anchor.get("lat") and work_anchor.get("lng"):
+        work_name = work_anchor.get("name", "Work")
+        try:
+            # Use lat/lng directly (more accurate than postcode)
+            r = requests.get(
+                "https://maps.googleapis.com/maps/api/directions/json",
+                params={
+                    "origin":         home_postcode,
+                    "destination":    f"{work_anchor['lat']},{work_anchor['lng']}",
+                    "mode":           "driving",
+                    "departure_time": "now",
+                    "traffic_model":  "best_guess",
+                    "key":            gm_key,
+                },
+                timeout=8,
+            )
+            d = r.json()
+            if d.get("status") == "OK":
+                leg       = d["routes"][0]["legs"][0]
+                dur_live  = leg.get("duration_in_traffic", leg["duration"])["value"]
+                dur_norm  = leg["duration"]["value"]
+                delay     = max(0, dur_live - dur_norm)
+                traffic   = "heavy" if delay > 600 else "moderate" if delay > 180 else "clear"
+                emoji     = "🔴" if traffic == "heavy" else "🟡" if traffic == "moderate" else "🟢"
+                legs.append({
+                    "child":       None,
+                    "school":      work_name,
+                    "type":        "work",
+                    "mins":        dur_live // 60,
+                    "normal_mins": dur_norm  // 60,
+                    "delay_mins":  delay     // 60,
+                    "traffic":     traffic,
+                    "emoji":       emoji,
+                })
+        except Exception:
+            pass
+
+    # Then: school runs
     for p in school_profiles[:3]:
         school = (p.get("school_name") or "").strip()
         child  = (p.get("child_name")  or "").strip()
@@ -8849,6 +8889,7 @@ def _v2_fetch_traffic(home_postcode: str, school_profiles: list) -> dict:
                 legs.append({
                     "child":       child,
                     "school":      school,
+                    "type":        "school",
                     "mins":        dur_live // 60,
                     "normal_mins": dur_norm  // 60,
                     "delay_mins":  delay     // 60,
@@ -9905,9 +9946,11 @@ def api_home_brief():
     if 7 <= _tr_hour <= 8 and _tr_wday < 5:
         _tr_pc   = postcode or prefs.get("fuel_postcode", "")
         _tr_schl = (ctx.get("school") or {}).get("schools") or []
-        if _tr_pc and _tr_schl:
+        _tr_work = prefs.get("work") or {}  # Work anchor from My Area
+        # Fetch traffic if school routes exist OR if work commute is set
+        if _tr_pc and (_tr_schl or _tr_work):
             try:
-                ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl)
+                ctx["traffic"] = _v2_fetch_traffic(_tr_pc, _tr_schl, _tr_work)
             except Exception:
                 pass
 
@@ -10146,12 +10189,16 @@ def api_home_brief():
                 _from_label = loc_station or trains.get("from", "")
                 if times:
                     facts.append(f"Next trains {_from_label} → {trains.get('to','')}: {times}")
-        # School run traffic — 7:00–8:30am only (out of the house by then)
+        # Commute traffic (work + school) — 7:00–8:30am only
         _tr = ctx.get("traffic", {}) if (7 <= now.hour <= 8 and not (now.hour == 8 and now.minute > 30)) else {}
         for _tleg in (_tr.get("legs") or []):
             _tdelay = _tleg.get("delay_mins", 0)
-            _child  = _tleg.get("child", "")
-            _label  = f"{_child} school run" if _child else f"School run to {_tleg['school'].split()[0]}"
+            _type = _tleg.get("type", "school")
+            if _type == "work":
+                _label = f"Commute to {_tleg['school']}"
+            else:
+                _child  = _tleg.get("child", "")
+                _label  = f"{_child} school run" if _child else f"School run to {_tleg['school'].split()[0]}"
             if _tleg.get("traffic") in ("heavy", "moderate"):
                 _ttxt = f"+{_tdelay} min delay" if _tdelay else _tleg["traffic"]
                 facts.append(f"{_label} {_tleg['emoji']} {_tleg['mins']} min ({_ttxt})")
