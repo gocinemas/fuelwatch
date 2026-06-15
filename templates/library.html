@@ -52,7 +52,7 @@ code{background:#dcfce7;padding:1px 5px;border-radius:4px}
 <button class="scanner-btn" onclick="bookToggleScanner()">📷 Scan ISBN barcode</button>
 <div id="book-scan-wrap" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden;background:#000">
 <div id="book-scan-reader" style="width:100%;height:300px;background:#000;position:relative">
-<video id="scanner-video" playsinline webkit-playsinline autoplay muted style="width:100%;height:100%;object-fit:cover;display:block"></video>
+<video id="scanner-video" playsinline webkit-playsinline autoplay muted style="width:100%;height:100%;object-fit:cover;display:block;-webkit-transform:scaleX(-1);transform:scaleX(-1)"></video>
 </div>
 <button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
 </div>
