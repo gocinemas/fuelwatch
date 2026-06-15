@@ -12446,7 +12446,8 @@ def api_morning_brief():
                         _mparts.append(_mline)
                 if _ms_week:
                     _mparts.append("")
-                    _mparts.append("🏫 *School this week*")
+                    _today_formatted = today.strftime("%-d %b")  # Format today's date (e.g., "14 Jun")
+                    _mparts.append(f"🏫 *School this week* (from {_today_formatted})")
                     for _mse in _ms_week[:3]:
                         _msdate = _mse.get("event_date","")
                         try:
