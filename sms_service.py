@@ -10385,7 +10385,15 @@ def api_home_brief():
                 if pe.get("end_time"):
                     _cal_entry["end_time"] = pe["end_time"]
                 _cal_events = _cal_events + [_cal_entry]
-                app.logger.info(f"[brief] Added to calendar: {pe.get('title')} - date={_pe_date} start={_pe_t}")
+                # Also add to facts for brief narrative
+                _child = pe.get("child", "").strip()
+                _fact_line = f"{_child + ' has ' if _child else ''}{pe['title']}"
+                if _pe_t:
+                    _fact_line += f" at {_pe_t}"
+                if _pe_loc:
+                    _fact_line += f" ({_pe_loc})"
+                facts.append(_fact_line)
+                app.logger.info(f"[brief] Added to calendar & facts: {pe.get('title')} - date={_pe_date} start={_pe_t}")
             # Leave-time reminder — surface as explicit fact so Groq says "leave by X"
             if _pe_leave and _pe_date == _today_s and _pe_leave > _now_hhmm_cur:
                 facts.append(f"Leave by {_pe_leave} for {pe['title']}")
