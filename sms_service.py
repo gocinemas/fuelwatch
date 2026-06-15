@@ -1156,8 +1156,10 @@ def index():
         return render_template("space.html")
     intel_mode = "intel." in request.host or request.args.get("intel") == "1" or request.args.get("screen") == "intel"
     resp = make_response(render_template("index.html", prefill_company=None, prefill_doc=None, intel_mode=intel_mode))
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    # Force no-cache at all levels to bypass edge caching
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, private"
     resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
     return resp
 
 @app.route("/saves-login", methods=["POST", "GET"])
