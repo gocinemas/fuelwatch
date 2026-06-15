@@ -9946,7 +9946,7 @@ def api_home_brief():
     if 7 <= _tr_hour <= 8 and _tr_wday < 5:
         _tr_pc   = postcode or prefs.get("fuel_postcode", "")
         _tr_schl = (ctx.get("school") or {}).get("schools") or []
-        _tr_work = prefs.get("work") or {}  # Work anchor from My Area
+        _tr_work = _loc_profile.get("work") or {}  # Work anchor from My Area location profile
         # Fetch traffic if school routes exist OR if work commute is set
         if _tr_pc and (_tr_schl or _tr_work):
             try:
