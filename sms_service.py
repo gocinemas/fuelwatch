@@ -7994,6 +7994,11 @@ def _receipt_category(merchant: str) -> str:
                               "car park", "parkingeye", "ukpc"]):
         return "Parking"
 
+    # Fuel / Petrol — check BEFORE Groceries (so "Asda Fuel" → Fuel, not Groceries)
+    if any(k in m for k in ["fuel", "petrol", "shell", "bp", "esso", "texaco", "total",
+                              "applegreen", "murco", "service station", "fuel station"]):
+        return "Fuel"
+
     # Groceries — supermarkets only (as specified)
     if any(k in m for k in ["tesco", "sainsbury", "asda", "morrisons", "waitrose",
                               "aldi", "lidl", "marks & spencer", "m&s food", "co-op", "coop",
@@ -8030,11 +8035,6 @@ def _receipt_category(merchant: str) -> str:
                               "domino", "pizza hut", "kebab", "chippy", "fish & chip",
                               "fish and chip", "fried chicken", "burger", "hot dog"]):
         return "Fast Food"
-
-    # Fuel / Petrol
-    if any(k in m for k in ["shell", "bp petrol", "esso", "texaco", "total petrol",
-                              "applegreen", "murco", "petrol", "fuel station", "service station"]):
-        return "Fuel"
 
     # Transport
     if any(k in m for k in ["trainline", "national rail", "gwr", "swr", "southern rail",
