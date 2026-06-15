@@ -909,6 +909,17 @@
       </button>
 
       <!-- School comms home card -->
+      <!-- Commute card: 7:00-8:30 AM weekdays only -->
+      <div id="commute-card" style="display:none;margin-bottom:10px;background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border:1.5px solid #fbbf24;border-radius:20px;padding:14px 16px;cursor:pointer">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px;flex-shrink:0">🚗</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:#78350f">School Commute</div>
+            <div id="commute-card-body" style="font-size:12px;color:#92400e;margin-top:4px"></div>
+          </div>
+        </div>
+      </div>
+
       <div id="school-home-card" style="display:none;margin-bottom:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:20px;overflow:hidden">
         <!-- CTA state: no profile set up -->
         <div id="shc-cta" style="display:none;padding:18px 18px 16px;cursor:pointer" onclick="_schoolHomeOpen()">
@@ -16364,6 +16375,29 @@ let _savesAll = [];
             briefText.style.display = "block";
           }
           _briefAskShow();
+
+          // Commute card — show traffic 7:00-8:30 AM weekdays only
+          if (d.context && d.context.traffic && d.context.traffic.legs) {
+            var now = new Date();
+            var hour = now.getHours();
+            var min = now.getMinutes();
+            var wday = now.getDay();  // 0=Sun, 1-5=Mon-Fri, 6=Sat
+            var isWeekday = wday >= 1 && wday <= 5;
+            var isCommutTime = hour === 7 || (hour === 8 && min <= 30);
+            var commuteCard = document.getElementById("commute-card");
+            if (commuteCard && isWeekday && isCommutTime) {
+              var legs = d.context.traffic.legs || [];
+              if (legs.length > 0) {
+                var html = legs.map(function(leg) {
+                  return leg.school + " " + leg.emoji + " " + leg.mins + " min" + (leg.delay_mins > 0 ? " (+"+leg.delay_mins+")" : "");
+                }).join("<br>");
+                document.getElementById("commute-card-body").innerHTML = html;
+                commuteCard.style.display = "block";
+              }
+            } else if (commuteCard) {
+              commuteCard.style.display = "none";
+            }
+          }
 
           // "Checked: ..." status line + brief card footer
           var _checkedParts = [];
