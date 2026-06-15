@@ -403,3 +403,57 @@ def delete_document(share_id: str) -> bool:
     except Exception:
         pass
     return bool(result.data)
+
+
+def search_books(query: str, limit: int = 10) -> list:
+    """Search for books via Google Books API.
+    Returns: [{"title", "author", "isbn", "cover_url", "published_date"}, ...]
+    """
+    import requests
+    if not query or len(query) < 2:
+        return []
+
+    try:
+        gm_key = os.environ.get("GOOGLE_BOOKS_API_KEY") or os.environ.get("GOOGLE_API_KEY", "")
+        if not gm_key:
+            # Fallback to public Google Books API (no key needed but rate limited)
+            r = requests.get(
+                "https://www.googleapis.com/books/v1/volumes",
+                params={"q": query, "maxResults": limit, "printType": "books"},
+                timeout=8
+            )
+        else:
+            r = requests.get(
+                "https://www.googleapis.com/books/v1/volumes",
+                params={"q": query, "maxResults": limit, "printType": "books", "key": gm_key},
+                timeout=8
+            )
+
+        if r.status_code != 200:
+            return []
+
+        books = []
+        for item in r.json().get("items", [])[:limit]:
+            vol_info = item.get("volumeInfo", {})
+            book = {
+                "title": vol_info.get("title", ""),
+                "author": ", ".join(vol_info.get("authors", [])),
+                "isbn": None,
+                "cover_url": vol_info.get("imageLinks", {}).get("thumbnail", ""),
+                "published_date": vol_info.get("publishedDate", ""),
+                "description": vol_info.get("description", "")[:200] if vol_info.get("description") else "",
+            }
+
+            # Try to find ISBN
+            for identifier in vol_info.get("industryIdentifiers", []):
+                if identifier.get("type") in ("ISBN_13", "ISBN_10"):
+                    book["isbn"] = identifier.get("identifier")
+                    break
+
+            if book["title"]:
+                books.append(book)
+
+        return books
+    except Exception as e:
+        print(f"[books-search] Error: {e}")
+        return []

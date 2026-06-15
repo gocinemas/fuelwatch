@@ -2552,6 +2552,22 @@ def api_library_delete(share_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/library/search-books")
+def api_library_search_books():
+    """Search for books via Google Books API.
+    Query params: ?q=title+or+author&limit=10
+    """
+    q = request.args.get("q", "").strip()
+    limit = min(int(request.args.get("limit", "10")), 20)
+    if not q:
+        return jsonify({"error": "Missing ?q query"}), 400
+    try:
+        books = lib.search_books(q, limit)
+        return jsonify({"books": books})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/library/download/<share_id>")
 def api_library_download(share_id):
     err = _check_library_pin()

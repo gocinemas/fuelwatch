@@ -138,27 +138,33 @@ function bookSearch() {
   document.getElementById('book-loading').style.display = 'block';
   document.getElementById('book-results').innerHTML = '';
 
-  // Simple client-side search from localStorage
-  var books = _bkGetLib();
-  var results = books.filter(b =>
-    (b.title && b.title.toLowerCase().includes(q.toLowerCase())) ||
-    (b.author && b.author.toLowerCase().includes(q.toLowerCase())) ||
-    (b.isbn && b.isbn.includes(q))
-  );
+  // Search via API (Google Books)
+  fetch('/api/library/search-books?q=' + encodeURIComponent(q) + '&limit=10')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('book-loading').style.display = 'none';
 
-  document.getElementById('book-loading').style.display = 'none';
+      if (!data.books || data.books.length === 0) {
+        document.getElementById('book-results').innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px">No books found</div>';
+        return;
+      }
 
-  if (results.length === 0) {
-    document.getElementById('book-results').innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px">No books found</div>';
-    return;
-  }
-
-  document.getElementById('book-results').innerHTML = results.map(b =>
-    '<div class="book-item" onclick="libAddToBooks(\'' + (b.isbn || '').replace(/'/g, '') + '\')">' +
-    '<div class="book-title">' + (b.title || 'Unknown') + '</div>' +
-    '<div class="book-author">' + (b.author || '') + '</div>' +
-    '</div>'
-  ).join('');
+      document.getElementById('book-results').innerHTML = data.books.map(b =>
+        '<div class="book-item" style="display:flex;gap:12px">' +
+          (b.cover_url ? '<img src="' + b.cover_url + '" style="width:50px;height:75px;border-radius:4px;object-fit:cover">' : '') +
+          '<div style="flex:1">' +
+            '<div class="book-title">' + (b.title || 'Unknown') + '</div>' +
+            '<div class="book-author">' + (b.author || 'Unknown author') + '</div>' +
+            (b.isbn ? '<div style="font-size:11px;color:#9ca3af;margin-top:4px">ISBN: ' + b.isbn + '</div>' : '') +
+          '</div>' +
+        '</div>'
+      ).join('');
+    })
+    .catch(e => {
+      document.getElementById('book-loading').style.display = 'none';
+      console.error('Book search error:', e);
+      document.getElementById('book-results').innerHTML = '<div style="text-align:center;color:#ef4444;padding:20px">Search failed: ' + e.message + '</div>';
+    });
 }
 
 function libAddToBooks(isbn) {
