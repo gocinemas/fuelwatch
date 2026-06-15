@@ -39,7 +39,7 @@ from search import (postcode_to_latlon, fetch_all_stations, haversine_km,
                     fetch_nearby_amenities, fetch_nearby_schools,
                     fetch_nearby_pubs, fetch_house_prices, fetch_local_amenities,
                     fetch_company_info, fetch_brand_data, fetch_brand_social,
-                    _fetch_wikipedia, _fetch_news, _fetch_trustpilot)
+                    _fetch_wikipedia, _fetch_news, _fetch_trustpilot, _BRAND_CACHE)
 import analytics
 import library as lib
 import school_service
