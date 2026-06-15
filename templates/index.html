@@ -19296,7 +19296,8 @@ let _savesAll = [];
     });
 
     body.innerHTML = html;
-    card.style.display = "block";
+    body.style.display = "block";  // Ensure body is visible
+    card.style.display = "block";  // Ensure card is visible
   }
 
   function _schoolRenderTabs() {
