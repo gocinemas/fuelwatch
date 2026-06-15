@@ -2269,7 +2269,9 @@ def company_page(company_slug):
             brand_meta["logo"] = d.get("logo")
     except Exception:
         pass
-    return render_template("brand_page.html", brand_name=brand_name, brand_meta=brand_meta)
+    # Use index.html (with new intel-detailed view) instead of brand_page.html
+    intel_mode = "intel." in request.host
+    return render_template("index.html", prefill_company=brand_name, prefill_doc=None, intel_mode=intel_mode, brand_meta=brand_meta)
 
 
 # ── Library API ───────────────────────────────────────────────────────────────
