@@ -1585,29 +1585,35 @@
         <div id="intel-detailed" style="display:block">
           <!-- KEY METRICS DASHBOARD -->
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px">
+            <!-- HQ Card -->
+            <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fcd34d;border-radius:16px;padding:16px">
+              <div style="font-size:11px;font-weight:700;color:#9a6800;text-transform:uppercase;letter-spacing:0.5px">HQ</div>
+              <div style="font-size:18px;font-weight:700;color:#78350f;margin:8px 0" data-metric="hq">—</div>
+            </div>
+            <!-- Founded Card -->
+            <div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);border:1px solid #93c5fd;border-radius:16px;padding:16px">
+              <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px">Founded</div>
+              <div style="font-size:18px;font-weight:700;color:#1e3a8a;margin:8px 0" data-metric="founded">—</div>
+            </div>
+            <!-- Industry Card -->
+            <div style="background:linear-gradient(135deg,#ddd6fe,#c4b5fd);border:1px solid #a78bfa;border-radius:16px;padding:16px">
+              <div style="font-size:11px;font-weight:700;color:#5b21b6;text-transform:uppercase;letter-spacing:0.5px">Industry</div>
+              <div style="font-size:18px;font-weight:700;color:#4c1d95;margin:8px 0" data-metric="industry">—</div>
+            </div>
             <!-- Revenue Card -->
             <div style="background:linear-gradient(135deg,#eef2ff,#f5f3ff);border:1px solid #e0e7ff;border-radius:16px;padding:16px">
               <div style="font-size:11px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:0.5px">Revenue</div>
-              <div style="font-size:28px;font-weight:900;color:#1e1b4b;margin:8px 0">$35.2B</div>
-              <div style="font-size:12px;color:#10b981;font-weight:600">↑12% YoY</div>
+              <div style="font-size:18px;font-weight:700;color:#1e1b4b;margin:8px 0" data-metric="revenue">—</div>
             </div>
-            <!-- Subscribers Card -->
+            <!-- Employees Card -->
             <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:16px;padding:16px">
-              <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.5px">Subscribers</div>
-              <div style="font-size:28px;font-weight:900;color:#1e3a1f;margin:8px 0">230M</div>
-              <div style="font-size:12px;color:#10b981;font-weight:600">↑8% YoY</div>
+              <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.5px">Employees</div>
+              <div style="font-size:18px;font-weight:700;color:#1e3a1f;margin:8px 0" data-metric="employees">—</div>
             </div>
             <!-- Market Cap Card -->
             <div style="background:linear-gradient(135deg,#fdf2f8,#fce7f3);border:1px solid #fbcfe8;border-radius:16px;padding:16px">
               <div style="font-size:11px;font-weight:700;color:#be123c;text-transform:uppercase;letter-spacing:0.5px">Market Cap</div>
-              <div style="font-size:28px;font-weight:900;color:#500724;margin:8px 0">$342.5B</div>
-              <div style="font-size:12px;color:#10b981;font-weight:600">↑22% YoY</div>
-            </div>
-            <!-- Growth Rate Card -->
-            <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-radius:16px;padding:16px">
-              <div style="font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:0.5px">User Growth</div>
-              <div style="font-size:28px;font-weight:900;color:#082f49;margin:8px 0">8%</div>
-              <div style="font-size:12px;color:#10b981;font-weight:600">Last 12 months</div>
+              <div style="font-size:18px;font-weight:700;color:#500724;margin:8px 0" data-metric="market_cap">—</div>
             </div>
           </div>
 
@@ -9816,10 +9822,27 @@ function _hcAdd() {
     miruShare({ title: _coCurrentName, url, btn: document.getElementById("co-share-btn") });
   }
 
+  async function _updateIntelMetrics(companyName) {
+    try {
+      const r = await fetch(`/api/company/metrics?name=${encodeURIComponent(companyName)}`);
+      const m = await r.json();
+      if (!m.error) {
+        document.querySelectorAll("[data-metric]").forEach(el => {
+          const key = el.getAttribute("data-metric");
+          const val = m[key];
+          if (val) el.textContent = val;
+        });
+      }
+    } catch(e) {
+      console.error("[metrics] fetch error:", e);
+    }
+  }
+
   function renderCompany(d) {
     document.getElementById("company-results").classList.remove("hidden");
     _coCurrentName = d.name || document.getElementById("company-input").value.trim();
     document.getElementById("co-share-name").textContent = _coCurrentName;
+    _updateIntelMetrics(_coCurrentName);
     coFeaturedLoad(_coCurrentName);
 
     // Wikipedia overview

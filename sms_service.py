@@ -13398,6 +13398,35 @@ def api_company():
     return jsonify(fetch_company_info(name))
 
 
+@app.route("/api/company/metrics")
+def api_company_metrics():
+    """Return just the key metrics for Intel detailed view (no "—" values)."""
+    name = request.args.get("name", "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "Company name required"}), 400
+
+    data = fetch_company_info(name)
+    wiki = data.get("wiki") or {}
+    share = data.get("share") or {}
+    jobs = data.get("job_signals") or {}
+    ai = data.get("ai_signals") or {}
+
+    # Extract metrics, filtering out empty/dash values
+    metrics = {
+        "name": data.get("name") or name,
+        "hq": wiki.get("hq") or wiki.get("headquarters") or None,
+        "founded": wiki.get("founded") or wiki.get("start_date") or None,
+        "industry": wiki.get("industry") or wiki.get("categories") or None,
+        "revenue": wiki.get("revenue") or wiki.get("annual_revenue") or None,
+        "employees": wiki.get("employees") or wiki.get("staffing_size") or None,
+        "market_cap": share.get("market_cap") or share.get("marketcap") or None,
+        "hiring": jobs.get("total") or None,
+        "ai_pct": ai.get("ai_pct") or None,
+    }
+
+    return jsonify(metrics)
+
+
 _GROQ_VISION_MODELS = [
     "meta-llama/llama-4-scout-17b-16e-instruct",
     "llama-3.2-11b-vision-preview",
