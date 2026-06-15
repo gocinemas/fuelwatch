@@ -405,6 +405,50 @@ def delete_document(share_id: str) -> bool:
     return bool(result.data)
 
 
+def create_or_get_pinpoint_collection(company_name: str, brand_key: str) -> str:
+    """Create or fetch Pinpoint collection for a company.
+    Returns: Pinpoint collection ID.
+    Stores mapping in intel_pinpoint_collections table.
+    """
+    try:
+        sb = _sb()
+        # Check if collection already exists for this brand
+        rows = sb.table("intel_pinpoint_collections").select("pinpoint_collection_id") \
+            .eq("brand_key", brand_key).limit(1).execute().data
+        if rows:
+            return rows[0]["pinpoint_collection_id"]
+
+        # Create new collection via Pinpoint API (manual for now — requires Google Cloud auth)
+        # For MVP, we'll just generate a collection ID and let user link it manually
+        # In production, use: https://pinpoint.google.com/api/documents/collections
+        import uuid
+        collection_id = f"intel_{brand_key}_{uuid.uuid4().hex[:8]}"
+
+        # Store mapping
+        sb.table("intel_pinpoint_collections").insert({
+            "brand_key": brand_key,
+            "company_name": company_name,
+            "pinpoint_collection_id": collection_id,
+            "created_at": __import__("datetime").datetime.utcnow().isoformat(),
+        }).execute()
+
+        return collection_id
+    except Exception as e:
+        print(f"[pinpoint] Error: {e}")
+        return None
+
+
+def get_pinpoint_collection(brand_key: str) -> dict:
+    """Fetch Pinpoint collection info for a company."""
+    try:
+        sb = _sb()
+        rows = sb.table("intel_pinpoint_collections").select("*") \
+            .eq("brand_key", brand_key).limit(1).execute().data
+        return rows[0] if rows else None
+    except Exception:
+        return None
+
+
 def search_books(query: str, limit: int = 10) -> list:
     """Search for books via Google Books API.
     Returns: [{"title", "author", "isbn", "cover_url", "published_date"}, ...]

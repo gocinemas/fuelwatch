@@ -6118,6 +6118,57 @@ def api_intel_brand_choices_delete():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/intel/pinpoint/collection")
+def api_intel_pinpoint_collection():
+    """Get or create Pinpoint collection for a company.
+    Query: ?brand_key=apple&company_name=Apple+Inc
+    """
+    brand_key = (request.args.get("brand_key") or "").strip().lower()
+    company_name = (request.args.get("company_name") or "").strip()
+    if not brand_key:
+        return jsonify({"error": "Missing brand_key"}), 400
+    try:
+        collection = lib.get_pinpoint_collection(brand_key)
+        if not collection:
+            collection_id = lib.create_or_get_pinpoint_collection(company_name, brand_key)
+            collection = lib.get_pinpoint_collection(brand_key)
+        return jsonify({
+            "ok": True,
+            "brand_key": brand_key,
+            "company_name": collection.get("company_name") if collection else company_name,
+            "collection_id": collection.get("pinpoint_collection_id") if collection else None,
+            "pinpoint_url": f"https://pinpoint.google.com/collections/{collection.get('pinpoint_collection_id')}" if collection else None
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/intel/research-docs")
+def api_intel_research_docs():
+    """List research docs for a company from Pinpoint collection.
+    For MVP: returns instructions on how to upload docs to Pinpoint.
+    Query: ?brand_key=apple
+    """
+    brand_key = (request.args.get("brand_key") or "").strip().lower()
+    if not brand_key:
+        return jsonify({"error": "Missing brand_key"}), 400
+    try:
+        collection = lib.get_pinpoint_collection(brand_key)
+        if not collection:
+            return jsonify({"docs": [], "message": "No Pinpoint collection yet"})
+
+        # TODO: Fetch actual docs from Pinpoint API
+        # For now, return collection info
+        return jsonify({
+            "brand_key": brand_key,
+            "collection_id": collection.get("pinpoint_collection_id"),
+            "pinpoint_url": f"https://pinpoint.google.com/collections/{collection.get('pinpoint_collection_id')}",
+            "message": "Open Pinpoint to upload documents"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/intel/pins")
 def api_intel_pins():
     did   = (request.args.get("device_id") or "").strip()
