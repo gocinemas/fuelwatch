@@ -8452,6 +8452,120 @@ def _v2_fetch_calendar(from_number: str) -> list:
         return []
 
 
+def _v2_extract_birthdays_and_upcoming(calendar_events: list, now) -> tuple:
+    """Extract birthdays from calendar and upcoming special dates.
+    Returns (birthdays, upcoming_special) where:
+    - birthdays: [{"name": "Jane", "date": "2026-06-23", "days_away": 8}, ...]
+    - upcoming_special: list of dict with cultural/special observances
+    """
+    from datetime import datetime as _bdt, timedelta as _btd, date as _bdate
+    birthdays = []
+    upcoming = []
+    today = now.date()
+
+    for ev in calendar_events:
+        title = (ev.get("title") or "").strip()
+        if not title:
+            continue
+        ev_date = ev.get("date", "")
+        if not ev_date or "T" in ev_date:  # skip times, we need just dates
+            continue
+
+        # Look for birthday events (case-insensitive)
+        if "birthday" in title.lower() or "bday" in title.lower():
+            # Extract name if format is "Jane's Birthday" or "Birthday - Jane"
+            name = title.replace("'s Birthday", "").replace("Birthday", "").replace("—", "").replace("-", "").strip()
+            if not name or name.lower() == "birthday":
+                name = "Someone"
+            try:
+                ev_dt = _bdate.fromisoformat(ev_date)
+                days_away = (ev_dt - today).days
+                if 0 <= days_away <= 30:  # Only upcoming in next 30 days
+                    birthdays.append({
+                        "name": name,
+                        "date": ev_date,
+                        "days_away": days_away
+                    })
+            except (ValueError, TypeError):
+                pass
+
+    # Sort by days_away so closest birthdays come first
+    birthdays.sort(key=lambda x: x["days_away"])
+    return birthdays, upcoming
+
+
+def _v2_fetch_rated_places(postcode: str, min_rating: float = 4.6) -> list:
+    """Fetch highly-rated restaurants, cafes, bars, pubs around postcode (4.6+ rating).
+    Returns list of {"name", "type", "rating", "distance_mi"} sorted by rating desc."""
+    if not postcode:
+        return []
+    try:
+        ll = postcode_to_latlon(postcode)
+        if not ll:
+            return []
+        lat, lon = ll
+
+        gm_key = (os.environ.get("GOOGLE_DIRECTIONS_KEY")
+                  or os.environ.get("GOOGLE_PLACES_KEY")
+                  or os.environ.get("GOOGLE_MAPS_KEY")
+                  or os.environ.get("GOOGLE_API_KEY", ""))
+
+        if not gm_key:
+            return []
+
+        rated_places = []
+        place_types = ["restaurant", "cafe", "bar"]
+
+        for place_type in place_types:
+            try:
+                r = requests.get(
+                    "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+                    params={
+                        "location": f"{lat},{lon}",
+                        "radius": 2000,  # 2km radius
+                        "type": place_type,
+                        "key": gm_key,
+                    },
+                    timeout=5,
+                )
+                if r.status_code == 200:
+                    for result in r.json().get("results", []):
+                        rating = result.get("rating", 0)
+                        if rating < min_rating:
+                            continue
+
+                        name = result.get("name", "")
+                        plat, plon = result.get("geometry", {}).get("location", {}).get("lat"), \
+                                     result.get("geometry", {}).get("location", {}).get("lng")
+                        if not name or not plat or not plon:
+                            continue
+
+                        dist_km = haversine_km(lat, lon, plat, plon)
+                        dist_mi = dist_km / 1.60934
+
+                        rated_places.append({
+                            "name": name,
+                            "type": place_type,
+                            "rating": round(rating, 1),
+                            "distance_mi": round(dist_mi, 1),
+                        })
+            except Exception:
+                continue
+
+        # Deduplicate by name, keep highest rated
+        seen = {}
+        for p in sorted(rated_places, key=lambda x: -x["rating"]):
+            key = p["name"].lower()
+            if key not in seen:
+                seen[key] = p
+
+        # Return top 5 by rating
+        return sorted(seen.values(), key=lambda x: -x["rating"])[:5]
+    except Exception as e:
+        app.logger.debug(f"[rated-places] {postcode}: {e}")
+        return []
+
+
 def _v2_fetch_recent_capture(from_number: str) -> dict:
     """Return the most recent photo save from the last 20 minutes, if any.
     Used to surface 'you just snapped this' context in the V2 brief."""
@@ -9961,6 +10075,7 @@ def api_home_brief():
         _area_pc = (prefs.get("fuel_postcode") or postcode or "").strip()
         if _area_pc:
             futures["area"] = pool.submit(_v2_fetch_area, _area_pc)
+            futures["rated_places"] = pool.submit(_v2_fetch_rated_places, _area_pc)
         if has_location:
             futures["loc_ctx"] = pool.submit(_v2_fetch_location_context, _req_lat, _req_lng)
         # Wait up to 8s for ALL futures collectively (not 8s each), then take whatever finished
@@ -10050,6 +10165,14 @@ def api_home_brief():
 
     # Extend day_type with bank holiday context
     is_long_weekend = bank_holiday_monday and wday >= 4  # Fri/Sat/Sun before BH Monday
+
+    # Extract birthdays from calendar events
+    birthdays = []
+    try:
+        _cal_data = ctx.get("calendar", []) + ctx.get("ms_calendar", [])
+        birthdays, _ = _v2_extract_birthdays_and_upcoming(_cal_data, now)
+    except Exception as e:
+        app.logger.debug(f"[birthdays] extraction failed: {e}")
 
     # Kids + school comms
     school_data = ctx.get("school", {})
@@ -10268,6 +10391,48 @@ def api_home_brief():
                 facts.append(f"{_ins_child} off school today — inset day")
             elif _ins_date == (now.date() + __import__("datetime").timedelta(days=1)).isoformat():
                 facts.append(f"{_ins_child} off school tomorrow — inset day")
+
+    # Birthdays — only upcoming within 7 days (relevant context, not noise)
+    for bd in birthdays:
+        if bd["days_away"] == 0:
+            facts.append(f"🎂 Today is {bd['name']}'s birthday!")
+        elif bd["days_away"] == 1:
+            facts.append(f"🎂 {bd['name']}'s birthday tomorrow")
+        elif bd["days_away"] <= 7:
+            facts.append(f"🎂 {bd['name']}'s birthday in {bd['days_away']} days")
+
+    # Upcoming public holidays (within 14 days, not today or tomorrow)
+    try:
+        from datetime import timedelta as _htd
+        _today_s = now.date().isoformat()
+        _tom_s = (now.date() + _htd(days=1)).isoformat()
+        _upcoming_holidays = []
+        for _bd_days in range(2, 15):  # 2-14 days from now
+            _check_date = (now.date() + _htd(days=_bd_days)).isoformat()
+            if _check_date in _bh_dates:
+                _upcoming_holidays.append(_check_date)
+        for _hol_date in _upcoming_holidays[:1]:  # Just next one
+            _hol_dt = datetime.strptime(_hol_date, "%Y-%m-%d")
+            _days_to_hol = (_hol_dt.date() - now.date()).days
+            _hol_name = "Bank holiday"  # UK gov API doesn't return names easily
+            facts.append(f"🏛️ {_hol_name} in {_days_to_hol} days")
+    except Exception:
+        pass
+
+    # Highly-rated places nearby (4.6+) — only surface for evening/weekend or location context
+    rated_places = ctx.get("rated_places", [])
+    if rated_places and (time_mode in ("evening_leisure",) or day_type == "weekend" or has_location):
+        # Pick 1 highest-rated place as a gentle suggestion
+        _top_place = rated_places[0]
+        _place_str = f"{_top_place['name']} ({_top_place['type'].title()}) {_top_place['rating']}★"
+        _dist_note = f" · {_top_place['distance_mi']}mi away" if _top_place['distance_mi'] < 2 else ""
+        if time_mode == "evening_leisure" and not has_location:
+            # Evening: gentle suggestion as context, not a CTA
+            facts.append(f"🌟 Nearby: {_place_str}{_dist_note} has great reviews")
+        elif day_type == "weekend" or has_location:
+            # Weekend/location context: more useful
+            facts.append(f"🌟 {_place_str}{_dist_note}")
+
     # Suppress events superseded by a reschedule/postpone/cancel notice
     import re as _scre
     _resc_kw = re.compile(r'\b(reschedul|postpone|cancel)\w*', re.I)
@@ -10361,12 +10526,12 @@ def api_home_brief():
                     from datetime import timedelta as _ptd
                     # Parse start time
                     _start_dt = datetime.strptime(_pe_t, "%H:%M")
-                    # Get end time: use set end_time + 10 min buffer, or start + 2 hours
+                    # Get end time: use set end_time + 10 min buffer, or start + 1 hour default
                     _pe_end_raw = pe.get("end_time", "")
                     if _pe_end_raw:
                         _end_dt = datetime.strptime(_pe_end_raw, "%H:%M") + _ptd(minutes=10)
                     else:
-                        _end_dt = _start_dt + _ptd(minutes=120)
+                        _end_dt = _start_dt + _ptd(minutes=60)
                     _pe_end = _end_dt.strftime("%H:%M")
                     # Compare times as strings (HH:MM)
                     _pe_past = _pe_end < _now_hhmm_cur
