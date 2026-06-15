@@ -9829,8 +9829,14 @@ function _hcAdd() {
       if (!m.error) {
         document.querySelectorAll("[data-metric]").forEach(el => {
           const key = el.getAttribute("data-metric");
-          const val = m[key];
-          if (val) el.textContent = val;
+          let val = m[key];
+          if (val) {
+            // Clean up HQ field (remove Wikipedia markup)
+            if (key === "hq" && val.includes("}}")) {
+              val = val.split("}}").pop().trim().split(" ").slice(0, 3).join(" ");
+            }
+            el.textContent = val;
+          }
         });
       }
     } catch(e) {
@@ -9842,12 +9848,17 @@ function _hcAdd() {
     document.getElementById("company-results").classList.remove("hidden");
     _coCurrentName = d.name || document.getElementById("company-input").value.trim();
     document.getElementById("co-share-name").textContent = _coCurrentName;
-    // Hide old tabs, show only new intel-detailed view
+    // Hide ALL old content, show ONLY intel-detailed metrics
     document.querySelectorAll("[id^='intel-tab-']").forEach(el => el.style.display = "none");
+    document.querySelectorAll("[id^='co-']").forEach(el => el.style.display = "none");
+    document.querySelectorAll("[id^='brand-']").forEach(el => el.style.display = "none");
     const detailedDiv = document.getElementById("intel-detailed");
-    if (detailedDiv) detailedDiv.style.display = "block";
+    if (detailedDiv) {
+      detailedDiv.style.display = "block";
+      // Hide old hardcoded sections within intel-detailed
+      detailedDiv.querySelectorAll("[id*='revenue-chart'], [id*='leadership'], [id*='news'], [id*='competitors']").forEach(el => el.parentElement && (el.parentElement.style.display = "none"));
+    }
     _updateIntelMetrics(_coCurrentName);
-    coFeaturedLoad(_coCurrentName);
 
     // Wikipedia overview
     const w = d.wiki || {};
