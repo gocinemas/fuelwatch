@@ -192,40 +192,46 @@ function bookToggleScanner() {
 function bookStartScanner() {
   if (_bkScanner) return;
 
-  if (!window.Quagga) {
-    alert('Scanner library not loaded. Refresh the page.');
-    return;
-  }
-
-  try {
-    var video = document.getElementById('scanner-video');
-    Quagga.init({
-      inputStream: { type: 'LiveStream', constraints: { facingMode: 'environment' }, target: video },
-      decoder: { readers: ['ean_reader', 'code_128_reader', 'ean_8_reader', 'code_39_reader'] },
-      locator: { halfSample: true }
-    }, function(err) {
-      if (err) {
-        console.error('[scanner] Init error:', err);
-        alert('Camera error: ' + err.message);
-        bookStopScanner();
-        return;
-      }
+  // Try camera first
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(function(stream) {
+      _bkStream = stream;
+      var video = document.getElementById('scanner-video');
+      video.srcObject = stream;
+      video.play();
       _bkScanner = true;
-      Quagga.onDetected(function(data) {
-        if (data.codeResult && data.codeResult.code) {
-          var code = data.codeResult.code;
-          console.log('[scanner] ✓ Detected:', code);
-          bookStopScanner();
-          bookSearchISBN(code);
+
+      if (window.Quagga) {
+        try {
+          Quagga.init({
+            inputStream: { type: 'LiveStream', constraints: { facingMode: 'environment' }, target: video },
+            decoder: { readers: ['ean_reader', 'code_128_reader', 'ean_8_reader', 'code_39_reader'] },
+            locator: { halfSample: true }
+          }, function(err) {
+            if (!err) {
+              Quagga.onDetected(function(data) {
+                if (data.codeResult && data.codeResult.code) {
+                  console.log('[scanner] ✓ Detected:', data.codeResult.code);
+                  bookStopScanner();
+                  bookSearchISBN(data.codeResult.code);
+                }
+              });
+              Quagga.start();
+            }
+          });
+        } catch (e) {
+          console.warn('[scanner] Quagga init failed, using manual mode');
         }
-      });
-      Quagga.start();
+      }
+    })
+    .catch(function(err) {
+      console.error('[scanner] Camera error:', err);
+      var isbn = prompt('Camera access denied.\n\nEnter ISBN or barcode:');
+      if (isbn && isbn.trim()) {
+        bookSearchISBN(isbn.trim());
+      }
+      bookStopScanner();
     });
-  } catch (e) {
-    console.error('[scanner] Error:', e);
-    alert('Error: ' + e.message);
-    bookStopScanner();
-  }
 }
 
 function bookSearchISBN(code) {
