@@ -192,8 +192,11 @@ function bookStartScanner() {
   if (_bkScanner) return;
 
   if (!window.BarcodeDetector) {
-    alert('Barcode scanner not supported on this device');
-    bookStopScanner();
+    // Fallback: manual ISBN entry
+    var isbn = prompt('Barcode scanner not supported.\n\nEnter ISBN or barcode:');
+    if (isbn && isbn.trim()) {
+      bookSearchISBN(isbn.trim());
+    }
     return;
   }
 
