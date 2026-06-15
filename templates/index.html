@@ -9409,7 +9409,8 @@ function _hcAdd() {
     if (!raw) return;
 
     // On intel.humanagency.co — go straight to the dedicated brand page
-    if (_INTEL_MODE) {
+    // UNLESS we're already on a /<slug> page (prefill_company was set), then skip redirect to avoid loop
+    if (_INTEL_MODE && !window._skipRedirectOnSearch) {
       var _slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       window.location.href = "/" + _slug;
       return;
@@ -10234,6 +10235,7 @@ function _hcAdd() {
     if (_urlTab && CO_TABS.includes(_urlTab)) _pendingCoTab = _urlTab;
     showScreen("company");
     document.getElementById("intel-input").value = "{{ prefill_company }}";
+    window._skipRedirectOnSearch = true; // Prevent infinite loop on /<slug> pages
     searchIntel();
   });
   {% endif %}
