@@ -20740,20 +20740,25 @@ let _savesAll = [];
       btn.querySelector("div:last-child").style.color = "#4338ca";
     }
 
-    // Food: show cuisine picker before fetching (but only if no cuisine selected yet)
-    if (cat === "food" && !_ehActiveCuisine) {
+    // Food: always show cuisine picker (allow switching anytime)
+    if (cat === "food") {
       const el = document.getElementById("explore-here-results");
-      el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">
-        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'indian'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🇮🇳 Indian</button>
-        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'chinese'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🥡 Chinese</button>
-        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'italian'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🍝 Italian</button>
-        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'mexican'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🌮 Mexican</button>
-        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'thai'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🌶️ Thai</button>
-        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'japanese'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🍣 Japanese</button>
-        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'spanish'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🇪🇸 Spanish</button>
-        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'british'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🍖 British</button>
-        <button onclick="_ehSetCat('food',document.querySelector('[data-cat=food]'),{cuisine:'middleeastern'})" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600">🥙 Middle East</button>
-      </div>`;
+      const cuisines = [
+        {emoji: "🇮🇳", name: "Indian", key: "indian"},
+        {emoji: "🥡", name: "Chinese", key: "chinese"},
+        {emoji: "🍝", name: "Italian", key: "italian"},
+        {emoji: "🌮", name: "Mexican", key: "mexican"},
+        {emoji: "🌶️", name: "Thai", key: "thai"},
+        {emoji: "🍣", name: "Japanese", key: "japanese"},
+        {emoji: "🇪🇸", name: "Spanish", key: "spanish"},
+        {emoji: "🍖", name: "British", key: "british"},
+        {emoji: "🥙", name: "Middle East", key: "middleeastern"}
+      ];
+      const current = _ehActiveCuisine ? ` (showing ${_ehActiveCuisine})` : "";
+      el.innerHTML = `<div style="margin-bottom:12px;font-size:12px;color:var(--muted);font-weight:600">Choose cuisine${current}:</div>` +
+        `<div style="display:flex;flex-wrap:wrap;gap:8px">` +
+        cuisines.map(c => `<button onclick="_ehActiveCuisine='${c.key}';_ehCache={};_ehSetCat('food',document.querySelector('[data-cat=food]'))" style="font-size:11px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);cursor:pointer;font-weight:600;${_ehActiveCuisine===c.key?'background:#4338ca;color:white;border-color:#4338ca':''}">${c.emoji} ${c.name}</button>`).join("") +
+        `</div>`;
       return;
     }
 
