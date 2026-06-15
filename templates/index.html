@@ -9364,14 +9364,19 @@ function _hcAdd() {
       }
 
       // Fetch Pinpoint collection for this brand/company
-      const _company = brData?.name || coData?.name || raw;
+      const _company = (brData?.name || coData?.name || (document.getElementById("brand-name-el")?.textContent || raw)).trim();
       const _brandKey = (_company || "").toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/^-|-$/g, "");
+      console.log("[pinpoint] company:", _company, "brandKey:", _brandKey);
       if (_company && _brandKey) {
-        fetch(`/api/intel/pinpoint/collection?brand_key=${encodeURIComponent(_brandKey)}&company_name=${encodeURIComponent(_company)}`)
+        const _url = `/api/intel/pinpoint/collection?brand_key=${encodeURIComponent(_brandKey)}&company_name=${encodeURIComponent(_company)}`;
+        console.log("[pinpoint] fetching:", _url);
+        fetch(_url)
           .then(r => r.json())
           .then(d => {
+            console.log("[pinpoint] response:", d);
             const card = document.getElementById("intel-research-docs-card");
-            if (!card || !d.ok) return;
+            if (!card) { console.log("[pinpoint] card not found"); return; }
+            if (!d.ok) { console.log("[pinpoint] ok=false"); return; }
             card.style.display = "";
             window._intelPinpointUrl = d.pinpoint_url;
             if (d.pinpoint_url) {
@@ -9379,7 +9384,9 @@ function _hcAdd() {
               document.getElementById("intel-research-items").style.display = "block";
               document.getElementById("intel-research-items").innerHTML = `<a href="${d.pinpoint_url}" target="_blank" style="color:#7c3aed;text-decoration:none">Open collection in Pinpoint ↗</a>`;
             }
-          }).catch(() => {});
+          }).catch(e => { console.error("[pinpoint] fetch error:", e); });
+      } else {
+        console.log("[pinpoint] skipped: company or brandKey empty");
       }
 
       // ── Hide tabs + sections that have no data ──
