@@ -6120,8 +6120,9 @@ def api_intel_brand_choices_delete():
 
 @app.route("/api/intel/pinpoint/collection")
 def api_intel_pinpoint_collection():
-    """Get or create Pinpoint collection for a company.
+    """Get Pinpoint collection info for a company.
     Query: ?brand_key=apple&company_name=Apple+Inc
+    Returns Pinpoint dashboard link where user can upload docs.
     """
     brand_key = (request.args.get("brand_key") or "").strip().lower()
     company_name = (request.args.get("company_name") or "").strip()
@@ -6129,16 +6130,15 @@ def api_intel_pinpoint_collection():
         return jsonify({"error": "Missing brand_key"}), 400
     try:
         collection = lib.get_pinpoint_collection(brand_key)
-        if not collection:
-            collection_id = lib.create_or_get_pinpoint_collection(company_name, brand_key)
-            collection = lib.get_pinpoint_collection(brand_key)
-        return jsonify({
-            "ok": True,
-            "brand_key": brand_key,
-            "company_name": collection.get("company_name") if collection else company_name,
-            "collection_id": collection.get("pinpoint_collection_id") if collection else None,
-            "pinpoint_url": f"https://pinpoint.google.com/collections/{collection.get('pinpoint_collection_id')}" if collection else None
-        })
+        if collection:
+            return jsonify({
+                "ok": True,
+                "brand_key": brand_key,
+                "company_name": company_name,
+                "collection_id": collection.get("pinpoint_collection_id"),
+                "pinpoint_url": collection.get("pinpoint_url")
+            })
+        return jsonify({"error": "Failed to create collection"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
