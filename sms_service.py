@@ -10340,6 +10340,13 @@ def api_home_brief():
             _pe_date = _today_s
             app.logger.info(f"[brief] Recurring event: {pe.get('title')} on today ({_today_s})")
 
+        # Also check if event has weekday matching today, even with a date (backwards compat for old events)
+        _pe_weekday = pe.get("weekday")
+        if _pe_weekday is not None and _pe_weekday == now.weekday():
+            _pe_date = _today_s  # Show today if weekday matches
+            _is_recurring = True
+            app.logger.info(f"[brief] Weekday-match event: {pe.get('title')} on today ({_today_s})")
+
         # Filter out past events (before today)
         if _pe_date < _today_s:
             _past_personal.append(pe)
