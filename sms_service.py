@@ -12432,6 +12432,50 @@ def api_admin_fix_currency():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/admin/fix-receipt-category", methods=["POST"])
+def api_admin_fix_receipt_category():
+    """Fix a specific receipt's category. Admin-only.
+    POST body: {"merchant": "Asda Stores Limited", "amount": 54.66, "new_category": "Fuel"}
+    """
+    if request.headers.get("X-Admin-Token") != "miru-digest-2026":
+        return jsonify({"error": "Forbidden"}), 403
+    try:
+        data = request.json or {}
+        merchant = (data.get("merchant") or "").strip()
+        amount = data.get("amount")
+        new_category = (data.get("new_category") or "").strip()
+
+        if not all([merchant, amount, new_category]):
+            return jsonify({"error": "Missing: merchant, amount, new_category"}), 400
+
+        # Find the receipt
+        rows = lib._sb().table("wa_saves").select("id,title,summary,category").execute().data
+        found = None
+        for r in rows:
+            title = (r.get("title") or "").lower()
+            summary = (r.get("summary") or "").strip()
+
+            if merchant.lower() in title and str(amount) in summary:
+                found = r
+                break
+
+        if not found:
+            return jsonify({"error": f"Receipt not found: {merchant} £{amount}"}), 404
+
+        # Update category
+        lib._sb().table("wa_saves").update({"category": new_category}).eq("id", found["id"]).execute()
+        return jsonify({
+            "ok": True,
+            "id": found["id"],
+            "merchant": merchant,
+            "amount": amount,
+            "old_category": found["category"],
+            "new_category": new_category
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/background/refresh-ask-miru", methods=["POST"])
 def api_background_refresh_ask_miru():
     """Background task: rebuild Ask Miru Intelligence (context) for all active users.
