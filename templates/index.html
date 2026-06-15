@@ -9842,6 +9842,10 @@ function _hcAdd() {
     document.getElementById("company-results").classList.remove("hidden");
     _coCurrentName = d.name || document.getElementById("company-input").value.trim();
     document.getElementById("co-share-name").textContent = _coCurrentName;
+    // Hide old tabs, show only new intel-detailed view
+    document.querySelectorAll("[id^='intel-tab-']").forEach(el => el.style.display = "none");
+    const detailedDiv = document.getElementById("intel-detailed");
+    if (detailedDiv) detailedDiv.style.display = "block";
     _updateIntelMetrics(_coCurrentName);
     coFeaturedLoad(_coCurrentName);
 
