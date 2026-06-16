@@ -10130,18 +10130,22 @@ def api_home_brief():
         _is_commute_time = 7 <= now.hour < 8 or (now.hour == 8 and now.minute < 30)
         _is_weekday = now.weekday() < 5
         if _is_commute_time and _is_weekday:
-            # During commute hours: use location profile commute (work/school from My Area)
+            # During commute hours: use location profile commute (from My Area)
+            _tf, _tt = None, None
             _loc_work = _loc_profile.get("work") or {}
             _loc_school = _loc_profile.get("school_run") or {}
             # Prefer school run if set, otherwise use work
-            if _loc_school.get("station_from") and _loc_school.get("station_to"):
-                tf, tt = _loc_school["station_from"], _loc_school["station_to"]
-                futures["trains"] = pool.submit(_v2_fetch_trains, tf, tt)
-                futures["trains_home"] = pool.submit(_v2_fetch_trains, tt, tf)
-            elif _loc_work.get("station_from") and _loc_work.get("station_to"):
-                tf, tt = _loc_work["station_from"], _loc_work["station_to"]
-                futures["trains"] = pool.submit(_v2_fetch_trains, tf, tt)
-                futures["trains_home"] = pool.submit(_v2_fetch_trains, tt, tf)
+            # Location profile stores: {"name": "...", "lat": ..., "lng": ..., "station": "STN", ...}
+            if _loc_school and (_loc_school.get("station") or _loc_school.get("name")):
+                _tf = "Home"
+                _tt = _loc_school.get("station") or _loc_school.get("name", "School")
+            elif _loc_work and (_loc_work.get("station") or _loc_work.get("name")):
+                _tf = "Home"
+                _tt = _loc_work.get("station") or _loc_work.get("name", "Work")
+            # Fetch trains if commute is configured
+            if _tf and _tt:
+                futures["trains"] = pool.submit(_v2_fetch_trains, _tf, _tt)
+                futures["trains_home"] = pool.submit(_v2_fetch_trains, _tt, _tf)
         # Outside commute hours: show nothing (don't fetch saved prefs)
         if from_number:
             futures["school"]          = pool.submit(_v2_fetch_school, from_number)
