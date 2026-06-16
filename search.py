@@ -1572,7 +1572,9 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
             competitors_from_ai = [{"name": c, "description": f"Competitor in {category}"} for c in _get_category_competitors(category, brand)]
             print(f"[competitors] {brand} ({category}): using smart fallback")
 
-        ranking = {}  # Phase 2: Deep Research will provide comprehensive ranking via EDGAR
+        # Ranking moved to Phase 2 (Deep Research agent with EDGAR)
+        # Return empty object (not None) so UI shows "—" placeholder
+        ranking = {}
 
         result = {
             "name":         brand,
@@ -1858,6 +1860,7 @@ def _fetch_wikipedia(company: str) -> dict:
         "geographical","river","lake","mountain","city","town","village","country","county","district",
         "surname","given name","first name","fictional character","television series","film","movie",
         "video game","album","song","musical","comic","novel","asteroid","spacecraft",
+        "lack of guilt","absence of guilt","concept","philosophy","emotion","abstract noun",
     }
 
     def _is_non_company(res: dict) -> bool:
