@@ -1152,44 +1152,6 @@ def _detect_brand_category(description: str, industry: str = "") -> str:
 
     return ""
 
-def _get_brand_ranking(brand_name: str, category: str, market_cap: float = None) -> dict:
-    """Calculate brand ranking based on market cap data.
-
-    Uses financial data to rank brands dynamically instead of hardcoded lists.
-    Returns rank and total number of brands in category.
-    """
-    if not market_cap or market_cap <= 0:
-        return {}  # No financial data available
-
-    try:
-        # Estimate category size based on total market cap in category
-        category_benchmarks = {
-            "beverage": {"total_market_cap": 800_000_000_000, "total_brands": 50},  # ~$800B
-            "automotive": {"total_market_cap": 2_500_000_000_000, "total_brands": 30},  # ~$2.5T
-            "technology": {"total_market_cap": 15_000_000_000_000, "total_brands": 100},  # ~$15T
-            "fashion": {"total_market_cap": 400_000_000_000, "total_brands": 100},  # ~$400B
-            "food": {"total_market_cap": 1_200_000_000_000, "total_brands": 50},  # ~$1.2T
-        }
-
-        if category not in category_benchmarks:
-            return {}
-
-        benchmark = category_benchmarks[category]
-        total_brands = benchmark["total_brands"]
-        total_market_cap = benchmark["total_market_cap"]
-
-        # Calculate percentile: what % of market cap does this brand represent?
-        percentile = (market_cap / total_market_cap) * 100
-
-        # Convert percentile to rank (top brands = lower numbers)
-        # Top 1% = rank 1, next 2% = rank 2, etc.
-        rank = max(1, int((100 - percentile) / (100 / total_brands)) + 1)
-        rank = min(rank, total_brands)  # Cap at total brands
-
-        return {"rank": rank, "of": total_brands}
-    except Exception as e:
-        print(f"[ranking] calculation error: {e}")
-        return {}
 
 def _get_category_competitors(category: str, brand_name: str) -> list:
     """Get relevant competitors for a brand category."""
@@ -1602,7 +1564,7 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
             v = wiki.get(wiki_key, "")
             return v if v else ai_facts.get(wiki_key, "")
 
-        # Smart competitor & ranking fallback
+        # Smart competitor fallback (ranking moved to Phase 2 Deep Research)
         category = _detect_brand_category(wiki.get("description", "") + " " + _val("industry"))
 
         competitors_from_ai = ai.get("competitors", [])
@@ -1610,18 +1572,7 @@ def fetch_brand_data(brand: str, force_refresh: bool = False) -> dict:
             competitors_from_ai = [{"name": c, "description": f"Competitor in {category}"} for c in _get_category_competitors(category, brand)]
             print(f"[competitors] {brand} ({category}): using smart fallback")
 
-        ranking = ai.get("ranking")
-        if not ranking and category:
-            # Try to get market cap for dynamic ranking
-            market_cap = None
-            if financials and isinstance(financials, dict):
-                # Extract market cap from financials if available
-                if "market_cap" in financials:
-                    market_cap = financials.get("market_cap")
-
-            ranking = _get_brand_ranking(brand, category, market_cap)
-            if ranking:
-                print(f"[ranking] {brand} ({category}): rank {ranking.get('rank')}/{ranking.get('of')}")
+        ranking = {}  # Phase 2: Deep Research will provide comprehensive ranking via EDGAR
 
         result = {
             "name":         brand,

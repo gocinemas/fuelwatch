@@ -2977,6 +2977,21 @@ def api_brand():
     return jsonify(data)
 
 
+@app.route("/api/brand/deep-research")
+def api_brand_deep_research():
+    """Phase 2: Deep research on company strategy, recent moves, EDGAR filings"""
+    name = request.args.get("name", "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "Brand/company name required"}), 400
+
+    try:
+        from deep_research import deep_research
+        result = deep_research(name)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/brand/social")
 def api_brand_social():
     name = request.args.get("name", "").strip()
