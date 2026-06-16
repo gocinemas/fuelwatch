@@ -7360,6 +7360,35 @@ def _v2_resolve(token: str) -> str:
         return token
     return _resolve_user_token(token) or ""
 
+# ── BRAND INTELLIGENCE API (Phase 1) ────────────────────────────────────
+@app.route("/api/brands/search", methods=["GET"])
+def api_brands_search():
+    """
+    Search for brand info using Wikipedia + Google Knowledge Graph
+    Data stored in Supabase for caching
+    Returns: brand name, description, SKUs, source (cache/wikipedia/google_kg)
+    """
+    from brands_intelligence import search_and_store_brand
+
+    q = request.args.get("q", "").strip()
+    if not q or len(q) < 2:
+        return jsonify({"error": "Brand name required (min 2 chars)"}), 400
+
+    try:
+        # Fetch from Wikipedia + Google KG + UPCItemDB (with Supabase caching)
+        google_kg_api_key = os.environ.get("GOOGLE_KG_API_KEY")
+        brand_data = search_and_store_brand(q, google_kg_api_key)
+
+        return jsonify({
+            "ok": True,
+            "brand": brand_data,
+            "skus_count": len(brand_data.get("skus", [])),
+            "source": brand_data.get("source")
+        })
+    except Exception as e:
+        app.logger.error(f"[brands/search] Error searching for {q}: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/v2/prefs", methods=["GET"])
 def api_v2_prefs_get():
     """Return V2 preferences for the user identified by token."""
