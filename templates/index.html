@@ -1598,13 +1598,13 @@
 
           <!-- ── Functional Tabs Interface ── -->
           <div class="intel-func-tabs">
-            <button class="intel-func-tab-btn active" onclick="switchIntelFuncTab('company')">Company</button>
-            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('details')">Details</button>
-            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('strategy')">Strategy</button>
-            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('social')">Social</button>
-            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('campaigns')">Campaigns</button>
-            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('competitors')">Competitors</button>
-            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('reports')">Reports</button>
+            <button class="intel-func-tab-btn active" onclick="switchIntelFuncTab('company', this)">Company</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('details', this)">Details</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('strategy', this)">Strategy</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('social', this)">Social</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('campaigns', this)">Campaigns</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('competitors', this)">Competitors</button>
+            <button class="intel-func-tab-btn" onclick="switchIntelFuncTab('reports', this)">Reports</button>
           </div>
 
           <!-- Company Tab -->
@@ -25197,8 +25197,8 @@ window.spotifyAddTrack = window.spotifyLike;
   };
 
   // ── Intel Functional Tabs ──────────────────────────────────────────────
-  window.switchIntelFuncTab = function(tab) {
-    // Hide all tabs
+  window.switchIntelFuncTab = function(tab, buttonEl) {
+    // Hide all tabs and buttons
     document.querySelectorAll('.intel-func-tab').forEach(t => t.style.display = 'none');
     document.querySelectorAll('.intel-func-tab-btn').forEach(b => b.classList.remove('active'));
 
@@ -25206,8 +25206,9 @@ window.spotifyAddTrack = window.spotifyLike;
     const tabEl = document.getElementById('intel-func-' + tab);
     if (tabEl) tabEl.style.display = 'block';
 
-    // Highlight active button
-    event.target.classList.add('active');
+    // Highlight active button (use the passed element or find it)
+    const activeBtn = buttonEl || document.querySelector(`button[onclick="switchIntelFuncTab('${tab}'"]`);
+    if (activeBtn) activeBtn.classList.add('active');
 
     // Load tab content on first view
     if (tab === 'strategy') {
