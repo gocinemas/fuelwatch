@@ -13752,6 +13752,17 @@ function _hcAdd() {
 
   <!-- ── MY LIBRARY PANEL ── -->
   <div id="books-library-panel" style="display:block;padding:16px">
+    <!-- Barcode scanner button -->
+    <button id="book-scan-btn-lib" onclick="bookToggleScanner()"
+      style="display:block;width:100%;padding:11px;border-radius:12px;border:1.5px dashed #7c3aed;background:#f5f3ff;color:#6d28d9;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;box-sizing:border-box">
+      📷 Scan ISBN barcode
+    </button>
+    <div id="book-scan-wrap-lib" style="display:none;margin-bottom:12px;border-radius:14px;overflow:hidden">
+      <div id="book-scan-reader"></div>
+      <button onclick="bookStopScanner()" style="display:block;width:100%;padding:10px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:700;cursor:pointer">✕ Stop scanner</button>
+    </div>
+    <div id="book-error-lib" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px;font-size:13px;color:#b91c1c;margin-bottom:10px"></div>
+
     <div id="lib-loading" style="text-align:center;padding:40px 20px;color:var(--muted)">Loading books...</div>
     <div id="lib-empty" style="display:none;text-align:center;padding:40px 20px">
       <div style="font-size:48px;margin-bottom:16px">📚</div>
@@ -14823,10 +14834,16 @@ var _bkScanner = null;
 function bookToggleScanner(){
   if(_bkScanner){ bookStopScanner(); return; }
   var wrap = document.getElementById("book-scan-wrap");
+  var wrapLib = document.getElementById("book-scan-wrap-lib");
   var btn  = document.getElementById("book-scan-btn");
+  var btnLib = document.getElementById("book-scan-btn-lib");
+
   wrap.style.display = "block";
+  if(wrapLib) wrapLib.style.display = "block";
   btn.textContent = "⏹ Stop scanner";
+  if(btnLib) btnLib.textContent = "⏹ Stop scanner";
   document.getElementById("book-error").style.display = "none";
+  if(document.getElementById("book-error-lib")) document.getElementById("book-error-lib").style.display = "none";
 
   _bkScanner = new Html5Qrcode("book-scan-reader");
   _bkScanner.start(
@@ -14853,22 +14870,33 @@ function bookToggleScanner(){
     bookStopScanner();
     document.getElementById("book-error").textContent = "Camera not available — " + err;
     document.getElementById("book-error").style.display = "block";
+    if(document.getElementById("book-error-lib")){
+      document.getElementById("book-error-lib").textContent = "Camera not available — " + err;
+      document.getElementById("book-error-lib").style.display = "block";
+    }
   });
 }
 
 function bookStopScanner(){
   var wrap = document.getElementById("book-scan-wrap");
+  var wrapLib = document.getElementById("book-scan-wrap-lib");
   var btn  = document.getElementById("book-scan-btn");
+  var btnLib = document.getElementById("book-scan-btn-lib");
+
   if(_bkScanner){
     _bkScanner.stop().catch(function(){}).finally(function(){
       _bkScanner.clear();
       _bkScanner = null;
       wrap.style.display = "none";
+      if(wrapLib) wrapLib.style.display = "none";
       btn.textContent = "📷 Scan ISBN barcode";
+      if(btnLib) btnLib.textContent = "📷 Scan ISBN barcode";
     });
   } else {
     wrap.style.display = "none";
+    if(wrapLib) wrapLib.style.display = "none";
     btn.textContent = "📷 Scan ISBN barcode";
+    if(btnLib) btnLib.textContent = "📷 Scan ISBN barcode";
   }
 }
 
