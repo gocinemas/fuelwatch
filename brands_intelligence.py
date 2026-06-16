@@ -294,15 +294,6 @@ def fetch_brand_competitors(brand_name):
     key = brand_name.lower()
     return competitors_map.get(key, [])
 
-def fetch_brand_financials(brand_name, cik=None):
-    """Fetch financials from SEC Edgar for public companies"""
-    # For now, return mock data
-    # Real implementation would query SEC Edgar API
-    return {
-        "status": "pending",
-        "note": "SEC Edgar integration coming soon"
-    }
-
 def store_brand_in_supabase(brand_data):
     """Store brand data in Supabase"""
     try:
