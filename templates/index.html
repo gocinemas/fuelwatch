@@ -25389,10 +25389,10 @@ window.spotifyAddTrack = window.spotifyLike;
     const category = params.get('category');
 
     if (q) {
-      document.getElementById('intel-brand-input').value = q;
+      document.getElementById('intel-input').value = q;
       window._currentCategory = category || '';
       // Auto-search
-      setTimeout(() => searchBrand(), 100);
+      setTimeout(() => searchIntel(), 100);
     }
   };
 
