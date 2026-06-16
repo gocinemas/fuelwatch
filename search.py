@@ -966,6 +966,170 @@ def _fetch_wiki_images(wiki_title: str) -> list:
         return []
 
 
+def _fetch_company_country(brand: str, ticker: str = "") -> str:
+    """Detect company's country from ticker or company info."""
+    # Ticker-based detection (e.g., RELIANCE.BO = Bombay, .L = London, .TO = Toronto)
+    if ticker:
+        suffixes = {
+            ".BO": "India", ".NS": "India",  # BSE, NSE
+            ".L": "UK",                        # London Stock Exchange
+            ".DE": "Germany",                  # Deutsche Börse
+            ".PA": "France",                   # Euronext Paris
+            ".MI": "Italy",                    # Borsa Italiana
+            ".MA": "Spain",                    # Madrid Stock Exchange
+            ".TO": "Canada",                   # Toronto Stock Exchange
+            ".AX": "Australia",                # ASX
+            ".NZ": "New Zealand",
+            ".HK": "Hong Kong",
+            ".SG": "Singapore",
+            ".TH": "Thailand",
+        }
+        for suffix, country in suffixes.items():
+            if ticker.upper().endswith(suffix):
+                return country
+
+    # Default to US if no suffix detected
+    return "US"
+
+def _fetch_india_financials(brand: str, ticker: str) -> dict:
+    """Fetch financials for Indian companies from NSE (yfinance supports .NS suffix)."""
+    try:
+        # India companies on NSE/BSE need .NS or .BO suffix for yfinance
+        # Try with .NS (NSE) first
+        nse_ticker = f"{ticker}.NS" if not ticker.endswith(('.NS', '.BO')) else ticker
+
+        print(f"[india_financials] Fetching {brand} ({nse_ticker}) from NSE...")
+        import yfinance as yf
+
+        info = yf.Ticker(nse_ticker).info
+        if info.get("marketCap") or info.get("totalRevenue"):
+            def _fmt(v):
+                if not v:
+                    return ""
+                try:
+                    v = float(v)
+                except:
+                    return ""
+                if v >= 1e12: return f"₹{v/1e12:.2f}T"
+                if v >= 1e9:  return f"₹{v/1e9:.1f}B"
+                if v >= 1e6:  return f"₹{v/1e6:.0f}M"
+                return f"₹{v:,.0f}"
+
+            result = {
+                "ticker": nse_ticker,
+                "market_cap": _fmt(info.get("marketCap")),
+                "total_revenue": _fmt(info.get("totalRevenue")),
+                "net_income": _fmt(info.get("netIncomeToCommon")),
+                "profit_margin": f"{round(float(info.get('profitMargins', 0)) * 100, 1)}%" if info.get("profitMargins") else "",
+                "source": "NSE (yfinance)"
+            }
+            return result
+    except Exception as e:
+        print(f"[india_financials] Error fetching {brand}: {e}")
+
+    return {}
+
+def _fetch_uk_financials(brand: str, ticker: str) -> dict:
+    """Fetch financials for UK companies (LSE) via yfinance."""
+    try:
+        # UK companies on LSE need .L suffix for yfinance
+        lse_ticker = f"{ticker}.L" if not ticker.endswith('.L') else ticker
+
+        print(f"[uk_financials] Fetching {brand} ({lse_ticker}) from LSE...")
+        import yfinance as yf
+
+        info = yf.Ticker(lse_ticker).info
+        if info.get("marketCap") or info.get("totalRevenue"):
+            def _fmt(v):
+                if not v:
+                    return ""
+                try:
+                    v = float(v)
+                except:
+                    return ""
+                if v >= 1e12: return f"£{v/1e12:.2f}T"
+                if v >= 1e9:  return f"£{v/1e9:.1f}B"
+                if v >= 1e6:  return f"£{v/1e6:.0f}M"
+                return f"£{v:,.0f}"
+
+            result = {
+                "ticker": lse_ticker,
+                "market_cap": _fmt(info.get("marketCap")),
+                "total_revenue": _fmt(info.get("totalRevenue")),
+                "net_income": _fmt(info.get("netIncomeToCommon")),
+                "profit_margin": f"{round(float(info.get('profitMargins', 0)) * 100, 1)}%" if info.get("profitMargins") else "",
+                "source": "LSE (yfinance)"
+            }
+            return result
+    except Exception as e:
+        print(f"[uk_financials] Error fetching {brand}: {e}")
+
+    return {}
+
+def _fetch_international_financials_generic(brand: str, ticker: str, country: str) -> dict:
+    """Generic international financials fetch using country-specific yfinance suffixes."""
+    # Map countries to yfinance ticker suffixes
+    suffix_map = {
+        "Germany": ".DE",
+        "France": ".PA",
+        "Italy": ".MI",
+        "Spain": ".MA",
+        "Canada": ".TO",
+        "Australia": ".AX",
+        "Japan": ".T",
+        "Hong Kong": ".HK",
+        "Singapore": ".SI",
+        "Brazil": ".SA",
+        "Mexico": ".MX",
+    }
+
+    suffix = suffix_map.get(country)
+    if not suffix:
+        return {}
+
+    try:
+        intl_ticker = f"{ticker}{suffix}" if not ticker.endswith(suffix) else ticker
+        print(f"[intl_financials] Fetching {brand} ({intl_ticker})...")
+        import yfinance as yf
+
+        info = yf.Ticker(intl_ticker).info
+        if info.get("marketCap") or info.get("totalRevenue"):
+            def _fmt(v):
+                if not v:
+                    return ""
+                try:
+                    v = float(v)
+                except:
+                    return ""
+                if v >= 1e12: return f"{v/1e12:.2f}T"
+                if v >= 1e9:  return f"{v/1e9:.1f}B"
+                if v >= 1e6:  return f"{v/1e6:.0f}M"
+                return f"{v:,.0f}"
+
+            result = {
+                "ticker": intl_ticker,
+                "market_cap": _fmt(info.get("marketCap")),
+                "total_revenue": _fmt(info.get("totalRevenue")),
+                "net_income": _fmt(info.get("netIncomeToCommon")),
+                "profit_margin": f"{round(float(info.get('profitMargins', 0)) * 100, 1)}%" if info.get("profitMargins") else "",
+                "source": f"{country} Exchange (yfinance)"
+            }
+            return result
+    except Exception as e:
+        print(f"[intl_financials] Error fetching {brand} ({country}): {e}")
+
+    return {}
+
+def _fetch_international_financials(brand: str, ticker: str, country: str) -> dict:
+    """Route to country-specific financial fetchers."""
+    if country == "India":
+        return _fetch_india_financials(brand, ticker)
+    elif country == "UK":
+        return _fetch_uk_financials(brand, ticker)
+    else:
+        # Try generic international fetch for all other countries
+        return _fetch_international_financials_generic(brand, ticker, country)
+
 def _fetch_brand_financials(brand: str) -> dict:
     """Fetch financials: Try SEC Edgar first (US companies), fall back to yfinance."""
     ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
@@ -1009,6 +1173,15 @@ def _fetch_brand_financials(brand: str) -> dict:
 
     if not ticker and not cik:
         return {}
+
+    # Step 1.5: Detect company country (for international companies)
+    country = _fetch_company_country(brand, ticker)
+
+    # Step 1.75: If international company (non-US), try country-specific sources first
+    if country != "US":
+        intl_result = _fetch_international_financials(brand, ticker, country)
+        if intl_result and intl_result.get("total_revenue") or intl_result.get("net_income"):
+            return intl_result
 
     def _fmt(v):
         if not v:
