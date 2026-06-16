@@ -9245,13 +9245,9 @@ function _hcAdd() {
     document.getElementById("intel-input").value = raw; // keep compat input in sync
     if (!raw) return;
 
-    // On intel.humanagency.co — go straight to the dedicated brand page
-    // UNLESS we're already on a /<slug> page (prefill_company was set), then skip redirect to avoid loop
-    if (_INTEL_MODE && !window._skipRedirectOnSearch) {
-      var _slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      window.location.href = "/" + _slug;
-      return;
-    }
+    // On intel.humanagency.co — show results inline (new fresh design)
+    // Don't redirect, just display results on this page
+    // Skip redirect logic entirely for the new interface
 
     // Detect local-service searches and nudge toward Finder
     const nudge = document.getElementById("intel-local-nudge");
