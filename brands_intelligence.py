@@ -8,6 +8,12 @@ import requests
 import json
 from datetime import datetime
 import library as lib
+from marketing_intelligence import (
+    analyze_brand_growth_opportunity,
+    get_consumer_trends,
+    get_competitor_skus,
+    get_strategic_theme
+)
 
 # API Keys (from environment)
 UPCITEMDB_API = "https://api.upcitemdb.com/prod/trial/lookup"
@@ -456,7 +462,21 @@ def get_brand_from_supabase(brand_name):
 
     return None
 
-def search_and_store_brand(brand_name, google_kg_api_key=None, force_refresh=False):
+def get_marketing_intelligence(brand_name, category):
+    """Get VP-level marketing intelligence: trends, SKUs, growth opportunities"""
+    try:
+        intelligence = analyze_brand_growth_opportunity(brand_name, category)
+        return {
+            "consumer_trend": intelligence.get("consumer_trend"),
+            "strategic_theme": intelligence.get("strategic_theme"),
+            "competitor_skus": intelligence.get("competitive_sku_landscape"),
+            "growth_efficiency": intelligence.get("growth_efficiency")
+        }
+    except Exception as e:
+        print(f"[Marketing Intelligence] Error: {e}")
+        return None
+
+def search_and_store_brand(brand_name, google_kg_api_key=None, force_refresh=False, category=None):
     """
     Complete brand search flow:
     1. Check if brand exists in Supabase (cache) — skip if force_refresh=True
@@ -510,6 +530,11 @@ def search_and_store_brand(brand_name, google_kg_api_key=None, force_refresh=Fal
     # Step 3f: Fetch product lineup
     products = fetch_brand_products(brand_name)
 
+    # Step 4: Get marketing intelligence (if category provided)
+    marketing_intel = None
+    if category:
+        marketing_intel = get_marketing_intelligence(brand_name, category)
+
     # Step 4: Prepare brand record
     description = ""
     source = None
@@ -537,6 +562,7 @@ def search_and_store_brand(brand_name, google_kg_api_key=None, force_refresh=Fal
         "financials": financials,
         "social": social,
         "products": products,
+        "marketing_intelligence": marketing_intel,
         "source": source
     }
 

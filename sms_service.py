@@ -7364,29 +7364,30 @@ def _v2_resolve(token: str) -> str:
 @app.route("/api/brands/search", methods=["GET"])
 def api_brands_search():
     """
-    Search for brand info using Wikipedia + Google Knowledge Graph
-    Data stored in Supabase for caching
-    Returns: brand name, description, SKUs, source (cache/wikipedia/google_kg)
-    Query params: q=brandname, refresh=true (optional, to bypass cache)
+    VP-Level Brand Intelligence Search
+    Returns: brand data + marketing intelligence (trends, SKUs, growth opportunities)
+    Query params: q=brandname, category=automotive/beverages/athletic_wear, refresh=true
     """
     from brands_intelligence import search_and_store_brand
 
     q = request.args.get("q", "").strip()
+    category = request.args.get("category", "").strip()  # e.g., automotive, beverages
     refresh = request.args.get("refresh", "false").lower() == "true"
 
     if not q or len(q) < 2:
         return jsonify({"error": "Brand name required (min 2 chars)"}), 400
 
     try:
-        # Fetch from Wikipedia + Google KG + UPCItemDB (with Supabase caching)
+        # Fetch from Wikipedia + Google KG + Marketing Intelligence
         google_kg_api_key = os.environ.get("GOOGLE_KG_API_KEY")
-        brand_data = search_and_store_brand(q, google_kg_api_key, force_refresh=refresh)
+        brand_data = search_and_store_brand(q, google_kg_api_key, force_refresh=refresh, category=category)
 
         return jsonify({
             "ok": True,
             "brand": brand_data,
             "skus_count": len(brand_data.get("skus", [])),
             "competitors_count": len(brand_data.get("competitors", [])),
+            "has_marketing_intelligence": brand_data.get("marketing_intelligence") is not None,
             "source": brand_data.get("source")
         })
     except Exception as e:
