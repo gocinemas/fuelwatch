@@ -22,9 +22,10 @@ def fetch_brand_from_wikipedia(brand_name):
             "action": "query",
             "format": "json",
             "titles": brand_name,
-            "prop": "extracts|info",
+            "prop": "extracts",
             "explaintext": True,
-            "redirects": 1
+            "redirects": 1,
+            "exintro": True
         }
         r = requests.get(WIKIPEDIA_API, params=params, timeout=5)
         data = r.json()
@@ -32,10 +33,16 @@ def fetch_brand_from_wikipedia(brand_name):
 
         for page_id, page in pages.items():
             if page_id != "-1":  # Found
-                extract = page.get("extract", "").split("\n")[0]  # First paragraph
+                extract = page.get("extract", "").strip()
+                if not extract:
+                    return None
+                # Get first 1-2 sentences
+                sentences = extract.split(". ")
+                description = ". ".join(sentences[:2]) if len(sentences) > 1 else extract[:300]
+
                 return {
                     "source": "wikipedia",
-                    "description": extract,
+                    "description": description,
                     "wikipedia_url": f"https://en.wikipedia.org/wiki/{page.get('title', brand_name).replace(' ', '_')}"
                 }
     except Exception as e:
