@@ -9524,7 +9524,6 @@ function _hcAdd() {
     var _iKey = "miru_intel_" + (_intelSearchMode || "brand");
     _saveRecent(_iKey, raw);
     _renderRecent(_iKey, "intel-recent", "intel-input", "searchIntel()");
-    _intelPopulateQuickSearch(); // Update home page quick search buttons
 
     // sync to compat hidden inputs so renderCompany / _renderBrand still work
     document.getElementById("company-input").value = raw;
