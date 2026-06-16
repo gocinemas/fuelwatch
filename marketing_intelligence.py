@@ -121,6 +121,20 @@ STRATEGIC_THEMES = {
         "opportunity": "Resale (Goat, Grailed, Depop) = untapped $15B market. Nike could own the secondhand channel, lock Gen Z loyalty early",
         "hbr_validation": "HBR: 'Direct-to-Consumer Wins Margin War' (2024) - DTC margins drive profitability, not volume"
     },
+    "consumer_electronics": {
+        "theme": "Apple's Silicon & Services Moat vs Commoditized Hardware",
+        "insight": "Apple: $3.2T market cap, 24.6% margin, $637k/employee. Competitors: selling commodity hardware. Apple's advantage: vertical integration (chips), services lock-in ($25B annual), brand premium (+15% price premium). iPhone margins 40%+, AirPods 35%+",
+        "brand_positioning": "Apple owns the premium end and ecosystem lock-in. Samsung competing on specs (losing). AI integration (Apple Intelligence) = new moat. Services (iCloud, Apple TV+) = recurring revenue, 70%+ margins",
+        "opportunity": "AI assistant platform (Siri redesign). Smart home integration (HomeKit). Health wearables (Watch as medical device). Services expansion into emerging markets",
+        "hbr_validation": "HBR: 'The Platform Economy' (2023) - Ecosystem control beats product innovation"
+    },
+    "food_cpg": {
+        "theme": "Nestlé's Premium Portfolio Strategy vs Private Label Disruption",
+        "insight": "Nestlé owns 20+ $1B+ brands (Nespresso, Purina, Haagen-Dazs). Strategy: move upmarket to premium + wellness. Private label growing 8% vs 2% for name brands. Margin compression at scale",
+        "brand_positioning": "Nestlé: buying innovation (M&A strategy), premiumization (Nespresso +25% margins), emerging markets growth. Weak in fast-growing categories (plant-based, functional)",
+        "opportunity": "Plant-based innovation M&A. Functional foods (probiotics, nootropics). Direct-to-consumer for premium brands. Subscription model (Nespresso AAA)",
+        "hbr_validation": "HBR: 'The End of Commodities' (2024) - CPG winners own brands, losers sell ingredients"
+    },
 }
 
 def get_consumer_trends(category):
