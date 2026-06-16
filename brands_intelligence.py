@@ -278,8 +278,10 @@ def fetch_brand_social_campaigns(brand_name):
                 {"platform": "YouTube", "spend_millions": 45.0, "monthly_budget": 3.75},
                 {"platform": "TikTok", "spend_millions": 28.0, "monthly_budget": 2.33},
                 {"platform": "Instagram", "spend_millions": 62.0, "monthly_budget": 5.17},
+                {"platform": "Twitter/X", "spend_millions": 18.0, "monthly_budget": 1.5},
+                {"platform": "Reddit", "spend_millions": 8.0, "monthly_budget": 0.67},
             ],
-            "total_ad_spend": 135.0,
+            "total_ad_spend": 161.0,
             "primary_campaign": "Cybertruck Launch"
         },
         "apple": {
@@ -287,8 +289,10 @@ def fetch_brand_social_campaigns(brand_name):
                 {"platform": "YouTube", "spend_millions": 120.0, "monthly_budget": 10.0},
                 {"platform": "Instagram", "spend_millions": 95.0, "monthly_budget": 7.92},
                 {"platform": "TikTok", "spend_millions": 45.0, "monthly_budget": 3.75},
+                {"platform": "Facebook", "spend_millions": 85.0, "monthly_budget": 7.08},
+                {"platform": "LinkedIn", "spend_millions": 15.0, "monthly_budget": 1.25},
             ],
-            "total_ad_spend": 260.0,
+            "total_ad_spend": 360.0,
             "primary_campaign": "iPhone 15 Pro"
         },
         "nike": {
@@ -296,9 +300,23 @@ def fetch_brand_social_campaigns(brand_name):
                 {"platform": "Instagram", "spend_millions": 78.0, "monthly_budget": 6.5},
                 {"platform": "YouTube", "spend_millions": 55.0, "monthly_budget": 4.58},
                 {"platform": "TikTok", "spend_millions": 38.0, "monthly_budget": 3.17},
+                {"platform": "Facebook", "spend_millions": 42.0, "monthly_budget": 3.5},
+                {"platform": "Pinterest", "spend_millions": 28.0, "monthly_budget": 2.33},
+                {"platform": "Snapchat", "spend_millions": 18.0, "monthly_budget": 1.5},
             ],
-            "total_ad_spend": 171.0,
-            "primary_campaign": "Summer Collection"
+            "total_ad_spend": 259.0,
+            "primary_campaign": "Summer Collection + Women's Campaign"
+        },
+        "coca-cola": {
+            "platforms": [
+                {"platform": "YouTube", "spend_millions": 95.0, "monthly_budget": 7.92},
+                {"platform": "TikTok", "spend_millions": 52.0, "monthly_budget": 4.33},
+                {"platform": "Instagram", "spend_millions": 68.0, "monthly_budget": 5.67},
+                {"platform": "Facebook", "spend_millions": 110.0, "monthly_budget": 9.17},
+                {"platform": "Twitter/X", "spend_millions": 15.0, "monthly_budget": 1.25},
+            ],
+            "total_ad_spend": 340.0,
+            "primary_campaign": "Coca-Cola Zero Sugar + Refresh Campaigns"
         },
     }
 
